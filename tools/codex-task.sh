@@ -12,6 +12,7 @@
 #
 # Model: defaults to gpt-6-astra (also the default in ~/.codex/config.toml);
 # override with CODEX_MODEL=... . Effort: CODEX_EFFORT (default high).
+# Sandbox: CODEX_SANDBOX (default workspace-write; read-only for reviews).
 set -euo pipefail
 name="$1"; prompt_file="$2"; shift 2
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,7 +21,7 @@ exec codex exec \
   -C "$root" \
   -m "${CODEX_MODEL:-gpt-6-astra}" \
   -c "model_reasoning_effort=\"${CODEX_EFFORT:-high}\"" \
-  -s workspace-write \
+  -s "${CODEX_SANDBOX:-workspace-write}" \
   --json \
   -o "$root/.codex-runs/$name.md" \
   "$@" \
