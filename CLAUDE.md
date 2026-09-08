@@ -102,10 +102,15 @@ are edited only by the coordinator.
 - All float arithmetic goes through `gekko-math`. `std`/`libm` math
   functions (`sqrt`, `sin`, `cos`, `atan2`, `powf`, `floor`, ...) are
   banned outside `gekko-math` and tests.
-- Where the retail asm shows `fmadds`/`fmsubs`/`fnmsubs`, use
-  `gekko_math::fma::*` with operands in PowerPC order (a, c, b). Where it
-  shows separate `fmuls`/`fadds`, write separate `*` and `+`. Where the asm
-  is not yet available, write unfused and mark `// FUSION AUDIT PENDING`.
+- Every multiply-add is checked against the retail asm before it is
+  written: `cd harness && uv run python asm.py <symbol> --fused`
+  (`docs/ASM.md`). Where the asm shows `fmadds`/`fmsubs`/`fnmsubs` (or the
+  paired-single `ps_madd*`), use `gekko_math::fma::*` with operands in
+  PowerPC order (a, c, b). Where it shows separate `fmuls`/`fadds`, write
+  separate `*` and `+`. Either way cite it: `// retail 0x80022A3C: fmadds`.
+  The old `// FUSION AUDIT PENDING` marker is retired; the 2026-09-08 audit
+  found MWCC fused most eligible sites (sinf, cosf, sqrtf, slerp, Hermite,
+  collision), changing 15-25% of results, so unaudited code is wrong code.
 - Preserve double promotion. `10.0 * HSD_Randf()` computes in `f64` and
   rounds once.
 - Transcribe MSL and Melee math routines literally. Do not simplify,
