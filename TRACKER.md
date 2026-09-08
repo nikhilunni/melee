@@ -9,19 +9,20 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
-Milestone 2 (HSD engine) and ISO-independent ports, while waiting on the
-disc and a Dolphin build. See blockers.
+Milestone 2 (HSD engine): `jobj.c` is next, then typed archive readers so
+Milestone 2's gate can run the moment a disc is present. Dolphin is built.
+See blockers.
 
 ## Blockers
 
 - `[!]` **Disc image.** NTSC-U 1.02 (`GALE01`), owned and self-dumped. Needed
   for: retail asm (FMA audit), `.dat` assets for the simulator, savestates,
   the first real oracle trace. Owner: user. `docs/ISO.md`.
-- `[!]` **Dolphin scripting build for macOS arm64.** No binaries exist.
-  Recipe in `docs/DOLPHIN.md`. Can be built before the disc arrives.
-- `[!]` **`frsqrte`/`fres` hardware tables.** Placeholders return IEEE
-  values. Blocks bit-exactness of anything using `sqrtf` (90 call sites in
-  game code). See Decisions.
+- `[!]` **`frsqrte`/`fres` tables licensing decision.** Behaviour is captured
+  and modelled (`harness/gekko_probe`); `estimate.rs` still returns IEEE
+  values until the user decides whether the captured tables may be
+  committed. Blocks bit-exactness of `sqrtf` (90 call sites), `acosf`,
+  `lb_sqrtf`, `PSVECNormalize`.
 
 ## Decisions
 
@@ -33,7 +34,7 @@ disc and a Dolphin build. See blockers.
 | 2026-09-08 | Oracle reads retail memory via Dolphin scripting; never a modified DOL | Keeps Slippi replays and community tools valid as test inputs. |
 | 2026-09-08 | Target Felk's Dolphin scripting fork; GDB stub as fallback | Only option with savestate, frame hook, memory read, input in one process. |
 | 2026-09-08 | Slippi fixtures from hohav/peppi (MIT), not slippi-js (LGPL) | License. |
-| pending | How to obtain `frsqrte`/`fres` tables | Options: derive from 750CL manual; extract empirically via homebrew DOL in Dolphin (preferred); port Dolphin's under GPLv2. |
+| pending | Whether to commit the empirically captured `frsqrte`/`fres` tables | Captured from executing the instructions in Dolphin with no Dolphin source consulted (`harness/gekko_probe/README.md`). Table values describe hardware behaviour, but Dolphin's emulation is GPLv2 code; user to decide. Model: frsqrte 32 (base, slope) entries by exp parity + top 4 mantissa bits; fres 32 entries by top 5 bits, single-range clamp. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure
@@ -47,8 +48,9 @@ disc and a Dolphin build. See blockers.
 - [x] Harness: Dolphin script skeleton (`trace_scenario.py`)
 - [x] Docs: ISO, oracle design, Dolphin options, plan
 - [x] Decomp pinned as submodule
-- [~] (2026-09-08) Build Dolphin scripting fork on macOS arm64 (`docs/DOLPHIN.md` recipe)
-- [ ] Verify `frameadvance` fires with Null video backend; measure frames/sec
+- [x] Build Dolphin scripting fork on macOS arm64 (`docs/DOLPHIN_BUILD.md`; binary under `~/Projects/dolphin-scripting/build/Binaries/`)
+- [x] Verify `frameadvance` fires with Null video backend (yes, even with no disc, via `-e probe.dol`)
+- [ ] Measure oracle frames/sec with a booted game (blocked on disc)
 - [ ] Verify savestate load is synchronous with next frame
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
 - [ ] `Snapshot` trait in `melee-types` + test that Rust emitters cover every schema path
@@ -63,10 +65,11 @@ disc and a Dolphin build. See blockers.
 - [x] MSL `sinf`, `cosf`, `tanf`, `logf`, `frexp`, `fmodf`, classify, fabs
 - [x] Gekko int/float conversion semantics (`fctiwz`, `__cvt_*`)
 - [x] Native-C reference oracle test (bit-exact vs decomp C, `-ffp-contract=off`)
-- [ ] `frsqrte` / `fres` hardware-exact (blocked on Decisions)
+- [~] `frsqrte` / `fres` hardware-exact: behaviour captured and modelled by `harness/gekko_probe` (100% of 74k pairs); porting the inferred tables into `estimate.rs` awaits the licensing decision
 - [ ] FMA audit of the 25 marked sites against retail asm (blocked on disc)
 - [ ] Int-conversion audit of the 1 marked site (blocked on disc)
-- [ ] Paired-single matrix routines (`PSMTX*`) used by HSD `mtx.c`: decide whether Rust needs to emulate paired-single rounding or whether results are identical to scalar f32
+- [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fused ops map to fmadds/fmsubs, results identical to scalar single-precision
+- [ ] `fmuls` on a double-width estimate result (Gekko truncates frC to 25 bits): needed once frsqrte is exact, for `PSVECMag`/`PSVECNormalize`
 
 ## Milestone 2: HSD engine (`hsd-archive`, `hsd-gobj`, `hsd-anim`)
 
@@ -76,9 +79,12 @@ animation, match bone matrices from the oracle.
 - [x] `hsd-archive`: header, relocs, publics, externs, strings; synthetic tests
 - [ ] `hsd-archive`: typed readers for JObj/DObj/MObj/AObj/FObj node graphs (offset-linked structs to owned trees)
 - [ ] `hsd-archive`: test against a real `.dat` (blocked on disc)
-- [~] (2026-09-08) `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
-- [~] (2026-09-08) `hsd-anim`: `mtx.c` (509) and `quatlib.c` (199) via gekko-math
-- [~] (2026-09-08) `hsd-anim`: `aobj.c` (550), `fobj.c` (496) keyframe evaluation
+- [x] `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
+- [x] `hsd-anim`: `mtx.c`, `quatlib.c`, and the SDK `PSMTX*`/`PSVEC*` paired-single kernels
+- [ ] `hsd-anim`: `PSMTXRotAxisRad` (used by jobj.c, psdisp.c, cobj.c), `C_MTXLookAt`
+- [ ] Wire `hsd_anim::mtx::InverseTrig` to `melee_lb::trigf` in `melee-sim` (hsd-anim must not depend on melee-lb)
+- [x] `hsd-anim`: `aobj.c`, `fobj.c` keyframe evaluation (native-C oracle, 0 mismatches)
+- [ ] `hsd-anim`: confirm via Dolphin whether retail data ever hits the uninitialised single-key FObj path (see fobj.rs `FOBJ_UNINITIALISED_VALUE`)
 - [ ] `hsd-anim`: `jobj.c` (1578) hierarchy, local/world matrices, flags
 - [ ] `hsd-anim`: `dobj.c` (349), `mobj.c` (591) data only, no render
 - [ ] `hsd-anim`: `robj.c` (942) constraints if fighters use them (check)
@@ -92,7 +98,7 @@ animation, match bone matrices from the oracle.
 
 Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 
-- [~] (2026-09-08) `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf with lookup table)
+- [x] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf) and `lb_00CE.c` expf/powf
 - [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access), `lbanim.c`
 - [ ] `melee-lb`: remaining `lb_*` files as needed by callers (17k lines total)
 - [ ] `melee-mp`: `mplib.c`, `mpcoll.c`, `mpisland.c` (12k lines): floor/wall/ceiling queries, ledge detection
@@ -212,6 +218,8 @@ Gate: zero divergence over thousands of Slippi replays.
 ## Session log
 
 Newest first. One line per session: date, what landed, what is next.
+
+- 2026-09-08: Second batch: hsd-gobj scheduler (35 tests), hsd-anim mtx/quat + SDK PS kernels and aobj/fobj (all native-C oracle clean), melee-lb lbtrigf + expf/powf, Dolphin scripting fork built on arm64, gekko_probe captured frsqrte/fres behaviour. Gate: 46 suites green. Next: hsd-anim jobj/dobj/mobj, hsd-archive typed node readers, Snapshot trait, melee-mp, user decision on estimate tables.
 
 - 2026-09-08: Parallel batch: hsd-archive parser, type enums, MSL math with native oracle, harness walk + schema generator, slp parser, Dolphin research. Fixed melee-diff float equality. Next: hsd-gobj, hsd-anim start, lbtrigf into melee-lb, Dolphin build.
 - 2026-09-08: Scaffolded workspace, gekko-math RNG/FMA, melee-diff, harness skeleton, docs. Decomp pinned as submodule.
