@@ -47,7 +47,7 @@ disc and a Dolphin build. See blockers.
 - [x] Harness: Dolphin script skeleton (`trace_scenario.py`)
 - [x] Docs: ISO, oracle design, Dolphin options, plan
 - [x] Decomp pinned as submodule
-- [ ] Build Dolphin scripting fork on macOS arm64 (`docs/DOLPHIN.md` recipe)
+- [~] (2026-09-08) Build Dolphin scripting fork on macOS arm64 (`docs/DOLPHIN.md` recipe)
 - [ ] Verify `frameadvance` fires with Null video backend; measure frames/sec
 - [ ] Verify savestate load is synchronous with next frame
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
@@ -76,9 +76,9 @@ animation, match bone matrices from the oracle.
 - [x] `hsd-archive`: header, relocs, publics, externs, strings; synthetic tests
 - [ ] `hsd-archive`: typed readers for JObj/DObj/MObj/AObj/FObj node graphs (offset-linked structs to owned trees)
 - [ ] `hsd-archive`: test against a real `.dat` (blocked on disc)
-- [ ] `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
-- [ ] `hsd-anim`: `mtx.c` (509) and `quatlib.c` (199) via gekko-math
-- [ ] `hsd-anim`: `aobj.c` (550), `fobj.c` (496) keyframe evaluation
+- [~] (2026-09-08) `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
+- [~] (2026-09-08) `hsd-anim`: `mtx.c` (509) and `quatlib.c` (199) via gekko-math
+- [~] (2026-09-08) `hsd-anim`: `aobj.c` (550), `fobj.c` (496) keyframe evaluation
 - [ ] `hsd-anim`: `jobj.c` (1578) hierarchy, local/world matrices, flags
 - [ ] `hsd-anim`: `dobj.c` (349), `mobj.c` (591) data only, no render
 - [ ] `hsd-anim`: `robj.c` (942) constraints if fighters use them (check)
@@ -92,7 +92,7 @@ animation, match bone matrices from the oracle.
 
 Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 
-- [ ] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf with lookup table)
+- [~] (2026-09-08) `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf with lookup table)
 - [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access), `lbanim.c`
 - [ ] `melee-lb`: remaining `lb_*` files as needed by callers (17k lines total)
 - [ ] `melee-mp`: `mplib.c`, `mpcoll.c`, `mpisland.c` (12k lines): floor/wall/ceiling queries, ledge detection
