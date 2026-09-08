@@ -12,7 +12,7 @@
 //! 2. **Estimate instructions.** `frsqrte` and `fres` return hardware
 //!    approximations from lookup tables, not IEEE results. MSL's `sqrtf` is
 //!    built on `frsqrte` plus Newton steps. See [`estimate`] and [`msl`].
-//! 3. **MSL's own libm.** `sinf`, `cosf`, `tanf`, `atan2f` are Metrowerks
+//! 3. **MSL's own libm.** `sinf`, `cosf`, `tanf`, `logf` are Metrowerks
 //!    polynomial implementations, not the platform libm. See [`msl`].
 //!
 //! The decomp sources these are ported from live in the `melee-decomp`
