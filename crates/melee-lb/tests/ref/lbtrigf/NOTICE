@@ -1,0 +1,20 @@
+Origin of the files in this directory
+=====================================
+
+lbtrigf.c, lbtrigf.h, lb_00CE.c, lb_00CE.h
+    Byte-for-byte copies of third_party/melee-decomp/src/melee/lb/ (the
+    doldecomp `melee` project, https://github.com/doldecomp/melee) at the
+    submodule commit the melee-lb port was written against. They are the
+    decompilation of Super Smash Bros. Melee's own trigonometry and
+    exponential routines. tests/ref_oracle.rs checks they still match the
+    submodule; if they differ, re-copy them and re-audit src/trigf.rs.
+
+    They are used only as a test oracle: compiled natively with fusion
+    disabled and compared bit for bit against the Rust transcription. They
+    are not part of the melee-lb library.
+
+driver.c, shim/
+    Written for this repository. The shim headers stand in for the decomp's
+    Runtime/platform.h, math.h and placeholder.h so the copies compile on a
+    host toolchain without the MetroTRK intrinsics. See shim/math.h for the
+    stand-ins for __frsqrte, __fnmsubs and sqrtf.
