@@ -10,4 +10,5 @@ pub mod mtx;
 pub mod quat;
 pub mod dobj;
 pub mod jobj;
+pub mod load;
 pub mod mobj;
