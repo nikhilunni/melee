@@ -1,0 +1,22 @@
+# Milestone 3 fallback scenario: two idle Foxes (P1 human, P2 human with no
+# controller input), Yoshi's Story, Stock 1, items off. Final Destination is
+# locked on a fresh save, so this stands in for idle_fd_fox until FD is unlocked.
+# The savestate is machine-local (harness/roms/, gitignored); recorded 2026-09-08
+# with harness/dolphin/remote.py `save-when-wait` at the first frame both
+# fighters were in ftCo_MS_Wait (frame 45970 of that Dolphin session).
+name = "idle_ys_fox"
+savestate = "harness/roms/idle_ys_fox.sav"
+frames = 600
+stage = "YoshisStory"
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
+
+inputs = []   # no input for 600 frames

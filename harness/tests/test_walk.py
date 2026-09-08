@@ -165,3 +165,111 @@ def test_inputs_reissued_every_frame():
     # set_gc_buttons lasts one frame in the scripting fork, so the held state
     # must be sent on every frame, not only on the frame the step appears.
     assert ctl.log == [(0, {}), (0, {"A": True}), (0, {"A": True}), (0, {}), (0, {})]
+
+
+def test_script_dir_without_dunder_file():
+    import trace_scenario
+
+    here = Path(trace_scenario.__file__).resolve().parent
+    assert trace_scenario.script_dir({"__file__": trace_scenario.__file__}) == here
+    # Dolphin runs --script files with PyRun_File and no __file__; the caller's
+    # code object still knows its filename, and the caller here is this test.
+    assert trace_scenario.script_dir({}) == Path(__file__).resolve().parent
+    assert trace_scenario.HERE == here
+    assert trace_scenario.REPO == here.parent.parent
+
+
+def test_savestate_path_resolves_against_repo_root(tmp_path: Path):
+    import trace_scenario
+
+    assert trace_scenario.resolve_savestate({}) is None
+    rel = trace_scenario.resolve_savestate({"savestate": "harness/roms/x.sav"}, repo=tmp_path)
+    assert rel == tmp_path / "harness/roms/x.sav"
+    assert trace_scenario.resolve_savestate({"savestate": "/abs/x.sav"}, repo=tmp_path) == Path("/abs/x.sav")
+    sav = tmp_path / "x.sav"
+    assert trace_scenario.read_sidecar(sav) is None
+    (tmp_path / "x.sav.json").write_text('{"seed": 7, "frame": 3}')
+    assert trace_scenario.read_sidecar(sav) == {"seed": 7, "frame": 3}
+
+
+class _FakeEvents:
+    def __init__(self):
+        self.callback = "registered"
+
+    def on_frameadvance(self, cb):
+        self.callback = cb
+
+
+class _FakeStates:
+    def __init__(self, mem, seed_after_load):
+        self.mem, self.seed_after_load, self.loaded = mem, seed_after_load, []
+
+    def load_from_file(self, path):
+        self.loaded.append(path)
+        self.mem.write_u32(0x804D5F90, self.seed_after_load)   # `seed`
+
+
+class _FakeController:
+    def __init__(self):
+        self.log = []
+
+    def set_gc_buttons(self, port, buttons):
+        self.log.append((port, dict(buttons)))
+
+
+def test_tracer_loads_on_first_frame_then_records_and_finishes(tmp_path: Path):
+    import json
+    import trace_scenario
+
+    m = build_two_fighter_world()
+    m.write_u32(0x804D5F90, 0x11111111)           # pre-load seed (boot menus)
+    states = _FakeStates(m, seed_after_load=0xABCD)
+    events, ctl = _FakeEvents(), _FakeController()
+    raw = tmp_path / "raw.jsonl"
+    done = tmp_path / "raw.jsonl.done"
+    t = trace_scenario.Tracer({"frames": 3, "inputs": [{"frame": 1, "buttons": {"A": True}}]},
+                              raw.open("w"), tmp_path / "s.sav", {"seed": 0xABCD}, done,
+                              mem=m, ctl=ctl, states=states, events=events)
+    for _ in range(5):                            # extra callbacks after finishing are ignored
+        t.on_frame()
+    assert states.loaded == [str(tmp_path / "s.sav")]
+    lines = [json.loads(l) for l in raw.read_text().splitlines()]
+    assert [r["frame"] for r in lines] == [0, 1, 2]
+    assert lines[0]["seed"] == 0xABCD             # frame 0 is the saved boundary, not the boot seed
+    assert [f["base"] for f in lines[0]["fighters"]] == ["0x80453080", "0x80455500"]
+    assert ctl.log == [(0, {}), (0, {"A": True}), (0, {"A": True})]
+    summary = json.loads(done.read_text())
+    assert summary["frames"] == 3 and summary["synced"] is True
+    assert summary["seed_after_load"] == 0xABCD and summary["sidecar_seed"] == 0xABCD
+    # "Unregistered" = replaced by a no-op (the fork rejects None); sys.exit would not stop it.
+    assert callable(events.callback) and events.callback is not t.on_frame
+    assert events.callback() is None
+
+
+def test_tracer_without_savestate_records_immediately(tmp_path: Path):
+    import trace_scenario
+
+    m = build_two_fighter_world()
+    events = _FakeEvents()
+    raw = tmp_path / "raw.jsonl"
+    t = trace_scenario.Tracer({"frames": 1}, raw.open("w"), None, None, tmp_path / "raw.jsonl.done",
+                              mem=m, ctl=_FakeController(), states=None, events=events)
+    t.on_frame()
+    assert len(raw.read_text().splitlines()) == 1 and events.callback is not t.on_frame
+
+
+def test_tracer_failure_writes_err_and_unregisters(tmp_path: Path):
+    import trace_scenario
+
+    class Boom:
+        def read_u32(self, addr):
+            raise RuntimeError("bad read")
+
+    events = _FakeEvents()
+    raw = tmp_path / "raw.jsonl"
+    t = trace_scenario.Tracer({"frames": 5}, raw.open("w"), None, None, tmp_path / "raw.jsonl.done",
+                              mem=Boom(), ctl=_FakeController(), states=None, events=events)
+    t.on_frame()
+    assert "bad read" in (tmp_path / "raw.jsonl.err").read_text()
+    assert not (tmp_path / "raw.jsonl.done").exists()
+    assert events.callback is not t.on_frame and t.done
