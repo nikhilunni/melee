@@ -178,3 +178,35 @@ JObj. The tree reader skips `JOBJ_INSTANCE` children and root siblings, as
 does. This equals `JObjTree::depth_first` for Fox's one-root skeleton;
 that Rust iterator can also traverse a forest, while animation attachment
 is scoped to a subtree. Corrupt pointers/cycles fail rather than truncate.
+
+## Result: passed 2026-09-08
+
+First run against the real game, savestate `harness/roms/idle_ys_fox.sav`
+(two idle Foxes, Yoshi's Story; P1 at (-42, 23.450098, 0) facing right,
+Wait1 at animation frame 6.0, dirty bones 67/71/72):
+
+```sh
+# oracle (4 s wall)
+OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl"
+MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$OUT" \
+MELEE_BONES_FRAMES=2 MELEE_BONES_FIGHTER_INDEX=0 \
+  ~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
+  -v OGL -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" \
+  --script "$PWD/harness/dolphin_bones_snippet.py"
+# ours, with the fighter-layer root overrides
+cargo run -q -p melee-sim -- bones --fighter fox --anim Wait1 --frame 6.0 --frames 2 \
+  --pos=-42,23.450098,0 --facing 1 --model-scale 0.96 --bone-scale 67=1.0416667
+```
+
+Outcome: 3,212 records per side; **0 mismatches on the 70 bones the game had
+recomputed** (2 frames x 70 bones x 22 words = 3,080 bit-exact values). The 58
+differing words are all on the three dirty bones whose cached matrices retail
+had not rebuilt. Without the root overrides the same run diverges at
+`p0.bone[0].mtx[0]`, exactly as predicted above. Every non-root joint's local
+SRT matched with no overrides at all, so the keyframe evaluator, quaternion
+and matrix code, and the fused-multiply-add audit are all confirmed against
+hardware-produced data. `crates/melee-sim/tests/m2_gate.rs` re-runs the
+comparison whenever the trace and disc are present.
+
+Open item: bone 67 carries scale 1/0.96 in retail; the fighter.c site that
+writes it has not been located (`TODO(meaning)` in `FighterPose`).

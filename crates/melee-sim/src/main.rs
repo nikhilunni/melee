@@ -46,6 +46,18 @@ enum Command {
         /// Extracted disc files; defaults to harness/roms/files in this repo.
         #[arg(long, default_value_os_t = melee_sim::bones::default_assets())]
         assets: PathBuf,
+        /// Fighter position written onto the root, as `x,y,z` (fp->cur_pos).
+        #[arg(long, value_parser = parse_vec3)]
+        pos: Option<hsd_types::Vec3>,
+        /// Facing direction, +1 or -1, applied as a root Y rotation.
+        #[arg(long)]
+        facing: Option<f32>,
+        /// Uniform model scale on the root (Fox: 0.96).
+        #[arg(long)]
+        model_scale: Option<f32>,
+        /// Extra per-bone uniform scale, `INDEX=SCALE`; repeatable.
+        #[arg(long = "bone-scale", value_parser = parse_bone_scale)]
+        bone_scales: Vec<(usize, f32)>,
     },
 }
 
@@ -55,13 +67,24 @@ fn main() -> anyhow::Result<()> {
         frame,
         frames,
         assets,
+        pos,
+        facing,
+        model_scale,
+        bone_scales,
         ..
     }) = args.command
     {
+        let pose = melee_sim::bones::FighterPose {
+            position: pos,
+            facing_dir: facing,
+            model_scale,
+            bone_scales,
+        };
         return melee_sim::bones::write_fox_wait1_bones(
             &assets,
             frame,
             frames,
+            &pose,
             io::BufWriter::new(io::stdout().lock()),
         );
     }
@@ -72,4 +95,29 @@ fn main() -> anyhow::Result<()> {
         args.assets.expect("required by clap").display(),
         args.out.expect("required by clap").display()
     )
+}
+
+fn parse_vec3(text: &str) -> Result<hsd_types::Vec3, String> {
+    let parts: Vec<f32> = text
+        .split(',')
+        .map(|p| p.trim().parse::<f32>().map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
+    match parts[..] {
+        [x, y, z] => Ok(hsd_types::Vec3::new(x, y, z)),
+        _ => Err("expected x,y,z".into()),
+    }
+}
+
+fn parse_bone_scale(text: &str) -> Result<(usize, f32), String> {
+    let (index, scale) = text.split_once('=').ok_or("expected INDEX=SCALE")?;
+    Ok((
+        index
+            .trim()
+            .parse()
+            .map_err(|e: std::num::ParseIntError| e.to_string())?,
+        scale
+            .trim()
+            .parse()
+            .map_err(|e: std::num::ParseFloatError| e.to_string())?,
+    ))
 }

@@ -1,7 +1,7 @@
 use std::process::Command;
 
 use melee_diff::{first_divergence, read_trace, Record, Value};
-use melee_sim::bones::{default_assets, write_fox_wait1_bones};
+use melee_sim::bones::{default_assets, write_fox_wait1_bones, FighterPose};
 
 const RECORDS_PER_FRAME: usize = 73 * (12 + 10);
 
@@ -45,7 +45,14 @@ fn real_fox_frames_zero_and_one_round_trip_and_advance() {
         return;
     }
     let mut jsonl = Vec::new();
-    write_fox_wait1_bones(&default_assets(), 0.0, 2, &mut jsonl).unwrap();
+    write_fox_wait1_bones(
+        &default_assets(),
+        0.0,
+        2,
+        &FighterPose::default(),
+        &mut jsonl,
+    )
+    .unwrap();
     let records = read_trace(jsonl.as_slice()).unwrap();
     assert_eq!(records.len(), 2 * RECORDS_PER_FRAME);
     for (frame, chunk) in records.chunks_exact(RECORDS_PER_FRAME).enumerate() {
@@ -65,7 +72,14 @@ fn real_fox_frames_zero_and_one_round_trip_and_advance() {
     assert_eq!(records[0].state["p0.bone[0].mtx[0]"], Value::f32(1.0));
     // A fresh request of frame 1 must equal normal playback's second sample.
     let mut requested = Vec::new();
-    write_fox_wait1_bones(&default_assets(), 1.0, 1, &mut requested).unwrap();
+    write_fox_wait1_bones(
+        &default_assets(),
+        1.0,
+        1,
+        &FighterPose::default(),
+        &mut requested,
+    )
+    .unwrap();
     let mut requested = read_trace(requested.as_slice()).unwrap();
     check_frame(&requested, 0);
     for record in &mut requested {
@@ -108,7 +122,14 @@ fn real_fox_cli_matches_library_from_another_working_directory() {
         String::from_utf8_lossy(&result.stderr)
     );
     let mut expected = Vec::new();
-    write_fox_wait1_bones(&default_assets(), 0.0, 2, &mut expected).unwrap();
+    write_fox_wait1_bones(
+        &default_assets(),
+        0.0,
+        2,
+        &FighterPose::default(),
+        &mut expected,
+    )
+    .unwrap();
     assert_eq!(
         read_trace(result.stdout.as_slice()).unwrap(),
         read_trace(expected.as_slice()).unwrap()
@@ -118,9 +139,13 @@ fn real_fox_cli_matches_library_from_another_working_directory() {
 #[test]
 fn invalid_frame_and_count_fail_before_loading_assets() {
     for (frame, count) in [(f32::NAN, 1), (f32::INFINITY, 1), (-1.0, 1), (0.0, 0)] {
-        assert!(
-            write_fox_wait1_bones(std::path::Path::new("absent"), frame, count, Vec::new())
-                .is_err()
-        );
+        assert!(write_fox_wait1_bones(
+            std::path::Path::new("absent"),
+            frame,
+            count,
+            &FighterPose::default(),
+            Vec::new()
+        )
+        .is_err());
     }
 }

@@ -96,6 +96,50 @@ fn joint_records(frame: u64, bone: usize, joint: &hsd_anim::jobj::JObj) -> Vec<R
     .collect()
 }
 
+/// What the fighter layer writes onto the skeleton before matrices are built.
+/// With `None` everywhere the root keeps its archive SRT (an identity world
+/// boundary), which is *not* what a fighter in a match looks like.
+#[derive(Debug, Clone, Default)]
+pub struct FighterPose {
+    /// `HSD_JObjSetTranslate(GET_JOBJ(gobj), &fp->cur_pos)` (fighter.c:519).
+    pub position: Option<hsd_types::Vec3>,
+    /// `ftPartSetRotY(fp, 0, M_PI_2 * fp->facing_dir)` (fighter.c:1174):
+    /// the product is a double, rounded once to f32.
+    pub facing_dir: Option<f32>,
+    /// `Fighter_UpdateModelScale` (fighter.c:213-229): uniform
+    /// `ftCommon_GetModelScale(fp)` unless `x34_scale.z != 1.0`, which
+    /// replaces only x. Fox is 0.96.
+    pub model_scale: Option<f32>,
+    /// Extra per-bone uniform scales observed in retail (e.g. bone 67 at
+    /// 1/model_scale on Fox). TODO(meaning): find the fighter.c site that
+    /// writes these; until then they are supplied by the caller.
+    pub bone_scales: Vec<(usize, f32)>,
+}
+
+impl FighterPose {
+    fn apply(&self, tree: &mut JObjTree, root: JObjId, bones: &[JObjId]) -> Result<()> {
+        if let Some(position) = self.position {
+            tree.set_translate(root, &position);
+        }
+        if let Some(facing) = self.facing_dir {
+            let rotation_y = (core::f64::consts::FRAC_PI_2 * facing as f64) as f32;
+            tree.set_rotation_x(root, 0.0);
+            tree.set_rotation_y(root, rotation_y);
+            tree.set_rotation_z(root, 0.0);
+        }
+        if let Some(scale) = self.model_scale {
+            tree.set_scale(root, &hsd_types::Vec3::new(scale, scale, scale));
+        }
+        for &(bone, scale) in &self.bone_scales {
+            let id = *bones
+                .get(bone)
+                .with_context(|| format!("bone {bone} does not exist"))?;
+            tree.set_scale(id, &hsd_types::Vec3::new(scale, scale, scale));
+        }
+        Ok(())
+    }
+}
+
 /// Load Fox's neutral costume and Wait1 and emit canonical JSONL.
 ///
 /// Request `frame` once; FIRST_PLAY evaluates exactly that time, subsequent
@@ -111,6 +155,7 @@ pub fn write_fox_wait1_bones(
     assets: &Path,
     frame: f32,
     frames: u64,
+    pose: &FighterPose,
     mut out: impl Write,
 ) -> Result<()> {
     ensure!(
@@ -120,6 +165,7 @@ pub fn write_fox_wait1_bones(
     ensure!(frames > 0, "frames must be positive");
     let (mut tree, root) = load_fox_wait1(assets)?;
     let ids: Vec<_> = tree.depth_first(root).collect();
+    pose.apply(&mut tree, root, &ids)?;
     request_frame(&mut tree, root, frame);
     for sample in 0..frames {
         tree.anim_all::<RetailTrig>(root);
