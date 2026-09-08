@@ -5,7 +5,7 @@ Bottom-up along the call graph, gated on bit-exact traces at every step.
 
 | # | Milestone | Gate | Status |
 |---|---|---|---|
-| 1 | Math and RNG (`gekko-math`) | Unit tests; goldens for `frsqrte` once tables are decided | RNG, FMA, and all in-tree MSL routines done and verified against natively compiled decomp C. `frsqrte`/`fres` are placeholders; 25 fusion sites await retail asm. |
+| 1 | Math and RNG (`gekko-math`) | Unit tests; hardware goldens for `frsqrte`/`fres` | Complete. RNG, FMA, all in-tree MSL routines, and hardware-exact `frsqrte`/`fres` (tables captured via `harness/gekko_probe`), all verified against natively compiled decomp C. Only the fusion audit against retail asm remains. |
 | 2 | Archive parsing and animation (`hsd-archive`, `hsd-anim`) | Load one character and one stage, match bone matrices of the wait animation | Archive parsing complete with synthetic tests. Animation not started. |
 | 3 | One fighter idle on Final Destination | `idle_fd_fox` 600 frames bit-exact | Scenario written; fighter-list walk done and tested. Needs disc, Dolphin build, savestate. |
 | 4 | Scripted input: movement, jumps, ledges | Movement scenarios | |

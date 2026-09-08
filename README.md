@@ -29,9 +29,8 @@ or ever will be committed to this repository.
 
 ## Status
 
-Milestone 1 of `docs/PLAN.md` is complete except for the `frsqrte`/`fres`
-hardware tables (see `crates/gekko-math/src/estimate.rs`). Archive parsing,
-the shared type crates, the Slippi replay parser, and the oracle harness
-(fighter-list walk, schema generator, `melee-diff`) are done and tested.
-Blocked on a disc image and a scripting-capable Dolphin build for the first
-real trace.
+Milestone 1 (math) is complete and hardware-exact. Milestone 2 (HSD
+engine) has archive parsing, typed descriptor readers, the GObj scheduler,
+matrix/quaternion math, keyframe animation, and the JObj scene graph; its
+gate needs a disc. The Snapshot mechanism, Slippi parser, and oracle
+harness are done. Dolphin is built. See `TRACKER.md`.
