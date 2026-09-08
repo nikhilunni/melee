@@ -10,3 +10,4 @@
 *.jsonl
 __pycache__/
 .DS_Store
+.codex-runs/

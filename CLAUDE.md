@@ -173,6 +173,25 @@ abstractions and clean organization.
 5. `cargo gate`. If a scenario diverges, `melee-diff` names the frame,
    phase, and field. Fix before moving on.
 
+## Delegating work
+
+Fable subagents are expensive; the user asked (2026-09-08) to keep them to at
+most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**
+(OpenAI, model `gpt-6-astra`) through `tools/codex-task.sh`:
+
+1. Write the task as a prompt file in the scratchpad: the decomp functions to
+   port, the crate and module to put them in, the naming and abstraction
+   expectations, and the **mechanical acceptance criteria**: named tests that
+   must pass (native-C reference oracle, Dolphin trace comparison, existing
+   suites) plus clippy. Codex reads `AGENTS.md`, which points at this file.
+2. `tools/codex-task.sh <name> <prompt-file>` runs it in the background from
+   the repo root in a workspace-write sandbox. Its final report is in
+   `.codex-runs/<name>.md`.
+3. Review the diff yourself: `cargo gate`, clippy, read the code for style.
+   Codex must never commit; you commit after verification.
+4. Bit-exact tests are the guardrail. If Codex touched expected values or
+   loosened a test, reject the change.
+
 ## Hard boundaries
 
 - Never modify `third_party/melee-decomp` from this repo.
