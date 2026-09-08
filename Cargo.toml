@@ -23,6 +23,7 @@ members = [
     "crates/melee-sim",
     "crates/melee-platform",
     "crates/melee-diff",
+    "crates/slp",
 ]
 
 [workspace.package]

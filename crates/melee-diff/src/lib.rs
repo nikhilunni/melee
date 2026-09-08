@@ -20,7 +20,7 @@ pub struct Record {
 
 /// Values are stored so that float comparison is exact: an `f32` is carried
 /// as its bit pattern alongside a human-readable decimal.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "t", content = "v")]
 pub enum Value {
     #[serde(rename = "i")]
@@ -35,6 +35,23 @@ pub enum Value {
     Str(String),
     #[serde(rename = "null")]
     Null,
+}
+
+/// Floats compare by bit pattern only. The `approx` field is a human-readable
+/// convenience and may lose its last digit on a JSON round trip, so it must
+/// never participate in equality.
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Int(a), Value::Int(b)) => a == b,
+            (Value::UInt(a), Value::UInt(b)) => a == b,
+            (Value::F32 { bits: a, .. }, Value::F32 { bits: b, .. }) => a == b,
+            (Value::F64 { bits: a, .. }, Value::F64 { bits: b, .. }) => a == b,
+            (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::Null, Value::Null) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Value {
@@ -174,6 +191,15 @@ mod tests {
         let d = first_divergence(&e, &a).unwrap();
         assert_eq!(d.frame, 1);
         assert_eq!(d.actual, None);
+    }
+
+    #[test]
+    fn float_equality_ignores_approx() {
+        let a = Value::F32 { bits: 0x41D5_28A9, approx: 26.644920349121094 };
+        let b = Value::F32 { bits: 0x41D5_28A9, approx: 26.644920349121097 };
+        assert_eq!(a, b);
+        let c = Value::F32 { bits: 0x41D5_28AA, approx: 26.644920349121094 };
+        assert_ne!(a, c);
     }
 
     #[test]

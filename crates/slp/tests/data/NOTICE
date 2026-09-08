@@ -1,0 +1,41 @@
+The .slp replay files in this directory are test fixtures copied verbatim
+from the `peppi` project (https://github.com/hohav/peppi), directory
+`tests/data`, retrieved 2026-09-08 from the `main` branch.
+
+peppi is distributed under the MIT License:
+
+    The MIT License (MIT)
+
+    Copyright (c) 2020 melkor
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to permit
+    persons to whom the Software is furnished to do so, subject to the
+    following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+Files:
+  v0.1.slp           Slippi 0.1.0 (pre Frame Start / Bookend layout)
+  v3.12.slp          Slippi 3.12.0
+  v3.13.slp          Slippi 3.13.0
+  v3.16.slp          Slippi 3.16.0
+  v3.18.slp          Slippi 3.18.0
+  netplay.slp        Slippi Online (rollback) game
+  joystick_udlr.slp  main-stick cardinal inputs
+  ics.slp            Ice Climbers (leader + follower frames)
+
+The project-slippi/slippi-js fixtures were considered and not used because
+that repository is licensed under the LGPL-3.0.

@@ -348,6 +348,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slp"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "melee-diff",
+ "serde_json",
+]
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
