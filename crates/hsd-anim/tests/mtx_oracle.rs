@@ -76,8 +76,11 @@ fn build_oracle() -> Option<PathBuf> {
     }
     let mtx_c = decomp_dir().join("src/sysdolphin/baselib/mtx.c");
     let quatlib_c = decomp_dir().join("src/sysdolphin/baselib/quatlib.c");
-    // trigf.c (sinf/cosf) plus the tables and fabsf__Ff it links against.
-    let msl_files = ["trigf.c", "math_data.c", "math_1.c"].map(|f| msl_ref_dir().join(f));
+    // The retail-faithful trigf.c (sinf/cosf with the fused multiply-adds the
+    // disc's asm shows; see gekko-math's ref_oracle) plus the tables and
+    // fabsf__Ff it links against.
+    let msl_files =
+        ["retail/trigf.c", "math_data.c", "math_1.c"].map(|f| msl_ref_dir().join(f));
     if !mtx_c.exists() || !quatlib_c.exists() {
         eprintln!("melee-decomp submodule not present; skipping native oracle comparison");
         return None;
@@ -92,9 +95,7 @@ fn build_oracle() -> Option<PathBuf> {
 
     let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("mtx_ref_oracle");
     std::fs::create_dir_all(&out_dir).unwrap();
-    let exe = out_dir.join("driver");
-    let mut cmd = Command::new(&cc);
-    cmd.args([
+    const CFLAGS: [&str; 7] = [
         "-std=c99",
         "-O0",
         "-ffp-contract=off",
@@ -102,18 +103,51 @@ fn build_oracle() -> Option<PathBuf> {
         "-fno-strict-aliasing",
         "-fwrapv",
         "-Wno-incompatible-library-redeclaration",
+    ];
+
+    // The MSL sources `#include "math.h"` expecting gekko-math's shim (which
+    // supplies the fixed-width types and the gekko_fmadds helpers), while
+    // mtx.c/quatlib.c expect this crate's shim. Compile the MSL files to
+    // objects against their own include dir first, then link everything.
+    let mut msl_objects = Vec::new();
+    for src in &msl_files {
+        let obj = out_dir.join(format!(
+            "{}.o",
+            src.file_stem().unwrap().to_string_lossy()
+        ));
+        let out = Command::new(&cc)
+            .args(CFLAGS)
+            .arg("-I")
+            .arg(msl_ref_dir())
+            .arg("-c")
+            .arg(src)
+            .arg("-o")
+            .arg(&obj)
+            .output()
+            .expect("spawn cc");
+        assert!(
+            out.status.success(),
+            "compiling {} failed:\n{}",
+            src.display(),
+            String::from_utf8_lossy(&out.stderr)
+        );
+        msl_objects.push(obj);
+    }
+
+    let exe = out_dir.join("driver");
+    let mut cmd = Command::new(&cc);
+    cmd.args(CFLAGS)
         // Keep the decomp's debug.h (and its OS dependencies) out; the shim
         // objalloc.h supplies HSD_ASSERT instead.
-        "-DSYSDOLPHIN_BASELIB_DEBUG_H",
-        "-I",
-    ])
-    .arg(ref_dir().join("include"))
-    .arg("-o")
-    .arg(&exe)
-    .arg(ref_dir().join("driver.c"))
-    .arg(&mtx_c)
-    .arg(&quatlib_c)
-    .args(&msl_files);
+        .arg("-DSYSDOLPHIN_BASELIB_DEBUG_H")
+        .arg("-I")
+        .arg(ref_dir().join("include"))
+        .arg("-o")
+        .arg(&exe)
+        .arg(ref_dir().join("driver.c"))
+        .arg(&mtx_c)
+        .arg(&quatlib_c)
+        .args(&msl_objects);
     let out = cmd.output().expect("spawn cc");
     assert!(
         out.status.success(),

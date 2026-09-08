@@ -1,16 +1,20 @@
 //! Bit-for-bit comparison of `melee_lb::trigf` against the decomp's own C,
-//! compiled natively with fusion disabled.
+//! compiled natively.
 //!
-//! What this proves: the Rust performs the same IEEE operations in the same
-//! order as the C source. What it does not prove: which of those operations
-//! MWCC contracted into fused multiply-adds on the retail disc (marked
-//! `FUSION AUDIT PENDING` in `src/trigf.rs`). `__frsqrte` is the table-exact
-//! model on both sides (`gekko_math::estimate` and its C twin
-//! `crates/gekko-math/tests/ref/gekko_estimate.h`).
+//! Two builds of the C exist ([`Variant`]). The retail-faithful copy in
+//! `tests/ref/lbtrigf/retail/` spells out, with `fmaf`, the multiply-adds
+//! MWCC fused on the disc (each site cites its instruction address;
+//! `src/trigf.rs` carries the same citations). The port must match that
+//! build bit for bit. The verbatim decomp sources are built too, and
+//! `fusion_changes_results_within_the_sweep` reports on how many inputs the
+//! two disagree: the evidence that the audit changed observable results.
+//! `__frsqrte` is the table-exact model on both sides (`gekko_math::estimate`
+//! and its C twin `crates/gekko-math/tests/ref/gekko_estimate.h`).
 //!
 //! The C is compiled with `cc -O0 -ffp-contract=off -fno-builtin
-//! -fno-strict-aliasing -fwrapv`. If no `cc` is on `PATH` the tests print a
-//! notice and pass; the std-tolerance tests in `src/trigf.rs` still run.
+//! -fno-strict-aliasing -fwrapv`, so the only fused operations are the ones
+//! written as such. If no `cc` is on `PATH` the tests print a notice and
+//! pass; the std-tolerance tests in `src/trigf.rs` still run.
 //!
 //! NaN outputs are compared as "both NaN": payload propagation through
 //! `x * NaN` and friends is hardware-specific, and the Rust models Gekko
@@ -30,6 +34,17 @@ use melee_lb::trigf;
 
 /// Files copied verbatim from the decomp; see `tests/ref/lbtrigf/NOTICE`.
 const REF_FILES: &[&str] = &["lbtrigf.c", "lbtrigf.h", "lb_00CE.c", "lb_00CE.h"];
+
+/// Which C the oracle is built from (`driver.c` picks by `-D`).
+#[derive(Clone, Copy)]
+enum Variant {
+    /// `retail/lbtrigf.c` plus the fused `sqrtf` shim: the retail
+    /// instruction sequence.
+    Retail,
+    /// The decomp sources verbatim (`-DLB_REF_UNFUSED`): every multiply and
+    /// add separate.
+    Verbatim,
+}
 
 fn ref_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/ref/lbtrigf")
@@ -54,14 +69,15 @@ fn ref_sources_match_submodule() {
         let theirs = std::fs::read(decomp.join(f)).unwrap();
         assert!(
             ours == theirs,
-            "tests/ref/lbtrigf/{f} differs from the decomp submodule; re-copy it and re-audit the port"
+            "tests/ref/lbtrigf/{f} differs from the decomp submodule; re-copy it, re-derive \
+             tests/ref/lbtrigf/retail/{f} from it if one exists, and re-audit the port"
         );
     }
 }
 
 /// Compiles the driver into a per-test directory (tests run in parallel, so
 /// they must not share an executable path).
-fn build_oracle(name: &str) -> Option<PathBuf> {
+fn build_oracle(variant: Variant, name: &str) -> Option<PathBuf> {
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
@@ -85,10 +101,15 @@ fn build_oracle(name: &str) -> Option<PathBuf> {
         "-I",
     ])
     .arg(ref_dir().join("shim"))
+    .arg("-I")
+    .arg(ref_dir())
     .arg("-o")
     .arg(&exe)
     .arg(ref_dir().join("driver.c"))
     .arg("-lm");
+    if let Variant::Verbatim = variant {
+        cmd.arg("-DLB_REF_UNFUSED");
+    }
     let out = cmd.output().expect("spawn cc");
     assert!(
         out.status.success(),
@@ -507,7 +528,7 @@ fn compare_binary(exe: &Path, op: &'static str, f: fn(f32, f32) -> f32, inputs: 
 
 #[test]
 fn atanf_lookup_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle("table") else {
+    let Some(exe) = build_oracle(Variant::Retail, "table") else {
         return;
     };
     let out = run_oracle(&exe, "atanf_lookup", &[]);
@@ -529,7 +550,7 @@ fn atanf_lookup_matches_native_c_bit_for_bit() {
 
 #[test]
 fn lbtrigf_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle("trig") else {
+    let Some(exe) = build_oracle(Variant::Retail, "trig") else {
         return;
     };
 
@@ -547,7 +568,7 @@ fn lbtrigf_matches_native_c_bit_for_bit() {
 
 #[test]
 fn lb_00ce_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle("exp") else {
+    let Some(exe) = build_oracle(Variant::Retail, "exp") else {
         return;
     };
 
@@ -558,4 +579,85 @@ fn lb_00ce_matches_native_c_bit_for_bit() {
     let pairs = powf_sweep();
     assert!(pairs.len() >= 100_000, "sweep has {} inputs", pairs.len());
     compare_binary(&exe, "powf", trigf::powf, &pairs);
+}
+
+/// Number of `f32` records that differ between two oracle outputs, counting
+/// two NaNs as equal.
+fn count_f32_differences(a: &[u8], b: &[u8]) -> usize {
+    assert_eq!(a.len(), b.len());
+    a.chunks_exact(4)
+        .zip(b.chunks_exact(4))
+        .filter(|(x, y)| {
+            let (x, y) = (
+                f32::from_bits(u32::from_ne_bytes((*x).try_into().unwrap())),
+                f32::from_bits(u32::from_ne_bytes((*y).try_into().unwrap())),
+            );
+            x.to_bits() != y.to_bits() && !(x.is_nan() && y.is_nan())
+        })
+        .count()
+}
+
+fn unary_bytes(xs: &[f32]) -> Vec<u8> {
+    xs.iter().flat_map(|x| x.to_bits().to_ne_bytes()).collect()
+}
+
+fn binary_bytes(pairs: &[(f32, f32)]) -> Vec<u8> {
+    pairs
+        .iter()
+        .flat_map(|(a, b)| [a.to_bits().to_ne_bytes(), b.to_bits().to_ne_bytes()].concat())
+        .collect()
+}
+
+/// The retail-faithful C and the verbatim C disagree on some inputs of the
+/// sweep for every function with a fused site, and on none for `expf` and
+/// `powf`, which have no fused instruction in retail. That is the evidence
+/// that the fusion audit changed observable results, and that the sweep is
+/// sensitive enough to catch a fused site written unfused (or the reverse).
+/// Per-function counts are printed; run with `--nocapture` to see them.
+#[test]
+fn fusion_changes_results_within_the_sweep() {
+    let (Some(retail), Some(verbatim)) = (
+        build_oracle(Variant::Retail, "fusion_retail"),
+        build_oracle(Variant::Verbatim, "fusion_verbatim"),
+    ) else {
+        return;
+    };
+
+    let trig = unary_trig_sweep();
+    let trig_bytes = unary_bytes(&trig);
+    let atan2 = atan2f_sweep();
+    let atan2_bytes = binary_bytes(&atan2);
+    let exp = expf_sweep();
+    let exp_bytes = unary_bytes(&exp);
+    let pow = powf_sweep();
+    let pow_bytes = binary_bytes(&pow);
+
+    let mut fused_total = 0;
+    for (op, input, n, has_fused_site) in [
+        ("atanf", &trig_bytes, trig.len(), true),
+        ("asinf", &trig_bytes, trig.len(), true),
+        ("acosf", &trig_bytes, trig.len(), true),
+        ("lb_sqrtf", &trig_bytes, trig.len(), true),
+        ("atan2f", &atan2_bytes, atan2.len(), true),
+        ("expf", &exp_bytes, exp.len(), false),
+        ("powf", &pow_bytes, pow.len(), false),
+    ] {
+        let differing = count_f32_differences(
+            &run_oracle(&retail, op, input),
+            &run_oracle(&verbatim, op, input),
+        );
+        eprintln!("{op}: retail-fused and verbatim C differ on {differing} of {n} inputs");
+        if has_fused_site {
+            fused_total += differing;
+        } else {
+            assert_eq!(
+                differing, 0,
+                "{op} has no fused site; the two builds must agree"
+            );
+        }
+    }
+    assert!(
+        fused_total > 0,
+        "the sweep cannot tell fused from unfused arithmetic"
+    );
 }

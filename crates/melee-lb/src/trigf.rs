@@ -23,14 +23,17 @@
 //! They go through [`gekko_math::estimate::frsqrte`], which is bit-exact with
 //! the captured hardware behaviour (see that module's docs).
 //!
-//! # Fusion audit
+//! # Fusion audit (done 2026-09-08 against the retail asm)
 //!
-//! No retail assembly was available when this was written. Every `a * b + c`
-//! shape MWCC could have contracted is written unfused and marked
-//! `// FUSION AUDIT PENDING`; the two `__fnmsubs` intrinsics in `atanf` are
-//! explicit in the C and are transcribed with [`gekko_math::fma::fnmsubs`].
-//! The transcription is checked bit for bit against the C compiled natively
-//! with `-ffp-contract=off` in `tests/ref_oracle.rs`.
+//! Every multiply-add was checked against the retail disassembly
+//! (`harness/asm.py <symbol> --fused`, see `docs/ASM.md`). MWCC fused every
+//! `a * b + c` shape in `lbtrigf.c`: each site carries a
+//! `// retail 0x........: <mnemonic>` comment and uses [`gekko_math::fma`]
+//! in PowerPC operand order `(frA, frC, frB)`. `expf` and `powf` contain no
+//! fusable shape, and their asm is `fmuls`/`fdivs`/`fadds` only. The
+//! native-C oracle in `tests/ref_oracle.rs` builds a retail-faithful copy of
+//! `lbtrigf.c` with the same fused calls spelled out, so it checks the fused
+//! sequence bit for bit.
 //!
 //! # Non-terminating inputs
 //!
@@ -42,7 +45,7 @@
 //! The retail game hangs the same way; callers only pass small arguments.
 
 use gekko_math::estimate::frsqrte;
-use gekko_math::fma::fnmsubs;
+use gekko_math::fma::{fmadds, fnmsubs};
 
 /// `MSL_TrigF_80400770[0]` (`src/MSL/float.c`, retail `0x80400770`): the NaN
 /// lbtrigf.c returns, bit pattern `0x7FFFFFFF`.
@@ -115,17 +118,15 @@ pub fn atan2f(y: f32, x: f32) -> f32 {
 /// `pi`; for `|x| > 1` it is the NaN `0x7FFFFFFF` propagated through
 /// `atanf`.
 pub fn acosf(x: f32) -> f32 {
-    // FUSION AUDIT PENDING: `1.0f - x * x` is an fnmsubs shape.
-    let mut result = 1.0 - x * x;
+    // retail 0x80022D30: fnmsubs x, x, 1.0  =>  1.0 - x * x
+    let mut result = fnmsubs(x, x, 1.0);
     if result > 0.0 {
         // `float guess = __frsqrte(result);` -> double estimate rounded to single.
         let mut guess = frsqrte(result as f64) as f32;
-        // FUSION AUDIT PENDING: `3.0f - guess * guess * result` is an fnmsubs shape.
-        guess = 0.5 * guess * (3.0 - guess * guess * result);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * result);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * result);
+        // retail 0x80022D54, 0x80022D64, 0x80022D74: fnmsubs in each step
+        guess = rsqrt_newton_step(result, guess);
+        guess = rsqrt_newton_step(result, guess);
+        guess = rsqrt_newton_step(result, guess);
         result = guess;
     } else if result != 0.0 {
         result = NAN;
@@ -143,14 +144,27 @@ pub fn acosf(x: f32) -> f32 {
 ///
 /// `atan(x / sqrt(1 - x^2))`, spelled `atanf(x * lb_sqrtf(-(x * x - 1.0f)))`.
 pub fn asinf(x: f32) -> f32 {
-    // FUSION AUDIT PENDING: `x * x - 1.0f` is an fmsubs shape (fnmsubs with
-    // the outer negation).
-    atanf(x * lb_sqrtf(-(x * x - 1.0)))
+    // retail 0x80022DD4: fnmsubs x, x, 1.0  =>  -(x * x - 1.0)
+    atanf(x * lb_sqrtf(fnmsubs(x, x, 1.0)))
 }
 
 // ---------------------------------------------------------------------------
 // lb_sqrtf (lbtrigf.c)
 // ---------------------------------------------------------------------------
+
+/// One single-precision Newton step `0.5f * g * (3.0f - g * g * x)` of the
+/// reciprocal square root, as retail compiles it in [`lb_sqrtf`]
+/// (`0x80022E14..0x80022E20`) and [`acosf`] (`0x80022D4C..0x80022D58`):
+/// `fmuls` g*g, `fmuls` 0.5*g, `fnmsubs x, g*g, 3.0`, `fmuls`. The C's
+/// `guess * guess * x` becomes `x * (guess * guess)` inside the fused
+/// subtract; the product is exact there, so the swap changes nothing.
+#[inline(always)]
+fn rsqrt_newton_step(x: f32, guess: f32) -> f32 {
+    let guess_sq = guess * guess;
+    let half_guess = 0.5 * guess;
+    let correction = fnmsubs(x, guess_sq, 3.0);
+    half_guess * correction
+}
 
 /// `lb_sqrtf` (lbtrigf.c), retail `0x80022DF8`. `static` in the C; public
 /// here so the oracle test can reach it.
@@ -162,12 +176,10 @@ pub fn asinf(x: f32) -> f32 {
 pub fn lb_sqrtf(x: f32) -> f32 {
     if x > 0.0 {
         let mut guess = frsqrte(x as f64) as f32;
-        // FUSION AUDIT PENDING: `3.0f - guess * guess * x` is an fnmsubs shape.
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
+        // retail 0x80022E1C, 0x80022E2C, 0x80022E3C: fnmsubs in each step
+        guess = rsqrt_newton_step(x, guess);
+        guess = rsqrt_newton_step(x, guess);
+        guess = rsqrt_newton_step(x, guess);
         return guess;
     }
 
@@ -323,6 +335,7 @@ pub fn atanf(x: f32) -> f32 {
 
             result = 1.0 / (offset_33 + (x + offset_39));
             // Explicit `__fnmsubs` intrinsics in the C: `-(a * b - c)`.
+            // retail 0x80022F90, 0x80022F94: fnmsubs
             result = fnmsubs(result, lut(lookup_index, 7), offset_33)
                 + fnmsubs(result, lut(lookup_index, 13), offset_39);
         }
@@ -331,25 +344,22 @@ pub fn atanf(x: f32) -> f32 {
     }
 
     {
+        // retail 0x80022FB8: fmuls result, result
         let result_squared = result * result;
+        // `result * result_squared`, left-associative as the C parses it.
+        // retail 0x80022FD0: fmuls result, result_squared
+        let result_cubed = result * result_squared;
 
-        // `result * result_squared * (...) + result`, Horner on
-        // `result_squared` inside. Left-associative as the C parses it:
-        // `(result * result_squared) * (...)`.
-        // FUSION AUDIT PENDING (6 sites): each `result_squared * (...) + c`
-        // is an fmadds shape, as is the outer `... * (...) + result`.
-        result = result
-            * result_squared
-            * (result_squared
-                * (result_squared
-                    * (result_squared
-                        * (result_squared
-                            * (result_squared * ATANF_LOOKUP[6] + ATANF_LOOKUP[5])
-                            + ATANF_LOOKUP[4])
-                        + ATANF_LOOKUP[3])
-                    + ATANF_LOOKUP[2])
-                + ATANF_LOOKUP[1])
-            + result;
+        // Horner in `result_squared`. retail 0x80022FC8, 0x80022FD8,
+        // 0x80022FE0, 0x80022FE4, 0x80022FE8: five fmadds, the first with
+        // the coefficient in frC.
+        let poly = fmadds(result_squared, ATANF_LOOKUP[6], ATANF_LOOKUP[5]);
+        let poly = fmadds(result_squared, poly, ATANF_LOOKUP[4]);
+        let poly = fmadds(result_squared, poly, ATANF_LOOKUP[3]);
+        let poly = fmadds(result_squared, poly, ATANF_LOOKUP[2]);
+        let poly = fmadds(result_squared, poly, ATANF_LOOKUP[1]);
+        // retail 0x80022FEC: fmadds result^3, poly, result
+        result = fmadds(result_cubed, poly, result);
 
         result += lut(lookup_index, 27);
         result += lut(lookup_index, 20);
@@ -382,6 +392,9 @@ fn lut(lookup_index: i32, k: i32) -> f32 {
 /// The factorial is accumulated as an `f32` and overflows to `+inf` at
 /// `35!`, which is where the non-terminating band described in the module
 /// docs comes from. Variable names follow the decomp.
+///
+/// Fusion audit: retail `0x8000CE8C..0x8000CEB8` has no fused multiply-add;
+/// the loop is `fmuls`, `fmuls`, `fdivs`, `fadds`.
 pub fn expf(arg8: f32) -> f32 {
     let mut var_f1: f32 = arg8;
     let mut var_r5: i32 = 2;
@@ -425,6 +438,10 @@ pub fn expf(arg8: f32) -> f32 {
 /// `y`, including `0` (the C returns before looking at `y`). Negative bases
 /// diverge the series to `-inf` and yield `expf(-inf * y)`. Variable names
 /// follow the decomp.
+///
+/// Fusion audit: retail `0x8000CF10..0x8000CF5C` has no fused multiply-add;
+/// `fsubs`, `fadds`, `fdivs`, `fmuls` in the setup, `fmuls`, `fdivs`,
+/// `fadds` in the loop, and two `fmuls` for `arg1 * (2.0 * sum)`.
 pub fn powf(arg0: f32, arg1: f32) -> f32 {
     if arg0 == 0.0 {
         return 0.0;

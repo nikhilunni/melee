@@ -17,25 +17,26 @@
 //! Every function here must be a literal transcription. Do not "simplify"
 //! the arithmetic: the order of operations is the observable behaviour.
 //!
-//! # Fusion audit
+//! # Fusion audit (done 2026-09-08 against the retail asm)
 //!
-//! No retail assembly was available when these were written, so the C was
-//! transcribed with separate multiplies and adds throughout and checked
-//! bit-for-bit against the same C compiled natively with
-//! `-ffp-contract=off` (see `tests/ref_oracle.rs`). Every `a * b + c` shape
-//! MWCC could have contracted into `fmadds`/`fmsubs`/`fnmsubs` is marked
-//! `// FUSION AUDIT PENDING`. When the disc is available, disassemble the
-//! retail function, and for each marked line either replace the expression
-//! with the matching `crate::fma::*` call or delete the marker.
+//! Every multiply-add in these routines was checked against the retail
+//! disassembly (`harness/asm.py <symbol> --fused`, see `docs/ASM.md`). MWCC
+//! contracted every `a * b + c` shape it could: each site carries a
+//! `// retail 0x........: <mnemonic>` comment naming the instruction and is
+//! written with [`crate::fma`] in PowerPC operand order `(frA, frC, frB)`.
+//! The native-C oracle (`tests/ref_oracle.rs`) compiles retail-faithful
+//! copies of the C with `fmaf`/`fma` spelled out at the same sites, so it
+//! checks the fused sequence bit for bit.
 //!
-//! Likewise `// INT CONVERSION AUDIT PENDING` marks the one place an
-//! `int -> float` conversion feeds a subtraction and MWCC may or may not have
-//! rounded the integer to single precision (`frsp`) before the `fsubs`. It
-//! only matters for `|n| >= 2^23`, i.e. `|x| >= ~1.3e7`.
+//! The one int-to-float question, `x - n * 2` in the `sinf`/`cosf`
+//! reduction, is also settled from the asm: MWCC subtracts the *double*
+//! integer directly and never rounds it to single first. See
+//! [`sincos_reduce`].
 
 pub mod math_data;
 
 use crate::estimate::frsqrte;
+use crate::fma::{fmadds, fnmadds, fnmsub, fnmsubs};
 use math_data::{LN_F, ONE_OVER_F, SINCOS_ON_QUADRANT, SINCOS_POLY};
 
 // ---------------------------------------------------------------------------
@@ -109,6 +110,22 @@ pub fn fabs(x: f64) -> f64 {
 // sqrtf (math_ppc.h)
 // ---------------------------------------------------------------------------
 
+/// One Newton step of MSL's `sqrtf`, in double: `0.5 * g * (3.0 - g * g * x)`.
+///
+/// Retail compiles it (`sqrtf__Ff`, the out-of-line copy of the inline that
+/// lbvector.c emits, `0x8000D5D8..0x8000D5E4`) as `fmul` g*g, `fmul` 0.5*g,
+/// `fnmsub x, g*g, 3.0`, `fmul`. The C's `guess * guess * x` becomes
+/// `x * (guess * guess)` inside the fused subtract; the product is exact
+/// there, so the swap changes nothing.
+#[inline(always)]
+fn sqrtf_newton_step(x: f64, guess: f64) -> f64 {
+    let guess_sq = guess * guess;
+    let half_guess = 0.5 * guess;
+    // retail 0x8000D5E0: fnmsub (double)  =>  3.0 - x * g^2
+    let correction = fnmsub(x, guess_sq, 3.0);
+    half_guess * correction
+}
+
 /// `sqrtf` from `src/MSL/math_ppc.h`.
 ///
 /// Transcribed from:
@@ -118,21 +135,19 @@ pub fn fabs(x: f64) -> f64 {
 /// y = (float) (x * guess);
 /// ```
 ///
-/// `__frsqrte` is the hardware-exact [`frsqrte`]. The Newton steps are
-/// written unfused and marked `FUSION AUDIT PENDING`: the retail compiler
-/// may have emitted `fnmsub`/`fmul` sequences here, and only the disassembly
-/// of an inlined call site can settle it. Against native C spelled the same
-/// way (`tests/ref_oracle.rs`), this matches bit for bit.
+/// `__frsqrte` is the hardware-exact [`frsqrte`]. The Newton steps follow
+/// the retail instruction selection (see [`sqrtf_newton_step`]); the
+/// out-of-line `sqrtf__Ff` (`0x8000D5BC`), `lbVector_sqrtf_accurate`
+/// (`0x8000E19C`) and the inlined copies sampled in `psdisp.c` all show
+/// the same `fmul`/`fnmsub` shape.
 pub fn sqrtf(x: f32) -> f32 {
     if x > 0.0 {
         let xd = x as f64;
         let mut guess = frsqrte(xd);
-        // FUSION AUDIT PENDING: `3.0 - guess * guess * x` is an fnmsub shape.
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        // retail 0x8000D5E0, 0x8000D5F0, 0x8000D600: fnmsub in each step
+        guess = sqrtf_newton_step(xd, guess);
+        guess = sqrtf_newton_step(xd, guess);
+        guess = sqrtf_newton_step(xd, guess);
         (xd * guess) as f32
     } else {
         x
@@ -140,19 +155,17 @@ pub fn sqrtf(x: f32) -> f32 {
 }
 
 /// `sqrtf_accurate` from `src/MSL/math_ppc.h`: one extra Newton step over
-/// the hardware-exact [`frsqrte`]. Same fusion caveat as [`sqrtf`].
+/// the hardware-exact [`frsqrte`]. Retail `lbVector_sqrtf_accurate`
+/// (`0x8000E19C`) has the same shape as [`sqrtf`] with four `fnmsub`s.
 pub fn sqrtf_accurate(x: f32) -> f32 {
     if x > 0.0 {
         let xd = x as f64;
         let mut guess = frsqrte(xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        // FUSION AUDIT PENDING
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        // retail 0x8000E1C0, 0x8000E1D0, 0x8000E1E0, 0x8000E1F0: fnmsub in each step
+        guess = sqrtf_newton_step(xd, guess);
+        guess = sqrtf_newton_step(xd, guess);
+        guess = sqrtf_newton_step(xd, guess);
+        guess = sqrtf_newton_step(xd, guess);
         (xd * guess) as f32
     } else {
         x
@@ -179,12 +192,14 @@ const TWO_OVER_PI: f32 = 2.0 / (core::f64::consts::PI as f32);
 #[allow(clippy::excessive_precision)]
 const FOUR_OVER_PI_M1: [f32; 4] = [0.25, 0.0232393741608, 1.70555722434e-7, 1.86736494323e-11];
 
-/// Shared argument reduction of `sinf`/`cosf` (identical text in both).
+/// Shared argument reduction of `sinf`/`cosf` (identical text in both;
+/// retail `sinf` `0x80326404..0x8032647C`, `cosf` `0x80326270..0x803262E8`).
 ///
 /// Returns `(n & 3, y)`: the quadrant and the reduced argument in units of
 /// `pi/4`, `y = 4x/pi - 2n`.
 #[inline(always)]
 fn sincos_reduce(x: f32) -> (usize, f32) {
+    // retail 0x80326404: fmuls (2/pi), x
     let z = TWO_OVER_PI * x;
     // `(__HI(x) & 0x80000000)`: the sign bit of the f32 pattern.
     let n = if x.to_bits() & 0x8000_0000 != 0 {
@@ -195,35 +210,55 @@ fn sincos_reduce(x: f32) -> (usize, f32) {
 
     // `y = x - n * 2 + m1[0] * x + m1[1] * x + m1[2] * x + m1[3] * x;`
     // Left-associative: ((((x - n*2) + m1[0]*x) + m1[1]*x) + m1[2]*x) + m1[3]*x.
-    // `n * 2` is a 32-bit int multiply (wraps for saturated n), then int -> float.
-    // INT CONVERSION AUDIT PENDING: `(float)(n * 2)` before the `fsubs`?
-    let n2 = n.wrapping_mul(2) as f32;
-    // FUSION AUDIT PENDING (4 sites): each `+ m1[k] * x` is an fmadds shape.
-    let y = x - n2
-        + FOUR_OVER_PI_M1[0] * x
-        + FOUR_OVER_PI_M1[1] * x
-        + FOUR_OVER_PI_M1[2] * x
-        + FOUR_OVER_PI_M1[3] * x;
+    // `n * 2` is a 32-bit int multiply (wraps for saturated n).
+    let n2 = n.wrapping_mul(2);
+    // retail 0x8032646C: `fsubs x, (double) n2`. MWCC converts the int to
+    // double (the 0x4330 store/lfd/fsub idiom at 0x8032643C..0x80326468)
+    // and feeds that double straight into the single-precision subtract;
+    // the integer is never rounded to single on its own. Forming the
+    // difference in f64 and rounding once reproduces that: the difference is
+    // exact in f64 unless `n` has saturated, and then `x + 2` rounds to `x`
+    // either way. (C semantics, and the first port, rounded `n2` to f32
+    // first, which differs for |x| > ~2.6e7.)
+    let y = (x as f64 - n2 as f64) as f32;
+    // retail 0x80326470, 0x80326474, 0x80326478, 0x8032647C: fmadds m1[k], x, acc
+    let y = fmadds(FOUR_OVER_PI_M1[0], x, y);
+    let y = fmadds(FOUR_OVER_PI_M1[1], x, y);
+    let y = fmadds(FOUR_OVER_PI_M1[2], x, y);
+    let y = fmadds(FOUR_OVER_PI_M1[3], x, y);
 
     ((n & 3) as usize, y)
 }
 
 /// The even-indexed (cosine) polynomial from `trigf.c`:
 /// `(((p0 * ysq + p2) * ysq + p4) * ysq + p6) * ysq + p8`.
+///
+/// Four `fmadds`: retail `sinf` `0x803264EC, 0x80326500, 0x80326508,
+/// 0x8032650C`; `cosf` `0x80326394, 0x803263A8, 0x803263B0, 0x803263B4`.
+/// The first has the coefficient in `frA` and `ysq` in `frC`; the rest
+/// accumulate as `ysq * acc + p`.
 #[inline(always)]
 fn sincos_poly_even(ysq: f32) -> f32 {
-    // FUSION AUDIT PENDING (4 sites): each `* ysq + p` is an fmadds shape.
-    (((SINCOS_POLY[0] * ysq + SINCOS_POLY[2]) * ysq + SINCOS_POLY[4]) * ysq + SINCOS_POLY[6]) * ysq
-        + SINCOS_POLY[8]
+    let acc = fmadds(SINCOS_POLY[0], ysq, SINCOS_POLY[2]);
+    let acc = fmadds(ysq, acc, SINCOS_POLY[4]);
+    let acc = fmadds(ysq, acc, SINCOS_POLY[6]);
+    fmadds(ysq, acc, SINCOS_POLY[8])
 }
 
-/// The odd-indexed (sine) polynomial from `trigf.c`, before the final `* y`:
-/// `(((p1 * ysq + p3) * ysq + p5) * ysq + p7) * ysq + p9`.
+/// The odd-indexed (sine) polynomial from `trigf.c` up to `p7`:
+/// `((p1 * ysq + p3) * ysq + p5) * ysq + p7`.
+///
+/// The last step, `* ysq + p9`, is left to the caller because retail selects
+/// it differently: `fmadds` in `sinf`, `fnmadds` in `cosf`, where it also
+/// absorbs the C's leading `-`.
+///
+/// Three `fmadds`: retail `sinf` `0x80326534, 0x80326548, 0x80326550`;
+/// `cosf` `0x80326348, 0x8032635C, 0x80326364`.
 #[inline(always)]
-fn sincos_poly_odd(ysq: f32) -> f32 {
-    // FUSION AUDIT PENDING (4 sites): each `* ysq + p` is an fmadds shape.
-    (((SINCOS_POLY[1] * ysq + SINCOS_POLY[3]) * ysq + SINCOS_POLY[5]) * ysq + SINCOS_POLY[7]) * ysq
-        + SINCOS_POLY[9]
+fn sincos_poly_odd_to_p7(ysq: f32) -> f32 {
+    let acc = fmadds(SINCOS_POLY[1], ysq, SINCOS_POLY[3]);
+    let acc = fmadds(ysq, acc, SINCOS_POLY[5]);
+    fmadds(ysq, acc, SINCOS_POLY[7])
 }
 
 /// `sinf` from `src/MSL/trigf.c` (retail `0x803263D4`).
@@ -232,8 +267,10 @@ pub fn sinf(x: f32) -> f32 {
 
     if fabsf(y) < TRIG_EPSILON {
         let n = n << 1;
-        // FUSION AUDIT PENDING: `q[n] + (q[n+1] * y) * p9` is an fmadds shape.
-        return SINCOS_ON_QUADRANT[n] + (SINCOS_ON_QUADRANT[n + 1] * y * SINCOS_POLY[9]);
+        // `q[n] + (q[n+1] * y * p9)`: retail 0x803264B4 fmuls y, q[n+1], then
+        // retail 0x803264BC: fmadds p9, (y * q[n+1]), q[n]
+        let scaled = y * SINCOS_ON_QUADRANT[n + 1];
+        return fmadds(SINCOS_POLY[9], scaled, SINCOS_ON_QUADRANT[n]);
     }
 
     let ysq = y * y;
@@ -243,7 +280,9 @@ pub fn sinf(x: f32) -> f32 {
         z * SINCOS_ON_QUADRANT[n]
     } else {
         let n = n << 1;
-        let z = sincos_poly_odd(ysq) * y;
+        // retail 0x80326554: fmadds ysq, acc, p9
+        let poly = fmadds(ysq, sincos_poly_odd_to_p7(ysq), SINCOS_POLY[9]);
+        let z = y * poly;
         z * SINCOS_ON_QUADRANT[n + 1]
     }
 }
@@ -261,15 +300,18 @@ pub fn cosf(x: f32) -> f32 {
 
     if fabsf(y) < TRIG_EPSILON {
         let n = n << 1;
-        // FUSION AUDIT PENDING: `q[n+1] - y * q[n]` is an fnmsubs/fmsubs shape.
-        return SINCOS_ON_QUADRANT[n + 1] - y * SINCOS_ON_QUADRANT[n];
+        // retail 0x80326318: fnmsubs y, q[n], q[n+1]  =>  q[n+1] - y * q[n]
+        return fnmsubs(y, SINCOS_ON_QUADRANT[n], SINCOS_ON_QUADRANT[n + 1]);
     }
 
     let ysq = y * y;
     if n & 1 != 0 {
         let n = n << 1;
-        // `z = -(poly) * y;` : unary minus binds to the polynomial, then `* y`.
-        let z = -sincos_poly_odd(ysq) * y;
+        // `z = -(poly) * y;`: the unary minus binds to the polynomial, and
+        // retail folds it into the last Horner step.
+        // retail 0x80326368: fnmadds ysq, acc, p9  =>  -(ysq * acc + p9)
+        let neg_poly = fnmadds(ysq, sincos_poly_odd_to_p7(ysq), SINCOS_POLY[9]);
+        let z = y * neg_poly;
         z * SINCOS_ON_QUADRANT[n]
     } else {
         let n = n << 1;
@@ -383,13 +425,16 @@ pub fn logf(x: f32) -> f32 {
 
                 let mut h = f32::from_bits(raw_f_upper_m) - f32::from_bits(raw_fm);
                 h *= ONE_OVER_F[m];
-                // FUSION AUDIT PENDING: `H * coef1 + coef0` is an fmadds shape.
-                let h2_poly = h * h * (h * LOGF_COEF1 + LOGF_COEF0);
-                // FUSION AUDIT PENDING: `LN2 * (float) E + __ln_F[m]` is an fmadds shape.
-                return (LN2 * e as f32 + LN_F[m]) + (h + h2_poly);
+                // retail 0x80326680: fmadds h, coef1, coef0
+                let poly = fmadds(h, LOGF_COEF1, LOGF_COEF0);
+                // `H * H * (...)`: fmuls h, h (0x80326678) then fmuls (h*h), poly
+                // (0x8032668C); not fused.
+                let h2_poly = h * h * poly;
+                // retail 0x80326690: fmadds LN2, (float) E, ln_F[m]
+                return fmadds(LN2, e as f32, LN_F[m]) + (h + h2_poly);
             }
-            // FUSION AUDIT PENDING: `LN2 * (float) E + __ln_F[m]` is an fmadds shape.
-            LN2 * e as f32 + LN_F[m]
+            // retail 0x803266D4: fmadds LN2, (float) E, ln_F[m]
+            fmadds(LN2, e as f32, LN_F[m])
         }
     }
 }
@@ -409,15 +454,16 @@ pub fn logf(x: f32) -> f32 {
 ///
 /// `a / b` is a single-precision divide whose result is converted to
 /// `long long` through `__cvt_dbl_usll`, and `quotient` comes back to
-/// single through `__cvt_sll_flt`. Inlined at every call site, so each
-/// caller's retail asm must be audited separately for fusion.
+/// single through `__cvt_sll_flt`. Inlined at every call site; both callers
+/// in the binary (`aobj.c` at `0x80364380`, `bytecode.c` at `0x80380FE4`)
+/// end in the same `fnmsubs`.
 pub fn fmodf(a: f32, b: f32) -> f32 {
     if fabsf(b) > fabsf(a) {
         return a;
     }
     let quotient = cvt_dbl_sll((a / b) as f64);
-    // FUSION AUDIT PENDING: `a - b * quotient` is an fnmsubs shape.
-    a - b * cvt_sll_flt(quotient)
+    // retail 0x80364380 (and 0x80380FE4): fnmsubs b, quotient, a  =>  a - b * quotient
+    fnmsubs(b, cvt_sll_flt(quotient), a)
 }
 
 /// `enum FloatType` from `src/MSL/math.h`.

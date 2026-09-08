@@ -13,6 +13,15 @@ lbtrigf.c, lbtrigf.h, lb_00CE.c, lb_00CE.h
     disabled and compared bit for bit against the Rust transcription. They
     are not part of the melee-lb library.
 
+retail/lbtrigf.c
+    lbtrigf.c with the multiply-adds that the retail disassembly of
+    main.dol shows as fused instructions rewritten as explicit fused calls
+    (gekko_fmadds / gekko_fnmsubs from crates/gekko-math/tests/ref/
+    gekko_fma.h), each tagged with its instruction address. Otherwise
+    unchanged; `diff lbtrigf.c retail/lbtrigf.c` lists the audited sites.
+    This is the copy the oracle compares the Rust against; the verbatim copy
+    is built too, to count the inputs on which fusion changes the result.
+
 driver.c, shim/
     Written for this repository. The shim headers stand in for the decomp's
     Runtime/platform.h, math.h and placeholder.h so the copies compile on a

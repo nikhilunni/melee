@@ -1,9 +1,12 @@
 /*
  * Reference-oracle driver. Built by tests/ref_oracle.rs with
  *   cc -std=c99 -O0 -ffp-contract=off -fno-builtin -fno-strict-aliasing
- *      -fwrapv -I shim driver.c -lm
+ *      -fwrapv -I shim -I . driver.c -lm
+ * once as-is (the retail-faithful lbtrigf.c from retail/, with the fused
+ * multiply-adds the disassembly shows) and once with -DLB_REF_UNFUSED (the
+ * verbatim decomp C, every multiply and add separate).
  *
- * It #includes the two decomp sources directly (rather than linking them as
+ * It #includes the decomp sources directly (rather than linking them as
  * separate translation units) so the static `lb_sqrtf` and the static
  * `atanf_lookup` table are reachable for comparison.
  *
@@ -27,8 +30,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The decomp sources, verbatim. See NOTICE. */
+/* The decomp sources. See NOTICE. */
+#ifdef LB_REF_UNFUSED
 #include "lbtrigf.c"
+#else
+#include "retail/lbtrigf.c"
+#endif
 #include "lb_00CE.c"
 
 /*

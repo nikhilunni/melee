@@ -15,12 +15,15 @@
  *   - MSL_HI / MSL_LO, adjusted for host endianness (the decomp's definition
  *     assumes big-endian: HI is the *first* int of a double)
  *   - fabsf -> the compiler builtin, mirroring `#define fabsf __fabsf`
- *   - the inline fmodf, copied verbatim from the decomp's math.h
+ *   - the inline fmodf from the decomp's math.h, in two spellings: the
+ *     retail one (fnmsubs, and the long long -> float conversion rounding
+ *     through double like __cvt_sll_flt) by default, or the verbatim C
+ *     under -DMSL_REF_UNFUSED
+ *   - the gekko_fmadds/... helpers (../gekko_fma.h) the retail/ copies use
  *
- * Nothing here does arithmetic of its own, so a bit-for-bit match between
- * this build (with -ffp-contract=off) and the Rust port shows the Rust is a
- * faithful transcription of the C. It says nothing about which operations
- * MWCC fused on the real hardware; that needs the retail asm.
+ * Nothing here does arithmetic of its own beyond those stand-ins, so a
+ * bit-for-bit match between the retail/ build (with -ffp-contract=off) and
+ * the Rust port shows the Rust performs the retail instruction sequence.
  */
 #ifndef GEKKO_MATH_REF_MSL_MATH_H
 #define GEKKO_MATH_REF_MSL_MATH_H
@@ -36,6 +39,8 @@ typedef unsigned long long u64;
 #define M_PI_2 (M_PI / 2)
 
 #define SECTION_CTORS
+
+#include "../gekko_fma.h"
 
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define MSL_HI(x) *(int*) &x
@@ -57,7 +62,9 @@ float logf(float);
 double frexp(double x, int* exponent);
 void __sinit_trigf_c(void);
 
-/* Verbatim from third_party/melee-decomp/src/MSL/math.h. */
+/* From third_party/melee-decomp/src/MSL/math.h; the return is the audited
+ * site (fmodf is inlined into its callers, aobj.c 0x80364380 and bytecode.c
+ * 0x80380FE4 both end in `fnmsubs b, quotient, a`). */
 static inline float fmodf(float a, float b)
 {
     long long quotient;
@@ -66,7 +73,12 @@ static inline float fmodf(float a, float b)
         return a;
     }
     quotient = a / b;
+#ifdef MSL_REF_UNFUSED
     return a - b * quotient;
+#else
+    /* __cvt_sll_flt rounds to double, then frsp to single. */
+    return gekko_fnmsubs(b, (float) (double) quotient, a);
+#endif
 }
 
 #endif

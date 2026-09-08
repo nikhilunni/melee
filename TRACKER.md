@@ -38,6 +38,7 @@ the port meets the real game, so expect surprises and record them here.
 | 2026-09-08 | Slippi fixtures from hohav/peppi (MIT), not slippi-js (LGPL) | License. |
 | 2026-09-08 | Commit the empirically captured `frsqrte`/`fres` tables (user decision) | Captured from executing the instructions in Dolphin with no Dolphin source consulted (`harness/gekko_probe/README.md`). Table values describe hardware behaviour, but Dolphin's emulation is GPLv2 code; user to decide. Model: frsqrte 32 (base, slope) entries by exp parity + top 4 mantissa bits; fres 32 entries by top 5 bits, single-range clamp. |
 | 2026-09-08 | Bulk porting delegated to Codex (`gpt-6-astra`) via `tools/codex-task.sh`; Fable subagents kept to one or two | User: Fable fan-out too expensive. Guardrail is the bit-exact test suite; Claude reviews and commits. |
+| 2026-09-08 | Melee-specific on-disc structs (`coll_data`, `ftData`, `map_head`) are read by the owning game crate (`melee-mp`, `melee-ft`, `melee-gr`) in a `desc`-style module that depends on `hsd-archive`; `hsd-archive` stays HSD-only and never depends on `melee-types` | Keeps the archive crate a leaf; game crates already know their own types. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure

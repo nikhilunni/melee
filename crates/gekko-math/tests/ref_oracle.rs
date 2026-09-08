@@ -1,14 +1,19 @@
 //! Bit-for-bit comparison of the `gekko_math::msl` transcriptions against the
 //! decomp's own C, compiled natively with fusion disabled.
 //!
-//! What this proves: the Rust performs the same IEEE operations in the same
-//! order as the C source. What it does not prove: which of those operations
-//! MWCC contracted into fused multiply-adds on the retail disc. Those sites
-//! are marked `FUSION AUDIT PENDING` in `src/msl.rs`.
+//! Two builds of the C exist ([`Variant`]). The retail-faithful copies in
+//! `tests/ref/msl/retail/` spell out, with `fmaf`/`fma`, the multiply-adds
+//! MWCC fused on the disc and the double-width `x - n * 2` it emitted (each
+//! site cites its instruction address; `src/msl.rs` carries the same
+//! citations). The port must match that build bit for bit. The verbatim
+//! decomp sources are built too, and
+//! `fusion_changes_results_within_the_sweep` reports on how many inputs the
+//! two disagree: the evidence that the audit changed observable results.
 //!
 //! The C is compiled with `cc -O0 -ffp-contract=off -fno-builtin
-//! -fno-strict-aliasing -fwrapv`. If no `cc` is on `PATH` the test prints a
-//! notice and passes; the std-tolerance tests in `src/msl.rs` still run.
+//! -fno-strict-aliasing -fwrapv`, so the only fused operations are the ones
+//! written as such. If no `cc` is on `PATH` the tests print a notice and
+//! pass; the std-tolerance tests in `src/msl.rs` still run.
 //!
 //! The estimate instructions (`frsqrte`, `fres`) have a C twin in
 //! `tests/ref/gekko_estimate.h`, shared with the melee-lb and hsd-anim oracle
@@ -30,7 +35,24 @@ use std::process::Command;
 
 use gekko_math::{estimate, msl};
 
+/// Verbatim copies of the decomp sources (checked against the submodule).
 const REF_FILES: &[&str] = &["trigf.c", "math_data.c", "math_1.c", "math.c"];
+
+/// The retail-faithful build: `retail/` copies where the asm shows fusion,
+/// verbatim files where it shows none (`math_1.c`, `math_data.c`).
+const RETAIL_FILES: &[&str] = &["retail/trigf.c", "math_data.c", "math_1.c", "retail/math.c"];
+
+/// Which C the oracle is built from.
+#[derive(Clone, Copy)]
+enum Variant {
+    /// `retail/` sources plus the fused `sqrtf`/`fmodf` shims: the retail
+    /// instruction sequence.
+    Retail,
+    /// The decomp sources verbatim, with `-DMSL_REF_UNFUSED` selecting the
+    /// unfused shims: every multiply and add separate, int-to-float by C's
+    /// rules.
+    Verbatim,
+}
 
 fn ref_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/ref/msl")
@@ -55,12 +77,15 @@ fn ref_sources_match_submodule() {
         let theirs = std::fs::read(decomp.join(f)).unwrap();
         assert!(
             ours == theirs,
-            "tests/ref/msl/{f} differs from the decomp submodule; re-copy it and re-audit the port"
+            "tests/ref/msl/{f} differs from the decomp submodule; re-copy it, re-derive \
+             tests/ref/msl/retail/{f} from it, and re-audit the port"
         );
     }
 }
 
-fn build_oracle() -> Option<PathBuf> {
+/// Compiles the driver into a per-test directory (tests run in parallel and
+/// must not share an executable or its `.in`/`.out` files).
+fn build_oracle(variant: Variant, name: &str) -> Option<PathBuf> {
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
@@ -69,7 +94,7 @@ fn build_oracle() -> Option<PathBuf> {
             return None;
         }
     }
-    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("msl_ref_oracle");
+    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("msl_ref_oracle_{name}"));
     std::fs::create_dir_all(&out_dir).unwrap();
     let exe = out_dir.join("driver");
     let mut cmd = Command::new(&cc);
@@ -81,13 +106,23 @@ fn build_oracle() -> Option<PathBuf> {
         "-fno-strict-aliasing",
         "-fwrapv",
         "-Wno-incompatible-library-redeclaration",
-        "-o",
+        "-I",
     ])
+    .arg(ref_dir())
+    .arg("-o")
     .arg(&exe)
     .arg(ref_dir().join("driver.c"));
-    for f in REF_FILES {
+    let files = match variant {
+        Variant::Retail => RETAIL_FILES,
+        Variant::Verbatim => {
+            cmd.arg("-DMSL_REF_UNFUSED");
+            REF_FILES
+        }
+    };
+    for f in files {
         cmd.arg(ref_dir().join(f));
     }
+    cmd.arg("-lm");
     let out = cmd.output().expect("spawn cc");
     assert!(
         out.status.success(),
@@ -382,7 +417,9 @@ fn compare_unary_u64(exe: &Path, op: &'static str, f: fn(u64) -> u64, inputs: &[
 /// built on either side must agree too.
 #[test]
 fn estimates_and_sqrtf_match_native_c() {
-    let Some(exe) = build_oracle() else { return };
+    let Some(exe) = build_oracle(Variant::Retail, "estimates") else {
+        return;
+    };
 
     let ds: Vec<u64> = f64_sweep().iter().map(|x| x.to_bits()).collect();
     compare_unary_u64(&exe, "frsqrte", estimate::frsqrte_bits, &ds);
@@ -420,7 +457,9 @@ fn estimates_and_sqrtf_match_native_c() {
 
 #[test]
 fn msl_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle() else { return };
+    let Some(exe) = build_oracle(Variant::Retail, "msl") else {
+        return;
+    };
 
     let xs = f32_sweep();
     assert!(xs.len() >= 100_000, "sweep has {} inputs", xs.len());
@@ -477,5 +516,66 @@ fn msl_matches_native_c_bit_for_bit() {
         0,
         "frexp mismatches vs native C:\n{}",
         samples.join("\n")
+    );
+}
+
+/// Number of `f32` records that differ between two oracle outputs, counting
+/// two NaNs as equal.
+fn count_f32_differences(a: &[u8], b: &[u8]) -> usize {
+    assert_eq!(a.len(), b.len());
+    a.chunks_exact(4)
+        .zip(b.chunks_exact(4))
+        .filter(|(x, y)| {
+            let (x, y) = (
+                f32::from_bits(u32::from_ne_bytes((*x).try_into().unwrap())),
+                f32::from_bits(u32::from_ne_bytes((*y).try_into().unwrap())),
+            );
+            x.to_bits() != y.to_bits() && !(x.is_nan() && y.is_nan())
+        })
+        .count()
+}
+
+/// The retail-faithful C and the verbatim C disagree on some inputs of the
+/// sweep. That is the evidence that the fusion audit changed observable
+/// results, and that the sweep is sensitive enough to catch a fused site
+/// written unfused (or the reverse). Per-function counts are printed; run
+/// with `--nocapture` to see them. For `sinf`/`cosf`/`tanf` the count also
+/// includes the double-width `x - n * 2` (inputs with |x| > ~2.6e7).
+#[test]
+fn fusion_changes_results_within_the_sweep() {
+    let (Some(retail), Some(verbatim)) = (
+        build_oracle(Variant::Retail, "fusion_retail"),
+        build_oracle(Variant::Verbatim, "fusion_verbatim"),
+    ) else {
+        return;
+    };
+
+    let xs = f32_sweep();
+    let unary: Vec<u8> = xs.iter().flat_map(|x| x.to_bits().to_ne_bytes()).collect();
+    let pairs = fmodf_sweep();
+    let binary: Vec<u8> = pairs
+        .iter()
+        .flat_map(|(a, b)| [a.to_bits().to_ne_bytes(), b.to_bits().to_ne_bytes()].concat())
+        .collect();
+
+    let mut total = 0;
+    for (op, input, n) in [
+        ("sqrtf", &unary, xs.len()),
+        ("sinf", &unary, xs.len()),
+        ("cosf", &unary, xs.len()),
+        ("tanf", &unary, xs.len()),
+        ("logf", &unary, xs.len()),
+        ("fmodf", &binary, pairs.len()),
+    ] {
+        let differing = count_f32_differences(
+            &run_oracle(&retail, op, input),
+            &run_oracle(&verbatim, op, input),
+        );
+        eprintln!("{op}: retail-fused and verbatim C differ on {differing} of {n} inputs");
+        total += differing;
+    }
+    assert!(
+        total > 0,
+        "the sweep cannot tell fused from unfused arithmetic"
     );
 }

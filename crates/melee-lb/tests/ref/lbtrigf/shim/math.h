@@ -17,25 +17,29 @@
  *       see that module's docs).
  *
  *   __fnmsubs(a, b, c)
- *       PowerPC `fnmsubs`: -(a * b - c), fused, rounded once. Mirrors
- *       gekko_math::fma::fnmsubs (whose operand order is (a, c, b) but whose
- *       call sites in trigf.rs pass the same three values in the same
- *       positions as the C).
+ *       PowerPC `fnmsubs`: -(a * b - c), fused, rounded once. The same
+ *       gekko_fnmsubs the retail/ copy uses (operands in instruction order,
+ *       which is also the order the C intrinsic takes).
+ *
+ *   gekko_fmadds, gekko_fnmsubs, ...
+ *       crates/gekko-math/tests/ref/gekko_fma.h, the C twin of
+ *       gekko_math::fma, for the fused sites in retail/lbtrigf.c.
  *
  *   sqrtf(float)
  *       MSL's inline sqrtf from src/MSL/math_ppc.h on top of the __frsqrte
- *       shim above, so it matches gekko_math::msl::sqrtf. Referenced by
- *       lb_8000D148 in lb_00CE.c, which is compiled but not exercised.
+ *       shim above, with the retail fnmsub (or the verbatim C under
+ *       -DLB_REF_UNFUSED) so it matches gekko_math::msl::sqrtf. Referenced
+ *       by lb_8000D148 in lb_00CE.c, which is compiled but not exercised.
  *
  * Nothing here does arithmetic beyond those stand-ins, so a bit-for-bit
- * match between this build (with -ffp-contract=off) and the Rust port shows
- * the Rust is a faithful transcription of the C. It says nothing about which
- * operations MWCC fused on the real hardware; that needs the retail asm.
+ * match between the retail/ build (with -ffp-contract=off) and the Rust
+ * port shows the Rust performs the retail instruction sequence.
  */
 #ifndef MELEE_LB_REF_SHIM_MATH_H
 #define MELEE_LB_REF_SHIM_MATH_H
 
 #include "../../../../../gekko-math/tests/ref/gekko_estimate.h"
+#include "../../../../../gekko-math/tests/ref/gekko_fma.h"
 
 #define M_PI 3.14159265358979323846
 #define M_PI_2 (M_PI / 2)
@@ -47,17 +51,28 @@ static inline double __frsqrte(double x)
 
 static inline float __fnmsubs(float a, float b, float c)
 {
-    return -__builtin_fmaf(a, b, -c);
+    return gekko_fnmsubs(a, b, c);
 }
 
-/* MSL sqrtf (src/MSL/math_ppc.h), verbatim apart from the volatile. */
+/* One Newton step of MSL's inline sqrtf; retail sqrtf__Ff 0x8000D5D8..
+ * 0x8000D5E4 is fmul, fmul, fnmsub, fmul. */
+static inline double msl_sqrtf_newton_step(double x, double guess)
+{
+#ifdef LB_REF_UNFUSED
+    return 0.5 * guess * (3.0 - guess * guess * x);
+#else
+    return (0.5 * guess) * gekko_fnmsub(x, guess * guess, 3.0);
+#endif
+}
+
+/* MSL sqrtf (src/MSL/math_ppc.h) over the shims above. */
 static inline float sqrtf(float x)
 {
     if (x > 0.0f) {
         double guess = __frsqrte((double) x);
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
-        guess = 0.5 * guess * (3.0 - guess * guess * x);
+        guess = msl_sqrtf_newton_step(x, guess);
+        guess = msl_sqrtf_newton_step(x, guess);
+        guess = msl_sqrtf_newton_step(x, guess);
         return (float) (x * guess);
     }
     return x;

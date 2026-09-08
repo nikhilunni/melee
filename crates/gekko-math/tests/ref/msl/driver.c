@@ -27,6 +27,18 @@
 #include "math.h"
 #include "../gekko_estimate.h"
 
+/* One Newton step of MSL's inline sqrtf (src/MSL/math_ppc.h). Retail
+ * (sqrtf__Ff, 0x8000D5D8..0x8000D5E4) emits fmul g*g, fmul 0.5*g,
+ * fnmsub x, g*g, 3.0, fmul; -DMSL_REF_UNFUSED keeps the C's separate ops. */
+static double msl_sqrtf_newton_step(double x, double guess)
+{
+#ifdef MSL_REF_UNFUSED
+    return 0.5 * guess * (3.0 - guess * guess * x);
+#else
+    return (0.5 * guess) * gekko_fnmsub(x, guess * guess, 3.0);
+#endif
+}
+
 /* MSL sqrtf (src/MSL/math_ppc.h), spelled as gekko_math::msl::sqrtf is, over
  * the table-exact frsqrte from gekko_estimate.h. */
 static float msl_sqrtf(float x)
@@ -34,9 +46,9 @@ static float msl_sqrtf(float x)
     if (x > 0.0f) {
         double xd = (double) x;
         double guess = gekko_frsqrte(xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        guess = msl_sqrtf_newton_step(xd, guess);
+        guess = msl_sqrtf_newton_step(xd, guess);
+        guess = msl_sqrtf_newton_step(xd, guess);
         return (float) (xd * guess);
     }
     return x;
