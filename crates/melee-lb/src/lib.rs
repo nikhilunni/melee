@@ -2,4 +2,5 @@
 //!
 //! See CLAUDE.md for the porting rules that apply to every crate.
 
+pub mod anim;
 pub mod trigf;

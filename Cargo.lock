@@ -196,6 +196,7 @@ version = "0.0.1"
 dependencies = [
  "gekko-math",
  "hsd-anim",
+ "hsd-archive",
  "hsd-gobj",
  "melee-lb",
  "melee-mp",
@@ -228,8 +229,10 @@ name = "melee-lb"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
  "hsd-archive",
  "hsd-types",
+ "melee-ft",
  "melee-types",
 ]
 

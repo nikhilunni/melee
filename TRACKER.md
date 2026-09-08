@@ -111,7 +111,9 @@ animation, match bone matrices from the oracle.
 Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 
 - [x] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf) and `lb_00CE.c` expf/powf
-- [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access), `lbanim.c`
+- [x] `melee-lb`: `lbanim.c` FigaTree -> JObj attachment (Codex; real Fox Wait1: 120 frames, 73 nodes, 49 animated joints); translation-filtered path `fn_8001E60C`/`lbAnim_8001E7E8` deliberately skipped, see anim.rs header
+- [x] `melee-ft`: `desc.rs` reads `ftData.xC` animation table from PlFx.dat and slices sub-archives out of PlFxAJ.dat (Codex)
+- [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access)
 - [ ] `melee-lb`: remaining `lb_*` files as needed by callers (17k lines total)
 - [x] `melee-mp`: `mplib.c` (103 fns) and `mpcoll.c` (complete) as `CollMap`; 42 tests on synthetic FD; all 39 fusion sites audited against retail (33 fused), geometry native-C oracle 200k inputs 0 mismatches (`tests/ref/FUSION_AUDIT.md`)
 - [ ] `melee-mp`: `mpisland.c` (626 lines; feeds CPU AI and Link hookshot) — `CollMap::island_update` is the hook
