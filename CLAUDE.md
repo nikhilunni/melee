@@ -117,6 +117,36 @@ are edited only by the coordinator.
   for the per-character union. The `Snapshot` trait and `harness/schema/`
   handle comparison.
 
+## Code style: write for humans
+
+The decomp C is machine-recovered and often ugly: `x1A88`-style field
+names, `ftCo_800AA320` function names, 400-line switch statements, unions
+of every character's state, magic numbers, and gotos. The Rust must be
+bit-exact in behaviour but must **not** mirror that shape. The user's
+explicit request (2026-09-08): idiomatic, readable Rust with good
+abstractions and clean organization.
+
+- Descriptive names everywhere. `cpu.reaction_delay_frames`, not `x7C`.
+  The decomp symbol and address live in the doc comment, not the identifier.
+- Enums with named variants for every C int-that-is-really-an-enum
+  (`melee-types` has the `c_enum!` macro). Bitflags types for flag words.
+- Split by meaning, not by decomp file. One Rust module per concept
+  (`ledge.rs`, `shield.rs`), files well under 2k lines, functions that fit
+  on a screen. A decomp function that does five things becomes five
+  named helpers plus one caller that preserves the original order.
+- Named constants with a one-line comment for every magic number whose
+  meaning is known (`const LEDGE_GRAB_COOLDOWN_FRAMES: u32 = 30;`). Unknown
+  ones get a `// TODO(meaning)` comment, not a bare literal.
+- Per-character state is an enum over per-character structs, never a
+  union or a bag of `f32`s.
+- Exactness constraints are expressed in types and helpers
+  (`fmadds`, `f64` promotion sites, `fctiwz`) so the reader sees *why* an
+  odd operation order exists. Add a short comment when the order matters.
+- Tests are readable too: name them after the behaviour, keep fixtures in
+  `tests/data/`, and prefer a table of cases to a wall of asserts.
+- When a clean abstraction would change floating-point operation order or
+  width, exactness wins; say so in a comment.
+
 ## Build-speed rules
 
 - Layer 0 (`gekko-math`, `hsd-types`, `melee-types`): types and pure
