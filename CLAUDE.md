@@ -35,6 +35,17 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `docs/` | `PLAN.md` (milestone definitions), `ORACLE.md` (verification design), `DOLPHIN.md` (emulator options, verified API), `ISO.md` (disc requirements). |
 | `third_party/melee-decomp` | The decomp as a pinned submodule. **Read-only reference.** |
 
+## Local assets (not in git)
+
+| Path | What |
+|---|---|
+| `harness/roms/GALE01.iso` | Verified NTSC 1.02 disc (hashes in `docs/ISO.md`). |
+| `harness/roms/sys/main.dol` | Retail executable, matches decomp `build.sha1`. |
+| `harness/roms/files/` | Extracted disc filesystem, once `extract_fst.py` exists. |
+| `harness/roms/*.sav` | Dolphin savestates for scenarios. |
+| `harness/traces/` | Captured oracle traces and probe data. |
+| `~/Projects/dolphin-scripting/build/Binaries/Dolphin.app` | Dolphin scripting fork, arm64. |
+
 ## Commands
 
 ```sh
@@ -46,6 +57,9 @@ cd harness && uv run python gen_schema.py --check
 cd harness && uv run python symbols.py <symbol...>      # retail addresses
 cargo run -p melee-diff -- expected.jsonl actual.jsonl
 cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
+# Dolphin oracle (see docs/DOLPHIN_BUILD.md for the config flags)
+~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
+  -e harness/roms/GALE01.iso --script $PWD/harness/dolphin/trace_scenario.py
 ```
 
 ## Session protocol
@@ -72,9 +86,11 @@ are edited only by the coordinator.
 ## Sources of truth, in order
 
 1. **The retail assembly.** It is the only record of where the compiler
-   fused multiply-adds and how it ordered float operations. Needs the
-   original `main.dol` (see `docs/ISO.md`) and the decomp's `dtk`/`objdiff`
-   tooling. Not available until a disc is present.
+   fused multiply-adds and how it ordered float operations. The original
+   `main.dol` is at `third_party/melee-decomp/orig/GALE01/sys/main.dol`
+   (gitignored; re-extract from `harness/roms/GALE01.iso` if missing). Use
+   the decomp's `dtk`/`objdiff` tooling, or `harness/asm.py` once written
+   (see TRACKER.md).
 2. **The decomp C** in `third_party/melee-decomp/src/`. Readable intent, but
    it does not show FMA contraction. Never port float math from the C alone
    without marking the sites `// FUSION AUDIT PENDING`.
@@ -132,6 +148,9 @@ are edited only by the coordinator.
 - Never modify `third_party/melee-decomp` from this repo.
 - Never commit game data: no ISO, DOL, `.dat`, savestates, or extracted
   files. `harness/roms/` and `harness/traces/` are gitignored for this.
+  The disc lives at `harness/roms/GALE01.iso`; extracted files go under
+  `harness/roms/files/`. Rust tests that need them must skip cleanly when
+  they are absent so the gate stays green on any machine.
 - Never help obtain the game from ROM sites. The disc must be owned and
   dumped by the user (`docs/ISO.md`).
 - Dolphin's `frsqrte`/`fres` tables are GPLv2. Do not copy them into this

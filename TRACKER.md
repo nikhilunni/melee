@@ -9,15 +9,22 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
-Milestone 2 code is in place; its gate (bone matrices vs oracle) needs a
-disc. Starting Milestone 3 groundwork: desc→runtime glue, `melee-gr` for
-Final Destination, `melee-ft` init and frame order, `melee-sim` loop.
+**The disc is present and verified.** `harness/roms/GALE01.iso` (gitignored)
+matches both hashes in `docs/ISO.md`; `harness/roms/sys/main.dol` matches
+the decomp's `build.sha1`; a copy of `main.dol` is at
+`third_party/melee-decomp/orig/GALE01/sys/main.dol` where the decomp's
+`dtk`/`objdiff` tooling expects it (that path is gitignored in the
+submodule). The Dolphin scripting build is at
+`~/Projects/dolphin-scripting/build/Binaries/Dolphin.app` (`docs/DOLPHIN_BUILD.md`).
+
+Nothing disc-dependent has been run yet. The next session should start
+with the three items under "Milestone 0: disc arrived" below; they are
+independent and can run in parallel. Every one of them is the first time
+the port meets the real game, so expect surprises and record them here.
 
 ## Blockers
 
-- `[!]` **Disc image.** NTSC-U 1.02 (`GALE01`), owned and self-dumped. Needed
-  for: retail asm (FMA audit), `.dat` assets for the simulator, savestates,
-  the first real oracle trace. Owner: user. `docs/ISO.md`.
+- None. The disc arrived 2026-09-08 and is verified (see Current focus).
 
 ## Decisions
 
@@ -45,7 +52,14 @@ Final Destination, `melee-ft` init and frame order, `melee-sim` loop.
 - [x] Decomp pinned as submodule
 - [x] Build Dolphin scripting fork on macOS arm64 (`docs/DOLPHIN_BUILD.md`; binary under `~/Projects/dolphin-scripting/build/Binaries/`)
 - [x] Verify `frameadvance` fires with Null video backend (yes, even with no disc, via `-e probe.dol`)
-- [ ] Measure oracle frames/sec with a booted game (blocked on disc)
+- [ ] Measure oracle frames/sec with a booted game
+
+### Milestone 0: disc arrived (do these first)
+
+- [ ] **Extract the disc filesystem.** Write `harness/extract_fst.py` (GameCube FST: offset at 0x424, size at 0x428, 12-byte entries, string table after) to `harness/roms/files/` + `sys/`. Expect ~1200 files incl. `PlFxNr.dat`, `PlFx.dat`, `PlFxAJ.dat`, `PlCo.dat`, `GrNLa.dat` (Final Destination). Then `crates/hsd-archive/tests/real_dat.rs`: parse those five, assert file_size/relocs/publics, read the Fox root `JObjDesc` and count joints; document the `PlFxAJ.dat` animation layout and the `GrNLa.dat` `map_head`/`coll_data` offsets. Tests must skip cleanly when the disc is absent.
+- [ ] **Boot the game in Dolphin scripting and get the first real trace.** Launch `Dolphin -e harness/roms/GALE01.iso --script harness/dolphin/trace_scenario.py` with the config flags from `docs/DOLPHIN_BUILD.md`; confirm `on_frameadvance` fires and `memory.read_u32(seed)` changes. Navigate to a Vs match (Fox, Final Destination, 1 stock, no items, CPU off or a second human slot idle), save a savestate at the first playable frame to `harness/roms/idle_fd_fox.sav`, run the `idle_fd_fox` scenario for 600 frames, `decode.py` it to `harness/traces/idle_fd_fox.expected.jsonl`. Verify the fighter-list walk finds one fighter and `p0.cur_pos` is sane. Record frames/sec. Note: `walk.py` assumes `HSD_GObj_Entities` layout from gobj.h; this is its first real test.
+- [ ] **Retail assembly lookup.** In the decomp submodule run its tooling (`python configure.py` then `ninja` may be heavy; `dtk dol split` or `objdiff` per `docs/getting_started.md`) to get per-function disassembly from `orig/GALE01/sys/main.dol`. Deliver `harness/asm.py <symbol>` that prints a function's retail asm. Then start the **fusion audit**: `grep -rn "FUSION AUDIT PENDING" crates/` lists every site (gekko-math 25, melee-lb 14, hsd-anim 92, melee-mp many); for each, read the asm, replace with `fmadds`/`fmsubs`/`fnmsubs` or confirm unfused, and remove the marker. Start with gekko-math `sqrtf` and `sinf` since everything depends on them, then `lbtrigf`, then mtx.
+- [ ] **Gate Milestone 2.** With the trace from the Dolphin item and the skeleton from the extraction item: read Fox's bone matrices from the oracle (JObj `mtx` at each joint via `HSD_JObjGetMtxPtr`; find the Fighter's root JObj through `fp->x28_jobj` or equivalent in `ft/types.h`) and compare against `hsd-anim` evaluating the Wait animation at the same frame. This is the first bit-exact comparison against the real game.
 - [ ] Verify savestate load is synchronous with next frame
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
 - [x] `Snapshot` trait in `melee-types`, `RecordSink` in `melee-diff`, `SchemaCoverage` in `melee-sim` with stale-exclusion detection
@@ -217,6 +231,8 @@ Gate: zero divergence over thousands of Slippi replays.
 ## Session log
 
 Newest first. One line per session: date, what landed, what is next.
+
+- 2026-09-08 (late): Disc arrived and verified; main.dol placed for decomp tooling. No disc-dependent work run yet. Session paused by user. Next: the four items under "Milestone 0: disc arrived".
 
 - 2026-09-08: Third batch: frsqrte/fres hardware-exact (M1 complete), JObj scene graph + DObj/MObj, typed descriptor readers + FigaTree, Snapshot/RecordSink/SchemaCoverage, melee-mp mplib+mpcoll. Gate: 55 suites green, clippy clean. Next: JObjDesc→JObjTree glue, melee-gr Final Destination, melee-ft skeleton (fighter.c init/update order), melee-sim frame loop, Dolphin savestate workflow doc.
 
