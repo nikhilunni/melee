@@ -288,3 +288,6 @@ mod tests {
         assert_eq!(err.to_string(), "99 is not a valid FighterKind");
     }
 }
+
+pub mod mp;
+pub mod snapshot;

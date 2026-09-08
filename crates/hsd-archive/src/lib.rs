@@ -69,3 +69,5 @@ pub use archive::{Archive, ExternSymbol, PublicSymbol};
 pub use error::{Error, Result, SymbolKind};
 pub use header::ArchiveHeader;
 pub use reader::{add_offset, Reader};
+
+pub mod desc;

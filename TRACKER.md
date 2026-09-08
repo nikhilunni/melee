@@ -18,11 +18,6 @@ See blockers.
 - `[!]` **Disc image.** NTSC-U 1.02 (`GALE01`), owned and self-dumped. Needed
   for: retail asm (FMA audit), `.dat` assets for the simulator, savestates,
   the first real oracle trace. Owner: user. `docs/ISO.md`.
-- `[!]` **`frsqrte`/`fres` tables licensing decision.** Behaviour is captured
-  and modelled (`harness/gekko_probe`); `estimate.rs` still returns IEEE
-  values until the user decides whether the captured tables may be
-  committed. Blocks bit-exactness of `sqrtf` (90 call sites), `acosf`,
-  `lb_sqrtf`, `PSVECNormalize`.
 
 ## Decisions
 
@@ -34,7 +29,7 @@ See blockers.
 | 2026-09-08 | Oracle reads retail memory via Dolphin scripting; never a modified DOL | Keeps Slippi replays and community tools valid as test inputs. |
 | 2026-09-08 | Target Felk's Dolphin scripting fork; GDB stub as fallback | Only option with savestate, frame hook, memory read, input in one process. |
 | 2026-09-08 | Slippi fixtures from hohav/peppi (MIT), not slippi-js (LGPL) | License. |
-| pending | Whether to commit the empirically captured `frsqrte`/`fres` tables | Captured from executing the instructions in Dolphin with no Dolphin source consulted (`harness/gekko_probe/README.md`). Table values describe hardware behaviour, but Dolphin's emulation is GPLv2 code; user to decide. Model: frsqrte 32 (base, slope) entries by exp parity + top 4 mantissa bits; fres 32 entries by top 5 bits, single-range clamp. |
+| 2026-09-08 | Commit the empirically captured `frsqrte`/`fres` tables (user decision) | Captured from executing the instructions in Dolphin with no Dolphin source consulted (`harness/gekko_probe/README.md`). Table values describe hardware behaviour, but Dolphin's emulation is GPLv2 code; user to decide. Model: frsqrte 32 (base, slope) entries by exp parity + top 4 mantissa bits; fres 32 entries by top 5 bits, single-range clamp. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure
@@ -53,7 +48,7 @@ See blockers.
 - [ ] Measure oracle frames/sec with a booted game (blocked on disc)
 - [ ] Verify savestate load is synchronous with next frame
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
-- [ ] `Snapshot` trait in `melee-types` + test that Rust emitters cover every schema path
+- [~] (2026-09-08) `Snapshot` trait in `melee-types` + test that Rust emitters cover every schema path
 - [ ] Golden fixture recorder: break on function entry/exit, dump args and touched memory to `harness/goldens/`
 - [ ] Retail asm lookup tool: given a symbol, print its disassembly from `main.dol` (needs disc)
 - [ ] CI: `cargo gate`, clippy `-D warnings`, harness pytest, `gen_schema.py --check`
@@ -65,7 +60,7 @@ See blockers.
 - [x] MSL `sinf`, `cosf`, `tanf`, `logf`, `frexp`, `fmodf`, classify, fabs
 - [x] Gekko int/float conversion semantics (`fctiwz`, `__cvt_*`)
 - [x] Native-C reference oracle test (bit-exact vs decomp C, `-ffp-contract=off`)
-- [~] `frsqrte` / `fres` hardware-exact: behaviour captured and modelled by `harness/gekko_probe` (100% of 74k pairs); porting the inferred tables into `estimate.rs` awaits the licensing decision
+- [~] (2026-09-08, porting) `frsqrte` / `fres` hardware-exact: behaviour captured and modelled by `harness/gekko_probe` (100% of 74k pairs); porting the inferred tables into `estimate.rs` awaits the licensing decision
 - [ ] FMA audit of the 25 marked sites against retail asm (blocked on disc)
 - [ ] Int-conversion audit of the 1 marked site (blocked on disc)
 - [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fused ops map to fmadds/fmsubs, results identical to scalar single-precision
@@ -77,7 +72,7 @@ Gate: load one character and one stage archive, evaluate the wait
 animation, match bone matrices from the oracle.
 
 - [x] `hsd-archive`: header, relocs, publics, externs, strings; synthetic tests
-- [ ] `hsd-archive`: typed readers for JObj/DObj/MObj/AObj/FObj node graphs (offset-linked structs to owned trees)
+- [~] (2026-09-08) `hsd-archive`: typed readers for JObj/DObj/MObj/AObj/FObj node graphs (offset-linked structs to owned trees)
 - [ ] `hsd-archive`: test against a real `.dat` (blocked on disc)
 - [x] `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
 - [x] `hsd-anim`: `mtx.c`, `quatlib.c`, and the SDK `PSMTX*`/`PSVEC*` paired-single kernels
@@ -85,8 +80,8 @@ animation, match bone matrices from the oracle.
 - [ ] Wire `hsd_anim::mtx::InverseTrig` to `melee_lb::trigf` in `melee-sim` (hsd-anim must not depend on melee-lb)
 - [x] `hsd-anim`: `aobj.c`, `fobj.c` keyframe evaluation (native-C oracle, 0 mismatches)
 - [ ] `hsd-anim`: confirm via Dolphin whether retail data ever hits the uninitialised single-key FObj path (see fobj.rs `FOBJ_UNINITIALISED_VALUE`)
-- [ ] `hsd-anim`: `jobj.c` (1578) hierarchy, local/world matrices, flags
-- [ ] `hsd-anim`: `dobj.c` (349), `mobj.c` (591) data only, no render
+- [~] (2026-09-08) `hsd-anim`: `jobj.c` (1578) hierarchy, local/world matrices, flags
+- [~] (2026-09-08) `hsd-anim`: `dobj.c` (349), `mobj.c` (591) data only, no render
 - [ ] `hsd-anim`: `robj.c` (942) constraints if fighters use them (check)
 - [ ] `hsd-anim`: `cobj.c` (1406) camera object, needed by `cm` later
 - [ ] HSD `class.c`/`object.c` object model: decide Rust representation (traits vs enums)
@@ -101,7 +96,7 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [x] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf) and `lb_00CE.c` expf/powf
 - [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access), `lbanim.c`
 - [ ] `melee-lb`: remaining `lb_*` files as needed by callers (17k lines total)
-- [ ] `melee-mp`: `mplib.c`, `mpcoll.c`, `mpisland.c` (12k lines): floor/wall/ceiling queries, ledge detection
+- [~] (2026-09-08) `melee-mp`: `mplib.c`, `mpcoll.c`, `mpisland.c` (12k lines): floor/wall/ceiling queries, ledge detection
 - [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c`, `grlast.c` (Final Destination only for this milestone)
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only

@@ -8,3 +8,6 @@ pub mod aobj;
 pub mod fobj;
 pub mod mtx;
 pub mod quat;
+pub mod dobj;
+pub mod jobj;
+pub mod mobj;
