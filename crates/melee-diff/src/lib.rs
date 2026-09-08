@@ -11,6 +11,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod snapshot;
+pub use snapshot::RecordSink;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Record {
     pub frame: u64,

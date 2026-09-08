@@ -1,0 +1,97 @@
+{
+  "struct": "Fighter",
+  "size": 9196,
+  "source": "harness/schema/fighter.yaml",
+  "fields": [
+    {
+      "name": "kind",
+      "offset": 4,
+      "type": "s32"
+    },
+    {
+      "name": "player_id",
+      "offset": 12,
+      "type": "u8"
+    },
+    {
+      "name": "motion_id",
+      "offset": 16,
+      "type": "s32"
+    },
+    {
+      "name": "facing_dir",
+      "offset": 44,
+      "type": "f32"
+    },
+    {
+      "name": "self_vel",
+      "offset": 128,
+      "type": "vec3"
+    },
+    {
+      "name": "kb_vel",
+      "offset": 140,
+      "type": "vec3"
+    },
+    {
+      "name": "cur_pos",
+      "offset": 176,
+      "type": "vec3"
+    },
+    {
+      "name": "ground_or_air",
+      "offset": 224,
+      "type": "s32"
+    },
+    {
+      "name": "cur_anim_frame",
+      "offset": 2196,
+      "type": "f32"
+    },
+    {
+      "name": "percent",
+      "offset": 6192,
+      "type": "f32"
+    },
+    {
+      "name": "jumps_used",
+      "offset": 6504,
+      "type": "u8"
+    },
+    {
+      "name": "cpu.buttons",
+      "offset": 6792,
+      "type": "u32"
+    },
+    {
+      "name": "cpu.lstick_x",
+      "offset": 6796,
+      "type": "s8"
+    },
+    {
+      "name": "cpu.lstick_y",
+      "offset": 6797,
+      "type": "s8"
+    },
+    {
+      "name": "cpu.type",
+      "offset": 6804,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.level",
+      "offset": 6808,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.behavior",
+      "offset": 6816,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.timer",
+      "offset": 6916,
+      "type": "s32"
+    }
+  ]
+}

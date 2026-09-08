@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
 melee-ft = { path = "../melee-ft" }
 melee-cpu = { path = "../melee-cpu" }
 melee-it = { path = "../melee-it" }
@@ -20,6 +21,7 @@ gekko-math = { path = "../gekko-math" }
 ft-fox = { path = "../ft-fox" }
 ft-mario = { path = "../ft-mario" }
 melee-diff = { path = "../melee-diff" }
+serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }

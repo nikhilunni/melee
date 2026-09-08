@@ -6,7 +6,11 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+melee-types = { path = "../melee-types" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
+
+[dev-dependencies]
+hsd-types = { path = "../hsd-types" }

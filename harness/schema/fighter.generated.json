@@ -1,0 +1,4189 @@
+{
+  "struct": "Fighter",
+  "size": 9196,
+  "source": "third_party/melee-decomp/src/melee/ft/types.h:1126",
+  "fields": [
+    {
+      "name": "gobj",
+      "offset": 0,
+      "type": "ptr"
+    },
+    {
+      "name": "kind",
+      "offset": 4,
+      "type": "s32"
+    },
+    {
+      "name": "x8_spawnNum",
+      "offset": 8,
+      "type": "s32"
+    },
+    {
+      "name": "player_id",
+      "offset": 12,
+      "type": "u8"
+    },
+    {
+      "name": "motion_id",
+      "offset": 16,
+      "type": "s32"
+    },
+    {
+      "name": "anim_id",
+      "offset": 20,
+      "type": "s32"
+    },
+    {
+      "name": "x18",
+      "offset": 24,
+      "type": "s32"
+    },
+    {
+      "name": "x1C_actionStateList",
+      "offset": 28,
+      "type": "ptr"
+    },
+    {
+      "name": "x20_actionStateList",
+      "offset": 32,
+      "type": "ptr"
+    },
+    {
+      "name": "x24",
+      "offset": 36,
+      "type": "ptr"
+    },
+    {
+      "name": "x28",
+      "offset": 40,
+      "type": "ptr"
+    },
+    {
+      "name": "facing_dir",
+      "offset": 44,
+      "type": "f32"
+    },
+    {
+      "name": "facing_dir1",
+      "offset": 48,
+      "type": "f32"
+    },
+    {
+      "name": "x34_scale",
+      "offset": 52,
+      "type": "vec3"
+    },
+    {
+      "name": "x40",
+      "offset": 64,
+      "type": "f32"
+    },
+    {
+      "name": "x44_mtx",
+      "offset": 68,
+      "type": "unknown",
+      "ctype": "Mtx"
+    },
+    {
+      "name": "x74_anim_vel",
+      "offset": 116,
+      "type": "vec3"
+    },
+    {
+      "name": "self_vel",
+      "offset": 128,
+      "type": "vec3"
+    },
+    {
+      "name": "x8c_kb_vel",
+      "offset": 140,
+      "type": "vec3"
+    },
+    {
+      "name": "x98_atk_shield_kb",
+      "offset": 152,
+      "type": "vec3"
+    },
+    {
+      "name": "xA4_unk_vel",
+      "offset": 164,
+      "type": "vec3"
+    },
+    {
+      "name": "cur_pos",
+      "offset": 176,
+      "type": "vec3"
+    },
+    {
+      "name": "prev_pos",
+      "offset": 188,
+      "type": "vec3"
+    },
+    {
+      "name": "pos_delta",
+      "offset": 200,
+      "type": "vec3"
+    },
+    {
+      "name": "xD4_unk_vel",
+      "offset": 212,
+      "type": "vec3"
+    },
+    {
+      "name": "ground_or_air",
+      "offset": 224,
+      "type": "s32"
+    },
+    {
+      "name": "xE4_ground_accel_1",
+      "offset": 228,
+      "type": "f32"
+    },
+    {
+      "name": "xE8_ground_accel_2",
+      "offset": 232,
+      "type": "f32"
+    },
+    {
+      "name": "gr_vel",
+      "offset": 236,
+      "type": "f32"
+    },
+    {
+      "name": "xF0_ground_kb_vel",
+      "offset": 240,
+      "type": "f32"
+    },
+    {
+      "name": "xF4_ground_attacker_shield_kb_vel",
+      "offset": 244,
+      "type": "f32"
+    },
+    {
+      "name": "xF8_playerNudgeVel",
+      "offset": 248,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "x100",
+      "offset": 256,
+      "type": "f32"
+    },
+    {
+      "name": "x104",
+      "offset": 260,
+      "type": "u8"
+    },
+    {
+      "name": "x105",
+      "offset": 261,
+      "type": "s8"
+    },
+    {
+      "name": "x106",
+      "offset": 262,
+      "type": "s8"
+    },
+    {
+      "name": "x107",
+      "offset": 263,
+      "type": "s8"
+    },
+    {
+      "name": "x108_costume_joint",
+      "offset": 264,
+      "type": "ptr"
+    },
+    {
+      "name": "ft_data",
+      "offset": 268,
+      "type": "ptr"
+    },
+    {
+      "name": "co_attrs",
+      "offset": 272,
+      "type": "unknown",
+      "ctype": "ftCo_DatAttrs"
+    },
+    {
+      "name": "x294_itPickup",
+      "offset": 660,
+      "type": "unknown",
+      "ctype": "itPickup"
+    },
+    {
+      "name": "x2C4",
+      "offset": 708,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "x2CC",
+      "offset": 716,
+      "type": "ptr"
+    },
+    {
+      "name": "x2D0",
+      "offset": 720,
+      "type": "ptr"
+    },
+    {
+      "name": "dat_attrs",
+      "offset": 724,
+      "type": "ptr"
+    },
+    {
+      "name": "dat_attrs_backup",
+      "offset": 728,
+      "type": "ptr"
+    },
+    {
+      "name": "x2DC",
+      "offset": 732,
+      "type": "f32"
+    },
+    {
+      "name": "x2E0",
+      "offset": 736,
+      "type": "f32"
+    },
+    {
+      "name": "x2E4",
+      "offset": 740,
+      "type": "f32"
+    },
+    {
+      "name": "x2E8",
+      "offset": 744,
+      "type": "f32"
+    },
+    {
+      "name": "x2EC",
+      "offset": 748,
+      "type": "f32"
+    },
+    {
+      "name": "dynamic_bone_sets",
+      "offset": 752,
+      "type": "unknown",
+      "ctype": "BoneDynamicsDesc[Ft_Dynamics_NumMax]"
+    },
+    {
+      "name": "dynamics_num",
+      "offset": 992,
+      "type": "s32"
+    },
+    {
+      "name": "x3E4_fighterCmdScript",
+      "offset": 996,
+      "type": "unknown",
+      "ctype": "CommandInfo"
+    },
+    {
+      "name": "x408",
+      "offset": 1032,
+      "type": "unknown",
+      "ctype": "ColorOverlay"
+    },
+    {
+      "name": "x488",
+      "offset": 1160,
+      "type": "unknown",
+      "ctype": "ColorOverlay"
+    },
+    {
+      "name": "x508",
+      "offset": 1288,
+      "type": "unknown",
+      "ctype": "ColorOverlay"
+    },
+    {
+      "name": "x588",
+      "offset": 1416,
+      "type": "ptr"
+    },
+    {
+      "name": "x58C",
+      "offset": 1420,
+      "type": "u32"
+    },
+    {
+      "name": "x590",
+      "offset": 1424,
+      "type": "ptr"
+    },
+    {
+      "name": "x594_b0",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x594_b1_loop",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x594_b2",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x594_b3",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x594_b4",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x594_b5",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x594_b6",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x594_b7",
+      "offset": 1428,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x596_bits.x0",
+      "offset": 1430,
+      "type": "unknown",
+      "ctype": "u8:7",
+      "bit": 0,
+      "width": 7
+    },
+    {
+      "name": "x596_bits.x7",
+      "offset": 1430,
+      "type": "unknown",
+      "ctype": "u16:3",
+      "bit": 7,
+      "width": 3
+    },
+    {
+      "name": "x594_s32",
+      "offset": 1428,
+      "type": "s32"
+    },
+    {
+      "name": "x598",
+      "offset": 1432,
+      "type": "ptr"
+    },
+    {
+      "name": "x59C",
+      "offset": 1436,
+      "type": "ptr"
+    },
+    {
+      "name": "x5A0",
+      "offset": 1440,
+      "type": "ptr"
+    },
+    {
+      "name": "x5A4",
+      "offset": 1444,
+      "type": "ptr"
+    },
+    {
+      "name": "x5A8",
+      "offset": 1448,
+      "type": "ptr"
+    },
+    {
+      "name": "x5AC",
+      "offset": 1452,
+      "type": "unknown",
+      "ctype": "FtPartsVis"
+    },
+    {
+      "name": "tobj_list",
+      "offset": 1484,
+      "type": "unknown",
+      "ctype": "CostumeTObjList"
+    },
+    {
+      "name": "parts",
+      "offset": 1512,
+      "type": "ptr"
+    },
+    {
+      "name": "dobj_list",
+      "offset": 1516,
+      "type": "unknown",
+      "ctype": "DObjList"
+    },
+    {
+      "name": "x5F4_arr",
+      "offset": 1524,
+      "type": "unknown",
+      "ctype": "struct[12]"
+    },
+    {
+      "name": "x60C",
+      "offset": 1548,
+      "type": "ptr"
+    },
+    {
+      "name": "x610_color_rgba",
+      "offset": 1552,
+      "type": "unknown",
+      "ctype": "GXColor[2]"
+    },
+    {
+      "name": "x618_player_id",
+      "offset": 1560,
+      "type": "u8"
+    },
+    {
+      "name": "x619_costume_id",
+      "offset": 1561,
+      "type": "u8"
+    },
+    {
+      "name": "x61A_controller_index",
+      "offset": 1562,
+      "type": "u8"
+    },
+    {
+      "name": "team",
+      "offset": 1563,
+      "type": "u8"
+    },
+    {
+      "name": "x61C",
+      "offset": 1564,
+      "type": "s8"
+    },
+    {
+      "name": "x61D",
+      "offset": 1565,
+      "type": "u8"
+    },
+    {
+      "name": "filler_x61E",
+      "offset": 1566,
+      "type": "unknown",
+      "ctype": "u8[0x620-0x61E]"
+    },
+    {
+      "name": "input.lstick",
+      "offset": 1568,
+      "type": "unknown",
+      "ctype": "Vec2[3]"
+    },
+    {
+      "name": "input.cstick",
+      "offset": 1592,
+      "type": "unknown",
+      "ctype": "Vec2[3]"
+    },
+    {
+      "name": "input.triggers",
+      "offset": 1616,
+      "type": "unknown",
+      "ctype": "float[3]"
+    },
+    {
+      "name": "input.held_buttons",
+      "offset": 1628,
+      "type": "unknown",
+      "ctype": "HSD_Pad[3]"
+    },
+    {
+      "name": "input.pressed_buttons",
+      "offset": 1640,
+      "type": "u32"
+    },
+    {
+      "name": "input.released_buttons",
+      "offset": 1644,
+      "type": "u32"
+    },
+    {
+      "name": "x670_timer_lstick_tilt_x",
+      "offset": 1648,
+      "type": "u8"
+    },
+    {
+      "name": "x671_timer_lstick_tilt_y",
+      "offset": 1649,
+      "type": "u8"
+    },
+    {
+      "name": "trigger_analog_timer",
+      "offset": 1650,
+      "type": "u8"
+    },
+    {
+      "name": "x673",
+      "offset": 1651,
+      "type": "u8"
+    },
+    {
+      "name": "x674",
+      "offset": 1652,
+      "type": "u8"
+    },
+    {
+      "name": "x675",
+      "offset": 1652,
+      "type": "u8"
+    },
+    {
+      "name": "x676_x",
+      "offset": 1654,
+      "type": "u8"
+    },
+    {
+      "name": "x677_y",
+      "offset": 1655,
+      "type": "u8"
+    },
+    {
+      "name": "x678",
+      "offset": 1656,
+      "type": "u8"
+    },
+    {
+      "name": "x679_x",
+      "offset": 1657,
+      "type": "u8"
+    },
+    {
+      "name": "x67A_y",
+      "offset": 1658,
+      "type": "u8"
+    },
+    {
+      "name": "x67B",
+      "offset": 1659,
+      "type": "u8"
+    },
+    {
+      "name": "x67C",
+      "offset": 1660,
+      "type": "u8"
+    },
+    {
+      "name": "x67D",
+      "offset": 1661,
+      "type": "u8"
+    },
+    {
+      "name": "x67E",
+      "offset": 1662,
+      "type": "u8"
+    },
+    {
+      "name": "x67F",
+      "offset": 1663,
+      "type": "u8"
+    },
+    {
+      "name": "x680",
+      "offset": 1664,
+      "type": "u8"
+    },
+    {
+      "name": "x681",
+      "offset": 1665,
+      "type": "u8"
+    },
+    {
+      "name": "x682",
+      "offset": 1666,
+      "type": "u8"
+    },
+    {
+      "name": "x683",
+      "offset": 1667,
+      "type": "u8"
+    },
+    {
+      "name": "x684",
+      "offset": 1668,
+      "type": "u8"
+    },
+    {
+      "name": "x685",
+      "offset": 1669,
+      "type": "u8"
+    },
+    {
+      "name": "x686",
+      "offset": 1670,
+      "type": "u8"
+    },
+    {
+      "name": "x687",
+      "offset": 1671,
+      "type": "u8"
+    },
+    {
+      "name": "x688",
+      "offset": 1672,
+      "type": "u8"
+    },
+    {
+      "name": "x689",
+      "offset": 1673,
+      "type": "u8"
+    },
+    {
+      "name": "x68A",
+      "offset": 1674,
+      "type": "u8"
+    },
+    {
+      "name": "x68B",
+      "offset": 1675,
+      "type": "u8"
+    },
+    {
+      "name": "x68C_transNPos",
+      "offset": 1676,
+      "type": "vec3"
+    },
+    {
+      "name": "x698",
+      "offset": 1688,
+      "type": "vec3"
+    },
+    {
+      "name": "x6A4_transNOffset",
+      "offset": 1700,
+      "type": "vec3"
+    },
+    {
+      "name": "x6B0",
+      "offset": 1712,
+      "type": "vec3"
+    },
+    {
+      "name": "lstick_angle",
+      "offset": 1724,
+      "type": "f32"
+    },
+    {
+      "name": "x6C0",
+      "offset": 1728,
+      "type": "vec3"
+    },
+    {
+      "name": "x6CC",
+      "offset": 1740,
+      "type": "vec3"
+    },
+    {
+      "name": "x6D8",
+      "offset": 1752,
+      "type": "vec3"
+    },
+    {
+      "name": "x6E4",
+      "offset": 1764,
+      "type": "vec3"
+    },
+    {
+      "name": "coll_data",
+      "offset": 1776,
+      "type": "unknown",
+      "ctype": "CollData"
+    },
+    {
+      "name": "ecb_lock",
+      "offset": 2188,
+      "type": "s32"
+    },
+    {
+      "name": "x890_cameraBox",
+      "offset": 2192,
+      "type": "ptr"
+    },
+    {
+      "name": "cur_anim_frame",
+      "offset": 2196,
+      "type": "f32"
+    },
+    {
+      "name": "x898_unk",
+      "offset": 2200,
+      "type": "f32"
+    },
+    {
+      "name": "frame_speed_mul",
+      "offset": 2204,
+      "type": "f32"
+    },
+    {
+      "name": "x8A0_unk",
+      "offset": 2208,
+      "type": "f32"
+    },
+    {
+      "name": "x8A4_animBlendFrames",
+      "offset": 2212,
+      "type": "f32"
+    },
+    {
+      "name": "x8A8_anim_frame",
+      "offset": 2216,
+      "type": "f32"
+    },
+    {
+      "name": "x8AC_animSkeleton",
+      "offset": 2220,
+      "type": "ptr"
+    },
+    {
+      "name": "x8B0",
+      "offset": 2224,
+      "type": "unknown",
+      "ctype": "struct Fighter_x8B0_t[5]"
+    },
+    {
+      "name": "x914",
+      "offset": 2324,
+      "type": "unknown",
+      "ctype": "HitCapsule[4]"
+    },
+    {
+      "name": "xDF4",
+      "offset": 3572,
+      "type": "unknown",
+      "ctype": "HitCapsule[2]"
+    },
+    {
+      "name": "x1064_thrownHitbox",
+      "offset": 4196,
+      "type": "unknown",
+      "ctype": "HitCapsule"
+    },
+    {
+      "name": "x119C_teamUnk",
+      "offset": 4508,
+      "type": "u8"
+    },
+    {
+      "name": "grabber_unk1",
+      "offset": 4509,
+      "type": "u8"
+    },
+    {
+      "name": "hurt_capsules_len",
+      "offset": 4510,
+      "type": "u8"
+    },
+    {
+      "name": "x119F",
+      "offset": 4511,
+      "type": "u8"
+    },
+    {
+      "name": "hurt_capsules",
+      "offset": 4512,
+      "type": "unknown",
+      "ctype": "FighterHurtCapsule[15]"
+    },
+    {
+      "name": "x1614",
+      "offset": 5652,
+      "type": "unknown",
+      "ctype": "struct Fighter_x1614_t[2]"
+    },
+    {
+      "name": "x166C",
+      "offset": 5740,
+      "type": "u8"
+    },
+    {
+      "name": "x1670",
+      "offset": 5744,
+      "type": "unknown",
+      "ctype": "struct Fighter_x1670_t[1]"
+    },
+    {
+      "name": "filler_x1674",
+      "offset": 5748,
+      "type": "unknown",
+      "ctype": "u8[0x1828-0x1670-0x28]"
+    },
+    {
+      "name": "x1828",
+      "offset": 6184,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x182c_behavior",
+      "offset": 6188,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1830_percent",
+      "offset": 6192,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1834",
+      "offset": 6196,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1838_percentTemp",
+      "offset": 6200,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x183C_applied",
+      "offset": 6204,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1840",
+      "offset": 6208,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.facing_dir_1",
+      "offset": 6212,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1848_kb_angle",
+      "offset": 6216,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x184c_damaged_hurtbox",
+      "offset": 6220,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.kb_applied",
+      "offset": 6224,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1854_collpos",
+      "offset": 6228,
+      "type": "vec3"
+    },
+    {
+      "name": "dmg.x1860_element",
+      "offset": 6240,
+      "type": "u32"
+    },
+    {
+      "name": "dmg.x1864",
+      "offset": 6244,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1868_source",
+      "offset": 6248,
+      "type": "ptr"
+    },
+    {
+      "name": "dmg.x186c",
+      "offset": 6252,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1870",
+      "offset": 6256,
+      "type": "ptr"
+    },
+    {
+      "name": "dmg.x1874",
+      "offset": 6260,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1878",
+      "offset": 6264,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x187c",
+      "offset": 6268,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1880",
+      "offset": 6272,
+      "type": "vec3"
+    },
+    {
+      "name": "dmg.x188c",
+      "offset": 6284,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1890",
+      "offset": 6288,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1894",
+      "offset": 6292,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1898",
+      "offset": 6296,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x189C_unk_num_frames",
+      "offset": 6300,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18a0",
+      "offset": 6304,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18A4_knockbackMagnitude",
+      "offset": 6308,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18A8",
+      "offset": 6312,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18ac_time_since_hit",
+      "offset": 6316,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.armor0",
+      "offset": 6320,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.armor1",
+      "offset": 6324,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18B8",
+      "offset": 6328,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18BC",
+      "offset": 6332,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x18C0",
+      "offset": 6336,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18c4_source_ply",
+      "offset": 6340,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18C8",
+      "offset": 6344,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18CC",
+      "offset": 6348,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18D0",
+      "offset": 6352,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18d4",
+      "offset": 6356,
+      "type": "unknown",
+      "ctype": "UnkPlBonusBits"
+    },
+    {
+      "name": "dmg.x18d8",
+      "offset": 6360,
+      "type": "unknown",
+      "ctype": "ft_800898B4_t"
+    },
+    {
+      "name": "dmg.x18ec_instancehitby",
+      "offset": 6380,
+      "type": "u16"
+    },
+    {
+      "name": "dmg.x18F0",
+      "offset": 6384,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18F4",
+      "offset": 6388,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x18F8",
+      "offset": 6392,
+      "type": "u8"
+    },
+    {
+      "name": "dmg.x18f9",
+      "offset": 6393,
+      "type": "u8"
+    },
+    {
+      "name": "dmg.x18fa_model_shift_frames",
+      "offset": 6394,
+      "type": "u16"
+    },
+    {
+      "name": "dmg.x18FC",
+      "offset": 6396,
+      "type": "u8"
+    },
+    {
+      "name": "dmg.x18FD",
+      "offset": 6397,
+      "type": "u8"
+    },
+    {
+      "name": "dmg.x1900",
+      "offset": 6400,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1904",
+      "offset": 6404,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1908",
+      "offset": 6408,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x190C",
+      "offset": 6412,
+      "type": "ptr"
+    },
+    {
+      "name": "dmg.x1910",
+      "offset": 6416,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1914",
+      "offset": 6420,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.int_value",
+      "offset": 6424,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x191C",
+      "offset": 6428,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.facing_dir",
+      "offset": 6432,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1924",
+      "offset": 6436,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1928",
+      "offset": 6440,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x192c",
+      "offset": 6444,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1930",
+      "offset": 6448,
+      "type": "unknown",
+      "ctype": "struct lb_80014638_arg0_t"
+    },
+    {
+      "name": "dmg.x1948",
+      "offset": 6472,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x194C",
+      "offset": 6476,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1950",
+      "offset": 6480,
+      "type": "s32"
+    },
+    {
+      "name": "dmg.x1954",
+      "offset": 6484,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x1958",
+      "offset": 6488,
+      "type": "f32"
+    },
+    {
+      "name": "dmg.x195c_hitlag_frames",
+      "offset": 6492,
+      "type": "f32"
+    },
+    {
+      "name": "x1960_vibrateMult",
+      "offset": 6496,
+      "type": "f32"
+    },
+    {
+      "name": "x1964",
+      "offset": 6500,
+      "type": "f32"
+    },
+    {
+      "name": "x1968_jumpsUsed",
+      "offset": 6504,
+      "type": "u8"
+    },
+    {
+      "name": "x1969_walljumpUsed",
+      "offset": 6505,
+      "type": "u8"
+    },
+    {
+      "name": "hitlag_mul",
+      "offset": 6508,
+      "type": "f32"
+    },
+    {
+      "name": "unk_msid",
+      "offset": 6512,
+      "type": "s32"
+    },
+    {
+      "name": "item_gobj",
+      "offset": 6516,
+      "type": "ptr"
+    },
+    {
+      "name": "x1978",
+      "offset": 6520,
+      "type": "ptr"
+    },
+    {
+      "name": "x197C",
+      "offset": 6524,
+      "type": "ptr"
+    },
+    {
+      "name": "x1980",
+      "offset": 6528,
+      "type": "ptr"
+    },
+    {
+      "name": "x1984_heldItemSpec",
+      "offset": 6532,
+      "type": "ptr"
+    },
+    {
+      "name": "x1988",
+      "offset": 6536,
+      "type": "s32"
+    },
+    {
+      "name": "x198C",
+      "offset": 6540,
+      "type": "s32"
+    },
+    {
+      "name": "x1990",
+      "offset": 6544,
+      "type": "s32"
+    },
+    {
+      "name": "x1994",
+      "offset": 6548,
+      "type": "s32"
+    },
+    {
+      "name": "shield_health",
+      "offset": 6552,
+      "type": "f32"
+    },
+    {
+      "name": "lightshield_amount",
+      "offset": 6556,
+      "type": "f32"
+    },
+    {
+      "name": "x19A0_shieldDamageTaken",
+      "offset": 6560,
+      "type": "s32"
+    },
+    {
+      "name": "x19A4",
+      "offset": 6564,
+      "type": "s32"
+    },
+    {
+      "name": "x19A8",
+      "offset": 6568,
+      "type": "ptr"
+    },
+    {
+      "name": "specialn_facing_dir",
+      "offset": 6572,
+      "type": "f32"
+    },
+    {
+      "name": "x19B0",
+      "offset": 6576,
+      "type": "s32"
+    },
+    {
+      "name": "shield_unk0",
+      "offset": 6580,
+      "type": "f32"
+    },
+    {
+      "name": "shield_unk1",
+      "offset": 6584,
+      "type": "f32"
+    },
+    {
+      "name": "x19BC_shieldDamageTaken3",
+      "offset": 6588,
+      "type": "s32"
+    },
+    {
+      "name": "shield_hit",
+      "offset": 6592,
+      "type": "unknown",
+      "ctype": "HitResult"
+    },
+    {
+      "name": "reflect_hit",
+      "offset": 6628,
+      "type": "unknown",
+      "ctype": "HitResult"
+    },
+    {
+      "name": "absorb_hit",
+      "offset": 6664,
+      "type": "unknown",
+      "ctype": "HitResult"
+    },
+    {
+      "name": "ReflectAttr.x1A2C_reflectHitDirection",
+      "offset": 6700,
+      "type": "f32"
+    },
+    {
+      "name": "ReflectAttr.x1A30_maxDamage",
+      "offset": 6704,
+      "type": "s32"
+    },
+    {
+      "name": "ReflectAttr.x1A34_damageMul",
+      "offset": 6708,
+      "type": "f32"
+    },
+    {
+      "name": "ReflectAttr.x1A38_speedMul",
+      "offset": 6712,
+      "type": "f32"
+    },
+    {
+      "name": "ReflectAttr.x1A3C_damageOver",
+      "offset": 6716,
+      "type": "s32"
+    },
+    {
+      "name": "AbsorbAttr.x1A40_absorbHitDirection",
+      "offset": 6720,
+      "type": "f32"
+    },
+    {
+      "name": "AbsorbAttr.x1A44_damageTaken",
+      "offset": 6724,
+      "type": "s32"
+    },
+    {
+      "name": "AbsorbAttr.x1A48_hitsTaken",
+      "offset": 6728,
+      "type": "s32"
+    },
+    {
+      "name": "grab_timer",
+      "offset": 6732,
+      "type": "f32"
+    },
+    {
+      "name": "x1A50",
+      "offset": 6736,
+      "type": "s8"
+    },
+    {
+      "name": "x1A51",
+      "offset": 6737,
+      "type": "s8"
+    },
+    {
+      "name": "x1A52",
+      "offset": 6738,
+      "type": "u8"
+    },
+    {
+      "name": "x1A53",
+      "offset": 6739,
+      "type": "u8"
+    },
+    {
+      "name": "x1A54",
+      "offset": 6740,
+      "type": "s32"
+    },
+    {
+      "name": "victim_gobj",
+      "offset": 6744,
+      "type": "ptr"
+    },
+    {
+      "name": "x1A5C",
+      "offset": 6748,
+      "type": "ptr"
+    },
+    {
+      "name": "target_item_gobj",
+      "offset": 6752,
+      "type": "ptr"
+    },
+    {
+      "name": "x1A64",
+      "offset": 6756,
+      "type": "ptr"
+    },
+    {
+      "name": "x1A68",
+      "offset": 6760,
+      "type": "u16"
+    },
+    {
+      "name": "x1A6A",
+      "offset": 6762,
+      "type": "u16"
+    },
+    {
+      "name": "x1A6C",
+      "offset": 6764,
+      "type": "f32"
+    },
+    {
+      "name": "x1A70",
+      "offset": 6768,
+      "type": "vec3"
+    },
+    {
+      "name": "x1A7C",
+      "offset": 6780,
+      "type": "vec3"
+    },
+    {
+      "name": "cpu.buttons",
+      "offset": 6792,
+      "type": "u32"
+    },
+    {
+      "name": "cpu.lstick",
+      "offset": 6796,
+      "type": "unknown",
+      "ctype": "S8Vec2"
+    },
+    {
+      "name": "cpu.cstick",
+      "offset": 6798,
+      "type": "unknown",
+      "ctype": "S8Vec2"
+    },
+    {
+      "name": "cpu.ltrigger",
+      "offset": 6800,
+      "type": "u8"
+    },
+    {
+      "name": "cpu.rtrigger",
+      "offset": 6801,
+      "type": "u8"
+    },
+    {
+      "name": "cpu.xC",
+      "offset": 6804,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.level",
+      "offset": 6808,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x14",
+      "offset": 6812,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x18",
+      "offset": 6816,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x1C",
+      "offset": 6820,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x20",
+      "offset": 6824,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x24",
+      "offset": 6828,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x28",
+      "offset": 6832,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x2C",
+      "offset": 6836,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x30",
+      "offset": 6840,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x34",
+      "offset": 6844,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x38",
+      "offset": 6848,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x3C",
+      "offset": 6852,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x40",
+      "offset": 6856,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x44",
+      "offset": 6860,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.x48",
+      "offset": 6864,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.x4C",
+      "offset": 6868,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.x50",
+      "offset": 6872,
+      "type": "u32"
+    },
+    {
+      "name": "cpu.x54",
+      "offset": 6876,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "cpu.x5C",
+      "offset": 6884,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x60",
+      "offset": 6888,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x64",
+      "offset": 6892,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "cpu.x6C",
+      "offset": 6900,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "cpu.x74",
+      "offset": 6908,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "cpu.x7C",
+      "offset": 6916,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x80",
+      "offset": 6920,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x84",
+      "offset": 6924,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x88",
+      "offset": 6928,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x8C",
+      "offset": 6932,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x90",
+      "offset": 6936,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x94",
+      "offset": 6940,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.x98",
+      "offset": 6944,
+      "type": "vec3"
+    },
+    {
+      "name": "cpu.xA4",
+      "offset": 6956,
+      "type": "s32"
+    },
+    {
+      "name": "cpu.xA8_array",
+      "offset": 6960,
+      "type": "unknown",
+      "ctype": "s32[8]"
+    },
+    {
+      "name": "cpu.xC8",
+      "offset": 6992,
+      "type": "u8"
+    },
+    {
+      "name": "cpu.pad_xC9",
+      "offset": 6993,
+      "type": "unknown",
+      "ctype": "u8[0xCC-0xC9]"
+    },
+    {
+      "name": "cpu.xCC_array",
+      "offset": 6996,
+      "type": "unknown",
+      "ctype": "s32[8]"
+    },
+    {
+      "name": "cpu.xEC",
+      "offset": 7028,
+      "type": "u8"
+    },
+    {
+      "name": "cpu.pad_xED",
+      "offset": 7029,
+      "type": "unknown",
+      "ctype": "u8[0xF0-0xED]"
+    },
+    {
+      "name": "cpu.xF0",
+      "offset": 7032,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.xF4",
+      "offset": 7036,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.xF8_b0",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF8_b12",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:2",
+      "bit": 1,
+      "width": 2
+    },
+    {
+      "name": "cpu.xF8_b34",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:2",
+      "bit": 3,
+      "width": 2
+    },
+    {
+      "name": "cpu.xF8_b5",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF8_b6",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF8_b7",
+      "offset": 7040,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b0",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b1",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b2",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b3",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b4",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b5",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b6",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "cpu.xF9_b7",
+      "offset": 7041,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b0",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b1",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b2",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b34",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:2",
+      "bit": 3,
+      "width": 2
+    },
+    {
+      "name": "cpu.xFA_b5",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b6",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFA_b7",
+      "offset": 7042,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b0",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b1",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b2",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b3",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b4",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b5",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b6",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFB_b7",
+      "offset": 7043,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "cpu.xFC",
+      "offset": 7044,
+      "type": "unknown",
+      "ctype": "struct Fighter_x1A88_xFC_t[30]"
+    },
+    {
+      "name": "cpu.x444",
+      "offset": 7884,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.x448",
+      "offset": 7888,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.command_duration",
+      "offset": 7892,
+      "type": "u32"
+    },
+    {
+      "name": "cpu.csP",
+      "offset": 7896,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.buffer",
+      "offset": 7900,
+      "type": "unknown",
+      "ctype": "s8[0x100]"
+    },
+    {
+      "name": "cpu.write_pos",
+      "offset": 8156,
+      "type": "ptr"
+    },
+    {
+      "name": "cpu.x558",
+      "offset": 8160,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x55C",
+      "offset": 8164,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x560",
+      "offset": 8168,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x564",
+      "offset": 8172,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x568",
+      "offset": 8176,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x56C",
+      "offset": 8180,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.x570",
+      "offset": 8184,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.half_width",
+      "offset": 8188,
+      "type": "f32"
+    },
+    {
+      "name": "cpu.half_height",
+      "offset": 8192,
+      "type": "f32"
+    },
+    {
+      "name": "x2004",
+      "offset": 8196,
+      "type": "s32"
+    },
+    {
+      "name": "x2008",
+      "offset": 8200,
+      "type": "s32"
+    },
+    {
+      "name": "x200C",
+      "offset": 8204,
+      "type": "s32"
+    },
+    {
+      "name": "x2010",
+      "offset": 8208,
+      "type": "s32"
+    },
+    {
+      "name": "x2014",
+      "offset": 8212,
+      "type": "s32"
+    },
+    {
+      "name": "x2018",
+      "offset": 8216,
+      "type": "s32"
+    },
+    {
+      "name": "x201C",
+      "offset": 8220,
+      "type": "s32"
+    },
+    {
+      "name": "x2020",
+      "offset": 8224,
+      "type": "s8"
+    },
+    {
+      "name": "x2021",
+      "offset": 8225,
+      "type": "s8"
+    },
+    {
+      "name": "x2022",
+      "offset": 8226,
+      "type": "s8"
+    },
+    {
+      "name": "x2024",
+      "offset": 8228,
+      "type": "s32"
+    },
+    {
+      "name": "metal_timer",
+      "offset": 8232,
+      "type": "s32"
+    },
+    {
+      "name": "metal_health",
+      "offset": 8236,
+      "type": "s32"
+    },
+    {
+      "name": "x2030",
+      "offset": 8240,
+      "type": "s32"
+    },
+    {
+      "name": "x2034",
+      "offset": 8244,
+      "type": "s32"
+    },
+    {
+      "name": "x2038",
+      "offset": 8248,
+      "type": "s32"
+    },
+    {
+      "name": "x203C",
+      "offset": 8252,
+      "type": "unknown",
+      "ctype": "DObjList"
+    },
+    {
+      "name": "filler_x2044",
+      "offset": 8260,
+      "type": "unknown",
+      "ctype": "u8[0x2064-0x2044]"
+    },
+    {
+      "name": "x2064_ledgeCooldown",
+      "offset": 8292,
+      "type": "s32"
+    },
+    {
+      "name": "x2068_attackID",
+      "offset": 8296,
+      "type": "s32"
+    },
+    {
+      "name": "x206C_attack_instance",
+      "offset": 8300,
+      "type": "u16"
+    },
+    {
+      "name": "x206E",
+      "offset": 8302,
+      "type": "s16"
+    },
+    {
+      "name": "x2070.x2070",
+      "offset": 8304,
+      "type": "s8"
+    },
+    {
+      "name": "x2070.x2071_b0_3",
+      "offset": 8305,
+      "type": "unknown",
+      "ctype": "u8:4",
+      "bit": 0,
+      "width": 4
+    },
+    {
+      "name": "x2070.x2071_b4",
+      "offset": 8305,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2071_b5",
+      "offset": 8305,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2071_b6",
+      "offset": 8305,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2071_b7",
+      "offset": 8305,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2072_b0",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2072_b1",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2072_b2",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2070.count_x1A4",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2070.count_thrown_items",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2070.count_aerials",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2070.count_x1A0",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2070.count_specials",
+      "offset": 8306,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2070.x2073",
+      "offset": 8307,
+      "type": "u8"
+    },
+    {
+      "name": "x2070.x2070_int",
+      "offset": 8304,
+      "type": "s32"
+    },
+    {
+      "name": "x2074.x2074_vec",
+      "offset": 8308,
+      "type": "unknown",
+      "ctype": "Vec2"
+    },
+    {
+      "name": "x2074.x207C",
+      "offset": 8316,
+      "type": "unknown",
+      "ctype": "S32Vec2"
+    },
+    {
+      "name": "x2074._anon_2084",
+      "offset": 8324,
+      "type": "unknown",
+      "ctype": "union"
+    },
+    {
+      "name": "x2074.x2088",
+      "offset": 8328,
+      "type": "u16"
+    },
+    {
+      "name": "x208C",
+      "offset": 8332,
+      "type": "s32"
+    },
+    {
+      "name": "x2090",
+      "offset": 8336,
+      "type": "u16"
+    },
+    {
+      "name": "x2092",
+      "offset": 8338,
+      "type": "u16"
+    },
+    {
+      "name": "x2094",
+      "offset": 8340,
+      "type": "ptr"
+    },
+    {
+      "name": "x2098",
+      "offset": 8344,
+      "type": "u16"
+    },
+    {
+      "name": "x209A",
+      "offset": 8346,
+      "type": "u16"
+    },
+    {
+      "name": "x209C",
+      "offset": 8348,
+      "type": "u16"
+    },
+    {
+      "name": "x20A0_accessory",
+      "offset": 8352,
+      "type": "ptr"
+    },
+    {
+      "name": "x20A4",
+      "offset": 8356,
+      "type": "unknown",
+      "ctype": "LbShadow"
+    },
+    {
+      "name": "unk_gobj",
+      "offset": 8364,
+      "type": "ptr"
+    },
+    {
+      "name": "x20B0",
+      "offset": 8368,
+      "type": "unknown",
+      "ctype": "struct Fighter_x20B0_t[3]"
+    },
+    {
+      "name": "x20F8",
+      "offset": 8440,
+      "type": "f32"
+    },
+    {
+      "name": "x20FC",
+      "offset": 8444,
+      "type": "f32"
+    },
+    {
+      "name": "x2100",
+      "offset": 8448,
+      "type": "s8"
+    },
+    {
+      "name": "x2101_bits_0to6",
+      "offset": 8449,
+      "type": "unknown",
+      "ctype": "u8:7",
+      "bit": 0,
+      "width": 7
+    },
+    {
+      "name": "x2101_bits_8",
+      "offset": 8449,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2102",
+      "offset": 8450,
+      "type": "s8"
+    },
+    {
+      "name": "x2103",
+      "offset": 8451,
+      "type": "s8"
+    },
+    {
+      "name": "x2104",
+      "offset": 8452,
+      "type": "s32"
+    },
+    {
+      "name": "capture_timer",
+      "offset": 8456,
+      "type": "s32"
+    },
+    {
+      "name": "wall_jump_input_timer",
+      "offset": 8460,
+      "type": "u8"
+    },
+    {
+      "name": "filler_x210C",
+      "offset": 8460,
+      "type": "unknown",
+      "ctype": "u8[3]"
+    },
+    {
+      "name": "x2110_walljumpWallSide",
+      "offset": 8464,
+      "type": "f32"
+    },
+    {
+      "name": "smash_attrs",
+      "offset": 8468,
+      "type": "unknown",
+      "ctype": "SmashAttr"
+    },
+    {
+      "name": "x213C",
+      "offset": 8508,
+      "type": "s32"
+    },
+    {
+      "name": "x2140",
+      "offset": 8512,
+      "type": "f32"
+    },
+    {
+      "name": "x2144",
+      "offset": 8516,
+      "type": "s32"
+    },
+    {
+      "name": "x2148",
+      "offset": 8520,
+      "type": "s32"
+    },
+    {
+      "name": "x214C",
+      "offset": 8524,
+      "type": "s32"
+    },
+    {
+      "name": "x2150",
+      "offset": 8528,
+      "type": "s32"
+    },
+    {
+      "name": "x2154",
+      "offset": 8532,
+      "type": "s32"
+    },
+    {
+      "name": "x2158",
+      "offset": 8536,
+      "type": "s32"
+    },
+    {
+      "name": "x215C",
+      "offset": 8540,
+      "type": "s32"
+    },
+    {
+      "name": "x2160",
+      "offset": 8544,
+      "type": "s32"
+    },
+    {
+      "name": "x2164",
+      "offset": 8548,
+      "type": "s32"
+    },
+    {
+      "name": "x2168",
+      "offset": 8552,
+      "type": "s32"
+    },
+    {
+      "name": "unk_grab_val",
+      "offset": 8556,
+      "type": "f32"
+    },
+    {
+      "name": "x2170",
+      "offset": 8560,
+      "type": "f32"
+    },
+    {
+      "name": "x2174",
+      "offset": 8564,
+      "type": "vec3"
+    },
+    {
+      "name": "x2180",
+      "offset": 8576,
+      "type": "s32"
+    },
+    {
+      "name": "x2184",
+      "offset": 8580,
+      "type": "ptr"
+    },
+    {
+      "name": "x2188",
+      "offset": 8584,
+      "type": "unknown",
+      "ctype": "S32Vec2"
+    },
+    {
+      "name": "grab_cb",
+      "offset": 8592,
+      "type": "ptr"
+    },
+    {
+      "name": "x2194",
+      "offset": 8596,
+      "type": "ptr"
+    },
+    {
+      "name": "grabbed_cb",
+      "offset": 8600,
+      "type": "ptr"
+    },
+    {
+      "name": "input_cb",
+      "offset": 8604,
+      "type": "ptr"
+    },
+    {
+      "name": "anim_cb",
+      "offset": 8608,
+      "type": "ptr"
+    },
+    {
+      "name": "phys_cb",
+      "offset": 8612,
+      "type": "ptr"
+    },
+    {
+      "name": "coll_cb",
+      "offset": 8616,
+      "type": "ptr"
+    },
+    {
+      "name": "cam_cb",
+      "offset": 8620,
+      "type": "ptr"
+    },
+    {
+      "name": "accessory1_cb",
+      "offset": 8624,
+      "type": "ptr"
+    },
+    {
+      "name": "accessory2_cb",
+      "offset": 8628,
+      "type": "ptr"
+    },
+    {
+      "name": "accessory3_cb",
+      "offset": 8632,
+      "type": "ptr"
+    },
+    {
+      "name": "accessory4_cb",
+      "offset": 8636,
+      "type": "ptr"
+    },
+    {
+      "name": "deal_dmg_cb",
+      "offset": 8640,
+      "type": "ptr"
+    },
+    {
+      "name": "shield_hit_cb",
+      "offset": 8644,
+      "type": "ptr"
+    },
+    {
+      "name": "reflect_hit_cb",
+      "offset": 8648,
+      "type": "ptr"
+    },
+    {
+      "name": "x21CC",
+      "offset": 8652,
+      "type": "ptr"
+    },
+    {
+      "name": "hitlag_cb",
+      "offset": 8656,
+      "type": "ptr"
+    },
+    {
+      "name": "pre_hitlag_cb",
+      "offset": 8660,
+      "type": "ptr"
+    },
+    {
+      "name": "post_hitlag_cb",
+      "offset": 8664,
+      "type": "ptr"
+    },
+    {
+      "name": "take_dmg_cb",
+      "offset": 8668,
+      "type": "ptr"
+    },
+    {
+      "name": "death1_cb",
+      "offset": 8672,
+      "type": "ptr"
+    },
+    {
+      "name": "death2_cb",
+      "offset": 8676,
+      "type": "ptr"
+    },
+    {
+      "name": "death3_cb",
+      "offset": 8680,
+      "type": "ptr"
+    },
+    {
+      "name": "x21EC",
+      "offset": 8684,
+      "type": "ptr"
+    },
+    {
+      "name": "take_dmg_2_cb",
+      "offset": 8688,
+      "type": "ptr"
+    },
+    {
+      "name": "hurtbox_detect_cb",
+      "offset": 8692,
+      "type": "ptr"
+    },
+    {
+      "name": "x21F8",
+      "offset": 8696,
+      "type": "ptr"
+    },
+    {
+      "name": "x21FC_flag",
+      "offset": 8700,
+      "type": "unknown",
+      "ctype": "UnkFlagStruct"
+    },
+    {
+      "name": "filler_x21FC",
+      "offset": 8700,
+      "type": "unknown",
+      "ctype": "u8[0x2200-0x21FD]"
+    },
+    {
+      "name": "cmd_vars",
+      "offset": 8704,
+      "type": "unknown",
+      "ctype": "u32[4]"
+    },
+    {
+      "name": "_anon_2210",
+      "offset": 8720,
+      "type": "unknown",
+      "ctype": "union"
+    },
+    {
+      "name": "cmd_timer",
+      "offset": 8724,
+      "type": "f32"
+    },
+    {
+      "name": "allow_interrupt",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2218_b1",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2218_b2",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "reflecting",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2218_b4",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2218_b5",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2218_b6",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2218_b7",
+      "offset": 8728,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2219_b0",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2219_b1",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2219_b2",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2219_b3",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2219_b4",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2219_b5",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2219_b6",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2219_b7",
+      "offset": 8729,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x221A_b0",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x221A_b1",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "allow_sdi",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221A_b3",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "fall_fast",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221A_b5",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221A_b6",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221A_b7",
+      "offset": 8730,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x221B_b0",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x221B_b1",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x221B_b2",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221B_b3",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x221B_b4",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221B_b5",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221B_b6",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221B_b7",
+      "offset": 8731,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x221C_b0",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x221C_b1",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x221C_b2",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221C_b3",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x221C_b4",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221C_b5",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221C_b6",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221C_u16_y",
+      "offset": 8732,
+      "type": "unknown",
+      "ctype": "u16:3",
+      "bit": 7,
+      "width": 3
+    },
+    {
+      "name": "x221D_b2",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221D_b3",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x221D_b4",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221D_b5",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221D_b6",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221D_b7",
+      "offset": 8733,
+      "type": "unknown",
+      "ctype": "u16:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "invisible",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x221E_b1",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x221E_b2",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221E_b3",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x221E_b4",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221E_b5",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221E_b6",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221E_b7",
+      "offset": 8734,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x221F_b0",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x221F_b1",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x221F_b2",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x221F_b3",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x221F_b4",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x221F_b5",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x221F_b6",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x221F_b7",
+      "offset": 8735,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2220_b0",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:3",
+      "bit": 0,
+      "width": 3
+    },
+    {
+      "name": "x2220_b3",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2220_b4",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2220_b5",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2220_b6",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2220_b7",
+      "offset": 8736,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2221_b0",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2221_b1",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2221_b2",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2221_b3",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2221_b4",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2221_b5",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2221_b6",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2221_b7",
+      "offset": 8737,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2222_b0",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "can_multijump",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2222_b2",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2222_b3",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2222_b4",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2222_b5",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2222_b6",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2222_b7",
+      "offset": 8738,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2223_b0",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2223_b1",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2223_b2",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2223_b3",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2223_b4",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2223_b5",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "is_always_metal",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "is_metal",
+      "offset": 8739,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2224_b0",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2224_b1",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2224_b2",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2224_b3",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2224_b4",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2224_b5",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2224_b6",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "can_walljump",
+      "offset": 8740,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2225_b0",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2225_b1",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2225_b2",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2225_b3",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2225_b4",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2225_b5",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2225_b6",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2225_b7",
+      "offset": 8741,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2226_b0",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2226_b1",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2226_b2",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2226_b3",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2226_b4",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2226_b5",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2226_b6",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2226_b7",
+      "offset": 8742,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2227_b0",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2227_b1",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2227_b2",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2227_b3",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2227_b4",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "x2227_b5",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2227_b6",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2227_b7",
+      "offset": 8743,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2228_b0",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2228_b1",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2228_b2",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2228_b3",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:2",
+      "bit": 3,
+      "width": 2
+    },
+    {
+      "name": "x2228_b5",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "used_tether",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x2228_b7",
+      "offset": 8744,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x2229_b0",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x2229_b1",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x2229_b2",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x2229_b3",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 3,
+      "width": 1
+    },
+    {
+      "name": "x2229_b4",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 4,
+      "width": 1
+    },
+    {
+      "name": "no_normal_motion",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x2229_b6",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "no_kb",
+      "offset": 8745,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "x222A_b0",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 0,
+      "width": 1
+    },
+    {
+      "name": "x222A_b1",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 1,
+      "width": 1
+    },
+    {
+      "name": "x222A_b2",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 2,
+      "width": 1
+    },
+    {
+      "name": "x222A_b3",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:2",
+      "bit": 3,
+      "width": 2
+    },
+    {
+      "name": "x222A_b5",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 5,
+      "width": 1
+    },
+    {
+      "name": "x222A_b6",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 6,
+      "width": 1
+    },
+    {
+      "name": "x222A_b7",
+      "offset": 8746,
+      "type": "unknown",
+      "ctype": "u8:1",
+      "bit": 7,
+      "width": 1
+    },
+    {
+      "name": "u.ca",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftCaptain_FighterVars"
+    },
+    {
+      "name": "u.gn",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftCaptain_FighterVars"
+    },
+    {
+      "name": "u.dk",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftDonkey_FighterVars"
+    },
+    {
+      "name": "u.fx",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftFox_FighterVars"
+    },
+    {
+      "name": "u.fc",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftFox_FighterVars"
+    },
+    {
+      "name": "u.gw",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftGameWatch_FighterVars"
+    },
+    {
+      "name": "u.kb",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftKb_FighterVars"
+    },
+    {
+      "name": "u.kp",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftKoopa_FighterVars"
+    },
+    {
+      "name": "u.gk",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftKoopa_FighterVars"
+    },
+    {
+      "name": "u.lk",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftLk_FighterVars"
+    },
+    {
+      "name": "u.lg",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftLuigi_FighterVars"
+    },
+    {
+      "name": "u.mr",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftMario_FighterVars"
+    },
+    {
+      "name": "u.ms",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftMars_FighterVars"
+    },
+    {
+      "name": "u.mh",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftMasterhand_FighterVars"
+    },
+    {
+      "name": "u.ch",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftMasterhand_FighterVars"
+    },
+    {
+      "name": "u.mt",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftMewtwo_FighterVars"
+    },
+    {
+      "name": "u.ns",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftNess_FighterVars"
+    },
+    {
+      "name": "u.pe",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPeach_FighterVars"
+    },
+    {
+      "name": "u.pk",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPikachu_FighterVars"
+    },
+    {
+      "name": "u.pc",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPikachu_FighterVars"
+    },
+    {
+      "name": "u.pp",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPopo_FighterVars"
+    },
+    {
+      "name": "u.nn",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPopo_FighterVars"
+    },
+    {
+      "name": "u.pr",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftPurin_FighterVars"
+    },
+    {
+      "name": "u.ss",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftSamus_FighterVars"
+    },
+    {
+      "name": "u.sb",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftSandbag_FighterVars"
+    },
+    {
+      "name": "u.sk",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftSeak_FighterVars"
+    },
+    {
+      "name": "u.ys",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftYoshi_FighterVars"
+    },
+    {
+      "name": "u.bo",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftZakoBoy_FighterVars"
+    },
+    {
+      "name": "u.gl",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftZakoBoy_FighterVars"
+    },
+    {
+      "name": "u.zd",
+      "offset": 8748,
+      "type": "unknown",
+      "ctype": "struct ftZelda_FighterVars"
+    },
+    {
+      "name": "bury_grkind",
+      "offset": 8996,
+      "type": "s32"
+    },
+    {
+      "name": "bury_timer_1",
+      "offset": 9000,
+      "type": "u32"
+    },
+    {
+      "name": "bury_timer_2",
+      "offset": 9004,
+      "type": "u32"
+    },
+    {
+      "name": "x2330",
+      "offset": 9008,
+      "type": "unknown",
+      "ctype": "IntVec2"
+    },
+    {
+      "name": "x2338",
+      "offset": 9016,
+      "type": "unknown",
+      "ctype": "IntVec2"
+    },
+    {
+      "name": "mv._",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "u8[0x23EC-0x2340]"
+    },
+    {
+      "name": "mv.ca",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftCaptain_MotionVars"
+    },
+    {
+      "name": "mv.gn",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftCaptain_MotionVars"
+    },
+    {
+      "name": "mv.co",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftCommon_MotionVars"
+    },
+    {
+      "name": "mv.dk",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftDonkey_MotionVars"
+    },
+    {
+      "name": "mv.fx",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftFox_MotionVars"
+    },
+    {
+      "name": "mv.fc",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftFox_MotionVars"
+    },
+    {
+      "name": "mv.gw",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftGameWatch_MotionVars"
+    },
+    {
+      "name": "mv.kb",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftKb_MotionVars"
+    },
+    {
+      "name": "mv.kp",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftKoopa_MotionVars"
+    },
+    {
+      "name": "mv.lk",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftLk_MotionVars"
+    },
+    {
+      "name": "mv.lg",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftLuigi_MotionVars"
+    },
+    {
+      "name": "mv.mr",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMario_MotionVars"
+    },
+    {
+      "name": "mv.dr",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMario_MotionVars"
+    },
+    {
+      "name": "mv.ms",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMars_MotionVars"
+    },
+    {
+      "name": "mv.fe",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMars_MotionVars"
+    },
+    {
+      "name": "mv.mh",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMasterHand_MotionVars"
+    },
+    {
+      "name": "mv.ch",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMasterHand_MotionVars"
+    },
+    {
+      "name": "mv.mt",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftMewtwo_MotionVars"
+    },
+    {
+      "name": "mv.ns",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftNess_MotionVars"
+    },
+    {
+      "name": "mv.pe",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftPe_MotionVars"
+    },
+    {
+      "name": "mv.pk",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftPikachu_MotionVars"
+    },
+    {
+      "name": "mv.pc",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftPikachu_MotionVars"
+    },
+    {
+      "name": "mv.pp",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftPp_MotionVars"
+    },
+    {
+      "name": "mv.pr",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftPurin_MotionVars"
+    },
+    {
+      "name": "mv.ss",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftSamus_MotionVars"
+    },
+    {
+      "name": "mv.sk",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftSeak_MotionVars"
+    },
+    {
+      "name": "mv.ys",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftYoshi_MotionVars"
+    },
+    {
+      "name": "mv.zd",
+      "offset": 9024,
+      "type": "unknown",
+      "ctype": "union ftZelda_MotionVars"
+    }
+  ]
+}

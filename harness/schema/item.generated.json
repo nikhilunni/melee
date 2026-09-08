@@ -1,0 +1,182 @@
+{
+  "struct": "Item",
+  "size": 4044,
+  "source": "third_party/melee-decomp/src/melee/it/types.h:213",
+  "fields": [
+    {
+      "name": "entity",
+      "offset": 4,
+      "type": "ptr"
+    },
+    {
+      "name": "spawn_kind",
+      "offset": 12,
+      "type": "s32"
+    },
+    {
+      "name": "kind",
+      "offset": 16,
+      "type": "s32"
+    },
+    {
+      "name": "hold_kind",
+      "offset": 20,
+      "type": "s32"
+    },
+    {
+      "name": "x20_team_id",
+      "offset": 32,
+      "type": "u8"
+    },
+    {
+      "name": "msid",
+      "offset": 36,
+      "type": "s32"
+    },
+    {
+      "name": "anim_id",
+      "offset": 40,
+      "type": "s32"
+    },
+    {
+      "name": "facing_dir",
+      "offset": 44,
+      "type": "f32"
+    },
+    {
+      "name": "init_facing_dir",
+      "offset": 48,
+      "type": "f32"
+    },
+    {
+      "name": "spin_spd",
+      "offset": 52,
+      "type": "f32"
+    },
+    {
+      "name": "scl",
+      "offset": 56,
+      "type": "f32"
+    },
+    {
+      "name": "x3C",
+      "offset": 60,
+      "type": "f32"
+    },
+    {
+      "name": "x40_vel",
+      "offset": 64,
+      "type": "vec3"
+    },
+    {
+      "name": "pos",
+      "offset": 76,
+      "type": "vec3"
+    },
+    {
+      "name": "x58_vec_unk",
+      "offset": 88,
+      "type": "vec3"
+    },
+    {
+      "name": "x64_vec_unk2",
+      "offset": 100,
+      "type": "vec3"
+    },
+    {
+      "name": "x70_nudge",
+      "offset": 112,
+      "type": "vec3"
+    },
+    {
+      "name": "owner",
+      "offset": 1304,
+      "type": "ptr"
+    },
+    {
+      "name": "toucher",
+      "offset": 3320,
+      "type": "ptr"
+    },
+    {
+      "name": "grab_victim",
+      "offset": 3328,
+      "type": "ptr"
+    },
+    {
+      "name": "atk_victim",
+      "offset": 3332,
+      "type": "ptr"
+    },
+    {
+      "name": "xD0C",
+      "offset": 3340,
+      "type": "s32"
+    },
+    {
+      "name": "animated",
+      "offset": 3348,
+      "type": "ptr"
+    },
+    {
+      "name": "physics_updated",
+      "offset": 3352,
+      "type": "ptr"
+    },
+    {
+      "name": "collided",
+      "offset": 3356,
+      "type": "ptr"
+    },
+    {
+      "name": "on_accessory",
+      "offset": 3360,
+      "type": "ptr"
+    },
+    {
+      "name": "touched",
+      "offset": 3364,
+      "type": "ptr"
+    },
+    {
+      "name": "entered_hitlag",
+      "offset": 3368,
+      "type": "ptr"
+    },
+    {
+      "name": "jumped_on",
+      "offset": 3368,
+      "type": "ptr"
+    },
+    {
+      "name": "grab_dealt",
+      "offset": 3380,
+      "type": "ptr"
+    },
+    {
+      "name": "grabbed_for_victim",
+      "offset": 3384,
+      "type": "ptr"
+    },
+    {
+      "name": "destroy_type",
+      "offset": 3424,
+      "type": "s32"
+    },
+    {
+      "name": "sfx_unk1",
+      "offset": 3428,
+      "type": "s32"
+    },
+    {
+      "name": "sfx_unk2",
+      "offset": 3432,
+      "type": "s32"
+    },
+    {
+      "name": "destroy_sfx",
+      "offset": 3452,
+      "type": "s32"
+    }
+  ]
+}

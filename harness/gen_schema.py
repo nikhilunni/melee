@@ -21,12 +21,20 @@ function-pointer typedef becomes ptr. Everything else (arrays, bitfields,
 nested aggregates, opaque typedefs) is emitted as `unknown` with the C type
 string so nothing is silently dropped.
 
+Alongside each `*.generated.yaml` the script writes a `*.generated.json` with
+identical content (struct, size, source, ordered fields) for consumers without
+a YAML parser: the Rust schema-coverage test in `crates/melee-sim` loads it via
+`include_str!`. The hand-written `fighter.yaml` is likewise mirrored to
+`fighter.hand.generated.json` so the same test can check an emitter against
+the subset the decoder currently reads.
+
 Usage (from harness/):
-    uv run python gen_schema.py            # writes schema/*.generated.yaml, prints report
+    uv run python gen_schema.py            # writes schema/*.generated.{yaml,json}, prints report
     uv run python gen_schema.py --check    # exit 1 on layout violations
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -608,6 +616,43 @@ def emit_yaml(struct: str, size: int | None, hdr: Header, root: Node, out_path: 
     return named
 
 
+def _field_json(name: str, n: Node) -> dict:
+    d: dict = {"name": name, "offset": n.offset, "type": n.schema_type}
+    if n.schema_type == "unknown" or n.schema_type not in SCHEMA_SCALARS:
+        d["ctype"] = n.ctype
+    if n.bit is not None:
+        d["bit"] = n.bit
+        d["width"] = n.width
+    return d
+
+
+def write_schema_json(struct: str, size: int | None, source: str | None,
+                      fields: list[dict], out_path: Path) -> None:
+    """Write the JSON twin of a schema: same struct/size/fields, fields as an ordered list."""
+    doc = {"struct": struct, "size": size, "source": source, "fields": fields}
+    out_path.write_text(json.dumps(doc, indent=2) + "\n")
+
+
+def emit_json(struct: str, size: int | None, hdr: Header, root: Node,
+              named: list[tuple[str, Node]], out_path: Path) -> None:
+    write_schema_json(struct, size, f"{hdr.rel}:{root.line}",
+                      [_field_json(name, n) for name, n in named], out_path)
+
+
+def hand_to_json(hand_path: Path, out_path: Path) -> int:
+    """Mirror a hand-written schema YAML (fields as a mapping) into the JSON list form."""
+    hand = yaml.safe_load(hand_path.read_text())
+    fields = []
+    for name, f in hand["fields"].items():
+        d = {"name": name, "offset": f["offset"], "type": f["type"]}
+        for k in ("ctype", "bit", "width"):
+            if k in f:
+                d[k] = f[k]
+        fields.append(d)
+    write_schema_json(hand["struct"], hand.get("size"), str(hand_path.relative_to(ROOT)), fields, out_path)
+    return len(fields)
+
+
 def compare_with_hand(hand_path: Path, named: list[tuple[str, Node]]) -> list[str]:
     hand = yaml.safe_load(hand_path.read_text())
     by_off: dict[int, list[tuple[str, Node]]] = {}
@@ -650,6 +695,8 @@ def run(struct: str, header: Path, out_name: str, hand: Path | None, typedefs: T
         return 0, 0
     size = hdr.assert_size(struct)
     named = emit_yaml(struct, size, hdr, root, SCHEMA_DIR / out_name)
+    json_name = out_name.removesuffix(".yaml") + ".json"
+    emit_json(struct, size, hdr, root, named, SCHEMA_DIR / json_name)
     kinds: dict[str, int] = {}
     for _, n in named:
         kinds[n.schema_type] = kinds.get(n.schema_type, 0) + 1
@@ -673,11 +720,14 @@ def run(struct: str, header: Path, out_name: str, hand: Path | None, typedefs: T
         print(f"    {v}")
     for nt in notes:
         print(f"  note: {nt}")
-    print(f"  wrote schema/{out_name}")
+    print(f"  wrote schema/{out_name} and schema/{json_name}")
     if hand is not None and hand.exists():
         print(f"  vs hand-written schema/{hand.name}:")
         for line in compare_with_hand(hand, named):
             print(line)
+        hand_json = hand.name.removesuffix(".yaml") + ".hand.generated.json"
+        n = hand_to_json(hand, SCHEMA_DIR / hand_json)
+        print(f"  wrote schema/{hand_json} ({n} fields)")
     return len(named), len(violations)
 
 
