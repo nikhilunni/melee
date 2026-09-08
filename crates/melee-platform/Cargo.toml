@@ -1,0 +1,8 @@
+[package]
+name = "melee-platform"
+description = "Platform layer: input, timing, file access, later graphics and audio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

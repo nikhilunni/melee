@@ -1,0 +1,14 @@
+[package]
+name = "melee-ft"
+description = "Common fighter logic: physics, action states, ftCo_* shared behaviours, collision (decomp src/melee/ft minus kinds/ and CPU)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-mp = { path = "../melee-mp" }
+melee-lb = { path = "../melee-lb" }
+hsd-gobj = { path = "../hsd-gobj" }
+hsd-anim = { path = "../hsd-anim" }
+gekko-math = { path = "../gekko-math" }

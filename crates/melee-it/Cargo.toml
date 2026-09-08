@@ -1,0 +1,13 @@
+[package]
+name = "melee-it"
+description = "Item logic (decomp src/melee/it). Split per item family if it grows past ~30k lines"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-mp = { path = "../melee-mp" }
+melee-lb = { path = "../melee-lb" }
+hsd-gobj = { path = "../hsd-gobj" }
+gekko-math = { path = "../gekko-math" }

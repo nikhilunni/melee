@@ -1,0 +1,12 @@
+[package]
+name = "melee-diff"
+description = "Compare canonical state traces from the Dolphin oracle and the Rust port; report the first divergence"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }

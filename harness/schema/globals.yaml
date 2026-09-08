@@ -1,0 +1,12 @@
+# Retail globals, resolved by symbol name via harness/symbols.py.
+globals:
+  rng_seed:
+    symbol: seed                 # src/sysdolphin/baselib/random.c, .sdata 0x804D5F90
+    type: u32
+  gobj_entities:
+    symbol: HSD_GObj_Entities    # pointer to the entity list struct; fighters list hangs off it
+    type: ptr
+  stage_info:
+    symbol: stage_info           # .bss 0x8049E6C8, size 0x748
+    type: ptr_to_struct
+    struct: StageInfo            # TODO: add harness/schema/stage.yaml

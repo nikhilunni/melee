@@ -1,0 +1,12 @@
+/target
+/harness/.venv
+/harness/traces/
+/harness/roms/
+*.iso
+*.rvz
+*.gcm
+*.dol
+*.sav
+*.jsonl
+__pycache__/
+.DS_Store

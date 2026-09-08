@@ -1,0 +1,9 @@
+[project]
+name = "melee-harness"
+version = "0.0.1"
+description = "Dolphin oracle harness: run scenarios, dump state, decode to canonical traces"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6"]
+
+[tool.uv]
+package = false

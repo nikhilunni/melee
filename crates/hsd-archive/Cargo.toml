@@ -1,0 +1,8 @@
+[package]
+name = "hsd-archive"
+description = "Typed deserialisation of HSD .dat archives (big-endian, 32-bit pointer relocation) into Rust structs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

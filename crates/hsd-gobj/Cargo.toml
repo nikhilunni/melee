@@ -1,0 +1,9 @@
+[package]
+name = "hsd-gobj"
+description = "HSD GObj scheduler: object lists, per-frame proc ordering, link/priority queues (decomp src/sysdolphin/baselib/gobj*.c)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hsd-types = { path = "../hsd-types" }

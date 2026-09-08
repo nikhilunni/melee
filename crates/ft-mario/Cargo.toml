@@ -1,0 +1,11 @@
+[package]
+name = "ft-mario"
+description = "Fighter: Mario (decomp src/melee/ft/kinds/ftMario)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+gekko-math = { path = "../gekko-math" }

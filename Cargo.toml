@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+    # Layer 0: leaf crates. Tiny, stable, everything depends on them.
+    "crates/gekko-math",
+    "crates/hsd-types",
+    "crates/melee-types",
+    # Layer 1: HSD engine.
+    "crates/hsd-archive",
+    "crates/hsd-gobj",
+    "crates/hsd-anim",
+    # Layer 2: Melee subsystems. None of these depend on each other except as listed in their Cargo.toml.
+    "crates/melee-lb",
+    "crates/melee-mp",
+    "crates/melee-gr",
+    "crates/melee-it",
+    "crates/melee-ft",
+    "crates/melee-cpu",
+    # Layer 3: one crate per character. Depend on melee-ft, never on each other.
+    "crates/ft-fox",
+    "crates/ft-mario",
+    # Layer 4: binaries and tooling.
+    "crates/melee-sim",
+    "crates/melee-platform",
+    "crates/melee-diff",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/nikhilunni/melee"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+
+# Bit-exactness is non-negotiable. Never enable fast-math style flags here,
+# and keep debug and release float behaviour identical.
+[profile.release]
+debug = 1
+
+# Dev builds: optimise dependencies once, keep our own crates fast to compile.
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev]
+opt-level = 0
+debug = 1
+incremental = true

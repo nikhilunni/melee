@@ -1,0 +1,8 @@
+[package]
+name = "gekko-math"
+description = "Bit-exact reproduction of Gekko (GameCube PowerPC) float semantics and the MSL C runtime math used by Melee"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

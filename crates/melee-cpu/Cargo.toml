@@ -1,0 +1,12 @@
+[package]
+name = "melee-cpu"
+description = "CPU opponent AI: behaviour state machine, attack selection, command script interpreter (decomp ftCo_0A01.c, ftcpuattack.c, ftcmdscript.c)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+melee-mp = { path = "../melee-mp" }
+gekko-math = { path = "../gekko-math" }

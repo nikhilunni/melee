@@ -1,0 +1,12 @@
+[package]
+name = "melee-lb"
+description = "Melee library layer: collision helpers, archive access, math utilities (decomp src/melee/lb)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
+hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }

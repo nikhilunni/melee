@@ -1,0 +1,25 @@
+[package]
+name = "melee-sim"
+description = "Headless simulator binary: wires every crate, runs a scenario file, emits a canonical JSONL trace for melee-diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+melee-cpu = { path = "../melee-cpu" }
+melee-it = { path = "../melee-it" }
+melee-gr = { path = "../melee-gr" }
+melee-mp = { path = "../melee-mp" }
+melee-lb = { path = "../melee-lb" }
+hsd-gobj = { path = "../hsd-gobj" }
+hsd-anim = { path = "../hsd-anim" }
+hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
+ft-fox = { path = "../ft-fox" }
+ft-mario = { path = "../ft-mario" }
+melee-diff = { path = "../melee-diff" }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }

@@ -1,0 +1,28 @@
+# Fighter struct subset. Source: third_party/melee-decomp/src/melee/ft/types.h
+# `struct Fighter`, ASSERT_SIZE 0x23EC. Offsets are from the header comments.
+#
+# How a fighter is found: walk HSD_GObj_Entities->fighters (an HSD_GObj list),
+# read the Fighter* at gobj+0x2C (GET_FIGHTER; see the `lwz r31, 0x2c(r3)`
+# idiom throughout the retail asm), then apply these offsets.
+struct: Fighter
+size: 0x23EC
+fields:
+  kind:            { offset: 0x004, type: s32 }   # FighterKind
+  player_id:       { offset: 0x00C, type: u8  }
+  motion_id:       { offset: 0x010, type: s32 }   # FtMotionId / action state
+  facing_dir:      { offset: 0x02C, type: f32 }
+  self_vel:        { offset: 0x080, type: vec3 }
+  kb_vel:          { offset: 0x08C, type: vec3 }  # x8c_kb_vel
+  cur_pos:         { offset: 0x0B0, type: vec3 }
+  ground_or_air:   { offset: 0x0E0, type: s32 }
+  cur_anim_frame:  { offset: 0x894, type: f32 }
+  percent:         { offset: 0x1830, type: f32 } # dmg.x1830_percent
+  jumps_used:      { offset: 0x1968, type: u8  }
+  # CPU AI state (struct CpuFighter at fp+0x1A88, size 0x57C)
+  cpu.buttons:     { offset: 0x1A88, type: u32 }
+  cpu.lstick_x:    { offset: 0x1A8C, type: s8  }
+  cpu.lstick_y:    { offset: 0x1A8D, type: s8  }
+  cpu.type:        { offset: 0x1A94, type: s32 } # CpuFighter.xC
+  cpu.level:       { offset: 0x1A98, type: s32 }
+  cpu.behavior:    { offset: 0x1AA0, type: s32 } # CpuFighter.x18
+  cpu.timer:       { offset: 0x1B04, type: s32 } # CpuFighter.x7C
