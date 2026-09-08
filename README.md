@@ -29,9 +29,9 @@ or ever will be committed to this repository.
 
 ## Status
 
-Milestone 1 of `docs/PLAN.md`: RNG and fused multiply-add are bit-exact and
-tested. `frsqrte`/`fres` are IEEE placeholders pending a decision on the
-hardware tables (see `crates/gekko-math/src/estimate.rs`). The oracle
-pipeline (`decode.py` to `melee-diff`) is end-to-end tested on synthetic
-dumps. The Dolphin driver script is a skeleton awaiting the fighter list
-walk.
+Milestone 1 of `docs/PLAN.md` is complete except for the `frsqrte`/`fres`
+hardware tables (see `crates/gekko-math/src/estimate.rs`). Archive parsing,
+the shared type crates, the Slippi replay parser, and the oracle harness
+(fighter-list walk, schema generator, `melee-diff`) are done and tested.
+Blocked on a disc image and a scripting-capable Dolphin build for the first
+real trace.
