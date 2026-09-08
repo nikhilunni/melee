@@ -238,7 +238,9 @@ name = "melee-mp"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
  "hsd-types",
+ "melee-lb",
  "melee-types",
 ]
 
