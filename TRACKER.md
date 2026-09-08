@@ -9,9 +9,9 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
-Milestone 2 (HSD engine): `jobj.c` is next, then typed archive readers so
-Milestone 2's gate can run the moment a disc is present. Dolphin is built.
-See blockers.
+Milestone 2 code is in place; its gate (bone matrices vs oracle) needs a
+disc. Starting Milestone 3 groundwork: desc→runtime glue, `melee-gr` for
+Final Destination, `melee-ft` init and frame order, `melee-sim` loop.
 
 ## Blockers
 
@@ -48,7 +48,7 @@ See blockers.
 - [ ] Measure oracle frames/sec with a booted game (blocked on disc)
 - [ ] Verify savestate load is synchronous with next frame
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
-- [~] (2026-09-08) `Snapshot` trait in `melee-types` + test that Rust emitters cover every schema path
+- [x] `Snapshot` trait in `melee-types`, `RecordSink` in `melee-diff`, `SchemaCoverage` in `melee-sim` with stale-exclusion detection
 - [ ] Golden fixture recorder: break on function entry/exit, dump args and touched memory to `harness/goldens/`
 - [ ] Retail asm lookup tool: given a symbol, print its disassembly from `main.dol` (needs disc)
 - [ ] CI: `cargo gate`, clippy `-D warnings`, harness pytest, `gen_schema.py --check`
@@ -60,7 +60,7 @@ See blockers.
 - [x] MSL `sinf`, `cosf`, `tanf`, `logf`, `frexp`, `fmodf`, classify, fabs
 - [x] Gekko int/float conversion semantics (`fctiwz`, `__cvt_*`)
 - [x] Native-C reference oracle test (bit-exact vs decomp C, `-ffp-contract=off`)
-- [~] (2026-09-08, porting) `frsqrte` / `fres` hardware-exact: behaviour captured and modelled by `harness/gekko_probe` (100% of 74k pairs); porting the inferred tables into `estimate.rs` awaits the licensing decision
+- [x] `frsqrte` / `fres` hardware-exact from captured tables (golden fixture 10,600 pairs; full captures 148k pairs, 0 mismatches; `sqrtf` bit-exact vs native C)
 - [ ] FMA audit of the 25 marked sites against retail asm (blocked on disc)
 - [ ] Int-conversion audit of the 1 marked site (blocked on disc)
 - [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fused ops map to fmadds/fmsubs, results identical to scalar single-precision
@@ -72,7 +72,7 @@ Gate: load one character and one stage archive, evaluate the wait
 animation, match bone matrices from the oracle.
 
 - [x] `hsd-archive`: header, relocs, publics, externs, strings; synthetic tests
-- [~] (2026-09-08) `hsd-archive`: typed readers for JObj/DObj/MObj/AObj/FObj node graphs (offset-linked structs to owned trees)
+- [x] `hsd-archive`: typed readers for JObjDesc/DObj/MObj/AObj/FObj/AnimJoint/MatAnimJoint/ShapeAnimJoint and Melee FigaTree (20 tests)
 - [ ] `hsd-archive`: test against a real `.dat` (blocked on disc)
 - [x] `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
 - [x] `hsd-anim`: `mtx.c`, `quatlib.c`, and the SDK `PSMTX*`/`PSVEC*` paired-single kernels
@@ -80,9 +80,10 @@ animation, match bone matrices from the oracle.
 - [ ] Wire `hsd_anim::mtx::InverseTrig` to `melee_lb::trigf` in `melee-sim` (hsd-anim must not depend on melee-lb)
 - [x] `hsd-anim`: `aobj.c`, `fobj.c` keyframe evaluation (native-C oracle, 0 mismatches)
 - [ ] `hsd-anim`: confirm via Dolphin whether retail data ever hits the uninitialised single-key FObj path (see fobj.rs `FOBJ_UNINITIALISED_VALUE`)
-- [~] (2026-09-08) `hsd-anim`: `jobj.c` (1578) hierarchy, local/world matrices, flags
-- [~] (2026-09-08) `hsd-anim`: `dobj.c` (349), `mobj.c` (591) data only, no render
-- [ ] `hsd-anim`: `robj.c` (942) constraints if fighters use them (check)
+- [x] `hsd-anim`: `jobj.c` hierarchy, matrix setup, dirty flags, SRT setters, anim application, ftparts bone lookup (52 tests)
+- [ ] `hsd-anim`: convert `hsd_archive::desc::JObjDesc`/`AnimJoint` trees into `JObjTree` (`JObjLoad` glue; both sides exist)
+- [x] `hsd-anim`: `dobj.c`, `mobj.c` data and anim plumbing, no render
+- [ ] `hsd-anim`: `robj.c` (942) constraints. jobj.rs lists exactly which RObj entry points it calls (all currently no-ops, matching `robj == NULL`); check whether fighter skeletons carry RObjs before porting
 - [ ] `hsd-anim`: `cobj.c` (1406) camera object, needed by `cm` later
 - [ ] HSD `class.c`/`object.c` object model: decide Rust representation (traits vs enums)
 - [-] Rendering: `tobj`, `pobj`, `lobj`, `tev`, `texp*`, `psdisp*`, `displayfunc`, `video`, `shadow`, `fog` (Milestone 8)
@@ -96,7 +97,10 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [x] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf) and `lb_00CE.c` expf/powf
 - [ ] `melee-lb`: `lbvector.c`, `lbcollision.c`, `lbarchive.c`, `lbfile.c` (headless file access), `lbanim.c`
 - [ ] `melee-lb`: remaining `lb_*` files as needed by callers (17k lines total)
-- [~] (2026-09-08) `melee-mp`: `mplib.c`, `mpcoll.c`, `mpisland.c` (12k lines): floor/wall/ceiling queries, ledge detection
+- [x] `melee-mp`: `mplib.c` (103 fns) and `mpcoll.c` (complete) as `CollMap`; 42 tests on synthetic FD
+- [ ] `melee-mp`: `mpisland.c` (626 lines; feeds CPU AI and Link hookshot) — `CollMap::island_update` is the hook
+- [ ] `melee-mp`: terrain sound-id tables (`mpLib_803BD3D8..`) once an sfx layer exists
+- [ ] `melee-mp`: test `CollMap::load` against a real `GrXX.dat` `coll_data` (blocked on disc)
 - [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c`, `grlast.c` (Final Destination only for this milestone)
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only
@@ -213,6 +217,8 @@ Gate: zero divergence over thousands of Slippi replays.
 ## Session log
 
 Newest first. One line per session: date, what landed, what is next.
+
+- 2026-09-08: Third batch: frsqrte/fres hardware-exact (M1 complete), JObj scene graph + DObj/MObj, typed descriptor readers + FigaTree, Snapshot/RecordSink/SchemaCoverage, melee-mp mplib+mpcoll. Gate: 55 suites green, clippy clean. Next: JObjDesc→JObjTree glue, melee-gr Final Destination, melee-ft skeleton (fighter.c init/update order), melee-sim frame loop, Dolphin savestate workflow doc.
 
 - 2026-09-08: Second batch: hsd-gobj scheduler (35 tests), hsd-anim mtx/quat + SDK PS kernels and aobj/fobj (all native-C oracle clean), melee-lb lbtrigf + expf/powf, Dolphin scripting fork built on arm64, gekko_probe captured frsqrte/fres behaviour. Gate: 46 suites green. Next: hsd-anim jobj/dobj/mobj, hsd-archive typed node readers, Snapshot trait, melee-mp, user decision on estimate tables.
 
