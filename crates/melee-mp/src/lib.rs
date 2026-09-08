@@ -5,8 +5,9 @@
 //! The decomp keeps the map in file-scope statics (`groundCollVtx`,
 //! `groundCollLine`, `groundCollJoint`, `jointListStart`, `didCheckBounding`,
 //! `mpLib_80458868`). Here all of that is owned by one [`CollMap`], built from
-//! a [`melee_types::mp::MapCollData`] by [`CollMap::load`] (`mpLibLoad`) or,
-//! until stage archives can be read, by [`CollMapBuilder`].
+//! a [`melee_types::mp::MapCollData`] by [`CollMap::load`] (`mpLibLoad`).
+//! Read stage archives with [`desc::read_public_coll_data`] or construct
+//! synthetic maps with [`CollMapBuilder`].
 //!
 //! Every method's doc comment carries the retail address and decomp function
 //! name so the assembly can be found. Float math is transcribed in the C's
@@ -21,6 +22,7 @@
 //! which are recorded as no-ops on [`CollMap::island_update`].
 
 mod builder;
+pub mod desc;
 mod geom;
 mod map;
 mod mpcoll;

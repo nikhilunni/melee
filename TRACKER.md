@@ -116,7 +116,7 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [x] `melee-mp`: `mplib.c` (103 fns) and `mpcoll.c` (complete) as `CollMap`; 42 tests on synthetic FD
 - [ ] `melee-mp`: `mpisland.c` (626 lines; feeds CPU AI and Link hookshot) — `CollMap::island_update` is the hook
 - [ ] `melee-mp`: terrain sound-id tables (`mpLib_803BD3D8..`) once an sfx layer exists
-- [ ] `melee-mp`: test `CollMap::load` against a real `GrXX.dat` `coll_data` (blocked on disc)
+- [x] `melee-mp`: `desc.rs` reads `coll_data` from an archive (Codex); real GrNLa.dat loads into `CollMap`, floor/ledge queries verified (3 real-stage tests)
 - [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c`, `grlast.c` (Final Destination only for this milestone)
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only
