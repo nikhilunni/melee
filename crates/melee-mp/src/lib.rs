@@ -11,8 +11,8 @@
 //!
 //! Every method's doc comment carries the retail address and decomp function
 //! name so the assembly can be found. Float math is transcribed in the C's
-//! order with `f32`/`f64` promotions preserved; `a * b + c` sites are marked
-//! `FUSION AUDIT PENDING` until the disassembly is checked.
+//! order with `f32`/`f64` promotions preserved; audited multiply-add sites
+//! cite their retail instructions (see `FUSION_AUDIT.md` in this crate).
 //!
 //! Not ported from `mplib.c` (see the crate report): the GX debug drawing
 //! (`mpLib_SetupDraw` through `mpLib_DrawZones`), the per-stage terrain sound

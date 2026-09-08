@@ -19,6 +19,7 @@
 //! `-0.0`, so it is [`c_abs`] rather than `fabsf` wherever its result feeds
 //! arithmetic.
 
+use gekko_math::fma::{fmadds, fmsubs, fnmsubs};
 use gekko_math::msl::{cosf, sinf};
 use hsd_types::{Vec2, Vec3};
 use melee_types::mp::{
@@ -364,7 +365,7 @@ pub fn load_ecb_jobj(cd: &mut CollData, flags: u32, bone: BoneLookup<'_>) {
 
     cd.desired_ecb.top = Vec2::new(0.0, top_y);
     cd.desired_ecb.bottom = Vec2::new(0.0, bottom_y);
-    // FUSION AUDIT PENDING: x124 + 0.5 * (bottom_y + top_y)
+    // retail 0x800428E4/E8/F8: fmuls + fadds, not fused (shared rounded half-sum).
     let side_y = cd.ecb_source.x124 + 0.5 * (bottom_y + top_y);
     cd.desired_ecb.right = Vec2::new(right_x, side_y);
     cd.desired_ecb.left = Vec2::new(left_x, side_y);
@@ -424,15 +425,15 @@ pub fn load_ecb_fixed(cd: &mut CollData) {
         update_min_max_2(&mut left_x, &mut right_x, rot_bot_x);
         update_min_max_2(&mut bottom_y, &mut top_y, rot_bot_y);
 
-        // FUSION AUDIT PENDING: (a * cos) - (b * sin) and (a * sin) + (b * cos)
-        let rot_right_x = (orig_right_x * cos) - (midpoint_x * sin);
-        let rot_right_y = (orig_right_x * sin) + (midpoint_x * cos);
+        // retail 0x80042AEC/F0/F4/F8: fmuls, fmuls, fmsubs, fmadds.
+        let rot_right_x = fmsubs(orig_right_x, cos, midpoint_x * sin);
+        let rot_right_y = fmadds(orig_right_x, sin, midpoint_x * cos);
         update_min_max_2(&mut left_x, &mut right_x, rot_right_x);
         update_min_max_2(&mut bottom_y, &mut top_y, rot_right_y);
 
-        // FUSION AUDIT PENDING
-        let rot_left_x = (orig_left_x * cos) - (midpoint_x * sin);
-        let rot_left_y = (orig_left_x * sin) + (midpoint_x * cos);
+        // retail 0x80042B34/38/3C/40: fmuls, fmuls, fmsubs, fmadds.
+        let rot_left_x = fmsubs(orig_left_x, cos, midpoint_x * sin);
+        let rot_left_y = fmadds(orig_left_x, sin, midpoint_x * cos);
         update_min_max_2(&mut left_x, &mut right_x, rot_left_x);
         update_min_max_2(&mut bottom_y, &mut top_y, rot_left_y);
     }
@@ -520,9 +521,9 @@ fn load_ecb_0x12_unlocked(cd: &mut CollData, bones: Option<BoneLookup<'_>>) {
 /// `Vec2_Interpolate` (`mpcoll.c:675`).
 #[inline]
 fn vec2_interpolate(time: f32, dest: &mut Vec2, src: &Vec2) {
-    // FUSION AUDIT PENDING: dest += time * (src - dest)
-    dest.x += time * (src.x - dest.x);
-    dest.y += time * (src.y - dest.y);
+    // retail 0x80042E68..0x80042EF4 (stride 0x14): fmadds (each x/y component).
+    dest.x = fmadds(time, src.x - dest.x, dest.x);
+    dest.y = fmadds(time, src.y - dest.y, dest.y);
 }
 
 /// `mpCollInterpolateECB` (retail `0x80042DB0`, `mpcoll.c:681`): move the
@@ -1130,9 +1131,9 @@ impl CollMap {
         let (right_x, right_y) = at(&cd.cur_pos, &cd.ecb.right);
         let right_dx = c_abs(cd.ecb.right.x);
         // recalculate ceiling direction from its normal
-        // FUSION AUDIT PENDING: (n.y * dx) + x ; -(n.x * dx) + y
-        let f1 = (cd.ceiling.normal.y * right_dx) + right_x;
-        let f2 = -(cd.ceiling.normal.x * right_dx) + right_y;
+        // retail 0x80043A4C/50: fmadds, fnmsubs.
+        let f1 = fmadds(cd.ceiling.normal.y, right_dx, right_x);
+        let f2 = fnmsubs(cd.ceiling.normal.x, right_dx, right_y);
         let Some(hit) =
             self.check_left_wall(f1, f2, right_x, right_y, cd.joint_id_skip, cd.joint_id_only)
         else {
@@ -1153,9 +1154,9 @@ impl CollMap {
     pub fn ceiling_right_wall_multi_collide(&mut self, cd: &mut CollData) {
         let (left_x, left_y) = at(&cd.cur_pos, &cd.ecb.left);
         let left_dx = c_abs(cd.ecb.left.x);
-        // FUSION AUDIT PENDING
-        let f1 = -(cd.ceiling.normal.y * left_dx) + left_x;
-        let f2 = (cd.ceiling.normal.x * left_dx) + left_y;
+        // retail 0x80043B2C/30: fnmsubs, fmadds.
+        let f1 = fnmsubs(cd.ceiling.normal.y, left_dx, left_x);
+        let f2 = fmadds(cd.ceiling.normal.x, left_dx, left_y);
         let Some(hit) =
             self.check_right_wall(f1, f2, left_x, left_y, cd.joint_id_skip, cd.joint_id_only)
         else {
@@ -1200,9 +1201,9 @@ impl CollMap {
         );
         if self.left_wall_probe(line_id, &pos).is_some() {
             // recalculate floor direction from its normal
-            // FUSION AUDIT PENDING
-            let floor_x = -(cd.floor.normal.y * right_dx) + pos.x;
-            let floor_y = (cd.floor.normal.x * right_dx) + pos.y;
+            // retail 0x80043D04/10: fnmsubs, fmadds.
+            let floor_x = fnmsubs(cd.floor.normal.y, right_dx, pos.x);
+            let floor_y = fmadds(cd.floor.normal.x, right_dx, pos.y);
             if let Some(hit) = self.check_left_wall(
                 floor_x,
                 floor_y,
@@ -1228,8 +1229,9 @@ impl CollMap {
             pos = self.left_wall_get_top(line_id);
             let f1 = pos.x - 2.0;
             let f2 = pos.y;
-            pos.x = -((2.0 * right_dx) - f1);
-            pos.y = -((2.0 * (cd.ecb.right.y - cd.ecb.bottom.y)) - f2);
+            // retail 0x80043DC4/DC: fnmsubs for both corner-extension coordinates.
+            pos.x = fnmsubs(2.0, right_dx, f1);
+            pos.y = fnmsubs(2.0, cd.ecb.right.y - cd.ecb.bottom.y, f2);
             if let Some(hit) = self.check_floor(
                 f1,
                 f2,
@@ -1284,9 +1286,9 @@ impl CollMap {
             0.0,
         );
         if self.right_wall_probe(line_id, &pos).is_some() {
-            // FUSION AUDIT PENDING
-            let floor_x = (cd.floor.normal.y * left_dx) + pos.x;
-            let floor_y = -(cd.floor.normal.x * left_dx) + pos.y;
+            // retail 0x80043FD8/E4: fmadds, fnmsubs.
+            let floor_x = fmadds(cd.floor.normal.y, left_dx, pos.x);
+            let floor_y = fnmsubs(cd.floor.normal.x, left_dx, pos.y);
             if let Some(hit) = self.check_right_wall(
                 floor_x,
                 floor_y,
@@ -1313,9 +1315,9 @@ impl CollMap {
             let f1 = 2.0 + pos.x;
             let f2 = pos.y;
             // 2.0 * (ecb bottom -> ecb left).normal() + ecb left
-            // FUSION AUDIT PENDING: 2.0 * left_dx + f1
-            pos.x = 2.0 * left_dx + f1;
-            pos.y = -(2.0 * (cd.ecb.left.y - cd.ecb.bottom.y)) + f2;
+            // retail 0x80044098/B0: fmadds, fnmsubs.
+            pos.x = fmadds(2.0, left_dx, f1);
+            pos.y = fnmsubs(2.0, cd.ecb.left.y - cd.ecb.bottom.y, f2);
             if let Some(hit) = self.check_floor(
                 f1,
                 f2,
@@ -2211,8 +2213,9 @@ impl CollMap {
                                     && self.line_get_kind(line_id) & line_kind::RIGHT_WALL != 0
                                 {
                                     let nrm = self.line_get_normal(line_id);
-                                    // FUSION AUDIT PENDING
-                                    let x = (pos.y - top.y) / nrm.x * -nrm.y + top.x - pos.x + 0.5;
+                                    // retail 0x80045820/2C/34: fneg, fdivs, fmadds.
+                                    let x = fmadds(-nrm.y, (pos.y - top.y) / nrm.x, top.x) - pos.x
+                                        + 0.5;
                                     if self.coll.max_x < cd.cur_pos.x + x {
                                         let temp = self.line_get_flags(line_id);
                                         self.wall_candidate(
@@ -2244,8 +2247,10 @@ impl CollMap {
                                     && self.line_get_kind(line_id) & line_kind::LEFT_WALL != 0
                                 {
                                     let nrm = self.line_get_normal(line_id2);
-                                    // FUSION AUDIT PENDING
-                                    let x = (pos.y - vec.y) / -nrm.x * nrm.y + vec.x - pos.x - 0.5;
+                                    // retail 0x80046598/B0/B4: fneg, fdivs, fmadds.
+                                    let x = fmadds(nrm.y, (pos.y - vec.y) / -nrm.x, vec.x)
+                                        - pos.x
+                                        - 0.5;
                                     if self.coll.max_x > cd.cur_pos.x + x {
                                         let temp = self.line_get_flags(line_id2);
                                         self.wall_candidate(
@@ -2294,11 +2299,11 @@ impl CollMap {
                 };
                 let x;
                 if bot <= pos.y && pos.y <= mid {
-                    // FUSION AUDIT PENDING
-                    x = f27 * (pos.y - bot) + cd.ecb.bottom.x;
+                    // retail 0x800458F8/0x80046688/0x80049500/0x8004A1E4: fmadds.
+                    x = fmadds(f27, pos.y - bot, cd.ecb.bottom.x);
                 } else if mid <= pos.y && pos.y <= top {
-                    // FUSION AUDIT PENDING
-                    x = f26 * (pos.y - top) + cd.ecb.top.x;
+                    // retail 0x80045924/0x800466B4/0x8004952C/0x8004A210: fmadds.
+                    x = fmadds(f26, pos.y - top, cd.ecb.top.x);
                 } else if pos.y < bot {
                     break;
                 } else {
@@ -2328,11 +2333,11 @@ impl CollMap {
                 };
                 let x;
                 if bot <= pos.y && pos.y <= mid {
-                    // FUSION AUDIT PENDING
-                    x = f27 * (pos.y - bot) + cd.ecb.bottom.x;
+                    // retail 0x800459FC/0x8004678C/0x80049604/0x8004A2E8: fmadds.
+                    x = fmadds(f27, pos.y - bot, cd.ecb.bottom.x);
                 } else if mid <= pos.y && pos.y <= top {
-                    // FUSION AUDIT PENDING
-                    x = f26 * (pos.y - top) + cd.ecb.top.x;
+                    // retail 0x80045A28/0x800467B8/0x80049630/0x8004A314: fmadds.
+                    x = fmadds(f26, pos.y - top, cd.ecb.top.x);
                 } else if pos.y > top {
                     break;
                 } else {
@@ -2886,8 +2891,8 @@ impl CollMap {
         let (bx, by) = at(&cd.cur_pos, &cd.ecb.bottom);
         for pass in 0..2 {
             if pass == 1 {
-                // FUSION AUDIT PENDING: 0.5 * (top + bottom) + prev_pos.y
-                pby = 0.5 * (cd.prev_ecb.top.y + cd.prev_ecb.bottom.y) + cd.prev_pos.y;
+                // retail 0x8004AA5C/6C: fadds + fmadds.
+                pby = fmadds(0.5, cd.prev_ecb.top.y + cd.prev_ecb.bottom.y, cd.prev_pos.y);
                 pbx = cd.prev_pos.x + cd.prev_ecb.bottom.x;
             }
             let hit = if self.moved_since(cd) {

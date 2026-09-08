@@ -7,6 +7,7 @@
 //! enable/hide/transform, and the joint callback slots. Line walkers live in
 //! `walk.rs`, sweeps and searches in `query.rs`.
 
+use gekko_math::fma::fmadds;
 use gekko_math::msl::fabsf;
 use hsd_anim::mtx::mtx_mult_vec;
 use hsd_types::{Mtx, Vec2, Vec3};
@@ -601,17 +602,17 @@ impl CollMap {
             let m1_3 = mtx[1][3];
             for vid in id_range(inner.vtx_start, vtx_count) {
                 let v = &mut self.vtx[vid as usize];
-                // FUSION AUDIT PENDING: v->x0 * m0_0 + m0_3
-                v.pos.x = v.x0 * m0_0 + m0_3;
-                // FUSION AUDIT PENDING
-                v.pos.y = v.x4 * m0_0 + m1_3;
+                // retail 0x800560F0..0x80056198 (stride 0x18), 0x800561C4: fmadds.
+                v.pos.x = fmadds(v.x0, m0_0, m0_3);
+                // retail 0x800560FC..0x800561A4 (stride 0x18), 0x800561D0: fmadds.
+                v.pos.y = fmadds(v.x4, m0_0, m1_3);
             }
             let joint = &mut self.joints[joint_id as usize];
-            // FUSION AUDIT PENDING: each bound is `b * m + t` then +-30.
-            joint.bounding_min.x = (inner.left_bound * m0_0 + m0_3) - 30.0;
-            joint.bounding_min.y = (inner.bottom_bound * m0_0 + m1_3) - 30.0;
-            joint.bounding_max.x = 30.0 + (inner.right_bound * m0_0 + m0_3);
-            joint.bounding_max.y = 30.0 + (inner.top_bound * m0_0 + m1_3);
+            // retail 0x800561EC/0x80056200/14/28: fmadds, then fsubs/fadds (+-30).
+            joint.bounding_min.x = fmadds(inner.left_bound, m0_0, m0_3) - 30.0;
+            joint.bounding_min.y = fmadds(inner.bottom_bound, m0_0, m1_3) - 30.0;
+            joint.bounding_max.x = 30.0 + fmadds(inner.right_bound, m0_0, m0_3);
+            joint.bounding_max.y = 30.0 + fmadds(inner.top_bound, m0_0, m1_3);
             joint.flags |= joint_flag::B8;
         } else {
             let mut sp28 = Vec3::ZERO;

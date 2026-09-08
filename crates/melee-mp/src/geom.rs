@@ -1,6 +1,7 @@
 //! Segment intersection primitives and the line-to-line remap from
 //! `mplib.c`. Pure functions; no map state.
 
+use gekko_math::fma::{fmadd, fmsub};
 use gekko_math::msl::{fabs, fabsf};
 use hsd_anim::mtx::vec_normalize;
 use hsd_types::Vec3;
@@ -45,20 +46,22 @@ pub fn remap_2d(
     let dy: f64 = f64::from(ay1 - ay0);
     let f30: f32 = px - ax0;
     let f29: f32 = py - ay0;
-    // FUSION AUDIT PENDING: (dy * dy) + (dx * dx) in f64.
-    let dist2: f64 = (dy * dy) + (dx * dx);
+    // retail 0x8004DCA0, 0x8004DCB0: fmul + fmadd.
+    let dist2: f64 = fmadd(dy, dy, dx * dx);
     if fabs(dist2) > 0.0001 {
         // how far along line a is point p
-        // FUSION AUDIT PENDING: dy * f29 + dx * f30 in f64.
-        let mut t: f64 = (dy * f64::from(f29) + dx * f64::from(f30)) / dist2;
+        // retail 0x8004DCE8, 0x8004DCF0: fmul + fmadd.
+        let mut t: f64 = fmadd(dy, f64::from(f29), dx * f64::from(f30)) / dist2;
         if t > 1.0 {
             t = 1.0;
         } else if t < 0.0 {
             t = 0.0;
         }
-        // FUSION AUDIT PENDING: two f64 multiply-adds, rounded once to f32.
-        let x = f64::from(px) + (1.0 - t) * f64::from(bx0 - ax0) + t * f64::from(bx1 - ax1);
-        let y = f64::from(py) + (1.0 - t) * f64::from(by0 - ay0) + t * f64::from(by1 - ay1);
+        // retail 0x8004DD30/34/38/3C: fmadd (two per coordinate), then frsp.
+        let start_x = fmadd(1.0 - t, f64::from(bx0 - ax0), f64::from(px));
+        let start_y = fmadd(1.0 - t, f64::from(by0 - ay0), f64::from(py));
+        let x = fmadd(t, f64::from(bx1 - ax1), start_x);
+        let y = fmadd(t, f64::from(by1 - ay1), start_y);
         (x as f32, y as f32)
     } else {
         // The C uses ax0 in both terms here; transcribed as is.
@@ -109,8 +112,8 @@ pub fn line_intersection(
     let d0x: f64 = f64::from(b0x - a0x);
     let aw: f64 = f64::from(a1x - a0x);
     let d0y: f64 = f64::from(b0y - a0y);
-    // FUSION AUDIT PENDING: (aw * d0y) - (ah * d0x) in f64.
-    let hs_b0_a: f64 = (aw * d0y) - (ah * d0x);
+    // retail 0x8004EA60/64: fmul + fmsub.
+    let hs_b0_a: f64 = fmsub(aw, d0y, ah * d0x);
 
     if hs_b0_a < 0.0 {
         if hs_b0_a < -0.1 {
@@ -122,8 +125,8 @@ pub fn line_intersection(
     let d1x: f64 = f64::from(b1x - a1x);
     let d1y: f64 = f64::from(b1y - a1y);
 
-    // FUSION AUDIT PENDING: (aw * d1y) - (ah * d1x) in f64.
-    let hs_b1_a: f64 = (aw * d1y) - (ah * d1x);
+    // retail 0x8004EA94/98: fmul + fmsub.
+    let hs_b1_a: f64 = fmsub(aw, d1y, ah * d1x);
     if hs_b1_a > 0.0 {
         if hs_b1_a > 0.1 {
             return None;
@@ -136,8 +139,8 @@ pub fn line_intersection(
         return None;
     }
 
-    // FUSION AUDIT PENDING: (d0x * d1y) - (d0y * d1x) in f64.
-    let det: f64 = (d0x * d1y) - (d0y * d1x);
+    // retail 0x8004EAD8/DC: fmul + fmsub.
+    let det: f64 = fmsub(d0x, d1y, d0y * d1x);
     if det < hs_b0_a {
         if det < hs_b1_a {
             return None;
@@ -149,20 +152,20 @@ pub fn line_intersection(
     let bw: f64 = f64::from(b1x - b0x);
     let bh: f64 = f64::from(b1y - b0y);
     if !((bw == 0.0 && bh == 0.0) || (b1_below_a && b2_above_a) || (hs_b0_a >= 0.0 && b2_above_a)) {
-        // FUSION AUDIT PENDING: (bw * ah) - (bh * aw) in f64.
-        let area: f64 = (bw * ah) - (bh * aw);
+        // retail 0x8004EB50/58: fmul + fmsub.
+        let area: f64 = fmsub(bw, ah, bh * aw);
 
         // `ABS(area) > 0.0001F`: the constant is a float promoted to double.
         if fabs(area) > f64::from(0.0001f32) {
             // barycentric weight
-            // FUSION AUDIT PENDING: (bw * d0y) - (bh * d0x) in f64.
-            let t: f64 = ((bw * d0y) - (bh * d0x)) / area;
+            // retail 0x8004EB80/88: fmul + fmsub, then fdiv.
+            let t: f64 = fmsub(bw, d0y, bh * d0x) / area;
             let (int_x, int_y) = if t > 0.0 {
                 if t < 1.0 {
-                    // FUSION AUDIT PENDING: (aw * t) + a0x in f64, rounded to f32.
+                    // retail 0x8004EBA4/A8: fmadd, then frsp.
                     (
-                        ((aw * t) + f64::from(a0x)) as f32,
-                        ((ah * t) + f64::from(a0y)) as f32,
+                        fmadd(aw, t, f64::from(a0x)) as f32,
+                        fmadd(ah, t, f64::from(a0y)) as f32,
                     )
                 } else {
                     (a1x, a1y)
@@ -215,8 +218,8 @@ pub fn line_intersection_h(
     if fabs(dby) < 0.0001 {
         return None;
     }
-    // FUSION AUDIT PENDING: dbx / dby * (a0y - b0y) + b0x in f64.
-    let mut new_x: f64 = dbx / dby * f64::from(a0y - b0y) + f64::from(b0x);
+    // retail 0x8004ECE8/F4: fdiv + fmadd, then frsp at 0x8004ED48.
+    let mut new_x: f64 = fmadd(dbx / dby, f64::from(a0y - b0y), f64::from(b0x));
     let dx: f64 = new_x - f64::from(min_ax);
     if dx < 0.0 {
         if dx < -0.1 {
@@ -272,8 +275,8 @@ pub fn line_intersection_v(
     if fabs(dbx) < 0.0001 {
         return None;
     }
-    // FUSION AUDIT PENDING: (dby / dbx * (a0x - b0x)) + b0y in f64.
-    let mut new_y: f64 = (dby / dbx * f64::from(a0x - b0x)) + f64::from(b0y);
+    // retail 0x80050158/64: fdiv + fmadd, then frsp at 0x800501B8.
+    let mut new_y: f64 = fmadd(dby / dbx, f64::from(a0x - b0x), f64::from(b0y));
     let mut dy: f64 = new_y - f64::from(min_ay);
     if dy < 0.0 {
         if dy < -0.1 {

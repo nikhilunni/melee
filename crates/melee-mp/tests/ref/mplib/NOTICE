@@ -1,0 +1,12 @@
+geom.c contains verbatim function extracts from
+third_party/melee-decomp/src/melee/mp/mplib.c (doldecomp/melee).
+The functions are mpRemap2d, mpLineIntersection, mpLineIntersectionH,
+and mpLineIntersectionV, in that order. geom_oracle.rs checks each extract
+against the submodule when present. These sources are test-only.
+
+retail/geom.c changes only the fused expressions shown by retail main.dol;
+each change cites the instruction address. The driver supplies bool, ABS,
+and the shared gekko-math C FMA wrappers. All implicit contraction is off.
+The verbatim build measures changes from the pre-audit arithmetic.
+
+driver.c and the Rust test were written for this repository.

@@ -4,6 +4,7 @@
 //! the ledge search `mpLib_80051BA8_Floor`, `mpCheckMultiple`, the floor walk
 //! `mpLib_80056C54`, and `mpGetSpeed`.
 
+use gekko_math::fma::fmadds;
 use gekko_math::msl::{fabsf, sqrtf};
 use hsd_types::Vec3;
 use melee_types::mp::{joint_flag, line_flag, line_kind, LineSection, NO_ID};
@@ -210,7 +211,7 @@ impl CollMap {
         }
         let flags = u32::from(self.ml(line_id).lo_flags);
         let (_, y0, _, y1) = self.line_pos(line_id);
-        // FUSION AUDIT PENDING: (y1 - y0) * (x - x0) / (x1 - x0) + y0 - y,
+        // retail 0x8004E02C/30/34: fmuls + fdivs + fadds, not fused.
         // then `+ 0.0001` in f64 and rounded to f32 on store.
         let f = (y1 - y0) * (x - x0) / (x1 - x0) + y0 - pos.y;
         let delta = (f64::from(f) + 0.0001) as f32;
@@ -271,7 +272,7 @@ impl CollMap {
         }
         let flags = u32::from(self.ml(line_id).lo_flags);
         let (_, y0, _, y1) = self.line_pos(line_id);
-        // FUSION AUDIT PENDING (see floor_probe); `- 0.0001` in f64.
+        // retail 0x8004E334/38/3C: fmuls + fdivs + fadds, not fused; fsub (double) at 0x8004E344.
         let f = (y1 - y0) * (x - x0) / (x1 - x0) + y0 - pos.y;
         let delta = (f64::from(f) - 0.0001) as f32;
         let normal = line_normal(x0, y0, x1, y1);
@@ -330,7 +331,7 @@ impl CollMap {
         }
         let flags = u32::from(self.ml(line_id).lo_flags);
         let (x0, _, x1, _) = self.line_pos(line_id);
-        // FUSION AUDIT PENDING: x0 + (x1 - x0) * (y - y0) / (y1 - y0) - pos.x
+        // retail 0x8004E628/2C/30: fmuls + fdivs + fadds, not fused.
         let delta = x0 + (x1 - x0) * (y - y0) / (y1 - y0) - pos.x;
         let normal = line_normal(x0, y0, x1, y1);
         Some(SurfaceProbe {
@@ -389,7 +390,7 @@ impl CollMap {
         }
         let flags = u32::from(self.ml(line_id).lo_flags);
         let (x0, _, x1, _) = self.line_pos(line_id);
-        // FUSION AUDIT PENDING: x0 + ((x1 - x0) * (y - y0)) / (y1 - y0) - pos.x
+        // retail 0x8004E920/24/28: fmuls + fdivs + fadds, not fused.
         let delta = x0 + ((x1 - x0) * (y - y0)) / (y1 - y0) - pos.x;
         let normal = line_normal(x0, y0, x1, y1);
         Some(SurfaceProbe {
@@ -536,8 +537,8 @@ impl CollMap {
                     let dx2 = sq(int_x - old_x);
                     let dy2 = sq(int_y - old_y);
                     let mut dist2 = dx2 + dy2;
-                    // FUSION AUDIT PENDING: dx * (int_x - old_x) + dy * (int_y - old_y)
-                    if dx * (int_x - old_x) + dy * (int_y - old_y) < 0.0 {
+                    // retail 0x8004F688/F77C/FE54/FF54, 0x800507A0/0894/0F8C/1080: fmuls + fmadds.
+                    if fmadds(dx, int_x - old_x, dy * (int_y - old_y)) < 0.0 {
                         dist2 = -dist2;
                     }
                     dist2
@@ -831,13 +832,14 @@ impl CollMap {
                     let (x, y) = remap_2d(a0x, a0y, a1x, a1y, b0x, b0y, b1x, b1y, x1, y1);
                     let vdx = x0 - x;
                     let vdy = y0 - y;
-                    if sq(vdx) + sq(vdy) > 0.001 {
+                    // retail 0x80051358/5C, 0x8005145C/1758/1858: fmuls + fmadds.
+                    if fmadds(vdx, vdx, sq(vdy)) > 0.001 {
                         if let Some((int_x, int_y)) =
                             line_intersection(b0x, b0y, b1x, b1y, x, y, x0, y0)
                         {
                             let mut dist2 = sq(int_x - x1) + sq(int_y - y1);
-                            // FUSION AUDIT PENDING: (vdx * (int_x - x1)) + (vdy * (int_y - y1))
-                            if (vdx * (int_x - x1)) + (vdy * (int_y - y1)) < 0.0 {
+                            // retail 0x800513B0/14B0/17AC/18AC: fmuls + fmadds; squared distance stays unfused.
+                            if fmadds(vdx, int_x - x1, vdy * (int_y - y1)) < 0.0 {
                                 dist2 = -dist2;
                             }
                             if min_dist2 > dist2 {
@@ -955,8 +957,8 @@ impl CollMap {
                         if differs_by_more_than_1e4(x1, x0) {
                             let dx = x1 - x0;
                             let dy = y1 - y0;
-                            // FUSION AUDIT PENDING: dy / dx * (x - x0) + y0
-                            if y >= dy / dx * (x - x0) + y0 {
+                            // retail 0x80051B1C: fmadds (after fdivs).
+                            if y >= fmadds(dy / dx, x - x0, y0) {
                                 line_id = id;
                                 break 'joints;
                             }
@@ -1339,11 +1341,11 @@ impl CollMap {
                 sp58
             } else {
                 let temp_f2_5 = var_f25 / dist_f28;
-                // FUSION AUDIT PENDING: (t * (b - a)) + a per component.
+                // retail 0x800573A0/B4/C8: fmadds (x/y/z).
                 Vec3::new(
-                    (temp_f2_5 * (sp4c.x - sp58.x)) + sp58.x,
-                    (temp_f2_5 * (sp4c.y - sp58.y)) + sp58.y,
-                    (temp_f2_5 * (sp4c.z - sp58.z)) + sp58.z,
+                    fmadds(temp_f2_5, sp4c.x - sp58.x, sp58.x),
+                    fmadds(temp_f2_5, sp4c.y - sp58.y, sp58.y),
+                    fmadds(temp_f2_5, sp4c.z - sp58.z, sp58.z),
                 )
             }
         } else {
