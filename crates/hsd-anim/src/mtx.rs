@@ -27,9 +27,8 @@
 //! mantissa bits before multiplying, which is not yet modelled. Those lines
 //! are tagged `FMULS FRC TRUNCATION PENDING` (open item in `TRACKER.md`).
 //!
-//! The HSD-level functions have no retail asm in this checkout, so they are
-//! transcribed from the decomp C with separate `*` and `+`, and every
-//! `a * b + c` shape is marked `// FUSION AUDIT PENDING`.
+//! HSD arithmetic is audited against the retail DOL. Fused operations cite
+//! their instruction addresses below; scalar sums of squares remain unfused.
 //!
 //! Aliasing: the C lets `dest` alias an input. Rust references cannot, so
 //! every function here takes `&Mtx` inputs and a `&mut Mtx` output; a caller
@@ -551,13 +550,16 @@ pub fn mtx_mult_vec_sr(m: &Mtx, src: &Vec3, dst: &mut Vec3) {
 // ---------------------------------------------------------------------------
 
 /// `HSD_CalcDeterminantMatrix3x4` (static inline in `mtx.c`): determinant of
-/// the 3x3 part, evaluated strictly left to right as written.
+/// the 3x3 part, with the retail accumulator order (second term first).
 fn hsd_calc_determinant_3x4(m: &[[f32; 4]; 3]) -> f32 {
-    // FUSION AUDIT PENDING (5 sites): each `+ a*b*c` / `- a*b*c` is a madd/msub shape.
-    m[0][0] * m[1][1] * m[2][2] + m[0][1] * m[1][2] * m[2][0] + m[0][2] * m[1][0] * m[2][1]
-        - m[2][0] * m[1][1] * m[0][2]
-        - m[1][0] * m[0][1] * m[2][2]
-        - m[0][0] * m[2][1] * m[1][2]
+    // retail 0x80379368..0x80379384: two fmadds, then three fnmsubs.
+    // Also inlined at 0x803795F4..0x80379614 and 0x80379A70..0x80379A8C.
+    let second_term = m[2][0] * (m[0][1] * m[1][2]);
+    let det = fmadds(m[2][2], m[0][0] * m[1][1], second_term);
+    let det = fmadds(m[2][1], m[0][2] * m[1][0], det);
+    let det = fnmsubs(m[0][2], m[2][0] * m[1][1], det);
+    let det = fnmsubs(m[2][2], m[1][0] * m[0][1], det);
+    fnmsubs(m[1][2], m[0][0] * m[2][1], det)
 }
 
 /// `fabsf_bitwise` (static inline in `mtx.h`): clears the sign bit.
@@ -581,21 +583,21 @@ pub fn hsd_mtx_inverse(src: &Mtx, dest: &mut Mtx) {
 
     let det = 1.0 / det;
 
-    // FUSION AUDIT PENDING (9 sites): each `(a*b - c*d) * det` has an msub shape.
-    let d00 = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * det;
-    let d01 = -(m[0][1] * m[2][2] - m[2][1] * m[0][2]) * det;
-    let d02 = (m[0][1] * m[1][2] - m[1][1] * m[0][2]) * det;
-    let d10 = -(m[1][0] * m[2][2] - m[2][0] * m[1][2]) * det;
-    let d11 = (m[0][0] * m[2][2] - m[2][0] * m[0][2]) * det;
-    let d12 = -(m[0][0] * m[1][2] - m[1][0] * m[0][2]) * det;
-    let d20 = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * det;
-    let d21 = -(m[0][0] * m[2][1] - m[2][0] * m[0][1]) * det;
-    let d22 = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * det;
+    // retail 0x803793EC..0x803794EC: fmsubs / fnmsubs, then fmuls.
+    let d00 = fmsubs(m[1][1], m[2][2], m[2][1] * m[1][2]) * det;
+    let d01 = fnmsubs(m[0][1], m[2][2], m[2][1] * m[0][2]) * det;
+    let d02 = fmsubs(m[0][1], m[1][2], m[1][1] * m[0][2]) * det;
+    let d10 = fnmsubs(m[1][0], m[2][2], m[2][0] * m[1][2]) * det;
+    let d11 = fmsubs(m[0][0], m[2][2], m[2][0] * m[0][2]) * det;
+    let d12 = fnmsubs(m[0][0], m[1][2], m[1][0] * m[0][2]) * det;
+    let d20 = fmsubs(m[1][0], m[2][1], m[2][0] * m[1][1]) * det;
+    let d21 = fnmsubs(m[0][0], m[2][1], m[2][0] * m[0][1]) * det;
+    let d22 = fmsubs(m[0][0], m[1][1], m[1][0] * m[0][1]) * det;
 
-    // FUSION AUDIT PENDING (3 sites): nested msub/nmsub shapes.
-    let d03 = -(d02 * m[2][3] - (-d00 * m[0][3] - d01 * m[1][3]));
-    let d13 = -(d12 * m[2][3] - (-d10 * m[0][3] - d11 * m[1][3]));
-    let d23 = -(d22 * m[2][3] - (-d20 * m[0][3] - d21 * m[1][3]));
+    // retail 0x80379518..0x80379574: fmsubs + fnmsubs for each row.
+    let d03 = fnmsubs(d02, m[2][3], fmsubs(-d00, m[0][3], d01 * m[1][3]));
+    let d13 = fnmsubs(d12, m[2][3], fmsubs(-d10, m[0][3], d11 * m[1][3]));
+    let d23 = fnmsubs(d22, m[2][3], fmsubs(-d20, m[0][3], d21 * m[1][3]));
 
     dest.0 = [
         [d00, d01, d02, d03],
@@ -618,32 +620,30 @@ pub fn hsd_mtx_inverse_concat(inv: &Mtx, src: &Mtx, dest: &mut Mtx) {
     }
 
     let det = 1.0 / det;
-    // FUSION AUDIT PENDING (9 sites): `(a*b - c*d) * det`, msub shapes.
-    let temp1 = ((i[1][1] * i[2][2]) - (i[2][1] * i[1][2])) * det;
-    let temp2 = (-((i[0][1] * i[2][2]) - (i[2][1] * i[0][2]))) * det;
-    let new_var = i[1][1];
-    let temp3 = (-((i[1][0] * i[2][2]) - (i[2][0] * i[1][2]))) * det;
-    let temp7 = ((i[0][1] * i[1][2]) - (new_var * i[0][2])) * det;
-    let temp4 = ((i[0][0] * i[2][2]) - (i[2][0] * i[0][2])) * det;
-    let temp8 = (-((i[0][0] * i[1][2]) - (i[1][0] * i[0][2]))) * det;
-    let temp5 = ((i[1][0] * i[2][1]) - (i[2][0] * new_var)) * det;
-    let temp6 = (-((i[0][0] * i[2][1]) - (i[2][0] * i[0][1]))) * det;
-    let temp9 = ((i[0][0] * i[1][1]) - (i[1][0] * i[0][1])) * det;
-    // FUSION AUDIT PENDING (3 sites): nested msub/nmsub shapes.
-    let temp10 = -((temp7 * i[2][3]) - (((-temp1) * i[0][3]) - (temp2 * i[1][3])));
-    let temp11 = -((temp8 * i[2][3]) - (((-temp3) * i[0][3]) - (temp4 * i[1][3])));
-    let new_var = i[0][3];
-    let temp12 = -((temp9 * i[2][3]) - (((-temp5) * new_var) - (temp6 * i[1][3])));
+    // retail 0x803796A0..0x803796E4: fmsubs / fnmsubs, then fmuls.
+    let temp1 = fmsubs(i[1][1], i[2][2], i[2][1] * i[1][2]) * det;
+    let temp2 = fnmsubs(i[0][1], i[2][2], i[2][1] * i[0][2]) * det;
+    let temp7 = fmsubs(i[0][1], i[1][2], i[1][1] * i[0][2]) * det;
+    let temp3 = fnmsubs(i[1][0], i[2][2], i[2][0] * i[1][2]) * det;
+    let temp4 = fmsubs(i[0][0], i[2][2], i[2][0] * i[0][2]) * det;
+    let temp8 = fnmsubs(i[0][0], i[1][2], i[1][0] * i[0][2]) * det;
+    let temp5 = fmsubs(i[1][0], i[2][1], i[2][0] * i[1][1]) * det;
+    let temp6 = fnmsubs(i[0][0], i[2][1], i[2][0] * i[0][1]) * det;
+    let temp9 = fmsubs(i[0][0], i[1][1], i[1][0] * i[0][1]) * det;
+    // retail 0x80379704..0x80379720: fmsubs + fnmsubs for each row.
+    let temp10 = fnmsubs(temp7, i[2][3], fmsubs(-temp1, i[0][3], temp2 * i[1][3]));
+    let temp11 = fnmsubs(temp8, i[2][3], fmsubs(-temp3, i[0][3], temp4 * i[1][3]));
+    let temp12 = fnmsubs(temp9, i[2][3], fmsubs(-temp5, i[0][3], temp6 * i[1][3]));
 
     // The aliased branch of the C computes into a temporary and copies; the
     // arithmetic is identical, so one body serves both.
-    // FUSION AUDIT PENDING (12 sites): `a*s2 + (b*s0 + c*s1)` madd chains.
+    // retail 0x80379748..0x80379888 / 0x803798AC..0x803799EC: two fmadds per entry.
     let row = |ta: f32, tb: f32, tc: f32, tt: f32| -> [f32; 4] {
         [
-            ta * s[2][0] + (tb * s[0][0] + tc * s[1][0]),
-            ta * s[2][1] + (tb * s[0][1] + tc * s[1][1]),
-            ta * s[2][2] + (tb * s[0][2] + tc * s[1][2]),
-            ta * s[2][3] + (tb * s[0][3] + tc * s[1][3]) + tt,
+            fmadds(ta, s[2][0], fmadds(tb, s[0][0], tc * s[1][0])),
+            fmadds(ta, s[2][1], fmadds(tb, s[0][1], tc * s[1][1])),
+            fmadds(ta, s[2][2], fmadds(tb, s[0][2], tc * s[1][2])),
+            fmadds(ta, s[2][3], fmadds(tb, s[0][3], tc * s[1][3])) + tt,
         ]
     };
     dest.0 = [
@@ -669,16 +669,16 @@ pub fn hsd_mtx_inverse_transpose(src: &Mtx, dest: &mut Mtx) {
     let det = 1.0 / det;
 
     // Same cofactors as HSD_MtxInverse, stored transposed.
-    // FUSION AUDIT PENDING (9 sites): `(a*b - c*d) * det`, msub shapes.
-    let d00 = ((m[1][1] * m[2][2]) - (m[2][1] * m[1][2])) * det;
-    let d10 = -((m[0][1] * m[2][2]) - (m[2][1] * m[0][2])) * det;
-    let d20 = ((m[0][1] * m[1][2]) - (m[1][1] * m[0][2])) * det;
-    let d01 = -((m[1][0] * m[2][2]) - (m[2][0] * m[1][2])) * det;
-    let d11 = ((m[0][0] * m[2][2]) - (m[2][0] * m[0][2])) * det;
-    let d21 = -((m[0][0] * m[1][2]) - (m[1][0] * m[0][2])) * det;
-    let d02 = ((m[1][0] * m[2][1]) - (m[2][0] * m[1][1])) * det;
-    let d12 = -((m[0][0] * m[2][1]) - (m[2][0] * m[0][1])) * det;
-    let d22 = ((m[0][0] * m[1][1]) - (m[1][0] * m[0][1])) * det;
+    // retail 0x80379AF0..0x80379BF0: fmsubs / fnmsubs, then fmuls.
+    let d00 = fmsubs(m[1][1], m[2][2], m[2][1] * m[1][2]) * det;
+    let d10 = fnmsubs(m[0][1], m[2][2], m[2][1] * m[0][2]) * det;
+    let d20 = fmsubs(m[0][1], m[1][2], m[1][1] * m[0][2]) * det;
+    let d01 = fnmsubs(m[1][0], m[2][2], m[2][0] * m[1][2]) * det;
+    let d11 = fmsubs(m[0][0], m[2][2], m[2][0] * m[0][2]) * det;
+    let d21 = fnmsubs(m[0][0], m[1][2], m[1][0] * m[0][2]) * det;
+    let d02 = fmsubs(m[1][0], m[2][1], m[2][0] * m[1][1]) * det;
+    let d12 = fnmsubs(m[0][0], m[2][1], m[2][0] * m[0][1]) * det;
+    let d22 = fmsubs(m[0][0], m[1][1], m[1][0] * m[0][1]) * det;
 
     dest.0 = [
         [d00, d01, d02, 0.0],
@@ -710,13 +710,13 @@ fn calc_val<T: InverseTrig>(x: f32, y: f32) -> f32 {
 pub fn hsd_mtx_get_rotation<T: InverseTrig>(m: &Mtx, vec: &mut Vec3) {
     let m = m.0;
 
-    // FUSION AUDIT PENDING: sum of three squares, madd shapes.
+    // retail 0x80379C50..0x80379C68: fmuls + fadds, not fused.
     let length0 = sqrtf(m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0]);
     if !(length0 < FLOAT_MIN) {
-        // FUSION AUDIT PENDING
+        // retail 0x80379CD4..0x80379CEC: fmuls + fadds, not fused.
         let length1 = sqrtf(m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1]);
         if !(length1 < FLOAT_MIN) {
-            // FUSION AUDIT PENDING
+            // retail 0x80379D58..0x80379D70: fmuls + fadds, not fused.
             let length2 = sqrtf(m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2]);
             if !(length2 < FLOAT_MIN) {
                 let mut test_val_1 = -m[2][0];
@@ -818,12 +818,12 @@ pub fn hsd_mk_rotation_mtx(arg0: &mut Mtx, arg1: &Vec3) {
     let m10 = cos_y * sin_z;
     let m20 = -sin_y;
     let temp2 = cos_x * sin_y;
-    // FUSION AUDIT PENDING (4 sites): `a*b -/+ c*d` msub/madd shapes.
-    let m01 = (cos_z * temp1) - (cos_x * sin_z);
-    let m11 = (sin_z * temp1) + (cos_x * cos_z);
+    // retail 0x8037A1B4, 0x8037A1C4, 0x8037A1D8, 0x8037A1E0: fmsubs / fmadds.
+    let m01 = fmsubs(cos_z, temp1, cos_x * sin_z);
+    let m11 = fmadds(sin_z, temp1, cos_x * cos_z);
     let m21 = sin_x * cos_y;
-    let m02 = (cos_z * temp2) + (sin_x * sin_z);
-    let m12 = (sin_z * temp2) - (sin_x * cos_z);
+    let m02 = fmadds(cos_z, temp2, sin_x * sin_z);
+    let m12 = fmsubs(sin_z, temp2, sin_x * cos_z);
     let m22 = cos_x * cos_y;
 
     arg0.0 = [
@@ -879,12 +879,12 @@ pub fn hsd_mtx_srt(m: &mut Mtx, vec1: &Vec3, vec2: &Vec3, vec3: &Vec3, vec4: Opt
     let m00 = cos_z * (vec1x_2 * cos_y);
     let m10 = sin_z * (vec1x_1 * cos_y);
     let m20 = -vec1x * sin_y;
-    // FUSION AUDIT PENDING (4 sites): inner `a*(b*c) -/+ d*e` msub/madd shapes.
-    let m01 = vec1y_2 * ((cos_z * (sin_x * sin_y)) - (cos_x * sin_z));
-    let m11 = vec1y_1 * ((sin_z * (sin_x * sin_y)) + (cos_x * cos_z));
+    // retail 0x8037A388, 0x8037A38C, 0x8037A3B4, 0x8037A3B8: fmsubs / fmadds.
+    let m01 = vec1y_2 * fmsubs(cos_z, sin_x * sin_y, cos_x * sin_z);
+    let m11 = vec1y_1 * fmadds(sin_z, sin_x * sin_y, cos_x * cos_z);
     let m21 = cos_y * (vec1y * sin_x);
-    let m02 = vec1z_2 * ((cos_z * (cos_x * sin_y)) + (sin_x * sin_z));
-    let m12 = vec1z_1 * ((sin_z * (cos_x * sin_y)) - (sin_x * cos_z));
+    let m02 = vec1z_2 * fmadds(cos_z, cos_x * sin_y, sin_x * sin_z);
+    let m12 = vec1z_1 * fmsubs(sin_z, cos_x * sin_y, sin_x * cos_z);
     let m22 = cos_y * (vec1z * cos_x);
 
     m.0 = [
@@ -944,8 +944,8 @@ pub fn hsd_mtx_srt_quat(
 pub fn hsd_mtx_scaled_add(arg0: &Mtx, arg1: &Mtx, arg2: &mut Mtx, arg3: f32) {
     for (r2, (r1, r0)) in arg2.0.iter_mut().zip(arg1.0.iter().zip(arg0.0.iter())) {
         for (e2, (e1, e0)) in r2.iter_mut().zip(r1.iter().zip(r0.iter())) {
-            // FUSION AUDIT PENDING: `b + s*a` is a madd shape.
-            *e2 = *e1 + (arg3 * *e0);
+            // retail 0x8037A554..0x8037A604 (stride 0x10): fmadds.
+            *e2 = fmadds(arg3, *e0, *e1);
         }
     }
 }

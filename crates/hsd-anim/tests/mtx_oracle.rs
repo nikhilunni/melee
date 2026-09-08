@@ -1,20 +1,15 @@
-//! Bit-for-bit comparison of `hsd_anim::{mtx, quat}` against the decomp's
-//! `sysdolphin/baselib/mtx.c` and `quatlib.c`, compiled natively with fusion
-//! disabled (`cc -O0 -ffp-contract=off`), following the pattern of
-//! `crates/gekko-math/tests/ref_oracle.rs`.
-//!
-//! What this proves: for the HSD-level functions (and MatToQuat / EulerToQuat
-//! / HSD_QuatLib_*), the Rust performs the same IEEE operations in the same
-//! order as the C source. What it does not prove: which of those operations
-//! MWCC contracted into fused multiply-adds on the retail disc (marked
-//! `FUSION AUDIT PENDING` in `src/mtx.rs` / `src/quat.rs`).
+//! Bit-for-bit comparison against retail-faithful copies of baselib mtx.c
+//! and quatlib.c. Explicit gekko_fma.h calls preserve the DOL's fused sites;
+//! `-ffp-contract=off` keeps all other expressions unfused. Verbatim copies
+//! are checked against the submodule, and a second build measures how many
+//! sweep records changed. Supporting SDK and MSL math is identical in both.
 //!
 //! The SDK `PSMTX*`/`PSVEC*` routines are asm-only in the decomp, so the
 //! driver carries an independent C re-transcription of the same asm (see
 //! `tests/ref/mtx/driver.c`). Agreement there catches transcription slips
 //! between two readings of the asm; it is not an independent oracle.
 //!
-//! `sinf`/`cosf` come from MSL `trigf.c` (gekko-math's verbatim copy).
+//! `sinf`/`cosf` come from MSL `trigf.c` (gekko-math's retail copy).
 //! `sqrtf` and the `fres`/`frsqrte` steps use the table-exact estimate model
 //! on both sides (`gekko_math::estimate` and its C twin
 //! `crates/gekko-math/tests/ref/gekko_estimate.h`); the `fmuls` on a
@@ -65,7 +60,7 @@ fn msl_ref_dir() -> PathBuf {
     manifest().join("../gekko-math/tests/ref/msl")
 }
 
-fn build_oracle() -> Option<PathBuf> {
+fn build_oracle(retail: bool) -> Option<PathBuf> {
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
@@ -74,14 +69,18 @@ fn build_oracle() -> Option<PathBuf> {
             return None;
         }
     }
-    let mtx_c = decomp_dir().join("src/sysdolphin/baselib/mtx.c");
-    let quatlib_c = decomp_dir().join("src/sysdolphin/baselib/quatlib.c");
+    let source_dir = if retail {
+        ref_dir().join("retail")
+    } else {
+        ref_dir()
+    };
+    let mtx_c = source_dir.join("mtx.c");
+    let quatlib_c = source_dir.join("quatlib.c");
     // The retail-faithful trigf.c (sinf/cosf with the fused multiply-adds the
     // disc's asm shows; see gekko-math's ref_oracle) plus the tables and
     // fabsf__Ff it links against.
-    let msl_files =
-        ["retail/trigf.c", "math_data.c", "math_1.c"].map(|f| msl_ref_dir().join(f));
-    if !mtx_c.exists() || !quatlib_c.exists() {
+    let msl_files = ["retail/trigf.c", "math_data.c", "math_1.c"].map(|f| msl_ref_dir().join(f));
+    if !decomp_dir().join("src/sysdolphin/baselib/mtx.h").exists() {
         eprintln!("melee-decomp submodule not present; skipping native oracle comparison");
         return None;
     }
@@ -93,7 +92,10 @@ fn build_oracle() -> Option<PathBuf> {
         );
     }
 
-    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("mtx_ref_oracle");
+    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("mtx_ref_oracle")
+        .join(std::thread::current().name().unwrap_or("unnamed"))
+        .join(if retail { "retail" } else { "verbatim" });
     std::fs::create_dir_all(&out_dir).unwrap();
     const CFLAGS: [&str; 7] = [
         "-std=c99",
@@ -111,10 +113,7 @@ fn build_oracle() -> Option<PathBuf> {
     // objects against their own include dir first, then link everything.
     let mut msl_objects = Vec::new();
     for src in &msl_files {
-        let obj = out_dir.join(format!(
-            "{}.o",
-            src.file_stem().unwrap().to_string_lossy()
-        ));
+        let obj = out_dir.join(format!("{}.o", src.file_stem().unwrap().to_string_lossy()));
         let out = Command::new(&cc)
             .args(CFLAGS)
             .arg("-I")
@@ -142,6 +141,10 @@ fn build_oracle() -> Option<PathBuf> {
         .arg("-DSYSDOLPHIN_BASELIB_DEBUG_H")
         .arg("-I")
         .arg(ref_dir().join("include"))
+        .arg("-I")
+        .arg(decomp_dir().join("src/sysdolphin/baselib"))
+        .arg("-I")
+        .arg(msl_ref_dir().join(".."))
         .arg("-o")
         .arg(&exe)
         .arg(ref_dir().join("driver.c"))
@@ -1031,7 +1034,37 @@ impl Mismatches {
 
 #[test]
 fn mtx_and_quat_match_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle() else { return };
+    compare_sweep(false);
+}
+
+#[test]
+fn fusion_changes_results_within_the_sweep() {
+    compare_sweep(true);
+}
+
+#[test]
+fn ref_sources_match_submodule() {
+    let baselib = decomp_dir().join("src/sysdolphin/baselib");
+    if !baselib.join("mtx.c").exists() {
+        eprintln!("melee-decomp submodule not present; skipping copy check");
+        return;
+    }
+    for file in ["mtx.c", "quatlib.c"] {
+        assert_eq!(
+            std::fs::read(ref_dir().join(file)).unwrap(),
+            std::fs::read(baselib.join(file)).unwrap(),
+            "{file} differs from the submodule; re-copy and re-audit"
+        );
+    }
+}
+
+fn compare_sweep(report_fusion: bool) {
+    let Some(exe) = build_oracle(true) else {
+        return;
+    };
+    let verbatim = report_fusion.then(|| build_oracle(false).expect("build verbatim oracle"));
+    let mut changed_total = 0;
+    let mut input_total = 0;
 
     let mut failures = Vec::new();
     for (k, op) in ops().iter().enumerate() {
@@ -1048,6 +1081,25 @@ fn mtx_and_quat_match_native_c_bit_for_bit() {
         let c_out = run_oracle(&exe, op.name, &input);
         assert_eq!(c_out.len(), n * op.nout, "{}: output length", op.name);
 
+        if let Some(verbatim) = &verbatim {
+            let old = run_oracle(verbatim, op.name, &input);
+            assert_eq!(old.len(), c_out.len());
+            let changed = c_out
+                .chunks_exact(op.nout)
+                .zip(old.chunks_exact(op.nout))
+                .filter(|(a, b)| {
+                    a.iter()
+                        .zip(b.iter())
+                        .any(|(a, b)| a.to_bits() != b.to_bits())
+                })
+                .count();
+            eprintln!(
+                "{}: retail and verbatim C differ on {changed} of {n} inputs",
+                op.name
+            );
+            changed_total += changed;
+            input_total += n;
+        }
         let mut mm = Mismatches {
             op: op.name,
             count: 0,
@@ -1076,6 +1128,9 @@ fn mtx_and_quat_match_native_c_bit_for_bit() {
                 mm.samples.join("\n  ")
             ));
         }
+    }
+    if report_fusion {
+        eprintln!("matrix/quaternion total: {changed_total} of {input_total} inputs changed");
     }
     assert!(
         failures.is_empty(),

@@ -79,7 +79,7 @@ the port meets the real game, so expect surprises and record them here.
 - [x] `frsqrte` / `fres` hardware-exact from captured tables (golden fixture 10,600 pairs; full captures 148k pairs, 0 mismatches; `sqrtf` bit-exact vs native C)
 - [ ] FMA audit of the 25 marked sites against retail asm (blocked on disc)
 - [ ] Int-conversion audit of the 1 marked site (blocked on disc)
-- [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fused ops map to fmadds/fmsubs, results identical to scalar single-precision
+- [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fusion audited against retail (`crates/hsd-anim/tests/ref/FUSION_AUDIT.md`)
 - [ ] `fmuls` on a double-width estimate result (Gekko truncates frC to 25 bits): needed once frsqrte is exact, for `PSVECMag`/`PSVECNormalize`
 
 ## Milestone 2: HSD engine (`hsd-archive`, `hsd-gobj`, `hsd-anim`)
@@ -91,10 +91,10 @@ animation, match bone matrices from the oracle.
 - [x] `hsd-archive`: typed readers for JObjDesc/DObj/MObj/AObj/FObj/AnimJoint/MatAnimJoint/ShapeAnimJoint and Melee FigaTree (20 tests)
 - [x] `hsd-archive`: test against a real `.dat` (7 tests; Fox 73 joints, GrNLa coll_data 16 verts/16 lines; `docs/DISC.md`)
 - [x] `hsd-gobj`: `gobj.c`, `gobjproc.c`, `gobjplink.c`, `gobjgxlink.c` (link/priority only, no GX), `gobjobject.c`, `gobjuserdata.c` (~800 lines)
-- [x] `hsd-anim`: `mtx.c`, `quatlib.c`, and the SDK `PSMTX*`/`PSVEC*` paired-single kernels
+- [x] `hsd-anim`: `mtx.c`, `quatlib.c`, and the SDK `PSMTX*`/`PSVEC*` paired-single kernels; all 31 fusion sites audited (Codex), ~22% of mtx/quat sweep inputs differ from unfused
 - [ ] `hsd-anim`: `PSMTXRotAxisRad` (used by jobj.c, psdisp.c, cobj.c), `C_MTXLookAt`
 - [ ] Wire `hsd_anim::mtx::InverseTrig` to `melee_lb::trigf` in `melee-sim` (hsd-anim must not depend on melee-lb)
-- [x] `hsd-anim`: `aobj.c`, `fobj.c` keyframe evaluation (native-C oracle, 0 mismatches)
+- [x] `hsd-anim`: `aobj.c`, `fobj.c` keyframe evaluation (retail-faithful native-C oracle, 0 mismatches; Hermite and linear tracks are fused in retail)
 - [ ] `hsd-anim`: confirm via Dolphin whether retail data ever hits the uninitialised single-key FObj path (see fobj.rs `FOBJ_UNINITIALISED_VALUE`)
 - [x] `hsd-anim`: `jobj.c` hierarchy, matrix setup, dirty flags, SRT setters, anim application, ftparts bone lookup (52 tests)
 - [x] `hsd-anim`: `load.rs` converts `JObjDesc`/`AnimJoint` trees into `JObjTree` (Codex; 12 synthetic tests + real Fox skeleton test)

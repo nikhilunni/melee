@@ -54,8 +54,9 @@
 //! the current segment length, `nb_pack` the keys left in the current pack.
 //!
 //! Every method here is a literal transcription. Float operation order is
-//! preserved; the `a * b + c` shapes are marked `FUSION AUDIT PENDING` until
-//! the retail assembly can be consulted.
+//! preserved; interpolation uses explicit fused operations from the retail DOL.
+
+use gekko_math::fma::fmadds;
 
 /// `HSD_A_OP_NONE` (`fobj.h`).
 pub const HSD_A_OP_NONE: u8 = 0;
@@ -412,8 +413,7 @@ pub fn parse_wait(ad: &[u8], pos: &mut usize) -> i32 {
 /// passes `1.0 / fobj->fterm`), `time` the position within the segment,
 /// `p0`/`p1` the end values and `d0`/`d1` the end slopes per frame.
 ///
-/// Operation order is the C's. Three `a * b + c` shapes are candidates for
-/// `fmadds` in retail; each is marked.
+/// The three weighted additions fuse in retail; basis arithmetic stays separate.
 #[allow(clippy::just_underscores_and_digits)]
 pub fn spl_get_helmite(fterm: f32, time: f32, p0: f32, p1: f32, d0: f32, d1: f32) -> f32 {
     let _1_t2: f32 = time * time;
@@ -423,12 +423,12 @@ pub fn spl_get_helmite(fterm: f32, time: f32, p0: f32, p1: f32, d0: f32, d1: f32
     let _2t3_t3: f32 = 2.0 * t3_t2 * fterm;
     let _3t2_t2: f32 = 3.0 * _1_t2 * t2;
 
-    // FUSION AUDIT PENDING: `p0 * (...) + p1 * (...)`.
-    let inner: f32 = (p0 * (1.0 + (_2t3_t3 - _3t2_t2))) + (p1 * (-_2t3_t3 + _3t2_t2));
-    // FUSION AUDIT PENDING: `d0 * (...) + inner`.
-    let mid: f32 = (d0 * (time + ((t3_t2 - t2_t) - t2_t))) + inner;
-    // FUSION AUDIT PENDING: `d1 * (...) + mid`.
-    (d1 * (t3_t2 - t2_t)) + mid
+    // retail 0x80378A84: fmadds, with the p1 product rounded first.
+    let inner: f32 = fmadds(p0, 1.0 + (_2t3_t3 - _3t2_t2), p1 * (-_2t3_t3 + _3t2_t2));
+    // retail 0x80378A88: fmadds.
+    let mid: f32 = fmadds(d0, time + ((t3_t2 - t2_t) - t2_t), inner);
+    // retail 0x80378A8C: fmadds.
+    fmadds(d1, t3_t2 - t2_t, mid)
 }
 
 impl FObj {
@@ -728,8 +728,8 @@ impl FObj {
                         self.p0 = self.p1;
                     }
                 }
-                // FUSION AUDIT PENDING: `d0 * time + p0`.
-                fv = self.d0 * self.time + self.p0;
+                // retail 0x8036AF98: fmadds.
+                fv = fmadds(self.d0, self.time, self.p0);
             }
             HSD_A_OP_SPL0 | HSD_A_OP_SPL | HSD_A_OP_SLP => {
                 fv = if self.fterm != 0 {
@@ -810,7 +810,9 @@ impl FObj {
                     self.set_state(state);
                 }
                 0 => return,
-                _ => panic!("HSD_FObjInterpretAnim: invalid state {state} (the C loops forever here)"),
+                _ => panic!(
+                    "HSD_FObjInterpretAnim: invalid state {state} (the C loops forever here)"
+                ),
             }
         }
     }

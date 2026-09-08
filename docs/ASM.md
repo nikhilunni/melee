@@ -154,3 +154,13 @@ The `sinf`/`cosf`/`tanf` counts include the int-to-float finding above
 `sqrtf` count is 0 because the Newton steps run in double and the final
 `frsp` hides a last-bit difference in the intermediate; the fused form is
 still what the disc executes.
+
+## hsd-anim
+
+The 31 original marker lines resolve to 20 fused arithmetic groups, six
+unfused scalar-length groups, and five overview notes. Determinants start with
+the second triple product; quaternion xyz products keep separate final adds;
+Hermite fuses only its three weighted accumulations. Existing paired-single
+lane transcriptions remain correct. Retail/verbatim C builds differ on 29,028
+of 129,706 matrix/quaternion inputs, 18,070 of 60,000 Hermite inputs, and 1,998
+of 4,011 FObj streams. See the [complete site table and oracle limitations](../crates/hsd-anim/tests/ref/FUSION_AUDIT.md).

@@ -1,11 +1,8 @@
-//! Bit-for-bit comparison of the `hsd_anim::fobj` transcription against the
-//! decomp's own `fobj.c` and `spline.c`, compiled natively with fusion
-//! disabled. Same approach as `crates/gekko-math/tests/ref_oracle.rs`.
-//!
-//! What this proves: the Rust performs the same IEEE operations in the same
-//! order as the C source, and drives the same state machine over the same
-//! byte streams. What it does not prove: which operations MWCC fused on the
-//! retail disc (`FUSION AUDIT PENDING` in `src/fobj.rs`).
+//! Bit-for-bit comparison of FObj interpretation and Hermite interpolation
+//! against retail-faithful fobj.c/spline.c copies with explicit gekko_fma.h
+//! calls. All remaining expressions compile with fusion disabled. Verbatim
+//! copies are checked against the submodule; the second build measures the
+//! number of sweep inputs changed by the four audited fused operations.
 //!
 //! `aobj.c` is not part of the oracle: it pulls in every HSD object header
 //! through `HSD_ForeachAnim` and is plain control flow; `tests/anim_aobj.rs`
@@ -53,7 +50,7 @@ fn ref_sources_match_submodule() {
     }
 }
 
-fn build_oracle() -> Option<PathBuf> {
+fn build_oracle(retail: bool) -> Option<PathBuf> {
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
@@ -62,7 +59,10 @@ fn build_oracle() -> Option<PathBuf> {
             return None;
         }
     }
-    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("anim_ref_oracle");
+    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("anim_ref_oracle")
+        .join(std::thread::current().name().unwrap_or("unnamed"))
+        .join(if retail { "retail" } else { "verbatim" });
     std::fs::create_dir_all(&out_dir).unwrap();
     let exe = out_dir.join("driver");
     let mut cmd = Command::new(&cc);
@@ -77,11 +77,17 @@ fn build_oracle() -> Option<PathBuf> {
         "-I",
     ])
     .arg(ref_dir())
+    .arg("-I")
+    .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../gekko-math/tests/ref"))
     .arg("-o")
     .arg(&exe)
     .arg(ref_dir().join("driver.c"));
     for f in REF_FILES {
-        cmd.arg(ref_dir().join(f));
+        cmd.arg(if retail {
+            ref_dir().join("retail").join(f)
+        } else {
+            ref_dir().join(f)
+        });
     }
     let out = cmd.output().expect("spawn cc");
     assert!(
@@ -121,7 +127,19 @@ fn words(bytes: &[u8]) -> Vec<u32> {
 
 #[test]
 fn helmite_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle() else { return };
+    compare_helmite(false);
+}
+
+#[test]
+fn fusion_changes_results_within_the_sweep() {
+    compare_helmite(true);
+    compare_fobj(true);
+}
+
+fn compare_helmite(report_fusion: bool) {
+    let Some(exe) = build_oracle(true) else {
+        return;
+    };
     let mut rng = Lcg(0x4E1A_0001);
     let mut inputs: Vec<[f32; 6]> = Vec::new();
     // Realistic: reciprocal of an integer segment length, integer-ish time.
@@ -130,7 +148,14 @@ fn helmite_matches_native_c_bit_for_bit() {
         let inv = (1.0f64 / fterm as f64) as f32;
         let t = rng.range(0, fterm as i32) as f32 + [0.0, 0.5, 0.25, 0.1][rng.below(4) as usize];
         let v = |r: &mut Lcg, s: f32| (r.unit() - 0.5) * s;
-        inputs.push([inv, t, v(&mut rng, 200.0), v(&mut rng, 200.0), v(&mut rng, 20.0), v(&mut rng, 20.0)]);
+        inputs.push([
+            inv,
+            t,
+            v(&mut rng, 200.0),
+            v(&mut rng, 200.0),
+            v(&mut rng, 20.0),
+            v(&mut rng, 20.0),
+        ]);
     }
     // Arbitrary bit patterns, including NaN/inf/denormals.
     for _ in 0..20_000 {
@@ -145,10 +170,24 @@ fn helmite_matches_native_c_bit_for_bit() {
     }
     let bytes: Vec<u8> = inputs
         .iter()
-        .flat_map(|r| r.iter().flat_map(|x| x.to_bits().to_ne_bytes()).collect::<Vec<_>>())
+        .flat_map(|r| {
+            r.iter()
+                .flat_map(|x| x.to_bits().to_ne_bytes())
+                .collect::<Vec<_>>()
+        })
         .collect();
     let out = words(&run_oracle(&exe, "helmite", &bytes));
     assert_eq!(out.len(), inputs.len());
+    if report_fusion {
+        let verbatim = build_oracle(false).expect("build verbatim oracle");
+        let old = words(&run_oracle(&verbatim, "helmite", &bytes));
+        assert_eq!(old.len(), out.len());
+        let changed = out.iter().zip(&old).filter(|(a, b)| a != b).count();
+        eprintln!(
+            "helmite: retail and verbatim C differ on {changed} of {} inputs",
+            inputs.len()
+        );
+    }
     let mut mismatches = 0;
     let mut nan_only = 0;
     let mut samples = Vec::new();
@@ -164,14 +203,23 @@ fn helmite_matches_native_c_bit_for_bit() {
         }
         mismatches += 1;
         if samples.len() < 10 {
-            samples.push(format!("helmite({r:?}): rust {:08x} vs c {:08x}", rust.to_bits(), c.to_bits()));
+            samples.push(format!(
+                "helmite({r:?}): rust {:08x} vs c {:08x}",
+                rust.to_bits(),
+                c.to_bits()
+            ));
         }
     }
     eprintln!(
         "helmite: {} inputs, {mismatches} mismatches, {nan_only} NaN-payload-only differences",
         inputs.len()
     );
-    assert_eq!(mismatches, 0, "splGetHelmite mismatches:\n{}", samples.join("\n"));
+    assert_eq!(
+        mismatches,
+        0,
+        "splGetHelmite mismatches:\n{}",
+        samples.join("\n")
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +330,13 @@ impl StepOut {
 }
 
 fn run_rust(case: &Case) -> Vec<StepOut> {
-    let mut f = FObj::new(&case.ad, case.startframe, case.obj_type, case.frac_value, case.frac_slope);
+    let mut f = FObj::new(
+        &case.ad,
+        case.startframe,
+        case.obj_type,
+        case.frac_value,
+        case.frac_slope,
+    );
     f.req_anim(case.req_start);
     let mut out = Vec::new();
     for &rate in &case.rates {
@@ -379,7 +433,11 @@ fn random_stream(rng: &mut Lcg, frac_value: u8, frac_slope: u8) -> Vec<u8> {
             14..=15 => HSD_A_OP_SLP,
             _ => HSD_A_OP_KEY,
         };
-        let count = if rng.below(10) == 0 { rng.range(9, 20) } else { rng.range(1, 4) } as u32;
+        let count = if rng.below(10) == 0 {
+            rng.range(9, 20)
+        } else {
+            rng.range(1, 4)
+        } as u32;
         for _ in 0..count {
             keys.push(op);
         }
@@ -434,7 +492,11 @@ fn random_case(rng: &mut Lcg) -> Case {
     let ad = random_stream(rng, frac_value, frac_slope);
     let nsteps = rng.range(1, 60) as usize;
     let mut rates = Vec::with_capacity(nsteps);
-    rates.push(if rng.below(4) == 0 { rng.range(0, 3) as f32 } else { 0.0 });
+    rates.push(if rng.below(4) == 0 {
+        rng.range(0, 3) as f32
+    } else {
+        0.0
+    });
     let base = [1.0f32, 1.0, 1.0, 0.5, 1.5, 2.0, 0.25, 3.0, 0.7, 10.0][rng.below(10) as usize];
     for _ in 1..nsteps {
         rates.push(match rng.below(20) {
@@ -483,17 +545,38 @@ fn hand_cases() -> Vec<Case> {
     let f = HSD_A_FRAC_FLOAT;
     let mut v = Vec::new();
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_CON, 3).f32(0.25).wait(3).f32(-7.5).wait(2).f32(3.0).wait(0);
+    s.pack(HSD_A_OP_CON, 3)
+        .f32(0.25)
+        .wait(3)
+        .f32(-7.5)
+        .wait(2)
+        .f32(3.0)
+        .wait(0);
     v.push(mk(s.finish(), f, f, ones(8)));
     let mut s = Stream::new();
     s.pack(HSD_A_OP_LIN, 2).f32(0.3).wait(4).f32(1.7);
     v.push(mk(s.finish(), f, f, ones(7)));
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_SPL, 2).f32(-1.0).f32(0.75).wait(5).f32(2.5).f32(-0.125);
+    s.pack(HSD_A_OP_SPL, 2)
+        .f32(-1.0)
+        .f32(0.75)
+        .wait(5)
+        .f32(2.5)
+        .f32(-0.125);
     v.push(mk(s.finish(), f, f, ones(7)));
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_SPL, 2).f32(10.0).f32(-3.0).wait(3).f32(-4.0).f32(1.0);
-    v.push(mk(s.finish(), f, f, vec![0.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7]));
+    s.pack(HSD_A_OP_SPL, 2)
+        .f32(10.0)
+        .f32(-3.0)
+        .wait(3)
+        .f32(-4.0)
+        .f32(1.0);
+    v.push(mk(
+        s.finish(),
+        f,
+        f,
+        vec![0.0, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
+    ));
     let mut s = Stream::new();
     s.pack(HSD_A_OP_SPL0, 2).f32(2.0).wait(4).f32(6.0);
     v.push(mk(s.finish(), f, f, ones(5)));
@@ -503,15 +586,32 @@ fn hand_cases() -> Vec<Case> {
     s.pack(HSD_A_OP_LIN, 1).f32(3.0);
     v.push(mk(s.finish(), f, f, ones(6)));
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_KEY, 3).f32(5.0).wait(2).f32(6.0).wait(3).f32(7.0);
+    s.pack(HSD_A_OP_KEY, 3)
+        .f32(5.0)
+        .wait(2)
+        .f32(6.0)
+        .wait(3)
+        .f32(7.0);
     v.push(mk(s.finish(), f, f, ones(8)));
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_KEY, 4).f32(1.0).wait(1).f32(2.0).wait(1).f32(3.0).wait(5).f32(4.0);
+    s.pack(HSD_A_OP_KEY, 4)
+        .f32(1.0)
+        .wait(1)
+        .f32(2.0)
+        .wait(1)
+        .f32(3.0)
+        .wait(5)
+        .f32(4.0);
     v.push(mk(s.finish(), f, f, vec![0.0, 2.5, 2.5, 2.5]));
     let fv = frac(FracType::S16, 8);
     let fs = frac(FracType::S8, 4);
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_SPL, 2).raw(fv, 256).raw(fs, -16).wait(4).raw(fv, -512).raw(fs, 8);
+    s.pack(HSD_A_OP_SPL, 2)
+        .raw(fv, 256)
+        .raw(fs, -16)
+        .wait(4)
+        .raw(fv, -512)
+        .raw(fs, 8);
     v.push(mk(s.finish(), fv, fs, ones(6)));
     // Negative start offset.
     let mut s = Stream::new();
@@ -526,7 +626,13 @@ fn hand_cases() -> Vec<Case> {
 
 #[test]
 fn fobj_interpreter_matches_native_c_bit_for_bit() {
-    let Some(exe) = build_oracle() else { return };
+    compare_fobj(false);
+}
+
+fn compare_fobj(report_fusion: bool) {
+    let Some(exe) = build_oracle(true) else {
+        return;
+    };
     let mut rng = Lcg(0xF0B1_0002);
     let mut cases = hand_cases();
     for _ in 0..4000 {
@@ -541,6 +647,26 @@ fn fobj_interpreter_matches_native_c_bit_for_bit() {
     let total_steps: usize = cases.iter().map(|c| c.rates.len()).sum();
     assert_eq!(out.len(), total_steps * STEP_WORDS, "oracle output length");
 
+    if report_fusion {
+        let verbatim = build_oracle(false).expect("build verbatim oracle");
+        let old = words(&run_oracle(&verbatim, "fobj", &input));
+        assert_eq!(old.len(), out.len());
+        let mut cursor = 0;
+        let mut changed_cases = 0;
+        let mut changed_steps = 0;
+        for case in &cases {
+            let end = cursor + case.rates.len() * STEP_WORDS;
+            let changed = out[cursor..end]
+                .chunks_exact(STEP_WORDS)
+                .zip(old[cursor..end].chunks_exact(STEP_WORDS))
+                .filter(|(a, b)| a != b)
+                .count();
+            changed_cases += usize::from(changed != 0);
+            changed_steps += changed;
+            cursor = end;
+        }
+        eprintln!("fobj: retail and verbatim C differ on {changed_cases} of {} cases, {changed_steps} of {total_steps} steps", cases.len());
+    }
     let mut cursor = 0;
     let mut mismatches = 0;
     let mut samples = Vec::new();
@@ -550,7 +676,10 @@ fn fobj_interpreter_matches_native_c_bit_for_bit() {
             let cw = &out[cursor..cursor + STEP_WORDS];
             cursor += STEP_WORDS;
             let cs = StepOut::from_words(cw);
-            assert_eq!(cs.uninit, 0, "case {ci}: generator produced an uninitialised-value stream");
+            assert_eq!(
+                cs.uninit, 0,
+                "case {ci}: generator produced an uninitialised-value stream"
+            );
             if !r.same(&cs) {
                 mismatches += 1;
                 if samples.len() < 8 {
@@ -562,6 +691,14 @@ fn fobj_interpreter_matches_native_c_bit_for_bit() {
             }
         }
     }
-    eprintln!("fobj: {} cases, {total_steps} steps, {mismatches} mismatches", cases.len());
-    assert_eq!(mismatches, 0, "HSD_FObjInterpretAnim mismatches:\n{}", samples.join("\n"));
+    eprintln!(
+        "fobj: {} cases, {total_steps} steps, {mismatches} mismatches",
+        cases.len()
+    );
+    assert_eq!(
+        mismatches,
+        0,
+        "HSD_FObjInterpretAnim mismatches:\n{}",
+        samples.join("\n")
+    );
 }

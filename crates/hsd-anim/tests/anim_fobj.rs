@@ -6,6 +6,7 @@
 mod anim_common;
 
 use anim_common::{decoded, Stream};
+use gekko_math::fma::fmadds;
 use hsd_anim::fobj::*;
 
 const FLOAT: u8 = HSD_A_FRAC_FLOAT;
@@ -13,6 +14,9 @@ const TRACK: u8 = JObjTrack::TraX as u8;
 
 /// Reference Hermite: the `splGetHelmite` formula written out again, so the
 /// library transcription is checked against an independent copy.
+/// The Hermite blend as MWCC compiled it (`splGetHelmite`, retail
+/// 0x80378A84..8C): the last three adds are `fmadds`, so this reference
+/// spells them with `fmadds` too. Everything else is separate single ops.
 fn hermite(inv_t: f32, t: f32, p0: f32, p1: f32, d0: f32, d1: f32) -> f32 {
     let tt = t * t;
     let i2 = inv_t * inv_t;
@@ -20,7 +24,9 @@ fn hermite(inv_t: f32, t: f32, p0: f32, p1: f32, d0: f32, d1: f32) -> f32 {
     let b = i2 * (tt * t);
     let c = 2.0 * b * inv_t;
     let d = 3.0 * tt * i2;
-    (d1 * (b - a)) + ((d0 * (t + ((b - a) - a))) + ((p0 * (1.0 + (c - d))) + (p1 * (-c + d))))
+    let inner = fmadds(p0, 1.0 + (c - d), p1 * (-c + d));
+    let mid = fmadds(d0, t + ((b - a) - a), inner);
+    fmadds(d1, b - a, mid)
 }
 
 fn inv(fterm: u16) -> f32 {
@@ -344,7 +350,8 @@ fn linear_track_with_integer_encoding() {
     let d0 = (v1 - v0) / 7.0f32;
     for i in 0..7 {
         let got = f.step(if i == 0 { 0.0 } else { 1.0 }).unwrap();
-        assert_eq!(got.to_bits(), (d0 * i as f32 + v0).to_bits(), "frame {i}");
+        // `d0 * t + v0` is one `fmadds` in retail (0x8036AF98).
+        assert_eq!(got.to_bits(), fmadds(d0, i as f32, v0).to_bits(), "frame {i}");
     }
 }
 

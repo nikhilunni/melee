@@ -1,3 +1,5 @@
+#include "gekko_fma.h"
+
 /*
  * Reference-oracle driver for hsd-anim's mtx/quat port. Built by
  * tests/mtx_oracle.rs together with the decomp's own
@@ -93,19 +95,19 @@ void HSD_ObjAllocInit(HSD_ObjAllocData* data, u32 size, u32 align)
 
 static float fmadds(float a, float c, float b)
 {
-    return fmaf(a, c, b);
+    return gekko_fmadds(a, c, b);
 }
 static float fmsubs(float a, float c, float b)
 {
-    return fmaf(a, c, -b);
+    return gekko_fmsubs(a, c, b);
 }
 static float fnmadds(float a, float c, float b)
 {
-    return -fmaf(a, c, b);
+    return gekko_fnmadds(a, c, b);
 }
 static float fnmsubs(float a, float c, float b)
 {
-    return -fmaf(a, c, -b);
+    return gekko_fnmsubs(a, c, b);
 }
 /* gekko_math::estimate::{frsqrte, fres}: the table model from gekko_estimate.h. */
 static double frsqrte(double x)
@@ -117,15 +119,16 @@ static float fres(float x)
     return gekko_fres(x);
 }
 
-/* gekko_math::msl::sqrtf, spelled identically. */
+/* Retail inline sqrtf: e.g. 0x80379C88 / 98 / A8, double fnmsub.
+ * Shared by both variants so the sweep isolates the HSD expression audit. */
 float sqrtf(float x)
 {
     if (x > 0.0f) {
         double xd = (double) x;
         double guess = frsqrte(xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
-        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        guess = (0.5 * guess) * gekko_fnmsub(xd, guess * guess, 3.0);
+        guess = (0.5 * guess) * gekko_fnmsub(xd, guess * guess, 3.0);
+        guess = (0.5 * guess) * gekko_fnmsub(xd, guess * guess, 3.0);
         return (float) (xd * guess);
     }
     return x;
