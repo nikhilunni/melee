@@ -10,3 +10,34 @@ globals:
     symbol: stage_info           # .bss 0x8049E6C8, size 0x748
     type: ptr_to_struct
     struct: StageInfo            # TODO: add harness/schema/stage.yaml
+
+# Struct layouts needed to reach the fighters from the globals above.
+# Source: third_party/melee-decomp/src/sysdolphin/baselib/gobj.h (line numbers cited).
+# harness/dolphin/walk.py mirrors these constants; tests/test_walk.py keeps them in sync.
+structs:
+  HSD_GObjList:                  # gobj.h:66-86. "Fake type": really HSD_GObj*[] indexed by p_link
+    size: 0x4C                   #   (gobj.h:111-113, gobjplink.c:19-20). fighters == p_link 8 (ft/fighter.c:852)
+    fields:
+      fighters:  { offset: 0x20, type: ptr }   # gobj.h:75  HSD_GObj* head of the fighter GObj list
+      items:     { offset: 0x24, type: ptr }   # gobj.h:76  HSD_GObj* head of the item GObj list
+  HSD_GObj:                      # gobj.h:28-47
+    size: 0x38
+    fields:
+      classifier:     { offset: 0x00, type: u16 }  # gobj.h:29
+      p_link:         { offset: 0x02, type: u8  }  # gobj.h:30
+      gx_link:        { offset: 0x03, type: u8  }  # gobj.h:31
+      p_priority:     { offset: 0x04, type: u8  }  # gobj.h:32
+      render_priority: { offset: 0x05, type: u8 }   # gobj.h:33
+      obj_kind:       { offset: 0x06, type: u8  }  # gobj.h:34
+      user_data_kind: { offset: 0x07, type: u8  }  # gobj.h:35
+      next:           { offset: 0x08, type: ptr }  # gobj.h:36  list terminates when next == NULL
+      prev:           { offset: 0x0C, type: ptr }  # gobj.h:37
+      next_gx:        { offset: 0x10, type: ptr }  # gobj.h:38
+      prev_gx:        { offset: 0x14, type: ptr }  # gobj.h:39
+      proc:           { offset: 0x18, type: ptr }  # gobj.h:40
+      render_cb:      { offset: 0x1C, type: ptr }  # gobj.h:41
+      gxlink_prios:   { offset: 0x20, type: u64 }  # gobj.h:42  (u64 is not a schema scalar; informational)
+      hsd_obj:        { offset: 0x28, type: ptr }  # gobj.h:43
+      user_data:      { offset: 0x2C, type: ptr }  # gobj.h:44  Fighter* for fighters (GET_FIGHTER, ft/inlines.h:40)
+      user_data_remove_func: { offset: 0x30, type: ptr }  # gobj.h:45
+      x34_unk:        { offset: 0x34, type: ptr }  # gobj.h:46
