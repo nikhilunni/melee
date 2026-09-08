@@ -15,9 +15,10 @@
  *     fmaf. This is an independent transcription of the same asm the Rust
  *     was written from, so a mismatch means one of the two misread it; a
  *     match does not prove either read is right.
- *   - sqrtf: MSL's math_ppc.h algorithm over gekko-math's *placeholder*
- *     frsqrte (IEEE 1/sqrt), spelled the same way gekko_math::msl::sqrtf is.
- *   - fres placeholder: 1.0f / x, as in gekko_math::estimate::fres.
+ *   - sqrtf: MSL's math_ppc.h algorithm over the table-exact frsqrte from
+ *     gekko-math's tests/ref/gekko_estimate.h (the C twin of
+ *     gekko_math::estimate), spelled the same way gekko_math::msl::sqrtf is.
+ *   - fres / frsqrte: gekko_estimate.h as well.
  *   - atan2f / asinf / acosf: deterministic stand-ins (these are Melee's own
  *     lbtrigf.c, out of scope here). The Rust test passes the same stand-ins
  *     through the InverseTrig trait, so the surrounding arithmetic and
@@ -37,9 +38,10 @@
 #include <dolphin/mtx.h>
 #include <sysdolphin/baselib/objalloc.h>
 
-/* Real libm entry points we need, declared by hand so the shim <math.h>
+#include "../../../../gekko-math/tests/ref/gekko_estimate.h"
+
+/* Real libm entry point we need, declared by hand so the shim <math.h>
  * stays in charge of the single-precision names. */
-double sqrt(double);
 float fmaf(float, float, float);
 
 /* MSL trigf.c fills its range-reduction tables from a static constructor;
@@ -105,15 +107,14 @@ static float fnmsubs(float a, float c, float b)
 {
     return -fmaf(a, c, -b);
 }
-/* ESTIMATE PLACEHOLDER: gekko_math::estimate::frsqrte returns IEEE 1/sqrt. */
+/* gekko_math::estimate::{frsqrte, fres}: the table model from gekko_estimate.h. */
 static double frsqrte(double x)
 {
-    return 1.0 / sqrt(x);
+    return gekko_frsqrte(x);
 }
-/* ESTIMATE PLACEHOLDER: gekko_math::estimate::fres returns IEEE 1/x. */
 static float fres(float x)
 {
-    return 1.0f / x;
+    return gekko_fres(x);
 }
 
 /* gekko_math::msl::sqrtf, spelled identically. */

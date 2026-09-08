@@ -17,4 +17,5 @@ driver.c, shim/
     Written for this repository. The shim headers stand in for the decomp's
     Runtime/platform.h, math.h and placeholder.h so the copies compile on a
     host toolchain without the MetroTRK intrinsics. See shim/math.h for the
-    stand-ins for __frsqrte, __fnmsubs and sqrtf.
+    stand-ins for __frsqrte (the table model from
+    crates/gekko-math/tests/ref/gekko_estimate.h), __fnmsubs and sqrtf.

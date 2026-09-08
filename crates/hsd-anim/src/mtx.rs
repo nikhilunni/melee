@@ -20,12 +20,12 @@
 //! -> [`fnmadds`]; `ps_neg` -> unary minus; `ps_merge*`, `psq_l`, `psq_st`
 //! are data movement only. A `psq_l ..., 1, qr0` load fills the second slot
 //! with `1.0`, and that `1.0` takes part in the arithmetic where noted.
-//! `fres`/`frsqrte` go through [`gekko_math::estimate`], which is currently
-//! an IEEE placeholder (see that module); the lines whose bits depend on it
-//! are tagged `ESTIMATE PLACEHOLDER`. Where the asm feeds the double-width
+//! `fres`/`frsqrte` go through [`gekko_math::estimate`], which is bit-exact
+//! with the captured hardware behaviour. Where the asm feeds the double-width
 //! `frsqrte` result into `fmuls`, this port rounds the `f64` product to `f32`;
-//! the hardware additionally truncates the second operand to 25 mantissa
-//! bits, which will matter once the estimate itself is exact.
+//! the hardware additionally truncates the second operand (frC) to 25
+//! mantissa bits before multiplying, which is not yet modelled. Those lines
+//! are tagged `FMULS FRC TRUNCATION PENDING` (open item in `TRACKER.md`).
 //!
 //! The HSD-level functions have no retail asm in this checkout, so they are
 //! transcribed from the decomp C with separate `*` and `+`, and every
@@ -127,10 +127,10 @@ pub fn vec_mag(v: &Vec3) -> f32 {
     // ps_madd f1, f1, f1, f0 ; ps_sum0 f1, f1, f0, f0
     let sqsum = fmadds(v.z, v.z, xx) + yy;
     // frsqrte f0, f1
-    let est = frsqrte(f64::from(sqsum)); // ESTIMATE PLACEHOLDER
-                                         // fmuls f2, f0, f0 ; fmuls f0, f0, f4 (f4 = 0.5)
-    let f2 = (est * est) as f32; // ESTIMATE PLACEHOLDER
-    let f0 = (est * 0.5) as f32; // ESTIMATE PLACEHOLDER
+    let est = frsqrte(f64::from(sqsum));
+    // fmuls f2, f0, f0 ; fmuls f0, f0, f4 (f4 = 0.5)
+    let f2 = (est * est) as f32; // FMULS FRC TRUNCATION PENDING
+    let f0 = (est * 0.5) as f32; // FMULS FRC TRUNCATION PENDING
                                  // fnmsubs f2, f2, f1, f3 (f3 = 3.0)
     let f2 = fnmsubs(f2, sqsum, 3.0);
     // fmuls f0, f2, f0
@@ -153,10 +153,10 @@ pub fn vec_normalize(src: &Vec3, dst: &mut Vec3) {
     // ps_madd xx_zz, v1_z, v1_z, xx_yy ; ps_sum0 sqsum, xx_zz, v1_z, xx_yy
     let sqsum = fmadds(src.z, src.z, xx) + yy;
     // frsqrte rsqrt, sqsum
-    let rsqrt = frsqrte(f64::from(sqsum)); // ESTIMATE PLACEHOLDER
-                                           // fmuls nwork0, rsqrt, rsqrt ; fmuls nwork1, rsqrt, c_half
-    let nwork0 = (rsqrt * rsqrt) as f32; // ESTIMATE PLACEHOLDER
-    let nwork1 = (rsqrt * 0.5) as f32; // ESTIMATE PLACEHOLDER
+    let rsqrt = frsqrte(f64::from(sqsum));
+    // fmuls nwork0, rsqrt, rsqrt ; fmuls nwork1, rsqrt, c_half
+    let nwork0 = (rsqrt * rsqrt) as f32; // FMULS FRC TRUNCATION PENDING
+    let nwork1 = (rsqrt * 0.5) as f32; // FMULS FRC TRUNCATION PENDING
                                        // fnmsubs nwork0, nwork0, sqsum, c_three
     let nwork0 = fnmsubs(nwork0, sqsum, 3.0);
     // fmuls rsqrt, nwork0, nwork1
@@ -315,7 +315,7 @@ pub fn mtx_inverse(src: &Mtx, inv: &mut Mtx) -> bool {
         return false;
     }
     // fres f0, f7 ; ps_add f6, f0, f0 ; ps_mul f5, f0, f0 ; ps_nmsub f0, f7, f5, f6
-    let r = fres(det); // ESTIMATE PLACEHOLDER
+    let r = fres(det);
     let f6 = r + r;
     let f5 = r * r;
     let rdet = fnmsubs(det, f5, f6);
@@ -362,8 +362,8 @@ pub fn mtx_inv_xpose(src: &Mtx, inv_x: &mut Mtx) -> bool {
         return false;
     }
     // ps_res f0, f7
-    let r = fres(det); // ESTIMATE PLACEHOLDER
-                       // ps_add f6, f0, f0 ; ps_mul f5, f0, f0 ; ps_nmsub f0, f7, f5, f6  (twice)
+    let r = fres(det);
+    // ps_add f6, f0, f0 ; ps_mul f5, f0, f0 ; ps_nmsub f0, f7, f5, f6  (twice)
     let f6 = r + r;
     let f5 = r * r;
     let r = fnmsubs(det, f5, f6);
@@ -468,8 +468,8 @@ pub fn mtx_quat(m: &mut Mtx, q: &Quaternion) {
     let yw = y * w;
     let xw = x * w;
     // fres tmp9, scale
-    let tmp9 = fres(scale); // ESTIMATE PLACEHOLDER
-                            // ps_sum1 tmp4, tmp3, tmp4, tmp2        ; (tmp4.ps0, zz + yy)
+    let tmp9 = fres(scale);
+    // ps_sum1 tmp4, tmp3, tmp4, tmp2        ; (tmp4.ps0, zz + yy)
     let tmp4_1 = zz + yy;
     // ps_nmsub scale, scale, tmp9, c_two    ; 2 - scale*r
     let scale = fnmsubs(scale, tmp9, c_two);
@@ -1061,8 +1061,8 @@ mod tests {
 
     #[test]
     fn ps_inverse_of_scale_translate_is_exact() {
-        // det = 64; the fres placeholder gives 1/64 exactly and the Newton
-        // step is then a no-op, so every entry is exactly representable.
+        // det = 64; fres gives 1/64 * (1 - 2^-13) and the Newton step
+        // recovers exactly 1/64, so every entry is exactly representable.
         let m = Mtx([
             [2.0, 0.0, 0.0, 1.0],
             [0.0, 4.0, 0.0, 2.0],

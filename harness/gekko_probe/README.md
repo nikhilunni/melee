@@ -15,6 +15,7 @@ tables printed by `analyze.py` are fitted from captured data.
 | `probe.py` | Dolphin `--script`. Writes input sweeps into MEM1, starts the guest, polls for completion, dumps `*.jsonl`. |
 | `run.sh` | Builds the `.dol`, launches Dolphin headless-ish (`-v Null`, no panic dialogs, file logging), waits, prints result paths. `run.sh 0` = interpreter (default), `run.sh 4` = ARM64 JIT. |
 | `analyze.py` | Infers the estimate structure from the pairs and verifies the model reproduces every pair. `--table` prints the fitted entries. |
+| `select_fixture.py` | Picks the compact golden subset committed under `crates/gekko-math/tests/data/` (every special, every table index, clamp edges, random fill). |
 
 Outputs go to `harness/traces/` (gitignored): `frsqrte_probe.jsonl`,
 `fres_probe.jsonl` (f32 in via `lfs`, f32 out via `stfs`),
@@ -99,6 +100,7 @@ and any boot errors) and `gekko_probe.status`, a plain-text progress log.
 
 ## Licensing note
 
-The fitted tables are derived from observed behaviour, but whether they may
-be committed under `crates/` is the licensing decision tracked in
-`TRACKER.md`. Nothing in this directory is imported by any crate.
+The fitted tables are derived from observed behaviour. Committing them under
+`crates/` (as `gekko_math::estimate` and the golden fixture) was decided on
+2026-09-08 and is recorded in `TRACKER.md`. Nothing in this directory is
+imported by any crate.

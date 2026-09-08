@@ -11,10 +11,10 @@
  * Stand-ins for the MetroTRK intrinsics:
  *
  *   __frsqrte(double)
- *       Gekko reciprocal-square-root estimate. Reproduces the PLACEHOLDER
- *       in gekko_math::estimate::frsqrte exactly (IEEE 1/sqrt, with the
- *       same special-case handling), so the C and Rust agree with each
- *       other. Neither matches hardware yet; see that module's docs.
+ *       Gekko reciprocal-square-root estimate: the table model from
+ *       crates/gekko-math/tests/ref/gekko_estimate.h, the C twin of
+ *       gekko_math::estimate::frsqrte (fitted from captured hardware pairs;
+ *       see that module's docs).
  *
  *   __fnmsubs(a, b, c)
  *       PowerPC `fnmsubs`: -(a * b - c), fused, rounded once. Mirrors
@@ -35,24 +35,14 @@
 #ifndef MELEE_LB_REF_SHIM_MATH_H
 #define MELEE_LB_REF_SHIM_MATH_H
 
+#include "../../../../../gekko-math/tests/ref/gekko_estimate.h"
+
 #define M_PI 3.14159265358979323846
 #define M_PI_2 (M_PI / 2)
 
 static inline double __frsqrte(double x)
 {
-    if (x != x) {
-        return __builtin_nan("");
-    }
-    if (x == 0.0) {
-        return __builtin_signbit(x) ? -__builtin_inf() : __builtin_inf();
-    }
-    if (x < 0.0) {
-        return __builtin_nan("");
-    }
-    if (__builtin_isinf(x)) {
-        return 0.0;
-    }
-    return 1.0 / __builtin_sqrt(x);
+    return gekko_frsqrte(x);
 }
 
 static inline float __fnmsubs(float a, float b, float c)

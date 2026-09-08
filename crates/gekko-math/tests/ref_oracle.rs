@@ -10,6 +10,11 @@
 //! -fno-strict-aliasing -fwrapv`. If no `cc` is on `PATH` the test prints a
 //! notice and passes; the std-tolerance tests in `src/msl.rs` still run.
 //!
+//! The estimate instructions (`frsqrte`, `fres`) have a C twin in
+//! `tests/ref/gekko_estimate.h`, shared with the melee-lb and hsd-anim oracle
+//! builds. `estimates_and_sqrtf_match_native_c` checks the twin against the
+//! Rust module directly, and MSL's `sqrtf` on top of it.
+//!
 //! Known host-vs-Gekko differences that are deliberately *not* modelled in
 //! the C build (the Rust models Gekko): float -> int conversion of NaN
 //! (`fctiwz` gives `i32::MIN`, hosts give 0 or `i32::MIN`), and
@@ -23,7 +28,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gekko_math::msl;
+use gekko_math::{estimate, msl};
 
 const REF_FILES: &[&str] = &["trigf.c", "math_data.c", "math_1.c", "math.c"];
 
@@ -345,6 +350,72 @@ fn compare_unary(exe: &Path, op: &'static str, f: fn(f32) -> f32, inputs: &[f32]
         mm.check_f32(format!("{:08x} = {x:e}", x.to_bits()), f(*x), c);
     }
     mm.finish(inputs.len());
+}
+
+fn compare_unary_u64(exe: &Path, op: &'static str, f: fn(u64) -> u64, inputs: &[u64]) {
+    let bytes: Vec<u8> = inputs.iter().flat_map(|x| x.to_ne_bytes()).collect();
+    let out = run_oracle(exe, op, &bytes);
+    assert_eq!(out.len(), inputs.len() * 8);
+    let mut count = 0;
+    let mut samples = Vec::new();
+    for (i, x) in inputs.iter().enumerate() {
+        let c = u64::from_ne_bytes(out[i * 8..i * 8 + 8].try_into().unwrap());
+        let r = f(*x);
+        if r != c {
+            count += 1;
+            if samples.len() < 10 {
+                samples.push(format!("{op}({x:016x}): rust {r:016x} vs c {c:016x}"));
+            }
+        }
+    }
+    eprintln!("{op}: {} inputs, {count} mismatches", inputs.len());
+    assert_eq!(
+        count,
+        0,
+        "{op} mismatches vs native C:\n{}",
+        samples.join("\n")
+    );
+}
+
+/// The C twin of `gekko_math::estimate` (`tests/ref/gekko_estimate.h`) must
+/// agree with the Rust bit for bit, NaN payloads included, and MSL `sqrtf`
+/// built on either side must agree too.
+#[test]
+fn estimates_and_sqrtf_match_native_c() {
+    let Some(exe) = build_oracle() else { return };
+
+    let ds: Vec<u64> = f64_sweep().iter().map(|x| x.to_bits()).collect();
+    compare_unary_u64(&exe, "frsqrte", estimate::frsqrte_bits, &ds);
+    compare_unary_u64(&exe, "fres64", estimate::fres_bits, &ds);
+
+    let xs = f32_sweep();
+    // NaN payloads are compared exactly here: both sides pass NaN through.
+    let bytes: Vec<u8> = xs.iter().flat_map(|x| x.to_bits().to_ne_bytes()).collect();
+    let out = run_oracle(&exe, "fres", &bytes);
+    let mut count = 0;
+    let mut samples = Vec::new();
+    for (i, x) in xs.iter().enumerate() {
+        let c = u32::from_ne_bytes(out[i * 4..i * 4 + 4].try_into().unwrap());
+        let r = estimate::fres(*x).to_bits();
+        if r != c {
+            count += 1;
+            if samples.len() < 10 {
+                samples.push(format!(
+                    "fres({:08x}): rust {r:08x} vs c {c:08x}",
+                    x.to_bits()
+                ));
+            }
+        }
+    }
+    eprintln!("fres: {} inputs, {count} mismatches", xs.len());
+    assert_eq!(
+        count,
+        0,
+        "fres mismatches vs native C:\n{}",
+        samples.join("\n")
+    );
+
+    compare_unary(&exe, "sqrtf", msl::sqrtf, &xs);
 }
 
 #[test]

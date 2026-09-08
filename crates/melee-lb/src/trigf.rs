@@ -20,9 +20,8 @@
 //! `acosf` and `lb_sqrtf` call `__frsqrte` directly (there is no `sqrtf`
 //! call anywhere in these two files), then refine with three Newton steps in
 //! **single** precision (unlike MSL's `sqrtf`, which refines in double).
-//! They go through [`gekko_math::estimate::frsqrte`], which is a placeholder
-//! until the hardware tables are available, so these two functions and
-//! `asinf` are not yet bit-exact with retail. See `gekko_math::estimate`.
+//! They go through [`gekko_math::estimate::frsqrte`], which is bit-exact with
+//! the captured hardware behaviour (see that module's docs).
 //!
 //! # Fusion audit
 //!

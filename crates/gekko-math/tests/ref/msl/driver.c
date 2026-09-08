@@ -11,6 +11,10 @@
  *   logf    u32                   u32
  *   fmodf   u32 a, u32 b          u32
  *   frexp   u64 (f64 bits)        u64 (f64 bits), i64 exponent
+ *   sqrtf   u32                   u32   (MSL math_ppc.h over gekko_frsqrte)
+ *   frsqrte u64                   u64   (gekko_estimate.h model)
+ *   fres64  u64                   u64
+ *   fres    u32                   u32
  *
  * All records are host-endian raw bytes; the Rust side reads and writes them
  * with to_ne_bytes/from_ne_bytes.
@@ -21,6 +25,22 @@
 #include <string.h>
 
 #include "math.h"
+#include "../gekko_estimate.h"
+
+/* MSL sqrtf (src/MSL/math_ppc.h), spelled as gekko_math::msl::sqrtf is, over
+ * the table-exact frsqrte from gekko_estimate.h. */
+static float msl_sqrtf(float x)
+{
+    if (x > 0.0f) {
+        double xd = (double) x;
+        double guess = gekko_frsqrte(xd);
+        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        guess = 0.5 * guess * (3.0 - guess * guess * xd);
+        return (float) (xd * guess);
+    }
+    return x;
+}
 
 static void* slurp(const char* path, size_t* len)
 {
@@ -97,6 +117,15 @@ int main(int argc, char** argv)
             fwrite(&rb, 8, 1, out);
             fwrite(&eb, 8, 1, out);
         }
+    } else if (strcmp(op, "frsqrte") == 0 || strcmp(op, "fres64") == 0) {
+        int rsq = strcmp(op, "frsqrte") == 0;
+        size_t n = len / 8;
+        for (size_t i = 0; i < n; i++) {
+            uint64_t ub;
+            memcpy(&ub, in + i * 8, 8);
+            uint64_t rb = rsq ? gekko_frsqrte_bits(ub) : gekko_fres_bits(ub);
+            fwrite(&rb, 8, 1, out);
+        }
     } else if (strcmp(op, "fmodf") == 0) {
         size_t n = len / 8;
         for (size_t i = 0; i < n; i++) {
@@ -116,6 +145,10 @@ int main(int argc, char** argv)
             fn = tanf;
         } else if (strcmp(op, "logf") == 0) {
             fn = logf;
+        } else if (strcmp(op, "sqrtf") == 0) {
+            fn = msl_sqrtf;
+        } else if (strcmp(op, "fres") == 0) {
+            fn = gekko_fres;
         } else {
             fprintf(stderr, "unknown op %s\n", op);
             return 2;

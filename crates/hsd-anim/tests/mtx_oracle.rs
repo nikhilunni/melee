@@ -15,8 +15,11 @@
 //! between two readings of the asm; it is not an independent oracle.
 //!
 //! `sinf`/`cosf` come from MSL `trigf.c` (gekko-math's verbatim copy).
-//! `sqrtf` and the `fres`/`frsqrte` steps use the same IEEE placeholders as
-//! `gekko-math` does today. `atan2f`/`asinf`/`acosf` are deterministic
+//! `sqrtf` and the `fres`/`frsqrte` steps use the table-exact estimate model
+//! on both sides (`gekko_math::estimate` and its C twin
+//! `crates/gekko-math/tests/ref/gekko_estimate.h`); the `fmuls` on a
+//! double-width `frsqrte` result is not yet modelled on either side (see the
+//! `FMULS FRC TRUNCATION PENDING` marks). `atan2f`/`asinf`/`acosf` are deterministic
 //! stand-ins on both sides (`StubTrig` here, the same expressions in the
 //! driver), since the real ones live in `melee-lb`.
 //!

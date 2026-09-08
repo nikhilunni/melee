@@ -4,9 +4,9 @@
 //! What this proves: the Rust performs the same IEEE operations in the same
 //! order as the C source. What it does not prove: which of those operations
 //! MWCC contracted into fused multiply-adds on the retail disc (marked
-//! `FUSION AUDIT PENDING` in `src/trigf.rs`), nor what the hardware
-//! `frsqrte` returns (both sides use the same IEEE placeholder; see
-//! `gekko_math::estimate`).
+//! `FUSION AUDIT PENDING` in `src/trigf.rs`). `__frsqrte` is the table-exact
+//! model on both sides (`gekko_math::estimate` and its C twin
+//! `crates/gekko-math/tests/ref/gekko_estimate.h`).
 //!
 //! The C is compiled with `cc -O0 -ffp-contract=off -fno-builtin
 //! -fno-strict-aliasing -fwrapv`. If no `cc` is on `PATH` the tests print a

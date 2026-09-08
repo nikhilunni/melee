@@ -1,0 +1,28 @@
+Origin of the files in this directory
+=====================================
+
+frsqrte_pairs.txt, fres64_pairs.txt, fres32_pairs.txt
+    Input/output bit pairs of the Gekko `frsqrte` and `fres` instructions,
+    one pair per line as `<input_hex> <output_hex>` (16 hex digits for the
+    double-width files, 8 for fres32), sorted by input bits.
+
+    They were captured by executing the instructions inside Dolphin (Felk's
+    scripting fork, interpreter core) with a hand-assembled guest program and
+    no game disc; see harness/gekko_probe/README.md. No emulator source was
+    consulted; the pairs are observed behaviour. The ARM64 JIT capture agreed
+    on every numeric pair and differed only by quieting signalling-NaN
+    inputs, which these files do not reflect (they follow the interpreter).
+
+    fres32 pairs are `lfs` / `fres` / `stfs` (single in, single out);
+    frsqrte and fres64 pairs are `lfd` / op / `stfd` (double in, double out).
+
+    The full captures (~74k pairs) live under harness/traces/ and are not
+    committed. These files are a deterministic subset chosen by
+    harness/gekko_probe/select_fixture.py: every special value, every table
+    index with a spread over the linear-term bits, the fres clamp
+    neighbourhoods, and random fill. tests/golden.rs replays every pair
+    against gekko_math::estimate, and also replays the full captures when
+    present.
+
+    The decision to commit tables and pairs derived from these captures is
+    recorded in TRACKER.md (user decision, 2026-09-08).

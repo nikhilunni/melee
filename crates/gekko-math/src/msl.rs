@@ -118,10 +118,11 @@ pub fn fabs(x: f64) -> f64 {
 /// y = (float) (x * guess);
 /// ```
 ///
-/// Fusion: the retail compiler emits `fnmsub`/`fmul` sequences for the
-/// Newton steps. TODO(oracle): confirm the exact instruction sequence from
-/// the disassembly of an inlined call site and update this transcription
-/// before relying on bit-exactness. Tracked by the ignored test below.
+/// `__frsqrte` is the hardware-exact [`frsqrte`]. The Newton steps are
+/// written unfused and marked `FUSION AUDIT PENDING`: the retail compiler
+/// may have emitted `fnmsub`/`fmul` sequences here, and only the disassembly
+/// of an inlined call site can settle it. Against native C spelled the same
+/// way (`tests/ref_oracle.rs`), this matches bit for bit.
 pub fn sqrtf(x: f32) -> f32 {
     if x > 0.0 {
         let xd = x as f64;
@@ -138,7 +139,8 @@ pub fn sqrtf(x: f32) -> f32 {
     }
 }
 
-/// `sqrtf_accurate` from `src/MSL/math_ppc.h`: one extra Newton step.
+/// `sqrtf_accurate` from `src/MSL/math_ppc.h`: one extra Newton step over
+/// the hardware-exact [`frsqrte`]. Same fusion caveat as [`sqrtf`].
 pub fn sqrtf_accurate(x: f32) -> f32 {
     if x > 0.0 {
         let xd = x as f64;
@@ -488,10 +490,25 @@ mod tests {
         assert!((sqrtf(2.0) - core::f32::consts::SQRT_2).abs() < 1e-6);
     }
 
+    /// `frsqrte` is table-exact (`estimate.rs`), and three double-precision
+    /// Newton steps from a 2^-12 estimate land within a single ULP of the
+    /// correctly rounded root. The bit-exact check of `sqrtf` against native
+    /// C over the same `frsqrte` is `tests/ref_oracle.rs`.
     #[test]
-    #[ignore = "needs hardware-exact frsqrte and oracle golden values"]
-    fn sqrtf_matches_oracle_goldens() {
-        // Populate from harness/goldens/msl_sqrtf.jsonl once recorded.
+    fn sqrtf_within_one_ulp_of_std() {
+        let mut worst = 0u32;
+        for exp in 1u32..=254 {
+            for k in 0..64u32 {
+                let x = f32::from_bits((exp << 23) | ((k * 0x2_0821) & 0x7F_FFFF));
+                let got = sqrtf(x);
+                let want = (f64::from(x)).sqrt() as f32;
+                let d = got.to_bits().abs_diff(want.to_bits());
+                worst = worst.max(d);
+                assert!(d <= 1, "sqrtf({x:e}) = {got:e}, std {want:e}, {d} ulp");
+            }
+        }
+        eprintln!("sqrtf worst deviation from std: {worst} ulp");
+        assert_eq!(sqrtf_accurate(2.0), sqrtf(2.0));
     }
 
     #[test]
