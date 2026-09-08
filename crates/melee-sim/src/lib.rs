@@ -4,4 +4,5 @@
 //! under `tests/` can reach the schema-coverage machinery without going
 //! through the CLI.
 
+pub mod bones;
 pub mod schema;
