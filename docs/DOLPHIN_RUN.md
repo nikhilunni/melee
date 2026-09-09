@@ -467,3 +467,12 @@ Character select with everyone unlocked: P1's hand reaches Marth with
 the hovered character) before `press A 3 @0; press A 3 @1; press Start 3`.
 On the stage select `stick 1 0 5; stick 0 1 3` from the start position
 lands on Final Destination.
+
+## One-command recording
+
+`harness/record.py scenarios/<name>.toml [--bones N] [--no-ledger] [--no-particles] [--ledger-suffix ledger600]`
+records the tick trace, the RNG ledger, the particle dump and optionally an
+N-tick bone dump for a scenario in sequence (one Dolphin at a time), then
+prints P1's motion transitions and any RNG sites beyond the idle set. The
+particle and bone snippets replay the scenario's scripted inputs
+(`MELEE_PARTICLES_SCENARIO` / `MELEE_BONES_SCENARIO`).

@@ -64,7 +64,16 @@ def main() -> None:
     saved = Path(os.environ["MELEE_BONES_SAVESTATE"]).resolve()
     # Reuse trace_common.run by synthesising the scenario it expects.
     scenario = HERE / "traces" / (out.stem + ".bones_scenario.toml")
-    scenario.write_text(f'name = "{out.stem}"\nsavestate = "{saved}"\nframes = {ticks}\ninputs = []\n')
+    inputs = "inputs = []\n"
+    if "MELEE_BONES_SCENARIO" in os.environ:
+        # Replay a scripted scenario's inputs (tick_trace.py contract) so the
+        # bone dump covers the same motion as its tick trace.
+        scripted = tomllib.loads(Path(os.environ["MELEE_BONES_SCENARIO"]).read_text())
+        steps = [f'  {{ frame = {int(st["frame"])}, port = {int(st.get("port", 0))}, buttons = {{ '
+                 + ", ".join(f'{k} = {str(v).lower() if isinstance(v, bool) else v}' for k, v in st.get("buttons", {}).items())
+                 + " } }" for st in scripted.get("inputs", [])]
+        inputs = "inputs = [\n" + ",\n".join(steps) + "\n]\n"
+    scenario.write_text(f'name = "{out.stem}"\nsavestate = "{saved}"\nframes = {ticks}\n{inputs}')
     os.environ["MELEE_SCENARIO"] = str(scenario)
     os.environ["MELEE_RAW_OUT"] = str(out.with_suffix(".raw.jsonl"))
     bones_out = out.open("w")
