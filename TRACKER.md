@@ -125,12 +125,13 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [ ] `melee-mp`: terrain sound-id tables (`mpLib_803BD3D8..`) once an sfx layer exists
 - [x] `melee-mp`: `desc.rs` reads `coll_data` from an archive (Codex); real GrNLa.dat loads into `CollMap`, floor/ledge queries verified (3 real-stage tests)
 - [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c` plumbing for one stage (Final Destination)
-- [~] (2026-09-08) `melee-gr`: `grlast.c` (1,035 lines) Final Destination decorations: background lights/flicker and transitions draw RNG 1-61 times per tick; required for `rng.seed` parity (user-approved)
+- [~] (2026-09-08) `melee-gr`: `grlast.c` Final Destination decorations, first pass committed (procs, direct RNG sites, desc readers). **Finding:** the direct grlast.c logic draws on only 2 of 600 idle ticks; the 6k+1 draws per tick come from elsewhere (likely the HSD particle generator via a particle-spawn animation track on map 4). Next: RNG ledger from Dolphin (PC/LR at each `seed` write) to attribute every draw before porting more.
 - [ ] `melee-gr`: Dolphin capture of the FD `Ground` struct at the `idle_fd_fox` savestate (timers/phases) to seed the decoration state; then a 600-tick RNG-draw-count test against `idle_fd_fox.tick.expected.jsonl`
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only
 - [ ] `melee-ft`: physics (`ft_08A1.c` etc): gravity, friction, ground snap
-- [ ] `ft-fox`: init, attributes, Wait animation; nothing else
+- [x] `ft-fox`: attributes (Fox special block, 0xD4 bytes) read from PlFx.dat (Codex T4); init and Wait wiring still to do
+- [x] `melee-ft`: `desc/` reads ftData attributes (0x184 bytes, grouped by concept), part table (54 entries, TopN/TransN/XRotN/YRotN=0/1/2/3), ECB joints [41,55,25,13,7,4], bone lists, PlCo common subset (`docs/FOX_DATA.md`)
 - [ ] `melee-sim`: scenario loading, asset loading, frame loop, trace emit
 - [x] Record savestate and `expected.jsonl`: **`idle_ys_fox`** (Yoshi's Story) instead of FD, two idle Foxes, 600 frames, byte-identical on rerun (`docs/DOLPHIN_RUN.md`)
 - [x] `idle_fd_fox` recorded (2026-09-08): FD unlocked via `poke-or 0x8045BF2A u16 0xC0` (save data `gmMainLib_804D3EE0->thing.x186A`), Stock 1 via `GameRules` bytes, items were already NONE. Savestate `harness/roms/idle_fd_fox.sav` at frame 50841, both Foxes in Wait at (+-60, 0.0001, 0). Tick trace `harness/traces/idle_fd_fox.tick.expected.jsonl`, 600 ticks, deterministic.
