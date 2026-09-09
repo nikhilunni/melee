@@ -67,11 +67,13 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 ```sh
 cargo gate                                                   # every unit/oracle test
 cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml   # M3: 600 ticks x 49 keys vs Dolphin
+cargo run -q -p melee-sim -- gate harness/scenarios/start_fd_fox.toml  # match start: entry, fall, landing, idle
+cargo test -p melee-ft --test start_fox_bones_130                      # 73 bones incl. tail dynamics vs Dolphin
 cargo test -p hsd-particle --test live_fd                    # particle system vs 600 dumped frames
 cargo test -p melee-sim --test m2_gate                       # M2: Fox bones vs Dolphin
 ```
 
-Milestones 1-3 passed on 2026-09-09. Their traces are machine-local
+Milestones 1-3 and the match-start scenario passed on 2026-09-09. Their traces are machine-local
 (`harness/traces/`, gitignored); `docs/DOLPHIN_RUN.md`, `docs/M2_GATE.md`,
 `docs/PARTICLES_DUMP.md` say how to re-record each one.
 
