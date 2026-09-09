@@ -109,6 +109,8 @@ name = "ft-fox"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-archive",
+ "hsd-types",
  "melee-ft",
  "melee-types",
 ]
@@ -198,6 +200,7 @@ dependencies = [
  "hsd-anim",
  "hsd-archive",
  "hsd-gobj",
+ "hsd-types",
  "melee-lb",
  "melee-mp",
  "melee-types",
@@ -208,6 +211,9 @@ name = "melee-gr"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
+ "hsd-types",
  "melee-lb",
  "melee-mp",
  "melee-types",
