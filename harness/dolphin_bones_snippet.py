@@ -33,7 +33,8 @@ def dump_frame(mem, gobj: int, frame: int, out, metadata) -> None:
     if not fp or mem.read_u32(fp + bones.FIGHTER_KIND) != 1:
         raise ValueError("selected GObj must be Fox (FighterKind=1)")
     if mem.read_u32(fp + bones.FIGHTER_ANIM_ID) != 2:
-        raise ValueError("selected Fox is not playing Wait1 (animation-table row 2)")
+        if os.environ.get("MELEE_BONES_ANY_ANIM") != "1":  # M2 gate wants Wait1; other scenarios opt out
+            raise ValueError("selected Fox is not playing Wait1 (animation-table row 2)")
     joints = bones.jobj_tree(mem, root)
     if len(joints) != 73:
         raise ValueError(f"expected 73 Fox joints, got {len(joints)}")
