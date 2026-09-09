@@ -1,0 +1,20 @@
+# Fountain of Dreams, Fox vs Fox, start boundary. Recorded 2026-09-09 with remote.py
+# after RAM-only pokes (all characters and stages unlocked, stock 1); the memory
+# card is unchanged. Savestate is machine-local (harness/roms/).
+name = "start_fod_fox"
+savestate = "harness/roms/start_fod_fox.sav"
+frames = 600
+seed = 1
+stage = "FountainOfDreams"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
