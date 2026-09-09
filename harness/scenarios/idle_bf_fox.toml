@@ -1,0 +1,21 @@
+# Battlefield, Fox vs Fox, both in Wait on the main platform.
+# Recorded 2026-09-09 with remote.py after RAM-only pokes (characters and
+# stages unlocked, stock 1); the memory card is unchanged. Savestate is
+# machine-local (harness/roms/).
+name = "idle_bf_fox"
+savestate = "harness/roms/idle_bf_fox.sav"
+frames = 600
+seed = 1
+stage = "Battlefield"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
