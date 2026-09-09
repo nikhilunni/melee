@@ -151,3 +151,43 @@ fn ledge_fd_fox_420() {
 fn ledge_particle_rng_sites_match_the_retail_ledger_in_order() {
     particle_rng_sites_for_ticks("ledge_fd_fox", 420);
 }
+
+#[test]
+fn turnrun_fd_fox_300() {
+    movement_gate_ticks("turnrun_fd_fox", 300);
+}
+
+#[test]
+fn turnrun_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("turnrun_fd_fox", 300);
+}
+
+#[test]
+fn walkfast_fd_fox_300() {
+    movement_gate_ticks("walkfast_fd_fox", 300);
+}
+
+#[test]
+fn walkfast_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("walkfast_fd_fox", 300);
+}
+
+#[test]
+fn ledgeclimb_fd_fox_420() {
+    movement_gate_ticks("ledgeclimb_fd_fox", 420);
+}
+
+#[test]
+fn ledgeclimb_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("ledgeclimb_fd_fox", 420);
+}
+
+#[test]
+fn ledgeescape_fd_fox_420() {
+    movement_gate_ticks("ledgeescape_fd_fox", 420);
+}
+
+#[test]
+fn ledgeescape_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("ledgeescape_fd_fox", 420);
+}

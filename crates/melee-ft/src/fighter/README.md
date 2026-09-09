@@ -9,6 +9,32 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T7 Running reversal and ledge options
+
+`turnrun_fd_fox` and `walkfast_fd_fox` match **300 ticks, 49 keys, zero
+divergences**; `ledgeclimb_fd_fox` and `ledgeescape_fd_fox` match **420 ticks,
+49 keys, zero divergences**. All four have raw fighter replays and ordered
+particle RNG checks. WalkFast needed no behavior correction. See
+[M4_TURNRUN.md](M4_TURNRUN.md) for the audit, commands and remaining boundaries.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| TurnRun predicates / entry | 800C9CEC / 800C9D40 / 800C9D94 | `turn_run.rs`, Run/RunBrake input in `run.rs`; typed facing and pause latch |
+| TurnRun Anim / IASA / Phys / Coll | 800C9E10 / 800C9ED8 / 800C9EFC / 800CA024 | `turn_run.rs`, enum dispatch in `procs.rs`; fused friction, pause/reversal, edge stop |
+| Post-turn Run predicate | 800CA644 | `turn_run.rs`; archive-derived interrupt delay from PlCo +430 |
+| CliffClimbQuick / CliffEscapeQuick entry | 8009AB9C / 8009B040 | `ledge.rs`; shared retained `CliffState`, grab exclusions and nudge suppression |
+| CliffClimb Anim / Phys / Coll; CliffEscape wrappers | 8009AC68 / 8009ACA8 / 8009ADA4; 8009B10C / 8009B130 / 8009B150 | `ledge.rs`; map endpoint + TransN, grounded root motion and edge collision |
+| Ground conversion / grounded root-motion physics | 8007D6A4 / 80084FA8 / 80085030 | `landing.rs`, `ledge.rs`; retained Y velocity and audited horizontal extraction |
+| Grab-category exclusions | 8007E2F4 | typed `GrabExclusions`; catch/wait use 0x1FF, options use 0x20 |
+
+Climb becomes grounded at tick 254 and enters WalkSlow at 266; escape becomes
+grounded at 252 and enters Wait at 281. Subaction intangibility ends at 262
+and 266 respectively. Quick/Slow selection uses **damage percentage**, not
+hang duration; Slow climb/escape remain explicit unsupported entries. Existing
+`CharacterCallbacks` defaults remain the character boundary; these new retail
+state bodies have no character-kind branches. Effect routing and particle
+math needed no changes, and no new particle field dumps were supplied.
+
 ## M4-T5 Air dodge, wavedash and ledges
 
 `airdodge_fd_fox` and `wavedash_fd_fox` match **300 ticks, 49 keys, zero
@@ -32,7 +58,7 @@ See [M4_LEDGE.md](M4_LEDGE.md) for validation, the retail audit and limitations.
 The recorded **262/263 are CliffJumpQuick1/Quick2**, not Slow1/Slow2 (260/261).
 The ledge ledger's dust calls at 246 and 283 are the launch and the landing.
 No supplied scene enters FallSpecial (35), so that animation-completion branch
-remains explicit. CliffClimb/Attack/Escape, timeout into DamageFall, occupied
+remains explicit. CliffAttack and Slow climb/escape, timeout into DamageFall, occupied
 ledge arbitration, items/tethers and ceiling interactions remain unsupported.
 `CharacterCallbacks::on_landing` and `air_dodge_tether` own character branches.
 No new RNG site or particle arithmetic was needed; particle field dumps for
@@ -130,7 +156,7 @@ Dash first-frame acceleration uses `xE8_ground_accel_2`; later ticks use the
 shared ground acceleration/clamp. Run tapers acceleration and scales animation
 rate by ground velocity. RunBrake retains its two command-variable controls,
 maximum duration and pause/release logic. Turn can now enter a dash with its
-initial attack/escape window disabled. TurnRun, combat/item/shield/jump-cancel,
+initial attack/escape window disabled. Combat/item/shield/jump-cancel,
 short/sloping body tilt and StopWall entries remain explicit boundaries. No
 new `ftCo_0A01.c` helper is called by these item-free human paths.
 
@@ -172,8 +198,8 @@ are enums in `state.rs`; scratch data uses typed `MotionData` variants.
 | `ftAction_80072CD8`, `ftAction_800728F8` | 80072CD8, 800728F8 | FD footstep sound and controller rumble requests |
 
 WalkFast shares the same selection, rate and physics implementation. Its tier
-threshold boundaries are unit-tested; the supplied retail traces exercise only
-Slow and Middle. Walk phase conversion uses retail `800E0010 fnmsubs`, followed
+threshold boundaries are unit-tested, and M4-T7's `walkfast_fd_fox` now verifies
+all three tiers against retail. Walk phase conversion uses retail `800E0010 fnmsubs`, followed
 by separate divide/multiply and `fctiwz`. Acceleration uses separate `fmuls`
 at 800E008C/0090/009C or 00AC, then `800E00B4 fadds`. No FMA is introduced there.
 Every imported resource comes from the owned archives; gameplay reads no trace
@@ -187,7 +213,7 @@ nametag timer and relevant Turn/Walk/Squat scratch fields. `m4_gate` separately
 runs the complete scene and checks all 49 keys with produced RNG. Local-data
 absence skips both test families cleanly.
 
-Remaining explicit movement boundaries: TurnRun (ftCo_TurnRun.c:35-38), platform-drop entry (ftCo_Squat.c:79-84), ledge
+Remaining explicit movement boundaries: platform-drop entry (ftCo_Squat.c:79-84), ledge
 Fall/Ottotto entries, attack/special/jump/shield transition bodies, metal
 or scaled-player modifiers, and non-default terrain footstep effects. The new
 IASAs retain their own predicate ordering and reject unsupported transition

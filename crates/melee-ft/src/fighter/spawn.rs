@@ -300,6 +300,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.shield.clear_collision();
         self.status.ignore_fighter_nudge = false;
         self.status.on_ledge = false;
+        self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         self.commands.allow_interrupt = false;
         self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
@@ -364,9 +365,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::WalkSlow => (MotionState::WALK_SLOW, 7),
             CommonMotionState::WalkMiddle => (MotionState::WALK_MIDDLE, 8),
             CommonMotionState::WalkFast => (MotionState::WALK_FAST, 9),
-            CommonMotionState::TurnRun => {
-                unimplemented!("ftCo_TurnRun.c:35-38: running reverse input -> TurnRun")
-            }
+            CommonMotionState::TurnRun => (MotionState::TURN_RUN, 11),
+            CommonMotionState::CliffClimbQuick => (MotionState::CLIFF_CLIMB, 220),
+            CommonMotionState::CliffEscapeQuick => (MotionState::CLIFF_ESCAPE, 224),
             CommonMotionState::KneeBend => (MotionState::KNEE_BEND, 15),
             CommonMotionState::JumpF => (MotionState::JUMP, 16),
             CommonMotionState::JumpB => (MotionState::JUMP_BACK, 17),

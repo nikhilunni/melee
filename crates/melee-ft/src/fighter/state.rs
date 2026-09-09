@@ -32,6 +32,8 @@ pub enum AnimationCallback {
     Dash,
     Run,
     RunBrake,
+    TurnRun,
+    CliffClimb,
     Squat,
     SquatWait,
     SquatRv,
@@ -66,6 +68,8 @@ pub enum InputCallback {
     Dash,
     Run,
     RunBrake,
+    TurnRun,
+    CliffClimb,
     Squat,
     SquatWait,
     SquatRv,
@@ -100,6 +104,8 @@ pub enum PhysicsCallback {
     Dash,
     Run,
     RunBrake,
+    TurnRun,
+    CliffClimb,
     Squat,
     SquatWait,
     SquatRv,
@@ -134,6 +140,8 @@ pub enum CollisionCallback {
     Dash,
     Run,
     RunBrake,
+    TurnRun,
+    CliffClimb,
     Squat,
     SquatWait,
     SquatRv,
@@ -161,6 +169,37 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const TURN_RUN: Self = Self {
+        id: CommonMotionState::TurnRun,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::TurnRun,
+            input: InputCallback::TurnRun,
+            physics: PhysicsCallback::TurnRun,
+            collision: CollisionCallback::TurnRun,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const CLIFF_CLIMB: Self = Self {
+        id: CommonMotionState::CliffClimbQuick,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffClimb,
+            input: InputCallback::CliffClimb,
+            physics: PhysicsCallback::CliffClimb,
+            collision: CollisionCallback::CliffClimb,
+            camera: CameraCallback::Cliff,
+        },
+    };
+    pub const CLIFF_ESCAPE: Self = Self {
+        id: CommonMotionState::CliffEscapeQuick,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffClimb,
+            input: InputCallback::CliffClimb,
+            physics: PhysicsCallback::CliffClimb,
+            collision: CollisionCallback::CliffClimb,
+            camera: CameraCallback::Cliff,
+        },
+    };
+
     pub const CLIFF_CATCH: Self = Self {
         id: CommonMotionState::CliffCatch,
         callbacks: StateCallbacks {

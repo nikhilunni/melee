@@ -487,6 +487,16 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         bytes[0x221D] & 1 != 0,
         "ledge flag tick {tick}"
     );
+    assert_eq!(
+        fighter.status.grab_exclusions.0,
+        u16::from_be_bytes([bytes[0x1A6A], bytes[0x1A6B]]),
+        "ledge option grab exclusion tick {tick}"
+    );
+    assert_eq!(
+        fighter.status.ignore_fighter_nudge,
+        bytes[0x221D] & 4 != 0,
+        "fighter nudge exclusion tick {tick}"
+    );
     let hurt = match fighter.commands.hurt_status {
         melee_ft::fighter::escape::HurtStatus::Normal => 0,
         melee_ft::fighter::escape::HurtStatus::Invincible => 1,
@@ -506,6 +516,27 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         word(bytes, 0x198C),
         "timed hurt status tick {tick}"
     );
+    if matches!(
+        fighter.motion_state.id,
+        S::CliffClimbQuick | S::CliffEscapeQuick
+    ) {
+        let translation = &fighter
+            .animation
+            .root_motion
+            .as_ref()
+            .unwrap()
+            .primary_history;
+        for (offset, actual) in [(0x68C, translation.position), (0x6A4, translation.offset)] {
+            for (axis, value) in [actual.x, actual.y, actual.z].into_iter().enumerate() {
+                check_float("ledge TransN", value, offset + axis * 4);
+            }
+        }
+        assert_eq!(
+            fighter.collision.data.floor.index as u32,
+            word(bytes, 0x83C),
+            "ledge floor tick {tick}"
+        );
+    }
     match (&fighter.state_data, fighter.motion_state.id) {
         (
             MotionData::Guard(guard),
@@ -581,7 +612,12 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         }
         (
             MotionData::Cliff(cliff),
-            S::CliffCatch | S::CliffWait | S::CliffJumpQuick1 | S::CliffJumpSlow1,
+            S::CliffCatch
+            | S::CliffWait
+            | S::CliffJumpQuick1
+            | S::CliffJumpSlow1
+            | S::CliffClimbQuick
+            | S::CliffEscapeQuick,
         ) => {
             assert_eq!(
                 cliff.ledge_id as u32,
@@ -663,6 +699,14 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
                 "brake paused tick {tick}"
             );
             check_float("brake frames", brake.remaining_frames, 0x2344);
+        }
+        (MotionData::TurnRun(turn), S::TurnRun) => {
+            check_float("turn-run entry facing", turn.entry_facing, 0x234C);
+            assert_eq!(
+                u32::from(turn.animation_paused),
+                word(bytes, 0x2354),
+                "turn-run pause latch tick {tick}"
+            );
         }
         (MotionData::Turn(turn), S::Turn) => {
             assert_eq!(

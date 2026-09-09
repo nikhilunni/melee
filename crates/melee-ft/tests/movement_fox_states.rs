@@ -194,3 +194,23 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
         assert_eq!(fighter.status.ledge_cooldown, (cooldown - 1).max(0));
     }
 }
+
+#[test]
+fn turnrun_fox_state_callbacks() {
+    replay_state_callbacks("turnrun", "ledger");
+}
+
+#[test]
+fn walkfast_fox_state_callbacks() {
+    replay_state_callbacks("walkfast", "ledger");
+}
+
+#[test]
+fn ledgeclimb_fox_state_callbacks() {
+    replay_state_callbacks("ledgeclimb", "ledger");
+}
+
+#[test]
+fn ledgeescape_fox_state_callbacks() {
+    replay_state_callbacks("ledgeescape", "ledger");
+}

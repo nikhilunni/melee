@@ -68,7 +68,7 @@ impl FighterAssets {
         let mut words = BTreeMap::new();
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42,
-            43, 17, 19, 36, 44, 216, 217, 225, 226, 227, 228, 238,
+            43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
         ] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -161,7 +161,7 @@ impl FighterAssets {
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41,
-                42, 43, 17, 19, 36, 44, 216, 217, 225, 226, 227, 228, 238,
+                42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
@@ -195,6 +195,7 @@ impl FighterAssets {
                 friction_multiplier: common.reader().f32(common_data + 0x60)?,
                 relaxed_jump_threshold: common.reader().f32(common_data + 0x80)?,
                 brake_pause_speed: common.reader().f32(common_data + 0x42c)?,
+                turn_exit_interrupt_delay: common.reader().f32(common_data + 0x430)?,
             },
             movement: crate::desc::common::MovementParameters {
                 middle_threshold: common.reader().f32(common_data + 0x28)?,

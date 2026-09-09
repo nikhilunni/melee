@@ -85,8 +85,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCommon_8007D7FC -> 8007D6A4 (ftcommon.c:550-595).
     /// Landing keeps vertical self velocity until the next ground Phys callback.
     pub fn land(&mut self) {
-        let max = self.attributes.ground.ground_max_horizontal_velocity;
-        self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-max, max);
+        if self
+            .animation
+            .flags
+            .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            let offset = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("landing TransN")
+                .primary_history
+                .offset
+                .z;
+            // Retail 8007D6CC fmuls: root motion supplies horizontal velocity.
+            self.physics.self_velocity.x = offset * self.physics.facing;
+        }
+        // Retail clamps the OLD gr_vel (8007D6D4..6F8), then overwrites it
+        // from self_vel (8007D704/708). It does not clamp the new velocity.
         self.physics.ground_or_air = GroundOrAir::Ground;
         self.physics.ground_velocity = self.physics.self_velocity.x;
         self.physics.jumps_used = 0;

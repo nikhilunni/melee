@@ -198,6 +198,10 @@ impl Fixture {
         f.status.ledge_cooldown = word(raw, 0x2064) as i32;
         f.status.ledge_intangibility = word(raw, 0x1990) as i32;
         f.status.on_ledge = raw[0x221D] & 1 != 0;
+        f.status.grab_exclusions = melee_ft::fighter::ledge::GrabExclusions(u16::from_be_bytes([
+            raw[0x1A6A],
+            raw[0x1A6B],
+        ]));
         f.status.ledge_grab_disabled = raw[0x2228] & 0x20 != 0;
         f.thrown_hitbox.state = word(raw, 0x1064);
         f.thrown_hitbox.offset = vector(raw, 0x1074);

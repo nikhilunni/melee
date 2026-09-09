@@ -113,6 +113,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.run_animation();
                 return Ok(None);
             }
+            state::AnimationCallback::TurnRun => {
+                self.turn_run_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::CliffClimb => {
+                self.cliff_climb_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::RunBrake => {
                 self.run_brake_animation(assets)?;
                 return Ok(None);
@@ -243,6 +251,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     self.shield_input(assets, &context).expect("shield IASA");
                     return;
                 }
+                state::InputCallback::TurnRun => {
+                    // ftCo_TurnRun_IASA (800C9ED8), ftCo_TurnRun.c:82-85.
+                    self.reject_running_jump(assets);
+                    return;
+                }
+                // Empty CliffClimb_IASA / CliffEscape_IASA (8009ACA4 / 8009B12C).
+                state::InputCallback::CliffClimb => return,
                 state::InputCallback::CliffCatch
                 | state::InputCallback::CliffJump1
                 | state::InputCallback::CliffJump2 => return,
@@ -386,10 +401,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     wind,
                 );
             }
-            state::PhysicsCallback::Dash
+            state::PhysicsCallback::TurnRun
+            | state::PhysicsCallback::Dash
             | state::PhysicsCallback::Run
             | state::PhysicsCallback::RunBrake => {
-                self.running_physics(assets);
+                if self.motion_state.id == melee_types::CommonMotionState::TurnRun {
+                    self.turn_run_physics(assets);
+                } else {
+                    self.running_physics(assets);
+                }
                 crate::physics::grounded::apply_ground_movement(
                     &mut self.physics,
                     self.collision.data.floor.normal,
@@ -426,6 +446,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     map,
                     wind,
                 );
+            }
+            state::PhysicsCallback::CliffClimb => {
+                self.cliff_climb_physics(assets, map)
+                    .expect("ledge option physics");
+                if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+                    crate::physics::grounded::finish_ground_update(
+                        &mut self.physics,
+                        &self.collision.data,
+                        &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+                        map,
+                        wind,
+                    );
+                } else {
+                    crate::physics::integrate::integrate_velocity(&mut self.physics);
+                    crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+                }
             }
             state::PhysicsCallback::CliffCatch
             | state::PhysicsCallback::CliffWait
@@ -636,6 +672,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.skeleton
                     .set_translate(self.animation.root, &self.physics.position);
             }
+            state::CollisionCallback::TurnRun => self.turn_run_collision(assets, map)?,
+            state::CollisionCallback::CliffClimb => self.ledge_collision(assets, map)?,
             state::CollisionCallback::CliffCatch
             | state::CollisionCallback::CliffWait
             | state::CollisionCallback::CliffJump1 => {

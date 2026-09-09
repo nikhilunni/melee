@@ -1,4 +1,4 @@
-//! Standing turn, ftCommon/ftCo_Turn.c. TurnRun has its own unported family.
+//! Standing turn, ftCommon/ftCo_Turn.c. TurnRun lives in turn_run.rs.
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,

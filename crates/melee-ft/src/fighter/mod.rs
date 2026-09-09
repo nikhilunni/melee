@@ -20,6 +20,7 @@ mod spawn;
 pub mod squat;
 pub mod state;
 pub mod turn;
+pub mod turn_run;
 pub mod walk;
 
 use crate::{
@@ -185,6 +186,8 @@ pub struct Status {
     pub ledge_grab_disabled: bool,
     /// x221D_b7: hanging/ledge-option state, cleared on motion entry.
     pub on_ledge: bool,
+    /// x1A6A, ftCommon_8007E2F4: excluded grab categories.
+    pub grab_exclusions: ledge::GrabExclusions,
     /// x1990: timed intangibility, independent of subaction hurt status.
     pub ledge_intangibility: i32,
 
@@ -208,6 +211,7 @@ impl Status {
             ledge_cooldown: 0,
             ledge_grab_disabled: false,
             on_ledge: false,
+            grab_exclusions: ledge::GrabExclusions::NONE,
             ledge_intangibility: 0,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
@@ -334,6 +338,7 @@ pub enum MotionData {
     Dash(dash::DashState),
     Run(run::RunState),
     RunBrake(run::RunBrakeState),
+    TurnRun(turn_run::TurnRunState),
     KneeBend(jump::KneeBendState),
     Jump(jump::JumpState),
     JumpAerial {

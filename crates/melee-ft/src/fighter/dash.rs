@@ -25,6 +25,8 @@ pub struct RunningParameters {
     pub relaxed_jump_threshold: f32,
     /// +42C: brake animation pause/release speed.
     pub brake_pause_speed: f32,
+    /// +430: Run interrupt delay after completing TurnRun.
+    pub turn_exit_interrupt_delay: f32,
 }
 #[derive(Clone, Debug)]
 pub struct DashState {

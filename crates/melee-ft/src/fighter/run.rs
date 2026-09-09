@@ -84,17 +84,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
             panic!("run data missing")
         };
         if run.interrupt_delay <= 0.0 {
-            self.reject_running_turn(assets);
+            if self.try_turn_run(assets, 0.0)? {
+                return Ok(());
+            }
             if fabsf(self.input.current.stick.x) < assets.running.run_threshold {
                 self.enter_run_brake(assets)?;
             }
         }
         Ok(())
-    }
-    fn reject_running_turn(&self, assets: &FighterAssets) {
-        if self.input.current.stick.x * self.physics.facing <= assets.running.turn_threshold {
-            unimplemented!("ftCo_TurnRun.c:19-38: TurnRun entry");
-        }
     }
     /// ftCo_RunBrake_Enter (0x800CAC18).
     fn enter_run_brake(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -135,8 +132,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_RunBrake_IASA (0x800CADB0).
     pub(super) fn run_brake_input(&mut self, assets: &FighterAssets) -> Result<()> {
         self.reject_running_jump(assets);
-        if self.commands.variables[0] != 0 {
-            self.reject_running_turn(assets);
+        if self.commands.variables[0] != 0 && self.try_turn_run(assets, self.animation.frame)? {
+            return Ok(());
         }
         if self.input.current.stick.y < -assets.input.thresholds.squat_stick_threshold {
             self.enter_squat(assets)?;
