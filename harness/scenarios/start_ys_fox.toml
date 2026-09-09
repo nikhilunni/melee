@@ -1,0 +1,20 @@
+# Yoshi's Story, Fox vs Fox, first initialised frame (both in Entry). Recorded
+# 2026-09-09 with remote.py after RAM-only pokes (characters and stages
+# unlocked, stock 1); the memory card is unchanged. Savestate is machine-local.
+name = "start_ys_fox"
+savestate = "harness/roms/start_ys_fox.sav"
+frames = 600
+seed = 1
+stage = "YoshisStory"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
