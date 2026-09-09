@@ -1,7 +1,8 @@
 /target
 /harness/.venv
-/harness/traces/
-/harness/roms/
+/harness/traces
+/harness/roms
+# (no trailing slash: the lane worktrees keep these as symlinks, which a `dir/` pattern does not match)
 *.iso
 *.rvz
 *.gcm
