@@ -241,6 +241,10 @@ happens only in the main checkout. Claude merges: review in the lane, rebase
 the lane branch onto `main`, run the full gates on the merged tree, commit
 on `main`. Lanes never commit on their own and never touch each other's
 crates; if two lanes drift into one file, Claude resolves it.
+Merging checklist (learned the hard way): after resolving conflicts,
+build the merged tree and grep the output for `error[`/`could not compile`
+as well as test failures before fast-forwarding `main`; a lane that passed
+in isolation can be semantically broken by a sibling's struct change.
 
 ## Hard boundaries
 

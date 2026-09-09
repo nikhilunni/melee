@@ -183,6 +183,8 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 
 - [x] (2026-09-09) **Parallel lanes prepared.** `harness/record.py` records tick trace, ledger, particles and bones in one command; melee-sim characters register in one line (`scene_characters!`); three git worktrees under `../melee-lanes/{combat,battlefield,chars}` (CLAUDE.md "Parallel lanes"). Recorded: `jab_fd_marth` (first hit: Marth dash into Fox, push apart, jab at t121, Fox damage state 79 at t124 for 4%, Wait t150; ledger adds `ifStatus_802F4B84+0x1C0/+0x1D0`, the HUD percent shake), Battlefield `idle_bf_fox`/`start_bf_fox` (Fox vs Fox spawn at (0,0) and (0,54.4); idle ledger adds `hsd_8039DAD4+0x900` x232 from the stage's own generators), and Falco (kind 22), Captain Falcon (kind 2) and Peach (kind 9) idle/start plus all sixteen movement scenes each (airjumpb needs the Marth drift timing for all three; Falcon's three ledge scenes need the drift back at VI 60). Lanes launched: A1 combat (jab), B1 Battlefield, C1 Falco; Falcon and Peach queued in the character lane.
 
+- [x] (2026-09-09) **Cold start (Codex lane B3).** `melee-sim/src/initial_state/cold.rs` builds the match-start state from `(stage, characters/costumes/ports, seed)` with no savestate: `start_fd_fox_cold`, `start_fd_marth_cold`, `start_bf_fox_cold`, `start_fd_falco_cold` all reach the recorded traces 600x49. Found and fixed en route: retail CPU initialisation draws twice (`ftCo_800A101C` + `ftCo_800B9704`); the first-session one-draw spawn expectation was self-authored and is corrected. `docs/COLD_START.md`. Next: Slippi replays as tests (lane B4).
+
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 
 Gate: two-fighter scenarios with hits, shields, grabs, KOs.

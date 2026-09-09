@@ -77,6 +77,8 @@ impl InitialState {
             pending_music,
             selected_music: None,
             resume_s_link: 24,
+            // A cold match has no emission interrupted by a save boundary.
+            pending_emission: None,
             effects: crate::effects::Effects::default(),
         })
     }
