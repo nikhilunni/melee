@@ -84,6 +84,7 @@ macro_rules! c_enum {
 // scope for them; no `use` is required.
 mod cpu_cmd;
 mod fighter_kind;
+mod ft_part;
 mod gr_kind;
 mod ground_or_air;
 mod item_kind;
@@ -92,6 +93,7 @@ mod player_kind;
 
 pub use cpu_cmd::CpuCmd;
 pub use fighter_kind::FighterKind;
+pub use ft_part::FtPart;
 pub use gr_kind::GrKind;
 pub use ground_or_air::GroundOrAir;
 pub use item_kind::ItemKind;
