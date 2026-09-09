@@ -1,0 +1,11 @@
+aobj.c.inc and ftanim.c.inc are unchanged function excerpts from doldecomp/melee
+(third_party/melee-decomp), under its MIT license. The source-verification test
+compares both excerpts against the pinned submodule when present.
+
+Only pure arithmetic is under test: FObj track dispatch, SRT transfer and
+root-motion extraction are stubbed out in driver.c. Both original frame-clock
+functions run, including FIRST_PLAY, stopped state, loop rewind, overshoot,
+blend progress and Fighter remainder. No fusion was present in either function
+in the NTSC-U 1.02 DOL (asm.py --fused); compile with -ffp-contract=off.
+Finite inputs and positive loop spans use native fmodf, which has the same
+finite remainder result as MSL. Invalid/NaN loop spans are outside this sweep.

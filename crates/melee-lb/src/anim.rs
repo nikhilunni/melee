@@ -5,9 +5,8 @@
 //! remapping, partial-body animation and blending remain fighter-layer work.
 //! HSD itself has no FigaTree helpers; request/interpret use its existing runtime.
 //!
-//! Deliberately omitted: `fn_8001E60C` / `lbAnim_8001E7E8` (translation-filtered
-//! attachment). Retail advances the track pointer only on an accepted track,
-//! so that path is not a conventional filter and must not be silently rewritten.
+//! Translation-filtered attachment preserves retail's accepted-prefix behavior;
+//! see [`attach_joint_tracks_without_translation`].
 
 use std::{collections::HashSet, fmt};
 
@@ -16,13 +15,14 @@ use hsd_anim::fobj::{FObj, FObjDesc};
 use hsd_anim::jobj::{jobj_sort_anim, JObjId, JObjTree, JOBJ_CLASSICAL_SCALE, JOBJ_INSTANCE};
 use hsd_archive::desc::{FigaTrack, FigaTree};
 
-/// Invalid inputs to the unfiltered FigaTree/skeleton attachment boundary.
+/// Invalid inputs to the FigaTree/skeleton attachment boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttachError {
     InvalidJoint(JObjId),
     RepeatedJoint(JObjId),
     NodeCount { joints: usize, nodes: usize },
     InvalidTracks,
+    NoAcceptedTracks,
 }
 
 impl fmt::Display for AttachError {
@@ -37,6 +37,9 @@ impl fmt::Display for AttachError {
                 )
             }
             Self::InvalidTracks => f.write_str("FigaTree track counts or stream lengths disagree"),
+            Self::NoAcceptedTracks => {
+                f.write_str("translation filter did not allocate a valid FObj")
+            }
         }
     }
 }
@@ -56,6 +59,35 @@ fn load_track(track: &FigaTrack) -> FObj {
         frac_slope: track.frac_slope,
         ad: track.ad.clone(),
     })
+}
+
+/// `fn_8001E60C` / `lbAnim_8001E7E8` (`lbanim.c`, 0x8001E60C/0x8001E7E8).
+/// Retail 0x8001E6A0 increments the track pointer inside the accepted branch;
+/// 0x8001E6AC increments the loop counter unconditionally. On the first type
+/// 5, 6 or 7, every remaining iteration inspects that SAME rejected track.
+/// Thus only the prefix before it is attached, not all nontranslation tracks.
+/// If that prefix is empty, C's final FObj pointer is uninitialized; retail
+/// 0x8001E6BC stores through r3, still the incoming track pointer. Return an
+/// error for that invalid/corrupting input instead of inventing an empty
+/// animation. A zero-count node, in contrast, is a defined no-op.
+pub fn attach_joint_tracks_without_translation(
+    tree: &mut JObjTree,
+    joint: JObjId,
+    animation: &FigaTree,
+    tracks: &[FigaTrack],
+) -> Result<(), AttachError> {
+    if tracks.is_empty() {
+        return Ok(());
+    }
+    let accepted = tracks
+        .iter()
+        .position(|t| matches!(t.obj_type, 5..=7))
+        .unwrap_or(tracks.len());
+    if accepted == 0 {
+        return Err(AttachError::NoAcceptedTracks);
+    }
+    attach_joint_tracks(tree, joint, animation, &tracks[..accepted]);
+    Ok(())
 }
 
 /// `lbAnim_8001E6D8` (`lbanim.c`, retail `0x8001E6D8`), including its inline
