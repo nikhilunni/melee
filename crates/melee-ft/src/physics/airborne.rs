@@ -60,12 +60,16 @@ pub fn drift(velocity: f32, stick: f32, attrs: &AirAttributes) -> f32 {
     acceleration
 }
 
-/// ft_80084DB0 (0x80084DB0), neutral input: CheckFallFast short-circuits.
+/// ft_80084DB0 (0x80084DB0), after CheckFallFast: terminal or fast-fall speed.
 pub fn fall_physics(state: &mut FighterPhysics, attrs: &AirAttributes, stick_x: f32) {
-    state.self_velocity.y = gravity(
-        state.self_velocity.y,
-        attrs.gravity,
-        attrs.terminal_velocity,
-    );
+    state.self_velocity.y = if state.fast_fall {
+        -attrs.fast_fall_velocity
+    } else {
+        gravity(
+            state.self_velocity.y,
+            attrs.gravity,
+            attrs.terminal_velocity,
+        )
+    };
     state.animation_velocity.x = drift(state.self_velocity.x, stick_x, attrs);
 }

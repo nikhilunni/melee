@@ -34,6 +34,14 @@ const LANDING_EFFECT: u32 = 0x18;
 // efasync.c:262-268: stationary model effect, with facing and floor rotation.
 const DASH_DUST_REQUEST: u16 = 0x3FF;
 const DASH_DUST_EFFECT: u32 = 5;
+// efasync.c:282-287: direct joint attachment, without a model effect.
+const JUMP_DUST_REQUEST: u16 = 0x402;
+const AERIAL_JUMP_DUST_REQUEST: u16 = 0x403;
+const JUMP_DUST_PARTICLE: u32 = 0x59;
+const AERIAL_JUMP_DUST_PARTICLE: u32 = 0x5E;
+// Stable fighter-bone identities occupy a range beyond effect model joints.
+const FIRST_FIGHTER_JOINT: usize = 1 << 24;
+const FIGHTER_JOINT_STRIDE: usize = 256;
 // EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
 const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
@@ -46,6 +54,7 @@ pub(crate) struct Effects {
     pub(crate) draws: DrawLog,
     instances: Vec<Effect>,
     next_joint: usize,
+    fighter_joints: BTreeMap<usize, (usize, usize)>,
 }
 struct Effect {
     tree: JObjTree,
@@ -102,6 +111,23 @@ impl Effects {
             if matches!(request, EffectRequest::DestroyOwned) {
                 continue;
             }
+            if let EffectRequest::Attached { id, bone } = request {
+                // efasync.c:282-287: kind 0, hsd_8039EFAC on the live bone.
+                let kind = match id {
+                    JUMP_DUST_REQUEST => JUMP_DUST_PARTICLE,
+                    AERIAL_JUMP_DUST_REQUEST => AERIAL_JUMP_DUST_PARTICLE,
+                    _ => anyhow::bail!("unsupported attached effect {id:#x}"),
+                };
+                assert!(bone < FIGHTER_JOINT_STRIDE);
+                let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                let joint = fighter.animation.parts[bone].joint;
+                fighter.skeleton.setup_matrix(joint);
+                let mut spawn = SpawnRequest::new(0, kind, 0);
+                spawn.joint = Some((joint_id, fighter.skeleton.get(joint).mtx));
+                particles.spawn::<RetailTrig>(bank, spawn, rng, &mut self.draws)?;
+                self.fighter_joints.insert(joint_id, (player, bone));
+                continue;
+            }
             if let EffectRequest::Graphics {
                 id,
                 bone,
@@ -149,7 +175,7 @@ impl Effects {
             let matrix = fighter.skeleton.get(root).mtx;
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
-                EffectRequest::DestroyOwned => unreachable!(),
+                EffectRequest::DestroyOwned | EffectRequest::Attached { .. } => unreachable!(),
                 EffectRequest::Graphics {
                     offset,
                     facing,
@@ -197,6 +223,18 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
+        self.fighter_joints.retain(|id, _| {
+            particles
+                .generators
+                .iter()
+                .any(|g| g.attachment_id == Some(*id))
+        });
+        for (&id, &(player, bone)) in &self.fighter_joints {
+            let fighter = &mut fighters[player];
+            let joint = fighter.animation.parts[bone].joint;
+            fighter.skeleton.setup_matrix(joint);
+            particles.update_joint(id, fighter.skeleton.get(joint).mtx);
+        }
         for effect in &mut self.instances {
             if effect.lifetime != 0 {
                 effect.lifetime -= 1;

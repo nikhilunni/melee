@@ -461,3 +461,48 @@ ports their display update with explicit camera view / psFrameNum inputs
 (`psDispSubAppSRT`, 803A1F90..2184). The dump does not contain those external
 inputs, so the test remains red rather than importing expected cache outputs
 or excluding fields. Full audit and results: `melee-ft/src/fighter/M4_DASH.md`.
+
+
+## M4-T3 jump, aerial-jump and landing dust (2026-09-09)
+
+The full-scene jump gate matches **300 ticks, 49 keys, zero divergences**.
+`hsd-particle/tests/live_fd_jump.rs` matches **489,588 canonical fields**,
+**9,544 ordered particle RNG draws** and every final seed over all 300 ticks
+(final seed `0x059317FC`). This includes generator/particle numeric state and
+list order. The original dash display-cache helper now lives in
+`tests/support/dust_replay.rs` and is reused unchanged; jump has **zero** such
+fields to exclude. Dash still matches 441,857 fields with its 532 documented
+render-cache exclusions, superseding the earlier incomplete follow-up above.
+
+| Tick | Animation request / async dispatch | Particle descriptor, bank 0 |
+|---|---|---|
+| 36, 106 | GFX 0x402, async kind 0, live fighter root joint | 0x59 (89) |
+| 113 | GFX 0x403, async kind 0, live fighter root joint | 0x5E (94) |
+| 55, 152 | Landing request 0x404, async kind 6, effect-table 0x18 | DPtcl 10 |
+
+All three use the existing disc emitter (shape 0); no new particle opcode,
+emitter math or AppSRT path was necessary. The effect layer now refreshes
+attached fighter-joint matrices before particle emission. Its five external
+requests and subsequent joint matrices were captured from the production
+jump gate into `tests/support/jump_fd_spawns.{rs,json}`; the fixture has no
+particle outputs or captured retail matrices. Particle descriptors/bytecode
+remain loaded from the owned archives. Runtime has no fixture dependency.
+
+The task's dust-spawner count is correct, but both randomized calls are
+**landing** commands at 55/152. Jump and aerial-jump GFX commands take
+`ftCo_09F7.c:115-133`'s kind-0 branch and consume no offset RNG. The previously
+ported block-70 sites FCDC/FD00/FD24 therefore execute twice each. Particle
+sites below are existing, audited paths newly verified by the jump field oracle:
+
+| Retail site / symbol offset | Count | Behavior |
+|---|---:|---|
+| 8039B5E0 / 930C+22D4 | 20 | BD random target speed |
+| 8039A810 / 930C+1504 | 8 | AC random size |
+| 8039E1E4 / DAD4+710 | 9 | disc radius |
+| 8039E3D4 / DAD4+900 | 9 | disc azimuth |
+| 8039E088 / DAD4+5B4 | 4 | negative-angle disc pre-loop |
+
+The complete ledger has 9,554 draws: 9,544 particle, six landing offset,
+two Wait-choice and two stage draws. `melee-sim/tests/m4_gate.rs` independently
+checks the full-scene ordered particle sites with produced RNG. See
+[the fighter report](../crates/melee-ft/src/fighter/M4_JUMP.md) for all commands.

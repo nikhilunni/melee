@@ -182,6 +182,7 @@ impl Fixture {
         f.physics.ground_knockback_velocity = float(raw, 0xF0);
         f.physics.ground_shield_knockback_velocity = float(raw, 0xF4);
         f.physics.jumps_used = raw[0x1968];
+        f.physics.fast_fall = raw[0x221A] & 8 != 0;
         f.physics.ground_or_air =
             melee_types::GroundOrAir::try_from(word(raw, 0xE0) as i32).unwrap();
         f.input = import_input(raw);

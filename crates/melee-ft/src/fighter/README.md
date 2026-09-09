@@ -9,6 +9,48 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T3 KneeBend, JumpF, JumpAerialF and fast fall
+
+`jump_fd_fox` matches **300 ticks, 49 keys, 0 divergences**. The raw callback
+replay checks the hop decision, first-physics flag, command variables, fast-fall
+flag, vertical input age and landing/crouch scratch. Button/stick hold and
+release/repress tests distinguish full hop from the latched short hop.
+See [M4_JUMP.md](M4_JUMP.md) for exact commands, effect routing and limits.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Jump_GetInput; KneeBend Enter / Anim / Check_ShortHop / IASA | 800CAE80; 800CB4E0 / 800CB528 / 800CB59C / 800CB5FC | `jump.rs`, typed input source and hop decision |
+| Jump entry velocities / Enter / Anim / IASA / Phys_Inner | 800CB110 / 800CB250 / 800CB2F8 / 800CB334 / 800CB438 | `jump.rs`; first Phys skips gravity, later Phys uses air drift |
+| JumpAerial_Enter_Basic / shared entry / Anim / IASA / Phys | 800CBBC0 / 800CBAC4 / 800CC388 / 800CC4F8 / 800CC634 | `jump.rs`, shared aerial input dispatch in `procs.rs` |
+| Fall_IASA_Inner / CheckFallFast / FallFast / air physics | 800CCAAC / 8007D528 / 8007D4E4 / 80084DB0 | `fall.rs`, `jump.rs`, `physics/airborne.rs` |
+| Landing_Enter / Landing_IASA / direct SquatWait | 800D5AEC / 800D5D78 / 800D62C4 | `landing.rs`; preserves scratch and shows nametag |
+| KneeBend Coll / Jump Coll / JumpAerial Coll | 800CB6CC / 800CB4B0 / 800CC700 | shared ground/air collision, explicit StopCeil boundary |
+| ftCo_8009F834 kind 0; efAsync_Dispatch 402/403 | 8009F834; efasync.c:282-287 | `effects.rs`: live fighter-bone attachment, no offset RNG |
+
+Fox uses the ordinary aerial jump, not the multijump `JumpAerialF1` family.
+Both JumpF launches in this capture are short hops. The first lands before its
+animation ends; it never enters Fall. Fast fall starts at tick 136, landing
+clears it at 152, and landing lag admits SquatWait at 156. Direct SquatWait
+preserves Landing's scratch; it does not run Squat's platform-drop reset.
+The otherwise inactive retained timer contains the prior jump physics flag's
+bits, matching the raw-state replay without changing expected values.
+
+Jump entry arithmetic was checked in retail assembly: all products and sums
+are separately rounded; no fused instruction appears in the audited jump,
+KneeBend, or fast-fall helpers. Grounded jump physics skips only its first
+callback; aerial jump physics applies gravity immediately.
+
+The full particle replay matches **489,588 fields and 9,544 ordered draws**
+over 300 ticks, with **zero display-cache exclusions**. Its five external
+spawn requests and attachment matrices come from the port's own run. The
+shared replay retains the original dash AppSRT display-cache exclusion helper
+unchanged. HSD's existing particle paths cover all three dust descriptors.
+
+Backward jumps, FallAerial animation completion, character-specific/multijump
+entries, combat/item transitions, and ceiling impacts remain explicit
+unsupported paths. Full-hop release behavior has a callback test; the supplied
+300-tick retail jump scenario validates the short-hop/double-jump trajectory.
+
 ## M4-T2 Dash/Run/RunBrake
 
 `dash_fd_fox` matches **300 ticks, 49 keys, 0 divergences**. The state replay

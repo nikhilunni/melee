@@ -459,7 +459,33 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
             "command variable {i} tick {tick}"
         );
     }
+    assert_eq!(
+        fighter.physics.fast_fall,
+        bytes[0x221A] & 8 != 0,
+        "fast fall tick {tick} p{player}"
+    );
+    assert_eq!(
+        fighter.input.vertical.tilt, bytes[0x671],
+        "vertical input age tick {tick} p{player}"
+    );
     match (&fighter.state_data, fighter.motion_state.id) {
+        (MotionData::KneeBend(squat), S::KneeBend) => {
+            assert_eq!(
+                u32::from(squat.short_hop),
+                word(bytes, 0x2340),
+                "short hop tick {tick}"
+            );
+            let input = match squat.input {
+                melee_ft::fighter::jump::JumpInput::Stick => 1,
+                melee_ft::fighter::jump::JumpInput::Buttons => 3,
+            };
+            assert_eq!(input, word(bytes, 0x2344), "jump input tick {tick}");
+        }
+        (MotionData::Jump(jump), S::JumpF) => {
+            assert_eq!(u32::from(jump.short_hop), word(bytes, 0x2340));
+            assert_eq!(u32::from(jump.physics_started), word(bytes, 0x2344));
+            check_float("jump multiplier", jump.multiplier, 0x2348);
+        }
         (MotionData::Dash(dash), S::Dash) => {
             check_float(
                 "initial dash acceleration",

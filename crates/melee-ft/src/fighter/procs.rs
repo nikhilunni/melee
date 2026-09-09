@@ -102,6 +102,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.entry_animation(assets)?;
                 return Ok(None);
             }
+            state::AnimationCallback::KneeBend => {
+                self.knee_bend_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Jump | state::AnimationCallback::JumpAerial => {
+                self.jump_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::Fall => {
                 self.fall_animation();
                 return Ok(None);
@@ -172,18 +180,25 @@ impl<C: CharacterCallbacks> Fighter<C> {
             ) {
                 return;
             }
-            if self.motion_state.callbacks.input == state::InputCallback::Fall {
+            if matches!(
+                self.motion_state.callbacks.input,
+                state::InputCallback::Fall
+                    | state::InputCallback::Jump
+                    | state::InputCallback::JumpAerial
+            ) {
                 let transition = super::fall::iasa(
                     &self.input,
                     &assets.input,
                     self.physics.jumps_used,
                     self.attributes.jumping.max_jumps,
                 );
-                assert_eq!(
-                    transition,
-                    WaitTransition::None,
-                    "unsupported airborne transition {transition:?}"
-                );
+                match transition {
+                    WaitTransition::None => {}
+                    WaitTransition::Jump => self.enter_aerial_jump(assets).expect("aerial jump"),
+                    _ => unimplemented!(
+                        "ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"
+                    ),
+                }
                 return;
             }
             let context = WaitContext {
@@ -193,6 +208,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 ..WaitContext::default()
             };
             match self.motion_state.callbacks.input {
+                state::InputCallback::KneeBend => {
+                    self.knee_bend_input(assets, &context);
+                    return;
+                }
                 state::InputCallback::Squat
                 | state::InputCallback::SquatWait
                 | state::InputCallback::SquatRv => {
@@ -223,7 +242,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 _ => {}
             }
             let transition = if self.motion_state.callbacks.input == state::InputCallback::Landing {
-                let MotionData::Landing { allow_interrupt } = self.state_data else {
+                let MotionData::Landing {
+                    allow_interrupt, ..
+                } = self.state_data
+                else {
                     panic!("landing data missing")
                 };
                 super::landing::iasa(
@@ -246,11 +268,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if transition == WaitTransition::Squat
                 && self.motion_state.callbacks.input == state::InputCallback::Landing
             {
-                // ftCo_Landing.c:144: immediate SquatWait, not Squat entry.
-                self.change_motion_state(melee_types::CommonMotionState::SquatWait, assets)
+                self.enter_landing_squat(assets)
                     .expect("landing squat hold");
-                self.state_data = MotionData::Squat(super::squat::SquatState::default());
-                self.status.name_tag_timer = assets.name_tag_duration;
             } else {
                 self.apply_ground_transition(assets, transition)
                     .expect("grounded transition");
@@ -274,7 +293,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 map,
                 wind,
             ),
-            state::PhysicsCallback::Landing
+            state::PhysicsCallback::KneeBend
+            | state::PhysicsCallback::Landing
             | state::PhysicsCallback::Squat
             | state::PhysicsCallback::SquatRv
             | state::PhysicsCallback::Turn => {
@@ -334,11 +354,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     wind,
                 );
             }
-            state::PhysicsCallback::Fall => {
-                assert_eq!(
-                    self.input.current.stick.y, 0.0,
-                    "fast-fall input is outside the neutral path"
-                );
+            state::PhysicsCallback::Fall
+            | state::PhysicsCallback::Jump
+            | state::PhysicsCallback::JumpAerial => {
                 assert_eq!(
                     self.physics.knockback_velocity,
                     Vec3::ZERO,
@@ -349,11 +367,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     Vec3::ZERO,
                     "air shield knockback decay needs damage physics"
                 );
-                crate::physics::airborne::fall_physics(
-                    &mut self.physics,
-                    &self.attributes.air,
-                    self.input.current.stick.x,
-                );
+                self.airborne_physics(assets);
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
                 crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }
@@ -387,6 +401,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     | state::CollisionCallback::Dash
                     | state::CollisionCallback::Run
                     | state::CollisionCallback::RunBrake
+                    | state::CollisionCallback::KneeBend
                     | state::CollisionCallback::Squat
                     | state::CollisionCallback::SquatWait
                     | state::CollisionCallback::SquatRv
@@ -401,6 +416,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.motion_state.callbacks.collision,
             state::CollisionCallback::Dash
                 | state::CollisionCallback::Run
+                | state::CollisionCallback::KneeBend
                 | state::CollisionCallback::Squat
                 | state::CollisionCallback::SquatWait
                 | state::CollisionCallback::SquatRv
@@ -462,6 +478,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             | state::CollisionCallback::Dash
             | state::CollisionCallback::Run
             | state::CollisionCallback::RunBrake
+            | state::CollisionCallback::KneeBend
             | state::CollisionCallback::Squat
             | state::CollisionCallback::SquatWait
             | state::CollisionCallback::SquatRv
@@ -495,7 +512,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.skeleton
                     .set_translate(self.animation.root, &self.physics.position);
             }
-            state::CollisionCallback::Fall => {
+            state::CollisionCallback::Fall
+            | state::CollisionCallback::Jump
+            | state::CollisionCallback::JumpAerial => {
                 air::begin_map(
                     &self.physics,
                     &mut self.collision,
@@ -515,6 +534,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     } else {
                         self.enter_landing(assets)?;
                     }
+                } else if matches!(
+                    self.motion_state.callbacks.collision,
+                    state::CollisionCallback::Jump | state::CollisionCallback::JumpAerial
+                ) && self.collision.data.env_flags as u32
+                    & melee_types::mp::collide::CEILING_HUG
+                    != 0
+                {
+                    unimplemented!(
+                        "ft_081B.c:792-803 / ftCo_StopCeil.c:16-22: jump ceiling impact"
+                    );
                 }
             }
             state::CollisionCallback::FallUnimplemented => {

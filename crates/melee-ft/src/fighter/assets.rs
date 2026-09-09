@@ -36,6 +36,7 @@ pub struct FighterAssets {
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],
+    pub jumping: super::jump::JumpParameters,
     pub running: super::dash::RunningParameters,
     pub movement: crate::desc::common::MovementParameters,
     pub squat_choices: Option<Vec<WaitEntry>>,
@@ -61,7 +62,9 @@ impl FighterAssets {
         let motion_table = table.table_offset.ok_or("missing motion table")?;
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        for id in [2, 3, 7, 8, 9, 10, 12, 13, 14, 20, 30, 31, 34, 35, 238] {
+        for id in [
+            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 238,
+        ] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -149,10 +152,12 @@ impl FighterAssets {
             hurtboxes: read_hurtboxes(fox, root)?,
             dynamics: crate::dynamics::read_sets(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
-            motions: [2, 3, 7, 8, 9, 10, 12, 13, 14, 20, 30, 31, 34, 35, 238]
-                .into_iter()
-                .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
-                .collect::<Result<_>>()?,
+            motions: [
+                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 238,
+            ]
+            .into_iter()
+            .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
+            .collect::<Result<_>>()?,
             rotating_effect_bones: {
                 let table = fox
                     .link(root + 0x54)?
@@ -162,6 +167,12 @@ impl FighterAssets {
                     *bone = fox.reader().u32(table + i as u32 * 4)? as usize;
                 }
                 bones
+            },
+            jumping: super::jump::JumpParameters {
+                backward_threshold: common.reader().f32(common_data + 0x78)?,
+                release_threshold: common.reader().f32(common_data + 0x7C)?,
+                fast_fall_threshold: common.reader().f32(common_data + 0x88)?,
+                fast_fall_window: common.reader().s32(common_data + 0x8C)?,
             },
             running: super::dash::RunningParameters {
                 turn_threshold: common.reader().f32(common_data + 0x38)?,

@@ -7,6 +7,8 @@ const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 pub enum EffectRequest {
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
+    /// efAsync kind 0 passes the live fighter joint without offset RNG.
+    Attached { id: u16, bone: usize },
     /// efAsync kinds 2/5/6 retain the bone and local offset until s_link 9.
     Graphics {
         id: u16,
@@ -96,7 +98,12 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
                 _ => bone,
             };
             let id = command.id;
-            if !(id < 0x250 || id / 1000 == 30 || matches!(id, 0x3FE | 0x3FF | 0x401)) {
+            if matches!(id, 0x402 | 0x403) {
+                // ftCo_09F7.c:115-133: kind 0, before randomized branches.
+                self.effects.push(EffectRequest::Attached { id, bone });
+                continue;
+            }
+            if !(id < 0x250 || id / 1000 == 30 || matches!(id, 0x3FE | 0x3FF | 0x401 | 0x402)) {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");
             }
             let mut offset = command.offset;

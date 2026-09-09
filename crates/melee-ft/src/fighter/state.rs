@@ -13,6 +13,9 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    KneeBend,
+    Jump,
+    JumpAerial,
     Dash,
     Run,
     RunBrake,
@@ -31,6 +34,9 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    KneeBend,
+    Jump,
+    JumpAerial,
     Dash,
     Run,
     RunBrake,
@@ -49,6 +55,9 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    KneeBend,
+    Jump,
+    JumpAerial,
     Dash,
     Run,
     RunBrake,
@@ -67,6 +76,9 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    KneeBend,
+    Jump,
+    JumpAerial,
     Dash,
     Run,
     RunBrake,
@@ -96,6 +108,39 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const KNEE_BEND: Self = Self {
+        id: CommonMotionState::KneeBend,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::KneeBend,
+            input: InputCallback::KneeBend,
+            physics: PhysicsCallback::KneeBend,
+            collision: CollisionCallback::KneeBend,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
+    pub const JUMP: Self = Self {
+        id: CommonMotionState::JumpF,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Jump,
+            input: InputCallback::Jump,
+            physics: PhysicsCallback::Jump,
+            collision: CollisionCallback::Jump,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
+    pub const JUMP_AERIAL: Self = Self {
+        id: CommonMotionState::JumpAerialF,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::JumpAerial,
+            input: InputCallback::JumpAerial,
+            physics: PhysicsCallback::JumpAerial,
+            collision: CollisionCallback::JumpAerial,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
     pub const RUN_BRAKE: Self = Self {
         id: CommonMotionState::RunBrake,
         callbacks: StateCallbacks {

@@ -7,6 +7,7 @@ pub mod dash;
 pub mod effects;
 pub mod entry;
 pub mod fall;
+pub mod jump;
 pub mod landing;
 mod procs;
 pub mod run;
@@ -37,6 +38,29 @@ pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// Which double-jump entry the character uses
+    /// (ftCo_JumpAerial.c:103-119 `switch (fp->kind)`). The default arm is
+    /// the ordinary `ftCo_JumpAerial_Enter_Basic`; Ness, Yoshi, Peach and
+    /// Mewtwo override this in their own crates.
+    fn aerial_jump_style(&self) -> AerialJumpStyle {
+        AerialJumpStyle::Basic
+    }
+}
+
+/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. Only `Basic`
+/// is ported; the others exist so character crates can name them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AerialJumpStyle {
+    /// ftCo_JumpAerial_Enter_Basic (0x800CBBC0).
+    Basic,
+    /// ftNs_JumpAerial_Enter: Ness's multi-frame double jump.
+    Ness,
+    /// ftYs_JumpAerial_Enter: Yoshi's armoured double jump.
+    Yoshi,
+    /// ftPe_JumpAerial_Enter: Peach's float-capable double jump.
+    Peach,
+    /// ftMt_JumpAerial_Enter: Mewtwo's teleport-style double jump.
+    Mewtwo,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -238,10 +262,16 @@ pub enum MotionData {
     Dash(dash::DashState),
     Run(run::RunState),
     RunBrake(run::RunBrakeState),
+    KneeBend(jump::KneeBendState),
+    Jump(jump::JumpState),
+    JumpAerial {
+        retained_drop_timer: f32,
+    },
     Fall {
         blend: f32,
     },
     Landing {
         allow_interrupt: bool,
+        retained_drop_timer: f32,
     },
 }

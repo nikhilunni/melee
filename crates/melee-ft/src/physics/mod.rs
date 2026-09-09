@@ -44,6 +44,8 @@ pub struct FighterPhysics {
     pub ground_or_air: GroundOrAir,
     /// `x1968_jumpsUsed`, +0x1968; unchanged by supported Wait.
     pub jumps_used: u8,
+    /// `fall_fast`, +0x221A bit 3; cleared on ordinary motion entry.
+    pub fast_fall: bool,
     /// `dmg.x1830_percent`, +0x1830; unchanged by this path.
     pub percent: f32,
     /// `facing_dir`, +0x2C, always +1 or -1.
@@ -74,6 +76,7 @@ impl FighterPhysics {
             player_nudge: Vec2::ZERO,
             ground_or_air: GroundOrAir::Ground,
             jumps_used: 0,
+            fast_fall: false,
             percent: 0.0,
             facing,
             velocity_blend: Default::default(),

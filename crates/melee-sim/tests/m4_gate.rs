@@ -38,15 +38,14 @@ fn dash_fd_fox_300() {
     movement_gate("dash_fd_fox");
 }
 
-#[test]
-fn dash_particle_rng_sites_match_the_retail_ledger_in_order() {
+fn particle_rng_sites_match_the_retail_ledger_in_order(name: &str) {
     use melee_sim::{frame::Simulation, initial_state::InitialState, inputs::PadScript};
-    let Some(scenario) = local_scenario_named("dash_fd_fox") else {
+    let Some(scenario) = local_scenario_named(name) else {
         return;
     };
     let path = scenario.trace_path("ledger.raw.jsonl");
     if !path.exists() {
-        eprintln!("skipping: local dash RNG ledger absent");
+        eprintln!("skipping: local {name} RNG ledger absent");
         return;
     }
     let ledger = std::fs::read_to_string(path).unwrap();
@@ -75,4 +74,18 @@ fn dash_particle_rng_sites_match_the_retail_ledger_in_order() {
         ticks += 1;
     }
     assert_eq!(ticks, 300);
+}
+
+#[test]
+fn jump_fd_fox_300() {
+    movement_gate("jump_fd_fox");
+}
+
+#[test]
+fn dash_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_match_the_retail_ledger_in_order("dash_fd_fox");
+}
+#[test]
+fn jump_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_match_the_retail_ledger_in_order("jump_fd_fox");
 }

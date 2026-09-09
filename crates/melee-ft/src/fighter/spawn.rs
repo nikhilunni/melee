@@ -284,10 +284,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
         start: f32,
     ) -> Result<()> {
         self.status.require_idle();
+        // fighter.c:1101-1102: ordinary entries clear fast fall.
+        self.physics.fast_fall = false;
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
         // ordinary motion entry clears it (fighter.c:1155-1157).
-        if !(state == CommonMotionState::SquatWait
-            && self.motion_state.id == CommonMotionState::Squat)
+        if state != CommonMotionState::JumpAerialF
+            && !(state == CommonMotionState::SquatWait
+                && self.motion_state.id == CommonMotionState::Squat)
         {
             self.status.name_tag_timer = 0;
         }
@@ -327,6 +330,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::TurnRun => {
                 unimplemented!("ftCo_TurnRun.c:35-38: running reverse input -> TurnRun")
             }
+            CommonMotionState::KneeBend => (MotionState::KNEE_BEND, 15),
+            CommonMotionState::JumpF => (MotionState::JUMP, 16),
+            CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
             CommonMotionState::Fall => (MotionState::FALL, 20),
             CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
             CommonMotionState::Landing => (MotionState::LANDING, 35),

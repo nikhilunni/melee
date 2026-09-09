@@ -29,7 +29,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
 }
 
 /// Item-free Fox predicates reached from ftCo_Fall_IASA_Inner (0x800CCAAC).
-/// Transition bodies remain owned by the future aerial action states.
+/// Shared with Jump/JumpAerial: item-free Fox ordering agrees through the
+/// double-jump check. Other character/item branches are outside this slice.
 pub fn iasa(
     input: &crate::input::FighterInput,
     common: &crate::input::InputCommonData,

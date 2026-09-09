@@ -6,7 +6,6 @@
 //! positions, velocities, generator fields or particle bytecode outputs.
 use crate::common::RetailTrig;
 use gekko_math::rng::HsdRng;
-use hsd_archive::Archive;
 use hsd_particle::{
     bank::ParticleBank,
     generator::ApplicationTransform,
@@ -15,18 +14,6 @@ use hsd_particle::{
 };
 use hsd_types::{Mtx, Vec3};
 use std::collections::BTreeMap;
-
-pub fn common_bank(archive: &Archive) -> ParticleBank {
-    // efAsync_LoadSync (efasync.c:1287-1316): effCommonDataTable begins with command/texture pointers.
-    let table = archive.public("effCommonDataTable").unwrap();
-    let commands = archive.link(table).unwrap().unwrap() as usize;
-    let textures = archive.link(table + 4).unwrap().unwrap() as usize;
-    ParticleBank::from_bytes(
-        &archive.data()[commands..textures],
-        &archive.data()[textures..],
-    )
-    .unwrap()
-}
 
 pub struct Spawns;
 impl Spawns {

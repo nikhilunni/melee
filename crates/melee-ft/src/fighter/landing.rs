@@ -1,4 +1,4 @@
-//! ftCo_Landing.c:107-163, neutral-input path.
+//! ftCo_Landing.c:41-163, including direct crouch after landing lag.
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -69,12 +69,51 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
     pub(super) fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        let retained_drop_timer = self.retained_drop_timer();
         self.land();
         self.change_motion_state(CommonMotionState::Landing, assets)?;
         self.state_data = MotionData::Landing {
             allow_interrupt: true,
+            retained_drop_timer,
         };
         Ok(())
+    }
+    /// ftCo_Landing_IASA -> fn_800D62C4 (800D62C4): direct SquatWait.
+    pub(super) fn enter_landing_squat(&mut self, assets: &FighterAssets) -> Result<()> {
+        let MotionData::Landing {
+            allow_interrupt,
+            retained_drop_timer,
+        } = self.state_data
+        else {
+            panic!("landing scratch missing")
+        };
+        self.change_motion_state(CommonMotionState::SquatWait, assets)?;
+        // SquatWait entry preserves both words; no Squat initialization runs.
+        self.state_data = MotionData::Squat(super::squat::SquatState {
+            platform_drop_pending: allow_interrupt,
+            platform_drop_timer: retained_drop_timer,
+        });
+        self.status.name_tag_timer = assets.name_tag_duration;
+        Ok(())
+    }
+    /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
+    /// Direct SquatWait entry inherits it as the inactive platform-drop timer
+    /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
+    pub(super) fn retained_drop_timer(&self) -> f32 {
+        match &self.state_data {
+            MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
+            MotionData::JumpAerial {
+                retained_drop_timer,
+            }
+            | MotionData::Landing {
+                retained_drop_timer,
+                ..
+            } => *retained_drop_timer,
+            MotionData::Fall { blend } => *blend,
+            _ => unimplemented!(
+                "ftCo_Landing.c:41-50: scratch inheritance from unsupported landing source"
+            ),
+        }
     }
     /// ftCo_Landing_Anim (0x800D5D3C): complete animation -> Wait.
     pub(super) fn landing_animation(&mut self, assets: &FighterAssets) -> Result<()> {
