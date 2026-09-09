@@ -154,7 +154,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 retained_drop_timer,
                 ..
             } => *retained_drop_timer,
-            MotionData::Fall { blend } => *blend,
+            MotionData::Fall(fall) => fall.blend,
+            MotionData::FallSpecial(fall) => fall.animation.blend,
             _ => unimplemented!(
                 "ftCo_Landing.c:41-50: scratch inheritance from unsupported landing source"
             ),

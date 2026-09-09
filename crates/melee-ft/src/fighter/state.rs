@@ -80,6 +80,7 @@ pub enum InputCallback {
     EntryStart,
     EntryEnd,
     Fall,
+    FallSpecial,
     Landing,
     FallUnimplemented,
 }
@@ -116,6 +117,7 @@ pub enum PhysicsCallback {
     EntryStart,
     EntryEnd,
     Fall,
+    FallSpecial,
     Landing,
     FallUnimplemented,
 }
@@ -152,6 +154,7 @@ pub enum CollisionCallback {
     EntryStart,
     EntryEnd,
     Fall,
+    FallSpecial,
     Landing,
     FallUnimplemented,
 }
@@ -489,7 +492,23 @@ impl MotionState {
         },
     };
 
-    /// Fall callbacks; neutral Anim/IASA/Phys/Coll are implemented.
+    /// ftCo_FallAerial_* (800CCDA8..800CCE94): shared fall blend and collision.
+    pub const FALL_AERIAL: Self = Self {
+        id: CommonMotionState::FallAerial,
+        callbacks: Self::FALL.callbacks,
+    };
+    /// ftCo_FallSpecial_* (80096AA0..80096C98).
+    pub const FALL_SPECIAL: Self = Self {
+        id: CommonMotionState::FallSpecial,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Fall,
+            input: InputCallback::FallSpecial,
+            physics: PhysicsCallback::FallSpecial,
+            collision: CollisionCallback::FallSpecial,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    /// ftCo_Fall_* (800CCA00..800CCD80).
     pub const FALL: Self = Self {
         id: CommonMotionState::Fall,
         callbacks: StateCallbacks {

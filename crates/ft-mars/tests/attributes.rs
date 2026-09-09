@@ -73,3 +73,17 @@ fn disc_attributes_and_character_resets() {
     assert!(!marth.side_special_boost_used);
     assert_eq!(marth.model_groups, [0; 2]);
 }
+
+#[test]
+fn shield_hook_selects_model_and_queues_sound_once_per_entry() {
+    let attrs = MarsAttributes::read(&archive(&[0; 0x98], &[], None), 0).unwrap();
+    let marth = Marth::new(attrs);
+    let mut commands = melee_ft::fighter::commands::CommandState::default();
+    commands.model_selections.insert(0, 3);
+    marth.guard_variant(&mut commands);
+    assert_eq!(commands.model_selections.get(&0), Some(&3));
+    assert_eq!(commands.model_selections.get(&1), Some(&1));
+    assert_eq!(commands.footstep_sounds.len(), 1);
+    let sound = &commands.footstep_sounds[0];
+    assert_eq!((sound.id, sound.volume, sound.pan), (190115, 127, 64));
+}

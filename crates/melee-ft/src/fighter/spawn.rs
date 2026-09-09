@@ -304,7 +304,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.commands.allow_interrupt = false;
         self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
-        self.physics.fast_fall = false;
+        if !matches!(
+            state,
+            CommonMotionState::Fall | CommonMotionState::FallSpecial
+        ) {
+            self.physics.fast_fall = false;
+        }
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
         // ordinary motion entry clears it (fighter.c:1155-1157).
         let preserve_name_tag = matches!(
@@ -374,6 +379,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::JumpAerialB => (MotionState::JUMP_AERIAL_BACK, 19),
             CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
             CommonMotionState::Fall => (MotionState::FALL, 20),
+            CommonMotionState::FallAerial => (MotionState::FALL_AERIAL, 23),
+            CommonMotionState::FallSpecial => (MotionState::FALL_SPECIAL, 26),
             CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
             CommonMotionState::Landing => (MotionState::LANDING, 35),
             CommonMotionState::LandingFallSpecial => (MotionState::LANDING_FALL_SPECIAL, 36),
@@ -460,9 +467,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 self.leave_ground();
             }
-            self.state_data = MotionData::Fall { blend: 0.0 };
+            self.state_data = MotionData::Fall(super::fall::FallState::new(
+                super::fall::FallFamily::Ordinary,
+            ));
             let max = self.attributes.air.air_drift_max;
             self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-max, max);
+        }
+        if state == CommonMotionState::FallAerial {
+            // ftCo_FallAerial_Enter (800CCDA8): no drift clamp or ground conversion.
+            self.state_data =
+                MotionData::Fall(super::fall::FallState::new(super::fall::FallFamily::Aerial));
         }
         if state == CommonMotionState::Wait {
             // ft_8008A348, ft_08A1.c:98 -> ftCommon_8007EFC0.

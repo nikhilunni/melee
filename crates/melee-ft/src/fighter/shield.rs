@@ -155,7 +155,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
     /// retail 80091A4C / 800924C0 / 80093A50.
     pub(super) fn enter_shield(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.character.guard_variant();
         let reflect = self.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS)
             && i32::from(self.input.shoulder.tilt) < assets.input.powershield_window;
         self.change_motion_state(if reflect { S::GuardReflect } else { S::GuardOn }, assets)?;
@@ -201,6 +200,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.skeleton.set_translate(joint, &Vec3::ZERO);
         self.queue_shield_effect(0x417);
         self.update_guard_pose(assets, 0.0)?;
+        self.character.guard_variant(&mut self.commands);
         Ok(())
     }
     fn queue_shield_effect(&mut self, id: u16) {
@@ -259,7 +259,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_80092908 (0x80092908): preserve scratch, replace the shield effect.
     fn enter_guard_hold(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.character.guard_variant();
         self.change_motion_state(S::Guard, assets)?;
         self.install_shield();
         self.queue_shield_effect(0x418);
@@ -336,7 +335,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_80091D58 (0x80091D58); same inlined size math at 80092014/1C.
     fn update_shield_size(&mut self, assets: &FighterAssets) {
-        self.character.guard_variant();
         let p = &assets.shield;
         // retail 80091DAC / 80091DB4 fmadds; health fraction product rounds first.
         let light = fmadds(
@@ -392,7 +390,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if (self.guard().released && self.guard().minimum_hold == 0.0)
                 || (!self.shield.active && !self.shield.reflecting)
             {
-                self.character.guard_variant();
                 return self.change_motion_state(S::GuardOff, assets);
             }
             if self.guard().interrupt_frames != 0 {

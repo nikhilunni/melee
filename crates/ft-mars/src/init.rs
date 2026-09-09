@@ -39,8 +39,23 @@ impl CharacterCallbacks for Marth {
     fn on_landing(&mut self, _allow_interrupt: bool) {
         self.side_special_boost_used = false;
     }
-    fn guard_variant(&self) {
-        unimplemented!("ftCo_Guard.c:342-346: Marth shield model/offset");
+    /// ftCo_800923B4 (800923B4), ftCo_800939B4 (800939B4),
+    /// ftCo_Guard.c:342-346,924-928: select the sword model after shield setup.
+    /// Shield joint/neutral pose still come from PlMs.dat's shared descriptors.
+    fn guard_variant(&self, commands: &mut melee_ft::fighter::commands::CommandState) {
+        use melee_ft::fighter::commands::{FootstepSound, SoundChannel};
+        const SWORD_MODEL_GROUP: i32 = 1;
+        const SHIELDED_SWORD_MODEL: i32 = 1;
+        const SHIELD_SOUND: u32 = 190115;
+        commands
+            .model_selections
+            .insert(SWORD_MODEL_GROUP, SHIELDED_SWORD_MODEL);
+        commands.footstep_sounds.push(FootstepSound {
+            channel: SoundChannel::Ordinary,
+            id: SHIELD_SOUND,
+            volume: 127,
+            pan: 64,
+        });
     }
 }
 

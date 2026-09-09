@@ -2,6 +2,7 @@
 use super::*;
 // efasync.c:255-282 maps animation GFX requests to particle descriptors.
 const RUN_DUST_REQUEST: u16 = 0x3FE;
+const REVERSE_BRAKE_DUST_REQUEST: u16 = 0x400;
 const BRAKE_DUST_REQUEST: u16 = 0x401;
 const RUN_DUST_GENERATOR: u32 = 0x107;
 const BRAKE_DUST_GENERATOR: u32 = 0x5A;
@@ -20,9 +21,16 @@ impl Effects {
             0x41C => (0x5D, false), // efasync.c:521-523, ledge grab
             0x407 => (0x3C, false), // efasync.c:305-307, spot dodge
             RUN_DUST_REQUEST => (RUN_DUST_GENERATOR, true),
-            BRAKE_DUST_REQUEST => (BRAKE_DUST_GENERATOR, true),
+            REVERSE_BRAKE_DUST_REQUEST | BRAKE_DUST_REQUEST => (BRAKE_DUST_GENERATOR, true),
             id if id < 0x250 || id / 1000 == 30 => (u32::from(id), false),
             _ => anyhow::bail!("efasync.c:255-282: unsupported dust {id:#x}"),
+        };
+        // efAsync_Dispatch (80063930), efasync.c:274-278: 0x400 reverses
+        // the direction passed to the same 0x5A generator (fneg, no fusion).
+        let facing = if id == REVERSE_BRAKE_DUST_REQUEST {
+            -facing
+        } else {
+            facing
         };
         // efLib_CreateGenerator (0x8005C9FC) selects a particle descriptor,
         // unlike model effects' effCommonDataTable entries.

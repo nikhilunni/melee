@@ -156,7 +156,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.motion_state.id,
                 CommonMotionState::JumpAerialF | CommonMotionState::JumpAerialB
             ) {
-                unimplemented!("ftCo_JumpAerial.c:275-276: animation end -> FallAerial");
+                return self.change_motion_state(CommonMotionState::FallAerial, assets);
             }
             self.change_motion_state(CommonMotionState::Fall, assets)?;
         }

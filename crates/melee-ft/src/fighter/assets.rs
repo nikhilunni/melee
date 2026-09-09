@@ -59,6 +59,7 @@ pub struct FighterAssets {
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],
     pub jumping: super::jump::JumpParameters,
+    pub falling: super::fall::FallParameters,
     pub air_dodge: super::air_dodge::AirDodgeParameters,
     pub ledge: super::ledge::LedgeParameters,
     pub running: super::dash::RunningParameters,
@@ -94,8 +95,8 @@ impl FighterAssets {
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
         for id in [
-            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42,
-            43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
+            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
+            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
         ] {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -188,8 +189,9 @@ impl FighterAssets {
             dynamics: crate::dynamics::read_sets(data, root)?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: [
-                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41,
-                42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
+                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
+                31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224,
+                225, 226, 227, 228, 238,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
@@ -203,6 +205,10 @@ impl FighterAssets {
                     *bone = data.reader().u32(table + i as u32 * 4)? as usize;
                 }
                 bones
+            },
+            falling: super::fall::FallParameters {
+                deadzone: common.reader().f32(common_data + 0x444)?,
+                smoothing: common.reader().f32(common_data + 0x448)?,
             },
             air_dodge: super::air_dodge::AirDodgeParameters::read(common, common_data)?,
             ledge: super::ledge::LedgeParameters::read(common, common_data)?,
@@ -278,6 +284,11 @@ fn read_script(
                 group: ((word << 6) as i32) >> 25,
                 variant: ((word << 13) as i32) >> 13,
             },
+            // ftAction_80072A5C (80072A80/84): eight-bit ID, low 18-bit duration.
+            46 => Command::ColorAnimation(super::commands::ColorAnimationRequest {
+                id: ((word >> 18) & 255) as u8,
+                duration: word & 0x3FFFF,
+            }),
             19 => Command::SetVariable {
                 index: ((word >> 24) & 3) as usize,
                 value: word & 0xFFFFFF,

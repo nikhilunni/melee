@@ -73,7 +73,7 @@ pub trait CharacterCallbacks {
     }
 
     /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
-    fn guard_variant(&self) {
+    fn guard_variant(&self, _commands: &mut commands::CommandState) {
         if self.kind() == FighterKind::Yoshi {
             unimplemented!("ftCo_Guard.c:339-341: Yoshi egg shield");
         }
@@ -340,9 +340,8 @@ pub enum MotionData {
     JumpAerial {
         retained_drop_timer: f32,
     },
-    Fall {
-        blend: f32,
-    },
+    Fall(fall::FallState),
+    FallSpecial(fall::SpecialFallState),
     Landing {
         allow_interrupt: bool,
         retained_drop_timer: f32,

@@ -205,6 +205,51 @@ impl FighterAnimation {
         Ok(())
     }
 
+    /// ftAnim_8006EDD0 (8006EDD0): replace only the secondary skeleton's
+    /// animation. Main submotion, frame, command stream and blend timer survive.
+    pub fn set_secondary_animation(
+        &mut self,
+        motion: &Motion,
+        start: f32,
+        rate: f32,
+    ) -> Result<(), AttachError> {
+        let mut secondary = self.blend_tree.clone();
+        secondary.remove_anim_all_by_flags(self.root, 1);
+        self.reset_pose(&mut secondary, true);
+        attach_motion(
+            &mut secondary,
+            &self.parts,
+            &motion.animation,
+            self.flags.bone_mask(),
+            None,
+        )?;
+        secondary.req_anim_all(self.root, start);
+        for_each_aobj(&mut secondary, self.root, |a| {
+            if motion.flags.contains(MotionFlags::LOOP) {
+                a.set_flags(AOBJ_LOOP);
+            }
+            a.set_rate(rate);
+        });
+        self.blend_tree = secondary;
+        Ok(())
+    }
+
+    /// ftCo_800CC988 (800CC988) / ftAnim_8006FE9C (8006FE9C) /
+    /// ftAnim_8006FF74 (8006FF74): advance secondary pose and blend below TopN.
+    /// Reuses the audited lb_8000C490 quaternion/SRT kernel in blend_pose.
+    pub fn apply_fall_pose<T: InverseTrig>(&mut self, tree: &mut JObjTree, weight: f32) {
+        self.blend_tree.anim_all::<T>(self.root);
+        let inverse = 1.0 - weight;
+        for part in self.parts.iter().skip(1).filter(|p| p.flags.eligible()) {
+            let source = self.blend_tree.get(part.joint);
+            if weight == 1.0 || part.flags.contains(PartFlags::COPY) {
+                copy_pose(source, tree, part.joint);
+            } else {
+                blend_pose::<T>(source, tree, part.joint, weight, inverse);
+            }
+        }
+    }
+
     /// Fighter_ChangeMotionState (0x800693AC), fighter.c:1349-1357.
     /// The state table's SM_None removes AObjs and keeps the current pose.
     pub fn clear_motion(&mut self, tree: &mut JObjTree) {

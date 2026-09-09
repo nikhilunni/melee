@@ -212,3 +212,173 @@ fn idle_marth_particle_draw_order() {
 fn start_marth_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_marth", 600, "ledger600");
 }
+
+#[test]
+fn squat_fd_marth_300() {
+    movement_gate_ticks("squat_fd_marth", 300);
+}
+
+#[test]
+fn turn_fd_marth_300() {
+    movement_gate_ticks("turn_fd_marth", 300);
+}
+
+#[test]
+fn walk_fd_marth_300() {
+    movement_gate_ticks("walk_fd_marth", 300);
+}
+
+#[test]
+fn dash_fd_marth_300() {
+    movement_gate_ticks("dash_fd_marth", 300);
+}
+
+#[test]
+fn jump_fd_marth_300() {
+    movement_gate_ticks("jump_fd_marth", 300);
+}
+
+#[test]
+fn shield_fd_marth_300() {
+    movement_gate_ticks("shield_fd_marth", 300);
+}
+
+#[test]
+fn spotdodge_fd_marth_300() {
+    movement_gate_ticks("spotdodge_fd_marth", 300);
+}
+
+#[test]
+fn roll_fd_marth_300() {
+    movement_gate_ticks("roll_fd_marth", 300);
+}
+
+#[test]
+fn airdodge_fd_marth_300() {
+    movement_gate_ticks("airdodge_fd_marth", 300);
+}
+
+#[test]
+fn wavedash_fd_marth_300() {
+    movement_gate_ticks("wavedash_fd_marth", 300);
+}
+
+#[test]
+fn ledge_fd_marth_420() {
+    movement_gate_ticks("ledge_fd_marth", 420);
+}
+
+#[test]
+fn turnrun_fd_marth_300() {
+    movement_gate_ticks("turnrun_fd_marth", 300);
+}
+
+#[test]
+fn walkfast_fd_marth_300() {
+    movement_gate_ticks("walkfast_fd_marth", 300);
+}
+
+#[test]
+fn ledgeclimb_fd_marth_420() {
+    movement_gate_ticks("ledgeclimb_fd_marth", 420);
+}
+
+#[test]
+fn ledgeescape_fd_marth_420() {
+    movement_gate_ticks("ledgeescape_fd_marth", 420);
+}
+
+#[test]
+fn airjumpb_fd_marth_300() {
+    movement_gate_ticks("airjumpb_fd_marth", 300);
+}
+
+#[test]
+fn airjumpb_fd_fox_300() {
+    movement_gate("airjumpb_fd_fox");
+}
+
+#[test]
+fn squat_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("squat_fd_marth", 300);
+}
+
+#[test]
+fn turn_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("turn_fd_marth", 300);
+}
+
+#[test]
+fn walk_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("walk_fd_marth", 300);
+}
+
+#[test]
+fn dash_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("dash_fd_marth", 300);
+}
+
+#[test]
+fn jump_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("jump_fd_marth", 300);
+}
+
+#[test]
+fn shield_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("shield_fd_marth", 300);
+}
+
+#[test]
+fn spotdodge_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("spotdodge_fd_marth", 300);
+}
+
+#[test]
+fn roll_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("roll_fd_marth", 300);
+}
+
+#[test]
+fn airdodge_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("airdodge_fd_marth", 300);
+}
+
+#[test]
+fn wavedash_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("wavedash_fd_marth", 300);
+}
+
+#[test]
+fn ledge_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("ledge_fd_marth", 420);
+}
+
+#[test]
+fn turnrun_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("turnrun_fd_marth", 300);
+}
+
+#[test]
+fn walkfast_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("walkfast_fd_marth", 300);
+}
+
+#[test]
+fn ledgeclimb_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("ledgeclimb_fd_marth", 420);
+}
+
+#[test]
+fn ledgeescape_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("ledgeescape_fd_marth", 420);
+}
+
+#[test]
+fn airjumpb_marth_particle_draw_order() {
+    particle_rng_sites_for_ticks("airjumpb_fd_marth", 300);
+}
+
+#[test]
+fn airjumpb_fox_particle_draw_order() {
+    particle_rng_sites_for_ticks("airjumpb_fd_fox", 300);
+}

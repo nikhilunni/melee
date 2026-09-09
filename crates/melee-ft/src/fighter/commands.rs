@@ -10,8 +10,17 @@ use hsd_anim::{
     jobj::{JObjTree, JOBJ_USE_QUATERNION},
 };
 
+/// ftAction_80072A5C (80072A5C) -> ftCo_800BFFD0 (800BFFD0).
+/// Color animation is renderer output; the command retains its ID and duration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ColorAnimationRequest {
+    pub id: u8,
+    pub duration: u32,
+}
+
 #[derive(Clone, Debug)]
 pub enum Command {
+    ColorAnimation(ColorAnimationRequest),
     ModelSelection {
         group: i32,
         variant: i32,
@@ -83,6 +92,7 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    pub color_animations: Vec<ColorAnimationRequest>,
     /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
     pub model_selections: std::collections::BTreeMap<i32, i32>,
@@ -166,6 +176,12 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::ColorAnimation(request) => {
+                    // ftAction_80072A4C (80072A4C): seeking only advances the word.
+                    if !seeking {
+                        self.color_animations.push(*request);
+                    }
+                }
                 Command::ModelSelection { group, variant } => {
                     self.model_selections.insert(*group, *variant);
                 }

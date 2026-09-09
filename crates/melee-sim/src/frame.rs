@@ -601,3 +601,6 @@ mod start_tests {
 
 #[cfg(test)]
 mod marth_bones;
+
+#[cfg(test)]
+mod fall_states;

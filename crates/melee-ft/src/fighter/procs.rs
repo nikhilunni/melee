@@ -145,7 +145,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 return Ok(None);
             }
             state::AnimationCallback::Fall => {
-                self.fall_animation();
+                self.fall_animation(assets)?;
                 return Ok(None);
             }
             state::AnimationCallback::Landing => {
@@ -233,6 +233,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     _ => unimplemented!(
                         "ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"
                     ),
+                }
+                return;
+            }
+            if self.motion_state.callbacks.input == state::InputCallback::FallSpecial {
+                // ftCo_FallSpecial_IASA (80096AF4): item/parasol predicates are
+                // excluded by require_idle; air-dodge entry consumed all jumps.
+                if i32::from(self.physics.jumps_used) < self.attributes.jumping.max_jumps {
+                    unimplemented!(
+                        "ftCo_FallSpecial.c:96-100: special fall with remaining aerial jumps"
+                    );
                 }
                 return;
             }
@@ -480,6 +490,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
                 crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }
+            state::PhysicsCallback::FallSpecial => {
+                self.special_fall_physics(assets);
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
             state::PhysicsCallback::Fall
             | state::PhysicsCallback::Jump
             | state::PhysicsCallback::JumpAerial => {
@@ -696,7 +711,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     self.enter_special_landing(assets, false, assets.air_dodge.landing_lag)?;
                 }
             }
-            state::CollisionCallback::Fall
+            state::CollisionCallback::FallSpecial
+            | state::CollisionCallback::Fall
             | state::CollisionCallback::Jump
             | state::CollisionCallback::JumpAerial
             | state::CollisionCallback::CliffJump2 => {
@@ -714,7 +730,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     self.animation.root,
                     self.status.ledge_cooldown == 0,
                 ) {
-                    if self.physics.self_velocity.y > assets.soft_landing_speed {
+                    if self.motion_state.callbacks.collision
+                        == state::CollisionCallback::FallSpecial
+                    {
+                        self.land_from_special_fall(assets)?;
+                    } else if self.physics.self_velocity.y > assets.soft_landing_speed {
                         self.land();
                         self.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
                     } else {

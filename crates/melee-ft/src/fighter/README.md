@@ -9,6 +9,30 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T9 Falls and Marth shield entry
+
+All sixteen Marth movement scenes and Fox's backward aerial jump now pass the
+49-key scene gates, with independent ordered particle RNG checks. Shared
+Fall/FallAerial/FallSpecial blend secondary directional animations without
+changing their primary action-state IDs. Marth's hook selects the shielded
+sword model and queues its sound; shield geometry uses the existing PlMs.dat
+pose/joint data. See [M4_FALLS.md](M4_FALLS.md) for the sixteen-scene table,
+raw scratch verification, assembly audit, corrections and remaining boundaries.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Fall blend selection / secondary evaluation | 800CCBE0 / 800CC988 | `fall.rs`; typed family, pose and weight; fused smoothing |
+| Secondary animation attachment / blend / copy | 8006EDD0 / 8006FE9C / 8006FF74 | `anim/playback.rs`; main animation and command clocks retained |
+| FallAerial entry / Anim / IASA / Phys / Coll | 800CCDA8 / 800CCDFC / 800CCE50 / 800CCE74 / 800CCE94 | `jump.rs`, `spawn.rs`, `fall.rs`, enum callbacks; existing air physics/collision |
+| FallSpecial entry / Anim / IASA / Phys / Coll / landing callback | 80096900 / 80096AA0 / 80096AF4 / 80096B44 / 80096C98 / 80096D28 | `fall.rs`, `air_dodge.rs`, `procs.rs`, `landing.rs`; typed mobility and landing policy |
+| Marth GuardOn / GuardReflect model hook | 800923B4 / 800939B4 | `ft-mars/init.rs`; model group 1 variant 1 and sound 190115 |
+| Color-animation command | 80072A5C | `commands.rs`, `assets.rs`; typed renderer request |
+| Reverse brake dust 0x400 | efAsync_Dispatch 80063930, efasync.c:270-281 | `effects.rs`, `melee-sim/effects/dust.rs`; existing generator 0x5A with negated facing |
+
+This supersedes earlier reports' unimplemented FallAerial/FallSpecial and
+Marth shield statements. Unused direct directional state entries, Yoshi's egg,
+alternate special-fall gravity, combat and item branches remain unsupported.
+
 ## M4-T8 Marth and mixed-character scenes
 
 Marth vs Fox on FD passes both idle and match-start gates: **600 ticks,

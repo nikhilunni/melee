@@ -125,7 +125,7 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
             }
             if !(id < 0x250
                 || id / 1000 == 30
-                || matches!(id, 0x3F3 | 0x407 | 0x3FE | 0x3FF | 0x401 | 0x402))
+                || matches!(id, 0x3F3 | 0x407 | 0x3FE | 0x3FF | 0x400 | 0x401 | 0x402))
             {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");
             }
@@ -137,7 +137,7 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
             ] {
                 let random = rng.randf();
                 // Early branch: retail 8009F94C/F970/F9A4 fmadds.
-                // 3F3/407/3FE/3FF/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
+                // 3F3/407/3FE/3FF/400/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
                 // The range doubling and random subtraction round separately.
                 *value = gekko_math::fma::fmadds(2.0 * range, random - 0.5, *value);
                 draws += 1;

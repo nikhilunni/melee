@@ -63,9 +63,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
         Ok(())
     }
     /// ftCo_EscapeAir_Anim (80099BD0), animation completion enters FallSpecial.
-    pub(super) fn air_dodge_animation(&mut self, _assets: &FighterAssets) -> Result<()> {
+    pub(super) fn air_dodge_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.animation.frames_remaining(&self.skeleton) {
-            unimplemented!("ftCo_EscapeAir.c:78-79 / ftCo_FallSpecial.c:34-57: FallSpecial entry");
+            self.enter_air_dodge_fall(assets)?;
         }
         Ok(())
     }
