@@ -48,15 +48,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
         );
     }
     pub(super) fn step_animation(&mut self, assets: &FighterAssets) {
-        let commands = &mut self.commands;
-        let ground_pose = &mut self.ground_pose;
-        let first_footstep = commands.footstep_sounds.len();
-        self.animation.step_with_hooks::<RetailTrig>(
+        let first_footstep = self.commands.footstep_sounds.len();
+        // ftAnim_8006EBA4: command-driven animation ownership changes must
+        // finish before the independent part blends are evaluated.
+        self.animation
+            .advance_main::<RetailTrig>(&mut self.skeleton);
+        self.commands.step(
+            &mut self.animation,
             &mut self.skeleton,
-            |animation, tree| commands.step(animation, tree, ground_pose, assets),
-            |_, _| {},
-        ); // ftCo_800DB500: no attached parasol (item-free gate).
-        if commands.footstep_sounds.len() != first_footstep
+            &mut self.ground_pose,
+            assets,
+        );
+        self.apply_dynamic_commands(assets);
+        self.animation
+            .advance_parts::<RetailTrig>(&mut self.skeleton);
+        // ftCo_800DB500: no attached parasol (item-free gate).
+        if self.commands.footstep_sounds.len() != first_footstep
             && self.collision.data.floor.flags & 255 != 0
         {
             unimplemented!(
@@ -206,6 +213,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 );
             },
         )?;
+        self.apply_dynamic_commands(assets);
         // ftCommon_8007E0E4: reset before the fighter-overlap nudge query.
         self.physics.player_nudge = Vec2::ZERO;
         Ok(result)
@@ -264,6 +272,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     &assets.input,
                     self.physics.jumps_used,
                     self.attributes.jumping.max_jumps,
+                    |phase| {
+                        let enabled = match &self.state_data {
+                            MotionData::Jump(jump) => jump.physics_started,
+                            MotionData::JumpAerial { .. } => {
+                                phase == super::FloatInputPhase::BeforeAerialJump
+                                    || self.commands.variables[0] != 0
+                            }
+                            _ => true,
+                        };
+                        if enabled {
+                            self.character.check_float_input(
+                                &self.input,
+                                assets,
+                                self.physics.self_velocity.y,
+                                phase,
+                            );
+                        }
+                    },
                 );
                 match transition {
                     WaitTransition::None => {}
@@ -971,7 +997,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 radius: c.radius,
             })
             .collect();
-        let environment = SolverEnvironment {
+        let mut environment = SolverEnvironment {
             disabled: false,
             colliders: &colliders,
             forces: &[],
@@ -981,7 +1007,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
         let plane = self.dynamics_use_floor_plane;
         let height = self.physics.position.y;
-        for (set, &first) in self.dynamics.iter_mut().zip(&self.dynamics_first_bone) {
+        let count = self.dynamics.len();
+        for (index, (set, &first)) in self
+            .dynamics
+            .iter_mut()
+            .zip(&self.dynamics_first_bone)
+            .enumerate()
+        {
+            environment.first_force_bone = self.character.dynamics_first_force_bone(index, count);
             set.solve(&mut self.skeleton, first, &environment, &mut |a, b| {
                 if plane {
                     melee_lb::dynamics::floor_plane(a, b, height)

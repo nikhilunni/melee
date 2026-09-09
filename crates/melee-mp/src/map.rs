@@ -257,7 +257,14 @@ impl CollMap {
         &self.bounds
     }
 
-    /// `mpColl_804D64AC`, the count of joint transform updates.
+    /// Ground_801C1CD0 (ground.c, 0x801C1CD0) advances the collision stamp
+    /// after every ground object's animation, even when its geometry is static.
+    pub fn finish_ground_animation(&mut self) {
+        self.coll_804d64ac = self.coll_804d64ac.wrapping_add(1);
+    }
+
+    /// `mpColl_804D64AC`, the collision stamp advanced by ground animation
+    /// and joint transform updates.
     pub fn transform_update_count(&self) -> i32 {
         self.coll_804d64ac
     }

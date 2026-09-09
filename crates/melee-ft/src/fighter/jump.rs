@@ -110,7 +110,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Jump_Enter / JumpAerial_Enter_Basic: separate fmuls at 800CBC0C.
     fn jump_direction(&self, assets: &FighterAssets, aerial: bool) -> CommonMotionState {
         // ftCo_Jump_Enter (800CB250), JumpAerial_Enter_Basic (800CBBC0):
-        // separate fmuls; choosing the backward animation does not turn facing.
+        // ftPe_JumpAerial_Enter (800CC130) also uses separate fmuls.
+        // Choosing the backward animation does not turn facing.
         let backward =
             self.input.current.stick.x * self.physics.facing <= -assets.jumping.backward_threshold;
         match (aerial, backward) {
@@ -123,10 +124,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_JumpAerial.c:103-119 character dispatch, then
     /// ftCo_JumpAerial_Enter_Basic (800CBBC0) -> ftCo_800CBAC4 for the
     /// default arm. Characters with their own double jump override
-    /// `CharacterCallbacks::aerial_jump_style`; those bodies are unported.
+    /// `CharacterCallbacks::aerial_jump_style`.
     pub(super) fn enter_aerial_jump(&mut self, assets: &FighterAssets) -> Result<()> {
         let style = self.character.aerial_jump_style();
-        if style != super::AerialJumpStyle::Basic {
+        if !matches!(
+            style,
+            super::AerialJumpStyle::Basic | super::AerialJumpStyle::Peach
+        ) {
             unimplemented!("ftCo_JumpAerial.c:104-116: {style:?} double jump entry");
         }
         let state = self.jump_direction(assets, true);
@@ -134,10 +138,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let retained_drop_timer = self.retained_drop_timer();
         self.commands.variables[0] = 1;
         let attrs = &self.attributes.jumping;
-        // retail 800CBC44/4C: separate fmuls, no fusion.
+        // retail 800CBC44/4C; Peach horizontal multiply 800CC15C:
+        // separate fmuls, no fusion.
         let velocity = Vec3::new(
             self.input.current.stick.x * attrs.air_jump_h_multiplier,
-            attrs.jump_v_initial_velocity * attrs.air_jump_v_multiplier,
+            // ftPe_JumpAerial_Enter: retail 800CC198..1A0 stores +0 Y/Z.
+            if style == super::AerialJumpStyle::Peach {
+                0.0
+            } else {
+                attrs.jump_v_initial_velocity * attrs.air_jump_v_multiplier
+            },
             0.0,
         );
         self.change_motion_state(state, assets)?;
@@ -164,6 +174,26 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Jump_Phys_Inner (800CB438), ft_80084DB0 and CheckFallFast (8007D528).
     pub(super) fn airborne_physics(&mut self, assets: &FighterAssets) {
+        if matches!(self.state_data, MotionData::JumpAerial { .. })
+            && self.character.aerial_jump_style() == super::AerialJumpStyle::Peach
+        {
+            // ftCo_JumpAerial_Phys_Cb (800CC6C8): ftCommon_8007D268 drift,
+            // then ft_800851D0 (800851F8/FC) copies TransN's vertical delta.
+            self.physics.animation_velocity.x = crate::physics::airborne::drift(
+                self.physics.self_velocity.x,
+                self.input.current.stick.x,
+                &self.attributes.air,
+            );
+            self.physics.self_velocity.y = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("aerial jump root motion")
+                .primary_history
+                .offset
+                .y;
+            return;
+        }
         if let MotionData::Jump(jump) = &mut self.state_data {
             if !jump.physics_started {
                 jump.physics_started = true;

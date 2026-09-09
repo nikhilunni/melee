@@ -265,6 +265,73 @@ impl FighterAnimation {
         self.blend_progress = 0.0;
     }
 
+    /// ftAnim_8006EED4 (8006EED4): restore and attach one unlocked subtree
+    /// at the current frame, preserving the fighter's animation clock.
+    pub fn resume_dynamic_subtree<T: InverseTrig>(
+        &mut self,
+        tree: &mut JObjTree,
+        bone: usize,
+        motion: &Motion,
+    ) -> Result<(), AttachError> {
+        let joint = self.parts[bone].joint;
+        let depth = self.parts[bone].depth;
+        let end = (bone + 1..self.parts.len())
+            .find(|&i| self.parts[i].depth <= depth)
+            .unwrap_or(self.parts.len());
+        let blending = self.blend_duration != 0.0;
+        let mut target = if blending {
+            self.blend_tree.clone()
+        } else {
+            tree.clone()
+        };
+        // ftAnim_GetNextJointInTree also visits the starting descriptor's
+        // following siblings. Attachment and evaluation stop at the subtree.
+        let reset_end = (bone + 1..self.parts.len())
+            .find(|&i| self.parts[i].depth < depth)
+            .unwrap_or(self.parts.len());
+        self.reset_pose_range(&mut target, blending, bone, reset_end);
+        let mut selected = self.parts.clone();
+        for (index, part) in selected.iter_mut().enumerate() {
+            if index < bone || index >= end {
+                part.flags.0 |= PartFlags::LOCKED;
+            }
+        }
+        attach_motion(
+            &mut target,
+            &selected,
+            &motion.animation,
+            motion.flags.bone_mask(),
+            motion.remap.as_ref(),
+        )?;
+        target.req_anim_all_by_flags(joint, 1, self.frame);
+        for_each_aobj(&mut target, joint, |aobj| {
+            if self.flags.contains(MotionFlags::LOOP) {
+                aobj.set_flags(AOBJ_LOOP);
+            }
+            aobj.set_rate(self.speed);
+        });
+        if blending {
+            self.blend_tree = target;
+            tree.req_anim_all_by_flags(joint, 1, self.frame);
+            for_each_aobj(tree, joint, |aobj| {
+                if self.flags.contains(MotionFlags::LOOP) {
+                    aobj.set_flags(AOBJ_LOOP);
+                }
+                aobj.set_rate(self.speed);
+            });
+            self.blend_tree.anim_all::<T>(joint);
+        } else {
+            *tree = target;
+        }
+        let mut callback = AObjEndCallback::default();
+        for part in &self.parts[bone..end] {
+            if part.flags.eligible() {
+                tree.anim::<T>(part.joint, &mut callback);
+            }
+        }
+        Ok(())
+    }
+
     /// `ftAnim_SetAnimRate` (0x8006F190) / `ftAnim_8006F0FC`: defer into
     /// fp+0x8A0 while Fighter.x2223_b0 is set, otherwise change both trees.
     pub fn set_rate(&mut self, tree: &mut JObjTree, rate: f32, deferred: bool) {
@@ -280,7 +347,11 @@ impl FighterAnimation {
     /// `ftAnim_8006FA58` / `ftAnim_8006FB88`: reset the descriptor bones
     /// below TopN, preserving locked rotations and independently animated parts.
     fn reset_pose(&self, target: &mut JObjTree, blending: bool) {
-        for (index, part) in self.parts.iter().enumerate().skip(1) {
+        self.reset_pose_range(target, blending, 1, self.parts.len());
+    }
+
+    fn reset_pose_range(&self, target: &mut JObjTree, blending: bool, start: usize, end: usize) {
+        for (index, part) in self.parts.iter().enumerate().take(end).skip(start) {
             if part.motion_mask != 0 {
                 continue;
             }

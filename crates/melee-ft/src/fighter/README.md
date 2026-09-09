@@ -30,6 +30,15 @@ The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
 attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
 remain explicit unsupported branches. No general moveset completeness is claimed.
 
+## Lane C: Peach
+
+All eighteen Peach idle/start/movement scenes and ordered particle ledgers pass.
+The start/idle bone oracles compare 233632 SRT words across 114 Peach joints
+(45 dynamic) and the 73-joint Fox opponent. Her aerial jump uses animation-driven
+vertical velocity. Per-motion dynamic boundaries, opcode 50 subtree restoration,
+static-stage collision stamps and the idle HUD resume boundary are now supported.
+See [M4_PEACH.md](M4_PEACH.md) and [PEACH_DATA.md](../../../../docs/PEACH_DATA.md).
+
 ## Lane C: Captain Falcon
 
 All eighteen Falcon idle/start/movement scenes and their ordered particle RNG

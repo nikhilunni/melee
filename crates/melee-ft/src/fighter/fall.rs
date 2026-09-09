@@ -188,14 +188,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
 }
 
-/// Item-free Fox predicates reached from ftCo_Fall_IASA_Inner (0x800CCAAC).
-/// Shared with Jump/JumpAerial: item-free Fox ordering agrees through the
-/// double-jump check. Other character/item branches are outside this slice.
+/// Item-free predicates from ftCo_Fall_IASA_Inner (0x800CCAAC).
+/// Jump/JumpAerial callers gate their character float hooks by motion state.
 pub fn iasa(
     input: &crate::input::FighterInput,
     common: &crate::input::InputCommonData,
     jumps_used: u8,
     max_jumps: i32,
+    mut check_float: impl FnMut(super::FloatInputPhase),
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
     if input.pressed.intersects(Buttons::B) {
@@ -212,6 +212,7 @@ pub fn iasa(
         crate::input::Stick::default(),
         "C-stick aerial selection needs ftCo_800DF478"
     );
+    check_float(super::FloatInputPhase::BeforeAerialJump);
     if i32::from(jumps_used) < max_jumps
         && (input.pressed.intersects(Buttons::XY)
             || (input.current.stick.y >= common.thresholds.tap_jump_threshold
@@ -219,5 +220,6 @@ pub fn iasa(
     {
         return T::Jump;
     }
+    check_float(super::FloatInputPhase::AfterAerialJump);
     T::None
 }

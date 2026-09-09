@@ -214,6 +214,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         let mut capabilities = Capabilities::default();
         character.on_load(&mut capabilities);
+        character.on_resources_loaded(assets, &player);
         // fighter.c:241, retail 0x80067CE8: fmadds. x40 was reset to +0.
         let offset = 0.0 * player.scale; // ftCommon_800804EC: separate fmuls.
         let position = Vec3::new(
@@ -362,6 +363,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
         rate: f32,
     ) -> Result<()> {
         self.status.require_supported();
+        if self.physics.ground_or_air == GroundOrAir::Ground {
+            self.character.on_grounded_motion();
+        }
+        self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
         self.shield.clear_collision();
         self.status.ignore_fighter_nudge = false;
@@ -457,15 +462,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
             _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
         };
         self.motion_state = motion_state;
-        let dynamic = assets.motions[&animation_id].flags.0 & 0x1000_0000 == 0;
         for (i, set) in self.dynamics.iter_mut().enumerate() {
-            self.dynamics_first_bone[i] = if dynamic { 0 } else { 0x100 };
+            let first = assets.dynamics_motion_starts[&animation_id][i];
+            let dynamic = first != 0x100;
+            self.dynamics_first_bone[i] = first;
             crate::dynamics::select(
                 set,
                 &mut self.skeleton,
                 &mut self.animation.parts,
                 dynamic,
-                0,
+                if dynamic { first as usize } else { 0 },
             );
         }
         self.ground_pose = GroundPoseFlags::default();
@@ -533,6 +539,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 assets,
             );
         }
+        self.apply_dynamic_commands(assets);
         if state == CommonMotionState::Fall {
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 self.leave_ground();

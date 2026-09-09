@@ -205,6 +205,7 @@ impl Runtime {
                                 .update_joint(stage::joint_id(map, joint), matrix);
                         }
                     }
+                    state.map.finish_ground_animation();
                 }
                 0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
                 _ => {
@@ -704,3 +705,6 @@ mod falco_bones;
 
 #[cfg(test)]
 mod falcon_bones;
+
+#[cfg(test)]
+mod peach_bones;

@@ -7,6 +7,7 @@ pub mod caches;
 pub mod commands;
 pub mod damage;
 pub mod dash;
+mod dynamic_commands;
 pub mod effects;
 pub mod entry;
 pub mod escape;
@@ -71,6 +72,15 @@ pub trait CharacterCallbacks {
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// OnLoad work requiring decoded animation resources and costume identity.
+    fn on_resources_loaded(&mut self, _assets: &assets::FighterAssets, _player: &PlayerSlot) {}
+    /// Fighter_ChangeMotionState, fighter.c:1120-1123: restore ground resources.
+    fn on_grounded_motion(&mut self) {}
+    /// ftCo_8009DD94, ftdynamics.c:397-419: first joint affected by forces.
+    fn dynamics_first_force_bone(&self, _set: usize, _count: usize) -> usize {
+        0
+    }
+
     /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79.
     fn air_dodge_tether(&self) {
         if matches!(
@@ -115,6 +125,17 @@ pub trait CharacterCallbacks {
             unimplemented!("ftCo_Escape.c:86-88, 232-234: Yoshi egg escape");
         }
     }
+    /// ftPe_8011BA54 / ftPe_8011BAD8: float selection surrounding the
+    /// aerial-jump predicate. Characters without float do nothing.
+    fn check_float_input(
+        &self,
+        _input: &crate::input::FighterInput,
+        _assets: &assets::FighterAssets,
+        _vertical_velocity: f32,
+        _phase: FloatInputPhase,
+    ) {
+    }
+
     /// Which double-jump entry the character uses
     /// (ftCo_JumpAerial.c:103-119 `switch (fp->kind)`). The default arm is
     /// the ordinary `ftCo_JumpAerial_Enter_Basic`; Ness, Yoshi, Peach and
@@ -124,8 +145,15 @@ pub trait CharacterCallbacks {
     }
 }
 
-/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. Only `Basic`
-/// is ported; the others exist so character crates can name them.
+/// Float predicates run on either side of the ordinary aerial-jump check.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FloatInputPhase {
+    BeforeAerialJump,
+    AfterAerialJump,
+}
+
+/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. `Basic` and `Peach`
+/// are ported; the others retain explicit unsupported boundaries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AerialJumpStyle {
     /// ftCo_JumpAerial_Enter_Basic (0x800CBBC0).

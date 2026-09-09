@@ -32,6 +32,8 @@ pub enum Command {
         reverse: bool,
     },
     ColorAnimation(ColorAnimationRequest),
+    /// ftAction_80072B94: toggle animation ownership of a dynamic joint.
+    ToggleDynamics(i32),
     ModelSelection {
         group: i32,
         variant: i32,
@@ -107,6 +109,8 @@ pub struct CommandState {
     pub hitboxes: [Option<super::hitbox::HitCapsule>; 4],
     pub jab_followup: bool,
     pub sword_trail: Option<(i32, bool)>,
+    /// Ordered ftCo_8009E318 requests, consumed immediately after commands.
+    pub dynamic_toggles: Vec<usize>,
     pub color_animations: Vec<ColorAnimationRequest>,
     /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
@@ -204,6 +208,12 @@ impl CommandState {
                 Command::ClearHitboxes => {
                     if !seeking {
                         self.hitboxes.fill(None);
+                    }
+                }
+                Command::ToggleDynamics(bone) => {
+                    if !seeking {
+                        self.dynamic_toggles
+                            .push(usize::try_from(*bone).expect("dynamic bone index"));
                     }
                 }
                 Command::SwordTrail { duration, reverse } => {

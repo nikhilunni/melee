@@ -57,6 +57,7 @@ pub struct FighterAssets {
     pub overlap: super::overlap::OverlapParameters,
     pub hurtboxes: Vec<super::caches::Hurtbox>,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
+    pub dynamics_motion_starts: BTreeMap<i32, Vec<u32>>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],
@@ -214,6 +215,11 @@ impl FighterAssets {
             },
             hurtboxes: read_hurtboxes(data, root)?,
             dynamics: crate::dynamics::read_sets(data, root)?,
+            dynamics_motion_starts: crate::dynamics::read_motion_starts(
+                data,
+                root,
+                descriptor.animation_count,
+            )?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
@@ -356,6 +362,7 @@ fn read_script(
             15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
             16 => Command::ClearHitboxes,
             29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
+            50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
             49 => Command::SwordTrail {
                 duration: ((word << 7) as i32) >> 7,
                 reverse: word & (1 << 25) != 0,

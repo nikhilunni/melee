@@ -58,7 +58,7 @@ pub struct InitialState {
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
     pub(crate) selected_music: Option<i32>,
     /// First unfinished phase: 0 between idle ticks, 14 inside the older idle
-    /// capture, 15 within particle emission, or 24 before match start.
+    /// capture, 15 within particle emission, 17 in the stock HUD, or 24 before match start.
     pub(crate) resume_s_link: u8,
 }
 fn first_json(path: &Path) -> Result<Json> {
@@ -158,6 +158,28 @@ impl InitialState {
                     );
                 }
                 (15, 0x8005_C9A4) => partial_emission = true,
+                (17, 0x802F_9410) => {
+                    // ifstock.c:478-492. Fighter/particle/dynamic procs have
+                    // completed; only an inactive stock HUD may be omitted.
+                    let owner = word(proc, 0x10);
+                    let user = word(saved.bytes(owner, 0x30), 0x2C);
+                    let hud = saved.bytes(user, 12);
+                    ensure!(hud[0] < 6 && hud[1] <= 1, "unsupported stock HUD mode");
+                    if hud[1] == 0 {
+                        // ifStock_802F8298 (802F8298): missing-stock animation
+                        // frame zero and active steals can emit particles.
+                        let stocks = word(
+                            saved.bytes(0x804A_1378 + 0x54 + u32::from(hud[0]) * 0x50, 4),
+                            0,
+                        ) as usize;
+                        ensure!(
+                            (1..=5).contains(&stocks)
+                                && (hud[2] == 0 || hud[5 + stocks..10].iter().all(|&v| v != 0))
+                                && hud[10..12] == [0, 0],
+                            "pending stock HUD effects: {hud:?}, stocks {stocks}"
+                        );
+                    }
+                }
                 _ => anyhow::bail!(
                     "unsupported scheduler resume boundary: link {saved_link}, callback {:08X}",
                     word(proc, 0x14)

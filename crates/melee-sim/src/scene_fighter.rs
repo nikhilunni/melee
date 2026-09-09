@@ -84,6 +84,7 @@ macro_rules! scene_characters {
 
 scene_characters! {
     "Fox" => Fox(ft_fox::init::Fox),
+    "Peach" => Peach(ft_peach::init::Peach),
     "Marth" => Marth(ft_mars::init::Marth),
     "Falco" => Falco(ft_falco::init::Falco),
     "CaptainFalcon" => CaptainFalcon(ft_captain::init::CaptainFalcon),

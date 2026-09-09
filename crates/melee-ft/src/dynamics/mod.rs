@@ -98,3 +98,45 @@ pub fn select(
         }
     }
 }
+
+/// ftCo_8009E7B4 (8009E7B4), ftdynamics.c:639-697. The apparent
+/// FigaTree pointers in x10 are actually integer chain-start indices.
+/// Motion blend metadata byte 1 selects the row; 0x100 disables solving.
+pub fn read_motion_starts(
+    archive: &Archive,
+    root: u32,
+    motion_count: u32,
+) -> Result<std::collections::BTreeMap<i32, Vec<u32>>, Box<dyn std::error::Error>> {
+    let mut result = std::collections::BTreeMap::new();
+    let Some(dynamics) = archive.link(root + 0x2C)? else {
+        return Ok(result);
+    };
+    let count = archive.reader().u32(dynamics)?;
+    if count == 0 {
+        return Ok(result);
+    }
+    let table = archive.link(dynamics + 0x10)?;
+    let motions = archive.link(root + 0xC)?.ok_or("missing motion table")?;
+    let blends = archive.link(root + 0x10)?.ok_or("missing blend metadata")?;
+    for motion in 0..motion_count {
+        let flags = archive.reader().u32(motions + motion * 0x18 + 0x10)?;
+        let starts = if flags & 0x0800_0000 != 0 {
+            let slot = u32::from(archive.reader().u8(blends + motion * 2 + 1)?);
+            let row = table
+                .map(|table| archive.link(table + slot * 4))
+                .transpose()?
+                .flatten();
+            if let Some(row) = row {
+                (0..count)
+                    .map(|i| archive.reader().u32(row + i * 4))
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                vec![0x100; count as usize]
+            }
+        } else {
+            vec![if flags & 0x1000_0000 != 0 { 0x100 } else { 0 }; count as usize]
+        };
+        result.insert(motion as i32, starts);
+    }
+    Ok(result)
+}
