@@ -1,4 +1,4 @@
-//! Per-slot character archives and shared Final Destination resources.
+//! Per-slot character archives and resources selected by the stage descriptor.
 use anyhow::{Context, Result};
 use hsd_anim::{
     jobj::{JObjId, JObjTree},
@@ -12,6 +12,7 @@ use std::{fs, path::Path};
 pub struct Assets {
     pub fighters: [FighterAssets; 2],
     pub stage: Archive,
+    pub stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
     pub effects: Archive,
@@ -19,7 +20,11 @@ pub struct Assets {
     pub characters: [CharacterArchive; 2],
 }
 impl Assets {
-    pub fn load(files: &Path, descriptors: [&'static CharacterDescriptor; 2]) -> Result<Self> {
+    pub fn load(
+        files: &Path,
+        descriptors: [&'static CharacterDescriptor; 2],
+        stage_descriptor: &'static crate::scene_stage::StageDescriptor,
+    ) -> Result<Self> {
         let read = |name| fs::read(files.join(name)).with_context(|| format!("loading {name}"));
         let archive = |name| -> Result<Archive> { Ok(Archive::parse(&read(name)?)?) };
         let common = archive("PlCo.dat")?;
@@ -46,9 +51,8 @@ impl Assets {
             });
             fighters.push(resources);
         }
-        let stage = archive("GrNLa.dat")?;
-        let stage_desc =
-            melee_gr::desc::read_final_destination(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let stage = archive(stage_descriptor.file)?;
+        let stage_desc = (stage_descriptor.read)(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
         let particle_bank = ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?;
         let effects = archive("EfCoData.dat")?;
         // efAsync_LoadSync (efasync.c:1287-1316): command/texture pointers.
@@ -64,6 +68,7 @@ impl Assets {
         Ok(Self {
             fighters: fighters.try_into().ok().expect("two character resources"),
             stage,
+            stage_descriptor,
             stage_desc,
             particle_bank,
             effects,

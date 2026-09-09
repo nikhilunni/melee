@@ -89,6 +89,7 @@ pub mod anim;
 pub mod dobj;
 pub mod figatree;
 pub mod jobj;
+pub mod light;
 
 pub use anim::{
     AObjDesc, AnimJoint, FObjDesc, MatAnimJoint, ShapeAnimJoint, ANIM_JOINT_SIZE, AOBJ_DESC_SIZE,

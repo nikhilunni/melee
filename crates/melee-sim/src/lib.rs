@@ -17,3 +17,5 @@ pub mod trace;
 mod effects;
 
 mod scene_fighter;
+
+pub mod scene_stage;

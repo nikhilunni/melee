@@ -388,8 +388,8 @@ fn both_end_opcodes_delete_before_physics_and_pause_freezes_every_timer() {
 fn unported_opcodes_and_malformed_programs_fail_explicitly() {
     let supported = [
         0xa0, 0xa1, 0xa2, 0xa3, 0xa5, 0xa6, 0xa7, 0xa8, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb0, 0xb1,
-        0xb6, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xe0, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xed, 0xef,
-        0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+        0xb3, 0xb6, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xe0, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xed,
+        0xef, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
     ];
     for opcode in 0xa0..=0xff {
         if supported.contains(&opcode) || (0xc0..0xe0).contains(&opcode) {
@@ -401,11 +401,13 @@ fn unported_opcodes_and_malformed_programs_fail_explicitly() {
             Err(Error::UnsupportedOpcode { opcode, pc: 0 })
         );
     }
-    let mut p = particle(vec![0xa2, 0]);
-    assert!(matches!(
-        p.update(&mut HsdRng::new(1), &mut DrawLog::default()),
-        Err(Error::TruncatedProgram { .. })
-    ));
+    for program in [vec![0xa2, 0], vec![0xb3], vec![0xb3, 2, 0x12, 80]] {
+        let mut p = particle(program);
+        assert!(matches!(
+            p.update(&mut HsdRng::new(1), &mut DrawLog::default()),
+            Err(Error::TruncatedProgram { .. })
+        ));
+    }
     let mut p = particle(vec![0xfc, 0xfd]);
     assert!(matches!(
         p.update(&mut HsdRng::new(1), &mut DrawLog::default()),

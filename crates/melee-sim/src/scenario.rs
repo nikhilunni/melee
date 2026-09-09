@@ -1,4 +1,4 @@
-//! TOML scenario loading: supported characters on Final Destination, with a
+//! TOML scenario loading: registered characters and stages, with a
 //! scripted input schedule for one or more ports.
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -59,10 +59,13 @@ impl Scenario {
         scenario.validate()?;
         Ok(scenario)
     }
+    pub fn stage_descriptor(&self) -> &'static crate::scene_stage::StageDescriptor {
+        crate::scene_stage::descriptor(&self.stage).expect("validated stage")
+    }
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            self.stage == "FinalDestination",
-            "only FinalDestination is supported"
+            crate::scene_stage::descriptor(&self.stage).is_some(),
+            "unsupported stage"
         );
         ensure!(
             (1..=600).contains(&self.frames),
@@ -119,7 +122,7 @@ impl Scenario {
     }
     /// Local assets/captures whose absence lets integration tests skip.
     pub fn required_files(&self) -> Vec<PathBuf> {
-        let mut paths = ["PlCo.dat", "GrNLa.dat", "EfCoData.dat"]
+        let mut paths = ["PlCo.dat", self.stage_descriptor().file, "EfCoData.dat"]
             .map(|n| self.assets_path().join(n))
             .to_vec();
         for fighter in &self.fighters {

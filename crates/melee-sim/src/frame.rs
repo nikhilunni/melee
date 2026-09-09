@@ -1,5 +1,7 @@
 //! Scene composition through HSD's real scheduler. Registrations, rather than
 //! a sorted callback replay, preserve same-tick insertion/deferred destruction.
+use crate::initial_state::stage;
+use crate::scene_stage::SceneStage;
 use crate::{initial_state::InitialState, inputs::PadScript};
 use anyhow::{ensure, Result};
 use hsd_gobj::{World, WorldConfig};
@@ -10,7 +12,6 @@ use melee_ft::{
     fighter::{FighterProc, RetailTrig},
     input::PadSample,
 };
-use melee_gr::last::{AnimationStatus, FinalDestination};
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,7 +31,7 @@ struct Registration {
     object: u8,
     callback: Callback,
 }
-fn registrations(stage: &FinalDestination) -> Vec<Registration> {
+fn registrations(stage: &SceneStage) -> Vec<Registration> {
     let mut rows: Vec<_> = stage
         .proc_table()
         .into_iter()
@@ -150,12 +151,13 @@ impl Runtime {
                 // Registered Ground wrappers: lighting, disabled spawn manager,
                 // fixed animation attachments, static collision, disabled rain.
                 // M3.md documents the scope and the constructor's phase guard.
-                0x801C1CD0 if map == Some(4) => {
-                    if let Some(animation) = &mut state.stage_animation {
+                0x801C1CD0 => {
+                    let map = map.expect("animation map");
+                    if let Some(animation) = state.stage_animations.get_mut(&map) {
                         for event in animation.tick::<RetailTrig>() {
                             let mut request =
                                 hsd_particle::system::SpawnRequest::new(event.bank, event.kind, 0);
-                            request.joint = Some((event.joint, event.matrix));
+                            request.joint = Some((stage::joint_id(map, event.joint), event.matrix));
                             state.particles.spawn::<RetailTrig>(
                                 &state.assets.particle_bank,
                                 request,
@@ -163,20 +165,18 @@ impl Runtime {
                                 &mut self.particle_draws,
                             )?;
                         }
+                        for (joint, matrix) in animation.matrices() {
+                            state
+                                .particles
+                                .update_joint(stage::joint_id(map, joint), matrix);
+                        }
                     }
                 }
-                0x801C461C | 0x801CADBC | 0x801C1CD0 | 0x801C1D38 | 0x801C0C2C => {}
+                0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
                 _ => {
-                    state.stage.run_stage_proc(
-                        map.expect("stage callback map"),
-                        &AnimationStatus::default(),
-                        &mut state.rng,
-                    );
-                    ensure!(
-                        state.stage.actions.is_empty(),
-                        "FD animation/creation transition outside imported M3 interval: {:?}",
-                        state.stage.actions
-                    );
+                    state
+                        .stage
+                        .run_stage_proc(map.expect("stage callback map"), &mut state.rng)?;
                 }
             },
             Callback::Effects => state.effects.tick(
@@ -346,16 +346,19 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use melee_gr::{ground::Ground, last::MatchMode};
-    fn stage() -> FinalDestination {
+    use melee_gr::{
+        ground::Ground,
+        last::{FinalDestination, MatchMode},
+    };
+    fn stage() -> SceneStage {
         let mut ground = Ground::controller([0; 3]);
         ground.start();
         ground.live_maps[..9].fill(true);
-        FinalDestination {
+        SceneStage::FinalDestination(Box::new(FinalDestination {
             ground,
             mode: MatchMode::Versus,
             actions: vec![],
-        }
+        }))
     }
     #[test]
     fn m3_proc_order() {

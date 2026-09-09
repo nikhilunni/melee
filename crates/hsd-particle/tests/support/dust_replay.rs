@@ -38,8 +38,8 @@ fn word(draw: &Json, key: &str) -> u32 {
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
-        0x8008_a8bc | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8
-        | 0x8021_b040 | 0x8021_af0c => false,
+        0x801c_26ac | 0x8008_a8bc | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc
+        | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c => false,
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
         0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
@@ -49,19 +49,38 @@ fn particle_draw(draw: &Json) -> bool {
     }
 }
 pub fn replay(name: &str, tick_count: usize) -> usize {
+    let battlefield = name.ends_with("_bf_fox");
+    let scene = if battlefield {
+        name.to_owned()
+    } else {
+        format!("{name}_fd_fox")
+    };
+    let match_start = name == "start_bf_fox";
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let paths = [
         "particles.jsonl.initial.jsonl",
         "particles.jsonl",
-        "ledger.raw.jsonl",
+        if battlefield {
+            "ledger600.raw.jsonl"
+        } else {
+            "ledger.raw.jsonl"
+        },
         "tick.expected.jsonl",
         "particles.jsonl.initial.jsonl.meta.json",
     ]
-    .map(|s| root.join(format!("traces/{name}_fd_fox.{s}")));
-    let archives = ["GrNLa.dat", "EfCoData.dat"].map(|s| root.join(format!("roms/files/{s}")));
+    .map(|s| root.join(format!("traces/{scene}.{s}")));
+    let archives = [
+        if battlefield {
+            "GrNBa.dat"
+        } else {
+            "GrNLa.dat"
+        },
+        "EfCoData.dat",
+    ]
+    .map(|s| root.join(format!("roms/files/{s}")));
     for path in paths.iter().chain(archives.iter()) {
         if !path.exists() {
-            eprintln!("skipping FD {name}: {} absent", path.display());
+            eprintln!("skipping {scene}: {} absent", path.display());
             return 0;
         }
     }
@@ -96,6 +115,11 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
         .iter_mut()
         .zip(particle_meta["generators"].as_array().unwrap())
     {
+        if battlefield {
+            // Production restore resolves the sole captured BF attachment to
+            // map 1, descendant 2 (grAnime excludes Ground's wrapper joint).
+            generator.attachment_id = Some(102);
+        }
         let pointer = &captured["fields"]["jobj"];
         let joint = particle_meta["joints"]
             .as_array()
@@ -151,12 +175,14 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
         }
         let mut draws = DrawLog::default();
         spawns.before_main(tick, &mut system, &banks, &mut rng, &mut draws);
-        system
-            .proc_main::<RetailTrig>(&mut rng, &mut draws)
-            .unwrap_or_else(|e| panic!("tick {tick} main: {e}"));
-        system
-            .proc_aux::<RetailTrig>(&mut rng, &mut draws)
-            .unwrap_or_else(|e| panic!("tick {tick} aux: {e}"));
+        if !(match_start && tick == 0) {
+            system
+                .proc_main::<RetailTrig>(&mut rng, &mut draws)
+                .unwrap_or_else(|e| panic!("tick {tick} main: {e}"));
+            system
+                .proc_aux::<RetailTrig>(&mut rng, &mut draws)
+                .unwrap_or_else(|e| panic!("tick {tick} aux: {e}"));
+        }
         let sites = expected[external..]
             .iter()
             .map(|d| word(d, "lr") - 4)
@@ -202,7 +228,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     );
 
     assert!(mismatches.is_empty(), "mismatched fields: {mismatches:?}");
-    eprintln!("FD {name} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
+    eprintln!("{scene} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
     if name == "dash" {
         assert!(
             display_cache_fields > 0,

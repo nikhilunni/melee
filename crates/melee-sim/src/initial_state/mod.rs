@@ -6,7 +6,7 @@ pub(crate) use melee_mp::CollMap;
 pub(crate) use saved_pose::SavedPose;
 pub(crate) mod particles;
 mod saved_pose;
-mod stage;
+pub(crate) mod stage;
 use hsd_types::Vec3;
 fn word(raw: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap())
@@ -43,9 +43,10 @@ pub struct InitialState {
     pub(crate) assets: Assets,
     pub(crate) fighters: [SceneFighter; 2],
     pub(crate) map: melee_mp::CollMap,
-    pub(crate) stage: melee_gr::last::FinalDestination,
+    pub(crate) stage: crate::scene_stage::SceneStage,
     pub(crate) particles: ParticleSystem,
-    pub(crate) stage_animation: Option<melee_gr::last::animation::BackgroundAnimation>,
+    pub(crate) stage_animations:
+        std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
     pub(crate) effects: crate::effects::Effects,
     pub(crate) rng: HsdRng,
     /// Match setup still owes Stage_80225074 before the first observation.
@@ -69,6 +70,7 @@ impl InitialState {
         let assets = Assets::load(
             &scenario.assets_path(),
             std::array::from_fn(|p| scenario.fighters[p].descriptor()),
+            scenario.stage_descriptor(),
         )?;
         let map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -203,13 +205,18 @@ impl InitialState {
             "inconsistent saved RNG seed"
         );
         let mut particles = particles::restore(&initial, &assets.particle_bank);
+        let meta = &metadata["particles"];
+        let captured_generators = meta["generators"]
+            .as_array()
+            .context("generator metadata")?;
         ensure!(
-            particles.generators.len() == usize::from(!match_start),
-            "unexpected initial FD generator population"
+            particles.generators.len() == captured_generators.len(),
+            "generator metadata count"
         );
-        if !match_start {
-            let meta = &metadata["particles"];
-            let generator = &meta["generators"][0]["fields"];
+        for (runtime_generator, captured) in
+            particles.generators.iter_mut().zip(captured_generators)
+        {
+            let generator = &captured["fields"];
             ensure!(
                 generator["callback"] == 0 && generator["user_functions"] == 0,
                 "particle callbacks unsupported"
@@ -230,28 +237,18 @@ impl InitialState {
                         .all(|w| w.as_u64().is_some_and(|v| v <= u64::from(u32::MAX))),
                 "invalid attachment matrix"
             );
-            particles.generators[0].joint_matrix = Some(Mtx(std::array::from_fn(|r| {
+            runtime_generator.joint_matrix = Some(Mtx(std::array::from_fn(|r| {
                 std::array::from_fn(|c| f32::from_bits(words[r * 4 + c].as_u64().unwrap() as u32))
             })));
         }
-        let stage = stage::restore(&saved, &assets)?;
-        ensure!(
-            stage.ground.waiting_for_start == match_start,
-            "FD start flag disagrees with fighter boundary"
-        );
-        let stage_animation = match_start
-            .then(|| {
-                melee_gr::last::animation::BackgroundAnimation::load(
-                    &assets.stage,
-                    &assets.stage_desc,
-                )
-            })
-            .transpose()
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
-        ensure!(
-            stage.ground.elapsed + scenario.frames as f32 <= 1800.0,
-            "FD transition exceeds implemented stationary attachment interval"
-        );
+        let (stage, stage_animations) = stage::restore_scene(
+            &saved,
+            &assets,
+            match_start,
+            scenario.frames,
+            &mut particles,
+            &metadata,
+        )?;
         let pending_music = if match_start {
             // gmMainLib_GetUnlockedCharactersBitmaskPtr (8015ED8C): lwz the
             // global, add 0x1868. gm/types.h's +1898 comment is stale.
@@ -259,7 +256,8 @@ impl InitialState {
             let unlocks = u16::from_be_bytes(saved.bytes(main + 0x1868, 2).try_into().unwrap());
             const ALL_UNLOCKABLE_CHARACTERS: u16 = (1 << 11) - 1;
             Some((
-                melee_gr::desc::read_fd_music(&assets.stage).map_err(|e| anyhow::anyhow!("{e}"))?,
+                melee_gr::desc::read_music(&assets.stage, assets.stage_descriptor.music_id)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?,
                 unlocks & ALL_UNLOCKABLE_CHARACTERS == ALL_UNLOCKABLE_CHARACTERS,
             ))
         } else {
@@ -275,7 +273,7 @@ impl InitialState {
             particles,
             rng: HsdRng::new(seed),
             resume_s_link,
-            stage_animation,
+            stage_animations,
             effects: crate::effects::Effects::default(),
         })
     }

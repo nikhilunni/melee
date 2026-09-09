@@ -36,3 +36,24 @@ fixtures. Position and matrix words are only the effect layer's inputs.
 | airdodge | 300 | 4 | 69 |
 | wavedash | 300 | 3 | 29 |
 | ledge | 420 | 4 | 64 |
+
+## Battlefield (Lane B1, 2026-09-09)
+
+`idle_bf_spawns.json` and `start_bf_spawns.json` were recorded from production
+`melee-sim gate` runs of the corresponding Battlefield scenarios, each reporting
+600 ticks × 49 keys with zero divergences. They use the same format and method
+above, additionally logging map animation spawns and joint updates in `frame.rs`.
+The temporary logging was removed afterward. No particle outputs were used as
+input fixtures. Duplicate unchanged joint matrices and unused joint updates are
+omitted; call order of all retained events is preserved.
+
+| Scene | External spawns | Retained input events |
+|---|---:|---:|
+| idle_bf_fox | 8 | 9 |
+| start_bf_fox | 12 | 259 |
+
+The initial generators all attach to production joint ID 102: map 1, archive
+descendant 2, after excluding Ground's scale wrapper. The helper resolves that
+initial identity before consuming the logged events. Start tick 0 performs the
+pending music choice but no scheduler procs, as in the saved boundary. Neither
+Battlefield replay needs an AppSRT display-cache exclusion.

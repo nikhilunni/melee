@@ -382,3 +382,20 @@ fn airjumpb_marth_particle_draw_order() {
 fn airjumpb_fox_particle_draw_order() {
     particle_rng_sites_for_ticks("airjumpb_fd_fox", 300);
 }
+
+#[test]
+fn idle_bf_fox_600() {
+    movement_gate_ticks("idle_bf_fox", 600);
+}
+#[test]
+fn start_bf_fox_600() {
+    movement_gate_ticks("start_bf_fox", 600);
+}
+#[test]
+fn battlefield_idle_particle_rng_order() {
+    particle_rng_sites_with_ledger("idle_bf_fox", 600, "ledger600");
+}
+#[test]
+fn battlefield_start_particle_rng_order() {
+    particle_rng_sites_with_ledger("start_bf_fox", 600, "ledger600");
+}

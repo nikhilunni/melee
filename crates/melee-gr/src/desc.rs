@@ -42,6 +42,7 @@ pub struct ModelDesc {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct StageDesc {
+    pub kind: GrKind,
     pub parameters: GroundParam,
     pub models: Vec<ModelDesc>,
     pub position_bindings: Vec<PositionBinding>,
@@ -103,6 +104,15 @@ fn pointer_list(archive: &Archive, slot: u32) -> ReadResult<Vec<u32>> {
 
 /// `grDatFiles_801C6038` (grdatfiles.c), retail 0x801C6038: resolve stage publics.
 pub fn read_final_destination(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Last, 4)
+}
+
+/// `grDatFiles_801C6038` (0x801C6038): Battlefield map 6 selects lights and has no fog.
+pub fn read_battlefield(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Battle, 6)
+}
+
+fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();
     reader.slice(header, 0x30)?;
@@ -116,19 +126,24 @@ pub fn read_final_destination(archive: &Archive) -> ReadResult<StageDesc> {
         .collect::<ReadResult<Vec<_>>>()?;
     let bindings = read_position_bindings(archive, header, section_counts[0], &models)?;
     let parameters = read_parameters(archive)?;
-    // Ground_801C1E00 selects the callback row with flags_b1: FD map 4.
-    let fog = models
-        .get(4)
-        .and_then(|m| m.fog_offset)
-        .ok_or_else(|| error("FD map 4 has no fog"))?;
+    // Ground_801C1E00 selects the callback row with flags_b1 (FD 4, BF 6).
+    let fog = models.get(environment_map).and_then(|m| m.fog_offset);
     // HSD_FogDesc (fog.h): u32 type, fog-adjust pointer, start/end, GXColor at +0x10.
-    let initial_fog = reader.array::<3>(fog + 0x10)?;
+    let initial_fog = fog
+        .map(|fog| reader.array::<3>(fog + 0x10))
+        .transpose()?
+        .unwrap_or([0; 3]);
     let scripts = public(archive, "yakumono_param")?;
     let mut material_script_offsets = [0; 4];
-    for (i, offset) in material_script_offsets.iter_mut().enumerate() {
+    for (i, offset) in material_script_offsets
+        .iter_mut()
+        .enumerate()
+        .take(if kind == GrKind::Last { 4 } else { 2 })
+    {
         *offset = required_link(archive, scripts + i as u32 * 4)?;
     }
     Ok(StageDesc {
+        kind,
         parameters,
         models,
         position_bindings: bindings,
@@ -234,37 +249,67 @@ pub fn load_collision(archive: &Archive, desc: &StageDesc) -> ReadResult<CollMap
     Ok(CollMap::load(
         read_public_coll_data(archive)?,
         desc.parameters.map_scale,
-        GrKind::Last,
+        desc.kind,
     ))
 }
 
 /// Ground_801C24F8: FD's StageParam row (gr/types.h, stride 0x64).
 /// +14 selects rule 6 (all characters unlocked), +16 is the percent threshold.
 pub fn read_fd_music(archive: &Archive) -> ReadResult<crate::music::MusicParameters> {
+    read_music(archive, 32)
+}
+
+/// `Ground_801C24F8` (0x801C24F8): select a StageParam row by stage-select ID.
+pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::MusicParameters> {
     let root = public(archive, "grGroundParam")?;
     let r = archive.reader();
     let count = r.u32(root + 0xB4)?;
     let table = archive
         .link(root + 0xB0)?
         .ok_or_else(|| error("missing StageParam"))?;
-    const FINAL_DESTINATION_STAGE: i32 = 32; // St_Kind_Last, stage-select numbering.
     let mut selected = None;
     for i in 0..count {
         let row = table + i * 0x64;
-        if r.s32(row)? == FINAL_DESTINATION_STAGE {
+        if r.s32(row)? == stage_id {
             selected = Some(row);
             break;
         }
     }
-    let row = selected.ok_or_else(|| error("missing Final Destination StageParam"))?;
+    let row = selected.ok_or_else(|| error("missing stage music parameters"))?;
     if r.s16(row + 0x14)? != 6 {
-        return Err(error("unsupported FD music unlock rule"));
+        return Err(error("unsupported stage music unlock rule"));
     }
     Ok(crate::music::MusicParameters {
         primary: r.s32(row + 4)?,
         alternate: r.s32(row + 8)?,
         alternate_chance: r.s16(row + 0x16)?,
     })
+}
+
+/// `Ground_801C466C` (0x801C466C), ground.c:2665-2670, and
+/// `lb_80011AC4` (0x80011AC4): the selected map's Melee LightList table.
+pub fn read_static_lights(
+    archive: &Archive,
+    model: &ModelDesc,
+) -> ReadResult<Vec<hsd_archive::desc::light::LightDesc>> {
+    let Some(mut cursor) = model.light_list_offset else {
+        return Ok(Vec::new());
+    };
+    let mut lights = Vec::new();
+    while let Some(list) = link(archive, cursor)? {
+        if lights.len() >= 8 {
+            return Err(error("stage light list exceeds hardware slots"));
+        }
+        if link(archive, list + 4)?.is_some() {
+            unimplemented!("ground.c:2723-2747: animated light descriptors");
+        }
+        lights.push(hsd_archive::desc::light::LightDesc::read(
+            archive,
+            required_link(archive, list)?,
+        )?);
+        cursor += 4;
+    }
+    Ok(lights)
 }
 
 #[cfg(test)]

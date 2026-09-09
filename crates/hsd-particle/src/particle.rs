@@ -378,6 +378,25 @@ impl Particle {
             0xaf => self.kind = (self.kind & !0x40) | 0x20,
             0xb0 => self.kind = (self.kind & !0x20) | 0x40,
             0xb1 => self.kind |= 0x60,
+            // hsd_8039930C (0x8039930C), particle.c:1502-1547.
+            // Alpha comparison uses signed 16.16 integer interpolation.
+            0xb3 => {
+                let track = &mut self.alpha_compare;
+                if track.duration != 0 {
+                    let step = (i32::from(track.remaining) << 16) / i32::from(track.duration);
+                    for (current, target) in track.current.iter_mut().zip(track.target) {
+                        let delta = step.wrapping_mul(i32::from(*current) - i32::from(target));
+                        *current = ((i32::from(target) << 16).wrapping_add(delta) >> 16) as u8;
+                    }
+                }
+                track.duration = pc.timer()?;
+                self.alpha_compare_mode = pc.byte()?;
+                track.target = [pc.byte()?, pc.byte()?];
+                track.remaining = track.duration;
+                if track.duration == 0 {
+                    track.current = track.target;
+                }
+            }
             // retail 0x8039AADC: fadds; immediate stfs at 0x8039AAF4.
             0xb6 => {
                 self.rotation_timer = pc.timer()?;

@@ -272,3 +272,30 @@ fn restored_render_tracks_keep_current_bytes_until_countdown_completes() {
     assert_eq!(rng.seed, 123);
     assert!(log.0.is_empty());
 }
+
+#[test]
+fn alpha_compare_command_materializes_old_interpolation_before_restarting() {
+    use hsd_particle::particle::{BytePairTrack, Particle};
+    // B3 duration 2, mode 0x12, targets 80/100; then wait 10 ticks.
+    let d = descriptor(vec![0xB3, 2, 0x12, 80, 100, 10]);
+    let mut particle = Particle::new(&d, 0, 0).unwrap();
+    particle.alpha_compare = BytePairTrack {
+        current: [20, 240],
+        target: [100, 40],
+        duration: 4,
+        remaining: 3,
+    };
+    let mut rng = HsdRng::new(1);
+    let mut draws = DrawLog::default();
+    particle.update(&mut rng, &mut draws).unwrap();
+    assert_eq!(particle.alpha_compare.current, [60, 140]);
+    assert_eq!(particle.alpha_compare.remaining, 2);
+    assert_eq!(particle.alpha_compare_mode, 0x12);
+    particle.update(&mut rng, &mut draws).unwrap();
+    assert_eq!(particle.alpha_compare.current, [60, 140]);
+    particle.update(&mut rng, &mut draws).unwrap();
+    assert_eq!(particle.alpha_compare.current, [80, 100]);
+    assert_eq!(particle.alpha_compare.duration, 0);
+    assert!(draws.0.is_empty());
+    assert_eq!(rng.seed, 1);
+}
