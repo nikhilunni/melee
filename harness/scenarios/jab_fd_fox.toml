@@ -10,9 +10,9 @@ stage = "FinalDestination"
 
 inputs = [
   { frame = 30, buttons = { StickX = 1.0 } },
-  { frame = 78, buttons = {} },
-  { frame = 112, buttons = { A = true } },
-  { frame = 114, buttons = {} },
+  { frame = 66, buttons = {} },
+  { frame = 105, buttons = { A = true } },
+  { frame = 107, buttons = {} },
 ]
 
 [[fighters]]

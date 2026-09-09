@@ -1,4 +1,6 @@
-# Launch: Marth dashes in, stops, and forward-smashes (stick + A same frame) the idle Fox: DamageFly, tumble, landing/tech-miss.
+# KO: Marth dashes in, stops, and forward-smashes (stick + A same frame) the idle
+# Fox at x=60: DamageFly, DamageFall off the right edge, death at t209 (stock 1,
+# so the match ends). Kept for the death/respawn/game-end port, not for A2.
 # Recorded from the idle_fd_marth savestate (P1 at -60 facing right, P2 at +60 facing
 # left, both in Wait). Input frames are VI callbacks counted from the savestate
 # load; the port replays the per-tick pad the tick tracer recorded.

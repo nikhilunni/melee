@@ -1,9 +1,9 @@
-# Grab and throw: Marth dashes in, stops, grabs the idle Fox (Z) and back-throws (stick back), so Fox lands on stage;
-# a forward throw from x=60 carried him off the right edge to a death.
+# Launch: Marth dashes in, stops, and up-tilts (stick 0.35 up + A) the idle Fox:
+# DamageFly upward, tumble (DamageFall), landing on stage (missed tech / DownBound).
 # Recorded from the idle_fd_marth savestate (P1 at -60 facing right, P2 at +60 facing
 # left, both in Wait). Input frames are VI callbacks counted from the savestate
 # load; the port replays the per-tick pad the tick tracer recorded.
-name = "grab_fd_marth"
+name = "utilt_fd_marth"
 savestate = "harness/roms/idle_fd_marth.sav"
 frames = 300
 seed = 1
@@ -12,10 +12,8 @@ stage = "FinalDestination"
 inputs = [
   { frame = 30, buttons = { StickX = 1.0 } },
   { frame = 88, buttons = {} },
-  { frame = 120, buttons = { Z = true } },
-  { frame = 122, buttons = {} },
-  { frame = 140, buttons = { StickX = -1.0 } },
-  { frame = 145, buttons = {} },
+  { frame = 120, buttons = { StickY = 0.35, A = true } },
+  { frame = 123, buttons = {} },
 ]
 
 [[fighters]]
