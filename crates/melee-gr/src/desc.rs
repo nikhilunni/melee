@@ -130,6 +130,24 @@ pub fn read_story_parameters(archive: &Archive) -> ReadResult<crate::story::Para
         heights,
     })
 }
+/// grOp_StageData / grDatFiles_801C6038: GrOp.dat, environment map 5.
+pub fn read_pupupu(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::OldPupupu, 5)
+}
+pub fn read_pupupu_parameters(archive: &Archive) -> ReadResult<crate::pupupu::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    Ok(crate::pupupu::Parameters {
+        background_delay: [r.s16(p)?, r.s16(p + 2)?],
+        background_height: r.s16(p + 4)?,
+        wind_delay: [r.s32(p + 8)?, r.s32(p + 12)?],
+        wind_speed: r.f32(p + 16)?,
+        right_bounds: [r.f32(p + 20)?, r.f32(p + 24)?],
+        left_bounds: [r.f32(p + 28)?, r.f32(p + 32)?],
+        vertical_bounds: [r.f32(p + 36)?, r.f32(p + 40)?],
+        blink_delay: [r.f32(p + 44)? as i32, r.f32(p + 48)? as i32],
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();

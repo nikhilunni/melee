@@ -166,6 +166,7 @@ switch's default case.
 | `A0`, `AC` | Size interpolation, deterministic/random |
 | `A1–A3` | Disable texture; gravity; friction |
 | `A6`, `A7`, `A8` | Random life; probabilistic deletion; random position offsets |
+| `A9` | Fixed-aperture velocity randomization; retail inverse trig and fused rotation (Dream Land) |
 | `AB`, `BE` | Scalar/component velocity multiplication |
 | `AD–B1` | Primary/environment and mirror flags |
 | `BA`, `BB` | Four signed random color deltas |

@@ -135,3 +135,22 @@ production matrix. No retail particle outputs were used as fixture inputs.
 `live_ys_start` uses `dust_replay.rs`, including the match-start tick-zero
 scheduler boundary. It compares 215,202 fields and 4,864 ordered particle RNG
 draws over 600 ticks, with zero mismatches and zero excluded fields.
+
+## Dream Land N64 (Lane B6, 2026-09-09)
+
+`idle_dl_spawns.json` and `start_dl_spawns.json` were logged from the
+production `melee-sim gate` runs, both 600 x 49 with zero divergences.
+They contain 3/8 external spawns and 251/254 retained input events. Log
+`ParticleSystem::{spawn,update_joint,expire_joint}` and the simulation tick;
+suppress `spawn` logging inside `update_particle`'s child-generator callback.
+The idle requests are stage animation DPtcl kinds 30000,30001,30002, bank 30;
+start requests are fighter entry/landing effects, bank 0. Initial populations
+are empty. Floats are stored as their production bit patterns.
+
+Retain updates only for referenced joints and remove repeated unchanged
+updates. A new spawn's matrix is not an update to older generators sharing
+its joint: retain the subsequent `update_joint` call even when it equals
+the new spawn's matrix. Both full-field replays pass with zero exclusions
+(53,715 idle fields; 178,032 start fields). Temporary instrumentation and its
+serialization dependency were removed. No retail outputs or child spawns
+are fixture inputs.

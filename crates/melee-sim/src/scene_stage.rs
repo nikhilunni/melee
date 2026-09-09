@@ -1,4 +1,5 @@
 //! Composition root for stage-specific resources and callbacks.
+pub(crate) mod pupupu;
 use anyhow::{ensure, Result};
 use gekko_math::HsdRng;
 use hsd_archive::Archive;
@@ -32,8 +33,14 @@ pub const YOSHIS_STORY: StageDescriptor = StageDescriptor {
     music_id: 8,
     read: melee_gr::desc::read_story,
 };
+pub const DREAM_LAND: StageDescriptor = StageDescriptor {
+    name: "DreamLand",
+    file: "GrOp.dat",
+    music_id: 28,
+    read: melee_gr::desc::read_pupupu,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
-    [&FINAL_DESTINATION, &BATTLEFIELD, &YOSHIS_STORY]
+    [&FINAL_DESTINATION, &BATTLEFIELD, &YOSHIS_STORY, &DREAM_LAND]
         .into_iter()
         .find(|d| d.name == name)
 }
@@ -41,6 +48,7 @@ pub enum SceneStage {
     FinalDestination(Box<FinalDestination>),
     Battlefield(Battlefield),
     Story(melee_gr::story::Story),
+    Pupupu(melee_gr::pupupu::Pupupu),
 }
 impl SceneStage {
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -48,10 +56,12 @@ impl SceneStage {
             Self::FinalDestination(s) => s.proc_table(),
             Self::Battlefield(s) => s.proc_table(),
             Self::Story(s) => s.proc_table(),
+            Self::Pupupu(s) => s.proc_table(),
         }
     }
     pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<bool> {
         match self {
+            Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),
             Self::FinalDestination(stage) => {
                 stage.run_stage_proc(map, &AnimationStatus::default(), rng);
                 ensure!(

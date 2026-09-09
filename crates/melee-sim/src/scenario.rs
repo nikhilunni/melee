@@ -92,7 +92,7 @@ impl Scenario {
             ensure!(
                 matches!(
                     self.stage.as_str(),
-                    "FinalDestination" | "Battlefield" | "YoshisStory"
+                    "FinalDestination" | "Battlefield" | "YoshisStory" | "DreamLand"
                 ),
                 "cold setup supports FD, Battlefield and Yoshi's Story"
             );

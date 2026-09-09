@@ -152,6 +152,18 @@ impl InitialState {
                 "saved scheduler link mismatch"
             );
             match (saved_link, word(proc, 0x14)) {
+                (4, 0x8006_B82C) => {
+                    let (registers, pc) = saved.cpu_general_registers()?;
+                    ensure!(
+                        pc == 0x8006_BF28
+                            && registers[31] == address
+                            && word(proc, 0x10) == word(&bytes[0], 0),
+                        "unsupported Fighter_procUpdate instruction/owner"
+                    );
+                    // Physics and wind are already integrated. Remaining retail
+                    // work is the inactive knockback flag and collision cache update.
+                    ensure!(word(&bytes[0], 0x10) == 14, "physics resume requires Wait");
+                }
                 (14, 0x8006_D1EC) => {
                     ensure!(
                         word(proc, 0x10) == word(&bytes[0], 0),

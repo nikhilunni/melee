@@ -12,6 +12,7 @@ use gekko_math::{
     msl::{fctiwz, sqrtf},
     rng::HsdRng,
 };
+use hsd_anim::mtx::InverseTrig;
 use std::sync::Arc;
 
 /// Kind flags used by simulation; all other retail bits are retained.
@@ -119,15 +120,19 @@ impl Particle {
     /// `hsd_8039930C` (particle.c, 0x8039930C). Returns false on deletion.
     /// An error terminates the simulation; callers must not continue a partial
     /// tick after unsupported bytecode or corrupt data.
-    pub fn update(&mut self, rng: &mut HsdRng, draws: &mut DrawLog) -> Result<bool, Error> {
-        self.update_with_generators(rng, draws, &mut |_, _, _, _, _| {
+    pub fn update<T: InverseTrig>(
+        &mut self,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<bool, Error> {
+        self.update_with_generators::<T>(rng, draws, &mut |_, _, _, _, _| {
             Err(Error::UnsupportedFeature(
                 "generator opcode requires ParticleSystem",
             ))
         })
     }
 
-    pub(crate) fn update_with_generators(
+    pub(crate) fn update_with_generators<T: InverseTrig>(
         &mut self,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
@@ -152,7 +157,7 @@ impl Particle {
         if self.wait != 0 {
             self.wait -= 1;
             if self.wait == 0 {
-                self.interpret(rng, draws, spawn)?;
+                self.interpret::<T>(rng, draws, spawn)?;
             }
         }
         self.life = self.life.wrapping_sub(1);
@@ -197,7 +202,7 @@ impl Particle {
         }
     }
 
-    fn interpret(
+    fn interpret<T: InverseTrig>(
         &mut self,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
@@ -282,7 +287,7 @@ impl Particle {
                             return Ok(());
                         }
                     }
-                    _ => self.command(opcode, opcode_pc, &mut cursor, rng, draws)?,
+                    _ => self.command::<T>(opcode, opcode_pc, &mut cursor, rng, draws)?,
                 }
             }
         }
@@ -319,7 +324,7 @@ impl Particle {
         Ok(())
     }
 
-    fn command(
+    fn command<T: InverseTrig>(
         &mut self,
         opcode: u8,
         opcode_pc: u16,
@@ -366,6 +371,10 @@ impl Particle {
                     // subsequent position addition remains separate.
                     self.position[axis] += fmsubs(2.0 * range, draws.draw(rng, site), range);
                 }
+            }
+            0xa9 => {
+                self.velocity =
+                    super::direction::randomize::<T>(self.velocity, pc.float()?, rng, draws);
             }
             0xab => {
                 let scale = pc.float()?;

@@ -74,7 +74,7 @@ fn particle_rng_sites_with_ledger(name: &str, expected_ticks: usize, ledger_suff
             .unwrap()
             .iter()
             .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
-            .filter(|site| (0x8039_930C..0x8039_F6CC).contains(site))
+            .filter(|site| *site == 0x8039_9114 || (0x8039_930C..0x8039_F6CC).contains(site))
             .collect();
         simulation.tick().unwrap();
         assert_eq!(
@@ -1149,4 +1149,25 @@ fn ledgeescape_fd_yoshi_420() {
 #[test]
 fn ledgeescape_yoshi_particle_draw_order() {
     particle_rng_sites_with_ledger("ledgeescape_fd_yoshi", 420, "ledger");
+}
+
+#[test]
+fn idle_dl_fox_600() {
+    movement_gate_ticks("idle_dl_fox", 600);
+}
+#[test]
+fn start_dl_fox_600() {
+    movement_gate_ticks("start_dl_fox", 600);
+}
+#[test]
+fn start_dl_fox_cold_600() {
+    movement_gate_ticks("start_dl_fox_cold", 600);
+}
+#[test]
+fn dream_land_idle_particle_rng_order() {
+    particle_rng_sites_with_ledger("idle_dl_fox", 600, "ledger600");
+}
+#[test]
+fn dream_land_start_particle_rng_order() {
+    particle_rng_sites_with_ledger("start_dl_fox", 600, "ledger600");
 }

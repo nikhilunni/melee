@@ -5,6 +5,7 @@
 pub mod appsrt;
 pub mod bank;
 mod color;
+mod direction;
 pub mod generator;
 pub mod particle;
 mod program;

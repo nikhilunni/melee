@@ -41,9 +41,10 @@ fn particle_draw(draw: &Json) -> bool {
         0x801c_26ac | 0x8006_3990 | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc
         | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040
         | 0x8021_af0c | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578
-        | 0x801e_3594 | 0x801e_35a4 | 0x801e_3610 | 0x801e_36b0 => false,
+        | 0x8021_1478 | 0x8021_1550 | 0x8021_1644 | 0x801e_3594 | 0x801e_35a4 | 0x801e_3610
+        | 0x801e_36b0 => false,
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
-        0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
+        0x8039_9114 | 0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
             true
         }
@@ -78,7 +79,9 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
     ]
     .map(|s| root.join(format!("traces/{name}.{s}")));
     let archives = [
-        if story {
+        if name.contains("_dl_") {
+            "GrOp.dat"
+        } else if story {
             "GrSt.dat"
         } else if battlefield {
             "GrNBa.dat"

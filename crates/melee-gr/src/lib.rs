@@ -7,3 +7,5 @@ pub mod last;
 pub mod music;
 
 pub mod story;
+
+pub mod pupupu;

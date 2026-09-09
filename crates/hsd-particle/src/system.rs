@@ -234,7 +234,7 @@ impl ParticleSystem {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
-        particle.update_with_generators(rng, draws, &mut |parent, kind, blend, rng, draws| {
+        particle.update_with_generators::<T>(rng, draws, &mut |parent, kind, blend, rng, draws| {
             let bank = self
                 .banks
                 .get(&parent.bank)

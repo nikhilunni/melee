@@ -42,12 +42,13 @@ impl InitialState {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // The supplied seed is after creation, before music. grLast's four
-        // draws (or grBattle/grStory's one), then two CPU-init draws per human slot.
+        // draws (Battle/Story: one; Dream Land: two), then two CPU draws per slot.
         // Invert this fixed, audited interval; never search an oracle at runtime.
         let stage_draws = match assets.stage_desc.kind {
             GrKind::Last => 4,
             GrKind::Battle | GrKind::Story => 1,
-            _ => anyhow::bail!("cold setup supports FD, Battlefield and Yoshi's Story"),
+            GrKind::OldPupupu => 2,
+            _ => anyhow::bail!("cold setup supports FD, Battlefield, Yoshi's Story and Dream Land"),
         };
         let boundary_seed = scenario.seed.expect("validated cold seed");
         let fighter_draws = CPU_SETUP_DRAWS_PER_PLAYER * scenario.fighters.len();
@@ -209,6 +210,36 @@ fn initialize_stage(
                 stage_animations.insert(id, animation);
             }
             SceneStage::Story(stage)
+        }
+        GrKind::OldPupupu => {
+            let parameters = melee_gr::desc::read_pupupu_parameters(&assets.stage)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let mut stage = melee_gr::pupupu::Pupupu::initialize(parameters, rng);
+            stage.lights =
+                melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 5)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+            for id in melee_gr::pupupu::procs::MAP_ORDER {
+                if id == 8 {
+                    continue;
+                }
+                let mut animation = BackgroundAnimation::load_model(
+                    &assets.stage,
+                    &assets.stage_desc.models[id as usize],
+                )
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+                if matches!(id, 0 | 3 | 7 | 4 | 1) {
+                    ensure!(
+                        animation.evaluate_initial_frame::<RetailTrig>().is_empty(),
+                        "unexpected Dream Land setup particle event"
+                    );
+                }
+                if id == 6 {
+                    animation.clear_animation();
+                }
+                stage_animations.insert(id, animation);
+            }
+            SceneStage::Pupupu(stage)
         }
         _ => unreachable!(),
     };

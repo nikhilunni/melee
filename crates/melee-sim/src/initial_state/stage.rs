@@ -139,6 +139,7 @@ pub(super) fn restore_scene(
             restore_battlefield(saved, assets, frames, particles, metadata)
         }
         melee_types::GrKind::Story => restore_story(saved, assets),
+        melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
         _ => unreachable!("registered stage descriptor"),
     }
 }
@@ -333,4 +334,106 @@ fn restore_story(saved: &SavedPose, assets: &Assets) -> Result<(SceneStage, Anim
     }
     ensure!(maps == [0, 1, 3, 2], "Story map order {maps:?}");
     Ok((SceneStage::Story(controller), animations))
+}
+
+/// Dream Land Ground owners and already-evaluated JObj frames at the saved boundary.
+fn restore_pupupu(
+    saved: &SavedPose,
+    assets: &Assets,
+    particles: &ParticleSystem,
+) -> Result<(SceneStage, Animations)> {
+    use melee_gr::pupupu::{Phase, Pupupu};
+    ensure!(
+        particles.generators.is_empty() && particles.particles.iter().all(Vec::is_empty),
+        "Dream Land initial particle population requires attachment restoration"
+    );
+    ensure!(
+        word(saved.bytes(0x804D6A9C, 4), 0) == 0,
+        "Dream Land demo freeze unsupported"
+    );
+    ensure!(
+        word(saved.bytes(0x804D63B0, 4), 0) == 0,
+        "Dream Land saved gust list unsupported"
+    );
+    let mut stage = Pupupu::initialize(
+        melee_gr::desc::read_pupupu_parameters(&assets.stage)
+            .map_err(|e| anyhow::anyhow!("{e}"))?,
+        &mut HsdRng::new(0),
+    );
+    stage.lights = melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 5)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let mut animations = BTreeMap::new();
+    let mut maps = Vec::new();
+    let entities = word(saved.bytes(0x804D782C, 4), 0);
+    let mut gobj = word(saved.bytes(entities + 20, 4), 0);
+    while gobj != 0 {
+        ensure!(maps.len() <= 8, "cyclic Dream Land map list");
+        let object = saved.bytes(gobj, 0x30);
+        let ground = word(object, 0x2C);
+        if ground != 0 {
+            let raw = saved.bytes(ground, 0x108);
+            let map = word(raw, 0x14) as u8;
+            maps.push(map);
+            if map == 7 {
+                stage.cycle = word(raw, 0xC4) as i32;
+                stage.phase = Phase::from_saved(word(raw, 0xC8) as i32);
+                stage.blink_timer = word(raw, 0xCC) as i32;
+                stage.timer = word(raw, 0xD0) as i32;
+                stage.entering = word(raw, 0xD4) != 0;
+                stage.facing_right = word(raw, 0xD8) != 0;
+                stage.wind = word(raw, 0xDC) as i32;
+                stage.elapsed = word(raw, 0xE0) as i32;
+                ensure!(
+                    stage.phase == Phase::Waiting && stage.facing_right,
+                    "Dream Land saved active wind phase requires animation selection"
+                );
+            }
+            if map == 1 {
+                stage.secondary = (word(raw, 0xD0) == 1).then_some((
+                    Phase::from_saved(word(raw, 0xC8) as i32),
+                    stage.facing_right,
+                ));
+            }
+            if map == 8 {
+                stage.background_timer = i16::from_be_bytes(raw[0xC4..0xC6].try_into().unwrap());
+                gobj = word(object, 8);
+                continue;
+            }
+            let root = word(object, 0x28);
+            let mut joints = Vec::new();
+            if root != 0 {
+                saved_joints(saved, word(saved.bytes(root + 16, 4), 0), &mut joints);
+            }
+            let mut frame = None;
+            for joint in joints {
+                let aobj = word(saved.bytes(joint + 0x7C, 4), 0);
+                if aobj != 0 {
+                    let current = float(saved.bytes(aobj, 0x18), 4);
+                    ensure!(
+                        frame.is_none_or(|f| f == current),
+                        "Dream Land map {map} animation frames disagree"
+                    );
+                    frame = Some(current);
+                }
+            }
+            let mut animation = BackgroundAnimation::load_model(
+                &assets.stage,
+                &assets.stage_desc.models[map as usize],
+            )
+            .map_err(|e| anyhow::anyhow!("Dream Land map {map}: {e}"))?;
+            animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+            if let Some(frame) = frame {
+                animation.restore_frame::<RetailTrig>(frame);
+            } else {
+                animation.clear_animation();
+            }
+            animations.insert(map, animation);
+        }
+        gobj = word(object, 8);
+    }
+    ensure!(
+        maps == melee_gr::pupupu::procs::MAP_ORDER,
+        "Dream Land map order {maps:?}"
+    );
+    Ok((SceneStage::Pupupu(stage), animations))
 }

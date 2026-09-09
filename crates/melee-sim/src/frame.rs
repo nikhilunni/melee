@@ -125,6 +125,20 @@ impl Runtime {
         if self.frame == 0 && row.s_link < self.state.resume_s_link {
             return Ok(());
         }
+        if self.frame == 0
+            && self.state.resume_s_link == 4
+            && row.s_link == 4
+            && matches!(
+                row.callback,
+                Callback::Stage { .. }
+                    | Callback::Fighter {
+                        player: 0,
+                        proc: FighterProc::Update
+                    }
+            )
+        {
+            return Ok(());
+        }
         let state = &mut self.state;
         let state_pads = &self.pads;
         match row.callback {
@@ -173,6 +187,10 @@ impl Runtime {
                         &mut state.effects,
                         &mut state.particles,
                         &mut state.rng,
+                        match &state.stage {
+                            SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
+                            _ => Vec3::ZERO,
+                        },
                     )
                 })?;
                 if proc == FighterProc::Animation {
@@ -242,7 +260,13 @@ impl Runtime {
                         }
                         animation.update_collision(&mut state.map, bindings);
                     }
-                    if state.stage.run_stage_proc(map_id, &mut state.rng)? {
+                    if matches!(state.stage, SceneStage::Pupupu(_)) {
+                        crate::scene_stage::pupupu::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                        )?;
+                    } else if state.stage.run_stage_proc(map_id, &mut state.rng)? {
                         // grLib_801C97DC (0x801C97DC): detached puff at the
                         // current world position of archive descendant 1.
                         let matrix =
@@ -404,6 +428,7 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
     effects: &mut crate::effects::Effects,
     particles: &mut hsd_particle::system::ParticleSystem,
     rng: &mut gekko_math::HsdRng,
+    wind: Vec3,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
     match proc {
@@ -419,7 +444,7 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
             let pad: PadSample = state_pads.sample(frame, usize::from(f.player.id));
             f.proc_input(assets, &pad)
         }
-        FighterProc::Update => f.proc_update(assets, map, Vec3::ZERO),
+        FighterProc::Update => f.proc_update(assets, map, wind),
         FighterProc::Map => {
             f.proc_map_with_assets(assets, map, rng)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;

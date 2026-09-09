@@ -47,6 +47,44 @@ impl BackgroundAnimation {
         tree.req_anim_all(root, 0.0);
         Ok(Self { tree, root })
     }
+    /// grAnime_801C8138: replace all joint tracks without replacing the model.
+    pub fn select_animation(
+        &mut self,
+        archive: &Archive,
+        model: &crate::desc::ModelDesc,
+        index: usize,
+    ) -> crate::desc::ReadResult<()> {
+        self.clear_animation();
+        self.attach_subtree(
+            archive,
+            0,
+            &model.animations[index],
+            model.animation_loops[index],
+        )
+    }
+    pub fn clear_animation(&mut self) {
+        let mut joints = Vec::new();
+        self.tree
+            .walk_tree(self.root, &mut |joint, _| joints.push(joint));
+        for joint in joints {
+            self.tree.get_mut(joint).aobj = None;
+        }
+    }
+    /// grAnime_801C83D0: completion flag of the first joint AObj.
+    pub fn ended(&self) -> bool {
+        let mut result = None;
+        self.tree.walk_tree(self.root, &mut |joint, _| {
+            if result.is_none() {
+                result = self
+                    .tree
+                    .get(joint)
+                    .aobj
+                    .as_ref()
+                    .map(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0);
+            }
+        });
+        result.unwrap_or(false)
+    }
     /// `Ground_GetStageGObj` (0x801C14D0), ground.c:889-908: map-scale
     /// wrapper above the archive root. Matrix products use audited HSD kernels.
     pub fn set_map_scale(&mut self, scale: f32) {

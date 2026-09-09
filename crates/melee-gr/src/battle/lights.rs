@@ -12,6 +12,11 @@ pub enum Light {
     Ambient {
         color: [u8; 4],
     },
+    Point {
+        color: [u8; 4],
+        position: Vec3,
+        attenuation: hsd_archive::desc::light::PointAttenuation,
+    },
     Directional {
         color: [u8; 4],
         position: Vec3,
@@ -45,6 +50,21 @@ pub fn load_model(archive: &Archive, desc: &StageDesc, map: usize) -> ReadResult
                             position.position.z * scale,
                         ),
                         shininess: light.shininess.expect("directional shininess"),
+                    }
+                }
+                14 => {
+                    let position = light.position.expect("point position");
+                    assert!(position.class_name.is_none() && position.constraints_offset.is_none());
+                    let scale = desc.parameters.map_scale;
+                    // Ground_801C466C: independent fmuls, as for directional lights.
+                    Light::Point {
+                        color: light.color,
+                        position: Vec3::new(
+                            position.position.x * scale,
+                            position.position.y * scale,
+                            position.position.z * scale,
+                        ),
+                        attenuation: light.point_attenuation.expect("point attenuation"),
                     }
                 }
                 _ => unimplemented!(

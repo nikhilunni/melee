@@ -122,7 +122,8 @@ fn b6_rotation_retargets_then_interpolates_without_rng() {
     let mut rng = HsdRng::new(1);
     let mut draws = DrawLog::default();
     for (rotation, target, timer) in [(2.0, 6.0, 2), (4.0, 6.0, 1), (5.0, 5.0, 0)] {
-        p.update(&mut rng, &mut draws).unwrap();
+        p.update::<common::RetailTrig>(&mut rng, &mut draws)
+            .unwrap();
         assert_eq!(
             (p.rotation, p.rotation_target, p.rotation_timer),
             (rotation, target, timer)
@@ -141,7 +142,8 @@ fn bd_normalizes_nonzero_velocity_and_draws_even_when_zero() {
         let mut p = Particle::new(&descriptor(program), 0, 0).unwrap();
         p.velocity = velocity;
         let mut draws = DrawLog::default();
-        p.update(&mut HsdRng::new(1), &mut draws).unwrap();
+        p.update::<common::RetailTrig>(&mut HsdRng::new(1), &mut draws)
+            .unwrap();
         assert_eq!(p.velocity.map(f32::to_bits), expected.map(f32::to_bits));
         assert_eq!(p.position, expected);
         assert_eq!(draws.0, [0x8039_b5e0]);
@@ -154,7 +156,8 @@ fn e0_shares_four_random_deltas_between_color_tracks() {
     p.primary.target = [10, 250, 5, 128];
     p.environment.target = [50, 0, 100, 0];
     let mut draws = DrawLog::default();
-    p.update(&mut HsdRng::new(1), &mut draws).unwrap();
+    p.update::<common::RetailTrig>(&mut HsdRng::new(1), &mut draws)
+        .unwrap();
     assert_eq!(
         draws.0,
         [0x8039_bb28, 0x8039_bbe4, 0x8039_bca0, 0x8039_bd5c]

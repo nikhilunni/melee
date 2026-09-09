@@ -21,6 +21,13 @@ pub struct LightDesc {
     /// the attenuation descriptor offset for their owning runtime reader.
     pub shininess: Option<f32>,
     pub attenuation_offset: Option<u32>,
+    pub point_attenuation: Option<PointAttenuation>,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct PointAttenuation {
+    pub reference_brightness: f32,
+    pub reference_distance: f32,
+    pub distance_function: u32,
 }
 impl LightDesc {
     /// `HSD_LObjLoadDesc` (lobj.c), retail 0x803672DC; `LObjLoad`, 0x80366EA8.
@@ -56,6 +63,19 @@ impl LightDesc {
                 None
             },
             attenuation_offset: attenuation,
+            point_attenuation: if flags & 3 == 2 && r.u16(offset + 0xA)? == 0 {
+                attenuation
+                    .map(|p| -> Result<_> {
+                        Ok(PointAttenuation {
+                            reference_brightness: r.f32(p)?,
+                            reference_distance: r.f32(p + 4)?,
+                            distance_function: r.u32(p + 8)?,
+                        })
+                    })
+                    .transpose()?
+            } else {
+                None
+            },
         })
     }
 }

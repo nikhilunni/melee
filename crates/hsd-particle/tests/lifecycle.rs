@@ -251,11 +251,15 @@ fn restored_render_tracks_keep_current_bytes_until_countdown_completes() {
     let mut rng = HsdRng::new(123);
     let mut log = DrawLog::default();
     particle.kind |= PAUSED;
-    assert!(particle.update(&mut rng, &mut log).unwrap());
+    assert!(particle
+        .update::<common::RetailTrig>(&mut rng, &mut log)
+        .unwrap());
     assert_eq!(particle.material.remaining, 2);
     particle.kind &= !PAUSED;
     for remaining in [1, 0] {
-        assert!(particle.update(&mut rng, &mut log).unwrap());
+        assert!(particle
+            .update::<common::RetailTrig>(&mut rng, &mut log)
+            .unwrap());
         for track in [
             &particle.material,
             &particle.ambient,
@@ -287,13 +291,19 @@ fn alpha_compare_command_materializes_old_interpolation_before_restarting() {
     };
     let mut rng = HsdRng::new(1);
     let mut draws = DrawLog::default();
-    particle.update(&mut rng, &mut draws).unwrap();
+    particle
+        .update::<common::RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
     assert_eq!(particle.alpha_compare.current, [60, 140]);
     assert_eq!(particle.alpha_compare.remaining, 2);
     assert_eq!(particle.alpha_compare_mode, 0x12);
-    particle.update(&mut rng, &mut draws).unwrap();
+    particle
+        .update::<common::RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
     assert_eq!(particle.alpha_compare.current, [60, 140]);
-    particle.update(&mut rng, &mut draws).unwrap();
+    particle
+        .update::<common::RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
     assert_eq!(particle.alpha_compare.current, [80, 100]);
     assert_eq!(particle.alpha_compare.duration, 0);
     assert!(draws.0.is_empty());

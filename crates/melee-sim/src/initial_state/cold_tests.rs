@@ -44,6 +44,7 @@ fn setup_snapshot(state: &InitialState) -> Record {
                 let sink: &mut dyn SnapshotSink = &mut prefix;
                 use melee_gr::battle::lights::Light;
                 let color = match light {
+                    Light::Point { .. } => unreachable!("Battlefield uses directional light"),
                     Light::Ambient { color } => {
                         sink.field("kind", &0u8);
                         color
@@ -63,6 +64,17 @@ fn setup_snapshot(state: &InitialState) -> Record {
                     sink.field(&format!("color[{component}]"), value);
                 }
             }
+        }
+        SceneStage::Pupupu(stage) => {
+            sink.field("stage.phase", &(stage.phase as u8));
+            sink.field("stage.cycle", &stage.cycle);
+            sink.field("stage.timer", &stage.timer);
+            sink.field("stage.blink_timer", &stage.blink_timer);
+            sink.field("stage.entering", &stage.entering);
+            sink.field("stage.facing_right", &stage.facing_right);
+            sink.field("stage.elapsed", &stage.elapsed);
+            sink.field("stage.background_timer", &stage.background_timer);
+            // xDC (wind) is inactive heap storage until the first map-7 proc.
         }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
@@ -178,6 +190,7 @@ fn cold_run_reads_only_dat_assets() {
         "start_fd_falco",
         "start_bf_fox",
         "start_ys_fox",
+        "start_dl_fox",
     ] {
         let mut scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}_cold.toml"))).unwrap();
@@ -200,4 +213,9 @@ fn cold_run_reads_only_dat_assets() {
 #[test]
 fn start_ys_fox_cold_600() {
     verify("start_ys_fox");
+}
+
+#[test]
+fn start_dl_fox_cold_600() {
+    verify("start_dl_fox");
 }

@@ -109,7 +109,10 @@ impl PendingEmission {
         generator.children += 1;
         // psGenerateParticle0 -> hsd_8039930C: immediate interpretation,
         // then the generator loop subtracts one and decrements its lifetime.
-        if self.particle.update(rng, draws)? {
+        if self
+            .particle
+            .update::<melee_ft::fighter::RetailTrig>(rng, draws)?
+        {
             system.particles[usize::from(self.particle.link)].insert(0, self.particle);
         } else {
             generator.children -= 1;
