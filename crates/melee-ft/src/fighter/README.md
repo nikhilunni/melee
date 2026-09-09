@@ -329,7 +329,7 @@ The port composes these ordinary Fox paths, with exceptional interactions gated:
 | `Fighter_UnkProcessDeath_80068354`, `0x80068354` | initial support probe, model scale, character reset, CPU init and thrown capsule initialization |
 | `ft_80082A68`, `0x80082A68` | vertical support probe through T5/MP |
 | `ftCommon_8007D5D4`, `0x8007D5D4` | failed probe: airborne, one jump used, ten-frame ECB lock |
-| `ftCo_800A101C`, `0x800A101C` | initializes CPU fields and consumes one RNG draw even for a human slot |
+| `ftCo_800A101C`, `0x800A101C` | initializes CPU reaction timers, then calls `ftCo_800B9704` to initialize typed attack delay; two RNG draws even for a human slot |
 | `Fighter_ChangeMotionState`, `0x800693AC` | `change_motion_state`; reset motion-owned state, install callbacks, animation, command entry and dynamic-bone gates |
 | `ft_8008A348`, `0x8008A348` | grounded Wait entry and nametag duration |
 | `ftCo_Fall_Enter` | neutral airborne Fall entry and callbacks, including Landing |

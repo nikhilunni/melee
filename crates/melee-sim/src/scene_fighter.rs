@@ -35,6 +35,25 @@ macro_rules! scene_characters {
         #[allow(unused_imports)]
         pub(crate) use with_fighter;
         impl SceneFighter {
+            pub(crate) fn from_parameters(
+                archive: &CharacterArchive,
+                resources: &FighterAssets,
+                player: melee_ft::fighter::PlayerSlot,
+                delay: i32,
+                context: melee_ft::fighter::SpawnContext<'_>,
+            ) -> anyhow::Result<Self> {
+                $(
+                    if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
+                        let character = <$ty as CharacterCallbacks>::from_archive(&archive.data)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        let (skeleton, root) = archive.model(player.costume);
+                        return Ok(Self::$variant(Box::new(Fighter::spawn_for_match(
+                            player, character, resources, skeleton, root, context, delay,
+                        ).map_err(|e| anyhow::anyhow!("{e}"))?)));
+                    }
+                )*
+                unreachable!("validated character descriptor")
+            }
             /// Scenario `kind` strings accepted by `Scenario::validate`.
             pub(crate) const NAMES: &'static [&'static str] = &[$( $name ),*];
             pub(crate) fn descriptor_for(name: &str) -> Option<&'static CharacterDescriptor> {

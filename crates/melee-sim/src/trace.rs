@@ -56,7 +56,10 @@ pub fn check_schema(record: &Record) -> Result<()> {
 /// The per-tick pads recorded beside the scenario's expected trace. A
 /// scripted scenario must carry them; a neutral one may predate the capture.
 pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
-    let path = scenario.trace_path("tick.expected.jsonl");
+    if scenario.is_cold() {
+        return Ok(PadScript::neutral(scenario.frames as usize));
+    }
+    let path = scenario.expected_path();
     let script = PadScript::from_expected_trace(&path, scenario.is_scripted())?;
     ensure!(
         script.len() as u64 == scenario.frames,
@@ -69,7 +72,11 @@ pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
 fn simulation(scenario: &Scenario) -> Result<Simulation> {
     let pads = pad_script(scenario)?;
     Ok(Simulation::with_inputs(
-        InitialState::from_savestate_traces(scenario)?,
+        if scenario.is_cold() {
+            InitialState::from_parameters(scenario)?
+        } else {
+            InitialState::from_savestate_traces(scenario)?
+        },
         pads,
     ))
 }
@@ -86,9 +93,7 @@ pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
 }
 /// Unlike first_divergence alone, this also rejects extra keys/records.
 pub fn gate(scenario: &Scenario) -> Result<()> {
-    let expected = read_trace(BufReader::new(File::open(
-        scenario.trace_path("tick.expected.jsonl"),
-    )?))?;
+    let expected = read_trace(BufReader::new(File::open(scenario.expected_path())?))?;
     ensure!(
         expected.len() as u64 == scenario.frames,
         "expected trace length {} differs from scenario {}",

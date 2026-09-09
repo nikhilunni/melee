@@ -163,6 +163,8 @@ pub struct CpuState {
     pub behavior: i32,
     /// x7C, +1B04; frozen for human slots.
     pub reaction_timer: i32,
+    /// CpuFighter.x34 (+1ABC): delay before choosing another attack.
+    pub attack_delay: i32,
     /// cpu.x55C/x560/x564/x568 (+1FE4..1FF0), current hurtbox extents.
     pub hurtbox_extents: [f32; 4],
 }

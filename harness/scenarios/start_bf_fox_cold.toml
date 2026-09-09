@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 1, items off, normal Versus Entry, two human ports, neutral pads.
+name = "start_bf_fox_cold"
+expected = "start_bf_fox"
+frames = 600
+seed = 0x8AAA75D2
+stage = "Battlefield"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 1
+stocks = 1
+controller = "idle"

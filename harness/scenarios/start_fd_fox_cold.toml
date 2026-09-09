@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 1, items off, normal Versus Entry, two human ports, neutral pads.
+name = "start_fd_fox_cold"
+expected = "start_fd_fox"
+frames = 600
+seed = 0xCC51A0A5
+stage = "FinalDestination"
+all_characters_unlocked = false
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 1
+stocks = 1
+controller = "idle"

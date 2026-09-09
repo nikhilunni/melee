@@ -36,8 +36,11 @@ fn fox_spawn_native() {
         // HSD_Randf (80380528) LCG: b3e97b5b; ftCo_800A101C's fmul/fctiwz
         // at 800A124C/800A1258 truncates 10*(b3e9/65536) to 7.
         assert_eq!(
-            rng.seed, 0xB3E97B5B,
-            "one CPU initialization draw, even for Human"
+            // Draws at 0x800A123C and 0x800B9718. The old one-draw
+            // expectation was self-authored, not oracle-derived.
+            rng.seed,
+            0x5B3F58B2,
+            "two CPU initialization draws, even for Human"
         );
         assert_eq!(counter.0, 2);
         assert_eq!(f.spawn_number, 1);
@@ -136,7 +139,9 @@ fn cpu_init_is_distinct_from_player_control() {
         let cpu = CpuState::initialize(mode, 1, &mut rng);
         assert_eq!(cpu.behavior, behavior);
         assert_eq!(cpu.reaction_timer, 7);
-        assert_eq!(rng.seed, 0xB3E97B5B);
+        // Draws at 0x800A123C and 0x800B9718. The old one-draw
+        // expectation was self-authored, not oracle-derived.
+        assert_eq!(rng.seed, 0x5B3F58B2);
     }
 }
 #[test]

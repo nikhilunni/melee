@@ -45,7 +45,7 @@ impl SpawnCounter {
 }
 impl CpuState {
     /// ftCo_800A101C (0x800A101C), ftCo_0A01.c:674-750.
-    /// Human and CPU slots both consume exactly one draw here.
+    /// Human and CPU slots both consume the reaction and attack-delay draws.
     pub fn initialize(mode: i32, level: i32, rng: &mut HsdRng) -> Self {
         let behavior = match mode {
             1 | 25 => 12,
@@ -55,6 +55,7 @@ impl CpuState {
         // Retail 0x800A124C fmul / 0x800A1258 fctiwz: double 10.0 * Randf then fctiwz.
         // asm.py ftCo_800A101C --fused: no multiply-add sites.
         let reaction_timer = (10.0_f64 * f64::from(rng.randf())) as i32;
+        let attack_delay = Self::initial_attack_delay(mode, level, rng);
         Self {
             buttons: 0,
             stick: [0; 2],
@@ -62,7 +63,25 @@ impl CpuState {
             level,
             behavior,
             reaction_timer,
+            attack_delay,
             hurtbox_extents: [1.0, 1.0, 1.0, 2.0],
+        }
+    }
+
+    /// ftCo_800B9704 (ftcpuattack.c:2098-2106), called at 0x800A1744.
+    fn initial_attack_delay(mode: i32, level: i32, rng: &mut HsdRng) -> i32 {
+        // Retail 0x800B9718 draws even for humans. 0x800B9734/0x800B974C
+        // are fmadds; 0x800B9750 truncates with fctiwz before mode-7 halving.
+        let random_delay = gekko_math::fma::fmadds(15.0, rng.randf(), 15.0);
+        let delay = gekko_math::msl::fctiwz(gekko_math::fma::fmadds(
+            (10 - level) as f32,
+            random_delay,
+            10.0,
+        ));
+        if mode == 7 {
+            delay / 2
+        } else {
+            delay
         }
     }
 }
@@ -78,6 +97,40 @@ impl<C: CharacterCallbacks> Fighter<C> {
         skeleton: JObjTree,
         root: JObjId,
         context: SpawnContext<'_>,
+    ) -> Result<Self> {
+        Self::create(player, character, assets, skeleton, root, context, None)
+    }
+
+    /// Fighter_Create (80069324..8006933C): Player's entry flag selects
+    /// Entry directly after reset, without first entering Wait or Fall.
+    pub fn spawn_for_match(
+        player: PlayerSlot,
+        character: C,
+        assets: &FighterAssets,
+        skeleton: JObjTree,
+        root: JObjId,
+        context: SpawnContext<'_>,
+        delay: i32,
+    ) -> Result<Self> {
+        Self::create(
+            player,
+            character,
+            assets,
+            skeleton,
+            root,
+            context,
+            Some(delay),
+        )
+    }
+
+    fn create(
+        player: PlayerSlot,
+        character: C,
+        assets: &FighterAssets,
+        skeleton: JObjTree,
+        root: JObjId,
+        context: SpawnContext<'_>,
+        entry_delay: Option<i32>,
     ) -> Result<Self> {
         let SpawnContext { map, rng, counter } = context;
         let initial_scale = skeleton.scale(root);
@@ -114,14 +167,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
         fighter.thrown_hitbox.state = 1;
         fighter.thrown_hitbox.update(&mut fighter.skeleton, root);
         fighter.cpu = CpuState::initialize(fighter.player.cpu_mode, fighter.player.cpu_level, rng);
-        fighter.change_motion_state(
-            if supported {
-                CommonMotionState::Wait
-            } else {
-                CommonMotionState::Fall
-            },
-            assets,
-        )?;
+        if let Some(delay) = entry_delay {
+            // Fighter_ChangeMotionState sets TopN's facing rotation even
+            // for SM_None. The ordinary animation-entry path does this itself.
+            fighter.skeleton.set_rotation_y(
+                root,
+                (std::f64::consts::FRAC_PI_2 * f64::from(fighter.physics.facing)) as f32,
+            );
+            fighter.enter_match(delay, assets)?;
+        } else {
+            fighter.change_motion_state(
+                if supported {
+                    CommonMotionState::Wait
+                } else {
+                    CommonMotionState::Fall
+                },
+                assets,
+            )?;
+        }
         // ftLib_800867E8 at the end of Fighter_Create: clear input and freeze
         // sampling until match setup calls ftLib_8008688C.
         fighter.input.clear_current_and_buffers();
@@ -249,6 +312,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 level: player.cpu_level,
                 behavior: 1,
                 reaction_timer: 0,
+                attack_delay: 0,
                 hurtbox_extents: [1.0, 1.0, 1.0, 2.0],
             },
             status: Status::reset(assets.shield_health),

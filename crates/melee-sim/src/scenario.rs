@@ -11,11 +11,15 @@ use std::{
 #[serde(deny_unknown_fields)]
 pub struct Scenario {
     pub name: String,
-    pub savestate: PathBuf,
+    pub savestate: Option<PathBuf>,
+    /// Comparison trace name, independent of construction and scenario name.
+    pub expected: Option<String>,
+    /// Ground music rule 6; required explicitly for a cold Versus scene.
+    pub all_characters_unlocked: Option<bool>,
     pub frames: u64,
     /// Cold-start seed; a restored match uses its saved seed instead.
     #[serde(default)]
-    pub seed: u32,
+    pub seed: Option<u32>,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -32,6 +36,13 @@ pub struct FighterScenario {
     pub slot: u8,
     pub kind: String,
     pub controller: String,
+    #[serde(default)]
+    pub costume: u8,
+    #[serde(default = "one_stock")]
+    pub stocks: u8,
+}
+fn one_stock() -> u8 {
+    1
 }
 /// One step of the Dolphin-side schedule: `buttons` holds on `port` from VI
 /// frame `frame` until that port's next step. Keys are the GC pad names the
@@ -64,6 +75,24 @@ impl Scenario {
         crate::scene_stage::descriptor(&self.stage).expect("validated stage")
     }
     pub fn validate(&self) -> Result<()> {
+        if self.is_cold() {
+            ensure!(
+                self.seed.is_some(),
+                "cold setup requires an explicit boundary seed"
+            );
+            ensure!(
+                matches!(self.stage.as_str(), "FinalDestination" | "Battlefield"),
+                "cold setup supports FD and Battlefield"
+            );
+            ensure!(
+                self.all_characters_unlocked.is_some(),
+                "cold setup requires all_characters_unlocked"
+            );
+            ensure!(
+                self.inputs.is_empty(),
+                "cold setup currently requires neutral inputs"
+            );
+        }
         ensure!(
             crate::scene_stage::descriptor(&self.stage).is_some(),
             "unsupported stage"
@@ -80,6 +109,13 @@ impl Scenario {
                     && matches!(fighter.controller.as_str(), "scripted" | "idle"),
                 "requires ordered human slots 0/1 with a registered character kind"
             );
+            if self.is_cold() {
+                ensure!(
+                    usize::from(fighter.costume) < fighter.descriptor().costumes.len()
+                        && fighter.stocks == 1,
+                    "cold setup requires a valid costume and one stock"
+                );
+            }
         }
         for step in &self.inputs {
             ensure!(
@@ -94,6 +130,15 @@ impl Scenario {
     pub fn is_scripted(&self) -> bool {
         self.inputs.iter().any(|step| !step.buttons.is_empty())
     }
+    pub fn is_cold(&self) -> bool {
+        self.savestate.is_none()
+    }
+    pub fn expected_path(&self) -> PathBuf {
+        self.root.join("harness/traces").join(format!(
+            "{}.tick.expected.jsonl",
+            self.expected.as_deref().unwrap_or(&self.name)
+        ))
+    }
     /// Traces recorded for this scenario (its own tick trace).
     pub fn trace_path(&self, suffix: &str) -> PathBuf {
         self.root
@@ -106,7 +151,8 @@ impl Scenario {
     /// dump and RNG ledger.
     pub fn boundary_name(&self) -> String {
         self.savestate
-            .file_stem()
+            .as_ref()
+            .and_then(|p| p.file_stem())
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| self.name.clone())
     }
@@ -119,7 +165,8 @@ impl Scenario {
         self.root.join("harness/roms/files")
     }
     pub fn savestate_path(&self) -> PathBuf {
-        self.root.join(&self.savestate)
+        self.root
+            .join(self.savestate.as_ref().expect("saved scenario"))
     }
     /// Local assets/captures whose absence lets integration tests skip.
     pub fn required_files(&self) -> Vec<PathBuf> {
@@ -138,6 +185,10 @@ impl Scenario {
                     .iter()
                     .map(|c| self.assets_path().join(c.file)),
             );
+        }
+        if self.is_cold() {
+            paths.push(self.expected_path());
+            return paths;
         }
         paths.push(self.savestate_path());
         paths.push(self.savestate_path().with_extension("sav.json"));

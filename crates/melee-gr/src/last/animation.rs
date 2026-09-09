@@ -122,12 +122,23 @@ impl BackgroundAnimation {
     }
     /// Ground_801C1CD0 (ground.c): evaluate the stage animation at s_link 1.
     pub fn tick<T: InverseTrig>(&mut self) -> Vec<ParticleRequest> {
+        self.evaluate::<T>(true)
+    }
+    /// grAnime_801C8138 evaluates frame zero during Ground creation.
+    /// grLib_801C99C0 attaches the JObj pointer without requesting its matrix;
+    /// retain the newly loaded cache until the first scheduler update.
+    pub fn evaluate_initial_frame<T: InverseTrig>(&mut self) -> Vec<ParticleRequest> {
+        self.evaluate::<T>(false)
+    }
+    fn evaluate<T: InverseTrig>(&mut self, refresh_matrices: bool) -> Vec<ParticleRequest> {
         self.tree.anim_all::<T>(self.root);
         std::mem::take(&mut self.tree.events)
             .into_iter()
             .filter_map(|event| match event {
                 JObjEvent::DPtcl { jobj, lo, hi } => {
-                    self.tree.setup_matrix(jobj);
+                    if refresh_matrices {
+                        self.tree.setup_matrix(jobj);
+                    }
                     Some(ParticleRequest {
                         bank: lo as u8,
                         kind: hi as u32,

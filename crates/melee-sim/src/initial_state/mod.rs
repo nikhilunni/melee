@@ -1,4 +1,7 @@
 //! Restore the owned, local savestate boundary. See ../M3.md.
+mod cold;
+#[cfg(test)]
+mod cold_tests;
 mod collision;
 mod fighter;
 mod particle_resume;
@@ -69,6 +72,10 @@ fn first_json(path: &Path) -> Result<Json> {
 impl InitialState {
     pub fn from_savestate_traces(scenario: &Scenario) -> Result<Self> {
         scenario.validate()?;
+        ensure!(
+            !scenario.is_cold(),
+            "saved construction requires a savestate"
+        );
         let assets = Assets::load(
             &scenario.assets_path(),
             std::array::from_fn(|p| scenario.fighters[p].descriptor()),
