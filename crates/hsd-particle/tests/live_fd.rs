@@ -74,7 +74,7 @@ fn capture() -> Option<Capture> {
         .map(|l| serde_json::from_str(l).unwrap())
         .collect::<Vec<_>>();
     let ticks = restore::read(&paths[4]);
-    assert_eq!(states.len(), 8);
+    assert!(states.len() >= 8, "need at least 8 dumped frames, got {}", states.len());
     assert_eq!(ledger.len(), 600);
     assert_eq!(ticks.len(), 600);
     Some(Capture {
@@ -193,9 +193,12 @@ fn replay(capture: Capture, ticks: usize, compare_state: bool) {
 }
 
 #[test]
-fn live_fd_eight_ticks_match_every_dumped_field() {
+fn live_fd_every_dumped_frame_matches_every_field() {
+    // The dump carries as many frames as were captured (8 at first, 600 now);
+    // compare every one of them field by field.
     if let Some(capture) = capture() {
-        replay(capture, 8, true);
+        let frames = capture.states.len().min(capture.ticks.len());
+        replay(capture, frames, true);
     }
 }
 #[test]
