@@ -1,8 +1,13 @@
 """Sample completed scheduler ticks. See docs/DOLPHIN_RUN.md for the contract.
 
 Uses MELEE_SCENARIO / MELEE_RAW_OUT and scenario.frames as the tick limit.
-Only neutral scenarios are supported: VI input injection cannot time scripted
-input transitions to the game's pad queue. No Dolphin dependency in tests.
+
+Scripted inputs: scenario `inputs` steps ({frame, port?, buttons}) are issued
+at VI callbacks counted from the savestate load. VI timing cannot be aligned
+to the game's pad queue exactly, so each tick record also carries `pad_game`,
+the HSD_PadGameStatus array the tick actually consumed (renewed by
+lb_80019900 right before HSD_GObj_80390CFC runs the tick); the port replays
+that, not the VI schedule. No Dolphin dependency in tests.
 """
 from __future__ import annotations
 
@@ -35,8 +40,10 @@ class TickTracer(Tracer):
             raise ValueError("tick tracing requires a match savestate")
         if type(self.scenario["frames"]) is not int or self.scenario["frames"] <= 0:
             raise ValueError("frames must be a positive tick count")
-        if any(step.get("buttons") for step in self.inputs):
-            raise ValueError("tick tracing currently supports neutral inputs only")
+        for step in self.inputs:
+            unknown = set(step.get("buttons", {})) - set(remote_proto.GC_KEYS)
+            if unknown or type(step.get("frame")) is not int or step["frame"] < 0:
+                raise ValueError(f"bad input step {step!r}: unknown keys {sorted(unknown)}")
         self.vi_frame = -1
         self.last_tick_vi = 0
         self.last_tick: int | None = None
@@ -79,7 +86,7 @@ class TickTracer(Tracer):
             if not self.installed:
                 self.t_start = time.monotonic()
                 self.install()
-            self.ctl.set_gc_buttons(0, remote_proto.neutral_inputs())
+            self.apply_inputs(self.vi_frame, base=remote_proto.neutral_inputs())
             if self.vi_frame - self.last_tick_vi >= MAX_VI_WITHOUT_TICK:
                 raise RuntimeError(f"no scheduler tick for {MAX_VI_WITHOUT_TICK} VI fields; "
                                    "check memcheck support, pause/stepping, and savestate")
@@ -112,7 +119,8 @@ class TickTracer(Tracer):
             if not record["fighters"]:
                 raise ValueError(f"no fighters at tick ordinal {self.frame}")
             record.update(tick=value, vi_frame=self.vi_frame,
-                          watch_address=WATCH_ADDR, watch_value=before)
+                          watch_address=WATCH_ADDR, watch_value=before,
+                          pad_game=self.read_game_pads())
             self.out.write(json.dumps(record) + "\n")
             self.out.flush()
             self.last_tick = value

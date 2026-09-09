@@ -32,7 +32,9 @@ def animations(state: dict) -> dict[str, float]:
             for key, field in state.items() if key.endswith(".cur_anim_frame")}
 
 
-def validate(records, max_draws: int = 64) -> dict:
+def validate(records, max_draws: int = 64, scripted: bool = False) -> dict:
+    """`scripted`: inputs drive the fighters, so animation rates are not unit;
+    only finiteness, RNG reachability and the tick metadata are checked."""
     if max_draws < 0:
         raise ValueError("max_draws must be nonnegative")
     histogram = Counter()
@@ -59,7 +61,7 @@ def validate(records, max_draws: int = 64) -> dict:
                 # before the first animation). Anything else, such as +2, is a
                 # sampling straddle; the tick-counter metadata check below is
                 # the exact detector when the raw record carries it.
-                if not (current - before == 1 or current <= before):
+                if not scripted and not (current - before == 1 or current <= before):
                     violations.append(f"ordinal {ordinal}: {key} {before:g} -> {current:g} "
                                       "(expected +1, hold, or restart)")
         if previous is not None:
@@ -101,12 +103,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
     parser.add_argument("--max-draws", type=int, default=64, metavar="K")
+    parser.add_argument("--scripted", action="store_true",
+                        help="inputs drive the fighters: skip the unit animation-rate rule")
     args = parser.parse_args(argv)
     if args.max_draws < 0:
         parser.error("--max-draws must be nonnegative")
     try:
         with args.trace.open() as stream:
-            result = validate((json.loads(line) for line in stream if line.strip()), args.max_draws)
+            result = validate((json.loads(line) for line in stream if line.strip()),
+                              args.max_draws, args.scripted)
     except (OSError, ValueError, KeyError, TypeError, struct.error, OverflowError) as exc:
         print(f"invalid trace: {exc}")
         return 1

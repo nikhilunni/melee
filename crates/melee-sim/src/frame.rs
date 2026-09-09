@@ -1,6 +1,6 @@
 //! Scene composition through HSD's real scheduler. Registrations, rather than
 //! a sorted callback replay, preserve same-tick insertion/deferred destruction.
-use crate::initial_state::InitialState;
+use crate::{initial_state::InitialState, inputs::PadScript};
 use anyhow::{ensure, Result};
 use hsd_gobj::{World, WorldConfig};
 use hsd_particle::rng_sites::DrawLog;
@@ -98,6 +98,8 @@ fn register(
 }
 struct Runtime {
     state: InitialState,
+    /// The pad each port consumed per tick: scenario input, never state.
+    pads: PadScript,
     frame: u64,
     error: Option<anyhow::Error>,
     /// Diagnostic only: values observed around procs, never gameplay inputs.
@@ -112,6 +114,7 @@ impl Runtime {
             return Ok(());
         }
         let state = &mut self.state;
+        let state_pads = &self.pads;
         match row.callback {
             Callback::Fighter { player, proc } => {
                 let f = &mut state.fighters[player];
@@ -123,7 +126,12 @@ impl Runtime {
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
                     }
                     FighterProc::CpuGate => f.proc_cpu_gate(),
-                    FighterProc::Input => f.proc_input(assets, &PadSample::default()),
+                    FighterProc::Input => {
+                        // HSD_PadGameStatus[fp->x618_player_id]: in a Vs match
+                        // the human slot's port is its player index.
+                        let pad: PadSample = state_pads.sample(self.frame, player);
+                        f.proc_input(assets, &pad)
+                    }
                     FighterProc::Update => f.proc_update(assets, &state.map, Vec3::ZERO),
                     FighterProc::Map => {
                         f.proc_map_with_assets(assets, &mut state.map, &mut state.rng)
@@ -200,16 +208,21 @@ impl Runtime {
     }
 }
 /// Owns all mutable simulation state. Once constructed, tick has no trace,
-/// ledger, seed, or frame-specific input argument.
+/// ledger, seed, or frame-specific argument: the input script is fixed up front.
 pub struct Simulation {
     world: World,
     runtime: Rc<RefCell<Runtime>>,
 }
 impl Simulation {
+    /// A simulation with neutral pads on every port.
     pub fn new(state: InitialState) -> Self {
+        Self::with_inputs(state, PadScript::default())
+    }
+    pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
         let rows = registrations(&state.stage);
         let runtime = Rc::new(RefCell::new(Runtime {
             state,
+            pads,
             frame: 0,
             error: None,
             rng_writers: Vec::new(),

@@ -143,11 +143,13 @@ impl InitialState {
         if let Some(diff) = first_divergence([&fighter_expected], [&sink.finish()]) {
             anyhow::bail!("imported fighter boundary: {diff}");
         }
+        // The particle population belongs to the savestate, so scripted
+        // scenarios recorded from the same savestate share this capture.
         let initial: Record = serde_json::from_value(first_json(
-            &scenario.trace_path("particles.jsonl.initial.jsonl"),
+            &scenario.boundary_path("particles.jsonl.initial.jsonl"),
         )?)?;
         let metadata: Json = serde_json::from_reader(File::open(
-            scenario.trace_path("particles.jsonl.initial.jsonl.meta.json"),
+            scenario.boundary_path("particles.jsonl.initial.jsonl.meta.json"),
         )?)?;
         ensure!(
             metadata["sampling"] == "savestate_loaded_before_first_tick",

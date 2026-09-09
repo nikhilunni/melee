@@ -74,3 +74,15 @@ def test_cli_exit_status_and_histogram(tmp_path, capsys):
     trace.write_text("not json")
     assert main([str(trace)]) == 1
     assert "invalid trace" in capsys.readouterr().out
+
+
+def test_scripted_mode_accepts_non_unit_animation_rates():
+    import validate_ticks as v
+    seed = 5
+    records = [{"state": {"rng.seed": {"t": "u", "v": seed},
+                          "p0.cur_anim_frame": {"t": "f32", "v": {"bits": 0x40000000}}}},
+               {"state": {"rng.seed": {"t": "u", "v": seed},
+                          "p0.cur_anim_frame": {"t": "f32", "v": {"bits": 0x40400000}}}}]  # 2.0 -> 3.0
+    records[1]["state"]["p0.cur_anim_frame"]["v"]["bits"] = 0x40900000  # 4.5: rate 2.5
+    assert v.validate(iter(records))["violations"]
+    assert not v.validate(iter(records), scripted=True)["violations"]

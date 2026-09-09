@@ -33,6 +33,11 @@ GOBJ_USER_DATA_OFF = walk.GOBJ_USER_DATA_OFF
 
 SEED_ADDR = symbols.addr("seed")
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
+# HSD_PadGameStatus[4]: the clamped, scaled pad each fighter reads
+# (Fighter_Spaghetti_8006AD10). HSD_PadStatus is 0x44 bytes (controller.h).
+PAD_GAME_ADDR = symbols.addr("HSD_PadGameStatus")
+PAD_STATUS_SIZE = 0x44
+PAD_PORTS = 4
 
 
 def fighter_bases(mem=None) -> list[int]:
@@ -73,22 +78,38 @@ class Tracer:
         self.events = event if events is None else events
         self.frame = 0
         self.inputs = sorted(scenario.get("inputs", []), key=lambda s: s["frame"])
-        self.held: dict = {}  # current pad state; a step at frame N holds until the next step
+        # TOML gotcha: a key written after a [[fighters]] table belongs to that
+        # table. `inputs` must be a top-level key (before the first table).
+        if any("inputs" in f for f in scenario.get("fighters", [])):
+            raise ValueError("scenario inputs must be top-level, not under a [[fighters]] table")
+        # Current pad state per port; a step at frame N holds until that port's
+        # next step. Frames count VI callbacks from the savestate load.
+        self.held: dict[int, dict] = {0: {}}
         self.needs_load = savestate_path is not None
         self.load_info: dict = {}
         self.done = False
         self.t_start: float | None = None
 
-    def pad_state(self, f: int) -> dict:
+    def pad_state(self, f: int) -> dict[int, dict]:
         for step in self.inputs:
             if step["frame"] == f:
-                self.held = dict(step.get("buttons", {}))
+                self.held[int(step.get("port", 0))] = dict(step.get("buttons", {}))
         return self.held
 
-    def apply_inputs(self, f: int, ctl=None) -> None:
+    def apply_inputs(self, f: int, ctl=None, base: dict | None = None) -> None:
+        """Re-issue every port's held state (an override lasts one VI frame).
+
+        `base` is merged under each port's step, so a step only names the
+        keys that differ from it (neutral for the tick tracer).
+        """
         ctl = self.ctl if ctl is None else ctl
-        # set_gc_buttons only lasts one frame: re-issue the held state every frame.
-        ctl.set_gc_buttons(0, self.pad_state(f))
+        for port, held in sorted(self.pad_state(f).items()):
+            ctl.set_gc_buttons(port, {**(base or {}), **held})
+
+    def read_game_pads(self, mem=None) -> str:
+        """Hex of HSD_PadGameStatus[0..3] as consumed by the tick just completed."""
+        mem = self.mem if mem is None else mem
+        return walk.read_bytes(mem, PAD_GAME_ADDR, PAD_STATUS_SIZE * PAD_PORTS).hex()
 
     def record(self, phase: str, mem=None) -> dict:
         mem = self.mem if mem is None else mem

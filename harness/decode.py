@@ -51,6 +51,34 @@ def decode_struct(schema: dict, blob: bytes, prefix: str) -> dict:
     return out
 
 
+# HSD_PadStatus (sysdolphin/baselib/controller.h), 0x44 bytes per port.
+PAD_FIELDS = [
+    ("button", 0x00, "u32"), ("last_button", 0x04, "u32"), ("trigger", 0x08, "u32"),
+    ("repeat", 0x0C, "u32"), ("release", 0x10, "u32"), ("repeat_count", 0x14, "s32"),
+    ("stickX", 0x18, "s8"), ("stickY", 0x19, "s8"), ("subStickX", 0x1A, "s8"),
+    ("subStickY", 0x1B, "s8"), ("analogL", 0x1C, "u8"), ("analogR", 0x1D, "u8"),
+    ("analogA", 0x1E, "u8"), ("analogB", 0x1F, "u8"),
+    ("nml_stickX", 0x20, "f32"), ("nml_stickY", 0x24, "f32"),
+    ("nml_subStickX", 0x28, "f32"), ("nml_subStickY", 0x2C, "f32"),
+    ("nml_analogL", 0x30, "f32"), ("nml_analogR", 0x34, "f32"),
+    ("nml_analogA", 0x38, "f32"), ("nml_analogB", 0x3C, "f32"),
+    ("cross_dir", 0x40, "u8"), ("err", 0x41, "s8"),
+]
+PAD_STATUS_SIZE = 0x44
+
+
+def decode_pads(blob: bytes) -> dict:
+    """`pad_game` (HSD_PadGameStatus[4]) -> {"p0": {...}, ...}. Inputs, not state."""
+    out = {}
+    for port in range(len(blob) // PAD_STATUS_SIZE):
+        base = port * PAD_STATUS_SIZE
+        out[f"p{port}"] = {
+            name: _val(kind, blob[base + off: base + off + struct.calcsize(_FMT[kind])])
+            for name, off, kind in PAD_FIELDS
+        }
+    return out
+
+
 def main(inp: Path, out: Path) -> None:
     fighter = yaml.safe_load((HERE / "schema" / "fighter.yaml").read_text())
     with inp.open() as fi, out.open("w") as fo:
@@ -65,6 +93,8 @@ def main(inp: Path, out: Path) -> None:
             for key in ("tick", "vi_frame", "watch_address", "watch_value"):
                 if key in d:
                     record[key] = d[key]
+            if "pad_game" in d:
+                record["inputs"] = decode_pads(bytes.fromhex(d["pad_game"]))
             fo.write(json.dumps(record) + "\n")
 
 

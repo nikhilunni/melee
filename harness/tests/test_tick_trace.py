@@ -7,6 +7,7 @@ import decode
 import remote_proto
 import run_scenario
 import tick_trace as tick
+import trace_common
 from test_walk import (_FakeController, _FakeStates, build_two_fighter_world)
 
 
@@ -159,7 +160,9 @@ def test_runner_selects_tick_script_and_required_dolphin_flags(tmp_path):
 
 
 @pytest.mark.parametrize("scenario", [{"frames": 0}, {"frames": 1.5},
-                                      {"frames": 3, "inputs": [{"frame": 1, "buttons": {"A": True}}]}])
+                                      {"frames": 3, "inputs": [{"frame": 1, "buttons": {"Q": True}}]},
+                                      {"frames": 3, "inputs": [{"frame": -1, "buttons": {"A": True}}]},
+                                      {"frames": 3, "fighters": [{"slot": 0, "inputs": []}]}])
 def test_invalid_tick_scenario_rejected_before_installation(tmp_path, scenario):
     with pytest.raises(ValueError):
         tick.TickTracer(scenario, None, tmp_path / "match.sav")
@@ -178,3 +181,42 @@ def test_startup_error_replaces_stale_done_marker(tmp_path, monkeypatch):
     trace_common.run(tick.TickTracer)
     assert not done.exists() and "missing.toml" in err.read_text()
     assert raw.read_text() == ""
+
+
+def test_scripted_steps_hold_per_port_and_each_tick_records_the_game_pads(tmp_path):
+    mem = build_two_fighter_world()
+    for addr, word in tick.BOUNDARY_CODE.items():
+        mem.write_u32(addr, word)
+    mem.write_u32(tick.WATCH_ADDR, 100)
+    events, ctl = Events(), _FakeController()
+    states = _FakeStates(mem, 123)
+    mem.add_memcheck = lambda addr: None
+    mem.remove_memcheck = lambda addr: None
+    mem.write_u32(trace_common.PAD_GAME_ADDR + 0x44 + 0x20, 0x3F800000)  # p1 nml_stickX = 1.0
+    raw = tmp_path / "ticks.raw.jsonl"
+    scenario = {"frames": 3, "inputs": [{"frame": 1, "buttons": {"StickX": 0.5}},
+                                        {"frame": 1, "port": 1, "buttons": {"A": True}},
+                                        {"frame": 2, "buttons": {}}]}
+    tracer = tick.TickTracer(scenario, raw.open("w"), tmp_path / "match.sav", {"seed": 123},
+                             tmp_path / "ticks.raw.jsonl.done", mem, ctl, states, events)
+    neutral = remote_proto.neutral_inputs()
+    tracer.on_frame()
+    store(tracer, mem, 101)
+    tracer.on_frame()
+    store(tracer, mem, 102)
+    tracer.on_frame()
+    tracer.on_frame()
+    assert ctl.log[:1] == [(0, neutral)]
+    assert ctl.log[1:3] == [(0, {**neutral, "StickX": 0.5}), (1, {**neutral, "A": True})]
+    assert ctl.log[3:5] == [(0, neutral), (1, {**neutral, "A": True})]  # p1 holds until its next step
+    store(tracer, mem, 103)
+    tracer.on_frame()
+    rows = [json.loads(line) for line in raw.read_text().splitlines()]
+    assert len(rows) == 3 and all(len(bytes.fromhex(r["pad_game"])) == 4 * 0x44 for r in rows)
+    decoded = tmp_path / "decoded.jsonl"
+    decode.main(raw, decoded)
+    result = json.loads(decoded.read_text().splitlines()[0])
+    assert len(result["state"]) == 49  # inputs live beside the compared state
+    assert result["inputs"]["p1"]["nml_stickX"] == {"t": "f32", "v": {"bits": 0x3F800000, "approx": 1.0}}
+    assert result["inputs"]["p0"]["button"] == {"t": "u", "v": 0}
+    assert set(result["inputs"]) == {"p0", "p1", "p2", "p3"}

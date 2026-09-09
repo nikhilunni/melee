@@ -1,4 +1,5 @@
-//! TOML scenario loading. This slice deliberately accepts only the M3 idle setup.
+//! TOML scenario loading: Fox vs Fox on Final Destination, optionally with a
+//! scripted input schedule for one or more ports.
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::{
@@ -16,8 +17,11 @@ pub struct Scenario {
     pub seed: u32,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
+    /// The VI-frame schedule that drove Dolphin. The port itself replays the
+    /// per-tick pads recorded beside the expected trace (`inputs.rs`); this
+    /// list only says whether the scenario is scripted.
     #[serde(default)]
-    pub inputs: Vec<toml::Value>,
+    pub inputs: Vec<InputStep>,
     #[serde(skip)]
     pub root: PathBuf,
 }
@@ -27,9 +31,18 @@ pub struct FighterScenario {
     pub slot: u8,
     pub kind: String,
     pub controller: String,
-    // The current TOML places inputs=[] under its second [[fighters]] table.
+}
+/// One step of the Dolphin-side schedule: `buttons` holds on `port` from VI
+/// frame `frame` until that port's next step. Keys are the GC pad names the
+/// harness accepts (`remote_proto.GC_KEYS`); an empty table is neutral.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InputStep {
+    pub frame: u64,
     #[serde(default)]
-    pub inputs: Vec<toml::Value>,
+    pub port: u8,
+    #[serde(default)]
+    pub buttons: toml::Table,
 }
 impl Scenario {
     pub fn load(path: &Path) -> Result<Self> {
@@ -48,33 +61,55 @@ impl Scenario {
     }
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            matches!(self.name.as_str(), "idle_fd_fox" | "start_fd_fox")
-                && self.stage == "FinalDestination",
-            "only idle_fd_fox/start_fd_fox on FinalDestination is supported"
+            self.stage == "FinalDestination",
+            "only FinalDestination is supported"
         );
         ensure!(
             (1..=600).contains(&self.frames),
-            "imported M3 boundary supports 1..=600 ticks"
+            "imported boundary supports 1..=600 ticks"
         );
-        ensure!(
-            self.fighters.len() == 2 && self.inputs.is_empty(),
-            "requires two idle fighters"
-        );
+        ensure!(self.fighters.len() == 2, "requires two fighters");
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
                 usize::from(fighter.slot) == slot
                     && fighter.kind == "Fox"
-                    && matches!(fighter.controller.as_str(), "scripted" | "idle")
-                    && fighter.inputs.is_empty(),
-                "requires ordered human Fox slots 0/1 with neutral input"
+                    && matches!(fighter.controller.as_str(), "scripted" | "idle"),
+                "requires ordered human Fox slots 0/1"
+            );
+        }
+        for step in &self.inputs {
+            ensure!(
+                usize::from(step.port) < crate::inputs::PORTS,
+                "input step port {} out of range",
+                step.port
             );
         }
         Ok(())
     }
+    /// Whether the Dolphin-side schedule ever leaves neutral.
+    pub fn is_scripted(&self) -> bool {
+        self.inputs.iter().any(|step| !step.buttons.is_empty())
+    }
+    /// Traces recorded for this scenario (its own tick trace).
     pub fn trace_path(&self, suffix: &str) -> PathBuf {
         self.root
             .join("harness/traces")
             .join(format!("{}.{suffix}", self.name))
+    }
+    /// The scenario whose captures describe this savestate's boundary: the
+    /// savestate's file stem (`idle_fd_fox.sav` -> `idle_fd_fox`). Several
+    /// scripted scenarios start from one savestate and share its particle
+    /// dump and RNG ledger.
+    pub fn boundary_name(&self) -> String {
+        self.savestate
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| self.name.clone())
+    }
+    pub fn boundary_path(&self, suffix: &str) -> PathBuf {
+        self.root
+            .join("harness/traces")
+            .join(format!("{}.{suffix}", self.boundary_name()))
     }
     pub fn assets_path(&self) -> PathBuf {
         self.root.join("harness/roms/files")
@@ -98,14 +133,14 @@ impl Scenario {
         paths.push(self.savestate_path());
         paths.push(self.savestate_path().with_extension("sav.json"));
         paths.push(self.trace_path("tick.raw.jsonl"));
+        paths.push(self.trace_path("tick.expected.jsonl"));
         paths.extend(
             [
                 "ledger600.raw.jsonl",
-                "tick.expected.jsonl",
                 "particles.jsonl.initial.jsonl",
                 "particles.jsonl.initial.jsonl.meta.json",
             ]
-            .map(|s| self.trace_path(s)),
+            .map(|s| self.boundary_path(s)),
         );
         paths
     }

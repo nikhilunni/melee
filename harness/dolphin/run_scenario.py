@@ -121,7 +121,10 @@ def main(argv: list[str] | None = None) -> None:
 
         if records != scenario["frames"] or summary.get("ticks") != records:
             sys.exit("tick trace record count does not match the scenario and .done marker")
-        if validate_ticks.main([str(expected)]):
+        flags = ["--max-draws", "256"]
+        if any(step.get("buttons") for step in scenario.get("inputs", [])):
+            flags.append("--scripted")
+        if validate_ticks.main([str(expected), *flags]):
             sys.exit(1)
 
 

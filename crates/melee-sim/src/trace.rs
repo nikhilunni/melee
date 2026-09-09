@@ -2,6 +2,7 @@
 use crate::{
     frame::Simulation,
     initial_state::InitialState,
+    inputs::PadScript,
     scenario::Scenario,
     schema::{Schema, SchemaCoverage},
 };
@@ -52,8 +53,28 @@ pub fn check_schema(record: &Record) -> Result<()> {
     );
     Ok(())
 }
+/// The per-tick pads recorded beside the scenario's expected trace. A
+/// scripted scenario must carry them; a neutral one may predate the capture.
+pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
+    let path = scenario.trace_path("tick.expected.jsonl");
+    let script = PadScript::from_expected_trace(&path, scenario.is_scripted())?;
+    ensure!(
+        script.len() as u64 == scenario.frames,
+        "expected trace length {} differs from scenario {}",
+        script.len(),
+        scenario.frames
+    );
+    Ok(script)
+}
+fn simulation(scenario: &Scenario) -> Result<Simulation> {
+    let pads = pad_script(scenario)?;
+    Ok(Simulation::with_inputs(
+        InitialState::from_savestate_traces(scenario)?,
+        pads,
+    ))
+}
 pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
-    let mut simulation = Simulation::new(InitialState::from_savestate_traces(scenario)?);
+    let mut simulation = simulation(scenario)?;
     for _ in 0..scenario.frames {
         let record = simulation.tick()?;
         check_schema(&record)?;
@@ -74,7 +95,7 @@ pub fn gate(scenario: &Scenario) -> Result<()> {
         expected.len(),
         scenario.frames
     );
-    let mut simulation = Simulation::new(InitialState::from_savestate_traces(scenario)?);
+    let mut simulation = simulation(scenario)?;
     for expected in expected {
         let actual = simulation.tick()?;
         check_schema(&expected)?;
