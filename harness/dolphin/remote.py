@@ -147,6 +147,17 @@ class Remote:
             self.log(f"screenshot failed: {e!r}")
         self.write_status()
 
+    def poke(self, addr: int, width: int, value: int, or_into: bool) -> None:
+        """Write (or OR into) one u8/u16/u32 of emulated memory. Used to flip
+        save-data bits such as the stage unlock mask; never part of a trace."""
+        read = getattr(self.mem, f"read_u{width}")
+        write = getattr(self.mem, f"write_u{width}")
+        before = read(addr)
+        new = (before | value) if or_into else value
+        write(addr, new)
+        self.note = f"poke 0x{addr:08X} u{width}: 0x{before:X} -> 0x{read(addr):X}"
+        self.log(self.note)
+
     def watch(self, addr: int, size: int) -> None:
         self.watches[addr] = size
 

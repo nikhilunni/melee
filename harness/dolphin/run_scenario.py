@@ -3,6 +3,7 @@
     cd harness
     uv run python dolphin/run_scenario.py scenarios/idle_fd_fox.toml
     uv run python dolphin/run_scenario.py scenarios/idle_fd_fox.toml --speed 1 --keep
+    uv run python dolphin/run_scenario.py scenarios/idle_ys_fox.toml --tick-trace --video OGL
 
 Steps: launch the scripting Dolphin with trace_scenario.py (unlimited emulation
 speed by default), wait for `<raw>.done`, SIGTERM Dolphin, run decode.py.
@@ -10,6 +11,9 @@ Outputs, under harness/traces/ unless --out is given:
     <name>.raw.jsonl        one record per frame, raw Fighter bytes
     <name>.raw.jsonl.done   summary: frames, fps, savestate load sync check
     <name>.expected.jsonl   the canonical melee-diff trace
+
+--tick-trace selects tick_trace.py, inserts `.tick` after <name>, interprets
+scenario.frames as scheduler ticks, and runs validate_ticks.py after decoding.
 """
 from __future__ import annotations
 
@@ -37,10 +41,12 @@ ISO = HARNESS / "roms" / "GALE01.iso"
 SI_GC_CONTROLLER, SI_NONE = 6, 0   # SerialInterface::SIDevices
 
 
-def dolphin_command(iso: Path, speed: float, video: str | None, ports: int) -> list[str]:
+def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
+                    tick_trace: bool = False) -> list[str]:
     """Same SI setup as drive.py launch: the savestate was recorded with `ports`
     emulated controllers plugged in and Dolphin should see the same devices."""
-    cmd = [str(DOLPHIN), "-e", str(iso), "--script", str(HERE / "trace_scenario.py"),
+    script = "tick_trace.py" if tick_trace else "trace_scenario.py"
+    cmd = [str(DOLPHIN), "-e", str(iso), "--script", str(HERE / script),
            "-C", f"Dolphin.Core.EmulationSpeed={speed}"]
     if video:
         cmd += ["-v", video]
@@ -55,7 +61,7 @@ def wait_for(path: Path, err: Path, timeout: float) -> None:
         if path.exists():
             return
         if err.exists():
-            sys.exit(f"trace_scenario.py failed:\n{err.read_text()}")
+            sys.exit(f"Dolphin tracer failed:\n{err.read_text()}")
         time.sleep(0.2)
     sys.exit(f"timed out after {timeout}s waiting for {path}")
 
@@ -79,21 +85,24 @@ def main(argv: list[str] | None = None) -> None:
                     help="emulated GC controllers plugged in (match the savestate)")
     ap.add_argument("--timeout", type=float, default=600.0)
     ap.add_argument("--keep", action="store_true", help="leave Dolphin running afterwards")
+    ap.add_argument("--tick-trace", action="store_true",
+                    help="capture scenario.frames scheduler ticks, then validate the idle trace")
     a = ap.parse_args(argv)
 
     scenario = tomllib.loads(a.scenario.read_text())
     name = scenario.get("name", a.scenario.stem)
     a.out.mkdir(parents=True, exist_ok=True)
-    raw = a.out / f"{name}.raw.jsonl"
+    stem = f"{name}.tick" if a.tick_trace else name
+    raw = (a.out / f"{stem}.raw.jsonl").resolve()
     done, err = Path(str(raw) + ".done"), Path(str(raw) + ".err")
-    expected = a.out / f"{name}.expected.jsonl"
+    expected = a.out / f"{stem}.expected.jsonl"
     for p in (raw, done, err):
         p.unlink(missing_ok=True)
 
     env = {**os.environ, "MELEE_SCENARIO": str(a.scenario.resolve()), "MELEE_RAW_OUT": str(raw)}
-    log = (a.out / f"{name}.dolphin.out").open("wb")
+    log = (a.out / f"{stem}.dolphin.out").open("wb")
     t0 = time.monotonic()
-    proc = subprocess.Popen(dolphin_command(ISO, a.speed, a.video, a.ports), env=env, stdout=log,
+    proc = subprocess.Popen(dolphin_command(ISO, a.speed, a.video, a.ports, a.tick_trace), env=env, stdout=log,
                             stderr=subprocess.STDOUT, start_new_session=True)
     print(f"dolphin pid {proc.pid}; waiting for {done}")
     try:
@@ -107,6 +116,13 @@ def main(argv: list[str] | None = None) -> None:
     records = sum(1 for line in expected.open() if line.strip())
     print(json.dumps({**summary, "wall_s_incl_boot": round(wall, 1), "records": records,
                       "raw": str(raw), "expected": str(expected)}, indent=1))
+    if a.tick_trace:
+        import validate_ticks
+
+        if records != scenario["frames"] or summary.get("ticks") != records:
+            sys.exit("tick trace record count does not match the scenario and .done marker")
+        if validate_ticks.main([str(expected)]):
+            sys.exit(1)
 
 
 if __name__ == "__main__":

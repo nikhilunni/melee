@@ -1,7 +1,9 @@
-# Milestone 3 scenario: one Fox, Final Destination, no input, fixed seed.
-# The savestate is machine-local (it embeds your disc's data) and lives under
-# harness/roms/, which is gitignored. Record it once with Dolphin at the first
-# frame of the match, then everything downstream is deterministic.
+# Milestone 3 scenario: two idle Foxes (P1 human, P2 human with no controller
+# input), Final Destination, Stock 1, items off. FD was unlocked by setting
+# bits 6-7 of the save's stage unlock mask (docs/DOLPHIN_RUN.md). The savestate
+# is machine-local (harness/roms/, gitignored); recorded 2026-09-08 with
+# harness/dolphin/remote.py `save-when-wait` at the first frame both fighters
+# were in ftCo_MS_Wait (frame 50841 of that Dolphin session).
 name = "idle_fd_fox"
 savestate = "harness/roms/idle_fd_fox.sav"
 frames = 600
@@ -13,4 +15,9 @@ slot = 0
 kind = "Fox"
 controller = "scripted"
 
-inputs = []   # no input for 600 frames
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
+
+inputs = []   # no input for 600 ticks

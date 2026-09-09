@@ -61,7 +61,11 @@ def main(inp: Path, out: Path) -> None:
             state = {"rng.seed": {"t": "u", "v": d["seed"]}}
             for i, f in enumerate(d.get("fighters", [])):
                 state.update(decode_struct(fighter, bytes.fromhex(f["bytes"]), f"p{i}"))
-            fo.write(json.dumps({"frame": d["frame"], "phase": d["phase"], "state": state}) + "\n")
+            record = {"frame": d["frame"], "phase": d["phase"], "state": state}
+            for key in ("tick", "vi_frame", "watch_address", "watch_value"):
+                if key in d:
+                    record[key] = d[key]
+            fo.write(json.dumps(record) + "\n")
 
 
 if __name__ == "__main__":

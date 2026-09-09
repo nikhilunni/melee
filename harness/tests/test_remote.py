@@ -14,6 +14,8 @@ from test_walk import ENTITIES_SYM, FIGHTER_A, FakeMemory, build_two_fighter_wor
 # --- parse_command ------------------------------------------------------------
 
 @pytest.mark.parametrize("text, expected", [
+    ("poke 0x804D3EE0 u16 0xC0", {"op": "poke", "addr": 0x804D3EE0, "width": 16, "value": 0xC0, "or": False}),
+    ("poke-or 0x804D3EE0 u16 0xC0", {"op": "poke", "addr": 0x804D3EE0, "width": 16, "value": 0xC0, "or": True}),
     ("press A", {"op": "input", "inputs": {"A": True}, "frames": proto.DEFAULT_PRESS_FRAMES}),
     ("press Start 3", {"op": "input", "inputs": {"Start": True}, "frames": 3}),
     ("press A+Start 4", {"op": "input", "inputs": {"A": True, "Start": True}, "frames": 4}),
@@ -57,6 +59,8 @@ def test_parse_command(text, expected):
 
 
 @pytest.mark.parametrize("text", [
+    "poke 0x80000000 u8 256",
+    "poke 0x80000000 u64 1",
     "", "press", "press Q", "press StickX", "press A 0", "press A -1", "press A 3 4",
     "hold StickX 1.5 3", "hold StickX 300 3", "hold StickX -2 3", "hold StickX 1.0", "hold A 1.0 3",
     "hold TriggerLeft -0.5 3", "stick 1 1", "wait", "wait x", "save rel/path.sav",

@@ -226,6 +226,17 @@ def parse_command(text: str) -> dict:
             raise CommandError("unwatch takes exactly: <addr> | all")
         return {"op": "unwatch", "addr": None if args[0].lower() == "all" else _address(args[0])}
 
+    if op in ("poke", "poke-or"):
+        # poke <addr> <u8|u16|u32> <value>: write; poke-or: OR the value in.
+        if len(args) != 3 or args[1].lower() not in ("u8", "u16", "u32"):
+            raise CommandError(f"{op} takes exactly: <addr> <u8|u16|u32> <value>")
+        width = int(args[1][1:])
+        value = int(args[2], 0)
+        if not 0 <= value < (1 << width):
+            raise CommandError(f"{op}: value {args[2]} does not fit in {width} bits")
+        return {"op": "poke", "addr": _address(args[0]), "width": width,
+                "value": value, "or": op == "poke-or"}
+
     if op in ("clear", "pause", "resume", "status", "stop"):
         if args:
             raise CommandError(f"{op} takes no arguments")
@@ -359,6 +370,7 @@ class Host(Protocol):
     def shot(self, path: str) -> None: ...
     def watch(self, addr: int, size: int) -> None: ...
     def unwatch(self, addr: int | None) -> None: ...
+    def poke(self, addr: int, width: int, value: int, or_into: bool) -> None: ...
     def stop(self) -> None: ...
     def write_status(self) -> None: ...
 
@@ -387,6 +399,8 @@ def apply_command(cmd: dict, queue: InputQueue, host: Host) -> None:
         host.shot(cmd["path"])
     elif op == "watch":
         host.watch(int(cmd["addr"]), int(cmd["size"]))
+    elif op == "poke":
+        host.poke(int(cmd["addr"]), int(cmd["width"]), int(cmd["value"]), bool(cmd["or"]))
     elif op == "unwatch":
         host.unwatch(None if cmd.get("addr") is None else int(cmd["addr"]))
     elif op == "status":

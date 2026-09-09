@@ -19,7 +19,7 @@ uv run python dolphin/drive.py shot /tmp/frame.png               # what the game
 ...                                                              # menu sequence below
 uv run python dolphin/drive.py save-when-wait /abs/harness/roms/idle_ys_fox.sav
 uv run python dolphin/drive.py kill
-uv run python dolphin/run_scenario.py scenarios/idle_ys_fox.toml --video OGL --ports 2
+uv run python dolphin/run_scenario.py scenarios/idle_ys_fox.toml --tick-trace --video OGL --ports 2
 ```
 
 Existing artefacts (all machine-local, gitignored):
@@ -36,6 +36,155 @@ Existing artefacts (all machine-local, gitignored):
 "?" tiles on the stage select are the unlockables. Yoshi's Story was used as
 the fallback the task allowed. `idle_fd_fox` needs FD unlocked first (or a
 save file that has it).
+
+## Complete game-tick oracle (T0)
+
+`tick_trace.py` defines **one record as the completed state of one invocation
+of the GObj proc scheduler**, before rendering or the next pad drain. It uses
+the existing `MELEE_SCENARIO` and `MELEE_RAW_OUT` variables; `scenario.frames`
+is the number of ticks to record (600 in `idle_ys_fox.toml`). The legacy
+`trace_scenario.py` remains a VI begin-field sampler even though its phase is
+called `frame_end`. Its existing trace is retained as evidence, not a complete
+tick contract.
+
+The watched word is **`gm_80479D58.unk_0`, `0x80479D58` (+0)**. In
+`third_party/melee-decomp/src/melee/gm/gm_1A45.c:340-342`, the driver calls
+`HSD_GObj_80390CFC`, then increments this counter unless it has saturated at
+`0xFFFFFFFE`. Retail GALE01 1.02 confirms:
+
+```text
+801A4FA0  481EBD5D  bl HSD_GObj_80390CFC
+801A4FA4  80790000  lwz r3, 0(r25)
+801A4FA8  3C030001  addis r0, r3, 1
+801A4FAC  2800FFFE  cmplwi r0, 0xfffe
+801A4FB0  4182000C  beq 0x801A4FBC
+801A4FB4  38030001  addi r0, r3, 1
+801A4FB8  90190000  stw r0, 0(r25)  # r25 = 0x80479D58
+```
+
+That store runs once per iteration of the inner pad-queue loop, including
+when multiple ticks precede one render. The only other assignment to this
+counter is its scene-entry reset (`gm_1A45.c:274`, retail `0x801A4D60`), before
+the tick loop. The sampler installs only after loading the match savestate,
+checks the code words above, rejects counter discontinuities and saturation,
+and never treats a scene reset as a new capture epoch. Pausing still permits
+scheduler invocations with masked procs; the idle validator will reject frozen
+animations. The counter measures scheduler invocations, not unpaused fighter
+updates.
+
+This is an **end-of-tick** sample: `lb_800198E0` has drained this tick's pad
+sample, and `lb_80019900` has copied it on the normal active-match path. Pad
+master/copy buffers therefore belong to the just-executed tick; a start sample
+after the next drain would instead pair previous-tick fighters with newly
+drained pad data. No pad data is rewritten by the sampler. Only neutral input
+scenarios are supported because per-VI overrides cannot schedule arbitrary
+input changes against individual entries of Melee's pad queue. Port 0's full
+neutral input is re-issued every frameadvance; port 1 remains the idle second
+controller configured by the launch flags.
+
+Source-verified against `~/Projects/dolphin-scripting/src` (2026-09-08):
+
+- `python-stubs/dolphin/memory.pyi` omits memchecks. The actual Python bindings
+  in `Source/Core/Scripting/Python/Modules/memorymodule.cpp:60-81,94-95` expose
+  `memory.add_memcheck(addr)` and `memory.remove_memcheck(addr)`, each taking
+  one positional u32 address and returning None. `Core/API/Memory.cpp:13-25`
+  creates a single-address check with no pause/log flags. Reads also emit
+  events; the sampler filters `is_write` and the exact address.
+- `event.on_memorybreakpoint(callback)` calls
+  `callback(is_write: bool, addr: int, value: int)` synchronously.
+  `Core/API/Events.h:82-104` asserts the CPU thread and invokes listeners
+  inline; `Scripting/Python/Modules/eventmodule.cpp:151-173,260-263` calls
+  Python directly. Guest CPU execution does not advance during the callback.
+  `Core/PowerPC/MMU.cpp:711-714` invokes the memcheck **before** the u32
+  store, and `BreakPoints.cpp:389` emits the event. Thus a memory read sees
+  the **old counter**, while callback `value` is the **pending new counter**;
+  all scheduler procs have already returned. Host reads use HostRead and do
+  not themselves trigger guest memchecks. No asynchronous coroutine is used.
+- `registers.pyi` exposes GPR/FPR reads and writes, but no PC read. The
+  sampler verifies the static retail store instructions and counter sequence;
+  `store_pc` in `.done` is the audited write site, not a captured PC.
+- Listeners accumulate in this source revision (contrary to older notes
+  saying replacement). Completed/error callbacks park behind guards. Removing
+  a memcheck inside its callback would invalidate the `TMemCheck` still used
+  by `Action` after event dispatch; cleanup is deferred to the next VI callback.
+
+Savestate loading still occurs synchronously on the first frameadvance. The
+load itself produces **no record**. Ordinal/frame 0 is the first scheduler-end
+store after loading; the loaded VI may be partway through that tick. Initialize
+a simulator from this new record 0, then advance once per adjacent record.
+Do not align its ordinal 0 to the old trace's loaded-state ordinal 0.
+
+Every raw and decoded record retains `frame` (zero-based capture ordinal) and
+`phase: "frame_end"`, plus the same seed and Fighter fields as before. These
+diagnostics remain outside canonical `state`:
+
+| Key | Meaning |
+|---|---|
+| `tick` | Pending incremented game counter supplied by the callback |
+| `vi_frame` | Script VI ordinal, 0 at the load callback; may repeat or skip between records |
+| `watch_address` | `0x80479D58`, encoded as an integer |
+| `watch_value` | Old word observed in memory; must equal `tick - 1` modulo 2^32 |
+
+Duplicate counter callbacks and re-entrancy are suppressed and counted in
+`.done`. A counter gap, wrong callback/store ordering, wrong retail code,
+sidecar seed mismatch, missing fighters, or 120 VI fields without a tick
+writes `.err`. `.done` is written after exactly N records and safe memcheck
+removal on the following VI. It proves capture completion; the validator
+separately checks animation and RNG behavior. If emulation itself stops and
+no VI callback fires, the shell runner's wall-clock timeout terminates the run.
+
+From the repository root, this command loads **`harness/roms/idle_ys_fox.sav`**,
+captures **600 ticks**, waits for completion, stops Dolphin, decodes, and
+validates, returning nonzero on any failure:
+
+```sh
+cd harness
+uv run python dolphin/run_scenario.py scenarios/idle_ys_fox.toml --tick-trace --video OGL --ports 2
+```
+
+Outputs are `harness/traces/idle_ys_fox.tick.raw.jsonl` (with `.done` or `.err`),
+`harness/traces/idle_ys_fox.tick.expected.jsonl`, and
+`harness/traces/idle_ys_fox.tick.dolphin.out`. The older VI files are untouched.
+Equivalent direct capture command, run from the repository root:
+
+```sh
+MELEE_SCENARIO="$PWD/harness/scenarios/idle_ys_fox.toml" \
+MELEE_RAW_OUT="$PWD/harness/traces/idle_ys_fox.tick.raw.jsonl" \
+~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
+  -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin/tick_trace.py" \
+  -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 \
+  -C Dolphin.Core.SIDevice2=0 -C Dolphin.Core.SIDevice3=0 \
+  -C Dolphin.Core.EmulationSpeed=0
+# After .done appears, close Dolphin, then:
+cd harness
+uv run python decode.py traces/idle_ys_fox.tick.raw.jsonl traces/idle_ys_fox.tick.expected.jsonl
+uv run python validate_ticks.py traces/idle_ys_fox.tick.expected.jsonl
+```
+
+The validator compares canonical f32 bits, allows animation time to advance
+by exactly one or restart at a smaller value, and checks each adjacent seed
+against 0..64 retail LCG draws (`--max-draws K` changes the bound). This is
+specific to idle/unit-rate animations, not general hitlag or variable-rate
+actions. An RNG pass establishes reachability within the bound, not the
+correct consumer schedule or RNG call sites.
+
+The existing VI trace produces exit status 1 and exactly:
+
+```text
+records: 600; transitions: 599
+LCG draw-count histogram (0..64): {0: 183, 1: 374, 2: 13, 3: 3, 4: 20, 5: 5, 7: 1}
+ordinal 486: p0.cur_anim_frame 11 -> 13 (expected +1 or restart)
+ordinal 487: p0.cur_anim_frame 13 -> 13 (expected +1 or restart)
+ordinal 488: p0.cur_anim_frame 13 -> 15 (expected +1 or restart)
+ordinal 496: p1.cur_anim_frame 15 -> 17 (expected +1 or restart)
+ordinal 497: p1.cur_anim_frame 17 -> 17 (expected +1 or restart)
+ordinal 498: p1.cur_anim_frame 17 -> 19 (expected +1 or restart)
+FAIL: 6 violations
+```
+
+The tick sampler is source-verified and tested with fake CPU events. A live
+Dolphin capture remains to be run outside the Codex sandbox; no new trace is
+claimed as verified until that command succeeds.
 
 ## One-time machine setup
 
@@ -82,9 +231,10 @@ All **verified** on 2026-09-08.
 - `__file__` is undefined in `--script` files. Scripts recover their path from
   `sys._getframe().f_code.co_filename` (see the top of `remote.py`).
 - Exceptions in a frame callback are printed to the Dolphin log and the
-  callback keeps firing. `sys.exit()` does not stop anything. Event listeners
-  can be **replaced but not removed** (`event.on_frameadvance(None)` raises
-  `ValueError`), so "unregister" means installing a no-op.
+  callback keeps firing. `sys.exit()` does not stop anything.
+  `event.on_frameadvance(None)` raises `ValueError`. The source audit above
+  corrects the old replacement claim: listeners accumulate, so callback
+  guards must park completed scripts.
 - `await event.framedrawn()` is a one-shot listener (removed after it fires);
   that is how `shot` works without paying the per-frame readback cost. The
   frame dump readback only runs while a listener exists, so the first frames

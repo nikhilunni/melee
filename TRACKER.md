@@ -26,9 +26,8 @@ the port meets the real game, so expect surprises and record them here.
 
 ## Blockers
 
-- **Oracle sampling point (found by the M3 plan, `docs/M3_PLAN.md` §1):** Dolphin's `frameadvance` fires at VI begin-field, not at a Melee tick boundary. In `idle_ys_fox` the animation counter steps 11,13,13,15 around ordinal 485, i.e. some samples straddle two ticks or zero. Fix: sample on a game-tick write via `memory.add_memcheck` + `event.on_memorybreakpoint`, then re-record. Until then `expected.jsonl` is not a complete-tick contract.
-- **RNG on Yoshi's Story (`docs/M3_PLAN.md` §3):** Randall's puff particle generators, Shy Guy spawns and the Wait1/Wait2 choice all draw from `seed` in an idle match (521 draws in 600 frames). Matching `rng.seed` there means porting stage decorations and the particle generator. FD would avoid the stage draws. User decision pending: unlock FD (poke/import save) vs gate M3 without `rng.seed` on YS vs port the decorations now.
-- Final Destination is locked on the fresh Dolphin save; scenarios use Yoshi's Story (`idle_ys_fox`) until FD is unlocked. Yoshi's Story has platforms and a slanted floor, which means Milestone 3 needs a bit more of `melee-gr`/`melee-mp` than FD would have.
+- ~~Oracle sampling point~~ **fixed 2026-09-08**: `harness/dolphin/tick_trace.py` samples on the memcheck of the scheduler tick counter (`gm_80479D58`, store at retail 0x801A4FB8, right after `HSD_GObj_80390CFC` returns). `run_scenario.py --tick-trace` records, decodes and validates; `harness/validate_ticks.py` checks +1 animation steps and LCG-consistent seeds. `idle_fd_fox.tick.expected.jsonl`: 600 ticks, 0 violations, rerun byte-identical.
+- **RNG consumers in an idle match.** User chose FD (unlocked 2026-09-08 by OR-ing bits 6-7 into the save's stage unlock mask via `drive.py poke-or`; Battlefield came with it). But FD is *not* RNG-quiet: `idle_fd_fox` draws 1..61 times per tick (histogram in the run output; pattern 6k+1), from `gr/grlast.c` background lights/flicker (lines 440-515, 652-658), plus the Wait1/Wait2 choice. Matching `rng.seed` on FD means porting grlast.c's per-tick decoration logic (1,035 lines, no particles or items). Decision: M3 gates on the 48 fighter fields first; `rng.seed` becomes a separate M3 item once grlast.c is ported.
 
 ## Decisions
 
@@ -132,7 +131,7 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [ ] `ft-fox`: init, attributes, Wait animation; nothing else
 - [ ] `melee-sim`: scenario loading, asset loading, frame loop, trace emit
 - [x] Record savestate and `expected.jsonl`: **`idle_ys_fox`** (Yoshi's Story) instead of FD, two idle Foxes, 600 frames, byte-identical on rerun (`docs/DOLPHIN_RUN.md`)
-- [!] `idle_fd_fox`: Final Destination and Battlefield are locked on a fresh save. Options: unlock legitimately in-game (user), import a completed save, or poke unlock flags (save-data modification, not done). Until then M3 gates on `idle_ys_fox`.
+- [x] `idle_fd_fox` recorded (2026-09-08): FD unlocked via `poke-or 0x8045BF2A u16 0xC0` (save data `gmMainLib_804D3EE0->thing.x186A`), Stock 1 via `GameRules` bytes, items were already NONE. Savestate `harness/roms/idle_fd_fox.sav` at frame 50841, both Foxes in Wait at (+-60, 0.0001, 0). Tick trace `harness/traces/idle_fd_fox.tick.expected.jsonl`, 600 ticks, deterministic.
 - [ ] `pl/player.c` and `gm` match setup: only what spawning one fighter needs
 
 ## Milestone 4: Movement (`melee-ft`)
@@ -243,7 +242,7 @@ Gate: zero divergence over thousands of Slippi replays.
 
 Newest first. One line per session: date, what landed, what is next.
 
-- 2026-09-08 (evening): Disc extracted (1,209 files), real .dat tests, retail asm lookup (`harness/asm.py`), fusion audit complete across gekko-math/melee-lb/hsd-anim/melee-mp (MWCC fused most sites; sinf ~18% of inputs differ), JObjDesc->JObjTree glue, coll_data reader + real FD collision test, lbanim FigaTree attach + ftData reader (Fox Wait1 plays), Dolphin oracle booted: `idle_ys_fox` savestate + 600-frame trace at 131 fps. Delegation switched to Codex (`tools/codex-task.sh`). M2 gate tooling built (Codex) and **M2 gate passed**: 0 mismatches on 3,080 bone words vs Dolphin. Next: M3 groundwork (melee-gr Yoshi's Story, melee-ft init and frame order, melee-sim loop).
+- 2026-09-08 (evening): Disc extracted (1,209 files), real .dat tests, retail asm lookup (`harness/asm.py`), fusion audit complete across gekko-math/melee-lb/hsd-anim/melee-mp (MWCC fused most sites; sinf ~18% of inputs differ), JObjDesc->JObjTree glue, coll_data reader + real FD collision test, lbanim FigaTree attach + ftData reader (Fox Wait1 plays), Dolphin oracle booted: `idle_ys_fox` savestate + 600-frame trace at 131 fps. Delegation switched to Codex (`tools/codex-task.sh`). M2 gate tooling built (Codex) and **M2 gate passed**: 0 mismatches on 3,080 bone words vs Dolphin. FD unlocked, tick-boundary sampling fixed, `idle_fd_fox` tick trace recorded (deterministic). Next: M3 tasks from `docs/M3_PLAN.md` on FD (fighter fields first, `rng.seed` after grlast.c).
 - 2026-09-08 (late): Disc arrived and verified; main.dol placed for decomp tooling. No disc-dependent work run yet. Session paused by user. Next: the four items under "Milestone 0: disc arrived".
 
 - 2026-09-08: Third batch: frsqrte/fres hardware-exact (M1 complete), JObj scene graph + DObj/MObj, typed descriptor readers + FigaTree, Snapshot/RecordSink/SchemaCoverage, melee-mp mplib+mpcoll. Gate: 55 suites green, clippy clean. Next: JObjDesc→JObjTree glue, melee-gr Final Destination, melee-ft skeleton (fighter.c init/update order), melee-sim frame loop, Dolphin savestate workflow doc.
