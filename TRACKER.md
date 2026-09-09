@@ -175,6 +175,8 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [ ] Scenarios for each, recorded from Dolphin
 - [ ] Battlefield and Yoshi's Story stages (platforms)
 
+- [~] (2026-09-09) **Second character: Marth.** Characters and FD unlocked in RAM (`poke-or 0x8045BF28 u16 0xFFFF` for the character mask, next to the stage mask; rules re-poked to stock 1 each session since the card still says time/2 min/3 stock). Savestates `harness/roms/{idle,start}_fd_marth.sav` (P1 Marth kind 18 at -60, P2 Fox idle at +60), tick traces, `ledger600`, particle dumps and bone dumps recorded. Start sequence: Marth 322 -> 323 t6 -> 324 t35 -> Fall t65 -> Landing t82 -> Wait t112. Codex M4-T8 (`ft-mars` crate, generalised loaders, mixed-character scene, Marth bone oracle) in flight.
+
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 
 Gate: two-fighter scenarios with hits, shields, grabs, KOs.
