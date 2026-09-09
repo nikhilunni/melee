@@ -27,7 +27,7 @@ the port meets the real game, so expect surprises and record them here.
 ## Blockers
 
 - ~~Oracle sampling point~~ **fixed 2026-09-08**: `harness/dolphin/tick_trace.py` samples on the memcheck of the scheduler tick counter (`gm_80479D58`, store at retail 0x801A4FB8, right after `HSD_GObj_80390CFC` returns). `run_scenario.py --tick-trace` records, decodes and validates; `harness/validate_ticks.py` checks +1 animation steps and LCG-consistent seeds. `idle_fd_fox.tick.expected.jsonl`: 600 ticks, 0 violations, rerun byte-identical.
-- **RNG consumers in an idle match.** User chose FD (unlocked 2026-09-08 by OR-ing bits 6-7 into the save's stage unlock mask via `drive.py poke-or`; Battlefield came with it). But FD is *not* RNG-quiet: `idle_fd_fox` draws 1..61 times per tick (histogram in the run output; pattern 6k+1), from `gr/grlast.c` background lights/flicker (lines 440-515, 652-658), plus the Wait1/Wait2 choice. Matching `rng.seed` on FD means porting grlast.c's per-tick decoration logic (1,035 lines, no particles or items). Decision: M3 gates on the 48 fighter fields first; `rng.seed` becomes a separate M3 item once grlast.c is ported.
+- **RNG consumers in an idle match.** User chose FD (unlocked 2026-09-08 by OR-ing bits 6-7 into the save's stage unlock mask via `drive.py poke-or`; Battlefield came with it). But FD is *not* RNG-quiet: `idle_fd_fox` draws 1..61 times per tick (histogram in the run output; pattern 6k+1), from `gr/grlast.c` background lights/flicker (lines 440-515, 652-658), plus the Wait1/Wait2 choice. Matching `rng.seed` on FD means porting grlast.c's per-tick decoration logic (1,035 lines, no particles or items). User decision (2026-09-08): port FD's decorations now so `rng.seed` is part of the M3 gate; stay on FD; keep the other stages' RNG dependencies tracked in Milestone 6.
 
 ## Decisions
 
@@ -124,7 +124,9 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [ ] `melee-mp`: `mpisland.c` (626 lines; feeds CPU AI and Link hookshot) — `CollMap::island_update` is the hook
 - [ ] `melee-mp`: terrain sound-id tables (`mpLib_803BD3D8..`) once an sfx layer exists
 - [x] `melee-mp`: `desc.rs` reads `coll_data` from an archive (Codex); real GrNLa.dat loads into `CollMap`, floor/ledge queries verified (3 real-stage tests)
-- [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c`, `grlast.c` (Final Destination only for this milestone)
+- [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c` plumbing for one stage (Final Destination)
+- [~] (2026-09-08) `melee-gr`: `grlast.c` (1,035 lines) Final Destination decorations: background lights/flicker and transitions draw RNG 1-61 times per tick; required for `rng.seed` parity (user-approved)
+- [ ] `melee-gr`: Dolphin capture of the FD `Ground` struct at the `idle_fd_fox` savestate (timers/phases) to seed the decoration state; then a 600-tick RNG-draw-count test against `idle_fd_fox.tick.expected.jsonl`
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only
 - [ ] `melee-ft`: physics (`ft_08A1.c` etc): gravity, friction, ground snap
@@ -207,10 +209,20 @@ crate passes its scenarios.
 Common fighter code shared by all: `ft/kinds/ftCommon` (30.4k lines) and
 `ft/*.c` (35.3k lines). Split `melee-ft` when it passes 30k.
 
-Stages (`gr/`, 56k lines across 77 files): `[ ]` Final Destination (M3),
-`[ ]` Battlefield, `[ ]` Yoshi's Story, `[ ]` Dream Land, `[ ]` Fountain of
-Dreams, `[ ]` Pokemon Stadium, then the rest. Target stages (`grt*`) and
-Adventure routes (`gr*route`) last.
+Stages (`gr/`, 56k lines across 77 files). Every stage's decorations must
+be ported for `rng.seed` parity, not just its collision; known per-tick RNG
+consumers are listed so they are not forgotten:
+
+| Stage | File | Status | Known RNG / dynamic elements |
+|---|---|---|---|
+| Final Destination | `grlast.c` | `[~]` (M3) | background lights/flicker, transitions (1-61 draws/tick) |
+| Battlefield | `grbattle.c` | `[ ]` | background; unlocked alongside FD |
+| Yoshi's Story | `grstory.c` | `[ ]` | Randall (moving platform + puff particle generators, `ef`), Shy Guys (`itheiho`, `it/itzako`), see `docs/M3_PLAN.md` §3; `idle_ys_fox` savestate + traces exist |
+| Dream Land | `grpura.c` | `[ ]` | Whispy wind timing, Bronto Burts |
+| Fountain of Dreams | `grizumi.c` | `[ ]` | platform height schedule, background |
+| Pokemon Stadium | `grpstadium.c` | `[ ]` | transformations, background screen |
+| Others (Kongo Jungle, Corneria, Brinstar, ...) | | `[ ]` | per stage |
+| Target stages `grt*`, Adventure routes `gr*route` | | `[ ]` | last |
 
 Items (`it/`, 17k core + 57.5k in `it/kinds` across 166 files):
 `[ ]` core item system (`item.c`, `itcoll.c`, `ithitbox.c`, `itdrop.c`),
