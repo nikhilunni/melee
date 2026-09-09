@@ -12,6 +12,7 @@ that, not the VI schedule. No Dolphin dependency in tests.
 from __future__ import annotations
 
 import json
+import struct
 import sys
 import time
 import traceback
@@ -19,7 +20,8 @@ from pathlib import Path
 
 HERE = Path(globals().get("__file__") or sys._getframe().f_code.co_filename).resolve().parent
 sys.path.insert(0, str(HERE))
-from trace_common import Tracer, event, run  # noqa: E402
+from trace_common import Tracer, event, read_items, run  # noqa: E402
+from item_kinds import ITEM_KIND_NAMES  # noqa: E402
 import remote_proto  # noqa: E402
 import symbols  # noqa: E402
 
@@ -34,6 +36,30 @@ BOUNDARY_CODE = {0x801A4FA0: 0x481EBD5D, 0x801A4FB4: 0x38030001,
 
 
 class TickTracer(Tracer):
+    def record(self, phase: str, mem=None) -> dict:
+        mem = self.mem if mem is None else mem
+        record = super().record(phase, mem)
+        items = read_items(mem)
+        record["items"] = []
+        if items:
+            # Use the fighter images from this same CPU callback, not a second
+            # walk or the list index (Nana and noncontiguous player slots exist).
+            # ft/types.h:1127,1130: Fighter.gobj +0, player_id +0xC.
+            owners = {}
+            for fighter in record["fighters"]:
+                raw = bytes.fromhex(fighter["bytes"])
+                owners[struct.unpack_from(">I", raw, 0)[0]] = raw[0xC]
+            owners.pop(0, None)
+            for gobj, base, raw in items:
+                kind = struct.unpack_from(">i", raw, 0x10)[0]  # it/types.h:225
+                owner = struct.unpack_from(">I", raw, 0x518)[0]  # it/types.h:295
+                record["items"].append({
+                    "gobj": f"0x{gobj:08X}", "base": f"0x{base:08X}",
+                    "kind": kind, "kind_name": ITEM_KIND_NAMES.get(kind, "?"),
+                    "owner": owners.get(owner), "bytes": raw.hex(),
+                })
+        return record
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.savestate_path is None:

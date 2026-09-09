@@ -29,6 +29,7 @@ except ImportError:  # allow importing for tests outside Dolphin
     controller = event = memory = savestate = None
 
 FIGHTER_SIZE = 0x23EC
+ITEM_SIZE = 0xFCC  # it/types.h:669, ASSERT_SIZE(struct Item, 0xFCC)
 GOBJ_USER_DATA_OFF = walk.GOBJ_USER_DATA_OFF
 
 SEED_ADDR = symbols.addr("seed")
@@ -43,6 +44,41 @@ PAD_PORTS = 4
 def fighter_bases(mem=None) -> list[int]:
     """Walk HSD_GObj_Entities->fighters and return Fighter* for each."""
     return walk.fighter_bases(memory if mem is None else mem, ENTITIES_ADDR)
+
+
+def read_items(mem=None) -> list[tuple[int, int, bytes]]:
+    """(GObj*, Item*, full memory image), in retail p_link 9 order.
+
+    gobj.h:76,36,44; item.c:957,984 creates p_link 9 and attaches Item*.
+    Retail's limits are per hold-kind, loaded from ItemCommonData (item.c:
+    132-144,455-528), not a fixed total. Walk to NULL without a fighter-sized
+    cap. A seen set bounds corrupt cycles; malformed pointers fail capture
+    instead of publishing a silently truncated oracle. Empty list: two reads.
+    """
+    mem = memory if mem is None else mem
+    entities = mem.read_u32(ENTITIES_ADDR)
+    if not entities:
+        return []
+
+    def checked(ptr: int, size: int) -> int:
+        if ptr & 3 or not walk.MEM1_LO <= ptr <= walk.MEM1_HI - size:
+            raise ValueError(f"invalid item-list pointer 0x{ptr:08X}")
+        return ptr
+
+    head = checked(entities, walk.GOBJLIST_ITEMS_OFF + 4)
+    gobj = mem.read_u32(head + walk.GOBJLIST_ITEMS_OFF)
+    items, seen = [], set()
+    while gobj:
+        checked(gobj, walk.GOBJ_SIZE)
+        if gobj in seen:
+            raise ValueError(f"cycle in item list at 0x{gobj:08X}")
+        seen.add(gobj)
+        base = mem.read_u32(gobj + GOBJ_USER_DATA_OFF)
+        if base:  # Same as fighters: a GObj awaiting user_data is not live yet.
+            checked(base, ITEM_SIZE)
+            items.append((gobj, base, walk.read_bytes(mem, base, ITEM_SIZE)))
+        gobj = mem.read_u32(gobj + walk.GOBJ_NEXT_OFF)
+    return items
 
 
 def resolve_savestate(scenario: dict, repo: Path = REPO) -> Path | None:

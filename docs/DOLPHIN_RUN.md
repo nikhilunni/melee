@@ -186,6 +186,41 @@ The tick sampler is source-verified and tested with fake CPU events. A live
 Dolphin capture remains to be run outside the Codex sandbox; no new trace is
 claimed as verified until that command succeeds.
 
+## Items
+
+The tick tracer (and its RNG-ledger subclass) always records `items: []` or
+the live `HSD_GObj_Entities->items` list in retail order. Each entry contains
+`gobj`, `base` (Item pointer), numeric `kind`, generated `kind_name`, `owner`
+(fighter player slot, or `null` for an unresolved/non-fighter owner), and
+the complete **0xFCC-byte** Item image as hex. An empty list costs two memory
+reads. There is no capture flag; old traces without `items` remain valid.
+
+`decode.py` retains each entry and adds its own typed `state`: position,
+collision previous position, velocity, facing, kind/spawn kind, spawn ID,
+motion/animation IDs, raw owner GObj, active hitbox count and first damage,
+and lifetime. Movement diagnostics also decode flags, extra displacement,
+callbacks and hit references. Fox lasers additionally expose
+`laser.prev_pos`, saved by their physics callback; collision `prev_pos` is
+not necessarily a previous-tick position. Float values retain exact bits.
+These keys stay outside the existing 49-key fighter/RNG `state`.
+
+Identity/finite-position checks run whenever items are present. Add
+`--items` to the **validator** to print spawn/despawn ticks and motion-check
+coverage:
+
+```sh
+python harness/validate_ticks.py harness/traces/laser_fd_fox.tick.expected.jsonl --scripted --max-draws 256 --items
+```
+
+The velocity diagnostic checks unaffected Fox laser flight with f32
+tolerance; hitlag, attachment, changed owner/velocity, other movement, and
+unaudited kinds/callbacks are reported in the skipped count. It is not a
+general item-physics comparator. Items already present at capture start
+are labelled; capture end is not a despawn. `record.py` needs no changes.
+The proposed 300-tick laser input script, offset sources, compatibility
+evidence and exact validation commands are in
+[`PORT_NOTES/C9_ITEM_ORACLE.md`](PORT_NOTES/C9_ITEM_ORACLE.md).
+
 ## One-time machine setup
 
 1. Dolphin config lives in `~/Library/Application Support/Dolphin/` (the default

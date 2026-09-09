@@ -20,6 +20,8 @@ from pathlib import Path
 
 import yaml
 
+from item_kinds import ITEM_KIND_NAMES
+
 HERE = Path(__file__).resolve().parent
 _FMT = {"u8": ">B", "s8": ">b", "u16": ">H", "s16": ">h", "u32": ">I", "s32": ">i",
         "f32": ">f", "f64": ">d", "ptr": ">I"}
@@ -66,6 +68,60 @@ PAD_FIELDS = [
 ]
 PAD_STATUS_SIZE = 0x44
 
+# All offsets are relative to Item*, big-endian; source lines are in
+# third_party/melee-decomp/src/melee/it/types.h unless otherwise stated.
+ITEM_SIZE = 0xFCC  # :669 ASSERT_SIZE; :666-667 includes the entire kind union
+ITEM_FIELDS = [
+    ("entity", 0x004, "ptr"),          # :216-217
+    ("spawn_kind", 0x00C, "s32"),      # :221-222
+    ("kind", 0x010, "s32"),            # :224-225
+    ("spawn_id", 0x01C, "u32"),        # :231 x1C; item.c:570 counter bits
+    ("motion_id", 0x024, "s32"),       # :240-241 msid
+    ("anim_id", 0x028, "s32"),         # :243-244
+    ("facing_dir", 0x02C, "f32"),      # :246-247
+    ("vel", 0x040, "vec3"),           # :261-262 x40_vel
+    ("pos", 0x04C, "vec3"),           # :264-265
+    ("external_vel", 0x058, "vec3"),  # :267-268; item.c:1423 additive displacement
+    ("ground_vel", 0x064, "vec3"),    # :270-271; item.c:1424-1434 platform displacement
+    ("nudge", 0x070, "vec3"),         # :273-274
+    ("ground_or_air", 0x0C0, "s32"),  # :281-284 (after two 4-byte pointers)
+    ("prev_pos", 0x388, "vec3"),      # :290 CollData +0x10; lb/types.h:202-206
+    ("env_flags", 0x4AC, "u32"),      # :290 CollData +0x134; lb/types.h:232
+    ("owner", 0x518, "ptr"),          # :293-295 (raw GObj*, not player slot)
+    ("hitbox0.state", 0x5D4, "s32"),  # :315-320; lb/types.h:32 HitCapsule +0
+    ("hitbox0.damage", 0x5E0, "f32"), # :316; lb/types.h:35 HitCapsule +0xC
+    ("hitbox1.state", 0x710, "s32"),  # :316
+    ("hitbox2.state", 0x84C, "s32"),  # :316
+    ("hitbox3.state", 0x988, "s32"),  # :316
+    ("reflect_gobj", 0xC64, "ptr"),   # :377
+    ("hitlag_frames", 0xCBC, "f32"),  # :397
+    ("atk_victim", 0xD04, "ptr"),     # :420-422
+    ("physics_callback", 0xD18, "ptr"),  # :437-438
+    ("collision_callback", 0xD1C, "ptr"),  # :440-441
+    ("life_timer", 0xD44, "f32"),     # :478 (not necessarily enabled for every kind)
+    ("flags", 0xDC8, "u32"),         # :530 (x9 hitlag, x13 held; item.c:1396-1402)
+]
+ITEM_SCHEMA = {"fields": {name: {"offset": off, "type": kind}
+                          for name, off, kind in ITEM_FIELDS}}
+FOX_LASER_KIND = next(k for k, name in ITEM_KIND_NAMES.items() if name == "It_Kind_Fox_Laser")
+
+
+def decode_item(blob: bytes) -> dict:
+    if len(blob) != ITEM_SIZE:
+        raise ValueError(f"Item image must be {ITEM_SIZE:#x} bytes, got {len(blob):#x}")
+    state = {key.removeprefix("item."): value
+             for key, value in decode_struct(ITEM_SCHEMA, blob, "item").items()}
+    # Four slots, no stored active-count field (:315-320). Disabled == 0,
+    # lb/forward.h:71-78; count the active HitCapsules, not xAC8_hurtboxNum.
+    state["hitbox_count"] = {"t": "u", "v": sum(
+        state[f"hitbox{i}.state"]["v"] != 0 for i in range(4))}
+    if state["kind"]["v"] == FOX_LASER_KIND:
+        # :568,667 union foxlaser; it/itCharItems.h:240 pos at union +0xC.
+        # itfoxlaser.c:95-96 saves this tick's pre-physics position here.
+        laser = {"fields": {"prev_pos": {"offset": 0xDE0, "type": "vec3"}}}
+        state.update(decode_struct(laser, blob, "laser"))
+    return state
+
 
 def decode_pads(blob: bytes) -> dict:
     """`pad_game` (HSD_PadGameStatus[4]) -> {"p0": {...}, ...}. Inputs, not state."""
@@ -95,6 +151,11 @@ def main(inp: Path, out: Path) -> None:
                     record[key] = d[key]
             if "pad_game" in d:
                 record["inputs"] = decode_pads(bytes.fromhex(d["pad_game"]))
+            if "items" in d:
+                record["items"] = [
+                    {**item, "state": decode_item(bytes.fromhex(item["bytes"]))}
+                    for item in d["items"]
+                ]
             fo.write(json.dumps(record) + "\n")
 
 
