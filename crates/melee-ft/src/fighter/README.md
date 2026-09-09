@@ -30,6 +30,16 @@ The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
 attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
 remain explicit unsupported branches. No general moveset completeness is claimed.
 
+## Lane C: Jigglypuff
+
+All eighteen Puff idle/start/movement scenes and ordered particle RNG ledgers
+pass. The start/idle bone oracles compare 153015 SRT words across 50 Puff joints
+(three dynamic nodes) and 73 Fox joints. Shared multijumps support F1..F5,
+held-input windows and the gradual backward facing turn through character hooks.
+The importer restores active command loops and resumes unfinished fighter
+creation; cold creation now initializes dynamics in the retail order.
+See [M4_PUFF.md](M4_PUFF.md) and [PUFF_DATA.md](../../../../docs/PUFF_DATA.md).
+
 ## Lane C: Yoshi
 
 All eighteen Yoshi idle/start/movement scenes and ordered particle ledgers pass.

@@ -125,7 +125,37 @@ pub(crate) fn import<C: CharacterCallbacks>(
     f.effect_state.destroy_on_state_change = raw[0x2219] & 0x80 != 0;
     f.effect_state.rotating_bone_index = raw[0x2220] >> 5;
     if f.commands.instruction.is_some() {
-        assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
+        // lbcommand.c Command_03/05 share a stack: loop body + count,
+        // or one subroutine continuation. Recover the typed owners from
+        // the command preceding each saved address, never from trace history.
+        use melee_ft::fighter::commands::{Command, CommandLoop};
+        let depth = word(raw, 0x3F0) as usize;
+        assert!(depth <= 5, "CommandInfo stack capacity");
+        let mut slot = 0;
+        while slot < depth {
+            let address = word(raw, 0x3F4 + slot * 4).wrapping_sub(archive_base);
+            let instruction = assets
+                .instruction_offsets
+                .iter()
+                .position(|&p| p == address)
+                .expect("saved command stack instruction");
+            let loop_header = assets
+                .instruction_offsets
+                .iter()
+                .position(|&p| p == address.wrapping_sub(4));
+            if loop_header.is_some_and(|i| matches!(assets.commands[i], Command::BeginLoop(_))) {
+                assert!(slot + 1 < depth, "loop count missing");
+                f.commands.loops.push(CommandLoop {
+                    start: instruction,
+                    remaining: word(raw, 0x3F4 + (slot + 1) * 4),
+                });
+                slot += 2;
+            } else {
+                assert!(assets.commands.iter().any(|c| matches!(c, Command::Call { continuation, .. } if *continuation == instruction)), "saved subroutine continuation");
+                f.commands.return_stack.push(instruction);
+                slot += 1;
+            }
+        }
     } // SM_None clears the script pointer; its old union bytes are inactive.
     f.skeleton.set_rotation_y(
         root,

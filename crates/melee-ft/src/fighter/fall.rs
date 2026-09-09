@@ -195,6 +195,20 @@ pub fn iasa(
     common: &crate::input::InputCommonData,
     jumps_used: u8,
     max_jumps: i32,
+    check_float: impl FnMut(super::FloatInputPhase),
+) -> crate::input::WaitTransition {
+    let jump = i32::from(jumps_used) < max_jumps
+        && (input.pressed.intersects(crate::input::Buttons::XY)
+            || (input.current.stick.y >= common.thresholds.tap_jump_threshold
+                && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window));
+    iasa_with_jump(input, jump, check_float)
+}
+
+/// The multijump path changes only the jump predicate; aerial action priority
+/// and the float hooks retain the same order as ftCo_Fall_IASA_Inner.
+pub(super) fn iasa_with_jump(
+    input: &crate::input::FighterInput,
+    jump: bool,
     mut check_float: impl FnMut(super::FloatInputPhase),
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
@@ -213,11 +227,7 @@ pub fn iasa(
         "C-stick aerial selection needs ftCo_800DF478"
     );
     check_float(super::FloatInputPhase::BeforeAerialJump);
-    if i32::from(jumps_used) < max_jumps
-        && (input.pressed.intersects(Buttons::XY)
-            || (input.current.stick.y >= common.thresholds.tap_jump_threshold
-                && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window))
-    {
+    if jump {
         return T::Jump;
     }
     check_float(super::FloatInputPhase::AfterAerialJump);

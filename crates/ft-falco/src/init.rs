@@ -62,6 +62,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         animation_count: 327,
         part_count: 54,
         part_animation_count: 5,
+        additional_motions: &[],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
                 file: "PlFcNr.dat",

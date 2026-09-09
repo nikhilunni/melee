@@ -26,6 +26,7 @@ ft-falco = { path = "../ft-falco" }
 ft-captain = { path = "../ft-captain" }
 ft-peach = { path = "../ft-peach" }
 ft-yoshi = { path = "../ft-yoshi" }
+ft-purin = { path = "../ft-purin" }
 ft-mario = { path = "../ft-mario" }
 melee-diff = { path = "../melee-diff" }
 serde = { workspace = true }

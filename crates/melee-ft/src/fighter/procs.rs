@@ -177,6 +177,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.entry_animation(assets)?;
                 return Ok(None);
             }
+            state::AnimationCallback::MultiJump => {
+                self.multi_jump_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::KneeBend => {
                 self.knee_bend_animation(assets)?;
                 return Ok(None);
@@ -274,11 +278,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     | state::InputCallback::Jump
                     | state::InputCallback::JumpAerial
             ) {
-                let transition = super::fall::iasa(
+                let transition = super::fall::iasa_with_jump(
                     &self.input,
-                    &assets.input,
-                    self.physics.jumps_used,
-                    self.attributes.jumping.max_jumps,
+                    self.aerial_jump_requested(assets),
                     |phase| {
                         let enabled = match &self.state_data {
                             MotionData::Jump(jump) => jump.physics_started,
@@ -587,6 +589,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     &self.attributes.air,
                     self.input.current.stick.x,
                 );
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::MultiJump => {
+                self.multi_jump_physics(assets);
+                self.decay_air_knockback(assets);
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
                 crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }

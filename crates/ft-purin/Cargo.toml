@@ -1,0 +1,12 @@
+[package]
+name = "ft-purin"
+description = "Jigglypuff character data and callbacks (ftPurin)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+hsd-types = { path = "../hsd-types" }
+hsd-archive = { path = "../hsd-archive" }

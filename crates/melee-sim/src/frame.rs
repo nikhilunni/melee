@@ -769,6 +769,10 @@ mod falcon_bones;
 mod peach_bones;
 
 #[cfg(test)]
+mod puff_bones;
+#[cfg(test)]
+mod puff_state;
+#[cfg(test)]
 mod yoshi_bones;
 
 #[cfg(test)]

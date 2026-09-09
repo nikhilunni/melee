@@ -170,6 +170,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-purin"
+version = "0.0.1"
+dependencies = [
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-yoshi"
 version = "0.0.1"
 dependencies = [
@@ -367,6 +377,7 @@ dependencies = [
  "ft-mario",
  "ft-mars",
  "ft-peach",
+ "ft-purin",
  "ft-yoshi",
  "gekko-math",
  "hsd-anim",

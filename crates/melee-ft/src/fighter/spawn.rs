@@ -135,6 +135,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let SpawnContext { map, rng, counter } = context;
         let initial_scale = skeleton.scale(root);
         let mut fighter = Self::prepare(player, character, assets, skeleton, root, map);
+        // ftCo_8009CF84 enables each chain before reset. prepare only allocates
+        // owners: savestate import must attach animations before restoring locks.
+        for set in &mut fighter.dynamics {
+            crate::dynamics::select(
+                set,
+                &mut fighter.skeleton,
+                &mut fighter.animation.parts,
+                true,
+                0,
+            );
+        }
+        fighter.dynamics_first_bone.fill(0);
         // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
         fighter.skeleton.set_scale(root, &initial_scale);
         fighter.spawn_number = counter.allocate();
@@ -247,6 +259,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // ftParts_80074E58 (0x80074E58), ftparts.c:692: semantic part 53.
         let last = assets.parts.part_to_joint[53].expect("missing part 53");
         animation.parts[usize::from(last)].flags.0 |= PartFlags::COPY;
+        // ftCo_8009CF84 builds spring rest lengths in the unscaled costume pose.
+        let dynamics: Vec<_> = assets
+            .dynamics
+            .iter()
+            .map(|desc| {
+                let joint = skeleton
+                    .bone(root, desc.root)
+                    .expect("missing dynamics root");
+                melee_lb::dynamics::DynamicBoneSet::new(
+                    &mut skeleton,
+                    joint,
+                    &desc.springs,
+                    desc.multipliers,
+                )
+            })
+            .collect();
         skeleton.set_translate(root, &position);
         // Fighter_UpdateModelScale / ftCommon_GetModelScale:
         // retail 0x8007F69C fmuls, no contraction.
@@ -271,21 +299,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             player.scale,
             assets.attributes.size.weight,
         );
-        let dynamics = assets
-            .dynamics
-            .iter()
-            .map(|desc| {
-                let joint = skeleton
-                    .bone(root, desc.root)
-                    .expect("missing dynamics root");
-                melee_lb::dynamics::DynamicBoneSet::new(
-                    &mut skeleton,
-                    joint,
-                    &desc.springs,
-                    desc.multipliers,
-                )
-            })
-            .collect();
         Self {
             dynamics,
             dynamics_use_floor_plane: false,
@@ -362,6 +375,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
         start: f32,
         rate: f32,
     ) -> Result<()> {
+        self.change_motion_state_with_row(state, assets, start, rate, None)
+    }
+
+    /// Character table rows can reuse a common callback family with a different
+    /// action number and submotion. All motion-entry side effects stay shared.
+    pub(super) fn change_motion_state_with_row(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+        row: Option<(MotionState, i32)>,
+    ) -> Result<()> {
         self.status.require_supported();
         self.status.interaction = Interaction::Idle;
         if self.physics.ground_or_air == GroundOrAir::Ground {
@@ -417,72 +443,75 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.commands.instruction = None;
             return Ok(());
         }
-        let (motion_state, animation_id) = match state {
-            CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
-                (MotionState::WAIT, 2)
-            }
-            CommonMotionState::Catch => (MotionState::CATCH, 242),
-            CommonMotionState::DamageN2 => (MotionState::DAMAGE_N2, 169),
-            CommonMotionState::DamageN1 => (
-                MotionState {
-                    id: state,
-                    ..MotionState::DAMAGE_N2
-                },
-                168,
-            ),
-            CommonMotionState::DamageHi3 => (
-                MotionState {
-                    id: state,
-                    ..MotionState::DAMAGE_N2
-                },
-                167,
-            ),
-            CommonMotionState::AttackHi3 => (MotionState::UP_TILT, 58),
-            CommonMotionState::Attack11 => (MotionState::JAB, 46),
-            CommonMotionState::Squat => (MotionState::SQUAT, 30),
-            CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
-            CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
-            CommonMotionState::GuardOn => (MotionState::GUARD_ON, 37),
-            CommonMotionState::Guard => (MotionState::GUARD, 38),
-            CommonMotionState::GuardReflect => (MotionState::GUARD_REFLECT, 37),
-            CommonMotionState::GuardOff => (MotionState::GUARD_OFF, 39),
-            CommonMotionState::GuardSetOff => (MotionState::GUARD_SET_OFF, 40),
-            CommonMotionState::EscapeF => (MotionState::ESCAPE_F, 42),
-            CommonMotionState::EscapeB => (MotionState::ESCAPE_B, 43),
-            CommonMotionState::EscapeN => (MotionState::ESCAPE_N, 41),
-            CommonMotionState::EscapeAir => (MotionState::ESCAPE_AIR, 44),
-            CommonMotionState::CliffCatch => (MotionState::CLIFF_CATCH, 216),
-            CommonMotionState::CliffWait => (MotionState::CLIFF_WAIT, 217),
-            CommonMotionState::CliffJumpQuick1 => (MotionState::CLIFF_JUMP_1, 227),
-            CommonMotionState::CliffJumpQuick2 => (MotionState::CLIFF_JUMP_2, 228),
-            CommonMotionState::CliffJumpSlow1 => (MotionState::CLIFF_JUMP_SLOW_1, 225),
-            CommonMotionState::CliffJumpSlow2 => (MotionState::CLIFF_JUMP_SLOW_2, 226),
-            CommonMotionState::Dash => (MotionState::DASH, 12),
-            CommonMotionState::Run => (MotionState::RUN, 13),
-            CommonMotionState::RunBrake => (MotionState::RUN_BRAKE, 14),
-            CommonMotionState::Turn => (MotionState::TURN, 10),
-            CommonMotionState::WalkSlow => (MotionState::WALK_SLOW, 7),
-            CommonMotionState::WalkMiddle => (MotionState::WALK_MIDDLE, 8),
-            CommonMotionState::WalkFast => (MotionState::WALK_FAST, 9),
-            CommonMotionState::TurnRun => (MotionState::TURN_RUN, 11),
-            CommonMotionState::CliffClimbQuick => (MotionState::CLIFF_CLIMB, 220),
-            CommonMotionState::CliffEscapeQuick => (MotionState::CLIFF_ESCAPE, 224),
-            CommonMotionState::KneeBend => (MotionState::KNEE_BEND, 15),
-            CommonMotionState::JumpF => (MotionState::JUMP, 16),
-            CommonMotionState::JumpB => (MotionState::JUMP_BACK, 17),
-            CommonMotionState::JumpAerialB => (MotionState::JUMP_AERIAL_BACK, 19),
-            CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
-            CommonMotionState::Fall => (MotionState::FALL, 20),
-            CommonMotionState::Pass => (MotionState::PASS, 209),
-            CommonMotionState::FallAerial => (MotionState::FALL_AERIAL, 23),
-            CommonMotionState::FallSpecial => (MotionState::FALL_SPECIAL, 26),
-            CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
-            CommonMotionState::Landing => (MotionState::LANDING, 35),
-            CommonMotionState::LandingFallSpecial => (MotionState::LANDING_FALL_SPECIAL, 36),
-            _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
-        };
+        let (motion_state, animation_id) = row.unwrap_or_else(|| {
+            let (mut motion, animation) = match state {
+                CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
+                    (MotionState::WAIT, 2)
+                }
+                CommonMotionState::Catch => (MotionState::CATCH, 242),
+                CommonMotionState::DamageN2 => (MotionState::DAMAGE_N2, 169),
+                CommonMotionState::DamageN1 => (
+                    MotionState {
+                        id: state,
+                        ..MotionState::DAMAGE_N2
+                    },
+                    168,
+                ),
+                CommonMotionState::DamageHi3 => (
+                    MotionState {
+                        id: state,
+                        ..MotionState::DAMAGE_N2
+                    },
+                    167,
+                ),
+                CommonMotionState::AttackHi3 => (MotionState::UP_TILT, 58),
+                CommonMotionState::Attack11 => (MotionState::JAB, 46),
+                CommonMotionState::Squat => (MotionState::SQUAT, 30),
+                CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
+                CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
+                CommonMotionState::GuardOn => (MotionState::GUARD_ON, 37),
+                CommonMotionState::Guard => (MotionState::GUARD, 38),
+                CommonMotionState::GuardReflect => (MotionState::GUARD_REFLECT, 37),
+                CommonMotionState::GuardOff => (MotionState::GUARD_OFF, 39),
+                CommonMotionState::GuardSetOff => (MotionState::GUARD_SET_OFF, 40),
+                CommonMotionState::EscapeF => (MotionState::ESCAPE_F, 42),
+                CommonMotionState::EscapeB => (MotionState::ESCAPE_B, 43),
+                CommonMotionState::EscapeN => (MotionState::ESCAPE_N, 41),
+                CommonMotionState::EscapeAir => (MotionState::ESCAPE_AIR, 44),
+                CommonMotionState::CliffCatch => (MotionState::CLIFF_CATCH, 216),
+                CommonMotionState::CliffWait => (MotionState::CLIFF_WAIT, 217),
+                CommonMotionState::CliffJumpQuick1 => (MotionState::CLIFF_JUMP_1, 227),
+                CommonMotionState::CliffJumpQuick2 => (MotionState::CLIFF_JUMP_2, 228),
+                CommonMotionState::CliffJumpSlow1 => (MotionState::CLIFF_JUMP_SLOW_1, 225),
+                CommonMotionState::CliffJumpSlow2 => (MotionState::CLIFF_JUMP_SLOW_2, 226),
+                CommonMotionState::Dash => (MotionState::DASH, 12),
+                CommonMotionState::Run => (MotionState::RUN, 13),
+                CommonMotionState::RunBrake => (MotionState::RUN_BRAKE, 14),
+                CommonMotionState::Turn => (MotionState::TURN, 10),
+                CommonMotionState::WalkSlow => (MotionState::WALK_SLOW, 7),
+                CommonMotionState::WalkMiddle => (MotionState::WALK_MIDDLE, 8),
+                CommonMotionState::WalkFast => (MotionState::WALK_FAST, 9),
+                CommonMotionState::TurnRun => (MotionState::TURN_RUN, 11),
+                CommonMotionState::CliffClimbQuick => (MotionState::CLIFF_CLIMB, 220),
+                CommonMotionState::CliffEscapeQuick => (MotionState::CLIFF_ESCAPE, 224),
+                CommonMotionState::KneeBend => (MotionState::KNEE_BEND, 15),
+                CommonMotionState::JumpF => (MotionState::JUMP, 16),
+                CommonMotionState::JumpB => (MotionState::JUMP_BACK, 17),
+                CommonMotionState::JumpAerialB => (MotionState::JUMP_AERIAL_BACK, 19),
+                CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
+                CommonMotionState::Fall => (MotionState::FALL, 20),
+                CommonMotionState::Pass => (MotionState::PASS, 209),
+                CommonMotionState::FallAerial => (MotionState::FALL_AERIAL, 23),
+                CommonMotionState::FallSpecial => (MotionState::FALL_SPECIAL, 26),
+                CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
+                CommonMotionState::Landing => (MotionState::LANDING, 35),
+                CommonMotionState::LandingFallSpecial => (MotionState::LANDING_FALL_SPECIAL, 36),
+                _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
+            };
+            motion.action_id = self.character.action_id(state);
+            (motion, animation)
+        });
         self.motion_state = motion_state;
-        self.motion_state.action_id = self.character.action_id(state);
         for (i, set) in self.dynamics.iter_mut().enumerate() {
             let first = assets.dynamics_motion_starts[&animation_id][i];
             let dynamic = first != 0x100;

@@ -10,6 +10,7 @@ pub(crate) use melee_mp::CollMap;
 pub(crate) use saved_pose::SavedPose;
 pub(crate) mod particles;
 mod saved_pose;
+mod setup_resume;
 pub(crate) mod stage;
 use hsd_types::Vec3;
 fn word(raw: &[u8], offset: usize) -> u32 {
@@ -216,15 +217,25 @@ impl InitialState {
             })
             .collect::<Result<Vec<_>>>()?;
         let bytes = saved_bytes;
-        let fighters = std::array::from_fn(|p| {
-            SceneFighter::from_saved(
-                &assets.characters[p],
-                &assets.fighters[p],
-                &map,
-                &bytes[p],
-                &saved,
-            )
-        });
+        let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
+        let fighters: [SceneFighter; 2] = (0..2)
+            .map(|p| {
+                if match_start && word(&bytes[p], 0x10) == 0 && word(&bytes[p], 0x2C) == 0 {
+                    setup_resume::fighter(&saved, &assets, p, &mut map, &mut rng)
+                } else {
+                    Ok(SceneFighter::from_saved(
+                        &assets.characters[p],
+                        &assets.fighters[p],
+                        &map,
+                        &bytes[p],
+                        &saved,
+                    ))
+                }
+            })
+            .collect::<Result<Vec<_>>>()?
+            .try_into()
+            .ok()
+            .expect("two players");
         let mut sink = RecordSink::new(0, "frame_end");
         for (p, fighter) in fighters.iter().enumerate() {
             fighter.snapshot(&mut PrefixSink::new(&mut sink, &format!("p{p}")));
@@ -349,7 +360,7 @@ impl InitialState {
             stage,
             particles,
             pending_emission,
-            rng: HsdRng::new(seed),
+            rng,
             resume_s_link,
             stage_animations,
             effects: crate::effects::Effects::default(),

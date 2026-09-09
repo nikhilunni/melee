@@ -17,6 +17,7 @@ pub mod hitbox;
 pub mod jump;
 pub mod landing;
 pub mod ledge;
+pub mod multi_jump;
 pub mod overlap;
 mod pass;
 mod procs;
@@ -159,6 +160,18 @@ pub trait CharacterCallbacks {
     fn aerial_jump_style(&self) -> AerialJumpStyle {
         AerialJumpStyle::Basic
     }
+    /// ftCo_800CB870 / ftCo_800D730C: shared multijump attributes, when enabled.
+    fn multi_jump_attributes(&self) -> Option<&multi_jump::MultiJumpAttributes> {
+        None
+    }
+    /// ftCo_800D7268: ordinary family by default; Kirby's copied helmet uses
+    /// the second family and must override this hook when that path is ported.
+    fn multi_jump_family(&self) -> usize {
+        0
+    }
+    fn multi_jump_animation(&self, _jump: usize) -> i32 {
+        unimplemented!("ftCo_JumpAerialF1.c: character multijump animation table")
+    }
     /// Character-owned setup after the common aerial-jump entry and Anim.
     fn aerial_jump_entered(_fighter: &mut Fighter<Self>)
     where
@@ -257,6 +270,8 @@ pub enum FloatInputPhase {
 /// Yoshi are ported; the others retain explicit unsupported boundaries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AerialJumpStyle {
+    /// ftCo_JumpAerialF1: shared Kirby/Jigglypuff multijumps.
+    MultiJump,
     /// ftCo_JumpAerial_Enter_Basic (0x800CBBC0).
     Basic,
     /// ftNs_JumpAerial_Enter: Ness's multi-frame double jump.
@@ -504,6 +519,7 @@ pub enum MotionData {
     TurnRun(turn_run::TurnRunState),
     KneeBend(jump::KneeBendState),
     Jump(jump::JumpState),
+    MultiJump(multi_jump::MultiJumpState),
     JumpAerial {
         retained_drop_timer: f32,
     },

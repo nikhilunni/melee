@@ -32,6 +32,8 @@ pub struct CharacterDescriptor {
     pub part_count: u32,
     pub part_animation_count: usize,
     pub costumes: &'static [CostumeDescriptor],
+    /// Character table animations using ported shared callbacks.
+    pub additional_motions: &'static [u32],
 }
 #[derive(Clone, Copy, Debug)]
 pub struct CostumeDescriptor {
@@ -117,6 +119,7 @@ impl FighterAssets {
         ]
         .into_iter()
         .chain(idle_motions.iter().copied())
+        .chain(descriptor.additional_motions.iter().copied())
         .collect::<BTreeSet<_>>()
         {
             let entry = data
@@ -238,6 +241,7 @@ impl FighterAssets {
             ]
             .into_iter()
             .chain(idle_motions.into_iter().map(|id| id as usize))
+            .chain(descriptor.additional_motions.iter().map(|&id| id as usize))
             .collect::<BTreeSet<_>>()
             .into_iter()
             .filter(|&id| table.entries[id].aj_size != 0)
@@ -261,6 +265,7 @@ impl FighterAssets {
             ledge: super::ledge::LedgeParameters::read(common, common_data)?,
             jumping: super::jump::JumpParameters {
                 backward_threshold: common.reader().f32(common_data + 0x78)?,
+                multi_jump_drift_threshold: common.reader().f32(common_data + 0x258)?,
                 release_threshold: common.reader().f32(common_data + 0x7C)?,
                 fast_fall_threshold: common.reader().f32(common_data + 0x88)?,
                 fast_fall_window: common.reader().s32(common_data + 0x8C)?,

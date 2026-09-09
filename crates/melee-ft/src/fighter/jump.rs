@@ -11,6 +11,8 @@ use melee_types::CommonMotionState;
 #[derive(Clone, Copy, Debug)]
 pub struct JumpParameters {
     pub backward_threshold: f32,
+    /// PlCo +258, ftCo_JumpAerialF1_Phys.
+    pub multi_jump_drift_threshold: f32,
     pub release_threshold: f32,
     pub fast_fall_threshold: f32,
     pub fast_fall_window: i32,
@@ -127,6 +129,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// `CharacterCallbacks::aerial_jump_style`.
     pub(super) fn enter_aerial_jump(&mut self, assets: &FighterAssets) -> Result<()> {
         let style = self.character.aerial_jump_style();
+        if style == super::AerialJumpStyle::MultiJump {
+            return self.enter_multi_jump(assets);
+        }
         if !matches!(
             style,
             super::AerialJumpStyle::Basic
@@ -219,6 +224,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 return;
             }
         }
+        self.apply_fall_gravity(assets);
+        self.physics.animation_velocity.x = crate::physics::airborne::drift(
+            self.physics.self_velocity.x,
+            self.input.current.stick.x,
+            &self.attributes.air,
+        );
+    }
+
+    /// ftCommon_CheckFallFast (8007D528), FallFast (8007D4E4), Fall (8007D494).
+    /// Shared by ordinary airborne physics and ft_80084E1C's multijump drift.
+    pub(super) fn apply_fall_gravity(&mut self, assets: &FighterAssets) {
         if !self.physics.fast_fall
             && self.physics.self_velocity.y < 0.0
             && self.input.current.stick.y <= -assets.jumping.fast_fall_threshold
@@ -227,10 +243,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.physics.fast_fall = true;
             self.input.vertical.tilt = 0xFE;
         }
-        crate::physics::airborne::fall_physics(
-            &mut self.physics,
-            &self.attributes.air,
-            self.input.current.stick.x,
-        );
+        let air = &self.attributes.air;
+        self.physics.self_velocity.y = if self.physics.fast_fall {
+            -air.fast_fall_velocity
+        } else {
+            crate::physics::airborne::gravity(
+                self.physics.self_velocity.y,
+                air.gravity,
+                air.terminal_velocity,
+            )
+        };
     }
 }

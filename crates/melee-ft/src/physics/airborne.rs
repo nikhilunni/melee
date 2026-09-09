@@ -23,8 +23,18 @@ pub fn drift(velocity: f32, stick: f32, attrs: &AirAttributes) -> f32 {
     } else {
         -attrs.aerial_drift_base
     };
-    let mut acceleration = scaled + base;
+    let acceleration = scaled + base;
     let target = stick * attrs.air_drift_max;
+    drift_acceleration(velocity, acceleration, target, attrs)
+}
+
+/// ftCommon_8007D140 / 8007D174: common clamp after caller-selected drift.
+pub fn drift_acceleration(
+    velocity: f32,
+    mut acceleration: f32,
+    target: f32,
+    attrs: &AirAttributes,
+) -> f32 {
     let friction = attrs.aerial_friction;
     if target == 0.0 {
         // ftCommon_ApplyFrictionAir (0x8007CE94): >=, unlike ground friction.

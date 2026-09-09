@@ -13,6 +13,7 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    MultiJump,
     Catch,
     Damage,
     Jab,
@@ -94,6 +95,7 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    MultiJump,
     Catch,
     Damage,
     Jab,
