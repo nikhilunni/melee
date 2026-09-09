@@ -152,7 +152,11 @@ fn retail_archives_parse_with_expected_tables() {
         let header = archive.header();
         assert_eq!(header.file_size, exp.file_size, "{}: file_size", exp.name);
         assert_eq!(header.nb_reloc, exp.nb_reloc, "{}: nb_reloc", exp.name);
-        assert_eq!(header.nb_extern, 0, "{}: retail files have no externs", exp.name);
+        assert_eq!(
+            header.nb_extern, 0,
+            "{}: retail files have no externs",
+            exp.name
+        );
         assert_eq!(header.version, exp.version, "{}: version bytes", exp.name);
         assert_relocs_point_inside_data(exp.name, &archive);
 
@@ -229,7 +233,11 @@ fn fox_skeleton_has_73_joints_14_levels_deep() {
     assert!(joints.iter().all(|j| j.class_name.is_none()));
     assert!(joints.iter().all(|j| !j.is_instance()));
     assert!(joints.iter().all(|j| j.robjdesc.is_none()));
-    assert_eq!(joints.iter().filter(|j| j.mtx.is_some()).count(), 65, "envelope matrices");
+    assert_eq!(
+        joints.iter().filter(|j| j.mtx.is_some()).count(),
+        65,
+        "envelope matrices"
+    );
     assert_eq!(
         joints.iter().filter(|j| j.u.dobj().is_some()).count(),
         4,
@@ -346,12 +354,19 @@ fn scan_aj_file(aj: &[u8]) -> Vec<(u32, u32, String)> {
         let end = cursor + header.file_size;
         let sub = Archive::parse(&aj[cursor as usize..end as usize])
             .unwrap_or_else(|e| panic!("sub-archive at {cursor:#x}: {e}"));
-        assert_eq!(sub.publics().len(), 1, "sub-archive at {cursor:#x} exports one symbol");
+        assert_eq!(
+            sub.publics().len(),
+            1,
+            "sub-archive at {cursor:#x} exports one symbol"
+        );
         assert_eq!(sub.externs().len(), 0);
         out.push((cursor, header.file_size, sub.publics()[0].name.clone()));
         cursor = end.next_multiple_of(AJ_ALIGN);
     }
-    assert_eq!(cursor as usize, aj.len().next_multiple_of(AJ_ALIGN as usize));
+    assert_eq!(
+        cursor as usize,
+        aj.len().next_multiple_of(AJ_ALIGN as usize)
+    );
     out
 }
 
@@ -364,7 +379,10 @@ fn fox_animation_table_indexes_aj_sub_archives() {
 
     let ft_data = pl_fx.public("ftDataFox").unwrap();
     assert_eq!(ft_data, 0x98f4);
-    let table = pl_fx.link(ft_data + ft_data_off::XC_ANIM_TABLE).unwrap().unwrap();
+    let table = pl_fx
+        .link(ft_data + ft_data_off::XC_ANIM_TABLE)
+        .unwrap()
+        .unwrap();
     assert_eq!(table, 0x771c);
     let entries = read_anim_table(&pl_fx, table, FOX_ANIM_COUNT);
 
@@ -385,12 +403,20 @@ fn fox_animation_table_indexes_aj_sub_archives() {
     assert_eq!((wait1.aj_offset, wait1.aj_size), (0, 5077));
     assert_eq!((entries[6].aj_offset, entries[6].aj_size), (0, 5077));
     assert_eq!(entries[6].figatree_name, wait1.figatree_name);
-    assert_ne!(entries[6].script, wait1.script, "shared animation, distinct scripts");
+    assert_ne!(
+        entries[6].script, wait1.script,
+        "shared animation, distinct scripts"
+    );
 
     // Every referenced sub-archive is a complete .dat whose one public is
     // the entry's figatree, exactly as ftData_80085E50 consumes it.
     for e in &with_anim {
-        assert!(e.aj_size <= MAX_AJ_SUB_ARCHIVE, "entry {}: {:#x}", e.index, e.aj_size);
+        assert!(
+            e.aj_size <= MAX_AJ_SUB_ARCHIVE,
+            "entry {}: {:#x}",
+            e.index,
+            e.aj_size
+        );
         assert_eq!(e.aj_offset % AJ_ALIGN, 0, "entry {}: alignment", e.index);
         let bytes = &aj[e.aj_offset as usize..(e.aj_offset + e.aj_size) as usize];
         let sub = Archive::parse(bytes).unwrap_or_else(|err| panic!("entry {}: {err}", e.index));
@@ -409,7 +435,8 @@ fn fox_animation_table_indexes_aj_sub_archives() {
 
     // Wait1 in detail.
     let wait1_arc = Archive::parse(&aj[..5077]).unwrap();
-    let wait1_tree = read_public_figatree(&wait1_arc, wait1.figatree_name.as_deref().unwrap()).unwrap();
+    let wait1_tree =
+        read_public_figatree(&wait1_arc, wait1.figatree_name.as_deref().unwrap()).unwrap();
     assert_eq!(wait1_tree.frames, 120.0);
     assert_eq!(wait1_tree.nodes.len(), 73, "one node per skeleton joint");
 
@@ -428,7 +455,11 @@ fn fox_animation_table_indexes_aj_sub_archives() {
         scanned.iter().filter(|s| !referenced.contains(s)).collect();
     assert_eq!(
         orphans,
-        [&(0x5dc0, 3601, "PlyFox5K_Share_ACTION_WalkBrake_figatree".to_owned())]
+        [&(
+            0x5dc0,
+            3601,
+            "PlyFox5K_Share_ACTION_WalkBrake_figatree".to_owned()
+        )]
     );
     assert!(referenced.iter().all(|r| scanned.contains(r)));
 }
@@ -532,9 +563,18 @@ fn final_destination_coll_data_is_one_joint_of_16_lines() {
 
     let coll_data = archive.public("coll_data").unwrap();
     assert_eq!(coll_data, 0x4e0f0);
-    let verts = archive.link(coll_data + coll_data_off::VERTS).unwrap().unwrap();
-    let lines = archive.link(coll_data + coll_data_off::LINES).unwrap().unwrap();
-    let joints = archive.link(coll_data + coll_data_off::JOINTS).unwrap().unwrap();
+    let verts = archive
+        .link(coll_data + coll_data_off::VERTS)
+        .unwrap()
+        .unwrap();
+    let lines = archive
+        .link(coll_data + coll_data_off::LINES)
+        .unwrap()
+        .unwrap();
+    let joints = archive
+        .link(coll_data + coll_data_off::JOINTS)
+        .unwrap()
+        .unwrap();
     assert_eq!((verts, lines, joints), (0x4df48, 0x4dfc8, 0x4e0c8));
 
     let vert_count = reader.s32(coll_data + coll_data_off::VERT_COUNT).unwrap();
@@ -579,7 +619,11 @@ fn final_destination_coll_data_is_one_joint_of_16_lines() {
         .collect();
     assert_eq!(
         floor_edges,
-        [(4, 15, LINE_FLAG_LEDGE), (15, 6, 0), (6, 5, LINE_FLAG_LEDGE)]
+        [
+            (4, 15, LINE_FLAG_LEDGE),
+            (15, 6, 0),
+            (6, 5, LINE_FLAG_LEDGE)
+        ]
     );
     assert_eq!(vertex(4), (-85.5657, 0.0));
     assert_eq!(vertex(15), (-75.0, 0.0));
@@ -626,8 +670,14 @@ fn final_destination_map_head_is_six_counted_arrays() {
     let pairs: Vec<(u32, i32)> = (0..6)
         .map(|i| {
             let at = map_head + 8 * i;
-            let ptr = archive.link(at).unwrap().expect("array pointer is relocated");
-            assert!(!archive.is_relocated_offset(at + 4), "count is a plain integer");
+            let ptr = archive
+                .link(at)
+                .unwrap()
+                .expect("array pointer is relocated");
+            assert!(
+                !archive.is_relocated_offset(at + 4),
+                "count is a plain integer"
+            );
             (ptr, reader.s32(at + 4).unwrap())
         })
         .collect();

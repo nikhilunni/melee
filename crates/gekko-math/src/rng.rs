@@ -34,7 +34,10 @@ impl HsdRng {
 
     #[inline]
     fn step(&mut self) -> u32 {
-        self.seed = self.seed.wrapping_mul(Self::MULTIPLIER).wrapping_add(Self::INCREMENT);
+        self.seed = self
+            .seed
+            .wrapping_mul(Self::MULTIPLIER)
+            .wrapping_add(Self::INCREMENT);
         self.seed >> 16
     }
 
@@ -89,7 +92,8 @@ mod tests {
         for _ in 0..10_000 {
             let before = r.seed;
             let f = r.randf();
-            let expected = ((before.wrapping_mul(214013).wrapping_add(2531011)) >> 16) as f32 / 65536.0;
+            let expected =
+                ((before.wrapping_mul(214013).wrapping_add(2531011)) >> 16) as f32 / 65536.0;
             assert_eq!(f.to_bits(), expected.to_bits());
             assert!((0.0..1.0).contains(&f));
         }

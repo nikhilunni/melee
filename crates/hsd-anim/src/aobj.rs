@@ -164,7 +164,11 @@ impl AObj {
     /// captured. All retail callers pass a non-null function; the
     /// `AOBJ_NO_UPDATE` flag is what suppresses updates. `cb` accumulates
     /// the end-callback counters for this pass.
-    pub fn interpret_anim(&mut self, update_func: &mut ObjUpdateFunc<'_>, cb: &mut AObjEndCallback) {
+    pub fn interpret_anim(
+        &mut self,
+        update_func: &mut ObjUpdateFunc<'_>,
+        cb: &mut AObjEndCallback,
+    ) {
         let mut rate: f32;
 
         if self.flags & AOBJ_NO_ANIM != 0 {

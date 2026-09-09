@@ -38,8 +38,9 @@ impl PadScript {
     /// `require`: fail if any record lacks `inputs` (scripted scenarios must
     /// carry them); otherwise records without them are neutral.
     pub fn from_expected_trace(path: &Path, require: bool) -> Result<Self> {
-        let reader =
-            BufReader::new(File::open(path).with_context(|| format!("opening {}", path.display()))?);
+        let reader = BufReader::new(
+            File::open(path).with_context(|| format!("opening {}", path.display()))?,
+        );
         let mut ticks = Vec::new();
         for (index, line) in reader.lines().enumerate() {
             let line = line?;
@@ -134,7 +135,8 @@ mod tests {
     use std::io::Write;
 
     fn pad_json(button: u32, stick_x_bits: u32) -> String {
-        let f32_field = |bits: u32| serde_json::json!({"t": "f32", "v": {"bits": bits, "approx": 0}});
+        let f32_field =
+            |bits: u32| serde_json::json!({"t": "f32", "v": {"bits": bits, "approx": 0}});
         let port = |b: u32, x: u32| {
             serde_json::json!({
                 "button": {"t": "u", "v": b},

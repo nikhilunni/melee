@@ -11,14 +11,14 @@ use std::collections::HashSet;
 use std::fmt;
 
 use hsd_archive::desc::DescError;
-use hsd_archive::{Archive, desc};
+use hsd_archive::{desc, Archive};
 use hsd_types::{Mtx, Vec3};
 
 use crate::aobj::AObjDesc;
 use crate::dobj::DObj;
 use crate::fobj::FObjDesc;
 use crate::jobj::{
-    AnimJoint, JOBJ_INSTANCE, JOBJ_JOINT, JOBJ_PTCL, JOBJ_SPLINE, JObjId, JObjTree, JointSpec,
+    AnimJoint, JObjId, JObjTree, JointSpec, JOBJ_INSTANCE, JOBJ_JOINT, JOBJ_PTCL, JOBJ_SPLINE,
 };
 use crate::mobj::{GxColor, MObj, Material, RENDER_BLENDING, RENDER_NO_ZUPDATE};
 

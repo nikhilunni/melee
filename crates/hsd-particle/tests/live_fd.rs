@@ -74,7 +74,11 @@ fn capture() -> Option<Capture> {
         .map(|l| serde_json::from_str(l).unwrap())
         .collect::<Vec<_>>();
     let ticks = restore::read(&paths[4]);
-    assert!(states.len() >= 8, "need at least 8 dumped frames, got {}", states.len());
+    assert!(
+        states.len() >= 8,
+        "need at least 8 dumped frames, got {}",
+        states.len()
+    );
     assert_eq!(ledger.len(), 600);
     assert_eq!(ticks.len(), 600);
     Some(Capture {

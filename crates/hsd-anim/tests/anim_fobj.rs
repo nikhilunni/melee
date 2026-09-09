@@ -98,13 +98,28 @@ fn pack_info_shift_past_31_reads_as_zero() {
     // The fifth continuation byte at shift 31 keeps only its low bit.
     let bytes = [0x80, 0x80, 0x80, 0x80, 0x80, 0x03];
     let mut pos = 0;
-    assert_eq!(parse_pack_info(&bytes, &mut pos), 1u32.wrapping_add(1 << 31));
+    assert_eq!(
+        parse_pack_info(&bytes, &mut pos),
+        1u32.wrapping_add(1 << 31)
+    );
     assert_eq!(pos, 6);
 }
 
 #[test]
 fn wait_leb128() {
-    for w in [0u32, 1, 127, 128, 129, 255, 16383, 16384, 65535, 65536, 1 << 27] {
+    for w in [
+        0u32,
+        1,
+        127,
+        128,
+        129,
+        255,
+        16383,
+        16384,
+        65535,
+        65536,
+        1 << 27,
+    ] {
         let mut s = Stream::new();
         s.wait(w);
         let mut pos = 0;
@@ -205,7 +220,10 @@ fn parse_float_float_type_with_shift_is_zero_and_does_not_advance() {
     // case matches, so the C returns 0.0 without touching the cursor.
     let f = frac(FracType::Float, 3);
     let mut pos = 0;
-    assert_eq!(parse_float(&[0xFF, 0xFF, 0xFF, 0xFF], &mut pos, f).to_bits(), 0);
+    assert_eq!(
+        parse_float(&[0xFF, 0xFF, 0xFF, 0xFF], &mut pos, f).to_bits(),
+        0
+    );
     assert_eq!(pos, 0);
     // Type bits 5..7 (undefined) likewise.
     let mut pos = 0;
@@ -281,9 +299,17 @@ fn constant_track_steps_at_segment_ends() {
 
     // Without the trailing wait the sequence is the same.
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_CON, 3).f32(v0).wait(3).f32(v1).wait(2).f32(v2);
+    s.pack(HSD_A_OP_CON, 3)
+        .f32(v0)
+        .wait(3)
+        .f32(v1)
+        .wait(2)
+        .f32(v2);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
-    assert_eq!(play(&mut f, 8), want.iter().map(|v| Some(*v)).collect::<Vec<_>>());
+    assert_eq!(
+        play(&mut f, 8),
+        want.iter().map(|v| Some(*v)).collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -305,7 +331,10 @@ fn constant_track_state_trace() {
     assert_eq!(f.op_intrp, HSD_A_OP_CON);
     assert_eq!(f.state(), FOBJ_EMITTED);
     assert_eq!(f.pos, 1 + 4 + 1 + 4);
-    assert_eq!(f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, FOBJ_FLAG_LIN_SLOPE_DIRTY);
+    assert_eq!(
+        f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY,
+        FOBJ_FLAG_LIN_SLOPE_DIRTY
+    );
 
     assert_eq!(f.step(1.0), Some(v0));
     assert_eq!(f.time, 1.0);
@@ -333,7 +362,11 @@ fn linear_track_interpolates_with_cached_slope() {
     let got = play(&mut f, 7);
     for (i, g) in got.iter().enumerate() {
         // Past the end, time keeps growing and the line is extrapolated.
-        assert_eq!(g.unwrap().to_bits(), expect(i as f32).to_bits(), "frame {i}");
+        assert_eq!(
+            g.unwrap().to_bits(),
+            expect(i as f32).to_bits(),
+            "frame {i}"
+        );
     }
     assert_eq!(f.d0.to_bits(), d0.to_bits());
     assert_eq!(f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, 0);
@@ -351,7 +384,11 @@ fn linear_track_with_integer_encoding() {
     for i in 0..7 {
         let got = f.step(if i == 0 { 0.0 } else { 1.0 }).unwrap();
         // `d0 * t + v0` is one `fmadds` in retail (0x8036AF98).
-        assert_eq!(got.to_bits(), fmadds(d0, i as f32, v0).to_bits(), "frame {i}");
+        assert_eq!(
+            got.to_bits(),
+            fmadds(d0, i as f32, v0).to_bits(),
+            "frame {i}"
+        );
     }
 }
 
@@ -359,7 +396,12 @@ fn linear_track_with_integer_encoding() {
 fn linear_zero_length_segment_snaps_to_end() {
     let (v0, v1, v2) = (1.0f32, 5.0f32, 9.0f32);
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_LIN, 3).f32(v0).wait(0).f32(v1).wait(2).f32(v2);
+    s.pack(HSD_A_OP_LIN, 3)
+        .f32(v0)
+        .wait(0)
+        .f32(v1)
+        .wait(2)
+        .f32(v2);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
     // Frame 0: v0 loaded, wait 0, v1 loaded -> state 4 with fterm 0 <= time 0,
     // pass straight through: wait 2, v2 loaded, fterm 2. LIN slope dirty:
@@ -401,7 +443,12 @@ fn spline_track_hermite_with_explicit_slopes() {
 fn spline_track_fractional_rate() {
     let (v0, s0, v1, s1) = (10.0f32, -3.0f32, -4.0f32, 1.0f32);
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_SPL, 2).f32(v0).f32(s0).wait(3).f32(v1).f32(s1);
+    s.pack(HSD_A_OP_SPL, 2)
+        .f32(v0)
+        .f32(s0)
+        .wait(3)
+        .f32(v1)
+        .f32(s1);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
     let mut t = 0.0f32;
     assert_eq!(f.step(0.0), Some(v0));
@@ -433,7 +480,10 @@ fn spline_slope_encoding_uses_frac_slope() {
     f.step(0.0);
     assert_eq!((f.p0, f.p1), (1.0, -2.0));
     assert_eq!((f.d0, f.d1), (-1.0, 0.5));
-    assert_eq!(f.step(1.0).unwrap().to_bits(), hermite(inv(4), 1.0, 1.0, -2.0, -1.0, 0.5).to_bits());
+    assert_eq!(
+        f.step(1.0).unwrap().to_bits(),
+        hermite(inv(4), 1.0, 1.0, -2.0, -1.0, 0.5).to_bits()
+    );
 }
 
 #[test]
@@ -527,7 +577,12 @@ fn slope_only_at_stream_start_is_shifted_out() {
 fn key_track_emits_once_per_key() {
     let (v0, v1, v2) = (5.0f32, 6.0f32, 7.0f32);
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_KEY, 3).f32(v0).wait(2).f32(v1).wait(3).f32(v2);
+    s.pack(HSD_A_OP_KEY, 3)
+        .f32(v0)
+        .wait(2)
+        .f32(v1)
+        .wait(3)
+        .f32(v2);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
     let got = play(&mut f, 8);
     assert_eq!(
@@ -583,7 +638,10 @@ fn linear_dirty_flag_survives_a_step_without_callback() {
     s.pack(HSD_A_OP_LIN, 2).f32(0.0).wait(4).f32(8.0);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
     f.interpret_anim(None, 0.0);
-    assert_eq!(f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, FOBJ_FLAG_LIN_SLOPE_DIRTY);
+    assert_eq!(
+        f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY,
+        FOBJ_FLAG_LIN_SLOPE_DIRTY
+    );
     assert_eq!(f.d0, 0.0);
     assert_eq!(f.step(1.0), Some(2.0));
     assert_eq!(f.d0, 2.0);
@@ -650,7 +708,12 @@ fn stop_anim_flushes_pending_key() {
 #[test]
 fn req_anim_rewinds_everything_but_keeps_key_ready_bit() {
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_SPL, 2).f32(1.0).f32(2.0).wait(3).f32(4.0).f32(5.0);
+    s.pack(HSD_A_OP_SPL, 2)
+        .f32(1.0)
+        .f32(2.0)
+        .wait(3)
+        .f32(4.0)
+        .f32(5.0);
     let mut f = track(&s.finish(), FLOAT, FLOAT);
     f.step(0.0);
     f.step(1.0);
@@ -664,7 +727,10 @@ fn req_anim_rewinds_everything_but_keeps_key_ready_bit() {
     // Only 0x40 is cleared by HSD_FObjReqAnim.
     assert_eq!(f.flags & FOBJ_FLAG_KEY_PENDING, 0);
     assert_eq!(f.flags & FOBJ_FLAG_KEY_READY, FOBJ_FLAG_KEY_READY);
-    assert_eq!(f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, FOBJ_FLAG_LIN_SLOPE_DIRTY);
+    assert_eq!(
+        f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY,
+        FOBJ_FLAG_LIN_SLOPE_DIRTY
+    );
 }
 
 #[test]
@@ -691,7 +757,10 @@ fn multiple_packs_and_large_pack_counts() {
     assert_eq!(got[10], Some(100.0));
     assert_eq!(got[11], Some(100.0));
     // The LIN slope was never computed.
-    assert_eq!(f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, FOBJ_FLAG_LIN_SLOPE_DIRTY);
+    assert_eq!(
+        f.flags & FOBJ_FLAG_LIN_SLOPE_DIRTY,
+        FOBJ_FLAG_LIN_SLOPE_DIRTY
+    );
     assert_eq!(f.d0, 0.0);
 }
 
@@ -699,7 +768,12 @@ fn multiple_packs_and_large_pack_counts() {
 fn length_limits_the_readable_stream() {
     // Bytes past `length` are never read: the track ends after v1.
     let mut s = Stream::new();
-    s.pack(HSD_A_OP_CON, 3).f32(1.0).wait(1).f32(2.0).wait(1).f32(3.0);
+    s.pack(HSD_A_OP_CON, 3)
+        .f32(1.0)
+        .wait(1)
+        .f32(2.0)
+        .wait(1)
+        .f32(3.0);
     let bytes = s.finish();
     let desc = FObjDesc {
         length: (1 + 4 + 1 + 4) as u32,
@@ -711,7 +785,10 @@ fn length_limits_the_readable_stream() {
     };
     let mut f = FObj::load_desc(&desc);
     f.req_anim(0.0);
-    assert_eq!(play(&mut f, 4), vec![Some(1.0), Some(2.0), Some(2.0), Some(2.0)]);
+    assert_eq!(
+        play(&mut f, 4),
+        vec![Some(1.0), Some(2.0), Some(2.0), Some(2.0)]
+    );
     assert_eq!(f.pos, 10);
 }
 

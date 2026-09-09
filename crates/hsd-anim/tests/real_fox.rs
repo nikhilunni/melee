@@ -34,7 +34,11 @@ fn fox_skeleton_loads_into_a_runtime_tree_in_descriptor_order() {
     assert_eq!(root, JObjId(0), "the root is allocated first");
     assert_eq!(tree.len(), FOX_JOINT_COUNT);
     let visited: Vec<JObjId> = tree.depth_first(root).collect();
-    assert_eq!(visited.len(), FOX_JOINT_COUNT, "depth-first walk reaches every joint");
+    assert_eq!(
+        visited.len(),
+        FOX_JOINT_COUNT,
+        "depth-first walk reaches every joint"
+    );
 
     // Runtime joints keep the descriptor's flags and transforms bit for bit,
     // in the same depth-first order the descriptor tree enumerates.

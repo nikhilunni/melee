@@ -59,10 +59,16 @@ impl PartialEq for Value {
 
 impl Value {
     pub fn f32(x: f32) -> Self {
-        Value::F32 { bits: x.to_bits(), approx: x as f64 }
+        Value::F32 {
+            bits: x.to_bits(),
+            approx: x as f64,
+        }
     }
     pub fn f64(x: f64) -> Self {
-        Value::F64 { bits: x.to_bits(), approx: x }
+        Value::F64 {
+            bits: x.to_bits(),
+            approx: x,
+        }
     }
 }
 
@@ -77,7 +83,11 @@ pub struct Divergence {
 
 impl std::fmt::Display for Divergence {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "first divergence at frame {} phase {}", self.frame, self.phase)?;
+        writeln!(
+            f,
+            "first divergence at frame {} phase {}",
+            self.frame, self.phase
+        )?;
         writeln!(f, "  field:    {}", self.path)?;
         writeln!(f, "  expected: {}", fmt_val(&self.expected))?;
         write!(f, "  actual:   {}", fmt_val(&self.actual))
@@ -113,7 +123,10 @@ where
                 frame: exp.frame,
                 phase: exp.phase.clone(),
                 path: "<record>".into(),
-                expected: Some(Value::Str(format!("frame {} phase {}", exp.frame, exp.phase))),
+                expected: Some(Value::Str(format!(
+                    "frame {} phase {}",
+                    exp.frame, exp.phase
+                ))),
                 actual: None,
             });
         };
@@ -122,8 +135,14 @@ where
                 frame: exp.frame,
                 phase: exp.phase.clone(),
                 path: "<record>".into(),
-                expected: Some(Value::Str(format!("frame {} phase {}", exp.frame, exp.phase))),
-                actual: Some(Value::Str(format!("frame {} phase {}", act.frame, act.phase))),
+                expected: Some(Value::Str(format!(
+                    "frame {} phase {}",
+                    exp.frame, exp.phase
+                ))),
+                actual: Some(Value::Str(format!(
+                    "frame {} phase {}",
+                    act.frame, act.phase
+                ))),
             });
         }
         for (path, ev) in &exp.state {
@@ -151,8 +170,8 @@ pub fn read_trace(reader: impl std::io::BufRead) -> anyhow::Result<Vec<Record>> 
         if line.trim().is_empty() {
             continue;
         }
-        let rec: Record = serde_json::from_str(&line)
-            .map_err(|e| anyhow::anyhow!("line {}: {e}", i + 1))?;
+        let rec: Record =
+            serde_json::from_str(&line).map_err(|e| anyhow::anyhow!("line {}: {e}", i + 1))?;
         out.push(rec);
     }
     Ok(out)
@@ -198,16 +217,32 @@ mod tests {
 
     #[test]
     fn float_equality_ignores_approx() {
-        let a = Value::F32 { bits: 0x41D5_28A9, approx: 26.644920349121094 };
-        let b = Value::F32 { bits: 0x41D5_28A9, approx: 26.644920349121097 };
+        let a = Value::F32 {
+            bits: 0x41D5_28A9,
+            approx: 26.644920349121094,
+        };
+        let b = Value::F32 {
+            bits: 0x41D5_28A9,
+            approx: 26.644920349121097,
+        };
         assert_eq!(a, b);
-        let c = Value::F32 { bits: 0x41D5_28AA, approx: 26.644920349121094 };
+        let c = Value::F32 {
+            bits: 0x41D5_28AA,
+            approx: 26.644920349121094,
+        };
         assert_ne!(a, c);
     }
 
     #[test]
     fn roundtrips_through_json() {
-        let r = rec(7, "post_input", &[("seed", Value::UInt(2745024)), ("p0.pos.y", Value::f32(-3.25))]);
+        let r = rec(
+            7,
+            "post_input",
+            &[
+                ("seed", Value::UInt(2745024)),
+                ("p0.pos.y", Value::f32(-3.25)),
+            ],
+        );
         let s = serde_json::to_string(&r).unwrap();
         let back: Record = serde_json::from_str(&s).unwrap();
         assert_eq!(r, back);

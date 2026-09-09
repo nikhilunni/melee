@@ -120,13 +120,29 @@ fn plays_to_end_frame_and_stops() {
     assert_eq!(step(&mut a, &mut cb), vec![(5, d0 * 0.0 + v0)]);
     assert_eq!(a.curr_frame(), 0.0);
     assert_eq!(a.flags & AOBJ_FIRST_PLAY, 0);
-    assert_eq!(cb, AObjEndCallback { ended: 0, running: 1 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 0,
+            running: 1
+        }
+    );
 
     for i in 1..4 {
-        assert_eq!(step(&mut a, &mut cb), vec![(5, d0 * i as f32 + v0)], "frame {i}");
+        assert_eq!(
+            step(&mut a, &mut cb),
+            vec![(5, d0 * i as f32 + v0)],
+            "frame {i}"
+        );
         assert_eq!(a.curr_frame, i as f32);
     }
-    assert_eq!(cb, AObjEndCallback { ended: 0, running: 4 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 0,
+            running: 4
+        }
+    );
 
     // Frame 4 reaches end_frame: the value is still pushed, then the tracks
     // are stopped and NO_ANIM set; the pass counts it as ended.
@@ -134,13 +150,25 @@ fn plays_to_end_frame_and_stops() {
     assert_eq!(a.curr_frame, 4.0);
     assert_eq!(a.flags & AOBJ_NO_ANIM, AOBJ_NO_ANIM);
     assert_eq!(a.fobj[0].state(), 0);
-    assert_eq!(cb, AObjEndCallback { ended: 1, running: 4 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 1,
+            running: 4
+        }
+    );
     assert!(!cb.should_invoke());
 
     // Stopped: no update, no counters, frame frozen.
     assert!(step(&mut a, &mut cb).is_empty());
     assert_eq!(a.curr_frame, 4.0);
-    assert_eq!(cb, AObjEndCallback { ended: 1, running: 4 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 1,
+            running: 4
+        }
+    );
 
     cb.init();
     assert!(step(&mut a, &mut cb).is_empty());
@@ -217,7 +245,10 @@ fn stop_anim_flushes_and_sets_no_anim() {
     let desc = AObjDesc {
         flags: 0,
         end_frame: 10.0,
-        fobjdesc: vec![key_desc(11, 1.0, 2, 2.0), con_desc(5, &[(4.0, 2), (5.0, 0)])],
+        fobjdesc: vec![
+            key_desc(11, 1.0, 2, 2.0),
+            con_desc(5, &[(4.0, 2), (5.0, 0)]),
+        ],
         obj_id: 0,
     };
     let mut a = AObj::load_desc(&desc);
@@ -270,7 +301,13 @@ fn loop_rewinds_with_fmodf() {
         ]
     );
     // Looping never ends.
-    assert_eq!(cb, AObjEndCallback { ended: 0, running: 9 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 0,
+            running: 9
+        }
+    );
     assert_eq!(a.flags & AOBJ_NO_ANIM, 0);
 }
 
@@ -372,14 +409,29 @@ fn no_update_advances_without_callbacks() {
     assert_eq!(a.curr_frame, 2.0);
     assert_eq!(a.fobj[0].time, 2.0);
     // The LIN slope was never computed because the callback was null.
-    assert_eq!(a.fobj[0].flags & FOBJ_FLAG_LIN_SLOPE_DIRTY, FOBJ_FLAG_LIN_SLOPE_DIRTY);
-    assert_eq!(cb, AObjEndCallback { ended: 0, running: 3 });
+    assert_eq!(
+        a.fobj[0].flags & FOBJ_FLAG_LIN_SLOPE_DIRTY,
+        FOBJ_FLAG_LIN_SLOPE_DIRTY
+    );
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 0,
+            running: 3
+        }
+    );
     // Clearing NO_UPDATE resumes the callbacks; the dirty slope is computed
     // now, at frame 3, and the end stop happens in the same step.
     a.clear_flags(AOBJ_NO_UPDATE);
     assert_eq!(step(&mut a, &mut cb), vec![(5, 3.0)]);
     assert_eq!(a.flags & AOBJ_NO_ANIM, AOBJ_NO_ANIM);
-    assert_eq!(cb, AObjEndCallback { ended: 1, running: 3 });
+    assert_eq!(
+        cb,
+        AObjEndCallback {
+            ended: 1,
+            running: 3
+        }
+    );
 }
 
 #[test]
@@ -467,6 +519,9 @@ fn tracks_are_updated_in_list_order_with_their_ids() {
     a.req_anim(0.0);
     let got = step(&mut a, &mut cb);
     assert_eq!(got, vec![(5, 1.0), (2, 3.0), (10, 5.0)]);
-    let ids: Vec<_> = got.iter().map(|(t, _)| JObjTrack::from_u8(*t).unwrap()).collect();
+    let ids: Vec<_> = got
+        .iter()
+        .map(|(t, _)| JObjTrack::from_u8(*t).unwrap())
+        .collect();
     assert_eq!(ids, vec![JObjTrack::TraX, JObjTrack::RotY, JObjTrack::ScaZ]);
 }

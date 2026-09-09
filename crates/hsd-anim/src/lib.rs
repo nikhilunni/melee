@@ -5,10 +5,10 @@
 //! `aobj` and `fobj` are another, `jobj` comes after both.
 
 pub mod aobj;
-pub mod fobj;
-pub mod mtx;
-pub mod quat;
 pub mod dobj;
+pub mod fobj;
 pub mod jobj;
 pub mod load;
 pub mod mobj;
+pub mod mtx;
+pub mod quat;
