@@ -156,7 +156,7 @@ impl Runtime {
                     FighterProc::HitDetection => f.proc_hit_detection(),
                     FighterProc::ProcessHit => f.proc_process_hit(assets),
                     FighterProc::Dynamics => f.proc_dynamics_with_map(&mut state.map),
-                    FighterProc::Camera => f.proc_camera(assets, 1.0),
+                    FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, &mut state.map),
                     FighterProc::PlayerMirror => f.proc_player_mirror(),
                 }
                 f.resolve_graphics_commands(assets, &mut state.rng);

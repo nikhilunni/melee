@@ -195,6 +195,10 @@ impl Fixture {
         f.status.input_frozen = raw[0x221D] & 8 != 0;
         f.status.shield_health = float(raw, 0x1998);
         f.status.name_tag_timer = u16::from_be_bytes([raw[0x209A], raw[0x209B]]);
+        f.status.ledge_cooldown = word(raw, 0x2064) as i32;
+        f.status.ledge_intangibility = word(raw, 0x1990) as i32;
+        f.status.on_ledge = raw[0x221D] & 1 != 0;
+        f.status.ledge_grab_disabled = raw[0x2228] & 0x20 != 0;
         f.thrown_hitbox.state = word(raw, 0x1064);
         f.thrown_hitbox.offset = vector(raw, 0x1074);
         f.thrown_hitbox.position = vector(raw, 0x10B0);

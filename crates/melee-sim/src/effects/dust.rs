@@ -17,6 +17,7 @@ impl Effects {
     ) -> Result<()> {
         let (kind, directional) = match id {
             0x3F3 => (0xB, false),  // efasync.c:186-188, roll smoke
+            0x41C => (0x5D, false), // efasync.c:521-523, ledge grab
             0x407 => (0x3C, false), // efasync.c:305-307, spot dodge
             RUN_DUST_REQUEST => (RUN_DUST_GENERATOR, true),
             BRAKE_DUST_REQUEST => (BRAKE_DUST_GENERATOR, true),

@@ -60,6 +60,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_idle();
         self.physics.begin_tick();
+        if self.status.ledge_intangibility != 0 {
+            self.status.ledge_intangibility -= 1;
+        }
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
             self.status.name_tag_timer -= 1;
         }
@@ -77,6 +80,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
             | state::AnimationCallback::GuardOff
             | state::AnimationCallback::GuardSetOff => {
                 self.shield_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::CliffCatch
+            | state::AnimationCallback::CliffWait
+            | state::AnimationCallback::CliffJump1
+            | state::AnimationCallback::CliffJump2 => {
+                self.ledge_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::EscapeAir => {
+                self.air_dodge_animation(assets)?;
                 return Ok(None);
             }
             state::AnimationCallback::Escape | state::AnimationCallback::EscapeN => {
@@ -207,6 +221,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 match transition {
                     WaitTransition::None => {}
                     WaitTransition::Jump => self.enter_aerial_jump(assets).expect("aerial jump"),
+                    WaitTransition::Escape => self.enter_air_dodge(assets).expect("air dodge"),
                     _ => unimplemented!(
                         "ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"
                     ),
@@ -226,6 +241,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 | state::InputCallback::GuardOff
                 | state::InputCallback::GuardSetOff => {
                     self.shield_input(assets, &context).expect("shield IASA");
+                    return;
+                }
+                state::InputCallback::CliffCatch
+                | state::InputCallback::CliffJump1
+                | state::InputCallback::CliffJump2 => return,
+                state::InputCallback::CliffWait => {
+                    self.ledge_input(assets).expect("ledge input");
+                    return;
+                }
+                state::InputCallback::EscapeAir => {
+                    self.air_dodge_input();
                     return;
                 }
                 // ftCo_8009563C is false without an item; EscapeN has no IASA.
@@ -400,6 +426,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     map,
                     wind,
                 );
+            }
+            state::PhysicsCallback::CliffCatch
+            | state::PhysicsCallback::CliffWait
+            | state::PhysicsCallback::CliffJump1 => {
+                self.ledge_physics(assets, map).expect("ledge physics");
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::CliffJump2 => {
+                self.ledge_jump_physics(assets);
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::EscapeAir => {
+                self.air_dodge_physics(assets);
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }
             state::PhysicsCallback::Fall
             | state::PhysicsCallback::Jump
@@ -593,9 +636,32 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.skeleton
                     .set_translate(self.animation.root, &self.physics.position);
             }
+            state::CollisionCallback::CliffCatch
+            | state::CollisionCallback::CliffWait
+            | state::CollisionCallback::CliffJump1 => {
+                self.ledge_collision(assets, map)?;
+            }
+            state::CollisionCallback::EscapeAir => {
+                air::begin_map(
+                    &self.physics,
+                    &mut self.collision,
+                    &mut self.skeleton,
+                    self.animation.root,
+                );
+                if air::collide_air_dodge(
+                    &mut self.physics,
+                    &mut self.collision,
+                    map,
+                    &mut self.skeleton,
+                    self.animation.root,
+                ) {
+                    self.enter_special_landing(assets, false, assets.air_dodge.landing_lag)?;
+                }
+            }
             state::CollisionCallback::Fall
             | state::CollisionCallback::Jump
-            | state::CollisionCallback::JumpAerial => {
+            | state::CollisionCallback::JumpAerial
+            | state::CollisionCallback::CliffJump2 => {
                 air::begin_map(
                     &self.physics,
                     &mut self.collision,
@@ -608,6 +674,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     map,
                     &mut self.skeleton,
                     self.animation.root,
+                    self.status.ledge_cooldown == 0,
                 ) {
                     if self.physics.self_velocity.y > assets.soft_landing_speed {
                         self.land();
@@ -615,9 +682,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     } else {
                         self.enter_landing(assets)?;
                     }
+                } else if self.try_grab_ledge(assets, map)? {
+                    // ft_800835B0: grabbing precedes the ceiling check.
                 } else if matches!(
                     self.motion_state.callbacks.collision,
-                    state::CollisionCallback::Jump | state::CollisionCallback::JumpAerial
+                    state::CollisionCallback::Jump
+                        | state::CollisionCallback::JumpAerial
+                        | state::CollisionCallback::CliffJump2
                 ) && self.collision.data.env_flags as u32
                     & melee_types::mp::collide::CEILING_HUG
                     != 0
@@ -787,6 +858,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
             });
         }
     }
+    /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:160-168: camera box first,
+    /// then notify the supporting stage joint while hanging airborne.
+    pub fn proc_camera_with_map(
+        &mut self,
+        assets: &FighterAssets,
+        fixed_zoom: f32,
+        map: &mut CollMap,
+    ) {
+        self.proc_camera(assets, fixed_zoom);
+        if !self.status.disabled && self.camera.on_ledge {
+            let MotionData::Cliff(cliff) = &self.state_data else {
+                panic!("cliff camera scratch missing")
+            };
+            map.notify_ledge_grab(&mut self.collision.data, cliff.ledge_id);
+        }
+    }
     /// Fighter_UnkCallCameraCallback_8006D9EC (0x8006D9EC), s_link 18.
     pub fn proc_camera(&mut self, assets: &FighterAssets, fixed_zoom: f32) {
         if self.status.disabled {
@@ -794,6 +881,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_idle();
         self.status.camera_shift = Vec2::ZERO;
+        self.camera.on_ledge = self.motion_state.callbacks.camera == state::CameraCallback::Cliff
+            && self.physics.ground_or_air == melee_types::GroundOrAir::Air;
         // ftCamera_80076018 / ftCamera_UpdateCameraBox: separate fmuls/fadds,
         // no contraction (retail asm.py --fused).
         let [h, v] = assets.camera_extents;

@@ -39,6 +39,8 @@ pub struct FighterAssets {
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],
     pub jumping: super::jump::JumpParameters,
+    pub air_dodge: super::air_dodge::AirDodgeParameters,
+    pub ledge: super::ledge::LedgeParameters,
     pub running: super::dash::RunningParameters,
     pub movement: crate::desc::common::MovementParameters,
     pub squat_choices: Option<Vec<WaitEntry>>,
@@ -66,7 +68,7 @@ impl FighterAssets {
         let mut words = BTreeMap::new();
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42,
-            43, 238,
+            43, 17, 19, 36, 44, 216, 217, 225, 226, 227, 228, 238,
         ] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -159,7 +161,7 @@ impl FighterAssets {
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41,
-                42, 43, 238,
+                42, 43, 17, 19, 36, 44, 216, 217, 225, 226, 227, 228, 238,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
@@ -174,6 +176,8 @@ impl FighterAssets {
                 }
                 bones
             },
+            air_dodge: super::air_dodge::AirDodgeParameters::read(common, common_data)?,
+            ledge: super::ledge::LedgeParameters::read(common, common_data)?,
             jumping: super::jump::JumpParameters {
                 backward_threshold: common.reader().f32(common_data + 0x78)?,
                 release_threshold: common.reader().f32(common_data + 0x7C)?,

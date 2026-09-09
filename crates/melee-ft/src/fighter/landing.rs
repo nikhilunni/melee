@@ -56,6 +56,32 @@ pub fn iasa(
     T::None
 }
 impl<C: CharacterCallbacks> Fighter<C> {
+    /// ftCo_LandingFallSpecial_Enter (800D5CB0), ftCo_Landing.c:103-113.
+    pub(super) fn enter_special_landing(
+        &mut self,
+        assets: &FighterAssets,
+        allow_interrupt: bool,
+        lag: f32,
+    ) -> Result<()> {
+        let retained_drop_timer = self.retained_drop_timer();
+        self.land();
+        // Fighter.x2EC is the normal Landing animation length (fighter.c:836).
+        // Retail 800D5D08 fadds then 800D5D14 fdivs; no fusion.
+        let rate = (0.1 + assets.motions[&35].animation.frames) / lag;
+        self.change_motion_state_with_rate(
+            CommonMotionState::LandingFallSpecial,
+            assets,
+            0.0,
+            rate,
+        )?;
+        self.state_data = MotionData::Landing {
+            allow_interrupt,
+            retained_drop_timer,
+        };
+        self.character.on_landing(allow_interrupt);
+        Ok(())
+    }
+
     /// ftCommon_8007D7FC -> 8007D6A4 (ftcommon.c:550-595).
     /// Landing keeps vertical self velocity until the next ground Phys callback.
     pub fn land(&mut self) {
@@ -72,6 +98,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let retained_drop_timer = self.retained_drop_timer();
         self.land();
         self.change_motion_state(CommonMotionState::Landing, assets)?;
+        self.character.on_landing(true);
         self.state_data = MotionData::Landing {
             allow_interrupt: true,
             retained_drop_timer,
@@ -101,6 +128,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
     pub(super) fn retained_drop_timer(&self) -> f32 {
         match &self.state_data {
+            MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
+            MotionData::CliffJump(jump) => jump.retained_wait_frames,
             MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
             MotionData::JumpAerial {
                 retained_drop_timer,

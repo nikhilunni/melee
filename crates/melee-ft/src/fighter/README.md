@@ -9,6 +9,35 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T5 Air dodge, wavedash and ledges
+
+`airdodge_fd_fox` and `wavedash_fd_fox` match **300 ticks, 49 keys, zero
+divergences**; `ledge_fd_fox` matches **420 ticks, 49 keys, zero divergences**.
+All three also have callback replays and ordered particle RNG checks.
+See [M4_LEDGE.md](M4_LEDGE.md) for validation, the retail audit and limitations.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| EscapeAir input / entry / Anim / IASA / Phys / Coll | 80099A58 / 80099A9C / 80099BD0 / 80099C24 / 80099CEC / 80099D48 | `air_dodge.rs`, shared aerial input in `procs.rs`; typed momentum and timer, command-controlled hurt status |
+| LandingFallSpecial entry; Landing common callbacks | 800D5CB0; 800D5D3C / 800D5D78 / 800D5F18 / 800D5F38 | `landing.rs`, caller-supplied rate installed before frame-zero commands |
+| Jump / JumpAerial backward selection | 800CB250 / 800CBBC0 | `jump.rs`; facing is retained for both backward animations |
+| Ledge grab predicate / catch entry / snap | 80081298 / 80081370 / 80081544 | `ledge.rs`; map-derived ledge ID, animated TransN, cleared momentum |
+| CliffCatch Anim / Coll; Cliff camera | 80081504 / 800815E4; 80081644 | `ledge.rs`, `procs.rs`; ECB mode 0xA, stage notification and camera flag |
+| CliffWait entry / Anim / IASA / timeout check | 8009A804 / 8009A8D8 / 8009A8FC / 8009A9AC | `ledge.rs`; wait duration, neutral latch, timed intangibility, ordered option predicates |
+| CliffJump entry / phase transition / launch Phys | 8009B1B8 / 8009B2F8 / 8009B464 | `ledge.rs`; quick/slow descriptors, retained timer, first-tick gravity skip |
+| Airborne collision / ledge-cooldown branch | 80083090 / 800835B0 | `collision/air.rs`, `procs.rs`; platform pass with or without ledge detection |
+| EscapeAir ground contact | 80082C74 / 80081D0C | `collision/air.rs`; ordinary airborne collision without ledge grabs |
+| Ledge effect 0x41C; special landing 0x407 | efasync.c:521-523; 305-307 | `melee-sim::effects`; positional particle 93 / root-relative particle 60 |
+
+The recorded **262/263 are CliffJumpQuick1/Quick2**, not Slow1/Slow2 (260/261).
+The ledge ledger's dust calls at 246 and 283 are the launch and the landing.
+No supplied scene enters FallSpecial (35), so that animation-completion branch
+remains explicit. CliffClimb/Attack/Escape, timeout into DamageFall, occupied
+ledge arbitration, items/tethers and ceiling interactions remain unsupported.
+`CharacterCallbacks::on_landing` and `air_dodge_tether` own character branches.
+No new RNG site or particle arithmetic was needed; particle field dumps for
+these three scenes have not been supplied.
+
 ## M4-T4 Shield, spot dodge and roll
 
 `shield_fd_fox`, `spotdodge_fd_fox` and `roll_fd_fox` each match **300 ticks,
@@ -73,7 +102,7 @@ spawn requests and attachment matrices come from the port's own run. The
 shared replay retains the original dash AppSRT display-cache exclusion helper
 unchanged. HSD's existing particle paths cover all three dust descriptors.
 
-Backward jumps, FallAerial animation completion, character-specific/multijump
+FallAerial animation completion, character-specific/multijump
 entries, combat/item transitions, and ceiling impacts remain explicit
 unsupported paths. Full-hop release behavior has a callback test; the supplied
 300-tick retail jump scenario validates the short-hop/double-jump trajectory.

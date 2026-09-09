@@ -1,5 +1,6 @@
 //! Fighter ownership and scheduler callbacks for grounded, item-free Wait.
 //! Retail addresses and unsupported paths are documented at each entry point.
+pub mod air_dodge;
 pub mod assets;
 pub mod caches;
 pub mod commands;
@@ -10,6 +11,7 @@ pub mod escape;
 pub mod fall;
 pub mod jump;
 pub mod landing;
+pub mod ledge;
 mod procs;
 pub mod run;
 pub mod shield;
@@ -40,6 +42,36 @@ pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79.
+    fn air_dodge_tether(&self) {
+        if matches!(
+            self.kind(),
+            FighterKind::Link | FighterKind::CLink | FighterKind::Samus
+        ) {
+            unimplemented!("ftCo_AirCatch.c:54-79: character tether hook");
+        }
+    }
+
+    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83.
+    /// Character crates reset their airborne special resources here.
+    fn on_landing(&mut self, _allow_interrupt: bool) {
+        if matches!(
+            self.kind(),
+            FighterKind::Mario
+                | FighterKind::DrMario
+                | FighterKind::Peach
+                | FighterKind::Mars
+                | FighterKind::Emblem
+                | FighterKind::GameWatch
+                | FighterKind::Popo
+                | FighterKind::Nana
+                | FighterKind::Kirby
+                | FighterKind::Mewtwo
+        ) {
+            unimplemented!("ftCo_Landing.c:51-83: character landing reset hook");
+        }
+    }
+
     /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
     fn guard_variant(&self) {
         if self.kind() == FighterKind::Yoshi {
@@ -149,6 +181,13 @@ pub struct Status {
     pub shield_health: f32,
     /// x2064_ledgeCooldown (+2064).
     pub ledge_cooldown: i32,
+    /// x2228_b2: suppress grabs while another state owns ledge detection.
+    pub ledge_grab_disabled: bool,
+    /// x221D_b7: hanging/ledge-option state, cleared on motion entry.
+    pub on_ledge: bool,
+    /// x1990: timed intangibility, independent of subaction hurt status.
+    pub ledge_intangibility: i32,
+
     /// x2100 (+2100), -1 disables sword afterimages.
     pub sword_trail: i32,
     /// dmg.x18B8/x18BC: camera damage displacement.
@@ -167,6 +206,9 @@ impl Status {
             time_since_smash: -1.0,
             shield_health,
             ledge_cooldown: 0,
+            ledge_grab_disabled: false,
+            on_ledge: false,
+            ledge_intangibility: 0,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
@@ -266,6 +308,8 @@ impl hsd_anim::mtx::InverseTrig for RetailTrig {
 
 #[derive(Clone, Debug, Default)]
 pub struct CameraSubject {
+    /// CameraBox.on_ledge, set by ftCo_Cliff_Cam (80081644).
+    pub on_ledge: bool,
     pub position: Vec3,
     pub bone_position: Vec3,
     pub horizontal: Vec2,
@@ -281,6 +325,9 @@ pub enum MotionData {
     Entry(entry::EntryState),
     Guard(shield::GuardState),
     Escape(escape::EscapeState),
+    EscapeAir(air_dodge::AirDodgeState),
+    Cliff(ledge::CliffState),
+    CliffJump(ledge::CliffJumpState),
     Squat(squat::SquatState),
     Turn(turn::TurnState),
     Walk(walk::WalkState),

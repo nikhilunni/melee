@@ -145,6 +145,35 @@ impl Effects {
                 self.fighter_joints.insert(joint_id, (player, bone));
                 continue;
             }
+            if let EffectRequest::LedgeGrab { position } = request {
+                self.spawn_dust_generator(
+                    0x41C,
+                    position,
+                    fighter.physics.facing,
+                    bank,
+                    particles,
+                    rng,
+                )?;
+                continue;
+            }
+            if let EffectRequest::Landing {
+                id: 0x407, offset, ..
+            } = request
+            {
+                let joint = fighter.animation.root;
+                fighter.skeleton.setup_matrix(joint);
+                let mut position = Vec3::ZERO;
+                mtx_mult_vec(&fighter.skeleton.get(joint).mtx, &offset, &mut position);
+                self.spawn_dust_generator(
+                    0x407,
+                    position,
+                    fighter.physics.facing,
+                    bank,
+                    particles,
+                    rng,
+                )?;
+                continue;
+            }
             if let EffectRequest::Graphics {
                 id,
                 bone,
@@ -199,7 +228,9 @@ impl Effects {
             let matrix = fighter.skeleton.get(root).mtx;
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
-                EffectRequest::DestroyOwned | EffectRequest::Attached { .. } => unreachable!(),
+                EffectRequest::DestroyOwned
+                | EffectRequest::Attached { .. }
+                | EffectRequest::LedgeGrab { .. } => unreachable!(),
                 // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
                 EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {

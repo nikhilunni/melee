@@ -63,9 +63,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             panic!("KneeBend data missing")
         };
         let short_hop = squat.short_hop;
-        self.require_forward_jump(assets);
+        let state = self.jump_direction(assets, false);
         self.leave_ground();
-        self.change_motion_state(CommonMotionState::JumpF, assets)?;
+        self.change_motion_state(state, assets)?;
         // ftCo_800CB110: retail 800CB140/144,174/180,18C/198,1A8,1B8;
         // products and sum are separately rounded, with no fusion.
         let attrs = &self.attributes.jumping;
@@ -108,9 +108,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
     }
     /// ftCo_Jump_Enter / JumpAerial_Enter_Basic: separate fmuls at 800CBC0C.
-    fn require_forward_jump(&self, assets: &FighterAssets) {
-        if self.input.current.stick.x * self.physics.facing <= -assets.jumping.backward_threshold {
-            unimplemented!("ftCo_Jump.c:156-158 / ftCo_JumpAerial.c:176-178: backward jump");
+    fn jump_direction(&self, assets: &FighterAssets, aerial: bool) -> CommonMotionState {
+        // ftCo_Jump_Enter (800CB250), JumpAerial_Enter_Basic (800CBBC0):
+        // separate fmuls; choosing the backward animation does not turn facing.
+        let backward =
+            self.input.current.stick.x * self.physics.facing <= -assets.jumping.backward_threshold;
+        match (aerial, backward) {
+            (false, false) => CommonMotionState::JumpF,
+            (false, true) => CommonMotionState::JumpB,
+            (true, false) => CommonMotionState::JumpAerialF,
+            (true, true) => CommonMotionState::JumpAerialB,
         }
     }
     /// ftCo_JumpAerial.c:103-119 character dispatch, then
@@ -122,7 +129,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if style != super::AerialJumpStyle::Basic {
             unimplemented!("ftCo_JumpAerial.c:104-116: {style:?} double jump entry");
         }
-        self.require_forward_jump(assets);
+        let state = self.jump_direction(assets, true);
         self.leave_ground();
         let retained_drop_timer = self.retained_drop_timer();
         self.commands.variables[0] = 1;
@@ -133,7 +140,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             attrs.jump_v_initial_velocity * attrs.air_jump_v_multiplier,
             0.0,
         );
-        self.change_motion_state(CommonMotionState::JumpAerialF, assets)?;
+        self.change_motion_state(state, assets)?;
         self.physics.self_velocity = velocity;
         self.input.vertical.tilt = 0xFE;
         self.physics.jumps_used += 1;
@@ -145,7 +152,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Jump_Anim (800CB2F8), ftCo_JumpAerial_Anim (800CC388).
     pub(super) fn jump_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.animation.frames_remaining(&self.skeleton) {
-            if self.motion_state.id == CommonMotionState::JumpAerialF {
+            if matches!(
+                self.motion_state.id,
+                CommonMotionState::JumpAerialF | CommonMotionState::JumpAerialB
+            ) {
                 unimplemented!("ftCo_JumpAerial.c:275-276: animation end -> FallAerial");
             }
             self.change_motion_state(CommonMotionState::Fall, assets)?;

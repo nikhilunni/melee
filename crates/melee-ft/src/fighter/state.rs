@@ -20,6 +20,11 @@ pub enum AnimationCallback {
     GuardReflect,
     Escape,
     EscapeN,
+    EscapeAir,
+    CliffCatch,
+    CliffWait,
+    CliffJump1,
+    CliffJump2,
 
     KneeBend,
     Jump,
@@ -49,6 +54,11 @@ pub enum InputCallback {
     GuardReflect,
     Escape,
     EscapeN,
+    EscapeAir,
+    CliffCatch,
+    CliffWait,
+    CliffJump1,
+    CliffJump2,
 
     KneeBend,
     Jump,
@@ -78,6 +88,11 @@ pub enum PhysicsCallback {
     GuardReflect,
     Escape,
     EscapeN,
+    EscapeAir,
+    CliffCatch,
+    CliffWait,
+    CliffJump1,
+    CliffJump2,
 
     KneeBend,
     Jump,
@@ -107,6 +122,11 @@ pub enum CollisionCallback {
     GuardReflect,
     Escape,
     EscapeN,
+    EscapeAir,
+    CliffCatch,
+    CliffWait,
+    CliffJump1,
+    CliffJump2,
 
     KneeBend,
     Jump,
@@ -130,6 +150,7 @@ pub enum CollisionCallback {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CameraCallback {
     FollowFighter,
+    Cliff,
 }
 
 /// `motion_id` (+0x10), distinct from animation's submotion (+0x14).
@@ -140,6 +161,80 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const CLIFF_CATCH: Self = Self {
+        id: CommonMotionState::CliffCatch,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffCatch,
+            input: InputCallback::CliffCatch,
+            physics: PhysicsCallback::CliffCatch,
+            collision: CollisionCallback::CliffCatch,
+            camera: CameraCallback::Cliff,
+        },
+    };
+    pub const CLIFF_WAIT: Self = Self {
+        id: CommonMotionState::CliffWait,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffWait,
+            input: InputCallback::CliffWait,
+            physics: PhysicsCallback::CliffWait,
+            collision: CollisionCallback::CliffWait,
+            camera: CameraCallback::Cliff,
+        },
+    };
+    pub const CLIFF_JUMP_1: Self = Self {
+        id: CommonMotionState::CliffJumpQuick1,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffJump1,
+            input: InputCallback::CliffJump1,
+            physics: PhysicsCallback::CliffJump1,
+            collision: CollisionCallback::CliffJump1,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const CLIFF_JUMP_2: Self = Self {
+        id: CommonMotionState::CliffJumpQuick2,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::CliffJump2,
+            input: InputCallback::CliffJump2,
+            physics: PhysicsCallback::CliffJump2,
+            collision: CollisionCallback::CliffJump2,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const CLIFF_JUMP_SLOW_1: Self = Self {
+        id: CommonMotionState::CliffJumpSlow1,
+        ..Self::CLIFF_JUMP_1
+    };
+    pub const CLIFF_JUMP_SLOW_2: Self = Self {
+        id: CommonMotionState::CliffJumpSlow2,
+        ..Self::CLIFF_JUMP_2
+    };
+
+    /// ftmotionstates.c:2731-2739, EscapeAir (236).
+    pub const ESCAPE_AIR: Self = Self {
+        id: CommonMotionState::EscapeAir,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::EscapeAir,
+            input: InputCallback::EscapeAir,
+            physics: PhysicsCallback::EscapeAir,
+            collision: CollisionCallback::EscapeAir,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const JUMP_BACK: Self = Self {
+        id: CommonMotionState::JumpB,
+        ..Self::JUMP
+    };
+    pub const JUMP_AERIAL_BACK: Self = Self {
+        id: CommonMotionState::JumpAerialB,
+        ..Self::JUMP_AERIAL
+    };
+    /// ftmotionstates.c:608-616: shares all four Landing callbacks.
+    pub const LANDING_FALL_SPECIAL: Self = Self {
+        id: CommonMotionState::LandingFallSpecial,
+        ..Self::LANDING
+    };
+
     pub const GUARD_ON: Self = Self {
         id: CommonMotionState::GuardOn,
         callbacks: StateCallbacks {

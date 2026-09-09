@@ -9,6 +9,8 @@ pub enum EffectRequest {
     Shield { id: u16, bone: usize },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
+    /// ftCliffCommon_80081370: async kind 2 with no bone, absolute position.
+    LedgeGrab { position: Vec3 },
     /// efAsync kind 0 passes the live fighter joint without offset RNG.
     Attached { id: u16, bone: usize },
     /// efAsync kinds 2/5/6 retain the bone and local offset until s_link 9.

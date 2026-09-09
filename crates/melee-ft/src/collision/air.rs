@@ -29,17 +29,26 @@ pub fn collide_fall(
     map: &mut CollMap,
     tree: &mut JObjTree,
     root: JObjId,
+    can_grab_ledge: bool,
 ) -> bool {
     let cd = &mut environment.data;
     cd.last_pos = cd.cur_pos;
     cd.cur_pos = state.position;
     set_facing_dir(cd, if state.facing < 0.0 { -1 } else { 1 });
     let pose = EcbPose::read(tree, root, cd);
-    let landed = map.air_collide_platform_pass_ledge(
-        cd,
-        Some(&mut |line| line != -1),
-        Some(&|i| pose.position(i)),
-    );
+    let landed = if can_grab_ledge {
+        map.air_collide_platform_pass_ledge(
+            cd,
+            Some(&mut |line| line != -1),
+            Some(&|i| pose.position(i)),
+        )
+    } else {
+        map.air_collide_platform_pass(
+            cd,
+            Some(&mut |line| line != -1),
+            Some(&|i| pose.position(i)),
+        )
+    };
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
     landed
@@ -65,5 +74,24 @@ pub fn collide_entry(
         map.ground_collide_box(cd, &ecb)
     };
     state.position = cd.cur_pos;
+    landed
+}
+
+/// ft_80082C74 -> ft_80081D0C (80081D0C): air dodge uses ordinary airborne
+/// collision, without ledge grabs or platform-drop filtering.
+pub fn collide_air_dodge(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+) -> bool {
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let pose = EcbPose::read(tree, root, cd);
+    let landed = map.air_collide_pass(cd, Some(&|i| pose.position(i)));
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
     landed
 }

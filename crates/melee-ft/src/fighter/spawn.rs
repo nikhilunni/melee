@@ -284,19 +284,36 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         start: f32,
     ) -> Result<()> {
+        self.change_motion_state_with_rate(state, assets, start, 1.0)
+    }
+
+    /// Fighter_ChangeMotionState (800693AC), fighter.c:1268-1296:
+    /// install the caller's rate before frame-zero animation and commands.
+    pub(super) fn change_motion_state_with_rate(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+    ) -> Result<()> {
         self.status.require_idle();
         self.shield.clear_collision();
         self.status.ignore_fighter_nudge = false;
+        self.status.on_ledge = false;
         self.commands.allow_interrupt = false;
         self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         self.physics.fast_fall = false;
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
         // ordinary motion entry clears it (fighter.c:1155-1157).
-        if state != CommonMotionState::JumpAerialF
-            && !(state == CommonMotionState::SquatWait
-                && self.motion_state.id == CommonMotionState::Squat)
-        {
+        let preserve_name_tag = matches!(
+            state,
+            CommonMotionState::JumpAerialF
+                | CommonMotionState::JumpAerialB
+                | CommonMotionState::CliffWait
+        ) || (state == CommonMotionState::SquatWait
+            && self.motion_state.id == CommonMotionState::Squat);
+        if !preserve_name_tag {
             self.status.name_tag_timer = 0;
         }
         if self.effect_state.destroy_on_state_change {
@@ -333,6 +350,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::EscapeF => (MotionState::ESCAPE_F, 42),
             CommonMotionState::EscapeB => (MotionState::ESCAPE_B, 43),
             CommonMotionState::EscapeN => (MotionState::ESCAPE_N, 41),
+            CommonMotionState::EscapeAir => (MotionState::ESCAPE_AIR, 44),
+            CommonMotionState::CliffCatch => (MotionState::CLIFF_CATCH, 216),
+            CommonMotionState::CliffWait => (MotionState::CLIFF_WAIT, 217),
+            CommonMotionState::CliffJumpQuick1 => (MotionState::CLIFF_JUMP_1, 227),
+            CommonMotionState::CliffJumpQuick2 => (MotionState::CLIFF_JUMP_2, 228),
+            CommonMotionState::CliffJumpSlow1 => (MotionState::CLIFF_JUMP_SLOW_1, 225),
+            CommonMotionState::CliffJumpSlow2 => (MotionState::CLIFF_JUMP_SLOW_2, 226),
             CommonMotionState::Dash => (MotionState::DASH, 12),
             CommonMotionState::Run => (MotionState::RUN, 13),
             CommonMotionState::RunBrake => (MotionState::RUN_BRAKE, 14),
@@ -345,10 +369,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             CommonMotionState::KneeBend => (MotionState::KNEE_BEND, 15),
             CommonMotionState::JumpF => (MotionState::JUMP, 16),
+            CommonMotionState::JumpB => (MotionState::JUMP_BACK, 17),
+            CommonMotionState::JumpAerialB => (MotionState::JUMP_AERIAL_BACK, 19),
             CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
             CommonMotionState::Fall => (MotionState::FALL, 20),
             CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
             CommonMotionState::Landing => (MotionState::LANDING, 35),
+            CommonMotionState::LandingFallSpecial => (MotionState::LANDING_FALL_SPECIAL, 36),
             _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
         };
         self.motion_state = motion_state;
@@ -389,10 +416,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             &mut self.skeleton,
             &assets.motions[&animation_id],
             start,
-            1.0,
+            rate,
         )?;
-        self.animation.set_rate(&mut self.skeleton, 1.0, false);
-        self.animation.frame = start - 1.0;
+        self.animation.set_rate(&mut self.skeleton, rate, false);
+        self.animation.frame = start - rate;
         self.animation.remainder = 0.0;
         self.commands.restart(assets.command_entries[&animation_id]);
         // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:

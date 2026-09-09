@@ -12,12 +12,16 @@ fn local_scenario_named(name: &str) -> Option<Scenario> {
 }
 
 fn movement_gate(name: &str) {
+    movement_gate_ticks(name, 300);
+}
+
+fn movement_gate_ticks(name: &str, ticks: usize) {
     let Some(scenario) = local_scenario_named(name) else {
         return;
     };
-    assert_eq!(scenario.frames, 300);
+    assert_eq!(scenario.frames as usize, ticks);
     trace::gate(&scenario).unwrap();
-    eprintln!("300 ticks, 49 keys, 0 divergences");
+    eprintln!("{ticks} ticks, 49 keys, 0 divergences");
 }
 
 #[test]
@@ -39,6 +43,10 @@ fn dash_fd_fox_300() {
 }
 
 fn particle_rng_sites_match_the_retail_ledger_in_order(name: &str) {
+    particle_rng_sites_for_ticks(name, 300);
+}
+
+fn particle_rng_sites_for_ticks(name: &str, expected_ticks: usize) {
     use melee_sim::{frame::Simulation, initial_state::InitialState, inputs::PadScript};
     let Some(scenario) = local_scenario_named(name) else {
         return;
@@ -73,7 +81,7 @@ fn particle_rng_sites_match_the_retail_ledger_in_order(name: &str) {
         );
         ticks += 1;
     }
-    assert_eq!(ticks, 300);
+    assert_eq!(ticks, expected_ticks);
 }
 
 #[test]
@@ -115,4 +123,31 @@ fn roll_fd_fox_300() {
 #[test]
 fn roll_particle_rng_sites_match_the_retail_ledger_in_order() {
     particle_rng_sites_match_the_retail_ledger_in_order("roll_fd_fox");
+}
+
+#[test]
+fn airdodge_fd_fox_300() {
+    movement_gate_ticks("airdodge_fd_fox", 300);
+}
+#[test]
+fn airdodge_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("airdodge_fd_fox", 300);
+}
+
+#[test]
+fn wavedash_fd_fox_300() {
+    movement_gate_ticks("wavedash_fd_fox", 300);
+}
+#[test]
+fn wavedash_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("wavedash_fd_fox", 300);
+}
+
+#[test]
+fn ledge_fd_fox_420() {
+    movement_gate_ticks("ledge_fd_fox", 420);
+}
+#[test]
+fn ledge_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_for_ticks("ledge_fd_fox", 420);
 }

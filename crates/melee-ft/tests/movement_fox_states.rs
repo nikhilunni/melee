@@ -124,3 +124,73 @@ fn spotdodge_fox_state_callbacks() {
 fn roll_fox_state_callbacks() {
     replay_state_callbacks("roll", "ledger");
 }
+
+#[test]
+fn airdodge_fox_state_callbacks() {
+    replay_state_callbacks("airdodge", "ledger");
+}
+
+#[test]
+fn wavedash_fox_state_callbacks() {
+    replay_state_callbacks("wavedash", "ledger");
+}
+
+#[test]
+fn ledge_fox_state_callbacks() {
+    replay_state_callbacks("ledge", "ledger");
+}
+
+/// Follow the recorded approach using only its initial boundary and pad inputs,
+/// then vary the grab gates. A one-frame cooldown expires before collision.
+#[test]
+fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
+    use fighter_support::{harness, json_lines, raw, replay::recorded_pad, Fixture};
+    use gekko_math::HsdRng;
+    use hsd_types::Vec3;
+    use melee_types::CommonMotionState as S;
+    let path = harness().join("traces/ledge_fd_fox.tick.raw.jsonl");
+    let pads = harness().join("traces/ledge_fd_fox.tick.expected.jsonl");
+    if !path.exists() || !pads.exists() {
+        eprintln!("skipping: local ledge approach absent");
+        return;
+    }
+    let Some(mut fixture) = Fixture::load() else {
+        return;
+    };
+    let boundary = raw(&json_lines(&path)[0], 0);
+    let pads = json_lines(&pads);
+    for (cooldown, down, disabled, catches) in [
+        (0, false, false, true),
+        (1, false, false, true),
+        (2, false, false, false),
+        (0, true, false, false),
+        (0, false, true, false),
+    ] {
+        let mut fighter = fixture.import(&boundary);
+        let mut rng = HsdRng::new(1);
+        for (tick, pad) in pads.iter().enumerate().take(71).skip(1) {
+            fighter.proc_anim(&fixture.assets, &mut rng).unwrap();
+            fighter.proc_input(&fixture.assets, &recorded_pad(pad, 0));
+            if tick == 70 {
+                fighter.status.ledge_cooldown = cooldown;
+            }
+            fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
+            if tick == 70 {
+                fighter.status.ledge_grab_disabled = disabled;
+                if down {
+                    fighter.input.current.stick.y = -fixture.assets.ledge.grab_down_threshold;
+                }
+            }
+            fighter
+                .proc_map_with_assets(&fixture.assets, &mut fixture.map, &mut rng)
+                .unwrap();
+            fighter.resolve_graphics_commands(&fixture.assets, &mut rng);
+        }
+        assert_eq!(
+            fighter.motion_state.id,
+            if catches { S::CliffCatch } else { S::JumpB }
+        );
+        assert_eq!(fighter.physics.facing.to_bits(), 1.0f32.to_bits());
+        assert_eq!(fighter.status.ledge_cooldown, (cooldown - 1).max(0));
+    }
+}

@@ -227,7 +227,9 @@ fn replay_config(
                         FighterProc::HitDetection => f.proc_hit_detection(),
                         FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets),
                         FighterProc::Dynamics => f.proc_dynamics_with_map(&mut fixture.map),
-                        FighterProc::Camera => f.proc_camera(&fixture.assets, 1.0),
+                        FighterProc::Camera => {
+                            f.proc_camera_with_map(&fixture.assets, 1.0, &mut fixture.map)
+                        }
                         FighterProc::PlayerMirror => f.proc_player_mirror(),
                     }));
                 let count = f.resolve_graphics_commands(&fixture.assets, &mut rng);
@@ -400,7 +402,7 @@ pub fn compared_component(flags: u32, field: &str, index: usize) -> bool {
 }
 
 /// Decode only the recorded pad input, never subsequent fighter state.
-fn recorded_pad(record: &serde_json::Value, port: usize) -> PadSample {
+pub fn recorded_pad(record: &serde_json::Value, port: usize) -> PadSample {
     use melee_ft::input::{Buttons, Stick};
     let Some(inputs) = record.get("inputs") else {
         return PadSample::default();
@@ -470,6 +472,40 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         fighter.input.vertical.tilt, bytes[0x671],
         "vertical input age tick {tick} p{player}"
     );
+    assert_eq!(
+        fighter.status.ledge_cooldown as u32,
+        word(bytes, 0x2064),
+        "ledge cooldown tick {tick}"
+    );
+    assert_eq!(
+        fighter.status.ledge_intangibility as u32,
+        word(bytes, 0x1990),
+        "ledge intangibility tick {tick}"
+    );
+    assert_eq!(
+        fighter.status.on_ledge,
+        bytes[0x221D] & 1 != 0,
+        "ledge flag tick {tick}"
+    );
+    let hurt = match fighter.commands.hurt_status {
+        melee_ft::fighter::escape::HurtStatus::Normal => 0,
+        melee_ft::fighter::escape::HurtStatus::Invincible => 1,
+        melee_ft::fighter::escape::HurtStatus::Intangible => 2,
+    };
+    assert_eq!(
+        hurt,
+        word(bytes, 0x1988),
+        "subaction hurt status tick {tick}"
+    );
+    assert_eq!(
+        if fighter.status.ledge_intangibility > 0 {
+            2
+        } else {
+            0
+        },
+        word(bytes, 0x198C),
+        "timed hurt status tick {tick}"
+    );
     match (&fighter.state_data, fighter.motion_state.id) {
         (
             MotionData::Guard(guard),
@@ -526,6 +562,63 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
             };
             assert_eq!(hurt, word(bytes, 0x1988), "hurt status tick {tick}");
         }
+        (MotionData::EscapeAir(dodge), S::EscapeAir) => {
+            assert_eq!(
+                dodge.item_throw_frames as u32,
+                word(bytes, 0x2340),
+                "air dodge timer tick {tick}"
+            );
+            for (axis, velocity) in [
+                dodge.saved_velocity.x,
+                dodge.saved_velocity.y,
+                dodge.saved_velocity.z,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                check_float("saved air momentum", velocity, 0x2344 + 4 * axis);
+            }
+        }
+        (
+            MotionData::Cliff(cliff),
+            S::CliffCatch | S::CliffWait | S::CliffJumpQuick1 | S::CliffJumpSlow1,
+        ) => {
+            assert_eq!(
+                cliff.ledge_id as u32,
+                word(bytes, 0x2340),
+                "ledge id tick {tick}"
+            );
+            if fighter.motion_state.id != S::CliffCatch {
+                check_float("ledge wait timer", cliff.wait_frames, 0x2344);
+                assert_eq!(
+                    u32::from(cliff.neutral_seen),
+                    word(bytes, 0x2348),
+                    "ledge neutral latch tick {tick}"
+                );
+            }
+        }
+        (MotionData::CliffJump(jump), S::CliffJumpQuick2 | S::CliffJumpSlow2) => {
+            assert_eq!(
+                u32::from(jump.physics_started),
+                word(bytes, 0x2340),
+                "ledge launch latch tick {tick}"
+            );
+            check_float("retained ledge timer", jump.retained_wait_frames, 0x2344);
+        }
+        (
+            MotionData::Landing {
+                allow_interrupt,
+                retained_drop_timer,
+            },
+            S::Landing | S::LandingFallSpecial,
+        ) => {
+            assert_eq!(
+                u32::from(*allow_interrupt),
+                word(bytes, 0x2340),
+                "landing interruption tick {tick}"
+            );
+            check_float("retained landing word", *retained_drop_timer, 0x2344);
+        }
         (MotionData::KneeBend(squat), S::KneeBend) => {
             assert_eq!(
                 u32::from(squat.short_hop),
@@ -538,7 +631,7 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
             };
             assert_eq!(input, word(bytes, 0x2344), "jump input tick {tick}");
         }
-        (MotionData::Jump(jump), S::JumpF) => {
+        (MotionData::Jump(jump), S::JumpF | S::JumpB) => {
             assert_eq!(u32::from(jump.short_hop), word(bytes, 0x2340));
             assert_eq!(u32::from(jump.physics_started), word(bytes, 0x2344));
             check_float("jump multiplier", jump.multiplier, 0x2348);
