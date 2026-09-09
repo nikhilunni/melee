@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 mod collision;
+pub mod replay;
 pub mod saved_pose;
 use ft_fox::{attributes::read_fox_attributes, init::Fox};
 use hsd_anim::load::load_joint_tree;

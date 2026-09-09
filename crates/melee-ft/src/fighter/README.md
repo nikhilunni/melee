@@ -1,5 +1,12 @@
 # Fighter ownership and the T10 idle path
 
+Current dynamics work: the un-ignored full `start_fox_600` replay now passes.
+The strict 130-tick match-start and 8-tick idle bone tests still fail; the
+first match-start difference is tick 1, bone 17's unused `rotate[3]` word.
+See [the dynamics report](../dynamics/README.md) for implementation, fusion
+audit, exact differences and validation. The text below records the earlier
+callback/idle milestone and its then-unimplemented dynamics boundary.
+
 The match-start extension and its remaining full-proc blocker are documented
 in [START_FOX.md](START_FOX.md). The T10 results below describe the original
 idle gate; they do not certify the match-start dynamics path.

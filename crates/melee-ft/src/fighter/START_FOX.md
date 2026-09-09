@@ -1,5 +1,12 @@
 # Fox match-start callback port
 
+Current dynamics work: the un-ignored full `start_fox_600` replay now passes.
+The strict 130-tick match-start and 8-tick idle bone tests still fail; the
+first match-start difference is tick 1, bone 17's unused `rotate[3]` word.
+See [the dynamics report](../dynamics/README.md) for implementation, fusion
+audit, exact differences and validation. The text below records the earlier
+callback/idle milestone and its then-unimplemented dynamics boundary.
+
 The requested state callbacks match both Foxes for all 600 records, with all
 24 fields per fighter and all 16 fighter RNG draws. **Full-proc acceptance is
 not complete.** `start_fox_600` still calls every scheduler proc and stops at

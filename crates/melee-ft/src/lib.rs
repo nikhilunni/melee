@@ -10,3 +10,5 @@ pub mod collision;
 pub mod physics;
 
 pub mod fighter;
+
+pub mod dynamics;

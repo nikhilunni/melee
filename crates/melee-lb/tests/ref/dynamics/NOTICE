@@ -1,0 +1,12 @@
+lbvector.c.inc and spring_step.c.inc are verbatim excerpts from the pinned
+third_party/melee-decomp/src/melee/lb/{lbvector.c,lb_00F9.c} (doldecomp/melee,
+CC0-1.0). retail_vector.c.inc differs only at the audited fused operations.
+The driver reuses the existing retail MSL/lbtrigf and Gekko estimate shims.
+
+Audit: cd harness && UV_CACHE_DIR=/tmp/melee-uv-cache uv run python asm.py
+lbVector_Normalize lbVector_Angle lbVector_RotateAboutUnitAxis
+lbVector_CreateEulerMatrix lb_8001044C --fused
+
+This tests the pure directional force/constraint portion of one bone step,
+without external forces, joint matrices or collision queries. It is not a
+replacement for the full tick-aligned bone oracle.

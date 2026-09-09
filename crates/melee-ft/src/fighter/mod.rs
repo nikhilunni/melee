@@ -176,7 +176,11 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub commands: commands::CommandState,
     /// x221C_u16_y, three ground-IK enable bits.
     pub ground_pose: GroundPoseFlags,
-    /// dynamic_bone_sets[].bone_id (+2F0, stride 18); 0x100 disables solving.
+    /// Owned DynamicsDesc chains from dynamic_bone_sets[].dyn_desc.
+    pub dynamics: Vec<melee_lb::dynamics::DynamicBoneSet>,
+    /// Fighter +2228 bit 1; use the fighter-height plane instead of mpCheckFloor.
+    pub dynamics_use_floor_plane: bool,
+    /// dynamic_bone_sets[].bone_id (+2F0, stride 0x18); 0x100 disables solving.
     pub dynamics_first_bone: Vec<u32>,
     /// Player_80032828 / Player_SetFacingDirectionConditional mirror.
     pub player_position: Vec3,

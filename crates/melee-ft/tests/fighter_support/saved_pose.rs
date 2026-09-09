@@ -71,6 +71,36 @@ impl SavedPose {
         assert_eq!(&self.bytes(address, 256)[..256], &raw[..256]);
         // These animation and command scalars must describe the same boundary.
         assert_eq!(self.bytes(address + 0x894, 0x18), &raw[0x894..0x8AC]);
+        fighter.dynamics_use_floor_plane = raw[0x2228] & 0x40 != 0;
+        for (i, set) in fighter.dynamics.iter_mut().enumerate() {
+            let desc = 0x2F4 + i * 0x18;
+            let mut address = word(raw, desc);
+            assert_eq!(word(raw, desc + 4) as usize, set.bones.len());
+            set.multipliers = vector(raw, desc + 8);
+            for bone in &mut set.bones {
+                let bytes = self.bytes(address, 0x98);
+                bone.rest_rotation = Quaternion::new(
+                    float(bytes, 4),
+                    float(bytes, 8),
+                    float(bytes, 12),
+                    float(bytes, 16),
+                );
+                bone.rest_translate = vector(bytes, 0x14);
+                bone.rest_scale = vector(bytes, 0x20);
+                bone.position = vector(bytes, 0x2C);
+                bone.velocity_axis = vector(bytes, 0x38);
+                bone.angular_velocity = float(bytes, 0x44);
+                bone.length = float(bytes, 0x48);
+                bone.dominant_axis = word(bytes, 0x54) as i32;
+                bone.gravity = float(bytes, 0x8C);
+                // Static parameters must agree with the ftData reader.
+                assert_eq!(bone.parameters.stiffness.to_bits(), word(bytes, 0x4C));
+                assert_eq!(bone.parameters.damping.to_bits(), word(bytes, 0x84));
+                assert_eq!(bone.parameters.max_step.to_bits(), word(bytes, 0x88));
+                address = word(bytes, 0x90);
+            }
+            assert_eq!(address, 0);
+        }
         let parts = word(raw, 0x5E8);
         for (i, part) in fighter.animation.parts.iter_mut().enumerate() {
             let data = self.bytes(parts + i as u32 * 16, 16);

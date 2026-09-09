@@ -195,7 +195,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
             player.scale,
             assets.attributes.size.weight,
         );
+        let dynamics = assets
+            .dynamics
+            .iter()
+            .map(|desc| {
+                let joint = skeleton
+                    .bone(root, desc.root)
+                    .expect("missing dynamics root");
+                melee_lb::dynamics::DynamicBoneSet::new(
+                    &mut skeleton,
+                    joint,
+                    &desc.springs,
+                    desc.multipliers,
+                )
+            })
+            .collect();
         Self {
+            dynamics,
+            dynamics_use_floor_plane: false,
             kind: character.kind(),
             spawn_number: 0,
             physics,
@@ -268,23 +285,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
         self.motion_state = motion_state;
         let dynamic = assets.motions[&animation_id].flags.0 & 0x1000_0000 == 0;
-        for (i, &bone) in self.bones.dynamics_roots.iter().enumerate() {
+        for (i, set) in self.dynamics.iter_mut().enumerate() {
             self.dynamics_first_bone[i] = if dynamic { 0 } else { 0x100 };
-            let mut joint = self.skeleton.bone(self.animation.root, bone as usize);
-            while let Some(id) = joint {
-                let part = self
-                    .animation
-                    .parts
-                    .iter_mut()
-                    .find(|p| p.joint == id)
-                    .unwrap();
-                if dynamic {
-                    part.flags.0 |= PartFlags::LOCKED;
-                } else {
-                    part.flags.0 &= !PartFlags::LOCKED;
-                }
-                joint = self.skeleton.child(id);
-            }
+            crate::dynamics::select(
+                set,
+                &mut self.skeleton,
+                &mut self.animation.parts,
+                dynamic,
+                0,
+            );
         }
         self.ground_pose = GroundPoseFlags::default();
         self.status.sword_trail = -1;

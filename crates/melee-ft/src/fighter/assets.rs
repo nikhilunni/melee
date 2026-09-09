@@ -32,6 +32,7 @@ pub struct FighterAssets {
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub hurtboxes: Vec<super::caches::Hurtbox>,
+    pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
     pub wait_choices: Vec<WaitEntry>,
@@ -141,6 +142,7 @@ impl FighterAssets {
                 }
             },
             hurtboxes: read_hurtboxes(fox, root)?,
+            dynamics: crate::dynamics::read_sets(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
             motions: [2, 3, 20, 35, 238]
                 .into_iter()

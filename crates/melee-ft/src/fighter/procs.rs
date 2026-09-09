@@ -442,10 +442,57 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 collider.offset,
             );
         }
-        for &bone in &self.dynamics_first_bone {
-            if bone <= 0xFF {
-                unimplemented!("lb_00F9.c:472-935: active dynamic-bone solver");
-            }
+        self.solve_dynamics(&mut |_, _| {
+            panic!("active grounded dynamics requires proc_dynamics_with_map")
+        });
+    }
+    /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
+    pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
+        if self.status.disabled {
+            return;
+        }
+        self.status.require_idle();
+        for collider in &mut self.dynamic_colliders {
+            collider.position = caches::bone_position(
+                &mut self.skeleton,
+                self.animation.root,
+                collider.bone,
+                collider.offset,
+            );
+        }
+        self.solve_dynamics(&mut |a, b| {
+            map.check_floor(a.x, a.y, b.x, b.y, 0.1, -1, -1, -1, None)
+                .map(|hit| hit.pos)
+        });
+    }
+    fn solve_dynamics(&mut self, floor: &mut impl FnMut(Vec3, Vec3) -> Option<Vec3>) {
+        use melee_lb::dynamics::{Collider, SolverEnvironment};
+        let colliders: Vec<_> = self
+            .dynamic_colliders
+            .iter()
+            .map(|c| Collider {
+                position: c.position,
+                radius: c.radius,
+            })
+            .collect();
+        let environment = SolverEnvironment {
+            disabled: false,
+            colliders: &colliders,
+            forces: &[],
+            first_force_bone: 0,
+            ground_check: self.player.scale == 1.0
+                && self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
+        };
+        let plane = self.dynamics_use_floor_plane;
+        let height = self.physics.position.y;
+        for (set, &first) in self.dynamics.iter_mut().zip(&self.dynamics_first_bone) {
+            set.solve(&mut self.skeleton, first, &environment, &mut |a, b| {
+                if plane {
+                    melee_lb::dynamics::floor_plane(a, b, height)
+                } else {
+                    floor(a, b)
+                }
+            });
         }
     }
     /// Fighter_UnkCallCameraCallback_8006D9EC (0x8006D9EC), s_link 18.
