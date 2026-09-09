@@ -30,6 +30,16 @@ The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
 attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
 remain explicit unsupported branches. No general moveset completeness is claimed.
 
+## Lane C: Captain Falcon
+
+All eighteen Falcon idle/start/movement scenes and their ordered particle RNG
+ledgers pass. The mixed Falcon/Fox bone oracle compares 169258 SRT words;
+the full idle particle replay compares 858792 fields. The new `ft-captain`
+crate uses existing character hooks. Shared asset loading now follows every
+Wait/SquatWait choice, and the importer completes the idle save's interrupted
+spherical emission from saved CPU/stack operands. See [M4_FALCON.md](M4_FALCON.md)
+and [FALCON_DATA.md](../../../../docs/FALCON_DATA.md).
+
 ## Lane C: Falco
 
 All eighteen Falco idle/start/movement scenes pass at 49 keys per tick, with

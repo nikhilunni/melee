@@ -1,6 +1,7 @@
 //! Restore the owned, local savestate boundary. See ../M3.md.
 mod collision;
 mod fighter;
+mod particle_resume;
 pub(crate) use fighter::import as import_fighter;
 pub(crate) use melee_mp::CollMap;
 pub(crate) use saved_pose::SavedPose;
@@ -45,6 +46,7 @@ pub struct InitialState {
     pub(crate) map: melee_mp::CollMap,
     pub(crate) stage: crate::scene_stage::SceneStage,
     pub(crate) particles: ParticleSystem,
+    pub(crate) pending_emission: Option<particle_resume::PendingEmission>,
     pub(crate) stage_animations:
         std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
     pub(crate) effects: crate::effects::Effects,
@@ -53,7 +55,7 @@ pub struct InitialState {
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
     pub(crate) selected_music: Option<i32>,
     /// First unfinished phase: 0 between idle ticks, 14 inside the older idle
-    /// capture, or 24 before the first match-start scheduler pass.
+    /// capture, 15 within particle emission, or 24 before match start.
     pub(crate) resume_s_link: u8,
 }
 fn first_json(path: &Path) -> Result<Json> {
@@ -122,6 +124,7 @@ impl InitialState {
         );
         let current_proc = word(saved.bytes(0x804D_7838, 4), 0);
         let saved_link = word(saved.bytes(0x804D_7834, 4), 0);
+        let mut partial_emission = false;
         let resume_s_link = if current_proc == 0 && saved_link == 24 {
             // Entry is observed before this match's scheduler starts. An idle
             // savestate between ticks instead needs one complete scheduler pass.
@@ -137,12 +140,22 @@ impl InitialState {
             );
             let proc = saved.bytes(current_proc, 0x18);
             ensure!(
-                word(saved.bytes(0x804D_7834, 4), 0) == 14
-                    && proc[12] == 14
-                    && word(proc, 0x14) == 0x8006_D1EC
-                    && word(proc, 0x10) == word(&bytes[0], 0),
-                "unsupported scheduler resume boundary"
+                u32::from(proc[12]) == saved_link,
+                "saved scheduler link mismatch"
             );
+            match (saved_link, word(proc, 0x14)) {
+                (14, 0x8006_D1EC) => {
+                    ensure!(
+                        word(proc, 0x10) == word(&bytes[0], 0),
+                        "unsupported ProcessHit owner"
+                    );
+                }
+                (15, 0x8005_C9A4) => partial_emission = true,
+                _ => anyhow::bail!(
+                    "unsupported scheduler resume boundary: link {saved_link}, callback {:08X}",
+                    word(proc, 0x14)
+                ),
+            }
             proc[12]
         };
         // The raw tick-zero row locates MEM1; it may be one full tick after
@@ -250,6 +263,9 @@ impl InitialState {
                 std::array::from_fn(|c| f32::from_bits(words[r * 4 + c].as_u64().unwrap() as u32))
             })));
         }
+        let pending_emission = partial_emission
+            .then(|| particle_resume::PendingEmission::restore(&saved, &particles, &metadata))
+            .transpose()?;
         let (stage, mut stage_animations) = stage::restore_scene(
             &saved,
             &assets,
@@ -289,6 +305,7 @@ impl InitialState {
             map,
             stage,
             particles,
+            pending_emission,
             rng: HsdRng::new(seed),
             resume_s_link,
             stage_animations,

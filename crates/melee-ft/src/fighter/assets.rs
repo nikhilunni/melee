@@ -94,13 +94,27 @@ impl FighterAssets {
             .ok_or("missing PlCo root")?;
         let common_data = common.link(common_root)?.ok_or("missing common data")?;
         let motion_table = table.table_offset.ok_or("missing motion table")?;
+        // ftwaitanim.c chooses from each character's sentinel-terminated
+        // tables. Load every referenced idle/squat motion and its script.
+        let wait_choices = read_wait_table(data, root)?;
+        let squat_choices = crate::desc::playback::read_squat_table(data, root)?;
+        let idle_motions: BTreeSet<_> = wait_choices
+            .iter()
+            .chain(squat_choices.iter().flatten())
+            .filter(|entry| entry.motion >= 0)
+            .map(|entry| entry.motion as u32)
+            .collect();
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
             41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 169,
             209,
-        ] {
+        ]
+        .into_iter()
+        .chain(idle_motions.iter().copied())
+        .collect::<BTreeSet<_>>()
+        {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -207,6 +221,9 @@ impl FighterAssets {
                 225, 226, 227, 228, 238, 46, 169, 209,
             ]
             .into_iter()
+            .chain(idle_motions.into_iter().map(|id| id as usize))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
             .collect::<Result<_>>()?,
             rotating_effect_bones: {
@@ -255,8 +272,8 @@ impl FighterAssets {
                 platform_drop_delay: common.reader().f32(common_data + 0x470)?,
                 platform_drop_velocity: common.reader().f32(common_data + 0x46C)?,
             },
-            squat_choices: crate::desc::playback::read_squat_table(data, root)?,
-            wait_choices: read_wait_table(data, root)?,
+            squat_choices,
+            wait_choices,
             commands,
             instruction_offsets: words.keys().copied().collect(),
             motion_table_offset: motion_table,

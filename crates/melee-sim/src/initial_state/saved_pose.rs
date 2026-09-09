@@ -44,6 +44,40 @@ impl SavedPose {
         let offset = self.ram_offset + (address - 0x8000_0000) as usize;
         &self.payload[offset..offset + length]
     }
+    /// Dolphin PowerPCManager::DoState serializes GPR[32], PC, NPC in
+    /// host byte order. Locate that record using retail's immutable SDA bases,
+    /// as MEM1 is located by its Fighter prefix, instead of a version-specific
+    /// offset into the emulator payload. Require one unique register record.
+    pub(super) fn cpu_general_registers(&self) -> anyhow::Result<([u32; 32], u32)> {
+        let mut matches = self
+            .payload
+            .windows(48)
+            .enumerate()
+            .filter_map(|(offset, bytes)| {
+                // r2 = _SDA2_BASE_, r13 = _SDA_BASE_ in NTSC-U 1.02.
+                if bytes[..4] != 0x804D_F9E0_u32.to_le_bytes()
+                    || bytes[44..48] != 0x804D_B6A0_u32.to_le_bytes()
+                {
+                    return None;
+                }
+                let start = offset.checked_sub(8)?;
+                let record = self.payload.get(start..start + 136)?;
+                let read = |i| u32::from_le_bytes(record[i..i + 4].try_into().unwrap());
+                let registers: [u32; 32] = std::array::from_fn(|i| read(i * 4));
+                let pc = read(128);
+                ((0x8000_0000..0x8180_0000).contains(&registers[1])
+                    && (0x8000_0000..0x8040_0000).contains(&pc))
+                .then_some((registers, pc))
+            });
+        let result = matches
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("saved CPU register record absent"))?;
+        anyhow::ensure!(
+            matches.next().is_none(),
+            "ambiguous saved CPU register record"
+        );
+        Ok(result)
+    }
     fn joint(&self, joint: &mut JObj, address: u32) {
         // HSD_JObj, jobj.h:104-125. Keep owned links/AObjs; restore saved SRT,
         // matrix validity and accumulated scale, including quaternion flags.

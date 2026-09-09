@@ -22,6 +22,7 @@ gekko-math = { path = "../gekko-math" }
 ft-fox = { path = "../ft-fox" }
 ft-mars = { path = "../ft-mars" }
 ft-falco = { path = "../ft-falco" }
+ft-captain = { path = "../ft-captain" }
 ft-mario = { path = "../ft-mario" }
 melee-diff = { path = "../melee-diff" }
 serde = { workspace = true }

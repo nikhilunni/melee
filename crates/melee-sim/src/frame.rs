@@ -248,9 +248,19 @@ impl Runtime {
                 &mut state.particles,
                 &mut state.rng,
             )?,
-            Callback::ParticlesMain => state
-                .particles
-                .proc_main::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
+            Callback::ParticlesMain => {
+                if let Some(pending) = state.pending_emission.take() {
+                    pending.finish(
+                        &mut state.particles,
+                        &mut state.rng,
+                        &mut self.particle_draws,
+                    )?;
+                } else {
+                    state
+                        .particles
+                        .proc_main::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?;
+                }
+            }
             Callback::ParticlesAux => state
                 .particles
                 .proc_aux::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
@@ -691,3 +701,6 @@ mod fall_states;
 mod combat;
 #[cfg(test)]
 mod falco_bones;
+
+#[cfg(test)]
+mod falcon_bones;
