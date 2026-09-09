@@ -68,6 +68,7 @@ the port meets the real game, so expect surprises and record them here.
 - [x] Verify savestate load is synchronous with next frame (yes; memory is frozen during a callback, load lands on the saved boundary)
 - [ ] Small C++ patch or debugger workflow to set code breakpoints for intra-frame phases
 - [x] `Snapshot` trait in `melee-types`, `RecordSink` in `melee-diff`, `SchemaCoverage` in `melee-sim` with stale-exclusion detection
+- [x] RNG ledger: `harness/dolphin/rng_ledger.py` + `harness/rng_ledger_report.py` (memcheck on `seed`, PC/LR via patched fork) attribute every draw per tick to its `bl` site
 - [ ] Golden fixture recorder: break on function entry/exit, dump args and touched memory to `harness/goldens/`
 - [ ] Retail asm lookup tool: given a symbol, print its disassembly from `main.dol` (needs disc)
 - [ ] CI: `cargo gate`, clippy `-D warnings`, harness pytest, `gen_schema.py --check`
@@ -109,7 +110,8 @@ recomputed bones). Remaining items below are breadth, not gate blockers.
 - [ ] HSD `class.c`/`object.c` object model: decide Rust representation (traits vs enums)
 - [-] Rendering: `tobj`, `pobj`, `lobj`, `tev`, `texp*`, `psdisp*`, `displayfunc`, `video`, `shadow`, `fog` (Milestone 8)
 - [-] Audio: `axdriver`, `synth`, `hsd_3A94` and other sound files (Milestone 8)
-- [-] `particle.c`, `generator.c`, `spline.c` effects (needed for `ef` later; visual only)
+- [~] (2026-09-08) `hsd-particle`: `generator.c` (1,244) and `particle.c` (3,095) lifetime/emission logic. **Not visual-only**: the RNG ledger shows every idle FD tick draws once in `hsd_8039EE24` (generator update) plus six per live particle (2 sites in `hsd_8039DAD4`, 4 in `hsd_8039930C`); this is the 6k+1 pattern. Required for `rng.seed` parity on every stage. `psdisp.c` rendering stays out of scope.
+- [-] `spline.c` (visual only)
 
 ## Milestone 3: One fighter idle (`melee-lb`, `melee-mp`, `melee-ft`, `ft-fox`)
 
@@ -125,7 +127,7 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [ ] `melee-mp`: terrain sound-id tables (`mpLib_803BD3D8..`) once an sfx layer exists
 - [x] `melee-mp`: `desc.rs` reads `coll_data` from an archive (Codex); real GrNLa.dat loads into `CollMap`, floor/ledge queries verified (3 real-stage tests)
 - [ ] `melee-gr`: `ground.c`, `grlib.c`, `grdatfiles.c` plumbing for one stage (Final Destination)
-- [~] (2026-09-08) `melee-gr`: `grlast.c` Final Destination decorations, first pass committed (procs, direct RNG sites, desc readers). **Finding:** the direct grlast.c logic draws on only 2 of 600 idle ticks; the 6k+1 draws per tick come from elsewhere (likely the HSD particle generator via a particle-spawn animation track on map 4). Next: RNG ledger from Dolphin (PC/LR at each `seed` write) to attribute every draw before porting more.
+- [~] (2026-09-08) `melee-gr`: `grlast.c` Final Destination decorations, first pass committed (procs, direct RNG sites, desc readers). **Finding:** the direct grlast.c logic draws on only 2 of 600 idle ticks; the 6k+1 draws per tick come from elsewhere (likely the HSD particle generator via a particle-spawn animation track on map 4). RNG ledger (`harness/dolphin/rng_ledger.py`, needs the fork patch `docs/patches/0002-scripting-read-pc-lr.patch`) attributes every draw: 120 idle ticks = 3,716 draws: 120 from `hsd_8039EE24+0xDC`, 599 each from six particle sites, 1 from `grLast_8021ADD0+0x270`, 1 from `ftCo_8008A7A8+0x114` (Wait anim choice). So the stage's own logic is nearly RNG-free; the particle system is the dependency.
 - [ ] `melee-gr`: Dolphin capture of the FD `Ground` struct at the `idle_fd_fox` savestate (timers/phases) to seed the decoration state; then a 600-tick RNG-draw-count test against `idle_fd_fox.tick.expected.jsonl`
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftanim.c`, `ftlib.c`
 - [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only

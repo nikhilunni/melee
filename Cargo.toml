@@ -9,6 +9,7 @@ members = [
     "crates/hsd-archive",
     "crates/hsd-gobj",
     "crates/hsd-anim",
+    "crates/hsd-particle",
     # Layer 2: Melee subsystems. None of these depend on each other except as listed in their Cargo.toml.
     "crates/melee-lb",
     "crates/melee-mp",

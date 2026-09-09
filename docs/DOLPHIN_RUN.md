@@ -381,3 +381,32 @@ of the savestate; heap pointers or audio/timing state are the usual suspects).
 - Menu navigation is scriptable end-to-end from this document; a
   `drive.py`-driven `navigate.py` that replays it and checks each step with
   `watch`/`status` would remove the manual screenshots.
+
+
+## RNG ledger (who draws from `seed`, per tick)
+
+Requires a Dolphin fork patch that exposes the program counter and link
+register to Python: `docs/patches/0002-scripting-read-pc-lr.patch` (applied to
+`~/Projects/dolphin-scripting/src`, rebuilt with `ninja` in ~15 s). `HSD_Rand`,
+`HSD_Randi` and `HSD_Randf` all inline the LCG and store `seed` without saving
+LR, so at the store `registers.read_lr()` is the direct caller.
+
+```sh
+cd harness
+OUT="$PWD/traces/idle_fd_fox.ledger.raw.jsonl"
+MELEE_SCENARIO=scenarios/idle_fd_fox.toml MELEE_RAW_OUT="$OUT" \
+  ~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
+  -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 \
+  -e "$PWD/roms/GALE01.iso" --script "$PWD/dolphin/rng_ledger.py"
+uv run python rng_ledger_report.py "$OUT" --ticks 3
+```
+
+Each raw record gains `rng_draws: [{pc, lr, seed}]` in draw order; the report
+maps `lr - 4` (the `bl`) to `function+offset` via symbols.txt. Result for
+`idle_fd_fox` (2026-09-08): per tick, one draw at `hsd_8039EE24+0xDC`
+(particle generator update) plus six per live particle (`hsd_8039DAD4+0x10A0/
++0x10F8`, `hsd_8039930C+0x1D7C/+0x1DE8/+0x1E54/+0x1EC0`), i.e. the 6k+1
+pattern; `grLast_8021ADD0+0x270` and `ftCo_8008A7A8+0x114` (Wait1/Wait2
+choice) fire rarely. Note: scripts under `harness/dolphin/` only start their
+tracer when run as the entry script (`__name__ == "__main__"`), so they can be
+imported by other tracers.

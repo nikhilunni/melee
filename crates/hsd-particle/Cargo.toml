@@ -1,0 +1,10 @@
+[package]
+name = "hsd-particle"
+version = "0.0.1"
+edition = "2021"
+description = "HSD particle generators and particles (sysdolphin generator.c, particle.c): lifetime, emission and RNG consumption; no rendering"
+
+[dependencies]
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }
+hsd-archive = { path = "../hsd-archive" }

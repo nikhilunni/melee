@@ -155,6 +155,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hsd-particle"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+]
+
+[[package]]
 name = "hsd-types"
 version = "0.0.1"
 

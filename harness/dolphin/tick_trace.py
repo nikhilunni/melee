@@ -142,5 +142,6 @@ class TickTracer(Tracer):
                 "duplicate_callbacks": self.duplicates, "reentrant_callbacks": self.reentrant}
 
 
-if event is not None:
+# Only when Dolphin runs this file directly; importing it (rng_ledger.py) must not start a tracer.
+if event is not None and __name__ == "__main__":
     run(TickTracer)
