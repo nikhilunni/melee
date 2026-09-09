@@ -198,8 +198,10 @@ most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**
    loosened a test, reject the change.
 5. **One Codex task at a time.** Two concurrent runs each doing cargo builds
    got the OS to kill them for memory (2026-09-08; the user's IDE holds ~14 GB).
-   Codex sessions survive: `codex exec resume <thread_id> "..."` continues
-   one (thread id is the first line of `.codex-runs/<name>.jsonl`).
+   Codex sessions survive. To continue one, from the repo root:
+   `codex exec resume <thread_id> -c 'sandbox_mode="workspace-write"' --json
+   -o .codex-runs/<name>.md "<what happened, what to finish>"` (the thread id is
+   on the first line of `.codex-runs/<name>.jsonl`; `resume` takes no `-C`/`-s`).
 
 ## Hard boundaries
 
