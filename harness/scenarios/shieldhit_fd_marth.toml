@@ -1,0 +1,28 @@
+# Shield hit: Fox (P2, port 1) holds shield while Marth dashes in and jabs it: shield damage and shield stun, then both return to neutral.
+# Recorded from the idle_fd_marth savestate (P1 at -60 facing right, P2 at +60 facing
+# left, both in Wait). Input frames are VI callbacks counted from the savestate
+# load; the port replays the per-tick pad the tick tracer recorded.
+name = "shieldhit_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 88, buttons = {} },
+  { frame = 100, port = 1, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 120, buttons = { A = true } },
+  { frame = 122, buttons = {} },
+  { frame = 200, port = 1, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
