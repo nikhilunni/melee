@@ -76,8 +76,16 @@ def main() -> None:
         if not saved.is_file():
             raise FileNotFoundError(saved)
         count = int(os.environ.get("MELEE_PARTICLES_TICKS", "3"))
+        scenario = {"frames": count}
+        if "MELEE_PARTICLES_SCENARIO" in os.environ:
+            # Scripted inputs (tick_trace.py contract); the savestate and tick
+            # count still come from the MELEE_PARTICLES_* variables.
+            import tomllib
+            scripted = tomllib.loads(Path(os.environ["MELEE_PARTICLES_SCENARIO"]).read_text())
+            scenario["inputs"] = scripted.get("inputs", [])
+            scenario["fighters"] = scripted.get("fighters", [])
         tracer = ParticleTracer(
-            {"frames": count}, metadata, saved, read_sidecar(saved), done,
+            scenario, metadata, saved, read_sidecar(saved), done,
             memory, controller, savestate, event, particle_out=out, initial_path=initial,
         )
         event.on_frameadvance(tracer.on_frame)

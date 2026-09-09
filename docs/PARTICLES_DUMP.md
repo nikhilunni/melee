@@ -28,7 +28,10 @@ MELEE_PARTICLES_TICKS=3 \
 Wait for `harness/traces/idle_fd_fox.particles.jsonl.done`, or inspect the
 adjacent `.err` file if capture fails. The snippet parks its listeners after
 completion; close Dolphin afterwards. It does not terminate the emulator.
-Set `MELEE_PARTICLES_TICKS` to the desired positive count. All outputs stay
+Set `MELEE_PARTICLES_TICKS` to the desired positive count. Set
+`MELEE_PARTICLES_SCENARIO` to a scenario TOML to replay its scripted `inputs`
+(same contract as `tick_trace.py`); the savestate and tick count still come
+from the variables above. All outputs stay
 under the ignored `harness/traces/` directory and must not be committed.
 
 For output path `X`, the files are:
