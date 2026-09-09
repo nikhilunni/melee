@@ -235,7 +235,7 @@ crate passes its scenarios.
 | Donkey Kong | `ft-donkey` | 2156 | `[ ]` |
 | Bowser | `ft-koopa` | 1988 | `[ ]` |
 | Ness | `ft-ness` | 5677 | `[ ]` |
-| Yoshi | `ft-yoshi` | 3364 | `[ ]` |
+| Yoshi | `ft-yoshi` | 3364 | `[x]` idle/start/16 movement scenes through the egg-shield, escape and armoured-jump hooks (2026-09-09, lane C4) |
 | Mewtwo | `ft-mewtwo` | 2703 | `[ ]` |
 | Mr. Game & Watch | `ft-gamewatch` | 3738 | `[ ]` |
 | Roy | `ft-emblem` | 454 | `[ ]` |
