@@ -228,6 +228,17 @@ fn replay_config(
                         FighterProc::Camera => f.proc_camera(&fixture.assets, 1.0),
                         FighterProc::PlayerMirror => f.proc_player_mirror(),
                     }));
+                let count = f.resolve_graphics_commands(&fixture.assets, &mut rng);
+                used += count;
+                total_draws += count;
+                if count != 0 {
+                    assert!(used <= sites.len(), "extra GFX draw tick {tick} p{player}");
+                    assert_eq!(
+                        rng.seed,
+                        sites[used - 1].1["seed"].as_u64().unwrap() as u32,
+                        "GFX post-seed tick {tick}"
+                    );
+                }
                 if let Err(error) = result {
                     let message = error
                         .downcast_ref::<String>()
@@ -431,7 +442,52 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         u16::from_be_bytes([bytes[0x209A], bytes[0x209B]]),
         "nametag tick {tick} p{player}"
     );
+    assert_eq!(
+        fighter.effect_state.destroy_on_state_change,
+        bytes[0x2219] & 0x80 != 0,
+        "effect destruction flag tick {tick}"
+    );
+    assert_eq!(
+        fighter.effect_state.rotating_bone_index,
+        bytes[0x2220] >> 5,
+        "effect bone cursor tick {tick}"
+    );
+    for (i, value) in fighter.commands.variables.iter().enumerate() {
+        assert_eq!(
+            *value,
+            word(bytes, 0x2200 + i * 4),
+            "command variable {i} tick {tick}"
+        );
+    }
     match (&fighter.state_data, fighter.motion_state.id) {
+        (MotionData::Dash(dash), S::Dash) => {
+            check_float(
+                "initial dash acceleration",
+                dash.initial_acceleration,
+                0x2340,
+            );
+            assert_eq!(
+                u32::from(dash.early_interrupts),
+                word(bytes, 0x2344),
+                "dash interrupts tick {tick}"
+            );
+        }
+        (MotionData::Run(run), S::Run) => {
+            check_float("run interrupt delay", run.interrupt_delay, 0x2340);
+            check_float(
+                "run animation velocity",
+                run.slippery_animation_velocity,
+                0x2344,
+            );
+        }
+        (MotionData::RunBrake(brake), S::RunBrake) => {
+            assert_eq!(
+                u32::from(brake.animation_paused),
+                word(bytes, 0x2340),
+                "brake paused tick {tick}"
+            );
+            check_float("brake frames", brake.remaining_frames, 0x2344);
+        }
         (MotionData::Turn(turn), S::Turn) => {
             assert_eq!(
                 u32::from(turn.has_turned),

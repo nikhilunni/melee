@@ -13,6 +13,11 @@ use hsd_anim::{
 #[derive(Clone, Debug)]
 pub enum Command {
     End,
+    Graphics(super::effects::GraphicsCommand),
+    SetVariable {
+        index: usize,
+        value: u32,
+    },
     Goto(usize),
     WaitAnimationLoop,
     LandingEffect(u16),
@@ -63,6 +68,9 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    /// cmd_vars (+2200): subaction-controlled state variables.
+    pub variables: [u32; 4],
+    pub graphics: Vec<super::effects::GraphicsCommand>,
     /// x3E4_fighterCmdScript.u (+3EC); index, not a retail address.
     pub instruction: Option<usize>,
     /// CommandInfo.timer, Fighter +3E4.
@@ -137,6 +145,12 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::Graphics(command) => {
+                    if !seeking {
+                        self.graphics.push(command.clone());
+                    }
+                }
+                Command::SetVariable { index, value } => self.variables[*index] = *value,
                 Command::End => self.instruction = None,
                 Command::Goto(target) => self.instruction = Some(*target),
                 // Command_08 (0x80005B00, lbcommand.c:85): resume after the animation wraps.

@@ -392,3 +392,60 @@ local traces present (both live tests and 38 hsd-particle tests total),
 `cargo clippy --workspace --all-targets -- -D warnings` passed, and
 `cd harness && UV_CACHE_DIR=/tmp/melee-uv-cache uv run python -m pytest -q`
 passed (181 tests). No commits, trace edits, or dump-format changes.
+
+## M4-T2 running dust (2026-09-09)
+
+The complete scene's `dash_fd_fox` gate matches 300 ticks x 49 keys, and its
+new `dash_particle_rng_sites_match_the_retail_ledger_in_order` test compares
+**every particle RNG branch site in order on all 300 ticks**, using the ledger
+only as expected output. All dust descriptors and programs come from the owned
+`EfCoData.dat`. No per-tick particle schedule or captured matrix drives runtime.
+
+| Tick / animation GFX | Actual dispatch | Particle descriptor chain (bank 0) |
+|---|---|---|
+| 34 / Dash 0x3FF | async kind 6; effect-table entry 5, world position, facing and floor rotation | frame-0 DPtcl 9; A5 children 7 and 8 |
+| 49 / Run 0x3FE | async kind 5; efLib_CreateGenerator_Translate_FacingDir | 263; EF children 264 and 265, blend mode 7 |
+| 56 / RunBrake 0x401 | async kind 5; efLib_CreateGenerator_Translate_FacingDir | 90 |
+
+All seven descriptors use shape 0. The three parent programs have zero-radius
+emission; children 7/8/265 use the existing random disc radius and azimuth;
+264 uses the existing negative-angle pre-loop selection. The task's suggested
+kind-2 route is implemented for direct particle IDs, but **none of these three
+recorded GFX commands takes kind 2**. The fighter draw sites also belong to the
+later switch, not the early direct-ID branch.
+
+The previously audited interpreter/emitter arithmetic already covers every new
+site in this recording. These paths are now named in `rng_sites.rs` and proven
+by the full-scene ledger test (counts below cover 300 ticks):
+
+| Site / symbol offset | Count | Gate |
+|---|---:|---|
+| 8039E1E4 / DAD4+710 | 11 | disc emission, radius >= 0 |
+| 8039E3D4 / DAD4+900 | 11 | nonnegative angle, disc modes other than 6/7 |
+| 8039E088 / DAD4+5B4 | 1 | negative-angle disc pre-loop with count >= 1 |
+| 8039B5E0 / 930C+22D4 | 8 | BD random target speed, even with zero velocity |
+| 8039A810 / 930C+1504 | 2 | AC random size, even with zero range |
+| 8039C4F8 / 930C+31EC | 4 | E4 random S flip, mode low bits == 3 |
+| 8039C58C / 930C+3280 | 4 | E5 random T flip, mode low bits == 3 |
+| 8039C870 / 930C+3564 | 2 | ED discrete rotation, divisions != 0 |
+| 8039F250 / F05C+1F4 | 1 | initial emission count: kind 0x100 clear, rate >= 0 |
+
+Run/brake require a **static shared AppSRT**, created by eflib.c:730-758.
+Generator position and particle simulation remain local; the transform stores
+world translation, facing rotation and unit scale. Negative facing sets kind
+bit 0x40000. A5/EF children without their own AppSRT share the parent's owned
+transform and retain local position, matching particle.c:1098-1124/1162-1190.
+The lifetime test verifies the reference survives parent deletion and is
+released after the last child. Descriptor-created or mutable attached AppSRTs,
+AppSRT-transforming bytecode and rendering remain explicit unsupported paths.
+Effect destruction now routes owned joints through hsd_8039D688's generator
+expiration rules. No unrelated particle program or emitter shape was added.
+
+The retail fusion audit was rerun for hsd_8039DAD4, hsd_8039930C and
+hsd_8039F05C. Existing radius/azimuth, BD/AC and ED arithmetic was retained;
+AppSRT inheritance introduces no float arithmetic. **No dash particle dump was
+supplied or recorded.** The 300-tick result proves fighters, shared seed and
+ordered particle draws, not independent bitwise parity of every dust particle
+position/velocity. Existing idle and match-start particle-field oracles still
+pass. `crates/hsd-particle/docs/PARTICLES.md` does not exist; this is the
+repository's canonical particle coverage document.

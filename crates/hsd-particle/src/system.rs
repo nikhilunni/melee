@@ -24,6 +24,8 @@ pub struct SpawnRequest {
     pub position: [f32; 3],
     pub velocity: Option<[f32; 3]>,
     pub joint: Option<(usize, Mtx)>,
+    pub application_transform: Option<crate::generator::ApplicationTransform>,
+    pub mirror: bool,
 }
 impl SpawnRequest {
     pub fn new(bank: u8, kind: u32, link: u8) -> Self {
@@ -34,6 +36,8 @@ impl SpawnRequest {
             position: [0.0; 3],
             velocity: None,
             joint: None,
+            application_transform: None,
+            mirror: false,
         }
     }
 }
@@ -96,6 +100,9 @@ impl ParticleSystem {
         self.family_counter = self.family_counter.wrapping_add(1).max(0x100);
         generator.id = id;
         generator.family_id = self.family_counter;
+        if generator.application_transform.is_some() {
+            generator.appsrt_id = Some(id);
+        }
         let insertion = self
             .generator_cursor
             .and_then(|cursor| self.generators.iter().position(|g| g.id == cursor))
@@ -123,6 +130,8 @@ impl ParticleSystem {
             position,
             velocity,
             joint,
+            application_transform,
+            mirror,
         } = request;
         if bank_id >= 65 || link >= 8 {
             return Ok(None);
@@ -136,6 +145,10 @@ impl ParticleSystem {
             if texture.palette_flags != 0 {
                 generator.descriptor.kind |= 0x10;
             }
+        }
+        generator.application_transform = application_transform.map(Arc::new);
+        if mirror {
+            generator.descriptor.kind |= 0x40000;
         }
         generator.position = position;
         if let Some(velocity) = velocity {
@@ -167,9 +180,6 @@ impl ParticleSystem {
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
         particle.update_with_generators(rng, draws, &mut |parent, kind, blend, rng, draws| {
-            if parent.appsrt_id.is_some() {
-                return Err(Error::UnsupportedFeature("child generator AppSRT"));
-            }
             let bank = self
                 .banks
                 .get(&parent.bank)
@@ -185,6 +195,10 @@ impl ParticleSystem {
             if let Some(id) = self.spawn::<T>(&bank, request, rng, draws)? {
                 let child = self.generator_mut(id).unwrap();
                 child.family_id = parent.family_id;
+                // particle.c:1098-1108/1162-1174: a child without its own
+                // AppSRT shares the parent's transform and keeps local position.
+                child.appsrt_id = parent.appsrt_id;
+                child.application_transform = parent.application_transform.clone();
                 child.position = parent.position;
                 child.flags |= 0x100;
                 if let Some((flags, attachment_id, matrix)) = attachment {
@@ -210,6 +224,25 @@ impl ParticleSystem {
                 particles
                     .sort_by_key(|p| ((p.kind >> 25) & 7) + if p.kind & 8 == 0 { 8 } else { 0 });
             }
+        }
+    }
+
+    /// hsd_8039D688 (0x8039D688): effect destruction visits each owned joint.
+    /// Existing children retain a zero-rate generator, except attached AppSRT
+    /// generators, whose particles are removed by the type-0x80 path.
+    pub fn expire_joint(&mut self, joint: usize) {
+        let mut index = 0;
+        while index < self.generators.len() {
+            let generator = &mut self.generators[index];
+            if generator.attachment_id == Some(joint) {
+                if generator.appsrt_id.is_some() && generator.flags & 0x100 != 0 {
+                    generator.flags |= 0x80;
+                }
+                if self.expire(index) {
+                    continue;
+                }
+            }
+            index += 1;
         }
     }
 

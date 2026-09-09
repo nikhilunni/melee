@@ -1,4 +1,5 @@
 //! Generator creation, attachment, and emission (`generator.c`).
+use crate::rng_sites::{DISC_AZIMUTH, DISC_INITIAL_ANGLE, DISC_RADIUS, INITIAL_EMISSION_COUNT};
 use crate::{
     bank::Descriptor,
     particle::Particle,
@@ -13,6 +14,17 @@ use gekko_math::{
 use hsd_anim::mtx::{self, InverseTrig, M_PI, M_PI_2};
 use hsd_types::{Mtx, Vec3};
 use std::sync::Arc;
+
+/// Static psAppSRT transform shared by a positional generator and its particles.
+/// psAddGeneratorAppSRT (psappsrt.c:25) initializes unit scale and status; mutable,
+/// attached AppSRT callbacks remain an explicit boundary.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ApplicationTransform {
+    pub translation: Vec3,
+    pub rotation: Vec3,
+    pub scale: Vec3,
+    pub status: i32,
+}
 
 /// Shape-dependent state from `HSD_Generator.aux` (psstructs.h).
 #[derive(Debug, Clone)]
@@ -56,6 +68,7 @@ pub struct Generator {
     pub children: u32,
     /// HSD_Generator.appsrt (+0x54), normalized owned AppSRT index.
     pub appsrt_id: Option<usize>,
+    pub application_transform: Option<Arc<ApplicationTransform>>,
     pub shape: EmissionShape,
     /// Caller supplies an already evaluated JObj matrix each animation tick.
     pub joint_matrix: Option<Mtx>,
@@ -103,7 +116,7 @@ impl Generator {
         } else if rate < 0.0 {
             0.0
         } else {
-            draws.draw(rng, 0x8039_F250)
+            draws.draw(rng, INITIAL_EMISSION_COUNT)
         };
         Ok(Self {
             id: 0,
@@ -118,6 +131,7 @@ impl Generator {
             remaining_life: descriptor.generator_life,
             children: 0,
             appsrt_id: None,
+            application_transform: None,
             shape,
             joint_matrix: None,
             attachment_id: None,
@@ -196,7 +210,14 @@ impl Generator {
                     ..
                 } => {
                     let cone = matches!(self.shape, EmissionShape::Cone { .. });
-                    let random = draws.draw(rng, if cone { 0x8039_E0D4 } else { 0x8039_E088 });
+                    let random = draws.draw(
+                        rng,
+                        if cone {
+                            0x8039_E0D4
+                        } else {
+                            DISC_INITIAL_ANGLE
+                        },
+                    );
                     frame.angle_step = (maximum_angle - minimum_angle) / count;
                     // retail 0x8039E0C8 / 0x8039E114: fmadds
                     frame.angle = fmadds(frame.angle_step, random, minimum_angle);
@@ -235,6 +256,8 @@ impl Generator {
             _ => self.disc::<T>(frame, rng, draws),
         };
         let mut particle = Particle::new(&self.descriptor, self.bank, self.link)?;
+        particle.appsrt_id = self.appsrt_id;
+        particle.application_transform = self.application_transform.clone();
         particle.generator_id = Some(self.id);
         particle.family_id = self.family_id;
         particle.position = position;
@@ -314,7 +337,7 @@ impl Generator {
         let fraction = if self.descriptor.radius < 0.0 {
             1.0
         } else {
-            let random = draws.draw(rng, 0x8039_E1E4);
+            let random = draws.draw(rng, DISC_RADIUS);
             if mode == 3 || mode == 4 {
                 sqrtf(random)
             } else {
@@ -333,7 +356,7 @@ impl Generator {
             let site = match mode {
                 6 => 0x8039_E300,
                 7 => 0x8039_E394,
-                _ => 0x8039_E3D4,
+                _ => DISC_AZIMUTH,
             };
             // retail 0x8039E314/E3A8/E3E8: fmadds
             frame.angle = fmadds(maximum - minimum, draws.draw(rng, site), minimum);

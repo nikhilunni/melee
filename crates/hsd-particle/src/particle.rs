@@ -1,4 +1,5 @@
 //! Particle creation and bytecode simulation (`particle.c`).
+use crate::rng_sites::{DISCRETE_ROTATION, RANDOM_SIZE, RANDOM_SPEED, RANDOM_TEXTURE_FLIP};
 use crate::{
     bank::Descriptor,
     color::ColorTrack,
@@ -63,6 +64,7 @@ pub struct Particle {
     pub ambient: BytePairTrack,
     /// HSD_Particle.appsrt (+0x8C), normalized owned AppSRT index.
     pub appsrt_id: Option<usize>,
+    pub application_transform: Option<Arc<crate::generator::ApplicationTransform>>,
     /// Availability from the owning texture group; no image bytes needed.
     pub texture_images: Arc<[bool]>,
 }
@@ -109,6 +111,7 @@ impl Particle {
             material: BytePairTrack::new([255; 2]),
             ambient: BytePairTrack::new([255; 2]),
             appsrt_id: None,
+            application_transform: None,
             texture_images: Arc::from([]),
         })
     }
@@ -332,7 +335,7 @@ impl Particle {
                     let range = pc.float()?;
                     // retail 0x8039A818: fmadds
                     self.size_target =
-                        fmadds(range, draws.draw(rng, 0x8039_A810), self.size_target);
+                        fmadds(range, draws.draw(rng, RANDOM_SIZE), self.size_target);
                 }
                 if self.size_timer == 0 {
                     self.size = self.size_target;
@@ -387,7 +390,7 @@ impl Particle {
                 let base = pc.float()?;
                 let range = pc.float()?;
                 // retail 0x8039B5E8: fmadds; B5EC..B604: unfused squared magnitude.
-                let speed = fmadds(range, draws.draw(rng, 0x8039_B5E0), base);
+                let speed = fmadds(range, draws.draw(rng, RANDOM_SPEED), base);
                 let [x, y, z] = self.velocity;
                 let magnitude = sqrtf((x * x + y * y) + z * z);
                 if magnitude > 1e-10 {
@@ -463,9 +466,9 @@ impl Particle {
             2 => self.kind ^= flag,
             _ => {
                 let site = if opcode == 0xe4 {
-                    0x8039_C4F8
+                    RANDOM_TEXTURE_FLIP[0]
                 } else {
-                    0x8039_C58C
+                    RANDOM_TEXTURE_FLIP[1]
                 };
                 self.set_flag(flag, draws.draw(rng, site) >= 0.5);
             }
@@ -482,7 +485,8 @@ impl Particle {
         let range = pc.float()?;
         let divisions = pc.byte()?;
         let delta = if divisions != 0 {
-            let index = fctiwz(f32::from(u16::from(divisions) + 1) * draws.draw(rng, 0x8039_C870));
+            let index =
+                fctiwz(f32::from(u16::from(divisions) + 1) * draws.draw(rng, DISCRETE_ROTATION));
             // retail 0x8039C8C4..0x8039C8CC: fmuls/fdivs/fadds.
             base + (range * index as f32) / f32::from(divisions)
         } else {

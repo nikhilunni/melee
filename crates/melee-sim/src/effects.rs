@@ -1,8 +1,11 @@
 //! Headless ef subset. This should become `melee-ef` once that workspace member
 //! is added: effect descriptor loading, efAsync request dispatch, attached and
 //! positional effect instances, lifetime/animation procs, and DPtcl routing.
+//! Async kind 2 transforms a queued bone-local offset before generator dispatch;
+//! running dust also uses kinds 5/6 for facing and floor-angle parameters.
 //! The warp additionally needs the HSD spline/reference evaluator in `spline`.
 //! No spawn schedules or captured matrices are runtime inputs.
+mod dust;
 mod spline;
 use anyhow::{ensure, Context, Result};
 use ft_fox::init::Fox;
@@ -28,15 +31,19 @@ const ENTRY_WARP_REQUEST: u16 = 0x43E;
 const ENTRY_WARP_EFFECT: u32 = 0x24;
 const LANDING_REQUEST: u16 = 0x404;
 const LANDING_EFFECT: u32 = 0x18;
+// efasync.c:262-268: stationary model effect, with facing and floor rotation.
+const DASH_DUST_REQUEST: u16 = 0x3FF;
+const DASH_DUST_EFFECT: u32 = 5;
 // EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
 const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 4] = [10, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 5] = [9, 10, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
+    pub(crate) draws: DrawLog,
     instances: Vec<Effect>,
     next_joint: usize,
 }
@@ -44,6 +51,7 @@ struct Effect {
     tree: JObjTree,
     root: JObjId,
     attachment: Option<usize>,
+    owner: Option<usize>,
     lifetime: u16,
     joint_base: usize,
     paths: BTreeMap<usize, (JObjId, spline::Spline)>,
@@ -74,7 +82,43 @@ impl Effects {
         let mut requests = Vec::new();
         fighter.drain_effects(&mut requests);
         // efAsync_Spawn prepends to the pending list (efasync.c:1458-1462).
+        // Destruction is synchronous, before newly queued spawns are flushed.
+        if requests
+            .iter()
+            .any(|r| matches!(r, EffectRequest::DestroyOwned))
+        {
+            for effect in self
+                .instances
+                .iter()
+                .filter(|effect| effect.owner == Some(player))
+            {
+                for joint in effect.tree.depth_first(effect.root) {
+                    particles.expire_joint(effect.joint_base + joint.0);
+                }
+            }
+            self.instances.retain(|effect| effect.owner != Some(player));
+        }
         for request in requests.into_iter().rev() {
+            if matches!(request, EffectRequest::DestroyOwned) {
+                continue;
+            }
+            if let EffectRequest::Graphics {
+                id,
+                bone,
+                offset,
+                facing,
+                ..
+            } = request
+            {
+                if id != DASH_DUST_REQUEST {
+                    let joint = fighter.animation.parts[bone].joint;
+                    fighter.skeleton.setup_matrix(joint);
+                    let mut position = Vec3::ZERO;
+                    mtx_mult_vec(&fighter.skeleton.get(joint).mtx, &offset, &mut position);
+                    self.spawn_dust_generator(id, position, facing, bank, particles, rng)?;
+                    continue;
+                }
+            }
             let (id, attachment) = match request {
                 EffectRequest::EntryWarp {
                     id: ENTRY_WARP_REQUEST,
@@ -84,6 +128,10 @@ impl Effects {
                     id: LANDING_REQUEST,
                     ..
                 } => (LANDING_EFFECT, None),
+                EffectRequest::Graphics {
+                    id: DASH_DUST_REQUEST,
+                    ..
+                } => (DASH_DUST_EFFECT, None),
                 _ => anyhow::bail!("unsupported fighter effect {request:?}"),
             };
             let mut effect = Effect::load(archive, id)?;
@@ -91,11 +139,34 @@ impl Effects {
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
-            let root = fighter.animation.root;
+            effect.owner = Some(player);
+            let root = if let EffectRequest::Graphics { bone, .. } = request {
+                fighter.animation.parts[bone].joint
+            } else {
+                fighter.animation.root
+            };
             fighter.skeleton.setup_matrix(root);
             let matrix = fighter.skeleton.get(root).mtx;
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
+                EffectRequest::DestroyOwned => unreachable!(),
+                EffectRequest::Graphics {
+                    offset,
+                    facing,
+                    floor_angle,
+                    ..
+                } => {
+                    mtx_mult_vec(&matrix, &offset, &mut position);
+                    effect.tree.set_rotation_y(
+                        effect.root,
+                        if facing < 0.0 {
+                            -std::f32::consts::FRAC_PI_2
+                        } else {
+                            std::f32::consts::FRAC_PI_2
+                        },
+                    );
+                    effect.tree.set_rotation_z(effect.root, floor_angle);
+                }
                 // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
                 EffectRequest::EntryWarp { scale, .. } => {
                     effect.tree.set_scale(effect.root, &scale)
@@ -113,7 +184,7 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            effect.animate(bank, particles, rng)?;
+            effect.animate(bank, particles, rng, &mut self.draws)?;
             self.instances.push(effect);
         }
         Ok(())
@@ -145,7 +216,7 @@ impl Effects {
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
             }
-            effect.animate(bank, particles, rng)?;
+            effect.animate(bank, particles, rng, &mut self.draws)?;
         }
         self.instances.retain(|effect| effect.lifetime != 0);
         Ok(())
@@ -193,6 +264,7 @@ impl Effect {
             root,
             lifetime: lifetime + 1,
             attachment: None,
+            owner: None,
             joint_base: 0,
             paths,
         })
@@ -221,6 +293,7 @@ impl Effect {
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
+        draws: &mut DrawLog,
     ) -> Result<()> {
         let joints: Vec<_> = self.tree.depth_first(self.root).collect();
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
@@ -241,12 +314,7 @@ impl Effect {
                         );
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
-                        particles.spawn::<RetailTrig>(
-                            bank,
-                            request,
-                            rng,
-                            &mut DrawLog::default(),
-                        )?;
+                        particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
                     }
                     JObjEvent::JSound(_) => {} // Audio has no simulation output.
                     _ => anyhow::bail!("unsupported ef animation event {event:?}"),

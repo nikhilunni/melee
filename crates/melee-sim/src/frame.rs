@@ -104,6 +104,7 @@ struct Runtime {
     error: Option<anyhow::Error>,
     /// Diagnostic only: values observed around procs, never gameplay inputs.
     rng_writers: Vec<(String, u32)>,
+    particle_draws: DrawLog,
 }
 impl Runtime {
     fn dispatch(&mut self, row: Registration) -> Result<()> {
@@ -157,6 +158,7 @@ impl Runtime {
                     FighterProc::Camera => f.proc_camera(assets, 1.0),
                     FighterProc::PlayerMirror => f.proc_player_mirror(),
                 }
+                f.resolve_graphics_commands(assets, &mut state.rng);
             }
             Callback::Stage { map, address } => match address {
                 // Registered Ground wrappers: lighting, disabled spawn manager,
@@ -172,7 +174,7 @@ impl Runtime {
                                 &state.assets.particle_bank,
                                 request,
                                 &mut state.rng,
-                                &mut DrawLog::default(),
+                                &mut self.particle_draws,
                             )?;
                         }
                     }
@@ -199,11 +201,12 @@ impl Runtime {
             )?,
             Callback::ParticlesMain => state
                 .particles
-                .proc_main::<RetailTrig>(&mut state.rng, &mut DrawLog::default())?,
+                .proc_main::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
             Callback::ParticlesAux => state
                 .particles
-                .proc_aux::<RetailTrig>(&mut state.rng, &mut DrawLog::default())?,
+                .proc_aux::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
         }
+        self.particle_draws.0.append(&mut state.effects.draws.0);
         Ok(())
     }
 }
@@ -226,6 +229,7 @@ impl Simulation {
             frame: 0,
             error: None,
             rng_writers: Vec::new(),
+            particle_draws: DrawLog::default(),
         }));
         let shared = Rc::clone(&runtime);
         let mut world = World::new(WorldConfig::MELEE);
@@ -258,6 +262,7 @@ impl Simulation {
         {
             let mut runtime = self.runtime.borrow_mut();
             runtime.rng_writers.clear();
+            runtime.particle_draws.0.clear();
             if runtime.frame != 0 {
                 // particleSort (psdisp.c:0x8039FC70), between observations.
                 runtime.state.particles.sort_for_display(7);
@@ -271,6 +276,10 @@ impl Simulation {
         let record = crate::trace::snapshot(&runtime.state, runtime.frame);
         runtime.frame += 1;
         Ok(record)
+    }
+    /// Ordered particle branch sites observed in the last completed tick.
+    pub fn particle_rng_sites(&self) -> Vec<u32> {
+        self.runtime.borrow().particle_draws.0.clone()
     }
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
         self.runtime.borrow().rng_writers.clone()

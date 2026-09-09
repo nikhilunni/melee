@@ -14,3 +14,8 @@ fn turn_fox_state_callbacks() {
 fn walk_fox_state_callbacks() {
     replay_state_callbacks("walk", "ledger");
 }
+
+#[test]
+fn dash_fox_state_callbacks() {
+    replay_state_callbacks("dash", "ledger");
+}

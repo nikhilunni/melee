@@ -79,6 +79,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.turn_animation(assets)?;
                 return Ok(None);
             }
+            state::AnimationCallback::Dash => {
+                self.dash_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Run => {
+                self.run_animation();
+                return Ok(None);
+            }
+            state::AnimationCallback::RunBrake => {
+                self.run_brake_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::Walk => {
                 self.walk_animation(assets);
                 return Ok(None);
@@ -192,6 +204,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     self.turn_input(assets, &context).expect("turn transition");
                     return;
                 }
+                state::InputCallback::Dash => {
+                    self.dash_input(assets, &context).expect("dash transition");
+                    return;
+                }
+                state::InputCallback::Run => {
+                    self.run_input(assets, &context).expect("run transition");
+                    return;
+                }
+                state::InputCallback::RunBrake => {
+                    self.run_brake_input(assets).expect("brake transition");
+                    return;
+                }
                 state::InputCallback::Walk => {
                     self.walk_input(assets, &context).expect("walk transition");
                     return;
@@ -265,6 +289,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     &mut self.physics,
                     &self.collision.data,
                     &params,
+                    map,
+                    wind,
+                );
+            }
+            state::PhysicsCallback::Dash
+            | state::PhysicsCallback::Run
+            | state::PhysicsCallback::RunBrake => {
+                self.running_physics(assets);
+                crate::physics::grounded::apply_ground_movement(
+                    &mut self.physics,
+                    self.collision.data.floor.normal,
+                    map.floor_speed_scale(&self.collision.data),
+                );
+                crate::physics::grounded::finish_ground_update(
+                    &mut self.physics,
+                    &self.collision.data,
+                    &GroundedParameters::from_attributes(&self.attributes, &assets.common),
                     map,
                     wind,
                 );
@@ -343,6 +384,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 state::CollisionCallback::Wait
                     | state::CollisionCallback::Landing
                     | state::CollisionCallback::Walk
+                    | state::CollisionCallback::Dash
+                    | state::CollisionCallback::Run
+                    | state::CollisionCallback::RunBrake
                     | state::CollisionCallback::Squat
                     | state::CollisionCallback::SquatWait
                     | state::CollisionCallback::SquatRv
@@ -355,7 +399,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     fn map_ground(&mut self, map: &mut CollMap) {
         let simple = matches!(
             self.motion_state.callbacks.collision,
-            state::CollisionCallback::Squat
+            state::CollisionCallback::Dash
+                | state::CollisionCallback::Run
+                | state::CollisionCallback::Squat
                 | state::CollisionCallback::SquatWait
                 | state::CollisionCallback::SquatRv
                 | state::CollisionCallback::Turn
@@ -373,7 +419,25 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.animation.root,
             self.input.current.stick.x,
         ) {
-            WaitGroundResult::Supported => {}
+            WaitGroundResult::Supported => {
+                if matches!(
+                    self.motion_state.callbacks.collision,
+                    state::CollisionCallback::Dash | state::CollisionCallback::Run
+                ) {
+                    // ft_800844EC -> ftCo_8009EDA4 (ftCo_StopWall.c:16-30).
+                    let wall = if self.physics.facing < 0.0 {
+                        melee_types::mp::collide::RIGHT_WALL_HUG
+                    } else {
+                        melee_types::mp::collide::LEFT_WALL_HUG
+                    };
+                    if self.collision.data.env_flags as u32 & wall != 0
+                        && gekko_math::msl::fabsf(self.physics.ground_velocity)
+                            > self.attributes.walking.walk_max_vel
+                    {
+                        unimplemented!("ftCo_StopWall.c:25-26: running wall impact -> StopWall");
+                    }
+                }
+            }
             WaitGroundResult::EnterFall => unimplemented!("ft_081B.c:1094: Wait -> Fall"),
             WaitGroundResult::EnterTeeter => unimplemented!("ft_081B.c:1092: Wait -> Ottotto"),
         }
@@ -395,6 +459,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             state::CollisionCallback::Wait
             | state::CollisionCallback::Landing
             | state::CollisionCallback::Walk
+            | state::CollisionCallback::Dash
+            | state::CollisionCallback::Run
+            | state::CollisionCallback::RunBrake
             | state::CollisionCallback::Squat
             | state::CollisionCallback::SquatWait
             | state::CollisionCallback::SquatRv

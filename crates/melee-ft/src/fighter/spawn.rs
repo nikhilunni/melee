@@ -187,6 +187,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // Fighter_UpdateModelScale / ftCommon_GetModelScale:
         // retail 0x8007F69C fmuls, no contraction.
         let model_scale = player.scale * assets.attributes.size.model_scaling;
+        animation.root_motion = Some(crate::anim::root_motion::RootMotion {
+            translation: animation.parts
+                [usize::from(assets.parts.joint(melee_types::FtPart::TransN).unwrap())]
+            .joint,
+            secondary: animation.parts
+                [usize::from(assets.parts.joint(melee_types::FtPart::TransN2).unwrap())]
+            .joint,
+            primary_history: Default::default(),
+            secondary_history: Default::default(),
+            effective_scale: model_scale,
+            compensate_joint: None,
+        });
         skeleton.set_scale(root, &Vec3::new(model_scale, model_scale, model_scale));
         let data = ecb::initialize(
             map,
@@ -224,6 +236,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             skeleton,
             motion_state: MotionState::WAIT,
             state_data: MotionData::None,
+            effect_state: super::effects::FighterEffects::default(),
             effects: Vec::new(),
             character,
             capabilities,
@@ -278,6 +291,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         {
             self.status.name_tag_timer = 0;
         }
+        if self.effect_state.destroy_on_state_change {
+            self.effect_state.destroy_on_state_change = false;
+            self.effects
+                .push(super::effects::EffectRequest::DestroyOwned);
+        }
         super::commands::reset_parts(&mut self.animation, &mut self.skeleton, assets);
         if matches!(
             state,
@@ -299,6 +317,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::Squat => (MotionState::SQUAT, 30),
             CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
             CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
+            CommonMotionState::Dash => (MotionState::DASH, 12),
+            CommonMotionState::Run => (MotionState::RUN, 13),
+            CommonMotionState::RunBrake => (MotionState::RUN_BRAKE, 14),
             CommonMotionState::Turn => (MotionState::TURN, 10),
             CommonMotionState::WalkSlow => (MotionState::WALK_SLOW, 7),
             CommonMotionState::WalkMiddle => (MotionState::WALK_MIDDLE, 8),
@@ -351,6 +372,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.
         self.animation
             .advance_main::<RetailTrig>(&mut self.skeleton);
+        // fighter.c:1309-1317: discard frame-zero extracted velocity.
+        if start == 0.0
+            && self
+                .animation
+                .flags
+                .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            if let Some(root) = &mut self.animation.root_motion {
+                root.primary_history.previous = root.primary_history.position;
+                root.primary_history.offset = Vec3::ZERO;
+                root.primary_history.previous_offset = Vec3::ZERO;
+            }
+        }
         if start != 0.0 {
             self.commands.seek(
                 &mut self.animation,

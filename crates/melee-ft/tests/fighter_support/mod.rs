@@ -231,6 +231,9 @@ impl Fixture {
         });
         f.commands.timer = float(raw, 0x3E4);
         f.commands.frame = float(raw, 0x3E8);
+        f.commands.variables = std::array::from_fn(|i| word(raw, 0x2200 + i * 4));
+        f.effect_state.destroy_on_state_change = raw[0x2219] & 0x80 != 0;
+        f.effect_state.rotating_bone_index = raw[0x2220] >> 5;
         if f.commands.instruction.is_some() {
             assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
         } // SM_None clears the script pointer; its old union bytes are inactive.

@@ -9,6 +9,46 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T2 Dash/Run/RunBrake
+
+`dash_fd_fox` matches **300 ticks, 49 keys, 0 divergences**. The state replay
+also compares command variables, both effect flags, ground velocity, animation
+rate/command clocks, and Dash/Run/RunBrake scratch fields. `m4_gate` verifies
+the complete particle call-site sequence against the 300-tick RNG ledger.
+See [M4_DASH.md](M4_DASH.md) for validation, affected files and limitations.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Dash CheckInput / Enter / Anim / IASA / Phys / Coll | 800CA094 / 800CA120 / 800CA1F4 / 800CA230 / 800CA53C / 800CA5D0 | `dash.rs`, `run.rs`, shared ground collision |
+| Run check / Enter / Enter_Full / Anim / IASA / Phys / Coll | 800CA5F0 / 800CA6F4 / 800CA71C / 800CA77C / 800CA830 / 800CA95C / 800CAA2C | `run.rs`; ordinary zero-phase entry |
+| RunBrake CheckInput / Enter / Anim / IASA / Phys / Coll | 800CABC4 / 800CAC18 / 800CAC9C / 800CADB0 / 800CAE18 / 800CAE60 | `run.rs`, shared Wait collision |
+| ftCommon_800804A0 / ftCommon_8007C98C / ftCommon_ApplyGroundMovement | 800804A0 / 8007C98C / 8007CB74 | initial secondary acceleration, target clamp and projection |
+| ft_8008A2BC / ft_800844EC / ftCo_8009EDA4 | 8008A2BC / 800844EC / 8009EDA4 | Wait return, ordinary ground support and explicit StopWall boundary |
+| ftAction_80071028 / ftAction_80071820 | 80071028 / 80071820 | five-word GFX decode and command variables |
+| ftCo_8009F834 / ftCommon_8007DB24 | 8009F834 / 8007DB24 | randomized offsets, typed rotating bone cursor and effect destruction flag |
+| ft_80089B08 | 80089B08 | RunBrake body tilt on long flat floors |
+
+Dash first-frame acceleration uses `xE8_ground_accel_2`; later ticks use the
+shared ground acceleration/clamp. Run tapers acceleration and scales animation
+rate by ground velocity. RunBrake retains its two command-variable controls,
+maximum duration and pause/release logic. Turn can now enter a dash with its
+initial attack/escape window disabled. TurnRun, combat/item/shield/jump-cancel,
+short/sloping body tilt and StopWall entries remain explicit boundaries. No
+new `ftCo_0A01.c` helper is called by these item-free human paths.
+
+Dash needs the existing TransN extraction code wired into fighter construction;
+motion entry clears extracted frame-zero velocity. GFX commands retain their
+archive-derived bone, flags, parameter, signed offsets and unsigned ranges.
+The literal scale is **0.003906f**, not exactly 1/256. The renderer-facing
+invisibility flag suppresses the command before RNG or bone-cursor changes.
+
+The recorded dust takes the later `ftCo_8009F834` switch: fused additions at
+**8009FCF8, 8009FD1C, 8009FD44**, following draws at FCDC/FD00/FD24. The early
+`gfx_id < 0x250 || gfx_id/1000 == 30` branch uses **8009F94C, 8009F970,
+8009F9A4** and async kind 2. Both are implemented. The scene resolves queued
+command requests at each fighter proc boundary and flushes the async queue in
+reverse insertion order at s_link 9. Runtime code reads no RNG ledger.
+
 ## M4-T1 ports
 
 Addresses below were resolved against the retail symbol map. State callbacks
@@ -49,9 +89,8 @@ nametag timer and relevant Turn/Walk/Squat scratch fields. `m4_gate` separately
 runs the complete scene and checks all 49 keys with produced RNG. Local-data
 absence skips both test families cleanly.
 
-Remaining explicit movement boundaries: TurnRun (ftCo_TurnRun.c:35-38), Turn to
-Dash (ftCo_Turn.c:139-144), platform-drop entry (ftCo_Squat.c:79-84), ledge
-Fall/Ottotto entries, attack/special/jump/shield/dash transition bodies, metal
+Remaining explicit movement boundaries: TurnRun (ftCo_TurnRun.c:35-38), platform-drop entry (ftCo_Squat.c:79-84), ledge
+Fall/Ottotto entries, attack/special/jump/shield transition bodies, metal
 or scaled-player modifiers, and non-default terrain footstep effects. The new
 IASAs retain their own predicate ordering and reject unsupported transition
 bodies. Sound/rumble are queued output requests; audio/controller playback is

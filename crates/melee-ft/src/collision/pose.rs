@@ -47,9 +47,6 @@ impl FlatGroundPose<'_> {
         if state.ground_or_air != GroundOrAir::Ground {
             return Ok(());
         }
-        if flags.0 & GroundPoseFlags::BODY_TILT != 0 {
-            return Err(UnsupportedGroundPose::BodyTilt);
-        }
         for (mask, leg) in [
             (GroundPoseFlags::RIGHT_LEG, bones.right_leg),
             (GroundPoseFlags::LEFT_LEG, bones.left_leg),
@@ -82,6 +79,22 @@ impl FlatGroundPose<'_> {
                 return Err(UnsupportedGroundPose::LegCorrection);
             }
             align_flat_foot(tree, ids[2], probe.normal)?;
+        }
+        if flags.0 & GroundPoseFlags::BODY_TILT != 0 {
+            // ft_80089B08 (0x80089B08), ft_0899.c:180-233. Long flat floors
+            // skip the short-segment neighbor adjustment; the clamp keeps zero.
+            let normal = environment.data.floor.normal;
+            let end = map.line_get_v1_pos(environment.data.floor.index);
+            let start = map.line_get_v0_pos(environment.data.floor.index);
+            let dx = end.x - start.x;
+            let dy = end.y - start.y;
+            // retail 0x8008A028 fmadds, then the standard three-step sqrtf.
+            let length = sqrtf(fmadds(dx, dx, dy * dy));
+            if normal.x != 0.0 || normal.y <= 0.0 || length < 5.0 {
+                return Err(UnsupportedGroundPose::BodyTilt);
+            }
+            let angle = state.facing * melee_lb::trigf::atan2f(normal.x, normal.y);
+            tree.set_rotation_x(root, angle);
         }
         Ok(())
     }

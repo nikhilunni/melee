@@ -13,6 +13,9 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    Dash,
+    Run,
+    RunBrake,
     Squat,
     SquatWait,
     SquatRv,
@@ -28,6 +31,9 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    Dash,
+    Run,
+    RunBrake,
     Squat,
     SquatWait,
     SquatRv,
@@ -43,6 +49,9 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    Dash,
+    Run,
+    RunBrake,
     Squat,
     SquatWait,
     SquatRv,
@@ -58,6 +67,9 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    Dash,
+    Run,
+    RunBrake,
     Squat,
     SquatWait,
     SquatRv,
@@ -84,6 +96,36 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const RUN_BRAKE: Self = Self {
+        id: CommonMotionState::RunBrake,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::RunBrake,
+            input: InputCallback::RunBrake,
+            physics: PhysicsCallback::RunBrake,
+            collision: CollisionCallback::RunBrake,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const RUN: Self = Self {
+        id: CommonMotionState::Run,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Run,
+            input: InputCallback::Run,
+            physics: PhysicsCallback::Run,
+            collision: CollisionCallback::Run,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const DASH: Self = Self {
+        id: CommonMotionState::Dash,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Dash,
+            input: InputCallback::Dash,
+            physics: PhysicsCallback::Dash,
+            collision: CollisionCallback::Dash,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
     pub const SQUAT: Self = Self {
         id: CommonMotionState::Squat,
         callbacks: StateCallbacks {

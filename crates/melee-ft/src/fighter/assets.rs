@@ -35,6 +35,8 @@ pub struct FighterAssets {
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
+    pub rotating_effect_bones: [usize; 5],
+    pub running: super::dash::RunningParameters,
     pub movement: crate::desc::common::MovementParameters,
     pub squat_choices: Option<Vec<WaitEntry>>,
     pub wait_choices: Vec<WaitEntry>,
@@ -59,7 +61,7 @@ impl FighterAssets {
         let motion_table = table.table_offset.ok_or("missing motion table")?;
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        for id in [2, 3, 7, 8, 9, 10, 20, 30, 31, 34, 35, 238] {
+        for id in [2, 3, 7, 8, 9, 10, 12, 13, 14, 20, 30, 31, 34, 35, 238] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -147,10 +149,32 @@ impl FighterAssets {
             hurtboxes: read_hurtboxes(fox, root)?,
             dynamics: crate::dynamics::read_sets(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
-            motions: [2, 3, 7, 8, 9, 10, 20, 30, 31, 34, 35, 238]
+            motions: [2, 3, 7, 8, 9, 10, 12, 13, 14, 20, 30, 31, 34, 35, 238]
                 .into_iter()
                 .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
                 .collect::<Result<_>>()?,
+            rotating_effect_bones: {
+                let table = fox
+                    .link(root + 0x54)?
+                    .ok_or("missing rotating effect bones")?;
+                let mut bones = [0; 5];
+                for (i, bone) in bones.iter_mut().enumerate() {
+                    *bone = fox.reader().u32(table + i as u32 * 4)? as usize;
+                }
+                bones
+            },
+            running: super::dash::RunningParameters {
+                turn_threshold: common.reader().f32(common_data + 0x38)?,
+                early_interrupt_frames: common.reader().f32(common_data + 0x44)?,
+                early_escape_frames: common.reader().f32(common_data + 0x48)?,
+                redash_frames: common.reader().f32(common_data + 0x4c)?,
+                interrupt_friction: common.reader().f32(common_data + 0x54)?,
+                run_threshold: common.reader().f32(common_data + 0x58)?,
+                acceleration_taper: common.reader().f32(common_data + 0x5c)?,
+                friction_multiplier: common.reader().f32(common_data + 0x60)?,
+                relaxed_jump_threshold: common.reader().f32(common_data + 0x80)?,
+                brake_pause_speed: common.reader().f32(common_data + 0x42c)?,
+            },
             movement: crate::desc::common::MovementParameters {
                 middle_threshold: common.reader().f32(common_data + 0x28)?,
                 fast_threshold: common.reader().f32(common_data + 0x2C)?,
@@ -199,6 +223,34 @@ fn read_script(
             6 => Command::Return,
             7 => Command::Goto(archive.link(offset + 4)?.ok_or("null command goto")? as usize),
             8 => Command::WaitAnimationLoop,
+            19 => Command::SetVariable {
+                index: ((word >> 24) & 3) as usize,
+                value: word & 0xFFFFFF,
+            },
+            10 => {
+                // ftAction_80071028 (0x80071028): signed offsets, unsigned ranges.
+                // Retail uses the literal 0.003906f, not exact 1/256; no fusion.
+                const SCALE: f32 = 0.003906;
+                let r = archive.reader();
+                Command::Graphics(super::effects::GraphicsCommand {
+                    bone: ((word >> 18) & 255) as usize,
+                    common_bone: word & (1 << 17) != 0,
+                    destroy_on_state_change: word & (1 << 16) != 0,
+                    item_bone: word & (1 << 15) != 0,
+                    id: r.u16(offset + 4)?,
+                    parameter: f32::from(r.u16(offset + 6)?),
+                    offset: hsd_types::Vec3::new(
+                        SCALE * f32::from(r.u16(offset + 8)? as i16),
+                        SCALE * f32::from(r.u16(offset + 10)? as i16),
+                        SCALE * f32::from(r.u16(offset + 12)? as i16),
+                    ),
+                    range: hsd_types::Vec3::new(
+                        SCALE * f32::from(r.u16(offset + 14)?),
+                        SCALE * f32::from(r.u16(offset + 16)?),
+                        SCALE * f32::from(r.u16(offset + 18)?),
+                    ),
+                })
+            }
             41 => Command::Part {
                 group: ((word >> 19) & 127) as usize,
                 variant: ((word >> 12) & 127) as usize,
@@ -209,7 +261,7 @@ fn read_script(
                 id: ((word >> 13) & 4095) as u16,
                 duration: (word & 8191) as u16,
             },
-            54 => Command::FootstepSound {
+            17 | 54 => Command::FootstepSound {
                 behavior: ((word >> 18) & 255) as u8,
                 id: archive.reader().u32(offset + 4)?,
                 volume: (archive.reader().u32(offset + 8)? >> 8) as u8,
@@ -248,6 +300,7 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
+            Command::Graphics(_) => offset += 20,
             Command::LandingEffect(_) | Command::FootstepSound { .. } => offset += 12,
             _ => offset += 4,
         }

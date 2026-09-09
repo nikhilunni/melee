@@ -215,3 +215,72 @@ fn full_sphere_draws_latitude_sign_and_azimuth_then_retains_expired_parent() {
     }
     assert!(system.generators.is_empty());
 }
+
+#[test]
+fn child_generator_shares_appsrt_after_its_parent_particle_dies() {
+    use hsd_particle::generator::ApplicationTransform;
+    use hsd_types::Vec3;
+    use std::sync::Arc;
+    for opcode in [0xa5, 0xef] {
+        let mut program = vec![opcode, 0, 1];
+        if opcode == 0xef {
+            program.push(7);
+        }
+        program.push(0xff);
+        let mut parent = descriptor(program);
+        parent.generator_life = 1;
+        let mut child = descriptor(vec![10]);
+        child.generator_life = 1;
+        child.particle_life = 2;
+        let bank = bank(vec![parent, child]);
+        let mut system = ParticleSystem::default();
+        let mut request = SpawnRequest::new(0, 0, 0);
+        request.application_transform = Some(ApplicationTransform {
+            translation: Vec3::new(-20.0, 3.0, 2.0),
+            rotation: Vec3::new(0.0, std::f32::consts::FRAC_PI_2, 0.0),
+            scale: Vec3::new(1.0, 1.0, 1.0),
+            status: 1,
+        });
+        let mut rng = HsdRng::new(1);
+        let mut draws = DrawLog::default();
+        let id = system
+            .spawn::<RetailTrig>(&bank, request, &mut rng, &mut draws)
+            .unwrap()
+            .unwrap();
+        let transform = system
+            .generator_mut(id)
+            .unwrap()
+            .application_transform
+            .clone()
+            .unwrap();
+        system
+            .proc_main::<RetailTrig>(&mut rng, &mut draws)
+            .unwrap();
+        assert!(
+            system.generator_mut(id).is_none(),
+            "dead parent must not keep the transform alive through a generator"
+        );
+        let particle = &system.particles[0][0];
+        assert!(Arc::ptr_eq(
+            particle.application_transform.as_ref().unwrap(),
+            &transform
+        ));
+        assert_eq!(particle.appsrt_id, Some(id));
+        assert_eq!(particle.family_id, 257);
+        assert_eq!(draws.0, [hsd_particle::rng_sites::DISC_AZIMUTH; 2]);
+        assert_ne!(
+            particle.position,
+            [-20.0, 3.0, 2.0],
+            "particle integration remains local to AppSRT"
+        );
+        system
+            .proc_main::<RetailTrig>(&mut rng, &mut draws)
+            .unwrap();
+        system
+            .proc_main::<RetailTrig>(&mut rng, &mut draws)
+            .unwrap();
+        assert_eq!(system.live_particles(), 0);
+        assert!(system.generators.is_empty());
+        assert_eq!(Arc::strong_count(&transform), 1);
+    }
+}

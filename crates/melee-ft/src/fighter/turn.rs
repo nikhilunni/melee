@@ -113,7 +113,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             turn.dash_direction = turn.facing_after;
         }
         if turn.just_turned && turn.dash_direction != 0.0 && forward {
-            unimplemented!("ftCo_Turn.c:139-144: Turn -> Dash");
+            // ftCo_Turn.c:139-144 passes 0: the new dash has no initial
+            // attack/escape window. Later stores touch inactive union bytes.
+            return self.enter_dash(assets, false);
         }
         turn.buffered_buttons.0 |= self.input.pressed.0 & (Buttons::A.0 | Buttons::B.0);
         turn.just_turned = false;

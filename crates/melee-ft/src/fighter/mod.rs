@@ -3,11 +3,13 @@
 pub mod assets;
 pub mod caches;
 pub mod commands;
+pub mod dash;
 pub mod effects;
 pub mod entry;
 pub mod fall;
 pub mod landing;
 mod procs;
+pub mod run;
 mod snapshot;
 mod spawn;
 pub mod squat;
@@ -171,6 +173,7 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub skeleton: JObjTree,
     pub motion_state: MotionState,
     pub state_data: MotionData,
+    pub effect_state: effects::FighterEffects,
     pub effects: Vec<effects::EffectRequest>,
     pub character: C,
     pub capabilities: Capabilities,
@@ -232,6 +235,9 @@ pub enum MotionData {
     Squat(squat::SquatState),
     Turn(turn::TurnState),
     Walk(walk::WalkState),
+    Dash(dash::DashState),
+    Run(run::RunState),
+    RunBrake(run::RunBrakeState),
     Fall {
         blend: f32,
     },
