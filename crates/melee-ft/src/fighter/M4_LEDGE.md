@@ -176,3 +176,42 @@ harness code changed.
 - `crates/melee-ft/tests/movement_fox_states.rs`
 - `crates/melee-sim/src/{effects.rs,effects/dust.rs,frame.rs,initial_state/fighter.rs}`
 - `crates/melee-sim/tests/m4_gate.rs`
+
+## M4-T5 particle-dump follow-up (2026-09-09)
+
+The supplied air-dodge, wavedash and ledge tick-boundary dumps pass the shared
+full-field `hsd-particle/tests/support/dust_replay.rs` runner. The runner now
+takes an explicit expected tick count: 300 for movement scenes and 420 for
+ledge. Both dump and ledger lengths remain strictly checked.
+
+| Test | Ticks | Compared fields | Ordered particle draws | Display-cache exclusions |
+|---|---:|---:|---:|---:|
+| `live_fd_airdodge` | 300 | 509,415 | 9,935 | 0 |
+| `live_fd_wavedash` | 300 | 472,911 | 9,284 | 0 |
+| `live_fd_ledge` | 420 | 669,918 | 13,418 | 0 |
+
+**All fields matched on the first replay**, including every dumped
+generator/particle/AppSRT field, ordered draw sites and final seeds. No dust
+routing, attachment, particle interpreter or arithmetic changes were needed.
+The fixtures contain the production port's external spawn requests and joint
+inputs, logged by running each `melee-sim` scenario gate; children and particle
+outputs are computed. Capture provenance and reproduction are documented in
+`hsd-particle/tests/data/README.md`. The tests print their field counts under
+`--nocapture`. The shield-scene snapshot correction is documented in
+`M4_SHIELD.md`; it does not alter these three results.
+
+Validation for this follow-up (local assets present, no skipped asset tests):
+
+- Six new integration targets with `--nocapture`: all pass and print the
+  counts above; `/tmp/melee-six-final.log`.
+- `cargo test -p hsd-particle`: 58 passed, zero failed.
+- `cargo test -p melee-sim --test m4_gate`: 19 passed, covering the 11 movement
+  scenes plus ordered particle RNG checks. Idle and match-start also pass in
+  `cargo gate`, completing all 13 scenes.
+- `cargo gate`: 588 passed, zero failed, one pre-existing ignored doctest
+  across 108 suite results; `/tmp/melee-final-gate.log`.
+- `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- `cargo fmt --all` and `git -c core.fsmonitor=false diff --check`: passed.
+
+Temporary capture instrumentation was removed. No protected harness paths or
+submodule files were changed, no Dolphin was run, and no commits were made.

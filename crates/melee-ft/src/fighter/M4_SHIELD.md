@@ -184,3 +184,53 @@ no harness code changed.
 - `crates/melee-sim/src/effects/dust.rs`
 - `crates/melee-sim/src/frame.rs`
 - `crates/melee-sim/tests/m4_gate.rs`
+
+## M4-T4 particle-dump follow-up (2026-09-09)
+
+The newly supplied tick-boundary dumps now pass the shared full-field
+`hsd-particle/tests/support/dust_replay.rs` runner. Each fixture was logged
+from the production `melee-sim` scenario gate, including spawn requests,
+attachment updates, destruction and the shield caller's generator flag
+operation. See `hsd-particle/tests/data/README.md` for reproduction. No
+simulation outputs are fixtures, and no runtime routing or shield attachment
+math needed changing.
+
+| Test | Ticks | Compared fields | Ordered particle draws | AppSRT display-cache fields excluded |
+|---|---:|---:|---:|---:|
+| `live_fd_shield` | 300 | 446,320 | 9,327 | 224 |
+| `live_fd_spotdodge` | 300 | 447,906 | 9,059 | 336 |
+| `live_fd_roll` | 300 | 468,444 | 9,659 | 336 |
+
+The first mismatch in all three scenes was at **tick 31,
+`particles.appsrt[0].generator_index`: expected `UInt(1)`, actual `Null`**.
+It occurred 8 times for shield and 12 times each for spot dodge and roll.
+Every other compared field matched on the first replay. The snapshot adapter
+had unconditionally emitted null for this field, even though the port retains
+the allocating generator's identity as the shared AppSRT ID.
+
+The adapter now normalizes the live allocating generator for descriptor kind
+0x20000. Retail `hsd_8039F05C` writes `AppSRT.gp` at **0x8039F698**;
+`psRemoveGeneratorSRT` clears it at **0x803A4428**. Explicit effect-created
+AppSRTs retain null, as before. Both assembly sites and their decomp callers
+were read. This fixes actual-state serialization; no expected value or
+comparison was changed. All final seeds and ordered draw sites match.
+
+Only the existing `psDispSubAppSRT` display-cache exclusion applies, with the
+counts above. The new tests print their counts under `--nocapture`. This
+supersedes the earlier statement that these scenes have no particle dump.
+
+Validation for this follow-up (local assets present, no skipped asset tests):
+
+- Six new integration targets with `--nocapture`: all pass and print the
+  counts above; `/tmp/melee-six-final.log`.
+- `cargo test -p hsd-particle`: 58 passed, zero failed.
+- `cargo test -p melee-sim --test m4_gate`: 19 passed, covering the 11 movement
+  scenes plus ordered particle RNG checks. Idle and match-start also pass in
+  `cargo gate`, completing all 13 scenes.
+- `cargo gate`: 588 passed, zero failed, one pre-existing ignored doctest
+  across 108 suite results; `/tmp/melee-final-gate.log`.
+- `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- `cargo fmt --all` and `git -c core.fsmonitor=false diff --check`: passed.
+
+Temporary capture instrumentation was removed. No protected harness paths or
+submodule files were changed, no Dolphin was run, and no commits were made.

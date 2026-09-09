@@ -11,7 +11,7 @@ use std::{collections::BTreeMap, fs, path::PathBuf};
 /// its column lengths, the display status bits and `psFrameNum`. They need the
 /// active camera and the render schedule, neither of which the simulation
 /// owns (rendering is Milestone 8), and no simulation field depends on them:
-/// every other generator/particle/AppSRT field matches over all 300 ticks.
+/// every other generator/particle/AppSRT field matches over all captured ticks.
 /// Same reasoning as the render-time JObj matrix caches excluded by the bone
 /// oracle (melee-ft/src/dynamics/README.md).
 fn is_display_cache(field: &str) -> bool {
@@ -48,7 +48,7 @@ fn particle_draw(draw: &Json) -> bool {
         _ => panic!("unclassified draw {site:#010x}"),
     }
 }
-pub fn replay(name: &str) -> usize {
+pub fn replay(name: &str, tick_count: usize) -> usize {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let paths = [
         "particles.jsonl.initial.jsonl",
@@ -82,7 +82,10 @@ pub fn replay(name: &str) -> usize {
         .map(|l| serde_json::from_str(l).unwrap())
         .collect();
     let ticks = restore::read(&paths[3]);
-    assert_eq!((states.len(), ledger.len(), ticks.len()), (300, 300, 300));
+    assert_eq!(
+        (states.len(), ledger.len(), ticks.len()),
+        (tick_count, tick_count, tick_count)
+    );
     assert_eq!(initial.len(), 1);
     let mut system = restore::restore(&initial[0], &banks);
     // Restore the attached stage JObj from initial metadata, as live_fd does.
@@ -111,7 +114,7 @@ pub fn replay(name: &str) -> usize {
     let mut field_count = 0;
     let mut mismatches = BTreeMap::<String, usize>::new();
     let mut display_cache_fields = 0usize;
-    for tick in 0..300 {
+    for tick in 0..tick_count {
         assert_eq!(ticks[tick].frame, tick as u64);
         assert_eq!(states[tick].frame, tick as u64);
         assert_eq!(states[tick].phase, "particles");
@@ -193,13 +196,13 @@ pub fn replay(name: &str) -> usize {
         }
     }
     eprintln!(
-        "Compared {} fields across 300 ticks and {particle_draws} ordered particle draws; mismatches: {}; AppSRT display-cache fields skipped: {display_cache_fields}",
+        "Compared {} fields across {tick_count} ticks and {particle_draws} ordered particle draws; mismatches: {}; AppSRT display-cache fields skipped: {display_cache_fields}",
         field_count - display_cache_fields,
         mismatches.values().sum::<usize>()
     );
 
     assert!(mismatches.is_empty(), "mismatched fields: {mismatches:?}");
-    eprintln!("FD {name} matched 300/300 ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
+    eprintln!("FD {name} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
     if name == "dash" {
         assert!(
             display_cache_fields > 0,

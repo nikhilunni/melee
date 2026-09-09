@@ -323,6 +323,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
 fn appsrt_fields(
     value: &hsd_particle::appsrt::ApplicationTransform,
     mut count: usize,
+    mut generator_index: Option<usize>,
     fields: &mut Fields<'_>,
 ) {
     let mut value = value.clone();
@@ -363,7 +364,7 @@ fn appsrt_fields(
     );
     fields.scalar("id", &mut (value.family_id));
     fields.scalar("unknown_byte", &mut (value.camera_facing));
-    fields.scalar("generator_index", &mut Option::<usize>::None);
+    fields.scalar("generator_index", &mut generator_index);
 }
 
 pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Banks) -> Record {
@@ -402,10 +403,20 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
                 .unwrap()
         })
     };
-    for (index, (_, transform, count)) in transforms.iter().enumerate() {
+    for (index, (id, transform, count)) in transforms.iter().enumerate() {
+        // hsd_8039F05C sets AppSRT.gp only for descriptor kind 0x20000
+        // (retail 8039F698); explicit effect AppSRTs keep gp null. The owned
+        // AppSRT identity is its allocating generator ID, retained by children.
+        // psRemoveGeneratorSRT clears gp when that owner leaves the live list
+        // (803A4428), so normalize only the still-live allocating generator.
+        let owner = system
+            .generators
+            .iter()
+            .position(|generator| generator.id == *id && generator.descriptor.kind & 0x20000 != 0);
         appsrt_fields(
             transform,
             *count,
+            owner,
             &mut Fields {
                 prefix: format!("particles.appsrt[{index}]"),
                 source: None,
