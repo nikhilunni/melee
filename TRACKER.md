@@ -185,11 +185,16 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 
 - [x] (2026-09-09) **Cold start (Codex lane B3).** `melee-sim/src/initial_state/cold.rs` builds the match-start state from `(stage, characters/costumes/ports, seed)` with no savestate: `start_fd_fox_cold`, `start_fd_marth_cold`, `start_bf_fox_cold`, `start_fd_falco_cold` all reach the recorded traces 600x49. Found and fixed en route: retail CPU initialisation draws twice (`ftCo_800A101C` + `ftCo_800B9704`); the first-session one-draw spawn expectation was self-authored and is corrected. `docs/COLD_START.md`. Next: Slippi replays as tests (lane B4).
 
+- [x] (2026-09-09) Yoshi's Story match start and cold start (Codex lane B5): `start_ys_fox`, `start_ys_fox_cold` 600x49, particle replay 215,202 fields. The Fox-vs-Falco Slippi fixture is an online match (per-frame netplay RNG resets), so only offline replays can be compared.
+- [~] (2026-09-09) Dream Land N64 recorded (`idle_dl_fox`, `start_dl_fox`, all stages unlocked in RAM with `poke-or 0x8045BF2A u16 0xFFFF`); lane B6 next.
+
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 
 Gate: two-fighter scenarios with hits, shields, grabs, KOs.
 
 - [x] (2026-09-09) **First hit (Codex lane A1):** `jab_fd_marth` gate 300x49: Marth Attack11 into idle Fox with fighter overlap push before it; typed hitboxes from the subaction commands, hurtboxes, hit detection in retail pair order, hitlag, damage, knockback, hitstun, Fox DamageN2 -> Wait; slash effects; new `melee-if` crate for the HUD percent-shake RNG (`ifstatus.c`, s_link 17). Particle replay 467,132 fields. Report `melee-ft/src/fighter/M5_HIT.md`. Next (A2, scenes scripted, recording pending): attacker swap `jab_fd_fox`, `fsmash_fd_marth` launch/tumble, `shieldhit_fd_marth`, `grab_fd_marth`.
+- [x] (2026-09-09) Combat batch 2 (Codex lane A2): `jab_fd_fox` (Fox as attacker), `utilt_fd_marth` (AttackHi3 launch, DamageHi, landing, slide into the ledge grab), `shieldhit_fd_marth` (GuardDamage, shield damage/stun, pushback) 300x49 each with particle replays; grab startup (ticks 0-126) with the pair states left for A3. Report `M5_COMBAT2.md`.
+- [~] (2026-09-09) Codex lane A3: grab/throw completion, KO/death/respawn/stocks (`ko_fd_marth`, stock-2 boundary), tech roll (`tech_fd_marth`)
 - [ ] Hitbox/hurtbox system breadth (`ftcoll.c`, `lbcollision.c`, `ftcolanim.c`): item and projectile collision, multi-hitbox priority
 - [ ] Damage, knockback, hitlag, hitstun, DI, SDI, ASDI
 - [ ] Shield damage and stun, powershield, shield break
