@@ -1,0 +1,31 @@
+# Air dodge: a full hop with an air dodge at the apex (EscapeAir -> LandingFallSpecial).
+# The first hop tries an L press during jump squat, which is too early for a
+# wavedash and just jumps; a real wavedash scenario is still to be recorded.
+# Recorded from the idle_fd_fox savestate (both Foxes in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "airdodge_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 32, buttons = { L = true, TriggerLeft = 1.0, StickX = 0.7, StickY = -0.7 } },
+  { frame = 36, buttons = {} },
+  { frame = 120, buttons = { X = true } },
+  { frame = 124, buttons = {} },
+  { frame = 140, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 143, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
