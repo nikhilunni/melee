@@ -228,6 +228,20 @@ most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**
    -o .codex-runs/<name>.md "<what happened, what to finish>"` (the thread id is
    on the first line of `.codex-runs/<name>.jsonl`; `resume` takes no `-C`/`-s`).
 
+### Parallel lanes (worktrees)
+
+Codex tasks that touch disjoint crates run concurrently, one per git
+worktree under `../melee-lanes/<lane>` (branches `lane/<lane>`), created
+from `main` with `harness/roms`, `harness/traces` and
+`third_party/melee-decomp` symlinked to the main checkout (so recordings and
+the retail asm split are shared; those three show as untracked/typechange in
+the lane, which is expected). Launch with the lane's own
+`tools/codex-task.sh`; its `.codex-runs/` is per lane. Recording (Dolphin)
+happens only in the main checkout. Claude merges: review in the lane, rebase
+the lane branch onto `main`, run the full gates on the merged tree, commit
+on `main`. Lanes never commit on their own and never touch each other's
+crates; if two lanes drift into one file, Claude resolves it.
+
 ## Hard boundaries
 
 - Never modify `third_party/melee-decomp` from this repo.
