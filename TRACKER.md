@@ -148,6 +148,8 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 Gate: scripted input scenarios for walk, dash, run, jump, double jump,
 fast fall, ledge grab, ledge options, platform drop, wavedash.
 
+- [~] (2026-09-09) **Match start** `harness/scenarios/start_fd_fox.toml`: savestate at the first initialised frame (both Foxes in Entry 322 at y=10); tick trace, RNG ledger and 600-frame particle dump recorded. Sequence: 322 -> 323 (t6) -> 324 (t35, anim frame holds at 10 until GO) -> Fall 29 (t65) -> Landing 42 (t75) -> Wait 14 (t105); P1 +5 ticks. Entry warp effects spawn new particle generators (new RNG sites). In flight (Codex): fighter Entry/Fall/Landing states + airborne physics (`start_fox_600`), and hsd-particle spawn requests/new opcodes (`live_fd_start`). Then melee-sim `gate start_fd_fox`.
+
 - [ ] Input system: `fighter.c` input parsing, buffers, deadzones (`ftCo_800A2040` CPU vs pad path)
 - [ ] `ftCo_*` ground movement states (walk, dash, run, turn, skid)
 - [ ] Jumps, air movement, fast fall, landing, L-cancel
