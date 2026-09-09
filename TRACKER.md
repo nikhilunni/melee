@@ -214,7 +214,7 @@ crate passes its scenarios.
 | Mario | `ft-mario` | 1257 | `[ ]` |
 | Dr. Mario | `ft-drmario` | 399 | `[ ]` |
 | Luigi | `ft-luigi` | 1922 | `[ ]` |
-| Captain Falcon | `ft-captain` | 1705 | `[ ]` |
+| Captain Falcon | `ft-captain` | 1705 | `[x]` idle/start/16 movement scenes (2026-09-09, lane C2) |
 | Falco | `ft-falco` | 503 | `[x]` idle/start/16 movement scenes (2026-09-09, lane C1) |
 | Sheik | `ft-seak` | 2858 | `[ ]` |
 | Zelda | `ft-zelda` | 2218 | `[ ]` (transform pair with Sheik) |
