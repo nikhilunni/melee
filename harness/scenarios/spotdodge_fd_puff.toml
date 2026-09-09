@@ -1,0 +1,27 @@
+# Spot dodge: shield, then tap down while shielding (EscapeN), release.
+# Jigglypuff variant of the Fox scenario, same inputs, from the idle_fd_puff savestate
+# (P1 Jigglypuff and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "spotdodge_fd_puff"
+savestate = "harness/roms/idle_fd_puff.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 34, buttons = { L = true, TriggerLeft = 1.0, StickY = -1.0 } },
+  { frame = 37, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 80, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
