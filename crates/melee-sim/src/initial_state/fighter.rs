@@ -11,7 +11,7 @@ use melee_ft::{
 use melee_mp::CollMap;
 use melee_types::PlayerKind;
 /// Import only the saved boundary. No later row is used by this constructor.
-pub(super) fn import<C: CharacterCallbacks>(
+pub(crate) fn import<C: CharacterCallbacks>(
     archive: &CharacterArchive,
     assets: &FighterAssets,
     character: C,

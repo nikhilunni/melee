@@ -83,10 +83,10 @@ fn falls_match_retail_scratch_and_command_clocks() {
                 .collect();
             let runtime = simulation.runtime.borrow();
             assert_eq!(bytes[12], 0, "P0 ledger ordering {name} tick {tick}");
-            fall_ticks += match &runtime.state.fighters[0] {
-                SceneFighter::Fox(f) => compare(f, &bytes),
-                SceneFighter::Marth(f) => compare(f, &bytes),
-            };
+            fall_ticks +=
+                crate::scene_fighter::with_fighter!(&runtime.state.fighters[0], |f| compare(
+                    f, &bytes
+                ));
         }
         assert!(fall_ticks > 0, "{name} must exercise falls");
         eprintln!("{name}: {fall_ticks} fall ticks, scratch and command clocks exact");

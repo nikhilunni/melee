@@ -1,6 +1,9 @@
 //! Restore the owned, local savestate boundary. See ../M3.md.
 mod collision;
 mod fighter;
+pub(crate) use fighter::import as import_fighter;
+pub(crate) use melee_mp::CollMap;
+pub(crate) use saved_pose::SavedPose;
 pub(crate) mod particles;
 mod saved_pose;
 mod stage;
@@ -157,30 +160,13 @@ impl InitialState {
             .collect::<Result<Vec<_>>>()?;
         let bytes = saved_bytes;
         let fighters = std::array::from_fn(|p| {
-            let archive = &assets.characters[p];
-            let resources = &assets.fighters[p];
-            match archive.descriptor.kind {
-                melee_types::FighterKind::Fox => {
-                    let character = ft_fox::init::Fox::new(
-                        ft_fox::attributes::read_fox_attributes(&archive.data).unwrap(),
-                    );
-                    let mut fighter =
-                        fighter::import(archive, resources, character, &map, &bytes[p]);
-                    saved.restore(&mut fighter, &bytes[p]);
-                    SceneFighter::Fox(Box::new(fighter))
-                }
-                melee_types::FighterKind::Mars => {
-                    let mut character = ft_mars::init::Marth::new(
-                        ft_mars::attributes::read_mars_attributes(&archive.data).unwrap(),
-                    );
-                    character.side_special_boost_used = word(&bytes[p], 0x222C) != 0;
-                    let mut fighter =
-                        fighter::import(archive, resources, character, &map, &bytes[p]);
-                    saved.restore(&mut fighter, &bytes[p]);
-                    SceneFighter::Marth(Box::new(fighter))
-                }
-                _ => unreachable!("validated character descriptor"),
-            }
+            SceneFighter::from_saved(
+                &assets.characters[p],
+                &assets.fighters[p],
+                &map,
+                &bytes[p],
+                &saved,
+            )
         });
         let mut sink = RecordSink::new(0, "frame_end");
         for (p, fighter) in fighters.iter().enumerate() {

@@ -72,9 +72,9 @@ impl Scenario {
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
                 usize::from(fighter.slot) == slot
-                    && matches!(fighter.kind.as_str(), "Fox" | "Marth")
+                    && crate::scene_fighter::SceneFighter::NAMES.contains(&fighter.kind.as_str())
                     && matches!(fighter.controller.as_str(), "scripted" | "idle"),
-                "requires ordered human Fox/Marth slots 0/1"
+                "requires ordered human slots 0/1 with a registered character kind"
             );
         }
         for step in &self.inputs {
@@ -154,10 +154,7 @@ impl Scenario {
 impl FighterScenario {
     /// Composition root selects a character crate; gameplay uses its callbacks.
     pub fn descriptor(&self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
-        match self.kind.as_str() {
-            "Fox" => &ft_fox::init::DESCRIPTOR,
-            "Marth" => &ft_mars::init::DESCRIPTOR,
-            _ => unreachable!("validated scenario kind"),
-        }
+        crate::scene_fighter::SceneFighter::descriptor_for(&self.kind)
+            .unwrap_or_else(|| unreachable!("validated scenario kind {}", self.kind))
     }
 }

@@ -41,6 +41,20 @@ pub use state::{interleaved_order, FighterProc, MotionState};
 /// character crate. The implementation owns its typed special attributes.
 pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
+    /// The character's on-disc resources (`ft<Char>_Init_*` strings, part and
+    /// animation counts). The scene loads archives through this.
+    fn descriptor() -> &'static assets::CharacterDescriptor
+    where
+        Self: Sized;
+    /// Build the character from its data archive (`ftData.ext_attr` and
+    /// whatever else its `OnLoad` reads). Mirrors `ft<Char>_Init_OnLoad`'s
+    /// PUSH_ATTRS without the runtime allocation.
+    fn from_archive(data: &hsd_archive::Archive) -> Result<Self, crate::desc::FighterDescError>
+    where
+        Self: Sized;
+    /// Restore character-owned fields from a retail Fighter dump when a scene
+    /// starts from a savestate (the shared fields are restored by the scene).
+    fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
     /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79.

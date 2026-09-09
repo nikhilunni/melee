@@ -24,6 +24,17 @@ impl CharacterCallbacks for Marth {
     fn kind(&self) -> FighterKind {
         FighterKind::Mars
     }
+    fn descriptor() -> &'static melee_ft::fighter::assets::CharacterDescriptor {
+        &DESCRIPTOR
+    }
+    fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
+        Ok(Self::new(crate::attributes::read_mars_attributes(data)?))
+    }
+    /// Marth +222C: side-special boost already spent (ftmars.c reset state).
+    fn restore_saved(&mut self, raw: &[u8]) {
+        self.side_special_boost_used =
+            u32::from_be_bytes(raw[0x222C..0x2230].try_into().unwrap()) != 0;
+    }
     /// ftMs_Init_OnLoad (801364AC): PUSH_ATTRS only; no item registrations
     /// or walljump flag. Four specials are present in ftdata.c's callback tables.
     /// OnLoadForRoy (80136474) uses this same attribute type, without scaling.

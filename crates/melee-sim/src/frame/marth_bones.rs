@@ -92,10 +92,8 @@ fn replay(name: &str, ticks: usize) {
         simulation.tick().unwrap();
         let runtime = simulation.runtime.borrow();
         for (player, fighter) in runtime.state.fighters.iter().enumerate() {
-            words += match fighter {
-                SceneFighter::Fox(f) => compare(f, row, player, tick),
-                SceneFighter::Marth(f) => compare(f, row, player, tick),
-            };
+            words +=
+                crate::scene_fighter::with_fighter!(fighter, |f| compare(f, row, player, tick));
         }
     }
     eprintln!("{name}: 90 Marth bones ({dynamic_bones} dynamic), 73 Fox bones, {ticks} ticks, {words} SRT words, 0 matrix words (no rendered capture)");

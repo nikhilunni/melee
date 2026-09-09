@@ -27,6 +27,12 @@ impl CharacterCallbacks for Fox {
     fn kind(&self) -> FighterKind {
         FighterKind::Fox
     }
+    fn descriptor() -> &'static melee_ft::fighter::assets::CharacterDescriptor {
+        &DESCRIPTOR
+    }
+    fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
+        Ok(Self::new(crate::attributes::read_fox_attributes(data)?))
+    }
     /// ftFx_Init_OnLoad (0x800E57AC), ftfox.c:486-501. PUSH_ATTRS is the
     /// owned FoxAttributes copy; item definitions are registered, not spawned.
     fn on_load(&mut self, capabilities: &mut Capabilities) {
