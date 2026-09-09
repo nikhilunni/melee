@@ -62,6 +62,19 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
   -e harness/roms/GALE01.iso --script $PWD/harness/dolphin/trace_scenario.py
 ```
 
+## The gates, in one command each
+
+```sh
+cargo gate                                                   # every unit/oracle test
+cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml   # M3: 600 ticks x 49 keys vs Dolphin
+cargo test -p hsd-particle --test live_fd                    # particle system vs 600 dumped frames
+cargo test -p melee-sim --test m2_gate                       # M2: Fox bones vs Dolphin
+```
+
+Milestones 1-3 passed on 2026-09-09. Their traces are machine-local
+(`harness/traces/`, gitignored); `docs/DOLPHIN_RUN.md`, `docs/M2_GATE.md`,
+`docs/PARTICLES_DUMP.md` say how to re-record each one.
+
 ## Session protocol
 
 At the start:
