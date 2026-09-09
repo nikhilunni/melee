@@ -8,9 +8,35 @@ use crate::{
 };
 use gekko_math::{fma::fmadds, rng::HsdRng};
 use hsd_anim::mtx::InverseTrig;
+use hsd_types::Mtx;
+use std::{collections::BTreeMap, sync::Arc};
 
 pub const MAIN_SKIP_MASK: u32 = 0x0006_0000;
 pub const AUX_SKIP_MASK: u32 = 0x0001_0000;
+
+/// Effect-layer input to `hsd_8039F05C` and its attachment/position wrappers.
+/// Velocity overrides are applied after descriptor initialization, as C callers do.
+#[derive(Debug, Clone)]
+pub struct SpawnRequest {
+    pub bank: u8,
+    pub kind: u32,
+    pub link: u8,
+    pub position: [f32; 3],
+    pub velocity: Option<[f32; 3]>,
+    pub joint: Option<(usize, Mtx)>,
+}
+impl SpawnRequest {
+    pub fn new(bank: u8, kind: u32, link: u8) -> Self {
+        Self {
+            bank,
+            kind,
+            link,
+            position: [0.0; 3],
+            velocity: None,
+            joint: None,
+        }
+    }
+}
 
 /// Owned equivalents of `hsd_804D78FC` and `hsd_804D0908[16]`.
 /// Vectors are in linked-list order; removal preserves all remaining order.
@@ -22,6 +48,7 @@ pub struct ParticleSystem {
     /// draws still happen on failure; immediate interpreter draws do not.
     pub particle_capacity: usize,
     next_id: usize,
+    banks: BTreeMap<u8, Arc<ParticleBank>>,
     /// lbl_804D6368 (0x804D6368), the u16 family-ID allocator.
     pub family_counter: u16,
     /// hsd_804D78F4 SList.data (+0x04), owned generator IDs in pending order.
@@ -35,6 +62,7 @@ impl Default for ParticleSystem {
             particles: std::array::from_fn(|_| Vec::new()),
             particle_capacity: usize::MAX,
             next_id: 0,
+            banks: BTreeMap::new(),
             family_counter: 0x100,
             pending_generators: Vec::new(),
             generator_cursor: None,
@@ -77,17 +105,25 @@ impl ParticleSystem {
         id
     }
 
-    /// Bank lookup and `hsd_8039F05C` creation. The caller can attach the
-    /// evaluated spawn JObj matrix to the returned generator before its pass.
+    /// Bank lookup and `hsd_8039F05C` creation. The first successful spawn
+    /// registers this bank for synchronous child-generator instructions.
+    /// The caller supplies evaluated matrices; attachment position is refreshed
+    /// before emission, while explicit velocity overrides apply after creation.
     pub fn spawn<T: InverseTrig>(
         &mut self,
         bank: &ParticleBank,
-        bank_id: u8,
-        descriptor_id: u32,
-        link: u8,
+        request: SpawnRequest,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<Option<usize>, Error> {
+        let SpawnRequest {
+            bank: bank_id,
+            kind: descriptor_id,
+            link,
+            position,
+            velocity,
+            joint,
+        } = request;
         if bank_id >= 65 || link >= 8 {
             return Ok(None);
         }
@@ -101,7 +137,80 @@ impl ParticleSystem {
                 generator.descriptor.kind |= 0x10;
             }
         }
+        generator.position = position;
+        if let Some(velocity) = velocity {
+            generator.descriptor.velocity = velocity;
+        }
+        if let Some((id, matrix)) = joint {
+            generator.attachment_id = Some(id);
+            generator.attach_joint(matrix);
+        }
+        self.banks
+            .entry(bank_id)
+            .or_insert_with(|| Arc::new(bank.clone()));
         Ok(Some(self.insert_generator(generator)))
+    }
+
+    /// Refresh a caller-owned animated joint, including inherited child attachments.
+    pub fn update_joint(&mut self, id: usize, matrix: Mtx) {
+        for generator in &mut self.generators {
+            if generator.attachment_id == Some(id) {
+                generator.joint_matrix = Some(matrix);
+            }
+        }
+    }
+
+    fn update_particle<T: InverseTrig>(
+        &mut self,
+        particle: &mut Particle,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<bool, Error> {
+        particle.update_with_generators(rng, draws, &mut |parent, kind, blend, rng, draws| {
+            if parent.appsrt_id.is_some() {
+                return Err(Error::UnsupportedFeature("child generator AppSRT"));
+            }
+            let bank = self
+                .banks
+                .get(&parent.bank)
+                .cloned()
+                .ok_or(Error::UnsupportedFeature(
+                    "child generator bank not registered",
+                ))?;
+            let attachment = parent
+                .generator_id
+                .and_then(|id| self.generators.iter().find(|g| g.id == id))
+                .map(|g| (g.flags, g.attachment_id, g.joint_matrix));
+            let request = SpawnRequest::new(parent.bank, kind, parent.link);
+            if let Some(id) = self.spawn::<T>(&bank, request, rng, draws)? {
+                let child = self.generator_mut(id).unwrap();
+                child.family_id = parent.family_id;
+                child.position = parent.position;
+                child.flags |= 0x100;
+                if let Some((flags, attachment_id, matrix)) = attachment {
+                    child.flags |= flags & 0x1e00;
+                    child.attachment_id = attachment_id;
+                    child.joint_matrix = matrix;
+                }
+                if let Some(blend) = blend {
+                    child.descriptor.kind =
+                        (child.descriptor.kind & 0xf1ff_ffff) | (u32::from(blend & 7) << 25);
+                }
+            }
+            Ok(())
+        })
+    }
+
+    /// `particleSort` (psdisp.c, 0x8039FC70): rendering stably buckets the *simulation*
+    /// lists by TexEdge and blend mode. Call between scheduler ticks when a
+    /// display pass occurred, before the next interpreter traversal.
+    pub fn sort_for_display(&mut self, links: u16) {
+        for (link, particles) in self.particles.iter_mut().enumerate() {
+            if links & (1 << link) != 0 {
+                particles
+                    .sort_by_key(|p| ((p.kind >> 25) & 7) + if p.kind & 8 == 0 { 8 } else { 0 });
+            }
+        }
     }
 
     pub fn generator_mut(&mut self, id: usize) -> Option<&mut Generator> {
@@ -137,13 +246,13 @@ impl ParticleSystem {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<(), Error> {
-        self.update_particles(mask, rng, draws)?;
+        self.update_particles::<T>(mask, rng, draws)?;
         self.update_generators::<T>(mask, rng, draws)
     }
 
     /// `hsd_8039CEAC` (particle.c, 0x8039CEAC): link 0 through 15, each
     /// from head to tail. Expiration updates child counts before generators.
-    pub fn update_particles(
+    pub fn update_particles<T: InverseTrig>(
         &mut self,
         mask: u32,
         rng: &mut HsdRng,
@@ -155,10 +264,11 @@ impl ParticleSystem {
             }
             let mut index = 0;
             while index < self.particles[link].len() {
-                if self.particles[link][index].update(rng, draws)? {
+                let mut particle = self.particles[link].remove(index);
+                if self.update_particle::<T>(&mut particle, rng, draws)? {
+                    self.particles[link].insert(index, particle);
                     index += 1;
                 } else {
-                    let particle = self.particles[link].remove(index);
                     if let Some(generator) =
                         particle.generator_id.and_then(|id| self.generator_mut(id))
                     {
@@ -225,7 +335,7 @@ impl ParticleSystem {
                 let link = usize::from(particle.link);
                 self.generators[index].children += 1;
                 // The new head is interpreted immediately, before count--.
-                let alive = particle.update(rng, draws)?;
+                let alive = self.update_particle::<T>(&mut particle, rng, draws)?;
                 if alive {
                     self.particles[link].insert(0, particle);
                 } else {

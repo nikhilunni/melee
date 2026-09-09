@@ -56,6 +56,35 @@ impl ColorTrack {
         }
         self.remaining = self.duration;
     }
+    /// E0, particle.c:2190-2349. One random offset per channel is shared
+    /// by both tracks; materialize each old interpolation before restarting.
+    pub(crate) fn random_dual(
+        primary: &mut Self,
+        environment: &mut Self,
+        pc: &mut Cursor<'_>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<(), Error> {
+        primary.materialize();
+        environment.materialize();
+        for (channel, site) in [0x8039_BB28, 0x8039_BBE4, 0x8039_BCA0, 0x8039_BD5C]
+            .into_iter()
+            .enumerate()
+        {
+            let random = draws.draw(rng, site);
+            let delta = i32::from(pc.byte()? as i8) << 1;
+            // retail 0x8039BB60/BB6C/BBB0 and subsequent channels:
+            // fmuls then separate fadds for each target; no contraction.
+            let offset = delta as f32 * random;
+            for track in [&mut *primary, &mut *environment] {
+                track.target[channel] =
+                    fctiwz((f32::from(track.target[channel]) + offset).clamp(0.0, 255.0)) as u8;
+            }
+        }
+        primary.restart();
+        environment.restart();
+        Ok(())
+    }
     pub(crate) fn random_delta(
         &mut self,
         pc: &mut Cursor<'_>,

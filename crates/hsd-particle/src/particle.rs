@@ -8,7 +8,7 @@ use crate::{
 };
 use gekko_math::{
     fma::{fmadds, fmsubs},
-    msl::fctiwz,
+    msl::{fctiwz, sqrtf},
     rng::HsdRng,
 };
 use std::sync::Arc;
@@ -117,6 +117,25 @@ impl Particle {
     /// An error terminates the simulation; callers must not continue a partial
     /// tick after unsupported bytecode or corrupt data.
     pub fn update(&mut self, rng: &mut HsdRng, draws: &mut DrawLog) -> Result<bool, Error> {
+        self.update_with_generators(rng, draws, &mut |_, _, _, _, _| {
+            Err(Error::UnsupportedFeature(
+                "generator opcode requires ParticleSystem",
+            ))
+        })
+    }
+
+    pub(crate) fn update_with_generators(
+        &mut self,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        spawn: &mut impl FnMut(
+            &Particle,
+            u32,
+            Option<u8>,
+            &mut HsdRng,
+            &mut DrawLog,
+        ) -> Result<(), Error>,
+    ) -> Result<bool, Error> {
         if self.kind & PAUSED != 0 {
             return Ok(true);
         }
@@ -130,7 +149,7 @@ impl Particle {
         if self.wait != 0 {
             self.wait -= 1;
             if self.wait == 0 {
-                self.interpret(rng, draws)?;
+                self.interpret(rng, draws, spawn)?;
             }
         }
         self.life = self.life.wrapping_sub(1);
@@ -175,7 +194,18 @@ impl Particle {
         }
     }
 
-    fn interpret(&mut self, rng: &mut HsdRng, draws: &mut DrawLog) -> Result<(), Error> {
+    fn interpret(
+        &mut self,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        spawn: &mut impl FnMut(
+            &Particle,
+            u32,
+            Option<u8>,
+            &mut HsdRng,
+            &mut DrawLog,
+        ) -> Result<(), Error>,
+    ) -> Result<(), Error> {
         let program = Arc::clone(&self.program);
         let mut cursor = Cursor {
             bytes: &program,
@@ -211,6 +241,17 @@ impl Particle {
                 track.setup(opcode & 15, &mut cursor)?;
             } else {
                 match opcode {
+                    0xa5 | 0xef => {
+                        // particle.c:1070-1191: child creation is synchronous;
+                        // RNG precedes the next instruction, even if parent dies.
+                        let kind = u32::from(cursor.short()?);
+                        let blend = if opcode == 0xef {
+                            Some(cursor.byte()?)
+                        } else {
+                            None
+                        };
+                        spawn(self, kind, blend, rng, draws)?;
+                    }
                     0xfa => {
                         self.loop_count = cursor.byte()?;
                         self.loop_start = cursor.pc;
@@ -334,6 +375,31 @@ impl Particle {
             0xaf => self.kind = (self.kind & !0x40) | 0x20,
             0xb0 => self.kind = (self.kind & !0x20) | 0x40,
             0xb1 => self.kind |= 0x60,
+            // retail 0x8039AADC: fadds; immediate stfs at 0x8039AAF4.
+            0xb6 => {
+                self.rotation_timer = pc.timer()?;
+                self.rotation_target += pc.float()?;
+                if self.rotation_timer == 0 {
+                    self.rotation = self.rotation_target;
+                }
+            }
+            0xbd => {
+                let base = pc.float()?;
+                let range = pc.float()?;
+                // retail 0x8039B5E8: fmadds; B5EC..B604: unfused squared magnitude.
+                let speed = fmadds(range, draws.draw(rng, 0x8039_B5E0), base);
+                let [x, y, z] = self.velocity;
+                let magnitude = sqrtf((x * x + y * y) + z * z);
+                if magnitude > 1e-10 {
+                    let scale = speed / magnitude;
+                    for value in &mut self.velocity {
+                        *value *= scale;
+                    }
+                }
+            }
+            0xe0 => {
+                ColorTrack::random_dual(&mut self.primary, &mut self.environment, pc, rng, draws)?
+            }
             0xba => self.primary.random_delta(pc, rng, draws, PRIMARY_COLOR)?,
             0xbb => self.environment.random_delta(
                 pc,

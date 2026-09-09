@@ -13,7 +13,7 @@ use hsd_archive::{
 use hsd_particle::{
     bank::ParticleBank,
     rng_sites::{DrawLog, EMISSION_COUNT, FD_EMISSION},
-    system::ParticleSystem,
+    system::{ParticleSystem, SpawnRequest},
 };
 use std::path::PathBuf;
 
@@ -90,7 +90,12 @@ fn run_cold(archive: &Archive, ticks: usize) -> ColdTrace {
                 // part of the ledger's steady-state 1+6*emissions pattern.
                 let mut creation = DrawLog::default();
                 let id = system
-                    .spawn::<RetailTrig>(&bank, lo as u8, hi as u32, 0, &mut rng, &mut creation)
+                    .spawn::<RetailTrig>(
+                        &bank,
+                        SpawnRequest::new(lo as u8, hi as u32, 0),
+                        &mut rng,
+                        &mut creation,
+                    )
                     .unwrap()
                     .unwrap();
                 assert_eq!(creation.0, [0x8039_f250]);

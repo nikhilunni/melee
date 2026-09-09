@@ -11,6 +11,20 @@ use hsd_particle::{
 use melee_diff::{Record, Value};
 use std::{collections::BTreeMap, fs::File, io::BufReader, path::Path};
 
+pub trait Banks {
+    fn bank(&self, id: u8) -> &ParticleBank;
+}
+impl Banks for ParticleBank {
+    fn bank(&self, _: u8) -> &ParticleBank {
+        self
+    }
+}
+impl Banks for BTreeMap<u8, ParticleBank> {
+    fn bank(&self, id: u8) -> &ParticleBank {
+        self.get(&id).expect("captured bank loaded")
+    }
+}
+
 pub fn read(path: &Path) -> Vec<Record> {
     melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap()
 }
@@ -107,7 +121,8 @@ impl Fields<'_> {
         }
     }
 }
-fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, bank: &ParticleBank) {
+fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl Banks) {
+    let bank = banks.bank(value.bank);
     fields.scalar("kind", &mut value.descriptor.kind);
     fields.scalar("random", &mut value.emission_rate);
     fields.scalar("count", &mut value.count);
@@ -142,10 +157,19 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, bank: &Parti
             fields.scalar("aux.longitude_mid", longitude_midpoint);
             fields.scalar("aux.longitude_range", longitude_range);
         }
-        other => panic!("live FD restore requires sphere auxiliary state, got {other:?}"),
+        EmissionShape::Disc {
+            minimum_angle,
+            maximum_angle,
+            ..
+        } => {
+            fields.scalar("aux.minimum_angle", minimum_angle);
+            fields.scalar("aux.maximum_angle", maximum_angle);
+        }
+        other => panic!("live FD adapter requires sphere/disc auxiliary state, got {other:?}"),
     }
 }
-fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, bank: &ParticleBank) {
+fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, banks: &impl Banks) {
+    let bank = banks.bank(value.bank);
     fields.scalar("kind", &mut value.kind);
     fields.scalar("bank", &mut value.bank);
     fields.scalar("texture_group", &mut value.texture_group);
@@ -200,18 +224,20 @@ fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, bank: &Particl
     fields.program(bank, &value.program);
 }
 
-pub fn restore(record: &Record, bank: &ParticleBank) -> ParticleSystem {
+pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
     let mut output = BTreeMap::new();
     let mut generators = Vec::new();
     for index in 0..uint(record, "particles.generator_count") {
         let prefix = format!("particles.generator[{index}]");
         let id = uint(record, &format!("{prefix}.program_kind")) as u32;
+        let bank_id = uint(record, &format!("{prefix}.bank")) as u8;
+        let bank = banks.bank(bank_id);
         let descriptor = bank.descriptor(id).expect("captured program in bank");
         // Constructor-only derived state; its private scratch RNG never enters
         // replay. Every canonical runtime field, including count, is overwritten.
         let mut generator = Generator::new::<RetailTrig>(
             descriptor,
-            30,
+            bank_id,
             0,
             &mut HsdRng::new(0),
             &mut DrawLog::default(),
@@ -245,8 +271,10 @@ pub fn restore(record: &Record, bank: &ParticleBank) -> ParticleSystem {
             .map(|index| {
                 let prefix = format!("{prefix}.particle[{index}]");
                 let id = uint(record, &format!("{prefix}.program_kind")) as u32;
+                let bank_id = uint(record, &format!("{prefix}.bank")) as u8;
+                let bank = banks.bank(bank_id);
                 let mut particle =
-                    Particle::new(bank.descriptor(id).unwrap(), 30, link as u8).unwrap();
+                    Particle::new(bank.descriptor(id).unwrap(), bank_id, link as u8).unwrap();
                 particle_fields(
                     &mut particle,
                     &mut Fields {
@@ -282,12 +310,17 @@ pub fn restore(record: &Record, bank: &ParticleBank) -> ParticleSystem {
     // This also rejects an unmapped field instead of silently dropping it.
     assert_state(
         record,
-        &snapshot(&system, uint(record, "rng.seed") as u32, record.frame, bank),
+        &snapshot(
+            &system,
+            uint(record, "rng.seed") as u32,
+            record.frame,
+            banks,
+        ),
     );
     system
 }
 
-pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &ParticleBank) -> Record {
+pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Banks) -> Record {
     let mut output = BTreeMap::new();
     output.insert("rng.seed".into(), seed.encode());
     output.insert(

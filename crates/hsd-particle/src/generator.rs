@@ -59,6 +59,8 @@ pub struct Generator {
     pub shape: EmissionShape,
     /// Caller supplies an already evaluated JObj matrix each animation tick.
     pub joint_matrix: Option<Mtx>,
+    /// Caller-owned joint identity, inherited by bytecode-created generators.
+    pub attachment_id: Option<usize>,
     pub texture_images: Arc<[bool]>,
 }
 
@@ -118,6 +120,7 @@ impl Generator {
             appsrt_id: None,
             shape,
             joint_matrix: None,
+            attachment_id: None,
             texture_images: Arc::from([]),
         })
     }
