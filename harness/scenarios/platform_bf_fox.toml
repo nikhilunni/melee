@@ -1,0 +1,31 @@
+# Platforms: from the main platform, a full hop drifting right lands on the
+# right side platform (y=27.2); then a stick-down tap drops through it (Pass)
+# back to the main platform; then a jump up through the platform from below.
+# Recorded from the idle_bf_fox savestate (Fox P1 at (0,0), Fox P2 idle on
+# the top platform). Input frames are VI callbacks counted from the savestate
+# load; the port replays the per-tick pad the tick tracer recorded.
+name = "platform_bf_fox"
+savestate = "harness/roms/idle_bf_fox.sav"
+frames = 300
+seed = 1
+stage = "Battlefield"
+
+inputs = [
+  { frame = 30, buttons = { X = true, StickX = 0.6 } },
+  { frame = 36, buttons = { StickX = 0.6 } },
+  { frame = 75, buttons = {} },
+  { frame = 130, buttons = { StickY = -1.0 } },
+  { frame = 134, buttons = {} },
+  { frame = 200, buttons = { X = true } },
+  { frame = 206, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
