@@ -45,6 +45,7 @@ Commands are JSON objects with an "op" key:
     press A 3 @1             any input command may end with @<port> (P2 is @1)
     watch 0x804D6714 4       unwatch 0x804D6714     unwatch all
     save-when-wait /abs/x.sav
+    save-when-fighters /abs/x.sav   # first frame any fighter exists (match start)
     wait 30 | clear | save P | load P | shot P | pause | resume | osd text... | status | stop
 """
 from __future__ import annotations
@@ -203,7 +204,7 @@ def parse_command(text: str) -> dict:
             raise CommandError("wait takes exactly: <frames>")
         return {"op": "wait", "frames": _frames(args[0])}
 
-    if op in ("save", "load", "shot", "save-when-wait"):
+    if op in ("save", "load", "shot", "save-when-wait", "save-when-fighters"):
         if len(args) != 1:
             raise CommandError(f"{op} takes exactly: <path>")
         path = Path(args[0])
@@ -364,6 +365,7 @@ class Host(Protocol):
     def save_state(self, path: str) -> None: ...
     def load_state(self, path: str) -> None: ...
     def save_when_wait(self, path: str) -> None: ...
+    def save_when_fighters(self, path: str) -> None: ...
     def pause(self) -> None: ...
     def resume(self) -> None: ...
     def osd(self, text: str) -> None: ...
@@ -389,6 +391,8 @@ def apply_command(cmd: dict, queue: InputQueue, host: Host) -> None:
         host.load_state(cmd["path"])
     elif op == "save_when_wait":
         host.save_when_wait(cmd["path"])
+    elif op == "save_when_fighters":
+        host.save_when_fighters(cmd["path"])
     elif op == "pause":
         host.pause()
     elif op == "resume":

@@ -14,6 +14,7 @@ from test_walk import ENTITIES_SYM, FIGHTER_A, FakeMemory, build_two_fighter_wor
 # --- parse_command ------------------------------------------------------------
 
 @pytest.mark.parametrize("text, expected", [
+    ("save-when-fighters /tmp/x.sav", {"op": "save_when_fighters", "path": "/tmp/x.sav"}),
     ("poke 0x804D3EE0 u16 0xC0", {"op": "poke", "addr": 0x804D3EE0, "width": 16, "value": 0xC0, "or": False}),
     ("poke-or 0x804D3EE0 u16 0xC0", {"op": "poke", "addr": 0x804D3EE0, "width": 16, "value": 0xC0, "or": True}),
     ("press A", {"op": "input", "inputs": {"A": True}, "frames": proto.DEFAULT_PRESS_FRAMES}),

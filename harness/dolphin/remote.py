@@ -64,6 +64,7 @@ class Remote:
         self.shot_path: Path | None = None   # pending screenshot, consumed by on_frame
         self.watches: dict[int, int] = {}    # addr -> size, dumped into every status
         self.save_when_wait_path: str | None = None
+        self.save_when_fighters_path: str | None = None
         self.frame = 0
         self.queue = proto.InputQueue()
         self.cmds = proto.CommandFile(CMD_FILE)
@@ -103,6 +104,20 @@ class Remote:
         """Arm a save for the first frame where every fighter is in Wait."""
         self.save_when_wait_path = path
         self.note = f"armed save-when-wait {path}"
+
+    def save_when_fighters(self, path: str) -> None:
+        """Arm a save for the first frame where any valid fighter exists (match start)."""
+        self.save_when_fighters_path = path
+        self.note = f"armed save-when-fighters {path}"
+
+    def check_save_when_fighters(self) -> None:
+        if self.save_when_fighters_path is None:
+            return
+        fighters = self.read_fighters()
+        if fighters and all(proto.fighter_looks_valid(f) for f in fighters):
+            path, self.save_when_fighters_path = self.save_when_fighters_path, None
+            self.save_state(path)
+            self.note = f"save-when-fighters fired at frame {self.frame}: {path}"
 
     def check_save_when_wait(self) -> None:
         if self.save_when_wait_path is None:
@@ -240,6 +255,7 @@ class Remote:
             self.frame += 1
             got_commands = self.poll_commands()
             self.check_save_when_wait()      # before this frame's inputs: the saved state is untouched
+            self.check_save_when_fighters()
             step = self.queue.next_frame()
             if step is not None:
                 port, inputs = step
