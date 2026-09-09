@@ -176,6 +176,29 @@ abstractions and clean organization.
   data. Special moves are per-character modules reached through the trait.
   A branch the current scenarios never take may stay an explicit
   `unimplemented!` with the C line, but when it is ported it becomes a hook.
+- **Motion states are tables, not matches.** A state is a `MotionRow<C>`
+  (anim id, flags, move id, five `fn(&mut Fighter<C>)` callbacks), exactly
+  retail's `MotionState`. The common table lives in `melee-ft`; a character
+  adds rows through `CharacterCallbacks::special_rows()` and enters them
+  from the `enter_special` hook. Dispatch is a table lookup; never a
+  `match` on the state or the kind to pick a callback.
+- **Kinds that share retail code share a family crate.** Fox and Falco
+  (retail `ftFx_`), Marth and Roy, Mario and Dr. Mario, Pikachu and Pichu,
+  Link and Young Link: the shared states live in `ft-<family>` as functions
+  generic over a small family trait (item kinds, sound ids, attribute
+  accessor, typed per-move scratch); each character crate implements the
+  trait and instantiates the table. Character crates never depend on each
+  other. Retail's `switch (kind)` inside the family code becomes a trait
+  constant or method.
+- **Per-move scratch is typed.** Retail's `fp->mv` union becomes a named
+  struct in the character payload (`Fox { laser: SpecialNeutral, .. }`),
+  visible only to that character's callbacks.
+- **Concrete core, thin generic shell.** Code that never calls a character
+  hook (physics, environment collision, animation player, subaction
+  interpreter, hitboxes) takes the non-generic fighter core, not
+  `Fighter<C>`. Only hook-calling code is generic. Monomorphization is the
+  one real cost of the trait design; keep the generic surface thin and
+  measure it (`cargo llvm-lines`, budget in `docs/PERF.md`).
 
 ## Build-speed rules
 
@@ -184,11 +207,34 @@ abstractions and clean organization.
 - One crate per subsystem. No crate over roughly 30k lines; split along
   the decomp's directory structure when one grows past that.
 - One crate per character under `crates/ft-<name>`. They depend on
-  `melee-ft` and `melee-types`, never on each other. Copy `ft-fox`.
+  `melee-ft`, `melee-types` and (when retail shares the code) their
+  `ft-<family>` crate, never on each other. Copy `ft-fox`.
 - No cross-layer `pub use` facades. Depend on the crate you use.
 - Only `melee-sim` and `melee-platform` may depend on everything.
 - No proc-macro or heavy dependencies in layers 0 and 1. Dependencies build
   at opt-level 2 once; our crates at opt-level 0 incrementally.
+
+## Zero-cost rules (the tick path)
+
+The abstractions above must cost nothing at run time; the checks below
+keep it that way. Design notes and code sketches: `docs/STEEL_THREAD.md`.
+
+- Static dispatch only in the tick path: generics, associated consts and
+  fn-pointer tables. No `dyn`, no `Box`, no `Rc<RefCell<..>>` per tick.
+  Heterogeneous runtime kinds (items, scene fighters) are an enum built by
+  one macro (`scene_characters!` is the model), not trait objects.
+- No heap allocation after initialization. Retail used fixed pools for
+  items, effects and particles; so do we (`[T; N]`, fixed-capacity vectors).
+  An allocation-count test asserts zero allocations per tick on a 600-tick
+  scene once it exists (C5).
+- Tables are `static`/`const` data (retail's `.data` tables), rows are
+  `Copy`, indices are enums so bounds checks vanish.
+- Bit-exactness and optimization do not fight: Rust never reassociates or
+  contracts floats, so fat LTO, one codegen unit and native CPU targeting
+  are safe in release. Fused ops stay explicit (`fmadds`), never inferred.
+- Performance, binary size and instantiation counts are regression gates
+  (`tools/perf-gate.sh`, `docs/PERF.md`), not bit-exact ones; they fail on
+  regression against the recorded baseline.
 
 ## Porting a function
 

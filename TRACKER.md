@@ -9,6 +9,34 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+**Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
+Fox vs Marth on Final Destination, four stocks, human inputs on both
+ports, from match start through the GAME banner, compared tick for tick
+on the gated keys plus the RNG ledger and particle replay. Breadth (more
+characters, more stages) is paused until the thread closes, except where
+it falls out as a by-product. Two phases, tracked in the **Steel thread**
+section below:
+
+1. **Consolidation round (C1..C10):** the architecture that makes going
+   wide a matter of adding tables and data: fn-pointer motion state tables
+   (common + per-character), special-move entry hooks, family crates for
+   kinds that share retail code, a non-generic fighter core under a thin
+   generic shell, the `melee-ef` crate, no per-tick heap allocation, and
+   size/throughput/instantiation budgets as regression gates. Existing
+   gates prove each refactor changed nothing.
+2. **Combat table (S1..S11):** every state a pad can reach in the match,
+   in cost order (ground attacks, aerials + L-cancel, specials,
+   items/projectiles, hit reactions incl. DI/SDI/ASDI/CC, shield, grabs,
+   ledge, KO variants, match flow), then the full-match acceptance gate.
+
+Status: consolidation lanes launched 2026-09-09 (core: C1 then C2/C7;
+perf: C6, C5 sim-side, C10; harness: C9). Going in: seven characters x 18
+scenes on FD (+ Battlefield, Yoshi's Story, Dream Land idle/start/cold),
+combat through KO/respawn, cold start, Slippi pipeline (needs an offline
+replay), 141 commits, 26 crates, ~950 tests, main green.
+
+<details><summary>Earlier focus text (history, 2026-09-08..09)</summary>
+
 **The disc is present, extracted, and the oracle works.** `harness/roms/idle_ys_fox.sav` + `harness/traces/idle_ys_fox.expected.jsonl` are the first real-game trace (two idle Foxes, Yoshi's Story, 600 frames). Fusion audit complete workspace-wide. Fox's Wait1 animation plays through the port. **Milestones 1-3 gates passed, plus the match-start scenario.** The port reproduces a Fox vs Fox match on Final Destination from its first initialised frame (entry warp, fall, landing, idle) for 600 ticks bit-exactly, RNG included, and the bone oracle matches all 73 bones. **2026-09-09 evening: paused for a stock-take; all lanes idle, main green.** Milestone 4 movement is essentially complete on FD, Battlefield, Yoshi's Story and Dream Land for seven characters; Milestone 5 combat has jab, tilt launch, shield hit, grab/throw, tech, KO/respawn; cold start and the Slippi pipeline exist. Earlier: **Milestone 4 has started (2026-09-09):** the tick tracer injects scripted inputs and records the pad each tick consumed; five movement scenarios (walk, dash, jump, turn, squat; 300 ticks each from `idle_fd_fox.sav`) are recorded with RNG ledgers; the port replays their pads and stops at each first transition with an explicit `unimplemented`. Squat/Turn/Walk (M4-T1), Dash/Run/RunBrake with dust effects (M4-T2) jumps/fast fall/landing (M4-T3), shield/spot dodge/roll (M4-T4) air dodge/wavedash/backward jump/ledge (M4-T5) and TurnRun/WalkFast/ledge climb+escape (M4-T7) are ported and gated: 17 scenario gates; dash and jump need dust effects (new particle draw sites) next. A `melee-ef` crate for the effect layer is still pending. Older: Milestone 3 groundwork (melee-gr Yoshi's Story, melee-ft init and frame order, melee-sim loop).
 
 Older note: `harness/roms/GALE01.iso` (gitignored)
@@ -23,6 +51,8 @@ Nothing disc-dependent has been run yet. The next session should start
 with the three items under "Milestone 0: disc arrived" below; they are
 independent and can run in parallel. Every one of them is the first time
 the port meets the real game, so expect surprises and record them here.
+
+</details>
 
 ## Blockers
 
@@ -43,6 +73,8 @@ the port meets the real game, so expect surprises and record them here.
 | 2026-09-08 | Bulk porting delegated to Codex (`gpt-6-astra`) via `tools/codex-task.sh`; Fable subagents kept to one or two | User: Fable fan-out too expensive. Guardrail is the bit-exact test suite; Claude reviews and commits. |
 | 2026-09-08 | Melee-specific on-disc structs (`coll_data`, `ftData`, `map_head`) are read by the owning game crate (`melee-mp`, `melee-ft`, `melee-gr`) in a `desc`-style module that depends on `hsd-archive`; `hsd-archive` stays HSD-only and never depends on `melee-types` | Keeps the archive crate a leaf; game crates already know their own types. |
 | 2026-09-09 | Scripted scenarios: the TOML `inputs` schedule drives Dolphin at VI frames; the port replays `HSD_PadGameStatus` as recorded at each tick boundary (`inputs.pN` beside the expected record, `melee-sim/src/inputs.rs`) | VI-to-tick alignment is not modelled; pads are inputs, never compared state. Several scenarios from one savestate share its particle capture (`Scenario::boundary_path`). |
+| 2026-09-09 | **Steel thread before breadth:** Fox vs Marth on Final Destination, a full match bit-exact, with a consolidation round first | User (2026-09-09): the gold standard is clean, zero-cost abstractions; going wide should be additional trait implementations and tables, not more shared code. |
+| 2026-09-09 | Motion states are fn-pointer tables (common table + per-character table from `CharacterCallbacks::special_rows()`), specials enter through a trait hook; kinds that share retail code get a family crate (`ft-fox-family` with a `FoxFamily` trait) that both characters depend on; `Fighter<C>` becomes a non-generic core plus a thin generic shell; no heap allocation in the tick path; perf/size/instantiation budgets are regression gates | Mirrors retail's own dispatch (`ftData_MotionStateList`, `ftFx_Init_MotionStateTable`, `ftData_SpecialN` per-kind tables), so the port's code is the C with the `switch (kind)` deleted. Keeps monomorphization (the one real cost) small. Baseline 2026-09-09: stripped `melee-sim` 3.9 MB, 600-tick gate 0.25 s CPU incl. load. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure
@@ -189,6 +221,49 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [x] (2026-09-09) Dream Land N64 (Codex lane B6): `melee-gr/src/pupupu/`, Whispy's wind schedule and gust on the fighters (the idle P2 is pushed from t519 and blown into Fall at t593), point lights, particle opcode A9, cold setup; gates `idle_dl_fox`, `start_dl_fox`, `start_dl_fox_cold` 600x49; particle replays 231,747 fields. `docs/DREAM_LAND.md`. Multi-minute flybys and auxiliary gust/camera effects remain.
 - [~] (2026-09-09) Fountain of Dreams recorded (`idle_fod_fox`, `start_fod_fox`: fighters spawn on the side platforms at (+-41.25, 16.1)); its idle ledger is particle-heavy (~7,800 draws each at `hsd_8039930C+0x31EC/+0x3280` over 600 ticks: the fountain water). Lane B7 prompt drafted; paused for discussion.
 
+## Steel thread: Fox vs Marth on Final Destination
+
+Definition: a recorded human-vs-human match (four stocks, eight minutes,
+FD) replays tick for tick on the 49 gated keys + RNG ledger + particle
+replay, from match start through the GAME banner. Acceptance: (a) our own
+Dolphin recording `match_fd_foxmarth`; (b) one offline Slippi replay of
+the same matchup (user records with Slippi Dolphin, `docs/SLIPPI.md`).
+Camera is out of gate scope (touches neither fighter state nor RNG). Fox
+vs Fox is the fallback if Marth's moveset stalls. Design discussion and
+code sketches: `docs/STEEL_THREAD.md`.
+
+### Consolidation round (architecture first; existing gates prove behaviour unchanged)
+
+- [~] (2026-09-09) C1 **Motion state tables.** `MotionRow<C>` = anim id, flags, move id, five `fn(&mut Fighter<C>)` callbacks (retail `MotionState`, `ft/types.h:853`). Common table (`ftData_MotionStateList`, 341 rows) built by `const fn common_table::<C>()` behind an associated const; `CharacterCallbacks::special_rows()` for rows >= 341 (`ftFx_Init_MotionStateTable`); `enter_special(slot, airborne)` hook called from the shared attack-input check (the `ftData_SpecialN`.. per-kind tables). Replaces the `AnimationCallback`/`InputCallback` enums and the `MotionState::CATCH`-style consts. Zero gate changes.
+- [ ] C2 **Concrete core.** Split `Fighter<C>` into a non-generic `FighterCore` (physics, environment collision, animation player, subaction interpreter, hitboxes) plus the thin generic shell that calls hooks. Budget: `cargo llvm-lines` instantiation count of melee-ft code per character crate, recorded in `docs/PERF.md`.
+- [ ] C3 **Family crates.** `ft-fox-family` (retail `ftFx_`, shared by Fox and Falco) with a `FoxFamily` trait (laser/ghost item kinds, sound ids, attributes accessor, typed per-move scratch). `ft-fox` and `ft-falco` depend on it, never on each other. Same pattern later for Marth/Roy, Mario/Dr. Mario, Pikachu/Pichu, Link/Young Link. Lands with S3.
+- [ ] C4 **`melee-ef` crate.** Effect layer out of melee-sim/melee-ft (`effects.rs`, `effects/dust.rs`, death effects) into its own crate with fixed pools. After C1 merges (both touch the motion-change path).
+- [~] (2026-09-09) C5 **No per-tick allocation.** Fixed-capacity pools/arrays in the tick path: effect flush vectors (melee-ft, after C1), RNG-writer `Rc<RefCell<Vec>>` and per-frame `collect()`s in melee-sim. Test: an allocation counter asserts zero allocations per tick after warm-up on a 600-tick scene.
+- [~] (2026-09-09) C6 **Performance gates.** Criterion bench (ticks/s headless on `start_fd_fox`, 600 ticks), stripped binary size (`cargo bloat` per crate), `cargo llvm-lines` budget; all regression-only, none bit-exact; `tools/perf-gate.sh`, results in `docs/PERF.md`. Baseline 2026-09-09: stripped `melee-sim` 3.9 MB, text 3.6 MB, `gate start_fd_fox` 0.25 s CPU incl. savestate load and compare.
+- [ ] C7 **Kind checks out of trait default bodies.** The interim `if kind == ..` checks inside `CharacterCallbacks` defaults become hooks or attribute data. After C1.
+- [ ] C8 **Shared subaction interpreter and collision crates** (`melee-cmd`, `melee-coll`) extracted from melee-ft so items can use them. Prerequisite for S4; after C2.
+- [~] (2026-09-09) C9 **Item oracle.** Tracer records the item GObj list each tick (Item struct bytes, owner, kind, position/velocity, state) beside fighters; decoder and validator keys for items; a laser scene (`laser_fd_fox`) recorded once the tracer lands. Needed before S4.
+- [~] (2026-09-09) C10 **Reports and CI.** `melee-ft/src/fighter/M4_*.md`, `M5_*.md` move to `docs/PORT_NOTES/`; new lane reports go there directly; `tools/merge-check.sh` runs the strict merge chain (build errors, gate/test failures, clippy, fmt all block) so it is not something only Claude runs by hand.
+
+### Combat table (each row: Dolphin scenes recorded by Claude, ported by Codex, gated)
+
+| # | Area | Have | Missing | Est. tasks |
+|---|---|---|---|---|
+| S1 | Ground attacks | jab, up-tilt, forward smash | dash attack, remaining tilts with angles, up/down smash, smash charge, jab combos | 3-4 |
+| S2 | Aerials | none | five aerials each, L-cancel, autocancel windows | 2 |
+| S3 | Specials | none | Fox: laser, Illusion, Fire Fox, reflector. Marth: Shield Breaker, Dancing Blade, Dolphin Slash, Counter | 5-6 |
+| S4 | Projectiles/items | none | item engine (`melee-it`, `SpawnItem`, per-kind logic rows as a trait), `it-foxlaser`, reflector interaction, item-fighter collision | 2-3 |
+| S5 | Hit reactions | launch, tumble, missed tech, tech roll | full damage state graph, DI, SDI, ASDI, crouch cancel, knockdowns and getups, wall tech, meteor cancel, wall jump | 4 |
+| S6 | Shield | shield hit | stun and pushback, tilt, light shield, powershield reflect, shield break and dizzy | 2 |
+| S7 | Grabs | grab, back throw, escape | four throws, pummel, mash escape, the parked hitbox-phase mismatch | 2 |
+| S8 | Ledge | grab, climb, escape | ledge attacks, ledge jump, slow variants past 100% | 1-2 |
+| S9 | KO/respawn | side KO, respawn, stocks | star KO, screen KO, top and bottom blast zones and their RNG | 1-2 |
+| S10 | Match flow | start, countdown | timer, GAME banner, sudden death, stale-move queue | 1-2 |
+| S11 | Acceptance | | `match_fd_foxmarth` full-match recording gate; one offline Slippi replay (user) | 1 + user |
+
+Effects and sound RNG for every new state are folded into each row (about
+a third of the cost so far). Budget one unknown-unknown per row.
+
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 
 Gate: two-fighter scenarios with hits, shields, grabs, KOs.
@@ -318,3 +393,4 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-08: Parallel batch: hsd-archive parser, type enums, MSL math with native oracle, harness walk + schema generator, slp parser, Dolphin research. Fixed melee-diff float equality. Next: hsd-gobj, hsd-anim start, lbtrigf into melee-lb, Dolphin build.
 - 2026-09-08: Scaffolded workspace, gekko-math RNG/FMA, melee-diff, harness skeleton, docs. Decomp pinned as submodule.
 - 2026-09-09: scripted-input tracer + per-tick pad replay in melee-sim; five movement scenarios and ledgers recorded; Codex M4-T1 launched (squat/turn/walk).
+- 2026-09-09 (late): stock-take with the user; reoriented on the steel thread (Fox vs Marth, FD, full match) with a consolidation round first; design in `docs/STEEL_THREAD.md`; lanes launched: core (C1), perf (C6/C5/C10), harness (C9).
