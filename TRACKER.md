@@ -273,8 +273,9 @@ character-specific branches.
 Gate: zero divergence over thousands of Slippi replays.
 
 - [x] `slp` crate: parse replays, emit scenarios and expected traces
-- [ ] Resolve `rng.seed` timing (Slippi records at frame start; we dump at frame end)
-- [ ] Map Slippi ports to fighter-list order when ports have gaps
+- [x] (2026-09-09) Codex lane B4: `melee-sim replay <file.slp>` cold-starts the replay's match, replays its pads, compares post-frame fields per tick; seed alignment (Slippi frame-start seed vs tick-end snapshot) and port-gap mapping implemented; verified on recorded scenes (599/599 frames, 1,800 pad samples). All eight peppi fixtures run but match 0 frames: each needs an unported character (Ice Climbers, Pichu, Ganondorf, Samus), stage (Fountain, Stadium, Dream Land), a CPU opponent, or Slippi Online setup. `docs/SLIPPI.md` gives the recipe for a qualifying offline Fox-vs-Fox FD replay (needs Slippi Dolphin to record).
+- [x] (2026-09-09) `rng.seed` timing resolved (lane B4, `docs/SLIPPI.md`)
+- [x] (2026-09-09) Slippi ports mapped to fighter-list order incl. gaps (lane B4)
 - [ ] Verify `self_vel`/`kb_vel` field mapping against Slippi's recording code
 - [ ] Batch runner: N replays in parallel, aggregate first divergences by function
 - [ ] Triage tooling: given a divergence, print the phase, the fighter's action state, and the likely decomp file
