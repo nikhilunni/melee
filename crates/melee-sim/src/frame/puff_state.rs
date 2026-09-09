@@ -92,7 +92,10 @@ fn puff_held_jump_visits_all_five_states_then_exhausts_air_jumps() {
     };
     fighter.proc_input(assets, &held);
     assert_eq!(
-        (fighter.motion_state.action_id, fighter.physics.jumps_used),
+        (
+            i32::from(fighter.motion_state.action),
+            fighter.physics.jumps_used
+        ),
         (341, 2)
     );
     assert_eq!(fighter.physics.facing, 1.0);
@@ -106,8 +109,8 @@ fn puff_held_jump_visits_all_five_states_then_exhausts_air_jumps() {
         if tick == 5 {
             assert_eq!(fighter.physics.facing, -1.0);
         }
-        if actions.last() != Some(&fighter.motion_state.action_id) {
-            actions.push(fighter.motion_state.action_id);
+        if actions.last() != Some(&i32::from(fighter.motion_state.action)) {
+            actions.push(i32::from(fighter.motion_state.action));
         }
     }
     assert_eq!(actions, [341, 342, 343, 344, 345, 32]);

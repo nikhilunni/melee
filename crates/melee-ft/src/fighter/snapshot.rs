@@ -7,7 +7,7 @@ impl<C: CharacterCallbacks> Snapshot for Fighter<C> {
     fn snapshot(&self, sink: &mut dyn SnapshotSink) {
         sink.field("kind", &i32::from(self.kind));
         sink.field("player_id", &self.player.id);
-        sink.field("motion_id", &self.motion_state.action_id);
+        sink.field("motion_id", &i32::from(self.motion_state.action));
         sink.field("facing_dir", &self.physics.facing);
         sink.field("self_vel", &self.physics.self_velocity);
         sink.field("kb_vel", &self.physics.knockback_velocity);

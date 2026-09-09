@@ -31,7 +31,7 @@ mod walk;
 
 pub use builder::CollMapBuilder;
 pub use geom::{line_intersection, line_intersection_h, line_intersection_v, remap_2d};
-pub use map::{CollMap, JobjState, JointCallbacks, JointCollisionCallback};
+pub use map::{CollMap, JobjState, JointCallbacks, JointCollisionHandler};
 pub use mpcoll::{
     air_flags, clear_floor_skip, coll_prev, copy_coll_data, interpolate_ecb, load_ecb,
     load_ecb_box, load_ecb_fixed, load_ecb_jobj, load_ecb_with_flags, mark_ecb_clear,

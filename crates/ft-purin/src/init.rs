@@ -21,6 +21,10 @@ impl Jigglypuff {
     }
 }
 impl CharacterCallbacks for Jigglypuff {
+    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
+        &CHARACTER_ROWS
+    }
+
     fn kind(&self) -> FighterKind {
         FighterKind::Purin
     }
@@ -98,4 +102,25 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
             joint_symbol: "PlyPurin5KYe_Share_joint",
         },
     ],
+};
+
+/// ftPr_Init_MotionStateTable[0..5]: JumpAerialF1..F5, actions 341..345.
+const CHARACTER_ROWS: [melee_ft::fighter::MotionRow<Jigglypuff>; 5] = {
+    use melee_ft::fighter::state::callbacks;
+    use melee_ft::fighter::{ActionId, CharacterCallbacks, MotionRow};
+    use melee_types::CommonMotionState as S;
+    let mut rows = [Jigglypuff::COMMON[S::JumpAerialF as usize]; 5];
+    let mut index = 0;
+    while index < 5 {
+        rows[index] = MotionRow {
+            action: ActionId(341 + index as u16),
+            animation: 295 + index as i32,
+            anim: callbacks::animation::multi_jump,
+            physics: callbacks::physics::multi_jump,
+            collision: callbacks::collision::fall,
+            ..rows[index]
+        };
+        index += 1;
+    }
+    rows
 };

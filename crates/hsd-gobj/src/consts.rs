@@ -107,7 +107,7 @@ pub mod proc_prio {
         pub const HIT: u8 = 0xE;
         /// `Fighter_8006D9AC`
         pub const P16: u8 = 0x10;
-        /// `Fighter_UnkCallCameraCallback_8006D9EC`
+        /// Fighter camera procedure (retail 0x8006D9EC)
         pub const CAMERA_CB: u8 = 0x12;
         /// `Fighter_8006DA4C`
         pub const P22: u8 = 0x16;

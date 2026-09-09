@@ -17,10 +17,10 @@ use melee_types::mp::{
 };
 use melee_types::GrKind;
 
-/// `mpLib_JointCollisionCallback` (`forward.h:37`). `user_data` is the
+/// Retail moving-joint collision typedef (`mp/forward.h:37`). `user_data` is the
 /// `Ground*` the stage registered, kept as an opaque id; `coll_x50` is
 /// `CollData::x50` converted to `int` at the call site as the C does.
-pub type JointCollisionCallback = fn(
+pub type JointCollisionHandler = fn(
     user_data: u32,
     joint_id: i32,
     coll: &mut CollData,
@@ -33,9 +33,9 @@ pub type JointCollisionCallback = fn(
 /// (`types.h:113-119`).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JointCallbacks {
-    pub cb_0: Option<JointCollisionCallback>,
+    pub cb_0: Option<JointCollisionHandler>,
     pub cb_data_0: u32,
-    pub cb_1: Option<JointCollisionCallback>,
+    pub cb_1: Option<JointCollisionHandler>,
     pub cb_data_1: u32,
 }
 
@@ -954,7 +954,7 @@ impl CollMap {
     // -----------------------------------------------------------------------
 
     /// `mpJointSetCb1` (retail `0x800580C8`).
-    pub fn joint_set_cb1(&mut self, joint_id: i32, user_data: u32, cb: JointCollisionCallback) {
+    pub fn joint_set_cb1(&mut self, joint_id: i32, user_data: u32, cb: JointCollisionHandler) {
         let c = &mut self.joint_cbs[joint_id as usize];
         c.cb_0 = Some(cb);
         c.cb_data_0 = user_data;
@@ -968,20 +968,20 @@ impl CollMap {
     }
 
     /// `mpJointGetCb1` (retail `0x800580FC`): `(cb, user_data)`.
-    pub fn joint_get_cb1(&self, joint_id: i32) -> (Option<JointCollisionCallback>, u32) {
+    pub fn joint_get_cb1(&self, joint_id: i32) -> (Option<JointCollisionHandler>, u32) {
         let c = &self.joint_cbs[joint_id as usize];
         (c.cb_0, c.cb_data_0)
     }
 
     /// `mpJointSetCb2` (retail `0x800581A4`).
-    pub fn joint_set_cb2(&mut self, joint_id: i32, user_data: u32, cb: JointCollisionCallback) {
+    pub fn joint_set_cb2(&mut self, joint_id: i32, user_data: u32, cb: JointCollisionHandler) {
         let c = &mut self.joint_cbs[joint_id as usize];
         c.cb_1 = Some(cb);
         c.cb_data_1 = user_data;
     }
 
     /// `mpJointGetCb2` (retail `0x800581BC`): `(cb, user_data)`.
-    pub fn joint_get_cb2(&self, joint_id: i32) -> (Option<JointCollisionCallback>, u32) {
+    pub fn joint_get_cb2(&self, joint_id: i32) -> (Option<JointCollisionHandler>, u32) {
         let c = &self.joint_cbs[joint_id as usize];
         (c.cb_1, c.cb_data_1)
     }

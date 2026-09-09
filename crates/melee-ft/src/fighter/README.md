@@ -20,7 +20,7 @@ hitlag/hitstun countdowns. [Port report, audit and limits](M5_HIT.md).
 | Retail functions | Addresses | Rust owner |
 |---|---|---|
 | Grounded fighter push / nudge | 8007DD7C / 8007E0E4 | `overlap.rs`, scene entity ordering and map neighbors |
-| Attack11 entry / Anim / IASA / Phys / Coll | 8008ABC0 / 8008AC9C / 8008ACD8 / 8008ADF0 / 8008AE10 | `attack.rs`, typed Jab state, `CharacterCallbacks::jab_variant`, enum dispatch |
+| Attack11 entry / Anim / IASA / Phys / Coll | 8008ABC0 / 8008AC9C / 8008ACD8 / 8008ADF0 / 8008AE10 | `attack.rs`, typed Jab state, `CharacterCallbacks::jab_variant`, motion-row dispatch |
 | Hitbox spawn / clear-one / clear-all / position | 8007121C / 80071784 / 800717D8 / 8007AD18 | `hitbox.rs`, `commands.rs`, archive descriptors and group victims |
 | Hurt contact / capsule geometry | 80078C70 / 80006E58 / 80005EBC | `damage.rs`, `caches.rs`, `melee-lb/collision.rs` |
 | Knockback / grounded DamageN2 / hitlag / recovery | 80079AB0 / 8008DCE0 / 8007DA74 / 8008F7F0 | `damage.rs`, typed combat scratch and proc gating |
@@ -62,7 +62,7 @@ raw tests and clippy cleanup remain outstanding. [Evidence and full file list](M
 |---|---|---|
 | Grab pair / capture alignment / CatchWait | 80078A2C / 800DAC78 / 800DA1D8 | `grab.rs`, scene `frame/grab_pairs.rs`, typed links |
 | ThrowB / thrown animation / release | 800DD4B0 / 8007E3EC / 800DDDE4 | `grab_throw.rs`, borrowed scripts, HSD position constraint |
-| DownBoundD / DownWaitD / PassiveStandB | 8009794C / 80097FD0 / 800989D4 | `down.rs`, enum callbacks and script hurt status |
+| DownBoundD / DownWaitD / PassiveStandB | 8009794C / 80097FD0 / 800989D4 | `down.rs`, motion-row callbacks and script hurt status |
 | Forward smash / charge damage | 8008C3E0 / 800DEEB8 | `smash.rs`, archive descriptors, character hook |
 | Blast check / DeadDown / revival | 800D3158 / 800D3BC8 / 800D4FF4 | `life.rs`, player stocks, revival accessory, scene reset |
 | Percent death / stock icon loss | 802F491C / 802F8298 | `melee-if`, saved HUD boundary, interface effects |
@@ -139,7 +139,7 @@ raw scratch verification, assembly audit, corrections and remaining boundaries.
 |---|---|---|
 | Fall blend selection / secondary evaluation | 800CCBE0 / 800CC988 | `fall.rs`; typed family, pose and weight; fused smoothing |
 | Secondary animation attachment / blend / copy | 8006EDD0 / 8006FE9C / 8006FF74 | `anim/playback.rs`; main animation and command clocks retained |
-| FallAerial entry / Anim / IASA / Phys / Coll | 800CCDA8 / 800CCDFC / 800CCE50 / 800CCE74 / 800CCE94 | `jump.rs`, `spawn.rs`, `fall.rs`, enum callbacks; existing air physics/collision |
+| FallAerial entry / Anim / IASA / Phys / Coll | 800CCDA8 / 800CCDFC / 800CCE50 / 800CCE74 / 800CCE94 | `jump.rs`, `spawn.rs`, `fall.rs`, motion-row callbacks; existing air physics/collision |
 | FallSpecial entry / Anim / IASA / Phys / Coll / landing callback | 80096900 / 80096AA0 / 80096AF4 / 80096B44 / 80096C98 / 80096D28 | `fall.rs`, `air_dodge.rs`, `procs.rs`, `landing.rs`; typed mobility and landing policy |
 | Marth GuardOn / GuardReflect model hook | 800923B4 / 800939B4 | `ft-mars/init.rs`; model group 1 variant 1 and sound 190115 |
 | Color-animation command | 80072A5C | `commands.rs`, `assets.rs`; typed renderer request |
@@ -178,7 +178,7 @@ particle RNG checks. WalkFast needed no behavior correction. See
 | Retail functions | Addresses | Rust owner |
 |---|---|---|
 | TurnRun predicates / entry | 800C9CEC / 800C9D40 / 800C9D94 | `turn_run.rs`, Run/RunBrake input in `run.rs`; typed facing and pause latch |
-| TurnRun Anim / IASA / Phys / Coll | 800C9E10 / 800C9ED8 / 800C9EFC / 800CA024 | `turn_run.rs`, enum dispatch in `procs.rs`; fused friction, pause/reversal, edge stop |
+| TurnRun Anim / IASA / Phys / Coll | 800C9E10 / 800C9ED8 / 800C9EFC / 800CA024 | `turn_run.rs`, motion-row dispatch in `procs.rs`; fused friction, pause/reversal, edge stop |
 | Post-turn Run predicate | 800CA644 | `turn_run.rs`; archive-derived interrupt delay from PlCo +430 |
 | CliffClimbQuick / CliffEscapeQuick entry | 8009AB9C / 8009B040 | `ledge.rs`; shared retained `CliffState`, grab exclusions and nudge suppression |
 | CliffClimb Anim / Phys / Coll; CliffEscape wrappers | 8009AC68 / 8009ACA8 / 8009ADA4; 8009B10C / 8009B130 / 8009B150 | `ledge.rs`; map endpoint + TransN, grounded root motion and edge collision |
@@ -454,7 +454,7 @@ and shared RNG, and inserts its own stage/particle callbacks between phases.
 | 13 | `proc_hit_detection` | `Fighter_8006CB94` |
 | 14 | `proc_process_hit` | `Fighter_ProcessHit_8006D1EC` |
 | 16 | `proc_dynamics` | `Fighter_8006D9AC` |
-| 18 | `proc_camera` | `Fighter_UnkCallCameraCallback_8006D9EC` |
+| 18 | `proc_camera` | `Fighter camera procedure at 0x8006D9EC` |
 | 22 | `proc_player_mirror` | `Fighter_8006DA4C` |
 
 Animation, input, physics and map dispatch consult the installed callback set.

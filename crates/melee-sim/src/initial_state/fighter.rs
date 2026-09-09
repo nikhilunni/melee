@@ -170,7 +170,7 @@ pub(crate) fn import<C: CharacterCallbacks>(
     if word(raw, 0x10) == 322 {
         use hsd_types::Vec2;
         use melee_ft::fighter::{entry::EntryState, MotionData, MotionState};
-        f.motion_state = MotionState::ENTRY;
+        f.motion_state = MotionState::new(f.row(melee_types::CommonMotionState::Entry.into()));
         let current_scale = vector(raw, 0x2354);
         f.skeleton.set_scale(root, &current_scale);
         f.state_data = MotionData::Entry(EntryState {

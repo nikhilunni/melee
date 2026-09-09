@@ -45,6 +45,10 @@ impl Yoshi {
     }
 }
 impl CharacterCallbacks for Yoshi {
+    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
+        &CHARACTER_ROWS
+    }
+
     fn kind(&self) -> FighterKind {
         FighterKind::Yoshi
     }
@@ -241,4 +245,32 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
             joint_symbol: "PlyYoshi5KAq_Share_joint",
         },
     ],
+};
+
+/// ftYs_Init_MotionStateTable[0..5]: egg shield states, actions 341..345.
+const CHARACTER_ROWS: [melee_ft::fighter::MotionRow<Yoshi>; 5] = {
+    use melee_ft::fighter::{ActionId, CharacterCallbacks, MotionRow};
+    use melee_types::CommonMotionState as S;
+    [
+        MotionRow {
+            action: ActionId(341),
+            ..Yoshi::COMMON[S::GuardOn as usize]
+        },
+        MotionRow {
+            action: ActionId(342),
+            ..Yoshi::COMMON[S::Guard as usize]
+        },
+        MotionRow {
+            action: ActionId(343),
+            ..Yoshi::COMMON[S::GuardOff as usize]
+        },
+        MotionRow {
+            action: ActionId(344),
+            ..Yoshi::COMMON[S::GuardSetOff as usize]
+        },
+        MotionRow {
+            action: ActionId(345),
+            ..Yoshi::COMMON[S::GuardReflect as usize]
+        },
+    ]
 };

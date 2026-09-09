@@ -1,8 +1,7 @@
 //! Kirby/Jigglypuff shared multijumps: ftCommon/ftCo_JumpAerialF1.c.
 use super::{
     assets::{FighterAssets, Result},
-    state::{AnimationCallback, CollisionCallback, PhysicsCallback},
-    CharacterCallbacks, Fighter, MotionData, MotionState,
+    ActionId, CharacterCallbacks, Fighter, MotionData,
 };
 use crate::input::Buttons;
 use hsd_types::Vec3;
@@ -55,7 +54,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if self.physics.jumps_used != 1 {
                 // Later jumps accept held input once the current script opens
                 // its jump window. Falling states do not require that command.
-                return (!attributes.contains_action(self.motion_state.action_id)
+                return (!attributes.contains_action(i32::from(self.motion_state.action))
                     || self.commands.variables[0] != 0)
                     && (self.input.current.stick.y >= threshold
                         || self.input.current.held.intersects(Buttons::XY));
@@ -84,13 +83,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assert!(index < attributes.state_count as usize);
         let first = attributes.first_actions[self.character.multi_jump_family()];
         assert!(first >= 0, "disabled multijump family");
-        let mut motion = MotionState::JUMP_AERIAL;
-        motion.action_id = first + index as i32;
-        motion.callbacks.animation = AnimationCallback::MultiJump;
-        motion.callbacks.physics = PhysicsCallback::MultiJump;
-        // ft_80082F28 has the Fall ground/ledge path, without StopCeil.
-        motion.callbacks.collision = CollisionCallback::Fall;
-        let animation = self.character.multi_jump_animation(index);
+        let action = ActionId(u16::try_from(first + index as i32).expect("multijump action"));
         // retail 800D74EC fmuls; vertical impulses are loaded directly.
         let velocity = Vec3::new(
             self.input.current.stick.x * attributes.horizontal_impulse,
@@ -101,13 +94,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let threshold = attributes.reverse_threshold;
         let retained_drop_timer = self.retained_drop_timer();
         self.commands.variables[0] = 0;
-        self.change_motion_state_with_row(
-            CommonMotionState::JumpAerialF,
-            assets,
-            0.0,
-            1.0,
-            Some((motion, animation)),
-        )?;
+        self.change_motion_state_with_rate(action, assets, 0.0, 1.0)?;
         self.physics.self_velocity = velocity;
         // arg3=false: unlike basic double jumps, keep the vertical tilt age.
         self.physics.jumps_used += 1;

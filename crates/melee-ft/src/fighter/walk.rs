@@ -170,6 +170,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
     ) -> Result<()> {
         match transition {
             T::None => Ok(()),
+            T::Special => {
+                self.enter_buffered_special(assets, false);
+                Ok(())
+            }
             T::Attack => self.enter_ground_attack(assets),
             T::Grab => self.enter_catch(assets),
             T::Shield => self.enter_shield(assets),

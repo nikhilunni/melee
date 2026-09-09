@@ -46,12 +46,28 @@ use hsd_anim::jobj::JObjTree;
 use hsd_types::{Vec2, Vec3};
 use melee_types::{FighterKind, PlayerKind};
 pub use spawn::{PlayerSlot, SpawnContext, SpawnCounter};
-pub use state::{interleaved_order, FighterProc, MotionState};
+pub use state::{
+    common_table, interleaved_order, ActionId, FighterProc, MotionRow, MotionState, SpecialSlot,
+    COMMON_COUNT,
+};
 
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
 /// character crate. The implementation owns its typed special attributes.
-pub trait CharacterCallbacks {
+pub trait CharacterCallbacks: Sized + 'static {
+    const COMMON: [MotionRow<Self>; COMMON_COUNT] = common_table::<Self>();
+
+    /// Character-owned table (retail's per-kind MotionState table), indexed
+    /// from action 341. Specials will form its bulk; existing multijumps and
+    /// character shield states also live here.
+    fn special_rows() -> &'static [MotionRow<Self>] {
+        &[]
+    }
+
+    fn enter_special(_fighter: &mut Fighter<Self>, _slot: SpecialSlot, _airborne: bool) {
+        // retail: ftData_SpecialN[kind] etc.
+    }
+
     fn kind(&self) -> FighterKind;
     /// ftCo_AttackS4.c decideFighter (8008C348): nonstandard character entry.
     fn forward_smash_variant(&self) {
@@ -463,7 +479,7 @@ pub struct Fighter<C: CharacterCallbacks> {
     /// GObj.hsd_obj: main skeleton; animation owns the secondary tree.
     pub skeleton: JObjTree,
     pub revival_platform: Option<life::RevivalPlatform>,
-    pub motion_state: MotionState,
+    pub motion_state: MotionState<C>,
     pub state_data: MotionData,
     pub combat: damage::CombatState,
     pub shield: shield::ShieldState,

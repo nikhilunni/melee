@@ -4,7 +4,7 @@ mod fighter_support;
 use fighter_support::*;
 use gekko_math::rng::HsdRng;
 use hsd_types::Vec3;
-use melee_ft::fighter::{CpuState, Fighter, Interaction, MotionState, SpawnContext, SpawnCounter};
+use melee_ft::fighter::{CpuState, Fighter, Interaction, SpawnContext, SpawnCounter};
 use melee_types::snapshot::{SnapValue, Snapshot};
 use std::collections::BTreeMap;
 
@@ -114,7 +114,25 @@ fn fox_spawn_native() {
         assert!(!f.character.blaster_present);
         assert_eq!(f.dynamics_first_bone, [0]);
         assert_eq!(f.bones.ecb.joints, [41, 55, 25, 13, 7, 4]);
-        assert_eq!(f.motion_state, MotionState::FALL);
+        let expected = f.row(melee_types::CommonMotionState::Fall.into());
+        assert_eq!(f.motion_state.action, expected.action);
+        assert_eq!(f.motion_state.id, expected.id);
+        assert_eq!(f.motion_state.row.animation, expected.animation);
+        assert!(std::ptr::fn_addr_eq(f.motion_state.row.anim, expected.anim));
+        assert!(std::ptr::fn_addr_eq(f.motion_state.row.iasa, expected.iasa));
+        assert!(std::ptr::fn_addr_eq(
+            f.motion_state.row.physics,
+            expected.physics
+        ));
+        assert!(std::ptr::fn_addr_eq(
+            f.motion_state.row.collision,
+            expected.collision
+        ));
+        assert!(std::ptr::fn_addr_eq(
+            f.motion_state.row.camera,
+            expected.camera
+        ));
+
         assert_eq!(f.ground_pose.0, 0, "Fall does not install ground IK");
         assert_eq!(f.collision.lock_frames, 10);
         assert_eq!(f.collision.data.floor.index, -1);
@@ -154,7 +172,7 @@ fn spawn_counter_skips_zero_after_wrapping() {
 
 #[test]
 fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
-    use melee_ft::fighter::state::AnimationCallback;
+    use melee_ft::fighter::state::unimplemented_anim;
     use std::panic::{catch_unwind, AssertUnwindSafe};
     let Some(fixture) = Fixture::load() else {
         return;
@@ -200,7 +218,7 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     fighter.proc_process_hit(&fixture.assets);
     fighter.status.interaction = Interaction::Idle;
     // Dispatch must consult the installed callback, not just motion_id=Wait.
-    fighter.motion_state.callbacks.animation = AnimationCallback::FallUnimplemented;
+    fighter.motion_state.row.anim = unimplemented_anim;
     assert!(catch_unwind(AssertUnwindSafe(
         || fighter.proc_anim(&fixture.assets, &mut HsdRng::new(1))
     ))
