@@ -287,6 +287,18 @@ happens only in the main checkout. Claude merges: review in the lane, rebase
 the lane branch onto `main`, run the full gates on the merged tree, commit
 on `main`. Lanes never commit on their own and never touch each other's
 crates; if two lanes drift into one file, Claude resolves it.
+**Never `git add harness`, `git add .` or `git add -A` in a lane.** The
+lane's `harness/roms` and `harness/traces` are symlinks to the main
+checkout; on 2026-09-09 a `git add harness` committed them, the
+fast-forward into `main` replaced the real directories with
+self-referential symlinks, and git deleted the ignored contents: the disc
+image, every savestate and every recorded trace. Add files by explicit
+path, run `git show --stat` on the lane commit and refuse to merge if it
+lists `harness/roms`, `harness/traces`, `third_party/melee-decomp` or any
+path you did not expect; `git ls-files harness/roms harness/traces` must
+print nothing on `main` before any fast-forward. Keep a copy of
+`harness/roms` and `harness/traces` outside the repo (`~/melee-data/`) and
+refresh it after every recording session.
 Merging checklist (learned the hard way): after resolving conflicts,
 build the merged tree and grep the output for `error[`/`could not compile`
 as well as test failures before fast-forwarding `main`; a lane that passed
