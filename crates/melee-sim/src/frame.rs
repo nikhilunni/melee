@@ -208,9 +208,33 @@ impl Runtime {
                 }
                 0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
                 _ => {
-                    state
-                        .stage
-                        .run_stage_proc(map.expect("stage callback map"), &mut state.rng)?;
+                    let map_id = map.expect("stage callback map");
+                    if matches!(state.stage, SceneStage::Story(_)) {
+                        let animation = state.stage_animations.get_mut(&map_id).unwrap();
+                        animation.update_collision(
+                            &mut state.map,
+                            &state.assets.stage_desc.models[map_id as usize].joint_mappings,
+                        );
+                    }
+                    if state.stage.run_stage_proc(map_id, &mut state.rng)? {
+                        // grLib_801C97DC (0x801C97DC): detached puff at the
+                        // current world position of archive descendant 1.
+                        let matrix =
+                            state.stage_animations.get_mut(&map_id).unwrap().matrices()[1].1;
+                        let mut request = hsd_particle::system::SpawnRequest::new(
+                            0,
+                            melee_gr::story::PUFF_PARTICLE,
+                            0,
+                        );
+                        request.joint = Some((stage::joint_id(map_id, 1), matrix));
+                        let id = state.particles.spawn::<RetailTrig>(
+                            &state.assets.common_particle_bank,
+                            request,
+                            &mut state.rng,
+                            &mut self.particle_draws,
+                        )?;
+                        state.particles.pending_generators.push(id);
+                    }
                 }
             },
             Callback::Interface { player } => {

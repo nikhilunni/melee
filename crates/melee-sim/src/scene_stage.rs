@@ -26,23 +26,31 @@ pub const BATTLEFIELD: StageDescriptor = StageDescriptor {
     music_id: 31,
     read: melee_gr::desc::read_battlefield,
 };
+pub const YOSHIS_STORY: StageDescriptor = StageDescriptor {
+    name: "YoshisStory",
+    file: "GrSt.dat",
+    music_id: 8,
+    read: melee_gr::desc::read_story,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
-    [&FINAL_DESTINATION, &BATTLEFIELD]
+    [&FINAL_DESTINATION, &BATTLEFIELD, &YOSHIS_STORY]
         .into_iter()
         .find(|d| d.name == name)
 }
 pub enum SceneStage {
     FinalDestination(Box<FinalDestination>),
     Battlefield(Battlefield),
+    Story(melee_gr::story::Story),
 }
 impl SceneStage {
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
         match self {
             Self::FinalDestination(s) => s.proc_table(),
             Self::Battlefield(s) => s.proc_table(),
+            Self::Story(s) => s.proc_table(),
         }
     }
-    pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<()> {
+    pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<bool> {
         match self {
             Self::FinalDestination(stage) => {
                 stage.run_stage_proc(map, &AnimationStatus::default(), rng);
@@ -52,6 +60,12 @@ impl SceneStage {
                     stage.actions
                 );
             }
+            Self::Story(stage) => match map {
+                1 => {}
+                3 => stage.tick_shy_guys(rng),
+                2 => return Ok(stage.tick_puff(rng)),
+                _ => unreachable!("Story callback map"),
+            },
             Self::Battlefield(stage) => match map {
                 3 => stage.tick(),
                 // Empty callbacks; map 6 updates the static collision transform
@@ -60,6 +74,6 @@ impl SceneStage {
                 _ => unimplemented!("grbattle.c:165-170: demo/event background"),
             },
         }
-        Ok(())
+        Ok(false)
     }
 }

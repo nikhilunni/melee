@@ -375,6 +375,16 @@ impl ParticleSystem {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<(), Error> {
+        // hsd_8039EE24 (8039EE24), generator.c:970-977: queued one-shot
+        // attachments are baked and released before generator iteration.
+        for id in std::mem::take(&mut self.pending_generators)
+            .into_iter()
+            .flatten()
+        {
+            if let Some(generator) = self.generator_mut(id) {
+                generator.detach_joint();
+            }
+        }
         self.generator_cursor = None;
         let mut index = 0;
         while index < self.generators.len() {

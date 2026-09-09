@@ -53,9 +53,12 @@ impl Spawns {
                     .get("mirror")
                     .and_then(Value::as_bool)
                     .unwrap_or(false);
-                system
+                let id = system
                     .spawn::<RetailTrig>(&banks[&bank], request, rng, draws)
                     .unwrap();
+                if event["detach"] == true {
+                    system.pending_generators.push(id);
+                }
             } else if let Some(joint) = event.get("update") {
                 system.update_joint(word(joint) as usize, matrix(&event["matrix"]));
             } else if let Some(joint) = event.get("expire") {

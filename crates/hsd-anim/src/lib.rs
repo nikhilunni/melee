@@ -12,3 +12,5 @@ pub mod load;
 pub mod mobj;
 pub mod mtx;
 pub mod quat;
+
+pub mod spline;

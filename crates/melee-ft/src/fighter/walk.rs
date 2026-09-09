@@ -206,6 +206,7 @@ mod tests {
             platform_drop_threshold: 0.0,
             platform_drop_window: 0,
             platform_drop_delay: 0.0,
+            platform_drop_velocity: 0.0,
         };
         let middle = 0.4_f32;
         let fast = 0.8_f32;

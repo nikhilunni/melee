@@ -147,7 +147,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
-            MotionData::JumpAerial {
+            MotionData::Pass {
+                retained_drop_timer,
+            }
+            | MotionData::JumpAerial {
                 retained_drop_timer,
             }
             | MotionData::Landing {

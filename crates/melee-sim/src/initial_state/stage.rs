@@ -133,6 +133,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Battle => {
             restore_battlefield(saved, assets, frames, particles, metadata)
         }
+        melee_types::GrKind::Story => restore_story(saved, assets),
         _ => unreachable!("registered stage descriptor"),
     }
 }
@@ -249,4 +250,82 @@ fn saved_joints(saved: &SavedPose, pointer: u32, joints: &mut Vec<u32>) {
     let raw = saved.bytes(pointer, 0x18);
     saved_joints(saved, word(raw, 0x10), joints);
     saved_joints(saved, word(raw, 8), joints);
+}
+
+fn restore_story(saved: &SavedPose, assets: &Assets) -> Result<(SceneStage, Animations)> {
+    use melee_gr::story::Story;
+    let entities = word(saved.bytes(0x804D_782C, 4), 0);
+    ensure!(
+        word(saved.bytes(entities + 9 * 4, 4), 0) == 0,
+        "Story boundary has live items; Heiho state restoration required"
+    );
+    let mut controller = Story {
+        parameters: melee_gr::desc::read_story_parameters(&assets.stage)
+            .map_err(|e| anyhow::anyhow!("{e}"))?,
+        puff_timer: 0,
+        shy_timer: 0,
+        previous_pattern: 0,
+        spawn_count: 0,
+        lights: melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 3)
+            .map_err(|e| anyhow::anyhow!("{e}"))?,
+        shy_guys: Vec::new(),
+        occupied_frames: 0,
+    };
+    let mut animations = BTreeMap::new();
+    let mut maps = Vec::new();
+    let mut gobj = word(saved.bytes(entities + 5 * 4, 4), 0);
+    while gobj != 0 {
+        ensure!(maps.len() <= 4, "cyclic Story map list");
+        let object = saved.bytes(gobj, 0x30);
+        let ground = word(object, 0x2C);
+        if ground != 0 {
+            let raw = saved.bytes(ground, 0x108);
+            let map = word(raw, 0x14) as u8;
+            maps.push(map);
+            if map == 3 {
+                controller.spawn_count = raw[0xC4] as i8;
+                controller.previous_pattern = raw[0xC5] as i8;
+                controller.shy_timer = word(raw, 0xC8) as i32;
+            }
+            if map == 2 {
+                controller.puff_timer = i16::from_be_bytes(raw[0xC4..0xC6].try_into().unwrap());
+            }
+            let root = word(object, 0x28);
+            let mut joints = Vec::new();
+            saved_joints(saved, word(saved.bytes(root + 0x10, 4), 0), &mut joints);
+            let mut frame = None;
+            for &joint in &joints {
+                let aobj = word(saved.bytes(joint + 0x7C, 4), 0);
+                if aobj != 0 {
+                    let current = float(saved.bytes(aobj, 0x18), 4);
+                    ensure!(
+                        frame.is_none_or(|f| f == current),
+                        "Story model animation frames disagree"
+                    );
+                    frame = Some(current);
+                }
+            }
+            let mut animation = BackgroundAnimation::load_model(
+                &assets.stage,
+                &assets.stage_desc.models[map as usize],
+            )
+            .map_err(|e| anyhow::anyhow!("Story map {map}: {e}"))?;
+            if map == 3 {
+                let model = &assets.stage_desc.models[3];
+                let subtree = melee_gr::desc::animation_subtree(&assets.stage, model, 1, 5)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                animation
+                    .attach_subtree(&assets.stage, 5, &subtree, model.animation_loops[1])
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+            }
+            animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+            if let Some(frame) = frame {
+                animation.restore_frame::<RetailTrig>(frame);
+            }
+            animations.insert(map, animation);
+        }
+        gobj = word(object, 8);
+    }
+    ensure!(maps == [0, 1, 3, 2], "Story map order {maps:?}");
+    Ok((SceneStage::Story(controller), animations))
 }

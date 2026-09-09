@@ -39,9 +39,9 @@ fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
         0x801c_26ac | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc | 0x8009_fcdc
-        | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c => {
-            false
-        }
+        | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c
+        | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578 | 0x801e_3594
+        | 0x801e_35a4 | 0x801e_3610 | 0x801e_36b0 => false,
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
         0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
@@ -55,6 +55,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     let battlefield = name.contains("_bf_");
     let scene = name;
     // A match-start savestate sits before its first tick's procs.
+    let story = name.contains("_ys_");
     let match_start = name == "start_bf_fox";
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let paths = [
@@ -70,7 +71,9 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     ]
     .map(|s| root.join(format!("traces/{name}.{s}")));
     let archives = [
-        if battlefield {
+        if story {
+            "GrSt.dat"
+        } else if battlefield {
             "GrNBa.dat"
         } else {
             "GrNLa.dat"
@@ -121,6 +124,9 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
             generator.attachment_id = Some(102);
         }
         let pointer = &captured["fields"]["jobj"];
+        if pointer == 0 {
+            continue;
+        }
         let joint = particle_meta["joints"]
             .as_array()
             .unwrap()

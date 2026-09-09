@@ -75,8 +75,9 @@
 //! - **Spline** (`spline.c`): the `HSD_A_J_PATH` track (`jobj.c:362-377`)
 //!   and the `aobj->hsd_obj` translation override in `HSD_JObjMakeMatrix`
 //!   (`jobj.c:187-195`) need `splArcLengthPoint` and the AObj's `obj_id`
-//!   resolution. The PATH clamp is applied and reported as
-//!   [`JObjEvent::Path`]; the matrix override is skipped.
+//!   resolution. Linear archive paths and their in-tree AObj references are
+//!   supported; unresolved runtime references report [`JObjEvent::Path`].
+//!   Cubic spline families remain unported.
 //! - **Rendering**: `HSD_JObjDispAll`, `HSD_JObjMakePositionMtx`,
 //!   `HSD_JObjDispSub`, envelope skinning (`envelopemtx` is stored, unused),
 //!   billboard flags (stored, unused), the `ptcl` union member.
@@ -186,7 +187,7 @@ pub const JOBJ_ALL_ANIM: u32 = 0x7FF;
 pub struct JObjId(pub usize);
 
 /// `HSD_JObj` (`jobj.h:98-118`) minus `object` (class header), `u.ptcl`,
-/// `u.spline`, and `robj` (deferred).
+/// and `robj` (deferred). Linear splines and their animation references are owned.
 #[derive(Debug, Clone, PartialEq)]
 pub struct JObj {
     /// `flags`: the `JOBJ_*` bits.
@@ -216,6 +217,8 @@ pub struct JObj {
     /// `u.dobj`: the display-object list, head first (see `dobj.rs`). Only
     /// meaningful when neither `JOBJ_PTCL` nor `JOBJ_SPLINE` is set.
     pub dobj: Vec<DObj>,
+    pub spline: Option<hsd_archive::desc::spline::LinearSpline>,
+    pub path_reference: Option<JObjId>,
     /// `id`: in the C the `HSD_Joint*` the node was loaded from, used as
     /// the id-table key. Free for the caller here.
     pub id: u32,
@@ -238,6 +241,8 @@ impl JObj {
             envelopemtx: None,
             aobj: None,
             dobj: Vec::new(),
+            spline: None,
+            path_reference: None,
             id: 0,
         }
     }
@@ -922,8 +927,8 @@ impl JObjTree {
     // -- matrices -----------------------------------------------------------
 
     /// `HSD_JObjMakeMatrix` (`jobj.c:138`): the composition pinned in the
-    /// module docs. The `aobj->hsd_obj` spline override (`jobj.c:187-195`)
-    /// is deferred.
+    /// module docs, including the resolved spline reference's translation
+    /// override (`jobj.c:187-195`).
     pub fn make_matrix(&mut self, id: JObjId) {
         let parent = self.nodes[id.0].parent;
         self.setup_matrix_opt(parent);
@@ -964,6 +969,22 @@ impl JObjTree {
             let pm = self.nodes[p.0].mtx;
             let m = self.nodes[id.0].mtx;
             mtx::mtx_concat(&pm, &m, &mut self.nodes[id.0].mtx);
+        }
+        if let Some(reference) = self.nodes[id.0]
+            .aobj
+            .as_ref()
+            .and(self.nodes[id.0].path_reference)
+        {
+            self.setup_matrix(reference);
+            let mut position = Vec3::ZERO;
+            mtx::mtx_mult_vec(
+                &self.nodes[reference.0].mtx,
+                &self.nodes[id.0].translate,
+                &mut position,
+            );
+            self.nodes[id.0].mtx.0[0][3] = position.x;
+            self.nodes[id.0].mtx.0[1][3] = position.y;
+            self.nodes[id.0].mtx.0[2][3] = position.z;
         }
     }
 
@@ -1357,7 +1378,16 @@ impl JObjTree {
                 }
                 // splArcLengthPoint(&p, aobj->hsd_obj->u.spline, fv) then
                 // HSD_JObjSetTranslate{X,Y,Z}: deferred (spline).
-                self.events.push(JObjEvent::Path { jobj: id, t: fv });
+                if let Some(reference) = self.nodes[id.0].path_reference {
+                    let spline = self.nodes[reference.0]
+                        .spline
+                        .as_ref()
+                        .expect("PATH reference must hold a spline");
+                    let position = crate::spline::linear_point(spline, fv);
+                    self.set_translate(id, &position);
+                } else {
+                    self.events.push(JObjEvent::Path { jobj: id, t: fv });
+                }
             }
             HSD_A_J_ROTX => {
                 // JOBJ_JOINT1: robj->u.ik_hint.rotate_x = fv. Deferred (RObj).

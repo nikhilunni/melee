@@ -15,6 +15,7 @@ pub struct StateCallbacks {
 pub enum AnimationCallback {
     Damage,
     Jab,
+    Pass,
     GuardOn,
     Guard,
     GuardOff,
@@ -91,6 +92,7 @@ pub enum InputCallback {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
     Jab,
+    Pass,
     GuardOn,
     Guard,
     GuardOff,
@@ -128,6 +130,7 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    Pass,
     GuardOn,
     Guard,
     GuardOff,
@@ -194,6 +197,17 @@ impl MotionState {
             input: InputCallback::Jab,
             physics: PhysicsCallback::Jab,
             collision: CollisionCallback::Escape,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    /// ftCo_Pass_* (ftCo_Pass.c), action 244, submotion 209.
+    pub const PASS: Self = Self {
+        id: CommonMotionState::Pass,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Pass,
+            input: InputCallback::Fall,
+            physics: PhysicsCallback::Pass,
+            collision: CollisionCallback::Pass,
             camera: CameraCallback::FollowFighter,
         },
     };

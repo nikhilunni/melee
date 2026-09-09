@@ -95,3 +95,28 @@ pub fn collide_air_dodge(
     tree.set_translate(root, &state.position);
     landed
 }
+
+/// ftCo_Pass_Coll -> ft_80082F28 -> ft_CheckGroundAndLedge (0x800822A4).
+/// The floor-skip line is retained; this path has no stick-down filter.
+pub fn collide_pass(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    can_grab_ledge: bool,
+) -> bool {
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    set_facing_dir(cd, if state.facing < 0.0 { -1 } else { 1 });
+    let pose = EcbPose::read(tree, root, cd);
+    let landed = if can_grab_ledge {
+        map.air_collide_ledge(cd, Some(&|i| pose.position(i)))
+    } else {
+        map.air_collide_pass(cd, Some(&|i| pose.position(i)))
+    };
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    landed
+}

@@ -167,7 +167,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.knee_bend_animation(assets)?;
                 return Ok(None);
             }
-            state::AnimationCallback::Jump | state::AnimationCallback::JumpAerial => {
+            state::AnimationCallback::Pass
+            | state::AnimationCallback::Jump
+            | state::AnimationCallback::JumpAerial => {
                 self.jump_animation(assets)?;
                 return Ok(None);
             }
@@ -539,6 +541,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
                 crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }
+            state::PhysicsCallback::Pass => {
+                crate::physics::airborne::fall_physics(
+                    &mut self.physics,
+                    &self.attributes.air,
+                    self.input.current.stick.x,
+                );
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
             state::PhysicsCallback::FallSpecial => {
                 self.special_fall_physics(assets);
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
@@ -760,7 +771,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     self.enter_special_landing(assets, false, assets.air_dodge.landing_lag)?;
                 }
             }
-            state::CollisionCallback::FallSpecial
+            state::CollisionCallback::Pass
+            | state::CollisionCallback::FallSpecial
             | state::CollisionCallback::Fall
             | state::CollisionCallback::Jump
             | state::CollisionCallback::JumpAerial
@@ -771,7 +783,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     &mut self.skeleton,
                     self.animation.root,
                 );
-                if air::collide_fall(
+                let collide =
+                    if self.motion_state.callbacks.collision == state::CollisionCallback::Pass {
+                        air::collide_pass
+                    } else {
+                        air::collide_fall
+                    };
+                if collide(
                     &mut self.physics,
                     &mut self.collision,
                     map,

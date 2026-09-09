@@ -5,3 +5,5 @@ pub mod desc;
 pub mod ground;
 pub mod last;
 pub mod music;
+
+pub mod story;

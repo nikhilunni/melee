@@ -14,6 +14,7 @@ pub struct Scenario {
     pub savestate: PathBuf,
     pub frames: u64,
     /// Cold-start seed; a restored match uses its saved seed instead.
+    #[serde(default)]
     pub seed: u32,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,

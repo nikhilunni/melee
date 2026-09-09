@@ -90,6 +90,7 @@ pub mod dobj;
 pub mod figatree;
 pub mod jobj;
 pub mod light;
+pub mod spline;
 
 pub use anim::{
     AObjDesc, AnimJoint, FObjDesc, MatAnimJoint, ShapeAnimJoint, ANIM_JOINT_SIZE, AOBJ_DESC_SIZE,
@@ -140,8 +141,14 @@ pub struct GxColor {
 pub enum DescError {
     /// A bounds or overflow failure from the underlying reader.
     Archive(Error),
+    InvalidSpline {
+        offset: u32,
+        reason: &'static str,
+    },
     /// The archive has no public symbol with this name.
-    MissingSymbol { name: String },
+    MissingSymbol {
+        name: String,
+    },
     /// A pointer field holds a non-zero value but its slot is not in the
     /// relocation table, so it cannot be a valid link.
     UnrelocatedPointer {
@@ -161,11 +168,20 @@ pub enum DescError {
     },
     /// A struct at `offset` was reached again while it was still on the
     /// traversal path (a `child`/`next` loop).
-    Cycle { what: &'static str, offset: u32 },
+    Cycle {
+        what: &'static str,
+        offset: u32,
+    },
     /// `child` nesting exceeded [`MAX_DEPTH`].
-    DepthExceeded { what: &'static str, offset: u32 },
+    DepthExceeded {
+        what: &'static str,
+        offset: u32,
+    },
     /// More than [`MAX_NODES`] structs were visited in one read.
-    TooManyNodes { what: &'static str, offset: u32 },
+    TooManyNodes {
+        what: &'static str,
+        offset: u32,
+    },
     /// A byte stream (`FObjDesc.ad`, `FigaTrack.ad_head`) runs past the
     /// end of the data section.
     TruncatedStream {
@@ -179,7 +195,10 @@ pub enum DescError {
         available: usize,
     },
     /// A `FigaTree.nodes` entry is negative and not the `-1` terminator.
-    BadFigaTreeNode { offset: u32, value: i8 },
+    BadFigaTreeNode {
+        offset: u32,
+        value: i8,
+    },
 }
 
 impl From<Error> for DescError {
@@ -192,6 +211,7 @@ impl fmt::Display for DescError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DescError::Archive(e) => write!(f, "{e}"),
+            DescError::InvalidSpline { offset, reason } => write!(f, "invalid spline at {offset:#x}: {reason}"),
             DescError::MissingSymbol { name } => {
                 write!(f, "archive exports no public symbol {name:?}")
             }

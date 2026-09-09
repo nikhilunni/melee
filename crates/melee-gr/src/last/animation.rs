@@ -63,6 +63,51 @@ impl BackgroundAnimation {
             self.tick::<T>();
         }
     }
+    /// grAnime_801C7FF8: replace an animated subtree, preserving siblings.
+    pub fn attach_subtree(
+        &mut self,
+        archive: &Archive,
+        bone: usize,
+        animation: &hsd_archive::desc::AnimJoint,
+        looping: bool,
+    ) -> crate::desc::ReadResult<()> {
+        let root = self
+            .tree
+            .bone(self.root, bone)
+            .expect("stage animation bone");
+        attach_anim_joint(&mut self.tree, root, animation, archive)?;
+        if looping {
+            let mut joints = Vec::new();
+            self.tree
+                .walk_tree(root, &mut |joint, _| joints.push(joint));
+            for joint in joints {
+                if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                    aobj.flags |= hsd_anim::aobj::AOBJ_LOOP;
+                }
+            }
+        }
+        self.tree.req_anim_all(root, 0.0);
+        Ok(())
+    }
+    /// Ground_801C2FE0 -> mpLib_80055E9C: bind each model's collision
+    /// joint to its animated descendant, preserving hidden state and history.
+    pub fn update_collision(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        bindings: &[crate::desc::JointMapping],
+    ) {
+        for binding in bindings {
+            let joint = self
+                .tree
+                .bone(self.root, binding.extra as usize)
+                .expect("collision bone");
+            let transform = melee_mp::JobjState {
+                mtx: *self.tree.get_mtx(joint),
+                hidden: self.tree.flags(joint) & hsd_anim::jobj::JOBJ_HIDDEN != 0,
+            };
+            map.update_joint_transform(i32::from(binding.joint_index), Some(transform));
+        }
+    }
     pub fn matrices(&mut self) -> Vec<(usize, Mtx)> {
         let mut joints = Vec::new();
         self.tree

@@ -188,3 +188,31 @@ uncommitted, as requested.
   `tests/data/{idle_bf_spawns.json,start_bf_spawns.json,README.md}`:
   alpha compare behavior and particle replay coverage.
 - `docs/BATTLEFIELD.md`, `TRACKER.md`: evidence, scope and session status.
+
+## Lane B2: platform movement (2026-09-09)
+
+`platform_bf_fox` passes **300 ticks × 49 keys, zero divergences**. It is now
+in `m4_gate`, alongside an ordered particle-RNG ledger comparison. The
+existing `melee-mp` one-way line handling and fighter Jump/Fall collision
+callbacks already support rising through soft platforms and landing on them.
+No collision geometry or expected values were changed.
+
+The missing state was `Pass` (244, submotion 209), entered from Squat's
+existing platform-drop timer. `ftCo_8009A228` leaves ground, clamps air drift,
+loads the PlCo +0x46C downward velocity, attaches Pass, then sets
+`CollData.floor_skip` to the supporting line and resets the stick timer to
+0xFE. Its collision callback uses `ft_CheckGroundAndLedge`'s ordinary airborne
+path, which respects that skipped line. Its physics uses ordinary fall
+physics without introducing a new fast-fall check. The Pass animation ends
+in Fall. The existing motion-change reset clears the skipped line on the
+next transition (including Landing); there is no separate guessed timeout.
+Pass's second motion scratch word is retained through landing.
+
+The gate covers KneeBend at tick 30, the rising JumpF at 33, main-floor
+Landing at 68, the second hop at 200/203, soft-platform Landing at 228,
+Wait there at 258, Squat at 262, **Pass at 265**, and main-floor Landing at
+280. P2 remains idle on the top platform throughout. `asm.py --fused` was
+checked for Pass entry, drift clamping and Pass physics; the new entry path
+has no multiply-add sites. No Dolphin run or new capture was necessary.
+
+See `docs/YOSHIS_STORY.md` for the complete B2 file list and validation scope.

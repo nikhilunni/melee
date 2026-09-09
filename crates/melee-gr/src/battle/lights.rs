@@ -21,7 +21,10 @@ pub enum Light {
 /// `Ground_801C466C` (0x801C466C), ground.c:2692-2713: scale the
 /// loaded world positions. Fusion audit: only independent fmuls at this site.
 pub fn load(archive: &Archive, desc: &StageDesc) -> ReadResult<Vec<Light>> {
-    crate::desc::read_static_lights(archive, &desc.models[6])?
+    load_model(archive, desc, 6)
+}
+pub fn load_model(archive: &Archive, desc: &StageDesc, map: usize) -> ReadResult<Vec<Light>> {
+    crate::desc::read_static_lights(archive, &desc.models[map])?
         .into_iter()
         .map(|light| {
             assert!(light.class_name.is_none() && light.next_offset.is_none());

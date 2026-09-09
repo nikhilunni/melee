@@ -72,3 +72,19 @@ The same full-field replay compares 467,132 simulation fields and 9,373 ordered
 particle draws over 300 ticks. HUD shake draws are classified as post-particle
 external RNG inputs, with strict site order; the production M5 gate generates
 those draws independently in `melee-if` at scheduler link 17.
+
+## Yoshi's Story (Lane B2, 2026-09-09)
+
+`idle_ys_spawns.json` contains the 26 common-bank puff requests logged from
+production `melee-sim gate harness/scenarios/idle_ys_fox.toml`, which reported
+600 ticks × 49 keys with zero divergences. The fixture uses the format above,
+with `detach: true` recording `hsd_8039F6CC`'s pending attachment queue.
+Each request contains only the production joint matrix (joint 201: map 2,
+archive descendant 1), bank/kind/link and zero local position. No retail
+particle outputs, future seeds or child-generator requests became inputs.
+Temporary logging was removed after generation. To regenerate, log the Story
+puff SpawnRequest in `frame.rs` and the following pending-generator enqueue.
+The replay bakes/releases that attachment before particle execution, as in
+retail. Its initial puff has no attachment and needs no fixture joint mapping.
+The 600-tick replay compares 51,303 fields and 476 ordered draws, with no
+mismatches and no display-cache exclusions.

@@ -384,6 +384,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::JumpAerialB => (MotionState::JUMP_AERIAL_BACK, 19),
             CommonMotionState::JumpAerialF => (MotionState::JUMP_AERIAL, 18),
             CommonMotionState::Fall => (MotionState::FALL, 20),
+            CommonMotionState::Pass => (MotionState::PASS, 209),
             CommonMotionState::FallAerial => (MotionState::FALL_AERIAL, 23),
             CommonMotionState::FallSpecial => (MotionState::FALL_SPECIAL, 26),
             CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),

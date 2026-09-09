@@ -115,4 +115,6 @@ pub struct MovementParameters {
     pub platform_drop_threshold: f32,
     pub platform_drop_window: i32,
     pub platform_drop_delay: f32,
+    /// +46C: initial downward velocity on entering Pass.
+    pub platform_drop_velocity: f32,
 }

@@ -16,6 +16,7 @@ pub mod jump;
 pub mod landing;
 pub mod ledge;
 pub mod overlap;
+mod pass;
 mod procs;
 pub mod run;
 pub mod shield;
@@ -369,6 +370,9 @@ pub enum MotionData {
     KneeBend(jump::KneeBendState),
     Jump(jump::JumpState),
     JumpAerial {
+        retained_drop_timer: f32,
+    },
+    Pass {
         retained_drop_timer: f32,
     },
     Fall(fall::FallState),

@@ -112,6 +112,24 @@ pub fn read_battlefield(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::Battle, 6)
 }
 
+/// grDatFiles_801C6038: Story's environment is map 3.
+pub fn read_story(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Story, 3)
+}
+pub fn read_story_parameters(archive: &Archive) -> ReadResult<crate::story::Parameters> {
+    let offset = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let mut heights = [0.0; 6];
+    for (i, height) in heights.iter_mut().enumerate() {
+        *height = r.f32(offset + 12 + i as u32 * 4)?;
+    }
+    Ok(crate::story::Parameters {
+        timer_minimum: r.f32(offset)?,
+        timer_range: r.f32(offset + 4)? as i32,
+        group_rarity: r.f32(offset + 8)? as i32,
+        heights,
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();
@@ -138,7 +156,11 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
     for (i, offset) in material_script_offsets
         .iter_mut()
         .enumerate()
-        .take(if kind == GrKind::Last { 4 } else { 2 })
+        .take(match kind {
+            GrKind::Last => 4,
+            GrKind::Battle => 2,
+            _ => 0,
+        })
     {
         *offset = required_link(archive, scripts + i as u32 * 4)?;
     }
@@ -310,6 +332,20 @@ pub fn read_static_lights(
         cursor += 4;
     }
     Ok(lights)
+}
+
+/// grAnime_801C7C1C (0x801C7C1C): animation arrays contain consecutive
+/// HSD_AnimJoint records, indexed by Ground's descendant number.
+pub fn animation_subtree(
+    archive: &Archive,
+    model: &ModelDesc,
+    animation: usize,
+    bone: u32,
+) -> ReadResult<AnimJoint> {
+    Ok(AnimJoint::read(
+        archive,
+        model.animations[animation].offset + bone * hsd_archive::desc::ANIM_JOINT_SIZE,
+    )?)
 }
 
 #[cfg(test)]

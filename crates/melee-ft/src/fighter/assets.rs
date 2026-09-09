@@ -99,6 +99,7 @@ impl FighterAssets {
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
             41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 169,
+            209,
         ] {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -203,7 +204,7 @@ impl FighterAssets {
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
                 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224,
-                225, 226, 227, 228, 238, 46, 169,
+                225, 226, 227, 228, 238, 46, 169, 209,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
@@ -252,6 +253,7 @@ impl FighterAssets {
                 platform_drop_threshold: common.reader().f32(common_data + 0x464)?,
                 platform_drop_window: common.reader().s32(common_data + 0x468)?,
                 platform_drop_delay: common.reader().f32(common_data + 0x470)?,
+                platform_drop_velocity: common.reader().f32(common_data + 0x46C)?,
             },
             squat_choices: crate::desc::playback::read_squat_table(data, root)?,
             wait_choices: read_wait_table(data, root)?,

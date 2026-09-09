@@ -2,8 +2,8 @@
 //! (`src/sysdolphin/baselib/jobj.c`). Binary layouts stay in `hsd-archive`.
 //!
 //! This is the headless, default-class loader. Polygon and texture rendering
-//! remain deferred as in `dobj`/`mobj`. Constraints, instance references, spline
-//! and particle joints, custom classes, and AObj object references are rejected
+//! remain deferred as in `dobj`/`mobj`. Constraints, instance references, cubic spline
+//! and particle joints, custom classes, and external AObj references are rejected
 //! because the runtime cannot represent their behavior. Pixel-engine descriptors
 //! are rendering-only state and are ignored here.
 
@@ -103,7 +103,7 @@ impl From<DescError> for LoadError {
 /// The descriptor already owns all supported data; `archive` is reserved for
 /// future typed readers of the remaining reference payloads.
 pub fn load_joint_tree(
-    _archive: &Archive,
+    archive: &Archive,
     root: &desc::JObjDesc,
 ) -> Result<(JObjTree, JObjId), LoadError> {
     let mut tree = JObjTree::new();
@@ -118,13 +118,31 @@ pub fn load_joint_tree(
         first.get_or_insert(id);
         previous = Some(id);
     }
+    for descriptor in root.siblings().flat_map(|j| j.descendants()) {
+        if let desc::JObjUnion::Spline(Some(offset)) = descriptor.u {
+            let spline = desc::spline::LinearSpline::read(archive, offset)?;
+            let id = (0..tree.len())
+                .map(JObjId)
+                .find(|&id| tree.get(id).id == descriptor.offset)
+                .unwrap();
+            tree.get_mut(id).spline = Some(spline);
+        }
+    }
     Ok((tree, first.expect("root.siblings() includes root")))
 }
 
 /// `JObjLoad` (`jobj.c:629-665`): build the owned inputs to the runtime loader.
 fn joint_spec(joint: &desc::JObjDesc) -> Result<JointSpec, LoadError> {
     check_class(joint.class_name.as_deref(), "hsd_jobj", joint.offset)?;
-    check_joint_flags(joint.flags, joint.offset)?;
+    check_joint_flags(
+        joint.flags
+            & if matches!(joint.u, desc::JObjUnion::Spline(Some(_))) {
+                !JOBJ_SPLINE
+            } else {
+                u32::MAX
+            },
+        joint.offset,
+    )?;
     if joint.robjdesc.is_some() {
         return Err(unsupported(joint.offset, "RObj constraints"));
     }
@@ -226,8 +244,30 @@ pub fn attach_anim_joint(
     _archive: &Archive,
 ) -> Result<(), LoadError> {
     let attachments = prepare_animation(tree, root, anim)?;
-    for (id, animation) in attachments {
+    let attachments = attachments
+        .into_iter()
+        .map(|(id, animation)| {
+            let reference = animation.aobjdesc.as_ref().map_or(0, |a| a.obj_id);
+            let target = if reference != 0 {
+                Some(
+                    (0..tree.len())
+                        .map(JObjId)
+                        .find(|&target| {
+                            tree.get(target).id == reference && tree.get(target).spline.is_some()
+                        })
+                        .ok_or_else(|| {
+                            unsupported(reference, "external/non-spline AObj reference")
+                        })?,
+                )
+            } else {
+                None
+            };
+            Ok((id, animation, target))
+        })
+        .collect::<Result<Vec<_>, LoadError>>()?;
+    for (id, animation, target) in attachments {
         tree.add_anim(id, Some(&animation), None);
+        tree.get_mut(id).path_reference = target;
     }
     Ok(())
 }
@@ -259,7 +299,15 @@ fn prepare_animation(
             return Err(LoadError::RepeatedJoint(id));
         }
         let joint = tree.get(id);
-        check_joint_flags(joint.flags, joint.id)?;
+        check_joint_flags(
+            joint.flags
+                & if joint.spline.is_some() {
+                    !JOBJ_SPLINE
+                } else {
+                    u32::MAX
+                },
+            joint.id,
+        )?;
         attachments.push((id, animation_node(animation)?));
         if follow_next {
             pending.push((joint.next, animation.next.as_deref(), true));
@@ -283,14 +331,14 @@ fn animation_node(anim: &desc::AnimJoint) -> Result<AnimJoint, LoadError> {
 
 /// `HSD_AObjLoadDesc` (`aobj.c:179-218`): pass flags and tracks to AObj's loader.
 fn animation_object(anim: &desc::AObjDesc) -> Result<AObjDesc, LoadError> {
-    if anim.obj_id != 0 || anim.obj_id_is_link {
+    if (anim.obj_id != 0 && !anim.obj_id_is_link) || (anim.obj_id == 0 && anim.obj_id_is_link) {
         return Err(unsupported(anim.offset, "AObj object reference"));
     }
     Ok(AObjDesc {
         flags: anim.flags,
         end_frame: anim.end_frame,
         fobjdesc: anim.tracks().map(animation_track).collect(),
-        obj_id: 0,
+        obj_id: anim.obj_id,
     })
 }
 

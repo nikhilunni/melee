@@ -167,6 +167,48 @@ impl Generator {
         }
     }
 
+    /// hsd_8039D71C (0x8039D71C): bake an attachment before releasing
+    /// its JObj. Column normalization preserves orientation without map scale.
+    pub(crate) fn detach_joint(&mut self) {
+        let Some(matrix) = self.joint_matrix else {
+            return;
+        };
+        if self.flags & 0x100 == 0 {
+            return;
+        }
+        self.update_attachment();
+        assert!(
+            self.application_transform.is_none(),
+            "generator.c:250-261: detached AppSRT attachment"
+        );
+        let columns: [Vec3; 3] = std::array::from_fn(|c| {
+            let column = Vec3::new(matrix.0[0][c], matrix.0[1][c], matrix.0[2][c]);
+            let mut normalized = Vec3::ZERO;
+            mtx::vec_normalize(&column, &mut normalized);
+            normalized
+        });
+        let [x, y, z] = self.descriptor.velocity;
+        // Retail 8039D8FC..918: X product, Y fmadds, Z fmadds.
+        self.descriptor.velocity = [
+            fmadds(columns[2].x, z, fmadds(columns[1].x, y, columns[0].x * x)),
+            fmadds(columns[2].y, z, fmadds(columns[1].y, y, columns[0].y * x)),
+            fmadds(columns[2].z, z, fmadds(columns[1].z, y, columns[0].z * x)),
+        ];
+        if let EmissionShape::Line { end } = &mut self.shape {
+            let old = *end;
+            // Retail 8039D954/58,970/74,98C/90: same left-associated FMAs.
+            *end = std::array::from_fn(|r| {
+                fmadds(
+                    matrix.0[r][2],
+                    old[2],
+                    fmadds(matrix.0[r][1], old[1], matrix.0[r][0] * old[0]),
+                )
+            });
+        }
+        self.joint_matrix = None;
+        self.attachment_id = None;
+    }
+
     /// `hsd_8039DAD4` (0x8039DAD4), pre-loop setup. Scalar magnitude sums
     /// are unfused (0x8039DB78..0x8039DB88); sqrt uses the three fnmsub
     /// Newton steps at 0x8039DBA8/DBB8/DBC8, as in gekko_math::msl::sqrtf.

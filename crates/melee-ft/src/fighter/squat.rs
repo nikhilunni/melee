@@ -89,8 +89,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             let transition = self.first_ground_transition(assets, context, &[P::Walk]);
             return self.apply_ground_transition(assets, transition);
         }
-        // ftCo_80099F9C (0x80099F9C). On FD the platform predicate is false;
-        // retain the typed timer and reject platform entry when it becomes due.
+        // ftCo_80099F9C (0x80099F9C): arm the delayed platform drop.
         let on_platform = self.collision.data.floor.flags & line_flag::PLATFORM != 0;
         let MotionData::Squat(squat) = &mut self.state_data else {
             panic!("squat data missing")
@@ -108,7 +107,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if squat.platform_drop_pending && squat.platform_drop_timer != 0.0 {
                 squat.platform_drop_timer -= 1.0;
                 if squat.platform_drop_timer == 0.0 && on_platform {
-                    unimplemented!("ftCo_Squat.c:79-84: platform drop -> Pass");
+                    return self.enter_pass(assets);
                 }
             }
         } else {

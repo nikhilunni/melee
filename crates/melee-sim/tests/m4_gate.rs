@@ -579,3 +579,21 @@ fn ledgeescape_fd_falco_420() {
 fn ledgeescape_falco_particle_draw_order() {
     particle_rng_sites_with_ledger("ledgeescape_fd_falco", 420, "ledger");
 }
+
+#[test]
+fn platform_bf_fox_300() {
+    movement_gate("platform_bf_fox");
+}
+#[test]
+fn battlefield_platform_particle_rng_order() {
+    particle_rng_sites_for_ticks("platform_bf_fox", 300);
+}
+
+#[test]
+fn idle_ys_fox_600() {
+    movement_gate_ticks("idle_ys_fox", 600);
+}
+#[test]
+fn story_idle_particle_rng_order() {
+    particle_rng_sites_with_ledger("idle_ys_fox", 600, "ledger600");
+}

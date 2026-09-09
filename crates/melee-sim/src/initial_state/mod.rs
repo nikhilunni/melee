@@ -72,7 +72,7 @@ impl InitialState {
             std::array::from_fn(|p| scenario.fighters[p].descriptor()),
             scenario.stage_descriptor(),
         )?;
-        let map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
+        let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // Only the first line is read. Later rows (including all rng_draws)
         // never enter simulation, even transiently.
@@ -204,7 +204,13 @@ impl InitialState {
                 && word(saved.bytes(0x804D_5F90, 4), 0) == seed,
             "inconsistent saved RNG seed"
         );
-        let mut particles = particles::restore(&initial, &assets.particle_bank);
+        let mut particles = particles::restore(
+            &initial,
+            &std::collections::BTreeMap::from([
+                (0, assets.common_particle_bank.clone()),
+                (30, assets.particle_bank.clone()),
+            ]),
+        );
         let meta = &metadata["particles"];
         let captured_generators = meta["generators"]
             .as_array()
@@ -221,6 +227,9 @@ impl InitialState {
                 generator["callback"] == 0 && generator["user_functions"] == 0,
                 "particle callbacks unsupported"
             );
+            if generator["jobj"] == 0 {
+                continue;
+            }
             let joint = meta["joints"]
                 .as_array()
                 .context("missing joint metadata")?
@@ -241,7 +250,7 @@ impl InitialState {
                 std::array::from_fn(|c| f32::from_bits(words[r * 4 + c].as_u64().unwrap() as u32))
             })));
         }
-        let (stage, stage_animations) = stage::restore_scene(
+        let (stage, mut stage_animations) = stage::restore_scene(
             &saved,
             &assets,
             match_start,
@@ -249,6 +258,15 @@ impl InitialState {
             &mut particles,
             &metadata,
         )?;
+        if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
+            for (&id, animation) in &mut stage_animations {
+                let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
+                animation.update_collision(&mut map, bindings);
+                for binding in bindings {
+                    map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
+                }
+            }
+        }
         let pending_music = if match_start {
             // gmMainLib_GetUnlockedCharactersBitmaskPtr (8015ED8C): lwz the
             // global, add 0x1868. gm/types.h's +1898 comment is stale.
