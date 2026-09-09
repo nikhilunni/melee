@@ -1,0 +1,26 @@
+# First projectile: Fox fires one grounded laser (SpecialNStart -> Loop -> End) at the idle
+# Fox at +60; the laser item spawns, crosses the gap, hits the opponent and despawns.
+# Recorded from the idle_fd_fox savestate (P1 at -60 facing right, P2 at +60 facing
+# left, both in Wait). Input frames are VI callbacks counted from the savestate load;
+# the port replays the per-tick pad the tick tracer recorded. Needs the item oracle
+# (C9): the trace must carry `items` per tick for this scene to be gated.
+name = "laser_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { B = true } },
+  { frame = 32, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
