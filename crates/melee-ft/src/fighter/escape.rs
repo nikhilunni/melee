@@ -1,0 +1,110 @@
+//! Spot dodge and roll, ftCo_Escape.c. Movement is sampled from TransN tracks.
+use super::{
+    assets::{FighterAssets, Result},
+    CharacterCallbacks, Fighter, MotionData,
+};
+use gekko_math::msl::fabsf;
+use melee_types::CommonMotionState as S;
+
+/// ftColl_8007B0C0 / Fighter.x1988: subaction-controlled vulnerability.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HurtStatus {
+    #[default]
+    Normal,
+    Invincible,
+    Intangible,
+}
+#[derive(Clone, Debug)]
+pub struct EscapeState {
+    /// mv.co.escape.x0: item-throw window, decremented by ftCo_8009563C.
+    /// C calls this bool, but retail preserves PlCo.x324 (five frames).
+    pub interrupt_frames: i32,
+    /// facing_dir1, retained when the subaction reverses facing_dir.
+    pub entry_facing: f32,
+}
+impl<C: CharacterCallbacks> Fighter<C> {
+    /// ftCo_8009980C (0x8009980C): main-stick down smash or C-stick down.
+    pub(super) fn spot_dodge_input(&self, assets: &FighterAssets) -> bool {
+        (self.input.current.stick.y <= assets.input.escape_threshold
+            && i32::from(self.input.vertical.tilt) < assets.input.escape_window)
+            || self.input.current.cstick.y <= assets.input.escape_threshold
+    }
+    /// ftCo_8009917C (0x8009917C): main-stick horizontal smash, then C-stick.
+    pub(super) fn roll_input(&self, assets: &FighterAssets) -> Option<S> {
+        let p = &assets.shield;
+        let x = if fabsf(self.input.current.stick.x) >= p.roll_threshold
+            && i32::from(self.input.horizontal.tilt) < p.roll_window
+        {
+            self.input.current.stick.x
+        } else if fabsf(self.input.current.cstick.x) >= p.roll_threshold {
+            self.input.current.cstick.x
+        } else {
+            return None;
+        };
+        Some(if x * self.physics.facing >= 0.0 {
+            S::EscapeF
+        } else {
+            S::EscapeB
+        })
+    }
+    /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
+    pub(super) fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
+        self.character.escape_variant(state != S::EscapeN);
+        self.commands.reverse_facing = false;
+        self.change_motion_state(state, assets)?;
+        self.step_animation(assets);
+        self.status.ignore_fighter_nudge = true;
+        self.state_data = MotionData::Escape(EscapeState {
+            interrupt_frames: assets.shield.roll_interrupt_frames,
+            entry_facing: self.physics.facing,
+        });
+        Ok(())
+    }
+    /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
+    pub(super) fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.motion_state.id != S::EscapeN && std::mem::take(&mut self.commands.reverse_facing) {
+            self.physics.facing = -self.physics.facing;
+        }
+        if !self.animation.frames_remaining(&self.skeleton) {
+            if self.motion_state.id != S::EscapeN {
+                self.physics.ground_velocity = 0.0;
+            }
+            self.change_motion_state(S::Wait, assets)?;
+        }
+        Ok(())
+    }
+    /// ftCo_Escape_Phys -> ft_80085004 -> ft_80085030 (0x80085030).
+    pub(super) fn escape_physics(&mut self, map: &melee_mp::CollMap) {
+        use crate::physics::{friction::friction_acceleration, grounded};
+        let MotionData::Escape(escape) = &self.state_data else {
+            panic!("escape data missing")
+        };
+        if self
+            .animation
+            .flags
+            .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            let offset = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("escape root motion")
+                .primary_history
+                .offset
+                .z;
+            // retail 8008505C fmsubs, facing_dir1 rather than current facing.
+            self.physics.ground_acceleration =
+                gekko_math::fma::fmsubs(offset, escape.entry_facing, self.physics.ground_velocity);
+        } else {
+            self.physics.ground_acceleration = friction_acceleration(
+                self.physics.ground_velocity,
+                self.attributes.ground.ground_friction,
+            );
+        }
+        grounded::apply_ground_movement(
+            &mut self.physics,
+            self.collision.data.floor.normal,
+            map.floor_speed_scale(&self.collision.data),
+        );
+    }
+}

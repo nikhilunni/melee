@@ -493,3 +493,73 @@ fn for_each_aobj(tree: &mut JObjTree, root: JObjId, mut visit: impl FnMut(&mut A
         }
     }
 }
+
+impl FighterAnimation {
+    /// ftCo_80091E78 (80091E78) composes ftAnim_8006F4C8/FB88/70108/FE9C.
+    /// Pose sources are owned costume and shield descriptors, never render caches.
+    /// Neutral descriptor blending is lb_8000C868: its six fused SRT sites
+    /// 8000C8A8/C8BC/C8D0/C8E4/C8F8/C90C and quaternion ordering match
+    /// blend_pose for an Euler source. Copy is lb_8000B4FC (no fused sites).
+    pub fn apply_guard_pose<T: InverseTrig>(
+        &mut self,
+        tree: &mut JObjTree,
+        tilt: &Motion,
+        neutral: &[hsd_anim::jobj::JObj],
+        magnitude: f32,
+        frame: f32,
+        weight: f32,
+    ) -> Result<(), AttachError> {
+        if magnitude != 0.0 {
+            attach_motion(
+                &mut self.blend_tree,
+                &self.parts,
+                &tilt.animation,
+                self.flags.bone_mask(),
+                None,
+            )?;
+            self.blend_tree.req_anim_all(self.root, frame);
+            // ftAnim_8006FB88 resets SRT while preserving the newly attached AObjs.
+            let mut reset = self.blend_tree.clone();
+            self.reset_pose(&mut reset, true);
+            self.blend_tree = reset;
+            self.blend_tree.anim_all::<T>(self.root);
+        }
+        let mut pose_index = 0;
+        for part in self.parts.iter().skip(1) {
+            if part.motion_mask != 0 {
+                continue;
+            }
+            let source = neutral.get(pose_index).expect("shield pose mapping");
+            pose_index += 1;
+            if !part.flags.eligible() {
+                continue;
+            }
+            if magnitude != 0.0 {
+                if magnitude < 1.0 {
+                    if part.flags.contains(PartFlags::COPY) {
+                        copy_pose(source, &mut self.blend_tree, part.joint);
+                    } else {
+                        blend_pose::<T>(
+                            source,
+                            &mut self.blend_tree,
+                            part.joint,
+                            1.0 - magnitude,
+                            magnitude,
+                        );
+                    }
+                }
+                let tilted = self.blend_tree.get(part.joint);
+                if weight >= 1.0 || part.flags.contains(PartFlags::COPY) {
+                    copy_pose(tilted, tree, part.joint);
+                } else {
+                    blend_pose::<T>(tilted, tree, part.joint, weight, 1.0 - weight);
+                }
+            } else if weight >= 1.0 || part.flags.contains(PartFlags::COPY) {
+                copy_pose(source, tree, part.joint);
+            } else {
+                blend_pose::<T>(source, tree, part.joint, weight, 1.0 - weight);
+            }
+        }
+        Ok(())
+    }
+}

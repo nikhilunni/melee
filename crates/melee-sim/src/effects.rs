@@ -47,7 +47,7 @@ const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 5] = [9, 10, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 6] = [9, 10, 45, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
@@ -62,8 +62,16 @@ struct Effect {
     attachment: Option<usize>,
     owner: Option<usize>,
     lifetime: u16,
+    indefinite: bool,
+    shield_bone: Option<usize>,
     joint_base: usize,
     paths: BTreeMap<usize, (JObjId, spline::Spline)>,
+}
+/// Retail efSync runs at the caller; efAsync drains at fighter link 9.
+#[derive(Clone, Copy)]
+pub enum EffectTiming {
+    Immediate,
+    Deferred,
 }
 impl Effects {
     #[cfg(test)]
@@ -79,8 +87,10 @@ impl Effects {
     }
     /// efAsync_QueueProcessDeferred (efasync.c:1321-1381), drained by
     /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557).
+    #[allow(clippy::too_many_arguments)] // Fighter, effect assets and particle runtime stay in their own layers.
     pub fn flush(
         &mut self,
+        timing: EffectTiming,
         player: usize,
         fighter: &mut Fighter<Fox>,
         archive: &Archive,
@@ -89,7 +99,14 @@ impl Effects {
         rng: &mut HsdRng,
     ) -> Result<()> {
         let mut requests = Vec::new();
-        fighter.drain_effects(&mut requests);
+        match timing {
+            EffectTiming::Immediate => fighter.drain_immediate_effects(&mut requests),
+            EffectTiming::Deferred => {
+                fighter.drain_effects(&mut requests);
+                // efAsync_Spawn prepends to the pending list.
+                requests.reverse();
+            }
+        }
         // efAsync_Spawn prepends to the pending list (efasync.c:1458-1462).
         // Destruction is synchronous, before newly queued spawns are flushed.
         if requests
@@ -107,7 +124,7 @@ impl Effects {
             }
             self.instances.retain(|effect| effect.owner != Some(player));
         }
-        for request in requests.into_iter().rev() {
+        for request in requests {
             if matches!(request, EffectRequest::DestroyOwned) {
                 continue;
             }
@@ -146,6 +163,8 @@ impl Effects {
                 }
             }
             let (id, attachment) = match request {
+                EffectRequest::Shield { id: 0x417, .. } => (0xB, Some(player)),
+                EffectRequest::Shield { id: 0x418, .. } => (0xC, Some(player)),
                 EffectRequest::EntryWarp {
                     id: ENTRY_WARP_REQUEST,
                     ..
@@ -166,7 +185,12 @@ impl Effects {
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
             effect.owner = Some(player);
-            let root = if let EffectRequest::Graphics { bone, .. } = request {
+            if let EffectRequest::Shield { bone, .. } = request {
+                effect.shield_bone = Some(bone);
+            }
+            let root = if let EffectRequest::Graphics { bone, .. }
+            | EffectRequest::Shield { bone, .. } = request
+            {
                 fighter.animation.parts[bone].joint
             } else {
                 fighter.animation.root
@@ -176,6 +200,8 @@ impl Effects {
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
                 EffectRequest::DestroyOwned | EffectRequest::Attached { .. } => unreachable!(),
+                // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
+                EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {
                     offset,
                     facing,
@@ -236,7 +262,7 @@ impl Effects {
             particles.update_joint(id, fighter.skeleton.get(joint).mtx);
         }
         for effect in &mut self.instances {
-            if effect.lifetime != 0 {
+            if !effect.indefinite && effect.lifetime != 0 {
                 effect.lifetime -= 1;
                 if effect.lifetime == 0 {
                     continue;
@@ -244,9 +270,20 @@ impl Effects {
             }
             if let Some(player) = effect.attachment {
                 let fighter = &mut fighters[player];
-                let root = fighter.animation.root;
+                let root = effect.shield_bone.map_or(fighter.animation.root, |bone| {
+                    fighter.animation.parts[bone].joint
+                });
                 fighter.skeleton.setup_matrix(root);
                 let matrix = fighter.skeleton.get(root).mtx;
+                if effect.shield_bone.is_some() {
+                    // efLib_Update (8005BC50), eflib.c:406-425: world Y scale,
+                    // broadcast to all three axes. HSD_MtxGetScale is audited.
+                    let mut scale = Vec3::ZERO;
+                    hsd_anim::mtx::hsd_mtx_get_scale(&matrix, &mut scale);
+                    scale.x = scale.y;
+                    scale.z = scale.y;
+                    effect.tree.set_scale(effect.root, &scale);
+                }
                 // lb_8000C1C0's position constraint (0x90000001) resolves the
                 // attachment's world translation; it does not inherit rotation.
                 effect.tree.set_translate(
@@ -256,7 +293,8 @@ impl Effects {
             }
             effect.animate(bank, particles, rng, &mut self.draws)?;
         }
-        self.instances.retain(|effect| effect.lifetime != 0);
+        self.instances
+            .retain(|effect| effect.indefinite || effect.lifetime != 0);
         Ok(())
     }
 }
@@ -268,7 +306,7 @@ impl Effect {
             .context("effect table")?;
         let offset = table + 8 + id * EFFECT_DESCRIPTOR_SIZE;
         let lifetime = archive.reader().f32(offset)? as u16;
-        ensure!(lifetime > 0, "unbounded effect lifetime unsupported");
+
         let descriptor =
             desc::JObjDesc::read(archive, archive.link(offset + 4)?.context("effect model")?)?;
         let animation = desc::AnimJoint::read(
@@ -301,6 +339,8 @@ impl Effect {
             tree,
             root,
             lifetime: lifetime + 1,
+            indefinite: lifetime == 0,
+            shield_bone: None,
             attachment: None,
             owner: None,
             joint_base: 0,
@@ -352,7 +392,14 @@ impl Effect {
                         );
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
-                        particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                        let id = particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                        if matches!(hi, 0x2D | 0x2E | 0x31) {
+                            // efLib_SpawnParticleEffect (8005D174), eflib.c:882-890.
+                            if let Some(id) = id {
+                                let generator = particles.generator_mut(id).unwrap();
+                                generator.flags = (generator.flags & !0x600) | 0x1800;
+                            }
+                        }
                     }
                     JObjEvent::JSound(_) => {} // Audio has no simulation output.
                     _ => anyhow::bail!("unsupported ef animation event {event:?}"),

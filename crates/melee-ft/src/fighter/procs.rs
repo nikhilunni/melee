@@ -71,6 +71,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.step_animation(assets);
         match self.motion_state.callbacks.animation {
+            state::AnimationCallback::GuardOn
+            | state::AnimationCallback::Guard
+            | state::AnimationCallback::GuardReflect
+            | state::AnimationCallback::GuardOff
+            | state::AnimationCallback::GuardSetOff => {
+                self.shield_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Escape | state::AnimationCallback::EscapeN => {
+                self.escape_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::Squat | state::AnimationCallback::SquatRv => {
                 self.squat_animation(assets)?;
                 return Ok(None);
@@ -208,6 +220,25 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 ..WaitContext::default()
             };
             match self.motion_state.callbacks.input {
+                state::InputCallback::GuardOn
+                | state::InputCallback::Guard
+                | state::InputCallback::GuardReflect
+                | state::InputCallback::GuardOff
+                | state::InputCallback::GuardSetOff => {
+                    self.shield_input(assets, &context).expect("shield IASA");
+                    return;
+                }
+                // ftCo_8009563C is false without an item; EscapeN has no IASA.
+                state::InputCallback::Escape => {
+                    // ftCo_8009563C (8009563C), ftCo_ItemThrow.c:261-263.
+                    if let MotionData::Escape(escape) = &mut self.state_data {
+                        if escape.interrupt_frames != 0 {
+                            escape.interrupt_frames -= 1;
+                        }
+                    }
+                    return;
+                }
+                state::InputCallback::EscapeN => return,
                 state::InputCallback::KneeBend => {
                     self.knee_bend_input(assets, &context);
                     return;
@@ -293,7 +324,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 map,
                 wind,
             ),
-            state::PhysicsCallback::KneeBend
+            state::PhysicsCallback::GuardOn
+            | state::PhysicsCallback::Guard
+            | state::PhysicsCallback::GuardReflect
+            | state::PhysicsCallback::GuardOff
+            | state::PhysicsCallback::GuardSetOff
+            | state::PhysicsCallback::EscapeN
+            | state::PhysicsCallback::KneeBend
             | state::PhysicsCallback::Landing
             | state::PhysicsCallback::Squat
             | state::PhysicsCallback::SquatRv
@@ -309,6 +346,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     &mut self.physics,
                     &self.collision.data,
                     &params,
+                    map,
+                    wind,
+                );
+            }
+            state::PhysicsCallback::Escape => {
+                self.escape_physics(map);
+                crate::physics::grounded::finish_ground_update(
+                    &mut self.physics,
+                    &self.collision.data,
+                    &GroundedParameters::from_attributes(&self.attributes, &assets.common),
                     map,
                     wind,
                 );
@@ -382,6 +429,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 unimplemented!("unsupported installed Fall physics")
             }
         }
+        if self.shield.active {
+            self.physics.shield_position_cached = false;
+            self.shield.hit.position_cached = false;
+            if self.motion_state.id != melee_types::CommonMotionState::GuardSetOff {
+                self.shield.reflect.volume.position_cached = false;
+            }
+        }
         for hurt in &mut self.hurtboxes {
             hurt.cached = false;
         }
@@ -395,7 +449,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assert!(
             matches!(
                 self.motion_state.callbacks.collision,
-                state::CollisionCallback::Wait
+                state::CollisionCallback::GuardOn
+                    | state::CollisionCallback::Guard
+                    | state::CollisionCallback::GuardReflect
+                    | state::CollisionCallback::GuardOff
+                    | state::CollisionCallback::GuardSetOff
+                    | state::CollisionCallback::Escape
+                    | state::CollisionCallback::EscapeN
+                    | state::CollisionCallback::Wait
                     | state::CollisionCallback::Landing
                     | state::CollisionCallback::Walk
                     | state::CollisionCallback::Dash
@@ -414,7 +475,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
     fn map_ground(&mut self, map: &mut CollMap) {
         let simple = matches!(
             self.motion_state.callbacks.collision,
-            state::CollisionCallback::Dash
+            state::CollisionCallback::GuardOn
+                | state::CollisionCallback::Guard
+                | state::CollisionCallback::GuardReflect
+                | state::CollisionCallback::GuardOff
+                | state::CollisionCallback::GuardSetOff
+                | state::CollisionCallback::Dash
                 | state::CollisionCallback::Run
                 | state::CollisionCallback::KneeBend
                 | state::CollisionCallback::Squat
@@ -422,7 +488,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 | state::CollisionCallback::SquatRv
                 | state::CollisionCallback::Turn
         );
-        let callback = if simple {
+        let callback = if matches!(
+            self.motion_state.callbacks.collision,
+            state::CollisionCallback::Escape | state::CollisionCallback::EscapeN
+        ) || (self.motion_state.callbacks.collision
+            == state::CollisionCallback::GuardSetOff
+            && self.shield.allow_sdi)
+        {
+            crate::collision::ground::map_escape
+        } else if simple {
             crate::collision::ground::map_ground_action
         } else {
             map_wait
@@ -472,7 +546,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_idle();
         match self.motion_state.callbacks.collision {
-            state::CollisionCallback::Wait
+            state::CollisionCallback::GuardOn
+            | state::CollisionCallback::Guard
+            | state::CollisionCallback::GuardReflect
+            | state::CollisionCallback::GuardOff
+            | state::CollisionCallback::GuardSetOff
+            | state::CollisionCallback::Escape
+            | state::CollisionCallback::EscapeN
+            | state::CollisionCallback::Wait
             | state::CollisionCallback::Landing
             | state::CollisionCallback::Walk
             | state::CollisionCallback::Dash
@@ -627,9 +708,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return;
         }
         self.status.require_idle();
-        if self.status.shield_health != assets.shield_health {
-            unimplemented!("fighter.c:2813-2820: shield regeneration");
-        }
+        self.shield_proc(assets);
         self.cpu.hurtbox_extents = caches::hurtbox_extents(
             &mut self.hurtboxes,
             &mut self.skeleton,

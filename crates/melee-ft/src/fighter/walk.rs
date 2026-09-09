@@ -170,6 +170,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
     ) -> Result<()> {
         match transition {
             T::None => Ok(()),
+            T::Shield => self.enter_shield(assets),
+            T::Escape => self.enter_escape(assets, CommonMotionState::EscapeN),
             T::Jump => self.enter_knee_bend(assets),
             T::Dash => self.enter_dash(assets, true),
             T::Squat => self.enter_squat(assets),

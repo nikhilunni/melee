@@ -140,14 +140,29 @@ impl ParticleSystem {
         let Some(descriptor) = bank.descriptor(descriptor_id) else {
             return Ok(None);
         };
-        let mut generator = Generator::new::<T>(descriptor, bank_id, link, rng, draws)?;
+        // hsd_8039F05C, generator.c:1210-1217; system owns allocation and aliases.
+        let application_transform = application_transform
+            .or_else(|| {
+                (descriptor.kind & 0x20000 != 0).then(|| crate::generator::ApplicationTransform {
+                    camera_facing: 1,
+                    ..Default::default()
+                })
+            })
+            .map(Arc::new);
+        let mut generator = Generator::with_application_transform::<T>(
+            descriptor,
+            bank_id,
+            link,
+            application_transform,
+            rng,
+            draws,
+        )?;
         if let Some(Some(texture)) = bank.textures.get(usize::from(descriptor.texture_group)) {
             generator.texture_images = texture.images.clone().into();
             if texture.palette_flags != 0 {
                 generator.descriptor.kind |= 0x10;
             }
         }
-        generator.application_transform = application_transform.map(Arc::new);
         if mirror {
             generator.descriptor.kind |= 0x40000;
         }
@@ -170,6 +185,44 @@ impl ParticleSystem {
         for generator in &mut self.generators {
             if generator.attachment_id == Some(id) {
                 generator.joint_matrix = Some(matrix);
+            }
+        }
+    }
+
+    /// hsd_8039D214 (8039D214), generator.c:38-71: refresh the shared owner
+    /// before its emission. Existing particles and child generators retain aliases.
+    fn update_application_attachment(&mut self, index: usize) {
+        let generator = &mut self.generators[index];
+        if generator.flags & 0x100 == 0 {
+            return;
+        }
+        let (Some(matrix), Some(transform), Some(id)) = (
+            generator.joint_matrix,
+            generator.application_transform.as_mut(),
+            generator.appsrt_id,
+        ) else {
+            return;
+        };
+        if id != generator.id || generator.flags & 0x1800 == 0 {
+            return;
+        }
+        let transform = Arc::make_mut(transform);
+        if generator.flags & 0x800 != 0 {
+            transform.translation =
+                hsd_types::Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
+        }
+        if generator.flags & 0x1000 != 0 {
+            hsd_anim::mtx::hsd_mtx_get_scale(&matrix, &mut transform.scale);
+        }
+        let transform = generator.application_transform.as_ref().unwrap().clone();
+        for generator in &mut self.generators {
+            if generator.appsrt_id == Some(id) {
+                generator.application_transform = Some(transform.clone());
+            }
+        }
+        for particle in self.particles.iter_mut().flatten() {
+            if particle.appsrt_id == Some(id) {
+                particle.application_transform = Some(transform.clone());
             }
         }
     }
@@ -328,6 +381,8 @@ impl ParticleSystem {
             let generator = &mut self.generators[index];
             let id = generator.id;
             if mask & (1 << (generator.link + 16)) == 0 && generator.descriptor.kind & PAUSED == 0 {
+                self.update_application_attachment(index);
+                let generator = &mut self.generators[index];
                 generator.update_attachment();
                 if generator.emission_rate < 0.0 {
                     generator.count -= generator.emission_rate;

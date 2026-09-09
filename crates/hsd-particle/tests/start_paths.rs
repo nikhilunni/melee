@@ -363,3 +363,84 @@ fn appsrt_display_updates_shared_cache_without_transforming_simulation() {
     assert_eq!(transform.model_view_matrix.0.map(|r| r[3]), [3.0, 4.0, 5.0]);
     assert_eq!(transform.axis_scale, [1.0, 1.0]);
 }
+
+#[test]
+fn animated_appsrt_follows_its_owner_and_expires_with_the_joint() {
+    use hsd_types::Vec3;
+    use std::sync::Arc;
+    let mut d = descriptor(vec![10]);
+    d.kind |= 0x20000; // hsd_8039F05C allocates an owned application transform.
+    let bank = bank(vec![d]);
+    let mut system = ParticleSystem::default();
+    let mut request = SpawnRequest::new(0, 0, 0);
+    request.joint = Some((42, Mtx::IDENTITY));
+    let mut rng = HsdRng::new(1);
+    let mut draws = DrawLog::default();
+    let id = system
+        .spawn::<RetailTrig>(&bank, request, &mut rng, &mut draws)
+        .unwrap()
+        .unwrap();
+    // efLib_SpawnParticleEffect's shield callback inherits translation and scale.
+    let generator = system.generator_mut(id).unwrap();
+    generator.flags = (generator.flags & !0x600) | 0x1800;
+    assert_eq!(
+        generator
+            .application_transform
+            .as_ref()
+            .unwrap()
+            .camera_facing,
+        1
+    );
+    system
+        .proc_main::<RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
+    assert_eq!(system.live_particles(), 1);
+    let local_position = system.particles[0][0].position;
+    system.update_joint(
+        42,
+        Mtx([
+            [2.0, 0.0, 0.0, 7.0],
+            [0.0, 3.0, 0.0, 8.0],
+            [0.0, 0.0, 4.0, 9.0],
+        ]),
+    );
+    system
+        .update_generators::<RetailTrig>(1 << 16, &mut rng, &mut draws)
+        .unwrap();
+    assert_eq!(
+        system.particles[0][0]
+            .application_transform
+            .as_ref()
+            .unwrap()
+            .translation,
+        Vec3::ZERO
+    );
+    system
+        .update_generators::<RetailTrig>(0, &mut rng, &mut draws)
+        .unwrap();
+    let generator_transform = system
+        .generator_mut(id)
+        .unwrap()
+        .application_transform
+        .clone()
+        .unwrap();
+    assert_eq!(generator_transform.translation, Vec3::new(7.0, 8.0, 9.0));
+    // Retail vector-length rounding recovers one ULP below each input scale.
+    let scale = generator_transform.scale;
+    assert_eq!(
+        [scale.x.to_bits(), scale.y.to_bits(), scale.z.to_bits()],
+        [0x3FFF_FFFF, 0x403F_FFFF, 0x407F_FFFF]
+    );
+    assert_eq!(system.live_particles(), 2);
+    for particle in &system.particles[0] {
+        assert!(Arc::ptr_eq(
+            particle.application_transform.as_ref().unwrap(),
+            &generator_transform
+        ));
+    }
+    assert_eq!(system.particles[0][1].position, local_position);
+    system.expire_joint(42);
+    assert_eq!(system.live_particles(), 0);
+    assert!(system.generators.is_empty());
+    assert_eq!(Arc::strong_count(&generator_transform), 1);
+}

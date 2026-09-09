@@ -16,6 +16,8 @@ impl Effects {
         rng: &mut HsdRng,
     ) -> Result<()> {
         let (kind, directional) = match id {
+            0x3F3 => (0xB, false),  // efasync.c:186-188, roll smoke
+            0x407 => (0x3C, false), // efasync.c:305-307, spot dodge
             RUN_DUST_REQUEST => (RUN_DUST_GENERATOR, true),
             BRAKE_DUST_REQUEST => (BRAKE_DUST_GENERATOR, true),
             id if id < 0x250 || id / 1000 == 30 => (u32::from(id), false),

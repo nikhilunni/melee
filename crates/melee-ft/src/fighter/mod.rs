@@ -6,11 +6,13 @@ pub mod commands;
 pub mod dash;
 pub mod effects;
 pub mod entry;
+pub mod escape;
 pub mod fall;
 pub mod jump;
 pub mod landing;
 mod procs;
 pub mod run;
+pub mod shield;
 mod snapshot;
 mod spawn;
 pub mod squat;
@@ -38,6 +40,24 @@ pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
+    fn guard_variant(&self) {
+        if self.kind() == FighterKind::Yoshi {
+            unimplemented!("ftCo_Guard.c:339-341: Yoshi egg shield");
+        }
+        if self.kind() == FighterKind::Mars {
+            unimplemented!("ftCo_Guard.c:342-346: Marth shield model/offset");
+        }
+    }
+    /// ftCo_Escape.c:78-94, 228-241: per-character escape setup.
+    fn escape_variant(&self, rolling: bool) {
+        if rolling && self.kind() == FighterKind::Samus {
+            unimplemented!("ftCo_Escape.c:83-85: Samus morph-ball roll");
+        }
+        if self.kind() == FighterKind::Yoshi {
+            unimplemented!("ftCo_Escape.c:86-88, 232-234: Yoshi egg escape");
+        }
+    }
     /// Which double-jump entry the character uses
     /// (ftCo_JumpAerial.c:103-119 `switch (fp->kind)`). The default arm is
     /// the ordinary `ftCo_JumpAerial_Enter_Basic`; Ness, Yoshi, Peach and
@@ -118,6 +138,8 @@ pub struct Status {
     pub disabled: bool,
     /// x221D_b4: reset input during match startup.
     pub input_frozen: bool,
+    /// x221D_b5: skip fighter-overlap nudge while dodging (ftcommon.c:850).
+    pub ignore_fighter_nudge: bool,
     pub interaction: Interaction,
     /// dmg.x18ac_time_since_hit (+18AC), reset -1.
     pub time_since_hit: i32,
@@ -139,6 +161,7 @@ impl Status {
         Self {
             disabled: false,
             input_frozen: false,
+            ignore_fighter_nudge: false,
             interaction: Interaction::Idle,
             time_since_hit: -1,
             time_since_smash: -1.0,
@@ -151,11 +174,10 @@ impl Status {
     }
     fn require_idle(&self) {
         match self.interaction {
-            Interaction::Idle => {}
+            Interaction::Idle | Interaction::Shield => {}
             Interaction::Hitlag => unimplemented!("fighter.c:1398-1437: hitlag/SDI"),
             Interaction::HeldItem => unimplemented!("fighter.c:1523-1532: held-item lifetime"),
             Interaction::Grab => unimplemented!("fighter.c:1560-1578,2602-2626: capture/grab"),
-            Interaction::Shield => unimplemented!("fighter.c:2822-2842: active shield"),
             Interaction::Damage => unimplemented!("fighter.c:2853-2998: damage/hitlag"),
             Interaction::Death => unimplemented!("fighter.c:914-929: death/entry states"),
             Interaction::StatusEffect => unimplemented!("fighter.c:1463-1641: status/item effects"),
@@ -197,6 +219,7 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub skeleton: JObjTree,
     pub motion_state: MotionState,
     pub state_data: MotionData,
+    pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,
     pub effects: Vec<effects::EffectRequest>,
     pub character: C,
@@ -256,6 +279,8 @@ pub enum MotionData {
     #[default]
     None,
     Entry(entry::EntryState),
+    Guard(shield::GuardState),
+    Escape(escape::EscapeState),
     Squat(squat::SquatState),
     Turn(turn::TurnState),
     Walk(walk::WalkState),

@@ -9,6 +9,33 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T4 Shield, spot dodge and roll
+
+`shield_fd_fox`, `spotdodge_fd_fox` and `roll_fd_fox` each match **300 ticks,
+49 keys, 0 divergences**, including RNG. Raw callback replays also check shield
+health, lightshield, tilt/timer scratch, startup flags and dodge hurt status;
+ordered particle RNG checks cover all three scenes. See [M4_SHIELD.md](M4_SHIELD.md)
+for the commands, fusion audit, character hooks and remaining boundaries.
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Guard input / GuardOn entry / GuardReflect entry | 80091A4C / 800924C0 / 80093A50 | `shield.rs`, typed `GuardState` and `ShieldState` |
+| GuardOn / Guard / GuardOff / GuardSetOff / GuardReflect Anim | 800926DC / 80092A24 / 80092CAC / 80093354 / 80093CD0 | `shield.rs`; enum callback tables in `state.rs` |
+| Guard hold / GuardOff entry / startup-window expiration | 80092908 / 80092C54 / 80093BC0 | `shield.rs`, scratch retention and collision reset |
+| Shield tilt / size / pose / health drain | 80091BC4 / 80091D58 / 80091E78 / 800925A4 | `shield.rs`, `anim/playback.rs`; owned descriptor pose and joint scale |
+| Shield / reflect collision descriptors | 80092450 / 8009370C | `shield.rs`, typed volumes and hit callbacks; M5 owns hit response |
+| Per-frame shield proc | 8006D1EC | `procs.rs`, `shield.rs`; active drain and inactive regeneration |
+| Roll predicate / entry / Anim; spot-dodge predicate / entry / Anim | 8009917C / 80099314 / 800994D8; 8009980C / 800998EC / 800999D8 | `escape.rs`, typed timer, facing and hurt status |
+| Roll physics / TransN acceleration; escape collision | 80085004 / 80085030; 80084104 | `escape.rs`, `collision/ground.rs`; stage-edge clamping |
+| Stick angle | 8000D008 | `melee-lb::trigf::stick_angle`, including neutral-vector handling |
+| Shield effects / attached AppSRT refresh | 8005BC50 / 8005D174 / 8039D214 | `melee-sim::effects`, `hsd-particle::system` |
+
+Retail IDs are **178 GuardOn, 179 Guard, 180 GuardOff, 181 GuardSetOff,
+182 GuardReflect**. These captures start with GuardReflect; the post-dodge
+return to 178 is GuardOn. GuardSetOff callbacks exist, but its damage/stun entry
+is explicitly M5. `CharacterCallbacks::guard_variant` and `escape_variant`
+keep Yoshi/Marth and Samus/Yoshi branches in character hooks; Fox uses defaults.
+
 ## M4-T3 KneeBend, JumpF, JumpAerialF and fast fall
 
 `jump_fd_fox` matches **300 ticks, 49 keys, 0 divergences**. The raw callback
@@ -228,15 +255,16 @@ solving: `ftCo_8009CB40(..., false, NULL)` sets the first bone to `0x100`, and
 ## Explicit boundaries
 
 `Status::interaction` is the scene's interaction boundary. A caller must mark
-hitlag, items, grabs, shields, damage, death, status effects, accessories, active
+hitlag, items, grabs, damage, death, status effects, accessories, active
 attacks, queued effects, stage hazards, fighter overlap or coin-match rules
-before dispatching such a scenario. Each arm has a C-located `unimplemented!`.
+before dispatching such a scenario. Unsupported arms have C-located `unimplemented!`
+boundaries. Shield without a hit is supported by the typed Guard state machine.
 The isolated fighter does not scan other fighters/items or implement the scene's
 collision registries. Empty ordinary-Wait branches are checked against the raw
 ledger's attack, item, accessory, async and catch fields.
 
 IASA bodies outside the movement slice above, CPU AI, unsupported motion entry,
-teeter/fall from a ledge, sloped leg correction/body tilt, altered shield health,
+teeter/fall from a ledge, sloped leg correction/body tilt, shield hit response,
 and scaled-player attribute modifiers fail explicitly. Neutral Fall through
 Landing/Wait and the Fox tail solver are implemented and covered by match-start
 gates.

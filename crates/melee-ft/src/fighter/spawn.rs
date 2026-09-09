@@ -236,6 +236,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             skeleton,
             motion_state: MotionState::WAIT,
             state_data: MotionData::None,
+            shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
             effects: Vec::new(),
             character,
@@ -284,6 +285,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
         start: f32,
     ) -> Result<()> {
         self.status.require_idle();
+        self.shield.clear_collision();
+        self.status.ignore_fighter_nudge = false;
+        self.commands.allow_interrupt = false;
+        self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         self.physics.fast_fall = false;
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
@@ -320,6 +325,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::Squat => (MotionState::SQUAT, 30),
             CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
             CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
+            CommonMotionState::GuardOn => (MotionState::GUARD_ON, 37),
+            CommonMotionState::Guard => (MotionState::GUARD, 38),
+            CommonMotionState::GuardReflect => (MotionState::GUARD_REFLECT, 37),
+            CommonMotionState::GuardOff => (MotionState::GUARD_OFF, 39),
+            CommonMotionState::GuardSetOff => (MotionState::GUARD_SET_OFF, 40),
+            CommonMotionState::EscapeF => (MotionState::ESCAPE_F, 42),
+            CommonMotionState::EscapeB => (MotionState::ESCAPE_B, 43),
+            CommonMotionState::EscapeN => (MotionState::ESCAPE_N, 41),
             CommonMotionState::Dash => (MotionState::DASH, 12),
             CommonMotionState::Run => (MotionState::RUN, 13),
             CommonMotionState::RunBrake => (MotionState::RUN_BRAKE, 14),
@@ -363,6 +376,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
             (std::f64::consts::FRAC_PI_2 * f64::from(self.physics.facing)) as f32,
         );
         self.skeleton.set_rotation_z(root, 0.0);
+        if matches!(
+            state,
+            CommonMotionState::GuardOn | CommonMotionState::Guard | CommonMotionState::GuardReflect
+        ) {
+            // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
+            self.animation.clear_motion(&mut self.skeleton);
+            self.commands.instruction = None;
+            return Ok(());
+        }
         self.animation.set_animation(
             &mut self.skeleton,
             &assets.motions[&animation_id],

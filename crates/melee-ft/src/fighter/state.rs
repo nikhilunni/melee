@@ -13,6 +13,14 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    GuardOn,
+    Guard,
+    GuardOff,
+    GuardSetOff,
+    GuardReflect,
+    Escape,
+    EscapeN,
+
     KneeBend,
     Jump,
     JumpAerial,
@@ -34,6 +42,14 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    GuardOn,
+    Guard,
+    GuardOff,
+    GuardSetOff,
+    GuardReflect,
+    Escape,
+    EscapeN,
+
     KneeBend,
     Jump,
     JumpAerial,
@@ -55,6 +71,14 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    GuardOn,
+    Guard,
+    GuardOff,
+    GuardSetOff,
+    GuardReflect,
+    Escape,
+    EscapeN,
+
     KneeBend,
     Jump,
     JumpAerial,
@@ -76,6 +100,14 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    GuardOn,
+    Guard,
+    GuardOff,
+    GuardSetOff,
+    GuardReflect,
+    Escape,
+    EscapeN,
+
     KneeBend,
     Jump,
     JumpAerial,
@@ -108,6 +140,87 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const GUARD_ON: Self = Self {
+        id: CommonMotionState::GuardOn,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::GuardOn,
+            input: InputCallback::GuardOn,
+            physics: PhysicsCallback::GuardOn,
+            collision: CollisionCallback::GuardOn,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const GUARD: Self = Self {
+        id: CommonMotionState::Guard,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Guard,
+            input: InputCallback::Guard,
+            physics: PhysicsCallback::Guard,
+            collision: CollisionCallback::Guard,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const GUARD_OFF: Self = Self {
+        id: CommonMotionState::GuardOff,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::GuardOff,
+            input: InputCallback::GuardOff,
+            physics: PhysicsCallback::GuardOff,
+            collision: CollisionCallback::GuardOff,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const GUARD_SET_OFF: Self = Self {
+        id: CommonMotionState::GuardSetOff,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::GuardSetOff,
+            input: InputCallback::GuardSetOff,
+            physics: PhysicsCallback::GuardSetOff,
+            collision: CollisionCallback::GuardSetOff,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const GUARD_REFLECT: Self = Self {
+        id: CommonMotionState::GuardReflect,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::GuardReflect,
+            input: InputCallback::GuardReflect,
+            physics: PhysicsCallback::GuardReflect,
+            collision: CollisionCallback::GuardReflect,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ESCAPE_F: Self = Self {
+        id: CommonMotionState::EscapeF,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Escape,
+            input: InputCallback::Escape,
+            physics: PhysicsCallback::Escape,
+            collision: CollisionCallback::Escape,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ESCAPE_B: Self = Self {
+        id: CommonMotionState::EscapeB,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Escape,
+            input: InputCallback::Escape,
+            physics: PhysicsCallback::Escape,
+            collision: CollisionCallback::Escape,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ESCAPE_N: Self = Self {
+        id: CommonMotionState::EscapeN,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::EscapeN,
+            input: InputCallback::EscapeN,
+            physics: PhysicsCallback::EscapeN,
+            collision: CollisionCallback::EscapeN,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
     pub const KNEE_BEND: Self = Self {
         id: CommonMotionState::KneeBend,
         callbacks: StateCallbacks {

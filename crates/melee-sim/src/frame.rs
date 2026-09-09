@@ -142,6 +142,7 @@ impl Runtime {
                     FighterProc::Accessories => f.proc_accessories(),
                     FighterProc::HitboxPositions => {
                         state.effects.flush(
+                            crate::effects::EffectTiming::Deferred,
                             player,
                             f,
                             &state.assets.effects,
@@ -159,6 +160,15 @@ impl Runtime {
                     FighterProc::PlayerMirror => f.proc_player_mirror(),
                 }
                 f.resolve_graphics_commands(assets, &mut state.rng);
+                state.effects.flush(
+                    crate::effects::EffectTiming::Immediate,
+                    player,
+                    f,
+                    &state.assets.effects,
+                    &state.assets.common_particle_bank,
+                    &mut state.particles,
+                    &mut state.rng,
+                )?;
             }
             Callback::Stage { map, address } => match address {
                 // Registered Ground wrappers: lighting, disabled spawn manager,

@@ -5,6 +5,8 @@ const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 #[derive(Clone, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// efSync_Spawn: shield model attached to the shield joint.
+    Shield { id: u16, bone: usize },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
     /// efAsync kind 0 passes the live fighter joint without offset RNG.
@@ -37,6 +39,22 @@ impl EffectSink for Vec<EffectRequest> {
 }
 
 impl<C: super::CharacterCallbacks> super::Fighter<C> {
+    /// efSync_Spawn / efLib_DestroyAll: dispatch at the owning fighter callback.
+    /// Deferred efAsync requests retain their original order until link 9.
+    pub fn drain_immediate_effects(&mut self, sink: &mut impl EffectSink) {
+        let mut deferred = Vec::new();
+        for effect in self.effects.drain(..) {
+            if matches!(
+                effect,
+                EffectRequest::Shield { .. } | EffectRequest::DestroyOwned
+            ) {
+                sink.spawn_effect(effect);
+            } else {
+                deferred.push(effect);
+            }
+        }
+        self.effects = deferred;
+    }
     /// Forward requests in call order; rendering/particle code supplies the sink.
     pub fn drain_effects(&mut self, sink: &mut impl EffectSink) {
         for effect in self.effects.drain(..) {
@@ -103,7 +121,10 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
                 self.effects.push(EffectRequest::Attached { id, bone });
                 continue;
             }
-            if !(id < 0x250 || id / 1000 == 30 || matches!(id, 0x3FE | 0x3FF | 0x401 | 0x402)) {
+            if !(id < 0x250
+                || id / 1000 == 30
+                || matches!(id, 0x3F3 | 0x407 | 0x3FE | 0x3FF | 0x401 | 0x402))
+            {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");
             }
             let mut offset = command.offset;
@@ -114,7 +135,7 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
             ] {
                 let random = rng.randf();
                 // Early branch: retail 8009F94C/F970/F9A4 fmadds.
-                // 3FE/3FF/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
+                // 3F3/407/3FE/3FF/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
                 // The range doubling and random subtraction round separately.
                 *value = gekko_math::fma::fmadds(2.0 * range, random - 0.5, *value);
                 draws += 1;

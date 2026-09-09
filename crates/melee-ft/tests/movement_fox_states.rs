@@ -109,3 +109,18 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
         }
     }
 }
+
+#[test]
+fn shield_fox_state_callbacks() {
+    replay_state_callbacks("shield", "ledger");
+}
+
+#[test]
+fn spotdodge_fox_state_callbacks() {
+    replay_state_callbacks("spotdodge", "ledger");
+}
+
+#[test]
+fn roll_fox_state_callbacks() {
+    replay_state_callbacks("roll", "ledger");
+}

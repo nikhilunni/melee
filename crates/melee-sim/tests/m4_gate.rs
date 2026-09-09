@@ -89,3 +89,30 @@ fn dash_particle_rng_sites_match_the_retail_ledger_in_order() {
 fn jump_particle_rng_sites_match_the_retail_ledger_in_order() {
     particle_rng_sites_match_the_retail_ledger_in_order("jump_fd_fox");
 }
+
+#[test]
+fn shield_fd_fox_300() {
+    movement_gate("shield_fd_fox");
+}
+#[test]
+fn shield_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_match_the_retail_ledger_in_order("shield_fd_fox");
+}
+
+#[test]
+fn spotdodge_fd_fox_300() {
+    movement_gate("spotdodge_fd_fox");
+}
+#[test]
+fn spotdodge_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_match_the_retail_ledger_in_order("spotdodge_fd_fox");
+}
+
+#[test]
+fn roll_fd_fox_300() {
+    movement_gate("roll_fd_fox");
+}
+#[test]
+fn roll_particle_rng_sites_match_the_retail_ledger_in_order() {
+    particle_rng_sites_match_the_retail_ledger_in_order("roll_fd_fox");
+}

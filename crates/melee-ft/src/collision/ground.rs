@@ -118,3 +118,27 @@ pub fn map_ground_action(
         WaitGroundResult::EnterFall
     }
 }
+
+/// ft_80084104 -> ft_800827A0 (0x800827A0): escape stops at the floor edge.
+pub fn map_escape(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    _stick_x: f32,
+) -> WaitGroundResult {
+    super::air::begin_map(state, environment, tree, root);
+    let pose = EcbPose::read(tree, root, &environment.data);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let supported = map.ground_collide_stop_at_edge(cd, Some(&|i| pose.position(i)));
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    if supported {
+        WaitGroundResult::Supported
+    } else {
+        WaitGroundResult::EnterFall
+    }
+}

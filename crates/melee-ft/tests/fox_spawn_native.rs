@@ -159,7 +159,6 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
         Interaction::Hitlag,
         Interaction::HeldItem,
         Interaction::Grab,
-        Interaction::Shield,
         Interaction::Damage,
         Interaction::Death,
         Interaction::StatusEffect,
@@ -173,6 +172,27 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
         fighter.status.interaction = interaction;
         assert!(catch_unwind(AssertUnwindSafe(|| fighter.proc_status())).is_err());
     }
+    // Shield is now supported: actual input installs its state and the proc arm runs.
+    fighter.status.interaction = Interaction::Idle;
+    fighter
+        .change_motion_state(melee_types::CommonMotionState::Wait, &fixture.assets)
+        .unwrap();
+    fighter.proc_input(
+        &fixture.assets,
+        &melee_ft::input::PadSample {
+            buttons: melee_ft::input::Buttons::L,
+            left_trigger: 1.0,
+            ..Default::default()
+        },
+    );
+    assert!(fighter.shield.enabled);
+    assert!(matches!(
+        fighter.state_data,
+        melee_ft::fighter::MotionData::Guard(_)
+    ));
+    fighter.status.interaction = Interaction::Shield;
+    fighter.proc_status();
+    fighter.proc_process_hit(&fixture.assets);
     fighter.status.interaction = Interaction::Idle;
     // Dispatch must consult the installed callback, not just motion_id=Wait.
     fighter.motion_state.callbacks.animation = AnimationCallback::FallUnimplemented;

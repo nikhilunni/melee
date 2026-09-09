@@ -86,10 +86,23 @@ impl Generator {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<Self, Error> {
+        Self::with_application_transform::<T>(descriptor, bank, link, None, rng, draws)
+    }
+
+    /// System-owned AppSRT allocation precedes exposing the new generator.
+    /// Direct callers must provide that owner for kind bit 0x20000.
+    pub(crate) fn with_application_transform<T: InverseTrig>(
+        descriptor: &Descriptor,
+        bank: u8,
+        link: u8,
+        application_transform: Option<Arc<ApplicationTransform>>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<Self, Error> {
         if link >= 8 {
             return Err(Error::InvalidLink(link));
         }
-        if descriptor.kind & 0x20000 != 0 {
+        if descriptor.kind & 0x20000 != 0 && application_transform.is_none() {
             return Err(Error::UnsupportedFeature("generator AppSRT"));
         }
         let shape = EmissionShape::new::<T>(descriptor)?;
@@ -114,7 +127,12 @@ impl Generator {
             family_id: 0,
             bank,
             link,
-            flags: descriptor.generator_type,
+            flags: descriptor.generator_type
+                | if descriptor.kind & 0x20000 != 0 {
+                    0x800
+                } else {
+                    0
+                },
             descriptor: descriptor.clone(),
             position: [0.0; 3],
             count,
@@ -122,7 +140,7 @@ impl Generator {
             remaining_life: descriptor.generator_life,
             children: 0,
             appsrt_id: None,
-            application_transform: None,
+            application_transform,
             shape,
             joint_matrix: None,
             attachment_id: None,
@@ -133,7 +151,11 @@ impl Generator {
     /// `hsd_8039EFAC` (0x8039EFAC) attaches a generator to its spawn joint.
     pub fn attach_joint(&mut self, matrix: Mtx) {
         self.joint_matrix = Some(matrix);
-        self.flags |= 0x700;
+        self.flags |= if self.descriptor.kind & 0x20000 != 0 {
+            0x500
+        } else {
+            0x700
+        };
     }
 
     /// `hsd_8039D214` (0x8039D214), after animation and before emission count.

@@ -61,6 +61,7 @@ fn replay_config(
     observe: &mut impl FnMut(usize, &[FoxFighter; 2]),
 ) {
     let compare_bones = oracle != BoneOracle::None;
+    let shield_scene = matches!(scene, "shield" | "spotdodge" | "roll");
     let trace_path = harness().join(format!("traces/{scene}_fd_fox.tick.expected.jsonl"));
     let ledger_path = harness().join(format!("traces/{scene}_fd_fox.{ledger_suffix}.raw.jsonl"));
     let raw_path = harness().join(format!("traces/{scene}_fd_fox.tick.raw.jsonl"));
@@ -153,6 +154,7 @@ fn replay_config(
         if tick != 0 {
             for (proc, player) in interleaved_order(fighters.len()) {
                 if callbacks_only
+                    && !(shield_scene && proc == FighterProc::ProcessHit)
                     && !matches!(
                         proc,
                         FighterProc::Status
@@ -469,6 +471,61 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         "vertical input age tick {tick} p{player}"
     );
     match (&fighter.state_data, fighter.motion_state.id) {
+        (
+            MotionData::Guard(guard),
+            S::GuardOn | S::Guard | S::GuardOff | S::GuardReflect | S::GuardSetOff,
+        ) => {
+            check_float("shield health", fighter.status.shield_health, 0x1998);
+            check_float("lightshield", fighter.shield.lightshield, 0x199C);
+            check_float("guard elapsed", guard.elapsed, 0x2340);
+            check_float("guard tilt magnitude", guard.tilt_magnitude, 0x2344);
+            check_float("guard tilt frame", guard.tilt_frame, 0x2348);
+            check_float("guard minimum hold", guard.minimum_hold, 0x2350);
+            check_float("guard reflect frames", guard.reflect_frames, 0x2354);
+            check_float("guard powershield frames", guard.powershield_frames, 0x2358);
+            check_float(
+                "guard previous lightshield",
+                guard.previous_lightshield,
+                0x236C,
+            );
+            assert_eq!(
+                u32::from(guard.released),
+                word(bytes, 0x234C),
+                "release tick {tick}"
+            );
+            assert_eq!(guard.interrupt_frames as u32, word(bytes, 0x235C));
+            assert_eq!(guard.jump_delay as u32, word(bytes, 0x2360));
+            assert_eq!(guard.grab_delay as u32, word(bytes, 0x2364));
+            for (actual, offset, mask) in [
+                (fighter.shield.enabled, 0x221A, 1),
+                (fighter.shield.active, 0x221B, 0x80),
+                (fighter.shield.reflecting, 0x2218, 0x10),
+                (fighter.shield.fresh_powershield, 0x221C, 0x10),
+                (fighter.shield.reflect_window, 0x221C, 0x40),
+                (fighter.shield.powershield_window, 0x221C, 0x20),
+            ] {
+                assert_eq!(
+                    actual,
+                    bytes[offset] & mask != 0,
+                    "shield flag {offset:x}/{mask:x}, tick {tick}"
+                );
+            }
+        }
+        (MotionData::Escape(escape), S::EscapeF | S::EscapeB | S::EscapeN) => {
+            if fighter.motion_state.id != S::EscapeN {
+                assert_eq!(
+                    escape.interrupt_frames as u32,
+                    word(bytes, 0x2340),
+                    "escape interrupt tick {tick}"
+                );
+            }
+            let hurt = match fighter.commands.hurt_status {
+                melee_ft::fighter::escape::HurtStatus::Normal => 0,
+                melee_ft::fighter::escape::HurtStatus::Invincible => 1,
+                melee_ft::fighter::escape::HurtStatus::Intangible => 2,
+            };
+            assert_eq!(hurt, word(bytes, 0x1988), "hurt status tick {tick}");
+        }
         (MotionData::KneeBend(squat), S::KneeBend) => {
             assert_eq!(
                 u32::from(squat.short_hop),

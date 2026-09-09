@@ -27,6 +27,8 @@ pub struct FighterAssets {
     pub common: CommonFighterData,
     pub input: InputCommonData,
     pub shield_health: f32,
+    pub shield: super::shield::ShieldParameters,
+    pub guard_pose: Vec<hsd_anim::jobj::JObj>,
     pub entry: super::entry::EntryParameters,
     pub soft_landing_speed: f32,
     pub name_tag_duration: u16,
@@ -63,7 +65,8 @@ impl FighterAssets {
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
         for id in [
-            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 238,
+            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42,
+            43, 238,
         ] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -139,6 +142,8 @@ impl FighterAssets {
                 initial_scale_y: common.reader().f32(common_data + 0x6C4)?,
             },
             soft_landing_speed: -common.reader().f32(common_data + 0x310)?,
+            shield: super::shield::ShieldParameters::read(common, common_data)?,
+            guard_pose: read_guard_pose(fox, root)?,
             shield_health: common.reader().f32(common_data + 0x260)?,
             name_tag_duration: common.reader().u32(common_data + 0x5F0)? as u16,
             thrown_hitbox: {
@@ -153,7 +158,8 @@ impl FighterAssets {
             dynamics: crate::dynamics::read_sets(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
             motions: [
-                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 238,
+                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41,
+                42, 43, 238,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
@@ -262,6 +268,15 @@ fn read_script(
                     ),
                 })
             }
+            // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
+            23 => Command::AllowInterrupt,
+            26 => Command::HurtStatus(match word & 0x03ff_ffff {
+                0 => super::escape::HurtStatus::Normal,
+                1 => super::escape::HurtStatus::Invincible,
+                2 => super::escape::HurtStatus::Intangible,
+                value => return Err(format!("unknown hurt status {value}").into()),
+            }),
+            20 if word & 0x03ff_ffff == 0 => Command::ReverseFacing,
             41 => Command::Part {
                 group: ((word >> 19) & 127) as usize,
                 variant: ((word >> 12) & 127) as usize,
@@ -398,4 +413,17 @@ fn read_dynamic_colliders(a: &Archive, root: u32) -> Result<Vec<super::caches::D
             })
         })
         .collect()
+}
+
+/// ftData.x20->x0[2]: neutral shield descriptor used by ftCo_80091E78.
+fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> {
+    let table = a.link(root + 0x20)?.ok_or("missing pose table")?;
+    let table = a.link(table)?.ok_or("missing pose list")?;
+    let joint = a.link(table + 8)?.ok_or("missing shield pose")?;
+    let desc = desc::JObjDesc::read(a, joint)?;
+    let (tree, root) = hsd_anim::load::load_joint_tree(a, &desc)?;
+    Ok(tree
+        .depth_first(root)
+        .map(|id| tree.get(id).clone())
+        .collect())
 }

@@ -467,6 +467,29 @@ pub fn powf(arg0: f32, arg1: f32) -> f32 {
     expf(arg1 * (2.0 * var_f4))
 }
 
+/// lb_8000D008 (0x8000D008), lb_00CE.c:112-160: stick angle with a
+/// near-zero X branch and a neutral-vector result of zero. asm.py --fused:
+/// no fused sites; the negative-X quadrant calculation retains double pi.
+pub fn stick_angle(y: f32, x: f32) -> f32 {
+    if x < 0.00001 && x > -0.00001 {
+        if y < 0.00001 && y > -0.00001 {
+            return 0.0;
+        }
+        let sign = if y < 0.0 { -1.0_f64 } else { 1.0_f64 };
+        return (std::f64::consts::FRAC_PI_2 * sign) as f32;
+    }
+    if x > 0.0 {
+        return atanf(y / x);
+    }
+    if x < 0.0 {
+        let ratio = y / x;
+        let ratio = if ratio < 0.0 { -ratio } else { ratio };
+        let sign = if y < 0.0 { -1.0_f64 } else { 1.0_f64 };
+        return (sign * (std::f64::consts::PI - f64::from(atanf(ratio)))) as f32;
+    }
+    y
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

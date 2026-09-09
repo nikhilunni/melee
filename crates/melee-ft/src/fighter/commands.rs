@@ -12,6 +12,9 @@ use hsd_anim::{
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    HurtStatus(super::escape::HurtStatus),
+    ReverseFacing,
+    AllowInterrupt,
     End,
     Graphics(super::effects::GraphicsCommand),
     SetVariable {
@@ -58,9 +61,17 @@ pub struct RumbleRequest {
     pub duration: u16,
 }
 
+/// ft_PlaySFX versus ft_800881D8, ftaction.c:600-608.
+#[derive(Clone, Copy, Debug)]
+pub enum SoundChannel {
+    Ordinary,
+    FighterVoice,
+}
+
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
 #[derive(Clone, Debug)]
 pub struct FootstepSound {
+    pub channel: SoundChannel,
     pub id: u32,
     pub volume: u8,
     pub pan: u8,
@@ -68,6 +79,9 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    pub hurt_status: super::escape::HurtStatus,
+    pub reverse_facing: bool,
+    pub allow_interrupt: bool,
     /// cmd_vars (+2200): subaction-controlled state variables.
     pub variables: [u32; 4],
     pub graphics: Vec<super::effects::GraphicsCommand>,
@@ -145,6 +159,9 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::HurtStatus(status) => self.hurt_status = *status,
+                Command::AllowInterrupt => self.allow_interrupt = true,
+                Command::ReverseFacing => self.reverse_facing = true,
                 Command::Graphics(command) => {
                     if !seeking {
                         self.graphics.push(command.clone());
@@ -178,11 +195,13 @@ impl CommandState {
                     pan,
                 } => {
                     if !seeking {
-                        assert_eq!(
-                            *behavior, 0,
-                            "ftaction.c:598-651: non-default sound behavior is unimplemented"
-                        );
+                        let channel = match behavior {
+                            0 => SoundChannel::Ordinary,
+                            2 => SoundChannel::FighterVoice,
+                            _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
+                        };
                         self.footstep_sounds.push(FootstepSound {
+                            channel,
                             id: *id,
                             volume: *volume,
                             pan: *pan,
