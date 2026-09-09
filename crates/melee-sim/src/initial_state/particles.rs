@@ -317,8 +317,99 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
     system
 }
 
+fn appsrt_fields(
+    value: &hsd_particle::appsrt::ApplicationTransform,
+    mut count: usize,
+    fields: &mut Fields<'_>,
+) {
+    let mut value = value.clone();
+    let mut translation = [
+        value.translation.x,
+        value.translation.y,
+        value.translation.z,
+    ];
+    fields.array("translation", &mut translation);
+    fields.array(
+        "rotation",
+        &mut [
+            value.rotation.x,
+            value.rotation.y,
+            value.rotation.z,
+            value.rotation_w,
+        ],
+    );
+    fields.array("scale", &mut [value.scale.x, value.scale.y, value.scale.z]);
+    fields.scalar("status", &mut (value.status as u8));
+    fields.scalar("frame_count", &mut (value.frame_number));
+    fields.scalar("use_count", &mut (count));
+    fields.array(
+        "matrix",
+        &mut std::array::from_fn::<_, 12, _>(|i| value.model_matrix.0[i / 4][i % 4]),
+    );
+    fields.scalar("scale_x", &mut (value.model_view_matrix.0[0][0]));
+    fields.scalar("scale_y", &mut (value.model_view_matrix.0[0][1]));
+    fields.array(
+        "unknown_float",
+        &mut std::array::from_fn::<_, 12, _>(|i| {
+            if i < 10 {
+                value.model_view_matrix.0[(i + 2) / 4][(i + 2) % 4]
+            } else {
+                value.axis_scale[i - 10]
+            }
+        }),
+    );
+    fields.scalar("id", &mut (value.family_id));
+    fields.scalar("unknown_byte", &mut (value.camera_facing));
+    fields.scalar("generator_index", &mut Option::<usize>::None);
+}
+
 pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Banks) -> Record {
     let mut output = BTreeMap::new();
+    // Dump identities are first-encounter order, not allocator/generator IDs.
+    let mut transforms = Vec::new();
+    for (id, transform) in system
+        .generators
+        .iter()
+        .map(|g| (g.appsrt_id, &g.application_transform))
+        .chain(
+            system
+                .particles
+                .iter()
+                .flatten()
+                .map(|p| (p.appsrt_id, &p.application_transform)),
+        )
+    {
+        if let Some(id) = id {
+            let transform = transform.as_ref().expect("owned AppSRT");
+            if let Some((_, _, count)) = transforms
+                .iter_mut()
+                .find(|(existing, _, _)| *existing == id)
+            {
+                *count += 1usize;
+            } else {
+                transforms.push((id, transform.as_ref(), 1usize));
+            }
+        }
+    }
+    let normalized = |id: Option<usize>| {
+        id.map(|id| {
+            transforms
+                .iter()
+                .position(|(owned, _, _)| *owned == id)
+                .unwrap()
+        })
+    };
+    for (index, (_, transform, count)) in transforms.iter().enumerate() {
+        appsrt_fields(
+            transform,
+            *count,
+            &mut Fields {
+                prefix: format!("particles.appsrt[{index}]"),
+                source: None,
+                output: &mut output,
+            },
+        );
+    }
     output.insert("rng.seed".into(), seed.encode());
     output.insert(
         "particles.generator_count".into(),
@@ -333,8 +424,10 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
         system.pending_generators.len().encode(),
     );
     for (index, generator) in system.generators.iter().enumerate() {
+        let mut generator = generator.clone();
+        generator.appsrt_id = normalized(generator.appsrt_id);
         generator_fields(
-            &mut generator.clone(),
+            &mut generator,
             &mut Fields {
                 prefix: format!("particles.generator[{index}]"),
                 source: None,
@@ -348,6 +441,7 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
         output.insert(format!("{prefix}.count"), particles.len().encode());
         for (index, particle) in particles.iter().enumerate() {
             let mut particle = particle.clone();
+            particle.appsrt_id = normalized(particle.appsrt_id);
             particle.generator_id = particle.generator_id.map(|id| {
                 system
                     .generators

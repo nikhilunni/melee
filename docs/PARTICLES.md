@@ -449,3 +449,15 @@ ordered particle draws, not independent bitwise parity of every dust particle
 position/velocity. Existing idle and match-start particle-field oracles still
 pass. `crates/hsd-particle/docs/PARTICLES.md` does not exist; this is the
 repository's canonical particle coverage document.
+
+
+### Dash particle capture follow-up (incomplete)
+
+The subsequently supplied 300-tick dash dump now has a strict replay in
+`tests/live_fd_dash.rs`. Of 442,389 comparisons, 425 still fail: all are AppSRT
+display caches starting at tick 50. Generator/particle simulation and AppSRT
+SRT/ownership fields match. The new `appsrt` module owns the cache fields and
+ports their display update with explicit camera view / psFrameNum inputs
+(`psDispSubAppSRT`, 803A1F90..2184). The dump does not contain those external
+inputs, so the test remains red rather than importing expected cache outputs
+or excluding fields. Full audit and results: `melee-ft/src/fighter/M4_DASH.md`.

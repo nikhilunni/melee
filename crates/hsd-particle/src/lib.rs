@@ -1,7 +1,8 @@
-//! HSD particle simulation, without `psdisp.c` rendering.
+//! HSD particle simulation and AppSRT display-cache bookkeeping, without GX rendering.
 //!
 //! Updates accept the caller's `HsdRng`. See `docs/PARTICLES.md` for the
 //! supported scripts, retail instruction audit, and integration boundaries.
+pub mod appsrt;
 pub mod bank;
 mod color;
 pub mod generator;

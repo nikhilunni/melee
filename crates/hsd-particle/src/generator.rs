@@ -15,16 +15,7 @@ use hsd_anim::mtx::{self, InverseTrig, M_PI, M_PI_2};
 use hsd_types::{Mtx, Vec3};
 use std::sync::Arc;
 
-/// Static psAppSRT transform shared by a positional generator and its particles.
-/// psAddGeneratorAppSRT (psappsrt.c:25) initializes unit scale and status; mutable,
-/// attached AppSRT callbacks remain an explicit boundary.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ApplicationTransform {
-    pub translation: Vec3,
-    pub rotation: Vec3,
-    pub scale: Vec3,
-    pub status: i32,
-}
+pub use crate::appsrt::ApplicationTransform;
 
 /// Shape-dependent state from `HSD_Generator.aux` (psstructs.h).
 #[derive(Debug, Clone)]

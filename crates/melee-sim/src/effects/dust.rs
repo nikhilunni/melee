@@ -45,6 +45,7 @@ impl Effects {
                 ),
                 scale: Vec3::new(1.0, 1.0, 1.0),
                 status: 1,
+                ..Default::default()
             });
             request.mirror = facing < 0.0;
         } else {

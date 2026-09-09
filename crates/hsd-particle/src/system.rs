@@ -100,8 +100,9 @@ impl ParticleSystem {
         self.family_counter = self.family_counter.wrapping_add(1).max(0x100);
         generator.id = id;
         generator.family_id = self.family_counter;
-        if generator.application_transform.is_some() {
+        if let Some(transform) = &mut generator.application_transform {
             generator.appsrt_id = Some(id);
+            Arc::make_mut(transform).family_id = self.family_counter;
         }
         let insertion = self
             .generator_cursor

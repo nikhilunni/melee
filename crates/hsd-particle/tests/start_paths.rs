@@ -240,6 +240,7 @@ fn child_generator_shares_appsrt_after_its_parent_particle_dies() {
             rotation: Vec3::new(0.0, std::f32::consts::FRAC_PI_2, 0.0),
             scale: Vec3::new(1.0, 1.0, 1.0),
             status: 1,
+            ..Default::default()
         });
         let mut rng = HsdRng::new(1);
         let mut draws = DrawLog::default();
@@ -283,4 +284,82 @@ fn child_generator_shares_appsrt_after_its_parent_particle_dies() {
         assert!(system.generators.is_empty());
         assert_eq!(Arc::strong_count(&transform), 1);
     }
+}
+
+#[test]
+fn appsrt_display_updates_shared_cache_without_transforming_simulation() {
+    use hsd_particle::generator::ApplicationTransform;
+    use hsd_types::Vec3;
+    use std::sync::Arc;
+    let bank = bank(vec![descriptor(vec![10])]);
+    let mut system = ParticleSystem::default();
+    let mut request = SpawnRequest::new(0, 0, 0);
+    request.application_transform = Some(ApplicationTransform {
+        translation: Vec3::new(3.0, 4.0, 5.0),
+        status: 1,
+        ..Default::default()
+    });
+    let mut rng = HsdRng::new(1);
+    let mut draws = DrawLog::default();
+    system
+        .spawn::<RetailTrig>(&bank, request, &mut rng, &mut draws)
+        .unwrap();
+    system
+        .proc_main::<RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
+    let position = system.particles[0][0].position;
+    let first_view = Mtx([
+        [2.0, 0.0, 0.0, 10.0],
+        [0.0, 3.0, 0.0, 20.0],
+        [0.0, 0.0, 1.0, 30.0],
+    ]);
+    system
+        .prepare_application_transforms(1, &first_view, 254)
+        .unwrap();
+    let transform = system.particles[0][0]
+        .application_transform
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        (
+            transform.status,
+            transform.frame_number,
+            transform.family_id
+        ),
+        (2, 254, 257)
+    );
+    assert_eq!(
+        transform.model_view_matrix.0.map(|r| r[3]),
+        [16.0, 32.0, 35.0]
+    );
+    assert_eq!(transform.axis_scale, [2.0, 3.0]);
+    assert_eq!(system.particles[0][0].position, position);
+    assert!(Arc::ptr_eq(
+        transform,
+        system.generators[0].application_transform.as_ref().unwrap()
+    ));
+    let cached = transform.as_ref().clone();
+    // The same psFrameNum reuses the cache even if the caller changes view.
+    let second_view = Mtx([
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+    ]);
+    system
+        .prepare_application_transforms(1, &second_view, 254)
+        .unwrap();
+    assert_eq!(
+        system.particles[0][0].application_transform.as_deref(),
+        Some(&cached)
+    );
+    system
+        .prepare_application_transforms(1, &second_view, 1)
+        .unwrap();
+    let transform = system.particles[0][0]
+        .application_transform
+        .as_ref()
+        .unwrap();
+    assert_eq!(transform.frame_number, 1);
+    assert_eq!(transform.model_view_matrix.0.map(|r| r[3]), [3.0, 4.0, 5.0]);
+    assert_eq!(transform.axis_scale, [1.0, 1.0]);
 }

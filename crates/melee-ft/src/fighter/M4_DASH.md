@@ -141,3 +141,55 @@ code changed.
 - `crates/melee-sim/src/initial_state/fighter.rs`
 - `crates/melee-sim/tests/m4_gate.rs`
 - `docs/PARTICLES.md`
+
+## Particle-dump follow-up (2026-09-09, incomplete)
+
+Added `hsd-particle/tests/live_fd_dash.rs` with production spawn inputs in
+`tests/support/dash_fd_spawns.rs`: restore the initial snapshot and attached
+stage matrix, then compare **442,389 fields over all 300 ticks** and **9,066
+ordered particle RNG draws**. Every generator/particle field, AppSRT SRT,
+reference count and family ID matches. No dust routing, blend, life, position
+or velocity correction was needed. The first harness mistake was omitting the
+initial stage joint matrix (tick 0 particle X differed by one ULP); restoring
+that input fixed it. The first adapter gap was absent AppSRT fields at tick 49;
+typed AppSRT cache state, normalized identities and live-owner counts fix that.
+
+**The strict test still fails: 425 display-cache differences, first at tick 50
+`particles.appsrt[0].frame_count` (retail 185, port 0).** The dump lacks the
+external display inputs: active camera view matrix and `psFrameNum`, including
+the display-pass order between tick samples. The camera subsystem is not
+ported. These cannot be reconstructed bit-exactly by feeding expected AppSRT
+output back as input. `psDispSubAppSRT` updates the cached model/model-view
+matrix, axis lengths, status and frame number (psdisp.c:1400-1439).
+`prepare_application_transforms` now ports that operation with explicit view
+and frame inputs; a synthetic test checks shared caches and frame reuse/wrap.
+Its sums are unfused at 803A1FFC..2014/2078..2090; sqrt Newton steps fuse at
+803A202C/203C/204C. Audit: `cd harness && UV_CACHE_DIR=/tmp/melee-uv-cache uv run
+python asm.py psDispParticles --fused` (also inspected the full disassembly).
+The replay deliberately supplies no guessed view or captured cache outputs.
+A display-input capture is required to finish; no comparisons are excluded.
+Dust spawns are at **34/49/56**, not 32-34.
+
+Validation this session (logs `/tmp/melee-dash-particles-*.log`):
+
+| Command | Result |
+|---|---|
+| `cargo test -p hsd-particle --test live_fd_dash -- --nocapture` | **FAIL**, 442389 comparisons, 425 AppSRT display-cache differences |
+| `cargo test -p melee-sim --test m4_gate` | 5 passed |
+| `cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml` | `600 ticks, 49 keys, 0 divergences` |
+| `cargo run -q -p melee-sim -- gate harness/scenarios/start_fd_fox.toml` | `600 ticks, 49 keys, 0 divergences` |
+| `cargo test -p hsd-particle --test live_fd` | 2 passed |
+| `cargo test -p hsd-particle --test live_fd_start` | 2 passed |
+| `cargo test -p hsd-particle --test start_paths` | 9 passed |
+| `cargo gate` | Baseline passed; final fails in the new strict dash replay |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `cargo fmt --all` / `git -c core.fsmonitor=false diff --check` | success |
+
+No protected captures/data/decomp changed, no Dolphin invocation, no commit.
+
+Files touched in this follow-up:
+
+- `crates/hsd-particle/src/{appsrt.rs,generator.rs,lib.rs,system.rs}`
+- `crates/hsd-particle/tests/{live_fd_dash.rs,start_paths.rs,support/restore.rs,support/dash_fd_spawns.rs}`
+- `crates/melee-sim/src/{effects/dust.rs,initial_state/particles.rs}`
+- `crates/melee-ft/src/fighter/M4_DASH.md`, `docs/PARTICLES.md`, `TRACKER.md`
