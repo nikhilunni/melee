@@ -410,3 +410,38 @@ pattern; `grLast_8021ADD0+0x270` and `ftCo_8008A7A8+0x114` (Wait1/Wait2
 choice) fire rarely. Note: scripts under `harness/dolphin/` only start their
 tracer when run as the entry script (`__name__ == "__main__"`), so they can be
 imported by other tracers.
+
+## Scripted-input scenarios (Milestone 4)
+
+`tick_trace.py` accepts a scenario `inputs` list: each step
+`{ frame = N, port = 0, buttons = { StickX = 0.35 } }` holds those pad keys
+(`remote_proto.GC_KEYS`; unnamed keys are neutral) on that port from VI
+callback `N` (counted from the savestate load) until the port's next step.
+**`inputs` must be a top-level TOML key, written before the first
+`[[fighters]]` table**; a key after a table header belongs to that table, and
+both the tracer and `melee-sim`'s `Scenario` reject the misplaced form.
+
+VI timing cannot be aligned to the game's pad queue, so every tick record also
+carries `pad_game`, the `HSD_PadGameStatus[4]` array (0x44 bytes per port)
+that the tick consumed: `lb_80019900` renews it right before
+`HSD_GObj_80390CFC` runs the tick (gm_1A45.c:306-340). `decode.py` emits it as
+`record["inputs"]["pN"]` beside, not inside, the compared `state`; the port
+replays it (`crates/melee-sim/src/inputs.rs`). `run_scenario.py --tick-trace`
+adds `--scripted` to `validate_ticks.py` for scripted scenarios (animation
+rates are not unit while moving).
+
+Stick values: Dolphin takes floats -1..1 mapped to raw 0..255 around 128.
+HSD clamps to radius 80 and divides by 80, so `StickX = 0.5` (raw 64) reaches
+the game as 0.8 (the dash threshold) and `0.35` (raw 45) as 0.5625. Recording:
+
+```sh
+cd harness
+uv run python dolphin/run_scenario.py scenarios/walk_fd_fox.toml --tick-trace --video OGL --ports 2
+# RNG ledger for the same scenario (rng_ledger.py extends the tick tracer):
+OUT="$PWD/traces/walk_fd_fox.ledger.raw.jsonl"
+MELEE_SCENARIO="$PWD/scenarios/walk_fd_fox.toml" MELEE_RAW_OUT="$OUT" \
+  ~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
+  -v OGL -C Dolphin.Core.EmulationSpeed=0 -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 \
+  -e "$PWD/roms/GALE01.iso" --script "$PWD/dolphin/rng_ledger.py"   # kill Dolphin once $OUT.done exists
+uv run python rng_ledger_report.py "$OUT" --ticks 300
+```
