@@ -217,6 +217,7 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-types",
+ "serde_json",
 ]
 
 [[package]]

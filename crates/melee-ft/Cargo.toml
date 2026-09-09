@@ -14,3 +14,6 @@ hsd-anim = { path = "../hsd-anim" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 hsd-types = { path = "../hsd-types" }
+
+[dev-dependencies]
+serde_json.workspace = true
