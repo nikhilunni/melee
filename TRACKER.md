@@ -187,7 +187,8 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 
 Gate: two-fighter scenarios with hits, shields, grabs, KOs.
 
-- [ ] Hitbox/hurtbox system (`ftcoll.c`, `lbcollision.c`, `ftcolanim.c`)
+- [x] (2026-09-09) **First hit (Codex lane A1):** `jab_fd_marth` gate 300x49: Marth Attack11 into idle Fox with fighter overlap push before it; typed hitboxes from the subaction commands, hurtboxes, hit detection in retail pair order, hitlag, damage, knockback, hitstun, Fox DamageN2 -> Wait; slash effects; new `melee-if` crate for the HUD percent-shake RNG (`ifstatus.c`, s_link 17). Particle replay 467,132 fields. Report `melee-ft/src/fighter/M5_HIT.md`. Next (A2, scenes scripted, recording pending): attacker swap `jab_fd_fox`, `fsmash_fd_marth` launch/tumble, `shieldhit_fd_marth`, `grab_fd_marth`.
+- [ ] Hitbox/hurtbox system breadth (`ftcoll.c`, `lbcollision.c`, `ftcolanim.c`): item and projectile collision, multi-hitbox priority
 - [ ] Damage, knockback, hitlag, hitstun, DI, SDI, ASDI
 - [ ] Shield damage and stun, powershield, shield break
 - [ ] Grabs, throws, grab escape
