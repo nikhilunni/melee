@@ -57,3 +57,18 @@ descendant 2, after excluding Ground's scale wrapper. The helper resolves that
 initial identity before consuming the logged events. Start tick 0 performs the
 pending music choice but no scheduler procs, as in the saved boundary. Neither
 Battlefield replay needs an AppSRT display-cache exclusion.
+
+## M5 jab input fixture
+
+`jab_fd_marth_spawns.json` was logged on 2026-09-09 from the Lane A1 production
+jab gate, which reported 300 ticks, 49 keys and zero divergences. It has nine
+external spawns and 41 retained input events. Use the procedure above, including
+the spawn in `effects/dust.rs`. Directional run/brake dust also supplies an
+AppSRT override: log its translation, rotation, scale and status plus the
+request's mirror flag. These are caller inputs, not observed particle outputs.
+Velocity overrides remain absent. All temporary logging was removed.
+
+The same full-field replay compares 467,132 simulation fields and 9,373 ordered
+particle draws over 300 ticks. HUD shake draws are classified as post-particle
+external RNG inputs, with strict site order; the production M5 gate generates
+those draws independently in `melee-if` at scheduler link 17.

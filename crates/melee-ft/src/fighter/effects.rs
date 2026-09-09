@@ -7,6 +7,11 @@ const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 pub enum EffectRequest {
     /// efSync_Spawn: shield model attached to the shield joint.
     Shield { id: u16, bone: usize },
+    /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
+    HitSpark {
+        position: Vec3,
+        element: melee_types::HitElement,
+    },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
     /// ftCliffCommon_80081370: async kind 2 with no bone, absolute position.
@@ -48,7 +53,9 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
         for effect in self.effects.drain(..) {
             if matches!(
                 effect,
-                EffectRequest::Shield { .. } | EffectRequest::DestroyOwned
+                EffectRequest::Shield { .. }
+                    | EffectRequest::HitSpark { .. }
+                    | EffectRequest::DestroyOwned
             ) {
                 sink.spawn_effect(effect);
             } else {

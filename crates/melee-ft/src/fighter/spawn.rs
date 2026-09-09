@@ -236,6 +236,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             skeleton,
             motion_state: MotionState::WAIT,
             state_data: MotionData::None,
+            combat: super::damage::CombatState::default(),
             shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
             effects: Vec::new(),
@@ -296,12 +297,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
         start: f32,
         rate: f32,
     ) -> Result<()> {
-        self.status.require_idle();
+        self.status.require_supported();
         self.shield.clear_collision();
         self.status.ignore_fighter_nudge = false;
         self.status.on_ledge = false;
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         self.commands.allow_interrupt = false;
+        self.commands.hitboxes.fill(None);
         self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         if !matches!(
@@ -345,6 +347,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
                 (MotionState::WAIT, 2)
             }
+            CommonMotionState::DamageN2 => (MotionState::DAMAGE_N2, 169),
+            CommonMotionState::Attack11 => (MotionState::JAB, 46),
             CommonMotionState::Squat => (MotionState::SQUAT, 30),
             CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
             CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
@@ -479,6 +483,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 MotionData::Fall(super::fall::FallState::new(super::fall::FallFamily::Aerial));
         }
         if state == CommonMotionState::Wait {
+            self.status.interaction = Interaction::Idle;
             // ft_8008A348, ft_08A1.c:98 -> ftCommon_8007EFC0.
             self.status.name_tag_timer = assets.name_tag_duration;
         }

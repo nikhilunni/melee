@@ -9,5 +9,5 @@ mod spawns;
 const SPAWN_FIXTURE: &str = include_str!("data/shield_fd_spawns.json");
 #[test]
 fn live_fd_shield_300_ticks_match_every_field_and_rng_draw() {
-    dust_replay::replay("shield", 300);
+    dust_replay::replay("shield_fd_fox", 300);
 }

@@ -48,7 +48,7 @@ const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 6] = [9, 10, 45, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 7] = [9, 10, 45, 267, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
@@ -193,6 +193,10 @@ impl Effects {
                 }
             }
             let (id, attachment) = match request {
+                EffectRequest::HitSpark {
+                    element: melee_types::HitElement::Slash,
+                    ..
+                } => (8, None),
                 EffectRequest::Shield { id: 0x417, .. } => (0xB, Some(player)),
                 EffectRequest::Shield { id: 0x418, .. } => (0xC, Some(player)),
                 EffectRequest::EntryWarp {
@@ -214,7 +218,11 @@ impl Effects {
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
-            effect.owner = Some(player);
+            effect.owner = if matches!(request, EffectRequest::HitSpark { .. }) {
+                None
+            } else {
+                Some(player)
+            };
             if let EffectRequest::Shield { bone, .. } = request {
                 effect.shield_bone = Some(bone);
             }
@@ -232,6 +240,16 @@ impl Effects {
                 EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. } => unreachable!(),
+                EffectRequest::HitSpark {
+                    position: contact, ..
+                } => {
+                    position = contact;
+                    // efasync.c:34-36: M_TAU is double, multiply then round.
+                    effect.tree.set_rotation_z(
+                        effect.root,
+                        (std::f64::consts::TAU * f64::from(rng.randf())) as f32,
+                    );
+                }
                 // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
                 EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {

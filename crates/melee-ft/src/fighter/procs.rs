@@ -17,12 +17,28 @@ use melee_mp::CollMap;
 
 impl<C: CharacterCallbacks> Fighter<C> {
     /// Fighter_8006A1BC (0x8006A1BC), s_link 0, fighter.c:1393-1442.
-    /// Timed status/hitlag/mushroom arms are explicit in Status::require_idle.
+    /// Hitlag expires here; unported interactions remain explicit guards.
     pub fn proc_status(&mut self) {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
+        match self.status.interaction {
+            super::Interaction::Hitlag => assert!(
+                self.combat.hitlag_remaining > 0.0,
+                "hitlag requires an active countdown"
+            ),
+            super::Interaction::Damage => assert!(
+                matches!(self.state_data, super::MotionData::Damage(_)),
+                "damage requires damage state"
+            ),
+            super::Interaction::Attack => assert!(
+                matches!(self.state_data, super::MotionData::Jab(_)),
+                "attack requires attack state"
+            ),
+            _ => {}
+        }
+        self.tick_hitlag();
         // ft_800819A8 (0x800819A8), ft_0819.c:32-46: three fadds.
         let cd = &self.collision.data;
         self.previous_collision_bounds = Vec3::new(
@@ -58,8 +74,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return Ok(None);
         }
-        self.status.require_idle();
+        self.status.require_supported();
         self.physics.begin_tick();
+        if self.combat.hitlag_remaining > 0.0 {
+            return Ok(None);
+        }
         if self.status.ledge_intangibility != 0 {
             self.status.ledge_intangibility -= 1;
         }
@@ -74,6 +93,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.step_animation(assets);
         match self.motion_state.callbacks.animation {
+            state::AnimationCallback::Damage => {
+                self.damage_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Jab => {
+                self.jab_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::GuardOn
             | state::AnimationCallback::Guard
             | state::AnimationCallback::GuardReflect
@@ -193,7 +220,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
         let effects = update_input(
             &mut self.input,
             input_source(self.player.control, self.cpu.mode),
@@ -201,11 +228,21 @@ impl<C: CharacterCallbacks> Fighter<C> {
             &assets.input,
             InputContext {
                 save_and_clear: self.status.input_frozen,
+                hitlag: self.combat.hitlag_remaining > 0.0,
                 ..InputContext::default()
             },
         );
+        if self.combat.hitlag_remaining > 0.0
+            && matches!(self.state_data, super::MotionData::Damage(_))
+            && (self.input.current.stick.x != 0.0
+                || self.input.current.stick.y != 0.0
+                || self.input.current.cstick.x != 0.0
+                || self.input.current.cstick.y != 0.0)
+        {
+            unimplemented!("ftCo_Damage.c:624-664: SDI during hitlag");
+        }
         self.joystick_count += u64::from(effects.joystick_count_increments);
-        if effects.run_input_callback {
+        if effects.run_input_callback && self.combat.hitlag_remaining == 0.0 {
             if matches!(
                 self.motion_state.callbacks.input,
                 state::InputCallback::Entry
@@ -238,7 +275,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             if self.motion_state.callbacks.input == state::InputCallback::FallSpecial {
                 // ftCo_FallSpecial_IASA (80096AF4): item/parasol predicates are
-                // excluded by require_idle; air-dodge entry consumed all jumps.
+                // excluded by require_supported; air-dodge entry consumed all jumps.
                 if i32::from(self.physics.jumps_used) < self.attributes.jumping.max_jumps {
                     unimplemented!(
                         "ftCo_FallSpecial.c:96-100: special fall with remaining aerial jumps"
@@ -253,6 +290,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 ..WaitContext::default()
             };
             match self.motion_state.callbacks.input {
+                state::InputCallback::Damage => {
+                    self.damage_input(assets, &context).expect("damage IASA");
+                    return;
+                }
+                state::InputCallback::Jab => {
+                    self.jab_input(assets, &context).expect("jab IASA");
+                    return;
+                }
                 state::InputCallback::GuardOn
                 | state::InputCallback::Guard
                 | state::InputCallback::GuardReflect
@@ -363,11 +408,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
+        if self.combat.hitlag_remaining > 0.0 {
+            return;
+        }
         if self.status.ledge_cooldown != 0 {
             self.status.ledge_cooldown -= 1;
         }
         match self.motion_state.callbacks.physics {
+            state::PhysicsCallback::Jab => self.jab_physics(assets, map, wind),
             state::PhysicsCallback::Wait | state::PhysicsCallback::SquatWait => step_wait(
                 &mut self.physics,
                 &self.collision.data,
@@ -539,7 +588,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
         assert!(
             matches!(
                 self.motion_state.callbacks.collision,
@@ -638,7 +687,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return Ok(0);
         }
-        self.status.require_idle();
+        self.status.require_supported();
         match self.motion_state.callbacks.collision {
             state::CollisionCallback::GuardOn
             | state::CollisionCallback::Guard
@@ -807,15 +856,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// Reset and Wait entry leave accessory1/2/3 NULL (fighter.c:456,1373).
     pub fn proc_accessories(&mut self) {
         if !self.status.disabled {
-            self.status.require_idle();
+            self.status.require_supported();
         }
     }
     /// Fighter_8006C80C (0x8006C80C), s_link 9, fighter.c:2555-2596.
-    /// Empty async queue, disabled attacks, NULL accessory on ordinary Wait.
+    /// Active attacks update their swept capsules after animation and map collision.
     /// The always-enabled thrown capsule still updates (ft_07C1.c:52-73).
     pub fn proc_hitbox_positions(&mut self) {
         if !self.status.disabled {
-            self.status.require_idle();
+            self.status.require_supported();
+            for hit in self.commands.hitboxes.iter_mut().flatten() {
+                hit.update(&mut self.skeleton, self.animation.root, self.player.scale);
+            }
             self.thrown_hitbox
                 .update(&mut self.skeleton, self.animation.root);
         }
@@ -824,23 +876,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// Wait has no catch hitbox (x221E_b6 is cleared by motion entry).
     pub fn proc_grab(&mut self) {
         if !self.status.disabled {
-            self.status.require_idle();
+            self.status.require_supported();
         }
     }
     /// Fighter_8006CB94 (0x8006CB94), s_link 13, fighter.c:2621-2642.
-    /// The scene must supply Damage/Grab before dispatch when interactions exist.
+    /// The scene visits fighter pairs in entity order before this local proc.
     pub fn proc_hit_detection(&mut self) {
         if !self.status.disabled {
-            self.status.require_idle();
+            self.status.require_supported();
         }
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
-    /// Shield regeneration and all hit accumulators are inactive at reset health.
+    /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
     pub fn proc_process_hit(&mut self, assets: &FighterAssets) {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
+        self.process_damage(assets).expect("hit response");
         self.shield_proc(assets);
         self.cpu.hurtbox_extents = caches::hurtbox_extents(
             &mut self.hurtboxes,
@@ -858,7 +911,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
         for collider in &mut self.dynamic_colliders {
             collider.position = caches::bone_position(
                 &mut self.skeleton,
@@ -876,7 +929,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
         for collider in &mut self.dynamic_colliders {
             collider.position = caches::bone_position(
                 &mut self.skeleton,
@@ -941,7 +994,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.disabled {
             return;
         }
-        self.status.require_idle();
+        self.status.require_supported();
         self.status.camera_shift = Vec2::ZERO;
         self.camera.on_ledge = self.motion_state.callbacks.camera == state::CameraCallback::Cliff
             && self.physics.ground_or_air == melee_types::GroundOrAir::Air;

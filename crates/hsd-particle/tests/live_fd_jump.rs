@@ -8,5 +8,5 @@ mod restore;
 mod spawns;
 #[test]
 fn live_fd_jump_300_ticks_match_every_field_and_rng_draw() {
-    dust_replay::replay("jump", 300);
+    dust_replay::replay("jump_fd_fox", 300);
 }

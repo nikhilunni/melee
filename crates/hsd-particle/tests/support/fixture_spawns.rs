@@ -8,7 +8,7 @@ use hsd_particle::{
     rng_sites::DrawLog,
     system::{ParticleSystem, SpawnRequest},
 };
-use hsd_types::Mtx;
+use hsd_types::{Mtx, Vec3};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -39,6 +39,20 @@ impl Spawns {
                         matrix(&event["joint"]["matrix"]),
                     ));
                 }
+                if let Some(t) = event.get("transform").filter(|t| !t.is_null()) {
+                    request.application_transform =
+                        Some(hsd_particle::generator::ApplicationTransform {
+                            translation: vector(&t["translation"]),
+                            rotation: vector(&t["rotation"]),
+                            scale: vector(&t["scale"]),
+                            status: t["status"].as_i64().unwrap() as i32,
+                            ..Default::default()
+                        });
+                }
+                request.mirror = event
+                    .get("mirror")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
                 system
                     .spawn::<RetailTrig>(&banks[&bank], request, rng, draws)
                     .unwrap();
@@ -72,4 +86,8 @@ fn matrix(value: &Value) -> Mtx {
     Mtx(std::array::from_fn(|row| {
         std::array::from_fn(|col| float(&value[row][col]))
     }))
+}
+
+fn vector(v: &Value) -> Vec3 {
+    Vec3::new(float(&v[0]), float(&v[1]), float(&v[2]))
 }

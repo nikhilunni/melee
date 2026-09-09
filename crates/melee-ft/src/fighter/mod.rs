@@ -2,16 +2,20 @@
 //! Retail addresses and unsupported paths are documented at each entry point.
 pub mod air_dodge;
 pub mod assets;
+pub mod attack;
 pub mod caches;
 pub mod commands;
+pub mod damage;
 pub mod dash;
 pub mod effects;
 pub mod entry;
 pub mod escape;
 pub mod fall;
+pub mod hitbox;
 pub mod jump;
 pub mod landing;
 pub mod ledge;
+pub mod overlap;
 mod procs;
 pub mod run;
 pub mod shield;
@@ -41,6 +45,15 @@ pub use state::{interleaved_order, FighterProc, MotionState};
 /// character crate. The implementation owns its typed special attributes.
 pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
+    /// decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
+    fn jab_variant(&self) {
+        match self.kind() {
+            FighterKind::GameWatch | FighterKind::Pikachu | FighterKind::Pichu => {
+                unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook")
+            }
+            _ => {}
+        }
+    }
     /// The character's on-disc resources (`ft<Char>_Init_*` strings, part and
     /// animation counts). The scene loads archives through this.
     fn descriptor() -> &'static assets::CharacterDescriptor
@@ -228,19 +241,20 @@ impl Status {
             name_tag_timer: 0,
         }
     }
-    fn require_idle(&self) {
+    fn require_supported(&self) {
         match self.interaction {
-            Interaction::Idle | Interaction::Shield => {}
-            Interaction::Hitlag => unimplemented!("fighter.c:1398-1437: hitlag/SDI"),
+            Interaction::Idle
+            | Interaction::Shield
+            | Interaction::Hitlag
+            | Interaction::Damage
+            | Interaction::Attack => {}
             Interaction::HeldItem => unimplemented!("fighter.c:1523-1532: held-item lifetime"),
             Interaction::Grab => unimplemented!("fighter.c:1560-1578,2602-2626: capture/grab"),
-            Interaction::Damage => unimplemented!("fighter.c:2853-2998: damage/hitlag"),
             Interaction::Death => unimplemented!("fighter.c:914-929: death/entry states"),
             Interaction::StatusEffect => unimplemented!("fighter.c:1463-1641: status/item effects"),
             Interaction::Accessory => {
                 unimplemented!("fighter.c:2533-2576: accessory callbacks/model")
             }
-            Interaction::Attack => unimplemented!("ftcoll.c:3032: active attack hitboxes"),
             Interaction::AsyncEffect => unimplemented!("fighter.c:2560: nonempty efAsync queue"),
             Interaction::StageHazard => {
                 unimplemented!("fighter.c:2604,2631: stage collision lists")
@@ -275,6 +289,7 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub skeleton: JObjTree,
     pub motion_state: MotionState,
     pub state_data: MotionData,
+    pub combat: damage::CombatState,
     pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,
     pub effects: Vec<effects::EffectRequest>,
@@ -337,6 +352,8 @@ pub enum MotionData {
     #[default]
     None,
     Entry(entry::EntryState),
+    Jab(attack::JabState),
+    Damage(damage::DamageState),
     Guard(shield::GuardState),
     Escape(escape::EscapeState),
     EscapeAir(air_dodge::AirDodgeState),

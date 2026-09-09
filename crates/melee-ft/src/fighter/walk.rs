@@ -38,7 +38,7 @@ fn walk_state(
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
-        // Metal/status interactions are rejected by Status::require_idle;
+        // Metal/status interactions are rejected by Status::require_supported;
         // scaled-player modifiers are rejected during Fighter::prepare.
         let multiplier = 1.0;
         let state = walk_state(
@@ -170,6 +170,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     ) -> Result<()> {
         match transition {
             T::None => Ok(()),
+            T::Attack => self.enter_jab(assets),
             T::Shield => self.enter_shield(assets),
             T::Escape => self.enter_escape(assets, CommonMotionState::EscapeN),
             T::Jump => self.enter_knee_bend(assets),

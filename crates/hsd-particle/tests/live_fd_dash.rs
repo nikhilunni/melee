@@ -8,5 +8,5 @@ mod restore;
 mod spawns;
 #[test]
 fn live_fd_dash_300_ticks_match_every_field_and_rng_draw() {
-    dust_replay::replay("dash", 300);
+    dust_replay::replay("dash_fd_fox", 300);
 }

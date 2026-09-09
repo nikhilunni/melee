@@ -9,6 +9,27 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M5-A1 First hit
+
+Marth's jab into an idle Fox on FD matches **300 ticks × 49 keys**, including
+fighter overlap, damage, knockback, recovery and the complete shared RNG stream.
+The independent particle replay matches 467,132 fields and 9,373 ordered draws.
+Raw fighter scratch additionally checks hitbox endpoints, damage/radii and both
+hitlag/hitstun countdowns. [Port report, audit and limits](M5_HIT.md).
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Grounded fighter push / nudge | 8007DD7C / 8007E0E4 | `overlap.rs`, scene entity ordering and map neighbors |
+| Attack11 entry / Anim / IASA / Phys / Coll | 8008ABC0 / 8008AC9C / 8008ACD8 / 8008ADF0 / 8008AE10 | `attack.rs`, typed Jab state, `CharacterCallbacks::jab_variant`, enum dispatch |
+| Hitbox spawn / clear-one / clear-all / position | 8007121C / 80071784 / 800717D8 / 8007AD18 | `hitbox.rs`, `commands.rs`, archive descriptors and group victims |
+| Hurt contact / capsule geometry | 80078C70 / 80006E58 / 80005EBC | `damage.rs`, `caches.rs`, `melee-lb/collision.rs` |
+| Knockback / grounded DamageN2 / hitlag / recovery | 80079AB0 / 8008DCE0 / 8007DA74 / 8008F7F0 | `damage.rs`, typed combat scratch and proc gating |
+| Slash spark / percent shake | 8007A06C / 80063930 / 802F4B84 | `melee-sim/effects.rs`, new `melee-if`, interface s_link 17 after particles |
+
+The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
+attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
+remain explicit unsupported branches. No general moveset completeness is claimed.
+
 ## M4-T9 Falls and Marth shield entry
 
 All sixteen Marth movement scenes and Fox's backward aerial jump now pass the
@@ -351,14 +372,13 @@ solving: `ftCo_8009CB40(..., false, NULL)` sets the first bone to `0x100`, and
 
 ## Explicit boundaries
 
-`Status::interaction` is the scene's interaction boundary. A caller must mark
-hitlag, items, grabs, damage, death, status effects, accessories, active
-attacks, queued effects, stage hazards, fighter overlap or coin-match rules
-before dispatching such a scenario. Unsupported arms have C-located `unimplemented!`
-boundaries. Shield without a hit is supported by the typed Guard state machine.
-The isolated fighter does not scan other fighters/items or implement the scene's
-collision registries. Empty ordinary-Wait branches are checked against the raw
-ledger's attack, item, accessory, async and catch fields.
+`Status::interaction` guards unsupported systems. Attack, damage and hitlag now
+have typed owners for the M5-A1 slice above; the scene scans fighter pairs in
+entity-list order and handles grounded overlap after each animation callback.
+Shield without a hit is supported by the typed Guard state machine. Items,
+grabs, death, status effects, accessories, stage hazards and coin-match rules
+retain C-located `unimplemented!` boundaries. Empty ordinary-Wait branches remain
+checked against the raw ledger's item, accessory, async and catch fields.
 
 IASA bodies outside the movement slice above, CPU AI, unsupported motion entry,
 teeter/fall from a ledge, sloped leg correction/body tilt, shield hit response,

@@ -18,6 +18,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 enum Callback {
     Stage { map: Option<u8>, address: u32 },
     Fighter { player: usize, proc: FighterProc },
+    Interface { player: usize },
     Effects,
     ParticlesMain,
     ParticlesAux,
@@ -47,6 +48,13 @@ fn registrations(stage: &SceneStage) -> Vec<Registration> {
         })
         .collect();
     for player in 0..2 {
+        rows.push(Registration {
+            s_link: 17,
+            p_link: 15,
+            priority: 0,
+            object: player as u8,
+            callback: Callback::Interface { player },
+        });
         rows.extend(FighterProc::ALL.map(|proc| Registration {
             s_link: proc.s_link(),
             p_link: 8,
@@ -106,6 +114,7 @@ struct Runtime {
     /// Diagnostic only: values observed around procs, never gameplay inputs.
     rng_writers: Vec<(String, u32)>,
     particle_draws: DrawLog,
+    interface: [melee_if::PercentDisplay; 2],
 }
 impl Runtime {
     fn dispatch(&mut self, row: Registration) -> Result<()> {
@@ -120,6 +129,24 @@ impl Runtime {
         match row.callback {
             Callback::Fighter { player, proc } => {
                 let assets = &state.assets;
+                if proc == FighterProc::HitDetection {
+                    use crate::scene_fighter::{with_fighter, SceneFighter};
+                    for other in 0..state.fighters.len() {
+                        if player == other {
+                            continue;
+                        }
+                        let (victim, attacker) = if player < other {
+                            let (left, right) = state.fighters.split_at_mut(other);
+                            (&mut left[player], &mut right[0])
+                        } else {
+                            let (left, right) = state.fighters.split_at_mut(player);
+                            (&mut right[0], &mut left[other])
+                        };
+                        with_fighter!(victim, |v| with_fighter!(attacker, |a| {
+                            melee_ft::fighter::damage::detect_hit(v, a, &assets.fighters[player])
+                        }));
+                    }
+                }
                 match &mut state.fighters[player] {
                     crate::scene_fighter::SceneFighter::Fox(f) => dispatch_fighter(
                         f,
@@ -145,6 +172,25 @@ impl Runtime {
                         &mut state.particles,
                         &mut state.rng,
                     )?,
+                }
+                if proc == FighterProc::Animation {
+                    use crate::scene_fighter::{with_fighter, SceneFighter};
+                    let bodies: Vec<_> = state
+                        .fighters
+                        .iter()
+                        .enumerate()
+                        .map(|(slot, fighter)| {
+                            with_fighter!(fighter, |f| f.overlap_body(&assets.fighters[slot]))
+                        })
+                        .collect();
+                    let nudge = melee_ft::fighter::overlap::nudge(
+                        player,
+                        &bodies,
+                        &assets.fighters[player].overlap,
+                        &state.map,
+                    );
+                    with_fighter!(&mut state.fighters[player], |f| f.physics.player_nudge =
+                        nudge);
                 }
             }
             Callback::Stage { map, address } => match address {
@@ -179,6 +225,11 @@ impl Runtime {
                         .run_stage_proc(map.expect("stage callback map"), &mut state.rng)?;
                 }
             },
+            Callback::Interface { player } => {
+                use crate::scene_fighter::{with_fighter, SceneFighter};
+                let percent = with_fighter!(&state.fighters[player], |f| f.physics.percent);
+                self.interface[player].tick(percent, &mut state.rng);
+            }
             Callback::Effects => state.effects.tick(
                 &mut state.fighters,
                 &state.assets.common_particle_bank,
@@ -209,8 +260,15 @@ impl Simulation {
     }
     pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
         let rows = registrations(&state.stage);
+        use crate::scene_fighter::{with_fighter, SceneFighter};
+        let interface = std::array::from_fn(|player| {
+            melee_if::PercentDisplay::new(with_fighter!(&state.fighters[player], |f| f
+                .physics
+                .percent))
+        });
         let runtime = Rc::new(RefCell::new(Runtime {
             state,
+            interface,
             pads,
             frame: 0,
             error: None,
@@ -380,7 +438,9 @@ mod tests {
         };
         stage_row(0, 3, None, 0x801C461C);
         stage_row(0, 4, None, 0x801CADBC);
-        for phase in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 22] {
+        for phase in [
+            0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 22,
+        ] {
             if phase == 1 {
                 for map in 0..9 {
                     expected.push((
@@ -431,6 +491,13 @@ mod tests {
                 expected.push((15, 11, 1, Callback::Effects));
                 expected.push((15, 11, 0, Callback::ParticlesMain));
                 expected.push((15, 12, 0, Callback::ParticlesAux));
+                continue;
+            }
+            if phase == 17 {
+                // ifStatus_802F5B48 -> ifStatus_802F4EDC, after particles.
+                for player in 0..2 {
+                    expected.push((17, 15, player as u8, Callback::Interface { player }));
+                }
                 continue;
             }
             let proc = match phase {
@@ -607,3 +674,6 @@ mod marth_bones;
 
 #[cfg(test)]
 mod fall_states;
+
+#[cfg(test)]
+mod combat;

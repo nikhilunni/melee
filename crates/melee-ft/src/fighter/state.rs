@@ -13,6 +13,8 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    Damage,
+    Jab,
     GuardOn,
     Guard,
     GuardOff,
@@ -49,6 +51,8 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    Damage,
+    Jab,
     GuardOn,
     Guard,
     GuardOff,
@@ -86,6 +90,7 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    Jab,
     GuardOn,
     Guard,
     GuardOff,
@@ -172,6 +177,26 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const DAMAGE_N2: Self = Self {
+        id: CommonMotionState::DamageN2,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Damage,
+            input: InputCallback::Damage,
+            physics: PhysicsCallback::Squat,
+            collision: CollisionCallback::Squat,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const JAB: Self = Self {
+        id: CommonMotionState::Attack11,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Jab,
+            input: InputCallback::Jab,
+            physics: PhysicsCallback::Jab,
+            collision: CollisionCallback::Escape,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
     pub const TURN_RUN: Self = Self {
         id: CommonMotionState::TurnRun,
         callbacks: StateCallbacks {

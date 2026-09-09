@@ -9,5 +9,5 @@ mod spawns;
 const SPAWN_FIXTURE: &str = include_str!("data/ledge_fd_spawns.json");
 #[test]
 fn live_fd_ledge_420_ticks_match_every_field_and_rng_draw() {
-    dust_replay::replay("ledge", 420);
+    dust_replay::replay("ledge_fd_fox", 420);
 }

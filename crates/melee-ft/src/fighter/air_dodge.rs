@@ -70,7 +70,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         Ok(())
     }
     /// ftCo_EscapeAir_IASA (80099C24), item-free path; item interaction is
-    /// rejected by Status::require_idle before the saved-momentum throw branch.
+    /// rejected by Status::require_supported before the saved-momentum throw branch.
     pub(super) fn air_dodge_input(&mut self) {
         let MotionData::EscapeAir(dodge) = &mut self.state_data else {
             panic!("air dodge scratch missing")

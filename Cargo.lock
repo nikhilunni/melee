@@ -269,6 +269,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "melee-if"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+]
+
+[[package]]
 name = "melee-it"
 version = "0.0.1"
 dependencies = [
@@ -326,6 +334,7 @@ dependencies = [
  "melee-diff",
  "melee-ft",
  "melee-gr",
+ "melee-if",
  "melee-it",
  "melee-lb",
  "melee-mp",

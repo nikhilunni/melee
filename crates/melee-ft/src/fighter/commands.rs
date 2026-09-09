@@ -20,6 +20,17 @@ pub struct ColorAnimationRequest {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    SpawnHitbox {
+        id: usize,
+        descriptor: super::hitbox::HitboxDescriptor,
+    },
+    ClearHitbox(usize),
+    ClearHitboxes,
+    JabFollowup(bool),
+    SwordTrail {
+        duration: i32,
+        reverse: bool,
+    },
     ColorAnimation(ColorAnimationRequest),
     ModelSelection {
         group: i32,
@@ -78,6 +89,7 @@ pub struct RumbleRequest {
 #[derive(Clone, Copy, Debug)]
 pub enum SoundChannel {
     Ordinary,
+    Action,
     FighterVoice,
 }
 
@@ -92,6 +104,9 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    pub hitboxes: [Option<super::hitbox::HitCapsule>; 4],
+    pub jab_followup: bool,
+    pub sword_trail: Option<(i32, bool)>,
     pub color_animations: Vec<ColorAnimationRequest>,
     /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
@@ -176,6 +191,31 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::SpawnHitbox { id, descriptor } => {
+                    if !seeking {
+                        super::hitbox::spawn(&mut self.hitboxes, *id, descriptor);
+                    }
+                }
+                Command::ClearHitbox(id) => {
+                    if !seeking {
+                        self.hitboxes[*id] = None;
+                    }
+                }
+                Command::ClearHitboxes => {
+                    if !seeking {
+                        self.hitboxes.fill(None);
+                    }
+                }
+                Command::SwordTrail { duration, reverse } => {
+                    if !seeking {
+                        self.sword_trail = Some((*duration, *reverse));
+                    }
+                }
+                Command::JabFollowup(disabled) => {
+                    if !disabled {
+                        self.jab_followup = true;
+                    }
+                }
                 Command::ColorAnimation(request) => {
                     // ftAction_80072A4C (80072A4C): seeking only advances the word.
                     if !seeking {
@@ -223,6 +263,7 @@ impl CommandState {
                     if !seeking {
                         let channel = match behavior {
                             0 => SoundChannel::Ordinary,
+                            1 => SoundChannel::Action,
                             2 => SoundChannel::FighterVoice,
                             _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
                         };

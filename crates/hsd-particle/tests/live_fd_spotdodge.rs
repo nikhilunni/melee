@@ -9,5 +9,5 @@ mod spawns;
 const SPAWN_FIXTURE: &str = include_str!("data/spotdodge_fd_spawns.json");
 #[test]
 fn live_fd_spotdodge_300_ticks_match_every_field_and_rng_draw() {
-    dust_replay::replay("spotdodge", 300);
+    dust_replay::replay("spotdodge_fd_fox", 300);
 }

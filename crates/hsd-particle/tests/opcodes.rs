@@ -414,3 +414,24 @@ fn unported_opcodes_and_malformed_programs_fail_explicitly() {
         Err(Error::InstructionLimit { .. })
     ));
 }
+
+#[test]
+fn alpha_comparison_rebases_before_retargeting_and_snaps_on_zero_timer() {
+    // B3 starts a 4-tick blend; two ticks later its 16.16 halfway value
+    // becomes the next blend's start. A zero-duration command snaps both bytes.
+    let mut p = particle(vec![
+        0xb3, 4, 0x33, 101, 55, 2, 0xb3, 0x80, 4, 0x12, 201, 155, 1, 0xb3, 0, 0x34, 7, 9, 20,
+    ]);
+    assert!(tick(&mut p).1 .0.is_empty());
+    assert_eq!(p.alpha_compare.current, [1, 255]);
+    tick(&mut p);
+    tick(&mut p);
+    assert_eq!(p.alpha_compare.current, [51, 155]);
+    assert_eq!(p.alpha_compare.remaining, 4);
+    assert_eq!(p.alpha_compare_mode, 0x12);
+    tick(&mut p);
+    assert_eq!(p.alpha_compare.current, [7, 9]);
+    assert_eq!(p.alpha_compare.duration, 0);
+    assert_eq!(p.alpha_compare.remaining, 0);
+    assert_eq!(p.alpha_compare_mode, 0x34);
+}

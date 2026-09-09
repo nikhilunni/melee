@@ -38,8 +38,10 @@ fn word(draw: &Json, key: &str) -> u32 {
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
-        0x801c_26ac | 0x8008_a8bc | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc
-        | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c => false,
+        0x801c_26ac | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc | 0x8009_fcdc
+        | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c => {
+            false
+        }
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
         0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
@@ -49,18 +51,16 @@ fn particle_draw(draw: &Json) -> bool {
     }
 }
 pub fn replay(name: &str, tick_count: usize) -> usize {
-    let battlefield = name.ends_with("_bf_fox");
-    let scene = if battlefield {
-        name.to_owned()
-    } else {
-        format!("{name}_fd_fox")
-    };
+    // `name` is the full scene name (e.g. "dash_fd_fox", "start_bf_fox").
+    let battlefield = name.contains("_bf_");
+    let scene = name;
+    // A match-start savestate sits before its first tick's procs.
     let match_start = name == "start_bf_fox";
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let paths = [
         "particles.jsonl.initial.jsonl",
         "particles.jsonl",
-        if battlefield {
+        if name.starts_with("idle_") || name.starts_with("start_") {
             "ledger600.raw.jsonl"
         } else {
             "ledger.raw.jsonl"
@@ -68,7 +68,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
         "tick.expected.jsonl",
         "particles.jsonl.initial.jsonl.meta.json",
     ]
-    .map(|s| root.join(format!("traces/{scene}.{s}")));
+    .map(|s| root.join(format!("traces/{name}.{s}")));
     let archives = [
         if battlefield {
             "GrNBa.dat"
@@ -157,9 +157,18 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
                 "tick {tick} ledger draw {ordinal}"
             );
         }
-        let external = expected.iter().take_while(|d| !particle_draw(d)).count();
+        // Interface s_link 17 follows the particle s_link 15 passes. Keep its
+        // external RNG input separate and reject every other interleaving.
+        let interface = expected
+            .iter()
+            .position(|d| matches!(word(d, "lr") - 4, 0x802f_4d44 | 0x802f_4d54))
+            .unwrap_or(expected.len());
+        let external = expected[..interface]
+            .iter()
+            .take_while(|d| !particle_draw(d))
+            .count();
         assert!(
-            expected[external..].iter().all(particle_draw),
+            expected[external..interface].iter().all(particle_draw),
             "tick {tick} external draws interleaved"
         );
         for draw in &expected[..external] {
@@ -183,7 +192,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
                 .proc_aux::<RetailTrig>(&mut rng, &mut draws)
                 .unwrap_or_else(|e| panic!("tick {tick} aux: {e}"));
         }
-        let sites = expected[external..]
+        let sites = expected[external..interface]
             .iter()
             .map(|d| word(d, "lr") - 4)
             .collect::<Vec<_>>();
@@ -191,6 +200,20 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
             assert_eq!(actual, expected, "tick {tick} draw {ordinal}");
         }
         assert_eq!(draws.0.len(), sites.len(), "tick {tick} draw count");
+        assert_eq!(
+            (expected.len() - interface) % 8,
+            0,
+            "four HUD digits per player"
+        );
+        for (ordinal, draw) in expected[interface..].iter().enumerate() {
+            assert_eq!(word(draw, "pc"), 0x8038_054c);
+            assert_eq!(
+                word(draw, "lr") - 4,
+                [0x802f_4d44, 0x802f_4d54][ordinal % 2],
+                "tick {tick} interface draw {ordinal}"
+            );
+            rng.randf();
+        }
         particle_draws += draws.0.len();
         field_count += states[tick].state.len();
         assert_eq!(
@@ -228,8 +251,8 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     );
 
     assert!(mismatches.is_empty(), "mismatched fields: {mismatches:?}");
-    eprintln!("{scene} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
-    if name == "dash" {
+    eprintln!("{name} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
+    if name == "dash_fd_fox" {
         assert!(
             display_cache_fields > 0,
             "the dump carries AppSRT display caches"

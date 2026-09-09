@@ -293,3 +293,6 @@ mod tests {
 
 pub mod mp;
 pub mod snapshot;
+
+mod hit;
+pub use hit::HitElement;

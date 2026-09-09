@@ -53,6 +53,8 @@ pub struct FighterAssets {
     pub soft_landing_speed: f32,
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
+    pub damage: super::damage::DamageParameters,
+    pub overlap: super::overlap::OverlapParameters,
     pub hurtboxes: Vec<super::caches::Hurtbox>,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
@@ -96,7 +98,7 @@ impl FighterAssets {
         let mut words = BTreeMap::new();
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
-            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
+            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 169,
         ] {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -185,13 +187,23 @@ impl FighterAssets {
                     ..super::caches::ThrownHitbox::default()
                 }
             },
+            damage: super::damage::DamageParameters::read(common, common_data)?,
+            overlap: super::overlap::OverlapParameters {
+                center: data
+                    .reader()
+                    .f32(data.link(root + 0x50)?.ok_or("missing push shape")?)?,
+                half_width: data.reader().f32(data.link(root + 0x50)?.unwrap() + 4)?,
+                horizontal_step: common.reader().f32(common_data + 0x450)?,
+                depth_step: common.reader().f32(common_data + 0x454)?,
+                depth_limit: common.reader().f32(common_data + 0x458)?,
+            },
             hurtboxes: read_hurtboxes(data, root)?,
             dynamics: crate::dynamics::read_sets(data, root)?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
                 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224,
-                225, 226, 227, 228, 238,
+                225, 226, 227, 228, 238, 46, 169,
             ]
             .into_iter()
             .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
@@ -317,8 +329,20 @@ fn read_script(
                     ),
                 })
             }
-            // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
+            // ftAction_8007121C: five command words per attack capsule.
+            11 => Command::SpawnHitbox {
+                id: ((word >> 23) & 7) as usize,
+                descriptor: super::hitbox::HitboxDescriptor::read(archive, offset)?,
+            },
+            15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
+            16 => Command::ClearHitboxes,
+            29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
+            49 => Command::SwordTrail {
+                duration: ((word << 7) as i32) >> 7,
+                reverse: word & (1 << 25) != 0,
+            },
             23 => Command::AllowInterrupt,
+            // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
             26 => Command::HurtStatus(match word & 0x03ff_ffff {
                 0 => super::escape::HurtStatus::Normal,
                 1 => super::escape::HurtStatus::Invincible,
@@ -375,7 +399,7 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
-            Command::Graphics(_) => offset += 20,
+            Command::Graphics(_) | Command::SpawnHitbox { .. } => offset += 20,
             Command::LandingEffect(_) | Command::FootstepSound { .. } => offset += 12,
             _ => offset += 4,
         }
@@ -438,6 +462,7 @@ fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<super::caches::Hurtbox>>
             let p = base + i * 0x28;
             Ok(super::caches::Hurtbox {
                 bone: a.reader().u32(p)? as usize,
+                height: super::caches::HurtHeight::from_retail(a.reader().u32(p + 4)?),
                 offsets: [read_vec(a, p + 12)?, read_vec(a, p + 24)?],
                 radius: a.reader().f32(p + 36)?,
                 positions: [hsd_types::Vec3::ZERO; 2],
