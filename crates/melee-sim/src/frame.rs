@@ -16,6 +16,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Callback {
+    Countdown,
     Stage { map: Option<u8>, address: u32 },
     Fighter { player: usize, proc: FighterProc },
     Interface { player: usize },
@@ -127,6 +128,19 @@ impl Runtime {
         let state = &mut self.state;
         let state_pads = &self.pads;
         match row.callback {
+            Callback::Countdown => {
+                if state
+                    .countdown
+                    .as_mut()
+                    .is_some_and(|countdown| countdown.tick())
+                {
+                    for fighter in &mut state.fighters {
+                        crate::scene_fighter::with_fighter!(fighter, |f| f.status.input_frozen =
+                            false);
+                    }
+                    state.countdown = None;
+                }
+            }
             Callback::Fighter { player, proc } => {
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
@@ -282,7 +296,16 @@ impl Simulation {
         Self::with_inputs(state, PadScript::default())
     }
     pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
-        let rows = registrations(&state.stage);
+        let mut rows = registrations(&state.stage);
+        if state.countdown.is_some() {
+            rows.push(Registration {
+                s_link: 0,
+                p_link: 14,
+                priority: 0,
+                object: 0,
+                callback: Callback::Countdown,
+            });
+        }
         use crate::scene_fighter::with_fighter;
         let interface = std::array::from_fn(|player| {
             melee_if::PercentDisplay::new(with_fighter!(&state.fighters[player], |f| f
@@ -382,7 +405,7 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
         FighterProc::Input => {
             // HSD_PadGameStatus[fp->x618_player_id]: in a Vs match
             // the human slot's port is its player index.
-            let pad: PadSample = state_pads.sample(frame, player);
+            let pad: PadSample = state_pads.sample(frame, usize::from(f.player.id));
             f.proc_input(assets, &pad)
         }
         FighterProc::Update => f.proc_update(assets, map, Vec3::ZERO),

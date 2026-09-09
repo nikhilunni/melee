@@ -373,6 +373,7 @@ dependencies = [
  "melee-types",
  "serde",
  "serde_json",
+ "slp",
  "toml",
 ]
 
@@ -471,7 +472,9 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "melee-diff",
+ "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

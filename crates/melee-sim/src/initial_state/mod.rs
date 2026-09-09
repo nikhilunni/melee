@@ -57,6 +57,7 @@ pub struct InitialState {
     /// Match setup still owes Stage_80225074 before the first observation.
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
     pub(crate) selected_music: Option<i32>,
+    pub(crate) countdown: Option<crate::countdown::Countdown>,
     /// First unfinished phase: 0 between idle ticks, 14 inside the older idle
     /// capture, 15 within particle emission, 17 in the stock HUD, or 24 before match start.
     pub(crate) resume_s_link: u8,
@@ -327,6 +328,7 @@ impl InitialState {
             None
         };
         Ok(Self {
+            countdown: None,
             pending_music,
             selected_music: None,
             assets,

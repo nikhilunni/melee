@@ -18,6 +18,15 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Cold-start a Slippi replay and report its first divergence or port boundary.
+    Replay {
+        file: PathBuf,
+        #[arg(long, action = clap::ArgAction::Set)]
+        all_characters_unlocked: Option<bool>,
+        /// Independently measured pre-music seed (decimal).
+        #[arg(long)]
+        boundary_seed: Option<u32>,
+    },
     /// Run the imported savestate and emit one canonical record per tick.
     Run {
         scenario: PathBuf,
@@ -59,6 +68,27 @@ enum Command {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args.command {
+        Command::Replay {
+            file,
+            all_characters_unlocked,
+            boundary_seed,
+        } => {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+            let report = melee_sim::replay::run_file(
+                &file,
+                &root,
+                melee_sim::replay::Setup {
+                    all_characters_unlocked,
+                    boundary_seed,
+                },
+            )?;
+            println!("{report}");
+            anyhow::ensure!(
+                !matches!(report.stop, melee_sim::replay::Stop::Diverged(_)),
+                "ported-state replay mismatch"
+            );
+            Ok(())
+        }
         Command::Bones {
             frame,
             frames,

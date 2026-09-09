@@ -6,6 +6,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+serde = { workspace = true }
+toml = "1.1"
 melee-diff = { path = "../melee-diff" }
 anyhow = { workspace = true }
 serde_json = { workspace = true }

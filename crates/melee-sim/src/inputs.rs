@@ -25,6 +25,35 @@ pub struct PadScript {
 }
 
 impl PadScript {
+    /// Slippi frame -123 is the first full scheduler pass. Simulation tick
+    /// zero completes the cold setup/reset boundary, so prepend one pad row.
+    pub fn from_replay_inputs(
+        inputs: &[slp::cold::ControllerFrame],
+        frames: usize,
+        ports: &[u8],
+    ) -> Result<Self> {
+        let mut script = Self::neutral(frames + 1);
+        let mut seen = std::collections::BTreeSet::new();
+        for input in inputs {
+            let frame = usize::try_from(input.frame)?;
+            anyhow::ensure!(
+                frame < frames && ports.contains(&input.port),
+                "replay input frame/port outside match"
+            );
+            anyhow::ensure!(
+                seen.insert((frame, input.port)),
+                "duplicate replay input frame {frame} port {}",
+                input.port
+            );
+            script.ticks[frame + 1][usize::from(input.port)] = replay_pad(input)
+                .with_context(|| format!("replay tick {frame} port {}", input.port))?;
+        }
+        anyhow::ensure!(
+            seen.len() == frames * ports.len(),
+            "missing replay input records"
+        );
+        Ok(script)
+    }
     /// All-neutral pads for `ticks` ticks (an idle scenario, or a trace
     /// recorded before the tracer captured pads).
     pub fn neutral(ticks: usize) -> Self {
@@ -87,6 +116,41 @@ impl PadScript {
             .flatten()
             .any(|pad| *pad != PadSample::default())
     }
+}
+
+/// Reconstruct the pad subset consumed by the human input proc. With old
+/// recordings, dead-zoned stick values cannot recover the original HSD pad;
+/// they do reproduce the ordinary fighter deadzone result. See docs/SLIPPI.md.
+pub fn replay_pad(input: &slp::cold::ControllerFrame) -> Result<PadSample> {
+    anyhow::ensure!(
+        input
+            .stick
+            .iter()
+            .chain(&input.cstick)
+            .all(|x| (-1.0..=1.0).contains(x))
+            && input.triggers.iter().all(|x| (0.0..=1.0).contains(x)),
+        "unusable Slippi stick/physical trigger fields (no guessed replacement)"
+    );
+    let stick = |raw: Option<[i8; 2]>, processed: [f32; 2]| {
+        raw.map_or(
+            Stick {
+                x: processed[0],
+                y: processed[1],
+            },
+            |[x, y]| melee_ft::input::pad::normalize_stick(x, y),
+        )
+    };
+    Ok(PadSample {
+        // Fighter-generated bit 31 (shield) and Z->A must be recomputed.
+        // The HSD stick-direction bits are preserved from processed buttons.
+        buttons: Buttons(
+            u32::from(input.buttons_physical) | (input.buttons_processed & 0x7fff_0000),
+        ),
+        stick: stick(input.raw_stick, input.stick),
+        cstick: stick(input.raw_cstick, input.cstick),
+        left_trigger: input.triggers[0],
+        right_trigger: input.triggers[1],
+    })
 }
 
 fn parse_ports(inputs: &Json) -> Result<[PadSample; PORTS]> {

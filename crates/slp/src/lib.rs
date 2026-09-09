@@ -18,10 +18,11 @@
 //! Slippi numbers frames from [`SLIPPI_FIRST_FRAME`] (-123); frame 0 is when
 //! the match timer starts. The harness numbers frames from 0 at the first
 //! simulated frame, so harness frame `k` is Slippi frame `k + SLIPPI_FIRST_FRAME`
-//! ([`harness_frame`]). Slippi's -123 is the first frame the game engine
-//! runs for the match (the "GO!" countdown), which is the frame the
-//! harness savestates are recorded at.
+//! ([`harness_frame`]). Slippi's -123 is the first full scheduler pass. B3's
+//! cold traces additionally include observation zero (the tick-counter reset)
+//! before that pass: cold observation 1 corresponds to Slippi frame -123.
 
+pub mod cold;
 pub mod event;
 pub mod ids;
 mod scenario;
@@ -85,6 +86,11 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// The actual scheduler-start seed. Pre Frame is later (fighter s_link 3)
+    /// and must not be substituted when comparing an end-of-tick snapshot.
+    pub fn scheduler_start_seed(&self) -> Option<u32> {
+        self.start.as_ref().map(|start| start.random_seed)
+    }
     /// The RNG seed at the start of this frame: Frame Start if present,
     /// otherwise the earliest port's Pre Frame seed (0.1.0 files).
     pub fn start_seed(&self) -> Option<u32> {
@@ -113,6 +119,16 @@ pub struct Replay {
 }
 
 impl Replay {
+    /// Retail creates leaders in ascending active slot order. Keep the
+    /// controller port separate from the contiguous fighter-list index.
+    pub fn leader_ports(&self) -> impl Iterator<Item = usize> + '_ {
+        self.start
+            .players
+            .iter()
+            .enumerate()
+            .filter(|(_, player)| player.is_present())
+            .map(|(port, _)| port)
+    }
     pub fn parse(bytes: &[u8]) -> Result<Replay> {
         let container = ubjson::split_container(bytes)?;
         let raw = container.raw;

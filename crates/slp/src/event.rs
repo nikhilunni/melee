@@ -115,6 +115,8 @@ pub struct PlayerStart {
     /// Costume index ("character colour"). Not a colour per se; the mapping
     /// to an actual palette is character-specific.
     pub costume: u8,
+    /// StartMeleeData PlayerInitData.x5: -1 uses the slot's stage marker.
+    pub spawn_point: i8,
     pub team_shade: u8,
     pub handicap: u8,
     pub team_id: u8,
@@ -152,6 +154,7 @@ pub struct GameStart {
     pub game_timer: u32,
     pub item_spawn_bitfields: [u8; 5],
     pub damage_ratio: f32,
+    pub game_speed: f32,
     pub players: [PlayerStart; 4],
     /// "The random seed before the game start" (0x13D).
     pub random_seed: u32,
@@ -194,6 +197,7 @@ impl GameStart {
                 player_type: PlayerType::from_u8(req!(p, N, u8, o + 1))?,
                 stock_start_count: req!(p, N, u8, o + 2),
                 costume: req!(p, N, u8, o + 3),
+                spawn_point: req!(p, N, i8, o + 5),
                 team_shade: req!(p, N, u8, o + 7),
                 handicap: req!(p, N, u8, o + 8),
                 team_id: req!(p, N, u8, o + 9),
@@ -221,6 +225,7 @@ impl GameStart {
             game_timer: req!(p, N, u32, B + 0x10),
             item_spawn_bitfields: req!(p, N, bytes, B + 0x23),
             damage_ratio: req!(p, N, f32, B + 0x30),
+            game_speed: req!(p, N, f32, B + 0x34),
             players,
             random_seed: req!(p, N, u32, 0x13D),
             pal: p.bool(0x1A1),
@@ -251,8 +256,9 @@ pub struct PreFrame {
     pub cstick_y: f32,
     /// Processed trigger, [0, 1].
     pub trigger: f32,
-    /// Low 16 bits mirror `buttons_physical`; higher bits are stick/c-stick
-    /// directions and "any trigger". See SPEC.md "Processed Buttons".
+    /// Fighter.input held word (+0x65C), including HSD directions and the
+    /// fighter's Z->A+shield and digital-shoulder macros. Low bits therefore
+    /// need not equal buttons_physical (MasterStatus, a different pad phase).
     pub buttons_processed: u32,
     pub buttons_physical: u16,
     pub physical_l_trigger: f32,

@@ -1,9 +1,8 @@
 //! Render a replay as a canonical trace: one `frame_end` record per frame.
 //!
-//! Paths follow `harness/schema/fighter.yaml`, prefixed `p{port}` where
-//! `port` is the 0-based controller port (the Dolphin decoder uses the
-//! fighter-list index instead; they coincide when ports are filled from 1
-//! without gaps). Only fields that Slippi's Post Frame Update carries are
+//! Paths follow `harness/schema/fighter.yaml`, prefixed by the contiguous
+//! leader index in ascending active-port order. `player_id` retains the
+//! original controller slot, including gaps. Only Post Frame fields are
 //! emitted; a field absent from an old replay is simply omitted, which
 //! `melee_diff::first_divergence` treats as "not checked" when the replay is
 //! the expected side.
@@ -25,11 +24,10 @@
 //! Climbers follower) has no schema path and is not emitted.
 //!
 //! `rng.seed` in a `frame_end` record is the seed after the frame finished.
-//! Slippi records the seed at the *start* of each frame (Frame Start, or the
-//! first Pre Frame Update before 2.2.0), so the record for frame `n` carries
-//! the start-of-frame seed of frame `n + 1`; the final frame has none. This
-//! assumes the game draws no random numbers between the end-of-frame dump
-//! and the next frame's Frame Start hook.
+//! Use adjacent Frame Start(n+1), never Pre Frame(n+1): the latter runs
+//! after fighter animation can draw RNG. The final frame, gaps, and versions
+//! before Frame Start omit this key. docs/SLIPPI.md records the ledger proof
+//! and the limits of the tick-end/next-start relation.
 
 use crate::{harness_frame, Replay};
 use melee_diff::{Record, Value};
@@ -50,17 +48,18 @@ pub fn to_trace(replay: &Replay) -> Vec<Record> {
         // the next frame really is the successor.
         if let Some(next) = iter.peek() {
             if next.number == frame.number.wrapping_add(1) {
-                if let Some(seed) = next.start_seed() {
+                if let Some(seed) = next.scheduler_start_seed() {
                     state.insert("rng.seed".to_string(), Value::UInt(seed as u64));
                 }
             }
         }
 
-        for (port, pf) in frame.ports.iter().enumerate() {
+        for (index, port) in replay.leader_ports().enumerate() {
+            let pf = &frame.ports[port];
             let Some(post) = &pf.leader.post else {
                 continue;
             };
-            let p = format!("p{port}");
+            let p = format!("p{index}");
             let mut put = |name: &str, v: Value| {
                 state.insert(format!("{p}.{name}"), v);
             };

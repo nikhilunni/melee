@@ -27,6 +27,10 @@ pub struct Scenario {
     /// list only says whether the scenario is scripted.
     #[serde(default)]
     pub inputs: Vec<InputStep>,
+    /// Per-tick Slippi inputs, independent of comparison traces.
+    #[serde(default)]
+    pub replay_inputs: Vec<slp::cold::ControllerFrame>,
+    pub replay_rules: Option<slp::cold::ReplayRules>,
     #[serde(skip)]
     pub root: PathBuf,
 }
@@ -38,11 +42,16 @@ pub struct FighterScenario {
     pub controller: String,
     #[serde(default)]
     pub costume: u8,
+    #[serde(default = "default_spawn_point")]
+    pub spawn_point: i8,
     #[serde(default = "one_stock")]
     pub stocks: u8,
 }
 fn one_stock() -> u8 {
     1
+}
+fn default_spawn_point() -> i8 {
+    -1
 }
 /// One step of the Dolphin-side schedule: `buttons` holds on `port` from VI
 /// frame `frame` until that port's next step. Keys are the GC pad names the
@@ -90,7 +99,7 @@ impl Scenario {
             );
             ensure!(
                 self.inputs.is_empty(),
-                "cold setup currently requires neutral inputs"
+                "cold setup accepts replay_inputs, not a Dolphin VI input schedule"
             );
         }
         ensure!(
@@ -98,24 +107,40 @@ impl Scenario {
             "unsupported stage"
         );
         ensure!(
-            (1..=600).contains(&self.frames),
+            (self.is_cold() && self.frames > 0) || (1..=600).contains(&self.frames),
             "imported boundary supports 1..=600 ticks"
         );
         ensure!(self.fighters.len() == 2, "requires two fighters");
+        let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
-                usize::from(fighter.slot) == slot
+                ((self.is_cold()
+                    && fighter.slot < 4
+                    && previous_port.is_none_or(|p| p < fighter.slot))
+                    || (!self.is_cold() && usize::from(fighter.slot) == slot))
                     && crate::scene_fighter::SceneFighter::NAMES.contains(&fighter.kind.as_str())
                     && matches!(fighter.controller.as_str(), "scripted" | "idle"),
-                "requires ordered human slots 0/1 with a registered character kind"
+                "requires ascending distinct human ports with a registered character kind"
             );
+            previous_port = Some(fighter.slot);
             if self.is_cold() {
                 ensure!(
                     usize::from(fighter.costume) < fighter.descriptor().costumes.len()
-                        && fighter.stocks == 1,
-                    "cold setup requires a valid costume and one stock"
+                        && (1..=99).contains(&fighter.stocks),
+                    "cold setup requires a valid costume and stock count"
                 );
             }
+        }
+        if let Some(rules) = &self.replay_rules {
+            ensure!(self.is_cold(), "replay rules require cold setup");
+            ensure!(
+                rules.game_mode == 1
+                    && matches!(rules.timer_type, 0 | 2)
+                    && !rules.teams
+                    && rules.item_spawn_behavior == -1
+                    && rules.damage_ratio.to_bits() == 1.0_f32.to_bits(),
+                "replay requires stock mode, countdown/no timer, singles, items off, normal damage"
+            );
         }
         for step in &self.inputs {
             ensure!(
@@ -187,6 +212,7 @@ impl Scenario {
             );
         }
         if self.is_cold() {
+            paths.push(self.assets_path().join("IfAll.usd"));
             paths.push(self.expected_path());
             return paths;
         }

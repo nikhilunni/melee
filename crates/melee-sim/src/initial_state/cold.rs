@@ -67,6 +67,7 @@ impl InitialState {
                 .expect("validated cold music rule"),
         ));
         Ok(Self {
+            countdown: Some(crate::countdown::Countdown::load(&scenario.assets_path())?),
             assets,
             map,
             stage,
@@ -176,7 +177,18 @@ fn create_players(
     map: &mut melee_mp::CollMap,
     rng: &mut HsdRng,
 ) -> Result<[SceneFighter; 2]> {
-    let positions = [spawn_position(assets, 0)?, spawn_position(assets, 1)?];
+    let positions: Vec<_> = scenario
+        .fighters
+        .iter()
+        .map(|fighter| {
+            let marker = if fighter.spawn_point == -1 {
+                i16::from(fighter.slot)
+            } else {
+                i16::from(fighter.spawn_point)
+            };
+            spawn_position(assets, marker)
+        })
+        .collect::<Result<_>>()?;
     // fn_8016DEEC: face the other player; nearby/equal-X markers
     // resolve +1 for the first player, then -1 for the second.
     let facing = if positions[1].x - positions[0].x < -5.0 {

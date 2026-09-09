@@ -57,6 +57,13 @@ pub fn check_schema(record: &Record) -> Result<()> {
 /// scripted scenario must carry them; a neutral one may predate the capture.
 pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
     if scenario.is_cold() {
+        if !scenario.replay_inputs.is_empty() {
+            return PadScript::from_replay_inputs(
+                &scenario.replay_inputs,
+                scenario.frames as usize,
+                &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
+            );
+        }
         return Ok(PadScript::neutral(scenario.frames as usize));
     }
     let path = scenario.expected_path();
@@ -82,8 +89,12 @@ fn simulation(scenario: &Scenario) -> Result<Simulation> {
 }
 pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
     let mut simulation = simulation(scenario)?;
-    for _ in 0..scenario.frames {
-        let record = simulation.tick()?;
+    if !scenario.replay_inputs.is_empty() {
+        simulation.tick()?;
+    }
+    for frame in 0..scenario.frames {
+        let mut record = simulation.tick()?;
+        record.frame = frame;
         check_schema(&record)?;
         serde_json::to_writer(&mut out, &record)?;
         writeln!(out)?;
@@ -101,8 +112,14 @@ pub fn gate(scenario: &Scenario) -> Result<()> {
         scenario.frames
     );
     let mut simulation = simulation(scenario)?;
+    if !scenario.replay_inputs.is_empty() {
+        simulation.tick()?;
+    }
     for expected in expected {
-        let actual = simulation.tick()?;
+        let mut actual = simulation.tick()?;
+        if !scenario.replay_inputs.is_empty() {
+            actual.frame -= 1;
+        }
         check_schema(&expected)?;
         check_schema(&actual)?;
         if let Some(diff) = first_divergence([&expected], [&actual]) {

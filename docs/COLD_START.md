@@ -1,5 +1,9 @@
 # Cold start: Lane B3
 
+Follow-up: [lane B4](SLIPPI.md) adds replay pads, gapped ports/spawn markers,
+stock/time rule carriage, and the normal countdown's input release. The
+historical B3 measurements and boundary limitations below remain unchanged.
+
 2026-09-09. The four cold scenarios construct their match boundary using only
 scenario parameters and owned DAT assets. Each gates against its existing
 trace for **600 ticks, 49 keys, 0 divergences**. Construction reads no savestate,

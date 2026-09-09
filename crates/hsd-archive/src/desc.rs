@@ -90,6 +90,7 @@ pub mod dobj;
 pub mod figatree;
 pub mod jobj;
 pub mod light;
+pub mod model;
 pub mod spline;
 
 pub use anim::{
