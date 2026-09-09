@@ -1,0 +1,31 @@
+# Backward double jump: full hop, then stick back plus X in the air
+# (JumpAerialB keeps the facing), drift back and land.
+# Falco variant of the Fox scenario, same inputs, from the idle_fd_falco savestate
+# (P1 Falco and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+# Drift back at VI 62 (the Marth timing): the Fox timing carries this character off the edge to a death.
+name = "airjumpb_fd_falco"
+savestate = "harness/roms/idle_fd_falco.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 36, buttons = {} },
+  { frame = 50, buttons = { StickX = -1.0, X = true } },
+  { frame = 53, buttons = { StickX = -1.0 } },
+  { frame = 62, buttons = { StickX = 1.0 } },
+  { frame = 100, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

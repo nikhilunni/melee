@@ -1,0 +1,29 @@
+# Ledge escape (roll from ledge): backward hop past the left edge, grab the ledge, then press L (CliffEscapeSlow/Quick) and wait.
+# Falco variant of the Fox scenario, same inputs, from the idle_fd_falco savestate
+# (P1 Falco and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "ledgeescape_fd_falco"
+savestate = "harness/roms/idle_fd_falco.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = -1.0, X = true } },
+  { frame = 36, buttons = { StickX = -1.0 } },
+  { frame = 72, buttons = { StickX = 1.0 } },
+  { frame = 200, buttons = {} },
+  { frame = 230, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 233, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

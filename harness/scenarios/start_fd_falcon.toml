@@ -1,0 +1,21 @@
+# Captain Falcon (P1) vs Fox (P2) on Final Destination, start boundary. Recorded 2026-09-09
+# with remote.py after RAM-only pokes (characters and FD unlocked, stock 1);
+# the memory card is unchanged. Savestate is machine-local (harness/roms/).
+# Both fighters in Entry (motion 322) at the first initialised frame.
+name = "start_fd_falcon"
+savestate = "harness/roms/start_fd_falcon.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

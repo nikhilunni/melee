@@ -1,0 +1,32 @@
+# Jump: X tap (KneeBend -> JumpF -> Fall -> Landing), then a second jump with a mid-air X (double jump) and a fast fall.
+# Peach variant of the Fox scenario, same inputs, from the idle_fd_peach savestate
+# (P1 Peach and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded
+# (see tick_trace.py), so VI-to-tick alignment does not need to be exact.
+name = "jump_fd_peach"
+savestate = "harness/roms/idle_fd_peach.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 32, buttons = {} },
+  { frame = 100, buttons = { X = true } },
+  { frame = 102, buttons = {} },
+  { frame = 112, buttons = { X = true } },
+  { frame = 114, buttons = {} },
+  { frame = 135, buttons = { StickY = -1.0 } },
+  { frame = 175, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

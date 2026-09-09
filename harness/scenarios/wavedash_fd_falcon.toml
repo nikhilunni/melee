@@ -1,0 +1,33 @@
+# Wavedash: X tap, then on the first airborne frame L plus a diagonal-down stick
+# (EscapeAir -> LandingFallSpecial almost immediately, sliding forward), then
+# neutral. Fox's jump squat is 3 frames, so the L press lands at VI 34.
+# Captain Falcon variant of the Fox scenario, same inputs, from the idle_fd_falcon savestate
+# (P1 Captain Falcon and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "wavedash_fd_falcon"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 32, buttons = {} },
+  { frame = 34, buttons = { L = true, TriggerLeft = 1.0, StickX = 0.7, StickY = -0.7 } },
+  { frame = 37, buttons = {} },
+  { frame = 120, buttons = { X = true } },
+  { frame = 122, buttons = {} },
+  { frame = 125, buttons = { L = true, TriggerLeft = 1.0, StickX = 0.7, StickY = -0.7 } },
+  { frame = 128, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
