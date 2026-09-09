@@ -1,36 +1,31 @@
 //! Headless simulator. Runs a scenario and writes a canonical trace.
 //!
-//! Usage (target shape, not all implemented yet):
+//! Usage:
 //!   melee-sim bones --fighter fox --anim Wait1 --frame 0 --frames 2
-//!   melee-sim --scenario harness/scenarios/idle_fd_fox.toml --assets <disc files dir> --out actual.jsonl
+//!   melee-sim run harness/scenarios/idle_fd_fox.toml --out actual.jsonl
+//!   melee-sim gate harness/scenarios/idle_fd_fox.toml
 //!   melee-diff expected.jsonl actual.jsonl
 use clap::{Parser, Subcommand};
 use std::io;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(
-    version,
-    about,
-    subcommand_negates_reqs = true,
-    args_conflicts_with_subcommands = true
-)]
+#[command(version, about)]
 struct Args {
     #[command(subcommand)]
-    command: Option<Command>,
-    /// Scenario file (TOML) describing seed, stage, fighters, and the input script.
-    #[arg(long, required = true)]
-    scenario: Option<PathBuf>,
-    /// Directory containing the game's `files/` tree (Pl*.dat, Gr*.dat, ...) from your own disc.
-    #[arg(long, required = true)]
-    assets: Option<PathBuf>,
-    /// Output trace path (JSONL).
-    #[arg(long, required = true)]
-    out: Option<PathBuf>,
+    command: Command,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Run the imported savestate and emit one canonical record per tick.
+    Run {
+        scenario: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Run and compare every key against the scenario's canonical tick trace.
+    Gate { scenario: PathBuf },
     /// Emit Fox Wait1 bone matrices and SRT with an identity world transform.
     Bones {
         #[arg(long, value_parser = ["fox"])]
@@ -63,38 +58,42 @@ enum Command {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    if let Some(Command::Bones {
-        frame,
-        frames,
-        assets,
-        pos,
-        facing,
-        model_scale,
-        bone_scales,
-        ..
-    }) = args.command
-    {
-        let pose = melee_sim::bones::FighterPose {
-            position: pos,
-            facing_dir: facing,
-            model_scale,
-            bone_scales,
-        };
-        return melee_sim::bones::write_fox_wait1_bones(
-            &assets,
+    match args.command {
+        Command::Bones {
             frame,
             frames,
-            &pose,
-            io::BufWriter::new(io::stdout().lock()),
-        );
+            assets,
+            pos,
+            facing,
+            model_scale,
+            bone_scales,
+            ..
+        } => {
+            let pose = melee_sim::bones::FighterPose {
+                position: pos,
+                facing_dir: facing,
+                model_scale,
+                bone_scales,
+            };
+            melee_sim::bones::write_fox_wait1_bones(
+                &assets,
+                frame,
+                frames,
+                &pose,
+                io::BufWriter::new(io::stdout().lock()),
+            )
+        }
+        Command::Run { scenario, out } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            melee_sim::trace::write_run(&scenario, io::BufWriter::new(std::fs::File::create(out)?))
+        }
+        Command::Gate { scenario } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            melee_sim::trace::gate(&scenario)?;
+            println!("{} ticks, 49 keys, 0 divergences", scenario.frames);
+            Ok(())
+        }
     }
-    anyhow::bail!(
-        "scenario simulation is not implemented yet. scenario={} assets={} out={}\n\
-         The bones subcommand is available for Milestone 2. See docs/M2_GATE.md.",
-        args.scenario.expect("required by clap").display(),
-        args.assets.expect("required by clap").display(),
-        args.out.expect("required by clap").display()
-    )
 }
 
 fn parse_vec3(text: &str) -> Result<hsd_types::Vec3, String> {

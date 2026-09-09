@@ -9,7 +9,7 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
-**The disc is present, extracted, and the oracle works.** `harness/roms/idle_ys_fox.sav` + `harness/traces/idle_ys_fox.expected.jsonl` are the first real-game trace (two idle Foxes, Yoshi's Story, 600 frames). Fusion audit complete workspace-wide. Fox's Wait1 animation plays through the port. **Milestone 2 gate passed.** Next: Milestone 3 groundwork (melee-gr Yoshi's Story, melee-ft init and frame order, melee-sim loop).
+**The disc is present, extracted, and the oracle works.** `harness/roms/idle_ys_fox.sav` + `harness/traces/idle_ys_fox.expected.jsonl` are the first real-game trace (two idle Foxes, Yoshi's Story, 600 frames). Fusion audit complete workspace-wide. Fox's Wait1 animation plays through the port. **Milestones 1-3 gates passed.** The port reproduces an idle two-Fox match on Final Destination for 600 ticks bit-exactly, RNG included. Next: a match-start savestate (fighters spawn falling at y=10) to exercise airborne physics and landing, then Milestone 4 movement scenarios with scripted inputs. Older: Milestone 3 groundwork (melee-gr Yoshi's Story, melee-ft init and frame order, melee-sim loop).
 
 Older note: `harness/roms/GALE01.iso` (gitignored)
 matches both hashes in `docs/ISO.md`; `harness/roms/sys/main.dol` matches
@@ -116,6 +116,7 @@ recomputed bones). Remaining items below are breadth, not gate blockers.
 ## Milestone 3: One fighter idle (`melee-lb`, `melee-mp`, `melee-ft`, `ft-fox`)
 
 Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
+**Gate passed 2026-09-09**: `melee-sim gate harness/scenarios/idle_fd_fox.toml` reproduces all 600 ticks x 49 keys (both Foxes' 24 fields and `rng.seed`) from the imported savestate boundary, with the real scheduler (`hsd-gobj::World`), stage, particle system and fighters; no per-tick oracle inputs. Remaining items below are breadth toward Milestone 4.
 
 - [x] `melee-lb`: `lbtrigf.c` (atan2f, atanf, asinf, acosf, lb_sqrtf) and `lb_00CE.c` expf/powf
 - [x] `melee-lb`: `lbanim.c` FigaTree -> JObj attachment (Codex; real Fox Wait1: 120 frames, 73 nodes, 49 animated joints); translation-filtered path `fn_8001E60C`/`lbAnim_8001E7E8` deliberately skipped, see anim.rs header
@@ -137,7 +138,7 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [ ] `melee-ft`: physics (`ft_08A1.c` etc): gravity, friction, ground snap
 - [x] `ft-fox`: attributes (Fox special block, 0xD4 bytes) read from PlFx.dat (Codex T4); init and Wait wiring still to do
 - [x] `melee-ft`: `desc/` reads ftData attributes (0x184 bytes, grouped by concept), part table (54 entries, TopN/TransN/XRotN/YRotN=0/1/2/3), ECB joints [41,55,25,13,7,4], bone lists, PlCo common subset (`docs/FOX_DATA.md`)
-- [ ] `melee-sim`: scenario loading, asset loading, frame loop, trace emit
+- [x] `melee-sim`: scenario/asset loading, `InitialState::from_savestate_traces`, `World`-driven frame loop, 49-key trace, `run`/`gate` CLI (Codex T13; `crates/melee-sim/src/M3.md` lists imported vs computed state)
 - [x] Record savestate and `expected.jsonl`: **`idle_ys_fox`** (Yoshi's Story) instead of FD, two idle Foxes, 600 frames, byte-identical on rerun (`docs/DOLPHIN_RUN.md`)
 - [x] `idle_fd_fox` recorded (2026-09-08): FD unlocked via `poke-or 0x8045BF2A u16 0xC0` (save data `gmMainLib_804D3EE0->thing.x186A`), Stock 1 via `GameRules` bytes, items were already NONE. Savestate `harness/roms/idle_fd_fox.sav` at frame 50841, both Foxes in Wait at (+-60, 0.0001, 0). Tick trace `harness/traces/idle_fd_fox.tick.expected.jsonl`, 600 ticks, deterministic.
 - [~] `pl/player.c` and `gm` match setup: the slot->kind/costume subset spawning needs is in `fighter/spawn.rs`; stocks/percent bookkeeping still to do
@@ -260,6 +261,7 @@ Gate: zero divergence over thousands of Slippi replays.
 
 Newest first. One line per session: date, what landed, what is next.
 
+- 2026-09-09 (later): T5 physics/collision, T10 Fighter composition, T13 melee-sim loop. **Milestone 3 gate passed**: 600 ticks x 49 keys, 0 divergences, seed included. Next: match-start scenario (spawn/Fall/landing), then M4 movement.
 - 2026-09-09: T7 animation playback and T9 human input both match the FD trace for 600 ticks; hsd-particle matches all 600 dumped frames field-for-field; Docker/IDE memory pressure killed two concurrent Codex runs (resumed; rule: one at a time unless memory is free). Next: T5 grounded physics + collision for a standing fighter, T10 spawn/state machine, T13 melee-sim frame loop, then the M3 gate `idle_fd_fox_600`.
 - 2026-09-08 (night): FD unlocked (save unlock mask poke), `idle_fd_fox` savestate + tick-boundary 600-tick trace (deterministic), Dolphin fork patched for PC/LR, RNG ledger attributes all 18,318 idle draws (particle system: 1 + 6 per emission per tick), M3 T4 Fox data readers, melee-gr FD first pass, hsd-particle first pass + live state dump. In flight: Codex replaying live particle state against the ledger. Next: fighter-side M3 tasks (T5 physics, T6/T7 animation playback, T9 input, T10 spawn) once particles match.
 - 2026-09-08 (evening): Disc extracted (1,209 files), real .dat tests, retail asm lookup (`harness/asm.py`), fusion audit complete across gekko-math/melee-lb/hsd-anim/melee-mp (MWCC fused most sites; sinf ~18% of inputs differ), JObjDesc->JObjTree glue, coll_data reader + real FD collision test, lbanim FigaTree attach + ftData reader (Fox Wait1 plays), Dolphin oracle booted: `idle_ys_fox` savestate + 600-frame trace at 131 fps. Delegation switched to Codex (`tools/codex-task.sh`). M2 gate tooling built (Codex) and **M2 gate passed**: 0 mismatches on 3,080 bone words vs Dolphin. FD unlocked, tick-boundary sampling fixed, `idle_fd_fox` tick trace recorded (deterministic). Next: M3 tasks from `docs/M3_PLAN.md` on FD (fighter fields first, `rng.seed` after grlast.c).
