@@ -130,7 +130,7 @@ impl Runtime {
             Callback::Fighter { player, proc } => {
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
-                    use crate::scene_fighter::{with_fighter, SceneFighter};
+                    use crate::scene_fighter::with_fighter;
                     for other in 0..state.fighters.len() {
                         if player == other {
                             continue;
@@ -147,8 +147,8 @@ impl Runtime {
                         }));
                     }
                 }
-                match &mut state.fighters[player] {
-                    crate::scene_fighter::SceneFighter::Fox(f) => dispatch_fighter(
+                crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                    dispatch_fighter(
                         f,
                         proc,
                         player,
@@ -159,22 +159,10 @@ impl Runtime {
                         &mut state.effects,
                         &mut state.particles,
                         &mut state.rng,
-                    )?,
-                    crate::scene_fighter::SceneFighter::Marth(f) => dispatch_fighter(
-                        f,
-                        proc,
-                        player,
-                        self.frame,
-                        state_pads,
-                        assets,
-                        &mut state.map,
-                        &mut state.effects,
-                        &mut state.particles,
-                        &mut state.rng,
-                    )?,
-                }
+                    )
+                })?;
                 if proc == FighterProc::Animation {
-                    use crate::scene_fighter::{with_fighter, SceneFighter};
+                    use crate::scene_fighter::with_fighter;
                     let bodies: Vec<_> = state
                         .fighters
                         .iter()
@@ -226,7 +214,7 @@ impl Runtime {
                 }
             },
             Callback::Interface { player } => {
-                use crate::scene_fighter::{with_fighter, SceneFighter};
+                use crate::scene_fighter::with_fighter;
                 let percent = with_fighter!(&state.fighters[player], |f| f.physics.percent);
                 self.interface[player].tick(percent, &mut state.rng);
             }
@@ -260,7 +248,7 @@ impl Simulation {
     }
     pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
         let rows = registrations(&state.stage);
-        use crate::scene_fighter::{with_fighter, SceneFighter};
+        use crate::scene_fighter::with_fighter;
         let interface = std::array::from_fn(|player| {
             melee_if::PercentDisplay::new(with_fighter!(&state.fighters[player], |f| f
                 .physics
@@ -677,3 +665,5 @@ mod fall_states;
 
 #[cfg(test)]
 mod combat;
+#[cfg(test)]
+mod falco_bones;

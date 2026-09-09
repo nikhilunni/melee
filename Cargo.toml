@@ -21,6 +21,7 @@ members = [
     # Layer 3: one crate per character. Depend on melee-ft, never on each other.
     "crates/ft-fox",
     "crates/ft-mars",
+    "crates/ft-falco",
     "crates/ft-mario",
     # Layer 4: binaries and tooling.
     "crates/melee-sim",

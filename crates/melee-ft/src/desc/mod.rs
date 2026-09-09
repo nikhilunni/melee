@@ -5,6 +5,7 @@ mod animation;
 pub mod attributes;
 pub mod bones;
 pub mod common;
+pub mod fox_attributes;
 pub mod playback;
 mod read;
 

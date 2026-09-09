@@ -1,11 +1,11 @@
-//! Fox's load/reset hooks, ft/kinds/ftFox/ftfox.c.
+//! Falco's load/reset hooks, ft/kinds/ftFalco/ftfalco.c.
 use melee_ft::desc::fox_attributes::FoxAttributes;
 use melee_ft::fighter::{Capabilities, CharacterCallbacks};
 use melee_types::{FighterKind, ItemKind};
 
 /// Character-owned state. The item resource registrations do not spawn items.
 #[derive(Clone, Debug)]
-pub struct Fox {
+pub struct Falco {
     pub attributes: FoxAttributes,
     /// u.fx.x222C_blasterGObj; no blaster exists during Wait.
     pub blaster_present: bool,
@@ -13,7 +13,7 @@ pub struct Fox {
     pub model_group: i32,
     pub registered_items: Vec<ItemKind>,
 }
-impl Fox {
+impl Falco {
     pub fn new(attributes: FoxAttributes) -> Self {
         Self {
             attributes,
@@ -23,17 +23,18 @@ impl Fox {
         }
     }
 }
-impl CharacterCallbacks for Fox {
+impl CharacterCallbacks for Falco {
     fn kind(&self) -> FighterKind {
-        FighterKind::Fox
+        FighterKind::Falco
     }
     fn descriptor() -> &'static melee_ft::fighter::assets::CharacterDescriptor {
         &DESCRIPTOR
     }
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
-        Ok(Self::new(crate::attributes::read_fox_attributes(data)?))
+        Ok(Self::new(crate::attributes::read_falco_attributes(data)?))
     }
-    /// ftFx_Init_OnLoad (0x800E57AC), ftfox.c:486-501. PUSH_ATTRS is the
+    /// ftFc_Init_OnLoad (80149CC4), ftfalco.c:467-484. OnLoadForFalco
+    /// (800E576C) copies the shared layout. PUSH_ATTRS is the
     /// owned FoxAttributes copy; item definitions are registered, not spawned.
     fn on_load(&mut self, capabilities: &mut Capabilities) {
         capabilities.can_walljump = true;
@@ -41,42 +42,42 @@ impl CharacterCallbacks for Fox {
         self.registered_items = vec![
             self.attributes.blaster.shot_item_kind,
             self.attributes.blaster.gun_item_kind,
-            ItemKind::FoxIllusion,
+            ItemKind::FalcoPhantasm,
         ];
     }
-    /// ftFx_Init_OnDeath (0x800E5554), ftfox.c:448-455; called at cold spawn.
+    /// ftFc_Init_OnDeath (80149ACC), ftfalco.c:440-445; called at cold spawn.
     fn on_reset(&mut self) {
         self.blaster_present = false;
         self.model_group = 0;
     }
 }
 
-/// ftFx_Init_* strings, ftData_Table_Unk0[1], and PlCo ftPartsTable[1].
+/// ftFc_Init_* strings, ftData_Table_Unk0[22], and PlCo ftPartsTable[22].
 pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
     melee_ft::fighter::assets::CharacterDescriptor {
-        kind: FighterKind::Fox,
-        data_file: "PlFx.dat",
-        data_symbol: "ftDataFox",
-        animation_file: "PlFxAJ.dat",
+        kind: FighterKind::Falco,
+        data_file: "PlFc.dat",
+        data_symbol: "ftDataFalco",
+        animation_file: "PlFcAJ.dat",
         animation_count: 327,
         part_count: 54,
         part_animation_count: 5,
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
-                file: "PlFxNr.dat",
-                joint_symbol: "PlyFox5K_Share_joint",
+                file: "PlFcNr.dat",
+                joint_symbol: "PlyFalco5K_Share_joint",
             },
             melee_ft::fighter::assets::CostumeDescriptor {
-                file: "PlFxOr.dat",
-                joint_symbol: "PlyFox5KOr_Share_joint",
+                file: "PlFcRe.dat",
+                joint_symbol: "PlyFalco5KRe_Share_joint",
             },
             melee_ft::fighter::assets::CostumeDescriptor {
-                file: "PlFxLa.dat",
-                joint_symbol: "PlyFox5KLa_Share_joint",
+                file: "PlFcBu.dat",
+                joint_symbol: "PlyFalco5KBu_Share_joint",
             },
             melee_ft::fighter::assets::CostumeDescriptor {
-                file: "PlFxGr.dat",
-                joint_symbol: "PlyFox5KGr_Share_joint",
+                file: "PlFcGr.dat",
+                joint_symbol: "PlyFalco5KGr_Share_joint",
             },
         ],
     };

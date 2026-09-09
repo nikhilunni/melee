@@ -26,7 +26,7 @@ macro_rules! scene_characters {
         macro_rules! with_fighter {
             ($fighter:expr, |$f:ident| $body:expr) => {
                 match $fighter {
-                    $( SceneFighter::$variant($f) => $body, )*
+                    $( $crate::scene_fighter::SceneFighter::$variant($f) => $body, )*
                 }
             };
         }
@@ -66,6 +66,7 @@ macro_rules! scene_characters {
 scene_characters! {
     "Fox" => Fox(ft_fox::init::Fox),
     "Marth" => Marth(ft_mars::init::Marth),
+    "Falco" => Falco(ft_falco::init::Falco),
 }
 
 fn construct<C: CharacterCallbacks>(

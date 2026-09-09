@@ -1,7 +1,7 @@
 //! Raw fighter scratch assertions supplement M5's 49-key gate. Only the initial
 //! state and pad samples drive simulation; subsequent retail bytes are assertions.
 use super::*;
-use crate::{scenario::Scenario, scene_fighter::SceneFighter};
+use crate::scenario::Scenario;
 use melee_ft::fighter::{hitbox::CapsulePhase, CharacterCallbacks, Fighter, MotionData};
 use std::{fs, path::Path};
 

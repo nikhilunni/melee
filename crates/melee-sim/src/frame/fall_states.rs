@@ -1,7 +1,7 @@
 //! Raw scratch oracle supplements the canonical 49-key scene gates.
 //! Only initial state and recorded pads drive the simulation; ledger bytes are assertions.
 use super::*;
-use crate::{scenario::Scenario, scene_fighter::SceneFighter};
+use crate::scenario::Scenario;
 use melee_ft::fighter::{fall::FallState, CharacterCallbacks, Fighter, MotionData};
 use melee_types::CommonMotionState as S;
 use serde_json::Value;

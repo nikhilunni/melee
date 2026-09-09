@@ -298,6 +298,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         rate: f32,
     ) -> Result<()> {
         self.status.require_supported();
+        self.flush_effects_on_motion_change();
         self.shield.clear_collision();
         self.status.ignore_fighter_nudge = false;
         self.status.on_ledge = false;

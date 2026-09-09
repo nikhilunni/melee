@@ -35,6 +35,9 @@ const LANDING_EFFECT: u32 = 0x18;
 // efasync.c:262-268: stationary model effect, with facing and floor rotation.
 const DASH_DUST_REQUEST: u16 = 0x3FF;
 const DASH_DUST_EFFECT: u32 = 5;
+// efasync.c:205-212: jump flash model, also with facing and floor rotation.
+const JUMP_FLASH_REQUEST: u16 = 0x3F7;
+const JUMP_FLASH_EFFECT: u32 = 0x12;
 // efasync.c:282-287: direct joint attachment, without a model effect.
 const JUMP_DUST_REQUEST: u16 = 0x402;
 const AERIAL_JUMP_DUST_REQUEST: u16 = 0x403;
@@ -108,25 +111,27 @@ impl Effects {
                 requests.reverse();
             }
         }
-        // efAsync_Spawn prepends to the pending list (efasync.c:1458-1462).
-        // Destruction is synchronous, before newly queued spawns are flushed.
-        if requests
-            .iter()
-            .any(|r| matches!(r, EffectRequest::DestroyOwned))
-        {
-            for effect in self
-                .instances
-                .iter()
-                .filter(|effect| effect.owner == Some(player))
-            {
-                for joint in effect.tree.depth_first(effect.root) {
-                    particles.expire_joint(effect.joint_base + joint.0);
-                }
-            }
-            self.instances.retain(|effect| effect.owner != Some(player));
-        }
-        for request in requests {
+        // Motion changes have already sealed earlier queues with their outgoing
+        // transforms. Preserve those flushes relative to immediate destruction.
+        let requests = requests.into_iter().flat_map(|request| match request {
+            EffectRequest::FlushDeferred(batch) => batch
+                .into_iter()
+                .map(|resolved| (resolved.request, Some(resolved.matrix)))
+                .collect::<Vec<_>>(),
+            request => vec![(request, None)],
+        });
+        for (request, resolved_matrix) in requests {
             if matches!(request, EffectRequest::DestroyOwned) {
+                for effect in self
+                    .instances
+                    .iter()
+                    .filter(|effect| effect.owner == Some(player))
+                {
+                    for joint in effect.tree.depth_first(effect.root) {
+                        particles.expire_joint(effect.joint_base + joint.0);
+                    }
+                }
+                self.instances.retain(|effect| effect.owner != Some(player));
                 continue;
             }
             if let EffectRequest::Attached { id, bone } = request {
@@ -141,7 +146,10 @@ impl Effects {
                 let joint = fighter.animation.parts[bone].joint;
                 fighter.skeleton.setup_matrix(joint);
                 let mut spawn = SpawnRequest::new(0, kind, 0);
-                spawn.joint = Some((joint_id, fighter.skeleton.get(joint).mtx));
+                spawn.joint = Some((
+                    joint_id,
+                    resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                ));
                 particles.spawn::<RetailTrig>(bank, spawn, rng, &mut self.draws)?;
                 self.fighter_joints.insert(joint_id, (player, bone));
                 continue;
@@ -164,7 +172,11 @@ impl Effects {
                 let joint = fighter.animation.root;
                 fighter.skeleton.setup_matrix(joint);
                 let mut position = Vec3::ZERO;
-                mtx_mult_vec(&fighter.skeleton.get(joint).mtx, &offset, &mut position);
+                mtx_mult_vec(
+                    &resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                    &offset,
+                    &mut position,
+                );
                 self.spawn_dust_generator(
                     0x407,
                     position,
@@ -183,11 +195,15 @@ impl Effects {
                 ..
             } = request
             {
-                if id != DASH_DUST_REQUEST {
+                if !matches!(id, DASH_DUST_REQUEST | JUMP_FLASH_REQUEST) {
                     let joint = fighter.animation.parts[bone].joint;
                     fighter.skeleton.setup_matrix(joint);
                     let mut position = Vec3::ZERO;
-                    mtx_mult_vec(&fighter.skeleton.get(joint).mtx, &offset, &mut position);
+                    mtx_mult_vec(
+                        &resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                        &offset,
+                        &mut position,
+                    );
                     self.spawn_dust_generator(id, position, facing, bank, particles, rng)?;
                     continue;
                 }
@@ -211,6 +227,10 @@ impl Effects {
                     id: DASH_DUST_REQUEST,
                     ..
                 } => (DASH_DUST_EFFECT, None),
+                EffectRequest::Graphics {
+                    id: JUMP_FLASH_REQUEST,
+                    ..
+                } => (JUMP_FLASH_EFFECT, None),
                 _ => anyhow::bail!("unsupported fighter effect {request:?}"),
             };
             let mut effect = Effect::load(archive, id)?;
@@ -234,10 +254,11 @@ impl Effects {
                 fighter.animation.root
             };
             fighter.skeleton.setup_matrix(root);
-            let matrix = fighter.skeleton.get(root).mtx;
+            let matrix = resolved_matrix.unwrap_or(fighter.skeleton.get(root).mtx);
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
-                EffectRequest::DestroyOwned
+                EffectRequest::FlushDeferred(_)
+                | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. } => unreachable!(),
                 EffectRequest::HitSpark {

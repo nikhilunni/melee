@@ -1,6 +1,7 @@
 mod support;
 
-use ft_fox::attributes::{read_fox_attributes, FoxAttributes};
+use ft_fox::attributes::read_fox_attributes;
+use melee_ft::desc::fox_attributes::FoxAttributes;
 use melee_types::ItemKind;
 use support::{archive, word};
 

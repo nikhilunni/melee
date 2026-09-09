@@ -1,10 +1,13 @@
 //! Requests at the fighter/effect boundary; particle lifetimes belong to ef.
-use hsd_types::Vec3;
+use hsd_types::{Mtx, Vec3};
 // ftCo_09F7.c:75-97: special part selectors bypass the common part table.
 const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 #[derive(Clone, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// Fighter_ChangeMotionState flushes the queue using the outgoing pose.
+    /// The scene consumes this batch at the owning proc boundary, in order.
+    FlushDeferred(Vec<ResolvedEffect>),
     /// efSync_Spawn: shield model attached to the shield joint.
     Shield { id: u16, bone: usize },
     /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
@@ -35,6 +38,12 @@ pub enum EffectRequest {
         floor_angle: f32,
     },
 }
+/// A deferred request whose joint transform was sampled at its retail flush.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedEffect {
+    pub request: EffectRequest,
+    pub matrix: Mtx,
+}
 /// Scene implementations drain Fighter.effects through this interface.
 pub trait EffectSink {
     fn spawn_effect(&mut self, request: EffectRequest);
@@ -46,17 +55,45 @@ impl EffectSink for Vec<EffectRequest> {
 }
 
 impl<C: super::CharacterCallbacks> super::Fighter<C> {
+    /// Fighter_ChangeMotionState (800693AC), fighter.c:950-951:
+    /// translate the root, then efAsync_QueueFlush before replacing the pose.
+    pub(super) fn flush_effects_on_motion_change(&mut self) {
+        self.skeleton
+            .set_translate(self.animation.root, &self.physics.position);
+        let mut pending = Vec::new();
+        let mut immediate = Vec::new();
+        for request in std::mem::take(&mut self.effects) {
+            if request.is_immediate() {
+                immediate.push(request);
+            } else {
+                pending.push(request);
+            }
+        }
+        let mut resolved = Vec::new();
+        for request in pending.into_iter().rev() {
+            let joint = match &request {
+                EffectRequest::Attached { bone, .. } | EffectRequest::Graphics { bone, .. } => {
+                    self.animation.parts[*bone].joint
+                }
+                _ => self.animation.root,
+            };
+            self.skeleton.setup_matrix(joint);
+            resolved.push(ResolvedEffect {
+                request,
+                matrix: self.skeleton.get(joint).mtx,
+            });
+        }
+        if !resolved.is_empty() {
+            immediate.push(EffectRequest::FlushDeferred(resolved));
+        }
+        self.effects = immediate;
+    }
     /// efSync_Spawn / efLib_DestroyAll: dispatch at the owning fighter callback.
     /// Deferred efAsync requests retain their original order until link 9.
     pub fn drain_immediate_effects(&mut self, sink: &mut impl EffectSink) {
         let mut deferred = Vec::new();
         for effect in self.effects.drain(..) {
-            if matches!(
-                effect,
-                EffectRequest::Shield { .. }
-                    | EffectRequest::HitSpark { .. }
-                    | EffectRequest::DestroyOwned
-            ) {
+            if effect.is_immediate() {
                 sink.spawn_effect(effect);
             } else {
                 deferred.push(effect);
@@ -69,6 +106,17 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
         for effect in self.effects.drain(..) {
             sink.spawn_effect(effect);
         }
+    }
+}
+impl EffectRequest {
+    fn is_immediate(&self) -> bool {
+        matches!(
+            self,
+            Self::Shield { .. }
+                | Self::HitSpark { .. }
+                | Self::DestroyOwned
+                | Self::FlushDeferred(_)
+        )
     }
 }
 
@@ -132,7 +180,10 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
             }
             if !(id < 0x250
                 || id / 1000 == 30
-                || matches!(id, 0x3F3 | 0x407 | 0x3FE | 0x3FF | 0x400 | 0x401 | 0x402))
+                || matches!(
+                    id,
+                    0x3F3 | 0x3F7 | 0x407 | 0x3FE | 0x3FF | 0x400 | 0x401 | 0x402
+                ))
             {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");
             }
@@ -144,7 +195,7 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
             ] {
                 let random = rng.randf();
                 // Early branch: retail 8009F94C/F970/F9A4 fmadds.
-                // 3F3/407/3FE/3FF/400/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
+                // 3F3/3F7/407/3FE/3FF/400/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
                 // The range doubling and random subtraction round separately.
                 *value = gekko_math::fma::fmadds(2.0 * range, random - 0.5, *value);
                 draws += 1;

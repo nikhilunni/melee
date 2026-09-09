@@ -30,6 +30,16 @@ The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
 attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
 remain explicit unsupported branches. No general moveset completeness is claimed.
 
+## Lane C: Falco
+
+All eighteen Falco idle/start/movement scenes pass at 49 keys per tick, with
+ordered particle RNG ledgers. The mixed Falco/Fox bone oracle compares 174160
+SRT words. Falco shares the typed Fox special-attribute reader in `melee-ft`
+and uses the existing character hooks. His jump flash exposed the shared
+motion-change effect queue flush; that now retains the outgoing transform and
+retail request order. See [M4_FALCO.md](M4_FALCO.md) and
+[FALCO_DATA.md](../../../../docs/FALCO_DATA.md).
+
 ## M4-T9 Falls and Marth shield entry
 
 All sixteen Marth movement scenes and Fox's backward aerial jump now pass the
