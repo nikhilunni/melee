@@ -1,0 +1,25 @@
+# KO and respawn (stock 2): Marth dashes in and forward-smashes the idle Fox
+# off the right edge; Fox dies, respawns on the revival platform, waits, and
+# drops to the stage. Recorded from idle2_fd_marth.sav (stock 2 rules).
+name = "ko_fd_marth"
+savestate = "harness/roms/idle2_fd_marth.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 88, buttons = {} },
+  { frame = 120, buttons = { StickX = 1.0, A = true } },
+  { frame = 123, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
