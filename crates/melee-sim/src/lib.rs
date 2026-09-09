@@ -12,3 +12,5 @@ pub mod frame;
 pub mod initial_state;
 pub mod scenario;
 pub mod trace;
+
+mod effects;

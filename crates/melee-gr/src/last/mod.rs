@@ -1,6 +1,7 @@
 //! Direct grlast.c state machine. Engine dependencies are explicit actions and
 //! observations; the pending particle/material interpreters must not be confused
 //! with direct stage RNG draws. See docs/FD_STAGE.md.
+pub mod animation;
 pub mod background;
 pub mod init;
 pub mod lights;

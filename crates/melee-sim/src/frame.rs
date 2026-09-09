@@ -17,6 +17,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 enum Callback {
     Stage { map: Option<u8>, address: u32 },
     Fighter { player: usize, proc: FighterProc },
+    Effects,
     ParticlesMain,
     ParticlesAux,
 }
@@ -54,6 +55,13 @@ fn registrations(stage: &FinalDestination) -> Vec<Registration> {
         }));
     }
     rows.extend([
+        Registration {
+            s_link: 15,
+            p_link: 11,
+            priority: 0,
+            object: 1,
+            callback: Callback::Effects,
+        },
         Registration {
             s_link: 15,
             p_link: 11,
@@ -117,14 +125,27 @@ impl Runtime {
                     FighterProc::CpuGate => f.proc_cpu_gate(),
                     FighterProc::Input => f.proc_input(assets, &PadSample::default()),
                     FighterProc::Update => f.proc_update(assets, &state.map, Vec3::ZERO),
-                    FighterProc::Map => f.proc_map(&mut state.map),
+                    FighterProc::Map => {
+                        f.proc_map_with_assets(assets, &mut state.map, &mut state.rng)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    }
                     FighterProc::Pose => f.proc_pose(&state.map),
                     FighterProc::Accessories => f.proc_accessories(),
-                    FighterProc::HitboxPositions => f.proc_hitbox_positions(),
+                    FighterProc::HitboxPositions => {
+                        state.effects.flush(
+                            player,
+                            f,
+                            &state.assets.effects,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                        f.proc_hitbox_positions();
+                    }
                     FighterProc::Grab => f.proc_grab(),
                     FighterProc::HitDetection => f.proc_hit_detection(),
                     FighterProc::ProcessHit => f.proc_process_hit(assets),
-                    FighterProc::Dynamics => f.proc_dynamics(),
+                    FighterProc::Dynamics => f.proc_dynamics_with_map(&mut state.map),
                     FighterProc::Camera => f.proc_camera(assets, 1.0),
                     FighterProc::PlayerMirror => f.proc_player_mirror(),
                 }
@@ -133,6 +154,21 @@ impl Runtime {
                 // Registered Ground wrappers: lighting, disabled spawn manager,
                 // fixed animation attachments, static collision, disabled rain.
                 // M3.md documents the scope and the constructor's phase guard.
+                0x801C1CD0 if map == Some(4) => {
+                    if let Some(animation) = &mut state.stage_animation {
+                        for event in animation.tick::<RetailTrig>() {
+                            let mut request =
+                                hsd_particle::system::SpawnRequest::new(event.bank, event.kind, 0);
+                            request.joint = Some((event.joint, event.matrix));
+                            state.particles.spawn::<RetailTrig>(
+                                &state.assets.particle_bank,
+                                request,
+                                &mut state.rng,
+                                &mut DrawLog::default(),
+                            )?;
+                        }
+                    }
+                }
                 0x801C461C | 0x801CADBC | 0x801C1CD0 | 0x801C1D38 | 0x801C0C2C => {}
                 _ => {
                     state.stage.run_stage_proc(
@@ -147,6 +183,12 @@ impl Runtime {
                     );
                 }
             },
+            Callback::Effects => state.effects.tick(
+                &mut state.fighters,
+                &state.assets.common_particle_bank,
+                &mut state.particles,
+                &mut state.rng,
+            )?,
             Callback::ParticlesMain => state
                 .particles
                 .proc_main::<RetailTrig>(&mut state.rng, &mut DrawLog::default())?,
@@ -200,7 +242,14 @@ impl Simulation {
             self.runtime.borrow().error.is_none(),
             "simulation is poisoned by a prior tick error"
         );
-        self.runtime.borrow_mut().rng_writers.clear();
+        {
+            let mut runtime = self.runtime.borrow_mut();
+            runtime.rng_writers.clear();
+            if runtime.frame != 0 {
+                // particleSort (psdisp.c:0x8039FC70), between observations.
+                runtime.state.particles.sort_for_display(7);
+            }
+        }
         self.world.run_procs();
         let mut runtime = self.runtime.borrow_mut();
         if let Some(error) = &runtime.error {
@@ -297,6 +346,7 @@ mod tests {
                 continue;
             }
             if phase == 15 {
+                expected.push((15, 11, 1, Callback::Effects));
                 expected.push((15, 11, 0, Callback::ParticlesMain));
                 expected.push((15, 12, 0, Callback::ParticlesAux));
                 continue;
@@ -361,5 +411,111 @@ mod tests {
             *calls.borrow(),
             ["item status", "fighter", "item update", "item map"]
         );
+    }
+}
+
+#[cfg(test)]
+mod start_tests {
+    use super::*;
+    use crate::{initial_state::particles, scenario::Scenario};
+    use std::{collections::BTreeSet, fs::File, io::BufReader, path::Path};
+    #[test]
+    fn start_effect_matrices_and_particle_state() {
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../harness/scenarios/start_fd_fox.toml"),
+        )
+        .unwrap();
+        let path = scenario.trace_path("particles.jsonl");
+        if let Some(missing) = scenario
+            .required_files()
+            .into_iter()
+            .chain([path.clone()])
+            .find(|p| !p.is_file())
+        {
+            eprintln!(
+                "skipping start matrices/particles: {} absent",
+                missing.display()
+            );
+            return;
+        }
+        let expected = melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap();
+        let changes: Vec<(u64, usize, [u32; 12])> = serde_json::from_str(include_str!(
+            "../../hsd-particle/tests/support/start_fd_joints.json"
+        ))
+        .unwrap();
+        let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+        // The ledger is verification only. Tick zero has no draws; its seed
+        // therefore is also the seed before tick zero's draws.
+        use std::io::BufRead;
+        let line = BufReader::new(File::open(scenario.trace_path("ledger600.raw.jsonl")).unwrap())
+            .lines()
+            .next()
+            .unwrap()
+            .unwrap();
+        let ledger: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert!(ledger["rng_draws"].as_array().unwrap().is_empty());
+        assert_eq!(ledger["seed"].as_u64(), Some(u64::from(initial.rng.seed)));
+        assert_eq!(initial.rng.seed, 0xCC51_A0A5);
+        let mut simulation = Simulation::new(initial);
+        assert_eq!(expected.len(), 600);
+        let mut attachments = BTreeSet::new();
+        let mut checked = 0;
+        let mut fields = 0;
+        for expected in expected {
+            simulation.tick().unwrap();
+            let runtime = simulation.runtime.borrow();
+            let state = &runtime.state;
+            attachments.extend(
+                state
+                    .particles
+                    .generators
+                    .iter()
+                    .filter_map(|g| g.attachment_id),
+            );
+            let mut matrices = state.effects.matrices();
+            for generator in &state.particles.generators {
+                if let Some(id) = generator
+                    .attachment_id
+                    .filter(|&id| id < crate::effects::FIRST_EFFECT_JOINT)
+                {
+                    matrices.insert(id, generator.joint_matrix.unwrap());
+                }
+            }
+            let ordered: Vec<_> = attachments.iter().copied().collect();
+            for &(_, normalized, words) in changes.iter().filter(|row| row.0 == expected.frame) {
+                let id = ordered[normalized];
+                let matrix = matrices.get(&id).unwrap();
+                let actual: Vec<_> = matrix.0.iter().flatten().map(|f| f.to_bits()).collect();
+                assert_eq!(
+                    actual, words,
+                    "effect matrix tick {} fixture joint {normalized} owned {id}",
+                    expected.frame
+                );
+                checked += 12;
+            }
+            struct Banks<'a>(&'a crate::assets::Assets);
+            impl particles::Banks for Banks<'_> {
+                fn bank(&self, id: u8) -> &hsd_particle::bank::ParticleBank {
+                    match id {
+                        0 => &self.0.common_particle_bank,
+                        30 => &self.0.particle_bank,
+                        _ => panic!("bank {id}"),
+                    }
+                }
+            }
+            let actual = particles::snapshot(
+                &state.particles,
+                state.rng.seed,
+                expected.frame,
+                &Banks(&state.assets),
+            );
+            if let Some(diff) = melee_diff::first_divergence([&expected], [&actual]) {
+                panic!("{diff}");
+            }
+            fields += expected.state.len();
+        }
+        assert_eq!(checked, changes.len() * 12);
+        eprintln!("{checked} captured matrix words and {fields} particle fields matched");
     }
 }

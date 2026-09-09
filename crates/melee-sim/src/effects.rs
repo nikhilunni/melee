@@ -1,0 +1,330 @@
+//! Headless ef subset. This should become `melee-ef` once that workspace member
+//! is added: effect descriptor loading, efAsync request dispatch, attached and
+//! positional effect instances, lifetime/animation procs, and DPtcl routing.
+//! The warp additionally needs the HSD spline/reference evaluator in `spline`.
+//! No spawn schedules or captured matrices are runtime inputs.
+mod spline;
+use anyhow::{ensure, Context, Result};
+use ft_fox::init::Fox;
+use gekko_math::HsdRng;
+use hsd_anim::{
+    aobj::AObjDesc,
+    fobj::FObjDesc,
+    jobj::{AnimJoint, JObjEvent, JObjId, JObjTree, JointSpec},
+    mtx::mtx_mult_vec,
+};
+use hsd_archive::{desc, Archive};
+use hsd_particle::{
+    bank::ParticleBank,
+    rng_sites::DrawLog,
+    system::{ParticleSystem, SpawnRequest},
+};
+use hsd_types::{Mtx, Vec3};
+use melee_ft::fighter::{effects::EffectRequest, Fighter, RetailTrig};
+use std::collections::BTreeMap;
+
+// efasync.c:288-293,750-756: request IDs select common effect descriptors.
+const ENTRY_WARP_REQUEST: u16 = 0x43E;
+const ENTRY_WARP_EFFECT: u32 = 0x24;
+const LANDING_REQUEST: u16 = 0x404;
+const LANDING_EFFECT: u32 = 0x18;
+// EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
+const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
+// Stage joint identities occupy the low range; effects own monotonic IDs.
+pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
+// EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
+const PARTICLE_KINDS: [i32; 4] = [10, 445, 448, 449];
+
+#[derive(Default)]
+pub(crate) struct Effects {
+    instances: Vec<Effect>,
+    next_joint: usize,
+}
+struct Effect {
+    tree: JObjTree,
+    root: JObjId,
+    attachment: Option<usize>,
+    lifetime: u16,
+    joint_base: usize,
+    paths: BTreeMap<usize, (JObjId, spline::Spline)>,
+}
+impl Effects {
+    #[cfg(test)]
+    pub fn matrices(&self) -> BTreeMap<usize, Mtx> {
+        let mut matrices = BTreeMap::new();
+        for effect in &self.instances {
+            let joints: Vec<_> = effect.tree.depth_first(effect.root).collect();
+            for joint in joints {
+                matrices.insert(effect.joint_base + joint.0, effect.tree.get(joint).mtx);
+            }
+        }
+        matrices
+    }
+    /// efAsync_QueueProcessDeferred (efasync.c:1321-1381), drained by
+    /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557).
+    pub fn flush(
+        &mut self,
+        player: usize,
+        fighter: &mut Fighter<Fox>,
+        archive: &Archive,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut requests = Vec::new();
+        fighter.drain_effects(&mut requests);
+        // efAsync_Spawn prepends to the pending list (efasync.c:1458-1462).
+        for request in requests.into_iter().rev() {
+            let (id, attachment) = match request {
+                EffectRequest::EntryWarp {
+                    id: ENTRY_WARP_REQUEST,
+                    ..
+                } => (ENTRY_WARP_EFFECT, Some(player)),
+                EffectRequest::Landing {
+                    id: LANDING_REQUEST,
+                    ..
+                } => (LANDING_EFFECT, None),
+                _ => anyhow::bail!("unsupported fighter effect {request:?}"),
+            };
+            let mut effect = Effect::load(archive, id)?;
+            // Reserve disjoint owned joint identities; stage IDs occupy 0..65536.
+            effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+            self.next_joint += effect.tree.len();
+            effect.attachment = attachment;
+            let root = fighter.animation.root;
+            fighter.skeleton.setup_matrix(root);
+            let matrix = fighter.skeleton.get(root).mtx;
+            let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
+            match request {
+                // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
+                EffectRequest::EntryWarp { scale, .. } => {
+                    effect.tree.set_scale(effect.root, &scale)
+                }
+                EffectRequest::Landing {
+                    offset,
+                    floor_angle,
+                    ..
+                } => {
+                    // efasync.c:1350-1355: lb_8000B1CC transforms the queued
+                    // offset by the fighter root, then 0x404 dispatches 0x18.
+                    mtx_mult_vec(&matrix, &offset, &mut position);
+                    effect.tree.set_rotation_z(effect.root, floor_angle);
+                }
+            }
+            effect.tree.set_translate(effect.root, &position);
+            // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
+            effect.animate(bank, particles, rng)?;
+            self.instances.push(effect);
+        }
+        Ok(())
+    }
+    /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
+    pub fn tick(
+        &mut self,
+        fighters: &mut [Fighter<Fox>; 2],
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        for effect in &mut self.instances {
+            if effect.lifetime != 0 {
+                effect.lifetime -= 1;
+                if effect.lifetime == 0 {
+                    continue;
+                }
+            }
+            if let Some(player) = effect.attachment {
+                let fighter = &mut fighters[player];
+                let root = fighter.animation.root;
+                fighter.skeleton.setup_matrix(root);
+                let matrix = fighter.skeleton.get(root).mtx;
+                // lb_8000C1C0's position constraint (0x90000001) resolves the
+                // attachment's world translation; it does not inherit rotation.
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+            }
+            effect.animate(bank, particles, rng)?;
+        }
+        self.instances.retain(|effect| effect.lifetime != 0);
+        Ok(())
+    }
+}
+impl Effect {
+    /// efLib_Create (eflib.c:433-536): table index, model, lifetime, animation.
+    fn load(archive: &Archive, id: u32) -> Result<Self> {
+        let table = archive
+            .public("effCommonDataTable")
+            .context("effect table")?;
+        let offset = table + 8 + id * EFFECT_DESCRIPTOR_SIZE;
+        let lifetime = archive.reader().f32(offset)? as u16;
+        ensure!(lifetime > 0, "unbounded effect lifetime unsupported");
+        let descriptor =
+            desc::JObjDesc::read(archive, archive.link(offset + 4)?.context("effect model")?)?;
+        let animation = desc::AnimJoint::read(
+            archive,
+            archive.link(offset + 8)?.context("effect animation")?,
+        )?;
+        let mut tree = JObjTree::new();
+        let root = tree.load_joint(&joint_spec(&descriptor)?);
+        let ids: Vec<_> = tree.depth_first(root).collect();
+        let descs = descriptor.descendants();
+        let mut paths = BTreeMap::new();
+        let mut references = BTreeMap::new();
+        attach(&mut tree, root, &animation, &mut references)?;
+        for &id in &ids {
+            let reference = references.get(&id.0).copied().unwrap_or(0);
+            if reference == 0 {
+                continue;
+            }
+            let index = descs
+                .iter()
+                .position(|d| d.offset == reference)
+                .context("unresolved spline joint")?;
+            let desc::JObjUnion::Spline(Some(offset)) = descs[index].u else {
+                anyhow::bail!("animation reference is not a spline");
+            };
+            paths.insert(id.0, (ids[index], spline::Spline::read(archive, offset)?));
+        }
+        tree.req_anim_all(root, 0.0);
+        Ok(Self {
+            tree,
+            root,
+            lifetime: lifetime + 1,
+            attachment: None,
+            joint_base: 0,
+            paths,
+        })
+    }
+    fn matrix(&mut self, joint: JObjId) -> Mtx {
+        self.tree.setup_matrix(joint);
+        if let Some((reference, _)) = self.paths.get(&joint.0) {
+            // JObjMakeMatrix, jobj.c:187-195: spline-reference translation
+            // uses the referenced joint's world matrix after ordinary SRT.
+            self.tree.setup_matrix(*reference);
+            let mut position = Vec3::ZERO;
+            mtx_mult_vec(
+                &self.tree.get(*reference).mtx,
+                &self.tree.get(joint).translate,
+                &mut position,
+            );
+            let matrix = &mut self.tree.get_mut(joint).mtx.0;
+            matrix[0][3] = position.x;
+            matrix[1][3] = position.y;
+            matrix[2][3] = position.z;
+        }
+        self.tree.get(joint).mtx
+    }
+    fn animate(
+        &mut self,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let joints: Vec<_> = self.tree.depth_first(self.root).collect();
+        let mut cb = hsd_anim::aobj::AObjEndCallback::default();
+        for joint in &joints {
+            self.tree.anim::<RetailTrig>(*joint, &mut cb);
+            for event in std::mem::take(&mut self.tree.events) {
+                match event {
+                    JObjEvent::Path { jobj, t } => {
+                        let (_, spline) = self.paths.get(&jobj.0).context("PATH without spline")?;
+                        self.tree.set_translate(jobj, &spline.point(t));
+                    }
+                    JObjEvent::DPtcl { jobj, lo, hi } => {
+                        // efLib_Cb_DPtcl -> efLib_SpawnParticleEffect,
+                        // eflib.c:857-1013: these kinds take hsd_8039EFAC(0,...).
+                        ensure!(
+                            lo == 0 && PARTICLE_KINDS.contains(&hi),
+                            "unsupported ef particle {lo}/{hi}"
+                        );
+                        let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
+                        request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
+                        particles.spawn::<RetailTrig>(
+                            bank,
+                            request,
+                            rng,
+                            &mut DrawLog::default(),
+                        )?;
+                    }
+                    JObjEvent::JSound(_) => {} // Audio has no simulation output.
+                    _ => anyhow::bail!("unsupported ef animation event {event:?}"),
+                }
+            }
+        }
+        for joint in joints {
+            let matrix = self.matrix(joint);
+            particles.update_joint(self.joint_base + joint.0, matrix);
+        }
+        Ok(())
+    }
+}
+fn vector(v: desc::Vec3) -> Vec3 {
+    Vec3::new(v.x, v.y, v.z)
+}
+/// Headless HSD_JObjLoadJoint: retain spline joints and reject constraints.
+/// DObjs/materials only render; SRT, flags and all joint FObjs are retained.
+fn joint_spec(d: &desc::JObjDesc) -> Result<JointSpec> {
+    ensure!(
+        d.robjdesc.is_none() && d.instance_of.is_none(),
+        "unsupported effect constraint/instance"
+    );
+    Ok(JointSpec {
+        flags: d.flags,
+        id: d.offset,
+        rotation: vector(d.rotation),
+        scale: vector(d.scale),
+        position: vector(d.position),
+        mtx: d.mtx.map(Mtx),
+        children: d.children().map(joint_spec).collect::<Result<_>>()?,
+        ..JointSpec::new()
+    })
+}
+fn attach(
+    tree: &mut JObjTree,
+    id: JObjId,
+    node: &desc::AnimJoint,
+    references: &mut BTreeMap<usize, u32>,
+) -> Result<()> {
+    ensure!(
+        node.robj_anim.is_none(),
+        "effect RObj animation unsupported"
+    );
+    let animation = AnimJoint {
+        flags: node.flags,
+        aobjdesc: node.aobjdesc.as_ref().map(|a| AObjDesc {
+            flags: a.flags,
+            end_frame: a.end_frame,
+            obj_id: a.obj_id,
+            fobjdesc: a
+                .tracks()
+                .map(|f| FObjDesc {
+                    length: f.length,
+                    startframe: f.startframe,
+                    obj_type: f.type_,
+                    frac_value: f.frac_value,
+                    frac_slope: f.frac_slope,
+                    ad: f.ad.clone(),
+                })
+                .collect(),
+        }),
+        children: vec![],
+    };
+    tree.add_anim(id, Some(&animation), None);
+    if let Some(a) = &node.aobjdesc {
+        references.insert(id.0, a.obj_id);
+    }
+    let mut child = tree.child(id);
+    let mut anim = node.child.as_deref();
+    while let (Some(id), Some(node)) = (child, anim) {
+        attach(tree, id, node, references)?;
+        child = tree.get(id).next;
+        anim = node.next.as_deref();
+    }
+    ensure!(
+        child.is_none() && anim.is_none(),
+        "effect animation tree mismatch"
+    );
+    Ok(())
+}

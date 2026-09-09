@@ -15,6 +15,8 @@ pub struct Assets {
     pub stage: Archive,
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
+    pub effects: Archive,
+    pub common_particle_bank: ParticleBank,
     fox: Archive,
     costumes: [Archive; 2],
 }
@@ -29,11 +31,24 @@ impl Assets {
         let stage_desc =
             melee_gr::desc::read_final_destination(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
         let particle_bank = ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?;
+        let effects = archive("EfCoData.dat")?;
+        // efAsync_LoadSync (efasync.c:1287-1316): command/texture pointers.
+        let table = effects
+            .public("effCommonDataTable")
+            .context("effect table")?;
+        let commands = effects.link(table)?.context("effect commands")? as usize;
+        let textures = effects.link(table + 4)?.context("effect textures")? as usize;
+        let common_particle_bank = ParticleBank::from_bytes(
+            &effects.data()[commands..textures],
+            &effects.data()[textures..],
+        )?;
         Ok(Self {
             fighter,
             stage,
             stage_desc,
             particle_bank,
+            effects,
+            common_particle_bank,
             fox,
             costumes: [archive("PlFxNr.dat")?, archive("PlFxOr.dat")?],
         })

@@ -68,9 +68,9 @@ pub(super) fn restore(saved: &SavedPose, assets: &Assets) -> Result<FinalDestina
         stage.ground.phase == Phase::LayeredStart
             && !stage.ground.transition_enabled
             && stage.ground.fade.complete
-            && !stage.ground.waiting_for_start
             && !stage.ground.demo_frozen,
-        "unsupported FD controller boundary"
+        "unsupported FD controller boundary: {:?}",
+        stage.ground
     );
     let bg = stage.ground.background.as_ref().unwrap();
     ensure!(

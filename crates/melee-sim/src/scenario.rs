@@ -48,8 +48,9 @@ impl Scenario {
     }
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            self.name == "idle_fd_fox" && self.stage == "FinalDestination",
-            "only idle_fd_fox on FinalDestination is supported"
+            matches!(self.name.as_str(), "idle_fd_fox" | "start_fd_fox")
+                && self.stage == "FinalDestination",
+            "only idle_fd_fox/start_fd_fox on FinalDestination is supported"
         );
         ensure!(
             (1..=600).contains(&self.frames),
@@ -90,10 +91,13 @@ impl Scenario {
             "PlFxAJ.dat",
             "PlCo.dat",
             "GrNLa.dat",
+            "EfCoData.dat",
         ]
         .map(|n| self.assets_path().join(n))
         .to_vec();
         paths.push(self.savestate_path());
+        paths.push(self.savestate_path().with_extension("sav.json"));
+        paths.push(self.trace_path("tick.raw.jsonl"));
         paths.extend(
             [
                 "ledger600.raw.jsonl",

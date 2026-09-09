@@ -31,18 +31,22 @@ pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox>
     let (tree, root) = assets.model(player.costume);
     let mut f = Fighter::prepare(player, assets.character(), &assets.fighter, tree, root, map);
     let root = f.animation.root;
-    f.animation
-        .set_animation(
-            &mut f.skeleton,
-            &assets.fighter.motions[&(word(raw, 0x14) as i32)],
-            float(raw, 0x894),
-            float(raw, 0x89C),
-        )
-        .unwrap();
-    f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
-    f.animation.step::<RetailTrig>(&mut f.skeleton);
-    f.animation.blend_progress = float(raw, 0x8A8);
-    f.animation.remainder = float(raw, 0x898);
+    if word(raw, 0x14) == u32::MAX {
+        f.animation.clear_motion(&mut f.skeleton);
+    } else {
+        f.animation
+            .set_animation(
+                &mut f.skeleton,
+                &assets.fighter.motions[&(word(raw, 0x14) as i32)],
+                float(raw, 0x894),
+                float(raw, 0x89C),
+            )
+            .unwrap();
+        f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
+        f.animation.step::<RetailTrig>(&mut f.skeleton);
+        f.animation.blend_progress = float(raw, 0x8A8);
+        f.animation.remainder = float(raw, 0x898);
+    }
     f.physics.self_velocity = vector(raw, 0x80);
     f.physics.knockback_velocity = vector(raw, 0x8C);
     f.physics.shield_knockback_velocity = vector(raw, 0x98);
@@ -75,24 +79,66 @@ pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox>
     f.dynamics_first_bone = (0..word(raw, 0x3E0) as usize)
         .map(|i| word(raw, 0x2F0 + i * 0x18))
         .collect();
+    // Fighter.x8B0[5], stride 0x14 (ft/types.h:1301-1308).
+    // ftAnim_800707B0 ignores a slot only when current is -1. Preserve
+    // even inactive scalar words rather than infer defaults from a pose.
+    for (index, state) in f.animation.part_animations.iter_mut().enumerate() {
+        let offset = 0x8B0 + index * 0x14;
+        state.state = word(raw, offset) as i32;
+        state.duration = float(raw, offset + 4);
+        state.progress = float(raw, offset + 8);
+        state.rate = float(raw, offset + 12);
+        state.previous = raw[offset + 16] as i8;
+        state.current = raw[offset + 17] as i8;
+        state.joints = f.bones.animation_sets[index]
+            .as_ref()
+            .map_or_else(Vec::new, |set| {
+                set.joints.iter().map(|&joint| usize::from(joint)).collect()
+            });
+    }
     let archive_base = word(raw, 0x24) - assets.fighter.motion_table_offset;
-    let pc = word(raw, 0x3EC) - archive_base;
-    f.commands.instruction = Some(
+    let pc = word(raw, 0x3EC).wrapping_sub(archive_base);
+    f.commands.instruction = (word(raw, 0x3EC) != 0).then(|| {
         assets
             .fighter
             .instruction_offsets
             .iter()
             .position(|&p| p == pc)
-            .unwrap(),
-    );
+            .unwrap()
+    });
     f.commands.timer = float(raw, 0x3E4);
     f.commands.frame = float(raw, 0x3E8);
-    assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
+    if f.commands.instruction.is_some() {
+        assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
+    } // SM_None clears the script pointer; its old union bytes are inactive.
     f.skeleton.set_rotation_y(
         root,
         (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32,
     );
     super::collision::restore(&mut f.collision, raw);
+    if word(raw, 0x10) == 322 {
+        use hsd_types::Vec2;
+        use melee_ft::fighter::{entry::EntryState, MotionData, MotionState};
+        f.motion_state = MotionState::ENTRY;
+        let current_scale = vector(raw, 0x2354);
+        f.skeleton.set_scale(root, &current_scale);
+        f.state_data = MotionData::Entry(EntryState {
+            timer: word(raw, 0x2340) as i32,
+            origin_y: float(raw, 0x2344),
+            original_scale: vector(raw, 0x2348),
+            current_scale,
+            trophy_height: float(raw, 0x2360),
+            trophy_scale: float(raw, 0x2364),
+            lift: float(raw, 0x2368),
+            collision_box: melee_types::mp::FtCollisionBox {
+                top: float(raw, 0x236C),
+                bottom: float(raw, 0x2370),
+                left: Vec2::new(float(raw, 0x2374), float(raw, 0x2378)),
+                right: Vec2::new(float(raw, 0x237C), float(raw, 0x2380)),
+            },
+        });
+    }
+
     f
 }
 fn import_input(raw: &[u8]) -> FighterInput {
