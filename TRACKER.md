@@ -170,11 +170,11 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [ ] RunDirect, skid, CliffClimbSlow/CliffEscapeSlow (the slow variants are chosen at 100%+ damage, so they wait for Milestone 5 combat)
 - [ ] Jumps backward, air movement, L-cancel
 - [ ] Ledge states (`ftcliffcommon.c` and `ftCo_Cliff*`)
-- [ ] Platform pass-through and drop
 - [ ] Shield, roll, spot dodge, air dodge (no hit interaction yet)
 - [ ] Scenarios for each, recorded from Dolphin
 - [x] (2026-09-09) Battlefield (Codex lane B1): `melee-gr/src/battle/`, `melee-sim/src/scene_stage.rs` stage dispatch, HSD light reader, particle opcode 0xB3; gates `idle_bf_fox`, `start_bf_fox` 600x49; particle replays 6,409,194 fields, 0 mismatches; `docs/BATTLEFIELD.md`.
-- [ ] Yoshi's Story stage (`grstory.c`, Randall, Shy Guys) and platform scenes on Battlefield (`platform_bf_fox`: land on a side platform, drop through, jump up through)
+- [x] (2026-09-09) Codex lane B2: platform landing, `ftCo_Pass` drop-through and one-way lines (`platform_bf_fox` 300x49); Yoshi's Story idle (`melee-gr/src/story/`, Randall and the Shy Guy schedule for the idle interval, spline support; `idle_ys_fox` 600x49, particle replay 51,303 fields). `docs/YOSHIS_STORY.md`. Full Shy Guy motion/hit/escape and a YS match start remain.
+- [ ] Platform drop-through with an opponent on the platform; Yoshi's Story match start (needs a start_ys_fox recording)
 
 - [x] (2026-09-09) **Second character: Marth (Codex M4-T8).** Characters and FD unlocked in RAM (`poke-or 0x8045BF28 u16 0xFFFF`; rules re-poked to stock 1 each session). Savestates `harness/roms/{idle,start}_fd_marth.sav` (P1 Marth kind 18 at -60, P2 Fox idle at +60) with tick traces, ledgers, particle and bone dumps. New `ft-mars` crate; `melee-ft` loaders take a `CharacterDescriptor` (files, symbols, part/animation counts); `melee-sim` scene holds a closed `SceneFighter` enum of boxed `Fighter<C>`; `melee-gr/src/music.rs` models the match-start alternate-music `HSD_Randi(100)` that only fires when all characters are unlocked (found via the ledger: `grLast`/`Ground_801C24F8+0x1B4`). Gates `idle_fd_marth`, `start_fd_marth` 600x49; bone oracle 90 Marth + 73 Fox bones, 202,672 SRT words. Report `melee-ft/src/fighter/M4_MARTH.md`, data `docs/MARTH_DATA.md`. Next: Marth variants of the 16 movement scenarios (recording).
 
