@@ -196,6 +196,10 @@ most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**
    Codex must never commit; you commit after verification.
 4. Bit-exact tests are the guardrail. If Codex touched expected values or
    loosened a test, reject the change.
+5. **One Codex task at a time.** Two concurrent runs each doing cargo builds
+   got the OS to kill them for memory (2026-09-08; the user's IDE holds ~14 GB).
+   Codex sessions survive: `codex exec resume <thread_id> "..."` continues
+   one (thread id is the first line of `.codex-runs/<name>.jsonl`).
 
 ## Hard boundaries
 
