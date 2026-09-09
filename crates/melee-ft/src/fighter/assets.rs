@@ -27,6 +27,8 @@ pub struct FighterAssets {
     pub common: CommonFighterData,
     pub input: InputCommonData,
     pub shield_health: f32,
+    pub entry: super::entry::EntryParameters,
+    pub soft_landing_speed: f32,
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub hurtboxes: Vec<super::caches::Hurtbox>,
@@ -43,7 +45,7 @@ pub struct FighterAssets {
 }
 impl FighterAssets {
     /// Fighter_LoadCommonData (0x80067ABC) / ftData_80085CD8:
-    /// only Fox's ordinary Wait resources, caller-owned archives and AJ bytes.
+    /// Fox's Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
     pub fn fox(fox: &Archive, common: &Archive, aj: &[u8]) -> Result<Self> {
         let root = fox.public("ftDataFox").ok_or("missing ftDataFox")?;
         let table = read_fox_animations(fox)?;
@@ -54,7 +56,7 @@ impl FighterAssets {
         let motion_table = table.table_offset.ok_or("missing motion table")?;
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        for id in [2, 3, 20] {
+        for id in [2, 3, 20, 35, 238] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -122,6 +124,12 @@ impl FighterAssets {
             parts: read_part_table(common, melee_types::FighterKind::Fox, 54)?,
             common: read_common_data(common)?,
             input: InputCommonData::read(common)?,
+            entry: super::entry::EntryParameters {
+                grow_frames: common.reader().s32(common_data + 0x6BC)?,
+                shrink_frames: common.reader().s32(common_data + 0x6C0)?,
+                initial_scale_y: common.reader().f32(common_data + 0x6C4)?,
+            },
+            soft_landing_speed: -common.reader().f32(common_data + 0x310)?,
             shield_health: common.reader().f32(common_data + 0x260)?,
             name_tag_duration: common.reader().u32(common_data + 0x5F0)? as u16,
             thrown_hitbox: {
@@ -134,7 +142,7 @@ impl FighterAssets {
             },
             hurtboxes: read_hurtboxes(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
-            motions: [2, 3, 20]
+            motions: [2, 3, 20, 35, 238]
                 .into_iter()
                 .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
                 .collect::<Result<_>>()?,
@@ -178,6 +186,7 @@ fn read_script(
                 variant: ((word >> 12) & 127) as usize,
                 blend: (word & 4095) as f32,
             },
+            55 => Command::LandingEffect((word & 0xFFFF) as u16),
             52 => Command::GroundPose((word & 7) as u8),
             40 => {
                 let mut indices = vec![((word >> 18) & 127) as usize];
@@ -191,7 +200,7 @@ fn read_script(
             }
             _ => {
                 return Err(format!(
-                    "unsupported Wait opcode {opcode} at {offset:#x} (ftaction.c:1344)"
+                    "unsupported fighter opcode {opcode} at {offset:#x} (ftaction.c:1344)"
                 )
                 .into())
             }
@@ -206,6 +215,7 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
+            Command::LandingEffect(_) => offset += 12,
             _ => offset += 4,
         }
     }

@@ -152,18 +152,22 @@ impl Fixture {
         player.costume = raw[0x619];
         let mut f = self.prepared(player);
         let root = f.animation.root;
-        f.animation
-            .set_animation(
-                &mut f.skeleton,
-                &self.assets.motions[&(word(raw, 0x14) as i32)],
-                float(raw, 0x894),
-                float(raw, 0x89C),
-            )
-            .unwrap();
-        f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
-        f.animation.step::<RetailTrig>(&mut f.skeleton);
-        f.animation.blend_progress = float(raw, 0x8A8);
-        f.animation.remainder = float(raw, 0x898);
+        if word(raw, 0x14) == u32::MAX {
+            f.animation.clear_motion(&mut f.skeleton);
+        } else {
+            f.animation
+                .set_animation(
+                    &mut f.skeleton,
+                    &self.assets.motions[&(word(raw, 0x14) as i32)],
+                    float(raw, 0x894),
+                    float(raw, 0x89C),
+                )
+                .unwrap();
+            f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
+            f.animation.step::<RetailTrig>(&mut f.skeleton);
+            f.animation.blend_progress = float(raw, 0x8A8);
+            f.animation.remainder = float(raw, 0x898);
+        }
         f.physics.self_velocity = vector(raw, 0x80);
         f.physics.knockback_velocity = vector(raw, 0x8C);
         f.physics.shield_knockback_velocity = vector(raw, 0x98);
@@ -198,22 +202,47 @@ impl Fixture {
             .map(|i| word(raw, 0x2F0 + i * 0x18))
             .collect();
         let archive_base = word(raw, 0x24) - self.assets.motion_table_offset;
-        let pc = word(raw, 0x3EC) - archive_base;
-        f.commands.instruction = Some(
+        let pc = word(raw, 0x3EC).wrapping_sub(archive_base);
+        f.commands.instruction = (word(raw, 0x3EC) != 0).then(|| {
             self.assets
                 .instruction_offsets
                 .iter()
                 .position(|&p| p == pc)
-                .unwrap(),
-        );
+                .unwrap()
+        });
         f.commands.timer = float(raw, 0x3E4);
         f.commands.frame = float(raw, 0x3E8);
-        assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
+        if f.commands.instruction.is_some() {
+            assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
+        } // SM_None clears the script pointer; its old union bytes are inactive.
         f.skeleton.set_rotation_y(
             root,
             (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32,
         );
         collision::restore(&mut f.collision, raw);
+        if word(raw, 0x10) == 322 {
+            use hsd_types::Vec2;
+            use melee_ft::fighter::{entry::EntryState, MotionData, MotionState};
+            f.motion_state = MotionState::ENTRY;
+            let current_scale = vector(raw, 0x2354);
+            f.skeleton.set_scale(root, &current_scale);
+            f.state_data = MotionData::Entry(EntryState {
+                timer: word(raw, 0x2340) as i32,
+                origin_y: float(raw, 0x2344),
+                original_scale: vector(raw, 0x2348),
+                current_scale,
+                trophy_height: float(raw, 0x2360),
+                trophy_scale: float(raw, 0x2364),
+                lift: float(raw, 0x2368),
+                collision_box: melee_types::mp::FtCollisionBox {
+                    top: float(raw, 0x236C),
+                    bottom: float(raw, 0x2370),
+                    left: Vec2::new(float(raw, 0x2374), float(raw, 0x2378)),
+                    right: Vec2::new(float(raw, 0x237C), float(raw, 0x2380)),
+                },
+            });
+        }
+
         f
     }
 }

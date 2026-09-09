@@ -51,12 +51,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return Ok(None);
         }
         self.status.require_idle();
-        match self.motion_state.callbacks.animation {
-            state::AnimationCallback::Wait => {}
-            state::AnimationCallback::FallUnimplemented => {
-                unimplemented!("ftCo_Fall.c:106: Fall_Anim")
-            }
-        }
         self.physics.begin_tick();
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
             self.status.name_tag_timer -= 1;
@@ -68,6 +62,26 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.time_since_smash += 1.0;
         }
         self.step_animation(assets);
+        match self.motion_state.callbacks.animation {
+            state::AnimationCallback::Entry
+            | state::AnimationCallback::EntryStart
+            | state::AnimationCallback::EntryEnd => {
+                self.entry_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Fall => {
+                self.fall_animation();
+                return Ok(None);
+            }
+            state::AnimationCallback::Landing => {
+                self.landing_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::FallUnimplemented => {
+                unimplemented!("unsupported installed Fall callback")
+            }
+            state::AnimationCallback::Wait => {}
+        }
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
         let result = self.animation.update_wait_with_restart(
@@ -101,10 +115,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return;
         }
         self.status.require_idle();
-        match self.motion_state.callbacks.input {
-            state::InputCallback::Wait => {}
-            state::InputCallback::FallUnimplemented => unimplemented!("ftCo_Fall.c:198: Fall_IASA"),
-        }
         let effects = update_input(
             &mut self.input,
             input_source(self.player.control, self.cpu.mode),
@@ -117,16 +127,55 @@ impl<C: CharacterCallbacks> Fighter<C> {
         );
         self.joystick_count += u64::from(effects.joystick_count_increments);
         if effects.run_input_callback {
-            let transition = wait_iasa(
-                &self.input,
-                &assets.input,
-                &WaitContext {
-                    facing: self.physics.facing,
-                    specials_available: self.capabilities.specials,
-                    shield_health: self.status.shield_health,
-                    ..WaitContext::default()
-                },
-            );
+            if matches!(
+                self.motion_state.callbacks.input,
+                state::InputCallback::Entry
+                    | state::InputCallback::EntryStart
+                    | state::InputCallback::EntryEnd
+            ) {
+                return;
+            }
+            if self.motion_state.callbacks.input == state::InputCallback::Fall {
+                let transition = super::fall::iasa(
+                    &self.input,
+                    &assets.input,
+                    self.physics.jumps_used,
+                    self.attributes.jumping.max_jumps,
+                );
+                assert_eq!(
+                    transition,
+                    WaitTransition::None,
+                    "unsupported airborne transition {transition:?}"
+                );
+                return;
+            }
+            let context = WaitContext {
+                facing: self.physics.facing,
+                specials_available: self.capabilities.specials,
+                shield_health: self.status.shield_health,
+                ..WaitContext::default()
+            };
+            let transition = if self.motion_state.callbacks.input == state::InputCallback::Landing {
+                let MotionData::Landing { allow_interrupt } = self.state_data else {
+                    panic!("landing data missing")
+                };
+                super::landing::iasa(
+                    &self.input,
+                    &assets.input,
+                    &context,
+                    self.animation.frame,
+                    self.animation.speed,
+                    self.attributes.landing.normal_landing_lag,
+                    allow_interrupt,
+                )
+            } else {
+                assert_eq!(
+                    self.motion_state.callbacks.input,
+                    state::InputCallback::Wait,
+                    "unsupported installed input callback"
+                );
+                wait_iasa(&self.input, &assets.input, &context)
+            };
             if transition != WaitTransition::None {
                 unimplemented!("ftCo_Wait.c:46-66: non-idle IASA transition {transition:?}");
             }
@@ -138,25 +187,51 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return;
         }
         self.status.require_idle();
-        match self.motion_state.callbacks.physics {
-            state::PhysicsCallback::Wait => {}
-            state::PhysicsCallback::FallUnimplemented => {
-                unimplemented!("ftCo_Fall.c:203: Fall_Phys")
-            }
-        }
-        if self.physics.ground_or_air != melee_types::GroundOrAir::Ground {
-            unimplemented!("fighter.c:2181: airborne physics");
-        }
         if self.status.ledge_cooldown != 0 {
             self.status.ledge_cooldown -= 1;
         }
-        step_wait(
-            &mut self.physics,
-            &self.collision.data,
-            &GroundedParameters::from_attributes(&self.attributes, &assets.common),
-            map,
-            wind,
-        );
+        match self.motion_state.callbacks.physics {
+            state::PhysicsCallback::Wait | state::PhysicsCallback::Landing => step_wait(
+                &mut self.physics,
+                &self.collision.data,
+                &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+                map,
+                wind,
+            ),
+            state::PhysicsCallback::Fall => {
+                assert_eq!(
+                    self.input.current.stick.y, 0.0,
+                    "fast-fall input is outside the neutral path"
+                );
+                assert_eq!(
+                    self.physics.knockback_velocity,
+                    Vec3::ZERO,
+                    "air knockback decay needs damage physics"
+                );
+                assert_eq!(
+                    self.physics.shield_knockback_velocity,
+                    Vec3::ZERO,
+                    "air shield knockback decay needs damage physics"
+                );
+                crate::physics::airborne::fall_physics(
+                    &mut self.physics,
+                    &self.attributes.air,
+                    self.input.current.stick.x,
+                );
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::Entry
+            | state::PhysicsCallback::EntryStart
+            | state::PhysicsCallback::EntryEnd => {
+                self.entry_physics(assets.entry);
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::FallUnimplemented => {
+                unimplemented!("unsupported installed Fall physics")
+            }
+        }
         for hurt in &mut self.hurtboxes {
             hurt.cached = false;
         }
@@ -167,12 +242,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return;
         }
         self.status.require_idle();
-        match self.motion_state.callbacks.collision {
-            state::CollisionCallback::Wait => {}
-            state::CollisionCallback::FallUnimplemented => {
-                unimplemented!("ftCo_Fall.c:208: Fall_Coll")
-            }
-        }
+        assert!(
+            matches!(
+                self.motion_state.callbacks.collision,
+                state::CollisionCallback::Wait | state::CollisionCallback::Landing
+            ),
+            "airborne map needs proc_map_with_assets"
+        );
+        self.map_ground(map);
+    }
+    fn map_ground(&mut self, map: &mut CollMap) {
         match map_wait(
             &mut self.physics,
             &mut self.collision,
@@ -185,6 +264,97 @@ impl<C: CharacterCallbacks> Fighter<C> {
             WaitGroundResult::EnterFall => unimplemented!("ft_081B.c:1094: Wait -> Fall"),
             WaitGroundResult::EnterTeeter => unimplemented!("ft_081B.c:1092: Wait -> Ottotto"),
         }
+    }
+    /// State-changing map dispatch, including Landing's immediate command/RNG work.
+    /// The original proc_map remains the grounded API used by melee-sim M3.
+    pub fn proc_map_with_assets(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut CollMap,
+        rng: &mut HsdRng,
+    ) -> Result<usize> {
+        use crate::collision::air;
+        if self.status.disabled {
+            return Ok(0);
+        }
+        self.status.require_idle();
+        match self.motion_state.callbacks.collision {
+            state::CollisionCallback::Wait | state::CollisionCallback::Landing => {
+                self.map_ground(map)
+            }
+            state::CollisionCallback::Entry
+            | state::CollisionCallback::EntryStart
+            | state::CollisionCallback::EntryEnd => {
+                air::begin_map(
+                    &self.physics,
+                    &mut self.collision,
+                    &mut self.skeleton,
+                    self.animation.root,
+                );
+                if self.motion_state.callbacks.collision != state::CollisionCallback::Entry {
+                    let MotionData::Entry(entry) = &self.state_data else {
+                        panic!("entry data missing")
+                    };
+                    let was_airborne = self.physics.ground_or_air == melee_types::GroundOrAir::Air;
+                    let supported = air::collide_entry(
+                        &mut self.physics,
+                        &mut self.collision,
+                        map,
+                        entry.collision_box,
+                    );
+                    if was_airborne && supported {
+                        self.land();
+                    } else if !was_airborne && !supported {
+                        self.leave_ground();
+                    }
+                }
+                self.skeleton
+                    .set_translate(self.animation.root, &self.physics.position);
+            }
+            state::CollisionCallback::Fall => {
+                air::begin_map(
+                    &self.physics,
+                    &mut self.collision,
+                    &mut self.skeleton,
+                    self.animation.root,
+                );
+                if air::collide_fall(
+                    &mut self.physics,
+                    &mut self.collision,
+                    map,
+                    &mut self.skeleton,
+                    self.animation.root,
+                ) {
+                    if self.physics.self_velocity.y > assets.soft_landing_speed {
+                        self.land();
+                        self.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
+                    } else {
+                        self.enter_landing(assets)?;
+                    }
+                }
+            }
+            state::CollisionCallback::FallUnimplemented => {
+                unimplemented!("unsupported installed Fall collision")
+            }
+        }
+        let mut draws = 0;
+        for id in self.commands.landing_effects.drain(..) {
+            // ftCo_8009F834 block_70. Even a zero range consumes three draws.
+            let mut offset = Vec3::ZERO;
+            for component in [&mut offset.x, &mut offset.y, &mut offset.z] {
+                let random = rng.randf();
+                // Retail fused sites 0x8009FCF8/FD1C/FD44 (asm.py --fused).
+                *component = gekko_math::fma::fmadds(0.0, random - 0.5, *component);
+                draws += 1;
+            }
+            let normal = self.collision.data.floor.normal;
+            self.effects.push(super::effects::EffectRequest::Landing {
+                id,
+                offset,
+                floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
+            });
+        }
+        Ok(draws)
     }
     /// Fighter_8006C5F4 (0x8006C5F4), s_link 7, fighter.c:2518-2525.
     pub fn proc_pose(&mut self, map: &CollMap) {

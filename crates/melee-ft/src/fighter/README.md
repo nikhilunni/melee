@@ -1,5 +1,9 @@
 # Fighter ownership and the T10 idle path
 
+The match-start extension and its remaining full-proc blocker are documented
+in [START_FOX.md](START_FOX.md). The T10 results below describe the original
+idle gate; they do not certify the match-start dynamics path.
+
 `Fighter<C>` owns `FighterPhysics` (including position and facing),
 `FighterAnimation`, `FighterInput`, `EnvironmentCollision`, attributes, bone
 descriptors, the main `JObjTree`, installed `MotionState` callbacks, command

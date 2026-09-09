@@ -2,6 +2,7 @@
 //! and `collision::ground::map_wait` at 6. Animation owns skeleton stepping.
 //! See README.md for the exact proc subset and unsupported outer callbacks.
 
+pub mod airborne;
 pub mod friction;
 pub mod grounded;
 pub mod integrate;

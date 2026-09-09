@@ -100,14 +100,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         } else {
             // ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
             // A failed probe leaves Fighter.cur_pos at the Player marker.
-            fighter.physics.ground_or_air = GroundOrAir::Air;
-            fighter.physics.ground_velocity = 0.0;
-            fighter.physics.shield_knockback_velocity.z = 0.0;
-            fighter.physics.position.z = 0.0;
-            fighter.physics.animation_velocity.y = 0.0;
-            fighter.physics.jumps_used = 1;
-            fighter.collision.lock_frames = 10;
-            fighter.collision.data.x130_flags |= melee_types::mp::coll_data_x130::LOCKED;
+            fighter.leave_ground();
         }
         fighter
             .skeleton
@@ -213,6 +206,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             bones: assets.bones.clone(),
             skeleton,
             motion_state: MotionState::WAIT,
+            state_data: MotionData::None,
+            effects: Vec::new(),
             character,
             capabilities,
             cpu: CpuState {
@@ -242,20 +237,33 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     /// Fighter_ChangeMotionState (0x800693AC), fighter.c:933-1391,
     /// reached through ft_8008A2BC/ft_8008A348 (Wait) or ftCo_Fall_Enter
-    /// (cold airborne spawn). Fall ticking remains explicitly unsupported.
+    /// (cold airborne spawn).
     pub fn change_motion_state(
         &mut self,
         state: CommonMotionState,
         assets: &FighterAssets,
     ) -> Result<()> {
         self.status.require_idle();
+        if matches!(
+            state,
+            CommonMotionState::Entry | CommonMotionState::EntryEnd
+        ) {
+            self.motion_state = if state == CommonMotionState::Entry {
+                MotionState::ENTRY
+            } else {
+                MotionState::ENTRY_END
+            };
+            self.animation.clear_motion(&mut self.skeleton);
+            self.commands.instruction = None;
+            return Ok(());
+        }
         let (motion_state, animation_id) = match state {
             CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
                 (MotionState::WAIT, 2)
             }
-            CommonMotionState::Fall if self.physics.ground_or_air == GroundOrAir::Air => {
-                (MotionState::FALL, 20)
-            }
+            CommonMotionState::Fall => (MotionState::FALL, 20),
+            CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
+            CommonMotionState::Landing => (MotionState::LANDING, 35),
             _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
         };
         self.motion_state = motion_state;
@@ -297,8 +305,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
             0.0,
             1.0,
         )?;
+        self.animation.set_rate(&mut self.skeleton, 1.0, false);
+        self.animation.frame = -1.0;
+        self.animation.remainder = 0.0;
         self.commands.restart(assets.command_entries[&animation_id]);
         self.step_animation(assets);
+        if state == CommonMotionState::Fall {
+            if self.physics.ground_or_air == GroundOrAir::Ground {
+                self.leave_ground();
+            }
+            self.state_data = MotionData::Fall { blend: 0.0 };
+            let max = self.attributes.air.air_drift_max;
+            self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-max, max);
+        }
         if state == CommonMotionState::Wait {
             // ft_8008A348, ft_08A1.c:98 -> ftCommon_8007EFC0.
             self.status.name_tag_timer = assets.name_tag_duration;

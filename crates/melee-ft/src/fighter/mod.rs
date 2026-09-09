@@ -3,6 +3,10 @@
 pub mod assets;
 pub mod caches;
 pub mod commands;
+pub mod effects;
+pub mod entry;
+pub mod fall;
+pub mod landing;
 mod procs;
 mod snapshot;
 mod spawn;
@@ -163,6 +167,8 @@ pub struct Fighter<C: CharacterCallbacks> {
     /// GObj.hsd_obj: main skeleton; animation owns the secondary tree.
     pub skeleton: JObjTree,
     pub motion_state: MotionState,
+    pub state_data: MotionData,
+    pub effects: Vec<effects::EffectRequest>,
     pub character: C,
     pub capabilities: Capabilities,
     pub cpu: CpuState,
@@ -208,4 +214,18 @@ pub struct CameraSubject {
     pub horizontal: Vec2,
     pub vertical: Vec3,
     pub facing: f32,
+}
+
+/// State-local data; the retail union starts at Fighter +2340.
+#[derive(Clone, Debug, Default)]
+pub enum MotionData {
+    #[default]
+    None,
+    Entry(entry::EntryState),
+    Fall {
+        blend: f32,
+    },
+    Landing {
+        allow_interrupt: bool,
+    },
 }

@@ -1,0 +1,9 @@
+The four .c.inc files are unchanged excerpts from doldecomp/melee's
+ft/ftcommon.c, under its MIT license. airborne_excerpts_match_decomp compares
+them with the pinned submodule. driver.c supplies only the accessed fields.
+
+Retail asm.py --fused reports no fused sites in these four functions. The C
+compiler uses -ffp-contract=off: in particular the stick multiplier followed
+by the flat acceleration must stay two operations. The sweep covers 100,000
+finite inputs, both signs of zero, neutral and non-neutral stick values,
+terminal speed and exact-friction boundaries.

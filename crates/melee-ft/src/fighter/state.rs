@@ -14,21 +14,41 @@ pub struct StateCallbacks {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
     Wait,
+    Entry,
+    EntryStart,
+    EntryEnd,
+    Fall,
+    Landing,
     FallUnimplemented,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
     Wait,
+    Entry,
+    EntryStart,
+    EntryEnd,
+    Fall,
+    Landing,
     FallUnimplemented,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
     Wait,
+    Entry,
+    EntryStart,
+    EntryEnd,
+    Fall,
+    Landing,
     FallUnimplemented,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
     Wait,
+    Entry,
+    EntryStart,
+    EntryEnd,
+    Fall,
+    Landing,
     FallUnimplemented,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,14 +64,54 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
-    /// Cold FD spawn can enter Fall; T10 ports entry, not airborne ticks.
+    /// Fall callbacks; neutral Anim/IASA/Phys/Coll are implemented.
     pub const FALL: Self = Self {
         id: CommonMotionState::Fall,
         callbacks: StateCallbacks {
-            animation: AnimationCallback::FallUnimplemented,
-            input: InputCallback::FallUnimplemented,
-            physics: PhysicsCallback::FallUnimplemented,
-            collision: CollisionCallback::FallUnimplemented,
+            animation: AnimationCallback::Fall,
+            input: InputCallback::Fall,
+            physics: PhysicsCallback::Fall,
+            collision: CollisionCallback::Fall,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ENTRY: Self = Self {
+        id: CommonMotionState::Entry,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Entry,
+            input: InputCallback::Entry,
+            physics: PhysicsCallback::Entry,
+            collision: CollisionCallback::Entry,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ENTRY_START: Self = Self {
+        id: CommonMotionState::EntryStart,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::EntryStart,
+            input: InputCallback::EntryStart,
+            physics: PhysicsCallback::EntryStart,
+            collision: CollisionCallback::EntryStart,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const ENTRY_END: Self = Self {
+        id: CommonMotionState::EntryEnd,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::EntryEnd,
+            input: InputCallback::EntryEnd,
+            physics: PhysicsCallback::EntryEnd,
+            collision: CollisionCallback::EntryEnd,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const LANDING: Self = Self {
+        id: CommonMotionState::Landing,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Landing,
+            input: InputCallback::Landing,
+            physics: PhysicsCallback::Landing,
+            collision: CollisionCallback::Landing,
             camera: CameraCallback::FollowFighter,
         },
     };

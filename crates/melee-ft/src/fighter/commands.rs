@@ -1,4 +1,4 @@
-//! Reachable Wait command interpreter, ftAction_80073240 (0x80073240).
+//! Reachable Wait, Fall, EntryStart and Landing command interpreter, ftAction_80073240 (0x80073240).
 //! Archive pointers are converted to instruction indices by assets.rs.
 use super::{assets::FighterAssets, RetailTrig};
 use crate::{
@@ -13,6 +13,7 @@ use hsd_anim::{
 #[derive(Clone, Debug)]
 pub enum Command {
     End,
+    LandingEffect(u16),
     Wait(f32),
     AtFrame(f32),
     Call {
@@ -44,6 +45,8 @@ pub struct CommandState {
     /// Requests to costume TObjs (ftAnim_800704F0). Rendering consumes these;
     /// TObj/GX execution remains M8, like the existing HSD model loader.
     pub texture_frames: Vec<(usize, f32)>,
+    /// ftAction_80072E4C requests, resolved at the calling proc boundary.
+    pub landing_effects: Vec<u16>,
 }
 impl CommandState {
     pub fn restart(&mut self, instruction: usize) {
@@ -69,6 +72,7 @@ impl CommandState {
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
                 Command::End => self.instruction = None,
+                Command::LandingEffect(id) => self.landing_effects.push(*id),
                 Command::Wait(frames) => self.timer += frames,
                 Command::AtFrame(frame) => self.timer = frame - self.frame,
                 Command::Call {

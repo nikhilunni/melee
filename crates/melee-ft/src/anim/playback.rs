@@ -205,6 +205,21 @@ impl FighterAnimation {
         Ok(())
     }
 
+    /// Fighter_ChangeMotionState (0x800693AC), fighter.c:1349-1357.
+    /// The state table's SM_None removes AObjs and keeps the current pose.
+    pub fn clear_motion(&mut self, tree: &mut JObjTree) {
+        tree.remove_anim_all_by_flags(self.root, 1);
+        self.blend_tree.remove_anim_all_by_flags(self.root, 1);
+        self.motion_id = -1;
+        self.flags = MotionFlags(0);
+        self.frame = -1.0;
+        self.remainder = 0.0;
+        self.speed = 1.0;
+        self.saved_speed = 1.0;
+        self.blend_duration = 0.0;
+        self.blend_progress = 0.0;
+    }
+
     /// `ftAnim_SetAnimRate` (0x8006F190) / `ftAnim_8006F0FC`: defer into
     /// fp+0x8A0 while Fighter.x2223_b0 is set, otherwise change both trees.
     pub fn set_rate(&mut self, tree: &mut JObjTree, rate: f32, deferred: bool) {
