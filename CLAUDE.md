@@ -66,6 +66,7 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 
 ```sh
 cargo gate                                                   # every unit/oracle test
+tools/perf-gate.sh                                            # separate release performance/size/instantiation regressions
 cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml   # M3: 600 ticks x 49 keys vs Dolphin
 cargo run -q -p melee-sim -- gate harness/scenarios/start_fd_fox.toml  # match start: entry, fall, landing, idle
 cargo test -p melee-ft --test start_fox_bones_130                      # 73 bones incl. tail dynamics vs Dolphin
@@ -299,10 +300,14 @@ path you did not expect; `git ls-files harness/roms harness/traces` must
 print nothing on `main` before any fast-forward. Keep a copy of
 `harness/roms` and `harness/traces` outside the repo (`~/melee-data/`) and
 refresh it after every recording session.
-Merging checklist (learned the hard way): after resolving conflicts,
-build the merged tree and grep the output for `error[`/`could not compile`
-as well as test failures before fast-forwarding `main`; a lane that passed
-in isolation can be semantically broken by a sibling's struct change.
+Before fast-forwarding `main`, run `tools/merge-check.sh <lane-branch>`
+in the lane worktree. It refuses tracked or touched game-data and decomp
+paths and an empty traces directory, checks ancestry and the checked-out
+revision, then runs the strict build, gate, M4, M5, particle, clippy and
+format chain, rejecting failure markers even when a command exits
+successfully. A lane that passed in isolation can be broken by a sibling's
+struct change; the merged tree must pass this script. The script never
+rebases or commits.
 
 ## Hard boundaries
 

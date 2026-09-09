@@ -81,5 +81,5 @@ The crate overrides `aerial_jump_style`, `multi_jump_attributes`, and
 family and provides the boundary for Kirby's helmet selection. Kirby gameplay
 itself is not enabled.
 
-See [M4_PUFF.md](../crates/melee-ft/src/fighter/M4_PUFF.md) for exact validation
+See [M4_PUFF.md](PORT_NOTES/M4_PUFF.md) for exact validation
 commands, save-boundary corrections, changed files and limits.

@@ -103,5 +103,5 @@ VI-aligned rendered capture. Tick-dump matrix caches are not rendered oracles.
 Special moves, sword-trail rendering, items, combat and Marth shield behavior
 remain outside the two idle/start scenes. No game files, captures or scenarios
 were modified, no Dolphin was run, and nothing was committed. See
-[`M4_MARTH.md`](../crates/melee-ft/src/fighter/M4_MARTH.md) for commands,
+[`M4_MARTH.md`](PORT_NOTES/M4_MARTH.md) for commands,
 scene-boundary corrections and the complete generalization list.

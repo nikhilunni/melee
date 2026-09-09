@@ -59,6 +59,7 @@ pub(crate) struct Effects {
     camera_quakes: Vec<(u16, Vec3)>,
     pub(crate) draws: DrawLog,
     instances: Vec<Effect>,
+    requests: Vec<EffectRequest>,
     next_joint: usize,
     fighter_joints: BTreeMap<usize, (usize, usize)>,
 }
@@ -66,6 +67,7 @@ struct Effect {
     velocity: Option<Vec3>,
     tree: JObjTree,
     root: JObjId,
+    joints: Vec<JObjId>,
     attachment: Option<usize>,
     owner: Option<usize>,
     lifetime: u16,
@@ -105,7 +107,7 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let mut requests = Vec::new();
+        let mut requests = std::mem::take(&mut self.requests);
         match timing {
             EffectTiming::Immediate => fighter.drain_immediate_effects(&mut requests),
             EffectTiming::Deferred => {
@@ -116,14 +118,17 @@ impl Effects {
         }
         // Motion changes have already sealed earlier queues with their outgoing
         // transforms. Preserve those flushes relative to immediate destruction.
-        let requests = requests.into_iter().flat_map(|request| match request {
-            EffectRequest::FlushDeferred(batch) => batch
+        let pending = requests.drain(..).flat_map(|request| {
+            let (batch, single) = match request {
+                EffectRequest::FlushDeferred(batch) => (batch, None),
+                request => (Vec::new(), Some((request, None))),
+            };
+            batch
                 .into_iter()
                 .map(|resolved| (resolved.request, Some(resolved.matrix)))
-                .collect::<Vec<_>>(),
-            request => vec![(request, None)],
+                .chain(single)
         });
-        for (request, resolved_matrix) in requests {
+        for (request, resolved_matrix) in pending {
             if let EffectRequest::EggShell { bone, scale } = request {
                 let joint = fighter.animation.parts[bone].joint;
                 fighter.skeleton.setup_matrix(joint);
@@ -361,6 +366,7 @@ impl Effects {
             effect.animate(bank, particles, rng, &mut self.draws)?;
             self.instances.push(effect);
         }
+        self.requests = requests;
         Ok(())
     }
     /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
@@ -476,6 +482,7 @@ impl Effect {
             attachment: None,
             owner: None,
             joint_base: 0,
+            joints: ids,
             paths,
         })
     }
@@ -505,11 +512,12 @@ impl Effect {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<()> {
-        let joints: Vec<_> = self.tree.depth_first(self.root).collect();
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
-        for joint in &joints {
-            self.tree.anim::<RetailTrig>(*joint, &mut cb);
-            for event in std::mem::take(&mut self.tree.events) {
+        for index in 0..self.joints.len() {
+            let joint = self.joints[index];
+            self.tree.anim::<RetailTrig>(joint, &mut cb);
+            let mut events = std::mem::take(&mut self.tree.events);
+            for event in events.drain(..) {
                 match event {
                     JObjEvent::Path { jobj, t } => {
                         let (_, spline) = self.paths.get(&jobj.0).context("PATH without spline")?;
@@ -569,8 +577,10 @@ impl Effect {
                     _ => anyhow::bail!("unsupported ef animation event {event:?}"),
                 }
             }
+            self.tree.events = events;
         }
-        for joint in joints {
+        for index in 0..self.joints.len() {
+            let joint = self.joints[index];
             let matrix = self.matrix(joint);
             particles.update_joint(self.joint_base + joint.0, matrix);
         }

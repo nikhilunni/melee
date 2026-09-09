@@ -35,3 +35,10 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 hsd-particle = { path = "../hsd-particle" }
 toml = "1.1"
+
+[dev-dependencies]
+criterion = { version = "0.8.2", default-features = false }
+
+[[bench]]
+name = "ticks"
+harness = false

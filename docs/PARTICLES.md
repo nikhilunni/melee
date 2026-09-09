@@ -461,7 +461,7 @@ SRT/ownership fields match. The new `appsrt` module owns the cache fields and
 ports their display update with explicit camera view / psFrameNum inputs
 (`psDispSubAppSRT`, 803A1F90..2184). The dump does not contain those external
 inputs, so the test remains red rather than importing expected cache outputs
-or excluding fields. Full audit and results: `melee-ft/src/fighter/M4_DASH.md`.
+or excluding fields. Full audit and results: `docs/PORT_NOTES/M4_DASH.md`.
 
 
 ## M4-T3 jump, aerial-jump and landing dust (2026-09-09)
@@ -506,4 +506,4 @@ sites below are existing, audited paths newly verified by the jump field oracle:
 The complete ledger has 9,554 draws: 9,544 particle, six landing offset,
 two Wait-choice and two stage draws. `melee-sim/tests/m4_gate.rs` independently
 checks the full-scene ordered particle sites with produced RNG. See
-[the fighter report](../crates/melee-ft/src/fighter/M4_JUMP.md) for all commands.
+[the fighter report](PORT_NOTES/M4_JUMP.md) for all commands.

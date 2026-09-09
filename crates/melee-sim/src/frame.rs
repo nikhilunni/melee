@@ -172,7 +172,7 @@ struct Runtime {
     frame: u64,
     error: Option<anyhow::Error>,
     /// Diagnostic only: values observed around procs, never gameplay inputs.
-    rng_writers: Vec<(String, u32)>,
+    rng_writers: Vec<(Option<Callback>, u32)>,
     particle_draws: DrawLog,
     interface: [melee_if::PercentDisplay; 2],
 }
@@ -315,14 +315,10 @@ impl Runtime {
                     grab_pairs::release(state, player)?;
                     let assets = &state.assets;
                     use crate::scene_fighter::with_fighter;
-                    let bodies: Vec<_> = state
-                        .fighters
-                        .iter()
-                        .enumerate()
-                        .map(|(slot, fighter)| {
-                            with_fighter!(fighter, |f| f.overlap_body(&assets.fighters[slot]))
-                        })
-                        .collect();
+                    let bodies = std::array::from_fn::<_, 2, _>(|slot| {
+                        with_fighter!(&state.fighters[slot], |f| f
+                            .overlap_body(&assets.fighters[slot]))
+                    });
                     let nudge = melee_ft::fighter::overlap::nudge(
                         player,
                         &bodies,
@@ -498,7 +494,8 @@ impl Simulation {
             pads,
             frame: 0,
             error: None,
-            rng_writers: Vec::new(),
+            // At most one writer per registered proc, plus match-start music.
+            rng_writers: Vec::with_capacity(rows.len() + 1),
             particle_draws: DrawLog::default(),
         }));
         let shared = Rc::clone(&runtime);
@@ -515,9 +512,7 @@ impl Simulation {
             }
             if seed != runtime.state.rng.seed {
                 let seed = runtime.state.rng.seed;
-                runtime
-                    .rng_writers
-                    .push((format!("{:?}", row.callback), seed));
+                runtime.rng_writers.push((Some(row.callback), seed));
             }
         });
         Self { world, runtime }
@@ -525,6 +520,13 @@ impl Simulation {
     /// Complete the imported partial tick first, then one full scheduler pass
     /// per call. Errors poison the simulation: a partial tick cannot be retried.
     pub fn tick(&mut self) -> Result<Record> {
+        self.tick_without_snapshot()?;
+        let runtime = self.runtime.borrow();
+        Ok(crate::trace::snapshot(&runtime.state, runtime.frame - 1))
+    }
+    /// Advance the same scheduler without constructing a diagnostic trace record.
+    /// Use this for headless throughput and allocation measurements.
+    pub fn tick_without_snapshot(&mut self) -> Result<()> {
         ensure!(
             self.runtime.borrow().error.is_none(),
             "simulation is poisoned by a prior tick error"
@@ -536,7 +538,7 @@ impl Simulation {
             if let Some((music, unlocked)) = runtime.state.pending_music.take() {
                 runtime.state.selected_music = Some(music.select(unlocked, &mut runtime.state.rng));
                 let seed = runtime.state.rng.seed;
-                runtime.rng_writers.push(("match-start music".into(), seed));
+                runtime.rng_writers.push((None, seed));
             }
             if runtime.frame != 0 {
                 // particleSort (psdisp.c:0x8039FC70), between observations.
@@ -548,16 +550,26 @@ impl Simulation {
         if let Some(error) = &runtime.error {
             anyhow::bail!("{error:#}");
         }
-        let record = crate::trace::snapshot(&runtime.state, runtime.frame);
         runtime.frame += 1;
-        Ok(record)
+        Ok(())
     }
     /// Ordered particle branch sites observed in the last completed tick.
     pub fn particle_rng_sites(&self) -> Vec<u32> {
         self.runtime.borrow().particle_draws.0.clone()
     }
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
-        self.runtime.borrow().rng_writers.clone()
+        self.runtime
+            .borrow()
+            .rng_writers
+            .iter()
+            .map(|&(callback, seed)| {
+                let name = callback.map_or_else(
+                    || "match-start music".into(),
+                    |callback| format!("{callback:?}"),
+                );
+                (name, seed)
+            })
+            .collect()
     }
 }
 

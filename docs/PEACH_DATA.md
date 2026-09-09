@@ -101,7 +101,7 @@ input cases, check float payloads and enum validity, verify load/reset behavior,
 and pin disc attributes, parts, animation-derived boundaries and all nine chains.
 Local disc-dependent tests skip cleanly if those files are absent.
 
-See [M4_PEACH.md](../crates/melee-ft/src/fighter/M4_PEACH.md) for the exact scenario
+See [M4_PEACH.md](PORT_NOTES/M4_PEACH.md) for the exact scenario
 commands, final output and full-workspace checks. The bone oracle compares SRT at
 the tick boundary, including quaternion W when enabled. Unused Euler W is excluded
 under the existing Marth/Fox contract. No rendered Peach matrix capture exists.

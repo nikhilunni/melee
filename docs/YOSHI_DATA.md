@@ -131,4 +131,4 @@ unsupported branches. Yoshi particle dumps are not newly compared field by
 field; ordered particle draws and scene seeds are gated, and existing
 `hsd-particle` field oracles still run. Commands, changed files, arithmetic
 audits and final results are in
-[`M4_YOSHI.md`](../crates/melee-ft/src/fighter/M4_YOSHI.md).
+[`M4_YOSHI.md`](PORT_NOTES/M4_YOSHI.md).

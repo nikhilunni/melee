@@ -93,7 +93,7 @@ save is paused at PC **80326290** inside `cosf`, called from **8039EC80**
 in the particle sphere emitter, under scheduler link 15. The current particle
 has not been allocated yet. The importer resumes it from saved stack operands;
 tick zero's remaining four draws are the existing primary-color sites.
-See [M4_FALCON.md](../crates/melee-ft/src/fighter/M4_FALCON.md) for the
+See [M4_FALCON.md](PORT_NOTES/M4_FALCON.md) for the
 instruction audit, exact commands and limits.
 
 Start and idle bone oracles compare local SRT at every tick boundary: **159398**

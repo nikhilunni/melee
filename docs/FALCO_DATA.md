@@ -91,5 +91,5 @@ lands at **80**, after its staggered entry (11/40/70); the notes' Fox tick 75
 is not this opponent's landing tick. The re-recorded `airjumpb_fd_falco`
 trace is present. Idle has only the existing idle RNG sites.
 
-See [M4_FALCO.md](../crates/melee-ft/src/fighter/M4_FALCO.md) for the shared
+See [M4_FALCO.md](PORT_NOTES/M4_FALCO.md) for the shared
 queue-flush correction, exact commands, results and changed files.
