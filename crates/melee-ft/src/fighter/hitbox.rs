@@ -8,6 +8,8 @@ use hsd_types::Vec3;
 pub struct HitboxDescriptor {
     pub group: u8,
     pub bone: usize,
+    pub common_bone: bool,
+    pub requires_throw_owner: bool,
     pub damage: f32,
     pub shield_damage: i8,
     pub sound_severity: u8,
@@ -31,15 +33,11 @@ impl HitboxDescriptor {
         let first = r.u32(offset)?;
         let flags = r.u32(offset + 12)?;
         let last = r.u32(offset + 16)?;
-        if first & (1 << 10) != 0 {
-            unimplemented!("ftaction.c:319: common hitbox bone mapping");
-        }
-        if flags & 8 != 0 {
-            unimplemented!("ftaction.c:300: throw-only hitbox command");
-        }
         // ftAction_8007121C --fused: none. Literal is 0.003906f, not 1/256.
         const SCALE: f32 = 0.003906;
         Ok(Self {
+            requires_throw_owner: flags & 8 != 0,
+            common_bone: first & (1 << 10) != 0,
             group: ((first >> 20) & 7) as u8,
             bone: ((first >> 11) & 255) as usize,
             damage: (first & 1023) as f32,

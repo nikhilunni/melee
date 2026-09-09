@@ -25,12 +25,41 @@ impl Spawns {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) {
+        self.apply(tick, system, banks, rng, draws, false);
+    }
+    pub fn after_particles(
+        &mut self,
+        tick: usize,
+        system: &mut ParticleSystem,
+        banks: &BTreeMap<u8, ParticleBank>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) {
+        self.apply(tick, system, banks, rng, draws, true);
+    }
+    fn apply(
+        &mut self,
+        tick: usize,
+        system: &mut ParticleSystem,
+        banks: &BTreeMap<u8, ParticleBank>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        after_particles: bool,
+    ) {
         let Some(events) = self.0.get(tick.to_string()).and_then(Value::as_array) else {
             return;
         };
         let mut last_spawn = None;
         for event in events {
-            if let Some(kind) = event.get("spawn") {
+            if (event["after_particles"] == true) != after_particles {
+                continue;
+            }
+            if let Some(site) = event.get("external_randf") {
+                // Caller-side efAsync orientation draw between generator requests.
+                assert_eq!(word(site), 0x8006_3b70);
+                rng.randf();
+                draws.0.push(word(site));
+            } else if let Some(kind) = event.get("spawn") {
                 let bank = word(&event["bank"]) as u8;
                 let mut request = SpawnRequest::new(bank, word(kind), word(&event["link"]) as u8);
                 request.position = std::array::from_fn(|axis| float(&event["position"][axis]));

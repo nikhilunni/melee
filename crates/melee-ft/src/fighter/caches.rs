@@ -23,6 +23,7 @@ impl HurtHeight {
 }
 #[derive(Clone, Debug)]
 pub struct Hurtbox {
+    pub grabbable: bool,
     pub height: HurtHeight,
     pub bone: usize,
     pub offsets: [Vec3; 2],

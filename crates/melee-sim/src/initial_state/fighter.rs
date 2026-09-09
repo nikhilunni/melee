@@ -36,6 +36,11 @@ pub(crate) fn import<C: CharacterCallbacks>(
     player.costume = raw[0x619];
     let (tree, root) = archive.model(player.costume);
     let mut f = Fighter::prepare(player, character, assets, tree, root, map);
+    f.spawn_number = word(raw, 0x8);
+    f.combat.capture_geometry = melee_ft::fighter::grab_throw::CaptureGeometry {
+        hip_scale: float(raw, 0x1A6C),
+        root_offset: vector(raw, 0x1A70),
+    };
     let root = f.animation.root;
     if word(raw, 0x14) == u32::MAX {
         f.animation.clear_motion(&mut f.skeleton);

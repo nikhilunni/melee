@@ -49,6 +49,27 @@ and the armored, animation-driven double jump use `ft-yoshi` hook overrides.
 Saved part-owned AObj/FObj streams, nullable Wait/guard data, counted command
 loops and static egg-shell effects are now supported. See
 [M4_YOSHI.md](M4_YOSHI.md) and [YOSHI_DATA.md](../../../../docs/YOSHI_DATA.md).
+## M5-A3 Capture, throw, tech and stocks (acceptance blocked)
+
+Grab and tech pass 300 ticks x49; KO passes 480 ticks x49. All three full
+particle replays pass. The full grab tests are now enabled. These paths
+supersede A2's linked-capture and tumble limits. **Final acceptance is blocked:**
+expanded raw coverage exposed incorrect existing throw sound-field offsets;
+the exactness rule required stopping without changing the comparator. Two new
+raw tests and clippy cleanup remain outstanding. [Evidence and full file list](M5_COMBAT3.md).
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| Grab pair / capture alignment / CatchWait | 80078A2C / 800DAC78 / 800DA1D8 | `grab.rs`, scene `frame/grab_pairs.rs`, typed links |
+| ThrowB / thrown animation / release | 800DD4B0 / 8007E3EC / 800DDDE4 | `grab_throw.rs`, borrowed scripts, HSD position constraint |
+| DownBoundD / DownWaitD / PassiveStandB | 8009794C / 80097FD0 / 800989D4 | `down.rs`, enum callbacks and script hurt status |
+| Forward smash / charge damage | 8008C3E0 / 800DEEB8 | `smash.rs`, archive descriptors, character hook |
+| Blast check / DeadDown / revival | 800D3158 / 800D3BC8 / 800D4FF4 | `life.rs`, player stocks, revival accessory, scene reset |
+| Percent death / stock icon loss | 802F491C / 802F8298 | `melee-if`, saved HUD boundary, interface effects |
+| Tornado / rectangular emission / random direction | 8039DAD4 / 8039930C / 80398F8C | `hsd-particle` |
+
+The captured KO remains on the platform through tick 479; no platform exit is
+recorded. Uncaptured branches and remaining review work are listed in the report.
 
 ## Lane C: Peach
 

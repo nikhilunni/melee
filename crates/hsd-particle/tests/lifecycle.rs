@@ -219,13 +219,25 @@ fn pool_exhaustion_keeps_geometry_draws_but_skips_particle_script() {
 }
 
 #[test]
-fn unsupported_shapes_and_app_srt_are_explicit_errors() {
+fn supported_shape_variants_and_unsupported_extensions_are_explicit() {
     for shape in [2, 5, 9, 15] {
         let mut d = descriptor(vec![]);
         d.generator_type = shape;
-        assert!(
-            matches!(Generator::new::<RetailTrig>(&d,0,0,&mut HsdRng::new(1),&mut DrawLog::default()),Err(Error::UnsupportedGenerator{shape:s}) if s==shape)
-        );
+        let result =
+            Generator::new::<RetailTrig>(&d, 0, 0, &mut HsdRng::new(1), &mut DrawLog::default());
+        match shape {
+            // A3 supplies these concrete variants; keep checking every original case.
+            2 => assert!(matches!(
+                result.unwrap().shape,
+                hsd_particle::generator::EmissionShape::Tornado { speed: 0.0 }
+            )),
+            5 => assert!(
+                matches!(result.unwrap().shape, hsd_particle::generator::EmissionShape::Rectangle { dimensions } if dimensions == d.parameters)
+            ),
+            _ => assert!(
+                matches!(result, Err(Error::UnsupportedGenerator { shape: s }) if s == shape)
+            ),
+        }
     }
     let mut d = descriptor(vec![]);
     d.kind = 0x20000;

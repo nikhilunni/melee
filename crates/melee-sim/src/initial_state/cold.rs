@@ -75,6 +75,8 @@ impl InitialState {
                 .expect("validated cold music rule"),
         ));
         Ok(Self {
+            stock_displays: [None, None],
+            spawn_counter: melee_ft::fighter::SpawnCounter(3),
             countdown: Some(crate::countdown::Countdown::load(&scenario.assets_path())?),
             assets,
             map,

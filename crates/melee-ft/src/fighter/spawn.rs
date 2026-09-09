@@ -303,6 +303,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             dynamics,
             dynamics_use_floor_plane: false,
             kind: character.kind(),
+            revival_platform: None,
             spawn_number: 0,
             physics,
             animation,
@@ -388,7 +389,34 @@ impl<C: CharacterCallbacks> Fighter<C> {
         rate: f32,
         row: Option<(MotionState, i32)>,
     ) -> Result<()> {
+        self.change_motion_state_with_options(state, assets, start, rate, row, None)
+    }
+
+    /// Borrow a throw animation/script while preserving ordinary row selection.
+    pub(super) fn change_motion_state_with_source(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(state, assets, start, rate, None, source)
+    }
+
+    #[allow(clippy::too_many_arguments)] // Independent table-row and throw-source overrides.
+    fn change_motion_state_with_options(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+        row: Option<(MotionState, i32)>,
+        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+    ) -> Result<()> {
         self.status.require_supported();
+        self.commands.smash_charge = None;
+        self.commands.borrowed_script = source.map(|(source, _)| source.commands.clone().into());
         self.status.interaction = Interaction::Idle;
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
@@ -443,12 +471,176 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.commands.instruction = None;
             return Ok(());
         }
+        if state == CommonMotionState::DeadDown {
+            self.motion_state = MotionState {
+                id: state,
+                action_id: self.character.action_id(state),
+                callbacks: state::StateCallbacks {
+                    animation: state::AnimationCallback::Dead,
+                    physics: state::PhysicsCallback::Dead,
+                    input: state::InputCallback::Catch,
+                    collision: state::CollisionCallback::Thrown,
+                    ..MotionState::CATCH.callbacks
+                },
+            };
+            self.animation.clear_motion(&mut self.skeleton);
+            self.commands.instruction = None;
+            self.animation.frame = -1.0;
+            return Ok(());
+        }
         let (motion_state, animation_id) = row.unwrap_or_else(|| {
             let (mut motion, animation) = match state {
+                CommonMotionState::Rebirth | CommonMotionState::RebirthWait => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Revival,
+                            physics: state::PhysicsCallback::Revival,
+                            input: state::InputCallback::Catch,
+                            collision: state::CollisionCallback::Revival,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    2,
+                ),
                 CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
                     (MotionState::WAIT, 2)
                 }
+                CommonMotionState::DamageFall => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Capture,
+                            ..MotionState::DAMAGE_N2.callbacks
+                        },
+                    },
+                    29,
+                ),
+                CommonMotionState::AttackS4S => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Jab,
+                            input: state::InputCallback::Tilt,
+                            physics: state::PhysicsCallback::Jab,
+                            collision: state::CollisionCallback::Escape,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    62,
+                ),
+                CommonMotionState::PassiveStandB => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::TechRoll,
+                            input: state::InputCallback::Catch,
+                            physics: state::PhysicsCallback::Jab,
+                            collision: state::CollisionCallback::Escape,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    201,
+                ),
+                CommonMotionState::DownBoundD | CommonMotionState::DownWaitD => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: if state == CommonMotionState::DownBoundD {
+                                state::AnimationCallback::DownBound
+                            } else {
+                                state::AnimationCallback::DownWait
+                            },
+                            input: state::InputCallback::Catch,
+                            physics: state::PhysicsCallback::Down,
+                            collision: state::CollisionCallback::Catch,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    if state == CommonMotionState::DownBoundD {
+                        191
+                    } else {
+                        192
+                    },
+                ),
+                CommonMotionState::ThrowB => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Throw,
+                            physics: state::PhysicsCallback::Jab,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    248,
+                ),
+                CommonMotionState::ThrownB => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Thrown,
+                            physics: state::PhysicsCallback::Capture,
+                            collision: state::CollisionCallback::Thrown,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    263,
+                ),
                 CommonMotionState::Catch => (MotionState::CATCH, 242),
+                CommonMotionState::CatchPull => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::CatchPull,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    242,
+                ),
+                CommonMotionState::CatchWait => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::CatchWait,
+                            ..MotionState::CATCH.callbacks
+                        },
+                    },
+                    244,
+                ),
+                CommonMotionState::CapturePulledLw | CommonMotionState::CaptureWaitLw => (
+                    MotionState {
+                        id: state,
+                        action_id: self.character.action_id(state),
+                        callbacks: state::StateCallbacks {
+                            animation: state::AnimationCallback::Capture,
+                            input: state::InputCallback::Catch,
+                            physics: state::PhysicsCallback::Capture,
+                            collision: state::CollisionCallback::Capture,
+                            camera: state::CameraCallback::FollowFighter,
+                        },
+                    },
+                    if state == CommonMotionState::CapturePulledLw {
+                        254
+                    } else {
+                        255
+                    },
+                ),
+                CommonMotionState::DamageFlyN => (
+                    MotionState {
+                        id: state,
+                        ..MotionState::DAMAGE_N2
+                    },
+                    178,
+                ),
                 CommonMotionState::DamageN2 => (MotionState::DAMAGE_N2, 169),
                 CommonMotionState::DamageN1 => (
                     MotionState {
@@ -551,14 +743,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.animation.set_animation(
             &mut self.skeleton,
-            &assets.motions[&animation_id],
+            source.map_or(&assets.motions[&animation_id], |(_, motion)| motion),
             start,
             rate,
         )?;
         self.animation.set_rate(&mut self.skeleton, rate, false);
         self.animation.frame = start - rate;
         self.animation.remainder = 0.0;
-        self.commands.restart(assets.command_entries[&animation_id]);
+        self.commands
+            .restart(source.map_or(assets, |(source, _)| source).command_entries[&animation_id]);
         // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:
         // main animation then commands. Part blends run only in the ordinary
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.

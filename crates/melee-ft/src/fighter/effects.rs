@@ -6,14 +6,30 @@ const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 #[derive(Clone, Debug, PartialEq)]
 pub enum EffectRequest {
     /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
-    EggShell { bone: usize, scale: f32 },
+    EggShell {
+        bone: usize,
+        scale: f32,
+    },
+    Death {
+        position: Vec3,
+        scale: f32,
+    },
+    /// fn_800DA1D8: async kind 1, hold-bone position sampled at queue flush.
+    CaptureFlash {
+        bone: usize,
+    },
     /// Fighter_ChangeMotionState flushes the queue using the outgoing pose.
     /// The scene consumes this batch at the owning proc boundary, in order.
     FlushDeferred(Vec<ResolvedEffect>),
     /// efSync_Spawn: shield model attached to the shield joint.
-    Shield { id: u16, bone: usize },
+    Shield {
+        id: u16,
+        bone: usize,
+    },
     /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
-    ShieldSpark { position: Vec3 },
+    ShieldSpark {
+        position: Vec3,
+    },
     HitSpark {
         position: Vec3,
         element: melee_types::HitElement,
@@ -22,9 +38,14 @@ pub enum EffectRequest {
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
     /// ftCliffCommon_80081370: async kind 2 with no bone, absolute position.
-    LedgeGrab { position: Vec3 },
+    LedgeGrab {
+        position: Vec3,
+    },
     /// efAsync kind 0 passes the live fighter joint without offset RNG.
-    Attached { id: u16, bone: usize },
+    Attached {
+        id: u16,
+        bone: usize,
+    },
     /// efAsync kinds 2/5/6 retain the bone and local offset until s_link 9.
     Graphics {
         id: u16,
@@ -34,7 +55,10 @@ pub enum EffectRequest {
         floor_angle: f32,
     },
     /// efAsync_Spawn(..., 3, 0x43E, root, scale), ft_0C31.c:130.
-    EntryWarp { id: u16, scale: Vec3 },
+    EntryWarp {
+        id: u16,
+        scale: Vec3,
+    },
     /// ftAction_80072E4C / ftCo_8009F834: root-relative landing dust.
     Landing {
         id: u16,
@@ -77,6 +101,7 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
         for request in pending.into_iter().rev() {
             let joint = match &request {
                 EffectRequest::EggShell { bone, .. }
+                | EffectRequest::CaptureFlash { bone }
                 | EffectRequest::Attached { bone, .. }
                 | EffectRequest::Graphics { bone, .. } => self.animation.parts[*bone].joint,
                 _ => self.animation.root,
@@ -116,7 +141,8 @@ impl EffectRequest {
     fn is_immediate(&self) -> bool {
         matches!(
             self,
-            Self::Shield { .. }
+            Self::Death { .. }
+                | Self::Shield { .. }
                 | Self::HitSpark { .. }
                 | Self::ShieldSpark { .. }
                 | Self::DestroyOwned
@@ -187,7 +213,17 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
                 || id / 1000 == 30
                 || matches!(
                     id,
-                    0x3F3 | 0x3F7 | 0x407 | 0x3FE | 0x3FF | 0x400 | 0x401 | 0x402
+                    0x3F8
+                        | 0x406
+                        | 0x514
+                        | 0x3F3
+                        | 0x3F7
+                        | 0x407
+                        | 0x3FE
+                        | 0x3FF
+                        | 0x400
+                        | 0x401
+                        | 0x402
                 ))
             {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");

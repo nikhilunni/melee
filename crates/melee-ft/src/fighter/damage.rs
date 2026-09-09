@@ -18,6 +18,9 @@ use melee_types::{CommonMotionState as S, GroundOrAir};
 pub struct CombatState {
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
+    pub capture_geometry: super::grab_throw::CaptureGeometry,
+    pub thrown_pose: Option<super::grab_throw::ThrownPose>,
+    pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
     pub dealt_damage: i32,
@@ -35,9 +38,17 @@ pub struct ReceivedHit {
     pub height: HurtHeight,
     pub facing: f32,
     pub knockback: f32,
+    pub facing_override: Option<f32>,
 }
 pub struct DamageParameters {
     pub weight_scale: f32,
+    pub throw_weight: f32,
+    pub down_wait_frames: f32,
+    pub tech_window: f32,
+    pub tech_lockout: i32,
+    pub tech_roll_threshold: f32,
+    pub ground_knockback_limit: f32,
+    pub trail_threshold: f32,
     pub weight_decay: f32,
     pub velocity_scale: f32,
     pub maximum: f32,
@@ -66,6 +77,13 @@ impl DamageParameters {
     pub fn read(a: &Archive, p: u32) -> Result<Self> {
         let r = a.reader();
         Ok(Self {
+            tech_window: r.f32(p + 0x250)?,
+            tech_lockout: r.u32(p + 0x1C)? as i32,
+            tech_roll_threshold: r.f32(p + 0x254)?,
+            down_wait_frames: r.f32(p + 0x424)?,
+            ground_knockback_limit: r.f32(p + 0x164)?,
+            throw_weight: r.f32(p + 0x10C)?,
+            trail_threshold: r.f32(p + 0x568)?,
             weight_scale: r.f32(p + 0xf4)?,
             weight_decay: r.f32(p + 0xf8)?,
             velocity_scale: r.f32(p + 0x100)?,
@@ -99,7 +117,10 @@ impl DamageParameters {
         let (p, d) = if hit.weight_knockback != 0 {
             (self.fixed_percent, f32::from(hit.weight_knockback))
         } else {
-            (fctiwz(percent) as f32 + hit.damage, hit.damage)
+            (
+                fctiwz(percent) as f32 + hit.damage,
+                fctiwz(hit.damage) as f32,
+            )
         };
         // retail 80079C34 (normal) / 80079B48 (fixed weight): fmadds.
         let inner = fmadds(self.percent_scale, p, self.damage_scale * (d * p));
@@ -148,7 +169,10 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
     attacker: &mut Fighter<A>,
     assets: &FighterAssets,
 ) {
-    if victim.status.disabled || attacker.status.disabled {
+    if victim.status.disabled
+        || attacker.status.disabled
+        || attacker.commands.thrown_by == Some(victim.spawn_number)
+    {
         return;
     }
     for id in 0..attacker.commands.hitboxes.len() {
@@ -159,6 +183,9 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
             continue;
         }
         let desc = &hit.descriptor;
+        if desc.element == melee_types::HitElement::Catch {
+            continue;
+        }
         let grounded = victim.physics.ground_or_air == GroundOrAir::Ground;
         if (grounded && !desc.hit_ground) || (!grounded && !desc.hit_air) {
             continue;
@@ -224,6 +251,7 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
                     1.0
                 },
                 knockback,
+                facing_override: None,
             });
             attacker.combat.has_recorded_hit = true;
             // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: the first
@@ -299,13 +327,16 @@ fn record_shield_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
 }
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.
-    fn contact_with_hurtboxes(
+    pub(super) fn contact_with_hurtboxes(
         &mut self,
         hit: &HitCapsule,
         attacker_scale: f32,
     ) -> Option<(Contact, HurtHeight)> {
         let desc = &hit.descriptor;
         for hurt in &mut self.hurtboxes {
+            if desc.element == melee_types::HitElement::Catch && !hurt.grabbable {
+                continue;
+            }
             if !hurt.cached {
                 hurt.positions = hurt.offsets.map(|offset| {
                     bone_position(&mut self.skeleton, self.animation.root, hurt.bone, offset)
@@ -435,6 +466,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         );
         self.collision.data.ledge_snap_height = ledge_height;
         if landed {
+            if matches!(self.motion_state.id, S::DamageFlyN | S::DamageFall) {
+                if self.try_tech(assets)? {
+                    return Ok(());
+                }
+                return self.enter_down_bound(assets);
+            }
             let v = self.physics.knockback_velocity;
             // retail 8008FBD4..E0: two fmuls then fadds, no contraction.
             let magnitude = sqrtf(v.x * v.x + v.y * v.y);
@@ -480,8 +517,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         Ok(())
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
-    fn begin_damage_reaction(&mut self, hit: ReceivedHit, assets: &FighterAssets) -> Result<i32> {
-        if self.physics.ground_or_air != GroundOrAir::Ground {
+    pub(super) fn begin_damage_reaction(
+        &mut self,
+        hit: ReceivedHit,
+        assets: &FighterAssets,
+    ) -> Result<i32> {
+        if self.physics.ground_or_air != GroundOrAir::Ground && self.motion_state.id != S::ThrownB {
             unimplemented!("ftCo_Damage.c:346: airborne hit");
         }
         let stun = hit.knockback * assets.damage.hitstun_scale;
@@ -496,6 +537,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             (0, HurtHeight::Middle) => S::DamageN1,
             (1, HurtHeight::Middle) => S::DamageN2,
             (2, HurtHeight::High) => S::DamageHi3,
+            (3, HurtHeight::Middle) => S::DamageFlyN,
             _ => unimplemented!(
                 "ftCo_Damage.c:63: damage level {level}, height {:?}",
                 hit.height
@@ -516,8 +558,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if normal.x != 0.0 || normal.y <= 0.0 {
             unimplemented!("ftCo_8008DCE0: sloped-floor launch angle");
         }
-        if vertical > 0.0 {
-            self.leave_ground();
+        if vertical > 0.0 || self.physics.ground_or_air == GroundOrAir::Air {
+            if self.physics.ground_or_air == GroundOrAir::Ground {
+                self.leave_ground();
+            }
             self.physics.knockback_velocity = Vec3::new(horizontal, vertical, 0.0);
             self.physics.ground_knockback_velocity = 0.0;
         } else {
@@ -527,6 +571,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.physics.self_velocity = Vec3::ZERO;
         self.physics.ground_velocity = 0.0;
+        if let Some(facing) = hit.facing_override {
+            self.physics.facing = facing;
+        }
+        if state == S::DamageFlyN && speed >= assets.damage.trail_threshold {
+            unimplemented!("ftCo_Damage_SetMv8FromKbThreshold: damage fly smoke");
+        }
         self.change_motion_state(state, assets)?;
         self.step_animation(assets);
         self.state_data = MotionData::Damage(DamageState {
@@ -573,7 +623,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if !self.animation.frames_remaining(&self.skeleton) && damage.hitstun <= 0.0 {
             self.change_motion_state(
                 if self.physics.ground_or_air == GroundOrAir::Air {
-                    S::Fall
+                    if self.motion_state.id == S::DamageFlyN {
+                        S::DamageFall
+                    } else {
+                        S::Fall
+                    }
                 } else {
                     S::Wait
                 },
@@ -619,7 +673,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             let transition = crate::input::wait_iasa(&self.input, &assets.input, context);
             self.apply_ground_transition(assets, transition)?;
-        } else if self.input.pressed.0 != 0 {
+        } else if self.input.pressed.intersects(crate::input::Buttons::XY)
+            || (self.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
+                && i32::from(self.input.vertical.tilt) < assets.input.thresholds.tap_jump_window)
+        {
             unimplemented!("ftCo_Damage.c:1015-1046: hitstun jump buffer");
         }
         Ok(())

@@ -45,6 +45,8 @@ use std::{
 /// The sole trace-to-runtime boundary. No expected records or ledger draws are
 /// retained by Simulation. Imports vs archive-derived state are listed in M3.md.
 pub struct InitialState {
+    pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
+    pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
     pub(crate) assets: Assets,
     pub(crate) fighters: [SceneFighter; 2],
     pub(crate) map: melee_mp::CollMap,
@@ -218,7 +220,7 @@ impl InitialState {
             .collect::<Result<Vec<_>>>()?;
         let bytes = saved_bytes;
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
-        let fighters: [SceneFighter; 2] = (0..2)
+        let mut fighters: [SceneFighter; 2] = (0..2)
             .map(|p| {
                 if match_start && word(&bytes[p], 0x10) == 0 && word(&bytes[p], 0x2C) == 0 {
                     setup_resume::fighter(&saved, &assets, p, &mut map, &mut rng)
@@ -236,6 +238,13 @@ impl InitialState {
             .try_into()
             .ok()
             .expect("two players");
+        for fighter in &mut fighters {
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                // Player_GetStocks, StaticPlayer stride 0xE90.
+                f.player.stocks =
+                    saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];
+            });
+        }
         let mut sink = RecordSink::new(0, "frame_end");
         for (p, fighter) in fighters.iter().enumerate() {
             fighter.snapshot(&mut PrefixSink::new(&mut sink, &format!("p{p}")));
@@ -350,7 +359,35 @@ impl InitialState {
         } else {
             None
         };
+        // ifStock_804A1378: import only the saved HUD boundary, never later trace rows.
+        let stock_displays = std::array::from_fn(|slot| {
+            if match_start {
+                return None;
+            }
+            let player = saved.bytes(0x804A_1378 + 8 + slot as u32 * 0x50, 0x50);
+            let state = saved.bytes(0x804A_1378 + 0x204 + slot as u32 * 0x54, 12);
+            let root = vector(saved.bytes(word(player, 4) + 0x38, 12), 0);
+            let icon_positions = std::array::from_fn(|i| {
+                let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
+                Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
+            });
+            Some(melee_if::StockDisplay {
+                icon_positions,
+                animation_frames: state[5..10].try_into().unwrap(),
+                animate_losses: state[2] != 0,
+            })
+        });
+        let spawn_counter = melee_ft::fighter::SpawnCounter(
+            fighters
+                .iter()
+                .map(|f| crate::scene_fighter::with_fighter!(f, |f| f.spawn_number))
+                .max()
+                .unwrap()
+                + 1,
+        );
         Ok(Self {
+            stock_displays,
+            spawn_counter,
             countdown: None,
             pending_music,
             selected_music: None,

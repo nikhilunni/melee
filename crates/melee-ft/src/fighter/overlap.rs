@@ -22,6 +22,7 @@ pub struct OverlapBody {
     pub facing: f32,
     pub floor: i32,
     pub eligible: bool,
+    pub linked: bool,
     pub ignore_others: bool,
     pub hitlag: bool,
 }
@@ -36,6 +37,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             facing: self.physics.facing,
             floor: self.collision.data.floor.index,
             eligible: !self.status.disabled && self.physics.ground_or_air == GroundOrAir::Ground,
+            linked: self.combat.grab.is_some(),
             ignore_others: self.status.ignore_fighter_nudge,
             hitlag: self.combat.hitlag_remaining > 0.0,
         }
@@ -57,7 +59,7 @@ pub fn nudge(
     }
     if !body.ignore_others {
         for (other_slot, other) in bodies.iter().enumerate() {
-            if other_slot == slot || !other.eligible {
+            if other_slot == slot || !other.eligible || other.linked {
                 continue;
             }
             if body.floor != other.floor

@@ -43,6 +43,7 @@ fn egg_body(fighter: &mut Fighter<Yoshi>) {
     fighter.character.egg_body = true;
     fighter.character.egg_hurtbox = Some(melee_ft::fighter::caches::Hurtbox {
         height: melee_ft::fighter::caches::HurtHeight::Middle,
+        grabbable: true,
         bone: usize::from(fighter.bones.model.shield),
         offsets: [Vec3::ZERO; 2],
         radius: 1.0,

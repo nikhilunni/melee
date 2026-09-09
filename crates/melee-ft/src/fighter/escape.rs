@@ -59,7 +59,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if state == S::EscapeN {
             C::escape_variant(self, assets, false)?;
         }
-        self.commands.reverse_facing = false;
+        self.commands.grab_release = false;
         self.change_motion_state(state, assets)?;
         self.step_animation(assets);
         self.status.ignore_fighter_nudge = true;
@@ -75,7 +75,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
     pub(super) fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.motion_state.id != S::EscapeN && std::mem::take(&mut self.commands.reverse_facing) {
+        if self.motion_state.id != S::EscapeN && std::mem::take(&mut self.commands.grab_release) {
             self.physics.facing = -self.physics.facing;
         }
         if !self.animation.frames_remaining(&self.skeleton) {

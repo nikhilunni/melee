@@ -432,6 +432,8 @@ impl JointSpec {
 /// animation produced.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct JObjTree {
+    /// Resolved external positions for REFTYPE_JOBJ subtype 1 constraints.
+    position_constraints: std::collections::BTreeMap<JObjId, Vec3>,
     nodes: Vec<JObj>,
     /// Callback invocations recorded by [`JObjTree::update_func`], oldest
     /// first. The caller drains them.
@@ -480,6 +482,19 @@ impl<'a> Iterator for DepthFirst<'a> {
 impl JObjTree {
     pub fn new() -> JObjTree {
         JObjTree::default()
+    }
+
+    /// lb_8000C1C0 / HSD_RObjUpdateAll: the scene resolves external joint ownership.
+    pub fn set_position_constraint(&mut self, id: JObjId, position: Option<Vec3>) {
+        match position {
+            Some(position) => {
+                self.position_constraints.insert(id, position);
+            }
+            None => {
+                self.position_constraints.remove(&id);
+            }
+        }
+        self.set_mtx_dirty_sub(id);
     }
 
     /// Number of nodes allocated.
@@ -1009,6 +1024,25 @@ impl JObjTree {
                 _ => {
                     // jobj.c:1432-1438: HSD_RObjUpdateAll when robj != NULL. Deferred.
                 }
+            }
+            if let Some(position) = self.position_constraints.get(&id).copied() {
+                // HSD_RObjGetGlobalPosition: accumulate from +0 then divide by
+                // the single target count. No fused instructions in retail.
+                let world = Vec3::new(0.0 + position.x, 0.0 + position.y, 0.0 + position.z);
+                self.nodes[id.0].mtx.0[0][3] = world.x;
+                self.nodes[id.0].mtx.0[1][3] = world.y;
+                self.nodes[id.0].mtx.0[2][3] = world.z;
+                // JObjUpdateFunc types 0x35/0x38: retain the constrained world
+                // matrix and recover local translation with the audited kernel.
+                let mut local = self.nodes[id.0].mtx;
+                if let Some(parent) = self.nodes[id.0].parent {
+                    mtx::hsd_mtx_inverse_concat(
+                        &self.nodes[parent.0].mtx,
+                        &self.nodes[id.0].mtx,
+                        &mut local,
+                    );
+                }
+                self.nodes[id.0].translate = Vec3::new(local.0[0][3], local.0[1][3], local.0[2][3]);
             }
             self.nodes[id.0].flags &= !JOBJ_MTX_DIRTY;
         }

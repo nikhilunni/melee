@@ -20,6 +20,12 @@ pub use crate::appsrt::ApplicationTransform;
 /// Shape-dependent state from `HSD_Generator.aux` (psstructs.h).
 #[derive(Debug, Clone)]
 pub enum EmissionShape {
+    Tornado {
+        speed: f32,
+    },
+    Rectangle {
+        dimensions: [f32; 3],
+    },
     Disc {
         mode: u16,
         minimum_angle: f32,
@@ -74,6 +80,7 @@ pub(crate) struct EmissionFrame {
     speed: f32,
     angle: f32,
     angle_step: f32,
+    tornado_angles: [f32; 2],
 }
 
 impl Generator {
@@ -250,7 +257,18 @@ impl Generator {
             speed,
             angle: 0.0,
             angle_step: 0.0,
+            tornado_angles: [0.0; 2],
         };
+        if matches!(self.shape, EmissionShape::Tornado { .. }) {
+            let first = guarded_atan::<T>(rotation.0[1][2], rotation.0[2][2]);
+            // retail 8039DFD8: fmuls, 8039DFEC: fmadds.
+            let combined = fmadds(
+                rotation.0[1][2],
+                sinf(first),
+                rotation.0[2][2] * cosf(first),
+            );
+            frame.tornado_angles = [first, guarded_atan::<T>(rotation.0[0][2], combined)];
+        }
         if self.descriptor.angle < 0.0 {
             let count = fctiwz(self.count) as f32;
             match self.shape {
@@ -289,17 +307,38 @@ impl Generator {
     /// One iteration of `hsd_8039DAD4` (0x8039DAD4). System performs the
     /// immediate interpreter before the next iteration, preserving RNG order.
     pub(crate) fn emit<T: InverseTrig>(
-        &self,
+        &mut self,
         frame: &mut EmissionFrame,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<Particle, Error> {
+        if let EmissionShape::Tornado { speed } = &mut self.shape {
+            *speed = frame.speed;
+            let radial_fraction = if self.descriptor.radius < 0.0 {
+                1.0
+            } else {
+                draws.draw(rng, 0x8039_E668)
+            };
+            if self.descriptor.angle < 0.0 {
+                frame.angle += frame.angle_step;
+            } else {
+                frame.angle = (2.0 * (M_PI * f64::from(draws.draw(rng, 0x8039_E684)))) as f32;
+            }
+            let mut particle = self.make_particle()?;
+            particle.kind |= crate::particle::TORNADO;
+            particle.velocity = [frame.angle, radial_fraction, 0.0];
+            [particle.gravity, particle.friction] = frame.tornado_angles;
+            return Ok(particle);
+        }
         let (position, velocity) = match self.shape {
             EmissionShape::Sphere {
                 speed,
                 latitude_range,
                 ..
             } => self.sphere(frame, speed, latitude_range, rng, draws),
+            EmissionShape::Rectangle { dimensions } => {
+                self.rectangle(frame, dimensions, rng, draws)?
+            }
             EmissionShape::Line { end } => {
                 let random = draws.draw(rng, 0x8039_E58C);
                 let offset = transform(&frame.rotation, end.map(|v| random * v));
@@ -310,15 +349,63 @@ impl Generator {
             }
             _ => self.disc::<T>(frame, rng, draws),
         };
+        let mut particle = self.make_particle()?;
+        particle.position = position;
+        particle.velocity = velocity;
+        Ok(particle)
+    }
+
+    fn make_particle(&self) -> Result<Particle, Error> {
         let mut particle = Particle::new(&self.descriptor, self.bank, self.link)?;
         particle.appsrt_id = self.appsrt_id;
         particle.application_transform = self.application_transform.clone();
         particle.generator_id = Some(self.id);
         particle.family_id = self.family_id;
-        particle.position = position;
-        particle.velocity = velocity;
         particle.texture_images = Arc::clone(&self.texture_images);
         Ok(particle)
+    }
+
+    /// Rectangle branch of hsd_8039DAD4 (8039E6E8).
+    fn rectangle(
+        &self,
+        frame: &EmissionFrame,
+        dimensions: [f32; 3],
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<([f32; 3], [f32; 3]), Error> {
+        let mut point = [
+            draws.draw(rng, 0x8039_E6E8),
+            draws.draw(rng, 0x8039_E6F0),
+            draws.draw(rng, 0x8039_E6F8),
+        ];
+        if dimensions.iter().any(|&v| v < 0.0) {
+            return Err(Error::UnsupportedFeature("rectangle surface emission"));
+        }
+        for value in &mut point {
+            *value -= 0.5;
+        }
+        // Retail 8039E978/7C, E994/98, E9B0/B4: matrix multiply retains zero terms.
+        let axes = [
+            [dimensions[0], 0.0, 0.0],
+            [0.0, dimensions[1], 0.0],
+            [0.0, 0.0, dimensions[2]],
+        ];
+        let offset = axes.map(|row| {
+            fmadds(
+                row[2],
+                point[2],
+                fmadds(row[1], point[1], row[0] * point[0]),
+            )
+        });
+        // Retail 8039E9DC..EA68: separate sum of squares and sqrtf.
+        let scale = frame.speed / magnitude([0.0, 0.0, dimensions[2]]);
+        Ok((
+            add(transform(&frame.rotation, offset), self.position),
+            transform(
+                &frame.rotation,
+                [0.0 * scale, 0.0 * scale, dimensions[2] * scale],
+            ),
+        ))
     }
 
     fn sphere(
@@ -484,6 +571,10 @@ impl EmissionShape {
                 mode,
                 minimum_angle,
                 maximum_angle,
+            },
+            2 => Self::Tornado { speed: 0.0 },
+            5 => Self::Rectangle {
+                dimensions: descriptor.parameters,
             },
             1 => Self::Line {
                 end: descriptor.parameters,

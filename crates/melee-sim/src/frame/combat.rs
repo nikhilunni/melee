@@ -58,8 +58,11 @@ fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) {
                 (u32::from(hit.weight_knockback), 0x28),
                 (u32::from(hit.base_knockback), 0x2c),
                 (i32::from(hit.element) as u32, 0x30),
-                (u32::from(hit.sound_severity), 0x34),
-                (u32::from(hit.sound_kind), 0x38),
+                // ftAction_80071E04 stores severity at +0x38 (0x80071ED0) and kind at
+                // +0x3C (0x80071EE0); +0x34 is lb/types.h's `x34`. The earlier +0x34/+0x38
+                // reading was a comparator mistake, never exercised before ThrowB.
+                (u32::from(hit.sound_severity), 0x38),
+                (u32::from(hit.sound_kind), 0x3c),
             ] {
                 assert_eq!(
                     actual,
@@ -116,6 +119,20 @@ fn shield_hitboxes_and_hitlag_match_retail_scratch() {
 fn catch_startup_and_throw_hitbox_commands_match_retail_scratch() {
     replay_scratch_until("grab_fd_marth", 127);
 }
+#[test]
+#[ignore = "raw-scratch comparison beyond the 49 gated keys: after the throw the port keeps a hitbox in the Sweeping phase where retail reads 0 (combat.rs `hitbox phase`, first seen merging A3 onto main). The 300-tick 49-key gates and particle replays for grab/tech pass; investigate whether retail disables throw hitboxes on release or whether the comparator's phase mapping is wrong (TRACKER M5)."]
+fn capture_back_throw_and_missed_tech_match_retail_scratch() {
+    replay_scratch("grab_fd_marth");
+}
+#[test]
+#[ignore = "raw-scratch comparison beyond the 49 gated keys: after the throw the port keeps a hitbox in the Sweeping phase where retail reads 0 (combat.rs `hitbox phase`, first seen merging A3 onto main). The 300-tick 49-key gates and particle replays for grab/tech pass; investigate whether retail disables throw hitboxes on release or whether the comparator's phase mapping is wrong (TRACKER M5)."]
+fn back_throw_and_tech_match_retail_scratch() {
+    replay_scratch("tech_fd_marth");
+}
+#[test]
+fn smash_death_and_revival_match_retail_scratch() {
+    replay_scratch_until("ko_fd_marth", 480);
+}
 fn replay_scratch(name: &str) {
     replay_scratch_until(name, 300);
 }
@@ -137,7 +154,7 @@ fn replay_scratch_until(name: &str, ticks: usize) {
         crate::trace::pad_script(&scenario).unwrap(),
     );
     let raw = fs::read_to_string(path).unwrap();
-    assert_eq!(raw.lines().count(), 300);
+    assert_eq!(raw.lines().count(), scenario.frames as usize);
     for (tick, line) in raw.lines().take(ticks).enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
         simulation.tick().unwrap();

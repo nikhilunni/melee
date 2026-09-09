@@ -14,6 +14,16 @@ pub struct StateCallbacks {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
     MultiJump,
+    Dead,
+    Revival,
+    TechRoll,
+    DownBound,
+    DownWait,
+    Throw,
+    Thrown,
+    CatchWait,
+    CatchPull,
+    Capture,
     Catch,
     Damage,
     Jab,
@@ -96,6 +106,10 @@ pub enum InputCallback {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
     MultiJump,
+    Dead,
+    Revival,
+    Down,
+    Capture,
     Catch,
     Damage,
     Jab,
@@ -137,6 +151,9 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    Revival,
+    Thrown,
+    Capture,
     Catch,
     Damage,
     Pass,

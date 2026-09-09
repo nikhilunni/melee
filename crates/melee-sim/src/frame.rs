@@ -156,6 +156,13 @@ impl Runtime {
                 }
             }
             Callback::Fighter { player, proc } => {
+                grab_pairs::constrain(state, player);
+                if proc == FighterProc::Grab {
+                    grab_pairs::select(state, player)?;
+                }
+                if proc == FighterProc::Update {
+                    grab_pairs::align(state, player);
+                }
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
                     use crate::scene_fighter::with_fighter;
@@ -194,6 +201,47 @@ impl Runtime {
                     )
                 })?;
                 if proc == FighterProc::Animation {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        if matches!(
+                            f.state_data,
+                            melee_ft::fighter::MotionData::Life(
+                                melee_ft::fighter::life::LifeState::AwaitingRespawn
+                            )
+                        ) {
+                            let archive = &state.assets.characters[player];
+                            let (tree, root) = archive.model(f.player.costume);
+                            f.reset_for_revival(
+                                &state.assets.fighters[player],
+                                &state.assets.arena,
+                                &archive.data,
+                                tree,
+                                root,
+                                melee_ft::fighter::SpawnContext {
+                                    map: &mut state.map,
+                                    rng: &mut state.rng,
+                                    counter: &mut state.spawn_counter,
+                                },
+                            )
+                            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                        }
+                        Ok::<(), anyhow::Error>(())
+                    })?;
+                }
+                if proc == FighterProc::Input {
+                    grab_pairs::throw_input(state, player)?;
+                }
+                if proc == FighterProc::Accessories {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        f.update_revival_platform();
+                        if f.motion_state.id == melee_types::CommonMotionState::ThrownB {
+                            f.thrown_accessory(&state.assets.fighters[player]);
+                        }
+                    });
+                }
+                if proc == FighterProc::Animation {
+                    grab_pairs::sync_wait(state, player)?;
+                    grab_pairs::release(state, player)?;
+                    let assets = &state.assets;
                     use crate::scene_fighter::with_fighter;
                     let bodies: Vec<_> = state
                         .fighters
@@ -290,7 +338,28 @@ impl Runtime {
             Callback::Interface { player } => {
                 use crate::scene_fighter::with_fighter;
                 let percent = with_fighter!(&state.fighters[player], |f| f.physics.percent);
+                let dead =
+                    crate::scene_fighter::with_fighter!(&state.fighters[player], |f| matches!(
+                        f.state_data,
+                        melee_ft::fighter::MotionData::Life(
+                            melee_ft::fighter::life::LifeState::Dead { .. }
+                        )
+                    ));
+                self.interface[player].set_dead(dead, &mut state.rng);
                 self.interface[player].tick(percent, &mut state.rng);
+                if let Some(display) = &mut state.stock_displays[player] {
+                    let stocks = with_fighter!(&state.fighters[player], |f| f.player.stocks);
+                    for position in display.tick(stocks) {
+                        let mut request = hsd_particle::system::SpawnRequest::new(0, 0xF7, 1);
+                        request.position = [position.x, position.y, position.z];
+                        state.particles.spawn::<RetailTrig>(
+                            &state.assets.common_particle_bank,
+                            request,
+                            &mut state.rng,
+                            &mut self.particle_draws,
+                        )?;
+                    }
+                }
             }
             Callback::Effects => state.effects.tick(
                 &mut state.fighters,
@@ -444,7 +513,11 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
             let pad: PadSample = state_pads.sample(frame, usize::from(f.player.id));
             f.proc_input(assets, &pad)
         }
-        FighterProc::Update => f.proc_update(assets, map, wind),
+        FighterProc::Update => {
+            f.proc_update(assets, map, wind);
+            f.check_blast_zone(assets, &scene_assets.arena)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        }
         FighterProc::Map => {
             f.proc_map_with_assets(assets, map, rng)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -469,6 +542,20 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
         FighterProc::Dynamics => f.proc_dynamics_with_map(map),
         FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
+    }
+    // ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi per smash voice.
+    for _ in 0..std::mem::take(&mut f.commands.smash_sound_requests) {
+        if !assets.smash_sounds.is_empty() {
+            let id = assets.smash_sounds[rng.randi(assets.smash_sounds.len() as i32) as usize];
+            f.commands
+                .footstep_sounds
+                .push(melee_ft::fighter::commands::FootstepSound {
+                    channel: melee_ft::fighter::commands::SoundChannel::Action,
+                    id,
+                    volume: 127,
+                    pan: 64,
+                });
+        }
     }
     f.resolve_graphics_commands(assets, rng);
     effects.flush(
@@ -775,5 +862,6 @@ mod puff_state;
 #[cfg(test)]
 mod yoshi_bones;
 
+mod grab_pairs;
 #[cfg(test)]
 mod yoshi_state;

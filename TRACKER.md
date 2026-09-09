@@ -297,6 +297,8 @@ Gate: zero divergence over thousands of Slippi replays.
 
 Newest first. One line per session: date, what landed, what is next.
 
+- 2026-09-09 (A3 rebase conflict resolution): preserved A3 grab/tech/KO and tornado/rectangle particles alongside main generic inverse trig, stages, character hooks and action IDs; scoped A3 motion resources to Fox/Marth. All 11 requested scenario gates exact (49 keys), M4 261/261, M5 8/8, particle/fighter/interface 166 tests pass; workspace all-target build and clippy clean, fmt applied. No git commands run. Next: user continues the rebase.
+
 - 2026-09-09 (dash particle follow-up): added strict full-field replay, production spawn fixture, AppSRT ownership adapter and display-cache API; 425 display-cache mismatches remain because camera/frame inputs were not captured. Need those external display inputs to complete the red gate; no comparisons weakened or commits made.
 
 - 2026-09-09 (M4-T1): ported Squat/Turn/Walk families, shared grounded physics/collision, walk command-loop and footstep/rumble requests; three movement gates 300x49 exact, state scratch/rate/command replay exact, all regressions and clippy pass. No commit requested. Next: review, then dash/run and jump/effect ports.

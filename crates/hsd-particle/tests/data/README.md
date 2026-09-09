@@ -154,3 +154,18 @@ the new spawn's matrix. Both full-field replays pass with zero exclusions
 (53,715 idle fields; 178,032 start fields). Temporary instrumentation and its
 serialization dependency were removed. No retail outputs or child spawns
 are fixture inputs.
+## M5 A3 input fixtures
+
+`grab_fd_marth_spawns.json`, `tech_fd_marth_spawns.json` and
+`ko_fd_marth_spawns.json` were logged from production scenario gates reporting
+300/300/480 ticks x49 with zero divergences. They contain 11/11/14 external
+spawns. The replay executes all child generators and particles itself.
+Temporary logging was removed; runtime reads no fixture schedules.
+
+KO adds two external boundary event forms. `external_randf` records efAsync's
+slash-orientation draw between spawn requests (80063B70), checked in order along
+with particle draws. `after_particles: true` places the stock-loss generator at
+the HUD callback after both particle passes. Both are actual production caller
+inputs, not expected particle state or injected seeds. The existing display-cache
+exclusions are unchanged. Full comparisons and the independent raw-test blocker
+are documented in `melee-ft/src/fighter/M5_COMBAT3.md`.

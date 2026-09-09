@@ -125,7 +125,7 @@ impl Particle {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
-        self.update_with_generators::<T>(rng, draws, &mut |_, _, _, _, _| {
+        self.update_with_generators::<T>(None, Some(T::atan2f), rng, draws, &mut |_, _, _, _, _| {
             Err(Error::UnsupportedFeature(
                 "generator opcode requires ParticleSystem",
             ))
@@ -134,6 +134,8 @@ impl Particle {
 
     pub(crate) fn update_with_generators<T: InverseTrig>(
         &mut self,
+        tornado: Option<TornadoPhysics>,
+        atan2: Option<fn(f32, f32) -> f32>,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         spawn: &mut impl FnMut(
@@ -147,9 +149,6 @@ impl Particle {
         if self.kind & PAUSED != 0 {
             return Ok(true);
         }
-        if self.kind & TORNADO != 0 {
-            return Err(Error::UnsupportedFeature("tornado particle physics"));
-        }
         if self.kind & 0x8000 != 0 {
             return Err(Error::UnsupportedFeature("particle JObj attachment"));
         }
@@ -157,15 +156,63 @@ impl Particle {
         if self.wait != 0 {
             self.wait -= 1;
             if self.wait == 0 {
-                self.interpret::<T>(rng, draws, spawn)?;
+                self.interpret::<T>(atan2, rng, draws, spawn)?;
             }
         }
         self.life = self.life.wrapping_sub(1);
         if self.life == 0 {
             return Ok(false);
         }
-        self.integrate();
+        if self.kind & TORNADO != 0 {
+            tornado
+                .ok_or(Error::UnsupportedFeature("tornado requires live generator"))?
+                .integrate(self);
+        } else {
+            self.integrate();
+        }
         Ok(true)
+    }
+
+    /// hsd_80398F8C (80398F8C): rotate velocity around a random cone azimuth.
+    fn randomize_direction(
+        &mut self,
+        angle: f32,
+        atan2: fn(f32, f32) -> f32,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) {
+        use gekko_math::msl::{cosf, fabsf, sinf};
+        let guarded = |y, x| {
+            if fabsf(x) < f32::MIN_POSITIVE {
+                if y >= 0.0 {
+                    std::f32::consts::FRAC_PI_2
+                } else {
+                    -std::f32::consts::FRAC_PI_2
+                }
+            } else {
+                atan2(y, x)
+            }
+        };
+        let [x, y, z] = self.velocity;
+        let first = guarded(y, z);
+        let (sin_a, cos_a) = (sinf(first), cosf(first));
+        // retail 80399044 fmuls, 80399048 fmadds.
+        let second = guarded(x, fmadds(y, sin_a, z * cos_a));
+        let (sin_b, cos_b) = (sinf(second), cosf(second));
+        // retail 803990B8/BC fmadds; sqrtf Newton steps DC/EC/FC.
+        let magnitude = sqrtf(fmadds(z, z, fmadds(x, x, y * y)));
+        let azimuth =
+            (2.0 * (std::f64::consts::PI * f64::from(draws.draw(rng, 0x8039_9114)))) as f32;
+        let radial = magnitude * sinf(angle);
+        let d = radial * cosf(azimuth);
+        let e = radial * sinf(azimuth);
+        let forward = magnitude * cosf(angle);
+        // retail 80399178, 180/190, 18C/194 preserve nested FMA order.
+        self.velocity = [
+            fmadds(d, cos_b, forward * sin_b),
+            fmadds(cos_b, forward * sin_a, fmadds(sin_b, -d * sin_a, e * cos_a)),
+            fmadds(cos_b, forward * cos_a, fmsubs(sin_b, -d * cos_a, e * sin_a)),
+        ];
     }
 
     fn interpolate(&mut self) {
@@ -204,6 +251,7 @@ impl Particle {
 
     fn interpret<T: InverseTrig>(
         &mut self,
+        atan2: Option<fn(f32, f32) -> f32>,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         spawn: &mut impl FnMut(
@@ -249,6 +297,15 @@ impl Particle {
                 track.setup(opcode & 15, &mut cursor)?;
             } else {
                 match opcode {
+                    0xa9 => {
+                        let angle = cursor.float()?;
+                        self.randomize_direction(
+                            angle,
+                            atan2.ok_or(Error::UnsupportedFeature("A9 requires inverse trig"))?,
+                            rng,
+                            draws,
+                        );
+                    }
                     0xa5 | 0xef => {
                         // particle.c:1070-1191: child creation is synchronous;
                         // RNG precedes the next instruction, even if parent dies.
@@ -556,5 +613,39 @@ impl BytePairTrack {
                 self.current = self.target;
             }
         }
+    }
+}
+
+/// Live generator inputs for particle.c's Tornado physics (8039CA78).
+#[derive(Clone, Copy)]
+pub(crate) struct TornadoPhysics {
+    pub position: [f32; 3],
+    pub speed: f32,
+    pub radius: f32,
+    pub angle: f32,
+    pub angular_speed: f32,
+}
+impl TornadoPhysics {
+    fn integrate(self, p: &mut Particle) {
+        use gekko_math::{
+            fma::{fmadds, fmsubs},
+            msl::{cosf, fabsf, sinf, tanf},
+        };
+        let (sin_a, sin_b) = (sinf(p.gravity), sinf(p.friction));
+        let (cos_a, cos_b) = (cosf(p.gravity), cosf(p.friction));
+        p.velocity[2] += self.speed;
+        // retail 8039CAFC fmadds, CB04 fmuls.
+        let radius =
+            fmadds(p.velocity[2], tanf(fabsf(self.angle)), fabsf(self.radius)) * p.velocity[1];
+        p.velocity[0] += self.angular_speed;
+        let d = radius * cosf(p.velocity[0]);
+        let e = radius * sinf(p.velocity[0]);
+        let z = p.velocity[2];
+        // retail CB38, CB40/54, CB60/68; final translations are separate fadds.
+        p.position[0] = self.position[0] + fmadds(d, cos_b, z * sin_b);
+        p.position[1] =
+            self.position[1] + fmadds(cos_b, z * sin_a, fmadds(sin_b, -d * sin_a, e * cos_a));
+        p.position[2] =
+            self.position[2] + fmadds(cos_b, z * cos_a, fmsubs(sin_b, -d * cos_a, e * sin_a));
     }
 }

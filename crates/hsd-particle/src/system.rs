@@ -234,40 +234,62 @@ impl ParticleSystem {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
-        particle.update_with_generators::<T>(rng, draws, &mut |parent, kind, blend, rng, draws| {
-            let bank = self
-                .banks
-                .get(&parent.bank)
-                .cloned()
-                .ok_or(Error::UnsupportedFeature(
-                    "child generator bank not registered",
-                ))?;
-            let attachment = parent
-                .generator_id
-                .and_then(|id| self.generators.iter().find(|g| g.id == id))
-                .map(|g| (g.flags, g.attachment_id, g.joint_matrix));
-            let request = SpawnRequest::new(parent.bank, kind, parent.link);
-            if let Some(id) = self.spawn::<T>(&bank, request, rng, draws)? {
-                let child = self.generator_mut(id).unwrap();
-                child.family_id = parent.family_id;
-                // particle.c:1098-1108/1162-1174: a child without its own
-                // AppSRT shares the parent's transform and keeps local position.
-                child.appsrt_id = parent.appsrt_id;
-                child.application_transform = parent.application_transform.clone();
-                child.position = parent.position;
-                child.flags |= 0x100;
-                if let Some((flags, attachment_id, matrix)) = attachment {
-                    child.flags |= flags & 0x1e00;
-                    child.attachment_id = attachment_id;
-                    child.joint_matrix = matrix;
+        let tornado = particle
+            .generator_id
+            .and_then(|id| self.generators.iter().find(|g| g.id == id))
+            .and_then(|g| {
+                if let crate::generator::EmissionShape::Tornado { speed } = g.shape {
+                    Some(crate::particle::TornadoPhysics {
+                        position: g.position,
+                        speed,
+                        radius: g.descriptor.radius,
+                        angle: g.descriptor.angle,
+                        angular_speed: g.descriptor.gravity,
+                    })
+                } else {
+                    None
                 }
-                if let Some(blend) = blend {
-                    child.descriptor.kind =
-                        (child.descriptor.kind & 0xf1ff_ffff) | (u32::from(blend & 7) << 25);
+            });
+        particle.update_with_generators::<T>(
+            tornado,
+            Some(T::atan2f),
+            rng,
+            draws,
+            &mut |parent, kind, blend, rng, draws| {
+                let bank =
+                    self.banks
+                        .get(&parent.bank)
+                        .cloned()
+                        .ok_or(Error::UnsupportedFeature(
+                            "child generator bank not registered",
+                        ))?;
+                let attachment = parent
+                    .generator_id
+                    .and_then(|id| self.generators.iter().find(|g| g.id == id))
+                    .map(|g| (g.flags, g.attachment_id, g.joint_matrix));
+                let request = SpawnRequest::new(parent.bank, kind, parent.link);
+                if let Some(id) = self.spawn::<T>(&bank, request, rng, draws)? {
+                    let child = self.generator_mut(id).unwrap();
+                    child.family_id = parent.family_id;
+                    // particle.c:1098-1108/1162-1174: a child without its own
+                    // AppSRT shares the parent's transform and keeps local position.
+                    child.appsrt_id = parent.appsrt_id;
+                    child.application_transform = parent.application_transform.clone();
+                    child.position = parent.position;
+                    child.flags |= 0x100;
+                    if let Some((flags, attachment_id, matrix)) = attachment {
+                        child.flags |= flags & 0x1e00;
+                        child.attachment_id = attachment_id;
+                        child.joint_matrix = matrix;
+                    }
+                    if let Some(blend) = blend {
+                        child.descriptor.kind =
+                            (child.descriptor.kind & 0xf1ff_ffff) | (u32::from(blend & 7) << 25);
+                    }
                 }
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+        )
     }
 
     /// `particleSort` (psdisp.c, 0x8039FC70): rendering stably buckets the *simulation*

@@ -81,7 +81,8 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         animation_count: 327,
         part_count: 54,
         part_animation_count: 3,
-        additional_motions: &[],
+        // A3 combat scripts: smash, tumble, prone recovery, tech and linked throws.
+        additional_motions: &[29, 62, 178, 191, 192, 201, 244, 248, 254, 255, 263],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
                 file: "PlMsNr.dat",

@@ -185,9 +185,20 @@ impl Scenario {
             .unwrap_or_else(|| self.name.clone())
     }
     pub fn boundary_path(&self, suffix: &str) -> PathBuf {
-        self.root
+        let shared = self
+            .root
             .join("harness/traces")
-            .join(format!("{}.{suffix}", self.boundary_name()))
+            .join(format!("{}.{suffix}", self.boundary_name()));
+        if shared.is_file() {
+            return shared;
+        }
+        // A newly captured savestate may have its initial population alongside
+        // the scripted scene. The importer still verifies the saved RNG seed.
+        self.trace_path(if suffix == "ledger600.raw.jsonl" {
+            "ledger.raw.jsonl"
+        } else {
+            suffix
+        })
     }
     pub fn assets_path(&self) -> PathBuf {
         self.root.join("harness/roms/files")

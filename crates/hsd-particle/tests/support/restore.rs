@@ -165,6 +165,22 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
             fields.scalar("aux.minimum_angle", minimum_angle);
             fields.scalar("aux.maximum_angle", maximum_angle);
         }
+        EmissionShape::Tornado { speed } => fields.scalar("aux.tornado_velocity", speed),
+        EmissionShape::Rectangle { dimensions } => {
+            for (name, value) in ["x", "y", "z"].into_iter().zip(dimensions.iter_mut()) {
+                fields.scalar(&format!("aux.{name}"), value);
+            }
+            for (row, names) in [["xx", "xy", "xz"], ["yx", "yy", "yz"], ["zx", "zy", "zz"]]
+                .into_iter()
+                .enumerate()
+            {
+                for (col, name) in names.into_iter().enumerate() {
+                    let mut value = if row == col { dimensions[row] } else { 0.0 };
+                    fields.scalar(&format!("aux.{name}"), &mut value);
+                }
+            }
+            fields.scalar("aux.flags", &mut 0u16);
+        }
         other => panic!("live FD adapter requires sphere/disc auxiliary state, got {other:?}"),
     }
 }

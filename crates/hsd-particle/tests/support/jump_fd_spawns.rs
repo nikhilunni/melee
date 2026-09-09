@@ -19,6 +19,15 @@ impl Spawns {
     pub fn new() -> Self {
         Self(serde_json::from_str(include_str!("jump_fd_spawns.json")).unwrap())
     }
+    pub fn after_particles(
+        &mut self,
+        _tick: usize,
+        _system: &mut ParticleSystem,
+        _banks: &BTreeMap<u8, ParticleBank>,
+        _rng: &mut HsdRng,
+        _draws: &mut DrawLog,
+    ) {
+    }
     pub fn before_main(
         &mut self,
         tick: usize,

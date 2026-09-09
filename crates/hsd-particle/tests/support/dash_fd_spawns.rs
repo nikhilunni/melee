@@ -20,6 +20,15 @@ impl Spawns {
     pub fn new() -> Self {
         Self
     }
+    pub fn after_particles(
+        &mut self,
+        _tick: usize,
+        _system: &mut ParticleSystem,
+        _banks: &BTreeMap<u8, ParticleBank>,
+        _rng: &mut HsdRng,
+        _draws: &mut DrawLog,
+    ) {
+    }
     pub fn before_main(
         &mut self,
         tick: usize,

@@ -22,6 +22,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             facing: self.physics.facing,
             ..WaitContext::default()
         };
+        if self.first_ground_transition(assets, &context, &[P::SmashSide]) != T::None {
+            return self.enter_forward_smash(assets);
+        }
         if self.first_ground_transition(
             assets,
             &context,

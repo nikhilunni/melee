@@ -38,11 +38,13 @@ fn word(draw: &Json, key: &str) -> u32 {
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
-        0x801c_26ac | 0x8006_3990 | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc
-        | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040
-        | 0x8021_af0c | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578
-        | 0x8021_1478 | 0x8021_1550 | 0x8021_1644 | 0x801e_3594 | 0x801e_35a4 | 0x801e_3610
-        | 0x801e_36b0 => false,
+        0x802f_496c | 0x802f_499c | 0x800a_123c | 0x800b_9718 | 0x8008_8a18 | 0x801c_26ac
+        | 0x8006_3990 | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc | 0x8009_fcdc
+        | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c
+        | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578 | 0x8021_1478
+        | 0x8021_1550 | 0x8021_1644 | 0x801e_3594 | 0x801e_35a4 | 0x801e_3610 | 0x801e_36b0 => {
+            false
+        }
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
         0x8039_9114 | 0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
@@ -177,14 +179,21 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
         // external RNG input separate and reject every other interleaving.
         let interface = expected
             .iter()
-            .position(|d| matches!(word(d, "lr") - 4, 0x802f_4d44 | 0x802f_4d54))
+            .position(|d| {
+                matches!(
+                    word(d, "lr") - 4,
+                    0x802f_4d44 | 0x802f_4d54 | 0x802f_496c | 0x802f_499c
+                )
+            })
             .unwrap_or(expected.len());
         let external = expected[..interface]
             .iter()
             .take_while(|d| !particle_draw(d))
             .count();
         assert!(
-            expected[external..interface].iter().all(particle_draw),
+            expected[external..interface]
+                .iter()
+                .all(|d| particle_draw(d) || word(d, "lr") - 4 == 0x8006_3b70),
             "tick {tick} external draws interleaved"
         );
         for draw in &expected[..external] {
@@ -208,6 +217,7 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
                 .proc_aux::<RetailTrig>(&mut rng, &mut draws)
                 .unwrap_or_else(|e| panic!("tick {tick} aux: {e}"));
         }
+        spawns.after_particles(tick, &mut system, &banks, &mut rng, &mut draws);
         let sites = expected[external..interface]
             .iter()
             .map(|d| word(d, "lr") - 4)
@@ -225,7 +235,11 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
             assert_eq!(word(draw, "pc"), 0x8038_054c);
             assert_eq!(
                 word(draw, "lr") - 4,
-                [0x802f_4d44, 0x802f_4d54][ordinal % 2],
+                if matches!(word(&expected[interface], "lr") - 4, 0x802f_496c) {
+                    [0x802f_496c, 0x802f_499c][ordinal % 2]
+                } else {
+                    [0x802f_4d44, 0x802f_4d54][ordinal % 2]
+                },
                 "tick {tick} interface draw {ordinal}"
             );
             rng.randf();

@@ -20,6 +20,12 @@ pub struct ColorAnimationRequest {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    SmashCharge(super::smash::SmashCharge),
+    SetAirborne(melee_types::GroundOrAir),
+    SmashSound,
+    ThrowAccessory,
+    GrabRelease,
+    ThrowReverse,
     SetThrowHitbox {
         id: usize,
         descriptor: super::hitbox::ThrowHitbox,
@@ -51,7 +57,6 @@ pub enum Command {
         variant: i32,
     },
     HurtStatus(super::escape::HurtStatus),
-    ReverseFacing,
     AllowInterrupt,
     End,
     Graphics(super::effects::GraphicsCommand),
@@ -124,6 +129,14 @@ pub struct CommandLoop {
 }
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    pub smash_charge: Option<super::smash::SmashCharge>,
+    pub airborne_changes: Vec<melee_types::GroundOrAir>,
+    pub thrown_by: Option<u32>,
+    pub smash_sound_requests: usize,
+    /// ftData_80085CD8: thrown states execute their captor's command stream.
+    pub borrowed_script: Option<std::sync::Arc<[Command]>>,
+    pub grab_release: bool,
+    pub throw_reverse: bool,
     pub throw_hitboxes: [Option<super::hitbox::ThrowHitbox>; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
@@ -142,7 +155,6 @@ pub struct CommandState {
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
     pub model_selections: std::collections::BTreeMap<i32, i32>,
     pub hurt_status: super::escape::HurtStatus,
-    pub reverse_facing: bool,
     pub allow_interrupt: bool,
     /// cmd_vars (+2200): subaction-controlled state variables.
     pub variables: [u32; 4],
@@ -205,6 +217,8 @@ impl CommandState {
         assets: &FighterAssets,
         seeking: bool,
     ) {
+        let borrowed_script = self.borrowed_script.clone();
+        let script = borrowed_script.as_deref().unwrap_or(&assets.commands);
         self.frame = animation.frame + animation.remainder;
         if self.instruction.is_none() {
             return;
@@ -222,7 +236,17 @@ impl CommandState {
                 break;
             }
             self.instruction = Some(pc + 1);
-            match &assets.commands[pc] {
+            match &script[pc] {
+                Command::ThrowAccessory => {
+                    unimplemented!("ftAction_80071974: character throw accessory")
+                }
+                Command::SmashSound => {
+                    if !seeking {
+                        self.smash_sound_requests += 1;
+                    }
+                }
+                Command::GrabRelease => self.grab_release = true,
+                Command::ThrowReverse => self.throw_reverse = true,
                 Command::SetThrowHitbox { id, descriptor } => {
                     // ftAction_80071F0C skips these records when seeking.
                     if !seeking {
@@ -234,12 +258,22 @@ impl CommandState {
                     }
                 }
                 Command::SpawnHitbox { id, descriptor } => {
-                    if !seeking {
+                    if !seeking && (!descriptor.requires_throw_owner || self.thrown_by.is_some()) {
                         let mut descriptor = descriptor.clone();
+                        if descriptor.common_bone {
+                            descriptor.bone = usize::from(
+                                assets.parts.part_to_joint[descriptor.bone]
+                                    .expect("hitbox semantic bone"),
+                            );
+                            descriptor.common_bone = false;
+                        }
                         if let Some(penalty) = self.first_hit_stale_penalty {
                             // ft_80089118 subtracts the first table weight; the
                             // separate multiplication is retail 8008927C (fmuls).
                             descriptor.damage *= 1.0 - penalty;
+                        }
+                        if let Some(charge) = &self.smash_charge {
+                            descriptor.damage = charge.scale_damage(descriptor.damage);
                         }
                         super::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     }
@@ -286,9 +320,10 @@ impl CommandState {
                     self.model_selections.insert(*group, *variant);
                 }
                 Command::ArticleVisibility(visible) => self.articles_visible = *visible,
+                Command::SmashCharge(charge) => self.smash_charge = Some(*charge),
+                Command::SetAirborne(state) => self.airborne_changes.push(*state),
                 Command::HurtStatus(status) => self.hurt_status = *status,
                 Command::AllowInterrupt => self.allow_interrupt = true,
-                Command::ReverseFacing => self.reverse_facing = true,
                 Command::Graphics(command) => {
                     if !seeking {
                         self.graphics.push(command.clone());

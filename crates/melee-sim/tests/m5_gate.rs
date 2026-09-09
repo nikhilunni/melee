@@ -24,12 +24,24 @@ fn shieldhit_fd_marth_300_ticks_and_ordered_particle_draws() {
 }
 
 #[test]
-#[ignore = "tick 127: active catch capsule needs pair query, linked capture/throw and missed-tech states"]
 fn grab_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("grab_fd_marth");
 }
 
+#[test]
+fn tech_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("tech_fd_marth");
+}
+
+#[test]
+fn ko_fd_marth_480_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("ko_fd_marth", 480);
+}
+
 fn combat_gate(name: &str) -> Option<usize> {
+    combat_gate_ticks(name, 300)
+}
+fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
     let scenario = Scenario::load(&path).unwrap();
@@ -43,15 +55,15 @@ fn combat_gate(name: &str) -> Option<usize> {
         eprintln!("skipping M5: {} absent", missing.display());
         return None;
     }
-    assert_eq!(scenario.frames, 300);
+    assert_eq!(scenario.frames as usize, ticks);
     trace::gate(&scenario).unwrap();
-    eprintln!("300 ticks, 49 keys, 0 divergences");
+    eprintln!("{ticks} ticks, 49 keys, 0 divergences");
     let mut simulation = Simulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         trace::pad_script(&scenario).unwrap(),
     );
     let ledger = fs::read_to_string(ledger_path).unwrap();
-    assert_eq!(ledger.lines().count(), 300);
+    assert_eq!(ledger.lines().count(), ticks);
     let mut particle_draws = 0;
     for (tick, line) in ledger.lines().enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
@@ -60,7 +72,7 @@ fn combat_gate(name: &str) -> Option<usize> {
             .unwrap()
             .iter()
             .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
-            .filter(|site| (0x8039_930c..0x8039_f6cc).contains(site))
+            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
             .collect();
         simulation.tick().unwrap();
         assert_eq!(
@@ -73,7 +85,7 @@ fn combat_gate(name: &str) -> Option<usize> {
     Some(particle_draws)
 }
 
-/// This prefix is separate from the unchanged, explicitly ignored 300-tick gate.
+/// Retain the focused catch-entry regression alongside the full throw gate.
 #[test]
 fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
     use melee_diff::{first_divergence, read_trace};
@@ -115,7 +127,7 @@ fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
             .unwrap()
             .iter()
             .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
-            .filter(|site| (0x8039_930c..0x8039_f6cc).contains(site))
+            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
             .collect();
         assert_eq!(
             simulation.particle_rng_sites(),

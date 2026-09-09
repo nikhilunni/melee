@@ -50,6 +50,17 @@ impl Spawns {
             changes: serde_json::from_str(include_str!("start_fd_joints.json")).unwrap(),
         }
     }
+    // Shared by several test binaries; not every one calls this method.
+    #[allow(dead_code)]
+    pub fn after_particles(
+        &mut self,
+        _tick: usize,
+        _system: &mut ParticleSystem,
+        _banks: &BTreeMap<u8, ParticleBank>,
+        _rng: &mut HsdRng,
+        _draws: &mut DrawLog,
+    ) {
+    }
     pub fn before_main(
         &mut self,
         tick: usize,

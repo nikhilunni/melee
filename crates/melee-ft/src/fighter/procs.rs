@@ -35,7 +35,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             super::Interaction::Attack => assert!(
                 matches!(
                     self.state_data,
-                    super::MotionData::Jab(_) | super::MotionData::Tilt
+                    super::MotionData::Jab(_) | super::MotionData::Tilt | super::MotionData::Smash
                 ),
                 "attack requires attack state"
             ),
@@ -62,10 +62,34 @@ impl<C: CharacterCallbacks> Fighter<C> {
             &mut self.ground_pose,
             assets,
         );
+        for state in std::mem::take(&mut self.commands.airborne_changes) {
+            match state {
+                melee_types::GroundOrAir::Ground => self.land(),
+                melee_types::GroundOrAir::Air => self.leave_ground(),
+            }
+        }
         self.apply_dynamic_commands(assets);
         self.animation
             .advance_parts::<RetailTrig>(&mut self.skeleton);
-        // ftCo_800DB500: no attached parasol (item-free gate).
+        // ftCo_800DB500 (800DB500): retain the animated local XRotN for release.
+        if let Some(pose) = &mut self.combat.thrown_pose {
+            let joint = self.animation.parts[usize::from(
+                assets
+                    .parts
+                    .joint(melee_types::FtPart::XRotN)
+                    .expect("XRotN"),
+            )]
+            .joint;
+            if self
+                .skeleton
+                .get(joint)
+                .aobj
+                .as_ref()
+                .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM == 0)
+            {
+                pose.saved_translation = self.skeleton.translation(joint);
+            }
+        }
         if self.commands.footstep_sounds.len() != first_footstep
             && self.collision.data.floor.flags & 255 != 0
         {
@@ -101,8 +125,47 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.status.time_since_smash != -1.0 {
             self.status.time_since_smash += 1.0;
         }
+        if self.motion_state.callbacks.animation == state::AnimationCallback::Dead {
+            self.death_animation();
+            return Ok(None);
+        }
         self.step_animation(assets);
+        self.advance_smash_charge(assets);
         match self.motion_state.callbacks.animation {
+            state::AnimationCallback::Dead => unreachable!(),
+            state::AnimationCallback::Revival => {
+                let choice = self.update_idle_animation(assets, rng)?;
+                self.revival_animation(assets)?;
+                return Ok(choice);
+            }
+            state::AnimationCallback::TechRoll => {
+                if !self.animation.frames_remaining(&self.skeleton) {
+                    self.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
+                }
+                return Ok(None);
+            }
+            state::AnimationCallback::DownBound | state::AnimationCallback::DownWait => {
+                self.down_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Thrown => {
+                self.thrown_animation(assets);
+                return Ok(None);
+            }
+            state::AnimationCallback::Throw => {
+                // The linked release runs immediately after this callback in scene order.
+                self.jab_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Capture | state::AnimationCallback::CatchWait => {
+                return Ok(None)
+            }
+            state::AnimationCallback::CatchPull => {
+                if self.commands.grab_release || !self.animation.frames_remaining(&self.skeleton) {
+                    self.enter_catch_wait(assets)?;
+                }
+                return Ok(None);
+            }
             state::AnimationCallback::Catch => {
                 self.catch_animation(assets)?;
                 return Ok(None);
@@ -204,6 +267,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             state::AnimationCallback::Wait => {}
         }
+        self.update_idle_animation(assets, rng)
+    }
+    fn update_idle_animation(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut HsdRng,
+    ) -> Result<Option<WaitChoice>> {
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
         let result = self.animation.update_wait_with_restart(
@@ -264,6 +334,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.joystick_count += u64::from(effects.joystick_count_increments);
         if effects.run_input_callback && self.combat.hitlag_remaining == 0.0 {
+            self.update_smash_charge_input();
             if matches!(
                 self.motion_state.callbacks.input,
                 state::InputCallback::Entry
@@ -458,6 +529,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.ledge_cooldown -= 1;
         }
         match self.motion_state.callbacks.physics {
+            state::PhysicsCallback::Capture => {
+                crate::physics::integrate::integrate_velocity(&mut self.physics);
+                crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+            }
+            state::PhysicsCallback::Dead => {}
+            state::PhysicsCallback::Revival => self.revival_physics(assets, wind),
+            state::PhysicsCallback::Down => self.down_physics(assets, map, wind),
             state::PhysicsCallback::Catch => self.catch_physics(assets, map, wind),
             state::PhysicsCallback::Damage => self.damage_physics(assets, map, wind),
             state::PhysicsCallback::Jab => self.jab_physics(assets, map, wind),
@@ -748,6 +826,30 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_supported();
         match self.motion_state.callbacks.collision {
+            state::CollisionCallback::Revival => {
+                air::begin_map(
+                    &self.physics,
+                    &mut self.collision,
+                    &mut self.skeleton,
+                    self.animation.root,
+                );
+                let cd = &mut self.collision.data;
+                cd.last_pos = cd.cur_pos;
+                cd.cur_pos = self.physics.position;
+                let pose = crate::collision::ecb::EcbPose::read(
+                    &mut self.skeleton,
+                    self.animation.root,
+                    cd,
+                );
+                if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
+                    map.air_collide_stay_ecb5(cd, Some(&|i| pose.position(i)));
+                } else if map.air_collide_ecb5(cd, Some(&|i| pose.position(i))) {
+                    unimplemented!("ftCoD5A30: revival platform reaches floor");
+                }
+                self.physics.position = cd.cur_pos;
+            }
+            state::CollisionCallback::Thrown => {}
+            state::CollisionCallback::Capture => self.capture_collision(assets, map)?,
             state::CollisionCallback::Catch => self.catch_collision(assets, map)?,
             state::CollisionCallback::Damage => self.damage_collision(assets, map)?,
             state::CollisionCallback::GuardOn
@@ -950,17 +1052,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub fn proc_grab(&mut self) {
         if !self.status.disabled {
             self.status.require_supported();
-            if self
-                .commands
-                .hitboxes
-                .iter()
-                .flatten()
-                .any(|hit| hit.descriptor.element == melee_types::HitElement::Catch)
-            {
-                unimplemented!(
-                    "ftColl_80078A2C: active catch capsule needs pair query and linked CatchPull/CapturePulled"
-                );
-            }
         }
     }
     /// Fighter_8006CB94 (0x8006CB94), s_link 13, fighter.c:2621-2642.

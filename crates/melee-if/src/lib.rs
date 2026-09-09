@@ -4,6 +4,7 @@ use hsd_types::Vec2;
 
 /// IfDamageState: the four digits draw even when hundreds/tens are hidden.
 pub struct PercentDisplay {
+    pub death_velocity: Option<[Vec2; 4]>,
     pub percent: i32,
     pub damage_from_last_attack: u8,
     pub shake_remaining: u8,
@@ -12,10 +13,37 @@ pub struct PercentDisplay {
 impl PercentDisplay {
     pub fn new(percent: f32) -> Self {
         Self {
+            death_velocity: None,
             percent: fctiwz(percent).clamp(0, 999),
             damage_from_last_attack: 0,
             shake_remaining: 0,
             offsets: [Vec2::ZERO; 4],
+        }
+    }
+    /// ifStatus_PercentOnDeathAnimationThink (802F491C): initialize four departing digits.
+    pub fn set_dead(&mut self, dead: bool, rng: &mut HsdRng) {
+        if !dead {
+            self.death_velocity = None;
+            return;
+        }
+        if let Some(velocities) = &mut self.death_velocity {
+            for (position, velocity) in self.offsets.iter_mut().zip(velocities.iter_mut()) {
+                if gekko_math::msl::fabsf(position.x) < 100.0 {
+                    position.x += velocity.x;
+                }
+                if position.y > -100.0 {
+                    position.y += velocity.y;
+                    velocity.y -= 0.2028;
+                }
+            }
+        } else {
+            self.death_velocity = Some(std::array::from_fn(|i| {
+                // 802F4974 fmuls then fadds; alternating signs share one toggle.
+                let x = 0.6083 * rng.randf() + 0.3041;
+                // retail 802F49A0 fmadds.
+                let y = gekko_math::fma::fmadds(0.811, rng.randf(), 1.2165);
+                Vec2::new(if i % 2 == 0 { x } else { -x }, y)
+            }));
         }
     }
     /// ifStatus_802F5B48 then ifStatus_802F4EDC, both s_link 17, p_link 15.
@@ -48,6 +76,38 @@ impl PercentDisplay {
             offset.y = if y < 0.0 { y - 0.2028 } else { y + 0.2028 };
         }
         self.shake_remaining -= 1;
+    }
+}
+
+/// ifStock_802F8298 (802F8298): five icon slots and their loss animation.
+pub struct StockDisplay {
+    pub icon_positions: [hsd_types::Vec3; 5],
+    pub animation_frames: [u8; 5],
+    pub animate_losses: bool,
+}
+impl StockDisplay {
+    pub fn tick(&mut self, stocks: u8) -> Vec<hsd_types::Vec3> {
+        assert!(
+            stocks <= 5,
+            "ifStock_802F8298: numeric stock count above five"
+        );
+        let mut effects = Vec::new();
+        for (i, frame) in self.animation_frames.iter_mut().enumerate() {
+            if i < usize::from(stocks) {
+                *frame = if self.animate_losses { 0 } else { 10 };
+            } else {
+                if !self.animate_losses {
+                    *frame = 10;
+                }
+                if *frame == 0 {
+                    effects.push(self.icon_positions[i]);
+                }
+                if *frame < 10 {
+                    *frame += 1;
+                }
+            }
+        }
+        effects
     }
 }
 

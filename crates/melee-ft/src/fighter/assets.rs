@@ -60,6 +60,8 @@ pub struct FighterAssets {
     pub hurtboxes: Vec<super::caches::Hurtbox>,
     pub first_stale_penalty: f32,
     pub grab_friction_multiplier: f32,
+    pub throw_weight_scale: f32,
+    pub smash_sounds: Vec<u32>,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamics_motion_starts: BTreeMap<i32, Vec<u32>>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
@@ -77,6 +79,9 @@ pub struct FighterAssets {
     /// Archive-relative source locations for savestate import/diagnostics only.
     pub instruction_offsets: Vec<u32>,
     pub motion_table_offset: u32,
+    pub life: super::life::LifeParameters,
+    pub revival_platform: super::life::RevivalPlatform,
+    pub charge_start_graphics: BTreeMap<u8, super::effects::GraphicsCommand>,
     pub camera_extents: [hsd_types::Vec3; 2],
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
@@ -148,6 +153,25 @@ impl FighterAssets {
                 other => other.clone(),
             })
             .collect::<Vec<_>>();
+        // lb_80014258 / ft_800BFF34: the charge overlay starts on the next Anim.
+        // This prefix is SetColor, Graphics, Wait; sustained charging is guarded.
+        let color_table = common.link(common_root + 6 * 4)?.ok_or("color table")?;
+        let mut charge_start_graphics = BTreeMap::new();
+        for command in &commands {
+            if let Command::SmashCharge(charge) = command {
+                let entry = common
+                    .link(color_table + u32::from(charge.color_animation) * 8)?
+                    .ok_or("charge color script")?;
+                if common.reader().u32(entry)? >> 26 != 18
+                    || common.reader().u32(entry + 8)? >> 26 != 21
+                    || common.reader().u32(entry + 28)? != (11 << 26 | 1)
+                {
+                    return Err("unsupported charge overlay prefix".into());
+                }
+                charge_start_graphics
+                    .insert(charge.color_animation, read_graphics(common, entry + 8)?);
+            }
+        }
         let groups = commands
             .iter()
             .filter_map(|c| {
@@ -185,6 +209,19 @@ impl FighterAssets {
             );
         }
         Ok(Self {
+            smash_sounds: {
+                let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+                if let Some(list) = data.link(sound_table)? {
+                    let count = data.reader().u32(list)?;
+                    let ids = data.link(list + 4)?.ok_or("missing smash sound list")?;
+                    (0..count)
+                        .map(|i| data.reader().u32(ids + i * 4))
+                        .collect::<std::result::Result<Vec<_>, _>>()?
+                } else {
+                    Vec::new()
+                }
+            },
+            throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,
             bones: read_fighter_bones(data, root, descriptor.part_animation_count)?,
@@ -299,6 +336,33 @@ impl FighterAssets {
             commands,
             instruction_offsets: words.keys().copied().collect(),
             motion_table_offset: motion_table,
+            revival_platform: {
+                let table = common
+                    .link(common_root + 8 * 4)?
+                    .ok_or("missing revival platform resources")?;
+                let descriptor = hsd_archive::desc::JObjDesc::read(
+                    common,
+                    common
+                        .link(table)?
+                        .ok_or("missing revival platform model")?,
+                )?;
+                let (mut tree, root) = hsd_anim::load::load_joint_tree(common, &descriptor)?;
+                let animation = hsd_archive::desc::AnimJoint::read(
+                    common,
+                    common.link(table + 4)?.ok_or("missing revival animation")?,
+                )?;
+                hsd_anim::load::attach_anim_joint(&mut tree, root, &animation, common)?;
+                tree.req_anim_all(root, 0.0);
+                super::life::RevivalPlatform { tree, root }
+            },
+            life: super::life::LifeParameters {
+                death_delay: common.reader().s32(common_data + 0x500)?,
+                revival_duration: common.reader().s32(common_data + 0x5D0)?,
+                platform_duration: common.reader().s32(common_data + 0x5D4)?,
+                invincibility_duration: common.reader().s32(common_data + 0x5D8)?,
+                death_effect_scale: common.reader().f32(common_data + 0x4F4)?,
+            },
+            charge_start_graphics,
             camera_extents: {
                 let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
                 [read_vec(data, p)?, read_vec(data, p + 12)?]
@@ -344,34 +408,13 @@ fn read_script(
                 id: ((word >> 18) & 255) as u8,
                 duration: word & 0x3FFFF,
             }),
+            18 => Command::SmashSound,
+            24 => Command::ThrowAccessory,
             19 => Command::SetVariable {
                 index: ((word >> 24) & 3) as usize,
                 value: word & 0xFFFFFF,
             },
-            10 => {
-                // ftAction_80071028 (0x80071028): signed offsets, unsigned ranges.
-                // Retail uses the literal 0.003906f, not exact 1/256; no fusion.
-                const SCALE: f32 = 0.003906;
-                let r = archive.reader();
-                Command::Graphics(super::effects::GraphicsCommand {
-                    bone: ((word >> 18) & 255) as usize,
-                    common_bone: word & (1 << 17) != 0,
-                    destroy_on_state_change: word & (1 << 16) != 0,
-                    item_bone: word & (1 << 15) != 0,
-                    id: r.u16(offset + 4)?,
-                    parameter: f32::from(r.u16(offset + 6)?),
-                    offset: hsd_types::Vec3::new(
-                        SCALE * f32::from(r.u16(offset + 8)? as i16),
-                        SCALE * f32::from(r.u16(offset + 10)? as i16),
-                        SCALE * f32::from(r.u16(offset + 12)? as i16),
-                    ),
-                    range: hsd_types::Vec3::new(
-                        SCALE * f32::from(r.u16(offset + 14)?),
-                        SCALE * f32::from(r.u16(offset + 16)?),
-                        SCALE * f32::from(r.u16(offset + 18)?),
-                    ),
-                })
-            }
+            10 => Command::Graphics(read_graphics(archive, offset)?),
             // ftAction_8007121C: five command words per attack capsule.
             11 => Command::SpawnHitbox {
                 id: ((word >> 23) & 7) as usize,
@@ -385,6 +428,11 @@ fn read_script(
                     descriptor: super::hitbox::ThrowHitbox::read(archive, offset)?,
                 }
             }
+            20 => match (word >> 23) & 7 {
+                0 => Command::GrabRelease,
+                1 => Command::ThrowReverse,
+                value => return Err(format!("unknown throw flag {value}").into()),
+            },
             15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
             16 => Command::ClearHitboxes,
             // ftAction_80071AE8 (80071AE8): x2218_b1 unless disabled (or holding an item).
@@ -398,6 +446,24 @@ fn read_script(
                 duration: ((word << 7) as i32) >> 7,
                 reverse: word & (1 << 25) != 0,
             },
+            // ftAction_80073008: separate fmuls at retail 80073048.
+            56 => Command::SmashCharge(super::smash::SmashCharge {
+                phase: super::smash::ChargePhase::PreCharge,
+                frames: 0.0,
+                maximum_frames: ((word >> 16) & 1023) as f32,
+                maximum_multiplier: 0.003906 * f32::from(word as u16),
+                saved_rate: 1.0,
+                color_animation: (archive.reader().u32(offset + 4)? >> 24) as u8,
+            }),
+            25 => Command::SetAirborne(match word & 0x03ff_ffff {
+                0 => melee_types::GroundOrAir::Ground,
+                1 => melee_types::GroundOrAir::Air,
+                value => {
+                    return Err(
+                        format!("ftAction_80071998: unsupported airborne mode {value}").into(),
+                    )
+                }
+            }),
             23 => Command::AllowInterrupt,
             // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
             26 => Command::HurtStatus(match word & 0x03ff_ffff {
@@ -406,7 +472,6 @@ fn read_script(
                 2 => super::escape::HurtStatus::Intangible,
                 value => return Err(format!("unknown hurt status {value}").into()),
             }),
-            20 if word & 0x03ff_ffff == 0 => Command::ReverseFacing,
             41 => Command::Part {
                 group: ((word >> 19) & 127) as usize,
                 variant: ((word >> 12) & 127) as usize,
@@ -456,6 +521,7 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
+            Command::SmashCharge(_) => offset += 8,
             Command::Graphics(_) | Command::SpawnHitbox { .. } => offset += 20,
             Command::LandingEffect(_)
             | Command::FootstepSound { .. }
@@ -520,6 +586,7 @@ fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<super::caches::Hurtbox>>
         .map(|i| {
             let p = base + i * 0x28;
             Ok(super::caches::Hurtbox {
+                grabbable: a.reader().u32(p + 8)? != 0,
                 bone: a.reader().u32(p)? as usize,
                 height: super::caches::HurtHeight::from_retail(a.reader().u32(p + 4)?),
                 offsets: [read_vec(a, p + 12)?, read_vec(a, p + 24)?],
@@ -565,4 +632,30 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
         .depth_first(root)
         .map(|id| tree.get(id).clone())
         .collect())
+}
+
+fn read_graphics(archive: &Archive, offset: u32) -> Result<super::effects::GraphicsCommand> {
+    let word = archive.reader().u32(offset)?;
+    // ftAction_80071028 (0x80071028): signed offsets, unsigned ranges.
+    // Retail uses the literal 0.003906f, not exact 1/256; no fusion.
+    const SCALE: f32 = 0.003906;
+    let r = archive.reader();
+    Ok(super::effects::GraphicsCommand {
+        bone: ((word >> 18) & 255) as usize,
+        common_bone: word & (1 << 17) != 0,
+        destroy_on_state_change: word & (1 << 16) != 0,
+        item_bone: word & (1 << 15) != 0,
+        id: r.u16(offset + 4)?,
+        parameter: f32::from(r.u16(offset + 6)?),
+        offset: hsd_types::Vec3::new(
+            SCALE * f32::from(r.u16(offset + 8)? as i16),
+            SCALE * f32::from(r.u16(offset + 10)? as i16),
+            SCALE * f32::from(r.u16(offset + 12)? as i16),
+        ),
+        range: hsd_types::Vec3::new(
+            SCALE * f32::from(r.u16(offset + 14)?),
+            SCALE * f32::from(r.u16(offset + 16)?),
+            SCALE * f32::from(r.u16(offset + 18)?),
+        ),
+    })
 }

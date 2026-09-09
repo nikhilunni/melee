@@ -52,10 +52,11 @@ const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 10] = [2, 9, 10, 45, 267, 306, 307, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 13] = [2, 9, 10, 45, 212, 261, 267, 306, 307, 364, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
+    camera_quakes: Vec<(u16, Vec3)>,
     pub(crate) draws: DrawLog,
     instances: Vec<Effect>,
     next_joint: usize,
@@ -206,7 +207,7 @@ impl Effects {
                 ..
             } = request
             {
-                if !matches!(id, DASH_DUST_REQUEST | JUMP_FLASH_REQUEST) {
+                if !matches!(id, 0x3F8 | 0x406 | DASH_DUST_REQUEST | JUMP_FLASH_REQUEST) {
                     let joint = fighter.animation.parts[bone].joint;
                     fighter.skeleton.setup_matrix(joint);
                     let mut position = Vec3::ZERO;
@@ -215,11 +216,20 @@ impl Effects {
                         &offset,
                         &mut position,
                     );
-                    self.spawn_dust_generator(id, position, facing, bank, particles, rng)?;
+                    if id == 0x514 {
+                        // efAsync kind 8 -> Camera_RequestQuake(3), no particle spawn.
+                        self.camera_quakes.push((3, position));
+                    } else {
+                        self.spawn_dust_generator(id, position, facing, bank, particles, rng)?;
+                    }
                     continue;
                 }
             }
             let (id, attachment) = match request {
+                EffectRequest::Death { .. } => (0x19, None),
+                EffectRequest::CaptureFlash { .. } => (0xF, None),
+                EffectRequest::Graphics { id: 0x3F8, .. } => (0x13, None),
+                EffectRequest::Graphics { id: 0x406, .. } => (4, None),
                 EffectRequest::HitSpark {
                     element: melee_types::HitElement::Normal,
                     ..
@@ -262,7 +272,8 @@ impl Effects {
             if let EffectRequest::Shield { bone, .. } = request {
                 effect.shield_bone = Some(bone);
             }
-            let root = if let EffectRequest::Graphics { bone, .. }
+            let root = if let EffectRequest::CaptureFlash { bone }
+            | EffectRequest::Graphics { bone, .. }
             | EffectRequest::Shield { bone, .. } = request
             {
                 fighter.animation.parts[bone].joint
@@ -279,6 +290,15 @@ impl Effects {
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. }
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
+                EffectRequest::Death {
+                    position: origin,
+                    scale,
+                } => {
+                    position = origin;
+                    effect
+                        .tree
+                        .set_scale(effect.root, &Vec3::new(scale, scale, scale));
+                }
                 EffectRequest::HitSpark {
                     position: contact,
                     element,
@@ -300,22 +320,25 @@ impl Effects {
                     }
                 }
                 // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
-                EffectRequest::Shield { .. } => {}
+                EffectRequest::CaptureFlash { .. } | EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {
+                    id,
                     offset,
                     facing,
                     floor_angle,
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    effect.tree.set_rotation_y(
-                        effect.root,
-                        if facing < 0.0 {
-                            -std::f32::consts::FRAC_PI_2
-                        } else {
-                            std::f32::consts::FRAC_PI_2
-                        },
-                    );
+                    if id != 0x406 {
+                        effect.tree.set_rotation_y(
+                            effect.root,
+                            if facing < 0.0 {
+                                -std::f32::consts::FRAC_PI_2
+                            } else {
+                                std::f32::consts::FRAC_PI_2
+                            },
+                        );
+                    }
                     effect.tree.set_rotation_z(effect.root, floor_angle);
                 }
                 // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
@@ -499,6 +522,24 @@ impl Effect {
                             lo == 0 && PARTICLE_KINDS.contains(&hi),
                             "unsupported ef particle {lo}/{hi}"
                         );
+                        if hi == 0xD4 {
+                            // efLib_SpawnParticleEffect (8005D174): standalone link 2,
+                            // root SRT overrides; no live joint attachment.
+                            let mut request = SpawnRequest::new(lo as u8, hi as u32, 2);
+                            request.application_transform =
+                                Some(hsd_particle::generator::ApplicationTransform {
+                                    translation: self.tree.translation(self.root),
+                                    rotation: Vec3::new(
+                                        0.0,
+                                        0.0,
+                                        self.tree.get(self.root).rotate.z,
+                                    ),
+                                    scale: self.tree.scale(self.root),
+                                    ..Default::default()
+                                });
+                            particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                            continue;
+                        }
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
                         if matches!(hi, 2 | 306 | 307) {

@@ -7,22 +7,26 @@ pub mod caches;
 pub mod commands;
 pub mod damage;
 pub mod dash;
+pub mod down;
 mod dynamic_commands;
 pub mod effects;
 pub mod entry;
 pub mod escape;
 pub mod fall;
 pub mod grab;
+pub mod grab_throw;
 pub mod hitbox;
 pub mod jump;
 pub mod landing;
 pub mod ledge;
+pub mod life;
 pub mod multi_jump;
 pub mod overlap;
 mod pass;
 mod procs;
 pub mod run;
 pub mod shield;
+pub mod smash;
 mod snapshot;
 mod spawn;
 pub mod squat;
@@ -49,9 +53,31 @@ pub use state::{interleaved_order, FighterProc, MotionState};
 /// character crate. The implementation owns its typed special attributes.
 pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
+    /// ftCo_AttackS4.c decideFighter (8008C348): nonstandard character entry.
+    fn forward_smash_variant(&self) {
+        if matches!(
+            self.kind(),
+            FighterKind::Ness
+                | FighterKind::Peach
+                | FighterKind::GameWatch
+                | FighterKind::Pikachu
+                | FighterKind::Pichu
+        ) {
+            unimplemented!("ftCo_AttackS4: character entry hook");
+        }
+    }
     /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
     /// character-specific capture variants override this boundary.
     fn catch_variant(&mut self) {}
+    /// ftCo_ThrowB_Anim: Fox laser and special capture callbacks are character-owned.
+    fn throw_variant(&self) {
+        if matches!(
+            self.kind(),
+            FighterKind::Fox | FighterKind::Samus | FighterKind::Kirby | FighterKind::Yoshi
+        ) {
+            unimplemented!("ftCo_Throw.c: character throw callback hook");
+        }
+    }
 
     /// Explicit boundary for a character-owned hurt-capsule layout.
     fn check_hurtbox_interaction(&self) {}
@@ -436,6 +462,7 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub bones: FighterBones,
     /// GObj.hsd_obj: main skeleton; animation owns the secondary tree.
     pub skeleton: JObjTree,
+    pub revival_platform: Option<life::RevivalPlatform>,
     pub motion_state: MotionState,
     pub state_data: MotionData,
     pub combat: damage::CombatState,
@@ -498,6 +525,11 @@ pub struct CameraSubject {
 /// State-local data; the retail union starts at Fighter +2340.
 #[derive(Clone, Debug, Default)]
 pub enum MotionData {
+    Life(life::LifeState),
+    Smash,
+    Down {
+        wait_remaining: f32,
+    },
     Catch,
     #[default]
     None,
