@@ -244,6 +244,7 @@ code sketches: `docs/STEEL_THREAD.md`.
 - [ ] C7 **Kind checks out of trait default bodies.** The interim `if kind == ..` checks inside `CharacterCallbacks` defaults become hooks or attribute data. After C1.
 - [ ] C8 **Shared subaction interpreter and collision crates** (`melee-cmd`, `melee-coll`) extracted from melee-ft so items can use them. Prerequisite for S4; after C2.
 - [~] (2026-09-09) C9 **Item oracle.** Tracer records the item GObj list each tick (Item struct bytes, owner, kind, position/velocity, state) beside fighters; decoder and validator keys for items; a laser scene (`laser_fd_fox`) recorded once the tracer lands. Needed before S4.
+- [ ] C11 **Gates must not pass on missing data.** The m4/m5 gate tests return early and report `ok` when `harness/traces`/`harness/roms` are absent (found 2026-09-09 when the C1 lane ran green against empty directories). Make a missing trace a hard failure, or an explicit `ignored` with the path in the message, so a green chain always means the oracle ran. Add the same check to `tools/merge-check.sh`.
 - [~] (2026-09-09) C10 **Reports and CI.** `melee-ft/src/fighter/M4_*.md`, `M5_*.md` move to `docs/PORT_NOTES/`; new lane reports go there directly; `tools/merge-check.sh` runs the strict merge chain (build errors, gate/test failures, clippy, fmt all block) so it is not something only Claude runs by hand.
 
 ### Combat table (each row: Dolphin scenes recorded by Claude, ported by Codex, gated)
