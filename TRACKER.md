@@ -186,7 +186,8 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [x] (2026-09-09) **Cold start (Codex lane B3).** `melee-sim/src/initial_state/cold.rs` builds the match-start state from `(stage, characters/costumes/ports, seed)` with no savestate: `start_fd_fox_cold`, `start_fd_marth_cold`, `start_bf_fox_cold`, `start_fd_falco_cold` all reach the recorded traces 600x49. Found and fixed en route: retail CPU initialisation draws twice (`ftCo_800A101C` + `ftCo_800B9704`); the first-session one-draw spawn expectation was self-authored and is corrected. `docs/COLD_START.md`. Next: Slippi replays as tests (lane B4).
 
 - [x] (2026-09-09) Yoshi's Story match start and cold start (Codex lane B5): `start_ys_fox`, `start_ys_fox_cold` 600x49, particle replay 215,202 fields. The Fox-vs-Falco Slippi fixture is an online match (per-frame netplay RNG resets), so only offline replays can be compared.
-- [~] (2026-09-09) Dream Land N64 recorded (`idle_dl_fox`, `start_dl_fox`, all stages unlocked in RAM with `poke-or 0x8045BF2A u16 0xFFFF`); lane B6 next.
+- [x] (2026-09-09) Dream Land N64 (Codex lane B6): `melee-gr/src/pupupu/`, Whispy's wind schedule and gust on the fighters (the idle P2 is pushed from t519 and blown into Fall at t593), point lights, particle opcode A9, cold setup; gates `idle_dl_fox`, `start_dl_fox`, `start_dl_fox_cold` 600x49; particle replays 231,747 fields. `docs/DREAM_LAND.md`. Multi-minute flybys and auxiliary gust/camera effects remain.
+- [~] (2026-09-09) Fountain of Dreams recorded (`idle_fod_fox`, `start_fod_fox`: fighters spawn on the side platforms at (+-41.25, 16.1)); its idle ledger is particle-heavy (~7,800 draws each at `hsd_8039930C+0x31EC/+0x3280` over 600 ticks: the fountain water). Lane B7 prompt drafted; paused for discussion.
 
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 
