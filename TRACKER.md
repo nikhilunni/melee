@@ -227,7 +227,7 @@ crate passes its scenarios.
 | Sheik | `ft-seak` | 2858 | `[ ]` |
 | Zelda | `ft-zelda` | 2218 | `[ ]` (transform pair with Sheik) |
 | Peach | `ft-peach` | 2195 | `[x]` idle/start/16 movement scenes incl. her double jump hook (2026-09-09, lane C3) |
-| Jigglypuff | `ft-purin` | 2533 | `[ ]` |
+| Jigglypuff | `ft-purin` | 2533 | `[x]` idle/start/16 movement scenes through the shared F1-F5 multi-jump path (2026-09-09, lane C5) |
 | Pikachu | `ft-pikachu` | 2377 | `[ ]` |
 | Pichu | `ft-pichu` | 421 | `[ ]` |
 | Samus | `ft-samus` | 1846 | `[ ]` |
