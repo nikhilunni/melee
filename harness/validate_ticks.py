@@ -54,7 +54,10 @@ def validate(records, max_draws: int = 64) -> dict:
                 violations.append(f"ordinal {ordinal}: {key} is not finite")
             elif key in previous_anim:
                 before = previous_anim[key]
-                if not (current - before == 1 or current < before):
+                # -1 means "no animation frame yet" (entry states before the
+                # first animation starts); it may hold across ticks.
+                idle_marker = before == -1 and current == -1
+                if not (current - before == 1 or current < before or idle_marker):
                     violations.append(f"ordinal {ordinal}: {key} {before:g} -> {current:g} "
                                       "(expected +1 or restart)")
         if previous is not None:
@@ -73,7 +76,8 @@ def validate(records, max_draws: int = 64) -> dict:
             if not metadata.issubset(record):
                 violations.append(f"ordinal {ordinal}: incomplete tick metadata")
             else:
-                if record["tick"] != (record["watch_value"] + 1) & 0xFFFFFFFF:
+                scene_reset = ordinal == 0 and record["tick"] == 0
+                if record["tick"] != (record["watch_value"] + 1) & 0xFFFFFFFF and not scene_reset:
                     violations.append(f"ordinal {ordinal}: watch value is not pre-increment tick")
                 if previous is not None and metadata.issubset(previous):
                     if record["tick"] != (previous["tick"] + 1) & 0xFFFFFFFF:

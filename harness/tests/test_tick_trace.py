@@ -91,7 +91,18 @@ def test_reads_unrelated_writes_duplicates_and_reentrancy_do_not_dump(capture):
     tracer.fail("test cleanup")
 
 
-@pytest.mark.parametrize("bad_value", [0, 100, 102])
+def test_counter_reset_to_zero_on_first_tick_is_a_scene_start(capture):
+    # A match scene resets the scheduler tick counter to 0 on its first tick.
+    tracer, mem, raw, done, calls = capture
+    tracer.on_frame()
+    tracer.on_memory(True, tick.WATCH_ADDR, 0)
+    assert not raw.with_suffix(".jsonl.err").exists()
+    assert tracer.counter_reset_at_start and tracer.last_tick == 0
+    assert len(raw.read_text().splitlines()) == 1
+    tracer.fail("test cleanup")
+
+
+@pytest.mark.parametrize("bad_value", [100, 102])
 def test_counter_reset_repeated_write_or_gap_fail(capture, bad_value):
     tracer, mem, raw, done, calls = capture
     tracer.on_frame()

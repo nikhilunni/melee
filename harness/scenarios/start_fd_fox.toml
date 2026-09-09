@@ -1,0 +1,23 @@
+# Match-start scenario: the first fully initialised frame of a Fox vs Fox match
+# on Final Destination. Both fighters are in the entry animation (motion 322)
+# at (+-60, 10, 0) and have not yet touched the floor. Recorded 2026-09-08 with
+# harness/dolphin/remote.py `save-when-fighters` (fires once both fighters
+# exist with valid motion ids). The savestate is machine-local (harness/roms/,
+# gitignored). Stock 1, items off, P2 = idle human slot on an emulated pad.
+name = "start_fd_fox"
+savestate = "harness/roms/start_fd_fox.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
+
+inputs = []   # no input for 600 ticks

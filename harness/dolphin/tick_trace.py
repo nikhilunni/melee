@@ -46,6 +46,7 @@ class TickTracer(Tracer):
         self.pending_finish = False
         self.duplicates = 0
         self.reentrant = 0
+        self.counter_reset_at_start = False
 
     def install(self) -> None:
         if self.load_info.get("synced") is False:
@@ -99,7 +100,12 @@ class TickTracer(Tracer):
             if self.frame and value == self.last_tick:
                 self.duplicates += 1
                 return
-            if before != self.last_tick or value != (before + 1) & MASK:
+            if self.frame == 0 and value == 0 and before == self.last_tick:
+                # A match scene resets the scheduler tick counter to 0 on its
+                # first tick (gm_1A45.c); a savestate taken at match start
+                # observes that reset. Accept it once and count from there.
+                self.counter_reset_at_start = True
+            elif before != self.last_tick or value != (before + 1) & MASK:
                 raise ValueError(f"tick discontinuity at ordinal {self.frame}: "
                                  f"last={self.last_tick}, memory={before}, callback={value}")
             record = self.record("frame_end")
@@ -139,7 +145,8 @@ class TickTracer(Tracer):
                 "ticks": self.frame, "vi_frames": self.vi_frame + 1,
                 "watch_address": WATCH_ADDR, "store_pc": STORE_PC,
                 "initial_tick": self.initial_tick, "last_tick": self.last_tick,
-                "duplicate_callbacks": self.duplicates, "reentrant_callbacks": self.reentrant}
+                "duplicate_callbacks": self.duplicates, "reentrant_callbacks": self.reentrant,
+                "counter_reset_at_start": self.counter_reset_at_start}
 
 
 # Only when Dolphin runs this file directly; importing it (rng_ledger.py) must not start a tracer.

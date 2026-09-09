@@ -114,7 +114,11 @@ class Remote:
         if self.save_when_fighters_path is None:
             return
         fighters = self.read_fighters()
-        if fighters and all(proto.fighter_looks_valid(f) for f in fighters):
+        # The first VI frame with a fighter GObj can precede Fighter init
+        # (garbage motion id, zero position, second fighter absent); wait for
+        # a full, initialised roster.
+        if len(fighters) >= 2 and all(proto.fighter_looks_valid(f) and 0 <= f["motion_id"] < 1000
+                                      for f in fighters):
             path, self.save_when_fighters_path = self.save_when_fighters_path, None
             self.save_state(path)
             self.note = f"save-when-fighters fired at frame {self.frame}: {path}"
