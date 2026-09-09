@@ -293,7 +293,7 @@ impl FighterAnimation {
 
     /// `ftAnim_8006E9B4`: blend timing precedes both skeleton evaluations;
     /// current frame is read only after the pose has been transferred.
-    fn advance_main<T: InverseTrig>(&mut self, tree: &mut JObjTree) {
+    pub(crate) fn advance_main<T: InverseTrig>(&mut self, tree: &mut JObjTree) {
         if self.motion_id == -1 {
             return;
         }

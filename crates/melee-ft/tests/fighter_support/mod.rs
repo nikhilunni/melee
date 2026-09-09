@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 mod collision;
+pub mod rendered_pose;
 pub mod replay;
 pub mod saved_pose;
 use ft_fox::{attributes::read_fox_attributes, init::Fox};

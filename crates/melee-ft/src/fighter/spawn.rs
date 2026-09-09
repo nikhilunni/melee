@@ -261,6 +261,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
     ) -> Result<()> {
         self.status.require_idle();
+        super::commands::reset_parts(&mut self.animation, &mut self.skeleton, assets);
         if matches!(
             state,
             CommonMotionState::Entry | CommonMotionState::EntryEnd
@@ -318,7 +319,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.animation.frame = -1.0;
         self.animation.remainder = 0.0;
         self.commands.restart(assets.command_entries[&animation_id]);
-        self.step_animation(assets);
+        // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:
+        // main animation then commands. Part blends run only in the ordinary
+        // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.
+        self.animation
+            .advance_main::<RetailTrig>(&mut self.skeleton);
+        self.commands.step(
+            &mut self.animation,
+            &mut self.skeleton,
+            &mut self.ground_pose,
+            assets,
+        );
         if state == CommonMotionState::Fall {
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 self.leave_ground();

@@ -163,3 +163,28 @@ fn apply_part(
         index += 1;
     }
 }
+
+/// ftAnim_80070F28 (0x80070F28), then ftAnim_80070E74 (0x80070E74).
+/// Fighter_ChangeMotionState calls both before attaching the new main motion
+/// (fighter.c:996-997). Remove temporary part ownership before pose reset;
+/// then reinstall any persistent selection from x8B0[i].x10.
+pub(super) fn reset_parts(
+    animation: &mut FighterAnimation,
+    tree: &mut JObjTree,
+    assets: &FighterAssets,
+) {
+    for slot in &mut animation.part_animations {
+        if slot.current != -1 {
+            for &bone in &slot.joints {
+                animation.parts[bone].flags.0 &= !PartFlags::PART_ANIMATION;
+            }
+            slot.current = -1;
+        }
+    }
+    for group in 0..animation.part_animations.len() {
+        let previous = animation.part_animations[group].previous;
+        if previous != -1 {
+            apply_part(animation, tree, assets, group, previous as usize, 0.0);
+        }
+    }
+}

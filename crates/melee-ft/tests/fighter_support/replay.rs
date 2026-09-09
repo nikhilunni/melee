@@ -9,6 +9,34 @@ use melee_ft::{
 use melee_types::snapshot::{PrefixSink, Snapshot};
 
 pub fn replay(scene: &str, ticks: usize, compare_bones: bool) {
+    replay_with_observer(
+        scene,
+        ticks,
+        if compare_bones {
+            BoneOracle::Srt
+        } else {
+            BoneOracle::None
+        },
+        |_, _| {},
+    );
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum BoneOracle {
+    None,
+    Srt,
+    Rendered,
+}
+
+type FoxFighter = melee_ft::fighter::Fighter<ft_fox::init::Fox>;
+
+pub fn replay_with_observer(
+    scene: &str,
+    ticks: usize,
+    oracle: BoneOracle,
+    mut observe: impl FnMut(usize, &[FoxFighter; 2]),
+) {
+    let compare_bones = oracle != BoneOracle::None;
     let trace_path = harness().join(format!("traces/{scene}_fd_fox.tick.expected.jsonl"));
     let ledger_path = harness().join(format!("traces/{scene}_fd_fox.ledger600.raw.jsonl"));
     let raw_path = harness().join(format!("traces/{scene}_fd_fox.tick.raw.jsonl"));
@@ -184,10 +212,13 @@ pub fn replay(scene: &str, ticks: usize, compare_bones: bool) {
             );
         }
         if let Some(bones) = &bones {
-            if let Some(mismatch) = compare_pose(&fighters, &bones[tick], tick, scene) {
-                first_bone_mismatch.get_or_insert(mismatch);
+            if oracle == BoneOracle::Srt {
+                if let Some(mismatch) = compare_pose(&fighters, &bones[tick], tick, scene) {
+                    first_bone_mismatch.get_or_insert(mismatch);
+                }
             }
         }
+        observe(tick, &fighters);
         for (player, f) in fighters.iter().enumerate() {
             let bytes = raw(&raw_trace[tick], player);
             assert_eq!(
@@ -249,9 +280,7 @@ fn compare_pose(
             ];
             let scale = [joint.scale.x, joint.scale.y, joint.scale.z];
             let translate = [joint.translate.x, joint.translate.y, joint.translate.z];
-            let matrix: Vec<_> = joint.mtx.0.iter().flatten().copied().collect();
             for (field, values) in [
-                ("mtx", matrix.as_slice()),
                 ("rotate", &rotation[..]),
                 ("scale", &scale[..]),
                 ("translate", &translate[..]),

@@ -1,4 +1,106 @@
-# Dynamic bones: implementation and verification limits
+# Dynamic bones: implementation and verification
+
+## Current acceptance: tick SRT and post-render matrices
+
+The reviewer-approved oracle split is now green, with no ignored bone tests:
+
+| Oracle | P0 | P1 | Compared fields |
+| --- | ---: | ---: | --- |
+| Start scheduler boundary | 130/130 ticks | 130/130 ticks | rotate/scale/translate, all 73 bones |
+| Idle scheduler boundary | 8/8 ticks | 8/8 ticks | rotate/scale/translate, all 73 bones |
+| Start post-render VI | 130/130 aligned and matching | 130/130 aligned and matching | non-dirty bone mtx[0..11] |
+
+The sole SRT exclusion is Euler `rotate[3]` when `JOBJ_USE_QUATERNION`
+is clear; the C/asm justification remains below. Quaternion W is compared.
+There are no SRT tolerances or dirty-bone exclusions. Dynamics bones 17–20,
+fingers/part-animation bones, and all other bones now match. No discrepancy
+remains in either oracle.
+
+### Why matrices use the VI oracle
+
+`HSD_JObjGetMtxPtr` in `third_party/melee-decomp/src/sysdolphin/baselib/jobj.h:697–701`
+calls `HSD_JObjSetupMatrix` before returning the cache. Display reaches those
+lazy demands through `HSD_JObjDispAll` (jobj.c:567–595), `HSD_JObjDisp`
+(displayfunc.c:479), and envelope matrix setup (pobj.c:1151/1168).
+A scheduler-boundary dump therefore contains a mixture of matrices rebuilt
+by simulation queries and caches left from the previous render. Those caches
+are not an oracle for that tick's newly evaluated pose. Per reviewer decision,
+tick tests now compare SRT only; **matrices are tested separately**, not with
+a one-tick shift or a weakened numerical comparison.
+
+`start_fox_matrices_vi_130` groups the singleton M2 records in
+`start_fd_fox.bones_vi_p0.jsonl` and `start_fd_fox.bones_vi_p1.jsonl` by frame.
+Both files use `p0` keys; the filename selects the replay fighter. The test
+matches metadata `(cur_anim_frame, cur_pos.x, cur_pos.y, cur_pos.z)` by exact
+float bits against the same full scheduler replay used for the SRT gate.
+It chooses the earliest matching tick at or after the preceding match,
+allowing repeated VI samples of a stationary tick. Chronology matters:
+Landing and Wait can have identical frame/position keys. Neither bone values
+nor an assumed VI/tick index offset are used for alignment. Records without
+a chronological matching tick are skipped and printed; none are skipped in
+these captures. Tick zero is the imported savestate boundary, as in the SRT
+test. No later oracle row changes the replay state.
+
+For each tick, a cloned skeleton services `setup_matrix` demands for the
+fighter's joints. This evaluates the current pose without modifying simulation
+caches. Only the bones explicitly listed in that VI record's `dirty_bones`
+are excluded, because retail did not rebuild them. Each player's first three
+VI frames list all 73 bones as dirty: these align but compare zero words.
+Thus each fighter has **127 frames with nonempty matrix coverage**. P0 checks
+102,900 matrix words and P1 checks 99,120, all bit-exact (202,020 total).
+
+### Motion-entry ordering correction
+
+Two steps were missing or misplaced in `Fighter_ChangeMotionState`
+(0x800693AC):
+
+1. At fighter.c:996–997, retail calls `ftAnim_80070F28` (0x80070F28)
+   and then `ftAnim_80070E74` (0x80070E74), **before** the new motion attachment
+   and descriptor-pose reset. The first clears temporary part ownership
+   (`flags_b5`, current selector x11); the second reinstalls persistent
+   selections (previous selector x10), if any. The port now does the same.
+   Retaining temporary part flags had suppressed the finger rest-pose reset
+   at Wait entry, leaving bone 45 rotate[0] as BE32B000 instead of BE32B8C7
+   beginning at tick 105.
+2. The new main motion is evaluated at fighter.c:1298 and commands run at
+   1342–1347. That path does **not** call `ftAnim_800707B0` (0x800707B0).
+   Ordinary `ftAnim_8006EBA4` (0x8006EBA4), ftanim.c:380–385, calls main
+   playback, commands, then part blends. Motion entry now advances main
+   playback and commands only. This removes the extra part blend on the
+   Landing transition (the former tick-75 finger discrepancy).
+
+`cd harness && UV_CACHE_DIR=/tmp/melee-uv-cache uv run python asm.py
+ftAnim_80070F28 --fused` and the same command for `ftAnim_80070E74` report
+no fused sites. These additions only change flags, selectors and call order;
+no new arithmetic or solver fusion sites were introduced. The previously
+audited `ftAnim_ApplyPartAnim` arithmetic is reused for persistent selections.
+No hsd-anim helpers or solver arithmetic changes were needed.
+
+Current changes are confined to `melee-ft`: `src/anim/playback.rs` exposes
+main-only stepping within the crate; `src/fighter/{commands,spawn}.rs` restores
+retail motion-entry order; `tests/fighter_support/{mod,replay,rendered_pose}.rs`
+and `tests/start_fox_bones_130.rs` implement the oracle split and shared replay
+observer; this README documents the results. No commits were made.
+
+Final validation for this revision:
+
+- `cargo test -p melee-ft --test start_fox_bones_130 -- --include-ignored --nocapture`:
+  all four tests passed before removing the two remaining ignores; output
+  reports the VI counts above.
+- `cargo gate` after removing the ignores: **540 passed, 0 failed, 1 ignored**
+  (the remaining ignore is the pre-existing melee-sim schema doctest).
+  Includes unignored `start_fox_600`, both SRT oracles, the VI matrix oracle,
+  and the native-C arithmetic oracles.
+- `cargo clippy --workspace --all-targets -- -D warnings`: clean.
+- `git diff --check`: clean. Cargo commands were run sequentially.
+
+## Historical boundary-import investigation
+
+The following report and complete per-tick mismatch inventory describe the
+**previous** cache/SRT comparison contract, before the reviewer-approved oracle
+split and the motion-entry fixes above. Its failure counts and ignored-test
+status are historical, retained to show the effect of the boundary imports.
+
 
 The full `start_fox_600` replay passes both fighters, 600 records each,
 all 24 fields and all 16 fighter RNG draws. **Bone-oracle acceptance remains

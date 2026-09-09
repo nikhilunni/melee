@@ -1,13 +1,10 @@
-//! Tick-boundary cached matrices and SRT. No dirty-bone exclusions: the
-//! tick capture does not include per-joint flags.
+//! Strict tick-boundary SRT and separately aligned post-render matrices.
 mod fighter_support;
 #[test]
-#[ignore = "post-import mismatch: tick 7 P0 bone 8 mtx[0] cache timing; tick 75 finger rotation; see dynamics/README.md"]
 fn start_fox_bones_130() {
     fighter_support::replay::replay("start", 130, true);
 }
 #[test]
-#[ignore = "post-import mismatch: tick 1 P0 bone 10 mtx[0] cache timing; see dynamics/README.md"]
 fn idle_fox_bones_8() {
     fighter_support::replay::replay("idle", 8, true);
 }
@@ -28,4 +25,9 @@ fn excludes_only_unused_euler_w() {
             }
         }
     }
+}
+
+#[test]
+fn start_fox_matrices_vi_130() {
+    fighter_support::rendered_pose::compare_start();
 }
