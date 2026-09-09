@@ -26,6 +26,8 @@ the port meets the real game, so expect surprises and record them here.
 
 ## Blockers
 
+- **Oracle sampling point (found by the M3 plan, `docs/M3_PLAN.md` §1):** Dolphin's `frameadvance` fires at VI begin-field, not at a Melee tick boundary. In `idle_ys_fox` the animation counter steps 11,13,13,15 around ordinal 485, i.e. some samples straddle two ticks or zero. Fix: sample on a game-tick write via `memory.add_memcheck` + `event.on_memorybreakpoint`, then re-record. Until then `expected.jsonl` is not a complete-tick contract.
+- **RNG on Yoshi's Story (`docs/M3_PLAN.md` §3):** Randall's puff particle generators, Shy Guy spawns and the Wait1/Wait2 choice all draw from `seed` in an idle match (521 draws in 600 frames). Matching `rng.seed` there means porting stage decorations and the particle generator. FD would avoid the stage draws. User decision pending: unlock FD (poke/import save) vs gate M3 without `rng.seed` on YS vs port the decorations now.
 - Final Destination is locked on the fresh Dolphin save; scenarios use Yoshi's Story (`idle_ys_fox`) until FD is unlocked. Yoshi's Story has platforms and a slanted floor, which means Milestone 3 needs a bit more of `melee-gr`/`melee-mp` than FD would have.
 
 ## Decisions
