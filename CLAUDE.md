@@ -166,6 +166,16 @@ abstractions and clean organization.
   `tests/data/`, and prefer a table of cases to a wall of asserts.
 - When a clean abstraction would change floating-point operation order or
   width, exactness wins; say so in a comment.
+- **Character differences go through the `CharacterCallbacks` trait, never
+  a `match kind` in shared code.** Retail's ftCommon states are shared by
+  every character and branch on `fp->kind` in ~170 places (Yoshi's shield,
+  Ness/Peach/Mewtwo/Yoshi double jumps, Samus/Yoshi rolls, walljumpers).
+  Each such branch becomes a trait method with a default implementation in
+  `melee-ft` (e.g. `aerial_jump_variant()`, `shield_shape()`), overridden in
+  the character's `ft-<char>` crate. Numeric differences stay in the attribute
+  data. Special moves are per-character modules reached through the trait.
+  A branch the current scenarios never take may stay an explicit
+  `unimplemented!` with the C line, but when it is ported it becomes a hook.
 
 ## Build-speed rules
 
