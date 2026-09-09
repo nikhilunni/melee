@@ -1,0 +1,29 @@
+# Ledge climb: backward hop past the left edge, grab the ledge, then tilt toward the stage (CliffClimbSlow/Quick) and wait.
+# Marth variant of the Fox scenario, same inputs, from the idle_fd_marth savestate
+# (P1 Marth and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "ledgeclimb_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = -1.0, X = true } },
+  { frame = 36, buttons = { StickX = -1.0 } },
+  { frame = 72, buttons = { StickX = 1.0 } },
+  { frame = 200, buttons = {} },
+  { frame = 230, buttons = { StickX = 0.5 } },
+  { frame = 270, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

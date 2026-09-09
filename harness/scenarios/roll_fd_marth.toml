@@ -1,0 +1,27 @@
+# Roll: shield, then tap forward while shielding (EscapeF), release.
+# Marth variant of the Fox scenario, same inputs, from the idle_fd_marth savestate
+# (P1 Marth and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "roll_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 34, buttons = { L = true, TriggerLeft = 1.0, StickX = 1.0 } },
+  { frame = 37, buttons = { L = true, TriggerLeft = 1.0 } },
+  { frame = 80, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
