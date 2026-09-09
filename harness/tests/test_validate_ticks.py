@@ -26,8 +26,10 @@ def test_unit_steps_restarts_and_zero_through_k_draws():
 def test_duplicate_skipped_ticks_and_rng_bound_report_ordinals():
     rows = [record(11, 15), record(13, 16), record(13, 18), record(15, 18, lcg(lcg(123)))]
     result = validate(rows, max_draws=1)
-    assert len(result["violations"]) == 6
-    assert sum("ordinal 2:" in line for line in result["violations"]) == 2
+    # 11 -> 13 and 13 -> 15 skip a frame (straddled ticks); 13 -> 13 is a legal
+    # hold; 16 -> 18 skips; the last seed needs two draws but only one is allowed.
+    assert len(result["violations"]) == 4
+    assert sum("ordinal 2:" in line for line in result["violations"]) == 1
     assert "not reachable in 0..1" in result["violations"][-1]
     assert draw_count(123, lcg(lcg(123)), 2) == 2
     assert draw_count(123, lcg(123), 0) is None
@@ -46,8 +48,10 @@ def test_missing_fighter_or_empty_trace_is_invalid():
     assert validate([record(0, 0)])["violations"]
 
 
-def test_large_unchanged_f32_is_not_mistaken_for_unit_advance():
-    assert validate([record(2**60, 0), record(2**60, 1)])["violations"]
+def test_large_f32_advance_is_judged_by_exact_difference():
+    # A hold is legal at any magnitude; a jump that is not exactly +1 is not.
+    assert not validate([record(2**60, 0), record(2**60, 1)])["violations"]
+    assert validate([record(2**60, 0), record(2**60 * 1.5, 1)])["violations"]
 
 
 def test_tick_metadata_allows_two_ticks_per_vi_but_rejects_counter_gap():
@@ -64,7 +68,7 @@ def test_cli_exit_status_and_histogram(tmp_path, capsys):
     trace.write_text("\n" + json.dumps(record(0, 0)) + "\n" + json.dumps(record(1, 1)))
     assert main([str(trace)]) == 0
     assert "{0: 1}" in capsys.readouterr().out
-    trace.write_text(json.dumps(record(0, 0)) + "\n" + json.dumps(record(0, 1)))
+    trace.write_text(json.dumps(record(0, 0)) + "\n" + json.dumps(record(2, 1)))
     assert main([str(trace)]) == 1
     assert "ordinal 1: p0.cur_anim_frame" in capsys.readouterr().out
     trace.write_text("not json")

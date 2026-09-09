@@ -54,12 +54,14 @@ def validate(records, max_draws: int = 64) -> dict:
                 violations.append(f"ordinal {ordinal}: {key} is not finite")
             elif key in previous_anim:
                 before = previous_anim[key]
-                # -1 means "no animation frame yet" (entry states before the
-                # first animation starts); it may hold across ticks.
-                idle_marker = before == -1 and current == -1
-                if not (current - before == 1 or current < before or idle_marker):
+                # Legitimate per-tick changes: +1 (rate 1), a restart, or a
+                # hold (frame speed 0, e.g. EntryEnd waiting for "GO!", or -1
+                # before the first animation). Anything else, such as +2, is a
+                # sampling straddle; the tick-counter metadata check below is
+                # the exact detector when the raw record carries it.
+                if not (current - before == 1 or current <= before):
                     violations.append(f"ordinal {ordinal}: {key} {before:g} -> {current:g} "
-                                      "(expected +1 or restart)")
+                                      "(expected +1, hold, or restart)")
         if previous is not None:
             if current_anim.keys() != previous_anim.keys():
                 violations.append(f"ordinal {ordinal}: fighter animation field set changed")
