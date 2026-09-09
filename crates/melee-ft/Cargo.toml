@@ -18,3 +18,5 @@ hsd-types = { path = "../hsd-types" }
 [dev-dependencies]
 melee-gr = { path = "../melee-gr" }
 serde_json.workspace = true
+melee-diff = { path = "../melee-diff" }
+ft-fox = { path = "../ft-fox" }

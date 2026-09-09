@@ -132,14 +132,15 @@ Gate: `harness/scenarios/idle_fd_fox.toml`, 600 frames bit-exact.
 - [x] `melee-ft`: `ftanim.c` playback/attach/blend + `ftwaitanim.c` Wait1/Wait2 choice (Codex T7): both Foxes' animation state matches the FD trace 600/600 ticks; all 9 idle-choice RNG draws match the ledger (`src/anim/README.md`)
 - [x] `melee-ft`: human input path `Fighter_Spaghetti_8006AD10` + 21 `ftCo_Wait_IASA` predicates (Codex T9): 600 ticks x 2 fighters, 108 input bytes + 7 CPU fields match (`src/input/README.md`)
 - [ ] `melee-ft`: `fighter.c` init and per-frame update order, `ftcommon.c`, `ftcoll.c`, `ftlib.c`
-- [ ] `melee-ft`: `ftCo_*` action states for standing, squat, and turn only
+- [x] `melee-ft`: `fighter/` composes data+physics+collision+animation+input into `Fighter` with spawn/reset, the Wait callback table, all 15 scheduler proc methods and the 24-key Snapshot (Codex T10): `tests/idle_fox_600.rs` replays both Foxes 600/600 ticks, all 24 fields each, bit-exact. Cold spawn at FD's y=10 markers enters Fall (retail-derived: one jump used, 10-frame ECB lock, one CPU-init draw). Non-idle branches are explicit `unimplemented` with C lines.
+- [ ] `melee-ft`: `ftCo_*` action states for squat and turn (Wait done)
 - [ ] `melee-ft`: physics (`ft_08A1.c` etc): gravity, friction, ground snap
 - [x] `ft-fox`: attributes (Fox special block, 0xD4 bytes) read from PlFx.dat (Codex T4); init and Wait wiring still to do
 - [x] `melee-ft`: `desc/` reads ftData attributes (0x184 bytes, grouped by concept), part table (54 entries, TopN/TransN/XRotN/YRotN=0/1/2/3), ECB joints [41,55,25,13,7,4], bone lists, PlCo common subset (`docs/FOX_DATA.md`)
 - [ ] `melee-sim`: scenario loading, asset loading, frame loop, trace emit
 - [x] Record savestate and `expected.jsonl`: **`idle_ys_fox`** (Yoshi's Story) instead of FD, two idle Foxes, 600 frames, byte-identical on rerun (`docs/DOLPHIN_RUN.md`)
 - [x] `idle_fd_fox` recorded (2026-09-08): FD unlocked via `poke-or 0x8045BF2A u16 0xC0` (save data `gmMainLib_804D3EE0->thing.x186A`), Stock 1 via `GameRules` bytes, items were already NONE. Savestate `harness/roms/idle_fd_fox.sav` at frame 50841, both Foxes in Wait at (+-60, 0.0001, 0). Tick trace `harness/traces/idle_fd_fox.tick.expected.jsonl`, 600 ticks, deterministic.
-- [ ] `pl/player.c` and `gm` match setup: only what spawning one fighter needs
+- [~] `pl/player.c` and `gm` match setup: the slot->kind/costume subset spawning needs is in `fighter/spawn.rs`; stocks/percent bookkeeping still to do
 
 ## Milestone 4: Movement (`melee-ft`)
 

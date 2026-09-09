@@ -209,11 +209,13 @@ dependencies = [
 name = "melee-ft"
 version = "0.0.1"
 dependencies = [
+ "ft-fox",
  "gekko-math",
  "hsd-anim",
  "hsd-archive",
  "hsd-gobj",
  "hsd-types",
+ "melee-diff",
  "melee-gr",
  "melee-lb",
  "melee-mp",

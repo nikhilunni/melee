@@ -8,3 +8,5 @@ pub mod input;
 
 pub mod collision;
 pub mod physics;
+
+pub mod fighter;

@@ -3,3 +3,5 @@
 //! See CLAUDE.md for the porting rules that apply to every crate.
 
 pub mod attributes;
+
+pub mod init;
