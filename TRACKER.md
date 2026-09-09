@@ -220,7 +220,7 @@ crate passes its scenarios.
 | Falco | `ft-falco` | 503 | `[x]` idle/start/16 movement scenes (2026-09-09, lane C1) |
 | Sheik | `ft-seak` | 2858 | `[ ]` |
 | Zelda | `ft-zelda` | 2218 | `[ ]` (transform pair with Sheik) |
-| Peach | `ft-peach` | 2195 | `[ ]` |
+| Peach | `ft-peach` | 2195 | `[x]` idle/start/16 movement scenes incl. her double jump hook (2026-09-09, lane C3) |
 | Jigglypuff | `ft-purin` | 2533 | `[ ]` |
 | Pikachu | `ft-pikachu` | 2377 | `[ ]` |
 | Pichu | `ft-pichu` | 421 | `[ ]` |
