@@ -153,3 +153,45 @@ fn decode_block(input: &[u8], output: &mut Vec<u8>, limit: usize) {
         }
     }
 }
+
+/// Main-tree SRT and cached matrices at the *initial* scheduler boundary.
+/// The bone oracle has no flags, accumulated scale, blend tree or dynamics
+/// heap state; those remain imported from the owned savestate and raw Fighter.
+/// Later oracle rows must never call this function.
+pub fn restore_oracle_boundary<C: CharacterCallbacks>(
+    fighter: &mut Fighter<C>,
+    player: usize,
+    row: &serde_json::Value,
+) {
+    assert_eq!(row["frame"].as_u64(), Some(0));
+    assert_eq!(row["state"].as_object().unwrap().len(), 3212);
+    for (bone, part) in fighter.animation.parts.iter().enumerate() {
+        let scalar = |field: &str, index: usize| {
+            let key = format!("p{player}.bone[{bone}].{field}[{index}]");
+            f32::from_bits(
+                row["state"][&key]["v"]["bits"]
+                    .as_u64()
+                    .unwrap()
+                    .try_into()
+                    .unwrap(),
+            )
+        };
+        let joint = fighter.skeleton.get_mut(part.joint);
+        joint.rotate = Quaternion::new(
+            scalar("rotate", 0),
+            scalar("rotate", 1),
+            scalar("rotate", 2),
+            scalar("rotate", 3),
+        );
+        joint.scale =
+            hsd_types::Vec3::new(scalar("scale", 0), scalar("scale", 1), scalar("scale", 2));
+        joint.translate = hsd_types::Vec3::new(
+            scalar("translate", 0),
+            scalar("translate", 1),
+            scalar("translate", 2),
+        );
+        for (index, value) in joint.mtx.0.iter_mut().flatten().enumerate() {
+            *value = scalar("mtx", index);
+        }
+    }
+}

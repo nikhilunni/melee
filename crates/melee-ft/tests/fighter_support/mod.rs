@@ -202,6 +202,23 @@ impl Fixture {
         f.dynamics_first_bone = (0..word(raw, 0x3E0) as usize)
             .map(|i| word(raw, 0x2F0 + i * 0x18))
             .collect();
+        // Fighter.x8B0[5], stride 0x14 (ft/types.h:1301-1308).
+        // ftAnim_800707B0 ignores a slot only when current is -1. Preserve
+        // even inactive scalar words rather than infer defaults from a pose.
+        for (index, state) in f.animation.part_animations.iter_mut().enumerate() {
+            let offset = 0x8B0 + index * 0x14;
+            state.state = word(raw, offset) as i32;
+            state.duration = float(raw, offset + 4);
+            state.progress = float(raw, offset + 8);
+            state.rate = float(raw, offset + 12);
+            state.previous = raw[offset + 16] as i8;
+            state.current = raw[offset + 17] as i8;
+            state.joints = f.bones.animation_sets[index]
+                .as_ref()
+                .map_or_else(Vec::new, |set| {
+                    set.joints.iter().map(|&joint| usize::from(joint)).collect()
+                });
+        }
         let archive_base = word(raw, 0x24) - self.assets.motion_table_offset;
         let pc = word(raw, 0x3EC).wrapping_sub(archive_base);
         f.commands.instruction = (word(raw, 0x3EC) != 0).then(|| {

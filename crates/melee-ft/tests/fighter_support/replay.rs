@@ -61,6 +61,12 @@ pub fn replay(scene: &str, ticks: usize, compare_bones: bool) {
     }
     if let Some(rows) = &bones {
         assert_eq!(rows.len(), ticks);
+        // This single row is the scheduler-boundary pose, not a later input.
+        // Import the entire main tree: idle also has stale palm caches on
+        // bones 26/56, outside the dynamics/part-animation bone lists.
+        for (player, fighter) in fighters.iter_mut().enumerate() {
+            saved_pose::restore_oracle_boundary(fighter, player, &rows[0]);
+        }
     }
     let mut first_bone_mismatch = None;
     let mut matched = [0; 2];
@@ -178,7 +184,7 @@ pub fn replay(scene: &str, ticks: usize, compare_bones: bool) {
             );
         }
         if let Some(bones) = &bones {
-            if let Some(mismatch) = compare_pose(&fighters, &bones[tick], tick) {
+            if let Some(mismatch) = compare_pose(&fighters, &bones[tick], tick, scene) {
                 first_bone_mismatch.get_or_insert(mismatch);
             }
         }
@@ -215,8 +221,10 @@ fn compare_pose(
     fighters: &[melee_ft::fighter::Fighter<ft_fox::init::Fox>; 2],
     expected: &serde_json::Value,
     tick: usize,
+    scene: &str,
 ) -> Option<String> {
     let mut first = None;
+    let mut details = Vec::new();
     let mut mismatches = std::collections::BTreeMap::<(usize, usize, String), usize>::new();
     assert_eq!(expected["frame"].as_u64().unwrap(), tick as u64);
     assert_eq!(expected["state"].as_object().unwrap().len(), 3212);
@@ -249,9 +257,28 @@ fn compare_pose(
                 ("translate", &translate[..]),
             ] {
                 for (index, actual) in values.iter().enumerate() {
+                    // Reviewer-approved exclusion: Euler mode never reads W.
+                    // Keep W bit-exact whenever JOBJ_USE_QUATERNION is set.
+                    if !compared_component(joint.flags, field, index) {
+                        continue;
+                    }
                     let key = format!("p{player}.bone[{bone}].{field}[{index}]");
                     let bits = expected["state"][&key]["v"]["bits"].as_u64().unwrap() as u32;
                     if actual.to_bits() != bits {
+                        let category = if in_dynamics {
+                            "dynamics"
+                        } else if fighter
+                            .bones
+                            .animation_sets
+                            .iter()
+                            .flatten()
+                            .any(|set| set.joints.contains(&(bone as u8)))
+                        {
+                            "part"
+                        } else {
+                            "other"
+                        };
+                        details.push(serde_json::json!({"player":player,"bone":bone,"field":field,"index":index,"expected":bits,"actual":actual.to_bits(),"category":category}));
                         first.get_or_insert_with(|| format!("first bone mismatch tick {tick}, p{player}, bone {bone}, {field}[{index}]: expected {bits:08X}, actual {:08X}, dynamics={in_dynamics}, port flags={:08X}", actual.to_bits(), joint.flags));
                         *mismatches
                             .entry((player, bone, format!("{field}[{index}]")))
@@ -261,6 +288,12 @@ fn compare_pose(
             }
         }
     }
+    if std::env::var_os("MELEE_BONE_MISMATCH_DETAILS").is_some() {
+        eprintln!(
+            "BONE_DIFF {}",
+            serde_json::json!({"scene":scene,"tick":tick,"differences":details})
+        );
+    }
     if let Some(first) = &first {
         eprintln!(
             "{first}; differing words: {}; first differing fields: {:?}",
@@ -269,4 +302,10 @@ fn compare_pose(
         );
     }
     first
+}
+
+/// Euler W is undefined retail stack data. All quaternion components and
+/// all other fields remain part of the bit-exact comparison.
+pub fn compared_component(flags: u32, field: &str, index: usize) -> bool {
+    field != "rotate" || index != 3 || flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0
 }
