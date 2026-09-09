@@ -234,3 +234,41 @@ fn unsupported_shapes_and_app_srt_are_explicit_errors() {
         Err(Error::UnsupportedFeature(_))
     ));
 }
+
+#[test]
+fn restored_render_tracks_keep_current_bytes_until_countdown_completes() {
+    use hsd_particle::particle::{BytePairTrack, Particle};
+    let mut particle = Particle::new(&descriptor(vec![]), 0, 0).unwrap();
+    let track = BytePairTrack {
+        current: [7, 19],
+        target: [113, 211],
+        duration: 2,
+        remaining: 2,
+    };
+    particle.material = track.clone();
+    particle.ambient = track.clone();
+    particle.alpha_compare = track;
+    let mut rng = HsdRng::new(123);
+    let mut log = DrawLog::default();
+    particle.kind |= PAUSED;
+    assert!(particle.update(&mut rng, &mut log).unwrap());
+    assert_eq!(particle.material.remaining, 2);
+    particle.kind &= !PAUSED;
+    for remaining in [1, 0] {
+        assert!(particle.update(&mut rng, &mut log).unwrap());
+        for track in [
+            &particle.material,
+            &particle.ambient,
+            &particle.alpha_compare,
+        ] {
+            assert_eq!(track.remaining, remaining);
+            assert_eq!(track.duration, if remaining == 0 { 0 } else { 2 });
+            assert_eq!(
+                track.current,
+                if remaining == 0 { [113, 211] } else { [7, 19] }
+            );
+        }
+    }
+    assert_eq!(rng.seed, 123);
+    assert!(log.0.is_empty());
+}

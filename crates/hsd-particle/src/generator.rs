@@ -54,6 +54,8 @@ pub struct Generator {
     pub emission_rate: f32,
     pub remaining_life: u16,
     pub children: u32,
+    /// HSD_Generator.appsrt (+0x54), normalized owned AppSRT index.
+    pub appsrt_id: Option<usize>,
     pub shape: EmissionShape,
     /// Caller supplies an already evaluated JObj matrix each animation tick.
     pub joint_matrix: Option<Mtx>,
@@ -113,6 +115,7 @@ impl Generator {
             emission_rate: rate,
             remaining_life: descriptor.generator_life,
             children: 0,
+            appsrt_id: None,
             shape,
             joint_matrix: None,
             texture_images: Arc::from([]),

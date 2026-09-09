@@ -51,6 +51,18 @@ pub struct Particle {
     pub primary: ColorTrack,
     pub environment: ColorTrack,
     pub trail: f32,
+    /// HSD_Particle.aCmpCount/Remain/Param1/Param2/targets (+0x54,78,57,58,7A).
+    pub alpha_compare: BytePairTrack,
+    /// HSD_Particle.aCmpMode (+0x56).
+    pub alpha_compare_mode: u8,
+    /// HSD_Particle.pJObjOfs (+0x59).
+    pub point_joint_offset: u8,
+    /// HSD_Particle.matColCount/Remain/RGB/A/targets (+0x5A,74,7C,7D,80).
+    pub material: BytePairTrack,
+    /// HSD_Particle.ambColCount/Remain/RGB/A/targets (+0x5C,76,7E,7F,82).
+    pub ambient: BytePairTrack,
+    /// HSD_Particle.appsrt (+0x8C), normalized owned AppSRT index.
+    pub appsrt_id: Option<usize>,
     /// Availability from the owning texture group; no image bytes needed.
     pub texture_images: Arc<[bool]>,
 }
@@ -90,6 +102,13 @@ impl Particle {
             primary: ColorTrack::new([255; 4]),
             environment: ColorTrack::new([0; 4]),
             trail: 1.0,
+            // particle.c:461-483; retail 0x80398E18..0x80398E7C: stb/sth.
+            alpha_compare: BytePairTrack::new([1, 255]),
+            alpha_compare_mode: 0x33,
+            point_joint_offset: 0,
+            material: BytePairTrack::new([255; 2]),
+            ambient: BytePairTrack::new([255; 2]),
+            appsrt_id: None,
             texture_images: Arc::from([]),
         })
     }
@@ -131,6 +150,9 @@ impl Particle {
         }
         self.primary.tick();
         self.environment.tick();
+        self.material.tick();
+        self.ambient.tick();
+        self.alpha_compare.tick();
         if self.rotation_timer != 0 {
             self.rotation +=
                 (self.rotation_target - self.rotation) / f32::from(self.rotation_timer);
@@ -404,5 +426,37 @@ impl Particle {
         self.rotation_target += delta;
         self.rotation += delta;
         Ok(())
+    }
+}
+
+/// Two-byte countdown tracks in HSD_Particle (psstructs.h:154-183).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BytePairTrack {
+    pub current: [u8; 2],
+    pub target: [u8; 2],
+    pub duration: u16,
+    pub remaining: u16,
+}
+impl BytePairTrack {
+    fn new(current: [u8; 2]) -> Self {
+        Self {
+            current,
+            target: [0; 2],
+            duration: 0,
+            remaining: 0,
+        }
+    }
+    fn tick(&mut self) {
+        // particle.c:732-766 (hsd_8039930C): integer countdown, then copy.
+        // Retail 0x80399474/78/7C (material), 0x803994B0/B4/B8
+        // (ambient), 0x803994EC/F0/F4 (alpha): lhz/subi/sth; zero
+        // branches copy target bytes at 0x80399494, 0x803994D0, 0x8039950C.
+        if self.duration != 0 {
+            self.remaining = self.remaining.wrapping_sub(1);
+            if self.remaining == 0 {
+                self.duration = 0;
+                self.current = self.target;
+            }
+        }
     }
 }

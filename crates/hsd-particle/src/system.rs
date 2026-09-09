@@ -22,7 +22,10 @@ pub struct ParticleSystem {
     /// draws still happen on failure; immediate interpreter draws do not.
     pub particle_capacity: usize,
     next_id: usize,
-    family_counter: u16,
+    /// lbl_804D6368 (0x804D6368), the u16 family-ID allocator.
+    pub family_counter: u16,
+    /// hsd_804D78F4 SList.data (+0x04), owned generator IDs in pending order.
+    pub pending_generators: Vec<Option<usize>>,
     generator_cursor: Option<usize>,
 }
 impl Default for ParticleSystem {
@@ -33,11 +36,29 @@ impl Default for ParticleSystem {
             particle_capacity: usize::MAX,
             next_id: 0,
             family_counter: 0x100,
+            pending_generators: Vec::new(),
             generator_cursor: None,
         }
     }
 }
 impl ParticleSystem {
+    /// Restore head-to-tail lists without allocation, insertion or RNG draws.
+    /// Generator IDs and particle associations must already be normalized.
+    pub fn from_live_lists(
+        generators: Vec<Generator>,
+        particles: [Vec<Particle>; 16],
+        family_counter: u16,
+    ) -> Self {
+        let next_id = generators.iter().map(|g| g.id + 1).max().unwrap_or(0);
+        Self {
+            generators,
+            particles,
+            family_counter,
+            next_id,
+            ..Self::default()
+        }
+    }
+
     /// `hsd_8039D9C8` (0x8039D9C8): insertion is after the current
     /// generator (cursor's successor), or after the head when cursor is null
     /// or at the tail. It is deliberately neither prepend nor append.

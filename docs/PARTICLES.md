@@ -4,7 +4,9 @@
 script and its sphere emitter, with owned state and caller-supplied
 `&mut HsdRng`. It also supports disc, line and cone emitters and the common
 instructions listed below. This is a subset of `generator.c` / `particle.c`,
-not a complete effects system. It contains no `psdisp.c` renderer.
+not a complete effects system. It contains no `psdisp.c` renderer. Live `idle_fd_fox` replay now matches
+all 600 RNG ticks and all eight captured state frames; see the live replay
+result below.
 
 The ledger's **6k+1 means six draws per newly emitted particle**, not per
 currently live particle. Particle creation immediately interprets its script;
@@ -145,8 +147,8 @@ Matrix operations reuse `hsd-anim`'s already audited paired-single kernels.
 Inverse trig is supplied via its `InverseTrig` interface; real tests use
 `melee-lb`'s retail implementation. No host libm is used in simulation.
 The existing `hsd-anim` normalization kernel documents its unresolved
-`FMULS FRC TRUNCATION PENDING` limitation; this port inherits it. No live
-Dolphin comparison of particle position/velocity bits has been claimed.
+`FMULS FRC TRUNCATION PENDING` limitation; this port inherits it. The live FD replay below now checks particle position/velocity bits for
+eight captured frames.
 
 ## Opcode coverage
 
@@ -264,3 +266,129 @@ Cargo.toml, hsd-anim, TRACKER.md, CLAUDE.md, third_party and harness/dolphin
 are unchanged; nothing was committed.
 
 Final verification: `cargo gate` passed (including all 35 hsd-particle tests with the disc present); workspace clippy passed with warnings denied; harness pytest passed, 181 tests.
+
+## Live savestate replay result (2026-09-08)
+
+The `idle_fd_fox` captures now pass both live tests:
+
+```sh
+cargo test -p hsd-particle --test live_fd -- --nocapture
+```
+
+- **600/600 ticks:** particle draw counts, ordered branch sites and RNG
+  variants match the ledger; all **600 final seeds** match the decoded tick
+  trace. There are 18,306 particle draws: 600 emission-count draws and 2,951
+  emissions with six draws each. Every particle draw is `HSD_Randf`
+  (`pc=0x8038054C`). First divergence: **none**.
+- **8/8 state snapshots:** all 10,120 canonical field comparisons pass,
+  including f32 bits, list order, color bytes, inactive counters, program
+  offsets, generator associations, and family allocator state. The initial
+  snapshot also round-trips without dropping or adding canonical fields.
+- First eight per-tick particle draw counts: **61, 13, 43, 1, 37, 49, 7, 13**.
+  The test prints the full 600-count vector. Its histogram is:
+
+  | Draws per tick | Ticks |
+  |---|---|
+  | 1 | 30 |
+  | 7 | 64 |
+  | 13 | 67 |
+  | 19 | 67 |
+  | 25 | 50 |
+  | 31 | 55 |
+  | 37 | 58 |
+  | 43 | 56 |
+  | 49 | 67 |
+  | 55 | 59 |
+  | 61 | 27 |
+
+The restored boundary has one generator (family 257, remaining life 3890,
+count bits `0x3EB28A00`), three particles, and family allocator 425.
+The initial seed is **1286746018**, verified against the initial sidecar
+and every ledger post-draw seed by replaying the LCG. Frame 0's tick-trace
+seed is the result of the first 61 draws, not the starting seed. Final seed
+after tick 599 is **`0x72AA79F8`**. The existing emission arithmetic, immediate
+interpretation, main/aux masks, list order, and lifetime sequencing already
+match these captures; no changes to them were needed.
+
+The actual ledger has **12**, not 11, external-draw ticks:
+
+| Caller branch | Ticks | Variant |
+|---|---|---|
+| `ftCo_8008A7A8+0x114` (`0x8008A8BC`) | 115, 120, 235, 240, 355, 360, 475, 480, 595 | `HSD_Randi(100)`, PC `0x8038059C` |
+| `grLast_8021ADD0+0x270` (`0x8021B040`) | 109 | `HSD_Randf` |
+| `grLast_8021ADD0+0x13C` (`0x8021AF0C`) | 196 | `HSD_Randf` |
+| `grLast_8021ADD0+0x22C` (`0x8021AFFC`) | 509 | `HSD_Randf` |
+
+All twelve precede the particle procs. The test advances the shared RNG
+for those external calls in ledger order, then runs `proc_main` followed
+by `proc_aux`. It rejects unknown callers or external calls interleaved
+with the particle block. Expected particle counts, sites, and seeds never
+control particle updates, and the RNG is never reset between ticks.
+The Wait result is unused; this models its RNG consumption, not fighter
+animation selection. The external calls are the only ledger-driven input
+after restoring the initial snapshot.
+
+### Restoration and additional state
+
+`tests/support/restore.rs` uses `melee_diff::read_trace`; both melee-diff and
+serde_json are dev-dependencies only. Its field adapter restores every
+canonical field present in these FD records and emits actual updated state
+for comparison. Program identity/resolution is derived by matching owned
+bank bytecode. Unknown fields, unresolved programs, unsupported non-sphere
+auxiliary shapes, non-null AppSRTs, and pending detach requests fail
+explicitly. This is an FD loader, not a claim of general AppSRT support.
+Missing local captures or GrNLa.dat skip cleanly; no dump regeneration is
+needed, and no expected fields or comparison tolerances changed.
+
+New owned state fields:
+
+| Rust state | C member and offset |
+|---|---|
+| `Particle.alpha_compare` | `aCmpCount` 54, `aCmpRemain` 78, parameters 57/58, targets 7A/7B |
+| `Particle.alpha_compare_mode` | `aCmpMode` 56 |
+| `Particle.point_joint_offset` | `pJObjOfs` 59 |
+| `Particle.material` | `matColCount` 5A, `matColRemain` 74, current 7C/7D, targets 80/81 |
+| `Particle.ambient` | `ambColCount` 5C, `ambColRemain` 76, current 7E/7F, targets 82/83 |
+| `Particle.appsrt_id` / `Generator.appsrt_id` | `appsrt` 8C / 54, normalized optional reference |
+| `ParticleSystem.pending_generators` | `hsd_804D78F4`, SList data at 04, owned references |
+
+The existing `family_counter` is now exposed for restoration;
+`from_live_lists` preserves captured list order, family IDs and associations
+without allocation or RNG consumption. New byte-pair tracks retain the
+retail defaults (`particle.c:461–483`, asm `80398E18..80398E7C`) and the
+countdown/copy behavior (`particle.c:732–766`, asm
+`80399474..80399518`: integer `lhz/subi/sth`, then target-byte copies).
+A lifecycle regression checks pause, intermediate bytes and completion.
+
+Rust fields not supplied by canonical records:
+
+- `program` bytes and `texture_images`: loaded from the owned GrNLa.dat bank
+  using the captured descriptor ID and texture group. Descriptor creation
+  parameters and its redundant initial type/life/rate fields also come from
+  that bank; runtime type/life/rate and the active sphere state are restored
+  from the capture. The loader's constructor uses a private scratch RNG;
+  its initial count is overwritten and it cannot consume the replay RNG.
+- `joint_matrix`: resolved from the initial metadata's generator JObj pointer
+  and cached matrix. This joint's animation-0 track only emits the generator;
+  its identity transform stays fixed for this replay. No future snapshot is
+  used as input. General animated attachment restoration remains outside
+  this FD test.
+- Internal generator `id` and `next_id`: assigned from initial list order
+  and its successor. `generator_cursor` starts empty; C resets it at every
+  generator pass. The family allocator is restored independently, not
+  inferred from the largest surviving family ID.
+- `particle_capacity`: unlimited, matching the observed successful
+  allocations; the canonical dump carries no pool capacity. Opaque callback,
+  user-data and allocator pointers are metadata, not canonical state, and
+  are not executed by this adapter. There are no callbacks/AppSRTs/pending
+  detaches in this capture.
+
+The eight state frames establish live bit-exact particle position/velocity
+parity for this scene, superseding the earlier cold-start-only limitation.
+State beyond frame 7 is not captured; the 600-tick claim covers RNG behavior.
+
+Final validation for this live-replay change: `cargo gate` passed with the
+local traces present (both live tests and 38 hsd-particle tests total),
+`cargo clippy --workspace --all-targets -- -D warnings` passed, and
+`cd harness && UV_CACHE_DIR=/tmp/melee-uv-cache uv run python -m pytest -q`
+passed (181 tests). No commits, trace edits, or dump-format changes.

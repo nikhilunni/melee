@@ -162,7 +162,9 @@ dependencies = [
  "hsd-anim",
  "hsd-archive",
  "hsd-types",
+ "melee-diff",
  "melee-lb",
+ "serde_json",
 ]
 
 [[package]]
