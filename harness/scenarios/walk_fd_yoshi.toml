@@ -1,0 +1,26 @@
+# Walk: 0.35 tilt right (raw 45, scaled 0.5625: WalkMiddle) for 40 VI frames, then release (Wait -> Walk -> Wait).
+# Yoshi variant of the Fox scenario, same inputs, from the idle_fd_yoshi savestate
+# (P1 Yoshi and P2 Fox in Wait at +-60 on Final
+# Destination, P1 facing right). Input frames are VI callbacks counted from the
+# savestate load; the port replays the per-tick pad the tick tracer recorded
+# (see tick_trace.py), so VI-to-tick alignment does not need to be exact.
+name = "walk_fd_yoshi"
+savestate = "harness/roms/idle_fd_yoshi.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 0.35 } },
+  { frame = 70, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
