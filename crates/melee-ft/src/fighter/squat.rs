@@ -1,0 +1,126 @@
+//! Crouch entry, hold and release: ftCo_Squat.c / SquatWait.c / SquatRv.c.
+use super::{
+    assets::{FighterAssets, Result},
+    CharacterCallbacks, Fighter, MotionData,
+};
+use crate::input::{WaitContext, WaitPredicate as P, WaitTransition as T};
+use melee_types::{mp::line_flag, CommonMotionState};
+
+/// Fighter.mv.co.squat / pass (+2340/+2344).
+#[derive(Clone, Debug, Default)]
+pub struct SquatState {
+    pub platform_drop_pending: bool,
+    pub platform_drop_timer: f32,
+}
+impl<C: CharacterCallbacks> Fighter<C> {
+    /// ftCo_Squat_Enter (0x800D600C): immediate step, clear pass, show nametag.
+    pub(super) fn enter_squat(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_motion_state(CommonMotionState::Squat, assets)?;
+        self.step_animation(assets);
+        self.state_data = MotionData::Squat(SquatState::default());
+        self.status.name_tag_timer = assets.name_tag_duration;
+        Ok(())
+    }
+
+    /// ftCo_Squat_Anim (0x800D607C), ftCo_800D638C (0x800D638C),
+    /// ftCo_SquatRv_Anim (0x800D6658). Hold entry preserves the nametag timer.
+    pub(super) fn squat_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if !self.animation.frames_remaining(&self.skeleton) {
+            self.change_motion_state(
+                if self.motion_state.id == CommonMotionState::Squat {
+                    CommonMotionState::SquatWait
+                } else {
+                    CommonMotionState::Wait
+                },
+                assets,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// ftCo_Squat_IASA (0x800D60B8), SquatWait_IASA (0x800D6474),
+    /// SquatRv_IASA (0x800D6694): distinct retail predicate order per state.
+    pub(super) fn squat_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        let entering = self.motion_state.id == CommonMotionState::Squat;
+        let releasing = self.motion_state.id == CommonMotionState::SquatRv;
+        let predicates: &[P] = if entering {
+            &[
+                P::SpecialSide,
+                P::SpecialUp,
+                P::SpecialNeutral,
+                P::SpecialDown,
+                P::Grab,
+                P::SmashSide,
+                P::SmashUp,
+                P::SmashDown,
+                P::TiltSide,
+                P::TiltUp,
+                P::TiltDown,
+                P::Jab,
+                P::Shield,
+                P::Taunt,
+                P::Jump,
+            ]
+        } else {
+            &[
+                P::SpecialDown,
+                P::SpecialUp,
+                P::SmashSide,
+                P::SmashUp,
+                P::SmashDown,
+                P::TiltSide,
+                P::TiltUp,
+                P::TiltDown,
+                P::Jab,
+                P::Shield,
+                P::Taunt,
+                P::Jump,
+            ]
+        };
+        let transition = self.first_ground_transition(assets, context, predicates);
+        if transition != T::None {
+            return self.apply_ground_transition(assets, transition);
+        }
+        if releasing {
+            let transition = self.first_ground_transition(assets, context, &[P::Walk]);
+            return self.apply_ground_transition(assets, transition);
+        }
+        // ftCo_80099F9C (0x80099F9C). On FD the platform predicate is false;
+        // retain the typed timer and reject platform entry when it becomes due.
+        let on_platform = self.collision.data.floor.flags & line_flag::PLATFORM != 0;
+        let MotionData::Squat(squat) = &mut self.state_data else {
+            panic!("squat data missing")
+        };
+        if !squat.platform_drop_pending
+            && self.input.current.stick.y <= -assets.movement.platform_drop_threshold
+            && i32::from(self.input.vertical.tilt) < assets.movement.platform_drop_window
+            && on_platform
+        {
+            squat.platform_drop_pending = true;
+            squat.platform_drop_timer = assets.movement.platform_drop_delay;
+            return Ok(());
+        }
+        if entering {
+            if squat.platform_drop_pending && squat.platform_drop_timer != 0.0 {
+                squat.platform_drop_timer -= 1.0;
+                if squat.platform_drop_timer == 0.0 && on_platform {
+                    unimplemented!("ftCo_Squat.c:79-84: platform drop -> Pass");
+                }
+            }
+        } else {
+            let transition = self.first_ground_transition(assets, context, &[P::Dash]);
+            if transition != T::None {
+                return self.apply_ground_transition(assets, transition);
+            }
+            if self.input.current.stick.y > -assets.movement.squat_release_threshold {
+                // ftCo_SquatRv_CheckInput/Enter (0x800D65D8/0x800D6620).
+                self.change_motion_state(CommonMotionState::SquatRv, assets)?;
+            }
+        }
+        Ok(())
+    }
+}

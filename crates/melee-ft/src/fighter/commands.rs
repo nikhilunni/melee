@@ -1,4 +1,4 @@
-//! Reachable Wait, Fall, EntryStart and Landing command interpreter, ftAction_80073240 (0x80073240).
+//! Movement and idle command interpreter, ftAction_80073240 (0x80073240).
 //! Archive pointers are converted to instruction indices by assets.rs.
 use super::{assets::FighterAssets, RetailTrig};
 use crate::{
@@ -13,7 +13,20 @@ use hsd_anim::{
 #[derive(Clone, Debug)]
 pub enum Command {
     End,
+    Goto(usize),
+    WaitAnimationLoop,
     LandingEffect(u16),
+    Rumble {
+        all_players: bool,
+        id: u16,
+        duration: u16,
+    },
+    FootstepSound {
+        behavior: u8,
+        id: u32,
+        volume: u8,
+        pan: u8,
+    },
     Wait(f32),
     AtFrame(f32),
     Call {
@@ -32,6 +45,22 @@ pub enum Command {
         frame: f32,
     },
 }
+/// ftAction_800728F8 (0x800728F8), forwarded to the controller-output owner.
+#[derive(Clone, Debug)]
+pub struct RumbleRequest {
+    pub all_players: bool,
+    pub id: u16,
+    pub duration: u16,
+}
+
+/// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
+#[derive(Clone, Debug)]
+pub struct FootstepSound {
+    pub id: u32,
+    pub volume: u8,
+    pub pan: u8,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
     /// x3E4_fighterCmdScript.u (+3EC); index, not a retail address.
@@ -47,6 +76,11 @@ pub struct CommandState {
     pub texture_frames: Vec<(usize, f32)>,
     /// ftAction_80072E4C requests, resolved at the calling proc boundary.
     pub landing_effects: Vec<u16>,
+    /// ftAction_800728F8 (0x800728F8): controller-output requests, no RNG.
+    pub rumble_requests: Vec<RumbleRequest>,
+    /// ftAction_80072CD8 (0x80072CD8) -> ftAction_80071B50 (0x80071B50).
+    /// FD default terrain has no footstep particle; audio is an output request.
+    pub footstep_sounds: Vec<FootstepSound>,
 }
 impl CommandState {
     pub fn restart(&mut self, instruction: usize) {
@@ -62,17 +96,90 @@ impl CommandState {
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
     ) {
+        self.step_inner(animation, tree, pose, assets, false);
+    }
+
+    /// ftAction_80073354 (0x80073354): seek a newly installed script to a
+    /// nonzero animation phase, skipping transient effects and part blending.
+    pub(super) fn seek(
+        &mut self,
+        animation: &mut FighterAnimation,
+        tree: &mut JObjTree,
+        pose: &mut GroundPoseFlags,
+        assets: &FighterAssets,
+    ) {
+        self.step_inner(animation, tree, pose, assets, true);
+    }
+
+    fn step_inner(
+        &mut self,
+        animation: &mut FighterAnimation,
+        tree: &mut JObjTree,
+        pose: &mut GroundPoseFlags,
+        assets: &FighterAssets,
+        seeking: bool,
+    ) {
         self.frame = animation.frame + animation.remainder;
         if self.instruction.is_none() {
             return;
         }
-        self.timer -= animation.speed;
-        while self.timer <= 0.0 {
-            let Some(pc) = self.instruction else { break };
+        if self.timer != f32::MAX {
+            self.timer -= animation.speed;
+        }
+        while let Some(pc) = self.instruction {
+            if self.timer == f32::MAX {
+                if self.frame >= animation.speed {
+                    break;
+                }
+                self.timer = -self.frame;
+            } else if self.timer > 0.0 {
+                break;
+            }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
                 Command::End => self.instruction = None,
-                Command::LandingEffect(id) => self.landing_effects.push(*id),
+                Command::Goto(target) => self.instruction = Some(*target),
+                // Command_08 (0x80005B00, lbcommand.c:85): resume after the animation wraps.
+                Command::WaitAnimationLoop => {
+                    self.timer = f32::MAX;
+                    break;
+                }
+                Command::Rumble {
+                    all_players,
+                    id,
+                    duration,
+                } => {
+                    if !seeking {
+                        self.rumble_requests.push(RumbleRequest {
+                            all_players: *all_players,
+                            id: *id,
+                            duration: *duration,
+                        });
+                    }
+                }
+                Command::FootstepSound {
+                    behavior,
+                    id,
+                    volume,
+                    pan,
+                } => {
+                    if !seeking {
+                        assert_eq!(
+                            *behavior, 0,
+                            "ftaction.c:598-651: non-default sound behavior is unimplemented"
+                        );
+                        self.footstep_sounds.push(FootstepSound {
+                            id: *id,
+                            volume: *volume,
+                            pan: *pan,
+                        });
+                    }
+                }
+                Command::LandingEffect(id) => {
+                    if !seeking {
+                        self.landing_effects.push(*id);
+                    }
+                }
                 Command::Wait(frames) => self.timer += frames,
                 Command::AtFrame(frame) => self.timer = frame - self.frame,
                 Command::Call {
@@ -99,7 +206,14 @@ impl CommandState {
                     group,
                     variant,
                     blend,
-                } => apply_part(animation, tree, assets, *group, *variant, *blend),
+                } => apply_part(
+                    animation,
+                    tree,
+                    assets,
+                    *group,
+                    *variant,
+                    if seeking { 0.0 } else { *blend },
+                ),
                 Command::Texture { indices, frame } => {
                     for &index in indices {
                         if let Some(entry) =

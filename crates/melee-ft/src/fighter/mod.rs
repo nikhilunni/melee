@@ -10,7 +10,10 @@ pub mod landing;
 mod procs;
 mod snapshot;
 mod spawn;
+pub mod squat;
 pub mod state;
+pub mod turn;
+pub mod walk;
 
 use crate::{
     anim::FighterAnimation,
@@ -226,6 +229,9 @@ pub enum MotionData {
     #[default]
     None,
     Entry(entry::EntryState),
+    Squat(squat::SquatState),
+    Turn(turn::TurnState),
+    Walk(walk::WalkState),
     Fall {
         blend: f32,
     },

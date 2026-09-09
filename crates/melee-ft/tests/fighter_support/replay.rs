@@ -36,9 +36,33 @@ pub fn replay_with_observer(
     oracle: BoneOracle,
     mut observe: impl FnMut(usize, &[FoxFighter; 2]),
 ) {
+    replay_config(scene, Some(ticks), "ledger600", oracle, false, &mut observe);
+}
+
+/// Replay only Status/Anim/Input/Phys/Coll; the simulation gate owns the full scene.
+/// Tick count comes from the trace; the caller identifies the ledger capture.
+pub fn replay_state_callbacks(scene: &str, ledger_suffix: &str) {
+    replay_config(
+        scene,
+        None,
+        ledger_suffix,
+        BoneOracle::None,
+        true,
+        &mut |_, _| {},
+    );
+}
+
+fn replay_config(
+    scene: &str,
+    tick_limit: Option<usize>,
+    ledger_suffix: &str,
+    oracle: BoneOracle,
+    callbacks_only: bool,
+    observe: &mut impl FnMut(usize, &[FoxFighter; 2]),
+) {
     let compare_bones = oracle != BoneOracle::None;
     let trace_path = harness().join(format!("traces/{scene}_fd_fox.tick.expected.jsonl"));
-    let ledger_path = harness().join(format!("traces/{scene}_fd_fox.ledger600.raw.jsonl"));
+    let ledger_path = harness().join(format!("traces/{scene}_fd_fox.{ledger_suffix}.raw.jsonl"));
     let raw_path = harness().join(format!("traces/{scene}_fd_fox.tick.raw.jsonl"));
     if !trace_path.exists() || !ledger_path.exists() || !raw_path.exists() {
         eprintln!("skipping: local FD expected trace/raw trace/RNG ledger absent");
@@ -50,16 +74,18 @@ pub fn replay_with_observer(
     let trace = json_lines(&trace_path);
     let ledger = json_lines(&ledger_path);
     let raw_trace = json_lines(&raw_path);
-    assert_eq!(raw_trace.len(), 600);
-    assert_eq!(trace.len(), 600);
-    assert_eq!(ledger.len(), 600);
+    assert!(!trace.is_empty());
+    assert_eq!(raw_trace.len(), trace.len());
+    assert_eq!(ledger.len(), trace.len());
+    let ticks = tick_limit.unwrap_or(trace.len());
+    assert!(ticks <= trace.len());
     let mut fighters = [
         fixture.import(&raw(&raw_trace[0], 0)),
         fixture.import(&raw(&raw_trace[0], 1)),
     ];
     let bones_path = harness().join(format!("traces/{scene}_fd_fox.bones.jsonl"));
     let save_path = harness().join(format!("roms/{scene}_fd_fox.sav"));
-    if !save_path.exists() || (compare_bones && !bones_path.exists()) {
+    if !callbacks_only && (!save_path.exists() || (compare_bones && !bones_path.exists())) {
         eprintln!("skipping: local savestate/bone oracle absent");
         return;
     }
@@ -72,9 +98,11 @@ pub fn replay_with_observer(
         16,
     )
     .unwrap();
-    let saved = saved_pose::SavedPose::load(&save_path, &first_raw, address);
-    for (player, fighter) in fighters.iter_mut().enumerate() {
-        saved.restore(fighter, &raw(&raw_trace[0], player));
+    if !callbacks_only {
+        let saved = saved_pose::SavedPose::load(&save_path, &first_raw, address);
+        for (player, fighter) in fighters.iter_mut().enumerate() {
+            saved.restore(fighter, &raw(&raw_trace[0], player));
+        }
     }
     let bones = compare_bones.then(|| json_lines(&bones_path));
     // Separate captures must agree on scheduler ticks and RNG boundaries.
@@ -124,6 +152,19 @@ pub fn replay_with_observer(
         let mut used = 0;
         if tick != 0 {
             for (proc, player) in interleaved_order(fighters.len()) {
+                if callbacks_only
+                    && !matches!(
+                        proc,
+                        FighterProc::Status
+                            | FighterProc::Animation
+                            | FighterProc::CpuGate
+                            | FighterProc::Input
+                            | FighterProc::Update
+                            | FighterProc::Map
+                    )
+                {
+                    continue;
+                }
                 let f = &mut fighters[player];
                 // Particle/stage draws are externally supplied before each
                 // fighter callback. All draws inside one callback are contiguous.
@@ -153,7 +194,10 @@ pub fn replay_with_observer(
                             }
                         }
                         FighterProc::CpuGate => f.proc_cpu_gate(),
-                        FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
+                        FighterProc::Input => f.proc_input(
+                            &fixture.assets,
+                            &recorded_pad(&trace[tick], usize::from(f.player.id)),
+                        ),
                         FighterProc::Update => {
                             f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO)
                         }
@@ -232,6 +276,9 @@ pub fn replay_with_observer(
                     word(&bytes, 0x2340) as i32,
                     "entry timer tick {tick} p{player}"
                 );
+            }
+            if callbacks_only {
+                compare_movement_internals(f, &bytes, tick, player);
             }
             matched[player] += 1;
         }
@@ -337,4 +384,96 @@ fn compare_pose(
 /// all other fields remain part of the bit-exact comparison.
 pub fn compared_component(flags: u32, field: &str, index: usize) -> bool {
     field != "rotate" || index != 3 || flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0
+}
+
+/// Decode only the recorded pad input, never subsequent fighter state.
+fn recorded_pad(record: &serde_json::Value, port: usize) -> PadSample {
+    use melee_ft::input::{Buttons, Stick};
+    let Some(inputs) = record.get("inputs") else {
+        return PadSample::default();
+    };
+    let pad = &inputs[format!("p{port}")];
+    let float = |name: &str| {
+        f32::from_bits(pad[name]["v"]["bits"].as_u64().expect("pad float bits") as u32)
+    };
+    PadSample {
+        buttons: Buttons(pad["button"]["v"].as_u64().expect("pad buttons") as u32),
+        stick: Stick {
+            x: float("nml_stickX"),
+            y: float("nml_stickY"),
+        },
+        cstick: Stick {
+            x: float("nml_subStickX"),
+            y: float("nml_subStickY"),
+        },
+        left_trigger: float("nml_analogL"),
+        right_trigger: float("nml_analogR"),
+    }
+}
+
+fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, player: usize) {
+    use melee_ft::fighter::MotionData;
+    use melee_types::CommonMotionState as S;
+    let check_float = |name: &str, actual: f32, offset| {
+        assert_eq!(
+            actual.to_bits(),
+            word(bytes, offset),
+            "{name} tick {tick} p{player}"
+        )
+    };
+    check_float("animation speed", fighter.animation.speed, 0x89C);
+    check_float("animation remainder", fighter.animation.remainder, 0x898);
+    check_float("ground velocity", fighter.physics.ground_velocity, 0xEC);
+    check_float("command timer", fighter.commands.timer, 0x3E4);
+    check_float("command frame", fighter.commands.frame, 0x3E8);
+    assert_eq!(
+        fighter.status.name_tag_timer,
+        u16::from_be_bytes([bytes[0x209A], bytes[0x209B]]),
+        "nametag tick {tick} p{player}"
+    );
+    match (&fighter.state_data, fighter.motion_state.id) {
+        (MotionData::Turn(turn), S::Turn) => {
+            assert_eq!(
+                u32::from(turn.has_turned),
+                word(bytes, 0x2340),
+                "turned tick {tick} p{player}"
+            );
+            assert_eq!(
+                u32::from(turn.just_turned),
+                word(bytes, 0x2358),
+                "just turned tick {tick} p{player}"
+            );
+            assert_eq!(
+                turn.buffered_buttons.0,
+                word(bytes, 0x235C),
+                "turn buffers tick {tick} p{player}"
+            );
+            check_float("destination facing", turn.facing_after, 0x2344);
+            check_float("dash direction", turn.dash_direction, 0x2348);
+            check_float("turn timer", turn.frames_to_turn, 0x2350);
+        }
+        (MotionData::Walk(walk), S::WalkSlow | S::WalkMiddle | S::WalkFast) => {
+            check_float(
+                "slippery animation velocity",
+                walk.slippery_animation_velocity,
+                0x2340,
+            );
+            check_float(
+                "walk acceleration multiplier",
+                walk.acceleration_multiplier,
+                0x2360,
+            );
+        }
+        (MotionData::Squat(squat), S::Squat | S::SquatWait) => {
+            assert_eq!(
+                u32::from(squat.platform_drop_pending),
+                word(bytes, 0x2340),
+                "drop pending tick {tick} p{player}"
+            );
+            if squat.platform_drop_pending {
+                check_float("drop timer", squat.platform_drop_timer, 0x2344);
+            }
+        }
+        _ => {}
+    }
 }

@@ -34,11 +34,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn step_animation(&mut self, assets: &FighterAssets) {
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
+        let first_footstep = commands.footstep_sounds.len();
         self.animation.step_with_hooks::<RetailTrig>(
             &mut self.skeleton,
             |animation, tree| commands.step(animation, tree, ground_pose, assets),
             |_, _| {},
         ); // ftCo_800DB500: no attached parasol (item-free gate).
+        if commands.footstep_sounds.len() != first_footstep
+            && self.collision.data.floor.flags & 255 != 0
+        {
+            unimplemented!(
+                "ft_081B.c:1258-1296: non-default terrain footstep sound/effect mapping"
+            );
+        }
     }
     /// Fighter_8006A360 (0x8006A360), s_link 1, fighter.c:1444-1701.
     /// Main playback precedes Wait_Anim and its immediate animation restart.
@@ -63,6 +71,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.step_animation(assets);
         match self.motion_state.callbacks.animation {
+            state::AnimationCallback::Squat | state::AnimationCallback::SquatRv => {
+                self.squat_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Turn => {
+                self.turn_animation(assets)?;
+                return Ok(None);
+            }
+            state::AnimationCallback::Walk => {
+                self.walk_animation(assets);
+                return Ok(None);
+            }
+            state::AnimationCallback::SquatWait => {}
             state::AnimationCallback::Entry
             | state::AnimationCallback::EntryStart
             | state::AnimationCallback::EntryEnd => {
@@ -87,7 +108,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let result = self.animation.update_wait_with_restart(
             &mut self.skeleton,
             rng,
-            Some(&assets.wait_choices),
+            if self.motion_state.callbacks.animation == state::AnimationCallback::SquatWait {
+                assets.squat_choices.as_deref()
+            } else {
+                Some(&assets.wait_choices)
+            },
             |id| &assets.motions[&id],
             |animation, tree| {
                 commands.restart(assets.command_entries[&animation.motion_id]);
@@ -155,6 +180,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 shield_health: self.status.shield_health,
                 ..WaitContext::default()
             };
+            match self.motion_state.callbacks.input {
+                state::InputCallback::Squat
+                | state::InputCallback::SquatWait
+                | state::InputCallback::SquatRv => {
+                    self.squat_input(assets, &context)
+                        .expect("squat transition");
+                    return;
+                }
+                state::InputCallback::Turn => {
+                    self.turn_input(assets, &context).expect("turn transition");
+                    return;
+                }
+                state::InputCallback::Walk => {
+                    self.walk_input(assets, &context).expect("walk transition");
+                    return;
+                }
+                _ => {}
+            }
             let transition = if self.motion_state.callbacks.input == state::InputCallback::Landing {
                 let MotionData::Landing { allow_interrupt } = self.state_data else {
                     panic!("landing data missing")
@@ -176,8 +219,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 );
                 wait_iasa(&self.input, &assets.input, &context)
             };
-            if transition != WaitTransition::None {
-                unimplemented!("ftCo_Wait.c:46-66: non-idle IASA transition {transition:?}");
+            if transition == WaitTransition::Squat
+                && self.motion_state.callbacks.input == state::InputCallback::Landing
+            {
+                // ftCo_Landing.c:144: immediate SquatWait, not Squat entry.
+                self.change_motion_state(melee_types::CommonMotionState::SquatWait, assets)
+                    .expect("landing squat hold");
+                self.state_data = MotionData::Squat(super::squat::SquatState::default());
+                self.status.name_tag_timer = assets.name_tag_duration;
+            } else {
+                self.apply_ground_transition(assets, transition)
+                    .expect("grounded transition");
             }
         }
     }
@@ -191,13 +243,56 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.ledge_cooldown -= 1;
         }
         match self.motion_state.callbacks.physics {
-            state::PhysicsCallback::Wait | state::PhysicsCallback::Landing => step_wait(
+            state::PhysicsCallback::Wait | state::PhysicsCallback::SquatWait => step_wait(
                 &mut self.physics,
                 &self.collision.data,
                 &GroundedParameters::from_attributes(&self.attributes, &assets.common),
                 map,
                 wind,
             ),
+            state::PhysicsCallback::Landing
+            | state::PhysicsCallback::Squat
+            | state::PhysicsCallback::SquatRv
+            | state::PhysicsCallback::Turn => {
+                let params = GroundedParameters::from_attributes(&self.attributes, &assets.common);
+                crate::physics::grounded::friction_physics(
+                    &mut self.physics,
+                    &params,
+                    self.collision.data.floor.normal,
+                    map.floor_speed_scale(&self.collision.data),
+                );
+                crate::physics::grounded::finish_ground_update(
+                    &mut self.physics,
+                    &self.collision.data,
+                    &params,
+                    map,
+                    wind,
+                );
+            }
+            state::PhysicsCallback::Walk => {
+                let MotionData::Walk(walk) = &mut self.state_data else {
+                    panic!("walk data missing")
+                };
+                walk.slippery_animation_velocity = crate::physics::grounded::walk_physics(
+                    &mut self.physics,
+                    &self.attributes,
+                    &assets.movement,
+                    self.input.current.stick.x,
+                    walk.acceleration_multiplier,
+                );
+                crate::physics::grounded::apply_ground_movement(
+                    &mut self.physics,
+                    self.collision.data.floor.normal,
+                    map.floor_speed_scale(&self.collision.data),
+                );
+                crate::physics::grounded::finish_ground_update(
+                    &mut self.physics,
+                    &self.collision.data,
+                    &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+                    map,
+                    wind,
+                );
+            }
             state::PhysicsCallback::Fall => {
                 assert_eq!(
                     self.input.current.stick.y, 0.0,
@@ -245,14 +340,32 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assert!(
             matches!(
                 self.motion_state.callbacks.collision,
-                state::CollisionCallback::Wait | state::CollisionCallback::Landing
+                state::CollisionCallback::Wait
+                    | state::CollisionCallback::Landing
+                    | state::CollisionCallback::Walk
+                    | state::CollisionCallback::Squat
+                    | state::CollisionCallback::SquatWait
+                    | state::CollisionCallback::SquatRv
+                    | state::CollisionCallback::Turn
             ),
             "airborne map needs proc_map_with_assets"
         );
         self.map_ground(map);
     }
     fn map_ground(&mut self, map: &mut CollMap) {
-        match map_wait(
+        let simple = matches!(
+            self.motion_state.callbacks.collision,
+            state::CollisionCallback::Squat
+                | state::CollisionCallback::SquatWait
+                | state::CollisionCallback::SquatRv
+                | state::CollisionCallback::Turn
+        );
+        let callback = if simple {
+            crate::collision::ground::map_ground_action
+        } else {
+            map_wait
+        };
+        match callback(
             &mut self.physics,
             &mut self.collision,
             map,
@@ -279,9 +392,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_idle();
         match self.motion_state.callbacks.collision {
-            state::CollisionCallback::Wait | state::CollisionCallback::Landing => {
-                self.map_ground(map)
-            }
+            state::CollisionCallback::Wait
+            | state::CollisionCallback::Landing
+            | state::CollisionCallback::Walk
+            | state::CollisionCallback::Squat
+            | state::CollisionCallback::SquatWait
+            | state::CollisionCallback::SquatRv
+            | state::CollisionCallback::Turn => self.map_ground(map),
             state::CollisionCallback::Entry
             | state::CollisionCallback::EntryStart
             | state::CollisionCallback::EntryEnd => {

@@ -1,15 +1,62 @@
-# Fighter ownership and the T10 idle path
+# Fighter states and scheduler
 
-Current dynamics work: the un-ignored full `start_fox_600` replay now passes.
-The strict 130-tick match-start and 8-tick idle bone tests still fail; the
-first match-start difference is tick 1, bone 17's unused `rotate[3]` word.
-See [the dynamics report](../dynamics/README.md) for implementation, fusion
-audit, exact differences and validation. The text below records the earlier
-callback/idle milestone and its then-unimplemented dynamics boundary.
+Fox on Final Destination now supports the M4-T1 grounded movement slice:
+Squat/SquatWait/SquatRv, standing Turn, and WalkSlow/Middle/Fast. The three
+recorded 300-tick movement gates match all 49 keys, including the scene RNG.
+Match-start Entry/Fall/Landing and the dynamic-bone solver are also implemented;
+the older unimplemented-dynamics claims in START_FOX.md describe its original
+callback-only milestone, not the current implementation.
 
-The match-start extension and its remaining full-proc blocker are documented
-in [START_FOX.md](START_FOX.md). The T10 results below describe the original
-idle gate; they do not certify the match-start dynamics path.
+Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
+
+## M4-T1 ports
+
+Addresses below were resolved against the retail symbol map. State callbacks
+are enums in `state.rs`; scratch data uses typed `MotionData` variants.
+
+| Retail function(s) | Address(es) | Rust owner |
+|---|---|---|
+| `ftCo_Squat_Enter`, `ftCo_Squat_Anim`, `ftCo_Squat_IASA` | 800D600C, 800D607C, 800D60B8 | `squat.rs` |
+| `ftCo_800D638C`, `ftCo_SquatWait_Anim`, `ftCo_SquatWait_IASA` | 800D638C, 800D6448, 800D6474 | `squat.rs`, shared animation restart |
+| `ftCo_SquatRv_CheckInput`, `ftCo_SquatRv_Enter`, `ftCo_SquatRv_Anim`, `ftCo_SquatRv_IASA` | 800D65D8, 800D6620, 800D6658, 800D6694 | `squat.rs` |
+| Squat / SquatWait / SquatRv Phys | 800D623C / 800D6584 / 800D6784 | shared `physics/grounded.rs`; only hold invalidates shield position |
+| Squat / SquatWait / SquatRv Coll | 800D625C / 800D65B8 / 800D67A4 | `collision/ground.rs::map_ground_action` |
+| `ftCo_Turn_Enter`, `ftCo_Turn_Enter_Basic`, `ftCo_Turn_Enter_Smash` | 800C9840, 800C98AC, 800C9C74 | `turn.rs` |
+| `ftCo_Turn_Anim_Inner`, Anim, IASA, Phys, Coll | 800C9924, 800C9970, 800C99F8, 800C9BEC, 800C9C0C | `turn.rs`, shared ground helpers |
+| `fn_800C9C2C` | 800C9C2C | Turn dash-direction buffering |
+| `ftCo_Walk_CheckInput`, Enter, Anim, IASA, Phys, Coll | 800C9468, 800C9528, 800C95F4, 800C9614, 800C9768, 800C9788 | `walk.rs`, shared ground helpers |
+| `ftWalkCommon_GetWalkType_800DFBF8`, `800DFCA4`, `800DFDDC`, `800DFEC8` | 800DFBF8, 800DFCA4, 800DFDDC, 800DFEC8 | walk tier, entry, rate and phase conversion |
+| `ftWalkCommon_800E0060`, `ftCommon_8007C98C`, `ftCommon_ApplyGroundMovement` | 800E0060, 8007C98C, 8007CB74 | `physics/grounded.rs` acceleration, target clamp and projection |
+| `ft_80084F3C`, `ftColl_8007AEE0` | 80084F3C, 8007AEE0 | shared friction, explicit shield-cache invalidation |
+| `ft_80083F88`, `ft_80082708`, `ft_80084280` | 80083F88, 80082708, 80084280 | ordinary Squat/Turn collision versus Walk/Wait teeter collision |
+| `ftCo_Wait_IASA`, `ft_8008A244`, `ft_8008A348` | 8008A4D4, 8008A244, 8008A348 | ordered movement entries and return to Wait |
+| `Command_07`, `Command_08`, `ftAction_80073354` | 80005AE4, 80005B00, 80073354 | script goto, animation-loop wait and nonzero-phase seek |
+| `ftAction_80072CD8`, `ftAction_800728F8` | 80072CD8, 800728F8 | FD footstep sound and controller rumble requests |
+
+WalkFast shares the same selection, rate and physics implementation. Its tier
+threshold boundaries are unit-tested; the supplied retail traces exercise only
+Slow and Middle. Walk phase conversion uses retail `800E0010 fnmsubs`, followed
+by separate divide/multiply and `fctiwz`. Acceleration uses separate `fmuls`
+at 800E008C/0090/009C or 00AC, then `800E00B4 fadds`. No FMA is introduced there.
+Every imported resource comes from the owned archives; gameplay reads no trace
+or tick number.
+
+`movement_fox_states` uses the common replay helper with trace-derived length
+and an explicit `ledger` suffix. It supplies only recorded pad inputs and the
+external pre-draw seeds needed to isolate fighter RNG. It compares 48 snapshot
+keys plus raw submotion, rate, remainder, ground velocity, command clocks,
+nametag timer and relevant Turn/Walk/Squat scratch fields. `m4_gate` separately
+runs the complete scene and checks all 49 keys with produced RNG. Local-data
+absence skips both test families cleanly.
+
+Remaining explicit movement boundaries: TurnRun (ftCo_TurnRun.c:35-38), Turn to
+Dash (ftCo_Turn.c:139-144), platform-drop entry (ftCo_Squat.c:79-84), ledge
+Fall/Ottotto entries, attack/special/jump/shield/dash transition bodies, metal
+or scaled-player modifiers, and non-default terrain footstep effects. The new
+IASAs retain their own predicate ordering and reject unsupported transition
+bodies. Sound/rumble are queued output requests; audio/controller playback is
+outside the headless simulation. FD's default footstep mapping has no graphics
+request or RNG. There were no new RNG sites or unexpected recorded transitions.
 
 `Fighter<C>` owns `FighterPhysics` (including position and facing),
 `FighterAnimation`, `FighterInput`, `EnvironmentCollision`, attributes, bone
@@ -39,7 +86,7 @@ The port composes these ordinary Fox paths, with exceptional interactions gated:
 | `ftCo_800A101C`, `0x800A101C` | initializes CPU fields and consumes one RNG draw even for a human slot |
 | `Fighter_ChangeMotionState`, `0x800693AC` | `change_motion_state`; reset motion-owned state, install callbacks, animation, command entry and dynamic-bone gates |
 | `ft_8008A348`, `0x8008A348` | grounded Wait entry and nametag duration |
-| `ftCo_Fall_Enter` | initial airborne Fall entry only; its ticking callbacks fail explicitly |
+| `ftCo_Fall_Enter` | neutral airborne Fall entry and callbacks, including Landing |
 | `ftLib_800867E8`, `0x800867E8` | clear/freeze input at the end of cold creation |
 | `ftFx_Init_OnLoad`, `0x800E57AC` | `ft_fox::init::Fox`: owned special attributes, walljump/special capabilities and three item resource registrations |
 | `ftFx_Init_OnDeath`, `0x800E5554` | clear blaster state and select default model group |
@@ -107,17 +154,18 @@ The isolated fighter does not scan other fighters/items or implement the scene's
 collision registries. Empty ordinary-Wait branches are checked against the raw
 ledger's attack, item, accessory, async and catch fields.
 
-Non-idle IASA transitions, CPU AI, airborne ticks, unsupported motion entry,
+IASA bodies outside the movement slice above, CPU AI, unsupported motion entry,
 teeter/fall from a ledge, sloped leg correction/body tilt, altered shield health,
-active dynamic-bone solving and scaled-player attribute modifiers also fail
-explicitly. Cold Fall creation is supported; advancing it to a landing is not.
+and scaled-player attribute modifiers fail explicitly. Neutral Fall through
+Landing/Wait and the Fox tail solver are implemented and covered by match-start
+gates.
 
 The reachable Wait command subset executes timing, call/return, part animation
 and ground-pose commands. Texture-frame commands retain requests for a renderer;
 TObj/material/GX execution remains outside this simulation slice. Other opcodes
 are rejected while loading. This is not a general T8 command interpreter.
 
-## Verification and initial-state import
+## Original idle verification and initial-state import
 
 `idle_fox_600` compares all 48 fighter values through `Snapshot` and `melee-diff`:
 P0 600/600, P1 600/600, first mismatch none. The fixture contains frame 0 and 599
@@ -151,7 +199,7 @@ Changed files (crate paths are relative to `crates/`):
 - `melee-ft/tests/fighter_support/{mod,collision,saved_pose}.rs`
 - Root `Cargo.lock`: two local dev-dependency edges.
 
-Final checks: `cargo gate` passed (514 passed, zero failures, one pre-existing
+Original T10 checks: `cargo gate` passed (514 passed, zero failures, one pre-existing
 ignored doctest); `cargo clippy --workspace --all-targets -- -D warnings` passed.
 The four cold-spawn/guard tests and the 600-record replay ran with local data.
 No protected files, game data or commits were added.

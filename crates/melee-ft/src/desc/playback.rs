@@ -27,6 +27,27 @@ pub fn read_wait_table(
     }
 }
 
+/// ftData.x28, used by ftCo_SquatWait_Anim (0x800D6448).
+/// A null table asks the common animation helper to restart without RNG.
+pub fn read_squat_table(
+    archive: &Archive,
+    fighter: u32,
+) -> Result<Option<Vec<WaitEntry>>, AnimationDescError> {
+    let Some(mut offset) = archive.link(add_offset(fighter, 0x28)?)? else {
+        return Ok(None);
+    };
+    let mut result = Vec::new();
+    loop {
+        let motion = archive.reader().s32(offset)?;
+        let weight = archive.reader().s32(add_offset(offset, 4)?)?;
+        result.push(WaitEntry { motion, weight });
+        if motion == -1 {
+            return Ok(Some(result));
+        }
+        offset = add_offset(offset, 8)?;
+    }
+}
+
 /// Motion-table flags (+0x10) and blend byte (`ftData.x10[id][0]`), used
 /// by ftwaitanim.c:93-113. Buffer loading uses the existing AJ locator.
 pub fn read_playback_motion(

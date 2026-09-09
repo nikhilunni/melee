@@ -260,7 +260,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
         state: CommonMotionState,
         assets: &FighterAssets,
     ) -> Result<()> {
+        self.change_motion_state_at(state, assets, 0.0)
+    }
+
+    /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.
+    pub(super) fn change_motion_state_at(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        start: f32,
+    ) -> Result<()> {
         self.status.require_idle();
+        // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
+        // ordinary motion entry clears it (fighter.c:1155-1157).
+        if !(state == CommonMotionState::SquatWait
+            && self.motion_state.id == CommonMotionState::Squat)
+        {
+            self.status.name_tag_timer = 0;
+        }
         super::commands::reset_parts(&mut self.animation, &mut self.skeleton, assets);
         if matches!(
             state,
@@ -278,6 +295,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let (motion_state, animation_id) = match state {
             CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
                 (MotionState::WAIT, 2)
+            }
+            CommonMotionState::Squat => (MotionState::SQUAT, 30),
+            CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),
+            CommonMotionState::SquatRv => (MotionState::SQUAT_RV, 34),
+            CommonMotionState::Turn => (MotionState::TURN, 10),
+            CommonMotionState::WalkSlow => (MotionState::WALK_SLOW, 7),
+            CommonMotionState::WalkMiddle => (MotionState::WALK_MIDDLE, 8),
+            CommonMotionState::WalkFast => (MotionState::WALK_FAST, 9),
+            CommonMotionState::TurnRun => {
+                unimplemented!("ftCo_TurnRun.c:35-38: running reverse input -> TurnRun")
             }
             CommonMotionState::Fall => (MotionState::FALL, 20),
             CommonMotionState::EntryStart => (MotionState::ENTRY_START, 238),
@@ -312,11 +339,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.animation.set_animation(
             &mut self.skeleton,
             &assets.motions[&animation_id],
-            0.0,
+            start,
             1.0,
         )?;
         self.animation.set_rate(&mut self.skeleton, 1.0, false);
-        self.animation.frame = -1.0;
+        self.animation.frame = start - 1.0;
         self.animation.remainder = 0.0;
         self.commands.restart(assets.command_entries[&animation_id]);
         // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:
@@ -324,12 +351,21 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.
         self.animation
             .advance_main::<RetailTrig>(&mut self.skeleton);
-        self.commands.step(
-            &mut self.animation,
-            &mut self.skeleton,
-            &mut self.ground_pose,
-            assets,
-        );
+        if start != 0.0 {
+            self.commands.seek(
+                &mut self.animation,
+                &mut self.skeleton,
+                &mut self.ground_pose,
+                assets,
+            );
+        } else {
+            self.commands.step(
+                &mut self.animation,
+                &mut self.skeleton,
+                &mut self.ground_pose,
+                assets,
+            );
+        }
         if state == CommonMotionState::Fall {
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 self.leave_ground();

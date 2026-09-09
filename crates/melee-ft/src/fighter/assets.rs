@@ -35,6 +35,8 @@ pub struct FighterAssets {
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
+    pub movement: crate::desc::common::MovementParameters,
+    pub squat_choices: Option<Vec<WaitEntry>>,
     pub wait_choices: Vec<WaitEntry>,
     pub commands: Vec<Command>,
     /// Archive-relative source locations for savestate import/diagnostics only.
@@ -57,7 +59,7 @@ impl FighterAssets {
         let motion_table = table.table_offset.ok_or("missing motion table")?;
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        for id in [2, 3, 20, 35, 238] {
+        for id in [2, 3, 7, 8, 9, 10, 20, 30, 31, 34, 35, 238] {
             let entry = fox
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -80,6 +82,7 @@ impl FighterAssets {
                     target: indices[&(*target as u32)],
                     continuation: indices[&(*continuation as u32)],
                 },
+                Command::Goto(target) => Command::Goto(indices[&(*target as u32)]),
                 other => other.clone(),
             })
             .collect::<Vec<_>>();
@@ -144,10 +147,21 @@ impl FighterAssets {
             hurtboxes: read_hurtboxes(fox, root)?,
             dynamics: crate::dynamics::read_sets(fox, root)?,
             dynamic_colliders: read_dynamic_colliders(fox, root)?,
-            motions: [2, 3, 20, 35, 238]
+            motions: [2, 3, 7, 8, 9, 10, 20, 30, 31, 34, 35, 238]
                 .into_iter()
                 .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
                 .collect::<Result<_>>()?,
+            movement: crate::desc::common::MovementParameters {
+                middle_threshold: common.reader().f32(common_data + 0x28)?,
+                fast_threshold: common.reader().f32(common_data + 0x2C)?,
+                acceleration_taper: common.reader().f32(common_data + 0x30)?,
+                slippery_animation_multiplier: common.reader().f32(common_data + 0x440)?,
+                squat_release_threshold: common.reader().f32(common_data + 0x94)?,
+                platform_drop_threshold: common.reader().f32(common_data + 0x464)?,
+                platform_drop_window: common.reader().s32(common_data + 0x468)?,
+                platform_drop_delay: common.reader().f32(common_data + 0x470)?,
+            },
+            squat_choices: crate::desc::playback::read_squat_table(fox, root)?,
             wait_choices: read_wait_table(fox, root)?,
             commands,
             instruction_offsets: words.keys().copied().collect(),
@@ -183,10 +197,23 @@ fn read_script(
                 continuation: (offset + 8) as usize,
             },
             6 => Command::Return,
+            7 => Command::Goto(archive.link(offset + 4)?.ok_or("null command goto")? as usize),
+            8 => Command::WaitAnimationLoop,
             41 => Command::Part {
                 group: ((word >> 19) & 127) as usize,
                 variant: ((word >> 12) & 127) as usize,
                 blend: (word & 4095) as f32,
+            },
+            43 => Command::Rumble {
+                all_players: word & (1 << 25) != 0,
+                id: ((word >> 13) & 4095) as u16,
+                duration: (word & 8191) as u16,
+            },
+            54 => Command::FootstepSound {
+                behavior: ((word >> 18) & 255) as u8,
+                id: archive.reader().u32(offset + 4)?,
+                volume: (archive.reader().u32(offset + 8)? >> 8) as u8,
+                pan: archive.reader().u32(offset + 8)? as u8,
             },
             55 => Command::LandingEffect((word & 0xFFFF) as u16),
             52 => Command::GroundPose((word & 7) as u8),
@@ -210,6 +237,10 @@ fn read_script(
         commands.insert(offset, command.clone());
         match command {
             Command::End | Command::Return => break,
+            Command::Goto(target) => {
+                read_script(archive, target as u32, commands)?;
+                break;
+            }
             Command::Call {
                 target,
                 continuation,
@@ -217,7 +248,7 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
-            Command::LandingEffect(_) => offset += 12,
+            Command::LandingEffect(_) | Command::FootstepSound { .. } => offset += 12,
             _ => offset += 4,
         }
     }

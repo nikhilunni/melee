@@ -13,6 +13,11 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    Squat,
+    SquatWait,
+    SquatRv,
+    Turn,
+    Walk,
     Wait,
     Entry,
     EntryStart,
@@ -23,6 +28,11 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    Squat,
+    SquatWait,
+    SquatRv,
+    Turn,
+    Walk,
     Wait,
     Entry,
     EntryStart,
@@ -33,6 +43,11 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    Squat,
+    SquatWait,
+    SquatRv,
+    Turn,
+    Walk,
     Wait,
     Entry,
     EntryStart,
@@ -43,6 +58,11 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    Squat,
+    SquatWait,
+    SquatRv,
+    Turn,
+    Walk,
     Wait,
     Entry,
     EntryStart,
@@ -64,6 +84,77 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const SQUAT: Self = Self {
+        id: CommonMotionState::Squat,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Squat,
+            input: InputCallback::Squat,
+            physics: PhysicsCallback::Squat,
+            collision: CollisionCallback::Squat,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const SQUAT_WAIT: Self = Self {
+        id: CommonMotionState::SquatWait,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::SquatWait,
+            input: InputCallback::SquatWait,
+            physics: PhysicsCallback::SquatWait,
+            collision: CollisionCallback::SquatWait,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const SQUAT_RV: Self = Self {
+        id: CommonMotionState::SquatRv,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::SquatRv,
+            input: InputCallback::SquatRv,
+            physics: PhysicsCallback::SquatRv,
+            collision: CollisionCallback::SquatRv,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const TURN: Self = Self {
+        id: CommonMotionState::Turn,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Turn,
+            input: InputCallback::Turn,
+            physics: PhysicsCallback::Turn,
+            collision: CollisionCallback::Turn,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const WALK_SLOW: Self = Self {
+        id: CommonMotionState::WalkSlow,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Walk,
+            input: InputCallback::Walk,
+            physics: PhysicsCallback::Walk,
+            collision: CollisionCallback::Walk,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const WALK_MIDDLE: Self = Self {
+        id: CommonMotionState::WalkMiddle,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Walk,
+            input: InputCallback::Walk,
+            physics: PhysicsCallback::Walk,
+            collision: CollisionCallback::Walk,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const WALK_FAST: Self = Self {
+        id: CommonMotionState::WalkFast,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Walk,
+            input: InputCallback::Walk,
+            physics: PhysicsCallback::Walk,
+            collision: CollisionCallback::Walk,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
     /// Fall callbacks; neutral Anim/IASA/Phys/Coll are implemented.
     pub const FALL: Self = Self {
         id: CommonMotionState::Fall,

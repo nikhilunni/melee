@@ -98,3 +98,21 @@ impl CommonFighterData {
         })
     }
 }
+
+/// PlCo movement parameters, loaded at the archive boundary.
+#[derive(Clone, Copy, Debug)]
+pub struct MovementParameters {
+    /// +28/+2C: speed fractions selecting Middle/Fast animation.
+    pub middle_threshold: f32,
+    pub fast_threshold: f32,
+    /// +30: approach-to-target acceleration gain.
+    pub acceleration_taper: f32,
+    /// +440: target-speed animation estimate on slippery ground.
+    pub slippery_animation_multiplier: f32,
+    /// +94: SquatRv release threshold.
+    pub squat_release_threshold: f32,
+    /// +464/+468/+470: platform-drop stick threshold, input age and delay.
+    pub platform_drop_threshold: f32,
+    pub platform_drop_window: i32,
+    pub platform_drop_delay: f32,
+}
