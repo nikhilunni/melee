@@ -165,7 +165,9 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [ ] Input system: `fighter.c` input parsing, buffers, deadzones (`ftCo_800A2040` CPU vs pad path)
 - [x] (2026-09-09) Third scenario batch recorded (tick traces + ledgers): `turnrun_fd_fox` (20 Dash t31, 21 Run t42, 19 TurnRun t61 at x=5.6, 21 Run left t91, 23 RunBrake t101, Wait t119; six dust spawns), `walkfast_fd_fox` (gradual tilt 0.35/0.6/0.95: 15 t31, 16 t41, 17 WalkFast t54, Wait t76; RNG-quiet), `ledgeclimb_fd_fox` (420 ticks: ledge grab as in ledge_fd_fox, 255 CliffClimbQuick t232, 15 WalkSlow t266, Wait t272), `ledgeescape_fd_fox` (420: 259 CliffEscapeQuick t232, Wait t281 at x=-50.7).
 - [ ] TurnRun (`ftCo_TurnRun.c`), WalkFast scenario, CliffClimbQuick/CliffEscapeQuick (`ftCo_CliffClimb.c`, `ftCo_CliffEscape.c`); gates `turnrun_fd_fox`, `walkfast_fd_fox`, `ledgeclimb_fd_fox`, `ledgeescape_fd_fox`
-- [ ] RunDirect, skid, CliffClimbSlow/CliffEscapeSlow (the slow variants need a long ledge hang before the input; not yet recorded)
+- [x] (2026-09-09) `airjumpb_fd_fox` recorded: full hop, then stick back + X in the air: 28 JumpAerialB t51 (y=35.5, facing kept), drifted past the left edge into 32 FallAerial t101 and a ledge grab 252/253 at t104/t111; RNG only particle updates.
+- [ ] JumpAerialB and FallAerial (`ftCo_JumpAerial.c`, `ftCo_FallAerial.c`); gate `airjumpb_fd_fox`
+- [ ] RunDirect, skid, CliffClimbSlow/CliffEscapeSlow (the slow variants are chosen at 100%+ damage, so they wait for Milestone 5 combat)
 - [ ] Jumps backward, air movement, L-cancel
 - [ ] Ledge states (`ftcliffcommon.c` and `ftCo_Cliff*`)
 - [ ] Platform pass-through and drop
