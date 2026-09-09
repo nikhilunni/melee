@@ -50,6 +50,10 @@ pub struct CommonFighterData {
     pub friction_when_above_walk_speed: f32,
     /// ft/types.h:143, +164 (x164); ground entry, ftcommon.c:197-201.
     pub ground_knockback_speed_limit: f32,
+    /// +200 (x200); Fighter_procUpdate grounded knockback friction.
+    pub ground_knockback_friction_multiplier: f32,
+    /// +3EC; Fighter_procUpdate attacker shield knockback friction.
+    pub shield_ground_friction_multiplier: f32,
     /// ft/types.h:169, +1CC (x1CC); ft_081B.c:142-147.
     pub ledge_snap_height_multiplier: f32,
     /// ft/types.h:552, +804 (x804); grounded pose clamp, ft_0899.c:225.
@@ -85,6 +89,10 @@ impl CommonFighterData {
             },
             friction_when_above_walk_speed: r.f32(0x6C)?,
             ground_knockback_speed_limit: r.f32(0x164)?,
+            ground_knockback_friction_multiplier: archive
+                .reader()
+                .f32(add_offset(offset, 0x200)?)?,
+            shield_ground_friction_multiplier: archive.reader().f32(add_offset(offset, 0x3EC)?)?,
             ledge_snap_height_multiplier: r.f32(0x1CC)?,
             ground_pose_max_angle_degrees: archive.reader().f32(add_offset(offset, 0x804)?)?,
         })

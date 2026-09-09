@@ -214,6 +214,7 @@ dependencies = [
  "hsd-archive",
  "hsd-gobj",
  "hsd-types",
+ "melee-gr",
  "melee-lb",
  "melee-mp",
  "melee-types",

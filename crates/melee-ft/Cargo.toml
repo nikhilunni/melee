@@ -16,4 +16,5 @@ gekko-math = { path = "../gekko-math" }
 hsd-types = { path = "../hsd-types" }
 
 [dev-dependencies]
+melee-gr = { path = "../melee-gr" }
 serde_json.workspace = true

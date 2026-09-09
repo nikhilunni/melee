@@ -5,3 +5,6 @@
 pub mod anim;
 pub mod desc;
 pub mod input;
+
+pub mod collision;
+pub mod physics;

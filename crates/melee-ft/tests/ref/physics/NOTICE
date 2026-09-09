@@ -1,0 +1,8 @@
+ftcommon.c.inc and ft_084E.c.inc are verbatim function excerpts from
+MIT-licensed doldecomp/melee, pinned in third_party/melee-decomp.
+ground_reference_sources_match_decomp verifies their source provenance.
+driver.c supplies only the referenced fields, floor multiplier and GObj access.
+Its integration block follows Fighter_procUpdate's retail arithmetic; removed
+C += 0 operations and explicit fmaf sites are documented at their addresses.
+Both builds disable implicit contraction. UNFUSED is only a diagnostic control;
+the Rust must match the retail build, including signed zero.
