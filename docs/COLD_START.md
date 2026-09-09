@@ -1,6 +1,8 @@
 # Cold start: Lane B3
 
-Follow-up: [lane B4](SLIPPI.md) adds replay pads, gapped ports/spawn markers,
+Follow-up: [lane B5](YOSHIS_STORY.md#lane-b5-match-start-and-cold-start-2026-09-09) adds
+Yoshi's Story (five setup draws, rule-0 music without an RNG draw).
+[lane B4](SLIPPI.md) adds replay pads, gapped ports/spawn markers,
 stock/time rule carriage, and the normal countdown's input release. The
 historical B3 measurements and boundary limitations below remain unchanged.
 

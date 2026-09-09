@@ -6,8 +6,9 @@ replays controller inputs, and compares each frame using `melee-diff`'s
 bit-pattern equality. It never initializes a fighter from post-frame state,
 repairs the RNG between frames, or searches seeds against an expected trace.
 
-**No bundled fixture qualifies for an actual cold replay comparison.** All
-eight have an unsupported cold stage or character. Their measured matched
+**No bundled fixture qualifies for an actual cold replay comparison.** Seven
+have an unsupported cold stage or character; after B5, `v3.16.slp` has a
+supported stage/matchup but requires online RNG reconstruction. Their measured matched
 counts are zero, with explicit setup reasons, not eight successful simulation
 runs. Separate adapter tests project existing independent Dolphin cold
 oracles into Slippi fields: **599 full frames each on FD and Battlefield**
@@ -36,7 +37,7 @@ and simulation errors remain failures. A corrupt late controller field stops
 at that tick, retaining the verified prefix rather than guessing an input.
 
 The current runnable setup is two human leaders in ascending distinct ports,
-FD or Battlefield, registered Fox/Marth/Falco/Captain Falcon, valid costumes,
+FD, Battlefield or Yoshi's Story, registered characters, valid costumes,
 normal speed/damage/scale/handicap, singles stock mode, items off, normal
 countdown and music. Stock count is preserved (1..99); time/countdown rules
 are preserved and time-up stops at an explicit unported boundary. CPU/demo
@@ -214,7 +215,7 @@ checked by `fixture_matched_frame_counts_never_decrease`.
 | `v0.1.slp` | 8,236 | Dream Land | P1 Fox, P2 Ganondorf | Stage/Ganondorf unsupported; no Frame Start seed | 0 |
 | `v3.12.slp` | 124 | Pokemon Stadium | P1 Marth, P2 Marth | Characters supported; stage/Online setup unsupported | 0 |
 | `v3.13.slp` | 148 | FD | P1 Fox, P3 Pichu | Stage/Fox supported; Pichu unsupported, items enabled (behavior 2) | 0 |
-| `v3.16.slp` | 308 | Yoshi's Story | P1 Fox, P2 Falco | Characters supported; stage has idle support but no cold start; Online setup unsupported | 0 |
+| `v3.16.slp` | 308 | Yoshi's Story | P1 Fox, P2 Falco | Stage and characters supported; Online per-frame RNG resets unsupported | 0 |
 | `v3.18.slp` | 941 | Fountain of Dreams | P1 Marth, P2 Captain Falcon CPU 7 | Characters supported; stage/CPU unsupported | 0 |
 
 No first unported **action state** has been reached in this real corpus;
@@ -296,3 +297,64 @@ crates/melee-sim/src/trace.rs
 crates/melee-sim/tests/slippi_oracle.rs
 crates/melee-sim/tests/slippi_replay.rs
 ```
+
+## Lane B5: first real Yoshi's Story attempt (2026-09-09)
+
+Yoshi's Story cold setup is now supported, with the match-start and cold
+600 x 49 gates described in YOSHIS_STORY.md. The replay stage whitelist
+includes stage-select ID 8. Its normal music rule is 0, so deriving the cold
+boundary from Frame Start does **not** undo a draw when characters are
+unlocked. A separate Story oracle projection verifies 599 complete frames.
+
+Actual invocation and complete output:
+
+```text
+$ cargo run -q -p melee-sim -- replay crates/slp/tests/data/v3.16.slp
+YoshisStory; port 1 -> p0 Fox costume 1 Human stocks 4, port 2 -> p1 Falco costume 0 Human stocks 4
+0 / 308 replay frames matched
+unsupported setup: Slippi Online initialization/seed resets
+```
+
+**Matched count: 0. First divergence: none measured**, because the explicit
+online setup check stops before simulation. This is not a green replay or a
+claim of a first-frame mismatch. The fixture-count floor remains zero; its
+pinned reason changes from unsupported cold stage to Online. No fixture
+bytes or expected trace values changed.
+
+The only structural setup rejection remaining for this fixture is Online.
+It is NTSC, English, singles stock mode, four stocks, 480 seconds, items off,
+normal speed/damage/handicap/scale, with supported Fox/Falco costumes and
+ports. Those stock/time settings are already carried by the B4 bridge.
+Changing those rules or the major-scene flag alone would be insufficient.
+
+Audited Slippi source at the same pinned revision as B4:
+[Online/Core/InitOnlinePlay.asm](https://github.com/project-slippi/slippi-ssbm-asm/blob/fcf47f10dc244152c2ebaa3a9dec142ea42243b7/Online/Core/InitOnlinePlay.asm).
+The injection at **0x8016E748** installs the negotiated RNG offset before
+ordinary match setup. It then creates `FN_SyncRNG`, a priority-zero GObj proc
+that runs before player animations. On **every frame** this callback replaces
+the shared seed with `scene_frame_counter.rotate_left(16) + negotiated_offset`
+(modulo 2^32). This is a netplay determinism mechanism, not a stock/timer/music
+rule. The recording hook then samples that stream at Frame Start.
+
+A read-only diagnostic of the unmodified fixture established:
+
+- Game Start seed and first Frame Start seed: **0x00003AAE**.
+- First scene counters: 0,1,2,3,4; corresponding Frame Start seeds:
+  **00003AAE, 00013AAE, 00023AAE, 00033AAE, 00043AAE**.
+- **308 / 308** recorded Frame Start seeds satisfy the reset formula with
+  offset 0x3AAE. A regression test pins this evidence and verifies that Online
+  is the sole setup rejection.
+- First Post Frames retain Entry 322 and animation frame -1, with P1 at
+  (-42,26.6) and P2 at (42,28), consistent with the stage's entry markers.
+
+Per the lane boundary, work stops at netplay reconstruction. The runner does
+not clear the online flag, inject successive recorded seeds, or relabel a
+retail/offline simulation as an online replay. Supporting this path requires
+an explicit online initialization/scheduler contract, its seed reset callback,
+and then verification of finalized rollback frames and the additional Gecko
+behavior. No complete rollback history was reconstructed in this lane.
+
+B5 final checks: `cargo gate` **821 passed, 0 failed, 1 pre-existing ignored**;
+clippy `--workspace --all-targets -- -D warnings`, fmt check and diff check
+passed; harness pytest **186 passed**. The Story oracle projection is included
+in the full gate. The complete B5 file list is in YOSHIS_STORY.md. No commit.

@@ -298,10 +298,13 @@ pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::
         }
     }
     let row = selected.ok_or_else(|| error("missing stage music parameters"))?;
-    if r.s16(row + 0x14)? != 6 {
-        return Err(error("unsupported stage music unlock rule"));
-    }
+    let rule = match r.s16(row + 0x14)? {
+        0 => crate::music::MusicRule::Primary,
+        6 => crate::music::MusicRule::AllCharactersUnlocked,
+        rule => return Err(error(format!("unsupported stage music unlock rule {rule}"))),
+    };
     Ok(crate::music::MusicParameters {
+        rule,
         primary: r.s32(row + 4)?,
         alternate: r.s32(row + 8)?,
         alternate_chance: r.s16(row + 0x16)?,

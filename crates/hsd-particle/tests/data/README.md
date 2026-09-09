@@ -118,3 +118,20 @@ final seed `0x71afbd66` (1,960 existing display-cache exclusions). The full
 catch capsule, so linked capture/throw/missed-tech effects and their production
 fixture are still missing. The startup helper checks the original 300-record
 file lengths and compares 127 records; existing full replays are unchanged.
+
+## Yoshi's Story match start (Lane B5, 2026-09-09)
+
+`start_ys_spawns.json` was logged from production `melee-sim gate
+harness/scenarios/start_ys_fox.toml` (600 x 49, zero divergences). It contains
+38 external requests: 30 detached Randall puffs and eight fighter entry/landing
+requests; 284 input events including joint updates/expiration. Temporary
+instrumentation at `ParticleSystem::{spawn,update_joint,expire_joint}` and
+`Simulation::tick` was removed. The 160 synchronous child requests (kinds
+446/447, `ParticleSystem::drain_children`) were discarded: bytecode generates
+those during replay. Unchanged matrices, unused joints, and map-2 updates
+for already detached puffs were omitted; each puff carries its own current
+production matrix. No retail particle outputs were used as fixture inputs.
+
+`live_ys_start` uses `dust_replay.rs`, including the match-start tick-zero
+scheduler boundary. It compares 215,202 fields and 4,864 ordered particle RNG
+draws over 600 ticks, with zero mismatches and zero excluded fields.

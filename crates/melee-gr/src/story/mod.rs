@@ -41,6 +41,25 @@ pub struct Story {
     pub occupied_frames: u16,
 }
 impl Story {
+    /// grStory_801E3234 / grStory_801E3370: Ground creation starts the
+    /// Shy Guy schedule at 120 and Randall's puff timer at zero.
+    pub fn initialize(parameters: Parameters, rng: &mut HsdRng) -> Self {
+        // Retail 801E32B8 draws even though 801E3304 overwrites the timer.
+        // 801E32F0 fadds, 801E32F4 fctiwz; no multiply-add contraction.
+        let _discarded_timer =
+            (parameters.timer_minimum + randi(rng, parameters.timer_range) as f32) as i32;
+        Self {
+            parameters,
+            puff_timer: 0,
+            shy_timer: SHY_GUY_DELAY,
+            previous_pattern: 0,
+            spawn_count: 0,
+            lights: Vec::new(),
+            shy_guys: Vec::new(),
+            occupied_frames: 0,
+        }
+    }
+
     /// grStory_801E366C (0x801E366C): signed short post-decrement.
     pub fn tick_puff(&mut self, rng: &mut HsdRng) -> bool {
         let old = self.puff_timer;

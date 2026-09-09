@@ -12,7 +12,7 @@ fn fixture(name: &str) -> Replay {
 
 #[test]
 fn fixture_matched_frame_counts_never_decrease() {
-    // Zero is honest: no fixture has a supported cold stage AND both characters.
+    // Zero remains the corpus floor: v3.16 reaches the Online setup boundary.
     // Pin the composition and the reason as well, so an unconditional skip or
     // a setup/parser regression cannot masquerade as a successful zero floor.
     let cases = [
@@ -22,7 +22,7 @@ fn fixture_matched_frame_counts_never_decrease() {
         ("v0.1.slp", "DreamLand", "cold stage", 0),
         ("v3.12.slp", "PokemonStadium", "cold stage", 0),
         ("v3.13.slp", "FinalDestination", "Pichu", 0),
-        ("v3.16.slp", "YoshisStory", "cold stage", 0),
+        ("v3.16.slp", "YoshisStory", "Online", 0),
         ("v3.18.slp", "FountainOfDreams", "cold stage", 0),
     ];
     for (name, stage, reason, floor) in cases {
@@ -302,4 +302,42 @@ fn gapped_ports_preserve_spawn_markers_and_route_pads_by_port() {
         panic!("{report}")
     };
     assert!(diff.path.starts_with("p1."), "{diff}");
+}
+
+/// InitOnlinePlay.asm's FN_SyncRNG resets before player animation on every
+/// scheduler pass. A match-rules change cannot reproduce this fixture.
+#[test]
+fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
+    let replay = fixture("v3.16.slp");
+    assert_eq!(replay.frames.len(), 308);
+    assert_eq!(replay.start.random_seed, 0x3AAE);
+    for frame in replay.frames.values() {
+        let start = frame.start.expect("v3.16 Frame Start");
+        let counter = start.scene_frame_counter.expect("v3.16 scene counter");
+        assert_eq!(
+            start.random_seed,
+            counter.rotate_left(16).wrapping_add(0x3AAE)
+        );
+    }
+    let reasons = replay::unsupported_setup(&replay);
+    assert_eq!(reasons, ["Slippi Online initialization/seed resets"]);
+}
+
+#[test]
+fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
+    let Some((mut replay, _)) = oracle_replay("start_ys_fox") else {
+        return;
+    };
+    replay.start.stage = 8;
+    let report = replay::run(
+        &replay,
+        &root(),
+        Setup {
+            all_characters_unlocked: Some(true),
+            boundary_seed: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(report.matched, 599, "{report}");
+    assert!(matches!(report.stop, Stop::Complete), "{report}");
 }

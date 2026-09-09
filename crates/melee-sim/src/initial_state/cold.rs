@@ -42,18 +42,25 @@ impl InitialState {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // The supplied seed is after creation, before music. grLast's four
-        // draws (or grBattle's one), then two CPU-init draws per human slot.
+        // draws (or grBattle/grStory's one), then two CPU-init draws per human slot.
         // Invert this fixed, audited interval; never search an oracle at runtime.
         let stage_draws = match assets.stage_desc.kind {
             GrKind::Last => 4,
-            GrKind::Battle => 1,
-            _ => anyhow::bail!("cold setup supports FD and Battlefield"),
+            GrKind::Battle | GrKind::Story => 1,
+            _ => anyhow::bail!("cold setup supports FD, Battlefield and Yoshi's Story"),
         };
         let boundary_seed = scenario.seed.expect("validated cold seed");
         let fighter_draws = CPU_SETUP_DRAWS_PER_PLAYER * scenario.fighters.len();
         let mut rng = HsdRng::new(before_setup(boundary_seed, stage_draws + fighter_draws));
         let mut particles = ParticleSystem::default();
-        let (stage, stage_animations) = initialize_stage(&assets, &mut rng, &mut particles)?;
+        let (stage, mut stage_animations) = initialize_stage(&assets, &mut rng, &mut particles)?;
+        for (&id, animation) in &mut stage_animations {
+            let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
+            animation.update_collision(&mut map, bindings);
+            for binding in bindings {
+                map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
+            }
+        }
         let fighters = create_players(scenario, &assets, &mut map, &mut rng)?;
         ensure!(
             rng.seed == boundary_seed,
@@ -171,6 +178,37 @@ fn initialize_stage(
                 stage_animations.insert(id, animation);
             }
             SceneStage::Battlefield(stage)
+        }
+        GrKind::Story => {
+            let parameters = melee_gr::desc::read_story_parameters(&assets.stage)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let mut stage = melee_gr::story::Story::initialize(parameters, rng);
+            stage.lights =
+                melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 3)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+            // grStory_801E3030: creation order 0,1,3,2. Maps 1/2 use
+            // grAnime_801C8138 (evaluate frame zero); map 3 only requests it.
+            for id in [0, 1, 3, 2] {
+                let model = &assets.stage_desc.models[id as usize];
+                let mut animation = BackgroundAnimation::load_model(&assets.stage, model)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                if id == 3 {
+                    let subtree = melee_gr::desc::animation_subtree(&assets.stage, model, 1, 5)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    animation
+                        .attach_subtree(&assets.stage, 5, &subtree, model.animation_loops[1])
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                }
+                animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+                if matches!(id, 1 | 2) {
+                    ensure!(
+                        animation.evaluate_initial_frame::<RetailTrig>().is_empty(),
+                        "unexpected Story setup particle event"
+                    );
+                }
+                stage_animations.insert(id, animation);
+            }
+            SceneStage::Story(stage)
         }
         _ => unreachable!(),
     };

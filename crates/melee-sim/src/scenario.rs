@@ -90,8 +90,11 @@ impl Scenario {
                 "cold setup requires an explicit boundary seed"
             );
             ensure!(
-                matches!(self.stage.as_str(), "FinalDestination" | "Battlefield"),
-                "cold setup supports FD and Battlefield"
+                matches!(
+                    self.stage.as_str(),
+                    "FinalDestination" | "Battlefield" | "YoshisStory"
+                ),
+                "cold setup supports FD, Battlefield and Yoshi's Story"
             );
             ensure!(
                 self.all_characters_unlocked.is_some(),

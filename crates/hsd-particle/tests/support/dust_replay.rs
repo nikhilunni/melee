@@ -63,7 +63,7 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
     let scene = name;
     // A match-start savestate sits before its first tick's procs.
     let story = name.contains("_ys_");
-    let match_start = name == "start_bf_fox";
+    let match_start = name.starts_with("start_");
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let paths = [
         "particles.jsonl.initial.jsonl",

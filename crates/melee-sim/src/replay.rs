@@ -76,7 +76,7 @@ impl std::fmt::Display for Report {
 pub fn unsupported_setup(replay: &Replay) -> Vec<String> {
     let mut reasons = Vec::new();
     let start = &replay.start;
-    if !matches!(start.stage, 31 | 32) {
+    if !matches!(start.stage, 8 | 31 | 32) {
         reasons.push(format!(
             "{} cold stage",
             slp::ids::stage_name(start.stage).unwrap_or("unknown")
@@ -147,7 +147,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
                 .next()
                 .and_then(slp::Frame::scheduler_start_seed)
                 .context("no Frame Start seed; supply an independently recorded --boundary-seed")?;
-            if unlocked {
+            if unlocked && matches!(replay.start.stage, 31 | 32) {
                 seed.wrapping_sub(gekko_math::HsdRng::INCREMENT)
                     .wrapping_mul(0xB9B3_3155)
             } else {

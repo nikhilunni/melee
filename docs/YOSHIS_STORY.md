@@ -150,3 +150,99 @@ Paths below are relative to the repository root; the list includes Part 1.
   `tests/m4_gate.rs`: stage registration/restoration, common-bank initialization,
   detached puff requests and both new gates with particle ledger tests.
 - `docs/{BATTLEFIELD.md,YOSHIS_STORY.md}`, `TRACKER.md`: findings and status.
+
+## Lane B5: match start and cold start (2026-09-09)
+
+Both `start_ys_fox` and the new `start_ys_fox_cold` gate for **600 ticks,
+49 keys, 0 divergences**. The existing saved-state adapter already restores
+the start animations/timers and the fighter Entry state correctly. The missing
+start path was music: Yoshi's Story's StageParam uses **rule 0**, primary
+track without a random draw, even when all characters are unlocked.
+`MusicRule` now distinguishes that rule from FD/Battlefield's rule 6.
+`Ground_801C24F8`'s rule-0 branch is the source; forced music remains outside
+the constructor contract.
+
+Cold setup now accepts Story. Retail `grStory_801E3030` creates maps
+**0,1,3,2**. Maps 1 and 2 evaluate animation frame zero during creation through
+`grAnime_801C8138`; map 3 requests frame zero without evaluating it, including
+animation 1 on descendant 5. Randall starts at that DAT path phase, with puff
+timer **0**. Map collision transforms/history are installed before creating
+fighters. The first full scheduler pass is tick 1; the first puff is tick 2.
+Map 3's Shy Guy timer starts at **120**, and its first group is chosen at tick
+**121**. This capture chooses one Shy Guy. The existing 960-frame occupied
+interval limitation and missing Heiho item motion/hit/escape still apply.
+No animation phase or spawn schedule is inferred from later trace rows.
+
+`grStory_801E3234` consumes one `HSD_Randi(1800)` at **0x801E32B8**,
+adds the archive's 600 minimum (`fadds` at 0x801E32F0, `fctiwz` at
+0x801E32F4), then overwrites the timer with 120 at **0x801E3304**.
+That discarded choice still advances RNG. Stage setup has **one draw**, then
+fighter creation has two CPU-initialization draws per player, in port order:
+**five setup draws total**. Reversing the fixed audited interval from the
+sidecar seed **968630801 / 0x39BC2211** gives **0x55688D82** immediately
+before stage creation; executing setup forward reaches the sidecar exactly.
+The constructor reads only DAT assets and scenario parameters. As in B3,
+this seed contract is the post-creation/pre-music boundary, not a measured
+earlier stage-select seed.
+
+The cold/imported comparison matches **86 initialized scene fields**, including
+CPU reaction/attack delays, Entry fields, Story timers and the scheduler
+boundary; initial particle snapshots also match. Inactive heap words retain
+the limitations documented in COLD_START.md. A DAT-only scratch-root test
+runs this scene without any savestate, sidecar, trace or particle dump.
+
+The platform Entry/Fall/Landing code needed no change. P1's marker is
+(-42,26.6), P2's is (42,28); both land at y=23.45. P1 follows the supplied
+sequence: Entry 322 at tick 0, EntryStart 323 at 6, EntryEnd 324 at 35,
+Fall 29 at 65, Landing 42 at 72, Wait 14 at 102.
+
+Independent `live_ys_start` particle replay through `dust_replay.rs` compares
+**215,202 fields and 4,864 ordered draws**, zero mismatches and **no exclusions**.
+The production gate generates the stage's 36 draws, eight Wait choices, six
+landing-position draws and those particle draws (4,914 total) in retail order.
+`m4_gate` adds both 600-tick gates and the start particle-site-order test.
+The new Slippi adapter projection matches **599 independent Story oracle
+frames**, including rule-0 seed alignment; this is a synthetic protocol
+projection, not a real-replay corpus result. See SLIPPI.md for the real attempt.
+
+No contradictions with the supplied transitions were found. No existing
+scenario, trace, ROM, or decomp files were edited; no Dolphin run or commit.
+
+### B5 final verification and file list
+
+- Both CLI gates: 600 ticks, 49 keys, 0 divergences.
+- `cargo gate`: **821 passed, 0 failed, 1 pre-existing ignored doctest**
+  (baseline: 813 passed). All existing scenario/oracle gates remain green.
+- `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- Harness pytest: **186 passed**, using the main checkout's existing venv,
+  with bytecode/cache writes disabled.
+- Real replay CLI: 0/308, Online setup stop; exact output in SLIPPI.md.
+
+Changed files (all B5 changes remain uncommitted):
+
+```text
+TRACKER.md
+docs/YOSHIS_STORY.md
+docs/COLD_START.md
+docs/SLIPPI.md
+harness/scenarios/start_ys_fox_cold.toml
+crates/melee-gr/src/desc.rs
+crates/melee-gr/src/music.rs
+crates/melee-gr/src/story/mod.rs
+crates/melee-gr/tests/real_story.rs
+crates/melee-sim/src/initial_state/cold.rs
+crates/melee-sim/src/initial_state/cold_tests.rs
+crates/melee-sim/src/scenario.rs
+crates/melee-sim/src/replay.rs
+crates/melee-sim/tests/m4_gate.rs
+crates/melee-sim/tests/slippi_replay.rs
+crates/hsd-particle/tests/support/dust_replay.rs
+crates/hsd-particle/tests/live_ys_start.rs
+crates/hsd-particle/tests/data/start_ys_spawns.json
+crates/hsd-particle/tests/data/README.md
+```
+
+The pre-existing lane symlinks for ROMs/traces and decomp typechange remain
+unchanged. Netplay reconstruction was intentionally not implemented, as
+requested; no retail expected values or comparison tolerances were changed.

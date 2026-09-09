@@ -957,3 +957,16 @@ fn ledgeescape_fd_peach_420() {
 fn ledgeescape_peach_particle_draw_order() {
     particle_rng_sites_with_ledger("ledgeescape_fd_peach", 420, "ledger");
 }
+
+#[test]
+fn start_ys_fox_600() {
+    movement_gate_ticks("start_ys_fox", 600);
+}
+#[test]
+fn start_ys_fox_cold_600() {
+    movement_gate_ticks("start_ys_fox_cold", 600);
+}
+#[test]
+fn story_start_particle_rng_order() {
+    particle_rng_sites_with_ledger("start_ys_fox", 600, "ledger600");
+}

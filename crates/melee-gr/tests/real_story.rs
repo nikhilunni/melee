@@ -14,6 +14,8 @@ fn story_platforms_and_randall_binding_come_from_the_archive() {
         Err(e) => panic!("{}: {e}", path.display()),
     };
     let archive = Archive::parse(&bytes).unwrap();
+    let music = desc::read_music(&archive, 8).unwrap();
+    assert_eq!(music.rule, melee_gr::music::MusicRule::Primary);
     let desc = desc::read_story(&archive).unwrap();
     assert_eq!(desc.models.len(), 4);
     assert_eq!(desc.parameters.map_scale.to_bits(), 0.7_f32.to_bits());

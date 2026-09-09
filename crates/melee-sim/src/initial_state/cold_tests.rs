@@ -64,7 +64,14 @@ fn setup_snapshot(state: &InitialState) -> Record {
                 }
             }
         }
-        SceneStage::Story(_) => unreachable!(),
+        SceneStage::Story(stage) => {
+            sink.field("stage.puff_timer", &stage.puff_timer);
+            sink.field("stage.shy_timer", &stage.shy_timer);
+            sink.field("stage.previous_pattern", &stage.previous_pattern);
+            sink.field("stage.spawn_count", &stage.spawn_count);
+            sink.field("stage.occupied_frames", &stage.occupied_frames);
+            sink.field("stage.shy_guys", &(stage.shy_guys.len() as u32));
+        }
     }
     sink.field("scheduler.resume_s_link", &state.resume_s_link);
     output.finish()
@@ -170,6 +177,7 @@ fn cold_run_reads_only_dat_assets() {
         "start_fd_marth",
         "start_fd_falco",
         "start_bf_fox",
+        "start_ys_fox",
     ] {
         let mut scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}_cold.toml"))).unwrap();
@@ -187,4 +195,9 @@ fn cold_run_reads_only_dat_assets() {
         assert!(!scenario.root.join("harness/traces").exists());
         crate::trace::write_run(&scenario, std::io::sink()).unwrap();
     }
+}
+
+#[test]
+fn start_ys_fox_cold_600() {
+    verify("start_ys_fox");
 }
