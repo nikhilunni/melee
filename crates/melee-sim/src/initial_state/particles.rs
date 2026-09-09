@@ -320,6 +320,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
 fn appsrt_fields(
     value: &hsd_particle::appsrt::ApplicationTransform,
     mut count: usize,
+    mut generator_index: Option<usize>,
     fields: &mut Fields<'_>,
 ) {
     let mut value = value.clone();
@@ -360,7 +361,7 @@ fn appsrt_fields(
     );
     fields.scalar("id", &mut (value.family_id));
     fields.scalar("unknown_byte", &mut (value.camera_facing));
-    fields.scalar("generator_index", &mut Option::<usize>::None);
+    fields.scalar("generator_index", &mut generator_index);
 }
 
 pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Banks) -> Record {
@@ -399,10 +400,18 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
                 .unwrap()
         })
     };
-    for (index, (_, transform, count)) in transforms.iter().enumerate() {
+    for (index, (id, transform, count)) in transforms.iter().enumerate() {
+        // hsd_8039F05C / eflib_create_generator_add_appsrt set the owner;
+        // psRemoveGeneratorSRT clears it when the allocating generator dies.
+        let owner = system.generators.iter().position(|generator| {
+            generator.id == *id
+                && (generator.descriptor.kind & 0x20000 != 0
+                    || (generator.attachment_id.is_some() && generator.flags & 0x900 == 0x900))
+        });
         appsrt_fields(
             transform,
             *count,
+            owner,
             &mut Fields {
                 prefix: format!("particles.appsrt[{index}]"),
                 source: None,

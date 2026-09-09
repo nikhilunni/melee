@@ -121,6 +121,11 @@ pub(super) fn restore_scene(
                 "unexpected initial FD generator population"
             );
             let mut animations = BTreeMap::new();
+            animations.insert(
+                3,
+                BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[3])
+                    .map_err(|e| anyhow::anyhow!("{e}"))?,
+            );
             if match_start {
                 animations.insert(
                     4,

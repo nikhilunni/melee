@@ -12,6 +12,7 @@ pub mod effects;
 pub mod entry;
 pub mod escape;
 pub mod fall;
+pub mod grab;
 pub mod hitbox;
 pub mod jump;
 pub mod landing;
@@ -47,6 +48,10 @@ pub use state::{interleaved_order, FighterProc, MotionState};
 /// character crate. The implementation owns its typed special attributes.
 pub trait CharacterCallbacks {
     fn kind(&self) -> FighterKind;
+    /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
+    /// character-specific capture variants override this boundary.
+    fn catch_variant(&mut self) {}
+
     /// decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
     fn jab_variant(&self) {
         match self.kind() {
@@ -380,10 +385,12 @@ pub struct CameraSubject {
 /// State-local data; the retail union starts at Fighter +2340.
 #[derive(Clone, Debug, Default)]
 pub enum MotionData {
+    Catch,
     #[default]
     None,
     Entry(entry::EntryState),
     Jab(attack::JabState),
+    Tilt,
     Damage(damage::DamageState),
     Guard(shield::GuardState),
     Escape(escape::EscapeState),

@@ -33,7 +33,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 "damage requires damage state"
             ),
             super::Interaction::Attack => assert!(
-                matches!(self.state_data, super::MotionData::Jab(_)),
+                matches!(
+                    self.state_data,
+                    super::MotionData::Jab(_) | super::MotionData::Tilt
+                ),
                 "attack requires attack state"
             ),
             _ => {}
@@ -100,6 +103,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.step_animation(assets);
         match self.motion_state.callbacks.animation {
+            state::AnimationCallback::Catch => {
+                self.catch_animation(assets)?;
+                return Ok(None);
+            }
             state::AnimationCallback::Damage => {
                 self.damage_animation(assets)?;
                 return Ok(None);
@@ -318,6 +325,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 ..WaitContext::default()
             };
             match self.motion_state.callbacks.input {
+                state::InputCallback::Catch => return,
+                state::InputCallback::Tilt => {
+                    self.tilt_input(assets, &context).expect("tilt IASA");
+                    return;
+                }
                 state::InputCallback::Damage => {
                     self.damage_input(assets, &context).expect("damage IASA");
                     return;
@@ -444,6 +456,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.ledge_cooldown -= 1;
         }
         match self.motion_state.callbacks.physics {
+            state::PhysicsCallback::Catch => self.catch_physics(assets, map, wind),
+            state::PhysicsCallback::Damage => self.damage_physics(assets, map, wind),
             state::PhysicsCallback::Jab => self.jab_physics(assets, map, wind),
             state::PhysicsCallback::Wait | state::PhysicsCallback::SquatWait => step_wait(
                 &mut self.physics,
@@ -585,16 +599,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             | state::PhysicsCallback::Jump
             | state::PhysicsCallback::JumpAerial => {
                 assert_eq!(
-                    self.physics.knockback_velocity,
-                    Vec3::ZERO,
-                    "air knockback decay needs damage physics"
-                );
-                assert_eq!(
                     self.physics.shield_knockback_velocity,
                     Vec3::ZERO,
                     "air shield knockback decay needs damage physics"
                 );
                 self.airborne_physics(assets);
+                self.decay_air_knockback(assets);
                 crate::physics::integrate::integrate_velocity(&mut self.physics);
                 crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
             }
@@ -650,9 +660,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             ),
             "airborne map needs proc_map_with_assets"
         );
-        self.map_ground(map);
+        assert!(
+            !self.map_ground(map),
+            "ground departure needs proc_map_with_assets"
+        );
     }
-    fn map_ground(&mut self, map: &mut CollMap) {
+    fn map_ground(&mut self, map: &mut CollMap) -> bool {
         let simple = matches!(
             self.motion_state.callbacks.collision,
             state::CollisionCallback::GuardOn
@@ -708,9 +721,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     }
                 }
             }
-            WaitGroundResult::EnterFall => unimplemented!("ft_081B.c:1094: Wait -> Fall"),
+            WaitGroundResult::EnterFall => return true,
             WaitGroundResult::EnterTeeter => unimplemented!("ft_081B.c:1092: Wait -> Ottotto"),
         }
+        false
     }
     /// State-changing map dispatch, including Landing's immediate command/RNG work.
     /// The original proc_map remains the grounded API used by melee-sim M3.
@@ -726,6 +740,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_supported();
         match self.motion_state.callbacks.collision {
+            state::CollisionCallback::Catch => self.catch_collision(assets, map)?,
+            state::CollisionCallback::Damage => self.damage_collision(assets, map)?,
             state::CollisionCallback::GuardOn
             | state::CollisionCallback::Guard
             | state::CollisionCallback::GuardReflect
@@ -743,7 +759,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             | state::CollisionCallback::Squat
             | state::CollisionCallback::SquatWait
             | state::CollisionCallback::SquatRv
-            | state::CollisionCallback::Turn => self.map_ground(map),
+            | state::CollisionCallback::Turn => {
+                if self.map_ground(map) {
+                    self.leave_ground();
+                    self.change_motion_state(melee_types::CommonMotionState::Fall, assets)?;
+                }
+            }
             state::CollisionCallback::Entry
             | state::CollisionCallback::EntryStart
             | state::CollisionCallback::EntryEnd => {
@@ -917,10 +938,21 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
     }
     /// Fighter_UnkProcessGrab_8006CA5C (0x8006CA5C), s_link 12.
-    /// Wait has no catch hitbox (x221E_b6 is cleared by motion entry).
+    /// Catch startup is ported; selecting/linking a victim is still a boundary.
     pub fn proc_grab(&mut self) {
         if !self.status.disabled {
             self.status.require_supported();
+            if self
+                .commands
+                .hitboxes
+                .iter()
+                .flatten()
+                .any(|hit| hit.descriptor.element == melee_types::HitElement::Catch)
+            {
+                unimplemented!(
+                    "ftColl_80078A2C: active catch capsule needs pair query and linked CatchPull/CapturePulled"
+                );
+            }
         }
     }
     /// Fighter_8006CB94 (0x8006CB94), s_link 13, fighter.c:2621-2642.
@@ -938,7 +970,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.status.require_supported();
         self.process_damage(assets).expect("hit response");
-        self.shield_proc(assets);
+        self.shield_proc(assets).expect("shield response");
         self.cpu.hurtbox_extents = caches::hurtbox_extents(
             &mut self.hurtboxes,
             &mut self.skeleton,

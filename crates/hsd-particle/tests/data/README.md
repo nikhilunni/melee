@@ -88,3 +88,33 @@ The replay bakes/releases that attachment before particle execution, as in
 retail. Its initial puff has no attachment and needs no fixture joint mapping.
 The 600-tick replay compares 51,303 fields and 476 ordered draws, with no
 mismatches and no display-cache exclusions.
+
+
+## M5 A2 input fixtures
+
+`jab_fd_fox_spawns.json`, `utilt_fd_marth_spawns.json` and
+`shieldhit_fd_marth_spawns.json` were logged on 2026-09-09 from the production
+Lane A2 gates; each reports 300 ticks, 49 keys, 0 divergences. They have
+8/13, 12/16 and 10/22 external spawns/retained events respectively.
+Use the method above, also recording the root-scale override and the
+`clear: 0x600, set: 0x800` operations on normal hit sparks (2/306/307).
+Flag operations apply to the immediately preceding spawn, even when several
+generators attach to the same joint. The fixture helper asserts that joint.
+
+When instrumenting `ParticleSystem::spawn`, exclude calls inside
+`update_particle`: those are child-generator instructions that the replay must
+execute itself. These fixtures contain no child requests or retail particle
+outputs. They retain only external calls, used joint updates and expirations;
+unchanged duplicate matrices are omitted. All temporary instrumentation and
+its temporary serialization dependency were removed.
+
+The replays compare 474,513 / 510,260 / 468,078 simulation fields and
+9,642 / 9,900 / 9,441 ordered particle draws with zero mismatches. No new
+AppSRT display-cache exclusions were added. `grab_fd_marth_startup_spawns.json` contains only the 9 external spawns / 10
+events logged from production ticks 0–126 by the same method. Its enabled
+startup replay compares 215,230 fields and 4,188 ordered draws, zero mismatches,
+final seed `0x71afbd66` (1,960 existing display-cache exclusions). The full
+300-tick grab replay is explicitly ignored: gameplay stops at tick 127's active
+catch capsule, so linked capture/throw/missed-tech effects and their production
+fixture are still missing. The startup helper checks the original 300-record
+file lengths and compares 127 records; existing full replays are unchanged.

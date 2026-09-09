@@ -224,12 +224,23 @@ impl Runtime {
                 0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
                 _ => {
                     let map_id = map.expect("stage callback map");
-                    if matches!(state.stage, SceneStage::Story(_)) {
+                    // Ground_801C2FE0 also runs from FD's controller. Even static
+                    // transforms advance the collision epoch and select remapped sweeps.
+                    if matches!(state.stage, SceneStage::Story(_)) || address == 0x8021_AAB0 {
                         let animation = state.stage_animations.get_mut(&map_id).unwrap();
-                        animation.update_collision(
-                            &mut state.map,
-                            &state.assets.stage_desc.models[map_id as usize].joint_mappings,
-                        );
+                        let bindings =
+                            &state.assets.stage_desc.models[map_id as usize].joint_mappings;
+                        if address == 0x8021_AAB0 {
+                            // grLast_804D4968: collision joint 0 belongs to map 3, root bone.
+                            const FD_COLLISION_BINDINGS: [melee_gr::desc::JointMapping; 1] =
+                                [melee_gr::desc::JointMapping {
+                                    joint_index: 0,
+                                    target_index: 3,
+                                    extra: 0,
+                                }];
+                            animation.update_collision(&mut state.map, &FD_COLLISION_BINDINGS);
+                        }
+                        animation.update_collision(&mut state.map, bindings);
                     }
                     if state.stage.run_stage_proc(map_id, &mut state.rng)? {
                         // grLib_801C97DC (0x801C97DC): detached puff at the

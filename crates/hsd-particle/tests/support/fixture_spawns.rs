@@ -28,6 +28,7 @@ impl Spawns {
         let Some(events) = self.0.get(tick.to_string()).and_then(Value::as_array) else {
             return;
         };
+        let mut last_spawn = None;
         for event in events {
             if let Some(kind) = event.get("spawn") {
                 let bank = word(&event["bank"]) as u8;
@@ -56,6 +57,7 @@ impl Spawns {
                 let id = system
                     .spawn::<RetailTrig>(&banks[&bank], request, rng, draws)
                     .unwrap();
+                last_spawn = id;
                 if event["detach"] == true {
                     system.pending_generators.push(id);
                 }
@@ -69,8 +71,9 @@ impl Spawns {
                 let generator = system
                     .generators
                     .iter_mut()
-                    .find(|g| g.attachment_id == Some(word(joint) as usize))
+                    .find(|g| Some(g.id) == last_spawn)
                     .unwrap();
+                assert_eq!(generator.attachment_id, Some(word(joint) as usize));
                 generator.flags = (generator.flags & !(word(&event["clear"]) as u16))
                     | word(&event["set"]) as u16;
             } else {

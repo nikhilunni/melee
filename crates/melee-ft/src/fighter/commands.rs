@@ -20,6 +20,10 @@ pub struct ColorAnimationRequest {
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    SetThrowHitbox {
+        id: usize,
+        descriptor: super::hitbox::ThrowHitbox,
+    },
     SpawnHitbox {
         id: usize,
         descriptor: super::hitbox::HitboxDescriptor,
@@ -27,6 +31,10 @@ pub enum Command {
     ClearHitbox(usize),
     ClearHitboxes,
     JabFollowup(bool),
+    /// ftAction_80071AE8: enable the jab combo flag (x2218_b1).
+    JabCombo {
+        disabled: bool,
+    },
     SwordTrail {
         duration: i32,
         reverse: bool,
@@ -106,8 +114,14 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    pub throw_hitboxes: [Option<super::hitbox::ThrowHitbox>; 2],
     pub hitboxes: [Option<super::hitbox::HitCapsule>; 4],
+    /// The first recorded contact affects subsequently created hitboxes of
+    /// this attack instance. Multiple-entry history remains a combat boundary.
+    pub first_hit_stale_penalty: Option<f32>,
     pub jab_followup: bool,
+    /// x2218_b1, set by subaction opcode 28 (`set_jab_combo`).
+    pub jab_combo: bool,
     pub sword_trail: Option<(i32, bool)>,
     /// Ordered ftCo_8009E318 requests, consumed immediately after commands.
     pub dynamic_toggles: Vec<usize>,
@@ -195,9 +209,25 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::SetThrowHitbox { id, descriptor } => {
+                    // ftAction_80071F0C skips these records when seeking.
+                    if !seeking {
+                        let mut descriptor = descriptor.clone();
+                        if let Some(penalty) = self.first_hit_stale_penalty {
+                            descriptor.damage *= 1.0 - penalty;
+                        }
+                        self.throw_hitboxes[*id] = Some(descriptor);
+                    }
+                }
                 Command::SpawnHitbox { id, descriptor } => {
                     if !seeking {
-                        super::hitbox::spawn(&mut self.hitboxes, *id, descriptor);
+                        let mut descriptor = descriptor.clone();
+                        if let Some(penalty) = self.first_hit_stale_penalty {
+                            // ft_80089118 subtracts the first table weight; the
+                            // separate multiplication is retail 8008927C (fmuls).
+                            descriptor.damage *= 1.0 - penalty;
+                        }
+                        super::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     }
                 }
                 Command::ClearHitbox(id) => {
@@ -224,6 +254,12 @@ impl CommandState {
                 Command::JabFollowup(disabled) => {
                     if !disabled {
                         self.jab_followup = true;
+                    }
+                }
+                Command::JabCombo { disabled } => {
+                    // ftAction_80071AE8: `|| fp->x197C != NULL` (held item) is never true here.
+                    if !disabled {
+                        self.jab_combo = true;
                     }
                 }
                 Command::ColorAnimation(request) => {

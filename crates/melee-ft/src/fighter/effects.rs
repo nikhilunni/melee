@@ -11,9 +11,11 @@ pub enum EffectRequest {
     /// efSync_Spawn: shield model attached to the shield joint.
     Shield { id: u16, bone: usize },
     /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
+    ShieldSpark { position: Vec3 },
     HitSpark {
         position: Vec3,
         element: melee_types::HitElement,
+        damage: f32,
     },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
@@ -114,6 +116,7 @@ impl EffectRequest {
             self,
             Self::Shield { .. }
                 | Self::HitSpark { .. }
+                | Self::ShieldSpark { .. }
                 | Self::DestroyOwned
                 | Self::FlushDeferred(_)
         )

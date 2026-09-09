@@ -9,6 +9,8 @@ pub struct HitboxDescriptor {
     pub group: u8,
     pub bone: usize,
     pub damage: f32,
+    pub shield_damage: i8,
+    pub sound_severity: u8,
     pub radius: f32,
     pub offset: Vec3,
     pub angle: u16,
@@ -41,6 +43,8 @@ impl HitboxDescriptor {
             group: ((first >> 20) & 7) as u8,
             bone: ((first >> 11) & 255) as usize,
             damage: (first & 1023) as f32,
+            shield_damage: (last >> 10) as u8 as i8,
+            sound_severity: ((last >> 7) & 7) as u8,
             radius: SCALE * f32::from(r.u16(offset + 4)?),
             offset: Vec3::new(
                 SCALE * f32::from(r.u16(offset + 6)? as i16),
@@ -57,6 +61,38 @@ impl HitboxDescriptor {
             ignore_scale: flags & 4 != 0,
             clank: flags & 2 != 0,
             rebound: flags & 1 != 0,
+        })
+    }
+}
+/// ftAction_80071E04 (80071E04): throw/pummel damage records have no geometry.
+#[derive(Clone, Debug)]
+pub struct ThrowHitbox {
+    pub damage: f32,
+    pub angle: u16,
+    pub growth: u16,
+    pub weight_knockback: u16,
+    pub base_knockback: u16,
+    pub element: melee_types::HitElement,
+    pub sound_severity: u8,
+    pub sound_kind: u8,
+}
+impl ThrowHitbox {
+    /// Three command words, lb/types.h set_throw_hitbox_0/1/2.
+    /// ftAction_80071E04 and ftColl_8007ABD0 have no fused arithmetic.
+    pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
+        let r = archive.reader();
+        let first = r.u32(offset)?;
+        let second = r.u32(offset + 4)?;
+        let third = r.u32(offset + 8)?;
+        Ok(Self {
+            damage: (first & 0x7f_ffff) as f32,
+            angle: (second >> 23) as u16,
+            growth: ((second >> 14) & 511) as u16,
+            weight_knockback: ((second >> 5) & 511) as u16,
+            base_knockback: (third >> 23) as u16,
+            element: melee_types::HitElement::try_from(((third >> 19) & 15) as i32)?,
+            sound_severity: ((third >> 16) & 7) as u8,
+            sound_kind: ((third >> 12) & 15) as u8,
         })
     }
 }

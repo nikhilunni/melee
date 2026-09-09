@@ -18,6 +18,20 @@ fn vector(v: Vec3, bytes: &[u8], offset: usize) {
     }
 }
 fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) {
+    for (actual, offset, label) in [
+        (f.status.shield_health, 0x1998, "shield health"),
+        (f.shield.lightshield, 0x199c, "lightshield amount"),
+        (
+            f.physics.ground_shield_knockback_velocity,
+            0xf4,
+            "attacker shield pushback",
+        ),
+        (f.physics.ground_velocity, 0xec, "ground velocity"),
+        (f.animation.speed, 0x89c, "animation rate"),
+    ] {
+        assert_eq!(actual.to_bits(), word(bytes, offset), "{label}");
+    }
+    vector(f.physics.shield_knockback_velocity, bytes, 0x98);
     assert_eq!(
         f.combat.hitlag_remaining.to_bits(),
         word(bytes, 0x195c),
@@ -29,6 +43,31 @@ fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) {
             word(bytes, 0x2340),
             "hitstun countdown"
         );
+    }
+    for (id, hit) in f.commands.throw_hitboxes.iter().enumerate() {
+        if let Some(hit) = hit {
+            let offset = 0xdf4 + id * 0x138;
+            assert_eq!(
+                hit.damage.to_bits(),
+                word(bytes, offset + 12),
+                "throw damage"
+            );
+            for (actual, field) in [
+                (u32::from(hit.angle), 0x20),
+                (u32::from(hit.growth), 0x24),
+                (u32::from(hit.weight_knockback), 0x28),
+                (u32::from(hit.base_knockback), 0x2c),
+                (i32::from(hit.element) as u32, 0x30),
+                (u32::from(hit.sound_severity), 0x34),
+                (u32::from(hit.sound_kind), 0x38),
+            ] {
+                assert_eq!(
+                    actual,
+                    word(bytes, offset + field),
+                    "throw field {field:#x}"
+                );
+            }
+        }
     }
     for (id, hit) in f.commands.hitboxes.iter().enumerate() {
         let offset = 0x914 + id * 0x138;
@@ -59,8 +98,30 @@ fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) {
 }
 #[test]
 fn jab_hitboxes_hitlag_and_hitstun_match_retail_scratch() {
+    replay_scratch("jab_fd_marth");
+}
+#[test]
+fn fox_jab_hitboxes_hitlag_and_hitstun_match_retail_scratch() {
+    replay_scratch("jab_fd_fox");
+}
+#[test]
+fn up_tilt_hitboxes_hitlag_and_hitstun_match_retail_scratch() {
+    replay_scratch("utilt_fd_marth");
+}
+#[test]
+fn shield_hitboxes_and_hitlag_match_retail_scratch() {
+    replay_scratch("shieldhit_fd_marth");
+}
+#[test]
+fn catch_startup_and_throw_hitbox_commands_match_retail_scratch() {
+    replay_scratch_until("grab_fd_marth", 127);
+}
+fn replay_scratch(name: &str) {
+    replay_scratch_until(name, 300);
+}
+fn replay_scratch_until(name: &str, ticks: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let scenario = Scenario::load(&root.join("harness/scenarios/jab_fd_marth.toml")).unwrap();
+    let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
     let path = scenario.trace_path("tick.raw.jsonl");
     if let Some(missing) = scenario
         .required_files()
@@ -77,7 +138,7 @@ fn jab_hitboxes_hitlag_and_hitstun_match_retail_scratch() {
     );
     let raw = fs::read_to_string(path).unwrap();
     assert_eq!(raw.lines().count(), 300);
-    for (tick, line) in raw.lines().enumerate() {
+    for (tick, line) in raw.lines().take(ticks).enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
         simulation.tick().unwrap();
         let runtime = simulation.runtime.borrow();

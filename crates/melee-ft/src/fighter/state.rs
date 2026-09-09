@@ -13,6 +13,7 @@ pub struct StateCallbacks {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationCallback {
+    Catch,
     Damage,
     Jab,
     Pass,
@@ -52,6 +53,8 @@ pub enum AnimationCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputCallback {
+    Catch,
+    Tilt,
     Damage,
     Jab,
     GuardOn,
@@ -91,6 +94,8 @@ pub enum InputCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicsCallback {
+    Catch,
+    Damage,
     Jab,
     Pass,
     GuardOn,
@@ -130,6 +135,8 @@ pub enum PhysicsCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollisionCallback {
+    Catch,
+    Damage,
     Pass,
     GuardOn,
     Guard,
@@ -180,13 +187,34 @@ pub struct MotionState {
     pub callbacks: StateCallbacks,
 }
 impl MotionState {
+    pub const CATCH: Self = Self {
+        id: CommonMotionState::Catch,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Catch,
+            input: InputCallback::Catch,
+            physics: PhysicsCallback::Catch,
+            collision: CollisionCallback::Catch,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+
     pub const DAMAGE_N2: Self = Self {
         id: CommonMotionState::DamageN2,
         callbacks: StateCallbacks {
             animation: AnimationCallback::Damage,
             input: InputCallback::Damage,
+            physics: PhysicsCallback::Damage,
+            collision: CollisionCallback::Damage,
+            camera: CameraCallback::FollowFighter,
+        },
+    };
+    pub const UP_TILT: Self = Self {
+        id: CommonMotionState::AttackHi3,
+        callbacks: StateCallbacks {
+            animation: AnimationCallback::Jab,
+            input: InputCallback::Tilt,
             physics: PhysicsCallback::Squat,
-            collision: CollisionCallback::Squat,
+            collision: CollisionCallback::Escape,
             camera: CameraCallback::FollowFighter,
         },
     };

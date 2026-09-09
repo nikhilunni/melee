@@ -1,4 +1,4 @@
-//! Jab entry and callbacks, ftCo_Attack1.c.
+//! Shared jab and up-tilt entry/callbacks, ftCo_Attack1.c / ftCo_AttackHi3.c.
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -12,9 +12,12 @@ pub struct JabState {
     pub followup_pressed: bool,
 }
 impl<C: CharacterCallbacks> Fighter<C> {
-    /// checkAttack11 (8008ABC0); item pickup is excluded by the scene contract.
-    pub(super) fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {
-        // Attack predicates share a transition enum; reject non-jab entries.
+    /// Grounded attack priority; checkAttack11 (8008ABC0), AttackHi3 doEnter (8008BA38).
+    pub(super) fn enter_ground_attack(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.combat.has_recorded_hit {
+            unimplemented!("ft_80089228: stale history across attack instances");
+        }
+        // Attack predicates share a transition enum; preserve the retail priority.
         let context = WaitContext {
             facing: self.physics.facing,
             ..WaitContext::default()
@@ -22,20 +25,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.first_ground_transition(
             assets,
             &context,
-            &[
-                P::SmashSide,
-                P::SmashUp,
-                P::SmashDown,
-                P::TiltSide,
-                P::TiltUp,
-                P::TiltDown,
-            ],
+            &[P::SmashSide, P::SmashUp, P::SmashDown, P::TiltSide],
         ) != T::None
         {
             unimplemented!("ftCo_Attack1.c:139-149: tilt/smash attack entry");
         }
+        if self.first_ground_transition(assets, &context, &[P::TiltUp]) != T::None {
+            self.change_motion_state(S::AttackHi3, assets)?;
+            self.step_animation(assets);
+            self.status.interaction = super::Interaction::Attack;
+            self.state_data = MotionData::Tilt;
+            return Ok(());
+        }
+        if self.first_ground_transition(assets, &context, &[P::TiltDown]) != T::None {
+            unimplemented!("ftCo_AttackLw3: down tilt entry");
+        }
         self.character.jab_variant();
         self.commands.jab_followup = false;
+        self.commands.jab_combo = false;
         self.change_motion_state(S::Attack11, assets)?;
         self.step_animation(assets);
         self.status.interaction = super::Interaction::Attack;
@@ -49,6 +56,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn jab_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.animation.frames_remaining(&self.skeleton) {
             self.change_motion_state(S::Wait, assets)?;
+        }
+        Ok(())
+    }
+    /// ftCo_AttackHi3_IASA (8008BAD4): Wait predicates after script unlock.
+    pub(super) fn tilt_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        if self.commands.allow_interrupt {
+            let transition = crate::input::wait_iasa(&self.input, &assets.input, context);
+            self.apply_ground_transition(assets, transition)?;
         }
         Ok(())
     }

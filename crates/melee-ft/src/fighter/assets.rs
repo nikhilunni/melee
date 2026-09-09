@@ -56,6 +56,8 @@ pub struct FighterAssets {
     pub damage: super::damage::DamageParameters,
     pub overlap: super::overlap::OverlapParameters,
     pub hurtboxes: Vec<super::caches::Hurtbox>,
+    pub first_stale_penalty: f32,
+    pub grab_friction_multiplier: f32,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamics_motion_starts: BTreeMap<i32, Vec<u32>>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
@@ -109,8 +111,8 @@ impl FighterAssets {
         let mut words = BTreeMap::new();
         for id in [
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
-            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 169,
-            209,
+            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 58,
+            167, 168, 169, 209, 242,
         ]
         .into_iter()
         .chain(idle_motions.iter().copied())
@@ -204,6 +206,13 @@ impl FighterAssets {
                 }
             },
             damage: super::damage::DamageParameters::read(common, common_data)?,
+            grab_friction_multiplier: common.reader().f32(common_data + 0x64)?,
+            // Fighter_LoadCommonData: pData[3] -> Fighter_804D6548 stale weights.
+            first_stale_penalty: common.reader().f32(
+                common
+                    .link(common_root + 12)?
+                    .ok_or("missing stale weights")?,
+            )?,
             overlap: super::overlap::OverlapParameters {
                 center: data
                     .reader()
@@ -224,7 +233,7 @@ impl FighterAssets {
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
                 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224,
-                225, 226, 227, 228, 238, 46, 169, 209,
+                225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
             ]
             .into_iter()
             .chain(idle_motions.into_iter().map(|id| id as usize))
@@ -359,8 +368,20 @@ fn read_script(
                 id: ((word >> 23) & 7) as usize,
                 descriptor: super::hitbox::HitboxDescriptor::read(archive, offset)?,
             },
+            34 => {
+                let id = ((word >> 23) & 7) as usize;
+                assert!(id < 2, "ftAction_80071E04: throw hitbox index");
+                Command::SetThrowHitbox {
+                    id,
+                    descriptor: super::hitbox::ThrowHitbox::read(archive, offset)?,
+                }
+            }
             15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
             16 => Command::ClearHitboxes,
+            // ftAction_80071AE8 (80071AE8): x2218_b1 unless disabled (or holding an item).
+            28 => Command::JabCombo {
+                disabled: word & 0x03ff_ffff != 0,
+            },
             29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
             50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
             49 => Command::SwordTrail {
@@ -426,7 +447,9 @@ fn read_script(
                 offset = continuation as u32;
             }
             Command::Graphics(_) | Command::SpawnHitbox { .. } => offset += 20,
-            Command::LandingEffect(_) | Command::FootstepSound { .. } => offset += 12,
+            Command::LandingEffect(_)
+            | Command::FootstepSound { .. }
+            | Command::SetThrowHitbox { .. } => offset += 12,
             _ => offset += 4,
         }
     }

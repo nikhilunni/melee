@@ -363,6 +363,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         rate: f32,
     ) -> Result<()> {
         self.status.require_supported();
+        self.status.interaction = Interaction::Idle;
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
         }
@@ -374,6 +375,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
+        self.commands.first_hit_stale_penalty = None;
         self.commands.hurt_status = super::escape::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         if !matches!(
@@ -417,7 +419,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
             CommonMotionState::Wait if self.physics.ground_or_air == GroundOrAir::Ground => {
                 (MotionState::WAIT, 2)
             }
+            CommonMotionState::Catch => (MotionState::CATCH, 242),
             CommonMotionState::DamageN2 => (MotionState::DAMAGE_N2, 169),
+            CommonMotionState::DamageN1 => (
+                MotionState {
+                    id: state,
+                    ..MotionState::DAMAGE_N2
+                },
+                168,
+            ),
+            CommonMotionState::DamageHi3 => (
+                MotionState {
+                    id: state,
+                    ..MotionState::DAMAGE_N2
+                },
+                167,
+            ),
+            CommonMotionState::AttackHi3 => (MotionState::UP_TILT, 58),
             CommonMotionState::Attack11 => (MotionState::JAB, 46),
             CommonMotionState::Squat => (MotionState::SQUAT, 30),
             CommonMotionState::SquatWait => (MotionState::SQUAT_WAIT, 31),

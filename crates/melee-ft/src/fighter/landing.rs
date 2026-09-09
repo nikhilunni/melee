@@ -144,6 +144,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
     pub(super) fn retained_drop_timer(&self) -> f32 {
         match &self.state_data {
+            MotionData::Damage(_) => 0.0, // ftCo_Damage.mv.x4: low-knockback collision flag.
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),

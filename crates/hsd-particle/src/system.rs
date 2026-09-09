@@ -141,14 +141,15 @@ impl ParticleSystem {
             return Ok(None);
         };
         // hsd_8039F05C, generator.c:1210-1217; system owns allocation and aliases.
-        let application_transform = application_transform
-            .or_else(|| {
-                (descriptor.kind & 0x20000 != 0).then(|| crate::generator::ApplicationTransform {
-                    camera_facing: 1,
-                    ..Default::default()
-                })
-            })
-            .map(Arc::new);
+        let mut application_transform = application_transform.or_else(|| {
+            (descriptor.kind & 0x20000 != 0).then(crate::generator::ApplicationTransform::default)
+        });
+        // hsd_8039F05C (8039F68C): the descriptor sets this byte before
+        // the effect caller applies its SRT overrides to the existing object.
+        if descriptor.kind & 0x20000 != 0 {
+            application_transform.as_mut().unwrap().camera_facing = 1;
+        }
+        let application_transform = application_transform.map(Arc::new);
         let mut generator = Generator::with_application_transform::<T>(
             descriptor,
             bank_id,
@@ -459,7 +460,25 @@ impl ParticleSystem {
             });
             generator.children -= (before - particles.len()) as u32;
         }
-        if generator.children != 0 {
+        let id = generator.id;
+        let owns_attached_transform = generator.flags & 0x100 != 0
+            && generator.attachment_id.is_some()
+            && generator.flags & 0x1800 != 0
+            && generator.appsrt_id == Some(id);
+        // hsd_8039D3AC (8039D3AC), generator.c:97-110: the transform's
+        // attached owner survives until its last generator/particle alias.
+        let shared_transform = owns_attached_transform
+            && (self
+                .generators
+                .iter()
+                .any(|g| g.id != id && g.appsrt_id == Some(id))
+                || self
+                    .particles
+                    .iter()
+                    .flatten()
+                    .any(|p| p.appsrt_id == Some(id)));
+        let generator = &mut self.generators[index];
+        if generator.children != 0 || shared_transform {
             generator.emission_rate = 0.0;
             generator.remaining_life = 1;
             false

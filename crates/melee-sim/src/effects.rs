@@ -51,7 +51,7 @@ const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 7] = [9, 10, 45, 267, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 10] = [2, 9, 10, 45, 267, 306, 307, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
@@ -154,7 +154,9 @@ impl Effects {
                 self.fighter_joints.insert(joint_id, (player, bone));
                 continue;
             }
-            if let EffectRequest::LedgeGrab { position } = request {
+            if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
+                request
+            {
                 self.spawn_dust_generator(
                     0x41C,
                     position,
@@ -210,10 +212,15 @@ impl Effects {
             }
             let (id, attachment) = match request {
                 EffectRequest::HitSpark {
+                    element: melee_types::HitElement::Normal,
+                    ..
+                } => (if rng.randi(8) == 0 { 9 } else { 10 }, None),
+                EffectRequest::HitSpark {
                     element: melee_types::HitElement::Slash,
                     ..
                 } => (8, None),
                 EffectRequest::Shield { id: 0x417, .. } => (0xB, Some(player)),
+                EffectRequest::Shield { id: 0x419, .. } => (0xD, Some(player)),
                 EffectRequest::Shield { id: 0x418, .. } => (0xC, Some(player)),
                 EffectRequest::EntryWarp {
                     id: ENTRY_WARP_REQUEST,
@@ -260,16 +267,27 @@ impl Effects {
                 EffectRequest::FlushDeferred(_)
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
-                | EffectRequest::LedgeGrab { .. } => unreachable!(),
+                | EffectRequest::LedgeGrab { .. }
+                | EffectRequest::ShieldSpark { .. } => unreachable!(),
                 EffectRequest::HitSpark {
-                    position: contact, ..
+                    position: contact,
+                    element,
+                    damage,
                 } => {
                     position = contact;
-                    // efasync.c:34-36: M_TAU is double, multiply then round.
-                    effect.tree.set_rotation_z(
-                        effect.root,
-                        (std::f64::consts::TAU * f64::from(rng.randf())) as f32,
-                    );
+                    if element == melee_types::HitElement::Normal {
+                        // efAsync_Dispatch, retail 80063A10: fmadds.
+                        let scale = gekko_math::fma::fmadds(0.04, damage, 0.3).clamp(0.3, 1.5);
+                        effect
+                            .tree
+                            .set_scale(effect.root, &Vec3::new(scale, scale, scale));
+                    } else {
+                        // efasync.c:34-36: M_TAU is double, multiply then round.
+                        effect.tree.set_rotation_z(
+                            effect.root,
+                            (std::f64::consts::TAU * f64::from(rng.randf())) as f32,
+                        );
+                    }
                 }
                 // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
                 EffectRequest::Shield { .. } => {}
@@ -457,7 +475,21 @@ impl Effect {
                         );
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
+                        if matches!(hi, 2 | 306 | 307) {
+                            // efLib_SpawnParticleEffect (8005D174): inherit root scale.
+                            request.application_transform =
+                                Some(hsd_particle::generator::ApplicationTransform {
+                                    scale: self.tree.get(self.root).scale,
+                                    ..Default::default()
+                                });
+                        }
                         let id = particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                        if matches!(hi, 2 | 306 | 307) {
+                            if let Some(id) = id {
+                                let generator = particles.generator_mut(id).unwrap();
+                                generator.flags = (generator.flags & !0x600) | 0x800;
+                            }
+                        }
                         if matches!(hi, 0x2D | 0x2E | 0x31) {
                             // efLib_SpawnParticleEffect (8005D174), eflib.c:882-890.
                             if let Some(id) = id {

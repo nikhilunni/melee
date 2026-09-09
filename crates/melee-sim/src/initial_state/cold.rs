@@ -136,6 +136,13 @@ fn initialize_stage(
                 BackgroundAnimation::load(&assets.stage, &assets.stage_desc)
                     .map_err(|e| anyhow::anyhow!("{e}"))?,
             );
+            // grLast_804D4968: collision joint 0 belongs to map 3, root bone; the
+            // scene applies its transform through the same animation table.
+            stage_animations.insert(
+                3,
+                BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[3])
+                    .map_err(|e| anyhow::anyhow!("{e}"))?,
+            );
             SceneStage::FinalDestination(Box::new(stage))
         }
         GrKind::Battle => {

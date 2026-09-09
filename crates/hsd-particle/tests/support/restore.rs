@@ -404,15 +404,17 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
         })
     };
     for (index, (id, transform, count)) in transforms.iter().enumerate() {
-        // hsd_8039F05C sets AppSRT.gp only for descriptor kind 0x20000
-        // (retail 8039F698); explicit effect AppSRTs keep gp null. The owned
+        // hsd_8039F05C sets gp for kind 0x20000 (8039F698);
+        // eflib_create_generator_add_appsrt also sets gp for attached effects.
+        // Standalone effect overrides leave gp null. The owned
         // AppSRT identity is its allocating generator ID, retained by children.
         // psRemoveGeneratorSRT clears gp when that owner leaves the live list
         // (803A4428), so normalize only the still-live allocating generator.
-        let owner = system
-            .generators
-            .iter()
-            .position(|generator| generator.id == *id && generator.descriptor.kind & 0x20000 != 0);
+        let owner = system.generators.iter().position(|generator| {
+            generator.id == *id
+                && (generator.descriptor.kind & 0x20000 != 0
+                    || (generator.attachment_id.is_some() && generator.flags & 0x900 == 0x900))
+        });
         appsrt_fields(
             transform,
             *count,

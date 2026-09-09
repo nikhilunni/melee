@@ -38,10 +38,10 @@ fn word(draw: &Json, key: &str) -> u32 {
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
-        0x801c_26ac | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc | 0x8009_fcdc
-        | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040 | 0x8021_af0c
-        | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578 | 0x801e_3594
-        | 0x801e_35a4 | 0x801e_3610 | 0x801e_36b0 => false,
+        0x801c_26ac | 0x8006_3990 | 0x8006_3b70 | 0x802f_4d44 | 0x802f_4d54 | 0x8008_a8bc
+        | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8 | 0x8021_b040
+        | 0x8021_af0c | 0x801e_348c | 0x801e_34dc | 0x801e_3534 | 0x801e_3560 | 0x801e_3578
+        | 0x801e_3594 | 0x801e_35a4 | 0x801e_3610 | 0x801e_36b0 => false,
         // Full symbol extents of interpreter, emitter, generator pass and constructor.
         0x8039_930c..=0x8039_ceab | 0x8039_dad4..=0x8039_f6cb => {
             assert_eq!(word(draw, "pc"), 0x8038_054c);
@@ -51,6 +51,13 @@ fn particle_draw(draw: &Json) -> bool {
     }
 }
 pub fn replay(name: &str, tick_count: usize) -> usize {
+    replay_prefix(name, tick_count, tick_count)
+}
+
+/// Explicit partial-port evidence. The complete recording length is still checked;
+/// existing full replays always compare every frame through `replay` above.
+pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> usize {
+    assert!(tick_count > 0 && tick_count <= recording_ticks);
     // `name` is the full scene name (e.g. "dash_fd_fox", "start_bf_fox").
     let battlefield = name.contains("_bf_");
     let scene = name;
@@ -106,7 +113,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     let ticks = restore::read(&paths[3]);
     assert_eq!(
         (states.len(), ledger.len(), ticks.len()),
-        (tick_count, tick_count, tick_count)
+        (recording_ticks, recording_ticks, recording_ticks)
     );
     assert_eq!(initial.len(), 1);
     let mut system = restore::restore(&initial[0], &banks);
@@ -257,7 +264,7 @@ pub fn replay(name: &str, tick_count: usize) -> usize {
     );
 
     assert!(mismatches.is_empty(), "mismatched fields: {mismatches:?}");
-    eprintln!("{name} matched {tick_count}/{tick_count} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
+    eprintln!("{name} matched {tick_count}/{recording_ticks} ticks: {} fields, {particle_draws} ordered particle draws, all final seeds; final seed {:#010x}", field_count - display_cache_fields, rng.seed);
     if name == "dash_fd_fox" {
         assert!(
             display_cache_fields > 0,

@@ -1,4 +1,4 @@
-//! Fighter-pair hit detection and grounded damage, ftcoll.c / ftCo_Damage.c.
+//! Fighter-pair hit/shield detection and launch reactions, ftcoll.c / ftCo_Damage.c.
 use super::{
     assets::{FighterAssets, Result},
     caches::{bone_position, HurtHeight},
@@ -7,7 +7,7 @@ use super::{
 };
 use gekko_math::{
     fma::fmadds,
-    msl::{cosf, fctiwz},
+    msl::{cosf, fctiwz, sinf, sqrtf},
 };
 use hsd_archive::Archive;
 use hsd_types::Vec3;
@@ -19,6 +19,7 @@ pub struct CombatState {
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
     pub dealt_damage: i32,
+    pub shield_pushback: Option<(f32, f32)>,
     /// The stale-move queue is outside this first-hit slice. Do not silently
     /// treat a subsequent contact as another unstaled attack.
     pub has_recorded_hit: bool,
@@ -46,10 +47,18 @@ pub struct DamageParameters {
     pub hitstun_scale: f32,
     pub reaction_thresholds: [f32; 3],
     pub grounded_angle_threshold: f32,
+    pub sakurai_air_angle: f32,
+    pub sakurai_ground_angle: f32,
+    pub sakurai_maximum_threshold: f32,
+    pub air_decay: f32,
+    pub landing_threshold: f32,
+    pub tumble_landing_threshold: f32,
+    pub ledge_height_scale: f32,
     pub hitlag_scale: f32,
     pub hitlag_base: f32,
     pub maximum_hitlag: f32,
     pub phantom_threshold: f32,
+    pub large_spark_threshold: f32,
 }
 impl DamageParameters {
     pub fn read(a: &Archive, p: u32) -> Result<Self> {
@@ -67,10 +76,18 @@ impl DamageParameters {
             hitstun_scale: r.f32(p + 0x154)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
+            sakurai_air_angle: r.f32(p + 0x144)?,
+            sakurai_ground_angle: r.f32(p + 0x148)?,
+            sakurai_maximum_threshold: r.f32(p + 0x150)?,
+            air_decay: r.f32(p + 0x204)?,
+            landing_threshold: r.f32(p + 0x1e4)?,
+            tumble_landing_threshold: r.f32(p + 0x1e0)?,
+            ledge_height_scale: r.f32(p + 0x1cc)?,
             hitlag_scale: r.f32(p + 0x198)?,
             hitlag_base: r.f32(p + 0x19c)?,
             maximum_hitlag: r.f32(p + 0x194)?,
             phantom_threshold: r.f32(p + 0x7a8)?,
+            large_spark_threshold: r.f32(p + 0x3f0)?,
         })
     }
     /// ftColl_80079AB0 (80079AB0), ordinary Vs 1.0 attack/defense/stage ratios.
@@ -96,6 +113,25 @@ impl DamageParameters {
         } else {
             result
         }
+    }
+    /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
+    fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
+        const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
+        if angle != 361 {
+            // retail 8008D854: fmuls after integer-to-single conversion.
+            return DEG_TO_RAD * f32::from(angle);
+        }
+        if ground == GroundOrAir::Air {
+            return self.sakurai_air_angle;
+        }
+        if knockback < self.grounded_angle_threshold {
+            return 0.0;
+        }
+        let fraction = (knockback - self.grounded_angle_threshold)
+            / (self.sakurai_maximum_threshold - self.grounded_angle_threshold);
+        // retail 8008D8AC: fmadds, then separately rounded degree conversion.
+        (DEG_TO_RAD * fmadds(self.sakurai_ground_angle, fraction, 1.0))
+            .min(DEG_TO_RAD * self.sakurai_ground_angle)
     }
     /// ftCommon_CalcHitlag (8007DA74), 8007DAA8 fmadds then fctiwz.
     pub fn hitlag(&self, damage: i32) -> f32 {
@@ -131,7 +167,11 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
             continue;
         }
         if victim.shield.active {
-            unimplemented!("ftcoll.c:1804-1846: shield hit");
+            if let Some(contact) = victim.shield_contact(hit, attacker.player.scale) {
+                let descriptor = desc.clone();
+                record_shield_hit(victim, attacker, &descriptor, contact);
+                continue;
+            }
         }
         let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
         if let Some((contact, height)) = contact {
@@ -161,6 +201,14 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
                 victim.physics.percent,
                 victim.attributes.size.weight,
             );
+            if descriptor.element == melee_types::HitElement::Normal
+                && (knockback >= assets.damage.large_spark_threshold
+                    || descriptor.sound_severity >= 1)
+            {
+                unimplemented!(
+                    "ftColl_80078538: large normal spark / severity-specific extra spark"
+                );
+            }
             victim.combat.pending = Some(ReceivedHit {
                 descriptor: descriptor.clone(),
                 height,
@@ -172,6 +220,9 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
                 knockback,
             });
             attacker.combat.has_recorded_hit = true;
+            // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: the first
+            // queue entry is visible to later hitbox commands of this same move.
+            attacker.commands.first_hit_stale_penalty = Some(assets.first_stale_penalty);
             attacker.combat.dealt_damage = fctiwz(descriptor.damage).max(1);
             for hit in attacker
                 .commands
@@ -188,9 +239,57 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
                 .push(super::effects::EffectRequest::HitSpark {
                     position: contact.position,
                     element: descriptor.element,
+                    damage: descriptor.damage,
                 });
         }
     }
+}
+/// ftColl_80076CBC (80076CBC): health damage, strongest impact and group victims.
+fn record_shield_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
+    victim: &mut Fighter<V>,
+    attacker: &mut Fighter<A>,
+    desc: &HitboxDescriptor,
+    contact: Contact,
+) {
+    // ftColl_80076CBC (80076CBC): shield contact wins over hurtboxes.
+    if victim.shield.powershield_window {
+        unimplemented!("ftColl_80076CBC: powershield contact");
+    }
+    if victim.shield.impact.is_some() {
+        unimplemented!("ftColl_80076CBC: simultaneous shield impact selection");
+    }
+    let damage = fctiwz(desc.damage).max(1);
+    let facing = if victim.physics.position.x > attacker.physics.position.x {
+        -1.0
+    } else {
+        1.0
+    };
+    victim.shield.damage_taken += (damage + i32::from(desc.shield_damage)).max(0);
+    victim.shield.impact = Some(super::shield::ShieldImpact {
+        damage,
+        facing,
+        element: desc.element,
+    });
+    attacker.combat.dealt_damage = damage;
+    if attacker.physics.ground_or_air == GroundOrAir::Ground {
+        attacker.combat.shield_pushback =
+            Some((victim.shield.lightshield * damage as f32, -facing));
+    }
+    let group = desc.group;
+    for hit in attacker
+        .commands
+        .hitboxes
+        .iter_mut()
+        .flatten()
+        .filter(|h| h.descriptor.group == group)
+    {
+        hit.victims.push(victim.spawn_number);
+    }
+    victim
+        .effects
+        .push(super::effects::EffectRequest::ShieldSpark {
+            position: contact.position,
+        });
 }
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.
@@ -237,52 +336,134 @@ impl<C: CharacterCallbacks> Fighter<C> {
         None
     }
 
+    /// Fighter_procUpdate (8006B82C): decay follows the state's air physics.
+    pub(super) fn decay_air_knockback(&mut self, assets: &FighterAssets) {
+        let v = &mut self.physics.knockback_velocity;
+        if v.x == 0.0 && v.y == 0.0 {
+            return;
+        }
+        let angle = melee_lb::trigf::atan2f(v.y, v.x);
+        // retail 8006B938: fmadds; sqrt is the audited MSL refinement.
+        if sqrtf(fmadds(v.x, v.x, v.y * v.y)) < assets.damage.air_decay {
+            v.x = 0.0;
+            v.y = 0.0;
+        } else {
+            // retail 8006B9C8 / 8006B9E4: fnmsubs.
+            v.x = gekko_math::fma::fnmsubs(assets.damage.air_decay, cosf(angle), v.x);
+            v.y = gekko_math::fma::fnmsubs(assets.damage.air_decay, sinf(angle), v.y);
+        }
+        self.physics.ground_knockback_velocity = 0.0;
+    }
+    /// ftCo_Damage_Phys (8008FB04): gravity/friction during hitstun, drift after it.
+    pub(super) fn damage_physics(
+        &mut self,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Vec3,
+    ) {
+        if self.physics.ground_or_air == GroundOrAir::Ground {
+            use crate::physics::grounded::{self, GroundedParameters};
+            let params = GroundedParameters::from_attributes(&self.attributes, &assets.common);
+            grounded::friction_physics(
+                &mut self.physics,
+                &params,
+                self.collision.data.floor.normal,
+                map.floor_speed_scale(&self.collision.data),
+            );
+            grounded::finish_ground_update(
+                &mut self.physics,
+                &self.collision.data,
+                &params,
+                map,
+                wind,
+            );
+            return;
+        }
+        let MotionData::Damage(damage) = &self.state_data else {
+            panic!("damage scratch missing")
+        };
+        if damage.hitstun > 0.0 {
+            crate::physics::airborne::fall_physics(&mut self.physics, &self.attributes.air, 0.0);
+        } else {
+            self.airborne_physics(assets);
+        }
+        self.decay_air_knockback(assets);
+        crate::physics::integrate::integrate_velocity(&mut self.physics);
+        crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+    }
+    /// ftCo_Damage_Coll (8008FB64), ft_80081DD4 (80081DD4).
+    pub(super) fn damage_collision(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        if self.physics.ground_or_air == GroundOrAir::Ground {
+            let result = crate::collision::ground::map_ground_action(
+                &mut self.physics,
+                &mut self.collision,
+                map,
+                &mut self.skeleton,
+                self.animation.root,
+                self.input.current.stick.x,
+            );
+            if result == crate::collision::ground::WaitGroundResult::EnterFall {
+                self.leave_ground();
+            }
+            return Ok(());
+        }
+        crate::collision::air::begin_map(
+            &self.physics,
+            &mut self.collision,
+            &mut self.skeleton,
+            self.animation.root,
+        );
+        let ledge_height = self.collision.data.ledge_snap_height;
+        self.collision.data.ledge_snap_height *= assets.damage.ledge_height_scale;
+        let landed = crate::collision::air::collide_pass(
+            &mut self.physics,
+            &mut self.collision,
+            map,
+            &mut self.skeleton,
+            self.animation.root,
+            self.status.ledge_cooldown == 0,
+        );
+        self.collision.data.ledge_snap_height = ledge_height;
+        if landed {
+            let v = self.physics.knockback_velocity;
+            // retail 8008FBD4..E0: two fmuls then fadds, no contraction.
+            let magnitude = sqrtf(v.x * v.x + v.y * v.y);
+            if magnitude >= assets.damage.tumble_landing_threshold {
+                unimplemented!("ftCo_Damage_Coll: high-speed landing -> DownBound");
+            } else if magnitude >= assets.damage.landing_threshold {
+                self.enter_landing(assets)?;
+            } else {
+                self.land();
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn process_damage(&mut self, assets: &FighterAssets) -> Result<()> {
         let mut hit_damage = std::mem::take(&mut self.combat.dealt_damage);
-        if let Some(hit) = self.combat.pending.take() {
-            if self.physics.ground_or_air != GroundOrAir::Ground {
-                unimplemented!("ftCo_Damage.c:346: airborne hit");
-            }
-            if hit.descriptor.angle != 361
-                || hit.knockback >= assets.damage.grounded_angle_threshold
-            {
-                unimplemented!("ftCo_Damage.c:79-102: nonzero knockback angle");
-            }
-            let stun = hit.knockback * assets.damage.hitstun_scale;
-            let level = assets
-                .damage
-                .reaction_thresholds
-                .iter()
-                .position(|&t| stun < t)
-                .unwrap_or(3);
-            if level != 1 || !matches!(hit.height, HurtHeight::Middle) {
-                unimplemented!(
-                    "ftCo_Damage.c:63: damage state table level {level}, height {:?}",
-                    hit.height
+        if let Some((damage, direction)) = self.combat.shield_pushback.take() {
+            if damage != 0.0 {
+                // Fighter_ProcessHit, retail 8006D8D8: fmadds.
+                let push = fmadds(
+                    damage,
+                    assets.shield.attacker_pushback_multiplier,
+                    assets.shield.attacker_pushback_base,
                 );
+                self.physics.ground_shield_knockback_velocity =
+                    if direction < 0.0 { push } else { -push };
+                let normal = self.collision.data.floor.normal;
+                let speed = self.physics.ground_shield_knockback_velocity;
+                // ftCommon_8007E2A4 (8007E2A4): separate tangent products.
+                self.physics.shield_knockback_velocity =
+                    Vec3::new(normal.y * speed, -normal.x * speed, 0.0);
             }
-            self.physics.percent += hit.descriptor.damage;
-            // ftCo_8008DCE0 --fused: these products are separate (8008DECC,
-            // 8008DFCC..E0F4); flat floor and grounded angle 361 take angle 0.
-            let speed = hit.knockback * assets.damage.velocity_scale;
-            self.physics.facing = hit.facing;
-            let horizontal = -(speed * cosf(0.0)) * hit.facing;
-            self.physics.ground_knockback_velocity = horizontal;
-            let normal = self.collision.data.floor.normal;
-            self.physics.knockback_velocity =
-                Vec3::new(normal.y * horizontal, -normal.x * horizontal, 0.0);
-            self.physics.self_velocity = Vec3::ZERO;
-            self.physics.ground_velocity = 0.0;
-            self.change_motion_state(S::DamageN2, assets)?;
-            self.step_animation(assets);
-            self.state_data = MotionData::Damage(DamageState {
-                hitstun: (fctiwz(stun).max(1)) as f32,
-            });
-            self.status.time_since_hit = 0;
-            self.status.interaction = Interaction::Damage;
-            self.input.horizontal.tilt = 254;
-            self.input.vertical.tilt = 254;
-            hit_damage = fctiwz(hit.descriptor.damage).max(1);
+        }
+        if let Some(hit) = self.combat.pending.take() {
+            hit_damage = self.begin_damage_reaction(hit, assets)?;
         }
         if hit_damage != 0 {
             self.combat.hitlag_remaining = assets.damage.hitlag(hit_damage);
@@ -291,6 +472,65 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
         }
         Ok(())
+    }
+    /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
+    fn begin_damage_reaction(&mut self, hit: ReceivedHit, assets: &FighterAssets) -> Result<i32> {
+        if self.physics.ground_or_air != GroundOrAir::Ground {
+            unimplemented!("ftCo_Damage.c:346: airborne hit");
+        }
+        let stun = hit.knockback * assets.damage.hitstun_scale;
+        let level = assets
+            .damage
+            .reaction_thresholds
+            .iter()
+            .position(|&t| stun < t)
+            .unwrap_or(3);
+        // ftCo_803C5520: reaction depends on hit strength and hurtbox height.
+        let state = match (level, hit.height) {
+            (0, HurtHeight::Middle) => S::DamageN1,
+            (1, HurtHeight::Middle) => S::DamageN2,
+            (2, HurtHeight::High) => S::DamageHi3,
+            _ => unimplemented!(
+                "ftCo_Damage.c:63: damage level {level}, height {:?}",
+                hit.height
+            ),
+        };
+        self.physics.percent += hit.descriptor.damage;
+        let angle = assets.damage.launch_angle(
+            hit.descriptor.angle,
+            hit.knockback,
+            self.physics.ground_or_air,
+        );
+        let speed = hit.knockback * assets.damage.velocity_scale;
+        self.physics.facing = hit.facing;
+        // ftCo_8008DCE0, 8008DFCC..E0F4: separate products.
+        let horizontal = -(speed * cosf(angle)) * hit.facing;
+        let vertical = speed * sinf(angle);
+        let normal = self.collision.data.floor.normal;
+        if normal.x != 0.0 || normal.y <= 0.0 {
+            unimplemented!("ftCo_8008DCE0: sloped-floor launch angle");
+        }
+        if vertical > 0.0 {
+            self.leave_ground();
+            self.physics.knockback_velocity = Vec3::new(horizontal, vertical, 0.0);
+            self.physics.ground_knockback_velocity = 0.0;
+        } else {
+            self.physics.ground_knockback_velocity = horizontal;
+            self.physics.knockback_velocity =
+                Vec3::new(normal.y * horizontal, -normal.x * horizontal, 0.0);
+        }
+        self.physics.self_velocity = Vec3::ZERO;
+        self.physics.ground_velocity = 0.0;
+        self.change_motion_state(state, assets)?;
+        self.step_animation(assets);
+        self.state_data = MotionData::Damage(DamageState {
+            hitstun: (fctiwz(stun).max(1)) as f32,
+        });
+        self.status.time_since_hit = 0;
+        self.status.interaction = Interaction::Damage;
+        self.input.horizontal.tilt = 254;
+        self.input.vertical.tilt = 254;
+        Ok(fctiwz(hit.descriptor.damage).max(1))
     }
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
@@ -307,6 +547,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                         unimplemented!("ftCo_Damage.c:624-664: ASDI/DI");
                     }
                     self.status.interaction = Interaction::Damage;
+                } else if matches!(self.state_data, MotionData::Guard(_)) {
+                    self.shield.allow_sdi = false;
+                    self.status.interaction = Interaction::Shield;
                 } else {
                     self.status.interaction = Interaction::Attack;
                 }
@@ -322,7 +565,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
             damage.hitstun -= 1.0;
         }
         if !self.animation.frames_remaining(&self.skeleton) && damage.hitstun <= 0.0 {
-            self.change_motion_state(S::Wait, assets)?;
+            self.change_motion_state(
+                if self.physics.ground_or_air == GroundOrAir::Air {
+                    S::Fall
+                } else {
+                    S::Wait
+                },
+                assets,
+            )?;
         }
         Ok(())
     }
@@ -335,6 +585,32 @@ impl<C: CharacterCallbacks> Fighter<C> {
             panic!("damage scratch missing")
         };
         if damage.hitstun <= 0.0 {
+            if self.physics.ground_or_air == GroundOrAir::Air {
+                use crate::input::WaitTransition as T;
+                // A damage state is neither Jump nor JumpAerial, so the
+                // float check (Peach) is always enabled here, as in procs.rs.
+                let vertical_velocity = self.physics.self_velocity.y;
+                let transition = super::fall::iasa(
+                    &self.input,
+                    &assets.input,
+                    self.physics.jumps_used,
+                    self.attributes.jumping.max_jumps,
+                    |phase| {
+                        self.character.check_float_input(
+                            &self.input,
+                            assets,
+                            vertical_velocity,
+                            phase,
+                        );
+                    },
+                );
+                return match transition {
+                    T::None => Ok(()),
+                    T::Jump => self.enter_aerial_jump(assets),
+                    T::Escape => self.enter_air_dodge(assets),
+                    transition => unimplemented!("ftCo_Damage_IASA: airborne {transition:?}"),
+                };
+            }
             let transition = crate::input::wait_iasa(&self.input, &assets.input, context);
             self.apply_ground_transition(assets, transition)?;
         } else if self.input.pressed.0 != 0 {

@@ -444,3 +444,56 @@ fn animated_appsrt_follows_its_owner_and_expires_with_the_joint() {
     assert!(system.generators.is_empty());
     assert_eq!(Arc::strong_count(&generator_transform), 1);
 }
+
+#[test]
+fn attached_transform_owner_outlives_its_direct_particles() {
+    use hsd_particle::generator::ApplicationTransform;
+    use hsd_types::Vec3;
+    let mut parent = descriptor(vec![0xa5, 0, 1, 0xff]);
+    parent.generator_life = 1;
+    let mut child = descriptor(vec![10]);
+    child.generator_life = 1;
+    child.particle_life = 2;
+    let bank = bank(vec![parent, child]);
+    let mut system = ParticleSystem::default();
+    let mut request = SpawnRequest::new(0, 0, 0);
+    request.joint = Some((42, Mtx::IDENTITY));
+    request.application_transform = Some(ApplicationTransform::default());
+    let mut rng = HsdRng::new(1);
+    let mut draws = DrawLog::default();
+    let id = system
+        .spawn::<RetailTrig>(&bank, request, &mut rng, &mut draws)
+        .unwrap()
+        .unwrap();
+    system.generator_mut(id).unwrap().flags |= 0x800;
+    system
+        .proc_main::<RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
+    let owner = system
+        .generator_mut(id)
+        .expect("the child generator still uses the attachment");
+    assert_eq!(owner.children, 0);
+    assert_eq!(owner.emission_rate, 0.0);
+    assert_eq!(system.live_particles(), 1);
+    let mut matrix = Mtx::IDENTITY;
+    matrix.0[0][3] = 7.0;
+    system.update_joint(42, matrix);
+    system
+        .proc_main::<RetailTrig>(&mut rng, &mut draws)
+        .unwrap();
+    assert_eq!(
+        system.particles[0][0]
+            .application_transform
+            .as_ref()
+            .unwrap()
+            .translation,
+        Vec3::new(7.0, 0.0, 0.0)
+    );
+    for _ in 0..3 {
+        system
+            .proc_main::<RetailTrig>(&mut rng, &mut draws)
+            .unwrap();
+    }
+    assert!(system.generators.is_empty());
+    assert_eq!(system.live_particles(), 0);
+}

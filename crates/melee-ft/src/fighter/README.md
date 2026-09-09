@@ -49,6 +49,31 @@ Wait/SquatWait choice, and the importer completes the idle save's interrupted
 spherical emission from saved CPU/stack operands. See [M4_FALCON.md](M4_FALCON.md)
 and [FALCON_DATA.md](../../../../docs/FALCON_DATA.md).
 
+## M5-A2 Launches and shield contact (partial lane)
+
+`jab_fd_fox`, `utilt_fd_marth`, and `shieldhit_fd_marth` each pass 300 ticks,
+49 keys, zero divergences, plus full particle replays and raw fighter scratch.
+The capture's jab is Fox versus Fox. **Grab startup passes ticks 0–126; linked
+capture stops at tick 127.** Full gameplay/particle grab tests are explicitly
+ignored with reasons; separate startup tests pass. The workspace gate is green
+with this visible gap; the full grab acceptance remains incomplete.
+[Port report, capture corrections, audit and remaining work](M5_COMBAT2.md).
+
+| Retail functions | Addresses | Rust owner |
+|---|---|---|
+| AttackHi3 entry / callbacks | 8008BA38 / 8008BA98 / 8008BAD4 / 8008BB04 / 8008BB24 | `attack.rs`, `state.rs`, archive motion 58 and shared commands |
+| Catch entry / Anim / Phys / Coll | 800D8C54 / 800D8CC8 / 800D8D88 / 800D8E08 | `grab.rs`, submotion 242, character hook; active pair query still unsupported |
+| Throw-hitbox records / seek skip | 80071E04 / 80071F0C | `hitbox.rs`, `assets.rs`, `commands.rs`; raw startup oracle |
+| First-hit staling of later hitbox commands | 80089118 / 80089228 | `commands.rs`, archive first stale weight; same-instance hitbox respawns |
+| Launch angle / air knockback decay / Damage collision | 8008D7F0 / 8006B82C / 8008FB64 | `damage.rs`, `procs.rs`; DamageN1/Hi3, Landing, residual knockback in Fall |
+| Shield contact / GuardSetOff / attacker pushback | 80076CBC / 80092F2C / 8006D1EC | `damage.rs`, `shield.rs`; group contact, damage, stun, hitlag and both pushbacks |
+| Small normal spark / attached transform lifetime | 80063930 / 8005D174 / 8039D3AC | scene effects and `hsd-particle`; scale, owner aliases and descriptor camera-facing flag |
+| FD static collision binding | 8021AAB0 / 804D4968 | scene composition applies map 3 root through existing collision transform updates |
+
+These completed paths supersede A1's airborne-damage and ordinary-shield-hit
+boundaries. Tumble, DI/SDI, powershield impacts, grab/throw, missed tech and
+Attack12 remain unsupported. No character-specific shared-code branch was added.
+
 ## Lane C: Falco
 
 All eighteen Falco idle/start/movement scenes pass at 49 keys per tick, with

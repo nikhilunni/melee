@@ -19,6 +19,16 @@ pub struct ShieldParameters {
     pub drain: f32,
     pub regeneration: f32,
     pub frame_damage: f32,
+    pub damage_multiplier: f32,
+    pub damage_lightshield: [f32; 2],
+    pub stun_multiplier: f32,
+    pub stun_base: f32,
+    pub stun_lightshield: [f32; 2],
+    pub pushback_multiplier: f32,
+    pub pushback_maximum: f32,
+    pub ordinary_pushback_multiplier: f32,
+    pub attacker_pushback_multiplier: f32,
+    pub attacker_pushback_base: f32,
     pub reflect_frames: f32,
     pub reflect_radius: f32,
     pub reflect_damage: f32,
@@ -41,6 +51,16 @@ impl ShieldParameters {
             drain: r.f32(p + 0x278)?,
             regeneration: r.f32(p + 0x27C)?,
             frame_damage: r.f32(p + 0x288)?,
+            damage_multiplier: r.f32(p + 0x284)?,
+            damage_lightshield: [r.f32(p + 0x2dc)?, r.f32(p + 0x2e0)?],
+            stun_multiplier: r.f32(p + 0x28c)?,
+            stun_base: r.f32(p + 0x290)?,
+            stun_lightshield: [r.f32(p + 0x2e4)?, r.f32(p + 0x2e8)?],
+            pushback_multiplier: r.f32(p + 0x294)?,
+            pushback_maximum: r.f32(p + 0x298)?,
+            ordinary_pushback_multiplier: r.f32(p + 0x2bc)?,
+            attacker_pushback_multiplier: r.f32(p + 0x3e0)?,
+            attacker_pushback_base: r.f32(p + 0x3e4)?,
             reflect_frames: r.f32(p + 0x2A4)?,
             reflect_radius: r.f32(p + 0x2A8)?,
             reflect_damage: r.f32(p + 0x2AC)?,
@@ -97,6 +117,13 @@ pub enum ShieldHitCallback {
 pub enum ReflectHitCallback {
     Powershield,
 }
+/// ftColl_80076CBC's strongest contact; health damage accumulates separately.
+#[derive(Clone, Debug)]
+pub struct ShieldImpact {
+    pub damage: i32,
+    pub facing: f32,
+    pub element: melee_types::HitElement,
+}
 /// Persistent Fighter shield fields and typed collision callbacks.
 #[derive(Clone, Debug, Default)]
 pub struct ShieldState {
@@ -110,6 +137,7 @@ pub struct ShieldState {
     pub size: f32,
     pub alpha: u8,
     pub damage_taken: i32,
+    pub impact: Option<ShieldImpact>,
     /// Fighter.allow_sdi: GuardSetOff collision clamps to stage during SDI.
     pub allow_sdi: bool,
     pub hit: ShieldVolume,
@@ -127,16 +155,95 @@ impl ShieldState {
         self.on_hit = None;
         self.on_reflect = None;
     }
-    /// ftCo_80092E50 (0x80092E50), ftCo_Guard.c:630-650.
-    pub fn take_hit(&mut self) {
-        unimplemented!("ftCo_Guard.c:630-650: shield damage/stun -> GuardSetOff");
-    }
     /// ftCo_80093790 (0x80093790), ftCo_Guard.c:875-882.
     pub fn reflect_hit(&mut self) {
         unimplemented!("ftCo_Guard.c:875-882: powershield reflection response");
     }
 }
 impl<C: CharacterCallbacks> Fighter<C> {
+    /// lbColl_80007BCC (80007BCC): a shield is a point capsule in its bone's scale.
+    pub(super) fn shield_contact(
+        &mut self,
+        hit: &super::hitbox::HitCapsule,
+        attacker_scale: f32,
+    ) -> Option<melee_lb::collision::Contact> {
+        use melee_lb::collision::{capsule_contact, Capsule};
+        let volume = &mut self.shield.hit;
+        if !volume.position_cached {
+            volume.position = super::caches::bone_position(
+                &mut self.skeleton,
+                self.animation.root,
+                volume.bone,
+                volume.offset,
+            );
+            volume.position_cached = true;
+        }
+        let joint = self.animation.parts[volume.bone].joint;
+        let matrix = *self.skeleton.get_mtx(joint);
+        // lbColl_80007BCC --fused: none; broadphase differs from hurtboxes.
+        capsule_contact(
+            Capsule {
+                start: hit.previous_position,
+                end: hit.position,
+                radius: hit.descriptor.radius
+                    * if hit.descriptor.ignore_scale {
+                        1.0
+                    } else {
+                        attacker_scale
+                    },
+            },
+            Capsule {
+                start: volume.position,
+                end: volume.position,
+                radius: volume.radius,
+            },
+            &matrix,
+            20.0 * self.player.scale,
+        )
+    }
+    /// ftCo_80092E50 -> ftCo_80092F2C (80092F2C): shield stun and defender pushback.
+    fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
+        if self.shield.powershield_window {
+            unimplemented!("ftCo_80092F2C: powershield impact");
+        }
+        self.character.guard_variant(&mut self.commands);
+        self.change_motion_state(S::GuardSetOff, assets)?;
+        self.input.horizontal.tilt = 254;
+        self.queue_shield_effect(0x419);
+        let p = &assets.shield;
+        // retail 80093038 and 8009305C: fmadds with a rounded damage product.
+        let light = fmadds(
+            self.shield.lightshield,
+            p.stun_lightshield[1] - p.stun_lightshield[0],
+            p.stun_lightshield[0],
+        );
+        let frames = fmadds(
+            p.stun_multiplier,
+            impact.damage as f32 * (1.0 - light),
+            p.stun_base,
+        );
+        self.animation.set_rate(
+            &mut self.skeleton,
+            (0.1 + assets.motions[&40].animation.frames) / frames,
+            false,
+        );
+        if impact.element == melee_types::HitElement::Cape {
+            unimplemented!("ftCo_80092E50: cape shield response");
+        }
+        let push = ((frames * p.pushback_multiplier) * p.ordinary_pushback_multiplier)
+            .min(p.pushback_maximum);
+        self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
+        self.install_shield();
+        self.update_shield_size(assets);
+        self.combat.hitlag_remaining = assets.damage.hitlag(impact.damage);
+        self.shield.allow_sdi = self.combat.hitlag_remaining > 0.0;
+        self.status.interaction = if self.shield.allow_sdi {
+            super::Interaction::Hitlag
+        } else {
+            super::Interaction::Shield
+        };
+        Ok(())
+    }
     fn guard(&mut self) -> &mut GuardState {
         let MotionData::Guard(guard) = &mut self.state_data else {
             panic!("guard scratch missing")
@@ -465,13 +572,20 @@ impl<C: CharacterCallbacks> Fighter<C> {
         Ok(())
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), fighter.c:2816-2843.
-    pub(super) fn shield_proc(&mut self, assets: &FighterAssets) {
+    pub(super) fn shield_proc(&mut self, assets: &FighterAssets) -> Result<()> {
         if self.shield.enabled {
-            if self.shield.damage_taken != 0 {
-                self.shield.take_hit();
-            }
-            // Zero hit accumulator still subtracts PlCo.x288; no hit formula is guessed.
-            self.status.shield_health -= assets.shield.frame_damage;
+            let p = &assets.shield;
+            // Fighter_ProcessHit, retail 8006D2AC / 8006D2CC: fmadds.
+            let light = fmadds(
+                self.shield.lightshield,
+                p.damage_lightshield[1] - p.damage_lightshield[0],
+                p.damage_lightshield[0],
+            );
+            self.status.shield_health -= fmadds(
+                p.damage_multiplier,
+                self.shield.damage_taken as f32 * (1.0 - light),
+                p.frame_damage,
+            );
             if self.status.shield_health < 0.0 {
                 unimplemented!("fighter.c:2837-2843: shield break");
             }
@@ -479,5 +593,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.shield_health =
                 (self.status.shield_health + assets.shield.regeneration).min(assets.shield_health);
         }
+        if let Some(impact) = self.shield.impact.take() {
+            self.take_shield_hit(impact, assets)?;
+        }
+        self.shield.damage_taken = 0;
+        Ok(())
     }
 }
