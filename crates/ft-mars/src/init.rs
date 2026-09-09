@@ -1,0 +1,80 @@
+//! Marth load/reset hooks, ft/kinds/ftMars/ftmars.c.
+use crate::attributes::MarsAttributes;
+use melee_ft::fighter::{Capabilities, CharacterCallbacks};
+use melee_types::FighterKind;
+
+#[derive(Clone, Debug)]
+pub struct Marth {
+    pub attributes: MarsAttributes,
+    /// Fighter +222C, ftmarsspecials.c:56-60: once-per-airtime vertical boost.
+    pub side_special_boost_used: bool,
+    /// ftMs_Init_OnDeath resets model groups 0 and 1.
+    pub model_groups: [i32; 2],
+}
+impl Marth {
+    pub fn new(attributes: MarsAttributes) -> Self {
+        Self {
+            attributes,
+            side_special_boost_used: false,
+            model_groups: [0; 2],
+        }
+    }
+}
+impl CharacterCallbacks for Marth {
+    fn kind(&self) -> FighterKind {
+        FighterKind::Mars
+    }
+    /// ftMs_Init_OnLoad (801364AC): PUSH_ATTRS only; no item registrations
+    /// or walljump flag. Four specials are present in ftdata.c's callback tables.
+    /// OnLoadForRoy (80136474) uses this same attribute type, without scaling.
+    fn on_load(&mut self, capabilities: &mut Capabilities) {
+        capabilities.specials = [true; 4];
+    }
+    /// ftMs_Init_OnDeath (80136258): two model groups and Fighter +222C.
+    fn on_reset(&mut self) {
+        self.model_groups = [0; 2];
+        self.side_special_boost_used = false;
+    }
+    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:64-67.
+    fn on_landing(&mut self, _allow_interrupt: bool) {
+        self.side_special_boost_used = false;
+    }
+    fn guard_variant(&self) {
+        unimplemented!("ftCo_Guard.c:342-346: Marth shield model/offset");
+    }
+}
+
+/// ftMs_Init_* strings, ftData_Table_Unk0[18] (327 rows), and
+/// PlCo ftPartsTable[18]: 90 joints mapped to the 54 semantic parts.
+pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
+    melee_ft::fighter::assets::CharacterDescriptor {
+        kind: FighterKind::Mars,
+        data_file: "PlMs.dat",
+        data_symbol: "ftDataMars",
+        animation_file: "PlMsAJ.dat",
+        animation_count: 327,
+        part_count: 54,
+        part_animation_count: 3,
+        costumes: &[
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlMsNr.dat",
+                joint_symbol: "PlyMars5K_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlMsRe.dat",
+                joint_symbol: "PlyMars5KRe_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlMsGr.dat",
+                joint_symbol: "PlyMars5KGr_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlMsBk.dat",
+                joint_symbol: "PlyMars5KBk_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlMsWh.dat",
+                joint_symbol: "PlyMars5KWh_Share_joint",
+            },
+        ],
+    };

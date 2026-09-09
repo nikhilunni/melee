@@ -12,7 +12,7 @@ use hsd_anim::mtx::InverseTrig;
 use hsd_archive::desc::{read_public_figatree, read_public_jobj};
 use hsd_archive::Archive;
 use melee_diff::{Record, Value};
-use melee_ft::desc::{read_fox_animations, WAIT1_ANIMATION_INDEX};
+use melee_ft::desc::{read_named_fighter_animations, WAIT1_ANIMATION_INDEX};
 use melee_lb::anim::{attach_figatree, request_frame};
 
 /// Resolve independently of the caller's working directory.
@@ -46,7 +46,7 @@ fn load_fox_wait1(assets: &Path) -> Result<(JObjTree, JObjId)> {
     let (mut tree, root) = load_joint_tree(&costume, &descriptor)?;
     ensure!(tree.next(root).is_none(), "Fox skeleton must have one root");
     let fighter = Archive::parse(&read_asset(assets, "PlFx.dat")?)?;
-    let table = read_fox_animations(&fighter)?;
+    let table = read_named_fighter_animations(&fighter, "ftDataFox", 327)?;
     let wait = &table.entries[WAIT1_ANIMATION_INDEX];
     let aj = read_asset(assets, "PlFxAJ.dat")?;
     let archive = Archive::parse(wait.sub_archive(&aj)?.context("Wait1 has no archive")?)?;

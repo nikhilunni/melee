@@ -1,4 +1,4 @@
-//! TOML scenario loading: Fox vs Fox on Final Destination, optionally with a
+//! TOML scenario loading: supported characters on Final Destination, with a
 //! scripted input schedule for one or more ports.
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -72,9 +72,9 @@ impl Scenario {
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
                 usize::from(fighter.slot) == slot
-                    && fighter.kind == "Fox"
+                    && matches!(fighter.kind.as_str(), "Fox" | "Marth")
                     && matches!(fighter.controller.as_str(), "scripted" | "idle"),
-                "requires ordered human Fox slots 0/1"
+                "requires ordered human Fox/Marth slots 0/1"
             );
         }
         for step in &self.inputs {
@@ -119,17 +119,22 @@ impl Scenario {
     }
     /// Local assets/captures whose absence lets integration tests skip.
     pub fn required_files(&self) -> Vec<PathBuf> {
-        let mut paths = [
-            "PlFxNr.dat",
-            "PlFxOr.dat",
-            "PlFx.dat",
-            "PlFxAJ.dat",
-            "PlCo.dat",
-            "GrNLa.dat",
-            "EfCoData.dat",
-        ]
-        .map(|n| self.assets_path().join(n))
-        .to_vec();
+        let mut paths = ["PlCo.dat", "GrNLa.dat", "EfCoData.dat"]
+            .map(|n| self.assets_path().join(n))
+            .to_vec();
+        for fighter in &self.fighters {
+            let descriptor = fighter.descriptor();
+            paths.extend(
+                [descriptor.data_file, descriptor.animation_file]
+                    .map(|n| self.assets_path().join(n)),
+            );
+            paths.extend(
+                descriptor
+                    .costumes
+                    .iter()
+                    .map(|c| self.assets_path().join(c.file)),
+            );
+        }
         paths.push(self.savestate_path());
         paths.push(self.savestate_path().with_extension("sav.json"));
         paths.push(self.trace_path("tick.raw.jsonl"));
@@ -143,5 +148,16 @@ impl Scenario {
             .map(|s| self.boundary_path(s)),
         );
         paths
+    }
+}
+
+impl FighterScenario {
+    /// Composition root selects a character crate; gameplay uses its callbacks.
+    pub fn descriptor(&self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
+        match self.kind.as_str() {
+            "Fox" => &ft_fox::init::DESCRIPTOR,
+            "Marth" => &ft_mars::init::DESCRIPTOR,
+            _ => unreachable!("validated scenario kind"),
+        }
     }
 }

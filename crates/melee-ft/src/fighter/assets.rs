@@ -5,7 +5,7 @@ use crate::{
     desc::{
         common::{read_common_data, CommonFighterData},
         playback::{read_playback_motion, read_wait_table},
-        read_fighter_attributes, read_fighter_bones, read_fox_animations, read_part_table,
+        read_fighter_animations, read_fighter_attributes, read_fighter_bones, read_part_table,
         FighterAttributes, FighterBones, PartTable,
     },
     input::InputCommonData,
@@ -20,7 +20,27 @@ pub struct PartResource {
     pub nodes: Vec<AnimJoint>,
     pub duration: f32,
 }
+/// Character metadata from ftdata.c, ftparts.c's PlCo tables and costume strings.
+/// Character crates own these descriptors; shared loaders never select by kind.
+#[derive(Clone, Copy, Debug)]
+pub struct CharacterDescriptor {
+    pub kind: melee_types::FighterKind,
+    pub data_file: &'static str,
+    pub data_symbol: &'static str,
+    pub animation_file: &'static str,
+    pub animation_count: u32,
+    pub part_count: u32,
+    pub part_animation_count: usize,
+    pub costumes: &'static [CostumeDescriptor],
+}
+#[derive(Clone, Copy, Debug)]
+pub struct CostumeDescriptor {
+    pub file: &'static str,
+    pub joint_symbol: &'static str,
+}
+
 pub struct FighterAssets {
+    pub kind: melee_types::FighterKind,
     pub attributes: FighterAttributes,
     pub bones: FighterBones,
     pub parts: PartTable,
@@ -55,10 +75,17 @@ pub struct FighterAssets {
 }
 impl FighterAssets {
     /// Fighter_LoadCommonData (0x80067ABC) / ftData_80085CD8:
-    /// Fox's Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
-    pub fn fox(fox: &Archive, common: &Archive, aj: &[u8]) -> Result<Self> {
-        let root = fox.public("ftDataFox").ok_or("missing ftDataFox")?;
-        let table = read_fox_animations(fox)?;
+    /// Shared Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
+    pub fn load(
+        descriptor: &CharacterDescriptor,
+        data: &Archive,
+        common: &Archive,
+        aj: &[u8],
+    ) -> Result<Self> {
+        let root = data
+            .public(descriptor.data_symbol)
+            .ok_or("missing fighter data symbol")?;
+        let table = read_fighter_animations(data, root, descriptor.animation_count)?;
         let common_root = common
             .public("ftLoadCommonData")
             .ok_or("missing PlCo root")?;
@@ -70,11 +97,11 @@ impl FighterAssets {
             2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42,
             43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
         ] {
-            let entry = fox
+            let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
             entries.insert(id as i32, entry);
-            read_script(fox, entry, &mut words)?;
+            read_script(data, entry, &mut words)?;
         }
         let indices: BTreeMap<_, _> = words
             .keys()
@@ -106,17 +133,17 @@ impl FighterAssets {
                 }
             })
             .collect::<BTreeSet<_>>();
-        let part_table = fox.link(root + 0x1C)?.ok_or("missing part animations")?;
+        let part_table = data.link(root + 0x1C)?.ok_or("missing part animations")?;
         let mut part_animations = BTreeMap::new();
         for (group, variant) in groups {
-            let set = fox
+            let set = data
                 .link(part_table + group as u32 * 4)?
                 .ok_or("missing part set")?;
-            let animations = fox.link(set + 8)?.ok_or("missing part variants")?;
-            let offset = fox
+            let animations = data.link(set + 8)?.ok_or("missing part variants")?;
+            let offset = data
                 .link(animations + variant as u32 * 4)?
                 .ok_or("missing part variant")?;
-            let source = desc::AnimJoint::read(fox, offset)?;
+            let source = desc::AnimJoint::read(data, offset)?;
             let mut nodes = Vec::new();
             flatten_part(&source, &mut nodes)?;
             let duration = nodes
@@ -126,16 +153,17 @@ impl FighterAssets {
             part_animations.insert(
                 (group, variant),
                 PartResource {
-                    root: usize::from(fox.reader().u16(set)?),
+                    root: usize::from(data.reader().u16(set)?),
                     nodes,
                     duration,
                 },
             );
         }
         Ok(Self {
-            attributes: read_fighter_attributes(fox, root)?,
-            bones: read_fighter_bones(fox, root)?,
-            parts: read_part_table(common, melee_types::FighterKind::Fox, 54)?,
+            kind: descriptor.kind,
+            attributes: read_fighter_attributes(data, root)?,
+            bones: read_fighter_bones(data, root, descriptor.part_animation_count)?,
+            parts: read_part_table(common, descriptor.kind, descriptor.part_count)?,
             common: read_common_data(common)?,
             input: InputCommonData::read(common)?,
             entry: super::entry::EntryParameters {
@@ -145,34 +173,34 @@ impl FighterAssets {
             },
             soft_landing_speed: -common.reader().f32(common_data + 0x310)?,
             shield: super::shield::ShieldParameters::read(common, common_data)?,
-            guard_pose: read_guard_pose(fox, root)?,
+            guard_pose: read_guard_pose(data, root)?,
             shield_health: common.reader().f32(common_data + 0x260)?,
             name_tag_duration: common.reader().u32(common_data + 0x5F0)? as u16,
             thrown_hitbox: {
-                let p = fox.link(root + 0x34)?.ok_or("missing thrown hitbox")?;
+                let p = data.link(root + 0x34)?.ok_or("missing thrown hitbox")?;
                 super::caches::ThrownHitbox {
-                    bone: fox.reader().u32(p)? as usize,
-                    radius: fox.reader().f32(p + 4)?,
+                    bone: data.reader().u32(p)? as usize,
+                    radius: data.reader().f32(p + 4)?,
                     ..super::caches::ThrownHitbox::default()
                 }
             },
-            hurtboxes: read_hurtboxes(fox, root)?,
-            dynamics: crate::dynamics::read_sets(fox, root)?,
-            dynamic_colliders: read_dynamic_colliders(fox, root)?,
+            hurtboxes: read_hurtboxes(data, root)?,
+            dynamics: crate::dynamics::read_sets(data, root)?,
+            dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: [
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 30, 31, 34, 35, 37, 38, 39, 40, 41,
                 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
             ]
             .into_iter()
-            .map(|id| Ok((id as i32, read_playback_motion(fox, root, &table, aj, id)?)))
+            .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
             .collect::<Result<_>>()?,
             rotating_effect_bones: {
-                let table = fox
+                let table = data
                     .link(root + 0x54)?
                     .ok_or("missing rotating effect bones")?;
                 let mut bones = [0; 5];
                 for (i, bone) in bones.iter_mut().enumerate() {
-                    *bone = fox.reader().u32(table + i as u32 * 4)? as usize;
+                    *bone = data.reader().u32(table + i as u32 * 4)? as usize;
                 }
                 bones
             },
@@ -207,14 +235,14 @@ impl FighterAssets {
                 platform_drop_window: common.reader().s32(common_data + 0x468)?,
                 platform_drop_delay: common.reader().f32(common_data + 0x470)?,
             },
-            squat_choices: crate::desc::playback::read_squat_table(fox, root)?,
-            wait_choices: read_wait_table(fox, root)?,
+            squat_choices: crate::desc::playback::read_squat_table(data, root)?,
+            wait_choices: read_wait_table(data, root)?,
             commands,
             instruction_offsets: words.keys().copied().collect(),
             motion_table_offset: motion_table,
             camera_extents: {
-                let p = fox.link(root + 0x3C)?.ok_or("missing camera extents")?;
-                [read_vec(fox, p)?, read_vec(fox, p + 12)?]
+                let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
+                [read_vec(data, p)?, read_vec(data, p + 12)?]
             },
             command_entries: entries
                 .into_iter()
@@ -245,6 +273,11 @@ fn read_script(
             6 => Command::Return,
             7 => Command::Goto(archive.link(offset + 4)?.ok_or("null command goto")? as usize),
             8 => Command::WaitAnimationLoop,
+            // ftAction_80071D40: signed 7-bit model index, signed 19-bit selection.
+            31 => Command::ModelSelection {
+                group: ((word << 6) as i32) >> 25,
+                variant: ((word << 13) as i32) >> 13,
+            },
             19 => Command::SetVariable {
                 index: ((word >> 24) & 3) as usize,
                 value: word & 0xFFFFFF,
@@ -405,6 +438,9 @@ fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<super::caches::Hurtbox>>
 fn read_dynamic_colliders(a: &Archive, root: u32) -> Result<Vec<super::caches::DynamicCollider>> {
     let table = a.link(root + 0x2C)?.ok_or("missing dynamics")?;
     let count = a.reader().u32(table + 8)?;
+    if count == 0 {
+        return Ok(Vec::new());
+    }
     let base = a.link(table + 12)?.ok_or("missing dynamic colliders")?;
     assert!(count <= 11);
     (0..count)

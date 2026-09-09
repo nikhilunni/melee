@@ -5,7 +5,7 @@ use hsd_archive::{desc::read_public_jobj, Archive};
 use melee_ft::anim::{attach::PartFlags, FighterAnimation};
 use melee_ft::desc::{
     playback::{read_playback_motion, read_wait_table},
-    read_fighter_bones, read_fox_animations,
+    read_fighter_bones, read_named_fighter_animations,
 };
 use serde_json::Value;
 use std::{fs, path::Path};
@@ -67,8 +67,8 @@ fn fox_wait_playback_600() {
     assert_eq!(ledger.len(), 600);
     let archive = Archive::parse(&fs::read(files.join("PlFx.dat")).unwrap()).unwrap();
     let fighter = archive.public("ftDataFox").unwrap();
-    let bones = read_fighter_bones(&archive, fighter).unwrap();
-    let table = read_fox_animations(&archive).unwrap();
+    let bones = read_fighter_bones(&archive, fighter, 5).unwrap();
+    let table = read_named_fighter_animations(&archive, "ftDataFox", 327).unwrap();
     let aj = fs::read(files.join("PlFxAJ.dat")).unwrap();
     let motions =
         [2, 3].map(|id| read_playback_motion(&archive, fighter, &table, &aj, id).unwrap());

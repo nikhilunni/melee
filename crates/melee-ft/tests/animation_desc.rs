@@ -1,5 +1,5 @@
 use hsd_archive::{Archive, ArchiveHeader};
-use melee_ft::desc::{read_fighter_animations, read_fox_animations, AnimationDescError};
+use melee_ft::desc::{read_fighter_animations, read_named_fighter_animations, AnimationDescError};
 
 struct Fixture {
     data: Vec<u8>,
@@ -95,7 +95,7 @@ fn invalid_pointers_counts_and_rows_are_errors() {
     assert!(read_fighter_animations(&fixture.archive(), u32::MAX, 3).is_err());
     assert!(read_fighter_animations(&fixture.archive(), fixture.fighter, 5).is_err());
     assert!(matches!(
-        read_fox_animations(&fixture.archive()),
+        read_named_fighter_animations(&fixture.archive(), "ftDataFox", 327),
         Err(AnimationDescError::MissingPublic(_))
     ));
     fixture.relocs.retain(|&slot| slot != fixture.fighter + 12);

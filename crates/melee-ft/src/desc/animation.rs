@@ -9,8 +9,6 @@ use std::fmt;
 use hsd_archive::reader::add_offset;
 use hsd_archive::{Archive, Reader};
 
-/// `ftData_Table_Unk0[FTKIND_FOX]` (`ftdata.c:255`, retail `0x803C0FD0`).
-pub const FOX_ANIMATION_COUNT: u32 = 327;
 /// `ftCo_SM_Wait1_0` (`ft/kinds/ftCommon/forward.h`, enum starts at -1).
 /// This is a submotion/table index, not the `ftCo_MS_Wait` action state.
 pub const WAIT1_ANIMATION_INDEX: usize = 2;
@@ -104,13 +102,17 @@ pub struct FighterAnimations {
     pub entries: Vec<AnimationEntry>,
 }
 
-/// Read `ftDataFox.xC` using `ftData_Table_Unk0[FTKIND_FOX].count`
+/// Read the named `ftData.xC` using the character's `ftData_Table_Unk0` count.
 /// (`ftdata.c`, retail `0x803C0FD0`); see `ftData_80085A14` at `0x80085A14`.
-pub fn read_fox_animations(archive: &Archive) -> Result<FighterAnimations, AnimationDescError> {
+pub fn read_named_fighter_animations(
+    archive: &Archive,
+    symbol: &str,
+    count: u32,
+) -> Result<FighterAnimations, AnimationDescError> {
     let offset = archive
-        .public("ftDataFox")
-        .ok_or_else(|| AnimationDescError::MissingPublic("ftDataFox".into()))?;
-    read_fighter_animations(archive, offset, FOX_ANIMATION_COUNT)
+        .public(symbol)
+        .ok_or_else(|| AnimationDescError::MissingPublic(symbol.into()))?;
+    read_fighter_animations(archive, offset, count)
 }
 
 /// Read `ftData.xC` (`ft/types.h:612`) as used by `ftData_80085A14`

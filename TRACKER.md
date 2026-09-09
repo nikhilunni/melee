@@ -175,7 +175,7 @@ fast fall, ledge grab, ledge options, platform drop, wavedash.
 - [ ] Scenarios for each, recorded from Dolphin
 - [ ] Battlefield and Yoshi's Story stages (platforms)
 
-- [~] (2026-09-09) **Second character: Marth.** Characters and FD unlocked in RAM (`poke-or 0x8045BF28 u16 0xFFFF` for the character mask, next to the stage mask; rules re-poked to stock 1 each session since the card still says time/2 min/3 stock). Savestates `harness/roms/{idle,start}_fd_marth.sav` (P1 Marth kind 18 at -60, P2 Fox idle at +60), tick traces, `ledger600`, particle dumps and bone dumps recorded. Start sequence: Marth 322 -> 323 t6 -> 324 t35 -> Fall t65 -> Landing t82 -> Wait t112. Codex M4-T8 (`ft-mars` crate, generalised loaders, mixed-character scene, Marth bone oracle) in flight.
+- [x] (2026-09-09) **Second character: Marth (Codex M4-T8).** Characters and FD unlocked in RAM (`poke-or 0x8045BF28 u16 0xFFFF`; rules re-poked to stock 1 each session). Savestates `harness/roms/{idle,start}_fd_marth.sav` (P1 Marth kind 18 at -60, P2 Fox idle at +60) with tick traces, ledgers, particle and bone dumps. New `ft-mars` crate; `melee-ft` loaders take a `CharacterDescriptor` (files, symbols, part/animation counts); `melee-sim` scene holds a closed `SceneFighter` enum of boxed `Fighter<C>`; `melee-gr/src/music.rs` models the match-start alternate-music `HSD_Randi(100)` that only fires when all characters are unlocked (found via the ledger: `grLast`/`Ground_801C24F8+0x1B4`). Gates `idle_fd_marth`, `start_fd_marth` 600x49; bone oracle 90 Marth + 73 Fox bones, 202,672 SRT words. Report `melee-ft/src/fighter/M4_MARTH.md`, data `docs/MARTH_DATA.md`. Next: Marth variants of the 16 movement scenarios (recording).
 
 ## Milestone 5: Combat (`melee-ft`, `melee-lb`)
 

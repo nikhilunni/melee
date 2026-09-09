@@ -44,3 +44,33 @@ impl CharacterCallbacks for Fox {
         self.model_group = 0;
     }
 }
+
+/// ftFx_Init_* strings, ftData_Table_Unk0[1], and PlCo ftPartsTable[1].
+pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
+    melee_ft::fighter::assets::CharacterDescriptor {
+        kind: FighterKind::Fox,
+        data_file: "PlFx.dat",
+        data_symbol: "ftDataFox",
+        animation_file: "PlFxAJ.dat",
+        animation_count: 327,
+        part_count: 54,
+        part_animation_count: 5,
+        costumes: &[
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlFxNr.dat",
+                joint_symbol: "PlyFox5K_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlFxOr.dat",
+                joint_symbol: "PlyFox5KOr_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlFxLa.dat",
+                joint_symbol: "PlyFox5KLa_Share_joint",
+            },
+            melee_ft::fighter::assets::CostumeDescriptor {
+                file: "PlFxGr.dat",
+                joint_symbol: "PlyFox5KGr_Share_joint",
+            },
+        ],
+    };

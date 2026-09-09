@@ -238,6 +238,35 @@ pub fn load_collision(archive: &Archive, desc: &StageDesc) -> ReadResult<CollMap
     ))
 }
 
+/// Ground_801C24F8: FD's StageParam row (gr/types.h, stride 0x64).
+/// +14 selects rule 6 (all characters unlocked), +16 is the percent threshold.
+pub fn read_fd_music(archive: &Archive) -> ReadResult<crate::music::MusicParameters> {
+    let root = public(archive, "grGroundParam")?;
+    let r = archive.reader();
+    let count = r.u32(root + 0xB4)?;
+    let table = archive
+        .link(root + 0xB0)?
+        .ok_or_else(|| error("missing StageParam"))?;
+    const FINAL_DESTINATION_STAGE: i32 = 32; // St_Kind_Last, stage-select numbering.
+    let mut selected = None;
+    for i in 0..count {
+        let row = table + i * 0x64;
+        if r.s32(row)? == FINAL_DESTINATION_STAGE {
+            selected = Some(row);
+            break;
+        }
+    }
+    let row = selected.ok_or_else(|| error("missing Final Destination StageParam"))?;
+    if r.s16(row + 0x14)? != 6 {
+        return Err(error("unsupported FD music unlock rule"));
+    }
+    Ok(crate::music::MusicParameters {
+        primary: r.s32(row + 4)?,
+        alternate: r.s32(row + 8)?,
+        alternate_chance: r.s16(row + 0x16)?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

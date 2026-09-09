@@ -14,7 +14,7 @@ use melee_ft::{
     desc::{
         common::read_common_data,
         playback::{read_playback_motion, read_wait_table},
-        read_fighter_attributes, read_fighter_bones, read_fox_animations,
+        read_fighter_attributes, read_fighter_bones, read_named_fighter_animations,
     },
     physics::{
         grounded::{step_wait, GroundedParameters},
@@ -125,8 +125,8 @@ fn idle_ground_fields_600() {
     let common_archive = Archive::parse(&fs::read(files.join("PlCo.dat")).unwrap()).unwrap();
     let common = read_common_data(&common_archive).unwrap();
     let params = GroundedParameters::from_attributes(&attrs, &common);
-    let bones = read_fighter_bones(&archive, fighter).unwrap();
-    let table = read_fox_animations(&archive).unwrap();
+    let bones = read_fighter_bones(&archive, fighter, 5).unwrap();
+    let table = read_named_fighter_animations(&archive, "ftDataFox", 327).unwrap();
     let aj = fs::read(files.join("PlFxAJ.dat")).unwrap();
     let motions =
         [2, 3].map(|id| read_playback_motion(&archive, fighter, &table, &aj, id).unwrap());

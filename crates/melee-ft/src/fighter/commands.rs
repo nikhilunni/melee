@@ -12,6 +12,10 @@ use hsd_anim::{
 
 #[derive(Clone, Debug)]
 pub enum Command {
+    ModelSelection {
+        group: i32,
+        variant: i32,
+    },
     HurtStatus(super::escape::HurtStatus),
     ReverseFacing,
     AllowInterrupt,
@@ -79,6 +83,9 @@ pub struct FootstepSound {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
+    /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
+    pub model_selections: std::collections::BTreeMap<i32, i32>,
     pub hurt_status: super::escape::HurtStatus,
     pub reverse_facing: bool,
     pub allow_interrupt: bool,
@@ -159,6 +166,9 @@ impl CommandState {
             }
             self.instruction = Some(pc + 1);
             match &assets.commands[pc] {
+                Command::ModelSelection { group, variant } => {
+                    self.model_selections.insert(*group, *variant);
+                }
                 Command::HurtStatus(status) => self.hurt_status = *status,
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::ReverseFacing => self.reverse_facing = true,

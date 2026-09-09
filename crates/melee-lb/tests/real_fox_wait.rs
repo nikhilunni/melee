@@ -6,7 +6,7 @@ use common::{srt, RetailTrig};
 use hsd_anim::load::load_joint_tree;
 use hsd_archive::desc::{read_public_figatree, read_public_jobj};
 use hsd_archive::Archive;
-use melee_ft::desc::{read_fox_animations, FOX_ANIMATION_COUNT, WAIT1_ANIMATION_INDEX};
+use melee_ft::desc::{read_named_fighter_animations, WAIT1_ANIMATION_INDEX};
 use melee_lb::anim::{animation_frames, attach_figatree, request_frame};
 
 const WAIT1_PUBLIC: &str = "PlyFox5K_Share_ACTION_Wait1_figatree";
@@ -20,9 +20,9 @@ fn real_fox_wait1_attaches_and_advances() {
         return;
     }
     let fighter = Archive::parse(&std::fs::read(dir.join("PlFx.dat")).unwrap()).unwrap();
-    let table = read_fox_animations(&fighter).unwrap();
+    let table = read_named_fighter_animations(&fighter, "ftDataFox", 327).unwrap();
     assert_eq!(table.table_offset, Some(0x771C));
-    assert_eq!(table.entries.len(), FOX_ANIMATION_COUNT as usize);
+    assert_eq!(table.entries.len(), 327);
     assert_eq!(
         table.entries.iter().filter(|row| row.aj_size != 0).count(),
         278

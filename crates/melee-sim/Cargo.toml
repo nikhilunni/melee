@@ -19,6 +19,7 @@ hsd-anim = { path = "../hsd-anim" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 ft-fox = { path = "../ft-fox" }
+ft-mars = { path = "../ft-mars" }
 ft-mario = { path = "../ft-mario" }
 melee-diff = { path = "../melee-diff" }
 serde = { workspace = true }

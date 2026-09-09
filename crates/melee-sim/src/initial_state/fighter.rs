@@ -1,8 +1,8 @@
 //! Fighter boundary adapter, promoted from melee-ft/tests/fighter_support.
 use super::{float, vector, word};
-use crate::assets::Assets;
-use ft_fox::init::Fox;
+use crate::assets::CharacterArchive;
 use hsd_types::Vec3;
+use melee_ft::fighter::{assets::FighterAssets, CharacterCallbacks};
 use melee_ft::{
     collision::pose::GroundPoseFlags,
     fighter::{Fighter, PlayerSlot, RetailTrig},
@@ -11,7 +11,13 @@ use melee_ft::{
 use melee_mp::CollMap;
 use melee_types::PlayerKind;
 /// Import only the saved boundary. No later row is used by this constructor.
-pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox> {
+pub(super) fn import<C: CharacterCallbacks>(
+    archive: &CharacterArchive,
+    assets: &FighterAssets,
+    character: C,
+    map: &CollMap,
+    raw: &[u8],
+) -> Fighter<C> {
     let mut player = PlayerSlot {
         id: raw[12],
         control: PlayerKind::Human,
@@ -28,8 +34,8 @@ pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox>
     player.facing = float(raw, 0x2C);
     player.damage = float(raw, 0x1830);
     player.costume = raw[0x619];
-    let (tree, root) = assets.model(player.costume);
-    let mut f = Fighter::prepare(player, assets.character(), &assets.fighter, tree, root, map);
+    let (tree, root) = archive.model(player.costume);
+    let mut f = Fighter::prepare(player, character, assets, tree, root, map);
     let root = f.animation.root;
     if word(raw, 0x14) == u32::MAX {
         f.animation.clear_motion(&mut f.skeleton);
@@ -37,7 +43,7 @@ pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox>
         f.animation
             .set_animation(
                 &mut f.skeleton,
-                &assets.fighter.motions[&(word(raw, 0x14) as i32)],
+                &assets.motions[&(word(raw, 0x14) as i32)],
                 float(raw, 0x894),
                 float(raw, 0x89C),
             )
@@ -103,11 +109,10 @@ pub(super) fn import(assets: &Assets, map: &CollMap, raw: &[u8]) -> Fighter<Fox>
                 set.joints.iter().map(|&joint| usize::from(joint)).collect()
             });
     }
-    let archive_base = word(raw, 0x24) - assets.fighter.motion_table_offset;
+    let archive_base = word(raw, 0x24) - assets.motion_table_offset;
     let pc = word(raw, 0x3EC).wrapping_sub(archive_base);
     f.commands.instruction = (word(raw, 0x3EC) != 0).then(|| {
         assets
-            .fighter
             .instruction_offsets
             .iter()
             .position(|&p| p == pc)

@@ -19,14 +19,13 @@ fn vector(raw: &[u8], offset: usize) -> Vec3 {
     )
 }
 
+use crate::scene_fighter::SceneFighter;
 use crate::{assets::Assets, scenario::Scenario};
 use anyhow::{ensure, Context, Result};
-use ft_fox::init::Fox;
 use gekko_math::HsdRng;
 use hsd_particle::system::ParticleSystem;
 use hsd_types::Mtx;
 use melee_diff::{first_divergence, Record, RecordSink};
-use melee_ft::fighter::Fighter;
 use melee_types::snapshot::{PrefixSink, Snapshot};
 use serde_json::Value as Json;
 use std::{
@@ -39,15 +38,18 @@ use std::{
 /// retained by Simulation. Imports vs archive-derived state are listed in M3.md.
 pub struct InitialState {
     pub(crate) assets: Assets,
-    pub(crate) fighters: [Fighter<Fox>; 2],
+    pub(crate) fighters: [SceneFighter; 2],
     pub(crate) map: melee_mp::CollMap,
     pub(crate) stage: melee_gr::last::FinalDestination,
     pub(crate) particles: ParticleSystem,
     pub(crate) stage_animation: Option<melee_gr::last::animation::BackgroundAnimation>,
     pub(crate) effects: crate::effects::Effects,
     pub(crate) rng: HsdRng,
-    /// First unfinished phase: 14 for the partial idle tick, 24 (past the
-    /// scheduler) for the completed match-start boundary.
+    /// Match setup still owes Stage_80225074 before the first observation.
+    pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
+    pub(crate) selected_music: Option<i32>,
+    /// First unfinished phase: 0 between idle ticks, 14 inside the older idle
+    /// capture, or 24 before the first match-start scheduler pass.
     pub(crate) resume_s_link: u8,
 }
 fn first_json(path: &Path) -> Result<Json> {
@@ -61,7 +63,10 @@ fn first_json(path: &Path) -> Result<Json> {
 impl InitialState {
     pub fn from_savestate_traces(scenario: &Scenario) -> Result<Self> {
         scenario.validate()?;
-        let assets = Assets::load(&scenario.assets_path())?;
+        let assets = Assets::load(
+            &scenario.assets_path(),
+            std::array::from_fn(|p| scenario.fighters[p].descriptor()),
+        )?;
         let map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // Only the first line is read. Later rows (including all rng_draws)
@@ -91,8 +96,8 @@ impl InitialState {
         for (slot, raw) in bytes.iter().enumerate() {
             ensure!(
                 usize::from(raw[12]) == slot
-                    && raw[0x619] == slot as u8
-                    && word(raw, 4) == 1
+                    && usize::from(raw[0x619]) < assets.characters[slot].descriptor.costumes.len()
+                    && word(raw, 4) == i32::from(assets.characters[slot].descriptor.kind) as u32
                     && matches!(word(raw, 0x10), 14 | 322),
                 "unsupported fighter boundary"
             );
@@ -111,15 +116,20 @@ impl InitialState {
             "fighters must share the imported Wait/Entry boundary"
         );
         let current_proc = word(saved.bytes(0x804D_7838, 4), 0);
-        let resume_s_link = if match_start {
-            // Match setup has not entered this match's scheduler yet.
-            // The first completed observation is the unchanged Entry boundary.
-            ensure!(
-                current_proc == 0 && word(saved.bytes(0x804D_7834, 4), 0) == 24,
-                "unsupported match-start scheduler boundary"
-            );
-            24
+        let saved_link = word(saved.bytes(0x804D_7834, 4), 0);
+        let resume_s_link = if current_proc == 0 && saved_link == 24 {
+            // Entry is observed before this match's scheduler starts. An idle
+            // savestate between ticks instead needs one complete scheduler pass.
+            if match_start {
+                24
+            } else {
+                0
+            }
         } else {
+            ensure!(
+                current_proc != 0 && !match_start,
+                "unsupported scheduler boundary"
+            );
             let proc = saved.bytes(current_proc, 0x18);
             ensure!(
                 word(saved.bytes(0x804D_7834, 4), 0) == 14
@@ -130,19 +140,60 @@ impl InitialState {
             );
             proc[12]
         };
-        let mut fighters = std::array::from_fn(|p| fighter::import(&assets, &map, &bytes[p]));
-        for (p, fighter) in fighters.iter_mut().enumerate() {
-            saved.restore(fighter, &bytes[p]);
-        }
+        // The raw tick-zero row locates MEM1; it may be one full tick after
+        // the saved idle boundary. Runtime imports always use saved memory.
+        let saved_bytes = rows
+            .iter()
+            .map(|row| -> Result<Vec<u8>> {
+                let address = u32::from_str_radix(
+                    row["base"]
+                        .as_str()
+                        .context("fighter address")?
+                        .trim_start_matches("0x"),
+                    16,
+                )?;
+                Ok(saved.bytes(address, 0x23EC).to_vec())
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let bytes = saved_bytes;
+        let fighters = std::array::from_fn(|p| {
+            let archive = &assets.characters[p];
+            let resources = &assets.fighters[p];
+            match archive.descriptor.kind {
+                melee_types::FighterKind::Fox => {
+                    let character = ft_fox::init::Fox::new(
+                        ft_fox::attributes::read_fox_attributes(&archive.data).unwrap(),
+                    );
+                    let mut fighter =
+                        fighter::import(archive, resources, character, &map, &bytes[p]);
+                    saved.restore(&mut fighter, &bytes[p]);
+                    SceneFighter::Fox(Box::new(fighter))
+                }
+                melee_types::FighterKind::Mars => {
+                    let mut character = ft_mars::init::Marth::new(
+                        ft_mars::attributes::read_mars_attributes(&archive.data).unwrap(),
+                    );
+                    character.side_special_boost_used = word(&bytes[p], 0x222C) != 0;
+                    let mut fighter =
+                        fighter::import(archive, resources, character, &map, &bytes[p]);
+                    saved.restore(&mut fighter, &bytes[p]);
+                    SceneFighter::Marth(Box::new(fighter))
+                }
+                _ => unreachable!("validated character descriptor"),
+            }
+        });
         let mut sink = RecordSink::new(0, "frame_end");
         for (p, fighter) in fighters.iter().enumerate() {
             fighter.snapshot(&mut PrefixSink::new(&mut sink, &format!("p{p}")));
         }
         let mut fighter_expected = expected;
         fighter_expected.state.remove("rng.seed");
-        if let Some(diff) = first_divergence([&fighter_expected], [&sink.finish()]) {
-            anyhow::bail!("imported fighter boundary: {diff}");
+        if resume_s_link != 0 {
+            if let Some(diff) = first_divergence([&fighter_expected], [&sink.finish()]) {
+                anyhow::bail!("imported fighter boundary: {diff}");
+            }
         }
+        // A full first tick is compared by the ordinary gate, including tick zero.
         // The particle population belongs to the savestate, so scripted
         // scenarios recorded from the same savestate share this capture.
         let initial: Record = serde_json::from_value(first_json(
@@ -215,7 +266,22 @@ impl InitialState {
             stage.ground.elapsed + scenario.frames as f32 <= 1800.0,
             "FD transition exceeds implemented stationary attachment interval"
         );
+        let pending_music = if match_start {
+            // gmMainLib_GetUnlockedCharactersBitmaskPtr (8015ED8C): lwz the
+            // global, add 0x1868. gm/types.h's +1898 comment is stale.
+            let main = word(saved.bytes(0x804D_3EE0, 4), 0);
+            let unlocks = u16::from_be_bytes(saved.bytes(main + 0x1868, 2).try_into().unwrap());
+            const ALL_UNLOCKABLE_CHARACTERS: u16 = (1 << 11) - 1;
+            Some((
+                melee_gr::desc::read_fd_music(&assets.stage).map_err(|e| anyhow::anyhow!("{e}"))?,
+                unlocks & ALL_UNLOCKABLE_CHARACTERS == ALL_UNLOCKABLE_CHARACTERS,
+            ))
+        } else {
+            None
+        };
         Ok(Self {
+            pending_music,
+            selected_music: None,
             assets,
             fighters,
             map,

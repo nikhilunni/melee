@@ -1,6 +1,5 @@
 //! Pinned values measured from the owned NTSC-U 1.02 disc, docs/FOX_DATA.md.
 use hsd_archive::{desc::read_public_jobj, Archive};
-use melee_ft::desc::bones::FOX_PART_COUNT;
 use melee_ft::desc::common::read_common_data;
 use melee_ft::desc::{read_fighter_attributes, read_fighter_bones, read_part_table};
 use melee_types::{
@@ -101,7 +100,7 @@ fn fox_spawn_attributes() {
 fn fox_ecb_bones() {
     let Some(dir) = disc_files() else { return };
     let common = read(&dir, "PlCo.dat");
-    let parts = read_part_table(&common, FighterKind::Fox, FOX_PART_COUNT).unwrap();
+    let parts = read_part_table(&common, FighterKind::Fox, 54).unwrap();
     let skeleton = read(&dir, "PlFxNr.dat");
     let root = read_public_jobj(&skeleton, "PlyFox5K_Share_joint").unwrap();
     assert_eq!(root.descendants().len(), 73);
@@ -139,7 +138,7 @@ fn fox_ecb_bones() {
     assert_eq!(parts.joint(FtPart::Unknown56), None);
     assert_eq!(parts.joint(FtPart::Unknown109), None);
     let a = read(&dir, "PlFx.dat");
-    let b = read_fighter_bones(&a, a.public("ftDataFox").unwrap()).unwrap();
+    let b = read_fighter_bones(&a, a.public("ftDataFox").unwrap(), 5).unwrap();
     assert_eq!(b.ecb.joints, [41, 55, 25, 13, 7, 4]);
     assert!(b
         .ecb

@@ -116,7 +116,7 @@ fn bone_data() -> (Vec<u8>, Vec<u32>) {
 #[test]
 fn bone_lists_keep_order_width_and_relocated_zero() {
     let (data, relocs) = bone_data();
-    let b = read_fighter_bones(&archive(&data, &relocs, None), 0x300).unwrap();
+    let b = read_fighter_bones(&archive(&data, &relocs, None), 0x300, 5).unwrap();
     assert_eq!(b.ecb.joints, [-1, 8, 0, 3, 4, 5]);
     assert_eq!(b.ecb.center_y.to_bits(), 0x8000_0000);
     assert_eq!(b.ecb.ledge_snap_x.to_bits(), 0x3F80_0000);
@@ -151,7 +151,7 @@ fn bone_arrays_reject_bad_counts_links_and_extents() {
         let (mut data, relocs) = bone_data();
         word(&mut data, slot, value);
         assert!(
-            read_fighter_bones(&archive(&data, &relocs, None), 0x300).is_err(),
+            read_fighter_bones(&archive(&data, &relocs, None), 0x300, 5).is_err(),
             "slot {slot:#x}"
         );
     }
@@ -162,6 +162,6 @@ fn bone_arrays_reject_bad_counts_links_and_extents() {
             .copied()
             .filter(|&slot| slot != omitted)
             .collect();
-        assert!(read_fighter_bones(&archive(&data, &relocs, None), 0x300).is_err());
+        assert!(read_fighter_bones(&archive(&data, &relocs, None), 0x300, 5).is_err());
     }
 }

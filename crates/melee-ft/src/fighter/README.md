@@ -9,6 +9,24 @@ callback-only milestone, not the current implementation.
 
 Final M4-T1 validation: `cargo gate` **550 passed, zero failures, one pre-existing ignored doctest**; clippy clean. [Exact commands, file list and limits](M4_FOX.md).
 
+## M4-T8 Marth and mixed-character scenes
+
+Marth vs Fox on FD passes both idle and match-start gates: **600 ticks,
+49 keys, zero divergences** each. The SRT oracle matches all 90 Marth bones,
+including twelve dynamic joints, plus the 73-bone Fox opponent over 130 start
+and eight idle ticks (**202,672 SRT words**). No rendered Marth matrix capture
+exists, so the matrix half is not run.
+
+Character crates own archive/costume descriptors and callbacks. Shared loaders
+accept explicit animation, part and part-animation counts. The simulator uses
+an enum of boxed concrete fighters and a generic per-fighter proc dispatcher;
+Snapshot's 24 fighter keys and scheduler order are unchanged. Marth's landing
+reset is a character hook. The existing effect 0x24 warp and dynamic solver
+work directly from Marth data. The imported boundary now handles both partial
+idle ticks and completed idle savestates, plus unlock-dependent FD music RNG.
+See [M4_MARTH.md](M4_MARTH.md) for the exactness evidence, complete list of Fox
+assumptions, capture corrections and remaining boundaries.
+
 ## M4-T7 Running reversal and ledge options
 
 `turnrun_fd_fox` and `walkfast_fd_fox` match **300 ticks, 49 keys, zero

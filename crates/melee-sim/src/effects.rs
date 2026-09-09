@@ -7,8 +7,8 @@
 //! No spawn schedules or captured matrices are runtime inputs.
 mod dust;
 mod spline;
+use crate::scene_fighter::SceneFighter;
 use anyhow::{ensure, Context, Result};
-use ft_fox::init::Fox;
 use gekko_math::HsdRng;
 use hsd_anim::{
     aobj::AObjDesc,
@@ -23,6 +23,7 @@ use hsd_particle::{
     system::{ParticleSystem, SpawnRequest},
 };
 use hsd_types::{Mtx, Vec3};
+use melee_ft::fighter::CharacterCallbacks;
 use melee_ft::fighter::{effects::EffectRequest, Fighter, RetailTrig};
 use std::collections::BTreeMap;
 
@@ -88,11 +89,11 @@ impl Effects {
     /// efAsync_QueueProcessDeferred (efasync.c:1321-1381), drained by
     /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557).
     #[allow(clippy::too_many_arguments)] // Fighter, effect assets and particle runtime stay in their own layers.
-    pub fn flush(
+    pub fn flush<C: CharacterCallbacks>(
         &mut self,
         timing: EffectTiming,
         player: usize,
-        fighter: &mut Fighter<Fox>,
+        fighter: &mut Fighter<C>,
         archive: &Archive,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
@@ -275,7 +276,7 @@ impl Effects {
     /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
     pub fn tick(
         &mut self,
-        fighters: &mut [Fighter<Fox>; 2],
+        fighters: &mut [SceneFighter; 2],
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
@@ -288,9 +289,7 @@ impl Effects {
         });
         for (&id, &(player, bone)) in &self.fighter_joints {
             let fighter = &mut fighters[player];
-            let joint = fighter.animation.parts[bone].joint;
-            fighter.skeleton.setup_matrix(joint);
-            particles.update_joint(id, fighter.skeleton.get(joint).mtx);
+            particles.update_joint(id, fighter.bone_matrix(Some(bone)));
         }
         for effect in &mut self.instances {
             if !effect.indefinite && effect.lifetime != 0 {
@@ -301,11 +300,7 @@ impl Effects {
             }
             if let Some(player) = effect.attachment {
                 let fighter = &mut fighters[player];
-                let root = effect.shield_bone.map_or(fighter.animation.root, |bone| {
-                    fighter.animation.parts[bone].joint
-                });
-                fighter.skeleton.setup_matrix(root);
-                let matrix = fighter.skeleton.get(root).mtx;
+                let matrix = fighter.bone_matrix(effect.shield_bone);
                 if effect.shield_bone.is_some() {
                     // efLib_Update (8005BC50), eflib.c:406-425: world Y scale,
                     // broadcast to all three axes. HSD_MtxGetScale is audited.

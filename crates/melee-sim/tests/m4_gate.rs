@@ -47,11 +47,14 @@ fn particle_rng_sites_match_the_retail_ledger_in_order(name: &str) {
 }
 
 fn particle_rng_sites_for_ticks(name: &str, expected_ticks: usize) {
+    particle_rng_sites_with_ledger(name, expected_ticks, "ledger");
+}
+fn particle_rng_sites_with_ledger(name: &str, expected_ticks: usize, ledger_suffix: &str) {
     use melee_sim::{frame::Simulation, initial_state::InitialState, inputs::PadScript};
     let Some(scenario) = local_scenario_named(name) else {
         return;
     };
-    let path = scenario.trace_path("ledger.raw.jsonl");
+    let path = scenario.trace_path(&format!("{ledger_suffix}.raw.jsonl"));
     if !path.exists() {
         eprintln!("skipping: local {name} RNG ledger absent");
         return;
@@ -190,4 +193,22 @@ fn ledgeescape_fd_fox_420() {
 #[test]
 fn ledgeescape_particle_rng_sites_match_the_retail_ledger_in_order() {
     particle_rng_sites_for_ticks("ledgeescape_fd_fox", 420);
+}
+
+#[test]
+fn idle_fd_marth_600() {
+    movement_gate_ticks("idle_fd_marth", 600);
+}
+#[test]
+fn start_fd_marth_600() {
+    movement_gate_ticks("start_fd_marth", 600);
+}
+
+#[test]
+fn idle_marth_particle_draw_order() {
+    particle_rng_sites_with_ledger("idle_fd_marth", 600, "ledger600");
+}
+#[test]
+fn start_marth_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_marth", 600, "ledger600");
 }

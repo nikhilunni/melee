@@ -1,0 +1,12 @@
+[package]
+name = "ft-mars"
+description = "Marth character data and callbacks (ftMars)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+hsd-types = { path = "../hsd-types" }
+hsd-archive = { path = "../hsd-archive" }

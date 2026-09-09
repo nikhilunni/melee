@@ -765,7 +765,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return;
         }
         let pose = FlatGroundPose {
-            bones: self.bones.ground_pose.as_ref().expect("Fox ground pose"),
+            bones: self
+                .bones
+                .ground_pose
+                .as_ref()
+                .expect("character ground pose"),
             player_scale: self.player.scale,
             flags: self.ground_pose,
         };

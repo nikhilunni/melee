@@ -77,7 +77,8 @@ impl Fixture {
         }
         let read = |name| Archive::parse(&fs::read(files.join(name)).unwrap()).unwrap();
         let fox = read("PlFx.dat");
-        let assets = FighterAssets::fox(
+        let assets = FighterAssets::load(
+            &ft_fox::init::DESCRIPTOR,
             &fox,
             &read("PlCo.dat"),
             &fs::read(files.join("PlFxAJ.dat")).unwrap(),

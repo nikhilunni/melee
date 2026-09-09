@@ -8,9 +8,6 @@ use melee_types::{FighterKind, FtPart};
 
 use super::read::{block, invalid, pointer, public, required, Result};
 
-/// Fox's forward table has 54 bytes (disc 0xCF90..0xCFC6), including unnamed
-/// part 53 used by ftparts.c:692. The header provides no forward-table count.
-pub const FOX_PART_COUNT: u32 = 54;
 /// `FTPART_INVALID`, ft/types.h:43.
 const INVALID_PART: u8 = 0xFF;
 /// Runtime allocation bound, ft/ftparts.h:50-51.
@@ -135,7 +132,8 @@ pub struct ModelBones {
 }
 
 /// ftData.x1C entries, ft/types.h:628-633. Five slots are fixed by the
-/// runtime `Fighter.x8B0[5]` at types.h:1301-1308, not a sentinel walk.
+/// runtime `Fighter.x8B0[5]` at types.h:1301-1308. The archive only stores
+/// the character's used prefix (ftAnim_800707B0 accesses active slots only).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnimationBoneSet {
     pub root_joint: u16,
@@ -176,7 +174,11 @@ pub struct FighterBones {
 
 /// ftData pointer slots: x8 +8, x1C +1C, dynamics +2C, hurtboxes +30,
 /// scaled joint +34, attachment +38, ECB +44 (`ft/types.h:615-653`).
-pub fn read_fighter_bones(archive: &Archive, ft_data: u32) -> Result<FighterBones> {
+pub fn read_fighter_bones(
+    archive: &Archive,
+    ft_data: u32,
+    part_animation_count: usize,
+) -> Result<FighterBones> {
     let model_offset = required(archive, ft_data, 8, "ftData.x8")?;
     let r = block(archive, model_offset, 0x15)?;
     let model = ModelBones {
@@ -187,7 +189,7 @@ pub fn read_fighter_bones(archive: &Archive, ft_data: u32) -> Result<FighterBone
         right_foot: r.u8(0x14)?,
     };
     let ecb = EcbBones::read(archive, required(archive, ft_data, 0x44, "ftData.x44")?)?;
-    let animation_sets = read_animation_sets(archive, ft_data)?;
+    let animation_sets = read_animation_sets(archive, ft_data, part_animation_count)?;
     let (dynamics_roots, dynamics_collision) = read_dynamics_bones(archive, ft_data)?;
     let hurtboxes = if let Some(offset) = pointer(archive, ft_data, 0x30, "ftData.x30")? {
         // ftHurtboxInit: ft/kinds/ftCommon/types.h:23-30; bone +0,
@@ -209,11 +211,21 @@ pub fn read_fighter_bones(archive: &Archive, ft_data: u32) -> Result<FighterBone
     })
 }
 
-fn read_animation_sets(archive: &Archive, ft_data: u32) -> Result<[Option<AnimationBoneSet>; 5]> {
+fn read_animation_sets(
+    archive: &Archive,
+    ft_data: u32,
+    count: usize,
+) -> Result<[Option<AnimationBoneSet>; 5]> {
     let mut sets = std::array::from_fn(|_| None);
     if let Some(table) = pointer(archive, ft_data, 0x1C, "ftData.x1C")? {
-        block(archive, table, 5 * 4)?;
-        for (i, set) in sets.iter_mut().enumerate() {
+        if count > sets.len() {
+            return Err(invalid(
+                "part animations",
+                "count exceeds five runtime slots",
+            ));
+        }
+        block(archive, table, count as u32 * 4)?;
+        for (i, set) in sets.iter_mut().take(count).enumerate() {
             if let Some(offset) = pointer(archive, table, i as u32 * 4, "animation bone set")? {
                 let r = block(archive, offset, 12)?;
                 *set = Some(AnimationBoneSet {

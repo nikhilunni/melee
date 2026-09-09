@@ -131,6 +131,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-mars"
+version = "0.0.1"
+dependencies = [
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-types",
+]
+
+[[package]]
 name = "gekko-math"
 version = "0.0.1"
 
@@ -305,6 +315,7 @@ dependencies = [
  "clap",
  "ft-fox",
  "ft-mario",
+ "ft-mars",
  "gekko-math",
  "hsd-anim",
  "hsd-archive",

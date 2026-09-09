@@ -15,3 +15,5 @@ pub mod scenario;
 pub mod trace;
 
 mod effects;
+
+mod scene_fighter;

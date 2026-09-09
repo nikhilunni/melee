@@ -118,57 +118,33 @@ impl Runtime {
         let state_pads = &self.pads;
         match row.callback {
             Callback::Fighter { player, proc } => {
-                let f = &mut state.fighters[player];
-                let assets = &state.assets.fighter;
-                match proc {
-                    FighterProc::Status => f.proc_status(),
-                    FighterProc::Animation => {
-                        f.proc_anim(assets, &mut state.rng)
-                            .map_err(|e| anyhow::anyhow!("{e}"))?;
-                    }
-                    FighterProc::CpuGate => f.proc_cpu_gate(),
-                    FighterProc::Input => {
-                        // HSD_PadGameStatus[fp->x618_player_id]: in a Vs match
-                        // the human slot's port is its player index.
-                        let pad: PadSample = state_pads.sample(self.frame, player);
-                        f.proc_input(assets, &pad)
-                    }
-                    FighterProc::Update => f.proc_update(assets, &state.map, Vec3::ZERO),
-                    FighterProc::Map => {
-                        f.proc_map_with_assets(assets, &mut state.map, &mut state.rng)
-                            .map_err(|e| anyhow::anyhow!("{e}"))?;
-                    }
-                    FighterProc::Pose => f.proc_pose(&state.map),
-                    FighterProc::Accessories => f.proc_accessories(),
-                    FighterProc::HitboxPositions => {
-                        state.effects.flush(
-                            crate::effects::EffectTiming::Deferred,
-                            player,
-                            f,
-                            &state.assets.effects,
-                            &state.assets.common_particle_bank,
-                            &mut state.particles,
-                            &mut state.rng,
-                        )?;
-                        f.proc_hitbox_positions();
-                    }
-                    FighterProc::Grab => f.proc_grab(),
-                    FighterProc::HitDetection => f.proc_hit_detection(),
-                    FighterProc::ProcessHit => f.proc_process_hit(assets),
-                    FighterProc::Dynamics => f.proc_dynamics_with_map(&mut state.map),
-                    FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, &mut state.map),
-                    FighterProc::PlayerMirror => f.proc_player_mirror(),
+                let assets = &state.assets;
+                match &mut state.fighters[player] {
+                    crate::scene_fighter::SceneFighter::Fox(f) => dispatch_fighter(
+                        f,
+                        proc,
+                        player,
+                        self.frame,
+                        state_pads,
+                        assets,
+                        &mut state.map,
+                        &mut state.effects,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?,
+                    crate::scene_fighter::SceneFighter::Marth(f) => dispatch_fighter(
+                        f,
+                        proc,
+                        player,
+                        self.frame,
+                        state_pads,
+                        assets,
+                        &mut state.map,
+                        &mut state.effects,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?,
                 }
-                f.resolve_graphics_commands(assets, &mut state.rng);
-                state.effects.flush(
-                    crate::effects::EffectTiming::Immediate,
-                    player,
-                    f,
-                    &state.assets.effects,
-                    &state.assets.common_particle_bank,
-                    &mut state.particles,
-                    &mut state.rng,
-                )?;
             }
             Callback::Stage { map, address } => match address {
                 // Registered Ground wrappers: lighting, disabled spawn manager,
@@ -273,6 +249,11 @@ impl Simulation {
             let mut runtime = self.runtime.borrow_mut();
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
+            if let Some((music, unlocked)) = runtime.state.pending_music.take() {
+                runtime.state.selected_music = Some(music.select(unlocked, &mut runtime.state.rng));
+                let seed = runtime.state.rng.seed;
+                runtime.rng_writers.push(("match-start music".into(), seed));
+            }
             if runtime.frame != 0 {
                 // particleSort (psdisp.c:0x8039FC70), between observations.
                 runtime.state.particles.sort_for_display(7);
@@ -294,6 +275,72 @@ impl Simulation {
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
         self.runtime.borrow().rng_writers.clone()
     }
+}
+
+#[allow(clippy::too_many_arguments)] // Borrow each subsystem independently while dispatching a concrete fighter.
+fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
+    f: &mut melee_ft::fighter::Fighter<C>,
+    proc: FighterProc,
+    player: usize,
+    frame: u64,
+    state_pads: &PadScript,
+    scene_assets: &crate::assets::Assets,
+    map: &mut melee_mp::CollMap,
+    effects: &mut crate::effects::Effects,
+    particles: &mut hsd_particle::system::ParticleSystem,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
+    let assets = &scene_assets.fighters[player];
+    match proc {
+        FighterProc::Status => f.proc_status(),
+        FighterProc::Animation => {
+            f.proc_anim(assets, rng)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
+        FighterProc::CpuGate => f.proc_cpu_gate(),
+        FighterProc::Input => {
+            // HSD_PadGameStatus[fp->x618_player_id]: in a Vs match
+            // the human slot's port is its player index.
+            let pad: PadSample = state_pads.sample(frame, player);
+            f.proc_input(assets, &pad)
+        }
+        FighterProc::Update => f.proc_update(assets, map, Vec3::ZERO),
+        FighterProc::Map => {
+            f.proc_map_with_assets(assets, map, rng)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
+        FighterProc::Pose => f.proc_pose(map),
+        FighterProc::Accessories => f.proc_accessories(),
+        FighterProc::HitboxPositions => {
+            effects.flush(
+                crate::effects::EffectTiming::Deferred,
+                player,
+                f,
+                &scene_assets.effects,
+                &scene_assets.common_particle_bank,
+                particles,
+                rng,
+            )?;
+            f.proc_hitbox_positions();
+        }
+        FighterProc::Grab => f.proc_grab(),
+        FighterProc::HitDetection => f.proc_hit_detection(),
+        FighterProc::ProcessHit => f.proc_process_hit(assets),
+        FighterProc::Dynamics => f.proc_dynamics_with_map(map),
+        FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
+        FighterProc::PlayerMirror => f.proc_player_mirror(),
+    }
+    f.resolve_graphics_commands(assets, rng);
+    effects.flush(
+        crate::effects::EffectTiming::Immediate,
+        player,
+        f,
+        &scene_assets.effects,
+        &scene_assets.common_particle_bank,
+        particles,
+        rng,
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -551,3 +598,6 @@ mod start_tests {
         eprintln!("{checked} captured matrix words and {fields} particle fields matched");
     }
 }
+
+#[cfg(test)]
+mod marth_bones;

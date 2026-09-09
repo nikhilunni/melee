@@ -142,8 +142,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
     ) -> Self {
         assert_eq!(
             character.kind(),
-            FighterKind::Fox,
-            "only Fox data is loaded"
+            assets.kind,
+            "character callbacks must match their assets"
         );
         assert!(player.facing == 1.0 || player.facing == -1.0);
         if player.scale != 1.0 {

@@ -61,7 +61,6 @@ pub trait CharacterCallbacks {
             FighterKind::Mario
                 | FighterKind::DrMario
                 | FighterKind::Peach
-                | FighterKind::Mars
                 | FighterKind::Emblem
                 | FighterKind::GameWatch
                 | FighterKind::Popo
@@ -77,9 +76,6 @@ pub trait CharacterCallbacks {
     fn guard_variant(&self) {
         if self.kind() == FighterKind::Yoshi {
             unimplemented!("ftCo_Guard.c:339-341: Yoshi egg shield");
-        }
-        if self.kind() == FighterKind::Mars {
-            unimplemented!("ftCo_Guard.c:342-346: Marth shield model/offset");
         }
     }
     /// ftCo_Escape.c:78-94, 228-241: per-character escape setup.
