@@ -209,13 +209,13 @@ crate passes its scenarios.
 
 | Character | Crate | Lines | Status |
 |---|---|---|---|
-| Fox | `ft-fox` | 3829 | `[ ]` (M5) |
-| Marth | `ft-mars` | 2184 | `[ ]` (M5) |
+| Fox | `ft-fox` | 3829 | `[x]` idle/start/17 movement scenes on FD and Battlefield; jab defender (A1) |
+| Marth | `ft-mars` | 2184 | `[x]` idle/start/16 movement scenes; first hit as attacker (M4-T8/T9, A1) |
 | Mario | `ft-mario` | 1257 | `[ ]` |
 | Dr. Mario | `ft-drmario` | 399 | `[ ]` |
 | Luigi | `ft-luigi` | 1922 | `[ ]` |
 | Captain Falcon | `ft-captain` | 1705 | `[ ]` |
-| Falco | `ft-falco` | 503 | `[ ]` |
+| Falco | `ft-falco` | 503 | `[x]` idle/start/16 movement scenes (2026-09-09, lane C1) |
 | Sheik | `ft-seak` | 2858 | `[ ]` |
 | Zelda | `ft-zelda` | 2218 | `[ ]` (transform pair with Sheik) |
 | Peach | `ft-peach` | 2195 | `[ ]` |
