@@ -16,6 +16,8 @@ use melee_types::{CommonMotionState as S, GroundOrAir};
 
 #[derive(Default)]
 pub struct CombatState {
+    /// Fighter.dmg.armor1 (+18B4), reset on motion change.
+    pub armor: f32,
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
     pub dealt_damage: i32,
@@ -160,6 +162,10 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
         let grounded = victim.physics.ground_or_air == GroundOrAir::Ground;
         if (grounded && !desc.hit_ground) || (!grounded && !desc.hit_air) {
             continue;
+        }
+        victim.character.check_hurtbox_interaction();
+        if victim.combat.armor != 0.0 {
+            unimplemented!("ftColl_80079AB0: double-jump armor damage response");
         }
         if victim.commands.hurt_status == super::escape::HurtStatus::Intangible
             || victim.status.ledge_intangibility != 0

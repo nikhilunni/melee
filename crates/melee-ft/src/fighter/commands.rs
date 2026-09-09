@@ -24,6 +24,10 @@ pub enum Command {
         id: usize,
         descriptor: super::hitbox::ThrowHitbox,
     },
+    BeginLoop(u32),
+    EndLoop,
+    /// ftAction_80071F78 (80071F78), Fighter +221E bit 4.
+    ArticleVisibility(bool),
     SpawnHitbox {
         id: usize,
         descriptor: super::hitbox::HitboxDescriptor,
@@ -112,9 +116,17 @@ pub struct FootstepSound {
     pub pan: u8,
 }
 
+/// Command_03/04: counted loop, independent of the subroutine return stack.
+#[derive(Clone, Debug)]
+pub struct CommandLoop {
+    pub start: usize,
+    pub remaining: u32,
+}
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
     pub throw_hitboxes: [Option<super::hitbox::ThrowHitbox>; 2],
+    /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
+    pub articles_visible: bool,
     pub hitboxes: [Option<super::hitbox::HitCapsule>; 4],
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
@@ -143,6 +155,7 @@ pub struct CommandState {
     pub frame: f32,
     /// CommandInfo.event_return / loop_count (+3F4/+3F0).
     pub return_stack: Vec<usize>,
+    pub loops: Vec<CommandLoop>,
     /// Requests to costume TObjs (ftAnim_800704F0). Rendering consumes these;
     /// TObj/GX execution remains M8, like the existing HSD model loader.
     pub texture_frames: Vec<(usize, f32)>,
@@ -159,6 +172,7 @@ impl CommandState {
         self.instruction = Some(instruction);
         self.timer = 0.0;
         self.return_stack.clear();
+        self.loops.clear();
     }
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
     pub fn step(
@@ -271,6 +285,7 @@ impl CommandState {
                 Command::ModelSelection { group, variant } => {
                     self.model_selections.insert(*group, *variant);
                 }
+                Command::ArticleVisibility(visible) => self.articles_visible = *visible,
                 Command::HurtStatus(status) => self.hurt_status = *status,
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::ReverseFacing => self.reverse_facing = true,
@@ -280,6 +295,22 @@ impl CommandState {
                     }
                 }
                 Command::SetVariable { index, value } => self.variables[*index] = *value,
+                Command::BeginLoop(count) => self.loops.push(CommandLoop {
+                    start: self.instruction.expect("loop body"),
+                    remaining: *count,
+                }),
+                Command::EndLoop => {
+                    let loop_state = self
+                        .loops
+                        .last_mut()
+                        .expect("Command_04 without Command_03");
+                    loop_state.remaining = loop_state.remaining.wrapping_sub(1);
+                    if loop_state.remaining != 0 {
+                        self.instruction = Some(loop_state.start);
+                    } else {
+                        self.loops.pop();
+                    }
+                }
                 Command::End => self.instruction = None,
                 Command::Goto(target) => self.instruction = Some(*target),
                 // Command_08 (0x80005B00, lbcommand.c:85): resume after the animation wraps.

@@ -44,8 +44,9 @@ macro_rules! scene_characters {
             ) -> anyhow::Result<Self> {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                        let character = <$ty as CharacterCallbacks>::from_archive(&archive.data)
+                        let mut character = <$ty as CharacterCallbacks>::from_archive(&archive.data)
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        character.on_costume_loaded(archive.costume(player.costume), player.costume).map_err(|e| anyhow::anyhow!("{e}"))?;
                         let (skeleton, root) = archive.model(player.costume);
                         return Ok(Self::$variant(Box::new(Fighter::spawn_for_match(
                             player, character, resources, skeleton, root, context, delay,
@@ -85,6 +86,7 @@ macro_rules! scene_characters {
 scene_characters! {
     "Fox" => Fox(ft_fox::init::Fox),
     "Peach" => Peach(ft_peach::init::Peach),
+    "Yoshi" => Yoshi(ft_yoshi::init::Yoshi),
     "Marth" => Marth(ft_mars::init::Marth),
     "Falco" => Falco(ft_falco::init::Falco),
     "CaptainFalcon" => CaptainFalcon(ft_captain::init::CaptainFalcon),
@@ -99,6 +101,9 @@ fn construct<C: CharacterCallbacks>(
 ) -> Fighter<C> {
     let mut character = C::from_archive(&archive.data)
         .unwrap_or_else(|e| panic!("{:?} character data: {e}", archive.descriptor.kind));
+    character
+        .on_costume_loaded(archive.costume(raw[0x619]), raw[0x619])
+        .expect("character costume data");
     character.restore_saved(raw);
     let mut fighter = crate::initial_state::import_fighter(archive, resources, character, map, raw);
     saved.restore(&mut fighter, raw);

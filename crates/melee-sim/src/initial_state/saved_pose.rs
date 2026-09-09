@@ -99,6 +99,56 @@ impl SavedPose {
         let scale = word(data, 0x74);
         joint.scl = (scale != 0).then(|| vector(self.bytes(scale, 12), 0));
     }
+    /// Independent part poses can outlive the motion that selected them.
+    /// Restore their saved AObj/FObj streams, rather than attaching the current
+    /// main motion to the part-owned blend joints (jobj.h/aobj.h/fobj.h).
+    fn part_animation(&self, joint: &mut JObj, address: u32) {
+        use hsd_anim::{aobj::AObj, fobj::FObj};
+        let pointer = word(self.bytes(address, 0x88), 0x7C);
+        if pointer == 0 {
+            joint.aobj = None;
+            return;
+        }
+        let data = self.bytes(pointer, 0x1C);
+        let mut tracks = Vec::new();
+        let mut track = word(data, 0x14);
+        while track != 0 {
+            let f = self.bytes(track, 0x34);
+            let head = word(f, 8);
+            let length = word(f, 12);
+            let mut decoded = FObj::new(
+                self.bytes(head, length as usize),
+                0.0,
+                f[0x13],
+                f[0x14],
+                f[0x15],
+            );
+            decoded.pos = word(f, 4)
+                .checked_sub(head)
+                .expect("FObj cursor before stream") as usize;
+            decoded.flags = f[0x10];
+            decoded.op = f[0x11];
+            decoded.op_intrp = f[0x12];
+            decoded.nb_pack = u16::from_be_bytes(f[0x16..0x18].try_into().unwrap());
+            decoded.startframe = i16::from_be_bytes(f[0x18..0x1A].try_into().unwrap());
+            decoded.fterm = u16::from_be_bytes(f[0x1A..0x1C].try_into().unwrap());
+            decoded.time = float(f, 0x1C);
+            decoded.p0 = float(f, 0x20);
+            decoded.p1 = float(f, 0x24);
+            decoded.d0 = float(f, 0x28);
+            decoded.d1 = float(f, 0x2C);
+            tracks.push(decoded);
+            track = word(f, 0);
+        }
+        joint.aobj = Some(AObj {
+            flags: word(data, 0),
+            curr_frame: float(data, 4),
+            rewind_frame: float(data, 8),
+            end_frame: float(data, 12),
+            framerate: float(data, 16),
+            fobj: tracks,
+        });
+    }
     pub fn restore<C: CharacterCallbacks>(&self, fighter: &mut Fighter<C>, raw: &[u8]) {
         let gobj = word(raw, 0);
         let address = word(self.bytes(gobj, 0x30), 0x2C);
@@ -144,6 +194,16 @@ impl SavedPose {
                 fighter.animation.blend_tree.get_mut(part.joint),
                 word(data, 4),
             );
+            if part
+                .flags
+                .contains(melee_ft::anim::attach::PartFlags::PART_ANIMATION)
+            {
+                self.part_animation(fighter.skeleton.get_mut(part.joint), word(data, 0));
+                self.part_animation(
+                    fighter.animation.blend_tree.get_mut(part.joint),
+                    word(data, 4),
+                );
+            }
         }
     }
 }

@@ -83,6 +83,9 @@ pub struct CharacterArchive {
     costumes: Vec<Archive>,
 }
 impl CharacterArchive {
+    pub(crate) fn costume(&self, costume: u8) -> &Archive {
+        &self.costumes[usize::from(costume)]
+    }
     pub(crate) fn model(&self, costume: u8) -> (JObjTree, JObjId) {
         let archive = &self.costumes[usize::from(costume)];
         let symbol = self.descriptor.costumes[usize::from(costume)].joint_symbol;

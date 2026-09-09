@@ -970,3 +970,183 @@ fn start_ys_fox_cold_600() {
 fn story_start_particle_rng_order() {
     particle_rng_sites_with_ledger("start_ys_fox", 600, "ledger600");
 }
+
+#[test]
+fn idle_fd_yoshi_600() {
+    movement_gate_ticks("idle_fd_yoshi", 600);
+}
+
+#[test]
+fn idle_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("idle_fd_yoshi", 600, "ledger600");
+}
+
+#[test]
+fn start_fd_yoshi_600() {
+    movement_gate_ticks("start_fd_yoshi", 600);
+}
+
+#[test]
+fn start_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_yoshi", 600, "ledger600");
+}
+
+#[test]
+fn squat_fd_yoshi_300() {
+    movement_gate_ticks("squat_fd_yoshi", 300);
+}
+
+#[test]
+fn squat_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("squat_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn turn_fd_yoshi_300() {
+    movement_gate_ticks("turn_fd_yoshi", 300);
+}
+
+#[test]
+fn turn_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("turn_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn walk_fd_yoshi_300() {
+    movement_gate_ticks("walk_fd_yoshi", 300);
+}
+
+#[test]
+fn walk_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("walk_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn walkfast_fd_yoshi_300() {
+    movement_gate_ticks("walkfast_fd_yoshi", 300);
+}
+
+#[test]
+fn walkfast_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("walkfast_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn dash_fd_yoshi_300() {
+    movement_gate_ticks("dash_fd_yoshi", 300);
+}
+
+#[test]
+fn dash_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("dash_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn turnrun_fd_yoshi_300() {
+    movement_gate_ticks("turnrun_fd_yoshi", 300);
+}
+
+#[test]
+fn turnrun_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("turnrun_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn jump_fd_yoshi_300() {
+    movement_gate_ticks("jump_fd_yoshi", 300);
+}
+
+#[test]
+fn jump_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("jump_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn airjumpb_fd_yoshi_300() {
+    movement_gate_ticks("airjumpb_fd_yoshi", 300);
+}
+
+#[test]
+fn airjumpb_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("airjumpb_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn shield_fd_yoshi_300() {
+    movement_gate_ticks("shield_fd_yoshi", 300);
+}
+
+#[test]
+fn shield_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("shield_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn spotdodge_fd_yoshi_300() {
+    movement_gate_ticks("spotdodge_fd_yoshi", 300);
+}
+
+#[test]
+fn spotdodge_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("spotdodge_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn roll_fd_yoshi_300() {
+    movement_gate_ticks("roll_fd_yoshi", 300);
+}
+
+#[test]
+fn roll_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("roll_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn airdodge_fd_yoshi_300() {
+    movement_gate_ticks("airdodge_fd_yoshi", 300);
+}
+
+#[test]
+fn airdodge_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("airdodge_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn wavedash_fd_yoshi_300() {
+    movement_gate_ticks("wavedash_fd_yoshi", 300);
+}
+
+#[test]
+fn wavedash_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("wavedash_fd_yoshi", 300, "ledger");
+}
+
+#[test]
+fn ledge_fd_yoshi_420() {
+    movement_gate_ticks("ledge_fd_yoshi", 420);
+}
+
+#[test]
+fn ledge_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("ledge_fd_yoshi", 420, "ledger");
+}
+
+#[test]
+fn ledgeclimb_fd_yoshi_420() {
+    movement_gate_ticks("ledgeclimb_fd_yoshi", 420);
+}
+
+#[test]
+fn ledgeclimb_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("ledgeclimb_fd_yoshi", 420, "ledger");
+}
+
+#[test]
+fn ledgeescape_fd_yoshi_420() {
+    movement_gate_ticks("ledgeescape_fd_yoshi", 420);
+}
+
+#[test]
+fn ledgeescape_yoshi_particle_draw_order() {
+    particle_rng_sites_with_ledger("ledgeescape_fd_yoshi", 420, "ledger");
+}

@@ -115,6 +115,8 @@ pub enum ShieldHitCallback {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReflectHitCallback {
+    /// ftYs_Shield_8012CACC: no response callback.
+    Egg,
     Powershield,
 }
 /// ftColl_80076CBC's strongest contact; health damage accumulates separately.
@@ -244,14 +246,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
         Ok(())
     }
-    fn guard(&mut self) -> &mut GuardState {
+    pub fn guard(&mut self) -> &mut GuardState {
         let MotionData::Guard(guard) = &mut self.state_data else {
             panic!("guard scratch missing")
         };
         guard
     }
     /// ftCo_80092450 (0x80092450), ftcoll.c:3175-3188.
-    fn install_shield(&mut self) {
+    pub fn install_shield(&mut self) {
         self.shield.active = true;
         self.shield.enabled = true;
         self.shield.hit.bone = usize::from(self.bones.model.shield);
@@ -264,6 +266,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn enter_shield(&mut self, assets: &FighterAssets) -> Result<()> {
         let reflect = self.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS)
             && i32::from(self.input.shoulder.tilt) < assets.input.powershield_window;
+        if let Some(result) = C::enter_shield(self, assets, reflect) {
+            return result;
+        }
         self.change_motion_state(if reflect { S::GuardReflect } else { S::GuardOn }, assets)?;
         self.step_animation(assets);
         self.state_data = MotionData::Guard(GuardState {
@@ -322,7 +327,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         (self.input.current.trigger - deadzone) / (1.0 - deadzone)
     }
     /// ftCo_80093BC0 (0x80093BC0): startup windows expire without a hit.
-    fn update_reflect_windows(&mut self) {
+    pub fn update_reflect_windows(&mut self) {
         self.shield.fresh_powershield = false;
         if self.shield.reflect_window {
             self.guard().reflect_frames -= 1.0;
@@ -340,7 +345,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
     }
     /// ftCo_800925A4 (0x800925A4): continuous shield drain and hold timer.
-    fn drain_shield(&mut self, assets: &FighterAssets) {
+    pub fn drain_shield(&mut self, assets: &FighterAssets) {
         if !self.shield.active {
             return;
         }
@@ -365,20 +370,32 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
     }
     /// ftCo_80092908 (0x80092908): preserve scratch, replace the shield effect.
-    fn enter_guard_hold(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_guard_hold(&mut self, assets: &FighterAssets) -> Result<()> {
+        if let Some(result) = C::enter_guard_hold(self, assets) {
+            return result;
+        }
         self.change_motion_state(S::Guard, assets)?;
         self.install_shield();
         self.queue_shield_effect(0x418);
         self.update_guard_pose(assets, 1.0)
     }
+    pub fn enter_guard_off(&mut self, assets: &FighterAssets) -> Result<()> {
+        if let Some(result) = C::enter_guard_off(self, assets) {
+            return result;
+        }
+        self.change_motion_state(S::GuardOff, assets)
+    }
     /// GuardOn/Guard/GuardOff/GuardSetOff/GuardReflect Anim, ftCo_Guard.c.
     pub(super) fn shield_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if let Some(result) = C::animate_shield(self, assets) {
+            return result;
+        }
         let state = self.motion_state.id;
         if state == S::GuardSetOff {
             self.update_reflect_windows();
             if !self.animation.frames_remaining(&self.skeleton) {
                 if self.guard().released {
-                    return self.change_motion_state(S::GuardOff, assets);
+                    return self.enter_guard_off(assets);
                 }
                 return self.enter_guard_hold(assets);
             }
@@ -486,6 +503,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
+        if let Some(result) = C::input_shield(self, assets) {
+            return result;
+        }
         let state = self.motion_state.id;
         if state == S::GuardSetOff {
             return Ok(());
@@ -497,7 +517,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if (self.guard().released && self.guard().minimum_hold == 0.0)
                 || (!self.shield.active && !self.shield.reflecting)
             {
-                return self.change_motion_state(S::GuardOff, assets);
+                return self.enter_guard_off(assets);
             }
             if self.guard().interrupt_frames != 0 {
                 self.guard().interrupt_frames -= 1;

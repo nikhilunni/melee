@@ -70,7 +70,7 @@ pub struct FighterAssets {
     pub running: super::dash::RunningParameters,
     pub movement: crate::desc::common::MovementParameters,
     pub squat_choices: Option<Vec<WaitEntry>>,
-    pub wait_choices: Vec<WaitEntry>,
+    pub wait_choices: Option<Vec<WaitEntry>>,
     pub commands: Vec<Command>,
     /// Archive-relative source locations for savestate import/diagnostics only.
     pub instruction_offsets: Vec<u32>,
@@ -103,6 +103,7 @@ impl FighterAssets {
         let squat_choices = crate::desc::playback::read_squat_table(data, root)?;
         let idle_motions: BTreeSet<_> = wait_choices
             .iter()
+            .flatten()
             .chain(squat_choices.iter().flatten())
             .filter(|entry| entry.motion >= 0)
             .map(|entry| entry.motion as u32)
@@ -239,6 +240,7 @@ impl FighterAssets {
             .chain(idle_motions.into_iter().map(|id| id as usize))
             .collect::<BTreeSet<_>>()
             .into_iter()
+            .filter(|&id| table.entries[id].aj_size != 0)
             .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
             .collect::<Result<_>>()?,
             rotating_effect_bones: {
@@ -318,6 +320,8 @@ fn read_script(
             0 => Command::End,
             1 => Command::Wait((word & 0x03ff_ffff) as f32),
             2 => Command::AtFrame((word & 0x03ff_ffff) as f32),
+            3 => Command::BeginLoop(word & 0x03ff_ffff),
+            4 => Command::EndLoop,
             5 => Command::Call {
                 target: archive.link(offset + 4)?.ok_or("null command call")? as usize,
                 continuation: (offset + 8) as usize,
@@ -383,6 +387,7 @@ fn read_script(
                 disabled: word & 0x03ff_ffff != 0,
             },
             29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
+            36 => Command::ArticleVisibility(word & 1 != 0),
             50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
             49 => Command::SwordTrail {
                 duration: ((word << 7) as i32) >> 7,
@@ -544,7 +549,10 @@ fn read_dynamic_colliders(a: &Archive, root: u32) -> Result<Vec<super::caches::D
 /// ftData.x20->x0[2]: neutral shield descriptor used by ftCo_80091E78.
 fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> {
     let table = a.link(root + 0x20)?.ok_or("missing pose table")?;
-    let table = a.link(table)?.ok_or("missing pose list")?;
+    let Some(table) = a.link(table)? else {
+        // Animated character shields do not supply the common blended pose.
+        return Ok(Vec::new());
+    };
     let joint = a.link(table + 8)?.ok_or("missing shield pose")?;
     let desc = desc::JObjDesc::read(a, joint)?;
     let (tree, root) = hsd_anim::load::load_joint_tree(a, &desc)?;

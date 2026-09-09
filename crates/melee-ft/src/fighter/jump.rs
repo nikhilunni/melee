@@ -129,11 +129,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let style = self.character.aerial_jump_style();
         if !matches!(
             style,
-            super::AerialJumpStyle::Basic | super::AerialJumpStyle::Peach
+            super::AerialJumpStyle::Basic
+                | super::AerialJumpStyle::Peach
+                | super::AerialJumpStyle::Yoshi
         ) {
             unimplemented!("ftCo_JumpAerial.c:104-116: {style:?} double jump entry");
         }
-        let state = self.jump_direction(assets, true);
+        let state = if style == super::AerialJumpStyle::Yoshi {
+            CommonMotionState::JumpAerialF
+        } else {
+            self.jump_direction(assets, true)
+        };
         self.leave_ground();
         let retained_drop_timer = self.retained_drop_timer();
         self.commands.variables[0] = 1;
@@ -142,8 +148,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // separate fmuls, no fusion.
         let velocity = Vec3::new(
             self.input.current.stick.x * attrs.air_jump_h_multiplier,
-            // ftPe_JumpAerial_Enter: retail 800CC198..1A0 stores +0 Y/Z.
-            if style == super::AerialJumpStyle::Peach {
+            // ftPe_JumpAerial_Enter stores +0 Y/Z at 800CC198..1A0;
+            // ftYs_JumpAerial_Enter likewise uses animation-driven vertical motion.
+            if matches!(
+                style,
+                super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
+            ) {
                 0.0
             } else {
                 attrs.jump_v_initial_velocity * attrs.air_jump_v_multiplier
@@ -157,6 +167,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.state_data = MotionData::JumpAerial {
             retained_drop_timer,
         };
+        C::aerial_jump_entered(self);
         Ok(())
     }
     /// ftCo_Jump_Anim (800CB2F8), ftCo_JumpAerial_Anim (800CC388).
@@ -166,16 +177,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.motion_state.id,
                 CommonMotionState::JumpAerialF | CommonMotionState::JumpAerialB
             ) {
-                return self.change_motion_state(CommonMotionState::FallAerial, assets);
+                self.change_motion_state(CommonMotionState::FallAerial, assets)?;
+                C::aerial_jump_animated(self);
+                return Ok(());
             }
             self.change_motion_state(CommonMotionState::Fall, assets)?;
+        }
+        if matches!(self.state_data, MotionData::JumpAerial { .. }) {
+            C::aerial_jump_animated(self);
         }
         Ok(())
     }
     /// ftCo_Jump_Phys_Inner (800CB438), ft_80084DB0 and CheckFallFast (8007D528).
     pub(super) fn airborne_physics(&mut self, assets: &FighterAssets) {
         if matches!(self.state_data, MotionData::JumpAerial { .. })
-            && self.character.aerial_jump_style() == super::AerialJumpStyle::Peach
+            && matches!(
+                self.character.aerial_jump_style(),
+                super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
+            )
         {
             // ftCo_JumpAerial_Phys_Cb (800CC6C8): ftCommon_8007D268 drift,
             // then ft_800851D0 (800851F8/FC) copies TransN's vertical delta.

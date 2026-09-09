@@ -50,7 +50,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.physics.position.y + self.attributes.camera.damage_camera_y_offset,
         );
     }
-    pub(super) fn step_animation(&mut self, assets: &FighterAssets) {
+    pub fn step_animation(&mut self, assets: &FighterAssets) {
         let first_footstep = self.commands.footstep_sounds.len();
         // ftAnim_8006EBA4: command-driven animation ownership changes must
         // finish before the independent part blends are evaluated.
@@ -208,7 +208,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if self.motion_state.callbacks.animation == state::AnimationCallback::SquatWait {
                 assets.squat_choices.as_deref()
             } else {
-                Some(&assets.wait_choices)
+                assets.wait_choices.as_deref()
             },
             |id| &assets.motions[&id],
             |animation, tree| {

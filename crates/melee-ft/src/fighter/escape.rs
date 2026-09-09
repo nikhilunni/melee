@@ -16,6 +16,8 @@ pub enum HurtStatus {
 }
 #[derive(Clone, Debug)]
 pub struct EscapeState {
+    /// Guard scratch survives in the retail union during a roll.
+    pub retained_guard: Option<super::shield::GuardState>,
     /// mv.co.escape.x0: item-throw window, decremented by ftCo_8009563C.
     /// C calls this bool, but retail preserves PlCo.x324 (five frames).
     pub interrupt_frames: i32,
@@ -30,7 +32,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             || self.input.current.cstick.y <= assets.input.escape_threshold
     }
     /// ftCo_8009917C (0x8009917C): main-stick horizontal smash, then C-stick.
-    pub(super) fn roll_input(&self, assets: &FighterAssets) -> Option<S> {
+    pub fn roll_input(&self, assets: &FighterAssets) -> Option<S> {
         let p = &assets.shield;
         let x = if fabsf(self.input.current.stick.x) >= p.roll_threshold
             && i32::from(self.input.horizontal.tilt) < p.roll_window
@@ -48,16 +50,27 @@ impl<C: CharacterCallbacks> Fighter<C> {
         })
     }
     /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
-    pub(super) fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
-        self.character.escape_variant(state != S::EscapeN);
+    pub fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
+        let retained_guard = if let MotionData::Guard(guard) = &self.state_data {
+            Some(guard.clone())
+        } else {
+            None
+        };
+        if state == S::EscapeN {
+            C::escape_variant(self, assets, false)?;
+        }
         self.commands.reverse_facing = false;
         self.change_motion_state(state, assets)?;
         self.step_animation(assets);
         self.status.ignore_fighter_nudge = true;
         self.state_data = MotionData::Escape(EscapeState {
+            retained_guard,
             interrupt_frames: assets.shield.roll_interrupt_frames,
             entry_facing: self.physics.facing,
         });
+        if state != S::EscapeN {
+            C::escape_variant(self, assets, true)?;
+        }
         Ok(())
     }
     /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
@@ -69,8 +82,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if self.motion_state.id != S::EscapeN {
                 self.physics.ground_velocity = 0.0;
             }
+            if let Some(result) = C::escape_finished(self, assets) {
+                return result;
+            }
             self.change_motion_state(S::Wait, assets)?;
         }
+        C::escape_animated(self);
         Ok(())
     }
     /// ftCo_Escape_Phys -> ft_80085004 -> ft_80085030 (0x80085030).

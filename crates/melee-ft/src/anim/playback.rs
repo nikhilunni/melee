@@ -346,7 +346,7 @@ impl FighterAnimation {
 
     /// `ftAnim_8006FA58` / `ftAnim_8006FB88`: reset the descriptor bones
     /// below TopN, preserving locked rotations and independently animated parts.
-    fn reset_pose(&self, target: &mut JObjTree, blending: bool) {
+    pub fn reset_pose(&self, target: &mut JObjTree, blending: bool) {
         self.reset_pose_range(target, blending, 1, self.parts.len());
     }
 

@@ -24,6 +24,7 @@ members = [
     "crates/ft-falco",
     "crates/ft-captain",
     "crates/ft-peach",
+    "crates/ft-yoshi",
     "crates/ft-mario",
     # Layer 4: binaries and tooling.
     "crates/melee-sim",

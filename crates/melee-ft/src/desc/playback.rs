@@ -10,10 +10,10 @@ use hsd_archive::Archive;
 pub fn read_wait_table(
     archive: &Archive,
     fighter: u32,
-) -> Result<Vec<WaitEntry>, AnimationDescError> {
-    let base = archive
-        .link(add_offset(fighter, 0x24)?)?
-        .ok_or(AnimationDescError::NullTable)?;
+) -> Result<Option<Vec<WaitEntry>>, AnimationDescError> {
+    let Some(base) = archive.link(add_offset(fighter, 0x24)?)? else {
+        return Ok(None);
+    };
     let mut result = Vec::new();
     let mut offset = base;
     loop {
@@ -21,7 +21,7 @@ pub fn read_wait_table(
         let weight = archive.reader().s32(add_offset(offset, 4)?)?;
         result.push(WaitEntry { motion, weight });
         if motion == -1 {
-            return Ok(result);
+            return Ok(Some(result));
         }
         offset = add_offset(offset, 8)?;
     }

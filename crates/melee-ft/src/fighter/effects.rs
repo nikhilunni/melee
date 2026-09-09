@@ -5,6 +5,8 @@ const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 #[derive(Clone, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
+    EggShell { bone: usize, scale: f32 },
     /// Fighter_ChangeMotionState flushes the queue using the outgoing pose.
     /// The scene consumes this batch at the owning proc boundary, in order.
     FlushDeferred(Vec<ResolvedEffect>),
@@ -74,9 +76,9 @@ impl<C: super::CharacterCallbacks> super::Fighter<C> {
         let mut resolved = Vec::new();
         for request in pending.into_iter().rev() {
             let joint = match &request {
-                EffectRequest::Attached { bone, .. } | EffectRequest::Graphics { bone, .. } => {
-                    self.animation.parts[*bone].joint
-                }
+                EffectRequest::EggShell { bone, .. }
+                | EffectRequest::Attached { bone, .. }
+                | EffectRequest::Graphics { bone, .. } => self.animation.parts[*bone].joint,
                 _ => self.animation.root,
             };
             self.skeleton.setup_matrix(joint);

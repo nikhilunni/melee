@@ -52,6 +52,8 @@ pub trait CharacterCallbacks {
     /// character-specific capture variants override this boundary.
     fn catch_variant(&mut self) {}
 
+    /// Explicit boundary for a character-owned hurt-capsule layout.
+    fn check_hurtbox_interaction(&self) {}
     /// decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
     fn jab_variant(&self) {
         match self.kind() {
@@ -77,6 +79,14 @@ pub trait CharacterCallbacks {
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// Costume-dependent OnLoad work (e.g. material animation end frames).
+    fn on_costume_loaded(
+        &mut self,
+        _archive: &hsd_archive::Archive,
+        _costume: u8,
+    ) -> assets::Result<()> {
+        Ok(())
+    }
     /// OnLoad work requiring decoded animation resources and costume identity.
     fn on_resources_loaded(&mut self, _assets: &assets::FighterAssets, _player: &PlayerSlot) {}
     /// Fighter_ChangeMotionState, fighter.c:1120-1123: restore ground resources.
@@ -116,19 +126,20 @@ pub trait CharacterCallbacks {
     }
 
     /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
-    fn guard_variant(&self, _commands: &mut commands::CommandState) {
-        if self.kind() == FighterKind::Yoshi {
-            unimplemented!("ftCo_Guard.c:339-341: Yoshi egg shield");
-        }
-    }
-    /// ftCo_Escape.c:78-94, 228-241: per-character escape setup.
-    fn escape_variant(&self, rolling: bool) {
-        if rolling && self.kind() == FighterKind::Samus {
+    fn guard_variant(&self, _commands: &mut commands::CommandState) {}
+    /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
+    fn escape_variant(
+        fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+        rolling: bool,
+    ) -> assets::Result<()>
+    where
+        Self: Sized,
+    {
+        if rolling && fighter.character.kind() == FighterKind::Samus {
             unimplemented!("ftCo_Escape.c:83-85: Samus morph-ball roll");
         }
-        if self.kind() == FighterKind::Yoshi {
-            unimplemented!("ftCo_Escape.c:86-88, 232-234: Yoshi egg escape");
-        }
+        Ok(())
     }
     /// ftPe_8011BA54 / ftPe_8011BAD8: float selection surrounding the
     /// aerial-jump predicate. Characters without float do nothing.
@@ -148,6 +159,91 @@ pub trait CharacterCallbacks {
     fn aerial_jump_style(&self) -> AerialJumpStyle {
         AerialJumpStyle::Basic
     }
+    /// Character-owned setup after the common aerial-jump entry and Anim.
+    fn aerial_jump_entered(_fighter: &mut Fighter<Self>)
+    where
+        Self: Sized,
+    {
+    }
+    fn aerial_jump_animated(_fighter: &mut Fighter<Self>)
+    where
+        Self: Sized,
+    {
+    }
+
+    /// Retail action identity for a shared semantic state. Character tables
+    /// may reuse common callbacks with their own action numbers.
+    fn action_id(&self, state: melee_types::CommonMotionState) -> i32 {
+        state.into()
+    }
+    /// GuardOn/Reflect usually skip animation and blend the guard pose.
+    /// Animated shields instead run the actual GuardOn motion and script.
+    fn animated_shield(&self) -> bool {
+        false
+    }
+    /// Complete character-owned shield callbacks; None selects shared behavior.
+    fn enter_shield(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+        _reflect: bool,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn animate_shield(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    /// Character-owned Guard IASA; None selects the shared input order.
+    fn input_shield(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn enter_guard_hold(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn enter_guard_off(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    /// ftCo_Escape.c: character setup after motion entry, and completion.
+    fn escape_finished(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn escape_animated(_fighter: &mut Fighter<Self>)
+    where
+        Self: Sized,
+    {
+    }
 }
 
 /// Float predicates run on either side of the ordinary aerial-jump check.
@@ -157,8 +253,8 @@ pub enum FloatInputPhase {
     AfterAerialJump,
 }
 
-/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. `Basic` and `Peach`
-/// are ported; the others retain explicit unsupported boundaries.
+/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. Basic, Peach and
+/// Yoshi are ported; the others retain explicit unsupported boundaries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AerialJumpStyle {
     /// ftCo_JumpAerial_Enter_Basic (0x800CBBC0).
@@ -175,6 +271,8 @@ pub enum AerialJumpStyle {
 
 #[derive(Clone, Debug, Default)]
 pub struct Capabilities {
+    /// Fighter +2226 bit 1: ftCo_DownBound selects the grounded-damage variant.
+    pub grounded_down_bound: bool,
     /// can_walljump, Fighter +2224 bit 0; Fox OnLoad sets this.
     pub can_walljump: bool,
     /// ftData special callback presence, S/Hi/N/Lw.

@@ -6,6 +6,7 @@
 //! The warp additionally needs the HSD spline/reference evaluator in `spline`.
 //! No spawn schedules or captured matrices are runtime inputs.
 mod dust;
+mod egg_shell;
 mod spline;
 use crate::scene_fighter::SceneFighter;
 use anyhow::{ensure, Context, Result};
@@ -61,6 +62,7 @@ pub(crate) struct Effects {
     fighter_joints: BTreeMap<usize, (usize, usize)>,
 }
 struct Effect {
+    velocity: Option<Vec3>,
     tree: JObjTree,
     root: JObjId,
     attachment: Option<usize>,
@@ -121,6 +123,13 @@ impl Effects {
             request => vec![(request, None)],
         });
         for (request, resolved_matrix) in requests {
+            if let EffectRequest::EggShell { bone, scale } = request {
+                let joint = fighter.animation.parts[bone].joint;
+                fighter.skeleton.setup_matrix(joint);
+                let matrix = resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx);
+                self.spawn_egg_shell(archive, bank, particles, rng, &matrix, scale)?;
+                continue;
+            }
             if matches!(request, EffectRequest::DestroyOwned) {
                 for effect in self
                     .instances
@@ -264,7 +273,8 @@ impl Effects {
             let matrix = resolved_matrix.unwrap_or(fighter.skeleton.get(root).mtx);
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
-                EffectRequest::FlushDeferred(_)
+                EffectRequest::EggShell { .. }
+                | EffectRequest::FlushDeferred(_)
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. }
@@ -375,6 +385,19 @@ impl Effects {
                 );
             }
             effect.animate(bank, particles, rng, &mut self.draws)?;
+            if let Some(velocity) = &mut effect.velocity {
+                // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
+                velocity.y -= 0.1;
+                let position = effect.tree.get(effect.root).translate;
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(
+                        position.x + velocity.x,
+                        position.y + velocity.y,
+                        position.z + velocity.z,
+                    ),
+                );
+            }
         }
         self.instances
             .retain(|effect| effect.indefinite || effect.lifetime != 0);
@@ -392,17 +415,19 @@ impl Effect {
 
         let descriptor =
             desc::JObjDesc::read(archive, archive.link(offset + 4)?.context("effect model")?)?;
-        let animation = desc::AnimJoint::read(
-            archive,
-            archive.link(offset + 8)?.context("effect animation")?,
-        )?;
+        let animation = archive
+            .link(offset + 8)?
+            .map(|offset| desc::AnimJoint::read(archive, offset))
+            .transpose()?;
         let mut tree = JObjTree::new();
         let root = tree.load_joint(&joint_spec(&descriptor)?);
         let ids: Vec<_> = tree.depth_first(root).collect();
         let descs = descriptor.descendants();
         let mut paths = BTreeMap::new();
         let mut references = BTreeMap::new();
-        attach(&mut tree, root, &animation, &mut references)?;
+        if let Some(animation) = &animation {
+            attach(&mut tree, root, animation, &mut references)?;
+        }
         for &id in &ids {
             let reference = references.get(&id.0).copied().unwrap_or(0);
             if reference == 0 {
@@ -419,6 +444,7 @@ impl Effect {
         }
         tree.req_anim_all(root, 0.0);
         Ok(Self {
+            velocity: None,
             tree,
             root,
             lifetime: lifetime + 1,

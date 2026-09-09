@@ -133,7 +133,7 @@ fn idle_ground_fields_600() {
     let mut entry_motion = read_playback_motion(&archive, fighter, &table, &aj, 238).unwrap();
     entry_motion.blend_frames = 0.0;
     eprintln!("entry frames {}", entry_motion.animation.frames);
-    let choices = read_wait_table(&archive, fighter).unwrap();
+    let choices = read_wait_table(&archive, fighter).unwrap().unwrap();
     let costume = Archive::parse(&fs::read(files.join("PlFxNr.dat")).unwrap()).unwrap();
     let desc = read_public_jobj(&costume, "PlyFox5K_Share_joint").unwrap();
     let stage = Archive::parse(&fs::read(files.join("GrNLa.dat")).unwrap()).unwrap();

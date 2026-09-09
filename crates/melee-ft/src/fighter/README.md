@@ -30,6 +30,16 @@ The scene takes DamageN2 directly back to Wait, with no DamageFall or dash
 attack. Other reactions, stale hits, DI/SDI, shield hits, clanks and jab follow-ups
 remain explicit unsupported branches. No general moveset completeness is claimed.
 
+## Lane C: Yoshi
+
+All eighteen Yoshi idle/start/movement scenes and ordered particle ledgers pass.
+The mixed Yoshi/Fox bone oracle compares 177804 SRT words across 70 Yoshi joints
+(no dynamic chains) and 73 Fox joints. Egg shield entry/Anim/IASA/exit, egg rolls,
+and the armored, animation-driven double jump use `ft-yoshi` hook overrides.
+Saved part-owned AObj/FObj streams, nullable Wait/guard data, counted command
+loops and static egg-shell effects are now supported. See
+[M4_YOSHI.md](M4_YOSHI.md) and [YOSHI_DATA.md](../../../../docs/YOSHI_DATA.md).
+
 ## Lane C: Peach
 
 All eighteen Peach idle/start/movement scenes and ordered particle ledgers pass.

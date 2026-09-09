@@ -370,9 +370,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
         self.shield.clear_collision();
+        self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
         self.status.on_ledge = false;
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
+        self.commands.articles_visible = true;
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
@@ -480,6 +482,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             _ => unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}"),
         };
         self.motion_state = motion_state;
+        self.motion_state.action_id = self.character.action_id(state);
         for (i, set) in self.dynamics.iter_mut().enumerate() {
             let first = assets.dynamics_motion_starts[&animation_id][i];
             let dynamic = first != 0x100;
@@ -505,10 +508,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             (std::f64::consts::FRAC_PI_2 * f64::from(self.physics.facing)) as f32,
         );
         self.skeleton.set_rotation_z(root, 0.0);
-        if matches!(
-            state,
-            CommonMotionState::GuardOn | CommonMotionState::Guard | CommonMotionState::GuardReflect
-        ) {
+        if state == CommonMotionState::Guard
+            || (!self.character.animated_shield()
+                && matches!(
+                    state,
+                    CommonMotionState::GuardOn | CommonMotionState::GuardReflect
+                ))
+        {
             // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
             self.animation.clear_motion(&mut self.skeleton);
             self.commands.instruction = None;

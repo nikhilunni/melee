@@ -742,3 +742,9 @@ mod falcon_bones;
 
 #[cfg(test)]
 mod peach_bones;
+
+#[cfg(test)]
+mod yoshi_bones;
+
+#[cfg(test)]
+mod yoshi_state;

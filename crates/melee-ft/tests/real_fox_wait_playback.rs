@@ -72,7 +72,7 @@ fn fox_wait_playback_600() {
     let aj = fs::read(files.join("PlFxAJ.dat")).unwrap();
     let motions =
         [2, 3].map(|id| read_playback_motion(&archive, fighter, &table, &aj, id).unwrap());
-    let choices = read_wait_table(&archive, fighter).unwrap();
+    let choices = read_wait_table(&archive, fighter).unwrap().unwrap();
     assert_eq!(
         choices
             .iter()
