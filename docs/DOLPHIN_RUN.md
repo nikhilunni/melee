@@ -445,3 +445,25 @@ MELEE_SCENARIO="$PWD/scenarios/walk_fd_fox.toml" MELEE_RAW_OUT="$OUT" \
   -e "$PWD/roms/GALE01.iso" --script "$PWD/dolphin/rng_ledger.py"   # kill Dolphin once $OUT.done exists
 uv run python rng_ledger_report.py "$OUT" --ticks 300
 ```
+
+## Unlocks and rules are RAM-only pokes (per session)
+
+The memory card still holds the stock save: no unlockables, time mode
+2 minutes, 3 stock. Every recording session re-applies these after the
+title screen has loaded the save (all addresses are inside the save-data
+block at `gmMainLib_804D3EE0` -> 0x8045A6C0; nothing is written back to
+the card):
+
+```sh
+cd harness
+uv run python dolphin/drive.py "poke-or 0x8045BF2A u16 0xC0"    # stages: Battlefield + Final Destination
+uv run python dolphin/drive.py "poke-or 0x8045BF28 u16 0xFFFF"  # all characters (Marth is row 3, ~(450,240))
+uv run python dolphin/drive.py "poke 0x8045BF12 u8 1; poke 0x8045BF14 u8 1"  # GameRules: stock mode, 1 stock
+```
+
+Character select with everyone unlocked: P1's hand reaches Marth with
+`stick 0 1 20 @0; stick 1 0 33 @0`, P2's reaches Fox with
+`stick 0 1 26 @1; stick -1 0 6 @1`; confirm with `shot` (the card previews
+the hovered character) before `press A 3 @0; press A 3 @1; press Start 3`.
+On the stage select `stick 1 0 5; stick 0 1 3` from the start position
+lands on Final Destination.
