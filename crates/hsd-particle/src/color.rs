@@ -1,0 +1,79 @@
+//! Color timers in `hsd_8039930C` (particle.c, retail 0x8039930C).
+use crate::{program::Cursor, rng_sites::DrawLog, Error};
+use gekko_math::{msl::fctiwz, rng::HsdRng};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColorTrack {
+    pub current: [u8; 4],
+    pub target: [u8; 4],
+    pub duration: u16,
+    pub remaining: u16,
+}
+impl ColorTrack {
+    pub fn new(current: [u8; 4]) -> Self {
+        // memset initializes targets to zero, independently of current color.
+        Self {
+            current,
+            target: [0; 4],
+            duration: 0,
+            remaining: 0,
+        }
+    }
+    pub(crate) fn tick(&mut self) {
+        if self.duration != 0 {
+            self.remaining = self.remaining.wrapping_sub(1);
+            if self.remaining == 0 {
+                self.duration = 0;
+                self.current = self.target;
+            }
+        }
+    }
+    fn materialize(&mut self) {
+        if self.duration == 0 {
+            return;
+        }
+        let step = (i32::from(self.remaining) << 16) / i32::from(self.duration);
+        for (current, target) in self.current.iter_mut().zip(self.target) {
+            let delta = step.wrapping_mul(i32::from(*current) - i32::from(target));
+            *current = ((i32::from(target) << 16).wrapping_add(delta) >> 16) as u8;
+        }
+    }
+    pub(crate) fn setup(&mut self, mask: u8, pc: &mut Cursor<'_>) -> Result<(), Error> {
+        self.materialize();
+        self.duration = pc.timer()?;
+        self.target = self.current;
+        for channel in 0..4 {
+            if mask & (1 << channel) != 0 {
+                self.target[channel] = pc.byte()?;
+            }
+        }
+        self.restart();
+        Ok(())
+    }
+    fn restart(&mut self) {
+        if self.duration == 0 {
+            self.current = self.target;
+        }
+        self.remaining = self.duration;
+    }
+    pub(crate) fn random_delta(
+        &mut self,
+        pc: &mut Cursor<'_>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        sites: [u32; 4],
+    ) -> Result<(), Error> {
+        self.materialize();
+        for (channel, site) in sites.into_iter().enumerate() {
+            let random = draws.draw(rng, site);
+            let delta = i32::from(pc.byte()? as i8) << 1;
+            // BA retail 0x8039B0C0/0x8039B0C8 and +0x6C per channel:
+            // separate fmuls/fadds. BB uses the same unfused instruction shape.
+            let offset = delta as f32 * random;
+            let value = f32::from(self.target[channel]) + offset;
+            self.target[channel] = fctiwz(value.clamp(0.0, 255.0)) as u8;
+        }
+        self.restart();
+        Ok(())
+    }
+}

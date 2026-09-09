@@ -1,0 +1,266 @@
+# HSD particle simulation
+
+`crates/hsd-particle` now runs the complete idle Final Destination particle
+script and its sphere emitter, with owned state and caller-supplied
+`&mut HsdRng`. It also supports disc, line and cone emitters and the common
+instructions listed below. This is a subset of `generator.c` / `particle.c`,
+not a complete effects system. It contains no `psdisp.c` renderer.
+
+The ledger's **6k+1 means six draws per newly emitted particle**, not per
+currently live particle. Particle creation immediately interprets its script;
+subsequent updates of FD's four-tick particles do not draw. Several cohorts
+coexist, so live population and emission count differ substantially.
+
+## FD data and animation provenance
+
+All offsets here are relative to the GrNLa.dat archive data section. The tests
+read the owned disc from `harness/roms/files/GrNLa.dat`; they skip only when
+that file is absent. No disc data files are included in this change.
+
+`map_head` is at `0x358`. Its models link at `+8` selects model set 4 with
+`Ground_ModelDesc` stride `0x34` (entry `0x17C`). Its joint-animation list at
+`+4` has eleven animations; only animation 0 contains the spawn track.
+That AnimJoint root is `0x49270`. AnimJoint `0x493B0` on joint index 16
+(JObjDesc `0x48FC8`, local identity SRT) references AObj `0x49260`:
+flags `0x20000000`, end frame 4000. FObj `0x4924C` has track type `0x28`,
+start frame 0, value/slope formats 0/0, and a six-byte KEY stream.
+The value's **bits** are `0x001D4C1E`, decoded as bank `bits & 63 = 30`,
+kind `(bits >> 6) & 0xFFFFFF = 30000`.
+
+`JObjUpdateFunc` (`jobj.c`, `0x8036FDC0`) forwards this integer payload.
+`efLib_Cb_DPtcl` routes stage banks through `grLib_801C99C0`, which calls
+`hsd_8039EFAC` with link 0. Existing `hsd-anim` already produces
+`JObjEvent::DPtcl`; **no hsd-anim change was necessary**. The real test loads
+and evaluates the actual JObj/AnimJoint hierarchy, handles this event, and
+supplies the evaluated joint matrix each tick. The separate bank test finds
+one spawn at local animation tick 0 over 4000 FObj evaluations.
+
+`map_ptcl` is a version `0x42` bank with first descriptor ID 30000 and five
+descriptors. `map_texg` has three texture groups. Kind 30000 has:
+
+| Field | Value |
+|---|---|
+| Generator shape / attached runtime type | sphere 8 / `0x708` |
+| Kind after bank Locate | `0x08400000` |
+| Generator / particle lifetime | 3999 / 4 |
+| Emission rate / initial count | 10 / one `HSD_Randf()` draw |
+| Radius / angle | -4000 / about 0.08726646 |
+| Velocity | `(0, 0, -0.01)` |
+| Size | 30 |
+| Parameter 1 / 2 / 3 | bits `0x3F29C91F` / 0 / 0 |
+| Script | texture 0; set RGBA; BA random RGBA; set five-tick fade; wait 4; end |
+
+Bank parsing preserves the internal bank-relative pointers, independently of
+DAT relocations. Version 0 and versions 0x40–0x43, sparse descriptor slots,
+nonzero descriptor ID bases, texture presence and palette metadata are
+supported. The next public bounds each public bank; a descriptor's program
+ends at the next descriptor or bank boundary and may include alignment
+padding. Texture pixels and form/geometry banks are not loaded.
+
+## Frame order, lists, and lifetime
+
+`ParticleSystem::proc_main` corresponds to `efLib_particles_proc_main`,
+s_link 15 / p_link 11; `proc_aux` to the following p_link 12 proc. Each calls
+`hsd_8039CEAC` (particles) **before** `hsd_8039EE24` (generators). Main skips
+links 1 and 2; aux skips link 0. These are literal masks: links 3 and above
+can update in both procs, rather than forming two disjoint partitions.
+
+Particles occupy sixteen global head/next lists in ascending link order,
+with optional references back to generators. Newly emitted particles are
+prepended, interpreted immediately, and only then is the generator's count
+decreased by one. Generator allocation has an unusual insertion rule:
+after the current generator (the traversal cursor's successor), or after
+the head if the cursor is null or at the tail. It is not simple append.
+Supported instructions cannot create nested children; those opcodes error
+before any child state is invented.
+
+For a generator not masked or paused (`kind & 0x800`), joint attachment is
+updated, emission count accumulated, particles emitted while count >= 1,
+and then nonzero generator life decremented. Zero generator life means
+indefinite duration. Expiration with surviving children changes rate to 0
+and life to 1, retaining the generator. Thus **0 * Randf still draws**,
+including the tick the final child dies before generator removal. Type bit
+`0x80` kills children on generator expiration. An optional particle capacity
+models allocation failure: geometry still draws, but no particle script runs.
+
+Particle allocation sets life to descriptor life + 1 (u16 wrapping), wait to
+1 for nonempty bytecode, and white primary / transparent black environment
+color. Updates interpolate timers, decrement nonzero wait and interpret when
+it reaches zero, decrement life, delete on zero, then apply gravity,
+friction and velocity in that order. Pause freezes everything. A zero
+particle life wraps to 65535 on update; it is not the generator's indefinite
+life convention. Unknown instructions report `UnsupportedOpcode { opcode,
+pc }`; malformed reads and nonyielding scripts also return explicit errors.
+After an error, discard or restore the partial tick before continuing.
+
+## RNG sites and floating-point audit
+
+Addresses are the retail **branch instruction**, not the return address.
+`DrawLog` records these in exact execution order without replacing the shared
+RNG. There are seven distinct FD sites: one per-generator site and six
+per-emission sites.
+
+| Site | Symbol offset | Exact condition |
+|---|---|---|
+| `0x8039EF00` | `hsd_8039EE24+0xDC` | Generator eligible under link mask, not paused, emission rate >= 0; includes zero rate and no emissions |
+| `0x8039EB74` | `hsd_8039DAD4+0x10A0` | Each shape-8 emission; latitude range nonzero and distance from double pi >= float 0.001 |
+| `0x8039EBCC` | `hsd_8039DAD4+0x10F8` | Each shape-8 emission, after latitude selection, unconditionally |
+| `0x8039B088` | `hsd_8039930C+0x1D7C` | Interpreter reaches BA; primary red random delta, even if delta is zero |
+| `0x8039B0F4` | `hsd_8039930C+0x1DE8` | Same BA execution, green after red |
+| `0x8039B160` | `hsd_8039930C+0x1E54` | Same BA execution, blue after green |
+| `0x8039B1CC` | `hsd_8039930C+0x1EC0` | Same BA execution, alpha after blue |
+
+For FD, the radius is negative, suppressing shape-8's radius draw at
+`0x8039EBF0`; angle is nonnegative, suppressing the pre-loop angular draw.
+Its latitude range selects `EB74`; the alternative branch draws at `EB04`
+and `EB5C`. Generator creation additionally draws at `0x8039F250` when kind
+bit `0x100` is clear and rate is nonnegative. Other supported shapes/scripts
+have additional logged sites; the 6k+1 assertion applies only to this FD script.
+
+The audit used the retail DOL, with these reproducible commands:
+
+```sh
+cd harness
+uv run python asm.py hsd_8039DAD4 --fused
+uv run python asm.py hsd_8039930C --fused
+uv run python asm.py hsd_8039EE24 --fused
+uv run python asm.py hsd_8039F05C --fused
+```
+
+| Operation | Retail instructions reproduced |
+|---|---|
+| Emission accumulation | `EF0C` fmadds |
+| Velocity projection | `DEA0` rounded multiply then `DEA4` fmadds |
+| Disc/cone angle interpolation | `E0C8`, `E114`, `E314`, `E3A8`, `E3E8` fmadds |
+| Sphere position | `ED18`, `ED28`, `ED38` fmadds |
+| Scalar magnitudes and radii | Separate sums/products, then three double fnmsub Newton steps; same kernel as `gekko_math::msl::sqrtf` |
+| Sphere azimuth | Double pi multiplication, double multiplication by 2, then one f32 rounding |
+| BA/BB random color | Separate fmuls/fadds, signed byte delta, clamp, fctiwz and byte store |
+| A8 random position | `A4A4`, `A4EC`, `A528` fmsubs; position addition separate |
+| AC random size / BC random pose | `A818` / `B514` fmadds |
+| ED random rotation | `C8D8` fmadds for continuous random; discrete branch remains multiply/divide/add |
+| Particle physics / scalar interpolation | Separate operations, no fused multiply-add |
+
+Matrix operations reuse `hsd-anim`'s already audited paired-single kernels.
+Inverse trig is supplied via its `InverseTrig` interface; real tests use
+`melee-lb`'s retail implementation. No host libm is used in simulation.
+The existing `hsd-anim` normalization kernel documents its unresolved
+`FMULS FRC TRUNCATION PENDING` limitation; this port inherits it. No live
+Dolphin comparison of particle position/velocity bits has been claimed.
+
+## Opcode coverage
+
+Every byte in the supported ranges is exercised by behavior tests, including
+all vector/color masks, both wait encodings, and each texture-flip mode.
+Unsupported entries fail explicitly; they are not skipped as in the C
+switch's default case.
+
+| Bytes | Supported behavior |
+|---|---|
+| `00–3F` | Wait, including extended count and zero-time nop |
+| `40–7F` | Texture pose plus wait |
+| `80–87`, `88–8F` | Selective position set/add |
+| `90–97`, `98–9F` | Selective velocity set/add |
+| `A0`, `AC` | Size interpolation, deterministic/random |
+| `A1–A3` | Disable texture; gravity; friction |
+| `A6`, `A7`, `A8` | Random life; probabilistic deletion; random position offsets |
+| `AB`, `BE` | Scalar/component velocity multiplication |
+| `AD–B1` | Primary/environment and mirror flags |
+| `BA`, `BB` | Four signed random color deltas |
+| `BC` | Random texture pose |
+| `C0–CF`, `D0–DF` | Selective primary/environment target and duration |
+| `E3–E8` | Palette; S/T flip modes; direction flags; trail |
+| `ED` | Random rotation, continuous/discrete |
+| `FA`, `FB`, `FC`, `FD` | Counted loop mark/back; unconditional mark/jump |
+| `FE`, `FF` | End/delete |
+| All other bytes | `UnsupportedOpcode` |
+
+Not yet ported: child particle/generator creation/remaps (`A4/A5/AA/B9/EF–F2`),
+force/JObj operations, AppSRT transforms, material/ambient/alpha compare
+tracks, additional color/velocity operations, callbacks and user data.
+Generator shapes 2 (tornado), 5 (rectangle), and custom shapes error.
+Shapes 0/1/3/4/6/7/8 are supported; camera-facing generators error at emission
+and AppSRT generators error at creation. Deferred detach requests and
+arbitrary callback-created list mutations remain unimplemented. Other FD
+animations/effect kinds and the full stage's transitions are not validated.
+
+## Measured cold-start result and verification
+
+Run the real-archive test:
+
+```sh
+cargo test -p hsd-particle --test real_fd_particles -- --nocapture
+```
+
+It starts FD model 4 animation 0 at local tick 0 with seed 1, processes the
+one creation draw separately, and runs main then aux for 120 ticks. This is
+an isolated stage-animation cold start, **not** a complete match boot or a
+restored `idle_fd_fox.sav`. It verifies exact call-site order, 1+6 times the
+newly emitted cohort, every surviving age cohort, generator life and child
+count, and identical output on repetition.
+
+Per-tick draw counts:
+
+```text
+43,19,1,1,61,55,31,37,43,25,25,31,19,55,43,55,7,49,37,1,
+19,49,55,55,61,55,37,25,31,61,19,31,13,49,43,43,37,19,7,43,
+7,7,7,43,19,13,19,1,43,7,7,61,19,25,43,49,25,49,43,25,
+7,13,49,25,13,19,55,13,25,37,19,13,37,25,31,37,25,43,1,43,
+19,25,37,25,19,1,43,55,25,25,19,25,19,13,19,1,7,7,25,37,
+19,1,55,55,37,37,55,55,43,31,31,25,55,31,55,43,13,19,25,31
+```
+
+Final seed: `0xE7BBE242`. First twelve live populations:
+`7,10,10,10,13,19,24,30,27,22,21,20`.
+The recorded savestate ledger instead begins `61,13,43`; reproducing those
+counts requires its initial count/seed and whole-tick integration, not a
+hardcoded count sequence. The dump tools now expose that state.
+
+Capture three completed ticks from the existing savestate (repository root):
+
+```sh
+MELEE_PARTICLES_SAVESTATE="$PWD/harness/roms/idle_fd_fox.sav" \
+MELEE_PARTICLES_OUT="$PWD/harness/traces/idle_fd_fox.particles.jsonl" \
+MELEE_PARTICLES_TICKS=3 \
+"$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" \
+  -e "$PWD/harness/roms/GALE01.iso" \
+  --script "$PWD/harness/dolphin_particle_snippet.py" \
+  -v OGL -C Dolphin.Core.EmulationSpeed=0 \
+  -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 \
+  -C Dolphin.Core.SIDevice2=0 -C Dolphin.Core.SIDevice3=0
+```
+
+The `.done` sidecar signals completion; `.err` records capture failures.
+The snippet removes its listeners when complete; close Dolphin afterwards.
+Runtime struct fields central to replay are:
+
+| Struct | Layout (hex offsets) |
+|---|---|
+| Generator (`94` bytes) | next `00`, kind `04`, rate/count `08/0C`, JObj `10`, life/type `14/16`, program `20`, position/velocity `24/30`, child count `50`, aux `60..90` |
+| Particle (`98` bytes) | next `00`, kind `04`, wait `1A`, loop count `1C`, program `20`, PC/mark/loop PC `24/26/28`, life `2A`, velocity/position `2C/40`, generator `88`, AppSRT `8C` |
+| AppSRT (`A4` bytes) | generator `04`, translation/rotation/scale `08/14/24`, use count `32`, matrix `34`, ID `A0` |
+
+[PARTICLES_DUMP.md](PARTICLES_DUMP.md) contains capture details,
+the complete `0x94` generator / `0x98` particle / `0xA4` AppSRT layouts,
+canonical record fields and fake-memory tests. It captures the savestate's
+initial state separately from N completed scheduler ticks. No live capture
+was performed for this change. Restoring those records into Rust and
+comparing live numeric state remains follow-up work.
+
+Validation commands:
+
+```sh
+cargo gate
+cargo clippy --workspace --all-targets -- -D warnings
+cd harness && uv run python -m pytest -q
+```
+
+The sandboxed run uses `UV_CACHE_DIR=/tmp/melee-uv-cache` to keep uv's cache
+inside a writable directory. No test expectations were loosened. Source
+changes are confined to hsd-particle, the two harness scripts and their
+tests, and these two documentation files. Cargo also updates its lockfile
+for hsd-particle's hsd-anim dependency and melee-lb test dependency. Root
+Cargo.toml, hsd-anim, TRACKER.md, CLAUDE.md, third_party and harness/dolphin
+are unchanged; nothing was committed.
+
+Final verification: `cargo gate` passed (including all 35 hsd-particle tests with the disc present); workspace clippy passed with warnings denied; harness pytest passed, 181 tests.

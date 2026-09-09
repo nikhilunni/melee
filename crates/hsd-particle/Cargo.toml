@@ -8,3 +8,7 @@ description = "HSD particle generators and particles (sysdolphin generator.c, pa
 hsd-types = { path = "../hsd-types" }
 gekko-math = { path = "../gekko-math" }
 hsd-archive = { path = "../hsd-archive" }
+hsd-anim = { path = "../hsd-anim" }
+
+[dev-dependencies]
+melee-lb = { path = "../melee-lb" }
