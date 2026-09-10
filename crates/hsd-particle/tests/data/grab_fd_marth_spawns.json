@@ -1,14 +1,7 @@
 {
   "34": [
     {
-      "spawn": 9,
       "bank": 0,
-      "link": 0,
-      "position": [
-        0,
-        0,
-        0
-      ],
       "joint": {
         "id": 65538,
         "matrix": [
@@ -32,11 +25,15 @@
           ]
         ]
       },
-      "transform": null,
-      "mirror": false
+      "link": 0,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "spawn": 9
     },
     {
-      "update": 65538,
       "matrix": [
         [
           3003349086,
@@ -56,218 +53,208 @@
           3003349086,
           3038613672
         ]
-      ]
+      ],
+      "update": 65538
     }
   ],
   "47": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           3254675052,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "55": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           3247125308,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "63": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           3225419846,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "70": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           1092196743,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "79": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           1104045659,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "86": [
     {
-      "spawn": 263,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 263,
       "transform": {
+        "rotation": [
+          0,
+          1070141403,
+          0
+        ],
+        "scale": [
+          1065353216,
+          1065353216,
+          1065353216
+        ],
+        "status": 1,
         "translation": [
           1108973971,
           953267991,
           0
-        ],
-        "rotation": [
-          0,
-          1070141403,
-          0
-        ],
-        "scale": [
-          1065353216,
-          1065353216,
-          1065353216
-        ],
-        "status": 1
-      },
-      "mirror": false
+        ]
+      }
     }
   ],
   "89": [
     {
-      "spawn": 90,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 90,
       "transform": {
-        "translation": [
-          1110373820,
-          953267991,
-          0
-        ],
         "rotation": [
           0,
           1070141403,
@@ -278,28 +265,28 @@
           1065353216,
           1065353216
         ],
-        "status": 1
-      },
-      "mirror": false
+        "status": 1,
+        "translation": [
+          1110373820,
+          953267991,
+          0
+        ]
+      }
     }
   ],
   "121": [
     {
-      "spawn": 90,
       "bank": 0,
+      "joint": null,
       "link": 0,
+      "mirror": true,
       "position": [
         0,
         0,
         0
       ],
-      "joint": null,
+      "spawn": 90,
       "transform": {
-        "translation": [
-          1114793576,
-          953267991,
-          3216192307
-        ],
         "rotation": [
           0,
           3217625051,
@@ -310,21 +297,18 @@
           1065353216,
           1065353216
         ],
-        "status": 1
-      },
-      "mirror": true
+        "status": 1,
+        "translation": [
+          1114793576,
+          953267991,
+          3216192307
+        ]
+      }
     }
   ],
   "129": [
     {
-      "spawn": 261,
       "bank": 0,
-      "link": 0,
-      "position": [
-        0,
-        0,
-        0
-      ],
       "joint": {
         "id": 65543,
         "matrix": [
@@ -348,11 +332,15 @@
           ]
         ]
       },
-      "transform": null,
-      "mirror": false
+      "link": 0,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "spawn": 261
     },
     {
-      "update": 65543,
       "matrix": [
         [
           1060201201,
@@ -372,22 +360,21 @@
           1060201201,
           3206125982
         ]
-      ]
+      ],
+      "update": 65543
     }
   ],
   "165": [
     {
-      "spawn": 60,
       "bank": 0,
+      "joint": null,
       "link": 0,
       "position": [
         1110000059,
         953286656,
         0
       ],
-      "joint": null,
-      "transform": null,
-      "mirror": false
+      "spawn": 60
     }
   ]
 }
