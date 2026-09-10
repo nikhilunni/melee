@@ -37,24 +37,24 @@ fn finish_ground<C: CharacterCallbacks>(
     running: bool,
 ) -> Result<()> {
     match collide(
-        &mut fighter.physics,
-        &mut fighter.collision,
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
         map,
-        &mut fighter.skeleton,
-        fighter.animation.root,
-        fighter.input.current.stick.x,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.input.current.stick.x,
     ) {
         WaitGroundResult::Supported => {
             if running {
                 // ft_800844EC -> ftCo_8009EDA4 (ftCo_StopWall.c:16-30).
-                let wall = if fighter.physics.facing < 0.0 {
+                let wall = if fighter.core.physics.facing < 0.0 {
                     melee_types::mp::collide::RIGHT_WALL_HUG
                 } else {
                     melee_types::mp::collide::LEFT_WALL_HUG
                 };
-                if fighter.collision.data.env_flags as u32 & wall != 0
-                    && gekko_math::msl::fabsf(fighter.physics.ground_velocity)
-                        > fighter.attributes.walking.walk_max_vel
+                if fighter.core.collision.data.env_flags as u32 & wall != 0
+                    && gekko_math::msl::fabsf(fighter.core.physics.ground_velocity)
+                        > fighter.core.attributes.walking.walk_max_vel
                 {
                     unimplemented!("ftCo_StopWall.c:25-26: running wall impact -> StopWall");
                 }
@@ -80,22 +80,22 @@ fn fall_collision<C: CharacterCallbacks>(
     stop_at_ceiling: bool,
 ) -> Result<()> {
     air::begin_map(
-        &fighter.physics,
-        &mut fighter.collision,
-        &mut fighter.skeleton,
-        fighter.animation.root,
+        &fighter.core.physics,
+        &mut fighter.core.collision,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
     );
     if collide(
-        &mut fighter.physics,
-        &mut fighter.collision,
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
         map,
-        &mut fighter.skeleton,
-        fighter.animation.root,
-        fighter.status.ledge_cooldown == 0,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.status.ledge_cooldown == 0,
     ) {
         if special_landing {
             fighter.land_from_special_fall(assets)?;
-        } else if fighter.physics.self_velocity.y > assets.soft_landing_speed {
+        } else if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
             fighter.land();
             fighter.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
         } else {
@@ -104,7 +104,7 @@ fn fall_collision<C: CharacterCallbacks>(
     } else if fighter.try_grab_ledge(assets, map)? {
         // ft_800835B0: grabbing precedes the ceiling check.
     } else if stop_at_ceiling
-        && fighter.collision.data.env_flags as u32 & melee_types::mp::collide::CEILING_HUG != 0
+        && fighter.core.collision.data.env_flags as u32 & melee_types::mp::collide::CEILING_HUG != 0
     {
         unimplemented!("ft_081B.c:792-803 / ftCo_StopCeil.c:16-22: jump ceiling impact");
     }
@@ -115,27 +115,7 @@ pub fn revival<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: CollisionPhase<'_>,
 ) -> Result<()> {
-    let CollisionPhase { assets, map } = phase;
-    let _assets = assets.expect("airborne map needs proc_map_with_assets");
-
-    air::begin_map(
-        &fighter.physics,
-        &mut fighter.collision,
-        &mut fighter.skeleton,
-        fighter.animation.root,
-    );
-    let cd = &mut fighter.collision.data;
-    cd.last_pos = cd.cur_pos;
-    cd.cur_pos = fighter.physics.position;
-    let pose =
-        crate::collision::ecb::EcbPose::read(&mut fighter.skeleton, fighter.animation.root, cd);
-    if fighter.motion_state.id == melee_types::CommonMotionState::Rebirth {
-        map.air_collide_stay_ecb5(cd, Some(&|i| pose.position(i)));
-    } else if map.air_collide_ecb5(cd, Some(&|i| pose.position(i))) {
-        unimplemented!("ftCoD5A30: revival platform reaches floor");
-    }
-    fighter.physics.position = cd.cur_pos;
-    Ok(())
+    fighter.core.collision_revival(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_ThrownB (240).
@@ -143,9 +123,7 @@ pub fn thrown<C: CharacterCallbacks>(
     _fighter: &mut Fighter<C>,
     phase: CollisionPhase<'_>,
 ) -> Result<()> {
-    let CollisionPhase { assets, map: _ } = phase;
-    assert!(assets.is_some(), "airborne map needs proc_map_with_assets");
-    Ok(())
+    _fighter.core.collision_thrown(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227).
@@ -189,36 +167,7 @@ pub fn entry<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: CollisionPhase<'_>,
 ) -> Result<()> {
-    let CollisionPhase { assets, map } = phase;
-    let _assets = assets.expect("airborne map needs proc_map_with_assets");
-
-    air::begin_map(
-        &fighter.physics,
-        &mut fighter.collision,
-        &mut fighter.skeleton,
-        fighter.animation.root,
-    );
-    if fighter.motion_state.id != melee_types::CommonMotionState::Entry {
-        let MotionData::Entry(entry) = &fighter.state_data else {
-            panic!("entry data missing")
-        };
-        let was_airborne = fighter.physics.ground_or_air == melee_types::GroundOrAir::Air;
-        let supported = air::collide_entry(
-            &mut fighter.physics,
-            &mut fighter.collision,
-            map,
-            entry.collision_box,
-        );
-        if was_airborne && supported {
-            fighter.land();
-        } else if !was_airborne && !supported {
-            fighter.leave_ground();
-        }
-    }
-    fighter
-        .skeleton
-        .set_translate(fighter.animation.root, &fighter.physics.position);
-    Ok(())
+    fighter.core.collision_entry(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
@@ -265,17 +214,17 @@ pub fn escape_air<C: CharacterCallbacks>(
     let assets = assets.expect("airborne map needs proc_map_with_assets");
 
     air::begin_map(
-        &fighter.physics,
-        &mut fighter.collision,
-        &mut fighter.skeleton,
-        fighter.animation.root,
+        &fighter.core.physics,
+        &mut fighter.core.collision,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
     );
     if air::collide_air_dodge(
-        &mut fighter.physics,
-        &mut fighter.collision,
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
         map,
-        &mut fighter.skeleton,
-        fighter.animation.root,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
     ) {
         fighter.enter_special_landing(assets, false, assets.air_dodge.landing_lag)?;
     };
@@ -334,7 +283,7 @@ pub fn guard_set_off<C: CharacterCallbacks>(
     phase: CollisionPhase<'_>,
 ) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
-    let collide = if fighter.shield.allow_sdi {
+    let collide = if fighter.core.shield.allow_sdi {
         map_escape
     } else {
         map_ground_action
@@ -386,4 +335,66 @@ pub fn jump<C: CharacterCallbacks>(
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fall_collision(fighter, assets, map, air::collide_fall, false, true)?;
     Ok(())
+}
+
+impl FighterCore {
+    fn collision_revival(&mut self, phase: CollisionPhase<'_>) -> Result<()> {
+        let CollisionPhase { assets, map } = phase;
+        let _assets = assets.expect("airborne map needs proc_map_with_assets");
+
+        air::begin_map(
+            &self.physics,
+            &mut self.collision,
+            &mut self.skeleton,
+            self.animation.root,
+        );
+        let cd = &mut self.collision.data;
+        cd.last_pos = cd.cur_pos;
+        cd.cur_pos = self.physics.position;
+        let pose =
+            crate::collision::ecb::EcbPose::read(&mut self.skeleton, self.animation.root, cd);
+        if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
+            map.air_collide_stay_ecb5(cd, Some(&|i| pose.position(i)));
+        } else if map.air_collide_ecb5(cd, Some(&|i| pose.position(i))) {
+            unimplemented!("ftCoD5A30: revival platform reaches floor");
+        }
+        self.physics.position = cd.cur_pos;
+        Ok(())
+    }
+    fn collision_thrown(&mut self, phase: CollisionPhase<'_>) -> Result<()> {
+        let CollisionPhase { assets, map: _ } = phase;
+        assert!(assets.is_some(), "airborne map needs proc_map_with_assets");
+        Ok(())
+    }
+    fn collision_entry(&mut self, phase: CollisionPhase<'_>) -> Result<()> {
+        let CollisionPhase { assets, map } = phase;
+        let _assets = assets.expect("airborne map needs proc_map_with_assets");
+
+        air::begin_map(
+            &self.physics,
+            &mut self.collision,
+            &mut self.skeleton,
+            self.animation.root,
+        );
+        if self.motion_state.id != melee_types::CommonMotionState::Entry {
+            let MotionData::Entry(entry) = &self.state_data else {
+                panic!("entry data missing")
+            };
+            let was_airborne = self.physics.ground_or_air == melee_types::GroundOrAir::Air;
+            let supported = air::collide_entry(
+                &mut self.physics,
+                &mut self.collision,
+                map,
+                entry.collision_box,
+            );
+            if was_airborne && supported {
+                self.land();
+            } else if !was_airborne && !supported {
+                self.leave_ground();
+            }
+        }
+        self.skeleton
+            .set_translate(self.animation.root, &self.physics.position);
+        Ok(())
+    }
 }

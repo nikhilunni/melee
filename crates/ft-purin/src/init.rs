@@ -73,6 +73,7 @@ impl CharacterCallbacks for Jigglypuff {
 /// ftparts.c's PlCo table maps 50 joints to 54 parts; ftData.x1C has two groups.
 pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     kind: FighterKind::Purin,
+    common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Purin),
     data_file: "PlPr.dat",
     data_symbol: "ftDataPurin",
     animation_file: "PlPrAJ.dat",

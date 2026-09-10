@@ -1,4 +1,5 @@
 //! Entry / EntryStart / EntryEnd, ft/ft_0C31.c:25-331.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     effects::EffectRequest,
@@ -65,12 +66,12 @@ impl EntryState {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_800C61B0 (0x800C61B0), scene supplies Player_GetUnk4C delay.
     pub fn enter_match(&mut self, delay: i32, assets: &FighterAssets) -> Result<()> {
-        let scale = self.skeleton.scale(self.animation.root);
-        let ecb = self.collision.data.ecb;
+        let scale = self.core.skeleton.scale(self.core.animation.root);
+        let ecb = self.core.collision.data.ecb;
         let current_scale = Vec3::new(scale.x, assets.entry.initial_scale_y, scale.z);
-        self.state_data = MotionData::Entry(EntryState {
+        self.core.state_data = MotionData::Entry(EntryState {
             timer: delay,
-            origin_y: self.physics.position.y,
+            origin_y: self.core.physics.position.y,
             original_scale: scale,
             current_scale,
             trophy_height: 0.0,
@@ -83,34 +84,38 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 right: ecb.right,
             },
         });
-        self.skeleton.set_scale(self.animation.root, &current_scale);
+        self.core
+            .skeleton
+            .set_scale(self.core.animation.root, &current_scale);
         self.change_motion_state(CommonMotionState::Entry, assets)
     }
     pub(super) fn entry_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::Entry(entry) = &mut self.state_data else {
+        let MotionData::Entry(entry) = &mut self.core.state_data else {
             panic!("entry data missing")
         };
-        let Some(mut next) = entry.advance(self.motion_state.id, assets.entry) else {
+        let Some(mut next) = entry.advance(self.core.motion_state.id, assets.entry) else {
             return Ok(());
         };
         match next {
             CommonMotionState::EntryStart => {
                 // ftCo_800C6408: separate fmuls and double fmul (no FMA).
-                entry.trophy_scale = self.player.scale * self.attributes.size.trophy_scale;
+                entry.trophy_scale =
+                    self.core.player.scale * self.core.attributes.size.trophy_scale;
                 entry.trophy_height = (1.497345_f64 * f64::from(entry.trophy_scale)) as f32;
-                self.effects.push(EffectRequest::EntryWarp {
+                self.core.effects.push(EffectRequest::EntryWarp {
                     id: 0x43E,
                     scale: entry.original_scale,
                 });
             }
             CommonMotionState::EntryEnd => {
-                self.skeleton
-                    .set_scale(self.animation.root, &entry.original_scale);
-                self.physics.position.y = entry.origin_y + entry.trophy_height;
+                self.core
+                    .skeleton
+                    .set_scale(self.core.animation.root, &entry.original_scale);
+                self.core.physics.position.y = entry.origin_y + entry.trophy_height;
             }
             CommonMotionState::Fall => {
                 // ftCommon_8007D92C (0x8007D92C), ftcommon.c:596-604.
-                if self.physics.ground_or_air == GroundOrAir::Ground {
+                if self.core.physics.ground_or_air == GroundOrAir::Ground {
                     next = CommonMotionState::Wait;
                 }
             }
@@ -118,6 +123,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.change_motion_state(next, assets)
     }
+}
+impl FighterCore {
     /// Entry_Phys is empty. Start (0x800C6740) grows the trophy/model;
     /// End (0x800C6D38) shrinks the trophy while retaining model scale.
     pub(super) fn entry_physics(&mut self, parameters: EntryParameters) {

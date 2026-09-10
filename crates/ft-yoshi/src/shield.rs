@@ -63,9 +63,9 @@ pub fn leave_egg(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) {
     fighter.character.egg_hurtbox = None;
     fighter.commands.hurt_status = HurtStatus::Normal;
     let bone = usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"));
-    fighter.effects.push(EffectRequest::EggShell {
+    fighter.core.effects.push(EffectRequest::EggShell {
         bone,
-        scale: fighter.attributes.yoshi_egg.size,
+        scale: fighter.core.attributes.yoshi_egg.size,
     });
 }
 pub fn enter(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets, reflect: bool) -> Result<()> {
@@ -141,7 +141,10 @@ pub fn hold(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> 
         fighter.state_data = MotionData::Guard(guard);
     }
     fighter.change_motion_state(S::Guard, assets)?;
-    fighter.animation.reset_pose(&mut fighter.skeleton, false);
+    fighter
+        .core
+        .animation
+        .reset_pose(&mut fighter.core.skeleton, false);
     model(fighter, 1);
     egg_body(fighter);
     fighter.install_shield();

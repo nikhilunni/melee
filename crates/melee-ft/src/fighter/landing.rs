@@ -1,4 +1,5 @@
 //! ftCo_Landing.c:41-163, including direct crouch after landing lag.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -74,14 +75,52 @@ impl<C: CharacterCallbacks> Fighter<C> {
             0.0,
             rate,
         )?;
-        self.state_data = MotionData::Landing {
+        self.core.state_data = MotionData::Landing {
             allow_interrupt,
             retained_drop_timer,
         };
         self.character.on_landing(allow_interrupt);
         Ok(())
     }
-
+    /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
+    pub(super) fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        let retained_drop_timer = self.retained_drop_timer();
+        self.land();
+        self.change_motion_state(CommonMotionState::Landing, assets)?;
+        self.character.on_landing(true);
+        self.core.state_data = MotionData::Landing {
+            allow_interrupt: true,
+            retained_drop_timer,
+        };
+        Ok(())
+    }
+    /// ftCo_Landing_IASA -> fn_800D62C4 (800D62C4): direct SquatWait.
+    pub(super) fn enter_landing_squat(&mut self, assets: &FighterAssets) -> Result<()> {
+        let MotionData::Landing {
+            allow_interrupt,
+            retained_drop_timer,
+        } = self.core.state_data
+        else {
+            panic!("landing scratch missing")
+        };
+        self.change_motion_state(CommonMotionState::SquatWait, assets)?;
+        // SquatWait entry preserves both words; no Squat initialization runs.
+        self.core.state_data = MotionData::Squat(super::squat::SquatState {
+            platform_drop_pending: allow_interrupt,
+            platform_drop_timer: retained_drop_timer,
+        });
+        self.core.status.name_tag_timer = assets.name_tag_duration;
+        Ok(())
+    }
+    /// ftCo_Landing_Anim (0x800D5D3C): complete animation -> Wait.
+    pub(super) fn landing_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
+            self.change_motion_state(CommonMotionState::Wait, assets)?;
+        }
+        Ok(())
+    }
+}
+impl FighterCore {
     /// ftCommon_8007D7FC -> 8007D6A4 (ftcommon.c:550-595).
     /// Landing keeps vertical self velocity until the next ground Phys callback.
     pub fn land(&mut self) {
@@ -109,36 +148,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.collision.lock_frames = 0;
         self.collision.data.x130_flags &= !coll_data_x130::LOCKED;
     }
-    /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
-    pub(super) fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
-        let retained_drop_timer = self.retained_drop_timer();
-        self.land();
-        self.change_motion_state(CommonMotionState::Landing, assets)?;
-        self.character.on_landing(true);
-        self.state_data = MotionData::Landing {
-            allow_interrupt: true,
-            retained_drop_timer,
-        };
-        Ok(())
-    }
-    /// ftCo_Landing_IASA -> fn_800D62C4 (800D62C4): direct SquatWait.
-    pub(super) fn enter_landing_squat(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::Landing {
-            allow_interrupt,
-            retained_drop_timer,
-        } = self.state_data
-        else {
-            panic!("landing scratch missing")
-        };
-        self.change_motion_state(CommonMotionState::SquatWait, assets)?;
-        // SquatWait entry preserves both words; no Squat initialization runs.
-        self.state_data = MotionData::Squat(super::squat::SquatState {
-            platform_drop_pending: allow_interrupt,
-            platform_drop_timer: retained_drop_timer,
-        });
-        self.status.name_tag_timer = assets.name_tag_duration;
-        Ok(())
-    }
     /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
     /// Direct SquatWait entry inherits it as the inactive platform-drop timer
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
@@ -165,13 +174,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 "ftCo_Landing.c:41-50: scratch inheritance from unsupported landing source"
             ),
         }
-    }
-    /// ftCo_Landing_Anim (0x800D5D3C): complete animation -> Wait.
-    pub(super) fn landing_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
-            self.change_motion_state(CommonMotionState::Wait, assets)?;
-        }
-        Ok(())
     }
 }
 #[cfg(test)]

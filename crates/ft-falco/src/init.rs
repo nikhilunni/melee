@@ -56,6 +56,7 @@ impl CharacterCallbacks for Falco {
 pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
     melee_ft::fighter::assets::CharacterDescriptor {
         kind: FighterKind::Falco,
+        common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Falco),
         data_file: "PlFc.dat",
         data_symbol: "ftDataFalco",
         animation_file: "PlFcAJ.dat",

@@ -85,7 +85,7 @@ mod tests {
                 panic!("table-only character has no assets")
             }
             fn kind(&self) -> melee_types::FighterKind {
-                melee_types::FighterKind::Fox
+                panic!("table-only character has no runtime kind")
             }
             fn on_load(&mut self, _: &mut crate::fighter::Capabilities) {}
             fn on_reset(&mut self) {}

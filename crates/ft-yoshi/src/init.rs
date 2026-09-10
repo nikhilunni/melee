@@ -138,7 +138,7 @@ impl CharacterCallbacks for Yoshi {
         assets: &FighterAssets,
     ) -> Option<FighterResult<()>> {
         // ftYs_GuardOn_1_IASA calls the common GuardReflect IASA verbatim.
-        if fighter.motion_state.id == melee_types::CommonMotionState::GuardReflect {
+        if fighter.core.motion_state.id == melee_types::CommonMotionState::GuardReflect {
             None
         } else {
             Some(crate::shield::input(fighter, assets))
@@ -170,20 +170,22 @@ impl CharacterCallbacks for Yoshi {
         crate::shield::escape_finished(fighter, assets)
     }
     fn escape_animated(fighter: &mut Fighter<Self>) {
-        if fighter.motion_state.id != melee_types::CommonMotionState::EscapeN {
+        if fighter.core.motion_state.id != melee_types::CommonMotionState::EscapeN {
             crate::shield::material(fighter);
         }
     }
     fn aerial_jump_entered(fighter: &mut Fighter<Self>) {
         let attr = &fighter.character.attributes.double_jump;
-        fighter.combat.armor = attr.armor;
+        fighter.core.combat.armor = attr.armor;
         // retail 800CBFC4: separate fmuls; strict less-than comparison.
-        fighter.character.jump_turn_remaining =
-            if fighter.input.current.stick.x * fighter.physics.facing < -attr.reverse_threshold {
-                attr.turn_frames
-            } else {
-                0
-            };
+        fighter.character.jump_turn_remaining = if fighter.core.input.current.stick.x
+            * fighter.core.physics.facing
+            < -attr.reverse_threshold
+        {
+            attr.turn_frames
+        } else {
+            0
+        };
         Self::aerial_jump_animated(fighter);
     }
     /// ft_800CB6EC (800CB6EC): turn the model, reverse facing halfway through.
@@ -194,13 +196,13 @@ impl CharacterCallbacks for Yoshi {
         }
         *remaining -= 1;
         let frames = fighter.character.attributes.double_jump.turn_frames;
-        let root = fighter.animation.parts[0].joint;
-        let old = fighter.skeleton.get(root).rotate.y;
+        let root = fighter.core.animation.parts[0].joint;
+        let old = fighter.core.skeleton.get(root).rotate.y;
         // retail 800CB768 fdivs, 800CB76C fnmsubs; @197 is float PI/180.
         let angle = gekko_math::fma::fnmsubs(0.017453292, 180.0 / frames as f32, old);
-        fighter.skeleton.set_rotation_y(root, angle);
+        fighter.core.skeleton.set_rotation_y(root, angle);
         if *remaining == frames / 2 {
-            fighter.physics.facing = -fighter.physics.facing;
+            fighter.core.physics.facing = -fighter.core.physics.facing;
         }
     }
     fn aerial_jump_style(&self) -> AerialJumpStyle {
@@ -212,6 +214,7 @@ impl CharacterCallbacks for Yoshi {
 /// ftData.x2C is an empty dynamic-bone set (zero chains and colliders).
 pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     kind: FighterKind::Yoshi,
+    common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Yoshi),
     data_file: "PlYs.dat",
     data_symbol: "ftDataYoshi",
     animation_file: "PlYsAJ.dat",

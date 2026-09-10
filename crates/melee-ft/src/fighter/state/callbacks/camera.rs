@@ -4,15 +4,15 @@ use crate::fighter::*;
 
 /// ftCamera_UpdateCameraBox: ordinary rows track the fighter's camera box.
 pub fn follow_fighter<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: CameraPhase<'_>) {
-    update(fighter, phase, false);
+    update(&mut fighter.core, phase, false);
 }
 
 /// ftCo_Cliff_Cam (80081644): the scheduler notifies the ledge after updating.
 pub fn cliff<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: CameraPhase<'_>) {
-    update(fighter, phase, true);
+    update(&mut fighter.core, phase, true);
 }
 
-fn update<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: CameraPhase<'_>, on_ledge: bool) {
+fn update(fighter: &mut FighterCore, phase: CameraPhase<'_>, on_ledge: bool) {
     let CameraPhase {
         assets,
         zoom: fixed_zoom,

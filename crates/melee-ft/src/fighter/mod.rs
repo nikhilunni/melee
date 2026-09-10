@@ -69,41 +69,28 @@ pub trait CharacterCallbacks: Sized + 'static {
     }
 
     fn kind(&self) -> FighterKind;
-    /// ftCo_AttackS4.c decideFighter (8008C348): nonstandard character entry.
+    /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
     fn forward_smash_variant(&self) {
-        if matches!(
-            self.kind(),
-            FighterKind::Ness
-                | FighterKind::Peach
-                | FighterKind::GameWatch
-                | FighterKind::Pikachu
-                | FighterKind::Pichu
-        ) {
+        if Self::descriptor().common_behavior.forward_smash_entry {
             unimplemented!("ftCo_AttackS4: character entry hook");
         }
     }
     /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
     /// character-specific capture variants override this boundary.
     fn catch_variant(&mut self) {}
-    /// ftCo_ThrowB_Anim: Fox laser and special capture callbacks are character-owned.
+    /// ftCo_Throw.c:145-157,346-353: special capture and Fox laser callbacks.
     fn throw_variant(&self) {
-        if matches!(
-            self.kind(),
-            FighterKind::Fox | FighterKind::Samus | FighterKind::Kirby | FighterKind::Yoshi
-        ) {
+        if Self::descriptor().common_behavior.throw_callback {
             unimplemented!("ftCo_Throw.c: character throw callback hook");
         }
     }
 
     /// Explicit boundary for a character-owned hurt-capsule layout.
     fn check_hurtbox_interaction(&self) {}
-    /// decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
+    /// ftCo_Attack1.c:89-110, decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
     fn jab_variant(&self) {
-        match self.kind() {
-            FighterKind::GameWatch | FighterKind::Pikachu | FighterKind::Pichu => {
-                unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook")
-            }
-            _ => {}
+        if Self::descriptor().common_behavior.jab_entry {
+            unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook");
         }
     }
     /// The character's on-disc resources (`ft<Char>_Init_*` strings, part and
@@ -141,10 +128,7 @@ pub trait CharacterCallbacks: Sized + 'static {
 
     /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79.
     fn air_dodge_tether(&self) {
-        if matches!(
-            self.kind(),
-            FighterKind::Link | FighterKind::CLink | FighterKind::Samus
-        ) {
+        if Self::descriptor().common_behavior.air_dodge_tether {
             unimplemented!("ftCo_AirCatch.c:54-79: character tether hook");
         }
     }
@@ -152,18 +136,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83.
     /// Character crates reset their airborne special resources here.
     fn on_landing(&mut self, _allow_interrupt: bool) {
-        if matches!(
-            self.kind(),
-            FighterKind::Mario
-                | FighterKind::DrMario
-                | FighterKind::Peach
-                | FighterKind::Emblem
-                | FighterKind::GameWatch
-                | FighterKind::Popo
-                | FighterKind::Nana
-                | FighterKind::Kirby
-                | FighterKind::Mewtwo
-        ) {
+        if Self::descriptor().common_behavior.landing_reset {
             unimplemented!("ftCo_Landing.c:51-83: character landing reset hook");
         }
     }
@@ -172,14 +145,14 @@ pub trait CharacterCallbacks: Sized + 'static {
     fn guard_variant(&self, _commands: &mut commands::CommandState) {}
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
     fn escape_variant(
-        fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter<Self>,
         _assets: &assets::FighterAssets,
         rolling: bool,
     ) -> assets::Result<()>
     where
         Self: Sized,
     {
-        if rolling && fighter.character.kind() == FighterKind::Samus {
+        if rolling && Self::descriptor().common_behavior.morph_ball_roll {
             unimplemented!("ftCo_Escape.c:83-85: Samus morph-ball roll");
         }
         Ok(())
@@ -460,9 +433,35 @@ impl Status {
     }
 }
 
-/// Fighter (ft/types.h), composed from the verified subsystem owners.
-/// Physical position/facing have one owner, `physics`, rather than mirrors.
+/// Character-owned payload and live callback row (ft/types.h).
+/// Calculation owners live in the concrete core.
 pub struct Fighter<C: CharacterCallbacks> {
+    pub core: FighterCore,
+    pub character: C,
+    pub motion_row: MotionRow<C>,
+}
+impl<C: CharacterCallbacks> std::ops::Deref for Fighter<C> {
+    type Target = FighterCore;
+    fn deref(&self) -> &Self::Target {
+        &self.core
+    }
+}
+impl<C: CharacterCallbacks> std::ops::DerefMut for Fighter<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.core
+    }
+}
+impl<C: CharacterCallbacks> Fighter<C> {
+    /// Install callback and scalar state together, including during savestate import.
+    pub fn install_motion_row(&mut self, row: MotionRow<C>) {
+        self.core.motion_state = MotionState::new(row);
+        self.motion_row = row;
+    }
+}
+
+/// Shared fighter state and calculations, compiled independently of character.
+/// Position and facing have one owner: `physics`.
+pub struct FighterCore {
     /// kind (+004), initialized by Fighter_UnkInitLoad_80068914.
     pub kind: FighterKind,
     /// player_id (+00C) and Player slot metadata (pl/player.c).
@@ -479,13 +478,12 @@ pub struct Fighter<C: CharacterCallbacks> {
     /// GObj.hsd_obj: main skeleton; animation owns the secondary tree.
     pub skeleton: JObjTree,
     pub revival_platform: Option<life::RevivalPlatform>,
-    pub motion_state: MotionState<C>,
+    pub motion_state: MotionState,
     pub state_data: MotionData,
     pub combat: damage::CombatState,
     pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,
     pub effects: Vec<effects::EffectRequest>,
-    pub character: C,
     pub capabilities: Capabilities,
     pub cpu: CpuState,
     pub status: Status,

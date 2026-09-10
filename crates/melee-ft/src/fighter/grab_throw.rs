@@ -1,4 +1,5 @@
 //! Linked back throw: ftCo_Throw.c / ftCo_Thrown.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     caches::bone_position,
@@ -19,7 +20,7 @@ pub struct ThrownPose {
 }
 
 /// ftCo_800DD1E4 (800DD1E4): horizontal stick crossing before the other throws.
-pub fn back_throw_requested<C: CharacterCallbacks>(f: &Fighter<C>, assets: &FighterAssets) -> bool {
+pub fn back_throw_requested(f: &FighterCore, assets: &FighterAssets) -> bool {
     if f.motion_state.id != S::CatchWait {
         return false;
     }
@@ -46,60 +47,26 @@ pub fn enter_back_throw<V: CharacterCallbacks, A: CharacterCallbacks>(
     aa: &FighterAssets,
 ) -> Result<()> {
     attacker.character.throw_variant();
-    // 800DD4B0 --fused: separate weight multiplication, reciprocal division.
-    let rate = if attacker.attributes.combat.weight_independent_throws_mask & 2 != 0 {
-        1.0
-    } else {
-        1.0 / (victim.attributes.size.weight * aa.throw_weight_scale)
-    };
-    attacker.commands.variables[0] = 0;
-    attacker.commands.grab_release = false;
-    attacker.commands.throw_reverse = false;
+    let rate = prepare_back_throw(&victim.core, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(S::ThrowB, aa, 0.0, rate)?;
     attacker.step_animation(aa);
-    attacker.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-    let xrot =
-        victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
-    let saved_translation = victim.skeleton.translation(xrot);
-    victim.skeleton.set_rotation(
-        xrot,
-        &hsd_anim::quat::Quaternion {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: 0.0,
-        },
-    );
-    victim.physics.facing = attacker.physics.facing;
-    let mut motion = aa.motions[&263].clone();
-    motion.remap = Some(crate::anim::attach::MotionRemap {
-        source: aa.parts.clone(),
-        destination: va.parts.clone(),
-        source_masks: attacker
-            .animation
-            .parts
-            .iter()
-            .map(|part| part.motion_mask)
-            .collect(),
-    });
-    victim.commands.thrown_by = Some(attacker.spawn_number);
+    let (saved_translation, motion) =
+        prepare_thrown_pose(&mut victim.core, &mut attacker.core, va, aa);
     victim.change_motion_state_with_source(S::ThrownB, va, 0.0, rate, Some((aa, &motion)))?;
-    let hip =
-        victim.animation.parts[usize::from(va.parts.joint(FtPart::HipN).expect("HipN"))].joint;
-    victim.combat.thrown_pose = Some(ThrownPose {
+    finish_thrown_pose(
+        &mut victim.core,
+        &mut attacker.core,
+        va,
+        aa,
         saved_translation,
-        hip_translation: victim.skeleton.translation(hip),
-    });
-    victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-    victim.step_animation(va);
-    update_constraint(victim, attacker, va, aa);
+    );
     Ok(())
 }
 
 /// lb_8000C1C0: resolve the cross-fighter target before this fighter's callback.
-pub fn update_constraint<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
+pub fn update_constraint(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
     va: &FighterAssets,
     aa: &FighterAssets,
 ) {
@@ -114,7 +81,7 @@ pub fn update_constraint<V: CharacterCallbacks, A: CharacterCallbacks>(
     victim.skeleton.set_position_constraint(xrot, Some(target));
 }
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl FighterCore {
     /// ftCommon_8007E3EC (8007E3EC): proportion the borrowed HipN translation.
     pub(super) fn thrown_animation(&mut self, assets: &FighterAssets) {
         let hip = self.animation.parts
@@ -176,6 +143,20 @@ pub fn release_back_throw<V: CharacterCallbacks, A: CharacterCallbacks>(
     aa: &FighterAssets,
     map: &mut melee_mp::CollMap,
 ) -> Result<()> {
+    let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
+    victim.begin_damage_reaction(hit, va)?;
+    Ok(())
+}
+
+/// ftCo_800DDDE4 / ftCo_800DE7C0: release geometry and damage data,
+/// before the victim's character-aware motion entry.
+fn prepare_throw_release(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+) -> super::damage::ReceivedHit {
     attacker.commands.grab_release = false;
     if victim.input.current.stick != crate::input::Stick::default() {
         unimplemented!("ftCo_8008E5A4: throw DI");
@@ -260,19 +241,82 @@ pub fn release_back_throw<V: CharacterCallbacks, A: CharacterCallbacks>(
         .set_translate(victim.animation.root, &victim.physics.position);
     victim.combat.grab = None;
     attacker.combat.grab = None;
-    victim.begin_damage_reaction(
-        super::damage::ReceivedHit {
-            facing: -attacker.physics.facing,
-            facing_override: if descriptor.angle > 90 && descriptor.angle < 270 {
-                Some(attacker.physics.facing)
-            } else {
-                None
-            },
-            descriptor,
-            height: super::caches::HurtHeight::Middle,
-            knockback,
+    super::damage::ReceivedHit {
+        facing: -attacker.physics.facing,
+        facing_override: if descriptor.angle > 90 && descriptor.angle < 270 {
+            Some(attacker.physics.facing)
+        } else {
+            None
         },
-        va,
-    )?;
-    Ok(())
+        descriptor,
+        height: super::caches::HurtHeight::Middle,
+        knockback,
+    }
+}
+
+/// ftCo_800DD4B0: weight-dependent playback rate before captor motion entry.
+fn prepare_back_throw(victim: &FighterCore, attacker: &mut FighterCore, aa: &FighterAssets) -> f32 {
+    // 800DD4B0 --fused: separate weight multiplication, reciprocal division.
+    let rate = if attacker.attributes.combat.weight_independent_throws_mask & 2 != 0 {
+        1.0
+    } else {
+        1.0 / (victim.attributes.size.weight * aa.throw_weight_scale)
+    };
+    attacker.commands.variables[0] = 0;
+    attacker.commands.grab_release = false;
+    attacker.commands.throw_reverse = false;
+    rate
+}
+/// ftCo_800DD398 / ftCo_800DE3FC: pose remapping before victim motion entry.
+fn prepare_thrown_pose(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) -> (Vec3, crate::anim::Motion) {
+    attacker.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    let xrot =
+        victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
+    let saved_translation = victim.skeleton.translation(xrot);
+    victim.skeleton.set_rotation(
+        xrot,
+        &hsd_anim::quat::Quaternion {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            w: 0.0,
+        },
+    );
+    victim.physics.facing = attacker.physics.facing;
+    let mut motion = aa.motions[&263].clone();
+    motion.remap = Some(crate::anim::attach::MotionRemap {
+        source: aa.parts.clone(),
+        destination: va.parts.clone(),
+        source_masks: attacker
+            .animation
+            .parts
+            .iter()
+            .map(|part| part.motion_mask)
+            .collect(),
+    });
+    victim.commands.thrown_by = Some(attacker.spawn_number);
+    (saved_translation, motion)
+}
+/// ftCo_800DE3FC: retain HipN and apply the constraint after victim entry.
+fn finish_thrown_pose(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+    saved_translation: Vec3,
+) {
+    let hip =
+        victim.animation.parts[usize::from(va.parts.joint(FtPart::HipN).expect("HipN"))].joint;
+    victim.combat.thrown_pose = Some(ThrownPose {
+        saved_translation,
+        hip_translation: victim.skeleton.translation(hip),
+    });
+    victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    victim.step_animation(va);
+    update_constraint(victim, attacker, va, aa);
 }

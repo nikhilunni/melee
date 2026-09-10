@@ -1,5 +1,6 @@
 //! Ledge catch, wait, jump, climb and escape (ftcliffcommon.c / ftCo_Cliff*.c).
 //! Ledge positions come from map geometry and animated TransN.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -66,9 +67,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// The caller must mark fighter interactions; occupied-ledge arbitration
     /// (ft_80082E3C) is outside the isolated Fox / idle-opponent slice.
     pub(super) fn try_grab_ledge(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<bool> {
-        if self.input.current.stick.y <= -assets.ledge.grab_down_threshold
-            || self.status.ledge_grab_disabled
-            || self.collision.data.env_flags as u32 & collide::LEDGE_GRAB_MASK == 0
+        if self.core.input.current.stick.y <= -assets.ledge.grab_down_threshold
+            || self.core.status.ledge_grab_disabled
+            || self.core.collision.data.env_flags as u32 & collide::LEDGE_GRAB_MASK == 0
         {
             return Ok(false);
         }
@@ -77,83 +78,56 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCliffCommon_80081370 (80081370), ftcliffcommon.c:55-114.
     fn enter_cliff_catch(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<()> {
-        self.physics.facing =
-            if self.collision.data.env_flags as u32 & collide::LEFT_LEDGE_GRAB != 0 {
+        self.core.physics.facing =
+            if self.core.collision.data.env_flags as u32 & collide::LEFT_LEDGE_GRAB != 0 {
                 1.0
             } else {
                 -1.0
             };
-        let ledge_id = if self.physics.facing > 0.0 {
-            self.collision.data.ledge_id_left
+        let ledge_id = if self.core.physics.facing > 0.0 {
+            self.core.collision.data.ledge_id_left
         } else {
-            self.collision.data.ledge_id_right
+            self.core.collision.data.ledge_id_right
         };
         self.leave_ground();
         self.change_motion_state(S::CliffCatch, assets)?;
         self.step_animation(assets);
         self.leave_ground();
-        self.status.name_tag_timer = assets.name_tag_duration;
+        self.core.status.name_tag_timer = assets.name_tag_duration;
         self.clear_movement();
-        self.status.grab_exclusions = GrabExclusions::ALL;
-        self.status.on_ledge = true;
+        self.core.status.grab_exclusions = GrabExclusions::ALL;
+        self.core.status.on_ledge = true;
         // Only ledge_id is written by catch. The other scratch words are
         // initialized by CliffWait before they are read.
-        self.state_data = MotionData::Cliff(CliffState {
+        self.core.state_data = MotionData::Cliff(CliffState {
             ledge_id,
             wait_frames: 0.0,
             neutral_seen: false,
         });
         self.ledge_physics(assets, map)?;
-        self.effects.push(super::effects::EffectRequest::LedgeGrab {
-            position: self.ledge_position(map, ledge_id),
-        });
+        self.core
+            .effects
+            .push(super::effects::EffectRequest::LedgeGrab {
+                position: self.ledge_position(map, ledge_id),
+            });
         Ok(())
-    }
-    /// ftCommon_8007E2FC (8007E2FC): clear every movement source.
-    pub(super) fn clear_movement(&mut self) {
-        self.physics.ground_acceleration = 0.0;
-        self.physics.secondary_ground_acceleration = 0.0;
-        self.physics.animation_velocity = Vec3::ZERO;
-        self.physics.ground_velocity = 0.0;
-        self.physics.self_velocity = Vec3::ZERO;
-        self.physics.ground_knockback_velocity = 0.0;
-        self.physics.knockback_velocity = Vec3::ZERO;
-        self.physics.ground_shield_knockback_velocity = 0.0;
-        self.physics.shield_knockback_velocity = Vec3::ZERO;
-    }
-    fn ledge_position(&self, map: &CollMap, ledge_id: i32) -> Vec3 {
-        if self.physics.facing > 0.0 {
-            map.floor_chain_left_end_id0(ledge_id)
-        } else {
-            map.floor_chain_right_end_id0(ledge_id)
-        }
     }
     /// ftCo_CliffCatch_Phys (80081544); also CliffWait/CliffJump1 physics.
     pub(super) fn ledge_physics(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<()> {
-        let MotionData::Cliff(cliff) = &self.state_data else {
+        let MotionData::Cliff(cliff) = &self.core.state_data else {
             panic!("cliff scratch missing")
         };
         if !map.line_is_active(cliff.ledge_id) {
             return self.change_motion_state(S::Fall, assets);
         }
-        let edge = self.ledge_position(map, cliff.ledge_id);
-        let translation = self
-            .animation
-            .root_motion
-            .as_ref()
-            .expect("ledge TransN")
-            .primary_history
-            .position;
-        // Retail 800815A8 / 8009AD1C fmadds, then separate 800815B8 / 8009AD2C fadds.
-        self.physics.position.x = fmadds(translation.z, self.physics.facing, edge.x);
-        self.physics.position.y = edge.y + translation.y;
+        self.core.place_at_ledge(map, cliff.ledge_id);
         Ok(())
     }
     /// CliffCatch_Anim (80081504), CliffWait_Anim (8009A8D8),
     /// CliffJump1_Anim (8009B278), ftCo_8009B2F8 (8009B2F8).
     pub(super) fn ledge_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.motion_state.id == S::CliffWait {
-            let MotionData::Cliff(cliff) = &mut self.state_data else {
+        if self.core.motion_state.id == S::CliffWait {
+            let MotionData::Cliff(cliff) = &mut self.core.state_data else {
                 panic!("cliff scratch missing")
             };
             if cliff.wait_frames > 0.0 {
@@ -161,49 +135,51 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             return Ok(());
         }
-        if self.animation.frames_remaining(&self.skeleton) {
+        if self.core.animation.frames_remaining(&self.core.skeleton) {
             return Ok(());
         }
-        match self.motion_state.id {
+        match self.core.motion_state.id {
             S::CliffCatch => {
                 // ftCo_8009A804 (8009A804), ftCo_CliffWait.c:22-40.
                 self.change_motion_state(S::CliffWait, assets)?;
-                self.status.grab_exclusions = GrabExclusions::ALL;
-                self.status.on_ledge = true;
-                let MotionData::Cliff(cliff) = &mut self.state_data else {
+                self.core.status.grab_exclusions = GrabExclusions::ALL;
+                self.core.status.on_ledge = true;
+                let MotionData::Cliff(cliff) = &mut self.core.state_data else {
                     panic!("cliff scratch missing")
                 };
                 cliff.neutral_seen = false;
                 cliff.wait_frames = assets.ledge.wait_frames
-                    [usize::from(self.physics.percent >= assets.ledge.slow_damage as f32)];
-                self.status.ledge_intangibility = self
+                    [usize::from(self.core.physics.percent >= assets.ledge.slow_damage as f32)];
+                self.core.status.ledge_intangibility = self
+                    .core
                     .status
                     .ledge_intangibility
                     .max(assets.ledge.intangible_frames);
             }
             S::CliffJumpQuick1 | S::CliffJumpSlow1 => {
-                let MotionData::Cliff(cliff) = &self.state_data else {
+                let MotionData::Cliff(cliff) = &self.core.state_data else {
                     panic!("cliff scratch missing")
                 };
                 let retained_wait_frames = cliff.wait_frames;
-                let next = if self.motion_state.id == S::CliffJumpQuick1 {
+                let next = if self.core.motion_state.id == S::CliffJumpQuick1 {
                     S::CliffJumpQuick2
                 } else {
                     S::CliffJumpSlow2
                 };
                 self.change_motion_state(next, assets)?;
                 self.step_animation(assets);
-                self.state_data = MotionData::CliffJump(CliffJumpState {
+                self.core.state_data = MotionData::CliffJump(CliffJumpState {
                     physics_started: false,
                     retained_wait_frames,
                 });
                 // Retail 8009B368 fmadds: preserve any prior horizontal momentum.
-                self.physics.self_velocity.x = fmadds(
-                    self.physics.facing,
-                    self.attributes.ledge.ledge_jump_horizontal_velocity,
-                    self.physics.self_velocity.x,
+                self.core.physics.self_velocity.x = fmadds(
+                    self.core.physics.facing,
+                    self.core.attributes.ledge.ledge_jump_horizontal_velocity,
+                    self.core.physics.self_velocity.x,
                 );
-                self.physics.self_velocity.y = self.attributes.ledge.ledge_jump_vertical_velocity;
+                self.core.physics.self_velocity.y =
+                    self.core.attributes.ledge.ledge_jump_vertical_velocity;
             }
             S::CliffJumpQuick2 | S::CliffJumpSlow2 => self.change_motion_state(S::Fall, assets)?,
             _ => unreachable!(),
@@ -212,56 +188,58 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_CliffWait_IASA (8009A8FC): attack, escape, jump, stick option, timeout.
     pub(super) fn ledge_input(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.input.current.cstick != crate::input::Stick::default() {
+        if self.core.input.current.cstick != crate::input::Stick::default() {
             unimplemented!("ftCo_CliffWait.c:53-56 / ft_0DF1.c:130-159: C-stick ledge options");
         }
-        if self.input.pressed.intersects(Buttons::A | Buttons::B) {
+        if self.core.input.pressed.intersects(Buttons::A | Buttons::B) {
             unimplemented!("ftCo_CliffAttack.c:29-49: CliffAttack entry");
         }
-        if self.input.pressed.intersects(Buttons::SHIELD) {
+        if self.core.input.pressed.intersects(Buttons::SHIELD) {
             return self.enter_cliff_option(assets, S::CliffEscapeQuick);
         }
-        let jump = self.input.pressed.intersects(Buttons::XY)
-            || (self.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
-                && i32::from(self.input.vertical.tilt) < assets.input.thresholds.tap_jump_window);
+        let jump = self.core.input.pressed.intersects(Buttons::XY)
+            || (self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
+                && i32::from(self.core.input.vertical.tilt)
+                    < assets.input.thresholds.tap_jump_window);
         if jump {
-            let next = if self.physics.percent < assets.ledge.slow_damage as f32 {
+            let next = if self.core.physics.percent < assets.ledge.slow_damage as f32 {
                 S::CliffJumpQuick1
             } else {
                 S::CliffJumpSlow1
             };
             self.change_motion_state(next, assets)?;
             self.step_animation(assets);
-            self.status.on_ledge = true;
-            self.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
+            self.core.status.on_ledge = true;
+            self.core.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
             return Ok(());
         }
-        let MotionData::Cliff(cliff) = &mut self.state_data else {
+        let MotionData::Cliff(cliff) = &mut self.core.state_data else {
             panic!("cliff scratch missing")
         };
-        let stick = self.input.current.stick;
+        let stick = self.core.input.current.stick;
         if fabsf(stick.x) >= assets.ledge.option_threshold
             || fabsf(stick.y) >= assets.ledge.option_threshold
         {
             let angle = melee_lb::trigf::atan2f(stick.y, fabsf(stick.x));
             let climb = angle > assets.ledge.option_angle
-                || (angle > -assets.ledge.option_angle && stick.x * self.physics.facing >= 0.0);
+                || (angle > -assets.ledge.option_angle
+                    && stick.x * self.core.physics.facing >= 0.0);
             if cliff.neutral_seen {
                 if climb {
                     return self.enter_cliff_option(assets, S::CliffClimbQuick);
                 }
-                self.status.ledge_cooldown = assets.ledge.cooldown;
+                self.core.status.ledge_cooldown = assets.ledge.cooldown;
                 self.change_motion_state(S::Fall, assets)?;
                 return Ok(());
             }
         } else {
             cliff.neutral_seen = true;
         }
-        let MotionData::Cliff(cliff) = &self.state_data else {
+        let MotionData::Cliff(cliff) = &self.core.state_data else {
             unreachable!()
         };
         if cliff.wait_frames <= 0.0 {
-            self.status.ledge_cooldown = assets.ledge.cooldown;
+            self.core.status.ledge_cooldown = assets.ledge.cooldown;
             unimplemented!("ftCo_CliffWait.c:74-79: ledge timeout -> DamageFall");
         }
         Ok(())
@@ -269,23 +247,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_8009AB9C / ftCo_8009B040 (8009AB9C / 8009B040),
     /// ftCo_CliffClimb.c:73-85 / ftCo_CliffEscape.c:14-28.
     fn enter_cliff_option(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
-        if self.physics.percent >= assets.ledge.slow_damage as f32 {
+        if self.core.physics.percent >= assets.ledge.slow_damage as f32 {
             unimplemented!("ftCo_CliffClimb.c:76-78 / ftCo_CliffEscape.c:17-19: Slow ledge option");
         }
         self.change_motion_state(state, assets)?;
         self.step_animation(assets);
-        self.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
-        self.status.on_ledge = true;
-        self.status.ignore_fighter_nudge = true;
+        self.core.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
+        self.core.status.on_ledge = true;
+        self.core.status.ignore_fighter_nudge = true;
         // The first Phys snaps the stepped TransN before ground detection.
         Ok(())
     }
     /// ftCo_CliffClimb_Anim / ftCo_CliffEscape_Anim (8009AC68 / 8009B10C),
     /// then ftCommon_8007D92C (8007D92C): ground -> Wait, air -> Fall.
     pub(super) fn cliff_climb_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(
-                if self.physics.ground_or_air == melee_types::GroundOrAir::Air {
+                if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
                     S::Fall
                 } else {
                     S::Wait
@@ -301,12 +279,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         map: &CollMap,
     ) -> Result<()> {
-        if self.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
             self.ledge_physics(assets, map)?;
-            if self.motion_state.id == S::Fall {
+            if self.core.motion_state.id == S::Fall {
                 return Ok(());
             }
             let translation = self
+                .core
                 .animation
                 .root_motion
                 .as_ref()
@@ -314,56 +293,20 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 .primary_history
                 .position;
             if translation.z >= 0.0 && translation.y >= 0.0 {
-                let MotionData::Cliff(cliff) = &self.state_data else {
+                let MotionData::Cliff(cliff) = &self.core.state_data else {
                     panic!("cliff scratch missing")
                 };
-                self.collision.data.floor.index = cliff.ledge_id;
+                self.core.collision.data.floor.index = cliff.ledge_id;
                 self.land();
             }
         } else {
-            // ft_80084FA8 (80084FA8) -> ft_80085030 (80085030).
-            if self
-                .animation
-                .flags
-                .contains(crate::anim::MotionFlags::ROOT_MOTION)
-            {
-                let offset = self
-                    .animation
-                    .root_motion
-                    .as_ref()
-                    .expect("ledge TransN")
-                    .primary_history
-                    .offset
-                    .z;
-                // Retail 8008505C fmsubs.
-                self.physics.ground_acceleration = gekko_math::fma::fmsubs(
-                    offset,
-                    self.physics.facing,
-                    self.physics.ground_velocity,
-                );
-            } else {
-                let friction = crate::physics::friction::wait_friction(
-                    self.physics.ground_velocity,
-                    self.attributes.ground.ground_friction,
-                    self.attributes.walking.walk_max_vel,
-                    assets.common.friction_when_above_walk_speed,
-                );
-                self.physics.ground_acceleration = crate::physics::friction::friction_acceleration(
-                    self.physics.ground_velocity,
-                    friction,
-                );
-            }
-            crate::physics::grounded::apply_ground_movement(
-                &mut self.physics,
-                self.collision.data.floor.normal,
-                map.floor_speed_scale(&self.collision.data),
-            );
+            self.core.cliff_ground_physics(assets, map);
         }
         Ok(())
     }
     /// ftCo_CliffJump2_Phys (8009B464): skip gravity only on the launch tick.
     pub(super) fn ledge_jump_physics(&mut self, assets: &FighterAssets) {
-        let MotionData::CliffJump(jump) = &mut self.state_data else {
+        let MotionData::CliffJump(jump) = &mut self.core.state_data else {
             panic!("ledge jump scratch missing")
         };
         if !jump.physics_started {
@@ -379,14 +322,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         map: &mut CollMap,
     ) -> Result<()> {
         use crate::collision::{air, ecb::EcbPose};
-        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
             let result = crate::collision::ground::map_escape(
-                &mut self.physics,
-                &mut self.collision,
+                &mut self.core.physics,
+                &mut self.core.collision,
                 map,
-                &mut self.skeleton,
-                self.animation.root,
-                self.input.current.stick.x,
+                &mut self.core.skeleton,
+                self.core.animation.root,
+                self.core.input.current.stick.x,
             );
             if result == crate::collision::ground::WaitGroundResult::EnterFall {
                 self.change_motion_state(S::Fall, assets)?;
@@ -394,24 +337,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return Ok(());
         }
         air::begin_map(
-            &self.physics,
-            &mut self.collision,
-            &mut self.skeleton,
-            self.animation.root,
+            &self.core.physics,
+            &mut self.core.collision,
+            &mut self.core.skeleton,
+            self.core.animation.root,
         );
-        let cd = &mut self.collision.data;
+        let cd = &mut self.core.collision.data;
         cd.last_pos = cd.cur_pos;
-        cd.cur_pos = self.physics.position;
-        let pose = EcbPose::read(&mut self.skeleton, self.animation.root, cd);
+        cd.cur_pos = self.core.physics.position;
+        let pose = EcbPose::read(&mut self.core.skeleton, self.core.animation.root, cd);
         let landed = map.air_collide_ecb10(cd, Some(&|i| pose.position(i)));
-        self.physics.position = cd.cur_pos;
+        self.core.physics.position = cd.cur_pos;
         if landed {
             if matches!(
-                self.motion_state.id,
+                self.core.motion_state.id,
                 S::CliffClimbQuick | S::CliffEscapeQuick | S::CliffJumpQuick1 | S::CliffJumpSlow1
             ) {
                 self.land();
-            } else if self.physics.self_velocity.y > assets.soft_landing_speed {
+            } else if self.core.physics.self_velocity.y > assets.soft_landing_speed {
                 self.land();
                 self.change_motion_state(S::Wait, assets)?;
             } else {
@@ -420,8 +363,87 @@ impl<C: CharacterCallbacks> Fighter<C> {
         } else if cd.env_flags as u32 & collide::CEILING_HUG != 0 {
             unimplemented!("ftcliffcommon.c:153-156 / ftCo_StopCeil.c:16-22: ledge ceiling impact");
         }
-        self.skeleton
-            .set_translate(self.animation.root, &self.physics.position);
+        self.core
+            .skeleton
+            .set_translate(self.core.animation.root, &self.core.physics.position);
         Ok(())
+    }
+}
+impl FighterCore {
+    /// ftCommon_8007E2FC (8007E2FC): clear every movement source.
+    pub(super) fn clear_movement(&mut self) {
+        self.physics.ground_acceleration = 0.0;
+        self.physics.secondary_ground_acceleration = 0.0;
+        self.physics.animation_velocity = Vec3::ZERO;
+        self.physics.ground_velocity = 0.0;
+        self.physics.self_velocity = Vec3::ZERO;
+        self.physics.ground_knockback_velocity = 0.0;
+        self.physics.knockback_velocity = Vec3::ZERO;
+        self.physics.ground_shield_knockback_velocity = 0.0;
+        self.physics.shield_knockback_velocity = Vec3::ZERO;
+    }
+    pub(super) fn ledge_position(&self, map: &CollMap, ledge_id: i32) -> Vec3 {
+        if self.physics.facing > 0.0 {
+            map.floor_chain_left_end_id0(ledge_id)
+        } else {
+            map.floor_chain_right_end_id0(ledge_id)
+        }
+    }
+}
+
+impl FighterCore {
+    /// ft_80084FA8 / ft_80085030 (80085030): grounded ledge root motion.
+    fn cliff_ground_physics(&mut self, assets: &FighterAssets, map: &CollMap) {
+        // ft_80084FA8 (80084FA8) -> ft_80085030 (80085030).
+        if self
+            .animation
+            .flags
+            .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            let offset = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("ledge TransN")
+                .primary_history
+                .offset
+                .z;
+            // Retail 8008505C fmsubs.
+            self.physics.ground_acceleration =
+                gekko_math::fma::fmsubs(offset, self.physics.facing, self.physics.ground_velocity);
+        } else {
+            let friction = crate::physics::friction::wait_friction(
+                self.physics.ground_velocity,
+                self.attributes.ground.ground_friction,
+                self.attributes.walking.walk_max_vel,
+                assets.common.friction_when_above_walk_speed,
+            );
+            self.physics.ground_acceleration = crate::physics::friction::friction_acceleration(
+                self.physics.ground_velocity,
+                friction,
+            );
+        }
+        crate::physics::grounded::apply_ground_movement(
+            &mut self.physics,
+            self.collision.data.floor.normal,
+            map.floor_speed_scale(&self.collision.data),
+        );
+    }
+}
+
+impl FighterCore {
+    /// ftCo_CliffCatch_Phys (80081544): active ledge plus animated TransN.
+    fn place_at_ledge(&mut self, map: &CollMap, ledge_id: i32) {
+        let edge = self.ledge_position(map, ledge_id);
+        let translation = self
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("ledge TransN")
+            .primary_history
+            .position;
+        // Retail 800815A8 / 8009AD1C fmadds, then separate 800815B8 / 8009AD2C fadds.
+        self.physics.position.x = fmadds(translation.z, self.physics.facing, edge.x);
+        self.physics.position.y = edge.y + translation.y;
     }
 }

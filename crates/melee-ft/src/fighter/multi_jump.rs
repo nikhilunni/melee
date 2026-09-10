@@ -1,7 +1,7 @@
 //! Kirby/Jigglypuff shared multijumps: ftCommon/ftCo_JumpAerialF1.c.
 use super::{
     assets::{FighterAssets, Result},
-    ActionId, CharacterCallbacks, Fighter, MotionData,
+    ActionId, CharacterCallbacks, Fighter, FighterCore, MotionData,
 };
 use crate::input::Buttons;
 use hsd_types::Vec3;
@@ -46,28 +46,29 @@ pub struct MultiJumpState {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ft_did_jump (800CB804), ftCo_800D730C (800D730C).
     pub(super) fn aerial_jump_requested(&self, assets: &FighterAssets) -> bool {
-        if i32::from(self.physics.jumps_used) >= self.attributes.jumping.max_jumps {
+        if i32::from(self.core.physics.jumps_used) >= self.core.attributes.jumping.max_jumps {
             return false;
         }
         let threshold = assets.input.thresholds.tap_jump_threshold;
         if let Some(attributes) = self.character.multi_jump_attributes() {
-            if self.physics.jumps_used != 1 {
+            if self.core.physics.jumps_used != 1 {
                 // Later jumps accept held input once the current script opens
                 // its jump window. Falling states do not require that command.
-                return (!attributes.contains_action(i32::from(self.motion_state.action))
-                    || self.commands.variables[0] != 0)
-                    && (self.input.current.stick.y >= threshold
-                        || self.input.current.held.intersects(Buttons::XY));
+                return (!attributes.contains_action(i32::from(self.core.motion_state.action))
+                    || self.core.commands.variables[0] != 0)
+                    && (self.core.input.current.stick.y >= threshold
+                        || self.core.input.current.held.intersects(Buttons::XY));
             }
         }
-        self.input.pressed.intersects(Buttons::XY)
-            || (self.input.current.stick.y >= threshold
-                && i32::from(self.input.vertical.tilt) < assets.input.thresholds.tap_jump_window)
+        self.core.input.pressed.intersects(Buttons::XY)
+            || (self.core.input.current.stick.y >= threshold
+                && i32::from(self.core.input.vertical.tilt)
+                    < assets.input.thresholds.tap_jump_window)
     }
 
     /// ftCo_800D74A4 (800D74A4) -> ftCo_800CBAC4 (800CBAC4).
     pub(super) fn enter_multi_jump(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.physics.jumps_used == 1 {
+        if self.core.physics.jumps_used == 1 {
             self.leave_ground();
         }
         let attributes = self
@@ -75,7 +76,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             .multi_jump_attributes()
             .expect("multijump attributes");
         let index = usize::from(
-            self.physics
+            self.core
+                .physics
                 .jumps_used
                 .checked_sub(1)
                 .expect("airborne jump count"),
@@ -86,21 +88,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let action = ActionId(u16::try_from(first + index as i32).expect("multijump action"));
         // retail 800D74EC fmuls; vertical impulses are loaded directly.
         let velocity = Vec3::new(
-            self.input.current.stick.x * attributes.horizontal_impulse,
+            self.core.input.current.stick.x * attributes.horizontal_impulse,
             attributes.vertical_impulses[index],
             0.0,
         );
         let turn_frames = attributes.turn_frames;
         let threshold = attributes.reverse_threshold;
         let retained_drop_timer = self.retained_drop_timer();
-        self.commands.variables[0] = 0;
+        self.core.commands.variables[0] = 0;
         self.change_motion_state_with_rate(action, assets, 0.0, 1.0)?;
-        self.physics.self_velocity = velocity;
+        self.core.physics.self_velocity = velocity;
         // arg3=false: unlike basic double jumps, keep the vertical tilt age.
-        self.physics.jumps_used += 1;
+        self.core.physics.jumps_used += 1;
         // retail 800D7554 fmuls; turn facing halfway through, not at entry.
-        self.state_data = MotionData::MultiJump(MultiJumpState {
-            turn_remaining: if self.input.current.stick.x * self.physics.facing < -threshold {
+        self.core.state_data = MotionData::MultiJump(MultiJumpState {
+            turn_remaining: if self.core.input.current.stick.x * self.core.physics.facing
+                < -threshold
+            {
                 turn_frames
             } else {
                 0
@@ -113,7 +117,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     /// ft_800CB6EC (800CB6EC): model turning also shared with Yoshi/Ness.
     fn multi_jump_turn(&mut self) {
-        let MotionData::MultiJump(jump) = &mut self.state_data else {
+        let MotionData::MultiJump(jump) = &mut self.core.state_data else {
             panic!("multijump scratch")
         };
         if jump.turn_remaining == 0 {
@@ -121,21 +125,16 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         jump.turn_remaining -= 1;
         let frames = self.character.multi_jump_attributes().unwrap().turn_frames;
-        let root = self.animation.root;
-        let old = self.skeleton.get(root).rotate.y;
-        // retail 800CB768 fdivs, 800CB76C fnmsubs; @197 = float PI/180.
-        let angle = gekko_math::fma::fnmsubs(0.017453292, 180.0 / frames as f32, old);
-        self.skeleton.set_rotation_y(root, angle);
-        if jump.turn_remaining == frames / 2 {
-            self.physics.facing = -self.physics.facing;
-        }
+        self.core.turn_multi_jump_model(frames);
     }
 
     /// ftCo_JumpAerialF1_Anim (800D7590): Fall until every jump is consumed.
     pub(super) fn multi_jump_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         self.multi_jump_turn();
-        if !self.animation.frames_remaining(&self.skeleton) {
-            let state = if i32::from(self.physics.jumps_used) >= self.attributes.jumping.max_jumps {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
+            let state = if i32::from(self.core.physics.jumps_used)
+                >= self.core.attributes.jumping.max_jumps
+            {
                 CommonMotionState::FallAerial
             } else {
                 CommonMotionState::Fall
@@ -149,6 +148,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn multi_jump_physics(&mut self, assets: &FighterAssets) {
         self.apply_fall_gravity(assets);
         let attributes = self.character.multi_jump_attributes().unwrap();
+        self.core.multi_jump_drift(assets, attributes);
+    }
+}
+
+impl FighterCore {
+    /// ftCo_JumpAerialF1_Phys (800D7634): drift after gravity and the attribute hook.
+    fn multi_jump_drift(&mut self, assets: &FighterAssets, attributes: &MultiJumpAttributes) {
         let air = &self.attributes.air;
         // retail 800D765C/64 and 80084EA8/AC: separate fmuls, no fusion.
         let acceleration = air.air_drift_stick_mul * attributes.acceleration_multiplier;
@@ -165,5 +171,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
             target,
             air,
         );
+    }
+}
+
+impl FighterCore {
+    /// ft_800CB6EC (800CB6EC): model rotation after the turn-frames hook.
+    fn turn_multi_jump_model(&mut self, frames: i32) {
+        let MotionData::MultiJump(jump) = &mut self.state_data else {
+            unreachable!()
+        };
+        let root = self.animation.root;
+        let old = self.skeleton.get(root).rotate.y;
+        // retail 800CB768 fdivs, 800CB76C fnmsubs; @197 = float PI/180.
+        let angle = gekko_math::fma::fnmsubs(0.017453292, 180.0 / frames as f32, old);
+        self.skeleton.set_rotation_y(root, angle);
+        if jump.turn_remaining == frames / 2 {
+            self.physics.facing = -self.physics.facing;
+        }
     }
 }

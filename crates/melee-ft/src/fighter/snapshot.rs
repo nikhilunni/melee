@@ -1,9 +1,9 @@
-use super::{CharacterCallbacks, Fighter};
+use super::{CharacterCallbacks, Fighter, FighterCore};
 use melee_types::snapshot::{Snapshot, SnapshotSink};
 
 /// Exactly harness/schema/fighter.yaml's 24 scalar keys. Player prefixes are
 /// supplied by the caller's PrefixSink; RNG belongs to the scene.
-impl<C: CharacterCallbacks> Snapshot for Fighter<C> {
+impl Snapshot for FighterCore {
     fn snapshot(&self, sink: &mut dyn SnapshotSink) {
         sink.field("kind", &i32::from(self.kind));
         sink.field("player_id", &self.player.id);
@@ -23,5 +23,11 @@ impl<C: CharacterCallbacks> Snapshot for Fighter<C> {
         sink.field("cpu.level", &self.cpu.level);
         sink.field("cpu.behavior", &self.cpu.behavior);
         sink.field("cpu.timer", &self.cpu.reaction_timer);
+    }
+}
+
+impl<C: CharacterCallbacks> Snapshot for Fighter<C> {
+    fn snapshot(&self, sink: &mut dyn SnapshotSink) {
+        self.core.snapshot(sink);
     }
 }

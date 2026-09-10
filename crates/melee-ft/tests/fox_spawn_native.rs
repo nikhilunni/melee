@@ -117,21 +117,15 @@ fn fox_spawn_native() {
         let expected = f.row(melee_types::CommonMotionState::Fall.into());
         assert_eq!(f.motion_state.action, expected.action);
         assert_eq!(f.motion_state.id, expected.id);
-        assert_eq!(f.motion_state.row.animation, expected.animation);
-        assert!(std::ptr::fn_addr_eq(f.motion_state.row.anim, expected.anim));
-        assert!(std::ptr::fn_addr_eq(f.motion_state.row.iasa, expected.iasa));
+        assert_eq!(f.motion_row.animation, expected.animation);
+        assert!(std::ptr::fn_addr_eq(f.motion_row.anim, expected.anim));
+        assert!(std::ptr::fn_addr_eq(f.motion_row.iasa, expected.iasa));
+        assert!(std::ptr::fn_addr_eq(f.motion_row.physics, expected.physics));
         assert!(std::ptr::fn_addr_eq(
-            f.motion_state.row.physics,
-            expected.physics
-        ));
-        assert!(std::ptr::fn_addr_eq(
-            f.motion_state.row.collision,
+            f.motion_row.collision,
             expected.collision
         ));
-        assert!(std::ptr::fn_addr_eq(
-            f.motion_state.row.camera,
-            expected.camera
-        ));
+        assert!(std::ptr::fn_addr_eq(f.motion_row.camera, expected.camera));
 
         assert_eq!(f.ground_pose.0, 0, "Fall does not install ground IK");
         assert_eq!(f.collision.lock_frames, 10);
@@ -218,7 +212,7 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     fighter.proc_process_hit(&fixture.assets);
     fighter.status.interaction = Interaction::Idle;
     // Dispatch must consult the installed callback, not just motion_id=Wait.
-    fighter.motion_state.row.anim = unimplemented_anim;
+    fighter.motion_row.anim = unimplemented_anim;
     assert!(catch_unwind(AssertUnwindSafe(
         || fighter.proc_anim(&fixture.assets, &mut HsdRng::new(1))
     ))

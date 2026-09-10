@@ -25,6 +25,7 @@ pub struct PartResource {
 #[derive(Clone, Copy, Debug)]
 pub struct CharacterDescriptor {
     pub kind: melee_types::FighterKind,
+    pub common_behavior: CommonBehavior,
     pub data_file: &'static str,
     pub data_symbol: &'static str,
     pub animation_file: &'static str,
@@ -35,6 +36,67 @@ pub struct CharacterDescriptor {
     /// Character table animations using ported shared callbacks.
     pub additional_motions: &'static [u32],
 }
+/// Retail common-state capability metadata. The descriptor supplies defaults
+/// even for kinds whose character-owned callbacks have not yet been ported.
+/// A ported character overrides the corresponding CharacterCallbacks hook.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CommonBehavior {
+    /// ftCo_AttackS4.c:145-166, decideFighter (8008C348).
+    pub forward_smash_entry: bool,
+    /// ftCo_Throw.c:145-157,346-353, per-character capture/laser callbacks.
+    pub throw_callback: bool,
+    /// ftCo_Attack1.c:89-110, decideAttack11 / getMotionFlags.
+    pub jab_entry: bool,
+    /// ftCo_AirCatch.c:54-79, ftCo_800C3B10 (800C3B10).
+    pub air_dodge_tether: bool,
+    /// ftCo_Landing.c:51-83, ftCo_Landing_Enter (800D5AEC).
+    pub landing_reset: bool,
+    /// ftCo_Escape.c:83-85, rolling-only morph-ball setup.
+    pub morph_ball_roll: bool,
+}
+impl CommonBehavior {
+    /// Descriptor-layer defaults transcribed from retail's kind selections.
+    /// This is initialization data; common state execution reads named fields.
+    pub const fn for_kind(kind: melee_types::FighterKind) -> Self {
+        use melee_types::FighterKind;
+        Self {
+            forward_smash_entry: matches!(
+                kind,
+                FighterKind::Ness
+                    | FighterKind::Peach
+                    | FighterKind::GameWatch
+                    | FighterKind::Pikachu
+                    | FighterKind::Pichu
+            ),
+            throw_callback: matches!(
+                kind,
+                FighterKind::Fox | FighterKind::Samus | FighterKind::Kirby | FighterKind::Yoshi
+            ),
+            jab_entry: matches!(
+                kind,
+                FighterKind::GameWatch | FighterKind::Pikachu | FighterKind::Pichu
+            ),
+            air_dodge_tether: matches!(
+                kind,
+                FighterKind::Link | FighterKind::CLink | FighterKind::Samus
+            ),
+            landing_reset: matches!(
+                kind,
+                FighterKind::Mario
+                    | FighterKind::DrMario
+                    | FighterKind::Peach
+                    | FighterKind::Emblem
+                    | FighterKind::GameWatch
+                    | FighterKind::Popo
+                    | FighterKind::Nana
+                    | FighterKind::Kirby
+                    | FighterKind::Mewtwo
+            ),
+            morph_ball_roll: matches!(kind, FighterKind::Samus),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct CostumeDescriptor {
     pub file: &'static str,

@@ -9,9 +9,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// bodies are still stubs and no existing gated scene reaches this hook.
     pub(crate) fn enter_buffered_special(&mut self, assets: &FighterAssets, airborne: bool) {
         let context = WaitContext {
-            facing: self.physics.facing,
-            specials_available: self.capabilities.specials,
-            shield_health: self.status.shield_health,
+            facing: self.core.physics.facing,
+            specials_available: self.core.capabilities.specials,
+            shield_health: self.core.status.shield_health,
             ..WaitContext::default()
         };
         for (predicate, slot) in [
@@ -20,7 +20,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             (WaitPredicate::SpecialNeutral, SpecialSlot::Neutral),
             (WaitPredicate::SpecialDown, SpecialSlot::Down),
         ] {
-            if crate::input::iasa::evaluate(predicate, &self.input, &assets.input, &context)
+            if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, &context)
                 == WaitTransition::Special
             {
                 C::enter_special(self, slot, airborne);

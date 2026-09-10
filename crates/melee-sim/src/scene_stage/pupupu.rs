@@ -19,10 +19,10 @@ fn fighter_sides(fighters: &mut [SceneFighter; 2]) -> i32 {
                 if f.status.disabled {
                     return 0;
                 }
-                let camera = &f.attributes.camera;
+                let camera = &f.core.attributes.camera;
                 let position = melee_ft::fighter::caches::bone_position(
-                    &mut f.skeleton,
-                    f.animation.root,
+                    &mut f.core.skeleton,
+                    f.core.animation.root,
                     camera.camera_zoom_target_bone as usize,
                     camera.zoom_offset,
                 );

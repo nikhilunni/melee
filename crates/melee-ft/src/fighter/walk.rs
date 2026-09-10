@@ -1,4 +1,5 @@
 //! WalkSlow/Middle/Fast: ftCo_Walk.c and ftwalkcommon.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -42,44 +43,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // scaled-player modifiers are rejected during Fighter::prepare.
         let multiplier = 1.0;
         let state = walk_state(
-            self.physics.ground_velocity,
-            self.attributes.walking.walk_max_vel,
+            self.core.physics.ground_velocity,
+            self.core.attributes.walking.walk_max_vel,
             multiplier,
             &assets.movement,
         );
         self.change_motion_state_at(state, assets, frame)?;
         self.step_animation(assets);
-        self.state_data = MotionData::Walk(WalkState {
-            slippery_animation_velocity: self.physics.ground_velocity,
+        self.core.state_data = MotionData::Walk(WalkState {
+            slippery_animation_velocity: self.core.physics.ground_velocity,
             acceleration_multiplier: multiplier,
         });
         Ok(())
-    }
-
-    /// ftCo_Walk_Anim (0x800C95F4) -> ftWalkCommon_800DFDDC (0x800DFDDC).
-    pub(super) fn walk_animation(&mut self, assets: &FighterAssets) {
-        let MotionData::Walk(walk) = &self.state_data else {
-            panic!("walk data missing")
-        };
-        // ft_GetGroundFrictionMultiplier reads the current floor material.
-        let speed = if crate::physics::grounded::floor_friction(&self.collision.data) < 1.0 {
-            walk.slippery_animation_velocity
-        } else {
-            self.physics.ground_velocity
-        };
-        let rate = if speed * self.physics.facing <= 0.0 {
-            0.0
-        } else {
-            let attrs = &assets.attributes.walking;
-            let divisor = match self.motion_state.id {
-                CommonMotionState::WalkSlow => attrs.slow_walk_max,
-                CommonMotionState::WalkMiddle => attrs.mid_walk_point,
-                CommonMotionState::WalkFast => attrs.fast_walk_min,
-                _ => unreachable!("walk callback on non-walk state"),
-            };
-            fabsf(speed) / divisor
-        };
-        self.animation.set_rate(&mut self.skeleton, rate, false);
     }
 
     /// ftCo_Walk_IASA (0x800C9614), including ft_8008A244 and
@@ -115,50 +90,39 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if transition != T::None {
             return self.apply_ground_transition(assets, transition);
         }
-        let stick = self.input.current.stick.x;
-        if stick * self.physics.facing < 0.0
+        let stick = self.core.input.current.stick.x;
+        if stick * self.core.physics.facing < 0.0
             || fabsf(stick) < assets.input.thresholds.walk_stick_threshold
         {
             return self.change_motion_state(CommonMotionState::Wait, assets);
         }
-        let MotionData::Walk(walk) = &self.state_data else {
+        let MotionData::Walk(walk) = &self.core.state_data else {
             panic!("walk data missing")
         };
         let next = walk_state(
-            self.physics.ground_velocity,
-            self.attributes.walking.walk_max_vel,
+            self.core.physics.ground_velocity,
+            self.core.attributes.walking.walk_max_vel,
             walk.acceleration_multiplier,
             &assets.movement,
         );
-        if next != self.motion_state.id {
+        if next != self.core.motion_state.id {
             let animation_id = match next {
                 CommonMotionState::WalkSlow => 7,
                 CommonMotionState::WalkMiddle => 8,
                 CommonMotionState::WalkFast => 9,
                 _ => unreachable!(),
             };
-            let duration = assets.motions[&self.animation.motion_id].animation.frames;
+            let duration = assets.motions[&self.core.animation.motion_id]
+                .animation
+                .frames;
             let target_duration = assets.motions[&animation_id].animation.frames;
-            let quotient = fctiwz(self.animation.frame / duration) as f32;
+            let quotient = fctiwz(self.core.animation.frame / duration) as f32;
             // retail 0x800E0010: fnmsubs; quotient is converted back to f32.
-            let phase = fnmsubs(duration, quotient, self.animation.frame);
+            let phase = fnmsubs(duration, quotient, self.core.animation.frame);
             let frame = fctiwz(target_duration * (phase / duration)) as f32;
             self.enter_walk(assets, frame)?;
         }
         Ok(())
-    }
-
-    pub(super) fn first_ground_transition(
-        &self,
-        assets: &FighterAssets,
-        context: &WaitContext,
-        predicates: &[P],
-    ) -> T {
-        predicates
-            .iter()
-            .map(|&p| crate::input::iasa::evaluate(p, &self.input, &assets.input, context))
-            .find(|t| *t != T::None)
-            .unwrap_or(T::None)
     }
 
     /// ftCo_Wait_IASA (0x8008A4D4) movement entry bodies, also used by
@@ -183,9 +147,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             T::Squat => self.enter_squat(assets),
             T::Walk => self.enter_walk(assets, 0.0),
             T::Turn => {
-                let smash = fabsf(self.input.current.stick.x)
+                let smash = fabsf(self.core.input.current.stick.x)
                     >= assets.input.thresholds.dash_smash_stick_threshold
-                    && i32::from(self.input.horizontal.tilt)
+                    && i32::from(self.core.input.horizontal.tilt)
                         < assets.input.thresholds.dash_smash_window;
                 self.enter_turn(assets, smash)
             }
@@ -193,6 +157,46 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 "ftCo_Wait.c:46-63 / grounded state IASA: {transition:?} transition body"
             ),
         }
+    }
+}
+impl FighterCore {
+    /// ftCo_Walk_Anim (0x800C95F4) -> ftWalkCommon_800DFDDC (0x800DFDDC).
+    pub(super) fn walk_animation(&mut self, assets: &FighterAssets) {
+        let MotionData::Walk(walk) = &self.state_data else {
+            panic!("walk data missing")
+        };
+        // ft_GetGroundFrictionMultiplier reads the current floor material.
+        let speed = if crate::physics::grounded::floor_friction(&self.collision.data) < 1.0 {
+            walk.slippery_animation_velocity
+        } else {
+            self.physics.ground_velocity
+        };
+        let rate = if speed * self.physics.facing <= 0.0 {
+            0.0
+        } else {
+            let attrs = &assets.attributes.walking;
+            let divisor = match self.motion_state.id {
+                CommonMotionState::WalkSlow => attrs.slow_walk_max,
+                CommonMotionState::WalkMiddle => attrs.mid_walk_point,
+                CommonMotionState::WalkFast => attrs.fast_walk_min,
+                _ => unreachable!("walk callback on non-walk state"),
+            };
+            fabsf(speed) / divisor
+        };
+        self.animation.set_rate(&mut self.skeleton, rate, false);
+    }
+
+    pub(super) fn first_ground_transition(
+        &self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+        predicates: &[P],
+    ) -> T {
+        predicates
+            .iter()
+            .map(|&p| crate::input::iasa::evaluate(p, &self.input, &assets.input, context))
+            .find(|t| *t != T::None)
+            .unwrap_or(T::None)
     }
 }
 

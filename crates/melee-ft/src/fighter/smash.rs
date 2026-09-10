@@ -1,4 +1,5 @@
 //! Forward smash and charge timing, ftCo_AttackS4.c / ft_0DF0.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -39,24 +40,26 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// doEnter (8008C3E0), ftCo_AttackS4.c; no fused sites in this unit.
     pub(super) fn enter_forward_smash(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.forward_smash_variant();
-        if self.input.current.stick.y != 0.0 || self.input.current.cstick.y != 0.0 {
+        if self.core.input.current.stick.y != 0.0 || self.core.input.current.cstick.y != 0.0 {
             unimplemented!("ftCo_AttackS4.c doEnter: angled smash");
         }
-        let x = if self.input.current.cstick.x != 0.0 {
-            self.input.current.cstick.x
+        let x = if self.core.input.current.cstick.x != 0.0 {
+            self.core.input.current.cstick.x
         } else {
-            self.input.current.stick.x
+            self.core.input.current.stick.x
         };
-        self.physics.facing = if x >= 0.0 { 1.0 } else { -1.0 };
-        self.commands.variables[0] = 0;
-        self.commands.grab_release = false;
-        self.commands.throw_reverse = false;
+        self.core.physics.facing = if x >= 0.0 { 1.0 } else { -1.0 };
+        self.core.commands.variables[0] = 0;
+        self.core.commands.grab_release = false;
+        self.core.commands.throw_reverse = false;
         self.change_motion_state(S::AttackS4S, assets)?;
         self.step_animation(assets);
-        self.state_data = MotionData::Smash;
-        self.status.interaction = super::Interaction::Attack;
+        self.core.state_data = MotionData::Smash;
+        self.core.status.interaction = super::Interaction::Attack;
         Ok(())
     }
+}
+impl FighterCore {
     /// ftCo_800DEF38 (800DEF38): charging advances before the state's Anim.
     pub(super) fn advance_smash_charge(&mut self, assets: &FighterAssets) {
         let Some(charge) = &mut self.commands.smash_charge else {

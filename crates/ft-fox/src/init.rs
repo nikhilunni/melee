@@ -55,6 +55,7 @@ impl CharacterCallbacks for Fox {
 pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
     melee_ft::fighter::assets::CharacterDescriptor {
         kind: FighterKind::Fox,
+        common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Fox),
         data_file: "PlFx.dat",
         data_symbol: "ftDataFox",
         animation_file: "PlFxAJ.dat",

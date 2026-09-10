@@ -156,18 +156,19 @@ impl Fixture {
         let mut f = self.prepared(player);
         let root = f.animation.root;
         if word(raw, 0x14) == u32::MAX {
-            f.animation.clear_motion(&mut f.skeleton);
+            f.core.animation.clear_motion(&mut f.core.skeleton);
         } else {
-            f.animation
+            f.core
+                .animation
                 .set_animation(
-                    &mut f.skeleton,
+                    &mut f.core.skeleton,
                     &self.assets.motions[&(word(raw, 0x14) as i32)],
                     float(raw, 0x894),
                     float(raw, 0x89C),
                 )
                 .unwrap();
             f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
-            f.animation.step::<RetailTrig>(&mut f.skeleton);
+            f.core.animation.step::<RetailTrig>(&mut f.core.skeleton);
             f.animation.blend_progress = float(raw, 0x8A8);
             f.animation.remainder = float(raw, 0x898);
         }
@@ -216,7 +217,7 @@ impl Fixture {
         // Fighter.x8B0[5], stride 0x14 (ft/types.h:1301-1308).
         // ftAnim_800707B0 ignores a slot only when current is -1. Preserve
         // even inactive scalar words rather than infer defaults from a pose.
-        for (index, state) in f.animation.part_animations.iter_mut().enumerate() {
+        for (index, state) in f.core.animation.part_animations.iter_mut().enumerate() {
             let offset = 0x8B0 + index * 0x14;
             state.state = word(raw, offset) as i32;
             state.duration = float(raw, offset + 4);
@@ -224,7 +225,7 @@ impl Fixture {
             state.rate = float(raw, offset + 12);
             state.previous = raw[offset + 16] as i8;
             state.current = raw[offset + 17] as i8;
-            state.joints = f.bones.animation_sets[index]
+            state.joints = f.core.bones.animation_sets[index]
                 .as_ref()
                 .map_or_else(Vec::new, |set| {
                     set.joints.iter().map(|&joint| usize::from(joint)).collect()
@@ -247,15 +248,15 @@ impl Fixture {
         if f.commands.instruction.is_some() {
             assert_eq!(word(raw, 0x3F0), 0, "initial command return stack empty");
         } // SM_None clears the script pointer; its old union bytes are inactive.
-        f.skeleton.set_rotation_y(
+        f.core.skeleton.set_rotation_y(
             root,
-            (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32,
+            (std::f64::consts::FRAC_PI_2 * f64::from(f.core.physics.facing)) as f32,
         );
         collision::restore(&mut f.collision, raw);
         if word(raw, 0x10) == 322 {
             use hsd_types::Vec2;
-            use melee_ft::fighter::{entry::EntryState, MotionData, MotionState};
-            f.motion_state = MotionState::new(f.row(melee_types::CommonMotionState::Entry.into()));
+            use melee_ft::fighter::{entry::EntryState, MotionData};
+            f.install_motion_row(f.row(melee_types::CommonMotionState::Entry.into()));
             let current_scale = vector(raw, 0x2354);
             f.skeleton.set_scale(root, &current_scale);
             f.state_data = MotionData::Entry(EntryState {

@@ -61,6 +61,7 @@ impl CharacterCallbacks for CaptainFalcon {
 /// contains three part-animation groups. Dynamic sets are archive-owned.
 pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     kind: FighterKind::Captain,
+    common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Captain),
     data_file: "PlCa.dat",
     data_symbol: "ftDataCaptain",
     animation_file: "PlCaAJ.dat",

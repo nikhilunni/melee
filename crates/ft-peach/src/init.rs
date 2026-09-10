@@ -149,6 +149,7 @@ impl CharacterCallbacks for Peach {
 /// ftData.x2C supplies nine five-joint dynamic chains, with no colliders.
 pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     kind: FighterKind::Peach,
+    common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Peach),
     data_file: "PlPe.dat",
     data_symbol: "ftDataPeach",
     animation_file: "PlPeAJ.dat",

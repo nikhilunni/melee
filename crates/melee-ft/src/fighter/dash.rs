@@ -1,4 +1,5 @@
 //! Initial dash and dash-dance input windows (ftCo_Dash.c).
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -42,24 +43,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         early_interrupts: bool,
     ) -> Result<()> {
-        self.commands.variables[0] = 0;
+        self.core.commands.variables[0] = 0;
         self.change_motion_state(CommonMotionState::Dash, assets)?;
         self.step_animation(assets);
-        self.input.horizontal.tilt = 0xFE;
+        self.core.input.horizontal.tilt = 0xFE;
         // Retail Dash_Enter: separate fmuls/fsubs; 800804A0 has no fused sites.
-        let initial = self.physics.facing * self.attributes.running.dash_initial_velocity;
-        let acceleration = if self.physics.ground_velocity * self.physics.facing < 0.0 {
+        let initial = self.core.physics.facing * self.core.attributes.running.dash_initial_velocity;
+        let acceleration = if self.core.physics.ground_velocity * self.core.physics.facing < 0.0 {
             initial
         } else {
-            initial - self.physics.ground_velocity
+            initial - self.core.physics.ground_velocity
         };
-        let terrain = crate::physics::grounded::floor_friction(&self.collision.data);
-        self.physics.secondary_ground_acceleration = if terrain < 1.0 {
+        let terrain = crate::physics::grounded::floor_friction(&self.core.collision.data);
+        self.core.physics.secondary_ground_acceleration = if terrain < 1.0 {
             acceleration * terrain
         } else {
             acceleration
         };
-        self.state_data = MotionData::Dash(DashState {
+        self.core.state_data = MotionData::Dash(DashState {
             initial_acceleration: acceleration,
             early_interrupts,
         });
@@ -67,7 +68,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Dash_Anim (0x800CA1F4), ft_8008A2BC (0x8008A2BC).
     pub(super) fn dash_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(CommonMotionState::Wait, assets)?;
         }
         Ok(())
@@ -78,10 +79,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        let MotionData::Dash(dash) = &self.state_data else {
+        let MotionData::Dash(dash) = &self.core.state_data else {
             panic!("dash data missing")
         };
-        let frame = self.animation.frame;
+        let frame = self.core.animation.frame;
         let common = &assets.running;
         if dash.early_interrupts && frame <= common.early_interrupt_frames {
             self.reject_running_actions(
@@ -101,7 +102,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 "ftCo_Dash.c:109-114",
             );
             self.reject_dash_attack("ftCo_Dash.c:111-114");
-            if self.input.current.stick.x * self.physics.facing < 0.0 && self.try_redash(assets)? {
+            if self.core.input.current.stick.x * self.core.physics.facing < 0.0
+                && self.try_redash(assets)?
+            {
                 return Ok(());
             }
             self.reject_running_actions(assets, context, &[P::Shield], "ftCo_Dash.c:121-123");
@@ -114,8 +117,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.reject_running_actions(assets, context, &[P::Taunt], "ftCo_Dash.c:139");
         self.reject_running_jump(assets);
-        if self.commands.variables[0] != 0
-            && self.input.current.stick.x * self.physics.facing >= common.run_threshold
+        if self.core.commands.variables[0] != 0
+            && self.core.input.current.stick.x * self.core.physics.facing >= common.run_threshold
         {
             self.enter_run(assets)?;
         }
@@ -123,24 +126,29 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Dash_CheckInput (0x800CA094): a fresh opposite smash enters Turn.
     fn try_redash(&mut self, assets: &FighterAssets) -> Result<bool> {
-        if fabsf(self.input.current.stick.x) >= assets.input.thresholds.dash_smash_stick_threshold
-            && i32::from(self.input.horizontal.tilt) < assets.input.thresholds.dash_smash_window
+        if fabsf(self.core.input.current.stick.x)
+            >= assets.input.thresholds.dash_smash_stick_threshold
+            && i32::from(self.core.input.horizontal.tilt)
+                < assets.input.thresholds.dash_smash_window
         {
-            if self.input.current.stick.x * self.physics.facing < 0.0 {
+            if self.core.input.current.stick.x * self.core.physics.facing < 0.0 {
                 self.enter_turn(assets, true)?;
             } else {
                 self.enter_dash(assets, true)?;
             }
             // ftCo_Dash_IASA's tail after a successful dash predicate.
-            let terrain = crate::physics::grounded::floor_friction(&self.collision.data);
-            let reduction = -(self.physics.ground_velocity * assets.running.interrupt_friction);
+            let terrain = crate::physics::grounded::floor_friction(&self.core.collision.data);
+            let reduction =
+                -(self.core.physics.ground_velocity * assets.running.interrupt_friction);
             // retail 0x800CA51C: fmadds.
-            self.physics.ground_velocity =
-                gekko_math::fma::fmadds(reduction, terrain, self.physics.ground_velocity);
+            self.core.physics.ground_velocity =
+                gekko_math::fma::fmadds(reduction, terrain, self.core.physics.ground_velocity);
             return Ok(true);
         }
         Ok(false)
     }
+}
+impl FighterCore {
     pub(super) fn reject_running_actions(
         &self,
         assets: &FighterAssets,

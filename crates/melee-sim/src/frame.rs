@@ -245,11 +245,11 @@ impl Runtime {
                         Ok(())
                     } else if let Continuation::Collision { in_sweep } = continuation {
                         melee_ft::collision::ground::resume_wait(
-                            &mut f.physics,
-                            &mut f.collision,
+                            &mut f.core.physics,
+                            &mut f.core.collision,
                             &mut state.map,
-                            &mut f.skeleton,
-                            f.animation.root,
+                            &mut f.core.skeleton,
+                            f.core.animation.root,
                             in_sweep,
                         );
                         Ok(())

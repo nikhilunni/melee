@@ -43,38 +43,22 @@ impl<C: CharacterCallbacks> std::fmt::Debug for MotionRow<C> {
     }
 }
 
-/// Fighter.motion_id (+0x10) and the row installed by Fighter_ChangeMotionState.
-pub struct MotionState<C: CharacterCallbacks> {
+/// Scalar live state, shared by physics, animation and raw snapshots.
+/// The typed callbacks live separately in Fighter::motion_row.
+#[derive(Clone, Copy, Debug)]
+pub struct MotionState {
     pub action: ActionId,
-    pub row: MotionRow<C>,
+    pub id: CommonMotionState,
+    pub animation: i32,
+    pub implemented: bool,
 }
-// Preserve read-only semantic-state readers without duplicating row metadata.
-// In particular, existing raw-state comparators continue to read state.id.
-impl<C: CharacterCallbacks> std::ops::Deref for MotionState<C> {
-    type Target = MotionRow<C>;
-    fn deref(&self) -> &Self::Target {
-        &self.row
-    }
-}
-impl<C: CharacterCallbacks> Copy for MotionState<C> {}
-impl<C: CharacterCallbacks> Clone for MotionState<C> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl<C: CharacterCallbacks> std::fmt::Debug for MotionState<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MotionState")
-            .field("action", &self.action)
-            .field("row", &self.row)
-            .finish()
-    }
-}
-impl<C: CharacterCallbacks> MotionState<C> {
-    pub const fn new(row: MotionRow<C>) -> Self {
+impl MotionState {
+    pub const fn new<C: CharacterCallbacks>(row: MotionRow<C>) -> Self {
         Self {
             action: row.action,
-            row,
+            id: row.id,
+            animation: row.animation,
+            implemented: row.implemented,
         }
     }
 }
@@ -99,32 +83,32 @@ pub fn unimplemented_anim<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     _phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    unsupported_action(fighter.motion_state.action)
+    unsupported_action(fighter.core.motion_state.action)
 }
 
 pub fn unimplemented_iasa<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
-    unsupported_action(fighter.motion_state.action)
+    unsupported_action(fighter.core.motion_state.action)
 }
 
 pub fn unimplemented_physics<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     _phase: PhysicsPhase<'_>,
 ) {
-    unsupported_action(fighter.motion_state.action)
+    unsupported_action(fighter.core.motion_state.action)
 }
 
 pub fn unimplemented_collision<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     _phase: CollisionPhase<'_>,
 ) -> Result<()> {
-    unsupported_action(fighter.motion_state.action)
+    unsupported_action(fighter.core.motion_state.action)
 }
 
 pub fn unimplemented_camera<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     _phase: CameraPhase<'_>,
 ) {
-    unsupported_action(fighter.motion_state.action)
+    unsupported_action(fighter.core.motion_state.action)
 }
 pub(crate) fn unsupported_action(action: ActionId) -> ! {
     let index = usize::from(action.0);

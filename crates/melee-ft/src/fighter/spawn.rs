@@ -137,54 +137,63 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let mut fighter = Self::prepare(player, character, assets, skeleton, root, map);
         // ftCo_8009CF84 enables each chain before reset. prepare only allocates
         // owners: savestate import must attach animations before restoring locks.
-        for set in &mut fighter.dynamics {
+        for set in &mut fighter.core.dynamics {
             crate::dynamics::select(
                 set,
-                &mut fighter.skeleton,
-                &mut fighter.animation.parts,
+                &mut fighter.core.skeleton,
+                &mut fighter.core.animation.parts,
                 true,
                 0,
             );
         }
-        fighter.dynamics_first_bone.fill(0);
+        fighter.core.dynamics_first_bone.fill(0);
         // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
-        fighter.skeleton.set_scale(root, &initial_scale);
-        fighter.spawn_number = counter.allocate();
-        let data = &mut fighter.collision.data;
-        data.last_pos = fighter.physics.position;
-        data.cur_pos = fighter.physics.position;
+        fighter.core.skeleton.set_scale(root, &initial_scale);
+        fighter.core.spawn_number = counter.allocate();
+        let data = &mut fighter.core.collision.data;
+        data.last_pos = fighter.core.physics.position;
+        data.cur_pos = fighter.core.physics.position;
         data.last_pos.y += 10.0;
         data.cur_pos.y -= 10.0;
-        let pose = ecb::EcbPose::read(&mut fighter.skeleton, root, data);
+        let pose = ecb::EcbPose::read(&mut fighter.core.skeleton, root, data);
         let supported = map.air_collide_pass(data, Some(&|i| pose.position(i)));
         if supported {
-            fighter.physics.position = data.cur_pos;
-            fighter.physics.ground_or_air = GroundOrAir::Ground;
-            fighter.physics.jumps_used = 0;
-            fighter.collision.lock_frames = 0;
+            fighter.core.physics.position = data.cur_pos;
+            fighter.core.physics.ground_or_air = GroundOrAir::Ground;
+            fighter.core.physics.jumps_used = 0;
+            fighter.core.collision.lock_frames = 0;
         } else {
             // ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
             // A failed probe leaves Fighter.cur_pos at the Player marker.
             fighter.leave_ground();
         }
         fighter
+            .core
             .skeleton
-            .set_translate(root, &fighter.physics.position);
-        let scale = fighter.player.scale * fighter.attributes.size.model_scaling;
+            .set_translate(root, &fighter.core.physics.position);
+        let scale = fighter.core.player.scale * fighter.core.attributes.size.model_scaling;
         fighter
+            .core
             .skeleton
             .set_scale(root, &Vec3::new(scale, scale, scale));
         fighter.character.on_reset();
         // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
-        fighter.thrown_hitbox.state = 1;
-        fighter.thrown_hitbox.update(&mut fighter.skeleton, root);
-        fighter.cpu = CpuState::initialize(fighter.player.cpu_mode, fighter.player.cpu_level, rng);
+        fighter.core.thrown_hitbox.state = 1;
+        fighter
+            .core
+            .thrown_hitbox
+            .update(&mut fighter.core.skeleton, root);
+        fighter.core.cpu = CpuState::initialize(
+            fighter.core.player.cpu_mode,
+            fighter.core.player.cpu_level,
+            rng,
+        );
         if let Some(delay) = entry_delay {
             // Fighter_ChangeMotionState sets TopN's facing rotation even
             // for SM_None. The ordinary animation-entry path does this itself.
-            fighter.skeleton.set_rotation_y(
+            fighter.core.skeleton.set_rotation_y(
                 root,
-                (std::f64::consts::FRAC_PI_2 * f64::from(fighter.physics.facing)) as f32,
+                (std::f64::consts::FRAC_PI_2 * f64::from(fighter.core.physics.facing)) as f32,
             );
             fighter.enter_match(delay, assets)?;
         } else {
@@ -199,8 +208,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         // ftLib_800867E8 at the end of Fighter_Create: clear input and freeze
         // sampling until match setup calls ftLib_8008688C.
-        fighter.input.clear_current_and_buffers();
-        fighter.status.input_frozen = true;
+        fighter.core.input.clear_current_and_buffers();
+        fighter.core.status.input_frozen = true;
         Ok(fighter)
     }
 
@@ -211,7 +220,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         player: PlayerSlot,
         mut character: C,
         assets: &FighterAssets,
-        mut skeleton: JObjTree,
+        skeleton: JObjTree,
         root: JObjId,
         map: &CollMap,
     ) -> Self {
@@ -227,6 +236,113 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let mut capabilities = Capabilities::default();
         character.on_load(&mut capabilities);
         character.on_resources_loaded(assets, &player);
+        let motion_row = C::COMMON[CommonMotionState::Wait as usize];
+        Self {
+            core: FighterCore::prepare(
+                player,
+                assets,
+                skeleton,
+                root,
+                map,
+                capabilities,
+                MotionState::new(motion_row),
+            ),
+            character,
+            motion_row,
+        }
+    }
+
+    /// Fighter_ChangeMotionState (0x800693AC), fighter.c:933-1391,
+    /// reached through ft_8008A2BC/ft_8008A348 (Wait) or ftCo_Fall_Enter
+    /// (cold airborne spawn).
+    pub fn change_motion_state(
+        &mut self,
+        state: impl Into<ActionId>,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_at(state, assets, 0.0)
+    }
+
+    /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.
+    pub(super) fn change_motion_state_at(
+        &mut self,
+        state: impl Into<ActionId>,
+        assets: &FighterAssets,
+        start: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_rate(state, assets, start, 1.0)
+    }
+
+    /// Fighter_ChangeMotionState (800693AC), fighter.c:1268-1296:
+    /// install the caller's rate before frame-zero animation and commands.
+    pub(super) fn change_motion_state_with_rate(
+        &mut self,
+        state: impl Into<ActionId>,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(state.into(), assets, start, rate, None)
+    }
+
+    /// Borrow a throw animation/script while preserving ordinary row selection.
+    pub(super) fn change_motion_state_with_source(
+        &mut self,
+        state: impl Into<ActionId>,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(state.into(), assets, start, rate, source)
+    }
+
+    fn change_motion_state_with_options(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        start: f32,
+        rate: f32,
+        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+    ) -> Result<()> {
+        let row = self.row(state);
+        let state = row.id;
+        self.core.begin_motion_change(source);
+        if self.core.physics.ground_or_air == GroundOrAir::Ground {
+            self.character.on_grounded_motion();
+        }
+        let animate = self.core.reset_motion(MotionState::new(row), assets);
+        self.motion_row = row;
+        if !animate {
+            return Ok(());
+        }
+        if state == CommonMotionState::Guard
+            || (!self.character.animated_shield()
+                && matches!(
+                    state,
+                    CommonMotionState::GuardOn | CommonMotionState::GuardReflect
+                ))
+        {
+            // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
+            self.core.clear_animation();
+            return Ok(());
+        }
+        self.core
+            .start_motion_animation(assets, row.animation, state, start, rate, source)
+    }
+}
+
+impl FighterCore {
+    /// Allocate decoded owners after the character's OnLoad/resource hooks.
+    fn prepare(
+        player: PlayerSlot,
+        assets: &FighterAssets,
+        mut skeleton: JObjTree,
+        root: JObjId,
+        map: &CollMap,
+        capabilities: Capabilities,
+        motion_state: MotionState,
+    ) -> Self {
         // fighter.c:241, retail 0x80067CE8: fmadds. x40 was reset to +0.
         let offset = 0.0 * player.scale; // ftCommon_800804EC: separate fmuls.
         let position = Vec3::new(
@@ -302,7 +418,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         Self {
             dynamics,
             dynamics_use_floor_plane: false,
-            kind: character.kind(),
+            kind: assets.kind,
             revival_platform: None,
             spawn_number: 0,
             physics,
@@ -312,13 +428,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             attributes: assets.attributes.clone(),
             bones: assets.bones.clone(),
             skeleton,
-            motion_state: MotionState::new(C::COMMON[CommonMotionState::Wait as usize]),
+            motion_state,
             state_data: MotionData::None,
             combat: super::damage::CombatState::default(),
             shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
             effects: Vec::new(),
-            character,
             capabilities,
             cpu: CpuState {
                 buttons: 0,
@@ -345,69 +460,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
             player,
         }
     }
-
-    /// Fighter_ChangeMotionState (0x800693AC), fighter.c:933-1391,
-    /// reached through ft_8008A2BC/ft_8008A348 (Wait) or ftCo_Fall_Enter
-    /// (cold airborne spawn).
-    pub fn change_motion_state(
-        &mut self,
-        state: impl Into<ActionId>,
-        assets: &FighterAssets,
-    ) -> Result<()> {
-        self.change_motion_state_at(state, assets, 0.0)
-    }
-
-    /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.
-    pub(super) fn change_motion_state_at(
-        &mut self,
-        state: impl Into<ActionId>,
-        assets: &FighterAssets,
-        start: f32,
-    ) -> Result<()> {
-        self.change_motion_state_with_rate(state, assets, start, 1.0)
-    }
-
-    /// Fighter_ChangeMotionState (800693AC), fighter.c:1268-1296:
-    /// install the caller's rate before frame-zero animation and commands.
-    pub(super) fn change_motion_state_with_rate(
-        &mut self,
-        state: impl Into<ActionId>,
-        assets: &FighterAssets,
-        start: f32,
-        rate: f32,
-    ) -> Result<()> {
-        self.change_motion_state_with_options(state.into(), assets, start, rate, None)
-    }
-
-    /// Borrow a throw animation/script while preserving ordinary row selection.
-    pub(super) fn change_motion_state_with_source(
-        &mut self,
-        state: impl Into<ActionId>,
-        assets: &FighterAssets,
-        start: f32,
-        rate: f32,
-        source: Option<(&FighterAssets, &crate::anim::Motion)>,
-    ) -> Result<()> {
-        self.change_motion_state_with_options(state.into(), assets, start, rate, source)
-    }
-
-    fn change_motion_state_with_options(
-        &mut self,
-        state: ActionId,
-        assets: &FighterAssets,
-        start: f32,
-        rate: f32,
-        source: Option<(&FighterAssets, &crate::anim::Motion)>,
-    ) -> Result<()> {
-        let row = self.row(state);
-        let state = row.id;
+    /// Fighter_ChangeMotionState (fighter.c:933-949), before OnGroundedMotion.
+    fn begin_motion_change(&mut self, source: Option<(&FighterAssets, &crate::anim::Motion)>) {
         self.status.require_supported();
         self.commands.smash_charge = None;
         self.commands.borrowed_script = source.map(|(source, _)| source.commands.clone().into());
         self.status.interaction = Interaction::Idle;
-        if self.physics.ground_or_air == GroundOrAir::Ground {
-            self.character.on_grounded_motion();
-        }
+    }
+    /// Fighter_ChangeMotionState (fighter.c:950-1189): outgoing effects, scalar
+    /// resets, row installation and pose setup, before the animated-shield hook.
+    fn reset_motion(&mut self, row: MotionState, assets: &FighterAssets) -> bool {
+        let state = row.id;
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
         self.shield.clear_collision();
@@ -449,17 +512,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
             state,
             CommonMotionState::Entry | CommonMotionState::EntryEnd
         ) {
-            self.motion_state = MotionState::new(row);
+            self.motion_state = row;
             self.animation.clear_motion(&mut self.skeleton);
             self.commands.instruction = None;
-            return Ok(());
+            return false;
         }
         if state == CommonMotionState::DeadDown {
-            self.motion_state = MotionState::new(row);
+            self.motion_state = row;
             self.animation.clear_motion(&mut self.skeleton);
             self.commands.instruction = None;
             self.animation.frame = -1.0;
-            return Ok(());
+            return false;
         }
         if !row.implemented {
             state::unsupported_action(row.action);
@@ -468,7 +531,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}");
         }
         let animation_id = row.animation;
-        self.motion_state = MotionState::new(row);
+        self.motion_state = row;
         for (i, set) in self.dynamics.iter_mut().enumerate() {
             let first = assets.dynamics_motion_starts[&animation_id][i];
             let dynamic = first != 0x100;
@@ -494,18 +557,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
             (std::f64::consts::FRAC_PI_2 * f64::from(self.physics.facing)) as f32,
         );
         self.skeleton.set_rotation_z(root, 0.0);
-        if state == CommonMotionState::Guard
-            || (!self.character.animated_shield()
-                && matches!(
-                    state,
-                    CommonMotionState::GuardOn | CommonMotionState::GuardReflect
-                ))
-        {
-            // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
-            self.animation.clear_motion(&mut self.skeleton);
-            self.commands.instruction = None;
-            return Ok(());
-        }
+        true
+    }
+    /// Ft_MF_SkipAnim, fighter.c:1349-1361.
+    fn clear_animation(&mut self) {
+        self.animation.clear_motion(&mut self.skeleton);
+        self.commands.instruction = None;
+    }
+    /// Fighter_ChangeMotionState (fighter.c:1268-1347): attach, evaluate main
+    /// tracks, run commands, then finish common entry bookkeeping.
+    fn start_motion_animation(
+        &mut self,
+        assets: &FighterAssets,
+        animation_id: i32,
+        state: CommonMotionState,
+        start: f32,
+        rate: f32,
+        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+    ) -> Result<()> {
         self.animation.set_animation(
             &mut self.skeleton,
             source.map_or(&assets.motions[&animation_id], |(_, motion)| motion),

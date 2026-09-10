@@ -1,4 +1,5 @@
 //! Spot dodge and roll, ftCo_Escape.c. Movement is sampled from TransN tracks.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -25,6 +26,51 @@ pub struct EscapeState {
     pub entry_facing: f32,
 }
 impl<C: CharacterCallbacks> Fighter<C> {
+    /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
+    pub fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
+        let retained_guard = if let MotionData::Guard(guard) = &self.core.state_data {
+            Some(guard.clone())
+        } else {
+            None
+        };
+        if state == S::EscapeN {
+            C::escape_variant(self, assets, false)?;
+        }
+        self.core.commands.grab_release = false;
+        self.change_motion_state(state, assets)?;
+        self.step_animation(assets);
+        self.core.status.ignore_fighter_nudge = true;
+        self.core.state_data = MotionData::Escape(EscapeState {
+            retained_guard,
+            interrupt_frames: assets.shield.roll_interrupt_frames,
+            entry_facing: self.core.physics.facing,
+        });
+        if state != S::EscapeN {
+            C::escape_variant(self, assets, true)?;
+        }
+        Ok(())
+    }
+    /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
+    pub(super) fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.motion_state.id != S::EscapeN
+            && std::mem::take(&mut self.core.commands.grab_release)
+        {
+            self.core.physics.facing = -self.core.physics.facing;
+        }
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
+            if self.core.motion_state.id != S::EscapeN {
+                self.core.physics.ground_velocity = 0.0;
+            }
+            if let Some(result) = C::escape_finished(self, assets) {
+                return result;
+            }
+            self.change_motion_state(S::Wait, assets)?;
+        }
+        C::escape_animated(self);
+        Ok(())
+    }
+}
+impl FighterCore {
     /// ftCo_8009980C (0x8009980C): main-stick down smash or C-stick down.
     pub(super) fn spot_dodge_input(&self, assets: &FighterAssets) -> bool {
         (self.input.current.stick.y <= assets.input.escape_threshold
@@ -48,47 +94,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
         } else {
             S::EscapeB
         })
-    }
-    /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
-    pub fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
-        let retained_guard = if let MotionData::Guard(guard) = &self.state_data {
-            Some(guard.clone())
-        } else {
-            None
-        };
-        if state == S::EscapeN {
-            C::escape_variant(self, assets, false)?;
-        }
-        self.commands.grab_release = false;
-        self.change_motion_state(state, assets)?;
-        self.step_animation(assets);
-        self.status.ignore_fighter_nudge = true;
-        self.state_data = MotionData::Escape(EscapeState {
-            retained_guard,
-            interrupt_frames: assets.shield.roll_interrupt_frames,
-            entry_facing: self.physics.facing,
-        });
-        if state != S::EscapeN {
-            C::escape_variant(self, assets, true)?;
-        }
-        Ok(())
-    }
-    /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
-    pub(super) fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.motion_state.id != S::EscapeN && std::mem::take(&mut self.commands.grab_release) {
-            self.physics.facing = -self.physics.facing;
-        }
-        if !self.animation.frames_remaining(&self.skeleton) {
-            if self.motion_state.id != S::EscapeN {
-                self.physics.ground_velocity = 0.0;
-            }
-            if let Some(result) = C::escape_finished(self, assets) {
-                return result;
-            }
-            self.change_motion_state(S::Wait, assets)?;
-        }
-        C::escape_animated(self);
-        Ok(())
     }
     /// ftCo_Escape_Phys -> ft_80085004 -> ft_80085030 (0x80085030).
     pub(super) fn escape_physics(&mut self, map: &melee_mp::CollMap) {

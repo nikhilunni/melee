@@ -9,6 +9,137 @@ use gekko_math::rng::HsdRng;
 use melee_mp::CollMap;
 
 impl<C: CharacterCallbacks> Fighter<C> {
+    /// Fighter_8006A360 (0x8006A360), s_link 1, fighter.c:1444-1701.
+    /// Main playback precedes Wait_Anim and its immediate animation restart.
+    pub fn proc_anim(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut HsdRng,
+    ) -> Result<Option<WaitChoice>> {
+        if !self.core.begin_animation_phase() {
+            return Ok(None);
+        }
+        (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })
+    }
+    /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
+    pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {
+        if self.core.sample_input(assets, sample) {
+            self.core.update_smash_charge_input();
+            (self.motion_row.iasa)(self, state::InputPhase { assets });
+        }
+    }
+
+    /// Fighter_procUpdate (0x8006B82C), s_link 4, fighter.c:2150-2438.
+    pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Vec3) {
+        if !self.core.begin_physics_phase() {
+            return;
+        }
+        (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
+        self.core.invalidate_collision_positions();
+    }
+    /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
+    pub fn proc_map(&mut self, map: &mut CollMap) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        (self.motion_row.collision)(self, state::CollisionPhase { assets: None, map })
+            .expect("grounded map callback");
+    }
+    /// State-changing map dispatch, including Landing's immediate command/RNG work.
+    /// The original proc_map remains the grounded API used by melee-sim M3.
+    pub fn proc_map_with_assets(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut CollMap,
+        rng: &mut HsdRng,
+    ) -> Result<usize> {
+        if self.core.status.disabled {
+            return Ok(0);
+        }
+        self.core.status.require_supported();
+        (self.motion_row.collision)(
+            self,
+            state::CollisionPhase {
+                assets: Some(assets),
+                map,
+            },
+        )?;
+        self.core.resolve_landing_effects(rng)
+    }
+    /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
+    /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
+    pub fn proc_process_hit(&mut self, assets: &FighterAssets) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        self.process_damage(assets).expect("hit response");
+        self.shield_proc(assets).expect("shield response");
+        self.core.update_hurtbox_extents();
+    }
+    /// Fighter_8006D9AC (0x8006D9AC), s_link 16 -> ftCo_8009DD94.
+    /// Wait x594_b3 selects ftCo_8009CB40(..., false, NULL), setting bone_id
+    /// to 0x100 (ftdynamics.c:55); lb_8001044C returns at lb_00F9.c:447.
+    pub fn proc_dynamics(&mut self) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        self.core.update_dynamic_colliders();
+        self.solve_dynamics(None);
+    }
+    /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
+    pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        self.core.update_dynamic_colliders();
+        self.solve_dynamics(Some(map));
+    }
+    fn solve_dynamics(&mut self, mut map: Option<&mut CollMap>) {
+        let frame = self.core.dynamics_frame();
+        let count = self.core.dynamics.len();
+        for index in 0..count.min(self.core.dynamics_first_bone.len()) {
+            let first_force_bone = self.character.dynamics_first_force_bone(index, count);
+            self.core
+                .solve_dynamic_set(index, first_force_bone, &frame, map.as_deref_mut());
+        }
+    }
+    /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:160-168: camera box first,
+    /// then notify the supporting stage joint while hanging airborne.
+    pub fn proc_camera_with_map(
+        &mut self,
+        assets: &FighterAssets,
+        fixed_zoom: f32,
+        map: &mut CollMap,
+    ) {
+        self.proc_camera(assets, fixed_zoom);
+        if !self.core.status.disabled && self.core.camera.on_ledge {
+            let MotionData::Cliff(cliff) = &self.core.state_data else {
+                panic!("cliff camera scratch missing")
+            };
+            map.notify_ledge_grab(&mut self.core.collision.data, cliff.ledge_id);
+        }
+    }
+    /// Fighter camera procedure at 0x8006D9EC (0x8006D9EC), s_link 18.
+    pub fn proc_camera(&mut self, assets: &FighterAssets, fixed_zoom: f32) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        self.core.status.camera_shift = Vec2::ZERO;
+        (self.motion_row.camera)(
+            self,
+            state::CameraPhase {
+                assets,
+                zoom: fixed_zoom,
+            },
+        );
+    }
+}
+impl FighterCore {
     /// Fighter_8006A1BC (0x8006A1BC), s_link 0, fighter.c:1393-1442.
     /// Hitlag expires here; unported interactions remain explicit guards.
     pub fn proc_status(&mut self) {
@@ -90,35 +221,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 "ft_081B.c:1258-1296: non-default terrain footstep sound/effect mapping"
             );
         }
-    }
-    /// Fighter_8006A360 (0x8006A360), s_link 1, fighter.c:1444-1701.
-    /// Main playback precedes Wait_Anim and its immediate animation restart.
-    pub fn proc_anim(
-        &mut self,
-        assets: &FighterAssets,
-        rng: &mut HsdRng,
-    ) -> Result<Option<WaitChoice>> {
-        if self.status.disabled {
-            return Ok(None);
-        }
-        self.status.require_supported();
-        self.physics.begin_tick();
-        if self.combat.hitlag_remaining > 0.0 {
-            return Ok(None);
-        }
-        if self.status.ledge_intangibility != 0 {
-            self.status.ledge_intangibility -= 1;
-        }
-        if self.status.name_tag_timer > 1 && !self.status.input_frozen {
-            self.status.name_tag_timer -= 1;
-        }
-        if self.status.time_since_hit != -1 {
-            self.status.time_since_hit = self.status.time_since_hit.wrapping_add(1);
-        }
-        if self.status.time_since_smash != -1.0 {
-            self.status.time_since_smash += 1.0;
-        }
-        (self.motion_state.row.anim)(self, state::AnimationPhase { assets, rng })
     }
     /// Finish ftAnim_8006E9B4 suspended in the blend-tree evaluator, or the
     /// Wait restart's ftAnim_8006EBE8 rate setup. The importer validates that
@@ -204,110 +306,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             input_source(self.player.control, self.cpu.mode),
         );
     }
-    /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
-    pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
-        let effects = update_input(
-            &mut self.input,
-            input_source(self.player.control, self.cpu.mode),
-            sample,
-            &assets.input,
-            InputContext {
-                save_and_clear: self.status.input_frozen,
-                hitlag: self.combat.hitlag_remaining > 0.0,
-                ..InputContext::default()
-            },
-        );
-        if self.combat.hitlag_remaining > 0.0
-            && matches!(self.state_data, super::MotionData::Damage(_))
-            && (self.input.current.stick.x != 0.0
-                || self.input.current.stick.y != 0.0
-                || self.input.current.cstick.x != 0.0
-                || self.input.current.cstick.y != 0.0)
-        {
-            unimplemented!("ftCo_Damage.c:624-664: SDI during hitlag");
-        }
-        self.joystick_count += u64::from(effects.joystick_count_increments);
-        if effects.run_input_callback && self.combat.hitlag_remaining == 0.0 {
-            self.update_smash_charge_input();
-            (self.motion_state.row.iasa)(self, state::InputPhase { assets });
-        }
-    }
-
-    /// Fighter_procUpdate (0x8006B82C), s_link 4, fighter.c:2150-2438.
-    pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Vec3) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
-        if self.combat.hitlag_remaining > 0.0 {
-            return;
-        }
-        if self.status.ledge_cooldown != 0 {
-            self.status.ledge_cooldown -= 1;
-        }
-        (self.motion_state.row.physics)(self, state::PhysicsPhase { assets, map, wind });
-        if self.shield.active {
-            self.physics.shield_position_cached = false;
-            self.shield.hit.position_cached = false;
-            if self.motion_state.id != melee_types::CommonMotionState::GuardSetOff {
-                self.shield.reflect.volume.position_cached = false;
-            }
-        }
-        for hurt in &mut self.hurtboxes {
-            hurt.cached = false;
-        }
-    }
-    /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
-    pub fn proc_map(&mut self, map: &mut CollMap) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
-        (self.motion_state.row.collision)(self, state::CollisionPhase { assets: None, map })
-            .expect("grounded map callback");
-    }
-    /// State-changing map dispatch, including Landing's immediate command/RNG work.
-    /// The original proc_map remains the grounded API used by melee-sim M3.
-    pub fn proc_map_with_assets(
-        &mut self,
-        assets: &FighterAssets,
-        map: &mut CollMap,
-        rng: &mut HsdRng,
-    ) -> Result<usize> {
-        if self.status.disabled {
-            return Ok(0);
-        }
-        self.status.require_supported();
-        (self.motion_state.row.collision)(
-            self,
-            state::CollisionPhase {
-                assets: Some(assets),
-                map,
-            },
-        )?;
-        let mut draws = 0;
-        for id in self.commands.landing_effects.drain(..) {
-            // ftCo_8009F834 block_70. Even a zero range consumes three draws.
-            let mut offset = Vec3::ZERO;
-            for component in [&mut offset.x, &mut offset.y, &mut offset.z] {
-                let random = rng.randf();
-                // Retail fused sites 0x8009FCF8/FD1C/FD44 (asm.py --fused).
-                *component = gekko_math::fma::fmadds(0.0, random - 0.5, *component);
-                draws += 1;
-            }
-            let normal = self.collision.data.floor.normal;
-            self.effects.push(super::effects::EffectRequest::Landing {
-                id,
-                offset,
-                floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
-            });
-        }
-        Ok(draws)
-    }
     /// Fighter_8006C5F4 (0x8006C5F4), s_link 7, fighter.c:2518-2525.
     pub fn proc_pose(&mut self, map: &CollMap) {
         if self.status.disabled {
@@ -366,15 +364,115 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.status.require_supported();
         }
     }
-    /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
-    /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
-    pub fn proc_process_hit(&mut self, assets: &FighterAssets) {
+    /// Fighter_8006DA4C (0x8006DA4C), s_link 22, fighter.c:3073-3083.
+    pub fn proc_player_mirror(&mut self) {
         if self.status.disabled {
             return;
         }
+        self.player_position = self.physics.position;
+        self.player_facing = self.physics.facing;
+    }
+}
+
+impl FighterCore {
+    // Scheduler bookkeeping keeps the original order around typed row dispatch.
+    fn begin_animation_phase(&mut self) -> bool {
+        if self.status.disabled {
+            return false;
+        }
         self.status.require_supported();
-        self.process_damage(assets).expect("hit response");
-        self.shield_proc(assets).expect("shield response");
+        self.physics.begin_tick();
+        if self.combat.hitlag_remaining > 0.0 {
+            return false;
+        }
+        if self.status.ledge_intangibility != 0 {
+            self.status.ledge_intangibility -= 1;
+        }
+        if self.status.name_tag_timer > 1 && !self.status.input_frozen {
+            self.status.name_tag_timer -= 1;
+        }
+        if self.status.time_since_hit != -1 {
+            self.status.time_since_hit = self.status.time_since_hit.wrapping_add(1);
+        }
+        if self.status.time_since_smash != -1.0 {
+            self.status.time_since_smash += 1.0;
+        }
+        true
+    }
+    fn sample_input(&mut self, assets: &FighterAssets, sample: &PadSample) -> bool {
+        if self.status.disabled {
+            return false;
+        }
+        self.status.require_supported();
+        let effects = update_input(
+            &mut self.input,
+            input_source(self.player.control, self.cpu.mode),
+            sample,
+            &assets.input,
+            InputContext {
+                save_and_clear: self.status.input_frozen,
+                hitlag: self.combat.hitlag_remaining > 0.0,
+                ..InputContext::default()
+            },
+        );
+        if self.combat.hitlag_remaining > 0.0
+            && matches!(self.state_data, super::MotionData::Damage(_))
+            && (self.input.current.stick.x != 0.0
+                || self.input.current.stick.y != 0.0
+                || self.input.current.cstick.x != 0.0
+                || self.input.current.cstick.y != 0.0)
+        {
+            unimplemented!("ftCo_Damage.c:624-664: SDI during hitlag");
+        }
+        self.joystick_count += u64::from(effects.joystick_count_increments);
+        effects.run_input_callback && self.combat.hitlag_remaining == 0.0
+    }
+    fn begin_physics_phase(&mut self) -> bool {
+        if self.status.disabled {
+            return false;
+        }
+        self.status.require_supported();
+        if self.combat.hitlag_remaining > 0.0 {
+            return false;
+        }
+        if self.status.ledge_cooldown != 0 {
+            self.status.ledge_cooldown -= 1;
+        }
+        true
+    }
+    fn invalidate_collision_positions(&mut self) {
+        if self.shield.active {
+            self.physics.shield_position_cached = false;
+            self.shield.hit.position_cached = false;
+            if self.motion_state.id != melee_types::CommonMotionState::GuardSetOff {
+                self.shield.reflect.volume.position_cached = false;
+            }
+        }
+        for hurt in &mut self.hurtboxes {
+            hurt.cached = false;
+        }
+    }
+    fn resolve_landing_effects(&mut self, rng: &mut HsdRng) -> Result<usize> {
+        let mut draws = 0;
+        for id in self.commands.landing_effects.drain(..) {
+            // ftCo_8009F834 block_70. Even a zero range consumes three draws.
+            let mut offset = Vec3::ZERO;
+            for component in [&mut offset.x, &mut offset.y, &mut offset.z] {
+                let random = rng.randf();
+                // Retail fused sites 0x8009FCF8/FD1C/FD44 (asm.py --fused).
+                *component = gekko_math::fma::fmadds(0.0, random - 0.5, *component);
+                draws += 1;
+            }
+            let normal = self.collision.data.floor.normal;
+            self.effects.push(super::effects::EffectRequest::Landing {
+                id,
+                offset,
+                floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
+            });
+        }
+        Ok(draws)
+    }
+    fn update_hurtbox_extents(&mut self) {
         self.cpu.hurtbox_extents = caches::hurtbox_extents(
             &mut self.hurtboxes,
             &mut self.skeleton,
@@ -384,14 +482,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.player.scale,
         );
     }
-    /// Fighter_8006D9AC (0x8006D9AC), s_link 16 -> ftCo_8009DD94.
-    /// Wait x594_b3 selects ftCo_8009CB40(..., false, NULL), setting bone_id
-    /// to 0x100 (ftdynamics.c:55); lb_8001044C returns at lb_00F9.c:447.
-    pub fn proc_dynamics(&mut self) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
+}
+
+/// Dynamics inputs sampled once before the per-set character hooks.
+struct DynamicsFrame {
+    colliders: Vec<melee_lb::dynamics::Collider>,
+    ground_check: bool,
+    plane: bool,
+    height: f32,
+}
+impl FighterCore {
+    /// ftCo_8009DD94: collider positions before the first dynamics set.
+    fn update_dynamic_colliders(&mut self) {
         for collider in &mut self.dynamic_colliders {
             collider.position = caches::bone_position(
                 &mut self.skeleton,
@@ -400,103 +502,53 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 collider.offset,
             );
         }
-        self.solve_dynamics(&mut |_, _| {
-            panic!("active grounded dynamics requires proc_dynamics_with_map")
-        });
     }
-    /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
-    pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
-        for collider in &mut self.dynamic_colliders {
-            collider.position = caches::bone_position(
-                &mut self.skeleton,
-                self.animation.root,
-                collider.bone,
-                collider.offset,
-            );
-        }
-        self.solve_dynamics(&mut |a, b| {
-            map.check_floor(a.x, a.y, b.x, b.y, 0.1, -1, -1, -1, None)
-                .map(|hit| hit.pos)
-        });
-    }
-    fn solve_dynamics(&mut self, floor: &mut impl FnMut(Vec3, Vec3) -> Option<Vec3>) {
-        use melee_lb::dynamics::{Collider, SolverEnvironment};
-        let colliders: Vec<_> = self
+    fn dynamics_frame(&self) -> DynamicsFrame {
+        let colliders = self
             .dynamic_colliders
             .iter()
-            .map(|c| Collider {
+            .map(|c| melee_lb::dynamics::Collider {
                 position: c.position,
                 radius: c.radius,
             })
             .collect();
-        let mut environment = SolverEnvironment {
-            disabled: false,
-            colliders: &colliders,
-            forces: &[],
-            first_force_bone: 0,
+        DynamicsFrame {
+            colliders,
             ground_check: self.player.scale == 1.0
                 && self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
-        };
-        let plane = self.dynamics_use_floor_plane;
-        let height = self.physics.position.y;
-        let count = self.dynamics.len();
-        for (index, (set, &first)) in self
-            .dynamics
-            .iter_mut()
-            .zip(&self.dynamics_first_bone)
-            .enumerate()
-        {
-            environment.first_force_bone = self.character.dynamics_first_force_bone(index, count);
-            set.solve(&mut self.skeleton, first, &environment, &mut |a, b| {
-                if plane {
-                    melee_lb::dynamics::floor_plane(a, b, height)
-                } else {
-                    floor(a, b)
-                }
-            });
+            plane: self.dynamics_use_floor_plane,
+            height: self.physics.position.y,
         }
     }
-    /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:160-168: camera box first,
-    /// then notify the supporting stage joint while hanging airborne.
-    pub fn proc_camera_with_map(
+    /// ftCo_8009DD94 (ftdynamics.c:397-419): solve after the set's force-bone hook.
+    fn solve_dynamic_set(
         &mut self,
-        assets: &FighterAssets,
-        fixed_zoom: f32,
-        map: &mut CollMap,
+        index: usize,
+        first_force_bone: usize,
+        frame: &DynamicsFrame,
+        mut map: Option<&mut CollMap>,
     ) {
-        self.proc_camera(assets, fixed_zoom);
-        if !self.status.disabled && self.camera.on_ledge {
-            let MotionData::Cliff(cliff) = &self.state_data else {
-                panic!("cliff camera scratch missing")
-            };
-            map.notify_ledge_grab(&mut self.collision.data, cliff.ledge_id);
-        }
-    }
-    /// Fighter camera procedure at 0x8006D9EC (0x8006D9EC), s_link 18.
-    pub fn proc_camera(&mut self, assets: &FighterAssets, fixed_zoom: f32) {
-        if self.status.disabled {
-            return;
-        }
-        self.status.require_supported();
-        self.status.camera_shift = Vec2::ZERO;
-        (self.motion_state.row.camera)(
-            self,
-            state::CameraPhase {
-                assets,
-                zoom: fixed_zoom,
+        let environment = melee_lb::dynamics::SolverEnvironment {
+            disabled: false,
+            colliders: &frame.colliders,
+            forces: &[],
+            first_force_bone,
+            ground_check: frame.ground_check,
+        };
+        self.dynamics[index].solve(
+            &mut self.skeleton,
+            self.dynamics_first_bone[index],
+            &environment,
+            &mut |a, b| {
+                if frame.plane {
+                    melee_lb::dynamics::floor_plane(a, b, frame.height)
+                } else {
+                    map.as_deref_mut()
+                        .expect("active grounded dynamics requires proc_dynamics_with_map")
+                        .check_floor(a.x, a.y, b.x, b.y, 0.1, -1, -1, -1, None)
+                        .map(|hit| hit.pos)
+                }
             },
         );
-    }
-    /// Fighter_8006DA4C (0x8006DA4C), s_link 22, fighter.c:3073-3083.
-    pub fn proc_player_mirror(&mut self) {
-        if self.status.disabled {
-            return;
-        }
-        self.player_position = self.physics.position;
-        self.player_facing = self.physics.facing;
     }
 }

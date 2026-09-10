@@ -1,4 +1,5 @@
 //! Shared fall animation families and air-dodge special fall, ftCommon/ftCo_Fall*.c.
+use super::FighterCore;
 use super::{CharacterCallbacks, Fighter, MotionData};
 /// PlCo ftCommonData +444/+448: normalized speed deadzone and blend smoothing.
 #[derive(Clone, Copy, Debug)]
@@ -85,6 +86,62 @@ pub struct SpecialFallState {
     pub landing_lag: f32,
 }
 impl<C: CharacterCallbacks> Fighter<C> {
+    /// ftCo_80096900 (80096900), called by EscapeAir_Anim (80099BD0).
+    /// ftCo_FallSpecial.c:34-57, EscapeAir.c:78-79: ordinary gravity,
+    /// forced landing lag and no landing interrupt; consumes all air jumps.
+    pub(super) fn enter_air_dodge_fall(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+    ) -> super::assets::Result<()> {
+        self.change_motion_state(melee_types::CommonMotionState::FallSpecial, assets)?;
+        self.core.state_data = MotionData::FallSpecial(SpecialFallState {
+            animation: FallState::new(FallFamily::Special),
+            // retail 8009696C fmuls; no multiply-add.
+            mobility: self.core.attributes.air.air_drift_max
+                * assets.air_dodge.special_fall_mobility,
+            ordinary_gravity: true,
+            force_landing_lag: true,
+            allow_interrupt: false,
+            landing_lag: assets.air_dodge.landing_lag,
+        });
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            unimplemented!("ftCo_FallSpecial.c:52-53: grounded special-fall entry");
+        }
+        self.core.physics.jumps_used = self.core.attributes.jumping.max_jumps as u8;
+        Ok(())
+    }
+
+    /// ftCo_FallSpecial_Phys (80096B44), ftCo_FallSpecial.c:104-125.
+    pub(super) fn special_fall_physics(&mut self, assets: &super::assets::FighterAssets) {
+        let MotionData::FallSpecial(fall) = &self.core.state_data else {
+            panic!("special fall scratch missing")
+        };
+        if !fall.ordinary_gravity {
+            unimplemented!("ftCo_FallSpecial.c:126-149: special-move gravity and mobility cap");
+        }
+        // 80096BAC fmuls, 80096BC8 fadds, 80096BD4 fmuls are separate;
+        // 8007D140 forwards to the same drift clamp used by ordinary air physics.
+        // Retail xC != 0 does not apply the saved mobility cap.
+        self.airborne_physics(assets);
+    }
+
+    /// ftCo_80096D28 (80096D28), ftCo_FallSpecial.c:170-180.
+    pub(super) fn land_from_special_fall(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+    ) -> super::assets::Result<()> {
+        let MotionData::FallSpecial(fall) = &self.core.state_data else {
+            panic!("special fall scratch missing")
+        };
+        if fall.force_landing_lag || self.core.physics.self_velocity.y < assets.soft_landing_speed {
+            self.enter_special_landing(assets, fall.allow_interrupt, fall.landing_lag)
+        } else {
+            self.land();
+            self.change_motion_state(melee_types::CommonMotionState::Wait, assets)
+        }
+    }
+}
+impl FighterCore {
     /// ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
     pub fn leave_ground(&mut self) {
         self.physics.ground_or_air = melee_types::GroundOrAir::Air;
@@ -131,60 +188,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 .apply_fall_pose::<super::RetailTrig>(&mut self.skeleton, fall.blend);
         }
         Ok(())
-    }
-
-    /// ftCo_80096900 (80096900), called by EscapeAir_Anim (80099BD0).
-    /// ftCo_FallSpecial.c:34-57, EscapeAir.c:78-79: ordinary gravity,
-    /// forced landing lag and no landing interrupt; consumes all air jumps.
-    pub(super) fn enter_air_dodge_fall(
-        &mut self,
-        assets: &super::assets::FighterAssets,
-    ) -> super::assets::Result<()> {
-        self.change_motion_state(melee_types::CommonMotionState::FallSpecial, assets)?;
-        self.state_data = MotionData::FallSpecial(SpecialFallState {
-            animation: FallState::new(FallFamily::Special),
-            // retail 8009696C fmuls; no multiply-add.
-            mobility: self.attributes.air.air_drift_max * assets.air_dodge.special_fall_mobility,
-            ordinary_gravity: true,
-            force_landing_lag: true,
-            allow_interrupt: false,
-            landing_lag: assets.air_dodge.landing_lag,
-        });
-        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
-            unimplemented!("ftCo_FallSpecial.c:52-53: grounded special-fall entry");
-        }
-        self.physics.jumps_used = self.attributes.jumping.max_jumps as u8;
-        Ok(())
-    }
-
-    /// ftCo_FallSpecial_Phys (80096B44), ftCo_FallSpecial.c:104-125.
-    pub(super) fn special_fall_physics(&mut self, assets: &super::assets::FighterAssets) {
-        let MotionData::FallSpecial(fall) = &self.state_data else {
-            panic!("special fall scratch missing")
-        };
-        if !fall.ordinary_gravity {
-            unimplemented!("ftCo_FallSpecial.c:126-149: special-move gravity and mobility cap");
-        }
-        // 80096BAC fmuls, 80096BC8 fadds, 80096BD4 fmuls are separate;
-        // 8007D140 forwards to the same drift clamp used by ordinary air physics.
-        // Retail xC != 0 does not apply the saved mobility cap.
-        self.airborne_physics(assets);
-    }
-
-    /// ftCo_80096D28 (80096D28), ftCo_FallSpecial.c:170-180.
-    pub(super) fn land_from_special_fall(
-        &mut self,
-        assets: &super::assets::FighterAssets,
-    ) -> super::assets::Result<()> {
-        let MotionData::FallSpecial(fall) = &self.state_data else {
-            panic!("special fall scratch missing")
-        };
-        if fall.force_landing_lag || self.physics.self_velocity.y < assets.soft_landing_speed {
-            self.enter_special_landing(assets, fall.allow_interrupt, fall.landing_lag)
-        } else {
-            self.land();
-            self.change_motion_state(melee_types::CommonMotionState::Wait, assets)
-        }
     }
 }
 

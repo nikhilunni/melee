@@ -2,7 +2,6 @@
 //! generated or checked in. Extended savestate header v1 uses LZ4 blocks.
 use super::{float, vector, word};
 use hsd_anim::{jobj::JObj, quat::Quaternion};
-use melee_ft::fighter::{CharacterCallbacks, Fighter};
 use std::{fs, path::Path};
 
 pub struct SavedPose {
@@ -128,7 +127,7 @@ impl SavedPose {
             fobj: tracks,
         });
     }
-    pub fn restore<C: CharacterCallbacks>(&self, fighter: &mut Fighter<C>, raw: &[u8]) {
+    pub fn restore(&self, fighter: &mut melee_ft::fighter::FighterCore, raw: &[u8]) {
         let gobj = word(raw, 0);
         let address = word(self.bytes(gobj, 0x30), 0x2C);
         // A savestate may interrupt a tick; the trace records its completed

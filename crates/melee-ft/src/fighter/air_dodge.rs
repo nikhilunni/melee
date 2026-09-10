@@ -42,19 +42,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_80099A9C (80099A9C): retain momentum, then select the stick direction.
     pub(super) fn enter_air_dodge(&mut self, assets: &FighterAssets) -> Result<()> {
         let p = assets.air_dodge;
-        let saved_velocity = self.physics.self_velocity;
-        let stick = self.input.current.stick;
+        let saved_velocity = self.core.physics.self_velocity;
+        let stick = self.core.input.current.stick;
         if fabsf(stick.x) < p.deadzone.x && fabsf(stick.y) < p.deadzone.y {
-            self.physics.self_velocity.x = 0.0;
-            self.physics.self_velocity.y = 0.0;
+            self.core.physics.self_velocity.x = 0.0;
+            self.core.physics.self_velocity.y = 0.0;
         } else {
             // ftCommon_8007D9D4; retail 80099B4C/B64: separate fmuls.
             let angle = melee_lb::trigf::atan2f(stick.y, stick.x);
-            self.physics.self_velocity.x = p.force * cosf(angle);
-            self.physics.self_velocity.y = p.force * sinf(angle);
+            self.core.physics.self_velocity.x = p.force * cosf(angle);
+            self.core.physics.self_velocity.y = p.force * sinf(angle);
         }
-        self.commands.variables[0] = 0;
-        self.state_data = MotionData::EscapeAir(AirDodgeState {
+        self.core.commands.variables[0] = 0;
+        self.core.state_data = MotionData::EscapeAir(AirDodgeState {
             item_throw_frames: p.item_throw_frames,
             saved_velocity,
         });
@@ -64,7 +64,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_EscapeAir_Anim (80099BD0), animation completion enters FallSpecial.
     pub(super) fn air_dodge_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.enter_air_dodge_fall(assets)?;
         }
         Ok(())
@@ -72,7 +72,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_EscapeAir_IASA (80099C24), item-free path; item interaction is
     /// rejected by Status::require_supported before the saved-momentum throw branch.
     pub(super) fn air_dodge_input(&mut self) {
-        let MotionData::EscapeAir(dodge) = &mut self.state_data else {
+        let MotionData::EscapeAir(dodge) = &mut self.core.state_data else {
             panic!("air dodge scratch missing")
         };
         if dodge.item_throw_frames != 0 {
@@ -82,9 +82,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_EscapeAir_Phys (80099CEC): separate fmuls; no velocity table.
     pub(super) fn air_dodge_physics(&mut self, assets: &FighterAssets) {
-        if self.commands.variables[0] == 0 {
-            self.physics.self_velocity.x *= assets.air_dodge.decay;
-            self.physics.self_velocity.y *= assets.air_dodge.decay;
+        if self.core.commands.variables[0] == 0 {
+            self.core.physics.self_velocity.x *= assets.air_dodge.decay;
+            self.core.physics.self_velocity.y *= assets.air_dodge.decay;
         } else {
             self.airborne_physics(assets);
         }

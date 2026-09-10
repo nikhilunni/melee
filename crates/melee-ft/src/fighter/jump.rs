@@ -1,4 +1,5 @@
 //! Ground and aerial jumps: ftCommon/ftCo_KneeBend.c and ftCo_Jump{,Aerial}.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -39,16 +40,16 @@ pub struct JumpState {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_KneeBend_Enter (800CB4E0), ftCo_Jump_GetInput (800CAE80).
     pub(super) fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
-        let input = if self.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
-            && i32::from(self.input.vertical.tilt) < assets.input.thresholds.tap_jump_window
+        let input = if self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
+            && i32::from(self.core.input.vertical.tilt) < assets.input.thresholds.tap_jump_window
         {
             JumpInput::Stick
-        } else if self.input.pressed.intersects(Buttons::XY) {
+        } else if self.core.input.pressed.intersects(Buttons::XY) {
             JumpInput::Buttons
         } else {
             unimplemented!("ftCo_Jump.c:69-98: relaxed/C-stick jump entry")
         };
-        self.state_data = MotionData::KneeBend(KneeBendState {
+        self.core.state_data = MotionData::KneeBend(KneeBendState {
             short_hop: false,
             input,
         });
@@ -56,12 +57,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_KneeBend_Anim (800CB528), ftCo_Jump_Enter (800CB250).
     pub(super) fn knee_bend_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.animation.frame < self.attributes.jumping.jump_startup_time
-            && self.animation.frames_remaining(&self.skeleton)
+        if self.core.animation.frame < self.core.attributes.jumping.jump_startup_time
+            && self.core.animation.frames_remaining(&self.core.skeleton)
         {
             return Ok(());
         }
-        let MotionData::KneeBend(squat) = &self.state_data else {
+        let MotionData::KneeBend(squat) = &self.core.state_data else {
             panic!("KneeBend data missing")
         };
         let short_hop = squat.short_hop;
@@ -70,14 +71,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.change_motion_state(state, assets)?;
         // ftCo_800CB110: retail 800CB140/144,174/180,18C/198,1A8,1B8;
         // products and sum are separately rounded, with no fusion.
-        let attrs = &self.attributes.jumping;
+        let attrs = &self.core.attributes.jumping;
         let multiplier = 1.0;
-        let momentum = self.physics.self_velocity.x
+        let momentum = self.core.physics.self_velocity.x
             * (attrs.ground_to_air_jump_momentum_multiplier * multiplier);
-        let horizontal =
-            momentum + multiplier * (self.input.current.stick.x * attrs.jump_h_initial_velocity);
+        let horizontal = momentum
+            + multiplier * (self.core.input.current.stick.x * attrs.jump_h_initial_velocity);
         let maximum = attrs.jump_h_max_velocity * multiplier;
-        self.physics.self_velocity = Vec3::new(
+        self.core.physics.self_velocity = Vec3::new(
             horizontal.clamp(-maximum, maximum),
             (if short_hop {
                 attrs.hop_v_initial_velocity
@@ -86,42 +87,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }) * multiplier,
             0.0,
         );
-        self.input.vertical.tilt = 0xFE;
-        self.state_data = MotionData::Jump(JumpState {
+        self.core.input.vertical.tilt = 0xFE;
+        self.core.state_data = MotionData::Jump(JumpState {
             short_hop,
             physics_started: false,
             multiplier,
         });
         Ok(())
-    }
-    /// ftCo_KneeBend_IASA (800CB5FC), Check_ShortHop (800CB59C).
-    pub(super) fn knee_bend_input(&mut self, assets: &FighterAssets, context: &WaitContext) {
-        let transition =
-            self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab, P::SmashUp]);
-        if transition != T::None {
-            unimplemented!("ftCo_KneeBend.c:63-65: jump cancel {transition:?}");
-        }
-        let MotionData::KneeBend(squat) = &mut self.state_data else {
-            panic!("KneeBend data missing")
-        };
-        squat.short_hop |= match squat.input {
-            JumpInput::Buttons => !self.input.current.held.intersects(Buttons::XY),
-            JumpInput::Stick => self.input.current.stick.y < assets.jumping.release_threshold,
-        };
-    }
-    /// ftCo_Jump_Enter / JumpAerial_Enter_Basic: separate fmuls at 800CBC0C.
-    fn jump_direction(&self, assets: &FighterAssets, aerial: bool) -> CommonMotionState {
-        // ftCo_Jump_Enter (800CB250), JumpAerial_Enter_Basic (800CBBC0):
-        // ftPe_JumpAerial_Enter (800CC130) also uses separate fmuls.
-        // Choosing the backward animation does not turn facing.
-        let backward =
-            self.input.current.stick.x * self.physics.facing <= -assets.jumping.backward_threshold;
-        match (aerial, backward) {
-            (false, false) => CommonMotionState::JumpF,
-            (false, true) => CommonMotionState::JumpB,
-            (true, false) => CommonMotionState::JumpAerialF,
-            (true, true) => CommonMotionState::JumpAerialB,
-        }
     }
     /// ftCo_JumpAerial.c:103-119 character dispatch, then
     /// ftCo_JumpAerial_Enter_Basic (800CBBC0) -> ftCo_800CBAC4 for the
@@ -147,12 +119,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
         self.leave_ground();
         let retained_drop_timer = self.retained_drop_timer();
-        self.commands.variables[0] = 1;
-        let attrs = &self.attributes.jumping;
+        self.core.commands.variables[0] = 1;
+        let attrs = &self.core.attributes.jumping;
         // retail 800CBC44/4C; Peach horizontal multiply 800CC15C:
         // separate fmuls, no fusion.
         let velocity = Vec3::new(
-            self.input.current.stick.x * attrs.air_jump_h_multiplier,
+            self.core.input.current.stick.x * attrs.air_jump_h_multiplier,
             // ftPe_JumpAerial_Enter stores +0 Y/Z at 800CC198..1A0;
             // ftYs_JumpAerial_Enter likewise uses animation-driven vertical motion.
             if matches!(
@@ -166,10 +138,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             0.0,
         );
         self.change_motion_state(state, assets)?;
-        self.physics.self_velocity = velocity;
-        self.input.vertical.tilt = 0xFE;
-        self.physics.jumps_used += 1;
-        self.state_data = MotionData::JumpAerial {
+        self.core.physics.self_velocity = velocity;
+        self.core.input.vertical.tilt = 0xFE;
+        self.core.physics.jumps_used += 1;
+        self.core.state_data = MotionData::JumpAerial {
             retained_drop_timer,
         };
         C::aerial_jump_entered(self);
@@ -177,9 +149,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_Jump_Anim (800CB2F8), ftCo_JumpAerial_Anim (800CC388).
     pub(super) fn jump_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             if matches!(
-                self.motion_state.id,
+                self.core.motion_state.id,
                 CommonMotionState::JumpAerialF | CommonMotionState::JumpAerialB
             ) {
                 self.change_motion_state(CommonMotionState::FallAerial, assets)?;
@@ -188,19 +160,80 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             self.change_motion_state(CommonMotionState::Fall, assets)?;
         }
-        if matches!(self.state_data, MotionData::JumpAerial { .. }) {
+        if matches!(self.core.state_data, MotionData::JumpAerial { .. }) {
             C::aerial_jump_animated(self);
         }
         Ok(())
     }
     /// ftCo_Jump_Phys_Inner (800CB438), ft_80084DB0 and CheckFallFast (8007D528).
     pub(super) fn airborne_physics(&mut self, assets: &FighterAssets) {
-        if matches!(self.state_data, MotionData::JumpAerial { .. })
+        let animation_driven = matches!(self.core.state_data, MotionData::JumpAerial { .. })
             && matches!(
                 self.character.aerial_jump_style(),
                 super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
-            )
+            );
+        self.core.airborne_physics(assets, animation_driven);
+    }
+}
+impl FighterCore {
+    /// ftCo_KneeBend_IASA (800CB5FC), Check_ShortHop (800CB59C).
+    pub(super) fn knee_bend_input(&mut self, assets: &FighterAssets, context: &WaitContext) {
+        let transition =
+            self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab, P::SmashUp]);
+        if transition != T::None {
+            unimplemented!("ftCo_KneeBend.c:63-65: jump cancel {transition:?}");
+        }
+        let MotionData::KneeBend(squat) = &mut self.state_data else {
+            panic!("KneeBend data missing")
+        };
+        squat.short_hop |= match squat.input {
+            JumpInput::Buttons => !self.input.current.held.intersects(Buttons::XY),
+            JumpInput::Stick => self.input.current.stick.y < assets.jumping.release_threshold,
+        };
+    }
+    /// ftCo_Jump_Enter / JumpAerial_Enter_Basic: separate fmuls at 800CBC0C.
+    pub(super) fn jump_direction(&self, assets: &FighterAssets, aerial: bool) -> CommonMotionState {
+        // ftCo_Jump_Enter (800CB250), JumpAerial_Enter_Basic (800CBBC0):
+        // ftPe_JumpAerial_Enter (800CC130) also uses separate fmuls.
+        // Choosing the backward animation does not turn facing.
+        let backward =
+            self.input.current.stick.x * self.physics.facing <= -assets.jumping.backward_threshold;
+        match (aerial, backward) {
+            (false, false) => CommonMotionState::JumpF,
+            (false, true) => CommonMotionState::JumpB,
+            (true, false) => CommonMotionState::JumpAerialF,
+            (true, true) => CommonMotionState::JumpAerialB,
+        }
+    }
+
+    /// ftCommon_CheckFallFast (8007D528), FallFast (8007D4E4), Fall (8007D494).
+    /// Shared by ordinary airborne physics and ft_80084E1C's multijump drift.
+    pub(super) fn apply_fall_gravity(&mut self, assets: &FighterAssets) {
+        if !self.physics.fast_fall
+            && self.physics.self_velocity.y < 0.0
+            && self.input.current.stick.y <= -assets.jumping.fast_fall_threshold
+            && i32::from(self.input.vertical.tilt) < assets.jumping.fast_fall_window
         {
+            self.physics.fast_fall = true;
+            self.input.vertical.tilt = 0xFE;
+        }
+        let air = &self.attributes.air;
+        self.physics.self_velocity.y = if self.physics.fast_fall {
+            -air.fast_fall_velocity
+        } else {
+            crate::physics::airborne::gravity(
+                self.physics.self_velocity.y,
+                air.gravity,
+                air.terminal_velocity,
+            )
+        };
+    }
+}
+
+impl FighterCore {
+    /// ftCo_Jump_Phys_Inner (800CB438): calculation after jump-style selection.
+    fn airborne_physics(&mut self, assets: &FighterAssets, animation_driven: bool) {
+        if animation_driven {
             // ftCo_JumpAerial_Phys_Cb (800CC6C8): ftCommon_8007D268 drift,
             // then ft_800851D0 (800851F8/FC) copies TransN's vertical delta.
             self.physics.animation_velocity.x = crate::physics::airborne::drift(
@@ -230,28 +263,5 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.input.current.stick.x,
             &self.attributes.air,
         );
-    }
-
-    /// ftCommon_CheckFallFast (8007D528), FallFast (8007D4E4), Fall (8007D494).
-    /// Shared by ordinary airborne physics and ft_80084E1C's multijump drift.
-    pub(super) fn apply_fall_gravity(&mut self, assets: &FighterAssets) {
-        if !self.physics.fast_fall
-            && self.physics.self_velocity.y < 0.0
-            && self.input.current.stick.y <= -assets.jumping.fast_fall_threshold
-            && i32::from(self.input.vertical.tilt) < assets.jumping.fast_fall_window
-        {
-            self.physics.fast_fall = true;
-            self.input.vertical.tilt = 0xFE;
-        }
-        let air = &self.attributes.air;
-        self.physics.self_velocity.y = if self.physics.fast_fall {
-            -air.fast_fall_velocity
-        } else {
-            crate::physics::airborne::gravity(
-                self.physics.self_velocity.y,
-                air.gravity,
-                air.terminal_velocity,
-            )
-        };
     }
 }

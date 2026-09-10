@@ -19,15 +19,15 @@ pub struct TurnState {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Turn_Enter_Basic (0x800C98AC), ftCo_Turn_Enter_Smash (0x800C9C74).
     pub(super) fn enter_turn(&mut self, assets: &FighterAssets, smash: bool) -> Result<()> {
-        self.state_data = MotionData::Turn(TurnState {
+        self.core.state_data = MotionData::Turn(TurnState {
             has_turned: false,
             just_turned: false,
-            facing_after: -self.physics.facing,
-            dash_direction: if smash { self.physics.facing } else { 0.0 },
+            facing_after: -self.core.physics.facing,
+            dash_direction: if smash { self.core.physics.facing } else { 0.0 },
             frames_to_turn: if smash {
                 0.0
             } else {
-                self.attributes.ground.standing_turn_frames
+                self.core.attributes.ground.standing_turn_frames
             },
             buffered_buttons: Buttons(0),
         });
@@ -38,7 +38,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     /// ftCo_Turn_Anim (0x800C9970), inner (0x800C9924): check before decrement.
     pub(super) fn turn_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::Turn(turn) = &mut self.state_data else {
+        let MotionData::Turn(turn) = &mut self.core.state_data else {
             panic!("turn data missing")
         };
         if turn.frames_to_turn > 0.0 {
@@ -46,9 +46,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
         } else if !turn.has_turned {
             turn.has_turned = true;
             turn.just_turned = true;
-            self.physics.facing = -self.physics.facing;
+            self.core.physics.facing = -self.core.physics.facing;
         }
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(CommonMotionState::Wait, assets)?;
         }
         Ok(())
@@ -61,18 +61,18 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        let MotionData::Turn(turn) = &self.state_data else {
+        let MotionData::Turn(turn) = &self.core.state_data else {
             panic!("turn data missing")
         };
         let has_turned = turn.has_turned;
         if turn.just_turned {
-            self.input.pressed.0 |= turn.buffered_buttons.0;
+            self.core.input.pressed.0 |= turn.buffered_buttons.0;
         }
         if !has_turned {
-            self.physics.facing = -self.physics.facing;
+            self.core.physics.facing = -self.core.physics.facing;
         }
         let mut attack_context = context.clone();
-        attack_context.facing = self.physics.facing;
+        attack_context.facing = self.core.physics.facing;
         let transition = self.first_ground_transition(
             assets,
             &attack_context,
@@ -94,21 +94,22 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return self.apply_ground_transition(assets, transition);
         }
         if !has_turned {
-            self.physics.facing = -self.physics.facing;
+            self.core.physics.facing = -self.core.physics.facing;
         }
         let transition =
             self.first_ground_transition(assets, context, &[P::Shield, P::Taunt, P::Jump]);
         if transition != T::None {
             return self.apply_ground_transition(assets, transition);
         }
-        let MotionData::Turn(turn) = &mut self.state_data else {
+        let MotionData::Turn(turn) = &mut self.core.state_data else {
             unreachable!()
         };
-        let forward = self.input.current.stick.x * turn.facing_after
+        let forward = self.core.input.current.stick.x * turn.facing_after
             >= assets.input.thresholds.dash_smash_stick_threshold;
         // fn_800C9C2C (0x800C9C2C).
         if forward
-            && i32::from(self.input.horizontal.tilt) < assets.input.thresholds.dash_smash_window
+            && i32::from(self.core.input.horizontal.tilt)
+                < assets.input.thresholds.dash_smash_window
         {
             turn.dash_direction = turn.facing_after;
         }
@@ -117,7 +118,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             // attack/escape window. Later stores touch inactive union bytes.
             return self.enter_dash(assets, false);
         }
-        turn.buffered_buttons.0 |= self.input.pressed.0 & (Buttons::A.0 | Buttons::B.0);
+        turn.buffered_buttons.0 |= self.core.input.pressed.0 & (Buttons::A.0 | Buttons::B.0);
         turn.just_turned = false;
         Ok(())
     }

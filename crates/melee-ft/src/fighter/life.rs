@@ -1,4 +1,5 @@
 //! Stock loss and revival, ft_0D31.c / ft_0D4D.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -49,7 +50,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         root: hsd_anim::jobj::JObjId,
         context: super::SpawnContext<'_>,
     ) -> Result<()> {
-        let mut player = self.player.clone();
+        let mut player = self.core.player.clone();
         if !arena.player_revival_markers {
             unimplemented!("gm_80167638: shared revival marker offset allocation");
         }
@@ -65,96 +66,88 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_800D3158 / ftCo_800D3BC8 (800D3158 / 800D3BC8), after Update.
     pub fn check_blast_zone(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
-        if matches!(self.state_data, MotionData::Life(_))
-            || self.status.disabled
-            || self.status.ledge_grab_disabled
+        if matches!(self.core.state_data, MotionData::Life(_))
+            || self.core.status.disabled
+            || self.core.status.ledge_grab_disabled
         {
             return Ok(());
         }
-        let p = self.physics.position;
+        let p = self.core.physics.position;
         if p.x < arena.left || p.x > arena.right || p.y > arena.top {
             unimplemented!("ftCo_800D3158: side/up death");
         }
         if p.y >= arena.bottom {
             return Ok(());
         }
-        if self.combat.grab.is_some() {
+        if self.core.combat.grab.is_some() {
             unimplemented!("ftCo_800D331C: release linked fighter on death");
         }
         // ftCommon_8007E2FC (8007E2FC): death clears every velocity owner.
-        self.physics.self_velocity = Vec3::ZERO;
-        self.physics.animation_velocity = Vec3::ZERO;
-        self.physics.knockback_velocity = Vec3::ZERO;
-        self.physics.shield_knockback_velocity = Vec3::ZERO;
-        self.physics.ground_velocity = 0.0;
-        self.physics.ground_knockback_velocity = 0.0;
-        self.physics.ground_shield_knockback_velocity = 0.0;
+        self.core.physics.self_velocity = Vec3::ZERO;
+        self.core.physics.animation_velocity = Vec3::ZERO;
+        self.core.physics.knockback_velocity = Vec3::ZERO;
+        self.core.physics.shield_knockback_velocity = Vec3::ZERO;
+        self.core.physics.ground_velocity = 0.0;
+        self.core.physics.ground_knockback_velocity = 0.0;
+        self.core.physics.ground_shield_knockback_velocity = 0.0;
         self.change_motion_state(S::DeadDown, assets)?;
-        self.state_data = MotionData::Life(LifeState::Dead {
+        self.core.state_data = MotionData::Life(LifeState::Dead {
             remaining: assets.life.death_delay,
         });
-        self.player.stocks = self.player.stocks.saturating_sub(1);
-        self.effect_state.invisible = true;
-        self.effects.push(super::effects::EffectRequest::Death {
-            position: p,
-            scale: assets.life.death_effect_scale,
-        });
+        self.core.player.stocks = self.core.player.stocks.saturating_sub(1);
+        self.core.effect_state.invisible = true;
+        self.core
+            .effects
+            .push(super::effects::EffectRequest::Death {
+                position: p,
+                scale: assets.life.death_effect_scale,
+            });
         Ok(())
-    }
-    /// ftCo_DeadDown_Anim (800D3E00): GM respawn is performed at this callback boundary.
-    pub(super) fn death_animation(&mut self) {
-        let MotionData::Life(LifeState::Dead { remaining }) = &mut self.state_data else {
-            panic!("death scratch");
-        };
-        *remaining -= 1;
-        if *remaining == 0 {
-            if self.player.stocks == 0 {
-                unimplemented!("gm_80167320: final stock / elimination");
-            }
-            self.state_data = MotionData::Life(LifeState::AwaitingRespawn);
-        }
     }
     /// ftCo_800D4FF4 (800D4FF4), after Fighter_UnkProcessDeath reset.
     pub fn enter_revival(&mut self, assets: &FighterAssets, target: Vec3) -> Result<()> {
         self.leave_ground();
         self.change_motion_state(S::Rebirth, assets)?;
-        self.state_data = MotionData::Life(LifeState::Revival {
+        self.core.state_data = MotionData::Life(LifeState::Revival {
             remaining: assets.life.revival_duration,
             target,
         });
-        self.status.input_frozen = false;
-        self.status.ignore_fighter_nudge = true;
-        self.commands.hurt_status = super::escape::HurtStatus::Intangible;
+        self.core.status.input_frozen = false;
+        self.core.status.ignore_fighter_nudge = true;
+        self.core.commands.hurt_status = super::escape::HurtStatus::Intangible;
         let mut platform = assets.revival_platform.clone();
         // ftCoD4FF4 (800D51C0): separate model-scale product, no FMA.
-        let scale = self.player.scale
-            * self.attributes.size.model_scaling
-            * self.attributes.size.respawn_platform_scale;
+        let scale = self.core.player.scale
+            * self.core.attributes.size.model_scaling
+            * self.core.attributes.size.respawn_platform_scale;
         platform
             .tree
             .set_scale(platform.root, &Vec3::new(scale, scale, scale));
         platform
             .tree
-            .set_translate(platform.root, &self.physics.position);
-        self.revival_platform = Some(platform);
+            .set_translate(platform.root, &self.core.physics.position);
+        self.core.revival_platform = Some(platform);
         Ok(())
     }
     /// Rebirth_Anim (800D52F8), RebirthWait_Anim (800D56EC).
     pub(super) fn revival_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        match &mut self.state_data {
+        match &mut self.core.state_data {
             MotionData::Life(LifeState::Revival { remaining, target }) => {
                 *remaining -= 1;
                 if *remaining == 0 {
                     let target = *target;
-                    melee_mp::set_position(&mut self.collision.data, &self.physics.position);
-                    self.physics.self_velocity.y = 0.0;
+                    melee_mp::set_position(
+                        &mut self.core.collision.data,
+                        &self.core.physics.position,
+                    );
+                    self.core.physics.self_velocity.y = 0.0;
                     self.change_motion_state(S::RebirthWait, assets)?;
-                    self.state_data = MotionData::Life(LifeState::PlatformWait {
+                    self.core.state_data = MotionData::Life(LifeState::PlatformWait {
                         remaining: assets.life.platform_duration,
                         target,
                     });
-                    self.status.ignore_fighter_nudge = true;
-                    self.commands.hurt_status = super::escape::HurtStatus::Intangible;
+                    self.core.status.ignore_fighter_nudge = true;
+                    self.core.commands.hurt_status = super::escape::HurtStatus::Intangible;
                 }
             }
             MotionData::Life(LifeState::PlatformWait { remaining, .. }) => {
@@ -168,6 +161,21 @@ impl<C: CharacterCallbacks> Fighter<C> {
             _ => panic!("revival scratch"),
         }
         Ok(())
+    }
+}
+impl FighterCore {
+    /// ftCo_DeadDown_Anim (800D3E00): GM respawn is performed at this callback boundary.
+    pub(super) fn death_animation(&mut self) {
+        let MotionData::Life(LifeState::Dead { remaining }) = &mut self.state_data else {
+            panic!("death scratch");
+        };
+        *remaining -= 1;
+        if *remaining == 0 {
+            if self.player.stocks == 0 {
+                unimplemented!("gm_80167320: final stock / elimination");
+            }
+            self.state_data = MotionData::Life(LifeState::AwaitingRespawn);
+        }
     }
     /// fn_800D54A4 and Fighter_8006C80C: place then animate the accessory.
     pub fn update_revival_platform(&mut self) {

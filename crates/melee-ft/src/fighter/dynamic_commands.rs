@@ -1,7 +1,8 @@
 //! Dynamic-joint subaction ownership, ftCo_8009E318 (8009E318).
-use super::{assets::FighterAssets, CharacterCallbacks, Fighter};
+use super::assets::FighterAssets;
+use super::FighterCore;
 use crate::anim::attach::PartFlags;
-impl<C: CharacterCallbacks> Fighter<C> {
+impl FighterCore {
     pub(super) fn apply_dynamic_commands(&mut self, assets: &FighterAssets) {
         for bone in std::mem::take(&mut self.commands.dynamic_toggles) {
             let part = &mut self.animation.parts[bone];

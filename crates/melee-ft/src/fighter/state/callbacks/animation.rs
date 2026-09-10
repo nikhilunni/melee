@@ -8,8 +8,7 @@ pub fn dead<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     _phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    fighter.death_animation();
-    Ok(None)
+    fighter.core.animation_dead(_phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
@@ -33,7 +32,11 @@ pub fn tech_roll<C: CharacterCallbacks>(
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
-    if !fighter.animation.frames_remaining(&fighter.skeleton) {
+    if !fighter
+        .core
+        .animation
+        .frames_remaining(&fighter.core.skeleton)
+    {
         fighter.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
     }
     Ok(None)
@@ -56,11 +59,7 @@ pub fn thrown<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.thrown_animation(assets);
-    Ok(None)
+    fighter.core.animation_thrown(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_ThrowB (220).
@@ -82,10 +81,7 @@ pub fn capture<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    Ok(None)
+    fighter.core.animation_capture(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_CatchPull (213).
@@ -96,7 +92,12 @@ pub fn catch_pull<C: CharacterCallbacks>(
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
-    if fighter.commands.grab_release || !fighter.animation.frames_remaining(&fighter.skeleton) {
+    if fighter.core.commands.grab_release
+        || !fighter
+            .core
+            .animation
+            .frames_remaining(&fighter.core.skeleton)
+    {
         fighter.enter_catch_wait(assets)?;
     }
     Ok(None)
@@ -232,11 +233,7 @@ pub fn run<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.run_animation();
-    Ok(None)
+    fighter.core.animation_run(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
@@ -281,11 +278,7 @@ pub fn walk<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.walk_animation(assets);
-    Ok(None)
+    fighter.core.animation_walk(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_SquatWait (40).
@@ -293,10 +286,7 @@ pub fn squat_wait<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.update_idle_animation(assets, rng)
+    fighter.core.animation_squat_wait(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
@@ -356,11 +346,7 @@ pub fn fall<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.fall_animation(assets)?;
-    Ok(None)
+    fighter.core.animation_fall(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Landing (42), ftCo_MS_LandingFallSpecial (43).
@@ -380,8 +366,58 @@ pub fn wait<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng } = phase;
-    fighter.step_animation(assets);
-    fighter.advance_smash_charge(assets);
-    fighter.update_idle_animation(assets, rng)
+    fighter.core.animation_wait(phase)
+}
+
+impl FighterCore {
+    fn animation_dead(&mut self, _phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        self.death_animation();
+        Ok(None)
+    }
+    fn animation_thrown(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng: _ } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.thrown_animation(assets);
+        Ok(None)
+    }
+    fn animation_capture(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng: _ } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        Ok(None)
+    }
+    fn animation_run(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng: _ } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.run_animation();
+        Ok(None)
+    }
+    fn animation_walk(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng: _ } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.walk_animation(assets);
+        Ok(None)
+    }
+    fn animation_squat_wait(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.update_idle_animation(assets, rng)
+    }
+    fn animation_fall(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng: _ } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.fall_animation(assets)?;
+        Ok(None)
+    }
+    fn animation_wait(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+        let AnimationPhase { assets, rng } = phase;
+        self.step_animation(assets);
+        self.advance_smash_charge(assets);
+        self.update_idle_animation(assets, rng)
+    }
 }

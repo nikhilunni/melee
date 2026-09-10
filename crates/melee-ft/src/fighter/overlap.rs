@@ -1,5 +1,6 @@
 //! Grounded fighter separation, ftcommon.c:720-888.
-use super::{assets::FighterAssets, CharacterCallbacks, Fighter};
+use super::assets::FighterAssets;
+use super::FighterCore;
 use gekko_math::{fma::fmadds, msl::fabsf};
 use hsd_types::{Vec2, Vec3};
 use melee_mp::CollMap;
@@ -26,7 +27,7 @@ pub struct OverlapBody {
     pub ignore_others: bool,
     pub hitlag: bool,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl FighterCore {
     pub fn overlap_body(&self, assets: &FighterAssets) -> OverlapBody {
         OverlapBody {
             // ftCommon_8007F8B4 (8007F8B4): deferred displacement is zero

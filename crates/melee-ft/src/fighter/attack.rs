@@ -1,4 +1,5 @@
 //! Shared jab and up-tilt entry/callbacks, ftCo_Attack1.c / ftCo_AttackHi3.c.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -14,12 +15,12 @@ pub struct JabState {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// Grounded attack priority; checkAttack11 (8008ABC0), AttackHi3 doEnter (8008BA38).
     pub(super) fn enter_ground_attack(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.combat.has_recorded_hit {
+        if self.core.combat.has_recorded_hit {
             unimplemented!("ft_80089228: stale history across attack instances");
         }
         // Attack predicates share a transition enum; preserve the retail priority.
         let context = WaitContext {
-            facing: self.physics.facing,
+            facing: self.core.physics.facing,
             ..WaitContext::default()
         };
         if self.first_ground_transition(assets, &context, &[P::SmashSide]) != T::None {
@@ -36,28 +37,28 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.first_ground_transition(assets, &context, &[P::TiltUp]) != T::None {
             self.change_motion_state(S::AttackHi3, assets)?;
             self.step_animation(assets);
-            self.status.interaction = super::Interaction::Attack;
-            self.state_data = MotionData::Tilt;
+            self.core.status.interaction = super::Interaction::Attack;
+            self.core.state_data = MotionData::Tilt;
             return Ok(());
         }
         if self.first_ground_transition(assets, &context, &[P::TiltDown]) != T::None {
             unimplemented!("ftCo_AttackLw3: down tilt entry");
         }
         self.character.jab_variant();
-        self.commands.jab_followup = false;
-        self.commands.jab_combo = false;
+        self.core.commands.jab_followup = false;
+        self.core.commands.jab_combo = false;
         self.change_motion_state(S::Attack11, assets)?;
         self.step_animation(assets);
-        self.status.interaction = super::Interaction::Attack;
-        self.state_data = MotionData::Jab(JabState {
-            followup_window: self.attributes.combat.jab_2_input_window,
+        self.core.status.interaction = super::Interaction::Attack;
+        self.core.state_data = MotionData::Jab(JabState {
+            followup_window: self.core.attributes.combat.jab_2_input_window,
             followup_pressed: false,
         });
         Ok(())
     }
     /// ftCo_Attack11_Anim (8008AC9C).
     pub(super) fn jab_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(S::Wait, assets)?;
         }
         Ok(())
@@ -68,8 +69,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        if self.commands.allow_interrupt {
-            let transition = crate::input::wait_iasa(&self.input, &assets.input, context);
+        if self.core.commands.allow_interrupt {
+            let transition = crate::input::wait_iasa(&self.core.input, &assets.input, context);
             self.apply_ground_transition(assets, transition)?;
         }
         Ok(())
@@ -80,7 +81,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        if self.commands.allow_interrupt
+        if self.core.commands.allow_interrupt
             && self.first_ground_transition(
                 assets,
                 context,
@@ -96,19 +97,19 @@ impl<C: CharacterCallbacks> Fighter<C> {
         {
             unimplemented!("ftCo_Attack1.c:143-148: jab interrupt attack");
         }
-        let MotionData::Jab(jab) = &mut self.state_data else {
+        let MotionData::Jab(jab) = &mut self.core.state_data else {
             panic!("jab scratch missing")
         };
         if jab.followup_window > 0.0 {
             jab.followup_window -= 1.0;
-            if self.input.pressed.intersects(Buttons::A) {
+            if self.core.input.pressed.intersects(Buttons::A) {
                 jab.followup_pressed = true;
             }
         }
-        if jab.followup_pressed && self.commands.jab_followup {
+        if jab.followup_pressed && self.core.commands.jab_followup {
             unimplemented!("ftCo_Attack1.c:219-220: Attack12 entry");
         }
-        if self.commands.allow_interrupt {
+        if self.core.commands.allow_interrupt {
             let transition = self.first_ground_transition(
                 assets,
                 context,
@@ -118,6 +119,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         Ok(())
     }
+}
+impl FighterCore {
     /// ftCo_Attack11_Phys (8008ADF0) -> ft_80084FA8 (80084FA8).
     pub(super) fn jab_physics(
         &mut self,

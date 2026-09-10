@@ -82,7 +82,7 @@ impl EffectSink for Vec<EffectRequest> {
     }
 }
 
-impl<C: super::CharacterCallbacks> super::Fighter<C> {
+impl super::FighterCore {
     /// Fighter_ChangeMotionState (800693AC), fighter.c:950-951:
     /// translate the root, then efAsync_QueueFlush before replacing the pose.
     pub(super) fn flush_effects_on_motion_change(&mut self) {
@@ -170,7 +170,7 @@ pub struct FighterEffects {
     pub rotating_bone_index: u8,
     pub invisible: bool,
 }
-impl<C: super::CharacterCallbacks> super::Fighter<C> {
+impl super::FighterCore {
     /// ftCo_8009F834 (0x8009F834). Called at the command-owning proc boundary,
     /// before another fighter or stage can draw from the shared RNG.
     pub fn resolve_graphics_commands(

@@ -17,17 +17,17 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn enter_squat(&mut self, assets: &FighterAssets) -> Result<()> {
         self.change_motion_state(CommonMotionState::Squat, assets)?;
         self.step_animation(assets);
-        self.state_data = MotionData::Squat(SquatState::default());
-        self.status.name_tag_timer = assets.name_tag_duration;
+        self.core.state_data = MotionData::Squat(SquatState::default());
+        self.core.status.name_tag_timer = assets.name_tag_duration;
         Ok(())
     }
 
     /// ftCo_Squat_Anim (0x800D607C), ftCo_800D638C (0x800D638C),
     /// ftCo_SquatRv_Anim (0x800D6658). Hold entry preserves the nametag timer.
     pub(super) fn squat_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(
-                if self.motion_state.id == CommonMotionState::Squat {
+                if self.core.motion_state.id == CommonMotionState::Squat {
                     CommonMotionState::SquatWait
                 } else {
                     CommonMotionState::Wait
@@ -45,8 +45,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        let entering = self.motion_state.id == CommonMotionState::Squat;
-        let releasing = self.motion_state.id == CommonMotionState::SquatRv;
+        let entering = self.core.motion_state.id == CommonMotionState::Squat;
+        let releasing = self.core.motion_state.id == CommonMotionState::SquatRv;
         let predicates: &[P] = if entering {
             &[
                 P::SpecialSide,
@@ -90,13 +90,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return self.apply_ground_transition(assets, transition);
         }
         // ftCo_80099F9C (0x80099F9C): arm the delayed platform drop.
-        let on_platform = self.collision.data.floor.flags & line_flag::PLATFORM != 0;
-        let MotionData::Squat(squat) = &mut self.state_data else {
+        let on_platform = self.core.collision.data.floor.flags & line_flag::PLATFORM != 0;
+        let MotionData::Squat(squat) = &mut self.core.state_data else {
             panic!("squat data missing")
         };
         if !squat.platform_drop_pending
-            && self.input.current.stick.y <= -assets.movement.platform_drop_threshold
-            && i32::from(self.input.vertical.tilt) < assets.movement.platform_drop_window
+            && self.core.input.current.stick.y <= -assets.movement.platform_drop_threshold
+            && i32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
             && on_platform
         {
             squat.platform_drop_pending = true;
@@ -115,7 +115,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if transition != T::None {
                 return self.apply_ground_transition(assets, transition);
             }
-            if self.input.current.stick.y > -assets.movement.squat_release_threshold {
+            if self.core.input.current.stick.y > -assets.movement.squat_release_threshold {
                 // ftCo_SquatRv_CheckInput/Enter (0x800D65D8/0x800D6620).
                 self.change_motion_state(CommonMotionState::SquatRv, assets)?;
             }

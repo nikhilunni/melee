@@ -1,4 +1,5 @@
 //! Run and RunBrake state callbacks (ftCo_Run.c / ftCo_RunBrake.c).
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -27,32 +28,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// fn_800CA5F0 / ftCo_Run_Enter / ftCo_Run_Enter_Full (0x800CA5F0/800CA6F4/800CA71C).
     pub(super) fn enter_run(&mut self, assets: &FighterAssets) -> Result<()> {
         self.change_motion_state(CommonMotionState::Run, assets)?;
-        self.state_data = MotionData::Run(RunState {
+        self.core.state_data = MotionData::Run(RunState {
             interrupt_delay: 0.0,
-            slippery_animation_velocity: self.physics.ground_velocity,
+            slippery_animation_velocity: self.core.physics.ground_velocity,
         });
         Ok(())
-    }
-    /// ftCo_Run_Anim (0x800CA77C).
-    pub(super) fn run_animation(&mut self) {
-        let MotionData::Run(run) = &mut self.state_data else {
-            panic!("run data missing")
-        };
-        let velocity = if grounded::floor_friction(&self.collision.data) < 1.0 {
-            run.slippery_animation_velocity
-        } else {
-            self.physics.ground_velocity
-        };
-        // Retail separate fmuls comparison and fdivs; no eligible FMA.
-        let rate = if velocity * self.physics.facing <= 0.0 {
-            0.0
-        } else {
-            fabsf(velocity) / self.attributes.running.run_animation_scaling
-        };
-        self.animation.set_rate(&mut self.skeleton, rate, false);
-        if run.interrupt_delay > 0.0 {
-            run.interrupt_delay -= 1.0;
-        }
     }
     /// ftCo_Run_IASA (0x800CA830).
     pub(super) fn run_input(
@@ -80,14 +60,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
             "ftCo_Run.c:133-140",
         );
         self.reject_running_jump(assets);
-        let MotionData::Run(run) = &self.state_data else {
+        let MotionData::Run(run) = &self.core.state_data else {
             panic!("run data missing")
         };
         if run.interrupt_delay <= 0.0 {
             if self.try_turn_run(assets, 0.0)? {
                 return Ok(());
             }
-            if fabsf(self.input.current.stick.x) < assets.running.run_threshold {
+            if fabsf(self.core.input.current.stick.x) < assets.running.run_threshold {
                 self.enter_run_brake(assets)?;
             }
         }
@@ -95,36 +75,42 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_RunBrake_Enter (0x800CAC18).
     fn enter_run_brake(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.commands.variables[0] = 0;
-        self.commands.variables[1] = 0;
+        self.core.commands.variables[0] = 0;
+        self.core.commands.variables[1] = 0;
         self.change_motion_state(CommonMotionState::RunBrake, assets)?;
-        self.state_data = MotionData::RunBrake(RunBrakeState {
+        self.core.state_data = MotionData::RunBrake(RunBrakeState {
             animation_paused: false,
-            remaining_frames: self.attributes.running.max_run_brake_frames,
+            remaining_frames: self.core.attributes.running.max_run_brake_frames,
         });
         Ok(())
     }
     /// ftCo_RunBrake_Anim (0x800CAC9C).
     pub(super) fn run_brake_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::RunBrake(brake) = &mut self.state_data else {
+        let MotionData::RunBrake(brake) = &mut self.core.state_data else {
             panic!("brake data missing")
         };
-        if self.commands.variables[1] != 0 {
-            let speed = fabsf(self.physics.ground_velocity);
+        if self.core.commands.variables[1] != 0 {
+            let speed = fabsf(self.core.physics.ground_velocity);
             if !brake.animation_paused {
                 if speed >= assets.running.brake_pause_speed {
-                    self.animation.set_rate(&mut self.skeleton, 0.0, false);
+                    self.core
+                        .animation
+                        .set_rate(&mut self.core.skeleton, 0.0, false);
                     brake.animation_paused = true;
                 }
             } else if speed <= assets.running.brake_pause_speed {
-                self.animation.set_rate(&mut self.skeleton, 1.0, false);
-                self.commands.variables[1] = 0;
+                self.core
+                    .animation
+                    .set_rate(&mut self.core.skeleton, 1.0, false);
+                self.core.commands.variables[1] = 0;
             }
         }
         if brake.remaining_frames != 0.0 {
             brake.remaining_frames = (brake.remaining_frames - 1.0).max(0.0);
         }
-        if !(self.animation.frames_remaining(&self.skeleton) && brake.remaining_frames != 0.0) {
+        if !(self.core.animation.frames_remaining(&self.core.skeleton)
+            && brake.remaining_frames != 0.0)
+        {
             self.change_motion_state(CommonMotionState::Wait, assets)?;
         }
         Ok(())
@@ -132,13 +118,38 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_RunBrake_IASA (0x800CADB0).
     pub(super) fn run_brake_input(&mut self, assets: &FighterAssets) -> Result<()> {
         self.reject_running_jump(assets);
-        if self.commands.variables[0] != 0 && self.try_turn_run(assets, self.animation.frame)? {
+        if self.core.commands.variables[0] != 0
+            && self.try_turn_run(assets, self.core.animation.frame)?
+        {
             return Ok(());
         }
-        if self.input.current.stick.y < -assets.input.thresholds.squat_stick_threshold {
+        if self.core.input.current.stick.y < -assets.input.thresholds.squat_stick_threshold {
             self.enter_squat(assets)?;
         }
         Ok(())
+    }
+}
+impl FighterCore {
+    /// ftCo_Run_Anim (0x800CA77C).
+    pub(super) fn run_animation(&mut self) {
+        let MotionData::Run(run) = &mut self.state_data else {
+            panic!("run data missing")
+        };
+        let velocity = if grounded::floor_friction(&self.collision.data) < 1.0 {
+            run.slippery_animation_velocity
+        } else {
+            self.physics.ground_velocity
+        };
+        // Retail separate fmuls comparison and fdivs; no eligible FMA.
+        let rate = if velocity * self.physics.facing <= 0.0 {
+            0.0
+        } else {
+            fabsf(velocity) / self.attributes.running.run_animation_scaling
+        };
+        self.animation.set_rate(&mut self.skeleton, rate, false);
+        if run.interrupt_delay > 0.0 {
+            run.interrupt_delay -= 1.0;
+        }
     }
     /// ftCo_Dash_Phys (0x800CA53C), ftCo_Run_Phys (0x800CA95C),
     /// ftCo_RunBrake_Phys (0x800CAE18). Retail --fused: no fused sites.

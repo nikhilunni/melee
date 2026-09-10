@@ -1,4 +1,5 @@
 //! Body-grab startup, ftCo_Catch.c. Linked capture is an explicit proc boundary.
+use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     CharacterCallbacks, Fighter, MotionData,
@@ -10,20 +11,43 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_800D8C54 (800D8C54): Catch begins at frame zero without an immediate step.
     pub(super) fn enter_catch(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.catch_variant();
-        self.physics.animation_velocity = Vec3::ZERO;
+        self.core.physics.animation_velocity = Vec3::ZERO;
         self.change_motion_state(S::Catch, assets)?;
-        self.state_data = MotionData::Catch;
+        self.core.state_data = MotionData::Catch;
         Ok(())
     }
 
     /// ftCo_Catch_Anim (800D8CC8): item/tether callbacks are character hooks.
     pub(super) fn catch_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if !self.animation.frames_remaining(&self.skeleton) {
+        if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(S::Wait, assets)?;
         }
         Ok(())
     }
 
+    /// ftCo_Catch_Coll (800D8E08) -> ft_800841B8: departure during startup.
+    pub(super) fn catch_collision(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        use crate::collision::ground::{map_ground_action, WaitGroundResult};
+        if map_ground_action(
+            &mut self.core.physics,
+            &mut self.core.collision,
+            map,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+            self.core.input.current.stick.x,
+        ) == WaitGroundResult::EnterFall
+        {
+            self.leave_ground();
+            self.change_motion_state(S::Fall, assets)?;
+        }
+        Ok(())
+    }
+}
+impl FighterCore {
     /// ftCo_Catch_Phys (800D8D88): separate multiplier product; no fused sites.
     pub(super) fn catch_physics(
         &mut self,
@@ -52,28 +76,6 @@ impl<C: CharacterCallbacks> Fighter<C> {
             wind,
         );
     }
-
-    /// ftCo_Catch_Coll (800D8E08) -> ft_800841B8: departure during startup.
-    pub(super) fn catch_collision(
-        &mut self,
-        assets: &FighterAssets,
-        map: &mut melee_mp::CollMap,
-    ) -> Result<()> {
-        use crate::collision::ground::{map_ground_action, WaitGroundResult};
-        if map_ground_action(
-            &mut self.physics,
-            &mut self.collision,
-            map,
-            &mut self.skeleton,
-            self.animation.root,
-            self.input.current.stick.x,
-        ) == WaitGroundResult::EnterFall
-        {
-            self.leave_ground();
-            self.change_motion_state(S::Fall, assets)?;
-        }
-        Ok(())
-    }
 }
 
 /// Reciprocal fighter identity; unlike a slot index, it distinguishes respawns.
@@ -85,10 +87,7 @@ pub enum GrabLink {
 
 /// ftColl_80078A2C (80078A2C): return distance only for a legal capsule contact.
 /// The scene chooses the strictly nearest candidate in fighter-list order.
-pub fn candidate<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &Fighter<A>,
-) -> Option<f32> {
+pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32> {
     use melee_types::{GroundOrAir, HitElement};
     if attacker.status.disabled
         || attacker.motion_state.id != S::Catch
@@ -130,45 +129,29 @@ pub fn capture_pair<V: CharacterCallbacks, A: CharacterCallbacks>(
     map: &mut melee_mp::CollMap,
 ) -> Result<()> {
     attacker.character.catch_variant();
-    if victim.physics.ground_or_air != melee_types::GroundOrAir::Ground {
+    if victim.core.physics.ground_or_air != melee_types::GroundOrAir::Ground {
         unimplemented!("fn_800DAADC: CapturePulledHi");
     }
-    attacker.physics.ground_velocity = 0.0;
-    let frame = attacker.animation.frame;
-    attacker.commands.grab_release = false;
-    attacker.commands.throw_reverse = false;
+    attacker.core.physics.ground_velocity = 0.0;
+    let frame = attacker.core.animation.frame;
+    attacker.core.commands.grab_release = false;
+    attacker.core.commands.throw_reverse = false;
     attacker.change_motion_state_at(S::CatchPull, attacker_assets, frame)?;
-    attacker.combat.grab = Some(GrabLink::Holding {
-        victim: victim.spawn_number,
+    attacker.core.combat.grab = Some(GrabLink::Holding {
+        victim: victim.core.spawn_number,
         vertical_offset: 0.0,
     });
-    victim.physics.facing = -attacker.physics.facing;
+    victim.core.physics.facing = -attacker.core.physics.facing;
     victim.change_motion_state(S::CapturePulledLw, victim_assets)?;
-    victim.step_animation(victim_assets);
-    victim.combat.grab = Some(GrabLink::Captured {
-        captor: attacker.spawn_number,
-    });
-    victim.physics.self_velocity = Vec3::ZERO;
-    victim.physics.knockback_velocity = Vec3::ZERO;
-    victim.physics.shield_knockback_velocity = Vec3::ZERO;
-    victim.physics.ground_velocity = 0.0;
-    victim.physics.ground_knockback_velocity = 0.0;
-    victim.physics.ground_shield_knockback_velocity = 0.0;
-    victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-    // fn_800DAA40: initial grounded alignment retains the vertical offset on captor.
-    let delta = capture_delta(victim, attacker, victim_assets);
-    attacker.combat.grab = Some(GrabLink::Holding {
-        victim: victim.spawn_number,
-        vertical_offset: delta.y + victim.physics.position.y - attacker.physics.position.y,
-    });
+    finish_capture(&mut victim.core, &mut attacker.core, victim_assets);
     victim.capture_collision(victim_assets, map)?;
     Ok(())
 }
 
 /// fn_800DAC78 (800DAC78), no fused sites: hold bone minus captured XRotN.
-fn capture_delta<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
+fn capture_delta(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
     assets: &FighterAssets,
 ) -> Vec3 {
     let target = super::caches::bone_position(
@@ -196,11 +179,7 @@ fn capture_delta<V: CharacterCallbacks, A: CharacterCallbacks>(
 }
 
 /// ftCo_CapturePulledLw_Phys (800DB00C): scene calls at this fighter's Update proc.
-pub fn align_capture<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
-    assets: &FighterAssets,
-) {
+pub fn align_capture(victim: &mut FighterCore, attacker: &mut FighterCore, assets: &FighterAssets) {
     let delta = capture_delta(victim, attacker, assets);
     victim.physics.position.x += delta.x;
     victim.physics.position.y += delta.y;
@@ -215,11 +194,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
         map: &mut melee_mp::CollMap,
     ) -> Result<()> {
         self.catch_collision(assets, map)?;
-        if !matches!(self.motion_state.id, S::CapturePulledLw | S::CaptureWaitLw) {
+        if !matches!(
+            self.core.motion_state.id,
+            S::CapturePulledLw | S::CaptureWaitLw
+        ) {
             unimplemented!("fn_800DB230: captured fighter leaves ground");
         }
-        self.skeleton
-            .set_translate(self.animation.root, &self.physics.position);
+        self.core
+            .skeleton
+            .set_translate(self.core.animation.root, &self.core.physics.position);
         Ok(())
     }
 }
@@ -227,13 +210,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
 impl<C: CharacterCallbacks> Fighter<C> {
     /// fn_800DA1D8 (800DA1D8): switch captor first, then linked victim in the scene.
     pub(super) fn enter_catch_wait(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.physics.ground_velocity = 0.0;
-        self.commands.grab_release = false;
+        self.core.physics.ground_velocity = 0.0;
+        self.core.commands.grab_release = false;
         self.change_motion_state(S::CatchWait, assets)?;
-        self.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-        self.effects
+        self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+        self.core
+            .effects
             .push(super::effects::EffectRequest::CaptureFlash {
-                bone: usize::from(self.bones.model.shield),
+                bone: usize::from(self.core.bones.model.shield),
             });
         Ok(())
     }
@@ -245,6 +229,32 @@ pub fn capture_wait<C: CharacterCallbacks>(
     assets: &FighterAssets,
 ) -> Result<()> {
     victim.change_motion_state(S::CaptureWaitLw, assets)?;
-    victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    victim.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     Ok(())
+}
+
+/// fn_800DAADC / fn_800DAA40: common linkage and initial pose alignment,
+/// after both motion entries and before the victim's collision callback.
+fn finish_capture(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    victim_assets: &FighterAssets,
+) {
+    victim.step_animation(victim_assets);
+    victim.combat.grab = Some(GrabLink::Captured {
+        captor: attacker.spawn_number,
+    });
+    victim.physics.self_velocity = Vec3::ZERO;
+    victim.physics.knockback_velocity = Vec3::ZERO;
+    victim.physics.shield_knockback_velocity = Vec3::ZERO;
+    victim.physics.ground_velocity = 0.0;
+    victim.physics.ground_knockback_velocity = 0.0;
+    victim.physics.ground_shield_knockback_velocity = 0.0;
+    victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    // fn_800DAA40: initial grounded alignment retains the vertical offset on captor.
+    let delta = capture_delta(victim, attacker, victim_assets);
+    attacker.combat.grab = Some(GrabLink::Holding {
+        victim: victim.spawn_number,
+        vertical_offset: delta.y + victim.physics.position.y - attacker.physics.position.y,
+    });
 }

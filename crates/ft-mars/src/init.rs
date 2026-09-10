@@ -75,6 +75,7 @@ impl CharacterCallbacks for Marth {
 pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
     melee_ft::fighter::assets::CharacterDescriptor {
         kind: FighterKind::Mars,
+        common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::Mars),
         data_file: "PlMs.dat",
         data_symbol: "ftDataMars",
         animation_file: "PlMsAJ.dat",
