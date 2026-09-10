@@ -1,0 +1,26 @@
+# S9: top blast-zone KO (DeadUp -> star or screen KO, RNG): Fox up smash on a 200% Fox (fighter x1830 and player-block damage RAM-poked in idle_fd_fox_p2_200.sav; stock-1 rules, so the recording ends before the match-end scene reset).
+# Up smash (tap up + A on the same frame).
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "topko_usmash_fd_fox"
+savestate = "harness/roms/idle_fd_fox_p2_200.sav"
+frames = 230
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 105, buttons = { StickY = 1.0, A = true } },
+  { frame = 107, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
