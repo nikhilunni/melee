@@ -183,17 +183,16 @@ impl FighterAssets {
             .collect();
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        for id in [
-            2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39, 40,
-            41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238, 46, 58,
-            167, 168, 169, 209, 242,
-        ]
-        .into_iter()
-        .chain(68..78)
-        .chain(idle_motions.iter().copied())
-        .chain(descriptor.additional_motions.iter().copied())
-        .collect::<BTreeSet<_>>()
-        {
+        let script_ids = motion_indices(
+            &[
+                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
+                40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
+                46, 58, 167, 168, 169, 209, 242,
+            ],
+            &idle_motions,
+            descriptor.additional_motions,
+        );
+        for id in script_ids {
             if table.entries[id as usize].aj_size == 0 {
                 continue;
             }
@@ -349,19 +348,23 @@ impl FighterAssets {
                 descriptor.animation_count,
             )?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
-            motions: [
-                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30,
-                31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224,
-                225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
-            ]
+            motions: motion_indices(
+                &[
+                    2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+                    30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220,
+                    224, 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
+                ],
+                &idle_motions,
+                descriptor.additional_motions,
+            )
             .into_iter()
-            .chain(68..78)
-            .chain(idle_motions.into_iter().map(|id| id as usize))
-            .chain(descriptor.additional_motions.iter().map(|&id| id as usize))
-            .collect::<BTreeSet<_>>()
-            .into_iter()
-            .filter(|&id| table.entries[id].aj_size != 0)
-            .map(|id| Ok((id as i32, read_playback_motion(data, root, &table, aj, id)?)))
+            .filter(|&id| table.entries[id as usize].aj_size != 0)
+            .map(|id| {
+                Ok((
+                    id as i32,
+                    read_playback_motion(data, root, &table, aj, id as usize)?,
+                ))
+            })
             .collect::<Result<_>>()?,
             rotating_effect_bones: {
                 let table = data
@@ -601,4 +604,17 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
         .depth_first(root)
         .map(|id| tree.get(id).clone())
         .collect())
+}
+
+/// Prepare each archive animation once, in retail index order. Keeping the
+/// common, idle and character lists separate avoids deeply nested iterator
+/// instantiations when another common motion family adds its resources.
+fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTreeSet<u32> {
+    let mut indices = idle.clone();
+    for list in [base, additional, super::down::MOTIONS] {
+        indices.extend(list.iter().copied());
+    }
+    // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).
+    indices.extend(68..78);
+    indices
 }

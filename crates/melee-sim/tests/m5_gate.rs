@@ -487,3 +487,45 @@ fn s2_prefix_gate(name: &str, ticks: usize) {
     }
     eprintln!("{name}: {ticks} ticks, 49 keys, 0 divergences; former pose boundary prefix");
 }
+
+// S5: full hit-reaction scenes, both fighters and ordered particle draws.
+#[test]
+fn di_upaway_fsmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("di_upaway_fsmash_fd_marth");
+}
+
+#[test]
+fn di_downin_fsmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("di_downin_fsmash_fd_marth");
+}
+
+#[test]
+fn sdi_fsmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("sdi_fsmash_fd_marth");
+}
+
+#[test]
+fn cc_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cc_ftilt_fd_marth");
+}
+
+#[test]
+#[ignore = "blocked on S3 part 2: Marth SpecialHi (Dolphin Slash) entry at tick 119; un-ignore when it lands"]
+fn tumbledi_dolphinslash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("tumbledi_dolphinslash_fd_marth");
+}
+
+#[test]
+fn getupattack_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("getupattack_fd_fox");
+}
+
+#[test]
+fn getupstand_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("getupstand_fd_fox");
+}
+
+#[test]
+fn getuproll_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("getuproll_fd_fox");
+}

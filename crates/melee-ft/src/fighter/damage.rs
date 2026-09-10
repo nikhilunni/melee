@@ -35,9 +35,30 @@ pub struct CombatState {
 pub struct DamageState {
     pub hitstun: f32,
     pub trail_timer: u32,
+    pub influence: InfluenceParameters,
+}
+/// PlCo values retained by the damage state's status callback, which runs
+/// before input sampling and has no archive resource argument.
+#[derive(Clone, Copy, Debug)]
+pub struct InfluenceParameters {
+    pub minimum_stick: f32,
+    pub tap_window: i32,
+    pub sdi_distance: f32,
+    pub asdi_distance: f32,
+    pub maximum_angle_degrees: f32,
+    pub shield_velocity_scale: f32,
 }
 use melee_coll::damage::ReceivedHit;
 pub struct DamageParameters {
+    pub influence: InfluenceParameters,
+    pub crouch_knockback_scale: f32,
+    pub crouch_hitlag_scale: f32,
+    pub down_stand_threshold: f32,
+    pub down_roll_threshold: f32,
+    pub down_attack_buffer: f32,
+    pub down_cstick_attack_threshold: f32,
+    pub tumble_exit_threshold: f32,
+    pub tumble_exit_window: i32,
     pub weight_scale: f32,
     pub throw_weight: f32,
     pub down_wait_frames: f32,
@@ -78,6 +99,22 @@ impl DamageParameters {
     pub fn read(a: &Archive, p: u32) -> Result<Self> {
         let r = a.reader();
         Ok(Self {
+            influence: InfluenceParameters {
+                minimum_stick: r.f32(p + 0x4B0)?,
+                tap_window: r.s32(p + 0x4B4)?,
+                sdi_distance: r.f32(p + 0x4B8)?,
+                asdi_distance: r.f32(p + 0x4BC)?,
+                maximum_angle_degrees: r.f32(p + 0x1A8)?,
+                shield_velocity_scale: r.f32(p + 0x1AC)?,
+            },
+            crouch_knockback_scale: r.f32(p + 0x124)?,
+            crouch_hitlag_scale: r.f32(p + 0x1A0)?,
+            down_stand_threshold: r.f32(p + 0x244)?,
+            down_roll_threshold: r.f32(p + 0x248)?,
+            down_attack_buffer: r.f32(p + 0x24C)?,
+            down_cstick_attack_threshold: r.f32(p + 0x7F4)?,
+            tumble_exit_threshold: r.f32(p + 0x210)?,
+            tumble_exit_window: r.s32(p + 0x214)?,
             tech_window: r.f32(p + 0x250)?,
             tech_lockout: r.u32(p + 0x1C)? as i32,
             tech_roll_threshold: r.f32(p + 0x254)?,
@@ -306,6 +343,24 @@ impl Fighter {
             &mut self.core.skeleton,
             self.core.animation.root,
         );
+        if self.core.combat.hitlag_remaining > 0.0 {
+            // ft_80081DD4: mpColl_800477E0 clamps SDI against the floor
+            // without a landing transition while hitlag is active.
+            let cd = &mut self.core.collision.data;
+            cd.last_pos = cd.cur_pos;
+            cd.cur_pos = self.core.physics.position;
+            let pose = crate::collision::ecb::EcbPose::read(
+                &mut self.core.skeleton,
+                self.core.animation.root,
+                cd,
+            );
+            map.air_collide_stay(cd, Some(&|bone| pose.position(bone)));
+            self.core.physics.position = cd.cur_pos;
+            self.core
+                .skeleton
+                .set_translate(self.core.animation.root, &self.core.physics.position);
+            return Ok(());
+        }
         let ledge_height = self.core.collision.data.ledge_snap_height;
         self.core.collision.data.ledge_snap_height *= assets.damage.ledge_height_scale;
         let landed = crate::collision::air::collide_pass(
@@ -342,6 +397,7 @@ impl Fighter {
     }
 
     pub(super) fn process_damage(&mut self, assets: &FighterAssets) -> Result<()> {
+        let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
         if let Some((damage, direction)) = self.core.combat.shield_pushback.take() {
             if damage != 0.0 {
@@ -373,7 +429,12 @@ impl Fighter {
             }
         }
         if hit_damage != 0 {
-            self.core.combat.hitlag_remaining = assets.damage.hitlag(hit_damage);
+            let mut hitlag = assets.damage.hitlag(hit_damage);
+            if crouching {
+                // ftCommon_CalcHitlag, 8007DAF8 fmuls then fctiwz.
+                hitlag = fctiwz(hitlag * assets.damage.crouch_hitlag_scale) as f32;
+            }
+            self.core.combat.hitlag_remaining = hitlag;
             if self.core.combat.hitlag_remaining > 0.0 {
                 self.core.status.interaction = Interaction::Hitlag;
             }
@@ -383,13 +444,17 @@ impl Fighter {
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
     pub(super) fn begin_damage_reaction(
         &mut self,
-        hit: ReceivedHit,
+        mut hit: ReceivedHit,
         assets: &FighterAssets,
     ) -> Result<i32> {
+        if matches!(self.core.motion_state.id, S::Squat | S::SquatWait) {
+            // ftCo_Damage_CalcKnockback, 8008D974: separate fmuls.
+            hit.knockback *= assets.damage.crouch_knockback_scale;
+        }
         let (state, stun) = self.core.prepare_damage_reaction(&hit, assets);
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
-        let result = self.core.finish_damage_reaction(hit, stun)?;
+        let result = self.core.finish_damage_reaction(hit, stun, assets)?;
         if let MotionData::Damage(damage) = &mut self.core.state_data {
             let velocity = self.core.physics.knockback_velocity;
             // ftCo_Damage_SetMv8FromKbThreshold: separate products and sums.
@@ -480,7 +545,17 @@ impl Fighter {
                     },
                 );
                 return match transition {
-                    T::None => Ok(()),
+                    T::None => {
+                        if self.core.motion_state.id == S::DamageFall
+                            && gekko_math::msl::fabsf(self.core.input.current.stick.x)
+                                >= assets.damage.tumble_exit_threshold
+                            && i32::from(self.core.input.horizontal.tilt)
+                                < assets.damage.tumble_exit_window
+                        {
+                            self.change_motion_state(S::Fall.into(), assets)?;
+                        }
+                        Ok(())
+                    }
                     T::Jump => self.enter_aerial_jump(assets),
                     T::Escape => self.enter_air_dodge(assets),
                     transition => unimplemented!("ftCo_Damage_IASA: airborne {transition:?}"),
@@ -503,6 +578,61 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// ftCo_Damage_OnEveryHitlag (8008E4F0), ftCo_Damage.c:569-589.
+    pub(super) fn damage_hitlag_input(&mut self) {
+        let MotionData::Damage(damage) = &self.state_data else {
+            return;
+        };
+        let parameters = damage.influence;
+        let stick = self.input.current.stick;
+        if stick_magnitude_passes(stick, parameters.minimum_stick)
+            && (i32::from(self.input.horizontal.tilt) < parameters.tap_window
+                || i32::from(self.input.vertical.tilt) < parameters.tap_window)
+        {
+            // 8008E560..574: products and position sums round separately.
+            self.physics.position.x += stick.x * parameters.sdi_distance;
+            self.physics.position.y += stick.y * parameters.sdi_distance;
+            self.input.horizontal.tilt = 254;
+            self.input.vertical.tilt = 254;
+        }
+    }
+
+    /// ftCo_Damage_OnExitHitlag (8008E714), ftCo_Damage.c:625-665.
+    fn exit_damage_hitlag(&mut self) {
+        let MotionData::Damage(damage) = &self.state_data else {
+            return;
+        };
+        let parameters = damage.influence;
+        let input = &self.input.current;
+        // ftCo_800DF608: C-stick takes priority, with the same PlCo radius.
+        let stick = if stick_magnitude_passes(input.cstick, parameters.minimum_stick) {
+            input.cstick
+        } else {
+            input.stick
+        };
+        if stick_magnitude_passes(stick, parameters.minimum_stick) {
+            // 8008E7A8..7DC: separately rounded products and sums.
+            self.physics.position.x += stick.x * parameters.asdi_distance;
+            self.physics.position.y += stick.y * parameters.asdi_distance;
+        }
+        apply_directional_influence(
+            &mut self.physics.knockback_velocity,
+            input.stick,
+            parameters.maximum_angle_degrees,
+        );
+        if input.held.intersects(crate::input::Buttons::SHIELD) {
+            let velocity = &mut self.physics.knockback_velocity;
+            if velocity.x != 0.0 || velocity.y != 0.0 {
+                let angle = melee_lb::trigf::atan2f(velocity.y, velocity.x);
+                // 8008E860 fmadds; 8008E8BC fmuls after sqrt refinement.
+                let speed = sqrtf(fmadds(velocity.x, velocity.x, velocity.y * velocity.y))
+                    * parameters.shield_velocity_scale;
+                velocity.x = speed * cosf(angle);
+                velocity.y = speed * sinf(angle);
+            }
+        }
+    }
+
     /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
     pub fn detect_item_hit(
         &mut self,
@@ -619,13 +749,7 @@ impl FighterCore {
     pub(super) fn tick_hitlag(&mut self) {
         if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
             if matches!(self.state_data, MotionData::Damage(_)) {
-                if self.input.current.stick.x != 0.0
-                    || self.input.current.stick.y != 0.0
-                    || self.input.current.cstick.x != 0.0
-                    || self.input.current.cstick.y != 0.0
-                {
-                    unimplemented!("ftCo_Damage.c:624-664: ASDI/DI");
-                }
+                self.exit_damage_hitlag();
                 self.status.interaction = Interaction::Damage;
             } else if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
@@ -666,8 +790,10 @@ fn detect_eligible_hit(
     }
     let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
     if let Some((contact, height)) = contact {
-        if !matches!(victim.motion_state.id, S::Wait | S::Landing)
-            && !matches!(victim.state_data, MotionData::Damage(_))
+        if !matches!(
+            victim.motion_state.id,
+            S::Wait | S::Landing | S::Squat | S::SquatWait
+        ) && !matches!(victim.state_data, MotionData::Damage(_))
         {
             unimplemented!("ftColl_80079AB0: crouch/other damage modifiers outside idle victim");
         }
@@ -809,10 +935,16 @@ impl FighterCore {
         (state, stun)
     }
     /// ftCo_8008DCE0: hitstun, timers and input ages after frame-zero playback.
-    fn finish_damage_reaction(&mut self, hit: ReceivedHit, stun: f32) -> Result<i32> {
+    fn finish_damage_reaction(
+        &mut self,
+        hit: ReceivedHit,
+        stun: f32,
+        assets: &FighterAssets,
+    ) -> Result<i32> {
         self.state_data = MotionData::Damage(DamageState {
             hitstun: (fctiwz(stun).max(1)) as f32,
             trail_timer: 0,
+            influence: assets.damage.influence,
         });
         self.status.time_since_hit = 0;
         self.status.interaction = Interaction::Damage;
@@ -827,4 +959,40 @@ fn is_tumble(state: S) -> bool {
         state,
         S::DamageFlyHi | S::DamageFlyN | S::DamageFlyLw | S::DamageFlyTop | S::DamageFlyRoll
     )
+}
+
+/// SDI/ASDI radius checks deliberately do not fuse (8008E744..754).
+fn stick_magnitude_passes(stick: crate::input::Stick, minimum: f32) -> bool {
+    stick.x * stick.x + stick.y * stick.y >= minimum * minimum
+}
+
+/// ftCo_8008E5A4 (ftCo_Damage.c:592-622): signed squared perpendicular
+/// stick projection rotates the launch while preserving its magnitude.
+fn apply_directional_influence(velocity: &mut Vec3, stick: crate::input::Stick, degrees: f32) {
+    if stick.x == 0.0 && stick.y == 0.0 {
+        return;
+    }
+    let (x, y) = (velocity.x, velocity.y);
+    let negative_x = gekko_math::fma::negate_rounded(x);
+    // 8008E5FC / 8008E624: fmadds, with the second product rounded first.
+    let squared_speed = fmadds(negative_x, negative_x, y * y);
+    const MINIMUM_SQUARED_SPEED: f32 = 0.00001; // ftCo_8008E5A4's zero guard.
+    if squared_speed < MINIMUM_SQUARED_SPEED {
+        return;
+    }
+    let perpendicular = fmadds(y, stick.x, negative_x * stick.y);
+    let mut influence = (perpendicular * perpendicular) / squared_speed;
+    // PSVECCrossProduct's Z sign; its first product rounds before ps_msub.
+    let cross = gekko_math::fma::fnmsubs(y, stick.x, stick.y * x);
+    if cross < 0.0 {
+        influence = gekko_math::fma::negate_rounded(influence);
+    }
+    let angle = melee_lb::trigf::atan2f(y, x);
+    // 8008E660 fmadds, then the audited three-step double sqrt refinement.
+    let speed = sqrtf(fmadds(x, x, y * y));
+    let radians = (std::f32::consts::PI / 180.0) * degrees;
+    // 8008E6CC: fmadds, not a separately rounded angle increment.
+    let angle = fmadds(radians, influence, angle);
+    velocity.x = speed * cosf(angle);
+    velocity.y = speed * sinf(angle);
 }

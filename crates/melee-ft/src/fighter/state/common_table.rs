@@ -1227,5 +1227,104 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // S5: prone recovery rows and state-specific wait/bounce callbacks.
+    rows[S::DownWaitU as usize].iasa = crate::fighter::down::wait_input;
+    rows[S::DownWaitD as usize].iasa = crate::fighter::down::wait_input;
+    // ftData_MotionStateList[186]: ftCo_MS_DownStandU.
+    rows[S::DownStandU as usize] = MotionRow {
+        action: ActionId(186),
+        id: S::DownStandU,
+        animation: 186,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[187]: ftCo_MS_DownAttackU.
+    rows[S::DownAttackU as usize] = MotionRow {
+        action: ActionId(187),
+        id: S::DownAttackU,
+        animation: 187,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[188]: ftCo_MS_DownFowardU.
+    rows[S::DownFowardU as usize] = MotionRow {
+        action: ActionId(188),
+        id: S::DownFowardU,
+        animation: 188,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[189]: ftCo_MS_DownBackU.
+    rows[S::DownBackU as usize] = MotionRow {
+        action: ActionId(189),
+        id: S::DownBackU,
+        animation: 189,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[194]: ftCo_MS_DownStandD.
+    rows[S::DownStandD as usize] = MotionRow {
+        action: ActionId(194),
+        id: S::DownStandD,
+        animation: 194,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[195]: ftCo_MS_DownAttackD.
+    rows[S::DownAttackD as usize] = MotionRow {
+        action: ActionId(195),
+        id: S::DownAttackD,
+        animation: 195,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[196]: ftCo_MS_DownFowardD.
+    rows[S::DownFowardD as usize] = MotionRow {
+        action: ActionId(196),
+        id: S::DownFowardD,
+        animation: 196,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftData_MotionStateList[197]: ftCo_MS_DownBackD.
+    rows[S::DownBackD as usize] = MotionRow {
+        action: ActionId(197),
+        id: S::DownBackD,
+        animation: 197,
+        anim: crate::fighter::down::recovery_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows
 }

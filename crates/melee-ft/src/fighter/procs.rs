@@ -39,6 +39,9 @@ impl Fighter {
             (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
         }
         self.core.apply_combo_push(&assets.combo);
+        if self.core.combat.hitlag_remaining > 0.0 {
+            self.core.damage_hitlag_input();
+        }
         self.core.invalidate_collision_positions();
     }
     /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
@@ -169,6 +172,7 @@ impl FighterCore {
                         | super::MotionData::Tilt
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }
+                        | super::MotionData::Down { .. }
                 ),
                 "attack requires attack state"
             ),
@@ -429,15 +433,6 @@ impl FighterCore {
                 ..InputContext::default()
             },
         );
-        if self.combat.hitlag_remaining > 0.0
-            && matches!(self.state_data, super::MotionData::Damage(_))
-            && (self.input.current.stick.x != 0.0
-                || self.input.current.stick.y != 0.0
-                || self.input.current.cstick.x != 0.0
-                || self.input.current.cstick.y != 0.0)
-        {
-            unimplemented!("ftCo_Damage.c:624-664: SDI during hitlag");
-        }
         self.joystick_count += u64::from(effects.joystick_count_increments);
         effects.run_input_callback && self.combat.hitlag_remaining == 0.0
     }

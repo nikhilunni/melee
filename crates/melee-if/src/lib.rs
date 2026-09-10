@@ -86,12 +86,13 @@ pub struct StockDisplay {
     pub animate_losses: bool,
 }
 impl StockDisplay {
-    pub fn tick(&mut self, stocks: u8) -> Vec<hsd_types::Vec3> {
+    pub fn tick(&mut self, stocks: u8) -> impl Iterator<Item = hsd_types::Vec3> {
         assert!(
             stocks <= 5,
             "ifStock_802F8298: numeric stock count above five"
         );
-        let mut effects = Vec::new();
+        // At most one loss effect per icon; preserve slot order without allocating.
+        let mut effects = [None; 5];
         for (i, frame) in self.animation_frames.iter_mut().enumerate() {
             if i < usize::from(stocks) {
                 *frame = if self.animate_losses { 0 } else { 10 };
@@ -100,14 +101,14 @@ impl StockDisplay {
                     *frame = 10;
                 }
                 if *frame == 0 {
-                    effects.push(self.icon_positions[i]);
+                    effects[i] = Some(self.icon_positions[i]);
                 }
                 if *frame < 10 {
                     *frame += 1;
                 }
             }
         }
-        effects
+        effects.into_iter().flatten()
     }
 }
 
