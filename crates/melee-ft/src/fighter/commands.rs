@@ -15,6 +15,9 @@ use melee_types::fixed::FixedVec;
 
 /// Explicit port bound for side requests; consumers drain before exhaustion.
 pub const COMMAND_REQUEST_CAPACITY: usize = 64;
+/// Wind (opcode 0x3A family) and radial-impulse requests: a subaction issues at most a
+/// few per frame and the scene drains them every tick; explicit port bound, overflow fails.
+pub const DYNAMICS_REQUEST_CAPACITY: usize = 8;
 /// Opcode 40 carries seven-bit texture indices.
 const TEXTURE_SLOT_COUNT: usize = 128;
 /// Opcode 31 carries a signed seven-bit model group.
@@ -96,8 +99,8 @@ pub struct CommandState {
     /// ftAction_80072E4C requests, resolved at the calling proc boundary.
     pub landing_effects: FixedVec<u16, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80073118: radial dynamics requests, no RNG.
-    pub wind_effects: FixedVec<melee_cmd::WindEffect, COMMAND_REQUEST_CAPACITY>,
-    pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, COMMAND_REQUEST_CAPACITY>,
+    pub wind_effects: FixedVec<melee_cmd::WindEffect, DYNAMICS_REQUEST_CAPACITY>,
+    pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, DYNAMICS_REQUEST_CAPACITY>,
     /// ftAction_800728F8: controller-output requests, no RNG.
     pub rumble_requests: FixedVec<RumbleRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80072CD8 (0x80072CD8) -> ftAction_80071B50 (0x80071B50).
