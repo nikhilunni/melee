@@ -45,9 +45,7 @@ impl Yoshi {
     }
 }
 impl CharacterCallbacks for Yoshi {
-    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
-        &CHARACTER_ROWS
-    }
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow<Self>] = &CHARACTER_ROWS;
 
     fn kind(&self) -> FighterKind {
         FighterKind::Yoshi

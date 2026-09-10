@@ -128,14 +128,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub fn row(&self, action: ActionId) -> MotionRow<C> {
         let mut index = usize::from(action.0);
         if index < COMMON_COUNT {
-            let common = C::COMMON[index];
+            let common = self.common_rows[index];
             index = usize::try_from(self.character.action_id(common.id))
                 .expect("nonnegative character action");
         }
         if index < COMMON_COUNT {
-            C::COMMON[index]
+            self.common_rows[index]
         } else {
-            C::special_rows()
+            self.special_rows
                 .get(index - COMMON_COUNT)
                 .copied()
                 .unwrap_or_else(|| unsupported_action(ActionId(index as u16)))

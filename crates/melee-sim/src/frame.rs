@@ -283,14 +283,9 @@ impl Runtime {
                                 melee_ft::fighter::life::LifeState::AwaitingRespawn
                             )
                         ) {
-                            let archive = &state.assets.characters[player];
-                            let (tree, root) = archive.model(f.player.costume);
                             f.reset_for_revival(
                                 &state.assets.fighters[player],
                                 &state.assets.arena,
-                                &archive.data,
-                                tree,
-                                root,
                                 melee_ft::fighter::SpawnContext {
                                     map: &mut state.map,
                                     rng: &mut state.rng,

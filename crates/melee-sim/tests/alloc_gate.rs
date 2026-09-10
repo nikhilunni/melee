@@ -6,14 +6,28 @@ use std::{
     path::Path,
 };
 
+#[path = "alloc_gate/revival.rs"]
+mod revival;
+
 struct CountingAllocator;
 thread_local! {
+    static BACKTRACES: Cell<bool> = const { Cell::new(false) };
+    static TICK: Cell<u64> = const { Cell::new(0) };
     static COUNTING: Cell<bool> = const { Cell::new(false) };
     static ALLOCATIONS: Cell<usize> = const { Cell::new(0) };
 }
 fn count() {
     if COUNTING.try_with(Cell::get).unwrap_or(false) {
         ALLOCATIONS.with(|count| count.set(count.get() + 1));
+        if BACKTRACES.with(Cell::get) {
+            COUNTING.with(|enabled| enabled.set(false));
+            eprintln!(
+                "allocation at tick {}:\n{}",
+                TICK.with(Cell::get),
+                std::backtrace::Backtrace::force_capture()
+            );
+            COUNTING.with(|enabled| enabled.set(true));
+        }
     }
 }
 unsafe impl GlobalAlloc for CountingAllocator {
@@ -56,7 +70,12 @@ fn measure(scenario: &Scenario, snapshot: bool) -> Measurement {
     ALLOCATIONS.with(|count| count.set(0));
     let mut peak = 0;
     let mut allocating_ticks = 0;
-    for _ in 1..scenario.frames {
+    // Optional diagnostic pass; backtrace storage itself is excluded from counting.
+    BACKTRACES.with(|enabled| {
+        enabled.set(!snapshot && std::env::var_os("MELEE_ALLOC_BACKTRACES").is_some())
+    });
+    for tick in 1..scenario.frames {
+        TICK.with(|current| current.set(tick));
         let before = ALLOCATIONS.with(Cell::get);
         COUNTING.with(|enabled| enabled.set(true));
         if snapshot {
@@ -120,8 +139,8 @@ fn jab_fd_marth_allocation_budget() {
 }
 #[test]
 fn ko_fd_marth_allocation_budget() {
-    // Remaining: full fighter reconstruction on revival (peak 668), plus particle storage.
-    allocation_budget("ko_fd_marth", 690);
+    // Revival reuses its owners; remaining allocations belong to particle storage.
+    allocation_budget("ko_fd_marth", 22);
 }
 #[test]
 fn start_bf_fox_allocation_budget() {

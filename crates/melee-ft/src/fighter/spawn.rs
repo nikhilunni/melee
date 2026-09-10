@@ -132,72 +132,43 @@ impl<C: CharacterCallbacks> Fighter<C> {
         context: SpawnContext<'_>,
         entry_delay: Option<i32>,
     ) -> Result<Self> {
-        let SpawnContext { map, rng, counter } = context;
         let initial_scale = skeleton.scale(root);
-        let mut fighter = Self::prepare(player, character, assets, skeleton, root, map);
-        // ftCo_8009CF84 enables each chain before reset. prepare only allocates
-        // owners: savestate import must attach animations before restoring locks.
-        for set in &mut fighter.core.dynamics {
-            crate::dynamics::select(
-                set,
-                &mut fighter.core.skeleton,
-                &mut fighter.core.animation.parts,
-                true,
-                0,
-            );
-        }
-        fighter.core.dynamics_first_bone.fill(0);
-        // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
-        fighter.core.skeleton.set_scale(root, &initial_scale);
-        fighter.core.spawn_number = counter.allocate();
-        let data = &mut fighter.core.collision.data;
-        data.last_pos = fighter.core.physics.position;
-        data.cur_pos = fighter.core.physics.position;
-        data.last_pos.y += 10.0;
-        data.cur_pos.y -= 10.0;
-        let pose = ecb::EcbPose::read(&mut fighter.core.skeleton, root, data);
-        let supported = map.air_collide_pass(data, Some(&|i| pose.position(i)));
-        if supported {
-            fighter.core.physics.position = data.cur_pos;
-            fighter.core.physics.ground_or_air = GroundOrAir::Ground;
-            fighter.core.physics.jumps_used = 0;
-            fighter.core.collision.lock_frames = 0;
-        } else {
-            // ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
-            // A failed probe leaves Fighter.cur_pos at the Player marker.
-            fighter.leave_ground();
-        }
-        fighter
+        let mut fighter = Self::prepare(player, character, assets, skeleton, root, context.map);
+        fighter.initialize_spawn(assets, context, entry_delay, initial_scale)?;
+        Ok(fighter)
+    }
+
+    /// Reset-time services shared by creation and revival; all owners already exist.
+    pub(super) fn initialize_spawn(
+        &mut self,
+        assets: &FighterAssets,
+        context: SpawnContext<'_>,
+        entry_delay: Option<i32>,
+        initial_scale: Vec3,
+    ) -> Result<()> {
+        let SpawnContext { map, rng, counter } = context;
+        let root = self.core.animation.root;
+        let supported = self
             .core
-            .skeleton
-            .set_translate(root, &fighter.core.physics.position);
-        let scale = fighter.core.player.scale * fighter.core.attributes.size.model_scaling;
-        fighter
-            .core
-            .skeleton
-            .set_scale(root, &Vec3::new(scale, scale, scale));
-        fighter.character.on_reset();
+            .initialize_spawn_geometry(map, counter, initial_scale);
+        self.character.on_reset();
         // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
-        fighter.core.thrown_hitbox.state = 1;
-        fighter
-            .core
+        self.core.thrown_hitbox.state = 1;
+        self.core
             .thrown_hitbox
-            .update(&mut fighter.core.skeleton, root);
-        fighter.core.cpu = CpuState::initialize(
-            fighter.core.player.cpu_mode,
-            fighter.core.player.cpu_level,
-            rng,
-        );
+            .update(&mut self.core.skeleton, root);
+        self.core.cpu =
+            CpuState::initialize(self.core.player.cpu_mode, self.core.player.cpu_level, rng);
         if let Some(delay) = entry_delay {
             // Fighter_ChangeMotionState sets TopN's facing rotation even
             // for SM_None. The ordinary animation-entry path does this itself.
-            fighter.core.skeleton.set_rotation_y(
+            self.core.skeleton.set_rotation_y(
                 root,
-                (std::f64::consts::FRAC_PI_2 * f64::from(fighter.core.physics.facing)) as f32,
+                (std::f64::consts::FRAC_PI_2 * f64::from(self.core.physics.facing)) as f32,
             );
-            fighter.enter_match(delay, assets)?;
+            self.enter_match(delay, assets)?;
         } else {
-            fighter.change_motion_state(
+            self.change_motion_state(
                 if supported {
                     CommonMotionState::Wait
                 } else {
@@ -208,9 +179,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         // ftLib_800867E8 at the end of Fighter_Create: clear input and freeze
         // sampling until match setup calls ftLib_8008688C.
-        fighter.core.input.clear_current_and_buffers();
-        fighter.core.status.input_frozen = true;
-        Ok(fighter)
+        self.core.input.clear_current_and_buffers();
+        self.core.status.input_frozen = true;
+        Ok(())
     }
 
     /// Allocate the typed owners without consuming RNG or entering a state.
@@ -249,6 +220,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
             ),
             character,
             motion_row,
+            common_rows: &C::COMMON,
+            special_rows: C::special_rows(),
         }
     }
 
@@ -333,6 +306,47 @@ impl<C: CharacterCallbacks> Fighter<C> {
 }
 
 impl FighterCore {
+    /// Reset dynamics, support probe and model placement before the death hook.
+    fn initialize_spawn_geometry(
+        &mut self,
+        map: &mut CollMap,
+        counter: &mut SpawnCounter,
+        initial_scale: Vec3,
+    ) -> bool {
+        let root = self.animation.root;
+        // ftCo_8009CF84 enables each chain before reset. prepare only allocates
+        // owners: savestate import must attach animations before restoring locks.
+        for set in &mut self.dynamics {
+            crate::dynamics::select(set, &mut self.skeleton, &mut self.animation.parts, true, 0);
+        }
+        self.dynamics_first_bone.fill(0);
+        // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
+        self.skeleton.set_scale(root, &initial_scale);
+        self.spawn_number = counter.allocate();
+        let data = &mut self.collision.data;
+        data.last_pos = self.physics.position;
+        data.cur_pos = self.physics.position;
+        data.last_pos.y += 10.0;
+        data.cur_pos.y -= 10.0;
+        let pose = ecb::EcbPose::read(&mut self.skeleton, root, data);
+        let supported = map.air_collide_pass(data, Some(&|i| pose.position(i)));
+        if supported {
+            self.physics.position = data.cur_pos;
+            self.physics.ground_or_air = GroundOrAir::Ground;
+            self.physics.jumps_used = 0;
+            self.collision.lock_frames = 0;
+        } else {
+            // ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
+            // A failed probe leaves Fighter.cur_pos at the Player marker.
+            self.leave_ground();
+        }
+        self.skeleton.set_translate(root, &self.physics.position);
+        let scale = self.player.scale * self.attributes.size.model_scaling;
+        self.skeleton
+            .set_scale(root, &Vec3::new(scale, scale, scale));
+        supported
+    }
+
     /// Allocate decoded owners after the character's OnLoad/resource hooks.
     fn prepare(
         player: PlayerSlot,
@@ -422,7 +436,8 @@ impl FighterCore {
             dynamics,
             dynamics_use_floor_plane: false,
             kind: assets.kind,
-            revival_platform: None,
+            revival_platform: assets.revival_platform.clone(),
+            revival_platform_active: false,
             spawn_number: 0,
             physics,
             animation,

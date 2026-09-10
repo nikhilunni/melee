@@ -40,29 +40,28 @@ pub struct LifeParameters {
 }
 impl<C: CharacterCallbacks> Fighter<C> {
     /// gm_8016719C -> Player_80032070 -> Fighter_UnkProcessDeath (80068354).
-    #[allow(clippy::too_many_arguments)]
     pub fn reset_for_revival(
         &mut self,
         assets: &FighterAssets,
         arena: &Arena,
-        archive: &hsd_archive::Archive,
-        skeleton: hsd_anim::jobj::JObjTree,
-        root: hsd_anim::jobj::JObjId,
         context: super::SpawnContext<'_>,
     ) -> Result<()> {
-        let mut player = self.core.player.clone();
         if !arena.player_revival_markers {
             unimplemented!("gm_80167638: shared revival marker offset allocation");
         }
-        let target = arena.revival_positions[usize::from(player.id)];
-        player.position = Vec3::new(target.x, arena.camera_top, 0.0);
-        player.facing = if player.position.x >= 0.0 { -1.0 } else { 1.0 };
-        player.damage = 0.0;
-        let character = C::from_archive(archive)?;
-        let mut next = Self::spawn(player, character, assets, skeleton, root, context)?;
-        next.enter_revival(assets, target)?;
-        *self = next;
-        Ok(())
+        let target = arena.revival_positions[usize::from(self.core.player.id)];
+        self.core.player.position = Vec3::new(target.x, arena.camera_top, 0.0);
+        self.core.player.facing = if self.core.player.position.x >= 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+        self.core.player.damage = 0.0;
+        self.core.reset_life(assets, context.map);
+        self.install_motion_row(C::COMMON[S::Wait as usize]);
+        let scale = self.core.skeleton.scale(self.core.animation.root);
+        self.initialize_spawn(assets, context, None, scale)?;
+        self.enter_revival(assets, target)
     }
     /// ftCo_800D3158 / ftCo_800D3BC8 (800D3158 / 800D3BC8), after Update.
     pub fn check_blast_zone(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
@@ -115,7 +114,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.status.input_frozen = false;
         self.core.status.ignore_fighter_nudge = true;
         self.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
-        let mut platform = assets.revival_platform.clone();
+        let platform = &mut self.core.revival_platform;
+        platform.tree.req_anim_all(platform.root, 0.0);
         // ftCoD4FF4 (800D51C0): separate model-scale product, no FMA.
         let scale = self.core.player.scale
             * self.core.attributes.size.model_scaling
@@ -126,7 +126,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         platform
             .tree
             .set_translate(platform.root, &self.core.physics.position);
-        self.core.revival_platform = Some(platform);
+        self.core.revival_platform_active = true;
         Ok(())
     }
     /// Rebirth_Anim (800D52F8), RebirthWait_Anim (800D56EC).
@@ -164,6 +164,48 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
 }
 impl FighterCore {
+    /// Fighter_UnkInitReset (80067C98): retain loaded resources and reset live state.
+    fn reset_life(&mut self, assets: &FighterAssets, map: &melee_mp::CollMap) {
+        let player = &self.player;
+        // Same audited coordinate calculation as initial preparation (80067CE8).
+        let offset = 0.0 * player.scale;
+        let position = Vec3::new(
+            gekko_math::fma::fmadds(player.facing, offset, player.position.x),
+            player.position.y,
+            player.position.z,
+        );
+        self.animation.reset_for_spawn(&mut self.skeleton);
+        self.skeleton.set_translate(self.animation.root, &position);
+        self.physics = crate::physics::FighterPhysics::standing(position, player.facing);
+        self.physics.percent = player.damage;
+        self.input = crate::input::FighterInput::default();
+        self.collision = super::EnvironmentCollision::new(crate::collision::ecb::initialize(
+            map,
+            position,
+            &self.bones.ecb,
+            player.scale,
+            self.attributes.size.weight,
+        ));
+        self.state_data = MotionData::None;
+        self.combat = super::damage::CombatState::default();
+        self.shield = super::shield::ShieldState::default();
+        self.effect_state = super::effects::FighterEffects::default();
+        self.effects = melee_ef::request::EffectQueue::default();
+        self.status = super::Status::reset(assets.shield_health);
+        self.commands = super::commands::CommandState::default();
+        self.ground_pose = crate::collision::pose::GroundPoseFlags::default();
+        self.dynamics_use_floor_plane = false;
+        self.player_position = position;
+        self.player_facing = player.facing;
+        self.joystick_count = 0;
+        self.previous_collision_bounds = Vec3::ZERO;
+        self.camera = super::CameraSubject::default();
+        self.hurtboxes.clone_from_slice(&assets.hurtboxes);
+        self.dynamic_colliders
+            .clone_from_slice(&assets.dynamic_colliders);
+        self.thrown_hitbox.clone_from(&assets.thrown_hitbox);
+        self.revival_platform_active = false;
+    }
     /// ftCo_DeadDown_Anim (800D3E00): GM respawn is performed at this callback boundary.
     pub(super) fn death_animation(&mut self) {
         let MotionData::Life(LifeState::Dead { remaining }) = &mut self.state_data else {
@@ -179,7 +221,8 @@ impl FighterCore {
     }
     /// fn_800D54A4 and Fighter_8006C80C: place then animate the accessory.
     pub fn update_revival_platform(&mut self) {
-        if let Some(platform) = &mut self.revival_platform {
+        if self.revival_platform_active {
+            let platform = &mut self.revival_platform;
             platform
                 .tree
                 .set_translate(platform.root, &self.physics.position);

@@ -154,6 +154,36 @@ impl FighterAnimation {
         }
     }
 
+    /// Reset clocks and poses while retaining both trees and their track buffers.
+    /// Fighter_UnkProcessDeath (80068354) reuses the fighter's loaded model.
+    pub fn reset_for_spawn(&mut self, tree: &mut JObjTree) {
+        self.clear_motion(tree);
+        self.frame = 0.0;
+        self.part_animations.fill_with(PartAnimation::default);
+        if let Some(root) = &mut self.root_motion {
+            root.primary_history = Default::default();
+            root.secondary_history = Default::default();
+            root.compensate_joint = None;
+        }
+        for part in &mut self.parts {
+            part.flags.0 &= PartFlags::PRESENT | PartFlags::TRANSLATION | PartFlags::COPY;
+            part.motion_mask = 0;
+            let rest = self.rest_pose.get(part.joint);
+            for target in [&mut *tree, &mut self.blend_tree] {
+                let joint = target.get_mut(part.joint);
+                joint.flags = rest.flags;
+                joint.rotate = rest.rotate;
+                joint.scale = rest.scale;
+                joint.translate = rest.translate;
+                joint.mtx = rest.mtx;
+                joint.scl = rest.scl;
+                joint.path_reference = rest.path_reference;
+            }
+        }
+        tree.events.clear();
+        self.blend_tree.events.clear();
+    }
+
     /// `ftAnim_8006EBE8` + `ftAnim_8006FE08`. Requesting does not evaluate;
     /// Wait's restart calls `step` immediately after this (0x8008A6D8).
     /// Existing frame/remainder and Fighter speed are retained, as in that

@@ -60,8 +60,10 @@ pub trait CharacterCallbacks: Sized + 'static {
     /// Character-owned table (retail's per-kind MotionState table), indexed
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.
+    const SPECIAL_ROWS: &'static [MotionRow<Self>] = &[];
+
     fn special_rows() -> &'static [MotionRow<Self>] {
-        &[]
+        Self::SPECIAL_ROWS
     }
 
     fn enter_special(_fighter: &mut Fighter<Self>, _slot: SpecialSlot, _airborne: bool) {
@@ -439,6 +441,10 @@ pub struct Fighter<C: CharacterCallbacks> {
     pub core: FighterCore,
     pub character: C,
     pub motion_row: MotionRow<C>,
+    /// Bind static tables once at construction. Runtime row lookup must not
+    /// instantiate the entire common callback graph in each character crate.
+    common_rows: &'static [MotionRow<C>; COMMON_COUNT],
+    special_rows: &'static [MotionRow<C>],
 }
 impl<C: CharacterCallbacks> std::ops::Deref for Fighter<C> {
     type Target = FighterCore;
@@ -477,7 +483,8 @@ pub struct FighterCore {
     pub bones: FighterBones,
     /// GObj.hsd_obj: main skeleton; animation owns the secondary tree.
     pub skeleton: JObjTree,
-    pub revival_platform: Option<life::RevivalPlatform>,
+    pub revival_platform: life::RevivalPlatform,
+    pub revival_platform_active: bool,
     pub motion_state: MotionState,
     pub state_data: MotionData,
     pub combat: damage::CombatState,
