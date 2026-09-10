@@ -276,7 +276,7 @@ Recorded 2026-09-10 (all from `idle_fd_fox.sav` / `idle_fd_marth.sav`, P2 Fox id
 
 | # | Area | Have | Missing | Est. tasks |
 |---|---|---|---|---|
-| S1 | Ground attacks | jab, up-tilt, forward smash | dash attack, remaining tilts with angles, up/down smash, smash charge, jab combos | 3-4 |
+| S1 | Ground attacks | **done 2026-09-10** (merged): dash attack, tilts with angles, up/down smash, smash charge, jab combos and rapid jab; 19 scenes gated both profiles; face-up knockdown rows; report `docs/PORT_NOTES/S1_GROUND_ATTACKS.md`. Perf debt: melee-sim melee-ft copies 2,015 -> 2,114 (new `fn(&mut Fighter<C>)` callbacks x 7 characters), stripped 3,747,632 -> 3,797,952; assigned to C15 | done |
 | S2 | Aerials | none | five aerials each, L-cancel, autocancel windows | 2 |
 | S3 | Specials | none | Fox: laser, Illusion, Fire Fox, reflector. Marth: Shield Breaker, Dancing Blade, Dolphin Slash, Counter | 5-6 |
 | S4 | Projectiles/items | none | item engine (`melee-it`, `SpawnItem`, per-kind logic rows as a trait), `it-foxlaser`, reflector interaction, item-fighter collision | 2-3 |
@@ -430,6 +430,7 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-09 (night, cont.): C11 merged; JIT probes, fox_ys bones and start_fd_fox VI bones re-captured; C4 chain running; C5-b running; M2 legacy oracle -> aligned model (follow-up).
 - 2026-09-09 (night, cont.): C4 merged (melee-ef). Awaiting C5-b follow-up and the M2 aligned-oracle follow-up; then a stock-take (user request), no new lanes.
 - 2026-09-09 (late night): C5-b and the M2 aligned oracle merged. Consolidation round complete except C8 (`melee-cmd`/`melee-coll`) and C3 (family crate, lands with the first Fox special). Main: strict workspace 965 passed / 0 failed, both profiles exact. Paused for a stock-take at the user's request; no lanes running.
+- 2026-09-10 (cont. 5): S1 merged (19 ground-attack scenes, M5 27, workspace 1,004/0 both profiles). perf-gate REGRESSION on the copies metric only (+99 in melee-sim: S1 callbacks x 7 characters) and +1.3% size, within the size tolerance; recorded in `docs/PERF.md` as the C15 debt, baseline not promoted. S4 (items/laser) done on its lane, rebasing next; then C15 alone.
 - 2026-09-10 (cont. 4): P1 merged (revival zero-alloc, Yoshi fix, baseline). C15 concrete shell scheduled after S1/S4. S9: a 200% Fox savestate (`idle_fd_marth4_fox200.sav`, fighter and player-block percent RAM-poked) for top blast-zone KOs; recording uthrow/utilt/Dolphin Slash/jab at 200%.
 - 2026-09-10 (cont. 3): recorded the scripted four-stock match `match_fd_marth_scripted` (S10 gate; needs S1 fsmash, respawn drop, teeter, GAME). Stock-4 savestates `start_fd_marth4.sav`/`idle_fd_marth4.sav` created.
 - 2026-09-10 (cont. 2): recorded 21 S5..S8 scenes (DI/SDI/CC/getups, shield variants incl. powershield and shield break, throws/pummel/mash, ledge options); mirrored. Launched P1 on the harness lane (revival without reconstruction: ko_fd_marth 690 allocs; ft-yoshi 228-copy anomaly + C15 concrete-shell design note; fresh perf baseline). S2/S3 prompts drafted; S3 waits for S4 (Illusion spawns item kind 56, the afterimage).
