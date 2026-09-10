@@ -20,10 +20,14 @@ impl Jigglypuff {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<Jigglypuff>();
+
 impl CharacterCallbacks for Jigglypuff {
-    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
-        &CHARACTER_ROWS
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
     }
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
 
     fn kind(&self) -> FighterKind {
         FighterKind::Purin
@@ -106,11 +110,11 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 };
 
 /// ftPr_Init_MotionStateTable[0..5]: JumpAerialF1..F5, actions 341..345.
-const CHARACTER_ROWS: [melee_ft::fighter::MotionRow<Jigglypuff>; 5] = {
+const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 5] = {
     use melee_ft::fighter::state::callbacks;
-    use melee_ft::fighter::{ActionId, CharacterCallbacks, MotionRow};
+    use melee_ft::fighter::{ActionId, MotionRow};
     use melee_types::CommonMotionState as S;
-    let mut rows = [Jigglypuff::COMMON[S::JumpAerialF as usize]; 5];
+    let mut rows = [melee_ft::fighter::state::COMMON[S::JumpAerialF as usize]; 5];
     let mut index = 0;
     while index < 5 {
         rows[index] = MotionRow {

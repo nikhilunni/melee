@@ -1,8 +1,8 @@
 //! Special entry boundary shared by the existing attack-input paths.
-use crate::fighter::{assets::FighterAssets, CharacterCallbacks, Fighter, SpecialSlot};
+use crate::fighter::{assets::FighterAssets, Fighter, SpecialSlot};
 use crate::input::{WaitContext, WaitPredicate, WaitTransition};
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_SpecialS_CheckInput / ftCo_Attack100_CheckInput / ftCo_800D6824 /
     /// ftCo_800D68C0 consult ftData_SpecialS/Hi/N/Lw[kind], respectively.
     /// The pure input predicates already recognize these buffers; their entry
@@ -23,7 +23,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, &context)
                 == WaitTransition::Special
             {
-                C::enter_special(self, slot, airborne, assets);
+                (self.character.table().enter_special)(self, slot, airborne, assets);
                 return;
             }
         }

@@ -1,6 +1,6 @@
 //! Extra state evidence for the hooks not covered by the 49-key trace schema.
 use super::*;
-use crate::{scenario::Scenario, scene_fighter::SceneFighter};
+use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
 use std::{fs, path::Path};
 
@@ -30,9 +30,8 @@ fn replay(name: &str) {
             |offset: usize| u32::from_str_radix(&raw[offset * 2..offset * 2 + 8], 16).unwrap();
         simulation.tick().unwrap();
         let runtime = &simulation.runtime;
-        let SceneFighter::Yoshi(fighter) = &runtime.state.fighters[0] else {
-            panic!("Yoshi slot")
-        };
+        let fighter = &runtime.state.fighters[0];
+        let _ = fighter.character.get::<ft_yoshi::init::Yoshi>();
         for (field, actual, offset) in [
             ("shield health", fighter.status.shield_health, 0x1998),
             ("double jump armor", fighter.combat.armor, 0x18B4),

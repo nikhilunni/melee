@@ -1,11 +1,11 @@
 //! Deliberately leaving a soft platform: ftCommon/ftCo_Pass.c.
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use melee_types::CommonMotionState;
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_8009A228 (0x8009A228): leave ground, clamp drift, attach Pass,
     /// then skip the supporting line. Fighter_ChangeMotionState clears that
     /// skip on the next transition (fighter.c:1080), including Fall or Landing.
@@ -19,7 +19,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.physics.self_velocity.x =
             self.core.physics.self_velocity.x.clamp(-maximum, maximum);
         self.core.physics.self_velocity.y = assets.movement.platform_drop_velocity;
-        self.change_motion_state(CommonMotionState::Pass, assets)?;
+        self.change_motion_state(CommonMotionState::Pass.into(), assets)?;
         melee_mp::update_floor_skip(&mut self.core.collision.data);
         self.core.input.vertical.tilt = 0xFE;
         self.core.state_data = MotionData::Pass {

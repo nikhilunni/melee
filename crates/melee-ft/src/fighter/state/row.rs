@@ -4,13 +4,13 @@ use super::{
 };
 use crate::anim::WaitChoice;
 use crate::fighter::assets::Result;
-use crate::fighter::{CharacterCallbacks, Fighter};
+use crate::fighter::Fighter;
 use melee_types::CommonMotionState;
 
 /// Retail MotionState (ft/types.h:853): animation ID and five event callbacks.
 /// `x4_flags` and the packed move-ID word are not yet modelled by this port;
 /// animation playback's MotionFlags are a different word and are not reused.
-pub struct MotionRow<C: CharacterCallbacks> {
+pub struct MotionRow {
     /// Retail table index, including the character-owned table's 341 offset.
     pub action: ActionId,
     /// Existing common semantic identity used by shared state scratch and hooks.
@@ -18,21 +18,21 @@ pub struct MotionRow<C: CharacterCallbacks> {
     pub id: CommonMotionState,
     /// Retail anim_id, previously selected as an i32 submotion in spawn.rs.
     pub animation: i32,
-    pub anim: AnimFn<C>,
-    pub iasa: InputFn<C>,
-    pub physics: PhysicsFn<C>,
-    pub collision: CollisionFn<C>,
-    pub camera: CameraFn<C>,
+    pub anim: AnimFn,
+    pub iasa: InputFn,
+    pub physics: PhysicsFn,
+    pub collision: CollisionFn,
+    pub camera: CameraFn,
     /// Port coverage, formerly the supported arms of motion-entry dispatch.
     pub implemented: bool,
 }
-impl<C: CharacterCallbacks> Copy for MotionRow<C> {}
-impl<C: CharacterCallbacks> Clone for MotionRow<C> {
+impl Copy for MotionRow {}
+impl Clone for MotionRow {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<C: CharacterCallbacks> std::fmt::Debug for MotionRow<C> {
+impl std::fmt::Debug for MotionRow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MotionRow")
             .field("action", &self.action)
@@ -53,7 +53,7 @@ pub struct MotionState {
     pub implemented: bool,
 }
 impl MotionState {
-    pub const fn new<C: CharacterCallbacks>(row: MotionRow<C>) -> Self {
+    pub const fn new(row: MotionRow) -> Self {
         Self {
             action: row.action,
             id: row.id,
@@ -65,7 +65,7 @@ impl MotionState {
 
 /// Placeholder for an unported ftData_MotionStateList index. All five callbacks
 /// identify the live ftCo_MS_* name and retail index instead of silently running.
-pub const fn unimplemented_row<C: CharacterCallbacks>() -> MotionRow<C> {
+pub const fn unimplemented_row() -> MotionRow {
     MotionRow {
         action: ActionId(0),
         id: CommonMotionState::None,
@@ -79,35 +79,26 @@ pub const fn unimplemented_row<C: CharacterCallbacks>() -> MotionRow<C> {
     }
 }
 
-pub fn unimplemented_anim<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
+pub fn unimplemented_anim(
+    fighter: &mut Fighter,
     _phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
     unsupported_action(fighter.core.motion_state.action)
 }
 
-pub fn unimplemented_iasa<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+pub fn unimplemented_iasa(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     unsupported_action(fighter.core.motion_state.action)
 }
 
-pub fn unimplemented_physics<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    _phase: PhysicsPhase<'_>,
-) {
+pub fn unimplemented_physics(fighter: &mut Fighter, _phase: PhysicsPhase<'_>) {
     unsupported_action(fighter.core.motion_state.action)
 }
 
-pub fn unimplemented_collision<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    _phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn unimplemented_collision(fighter: &mut Fighter, _phase: CollisionPhase<'_>) -> Result<()> {
     unsupported_action(fighter.core.motion_state.action)
 }
 
-pub fn unimplemented_camera<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    _phase: CameraPhase<'_>,
-) {
+pub fn unimplemented_camera(fighter: &mut Fighter, _phase: CameraPhase<'_>) {
     unsupported_action(fighter.core.motion_state.action)
 }
 pub(crate) fn unsupported_action(action: ActionId) -> ! {
@@ -121,21 +112,23 @@ pub(crate) fn unsupported_action(action: ActionId) -> ! {
     );
 }
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// Fighter_ChangeMotionState (800693AC), fighter.c:1177-1181. Common entry
     /// identities can resolve through the existing character action-ID hook;
     /// both cases return the actual row, including its action number.
-    pub fn row(&self, action: ActionId) -> MotionRow<C> {
+    pub fn row(&self, action: ActionId) -> MotionRow {
         let mut index = usize::from(action.0);
         if index < COMMON_COUNT {
-            let common = self.common_rows[index];
+            let common = super::COMMON[index];
             index = usize::try_from(self.character.action_id(common.id))
                 .expect("nonnegative character action");
         }
         if index < COMMON_COUNT {
-            self.common_rows[index]
+            super::COMMON[index]
         } else {
-            self.special_rows
+            self.character
+                .table()
+                .special_rows
                 .get(index - COMMON_COUNT)
                 .copied()
                 .unwrap_or_else(|| unsupported_action(ActionId(index as u16)))

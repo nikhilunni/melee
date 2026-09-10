@@ -3,7 +3,7 @@ use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
     caches::bone_position,
-    CharacterCallbacks, Fighter,
+    Fighter,
 };
 use hsd_types::Vec3;
 use melee_types::{CommonMotionState as S, FtPart};
@@ -40,19 +40,25 @@ pub fn back_throw_requested(f: &FighterCore, assets: &FighterAssets) -> bool {
 }
 
 /// ftCo_800DD4B0 -> ftCo_800DD398 -> ftCo_800DE3FC.
-pub fn enter_back_throw<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
+pub fn enter_back_throw(
+    victim: &mut Fighter,
+    attacker: &mut Fighter,
     va: &FighterAssets,
     aa: &FighterAssets,
 ) -> Result<()> {
     attacker.character.throw_variant();
     let rate = prepare_back_throw(&victim.core, &mut attacker.core, aa);
-    attacker.change_motion_state_with_rate(S::ThrowB, aa, 0.0, rate)?;
+    attacker.change_motion_state_with_rate(S::ThrowB.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
     let (saved_translation, motion) =
         prepare_thrown_pose(&mut victim.core, &mut attacker.core, va, aa);
-    victim.change_motion_state_with_source(S::ThrownB, va, 0.0, rate, Some((aa, &motion)))?;
+    victim.change_motion_state_with_source(
+        S::ThrownB.into(),
+        va,
+        0.0,
+        rate,
+        Some((aa, &motion)),
+    )?;
     finish_thrown_pose(
         &mut victim.core,
         &mut attacker.core,
@@ -136,9 +142,9 @@ impl FighterCore {
 }
 
 /// ftCo_800DDDE4 (800DDDE4) and ftCo_800DE7C0 (800DE7C0): release without hitlag.
-pub fn release_back_throw<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
+pub fn release_back_throw(
+    victim: &mut Fighter,
+    attacker: &mut Fighter,
     va: &FighterAssets,
     aa: &FighterAssets,
     map: &mut melee_mp::CollMap,

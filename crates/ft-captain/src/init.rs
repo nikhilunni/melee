@@ -24,7 +24,13 @@ impl CaptainFalcon {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<CaptainFalcon>();
+
 impl CharacterCallbacks for CaptainFalcon {
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
+    }
     fn kind(&self) -> FighterKind {
         FighterKind::Captain
     }

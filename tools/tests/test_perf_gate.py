@@ -71,7 +71,8 @@ class PerformanceBudget(unittest.TestCase):
             (run / "llvm-version.txt").write_text("synthetic test llvm-lines")
             (run / "characters.txt").write_text("ft-fox\n")
             (run / "llvm-melee-sim.txt").write_text("100 7 (TOTAL)\n100 (100%, 100%) 7 (100%, 100%) melee_ft::function<C>\n")
-            (run / "llvm-melee-ft.txt").write_text("100 1 (TOTAL)\n100 (100%, 100%) 1 (100%, 100%) melee_ft::core_function\n")
+            (run / "llvm-melee-ft.txt").write_text("100 4 (TOTAL)\n" + "".join(
+                f"25 (25%, 100%) 1 (25%, 100%) {name}\n" for name in sorted(perf.PAIR_HELPERS)))
             (run / "llvm-ft-fox.txt").write_text("100 1 (TOTAL)\n100 (100%, 100%) 1 (100%, 100%) ft_fox::function\n")
             for name in ("load", "ticks_600"):
                 path = run / f"criterion/start_fd_fox/{name}/new/estimates.json"
@@ -86,7 +87,49 @@ class PerformanceBudget(unittest.TestCase):
             self.assertEqual(report.read_text().count('"status": "PASS"'), 1)
             self.assertEqual(report.read_text().count('"status": "REGRESSION"'), 2)
             self.assertIn("COMPLETE — PASS", report.read_text())
-            self.assertIn("### melee-ft: 1 melee-ft copies", report.read_text())
+            self.assertIn("### melee-ft: 4 melee-ft copies", report.read_text())
+
+
+class ConcreteShellBudget(unittest.TestCase):
+    def pairs(self):
+        return [dict(function=name, copies=1, lines=10) for name in perf.PAIR_HELPERS]
+
+    def test_a_common_body_moved_to_another_crate_still_counts_twice(self):
+        name = "melee_ft::fighter::shield::<impl melee_ft::fighter::Fighter>::enter_shield"
+        row = dict(function=name, copies=1, lines=20)
+        labels, failures = perf.concrete_shell_census({"melee-ft": self.pairs() + [row]})
+        self.assertEqual(failures, [])
+        self.assertEqual(labels[name]["copies"], 1)
+        labels, failures = perf.concrete_shell_census({"melee-ft": self.pairs() + [row], "ft-yoshi": [row]})
+        self.assertEqual(labels[name]["copies"], 2)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("ft-yoshi", failures[0])
+
+    def test_generic_shell_is_rejected_even_with_one_instantiation(self):
+        row = dict(function="melee_ft::fighter::shield::<impl melee_ft::fighter::Fighter<C>>::enter_shield", copies=1, lines=20)
+        _, failures = perf.concrete_shell_census({"melee-ft": self.pairs() + [row]})
+        self.assertEqual(len(failures), 1)
+        self.assertIn("Fighter<C>", failures[0])
+
+    def test_missing_pair_helper_cannot_pass_as_a_smaller_census(self):
+        rows = self.pairs()
+        missing = rows.pop()["function"]
+        _, failures = perf.concrete_shell_census({"melee-ft": rows})
+        self.assertEqual(failures, [f"missing concrete pair helper: {missing}"])
+
+    def test_fixed_caps_reject_size_time_and_attribution_drift(self):
+        current = dict(stripped_bytes=perf.C15_STRIPPED_LIMIT, copies=dict(perf.C15_COPY_LIMITS), **perf.C15_P1_TIME_LIMITS)
+        self.assertEqual(perf.concrete_limits(current), [])
+        bad = dict(current, stripped_bytes=current["stripped_bytes"] + 1)
+        self.assertTrue(perf.concrete_limits(bad))
+        bad = dict(current, ticks_600_ns=current["ticks_600_ns"] + 1)
+        self.assertTrue(perf.concrete_limits(bad))
+        copies = dict(current["copies"])
+        copies["melee-ft"] += 1
+        copies["melee-sim"] -= 1  # Same aggregate does not excuse a per-crate regression.
+        self.assertTrue(perf.concrete_limits(dict(current, copies=copies)))
+        copies = dict(current["copies"], **{"ft-new": 1})
+        self.assertTrue(perf.concrete_limits(dict(current, copies=copies)))
 
 
 if __name__ == "__main__":

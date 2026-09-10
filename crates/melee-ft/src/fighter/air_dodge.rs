@@ -2,7 +2,7 @@
 //! the switch from multiplicative decay to ordinary aerial physics.
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use gekko_math::msl::{cosf, fabsf, sinf};
 use hsd_archive::Archive;
@@ -38,7 +38,7 @@ pub struct AirDodgeState {
     pub item_throw_frames: i32,
     pub saved_velocity: Vec3,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_80099A9C (80099A9C): retain momentum, then select the stick direction.
     pub(super) fn enter_air_dodge(&mut self, assets: &FighterAssets) -> Result<()> {
         let p = assets.air_dodge;
@@ -58,7 +58,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             item_throw_frames: p.item_throw_frames,
             saved_velocity,
         });
-        self.change_motion_state(CommonMotionState::EscapeAir, assets)?;
+        self.change_motion_state(CommonMotionState::EscapeAir.into(), assets)?;
         self.step_animation(assets);
         Ok(())
     }

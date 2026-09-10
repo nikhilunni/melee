@@ -3,7 +3,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::Buttons;
 use gekko_math::{fma::fmadds, msl::fabsf};
@@ -62,7 +62,7 @@ pub struct CliffJumpState {
     pub physics_started: bool,
     pub retained_wait_frames: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCliffCommon_80081298 (80081298), ftcliffcommon.c:23-53.
     /// The caller must mark fighter interactions; occupied-ledge arbitration
     /// (ft_80082E3C) is outside the isolated Fox / idle-opponent slice.
@@ -90,7 +90,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.core.collision.data.ledge_id_right
         };
         self.leave_ground();
-        self.change_motion_state(S::CliffCatch, assets)?;
+        self.change_motion_state(S::CliffCatch.into(), assets)?;
         self.step_animation(assets);
         self.leave_ground();
         self.core.status.name_tag_timer = assets.name_tag_duration;
@@ -118,7 +118,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             panic!("cliff scratch missing")
         };
         if !map.line_is_active(cliff.ledge_id) {
-            return self.change_motion_state(S::Fall, assets);
+            return self.change_motion_state(S::Fall.into(), assets);
         }
         self.core.place_at_ledge(map, cliff.ledge_id);
         Ok(())
@@ -141,7 +141,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         match self.core.motion_state.id {
             S::CliffCatch => {
                 // ftCo_8009A804 (8009A804), ftCo_CliffWait.c:22-40.
-                self.change_motion_state(S::CliffWait, assets)?;
+                self.change_motion_state(S::CliffWait.into(), assets)?;
                 self.core.status.grab_exclusions = GrabExclusions::ALL;
                 self.core.status.on_ledge = true;
                 let MotionData::Cliff(cliff) = &mut self.core.state_data else {
@@ -166,7 +166,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 } else {
                     S::CliffJumpSlow2
                 };
-                self.change_motion_state(next, assets)?;
+                self.change_motion_state(next.into(), assets)?;
                 self.step_animation(assets);
                 self.core.state_data = MotionData::CliffJump(CliffJumpState {
                     physics_started: false,
@@ -181,7 +181,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.core.physics.self_velocity.y =
                     self.core.attributes.ledge.ledge_jump_vertical_velocity;
             }
-            S::CliffJumpQuick2 | S::CliffJumpSlow2 => self.change_motion_state(S::Fall, assets)?,
+            S::CliffJumpQuick2 | S::CliffJumpSlow2 => {
+                self.change_motion_state(S::Fall.into(), assets)?
+            }
             _ => unreachable!(),
         }
         Ok(())
@@ -207,7 +209,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             } else {
                 S::CliffJumpSlow1
             };
-            self.change_motion_state(next, assets)?;
+            self.change_motion_state(next.into(), assets)?;
             self.step_animation(assets);
             self.core.status.on_ledge = true;
             self.core.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
@@ -229,7 +231,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     return self.enter_cliff_option(assets, S::CliffClimbQuick);
                 }
                 self.core.status.ledge_cooldown = assets.ledge.cooldown;
-                self.change_motion_state(S::Fall, assets)?;
+                self.change_motion_state(S::Fall.into(), assets)?;
                 return Ok(());
             }
         } else {
@@ -250,7 +252,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if self.core.physics.percent >= assets.ledge.slow_damage as f32 {
             unimplemented!("ftCo_CliffClimb.c:76-78 / ftCo_CliffEscape.c:17-19: Slow ledge option");
         }
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;
         self.core.status.on_ledge = true;
@@ -263,11 +265,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn cliff_climb_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(
-                if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+                (if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
                     S::Fall
                 } else {
                     S::Wait
-                },
+                })
+                .into(),
                 assets,
             )?;
         }
@@ -332,7 +335,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.core.input.current.stick.x,
             );
             if result == crate::collision::ground::WaitGroundResult::EnterFall {
-                self.change_motion_state(S::Fall, assets)?;
+                self.change_motion_state(S::Fall.into(), assets)?;
             }
             return Ok(());
         }
@@ -356,7 +359,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.land();
             } else if self.core.physics.self_velocity.y > assets.soft_landing_speed {
                 self.land();
-                self.change_motion_state(S::Wait, assets)?;
+                self.change_motion_state(S::Wait.into(), assets)?;
             } else {
                 self.enter_landing(assets)?;
             }

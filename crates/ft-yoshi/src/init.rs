@@ -44,8 +44,14 @@ impl Yoshi {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<Yoshi>();
+
 impl CharacterCallbacks for Yoshi {
-    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow<Self>] = &CHARACTER_ROWS;
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
+    }
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
 
     fn kind(&self) -> FighterKind {
         FighterKind::Yoshi
@@ -119,22 +125,16 @@ impl CharacterCallbacks for Yoshi {
         true
     }
     fn enter_shield(
-        fighter: &mut Fighter<Self>,
+        fighter: &mut Fighter,
         assets: &FighterAssets,
         reflect: bool,
     ) -> Option<FighterResult<()>> {
         Some(crate::shield::enter(fighter, assets, reflect))
     }
-    fn animate_shield(
-        fighter: &mut Fighter<Self>,
-        assets: &FighterAssets,
-    ) -> Option<FighterResult<()>> {
+    fn animate_shield(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         Some(crate::shield::animate(fighter, assets))
     }
-    fn input_shield(
-        fighter: &mut Fighter<Self>,
-        assets: &FighterAssets,
-    ) -> Option<FighterResult<()>> {
+    fn input_shield(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         // ftYs_GuardOn_1_IASA calls the common GuardReflect IASA verbatim.
         if fighter.core.motion_state.id == melee_types::CommonMotionState::GuardReflect {
             None
@@ -143,57 +143,52 @@ impl CharacterCallbacks for Yoshi {
         }
     }
     fn enter_guard_hold(
-        fighter: &mut Fighter<Self>,
+        fighter: &mut Fighter,
         assets: &FighterAssets,
     ) -> Option<FighterResult<()>> {
         Some(crate::shield::hold(fighter, assets))
     }
-    fn enter_guard_off(
-        fighter: &mut Fighter<Self>,
-        assets: &FighterAssets,
-    ) -> Option<FighterResult<()>> {
+    fn enter_guard_off(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         Some(crate::shield::off(fighter, assets))
     }
     fn escape_variant(
-        fighter: &mut Fighter<Self>,
+        fighter: &mut Fighter,
         assets: &FighterAssets,
         rolling: bool,
     ) -> FighterResult<()> {
         crate::shield::escape_entered(fighter, assets, rolling)
     }
-    fn escape_finished(
-        fighter: &mut Fighter<Self>,
-        assets: &FighterAssets,
-    ) -> Option<FighterResult<()>> {
+    fn escape_finished(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         crate::shield::escape_finished(fighter, assets)
     }
-    fn escape_animated(fighter: &mut Fighter<Self>) {
+    fn escape_animated(fighter: &mut Fighter) {
         if fighter.core.motion_state.id != melee_types::CommonMotionState::EscapeN {
             crate::shield::material(fighter);
         }
     }
-    fn aerial_jump_entered(fighter: &mut Fighter<Self>) {
-        let attr = &fighter.character.attributes.double_jump;
+    fn aerial_jump_entered(fighter: &mut Fighter) {
+        let attr = &fighter.character.get_mut::<Yoshi>().attributes.double_jump;
         fighter.core.combat.armor = attr.armor;
         // retail 800CBFC4: separate fmuls; strict less-than comparison.
-        fighter.character.jump_turn_remaining = if fighter.core.input.current.stick.x
-            * fighter.core.physics.facing
-            < -attr.reverse_threshold
-        {
-            attr.turn_frames
-        } else {
-            0
-        };
+        fighter.character.get_mut::<Yoshi>().jump_turn_remaining =
+            if fighter.core.input.current.stick.x * fighter.core.physics.facing
+                < -attr.reverse_threshold
+            {
+                attr.turn_frames
+            } else {
+                0
+            };
         Self::aerial_jump_animated(fighter);
     }
     /// ft_800CB6EC (800CB6EC): turn the model, reverse facing halfway through.
-    fn aerial_jump_animated(fighter: &mut Fighter<Self>) {
-        let remaining = &mut fighter.character.jump_turn_remaining;
+    fn aerial_jump_animated(fighter: &mut Fighter) {
+        let character = fighter.character.get_mut::<Yoshi>();
+        let remaining = &mut character.jump_turn_remaining;
         if *remaining == 0 {
             return;
         }
         *remaining -= 1;
-        let frames = fighter.character.attributes.double_jump.turn_frames;
+        let frames = character.attributes.double_jump.turn_frames;
         let root = fighter.core.animation.parts[0].joint;
         let old = fighter.core.skeleton.get(root).rotate.y;
         // retail 800CB768 fdivs, 800CB76C fnmsubs; @197 is float PI/180.
@@ -249,29 +244,29 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 };
 
 /// ftYs_Init_MotionStateTable[0..5]: egg shield states, actions 341..345.
-const CHARACTER_ROWS: [melee_ft::fighter::MotionRow<Yoshi>; 5] = {
-    use melee_ft::fighter::{ActionId, CharacterCallbacks, MotionRow};
+const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 5] = {
+    use melee_ft::fighter::{ActionId, MotionRow};
     use melee_types::CommonMotionState as S;
     [
         MotionRow {
             action: ActionId(341),
-            ..Yoshi::COMMON[S::GuardOn as usize]
+            ..melee_ft::fighter::state::COMMON[S::GuardOn as usize]
         },
         MotionRow {
             action: ActionId(342),
-            ..Yoshi::COMMON[S::Guard as usize]
+            ..melee_ft::fighter::state::COMMON[S::Guard as usize]
         },
         MotionRow {
             action: ActionId(343),
-            ..Yoshi::COMMON[S::GuardOff as usize]
+            ..melee_ft::fighter::state::COMMON[S::GuardOff as usize]
         },
         MotionRow {
             action: ActionId(344),
-            ..Yoshi::COMMON[S::GuardSetOff as usize]
+            ..melee_ft::fighter::state::COMMON[S::GuardSetOff as usize]
         },
         MotionRow {
             action: ActionId(345),
-            ..Yoshi::COMMON[S::GuardReflect as usize]
+            ..melee_ft::fighter::state::COMMON[S::GuardReflect as usize]
         },
     ]
 };

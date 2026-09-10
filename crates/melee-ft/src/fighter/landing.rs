@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use melee_types::{mp::coll_data_x130, CommonMotionState, GroundOrAir};
 
@@ -56,7 +56,7 @@ pub fn iasa(
     }
     T::None
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_LandingFallSpecial_Enter (800D5CB0), ftCo_Landing.c:103-113.
     pub(super) fn enter_special_landing(
         &mut self,
@@ -70,7 +70,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // Retail 800D5D08 fadds then 800D5D14 fdivs; no fusion.
         let rate = (0.1 + assets.motions[&35].animation.frames) / lag;
         self.change_motion_state_with_rate(
-            CommonMotionState::LandingFallSpecial,
+            CommonMotionState::LandingFallSpecial.into(),
             assets,
             0.0,
             rate,
@@ -86,7 +86,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
         let retained_drop_timer = self.retained_drop_timer();
         self.land();
-        self.change_motion_state(CommonMotionState::Landing, assets)?;
+        self.change_motion_state(CommonMotionState::Landing.into(), assets)?;
         self.character.on_landing(true);
         self.core.state_data = MotionData::Landing {
             allow_interrupt: true,
@@ -103,7 +103,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         else {
             panic!("landing scratch missing")
         };
-        self.change_motion_state(CommonMotionState::SquatWait, assets)?;
+        self.change_motion_state(CommonMotionState::SquatWait.into(), assets)?;
         // SquatWait entry preserves both words; no Squat initialization runs.
         self.core.state_data = MotionData::Squat(super::squat::SquatState {
             platform_drop_pending: allow_interrupt,
@@ -115,7 +115,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Landing_Anim (0x800D5D3C): complete animation -> Wait.
     pub(super) fn landing_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(CommonMotionState::Wait, assets)?;
+            self.change_motion_state(CommonMotionState::Wait.into(), assets)?;
         }
         Ok(())
     }

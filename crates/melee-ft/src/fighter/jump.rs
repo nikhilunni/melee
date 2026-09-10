@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::{Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use hsd_types::Vec3;
@@ -37,7 +37,7 @@ pub struct JumpState {
     pub physics_started: bool,
     pub multiplier: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_KneeBend_Enter (800CB4E0), ftCo_Jump_GetInput (800CAE80).
     pub(super) fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
         let input = if self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
@@ -53,7 +53,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             short_hop: false,
             input,
         });
-        self.change_motion_state(CommonMotionState::KneeBend, assets)
+        self.change_motion_state(CommonMotionState::KneeBend.into(), assets)
     }
     /// ftCo_KneeBend_Anim (800CB528), ftCo_Jump_Enter (800CB250).
     pub(super) fn knee_bend_animation(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -68,7 +68,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let short_hop = squat.short_hop;
         let state = self.jump_direction(assets, false);
         self.leave_ground();
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         // ftCo_800CB110: retail 800CB140/144,174/180,18C/198,1A8,1B8;
         // products and sum are separately rounded, with no fusion.
         let attrs = &self.core.attributes.jumping;
@@ -137,14 +137,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
             },
             0.0,
         );
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.core.physics.self_velocity = velocity;
         self.core.input.vertical.tilt = 0xFE;
         self.core.physics.jumps_used += 1;
         self.core.state_data = MotionData::JumpAerial {
             retained_drop_timer,
         };
-        C::aerial_jump_entered(self);
+        (self.character.table().aerial_jump_entered)(self);
         Ok(())
     }
     /// ftCo_Jump_Anim (800CB2F8), ftCo_JumpAerial_Anim (800CC388).
@@ -154,14 +154,14 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.core.motion_state.id,
                 CommonMotionState::JumpAerialF | CommonMotionState::JumpAerialB
             ) {
-                self.change_motion_state(CommonMotionState::FallAerial, assets)?;
-                C::aerial_jump_animated(self);
+                self.change_motion_state(CommonMotionState::FallAerial.into(), assets)?;
+                (self.character.table().aerial_jump_animated)(self);
                 return Ok(());
             }
-            self.change_motion_state(CommonMotionState::Fall, assets)?;
+            self.change_motion_state(CommonMotionState::Fall.into(), assets)?;
         }
         if matches!(self.core.state_data, MotionData::JumpAerial { .. }) {
-            C::aerial_jump_animated(self);
+            (self.character.table().aerial_jump_animated)(self);
         }
         Ok(())
     }

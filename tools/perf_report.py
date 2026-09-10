@@ -14,6 +14,82 @@ MARKER = r"<!-- perf-gate-v1\n(.*?)\n-->"
 LLVM_ROW = re.compile(r"^\s*(\d+)\s+\([^)]*\)\s+(\d+)\s+\([^)]*\)\s+(.+)$")
 
 
+# C15 deliberately transfers common bodies and static adapters to their owners.
+# These ceilings replace the generic-shell attribution, never timing/size limits.
+C15_COPY_LIMITS = {
+    "ft-captain": 66,
+    "ft-falco": 67,
+    "ft-fox": 67,
+    "ft-fox-family": 0,
+    "ft-mario": 0,
+    "ft-mars": 66,
+    "ft-peach": 67,
+    "ft-purin": 66,
+    "ft-yoshi": 68,
+    "melee-ft": 845,
+    "melee-sim": 128
+}
+C15_STRIPPED_LIMIT = 3_747_632
+C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
+PAIR_HELPERS = {
+    "melee_ft::fighter::grab::capture_pair",
+    "melee_ft::fighter::grab_throw::enter_back_throw",
+    "melee_ft::fighter::grab_throw::release_back_throw",
+    "melee_ft::fighter::damage::detect_hit",
+}
+
+
+def common_shell_label(name):
+    """Namespace-owned definitions, excluding generic library helpers mentioning a fighter."""
+    return (name.startswith("melee_ft::fighter::") and (
+        "impl melee_ft::fighter::Fighter>" in name
+        or "impl melee_ft::fighter::Fighter<" in name
+        or name.startswith("melee_ft::fighter::Fighter::")
+        or re.search(r"\bfor melee_ft::fighter::Fighter(?:<[^>]*>)?>", name) is not None
+        or name.startswith("melee_ft::fighter::state::callbacks::")
+        or name.startswith("melee_ft::fighter::state::row::unimplemented_")
+        or name in PAIR_HELPERS))
+
+
+def concrete_shell_census(contributions):
+    """Charge each common definition across compiling crates, never just within one."""
+    labels = {}
+    for crate, rows in contributions.items():
+        for row in rows:
+            name = row["function"]
+            if common_shell_label(name):
+                label = labels.setdefault(name, {"copies": 0, "lines": 0, "crates": {}})
+                label["copies"] += row["copies"]
+                label["lines"] += row["lines"]
+                label["crates"][crate] = row["copies"]
+    failures = []
+    for name, label in labels.items():
+        if "Fighter<" in name or label["copies"] != 1:
+            failures.append(f"common definition {name}: {label['copies']} copies across {label['crates']}")
+    # Missing common code is incomplete evidence, not a smaller successful census.
+    for name in sorted(PAIR_HELPERS - labels.keys()):
+        failures.append(f"missing concrete pair helper: {name}")
+    return labels, failures
+
+
+def concrete_limits(metrics):
+    failures = []
+    if metrics["stripped_bytes"] > C15_STRIPPED_LIMIT:
+        failures.append(f"C15 stripped bytes: {metrics['stripped_bytes']} > {C15_STRIPPED_LIMIT}")
+    for name, limit in C15_P1_TIME_LIMITS.items():
+        if metrics.get(name, 0) > limit:
+            failures.append(f"P1 time ceiling {name}: {metrics[name]:.3f} > {limit}")
+    for crate, copies in metrics.get("copies", {}).items():
+        limit = C15_COPY_LIMITS.get(crate, 0)
+        if copies > limit:
+            failures.append(f"C15 {crate} copies: {copies} > {limit}")
+    total = sum(metrics.get("copies", {}).values())
+    limit = sum(C15_COPY_LIMITS.values())
+    if total > limit:
+        failures.append(f"C15 total copies: {total} > {limit}")
+    return failures
+
+
 def tolerance(name, default, integer=False):
     value = float(os.environ.get(name, default))
     if not math.isfinite(value) or value < 0 or (integer and not value.is_integer()):
@@ -113,13 +189,22 @@ def main(run, report):
     # Failed/incomplete measurements never ratchet the regression baseline upward.
     previous = next((block for block in reversed(history) if block["status"] == "PASS"), None)
     baseline = previous["metrics"] if previous else HISTORICAL
+    if previous and previous.get("architecture") != "concrete-shell-v1":
+        # Explicit C15 accounting migration: core + static adapter definitions
+        # replace sim monomorphizations. Fixed aggregate/common-label caps below
+        # prevent accepting duplicates merely moved into another crate.
+        baseline = {**baseline, "copies": C15_COPY_LIMITS}
+    common_labels, common_failures = concrete_shell_census(contributions)
+    (run / "common-definitions.json").write_text(json.dumps(common_labels, indent=2, sort_keys=True))
     regressions = compare(metrics, baseline, time_percent, size_percent, copies_allowed)
+    regressions += concrete_limits(metrics) + common_failures
     # There was no historical instantiation census to compare the first run to.
     if previous is None:
         regressions = [item for item in regressions if "melee-ft copies:" not in item]
     status = "INCOMPLETE" if missing else "REGRESSION" if regressions else "PASS"
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     block = {"date": now, "status": status, "metrics": metrics,
+             "architecture": "concrete-shell-v1",
              "rustc": (run / "rustc.txt").read_text().strip(),
              "platform": platform.platform(),
              "revision": (run / "revision.txt").read_text().strip()}
@@ -128,6 +213,7 @@ def main(run, report):
              f"\n{block['rustc']}; {block['platform']}.",
              f"\nTolerance: time +{time_percent:g}%, size +{size_percent:g}%, copies +{copies_allowed} per compiling crate.",
              f"Baseline: {previous['date'] if previous else '2026-09-09 main size measurements; timing/copies not yet baselined'}.",
+             f"C15 fixed ceilings: {C15_STRIPPED_LIMIT:,} stripped bytes; {sum(C15_COPY_LIMITS.values()):,} total copies; one definition per common label.",
              "\n| Measurement | Value |", "|---|---:|",
              f"| Stripped binary | {metrics['stripped_bytes']:,} bytes |",
              f"| Text (`size`) | {metrics['text_bytes']:,} bytes |",
@@ -136,6 +222,8 @@ def main(run, report):
         lines.append(f"| {name} mean | {value['ns']/1e6:.3f} ms (95% CI {value['lower_ns']/1e6:.3f}..{value['upper_ns']/1e6:.3f} ms) |")
     if "ticks_600" in estimates:
         lines.append(f"| Headless throughput | {600e9/estimates['ticks_600']['ns']:,.0f} ticks/s |")
+    lines += [f"| Total melee-ft copies | {sum(metrics['copies'].values()):,} |",
+              f"| Common definition labels audited across crates | {len(common_labels)} |"]
     lines += [f"\n- {message}" for message in missing + regressions]
     for name in ("bloat-version", "llvm-version"):
         if (run / f"{name}.txt").exists():

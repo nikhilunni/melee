@@ -1,4 +1,4 @@
-use super::{CharacterCallbacks, Fighter, FighterCore};
+use super::{Fighter, FighterCore};
 use melee_types::snapshot::{Snapshot, SnapshotSink};
 
 /// Exactly harness/schema/fighter.yaml's 24 scalar keys. Player prefixes are
@@ -26,7 +26,7 @@ impl Snapshot for FighterCore {
     }
 }
 
-impl<C: CharacterCallbacks> Snapshot for Fighter<C> {
+impl Snapshot for Fighter {
     fn snapshot(&self, sink: &mut dyn SnapshotSink) {
         self.core.snapshot(sink);
     }

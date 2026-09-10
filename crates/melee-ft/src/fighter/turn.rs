@@ -1,7 +1,7 @@
 //! Standing turn, ftCommon/ftCo_Turn.c. TurnRun lives in turn_run.rs.
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::{Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use melee_types::CommonMotionState;
@@ -16,7 +16,7 @@ pub struct TurnState {
     pub just_turned: bool,
     pub buffered_buttons: Buttons,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_Turn_Enter_Basic (0x800C98AC), ftCo_Turn_Enter_Smash (0x800C9C74).
     pub(super) fn enter_turn(&mut self, assets: &FighterAssets, smash: bool) -> Result<()> {
         self.core.state_data = MotionData::Turn(TurnState {
@@ -31,7 +31,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             },
             buffered_buttons: Buttons(0),
         });
-        self.change_motion_state(CommonMotionState::Turn, assets)?;
+        self.change_motion_state(CommonMotionState::Turn.into(), assets)?;
         self.step_animation(assets);
         Ok(())
     }
@@ -49,7 +49,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.core.physics.facing = -self.core.physics.facing;
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(CommonMotionState::Wait, assets)?;
+            self.change_motion_state(CommonMotionState::Wait.into(), assets)?;
         }
         Ok(())
     }

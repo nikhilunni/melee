@@ -29,8 +29,8 @@ type AirCollision = fn(
 
 /// ft_80084280 / ft_800844EC / ft_80083F88: preserve the old grounded API's
 /// departure assertion when the caller has not supplied motion assets.
-fn finish_ground<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
+fn finish_ground(
+    fighter: &mut Fighter,
     assets: Option<&FighterAssets>,
     map: &mut CollMap,
     collide: GroundCollision,
@@ -63,7 +63,7 @@ fn finish_ground<C: CharacterCallbacks>(
         WaitGroundResult::EnterFall => {
             let assets = assets.expect("ground departure needs proc_map_with_assets");
             fighter.leave_ground();
-            fighter.change_motion_state(melee_types::CommonMotionState::Fall, assets)?;
+            fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
         }
         WaitGroundResult::EnterTeeter => unimplemented!("ft_081B.c:1092: Wait -> Ottotto"),
     }
@@ -71,8 +71,8 @@ fn finish_ground<C: CharacterCallbacks>(
 }
 
 /// ftCo_Fall_Coll / ftCo_Pass_Coll / ftCo_Jump_Coll: ledge grab precedes StopCeil.
-fn fall_collision<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
+fn fall_collision(
+    fighter: &mut Fighter,
     assets: &FighterAssets,
     map: &mut CollMap,
     collide: AirCollision,
@@ -97,7 +97,7 @@ fn fall_collision<C: CharacterCallbacks>(
             fighter.land_from_special_fall(assets)?;
         } else if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
             fighter.land();
-            fighter.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
+            fighter.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)?;
         } else {
             fighter.enter_landing(assets)?;
         }
@@ -111,26 +111,17 @@ fn fall_collision<C: CharacterCallbacks>(
     Ok(())
 }
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
-pub fn revival<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn revival(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     fighter.core.collision_revival(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_ThrownB (240).
-pub fn thrown<C: CharacterCallbacks>(
-    _fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn thrown(_fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     _fighter.core.collision_thrown(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227).
-pub fn capture<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn capture(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fighter.capture_collision(assets, map)?;
@@ -139,10 +130,7 @@ pub fn capture<C: CharacterCallbacks>(
 
 /// ftData_MotionStateList: ftCo_MS_DownBoundD (191), ftCo_MS_DownWaitD (192), ftCo_MS_Catch
 /// (212), ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216), ftCo_MS_ThrowB (220).
-pub fn catch<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fighter.catch_collision(assets, map)?;
@@ -151,10 +139,7 @@ pub fn catch<C: CharacterCallbacks>(
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
-pub fn damage<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn damage(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fighter.damage_collision(assets, map)?;
@@ -163,18 +148,12 @@ pub fn damage<C: CharacterCallbacks>(
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
 /// (324).
-pub fn entry<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn entry(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     fighter.core.collision_entry(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
-pub fn turn_run<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn turn_run(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fighter.turn_run_collision(assets, map)?;
@@ -182,10 +161,7 @@ pub fn turn_run<C: CharacterCallbacks>(
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffClimbQuick (255), ftCo_MS_CliffEscapeQuick (259).
-pub fn cliff_climb<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn cliff_climb(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fighter.ledge_collision(assets, map)?;
@@ -194,10 +170,7 @@ pub fn cliff_climb<C: CharacterCallbacks>(
 
 /// ftData_MotionStateList: ftCo_MS_CliffCatch (252), ftCo_MS_CliffWait (253),
 /// ftCo_MS_CliffJumpSlow1 (260), ftCo_MS_CliffJumpQuick1 (262).
-pub fn cliff_catch<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn cliff_catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
 
@@ -206,10 +179,7 @@ pub fn cliff_catch<C: CharacterCallbacks>(
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
-pub fn escape_air<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn escape_air(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
 
@@ -234,10 +204,7 @@ pub fn escape_air<C: CharacterCallbacks>(
 /// ftData_MotionStateList: ftCo_MS_Wait (14), ftCo_MS_WalkSlow (15), ftCo_MS_WalkMiddle (16),
 /// ftCo_MS_WalkFast (17), ftCo_MS_RunBrake (23), ftCo_MS_Landing (42),
 /// ftCo_MS_LandingFallSpecial (43).
-pub fn ground_wait<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn ground_wait(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     finish_ground(fighter, assets, map, map_wait, false)?;
     Ok(())
@@ -246,10 +213,7 @@ pub fn ground_wait<C: CharacterCallbacks>(
 /// ftData_MotionStateList: ftCo_MS_Turn (18), ftCo_MS_KneeBend (24), ftCo_MS_Squat (39),
 /// ftCo_MS_SquatWait (40), ftCo_MS_SquatRv (41), ftCo_MS_GuardOn (178), ftCo_MS_Guard (179),
 /// ftCo_MS_GuardOff (180), ftCo_MS_GuardReflect (182).
-pub fn ground_action<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn ground_action(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     finish_ground(fighter, assets, map, map_ground_action, false)?;
     Ok(())
@@ -258,30 +222,21 @@ pub fn ground_action<C: CharacterCallbacks>(
 /// ftData_MotionStateList: ftCo_MS_Attack11 (44), ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S
 /// (60), ftCo_MS_PassiveStandB (201), ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234),
 /// ftCo_MS_EscapeN (235).
-pub fn escape<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn escape(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     finish_ground(fighter, assets, map, map_escape, false)?;
     Ok(())
 }
 
 /// ftData_MotionStateList: ftCo_MS_Dash (20), ftCo_MS_Run (21).
-pub fn running<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn running(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     finish_ground(fighter, assets, map, map_ground_action, true)?;
     Ok(())
 }
 
 /// ftData_MotionStateList: ftCo_MS_GuardSetOff (181).
-pub fn guard_set_off<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn guard_set_off(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let collide = if fighter.core.shield.allow_sdi {
         map_escape
@@ -294,10 +249,7 @@ pub fn guard_set_off<C: CharacterCallbacks>(
 
 /// ftCo_AirCatchHit_Coll (80082B78): ordinary collision and soft landing,
 /// with no platform filtering or ledge-grab branch.
-pub fn air_catch_hit<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn air_catch_hit(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = phase.assets.expect("airborne map needs fighter assets");
     air::begin_map(
         &fighter.core.physics,
@@ -314,7 +266,7 @@ pub fn air_catch_hit<C: CharacterCallbacks>(
     ) {
         if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
             fighter.land();
-            fighter.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
+            fighter.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)?;
         } else {
             fighter.enter_landing(assets)?;
         }
@@ -323,10 +275,7 @@ pub fn air_catch_hit<C: CharacterCallbacks>(
 }
 
 /// ftData_MotionStateList: ftCo_MS_Fall (29), ftCo_MS_FallAerial (32).
-pub fn fall<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn fall(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fall_collision(fighter, assets, map, air::collide_fall, false, false)?;
@@ -334,10 +283,7 @@ pub fn fall<C: CharacterCallbacks>(
 }
 
 /// ftData_MotionStateList: ftCo_MS_Pass (244).
-pub fn pass<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn pass(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fall_collision(fighter, assets, map, air::collide_pass, false, false)?;
@@ -345,10 +291,7 @@ pub fn pass<C: CharacterCallbacks>(
 }
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
-pub fn fall_special<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn fall_special(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fall_collision(fighter, assets, map, air::collide_fall, true, false)?;
@@ -357,10 +300,7 @@ pub fn fall_special<C: CharacterCallbacks>(
 
 /// ftData_MotionStateList: ftCo_MS_JumpF (25), ftCo_MS_JumpB (26), ftCo_MS_JumpAerialF (27),
 /// ftCo_MS_JumpAerialB (28), ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick2 (263).
-pub fn jump<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    phase: CollisionPhase<'_>,
-) -> Result<()> {
+pub fn jump(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
     fall_collision(fighter, assets, map, air::collide_fall, false, true)?;
@@ -383,9 +323,10 @@ impl FighterCore {
         cd.cur_pos = self.physics.position;
         let pose =
             crate::collision::ecb::EcbPose::read(&mut self.skeleton, self.animation.root, cd);
+        let position = |i| pose.position(i);
         if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
-            map.air_collide_stay_ecb5(cd, Some(&|i| pose.position(i)));
-        } else if map.air_collide_ecb5(cd, Some(&|i| pose.position(i))) {
+            map.air_collide_stay_ecb5(cd, Some(&position));
+        } else if map.air_collide_ecb5(cd, Some(&position)) {
             unimplemented!("ftCoD5A30: revival platform reaches floor");
         }
         self.physics.position = cd.cur_pos;

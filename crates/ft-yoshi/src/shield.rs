@@ -24,12 +24,13 @@ pub enum EggShieldMotion {
 
 /// ftYs_Init_8012B8A4 (8012B8A4): shield health selects the egg material frame.
 /// Renderer output is retained just like the common texture/model commands.
-pub fn material(fighter: &mut Fighter<Yoshi>) {
+pub fn material(fighter: &mut Fighter) {
     // retail 8012B8D0/E0/E4: fdivs, fsubs, fmuls, no contraction.
-    fighter.character.shield_material_frame = fighter.character.attributes.shield_material_frames
-        * (1.0 - fighter.status.shield_health / fighter.character.shield_maximum_health);
+    let character = fighter.character.get_mut::<Yoshi>();
+    character.shield_material_frame = character.attributes.shield_material_frames
+        * (1.0 - fighter.core.status.shield_health / character.shield_maximum_health);
 }
-fn size(fighter: &mut Fighter<Yoshi>) {
+fn size(fighter: &mut Fighter) {
     // ftCo_80091D58 -> inlineB0: egg size is independent of health and analog L/R.
     let size = fighter.attributes.shield.initial_shield_size;
     fighter.shield.size = size;
@@ -39,9 +40,9 @@ fn size(fighter: &mut Fighter<Yoshi>) {
         .set_scale(joint, &Vec3::new(size, size, size));
 }
 /// ftYs_Init_8012BDA0: intangible body and one normal, grabbable egg capsule.
-fn egg_body(fighter: &mut Fighter<Yoshi>) {
-    fighter.character.egg_body = true;
-    fighter.character.egg_hurtbox = Some(melee_coll::hurtbox::HurtCapsule {
+fn egg_body(fighter: &mut Fighter) {
+    fighter.character.get_mut::<Yoshi>().egg_body = true;
+    fighter.character.get_mut::<Yoshi>().egg_hurtbox = Some(melee_coll::hurtbox::HurtCapsule {
         height: melee_coll::hurtbox::HurtHeight::Middle,
         grabbable: true,
         bone: usize::from(fighter.bones.model.shield),
@@ -52,15 +53,15 @@ fn egg_body(fighter: &mut Fighter<Yoshi>) {
     });
     fighter.commands.hurt_status = HurtStatus::Intangible;
 }
-fn model(fighter: &mut Fighter<Yoshi>, variant: i32) {
-    fighter.character.model_group = variant;
+fn model(fighter: &mut Fighter, variant: i32) {
+    fighter.character.get_mut::<Yoshi>().model_group = variant;
     fighter.commands.model_selections.insert(0, variant);
 }
 /// ftYs_Init_8012BE3C (8012BE3C): restore the body and burst twelve shell pieces.
-pub fn leave_egg(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) {
+pub fn leave_egg(fighter: &mut Fighter, assets: &FighterAssets) {
     model(fighter, 0);
-    fighter.character.egg_body = false;
-    fighter.character.egg_hurtbox = None;
+    fighter.character.get_mut::<Yoshi>().egg_body = false;
+    fighter.character.get_mut::<Yoshi>().egg_hurtbox = None;
     fighter.commands.hurt_status = HurtStatus::Normal;
     let bone = usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"));
     fighter.core.effects.push(EffectRequest::EggShell {
@@ -68,7 +69,7 @@ pub fn leave_egg(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) {
         scale: fighter.core.attributes.yoshi_egg.size,
     });
 }
-pub fn enter(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets, reflect: bool) -> Result<()> {
+pub fn enter(fighter: &mut Fighter, assets: &FighterAssets, reflect: bool) -> Result<()> {
     // Plain GuardOn does not write the old reflect/powershield countdowns.
     let retained = match &fighter.state_data {
         MotionData::Guard(guard) => Some(guard),
@@ -78,7 +79,10 @@ pub fn enter(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets, reflect: bool
     let windows = retained.map_or([0.0; 2], |guard| {
         [guard.reflect_frames, guard.powershield_frames]
     });
-    fighter.change_motion_state(if reflect { S::GuardReflect } else { S::GuardOn }, assets)?;
+    fighter.change_motion_state(
+        (if reflect { S::GuardReflect } else { S::GuardOn }).into(),
+        assets,
+    )?;
     fighter.step_animation(assets);
     fighter.state_data = MotionData::Guard(GuardState {
         minimum_hold: assets.shield.minimum_hold,
@@ -94,8 +98,8 @@ pub fn enter(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets, reflect: bool
         },
         ..Default::default()
     });
-    fighter.character.egg_body = false;
-    fighter.character.egg_hurtbox = None;
+    fighter.character.get_mut::<Yoshi>().egg_body = false;
+    fighter.character.get_mut::<Yoshi>().egg_hurtbox = None;
     // HurtCapsule_Disabled throughout the startup animation.
     fighter.commands.hurt_status = HurtStatus::Intangible;
     if reflect {
@@ -132,7 +136,7 @@ pub fn enter(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets, reflect: bool
     Ok(())
 }
 /// ftYs_Shield_8012C1D4 (8012C1D4): SM_None, rest pose, egg model and capsule.
-pub fn hold(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> {
+pub fn hold(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     if let MotionData::Escape(escape) = &fighter.state_data {
         let mut guard = escape.retained_guard.clone().unwrap_or_default();
         // Escape's integer timer and Guard's elapsed float share mv +0 in
@@ -140,7 +144,7 @@ pub fn hold(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> 
         guard.elapsed = f32::from_bits(escape.interrupt_frames as u32);
         fighter.state_data = MotionData::Guard(guard);
     }
-    fighter.change_motion_state(S::Guard, assets)?;
+    fighter.change_motion_state(S::Guard.into(), assets)?;
     fighter
         .core
         .animation
@@ -153,12 +157,12 @@ pub fn hold(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> 
     size(fighter);
     Ok(())
 }
-pub fn off(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> {
-    fighter.change_motion_state(S::GuardOff, assets)?;
+pub fn off(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    fighter.change_motion_state(S::GuardOff.into(), assets)?;
     leave_egg(fighter, assets);
     Ok(())
 }
-pub fn animate(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> {
+pub fn animate(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = fighter.motion_state.id;
     if state == S::GuardSetOff {
         unimplemented!("ftYs_Shield_8012C600: egg shield damage");
@@ -169,7 +173,7 @@ pub fn animate(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<(
     fighter.guard().elapsed += 1.0;
     if state == S::GuardOff {
         if !fighter.animation.frames_remaining(&fighter.skeleton) {
-            fighter.change_motion_state(S::Wait, assets)?;
+            fighter.change_motion_state(S::Wait.into(), assets)?;
         }
         return Ok(());
     }
@@ -191,7 +195,7 @@ pub fn animate(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<(
 /// ftYs_GuardOn_0 / GuardHold / GuardOff IASA (ftyoshiguard.c:135,204,258).
 /// Hold release belongs to Anim. These IASAs have neither shield jumping
 /// nor the common C-stick spot dodge; GuardOn_1 uses shared GuardReflect.
-pub fn input(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()> {
+pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = fighter.motion_state.id;
     if state == S::GuardSetOff {
         unimplemented!("ftyoshiguard.c:273-320: egg shield damage");
@@ -229,20 +233,16 @@ pub fn input(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Result<()>
     }
     Ok(())
 }
-pub fn escape_entered(
-    fighter: &mut Fighter<Yoshi>,
-    assets: &FighterAssets,
-    rolling: bool,
-) -> Result<()> {
+pub fn escape_entered(fighter: &mut Fighter, assets: &FighterAssets, rolling: bool) -> Result<()> {
     if rolling {
         model(fighter, 1);
         egg_body(fighter);
-    } else if fighter.character.model_group == 1 {
+    } else if fighter.character.get::<Yoshi>().model_group == 1 {
         leave_egg(fighter, assets);
     }
     Ok(())
 }
-pub fn escape_finished(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> Option<Result<()>> {
+pub fn escape_finished(fighter: &mut Fighter, assets: &FighterAssets) -> Option<Result<()>> {
     if fighter.motion_state.id == S::EscapeN {
         return None;
     }
@@ -251,5 +251,5 @@ pub fn escape_finished(fighter: &mut Fighter<Yoshi>, assets: &FighterAssets) -> 
         return Some(hold(fighter, assets));
     }
     leave_egg(fighter, assets);
-    Some(fighter.change_motion_state(S::Wait, assets))
+    Some(fighter.change_motion_state(S::Wait.into(), assets))
 }

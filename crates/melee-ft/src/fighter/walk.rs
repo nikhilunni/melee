@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::desc::common::MovementParameters;
 use crate::input::{WaitContext, WaitPredicate as P, WaitTransition as T};
@@ -36,7 +36,7 @@ fn walk_state(
     }
 }
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
         // Metal/status interactions are rejected by Status::require_supported;
@@ -48,7 +48,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             multiplier,
             &assets.movement,
         );
-        self.change_motion_state_at(state, assets, frame)?;
+        self.change_motion_state_at(state.into(), assets, frame)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::Walk(WalkState {
             slippery_animation_velocity: self.core.physics.ground_velocity,
@@ -94,7 +94,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if stick * self.core.physics.facing < 0.0
             || fabsf(stick) < assets.input.thresholds.walk_stick_threshold
         {
-            return self.change_motion_state(CommonMotionState::Wait, assets);
+            return self.change_motion_state(CommonMotionState::Wait.into(), assets);
         }
         let MotionData::Walk(walk) = &self.core.state_data else {
             panic!("walk data missing")

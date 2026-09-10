@@ -4,44 +4,44 @@ use crate::fighter::*;
 use crate::physics::grounded::{step_wait, GroundedParameters};
 /// ftData_MotionStateList: ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227),
 /// ftCo_MS_ThrownB (240).
-pub fn capture<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn capture(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_capture(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadDown (0).
-pub fn dead<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: PhysicsPhase<'_>) {}
+pub fn dead(_fighter: &mut Fighter, _phase: PhysicsPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
-pub fn revival<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn revival(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_revival(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DownBoundD (191), ftCo_MS_DownWaitD (192).
-pub fn down<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn down(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_down(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Catch (212), ftCo_MS_CatchPull (213), ftCo_MS_CatchWait
 /// (216).
-pub fn catch<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn catch(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_catch(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
-pub fn damage<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn damage(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     fighter.damage_physics(assets, map, wind)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Attack11 (44), ftCo_MS_AttackS4S (60), ftCo_MS_PassiveStandB
 /// (201), ftCo_MS_ThrowB (220).
-pub fn jab<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn jab(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_jab(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Wait (14), ftCo_MS_SquatWait (40).
-pub fn wait<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn wait(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_wait(phase)
 }
 
@@ -49,33 +49,33 @@ pub fn wait<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase
 /// ftCo_MS_SquatRv (41), ftCo_MS_Landing (42), ftCo_MS_LandingFallSpecial (43),
 /// ftCo_MS_AttackHi3 (56), ftCo_MS_GuardOn (178), ftCo_MS_Guard (179), ftCo_MS_GuardOff (180),
 /// ftCo_MS_GuardSetOff (181), ftCo_MS_GuardReflect (182), ftCo_MS_EscapeN (235).
-pub fn guard_on<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn guard_on(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_guard_on(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234).
-pub fn escape<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn escape(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_escape(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
-pub fn turn_run<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn turn_run(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_turn_run(phase)
 }
 
 /// ftCo_Dash / Run / RunBrake_Phys: shared running movement.
-pub fn running<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn running(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_running(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_WalkSlow (15), ftCo_MS_WalkMiddle (16), ftCo_MS_WalkFast
 /// (17).
-pub fn walk<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn walk(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_walk(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffClimbQuick (255), ftCo_MS_CliffEscapeQuick (259).
-pub fn cliff_climb<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn cliff_climb(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     fighter
         .cliff_climb_physics(assets, map)
@@ -96,7 +96,7 @@ pub fn cliff_climb<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Physi
 
 /// ftData_MotionStateList: ftCo_MS_CliffCatch (252), ftCo_MS_CliffWait (253),
 /// ftCo_MS_CliffJumpSlow1 (260), ftCo_MS_CliffJumpQuick1 (262).
-pub fn cliff_catch<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn cliff_catch(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     fighter.ledge_physics(assets, map).expect("ledge physics");
     crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
@@ -104,7 +104,7 @@ pub fn cliff_catch<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Physi
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick2 (263).
-pub fn cliff_jump2<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn cliff_jump2(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {
         assets,
         map: _,
@@ -116,7 +116,7 @@ pub fn cliff_jump2<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Physi
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
-pub fn escape_air<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn escape_air(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {
         assets,
         map: _,
@@ -128,13 +128,13 @@ pub fn escape_air<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Physic
 }
 
 /// ftData_MotionStateList: ftCo_MS_Pass (244).
-pub fn pass<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn pass(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_pass(phase)
 }
 
 /// ftCo_JumpAerialF1_Phys (800D7634), ftPr_Init_MotionStateTable[0..5]:
 /// Jigglypuff actions 341..345 retain gravity, drift, decay, then integration.
-pub fn multi_jump<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn multi_jump(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {
         assets,
         map: _,
@@ -147,7 +147,7 @@ pub fn multi_jump<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Physic
 }
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
-pub fn fall_special<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn fall_special(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {
         assets,
         map: _,
@@ -160,7 +160,7 @@ pub fn fall_special<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: Phys
 
 /// ftData_MotionStateList: ftCo_MS_JumpF (25), ftCo_MS_JumpB (26), ftCo_MS_JumpAerialF (27),
 /// ftCo_MS_JumpAerialB (28), ftCo_MS_Fall (29), ftCo_MS_FallAerial (32).
-pub fn fall<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn fall(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {
         assets,
         map: _,
@@ -179,7 +179,7 @@ pub fn fall<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
 /// (324).
-pub fn entry<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn entry(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_entry(phase)
 }
 
@@ -335,7 +335,7 @@ impl FighterCore {
 }
 
 /// ftCo_AttackDash_Phys: concrete root-motion/friction implementation.
-pub fn dash_attack<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+pub fn dash_attack(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter
         .core
         .dash_attack_physics(phase.assets, phase.map, phase.wind);

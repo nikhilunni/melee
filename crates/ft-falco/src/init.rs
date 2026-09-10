@@ -22,34 +22,36 @@ impl Falco {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<Falco>();
+
 impl CharacterCallbacks for Falco {
-    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
-        static ROWS: [melee_ft::fighter::MotionRow<Falco>; ft_fox_family::FamilyState::COUNT] =
-            ft_fox_family::rows::<Falco>();
-        &ROWS
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
     }
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &ft_fox_family::rows::<Self>();
     fn enter_special(
-        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        fighter: &mut melee_ft::fighter::Fighter,
         slot: melee_ft::fighter::SpecialSlot,
         airborne: bool,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) {
-        ft_fox_family::enter_special(fighter, slot, airborne, assets);
+        ft_fox_family::enter_special::<Self>(fighter, slot, airborne, assets);
     }
     fn accessory(
-        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) {
-        ft_fox_family::special_n::accessory(fighter, assets);
+        ft_fox_family::special_n::accessory::<Self>(fighter, assets);
     }
     fn item_owner(
-        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_it::ItemOwner {
-        ft_fox_family::special_n::item_owner(fighter, assets)
+        ft_fox_family::special_n::item_owner::<Self>(fighter, assets)
     }
     fn item_muzzle(
-        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) -> Option<(hsd_types::Vec3, f32)> {
         Some(ft_fox_family::special_n::item_muzzle(

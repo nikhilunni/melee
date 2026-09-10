@@ -2,13 +2,13 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::Buttons;
 use melee_types::CommonMotionState as S;
 
 use melee_cmd::ChargePhase;
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// doEnter (8008C3E0), ftCo_AttackS4.c; no fused sites in this unit.
     pub(super) fn enter_forward_smash(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.forward_smash_variant();
@@ -24,7 +24,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.commands.variables[0] = 0;
         self.core.commands.grab_release = false;
         self.core.commands.throw_reverse = false;
-        self.change_motion_state(S::AttackS4S, assets)?;
+        self.change_motion_state(S::AttackS4S.into(), assets)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::Smash;
         self.core.status.interaction = super::Interaction::Attack;

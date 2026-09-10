@@ -49,9 +49,9 @@ if command -v cargo-bloat >/dev/null 2>&1; then
 fi
 if command -v cargo-llvm-lines >/dev/null 2>&1; then
     cargo llvm-lines --version >"$run_dir/llvm-version.txt"
-    # Monomorphizations are charged to their compiling crate. Inspect the sim
-    # library (which owns the generic scene dispatch), the concrete melee-ft
-    # core, plus each character crate. C2 moved core bodies out of the sim IR.
+    # Definitions are charged to their compiling crate: concrete core/shell,
+    # sim composition, and every character/family crate. perf_report.py enforces
+    # the C15 per-crate/aggregate ceilings and one definition per common label.
     cargo metadata --no-deps --format-version=1 | python3 -c 'import json,sys; print("\n".join(sorted(p["name"] for p in json.load(sys.stdin)["packages"] if p["name"].startswith("ft-"))))' >"$run_dir/characters.txt"
     for package in melee-ft melee-sim $(cat "$run_dir/characters.txt"); do
         if ! cargo llvm-lines -p "$package" --release --lib >"$run_dir/llvm-$package.txt" 2>"$run_dir/llvm-$package-error.txt"; then

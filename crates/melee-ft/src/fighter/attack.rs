@@ -4,7 +4,7 @@ pub mod stale;
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::{pad::Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use melee_types::CommonMotionState as S;
@@ -15,7 +15,7 @@ pub struct JabState {
     pub followup_pressed: bool,
     pub rapid_edges: i32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// Grounded attack priority; checkAttack11 (8008ABC0), AttackHi3 doEnter (8008BA38).
     pub(super) fn enter_ground_attack(&mut self, assets: &FighterAssets) -> Result<()> {
         // Attack predicates share a transition enum; preserve the retail priority.
@@ -45,7 +45,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.character.jab_variant();
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
-        self.change_motion_state(S::Attack11, assets)?;
+        self.change_motion_state(S::Attack11.into(), assets)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = MotionData::Jab(JabState {
@@ -60,7 +60,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn enter_simple_attack(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         self.core.commands.allow_interrupt = false;
         self.core.commands.variables[0] = 0;
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = if state == S::AttackLw3 {
@@ -81,7 +81,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             return self.enter_simple_attack(S::AttackLw3, assets);
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(S::SquatWait, assets)?;
+            self.change_motion_state(S::SquatWait.into(), assets)?;
             self.core.state_data = MotionData::Squat(super::squat::SquatState::default());
         }
         Ok(())
@@ -137,7 +137,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Attack100Start_Anim (800D6C0C): loop entry does not advance animation.
     pub(super) fn rapid_start_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(S::Attack100Loop, assets)?;
+            self.change_motion_state(S::Attack100Loop.into(), assets)?;
         }
         Ok(())
     }
@@ -153,7 +153,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         if std::mem::take(&mut self.core.commands.rapid_jab_loop_end) {
             if rapid.loop_started && !rapid.edge_pressed {
-                self.change_motion_state(S::Attack100End, assets)?;
+                self.change_motion_state(S::Attack100End.into(), assets)?;
             } else {
                 rapid.edge_pressed = false;
             }
@@ -163,7 +163,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Attack11_Anim (8008AC9C).
     pub(super) fn jab_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(S::Wait, assets)?;
+            self.change_motion_state(S::Wait.into(), assets)?;
         }
         Ok(())
     }
@@ -211,7 +211,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             && jab.rapid_edges >= self.core.attributes.combat.rapid_jab_window
         {
             self.core.commands.rapid_jab_loop_end = false;
-            self.change_motion_state(S::Attack100Start, assets)?;
+            self.change_motion_state(S::Attack100Start.into(), assets)?;
             self.step_animation(assets);
             self.core.state_data = MotionData::RapidJab(RapidJabState::default());
             return Ok(());
@@ -230,7 +230,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 self.character.third_jab_state()
             };
             self.core.commands.jab_followup = false;
-            self.change_motion_state(state, assets)?;
+            self.change_motion_state(state.into(), assets)?;
             self.core.state_data = MotionData::Jab(JabState {
                 followup_window: self.core.attributes.combat.jab_3_input_window,
                 followup_pressed: false,

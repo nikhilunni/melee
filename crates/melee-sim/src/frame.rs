@@ -815,8 +815,8 @@ impl Simulation {
 }
 
 #[allow(clippy::too_many_arguments)] // Borrow each subsystem independently while dispatching a concrete fighter.
-fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
-    f: &mut melee_ft::fighter::Fighter<C>,
+fn dispatch_fighter(
+    f: &mut melee_ft::fighter::Fighter,
     proc: FighterProc,
     player: usize,
     frame: u64,

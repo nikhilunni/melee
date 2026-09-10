@@ -2,17 +2,17 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_800D8C54 (800D8C54): Catch begins at frame zero without an immediate step.
     pub(super) fn enter_catch(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.catch_variant();
         self.core.physics.animation_velocity = Vec3::ZERO;
-        self.change_motion_state(S::Catch, assets)?;
+        self.change_motion_state(S::Catch.into(), assets)?;
         self.core.state_data = MotionData::Catch;
         Ok(())
     }
@@ -20,7 +20,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Catch_Anim (800D8CC8): item/tether callbacks are character hooks.
     pub(super) fn catch_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(S::Wait, assets)?;
+            self.change_motion_state(S::Wait.into(), assets)?;
         }
         Ok(())
     }
@@ -42,7 +42,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         ) == WaitGroundResult::EnterFall
         {
             self.leave_ground();
-            self.change_motion_state(S::Fall, assets)?;
+            self.change_motion_state(S::Fall.into(), assets)?;
         }
         Ok(())
     }
@@ -121,9 +121,9 @@ pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32
 }
 
 /// Fighter_UnkProcessGrab (8006CA5C): grab_cb runs before grabbed_cb.
-pub fn capture_pair<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
+pub fn capture_pair(
+    victim: &mut Fighter,
+    attacker: &mut Fighter,
     victim_assets: &FighterAssets,
     attacker_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
@@ -136,13 +136,13 @@ pub fn capture_pair<V: CharacterCallbacks, A: CharacterCallbacks>(
     let frame = attacker.core.animation.frame;
     attacker.core.commands.grab_release = false;
     attacker.core.commands.throw_reverse = false;
-    attacker.change_motion_state_at(S::CatchPull, attacker_assets, frame)?;
+    attacker.change_motion_state_at(S::CatchPull.into(), attacker_assets, frame)?;
     attacker.core.combat.grab = Some(GrabLink::Holding {
         victim: victim.core.spawn_number,
         vertical_offset: 0.0,
     });
     victim.core.physics.facing = -attacker.core.physics.facing;
-    victim.change_motion_state(S::CapturePulledLw, victim_assets)?;
+    victim.change_motion_state(S::CapturePulledLw.into(), victim_assets)?;
     finish_capture(&mut victim.core, &mut attacker.core, victim_assets);
     victim.capture_collision(victim_assets, map)?;
     Ok(())
@@ -186,7 +186,7 @@ pub fn align_capture(victim: &mut FighterCore, attacker: &mut FighterCore, asset
     victim.physics.position.z += delta.z;
 }
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_CapturePulledLw_Coll (800DB1F8) -> ft_8008403C.
     pub(super) fn capture_collision(
         &mut self,
@@ -207,12 +207,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
 }
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// fn_800DA1D8 (800DA1D8): switch captor first, then linked victim in the scene.
     pub(super) fn enter_catch_wait(&mut self, assets: &FighterAssets) -> Result<()> {
         self.core.physics.ground_velocity = 0.0;
         self.core.commands.grab_release = false;
-        self.change_motion_state(S::CatchWait, assets)?;
+        self.change_motion_state(S::CatchWait.into(), assets)?;
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         self.core
             .effects
@@ -224,11 +224,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
 }
 
 /// fn_800DB6C8 -> fn_800DBAE4 (800DBAE4), before victim's own Anim proc.
-pub fn capture_wait<C: CharacterCallbacks>(
-    victim: &mut Fighter<C>,
-    assets: &FighterAssets,
-) -> Result<()> {
-    victim.change_motion_state(S::CaptureWaitLw, assets)?;
+pub fn capture_wait(victim: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    victim.change_motion_state(S::CaptureWaitLw.into(), assets)?;
     victim.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     Ok(())
 }

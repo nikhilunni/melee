@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, Interaction, MotionData,
+    Fighter, Interaction, MotionData,
 };
 use gekko_math::{
     fma::fmadds,
@@ -178,11 +178,7 @@ impl DamageParameters {
 }
 /// ftColl_80078C70 (80078C70): receiver first, other fighters then hitbox IDs,
 /// then hurt-table order. The scene supplies that entity-list ordering.
-pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
-    victim: &mut Fighter<V>,
-    attacker: &mut Fighter<A>,
-    assets: &FighterAssets,
-) {
+pub fn detect_hit(victim: &mut Fighter, attacker: &mut Fighter, assets: &FighterAssets) {
     if victim.core.status.disabled
         || attacker.core.status.disabled
         || attacker.core.commands.thrown_by == Some(victim.core.spawn_number)
@@ -242,7 +238,7 @@ fn record_shield_hit(
             position: contact.position,
         });
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_Damage_Phys (8008FB18): gravity/friction during hitstun, drift after it.
     pub(super) fn damage_physics(
         &mut self,
@@ -391,7 +387,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
     ) -> Result<i32> {
         let (state, stun) = self.core.prepare_damage_reaction(&hit, assets);
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         let result = self.core.finish_damage_reaction(hit, stun)?;
         if let MotionData::Damage(damage) = &mut self.core.state_data {
@@ -440,7 +436,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) && damage.hitstun <= 0.0 {
             self.change_motion_state(
-                if self.core.physics.ground_or_air == GroundOrAir::Air {
+                (if self.core.physics.ground_or_air == GroundOrAir::Air {
                     if is_tumble(self.core.motion_state.id) {
                         S::DamageFall
                     } else {
@@ -448,7 +444,8 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     }
                 } else {
                     S::Wait
-                },
+                })
+                .into(),
                 assets,
             )?;
         }

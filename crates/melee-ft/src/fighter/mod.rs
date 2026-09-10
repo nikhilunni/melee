@@ -1,5 +1,8 @@
 //! Fighter ownership and scheduler callbacks for grounded, item-free Wait.
 //! Retail addresses and unsupported paths are documented at each entry point.
+mod character;
+pub use character::{CharacterState, CharacterTable};
+
 pub mod air_dodge;
 pub mod assets;
 pub mod attack;
@@ -54,20 +57,28 @@ pub use state::{
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
 /// character crate. The implementation owns its typed special attributes.
-pub trait CharacterCallbacks: Sized + 'static {
-    const COMMON: [MotionRow<Self>; COMMON_COUNT] = common_table::<Self>();
+pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
+    const TABLE: CharacterTable = CharacterTable::new::<Self>();
+
+    fn table() -> &'static CharacterTable {
+        &Self::TABLE
+    }
+
+    fn into_state(self) -> CharacterState {
+        CharacterState::new(self)
+    }
 
     /// Character-owned table (retail's per-kind MotionState table), indexed
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.
-    const SPECIAL_ROWS: &'static [MotionRow<Self>] = &[];
+    const SPECIAL_ROWS: &'static [MotionRow] = &[];
 
-    fn special_rows() -> &'static [MotionRow<Self>] {
+    fn special_rows() -> &'static [MotionRow] {
         Self::SPECIAL_ROWS
     }
 
     fn enter_special(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _slot: SpecialSlot,
         _airborne: bool,
         _assets: &assets::FighterAssets,
@@ -76,18 +87,12 @@ pub trait CharacterCallbacks: Sized + 'static {
     }
 
     /// Fighter_CallAcessoryCallbacks_8006C624: character-owned accessory4.
-    fn accessory(_fighter: &mut Fighter<Self>, _assets: &assets::FighterAssets) {}
-    fn item_muzzle(
-        _fighter: &mut Fighter<Self>,
-        _assets: &assets::FighterAssets,
-    ) -> Option<(Vec3, f32)> {
+    fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+    fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }
 
-    fn item_owner(
-        fighter: &mut Fighter<Self>,
-        _assets: &assets::FighterAssets,
-    ) -> melee_it::ItemOwner {
+    fn item_owner(fighter: &mut Fighter, _assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         melee_it::ItemOwner {
             position: fighter.physics.position,
             facing: fighter.physics.facing,
@@ -178,7 +183,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     fn guard_variant(&self, _commands: &mut commands::CommandState) {}
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
     fn escape_variant(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
         rolling: bool,
     ) -> assets::Result<()>
@@ -221,12 +226,12 @@ pub trait CharacterCallbacks: Sized + 'static {
         unimplemented!("ftCo_JumpAerialF1.c: character multijump animation table")
     }
     /// Character-owned setup after the common aerial-jump entry and Anim.
-    fn aerial_jump_entered(_fighter: &mut Fighter<Self>)
+    fn aerial_jump_entered(_fighter: &mut Fighter)
     where
         Self: Sized,
     {
     }
-    fn aerial_jump_animated(_fighter: &mut Fighter<Self>)
+    fn aerial_jump_animated(_fighter: &mut Fighter)
     where
         Self: Sized,
     {
@@ -244,7 +249,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     }
     /// Complete character-owned shield callbacks; None selects shared behavior.
     fn enter_shield(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
         _reflect: bool,
     ) -> Option<assets::Result<()>>
@@ -254,7 +259,7 @@ pub trait CharacterCallbacks: Sized + 'static {
         None
     }
     fn animate_shield(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
     ) -> Option<assets::Result<()>>
     where
@@ -264,7 +269,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     }
     /// Character-owned Guard IASA; None selects the shared input order.
     fn input_shield(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
     ) -> Option<assets::Result<()>>
     where
@@ -273,7 +278,7 @@ pub trait CharacterCallbacks: Sized + 'static {
         None
     }
     fn enter_guard_hold(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
     ) -> Option<assets::Result<()>>
     where
@@ -282,7 +287,7 @@ pub trait CharacterCallbacks: Sized + 'static {
         None
     }
     fn enter_guard_off(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
     ) -> Option<assets::Result<()>>
     where
@@ -292,7 +297,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     }
     /// ftCo_Escape.c: character setup after motion entry, and completion.
     fn escape_finished(
-        _fighter: &mut Fighter<Self>,
+        _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
     ) -> Option<assets::Result<()>>
     where
@@ -300,7 +305,7 @@ pub trait CharacterCallbacks: Sized + 'static {
     {
         None
     }
-    fn escape_animated(_fighter: &mut Fighter<Self>)
+    fn escape_animated(_fighter: &mut Fighter)
     where
         Self: Sized,
     {
@@ -468,38 +473,34 @@ impl Status {
 
 /// Character-owned payload and live callback row (ft/types.h).
 /// Calculation owners live in the concrete core.
-pub struct Fighter<C: CharacterCallbacks> {
+pub struct Fighter {
     pub core: FighterCore,
-    pub character: C,
-    pub motion_row: MotionRow<C>,
-    /// Bind static tables once at construction. Runtime row lookup must not
-    /// instantiate the entire common callback graph in each character crate.
-    common_rows: &'static [MotionRow<C>; COMMON_COUNT],
-    special_rows: &'static [MotionRow<C>],
+    pub character: CharacterState,
+    pub motion_row: MotionRow,
 }
-impl<C: CharacterCallbacks> std::ops::Deref for Fighter<C> {
+impl std::ops::Deref for Fighter {
     type Target = FighterCore;
     fn deref(&self) -> &Self::Target {
         &self.core
     }
 }
-impl<C: CharacterCallbacks> std::ops::DerefMut for Fighter<C> {
+impl std::ops::DerefMut for Fighter {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.core
     }
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     pub fn character_accessory(&mut self, assets: &assets::FighterAssets) {
-        C::accessory(self, assets);
+        (self.character.table().accessory)(self, assets);
     }
     pub fn item_muzzle(&mut self, assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
-        C::item_muzzle(self, assets)
+        (self.character.table().item_muzzle)(self, assets)
     }
     pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
-        C::item_owner(self, assets)
+        (self.character.table().item_owner)(self, assets)
     }
     /// Install callback and scalar state together, including during savestate import.
-    pub fn install_motion_row(&mut self, row: MotionRow<C>) {
+    pub fn install_motion_row(&mut self, row: MotionRow) {
         self.core.motion_state = MotionState::new(row);
         self.motion_row = row;
     }

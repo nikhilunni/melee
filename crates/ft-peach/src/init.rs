@@ -44,7 +44,13 @@ impl Peach {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<Peach>();
+
 impl CharacterCallbacks for Peach {
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
+    }
     fn kind(&self) -> FighterKind {
         FighterKind::Peach
     }

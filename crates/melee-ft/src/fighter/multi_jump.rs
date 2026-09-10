@@ -1,7 +1,7 @@
 //! Kirby/Jigglypuff shared multijumps: ftCommon/ftCo_JumpAerialF1.c.
 use super::{
     assets::{FighterAssets, Result},
-    ActionId, CharacterCallbacks, Fighter, FighterCore, MotionData,
+    ActionId, Fighter, FighterCore, MotionData,
 };
 use crate::input::Buttons;
 use hsd_types::Vec3;
@@ -43,7 +43,7 @@ pub struct MultiJumpState {
     /// +2344: unchanged union word inherited by landing's drop timer.
     pub retained_drop_timer: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ft_did_jump (800CB804), ftCo_800D730C (800D730C).
     pub(super) fn aerial_jump_requested(&self, assets: &FighterAssets) -> bool {
         if i32::from(self.core.physics.jumps_used) >= self.core.attributes.jumping.max_jumps {
@@ -139,7 +139,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             } else {
                 CommonMotionState::Fall
             };
-            self.change_motion_state(state, assets)?;
+            self.change_motion_state(state.into(), assets)?;
         }
         Ok(())
     }

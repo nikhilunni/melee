@@ -1,6 +1,6 @@
 //! Shared fall animation families and air-dodge special fall, ftCommon/ftCo_Fall*.c.
 use super::FighterCore;
-use super::{CharacterCallbacks, Fighter, MotionData};
+use super::{Fighter, MotionData};
 /// PlCo ftCommonData +444/+448: normalized speed deadzone and blend smoothing.
 #[derive(Clone, Copy, Debug)]
 pub struct FallParameters {
@@ -85,7 +85,7 @@ pub struct SpecialFallState {
     pub allow_interrupt: bool,
     pub landing_lag: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_80096900 (80096900), called by EscapeAir_Anim (80099BD0).
     /// ftCo_FallSpecial.c:34-57, EscapeAir.c:78-79: ordinary gravity,
     /// forced landing lag and no landing interrupt; consumes all air jumps.
@@ -111,7 +111,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         mobility: f32,
         landing_lag: f32,
     ) -> super::assets::Result<()> {
-        self.change_motion_state(melee_types::CommonMotionState::FallSpecial, assets)?;
+        self.change_motion_state(melee_types::CommonMotionState::FallSpecial.into(), assets)?;
         self.core.state_data = MotionData::FallSpecial(SpecialFallState {
             animation: FallState::new(FallFamily::Special),
             // retail 8009696C fmuls; no multiply-add.
@@ -154,7 +154,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.enter_special_landing(assets, fall.allow_interrupt, fall.landing_lag)
         } else {
             self.land();
-            self.change_motion_state(melee_types::CommonMotionState::Wait, assets)
+            self.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)
         }
     }
 }

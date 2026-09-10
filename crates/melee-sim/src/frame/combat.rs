@@ -3,7 +3,7 @@
 use super::*;
 use crate::scenario::Scenario;
 use melee_coll::hitbox::CapsulePhase;
-use melee_ft::fighter::{CharacterCallbacks, Fighter, MotionData};
+use melee_ft::fighter::{Fighter, MotionData};
 use std::{fs, path::Path};
 
 fn word(bytes: &[u8], offset: usize) -> u32 {
@@ -18,7 +18,7 @@ fn vector(v: Vec3, bytes: &[u8], offset: usize) {
         );
     }
 }
-fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) {
+fn compare(f: &Fighter, bytes: &[u8]) {
     for (actual, offset, label) in [
         (f.status.shield_health, 0x1998, "shield health"),
         (f.shield.lightshield, 0x199c, "lightshield amount"),

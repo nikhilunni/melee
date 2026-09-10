@@ -28,7 +28,7 @@ pub enum BoneOracle {
     Rendered,
 }
 
-type FoxFighter = melee_ft::fighter::Fighter<ft_fox::init::Fox>;
+type FoxFighter = melee_ft::fighter::Fighter;
 
 pub fn replay_with_observer(
     scene: &str,
@@ -372,7 +372,7 @@ fn replay_config(
 }
 
 fn compare_pose(
-    fighters: &[melee_ft::fighter::Fighter<ft_fox::init::Fox>; 2],
+    fighters: &[melee_ft::fighter::Fighter; 2],
     expected: &serde_json::Value,
     tick: usize,
     scene: &str,

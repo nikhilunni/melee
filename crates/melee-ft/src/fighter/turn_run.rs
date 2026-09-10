@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use gekko_math::fma::{fmadds, fnmsubs};
 use melee_types::CommonMotionState as S;
@@ -15,7 +15,7 @@ pub struct TurnRunState {
 }
 // The skid pose releases once velocity toward the old facing is this small.
 const TURN_RELEASE_SPEED: f32 = 0.01;
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// fn_800C9CEC / fn_800C9D40 (800C9CEC / 800C9D40):
     /// RunBrake retains its phase; Run supplies frame zero.
     pub(super) fn try_turn_run(&mut self, assets: &FighterAssets, start: f32) -> Result<bool> {
@@ -37,7 +37,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         });
         // Ft_MF_SkipAnimVel (fighter.c:1318-1324): retain ground momentum
         // when RunBrake supplies a nonzero phase. Motion entry already does so.
-        self.change_motion_state_at(S::TurnRun, assets, start)
+        self.change_motion_state_at(S::TurnRun.into(), assets, start)
     }
     /// ftCo_TurnRun_Anim (800C9E10), ftCo_TurnRun.c:58-80.
     pub(super) fn turn_run_animation(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -69,7 +69,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 };
                 run.interrupt_delay = assets.running.turn_exit_interrupt_delay;
             } else {
-                self.change_motion_state(S::Wait, assets)?;
+                self.change_motion_state(S::Wait.into(), assets)?;
             }
         }
         Ok(())
@@ -89,7 +89,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.core.input.current.stick.x,
         );
         if result == crate::collision::ground::WaitGroundResult::EnterFall {
-            self.change_motion_state(S::Fall, assets)?;
+            self.change_motion_state(S::Fall.into(), assets)?;
         } else if self.core.collision.data.env_flags as u32 & melee_types::mp::collide::EDGE != 0 {
             self.clear_movement();
         }

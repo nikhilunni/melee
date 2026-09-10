@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
@@ -63,7 +63,7 @@ impl EntryState {
         }
     }
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_800C61B0 (0x800C61B0), scene supplies Player_GetUnk4C delay.
     pub fn enter_match(&mut self, delay: i32, assets: &FighterAssets) -> Result<()> {
         let scale = self.core.skeleton.scale(self.core.animation.root);
@@ -87,7 +87,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core
             .skeleton
             .set_scale(self.core.animation.root, &current_scale);
-        self.change_motion_state(CommonMotionState::Entry, assets)
+        self.change_motion_state(CommonMotionState::Entry.into(), assets)
     }
     pub(super) fn entry_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         let MotionData::Entry(entry) = &mut self.core.state_data else {
@@ -121,7 +121,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             _ => unreachable!(),
         }
-        self.change_motion_state(next, assets)
+        self.change_motion_state(next.into(), assets)
     }
 }
 impl FighterCore {

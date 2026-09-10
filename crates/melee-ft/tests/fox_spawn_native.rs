@@ -22,7 +22,7 @@ fn fox_spawn_native() {
         let mut counter = SpawnCounter(1);
         let f = Fighter::spawn(
             slot,
-            fixture.character(),
+            melee_ft::fighter::CharacterState::new(fixture.character()),
             &fixture.assets,
             tree,
             root,
@@ -110,8 +110,19 @@ fn fox_spawn_native() {
             fixture.assets.shield_health.to_bits()
         );
         assert!(f.capabilities.can_walljump);
-        assert_eq!(f.character.registered_items.len(), 3);
-        assert!(!f.character.special_neutral.blaster_present);
+        assert_eq!(
+            f.character
+                .get::<ft_fox::init::Fox>()
+                .registered_items
+                .len(),
+            3
+        );
+        assert!(
+            !f.character
+                .get::<ft_fox::init::Fox>()
+                .special_neutral
+                .blaster_present
+        );
         assert_eq!(f.dynamics_first_bone, [0]);
         assert_eq!(f.bones.ecb.joints, [41, 55, 25, 13, 7, 4]);
         let expected = f.row(melee_types::CommonMotionState::Fall.into());
@@ -192,7 +203,7 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     // Shield is now supported: actual input installs its state and the proc arm runs.
     fighter.status.interaction = Interaction::Idle;
     fighter
-        .change_motion_state(melee_types::CommonMotionState::Wait, &fixture.assets)
+        .change_motion_state(melee_types::CommonMotionState::Wait.into(), &fixture.assets)
         .unwrap();
     fighter.proc_input(
         &fixture.assets,

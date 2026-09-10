@@ -85,14 +85,14 @@ impl CpuState {
         }
     }
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// Fighter_Create (0x80068E98), UnkInitLoad (0x80068914),
     /// UnkInitReset (0x80067C98), UnkProcessDeath (0x80068354).
     /// Costume skeleton loading and Player slot selection precede this call.
     /// Grounded spawn takes the +/-10 probe in ft_80082A68 (0x80082A68).
     pub fn spawn(
         player: PlayerSlot,
-        character: C,
+        character: CharacterState,
         assets: &FighterAssets,
         skeleton: JObjTree,
         root: JObjId,
@@ -105,7 +105,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// Entry directly after reset, without first entering Wait or Fall.
     pub fn spawn_for_match(
         player: PlayerSlot,
-        character: C,
+        character: CharacterState,
         assets: &FighterAssets,
         skeleton: JObjTree,
         root: JObjId,
@@ -125,7 +125,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     fn create(
         player: PlayerSlot,
-        character: C,
+        character: CharacterState,
         assets: &FighterAssets,
         skeleton: JObjTree,
         root: JObjId,
@@ -169,11 +169,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             self.enter_match(delay, assets)?;
         } else {
             self.change_motion_state(
-                if supported {
+                (if supported {
                     CommonMotionState::Wait
                 } else {
                     CommonMotionState::Fall
-                },
+                })
+                .into(),
                 assets,
             )?;
         }
@@ -189,7 +190,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// it must never call spawn or change_motion_state.
     pub fn prepare(
         player: PlayerSlot,
-        mut character: C,
+        mut character: CharacterState,
         assets: &FighterAssets,
         skeleton: JObjTree,
         root: JObjId,
@@ -207,7 +208,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let mut capabilities = Capabilities::default();
         character.on_load(&mut capabilities);
         character.on_resources_loaded(assets, &player);
-        let motion_row = C::COMMON[CommonMotionState::Wait as usize];
+        let motion_row = state::COMMON[CommonMotionState::Wait as usize];
         Self {
             core: FighterCore::prepare(
                 player,
@@ -220,26 +221,20 @@ impl<C: CharacterCallbacks> Fighter<C> {
             ),
             character,
             motion_row,
-            common_rows: &C::COMMON,
-            special_rows: C::special_rows(),
         }
     }
 
     /// Fighter_ChangeMotionState (0x800693AC), fighter.c:933-1391,
     /// reached through ft_8008A2BC/ft_8008A348 (Wait) or ftCo_Fall_Enter
     /// (cold airborne spawn).
-    pub fn change_motion_state(
-        &mut self,
-        state: impl Into<ActionId>,
-        assets: &FighterAssets,
-    ) -> Result<()> {
+    pub fn change_motion_state(&mut self, state: ActionId, assets: &FighterAssets) -> Result<()> {
         self.change_motion_state_at(state, assets, 0.0)
     }
 
     /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.
     pub(super) fn change_motion_state_at(
         &mut self,
-        state: impl Into<ActionId>,
+        state: ActionId,
         assets: &FighterAssets,
         start: f32,
     ) -> Result<()> {
@@ -250,24 +245,24 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// install the caller's rate before frame-zero animation and commands.
     pub(super) fn change_motion_state_with_rate(
         &mut self,
-        state: impl Into<ActionId>,
+        state: ActionId,
         assets: &FighterAssets,
         start: f32,
         rate: f32,
     ) -> Result<()> {
-        self.change_motion_state_with_options(state.into(), assets, start, rate, None)
+        self.change_motion_state_with_options(state, assets, start, rate, None)
     }
 
     /// Borrow a throw animation/script while preserving ordinary row selection.
     pub(super) fn change_motion_state_with_source(
         &mut self,
-        state: impl Into<ActionId>,
+        state: ActionId,
         assets: &FighterAssets,
         start: f32,
         rate: f32,
         source: Option<(&FighterAssets, &crate::anim::Motion)>,
     ) -> Result<()> {
-        self.change_motion_state_with_options(state.into(), assets, start, rate, source)
+        self.change_motion_state_with_options(state, assets, start, rate, source)
     }
 
     fn change_motion_state_with_options(

@@ -12,23 +12,16 @@ use melee_ft::fighter::{
 };
 use melee_types::snapshot::{Snapshot, SnapshotSink};
 
-/// A closed enum keeps each character's generic fighter monomorphised, with
-/// no object-safe mirror of the gameplay API. Boxes keep the scene small and
-/// avoid copying large fighter states. Only composition dispatches variants;
-/// shared action-state behavior remains in CharacterCallbacks and archive data.
+/// The roster selects archives and typed payloads only during construction.
+/// Every scene slot then owns one concrete fighter. Its box is allocated once
+/// at setup; common gameplay dispatches through the installed static table.
 macro_rules! scene_characters {
     ($( $name:literal => $variant:ident ( $ty:path ) ),* $(,)?) => {
-        pub(crate) enum SceneFighter {
-            $( $variant(Box<Fighter<$ty>>), )*
-        }
-        /// Run one generic expression on whichever character is in the slot:
-        /// `with_fighter!(scene_fighter, |f| f.snapshot(sink))`.
+        pub(crate) struct SceneFighter(pub(crate) Box<Fighter>);
         macro_rules! with_fighter {
-            ($fighter:expr, |$f:ident| $body:expr) => {
-                match $fighter {
-                    $( $crate::scene_fighter::SceneFighter::$variant($f) => $body, )*
-                }
-            };
+            ($fighter:expr, |$f:ident| $body:expr) => {{
+                match $fighter { $crate::scene_fighter::SceneFighter($f) => $body }
+            }};
         }
         // Used by the test modules under frame/; the macro is textually in
         // scope here, so the re-export looks unused in a non-test build.
@@ -48,8 +41,8 @@ macro_rules! scene_characters {
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
                         character.on_costume_loaded(archive.costume(player.costume), player.costume).map_err(|e| anyhow::anyhow!("{e}"))?;
                         let (skeleton, root) = archive.model(player.costume);
-                        return Ok(Self::$variant(Box::new(Fighter::spawn_for_match(
-                            player, character, resources, skeleton, root, context, delay,
+                        return Ok(Self(Box::new(Fighter::spawn_for_match(
+                            player, character.into_state(), resources, skeleton, root, context, delay,
                         ).map_err(|e| anyhow::anyhow!("{e}"))?)));
                     }
                 )*
@@ -74,7 +67,7 @@ macro_rules! scene_characters {
             ) -> Self {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                        return Self::$variant(Box::new(construct::<$ty>(archive, resources, map, raw, saved)));
+                        return Self(Box::new(construct::<$ty>(archive, resources, map, raw, saved)));
                     }
                 )*
                 unreachable!("validated character descriptor {:?}", archive.descriptor.kind)
@@ -99,30 +92,43 @@ fn construct<C: CharacterCallbacks>(
     map: &CollMap,
     raw: &[u8],
     saved: &SavedPose,
-) -> Fighter<C> {
+) -> Fighter {
     let mut character = C::from_archive(&archive.data)
         .unwrap_or_else(|e| panic!("{:?} character data: {e}", archive.descriptor.kind));
     character
         .on_costume_loaded(archive.costume(raw[0x619]), raw[0x619])
         .expect("character costume data");
     character.restore_saved(raw);
-    let mut fighter = crate::initial_state::import_fighter(archive, resources, character, map, raw);
+    let mut fighter =
+        crate::initial_state::import_fighter(archive, resources, character.into_state(), map, raw);
     saved.restore(&mut fighter, raw);
     fighter
 }
 
 impl Snapshot for SceneFighter {
     fn snapshot(&self, sink: &mut dyn SnapshotSink) {
-        with_fighter!(self, |f| f.snapshot(sink))
+        self.0.snapshot(sink)
     }
 }
 impl SceneFighter {
     pub fn bone_matrix(&mut self, bone: Option<usize>) -> Mtx {
-        fn matrix<C: CharacterCallbacks>(f: &mut Fighter<C>, bone: Option<usize>) -> Mtx {
+        fn matrix(f: &mut Fighter, bone: Option<usize>) -> Mtx {
             let joint = bone.map_or(f.animation.root, |i| f.animation.parts[i].joint);
             f.skeleton.setup_matrix(joint);
             f.skeleton.get(joint).mtx
         }
         with_fighter!(self, |f| matrix(f, bone))
+    }
+}
+
+impl std::ops::Deref for SceneFighter {
+    type Target = Fighter;
+    fn deref(&self) -> &Fighter {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for SceneFighter {
+    fn deref_mut(&mut self) -> &mut Fighter {
+        &mut self.0
     }
 }

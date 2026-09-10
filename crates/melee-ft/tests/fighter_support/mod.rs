@@ -131,11 +131,11 @@ impl Fixture {
             cpu_level: 1,
         }
     }
-    pub fn prepared(&self, player: PlayerSlot) -> Fighter<Fox> {
+    pub fn prepared(&self, player: PlayerSlot) -> Fighter {
         let (tree, root) = self.model(player.costume);
         Fighter::prepare(
             player,
-            self.character(),
+            melee_ft::fighter::CharacterState::new(self.character()),
             &self.assets,
             tree,
             root,
@@ -158,7 +158,7 @@ impl Fixture {
         Fox::new(read_fox_attributes(&self.fox).unwrap())
     }
     /// Import only the saved boundary. No later row is used by this constructor.
-    pub fn import(&self, raw: &[u8]) -> Fighter<Fox> {
+    pub fn import(&self, raw: &[u8]) -> Fighter {
         let mut player = Self::player(raw[12]);
         player.position = vector(raw, 0xB0);
         player.facing = float(raw, 0x2C);

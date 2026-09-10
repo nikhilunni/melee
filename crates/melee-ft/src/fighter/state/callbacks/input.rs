@@ -6,10 +6,10 @@ use crate::input::{wait_iasa, WaitContext, WaitTransition};
 /// (13), ftCo_MS_DownBoundD (191), ftCo_MS_DownWaitD (192), ftCo_MS_PassiveStandB (201),
 /// ftCo_MS_Catch (212), ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216), ftCo_MS_ThrowB (220),
 /// ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227), ftCo_MS_ThrownB (240).
-pub fn catch<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).
-pub fn tilt<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -22,7 +22,7 @@ pub fn tilt<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
-pub fn damage<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn damage(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -34,7 +34,7 @@ pub fn damage<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase
 }
 
 /// ftData_MotionStateList: ftCo_MS_Attack11 (44).
-pub fn jab<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn jab(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -47,7 +47,7 @@ pub fn jab<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_
 
 /// ftData_MotionStateList: ftCo_MS_GuardOn (178), ftCo_MS_Guard (179), ftCo_MS_GuardOff (180),
 /// ftCo_MS_GuardSetOff (181), ftCo_MS_GuardReflect (182).
-pub fn guard_on<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn guard_on(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -59,43 +59,43 @@ pub fn guard_on<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPha
 }
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
-pub fn turn_run<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn turn_run(fighter: &mut Fighter, phase: InputPhase<'_>) {
     fighter.core.input_turn_run(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffClimbQuick (255), ftCo_MS_CliffEscapeQuick (259).
-pub fn cliff_climb<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+pub fn cliff_climb(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_CliffCatch (252), ftCo_MS_CliffJumpSlow1 (260),
 /// ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick1 (262), ftCo_MS_CliffJumpQuick2 (263).
-pub fn cliff_catch<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+pub fn cliff_catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_CliffWait (253).
-pub fn cliff_wait<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn cliff_wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     fighter.ledge_input(assets).expect("ledge input");
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
-pub fn escape_air<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+pub fn escape_air(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     fighter.air_dodge_input();
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234).
-pub fn escape<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+pub fn escape(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     fighter.core.input_escape(_phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeN (235).
-pub fn escape_n<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+pub fn escape_n(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_KneeBend (24).
-pub fn knee_bend<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn knee_bend(fighter: &mut Fighter, phase: InputPhase<'_>) {
     fighter.core.input_knee_bend(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Squat (39), ftCo_MS_SquatWait (40), ftCo_MS_SquatRv (41).
-pub fn squat<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn squat(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -109,7 +109,7 @@ pub fn squat<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<
 }
 
 /// ftData_MotionStateList: ftCo_MS_Turn (18).
-pub fn turn<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn turn(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -123,7 +123,7 @@ pub fn turn<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'
 }
 
 /// ftData_MotionStateList: ftCo_MS_Dash (20).
-pub fn dash<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn dash(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -137,7 +137,7 @@ pub fn dash<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'
 }
 
 /// ftData_MotionStateList: ftCo_MS_Run (21).
-pub fn run<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn run(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -149,14 +149,14 @@ pub fn run<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_
 }
 
 /// ftData_MotionStateList: ftCo_MS_RunBrake (23).
-pub fn run_brake<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn run_brake(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     fighter.run_brake_input(assets).expect("brake transition");
 }
 
 /// ftData_MotionStateList: ftCo_MS_WalkSlow (15), ftCo_MS_WalkMiddle (16), ftCo_MS_WalkFast
 /// (17).
-pub fn walk<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn walk(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -171,7 +171,7 @@ pub fn walk<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'
 
 /// ftData_MotionStateList: ftCo_MS_JumpF (25), ftCo_MS_JumpB (26), ftCo_MS_JumpAerialF (27),
 /// ftCo_MS_JumpAerialB (28), ftCo_MS_Fall (29), ftCo_MS_FallAerial (32), ftCo_MS_Pass (244).
-pub fn aerial<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let transition = crate::fighter::fall::iasa_with_jump(
         &fighter.core.input,
@@ -205,16 +205,16 @@ pub fn aerial<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase
 }
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
-pub fn fall_special<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+pub fn fall_special(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     fighter.core.input_fall_special(_phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
 /// (324).
-pub fn entry<C: CharacterCallbacks>(_fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+pub fn entry(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_Wait (14).
-pub fn wait<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -229,7 +229,7 @@ pub fn wait<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'
 }
 
 /// ftData_MotionStateList: ftCo_MS_Landing (42), ftCo_MS_LandingFallSpecial (43).
-pub fn landing<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn landing(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
         facing: fighter.core.physics.facing,
@@ -297,7 +297,7 @@ impl FighterCore {
 }
 
 /// ftCo_AttackLw3_IASA.
-pub fn down_tilt<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+pub fn down_tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let context = WaitContext {
         facing: fighter.core.physics.facing,
         ..WaitContext::default()
@@ -308,7 +308,7 @@ pub fn down_tilt<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPh
 }
 
 /// ftCo_Attack100Loop_IASA: both A edges keep the rapid attack alive.
-pub fn rapid_loop<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+pub fn rapid_loop(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     let pressed = (fighter.core.input.pressed | fighter.core.input.released)
         .intersects(crate::input::Buttons::A);
     let MotionData::RapidJab(rapid) = &mut fighter.core.state_data else {

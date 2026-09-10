@@ -1,16 +1,11 @@
 //! Tick-aligned local SRT oracle. No rendered Marth matrix capture exists.
 use super::*;
-use crate::{scenario::Scenario, scene_fighter::SceneFighter};
-use melee_ft::fighter::{CharacterCallbacks, Fighter};
+use crate::scenario::Scenario;
+use melee_ft::fighter::Fighter;
 use serde_json::Value;
 use std::{fs, path::Path};
 
-fn compare<C: CharacterCallbacks>(
-    fighter: &Fighter<C>,
-    expected: &Value,
-    player: usize,
-    tick: usize,
-) -> usize {
+fn compare(fighter: &Fighter, expected: &Value, player: usize, tick: usize) -> usize {
     let mut compared = 0;
     for (bone, part) in fighter.animation.parts.iter().enumerate() {
         let joint = fighter.skeleton.get(part.joint);
@@ -63,9 +58,8 @@ fn replay(name: &str, ticks: usize) {
         return;
     }
     let initial = InitialState::from_savestate_traces(&scenario).unwrap();
-    let SceneFighter::Marth(marth) = &initial.fighters[0] else {
-        panic!("Marth slot")
-    };
+    let marth = &initial.fighters[0];
+    let _ = marth.character.get::<ft_mars::init::Marth>();
     assert_eq!(marth.animation.parts.len(), 90);
     let dynamic_bones: usize = marth.dynamics.iter().map(|set| set.bones.len()).sum();
     eprintln!(

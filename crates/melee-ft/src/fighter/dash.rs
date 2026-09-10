@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::{WaitContext, WaitPredicate as P, WaitTransition as T};
 use gekko_math::msl::fabsf;
@@ -36,7 +36,7 @@ pub struct DashState {
     /// mv.co.dash.x4 (+2344): enable initial attack/escape window.
     pub early_interrupts: bool,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_Dash_Enter (0x800CA120), ftCommon_800804A0 (0x800804A0).
     pub(super) fn enter_dash(
         &mut self,
@@ -44,7 +44,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         early_interrupts: bool,
     ) -> Result<()> {
         self.core.commands.variables[0] = 0;
-        self.change_motion_state(CommonMotionState::Dash, assets)?;
+        self.change_motion_state(CommonMotionState::Dash.into(), assets)?;
         self.step_animation(assets);
         self.core.input.horizontal.tilt = 0xFE;
         // Retail Dash_Enter: separate fmuls/fsubs; 800804A0 has no fused sites.
@@ -69,7 +69,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_Dash_Anim (0x800CA1F4), ft_8008A2BC (0x8008A2BC).
     pub(super) fn dash_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            self.change_motion_state(CommonMotionState::Wait, assets)?;
+            self.change_motion_state(CommonMotionState::Wait.into(), assets)?;
         }
         Ok(())
     }

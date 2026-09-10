@@ -2,12 +2,12 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use hsd_types::Vec3;
 use melee_types::{CommonMotionState as S, FtPart};
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_800986B0 / ftCo_80098928 (800986B0 / 80098928): digital edge window.
     pub(super) fn try_tech(&mut self, assets: &FighterAssets) -> Result<bool> {
         let timers = &self.core.input.buttons;
@@ -24,7 +24,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             unimplemented!("ftCo_800989D4: PassiveStandF");
         }
         self.land();
-        self.change_motion_state(S::PassiveStandB, assets)?;
+        self.change_motion_state(S::PassiveStandB.into(), assets)?;
         self.core
             .effects
             .push(melee_ef::request::EffectRequest::CaptureFlash { bone: 0 });
@@ -42,7 +42,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         } else {
             S::DownBoundD
         };
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Down {
             wait_remaining: 0.0,
         };
@@ -94,11 +94,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     unimplemented!("ftCo_DownBound_Anim: recovery input");
                 }
                 self.change_motion_state(
-                    if self.core.motion_state.id == S::DownBoundU {
+                    (if self.core.motion_state.id == S::DownBoundU {
                         S::DownWaitU
                     } else {
                         S::DownWaitD
-                    },
+                    })
+                    .into(),
                     assets,
                 )?;
                 self.core.state_data = MotionData::Down {

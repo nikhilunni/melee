@@ -2,7 +2,7 @@
 use super::{float, vector, word};
 use crate::assets::CharacterArchive;
 use hsd_types::Vec3;
-use melee_ft::fighter::{assets::FighterAssets, CharacterCallbacks};
+use melee_ft::fighter::{assets::FighterAssets, CharacterState};
 use melee_ft::{
     collision::pose::GroundPoseFlags,
     fighter::{Fighter, PlayerSlot, RetailTrig},
@@ -11,13 +11,13 @@ use melee_ft::{
 use melee_mp::CollMap;
 use melee_types::PlayerKind;
 /// Import only the saved boundary. No later row is used by this constructor.
-pub(crate) fn import<C: CharacterCallbacks>(
+pub(crate) fn import(
     archive: &CharacterArchive,
     assets: &FighterAssets,
-    character: C,
+    character: CharacterState,
     map: &CollMap,
     raw: &[u8],
-) -> Fighter<C> {
+) -> Fighter {
     let mut player = PlayerSlot {
         id: raw[12],
         control: PlayerKind::Human,

@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
@@ -38,7 +38,7 @@ pub struct LifeParameters {
     pub invincibility_duration: i32,
     pub death_effect_scale: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// gm_8016719C -> Player_80032070 -> Fighter_UnkProcessDeath (80068354).
     pub fn reset_for_revival(
         &mut self,
@@ -58,7 +58,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         };
         self.core.player.damage = 0.0;
         self.core.reset_life(assets, context.map);
-        self.install_motion_row(C::COMMON[S::Wait as usize]);
+        self.install_motion_row(super::state::COMMON[S::Wait as usize]);
         let scale = self.core.skeleton.scale(self.core.animation.root);
         self.initialize_spawn(assets, context, None, scale)?;
         self.enter_revival(assets, target)
@@ -89,7 +89,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.physics.ground_velocity = 0.0;
         self.core.physics.ground_knockback_velocity = 0.0;
         self.core.physics.ground_shield_knockback_velocity = 0.0;
-        self.change_motion_state(S::DeadDown, assets)?;
+        self.change_motion_state(S::DeadDown.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::Dead {
             remaining: assets.life.death_delay,
         });
@@ -106,7 +106,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     /// ftCo_800D4FF4 (800D4FF4), after Fighter_UnkProcessDeath reset.
     pub fn enter_revival(&mut self, assets: &FighterAssets, target: Vec3) -> Result<()> {
         self.leave_ground();
-        self.change_motion_state(S::Rebirth, assets)?;
+        self.change_motion_state(S::Rebirth.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::Revival {
             remaining: assets.life.revival_duration,
             target,
@@ -141,7 +141,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                         &self.core.physics.position,
                     );
                     self.core.physics.self_velocity.y = 0.0;
-                    self.change_motion_state(S::RebirthWait, assets)?;
+                    self.change_motion_state(S::RebirthWait.into(), assets)?;
                     self.core.state_data = MotionData::Life(LifeState::PlatformWait {
                         remaining: assets.life.platform_duration,
                         target,

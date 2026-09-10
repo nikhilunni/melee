@@ -20,7 +20,13 @@ impl Marth {
         }
     }
 }
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<Marth>();
+
 impl CharacterCallbacks for Marth {
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
+    }
     fn third_jab_state(&self) -> melee_types::CommonMotionState {
         melee_types::CommonMotionState::Attack11
     }

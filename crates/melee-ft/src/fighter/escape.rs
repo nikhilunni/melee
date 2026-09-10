@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use gekko_math::msl::fabsf;
 use melee_types::CommonMotionState as S;
@@ -17,7 +17,7 @@ pub struct EscapeState {
     /// facing_dir1, retained when the subaction reverses facing_dir.
     pub entry_facing: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
     pub fn enter_escape(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
         let retained_guard = if let MotionData::Guard(guard) = &self.core.state_data {
@@ -26,10 +26,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
             None
         };
         if state == S::EscapeN {
-            C::escape_variant(self, assets, false)?;
+            (self.character.table().escape_variant)(self, assets, false)?;
         }
         self.core.commands.grab_release = false;
-        self.change_motion_state(state, assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.ignore_fighter_nudge = true;
         self.core.state_data = MotionData::Escape(EscapeState {
@@ -38,7 +38,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             entry_facing: self.core.physics.facing,
         });
         if state != S::EscapeN {
-            C::escape_variant(self, assets, true)?;
+            (self.character.table().escape_variant)(self, assets, true)?;
         }
         Ok(())
     }
@@ -53,12 +53,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if self.core.motion_state.id != S::EscapeN {
                 self.core.physics.ground_velocity = 0.0;
             }
-            if let Some(result) = C::escape_finished(self, assets) {
+            if let Some(result) = (self.character.table().escape_finished)(self, assets) {
                 return result;
             }
-            self.change_motion_state(S::Wait, assets)?;
+            self.change_motion_state(S::Wait.into(), assets)?;
         }
-        C::escape_animated(self);
+        (self.character.table().escape_animated)(self);
         Ok(())
     }
 }

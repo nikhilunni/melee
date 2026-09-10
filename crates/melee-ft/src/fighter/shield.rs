@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData, RetailTrig,
+    Fighter, MotionData, RetailTrig,
 };
 use crate::input::{Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use gekko_math::{
@@ -163,14 +163,14 @@ impl ShieldState {
         unimplemented!("ftCo_Guard.c:875-882: powershield reflection response");
     }
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_80092E50 -> ftCo_80092F2C (80092F2C): shield stun and defender pushback.
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
         if self.core.shield.powershield_window {
             unimplemented!("ftCo_80092F2C: powershield impact");
         }
         self.character.guard_variant(&mut self.core.commands);
-        self.change_motion_state(S::GuardSetOff, assets)?;
+        self.change_motion_state(S::GuardSetOff.into(), assets)?;
         self.core.apply_shield_impact(impact, assets)
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
@@ -182,10 +182,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             .pressed
             .intersects(Buttons::DIGITAL_SHOULDERS)
             && i32::from(self.core.input.shoulder.tilt) < assets.input.powershield_window;
-        if let Some(result) = C::enter_shield(self, assets, reflect) {
+        if let Some(result) = (self.character.table().enter_shield)(self, assets, reflect) {
             return result;
         }
-        self.change_motion_state(if reflect { S::GuardReflect } else { S::GuardOn }, assets)?;
+        self.change_motion_state(
+            (if reflect { S::GuardReflect } else { S::GuardOn }).into(),
+            assets,
+        )?;
         self.step_animation(assets);
         self.core.state_data = MotionData::Guard(GuardState {
             minimum_hold: assets.shield.minimum_hold,
@@ -233,23 +236,23 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
     /// ftCo_80092908 (0x80092908): preserve scratch, replace the shield effect.
     pub fn enter_guard_hold(&mut self, assets: &FighterAssets) -> Result<()> {
-        if let Some(result) = C::enter_guard_hold(self, assets) {
+        if let Some(result) = (self.character.table().enter_guard_hold)(self, assets) {
             return result;
         }
-        self.change_motion_state(S::Guard, assets)?;
+        self.change_motion_state(S::Guard.into(), assets)?;
         self.install_shield();
         self.queue_shield_effect(0x418);
         self.update_guard_pose(assets, 1.0)
     }
     pub fn enter_guard_off(&mut self, assets: &FighterAssets) -> Result<()> {
-        if let Some(result) = C::enter_guard_off(self, assets) {
+        if let Some(result) = (self.character.table().enter_guard_off)(self, assets) {
             return result;
         }
-        self.change_motion_state(S::GuardOff, assets)
+        self.change_motion_state(S::GuardOff.into(), assets)
     }
     /// GuardOn/Guard/GuardOff/GuardSetOff/GuardReflect Anim, ftCo_Guard.c.
     pub(super) fn shield_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if let Some(result) = C::animate_shield(self, assets) {
+        if let Some(result) = (self.character.table().animate_shield)(self, assets) {
             return result;
         }
         let state = self.core.motion_state.id;
@@ -270,7 +273,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.guard().elapsed += 1.0;
         if state == S::GuardOff {
             if !self.core.animation.frames_remaining(&self.core.skeleton) {
-                self.change_motion_state(S::Wait, assets)?;
+                self.change_motion_state(S::Wait.into(), assets)?;
             }
             return Ok(());
         }
@@ -292,7 +295,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        if let Some(result) = C::input_shield(self, assets) {
+        if let Some(result) = (self.character.table().input_shield)(self, assets) {
             return result;
         }
         let state = self.core.motion_state.id;

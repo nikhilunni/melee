@@ -16,7 +16,7 @@ fn invisible_commands_do_not_advance_rng_or_the_rotating_bone_cursor() {
     let (tree, root) = fixture.model(0);
     let mut fighter = Fighter::prepare(
         Fixture::player(0),
-        fixture.character(),
+        melee_ft::fighter::CharacterState::new(fixture.character()),
         &fixture.assets,
         tree,
         root,
@@ -65,7 +65,7 @@ fn invisible_commands_do_not_advance_rng_or_the_rotating_bone_cursor() {
     assert_eq!(fighter.effect_state.rotating_bone_index, 1);
     assert!(fighter.effect_state.destroy_on_state_change);
     fighter
-        .change_motion_state(CommonMotionState::Wait, &fixture.assets)
+        .change_motion_state(CommonMotionState::Wait.into(), &fixture.assets)
         .unwrap();
     assert!(!fighter.effect_state.destroy_on_state_change);
     assert_eq!(

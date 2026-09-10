@@ -2,7 +2,7 @@
 //! Only initial state and recorded pads drive the simulation; ledger bytes are assertions.
 use super::*;
 use crate::scenario::Scenario;
-use melee_ft::fighter::{fall::FallState, CharacterCallbacks, Fighter, MotionData};
+use melee_ft::fighter::{fall::FallState, Fighter, MotionData};
 use melee_types::CommonMotionState as S;
 use serde_json::Value;
 use std::{fs, path::Path};
@@ -18,7 +18,7 @@ fn check_fall(fall: &FallState, bytes: &[u8]) {
     );
     assert_eq!(fall.blend.to_bits(), word(bytes, 0x2344), "fall blend bits");
 }
-fn compare<C: CharacterCallbacks>(f: &Fighter<C>, bytes: &[u8]) -> usize {
+fn compare(f: &Fighter, bytes: &[u8]) -> usize {
     match (&f.state_data, f.motion_state.id) {
         (MotionData::Fall(fall), S::Fall | S::FallAerial) => check_fall(fall, bytes),
         (MotionData::FallSpecial(fall), S::FallSpecial) => {

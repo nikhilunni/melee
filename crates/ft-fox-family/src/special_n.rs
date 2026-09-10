@@ -34,60 +34,60 @@ impl FamilyState {
 }
 
 /// ftFx_Init_MotionStateTable (800E5534), first six rows, animations 295..300.
-pub const fn rows<C: FoxFamily>() -> [MotionRow<C>; FamilyState::COUNT] {
+pub const fn rows<C: FoxFamily>() -> [MotionRow; FamilyState::COUNT] {
     [
-        row::<C>(
+        row(
             FamilyState::SpecialNStart,
             295,
             start::<C, false>,
             loop_input::<C>,
             false,
         ),
-        row::<C>(
+        row(
             FamilyState::SpecialNLoop,
             296,
             firing::<C, false>,
             loop_input::<C>,
             false,
         ),
-        row::<C>(
+        row(
             FamilyState::SpecialNEnd,
             297,
             end::<C, false>,
-            no_input::<C>,
+            no_input,
             false,
         ),
-        row::<C>(
+        row(
             FamilyState::SpecialAirNStart,
             298,
             start::<C, true>,
             loop_input::<C>,
             true,
         ),
-        row::<C>(
+        row(
             FamilyState::SpecialAirNLoop,
             299,
             firing::<C, true>,
             loop_input::<C>,
             true,
         ),
-        row::<C>(
+        row(
             FamilyState::SpecialAirNEnd,
             300,
             end::<C, true>,
-            no_input::<C>,
+            no_input,
             true,
         ),
     ]
 }
 
-const fn row<C: FoxFamily>(
+const fn row(
     state: FamilyState,
     animation: i32,
-    anim: melee_ft::fighter::state::AnimFn<C>,
-    iasa: melee_ft::fighter::state::InputFn<C>,
+    anim: melee_ft::fighter::state::AnimFn,
+    iasa: melee_ft::fighter::state::InputFn,
     airborne: bool,
-) -> MotionRow<C> {
+) -> MotionRow {
     MotionRow {
         action: ActionId(state as u16),
         id: CommonMotionState::None,
@@ -95,23 +95,23 @@ const fn row<C: FoxFamily>(
         anim,
         iasa,
         physics: if airborne {
-            callbacks::physics::pass::<C>
+            callbacks::physics::pass
         } else {
-            callbacks::physics::guard_on::<C>
+            callbacks::physics::guard_on
         },
         collision: if airborne {
-            callbacks::collision::air_catch_hit::<C>
+            callbacks::collision::air_catch_hit
         } else {
-            callbacks::collision::ground_action::<C>
+            callbacks::collision::ground_action
         },
-        camera: callbacks::camera::follow_fighter::<C>,
+        camera: callbacks::camera::follow_fighter,
         implemented: true,
     }
 }
 
 /// ftFx_SpecialN_Enter (800E608C), ftFx_SpecialAirN_Enter (800E61A8).
 pub fn enter_special<C: FoxFamily>(
-    f: &mut Fighter<C>,
+    f: &mut Fighter,
     slot: SpecialSlot,
     airborne: bool,
     assets: &FighterAssets,
@@ -122,7 +122,7 @@ pub fn enter_special<C: FoxFamily>(
     } else {
         FamilyState::SpecialNStart
     };
-    f.change_motion_state(state, assets)
+    f.change_motion_state(state.into(), assets)
         .expect("SpecialN motion assets");
     f.commands.variables.fill(0);
     f.step_animation(assets);
@@ -130,7 +130,7 @@ pub fn enter_special<C: FoxFamily>(
         f.physics.ground_velocity = 0.0;
         f.physics.self_velocity = Vec3::ZERO;
     }
-    *f.character.special_neutral() = SpecialNeutral {
+    *f.character.get_mut::<C>().special_neutral() = SpecialNeutral {
         blaster_present: true,
         ..SpecialNeutral::default()
     };
@@ -143,8 +143,8 @@ pub fn enter_special<C: FoxFamily>(
     f.core.item_requests.push(ItemRequest::Spawn(spawn));
 }
 
-fn control<C: FoxFamily>(f: &mut Fighter<C>, control: ItemControl) {
-    if f.character.special_neutral().blaster_present {
+fn control<C: FoxFamily>(f: &mut Fighter, control: ItemControl) {
+    if f.character.get_mut::<C>().special_neutral().blaster_present {
         f.core.item_requests.push(ItemRequest::Control {
             owner: f.player.id,
             kind: C::BLASTER,
@@ -154,94 +154,100 @@ fn control<C: FoxFamily>(f: &mut Fighter<C>, control: ItemControl) {
 }
 
 /// ftFox_SpecialN_UpdateBlaster, inlined into Start/Loop animation callbacks.
-fn update_blaster<C: FoxFamily>(f: &mut Fighter<C>) {
-    control(f, ItemControl::Visibility(1));
-    if f.commands.variables[3] == 1 && f.character.special_neutral().blaster_present {
+fn update_blaster<C: FoxFamily>(f: &mut Fighter) {
+    control::<C>(f, ItemControl::Visibility(1));
+    if f.commands.variables[3] == 1 && f.character.get_mut::<C>().special_neutral().blaster_present
+    {
         f.commands.variables[3] = 0;
-        control(f, ItemControl::Open);
+        control::<C>(f, ItemControl::Open);
     }
 }
 
 fn start<C: FoxFamily, const AIR: bool>(
-    f: &mut Fighter<C>,
+    f: &mut Fighter,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
     f.step_animation(phase.assets);
-    update_blaster(f);
+    update_blaster::<C>(f);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(
-            if AIR {
+            (if AIR {
                 FamilyState::SpecialAirNLoop
             } else {
                 FamilyState::SpecialNLoop
-            },
+            })
+            .into(),
             phase.assets,
         )?;
-        f.character.special_neutral().accessory_shot = true;
-        control(f, ItemControl::Visibility(1));
+        f.character.get_mut::<C>().special_neutral().accessory_shot = true;
+        control::<C>(f, ItemControl::Visibility(1));
     }
     Ok(None)
 }
 
 fn firing<C: FoxFamily, const AIR: bool>(
-    f: &mut Fighter<C>,
+    f: &mut Fighter,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
     f.step_animation(phase.assets);
-    update_blaster(f);
+    update_blaster::<C>(f);
     if !f.animation.frames_remaining(&f.skeleton) {
-        if f.character.special_neutral().repeat {
+        if f.character.get_mut::<C>().special_neutral().repeat {
             f.change_motion_state(
-                if AIR {
+                (if AIR {
                     FamilyState::SpecialAirNLoop
                 } else {
                     FamilyState::SpecialNLoop
-                },
+                })
+                .into(),
                 phase.assets,
             )?;
-            f.character.special_neutral().repeat = false;
-            f.character.special_neutral().accessory_shot = true;
+            f.character.get_mut::<C>().special_neutral().repeat = false;
+            f.character.get_mut::<C>().special_neutral().accessory_shot = true;
         } else {
             f.change_motion_state(
-                if AIR {
+                (if AIR {
                     FamilyState::SpecialAirNEnd
                 } else {
                     FamilyState::SpecialNEnd
-                },
+                })
+                .into(),
                 phase.assets,
             )?;
-            f.character.special_neutral().accessory_shot = false;
+            f.character.get_mut::<C>().special_neutral().accessory_shot = false;
             f.commands.variables[1] = 1;
         }
-        control(f, ItemControl::Visibility(1));
+        control::<C>(f, ItemControl::Visibility(1));
     }
-    fire(f, phase.assets);
+    fire::<C>(f, phase.assets);
     Ok(None)
 }
 
 fn end<C: FoxFamily, const AIR: bool>(
-    f: &mut Fighter<C>,
+    f: &mut Fighter,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
     f.step_animation(phase.assets);
-    control(f, ItemControl::Visibility(f.commands.variables[1] as i32));
-    if f.commands.variables[3] == 2 && f.character.special_neutral().blaster_present {
+    control::<C>(f, ItemControl::Visibility(f.commands.variables[1] as i32));
+    if f.commands.variables[3] == 2 && f.character.get_mut::<C>().special_neutral().blaster_present
+    {
         f.commands.variables[3] = 0;
-        control(f, ItemControl::Close);
+        control::<C>(f, ItemControl::Close);
     }
     if !f.animation.frames_remaining(&f.skeleton) {
-        f.character.special_neutral().blaster_present = false;
-        f.character.special_neutral().accessory_shot = false;
-        if AIR && f.character.attributes().blaster.landing_lag != 0.0 {
-            let lag = f.character.attributes().blaster.landing_lag;
+        f.character.get_mut::<C>().special_neutral().blaster_present = false;
+        f.character.get_mut::<C>().special_neutral().accessory_shot = false;
+        if AIR && f.character.get::<C>().attributes().blaster.landing_lag != 0.0 {
+            let lag = f.character.get::<C>().attributes().blaster.landing_lag;
             f.enter_special_fall(phase.assets, false, true, 1.0, lag)?;
         } else {
             f.change_motion_state(
-                if AIR {
+                (if AIR {
                     CommonMotionState::Fall
                 } else {
                     CommonMotionState::Wait
-                },
+                })
+                .into(),
                 phase.assets,
             )?;
         }
@@ -250,12 +256,12 @@ fn end<C: FoxFamily, const AIR: bool>(
 }
 
 /// ftFox_SpecialN_CheckLoopInput: only a fresh B press during cmd_var0's window.
-fn loop_input<C: FoxFamily>(f: &mut Fighter<C>, _phase: InputPhase<'_>) {
+fn loop_input<C: FoxFamily>(f: &mut Fighter, _phase: InputPhase<'_>) {
     if f.commands.variables[0] != 0 && f.input.pressed.intersects(Buttons::B) {
-        f.character.special_neutral().repeat = true;
+        f.character.get_mut::<C>().special_neutral().repeat = true;
     }
 }
-fn no_input<C: FoxFamily>(_f: &mut Fighter<C>, _phase: InputPhase<'_>) {}
+fn no_input(_f: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftFx_SpecialN_FtGetHoldJoint / ItGetHoldJoint (800E5CF8 / 800E5D44).
 pub fn hold_position(core: &mut FighterCore, assets: &FighterAssets, muzzle: bool) -> Vec3 {
@@ -278,14 +284,14 @@ pub fn hold_position(core: &mut FighterCore, assets: &FighterAssets, muzzle: boo
 }
 
 /// ftFx_SpecialN_CreateBlasterShot (800E5F28): reached in animation and accessory4.
-fn fire<C: FoxFamily>(f: &mut Fighter<C>, assets: &FighterAssets) {
+fn fire<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
     if f.commands.variables[2] == 0 {
         return;
     }
     f.commands.variables[2] = 0;
     let mut position = hold_position(&mut f.core, assets, true);
     position.z = 0.0;
-    let attrs = &f.character.attributes().blaster;
+    let attrs = &f.character.get::<C>().attributes().blaster;
     // Retail 800E5FCC fsub (double), rounded on the it_8029C6A4 call boundary.
     let angle = if f.physics.facing == 1.0 {
         attrs.angle
@@ -308,7 +314,7 @@ fn fire<C: FoxFamily>(f: &mut Fighter<C>, assets: &FighterAssets) {
         speed,
         motion: 0,
     });
-    control(f, ItemControl::Fire);
+    control::<C>(f, ItemControl::Fire);
     let sound = C::SOUNDS.fire[usize::from(f.physics.facing == -1.0)];
     f.commands.footstep_sounds.push(FootstepSound {
         channel: SoundChannel::Ordinary,
@@ -318,17 +324,14 @@ fn fire<C: FoxFamily>(f: &mut Fighter<C>, assets: &FighterAssets) {
     });
 }
 
-pub fn accessory<C: FoxFamily>(f: &mut Fighter<C>, assets: &FighterAssets) {
-    if f.character.special_neutral().accessory_shot {
-        fire(f, assets);
+pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
+    if f.character.get_mut::<C>().special_neutral().accessory_shot {
+        fire::<C>(f, assets);
     }
 }
 
 /// ftFx_SpecialN_GetBlasterAction / CheckRemoveBlaster.
-pub fn item_owner<C: FoxFamily>(
-    f: &mut Fighter<C>,
-    _assets: &FighterAssets,
-) -> melee_it::ItemOwner {
+pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
     let action = f.motion_state.action.0;
     melee_it::ItemOwner {
         position: f.physics.position,
@@ -339,7 +342,7 @@ pub fn item_owner<C: FoxFamily>(
         } else {
             9
         },
-        remove_blaster: !f.character.special_neutral().blaster_present,
+        remove_blaster: !f.character.get_mut::<C>().special_neutral().blaster_present,
     }
 }
 

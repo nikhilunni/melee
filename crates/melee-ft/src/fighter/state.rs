@@ -11,7 +11,7 @@ mod names;
 mod row;
 mod special;
 pub use action::{ActionId, SpecialSlot, COMMON_COUNT};
-pub use common_table::common_table;
+pub use common_table::{common_table, COMMON};
 pub(crate) use row::unsupported_action;
 pub use row::{unimplemented_anim, unimplemented_row, MotionRow, MotionState};
 
@@ -73,46 +73,29 @@ mod tests {
 
     #[test]
     fn wait_callback_table() {
-        use crate::fighter::CharacterCallbacks;
-        struct TestCharacter;
-        impl CharacterCallbacks for TestCharacter {
-            fn descriptor() -> &'static crate::fighter::assets::CharacterDescriptor {
-                panic!("table-only character has no assets")
-            }
-            fn from_archive(
-                _: &hsd_archive::Archive,
-            ) -> Result<Self, crate::desc::FighterDescError> {
-                panic!("table-only character has no assets")
-            }
-            fn kind(&self) -> melee_types::FighterKind {
-                panic!("table-only character has no runtime kind")
-            }
-            fn on_load(&mut self, _: &mut crate::fighter::Capabilities) {}
-            fn on_reset(&mut self) {}
-        }
-        let row = TestCharacter::COMMON[melee_types::CommonMotionState::Wait as usize];
+        let row = COMMON[melee_types::CommonMotionState::Wait as usize];
         assert_eq!(i32::from(row.action), 14);
         assert_eq!(i32::from(row.id), 14);
         assert_eq!(row.animation, 2);
         assert!(std::ptr::fn_addr_eq(
             row.anim,
-            callbacks::animation::wait::<TestCharacter> as AnimFn<TestCharacter>
+            callbacks::animation::wait as AnimFn
         ));
         assert!(std::ptr::fn_addr_eq(
             row.iasa,
-            callbacks::input::wait::<TestCharacter> as InputFn<TestCharacter>
+            callbacks::input::wait as InputFn
         ));
         assert!(std::ptr::fn_addr_eq(
             row.physics,
-            callbacks::physics::wait::<TestCharacter> as PhysicsFn<TestCharacter>
+            callbacks::physics::wait as PhysicsFn
         ));
         assert!(std::ptr::fn_addr_eq(
             row.collision,
-            callbacks::collision::ground_wait::<TestCharacter> as CollisionFn<TestCharacter>
+            callbacks::collision::ground_wait as CollisionFn
         ));
         assert!(std::ptr::fn_addr_eq(
             row.camera,
-            callbacks::camera::follow_fighter::<TestCharacter> as CameraFn<TestCharacter>
+            callbacks::camera::follow_fighter as CameraFn
         ));
     }
 

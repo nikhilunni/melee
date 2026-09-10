@@ -42,9 +42,50 @@ the sum of copies per compiling crate. No count is inferred by dividing a
 shared total by roster size. See the upstream [llvm-lines interpretation](https://github.com/dtolnay/cargo-llvm-lines#multicrate-projects)
 and [cargo-bloat measurement limitations](https://github.com/RazrFalcon/cargo-bloat#usage).
 
-## Active baseline after P1
+## Active baseline after C15
 
-The COMPLETE PASS at **2026-09-10T06:15:55+00:00** is the active baseline: P1 on
+The COMPLETE PASS at **2026-09-10T08:10:28+00:00** is the active baseline, with the
+concrete shell on `82459f1` plus this uncommitted working tree.
+All 1,017 workspace tests pass in both profiles (three existing ignores).
+Evidence: `target/perf/20260910T080958Z-957`; full report: `PORT_NOTES/C15_CONCRETE_SHELL.md`.
+
+| Metric | C15 measurement | Next-run ceiling |
+|---|---:|---:|
+| Stripped bytes | 3,483,104 | 3,657,259 (also capped at P1's 3,747,632) |
+| Text bytes | 3,178,496 | 3,337,421 |
+| Load mean | 165.646 ms | 182.210 ms |
+| 600-tick mean | 23.533 ms | 25.886 ms |
+| Throughput | 25,496 ticks/s | equivalent tick-time ceiling above |
+| melee-ft copies | 845 | 845 |
+| melee-sim copies | 128 | 128 (stricter than the requested 900) |
+| ft-captain / ft-falco / ft-fox | 66 / 67 / 67 | unchanged |
+| ft-mars / ft-peach / ft-purin / ft-yoshi | 66 / 67 / 66 / 68 | unchanged |
+| ft-mario / ft-fox-family | 0 / 0 | unchanged |
+| Total copies in measured libraries | 1,440 | 1,440 |
+| Audited common labels across crates | 270 | exactly one definition each |
+
+`tools/perf_report.py` now enforces fixed C15 per-crate and total ceilings,
+the exact P1 stripped-size ceiling, and P1 time ceilings in addition to the
+ordinary latest-PASS comparison. The default tolerances remain time +10%,
+size +5%, copies +0. Neither environment overrides nor historical failed
+measurements can lift the fixed ceilings. Missing pair helpers and a generic or
+duplicated common definition fail the audit; raw ownership is saved as
+`common-definitions.json`. An additional CLI census found zero common-shell
+labels, so the 270-label check also passes when that compiling target is included.
+
+C15 deliberately replaces the old generic-shell attribution: shared bodies move
+from sim into melee-ft and static hook adapters are emitted by character crates.
+The migration is versioned as `concrete-shell-v1`, uses explicit measured copy
+ceilings, and preserves the P1 timing/size reference. Total copies fall from
+2,754 to 1,440 rather than moving the duplicates. Subsequent complete PASS
+blocks continue to ratchet each crate against its previous passing count.
+The first after sample remains a REGRESSION under the old attribution; it was
+not edited or promoted. The two later complete C15 runs pass, the last with the
+core's fixed ceiling tightened from the exploratory 846 to the final 845.
+
+## Historical P1 reference
+
+The COMPLETE PASS at **2026-09-10T06:15:55+00:00** was the pre-C15 baseline: P1 on
 `cd6cfad`, production-equivalent to main `7020449` before the P1 edits. The
 intervening main commit adds only scenarios and TRACKER text. Default tolerances
 remain time +10%, size +5%, and **zero** additional copies per compiling crate.
@@ -2195,4 +2236,1552 @@ Note: numbers above are a result of guesswork. They are not 100% correct and nev
 
 <!-- perf-gate-v1
 {"date": "2026-09-10T07:37:08+00:00", "metrics": {"copies": {"ft-captain": 2, "ft-falco": 22, "ft-fox": 22, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 3, "ft-peach": 8, "ft-purin": 2, "ft-yoshi": 22, "melee-ft": 561, "melee-sim": 2112}, "load_ns": 167691471.24309525, "stripped_bytes": 3916784, "text_bytes": 3489792, "ticks_600_ns": 24580394.433333334}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "dc0b51ece8f9aece02b7dafbcbbd81afe9d8b35f", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "REGRESSION"}
+-->
+
+## 2026-09-10T07:43:35+00:00 — COMPLETE — REGRESSION
+
+Evidence: `/Users/nikhilunni/Projects/melee-lanes/combat/target/perf/20260910T074240Z-77868`. Revision `82459f14972807e09a89c41d59ec2498e68ba35b` (working tree included).
+
+rustc 1.96.0 (ac68faa20 2026-05-25); macOS-26.2-arm64-arm-64bit-Mach-O.
+
+Tolerance: time +10%, size +5%, copies +0 per compiling crate.
+Baseline: 2026-09-10T06:15:55+00:00.
+
+| Measurement | Value |
+|---|---:|
+| Stripped binary | 3,916,784 bytes |
+| Text (`size`) | 3,489,792 bytes |
+| load mean | 166.264 ms (95% CI 166.076..166.456 ms) |
+| ticks_600 mean | 23.867 ms (95% CI 23.690..24.106 ms) |
+| Headless throughput | 25,139 ticks/s |
+
+- ft-fox melee-ft copies: 22 > 2 + 0
+
+- ft-falco melee-ft copies: 22 > 2 + 0
+
+- melee-sim melee-ft copies: 2112 > 2015 + 0
+
+- melee-ft melee-ft copies: 561 > 535 + 0
+
+Tool: `0.12.1`.
+
+Tool: `cargo-llvm-lines 0.4.48`.
+
+Per-crate text contribution (cargo-bloat estimates):
+```text
+File  .text     Size Crate
+16.9%  35.0% 916.1KiB melee_sim
+ 8.3%  17.2% 450.2KiB std
+ 5.5%  11.5% 299.8KiB melee_ft
+ 4.9%  10.2% 266.2KiB clap_builder
+ 1.5%   3.1%  82.1KiB melee_ef
+ 1.3%   2.6%  67.8KiB slp
+ 1.2%   2.5%  64.2KiB melee_mp
+ 1.1%   2.3%  59.3KiB melee_gr
+ 0.9%   1.9%  50.8KiB hsd_anim
+ 0.9%   1.9%  50.7KiB hsd_archive
+ 0.8%   1.6%  41.7KiB toml
+ 0.7%   1.4%  37.6KiB serde_json
+ 0.7%   1.4%  37.1KiB hsd_particle
+ 0.7%   1.4%  36.5KiB toml_parser
+ 0.3%   0.7%  17.6KiB serde_core
+ 0.3%   0.6%  15.4KiB melee_lb
+ 0.3%   0.6%  15.4KiB melee_diff
+ 0.3%   0.6%  14.5KiB ft_yoshi
+ 0.3%   0.5%  13.7KiB hsd_gobj
+ 0.2%   0.4%  11.3KiB melee_types
+ 0.2%   0.4%  11.1KiB melee_it
+ 0.1%   0.3%   6.9KiB anyhow
+ 0.1%   0.3%   6.6KiB ft_fox_family
+ 0.1%   0.2%   5.1KiB toml_datetime
+ 0.1%   0.2%   4.1KiB melee_cmd
+ 0.1%   0.1%   3.7KiB ft_peach
+ 0.1%   0.1%   3.2KiB it_foxlaser
+ 0.1%   0.1%   3.1KiB [Unknown]
+ 0.1%   0.1%   3.0KiB ft_purin
+ 0.1%   0.1%   2.8KiB clap_lex
+ 0.0%   0.1%   2.7KiB gekko_math
+ 0.0%   0.1%   2.5KiB melee_coll
+ 0.0%   0.1%   2.3KiB ft_mars
+ 0.0%   0.1%   2.1KiB serde
+ 0.0%   0.1%   2.1KiB ft_captain
+ 0.0%   0.1%   2.1KiB melee_if
+ 0.0%   0.1%   1.7KiB anstream
+ 0.0%   0.1%   1.6KiB anstyle
+ 0.0%   0.1%   1.4KiB strsim
+ 0.0%   0.0%   1.3KiB ft_falco
+ 0.0%   0.0%   1.3KiB ft_fox
+ 0.0%   0.0%   1.0KiB zmij
+ 0.0%   0.0%     960B itoa
+ 0.0%   0.0%     848B toml_writer
+ 0.0%   0.0%     312B winnow
+ 0.0%   0.0%     264B hsd_types
+ 0.0%   0.0%      20B __rustc
+ 0.0%   0.0%      16B colorchoice
+48.4% 100.0%   2.6MiB .text section size, the file size is 5.3MiB
+
+Note: numbers above are a result of guesswork. They are not 100% correct and never will be.
+```
+
+### melee-ft: 561 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 21966 | 1 | `melee_ft::fighter::assets::FighterAssets::load` |
+| 2411 | 1 | `melee_ft::fighter::damage::DamageParameters::read` |
+| 1682 | 1 | `melee_ft::fighter::shield::ShieldParameters::read` |
+| 1374 | 1 | `melee_ft::desc::common::CommonFighterData::read` |
+| 1231 | 1 | `melee_ft::dynamics::read_sets` |
+| 1123 | 1 | `melee_ft::input::common::InputCommonData::read` |
+| 1101 | 1 | `melee_ft::desc::playback::read_playback_motion` |
+| 1064 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::FighterCore>::prepare` |
+| 1042 | 1 | `melee_ft::desc::bones::read_fighter_bones` |
+| 950 | 1 | `melee_ft::fighter::commands::CommandState::step_inner` |
+| 929 | 1 | `melee_ft::desc::fox_attributes::FireFoxAttributes::read` |
+| 885 | 1 | `melee_ft::desc::attributes::FighterAttributes::read` |
+| 844 | 1 | `melee_ft::dynamics::read_motion_starts` |
+| 760 | 1 | `melee_ft::anim::attach::select_motion` |
+| 695 | 1 | `melee_ft::fighter::smash::read_overlay` |
+| 682 | 1 | `melee_ft::anim::playback::FighterAnimation::resume_dynamic_subtree` |
+| 659 | 1 | `melee_ft::desc::fox_attributes::IllusionAttributes::read` |
+| 640 | 1 | `melee_ft::desc::bones::read_ground_pose` |
+| 603 | 1 | `melee_ft::desc::bones::EcbBones::read` |
+| 577 | 1 | `melee_ft::desc::fox_attributes::BlasterAttributes::read` |
+
+### melee-sim: 2112 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 8673 | 49 | `melee_ft::fighter::grab::capture_pair` |
+| 8036 | 49 | `melee_ft::fighter::grab_throw::enter_back_throw` |
+| 3087 | 49 | `melee_ft::fighter::damage::detect_hit` |
+| 2548 | 49 | `melee_ft::fighter::grab_throw::release_back_throw` |
+| 2450 | 7 | `melee_ft::fighter::shield::<impl melee_ft::fighter::Fighter<C>>::enter_shield` |
+| 2422 | 7 | `melee_ft::fighter::ledge::<impl melee_ft::fighter::Fighter<C>>::ledge_input` |
+| 2310 | 7 | `melee_ft::fighter::shield::<impl melee_ft::fighter::Fighter<C>>::shield_input` |
+| 2198 | 7 | `melee_ft::fighter::walk::<impl melee_ft::fighter::Fighter<C>>::walk_input` |
+| 2191 | 7 | `melee_ft::fighter::turn::<impl melee_ft::fighter::Fighter<C>>::turn_input` |
+| 2135 | 7 | `melee_ft::fighter::attack::<impl melee_ft::fighter::Fighter<C>>::jab_input` |
+| 2114 | 7 | `melee_ft::fighter::ledge::<impl melee_ft::fighter::Fighter<C>>::ledge_animation` |
+| 2107 | 7 | `melee_ft::fighter::squat::<impl melee_ft::fighter::Fighter<C>>::squat_input` |
+| 1988 | 7 | `melee_ft::fighter::damage::<impl melee_ft::fighter::Fighter<C>>::damage_collision` |
+| 1764 | 7 | `melee_ft::fighter::ledge::<impl melee_ft::fighter::Fighter<C>>::enter_cliff_catch` |
+| 1715 | 7 | `melee_ft::fighter::attack::<impl melee_ft::fighter::Fighter<C>>::enter_ground_attack` |
+| 1680 | 7 | `melee_ft::fighter::damage::<impl melee_ft::fighter::Fighter<C>>::damage_animation` |
+| 1680 | 7 | `melee_ft::fighter::dash::<impl melee_ft::fighter::Fighter<C>>::dash_input` |
+| 1666 | 7 | `melee_ft::fighter::ledge::<impl melee_ft::fighter::Fighter<C>>::ledge_collision` |
+| 1652 | 7 | `melee_ft::fighter::damage::<impl melee_ft::fighter::Fighter<C>>::process_damage` |
+| 1652 | 7 | `melee_ft::fighter::multi_jump::<impl melee_ft::fighter::Fighter<C>>::enter_multi_jump` |
+
+### ft-captain: 2 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 83 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 65 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+
+### ft-falco: 22 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 152 | 1 | `melee_ft::fighter::state::callbacks::collision::finish_ground` |
+| 130 | 1 | `melee_ft::fighter::state::callbacks::collision::air_catch_hit` |
+| 112 | 1 | `melee_ft::fighter::state::row::<impl melee_ft::fighter::Fighter<C>>::row` |
+| 107 | 1 | `melee_ft::fighter::fall::<impl melee_ft::fighter::Fighter<C>>::enter_special_fall` |
+| 79 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 72 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::Fighter<C>>::change_motion_state_with_options` |
+| 67 | 1 | `melee_ft::fighter::landing::<impl melee_ft::fighter::Fighter<C>>::enter_landing` |
+| 55 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 50 | 1 | `melee_ft::fighter::state::callbacks::collision::ground_action` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 8 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::camera::follow_fighter` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::physics::guard_on` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::physics::pass` |
+| 1 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::descriptor` |
+| 1 | 1 | `melee_ft::fighter::CharacterCallbacks::action_id` |
+
+### ft-fox: 22 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 152 | 1 | `melee_ft::fighter::state::callbacks::collision::finish_ground` |
+| 130 | 1 | `melee_ft::fighter::state::callbacks::collision::air_catch_hit` |
+| 112 | 1 | `melee_ft::fighter::state::row::<impl melee_ft::fighter::Fighter<C>>::row` |
+| 107 | 1 | `melee_ft::fighter::fall::<impl melee_ft::fighter::Fighter<C>>::enter_special_fall` |
+| 79 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 72 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::Fighter<C>>::change_motion_state_with_options` |
+| 67 | 1 | `melee_ft::fighter::landing::<impl melee_ft::fighter::Fighter<C>>::enter_landing` |
+| 55 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 50 | 1 | `melee_ft::fighter::state::callbacks::collision::ground_action` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 8 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::camera::follow_fighter` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::physics::guard_on` |
+| 2 | 1 | `melee_ft::fighter::state::callbacks::physics::pass` |
+| 1 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::descriptor` |
+| 1 | 1 | `melee_ft::fighter::CharacterCallbacks::action_id` |
+
+### ft-fox-family: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mario: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mars: 3 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 67 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 42 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 22 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::guard_variant` |
+
+### ft-peach: 8 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 65 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 64 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::check_float_input` |
+| 55 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 52 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 49 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_resources_loaded` |
+| 15 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+
+### ft-purin: 2 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 61 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 13 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+
+### ft-yoshi: 22 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 194 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 179 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::Fighter<C>>::enter_escape` |
+| 142 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 112 | 1 | `melee_ft::fighter::state::row::<impl melee_ft::fighter::Fighter<C>>::row` |
+| 84 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_animated` |
+| 72 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::Fighter<C>>::change_motion_state_with_options` |
+| 60 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::FighterCore>::roll_input` |
+| 54 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 49 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 40 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_entered` |
+| 28 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 18 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::action_id` |
+| 16 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::input_shield` |
+| 11 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::check_hurtbox_interaction` |
+| 9 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::animate_shield` |
+| 9 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::enter_guard_hold` |
+| 9 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::enter_guard_off` |
+| 9 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::enter_shield` |
+| 6 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::escape_variant` |
+| 2 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::escape_finished` |
+
+<!-- perf-gate-v1
+{"date": "2026-09-10T07:43:35+00:00", "metrics": {"copies": {"ft-captain": 2, "ft-falco": 22, "ft-fox": 22, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 3, "ft-peach": 8, "ft-purin": 2, "ft-yoshi": 22, "melee-ft": 561, "melee-sim": 2112}, "load_ns": 166263815.21579364, "stripped_bytes": 3916784, "text_bytes": 3489792, "ticks_600_ns": 23866916.666666664}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "82459f14972807e09a89c41d59ec2498e68ba35b", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "REGRESSION"}
+-->
+
+## 2026-09-10T08:00:06+00:00 — COMPLETE — REGRESSION
+
+Evidence: `/Users/nikhilunni/Projects/melee-lanes/combat/target/perf/20260910T075914Z-89504`. Revision `82459f14972807e09a89c41d59ec2498e68ba35b` (working tree included).
+
+rustc 1.96.0 (ac68faa20 2026-05-25); macOS-26.2-arm64-arm-64bit-Mach-O.
+
+Tolerance: time +10%, size +5%, copies +0 per compiling crate.
+Baseline: 2026-09-10T06:15:55+00:00.
+
+| Measurement | Value |
+|---|---:|
+| Stripped binary | 3,483,104 bytes |
+| Text (`size`) | 3,178,496 bytes |
+| load mean | 166.885 ms (95% CI 166.700..167.081 ms) |
+| ticks_600 mean | 23.957 ms (95% CI 23.652..24.321 ms) |
+| Headless throughput | 25,044 ticks/s |
+
+- ft-captain melee-ft copies: 66 > 2 + 0
+
+- melee-ft melee-ft copies: 846 > 535 + 0
+
+- ft-purin melee-ft copies: 66 > 2 + 0
+
+- ft-fox melee-ft copies: 67 > 2 + 0
+
+- ft-falco melee-ft copies: 67 > 2 + 0
+
+- ft-mars melee-ft copies: 66 > 3 + 0
+
+- ft-yoshi melee-ft copies: 68 > 22 + 0
+
+- ft-peach melee-ft copies: 67 > 8 + 0
+
+Tool: `0.12.1`.
+
+Tool: `cargo-llvm-lines 0.4.48`.
+
+Per-crate text contribution (cargo-bloat estimates):
+```text
+File  .text     Size Crate
+12.8%  25.9% 614.3KiB melee_sim
+ 9.8%  19.7% 467.9KiB std
+ 7.1%  14.3% 340.0KiB melee_ft
+ 5.6%  11.2% 266.1KiB clap_builder
+ 1.7%   3.5%  82.1KiB melee_ef
+ 1.4%   2.8%  67.6KiB slp
+ 1.3%   2.7%  64.2KiB melee_mp
+ 1.2%   2.5%  59.3KiB melee_gr
+ 1.1%   2.1%  50.8KiB hsd_anim
+ 1.1%   2.1%  50.7KiB hsd_archive
+ 0.9%   1.7%  41.5KiB toml
+ 0.8%   1.7%  39.3KiB hsd_particle
+ 0.8%   1.5%  36.5KiB toml_parser
+ 0.7%   1.5%  35.5KiB serde_json
+ 0.4%   0.7%  16.9KiB serde_core
+ 0.3%   0.7%  15.4KiB melee_diff
+ 0.3%   0.6%  14.6KiB melee_lb
+ 0.3%   0.6%  14.6KiB ft_yoshi
+ 0.3%   0.6%  13.5KiB hsd_gobj
+ 0.2%   0.5%  11.1KiB melee_it
+ 0.2%   0.5%  10.8KiB melee_types
+ 0.2%   0.3%   8.0KiB ft_fox_family
+ 0.1%   0.3%   6.9KiB anyhow
+ 0.1%   0.2%   5.1KiB toml_datetime
+ 0.1%   0.2%   4.1KiB melee_cmd
+ 0.1%   0.1%   3.4KiB ft_peach
+ 0.1%   0.1%   3.4KiB melee_coll
+ 0.1%   0.1%   3.2KiB [Unknown]
+ 0.1%   0.1%   3.2KiB it_foxlaser
+ 0.1%   0.1%   3.1KiB ft_purin
+ 0.1%   0.1%   2.8KiB clap_lex
+ 0.1%   0.1%   2.7KiB gekko_math
+ 0.0%   0.1%   2.3KiB ft_mars
+ 0.0%   0.1%   2.2KiB ft_captain
+ 0.0%   0.1%   2.1KiB serde
+ 0.0%   0.1%   2.1KiB melee_if
+ 0.0%   0.1%   1.7KiB anstream
+ 0.0%   0.1%   1.6KiB anstyle
+ 0.0%   0.1%   1.6KiB ft_fox
+ 0.0%   0.1%   1.6KiB ft_falco
+ 0.0%   0.1%   1.4KiB strsim
+ 0.0%   0.0%   1.0KiB zmij
+ 0.0%   0.0%     960B itoa
+ 0.0%   0.0%     848B toml_writer
+ 0.0%   0.0%     312B winnow
+ 0.0%   0.0%     264B hsd_types
+ 0.0%   0.0%      20B __rustc
+ 0.0%   0.0%      16B colorchoice
+49.6% 100.0%   2.3MiB .text section size, the file size is 4.7MiB
+
+Note: numbers above are a result of guesswork. They are not 100% correct and never will be.
+```
+
+### melee-ft: 846 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 21966 | 1 | `melee_ft::fighter::assets::FighterAssets::load` |
+| 2411 | 1 | `melee_ft::fighter::damage::DamageParameters::read` |
+| 2091 | 1 | `melee_ft::fighter::state::common_table::common_table` |
+| 1682 | 1 | `melee_ft::fighter::shield::ShieldParameters::read` |
+| 1374 | 1 | `melee_ft::desc::common::CommonFighterData::read` |
+| 1231 | 1 | `melee_ft::dynamics::read_sets` |
+| 1123 | 1 | `melee_ft::input::common::InputCommonData::read` |
+| 1101 | 1 | `melee_ft::desc::playback::read_playback_motion` |
+| 1064 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::FighterCore>::prepare` |
+| 1042 | 1 | `melee_ft::desc::bones::read_fighter_bones` |
+| 950 | 1 | `melee_ft::fighter::commands::CommandState::step_inner` |
+| 929 | 1 | `melee_ft::desc::fox_attributes::FireFoxAttributes::read` |
+| 885 | 1 | `melee_ft::desc::attributes::FighterAttributes::read` |
+| 844 | 1 | `melee_ft::dynamics::read_motion_starts` |
+| 760 | 1 | `melee_ft::anim::attach::select_motion` |
+| 695 | 1 | `melee_ft::fighter::smash::read_overlay` |
+| 682 | 1 | `melee_ft::anim::playback::FighterAnimation::resume_dynamic_subtree` |
+| 659 | 1 | `melee_ft::desc::fox_attributes::IllusionAttributes::read` |
+| 640 | 1 | `melee_ft::desc::bones::read_ground_pose` |
+| 603 | 1 | `melee_ft::desc::bones::EcbBones::read` |
+
+### melee-sim: 128 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 478 | 7 | `melee_ft::fighter::character::CharacterState::new` |
+| 282 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_main` |
+| 252 | 1 | `melee_ft::anim::root_motion::RootMotion::evaluate` |
+| 229 | 1 | `melee_ft::anim::blend::blend_rotation` |
+| 205 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::assets::FighterAssets>` |
+| 164 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_parts` |
+| 130 | 1 | `melee_ft::anim::blend::blend_pose` |
+| 110 | 1 | `melee_ft::anim::playback::animate_parts` |
+| 109 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::FighterCore>` |
+| 72 | 1 | `<melee_ft::fighter::state::FighterProc as core::fmt::Debug>::fmt` |
+| 56 | 1 | `<melee_ft::input::pad::PadSample as core::cmp::PartialEq>::eq` |
+| 54 | 1 | `<melee_ft::desc::animation::AnimationDescError as core::fmt::Debug>::fmt` |
+| 48 | 1 | `core::ptr::drop_in_place<melee_ft::desc::bones::FighterBones>` |
+| 41 | 1 | `core::ptr::drop_in_place<[core::option::Option<melee_ft::desc::bones::AnimationBoneSet>; 5]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::desc::animation::AnimationEntry]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::dynamics::DynamicSetDescriptor]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets; 2]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets]>` |
+| 38 | 1 | `core::ptr::drop_in_place<melee_ft::anim::playback::FighterAnimation>` |
+| 37 | 1 | `core::ptr::drop_in_place<melee_ft::anim::attach::MotionRemap>` |
+
+### ft-captain: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 83 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 7 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-falco: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox-family: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mario: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mars: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 67 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 42 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::guard_variant` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 5 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+
+### ft-peach: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 64 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::check_float_input` |
+| 55 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 52 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 49 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_resources_loaded` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 15 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 10 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::dynamics_first_force_bone` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+
+### ft-purin: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 61 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 4 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_attributes` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_animation` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-yoshi: 68 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 194 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 142 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 87 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_animated` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 60 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::FighterCore>::roll_input` |
+| 54 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 49 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 41 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_entered` |
+| 28 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 18 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::action_id` |
+| 17 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::input_shield` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 11 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::check_hurtbox_interaction` |
+
+<!-- perf-gate-v1
+{"date": "2026-09-10T08:00:06+00:00", "metrics": {"copies": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 846, "melee-sim": 128}, "load_ns": 166884751.40115076, "stripped_bytes": 3483104, "text_bytes": 3178496, "ticks_600_ns": 23957468.133333333}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "82459f14972807e09a89c41d59ec2498e68ba35b", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "REGRESSION"}
+-->
+
+## 2026-09-10T08:08:48+00:00 — COMPLETE — PASS
+
+Evidence: `/Users/nikhilunni/Projects/melee-lanes/combat/target/perf/20260910T080756Z-99078`. Revision `82459f14972807e09a89c41d59ec2498e68ba35b` (working tree included).
+
+rustc 1.96.0 (ac68faa20 2026-05-25); macOS-26.2-arm64-arm-64bit-Mach-O.
+
+Tolerance: time +10%, size +5%, copies +0 per compiling crate.
+Baseline: 2026-09-10T06:15:55+00:00.
+C15 fixed ceilings: 3,747,632 stripped bytes; 1,441 total copies; one definition per common label.
+
+| Measurement | Value |
+|---|---:|
+| Stripped binary | 3,483,104 bytes |
+| Text (`size`) | 3,178,496 bytes |
+| load mean | 166.867 ms (95% CI 166.540..167.301 ms) |
+| ticks_600 mean | 23.946 ms (95% CI 23.836..24.063 ms) |
+| Headless throughput | 25,056 ticks/s |
+| Total melee-ft copies | 1,440 |
+| Common definition labels audited across crates | 270 |
+
+Tool: `0.12.1`.
+
+Tool: `cargo-llvm-lines 0.4.48`.
+
+Per-crate text contribution (cargo-bloat estimates):
+```text
+File  .text     Size Crate
+12.8%  25.9% 614.3KiB melee_sim
+ 9.8%  19.7% 467.9KiB std
+ 7.1%  14.3% 340.0KiB melee_ft
+ 5.6%  11.2% 266.1KiB clap_builder
+ 1.7%   3.5%  82.1KiB melee_ef
+ 1.4%   2.8%  67.6KiB slp
+ 1.3%   2.7%  64.2KiB melee_mp
+ 1.2%   2.5%  59.3KiB melee_gr
+ 1.1%   2.1%  50.8KiB hsd_anim
+ 1.1%   2.1%  50.7KiB hsd_archive
+ 0.9%   1.7%  41.5KiB toml
+ 0.8%   1.7%  39.3KiB hsd_particle
+ 0.8%   1.5%  36.5KiB toml_parser
+ 0.7%   1.5%  35.5KiB serde_json
+ 0.4%   0.7%  16.9KiB serde_core
+ 0.3%   0.7%  15.4KiB melee_diff
+ 0.3%   0.6%  14.6KiB melee_lb
+ 0.3%   0.6%  14.6KiB ft_yoshi
+ 0.3%   0.6%  13.5KiB hsd_gobj
+ 0.2%   0.5%  11.1KiB melee_it
+ 0.2%   0.5%  10.8KiB melee_types
+ 0.2%   0.3%   8.0KiB ft_fox_family
+ 0.1%   0.3%   6.9KiB anyhow
+ 0.1%   0.2%   5.1KiB toml_datetime
+ 0.1%   0.2%   4.1KiB melee_cmd
+ 0.1%   0.1%   3.4KiB ft_peach
+ 0.1%   0.1%   3.4KiB melee_coll
+ 0.1%   0.1%   3.2KiB [Unknown]
+ 0.1%   0.1%   3.2KiB it_foxlaser
+ 0.1%   0.1%   3.1KiB ft_purin
+ 0.1%   0.1%   2.8KiB clap_lex
+ 0.1%   0.1%   2.7KiB gekko_math
+ 0.0%   0.1%   2.3KiB ft_mars
+ 0.0%   0.1%   2.2KiB ft_captain
+ 0.0%   0.1%   2.1KiB serde
+ 0.0%   0.1%   2.1KiB melee_if
+ 0.0%   0.1%   1.7KiB anstream
+ 0.0%   0.1%   1.6KiB anstyle
+ 0.0%   0.1%   1.6KiB ft_falco
+ 0.0%   0.1%   1.6KiB ft_fox
+ 0.0%   0.1%   1.4KiB strsim
+ 0.0%   0.0%   1.0KiB zmij
+ 0.0%   0.0%     960B itoa
+ 0.0%   0.0%     848B toml_writer
+ 0.0%   0.0%     312B winnow
+ 0.0%   0.0%     264B hsd_types
+ 0.0%   0.0%      20B __rustc
+ 0.0%   0.0%      16B colorchoice
+49.6% 100.0%   2.3MiB .text section size, the file size is 4.7MiB
+
+Note: numbers above are a result of guesswork. They are not 100% correct and never will be.
+```
+
+### melee-ft: 845 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 21966 | 1 | `melee_ft::fighter::assets::FighterAssets::load` |
+| 2411 | 1 | `melee_ft::fighter::damage::DamageParameters::read` |
+| 2091 | 1 | `melee_ft::fighter::state::common_table::common_table` |
+| 1682 | 1 | `melee_ft::fighter::shield::ShieldParameters::read` |
+| 1374 | 1 | `melee_ft::desc::common::CommonFighterData::read` |
+| 1231 | 1 | `melee_ft::dynamics::read_sets` |
+| 1123 | 1 | `melee_ft::input::common::InputCommonData::read` |
+| 1101 | 1 | `melee_ft::desc::playback::read_playback_motion` |
+| 1064 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::FighterCore>::prepare` |
+| 1042 | 1 | `melee_ft::desc::bones::read_fighter_bones` |
+| 950 | 1 | `melee_ft::fighter::commands::CommandState::step_inner` |
+| 929 | 1 | `melee_ft::desc::fox_attributes::FireFoxAttributes::read` |
+| 885 | 1 | `melee_ft::desc::attributes::FighterAttributes::read` |
+| 844 | 1 | `melee_ft::dynamics::read_motion_starts` |
+| 760 | 1 | `melee_ft::anim::attach::select_motion` |
+| 695 | 1 | `melee_ft::fighter::smash::read_overlay` |
+| 682 | 1 | `melee_ft::anim::playback::FighterAnimation::resume_dynamic_subtree` |
+| 659 | 1 | `melee_ft::desc::fox_attributes::IllusionAttributes::read` |
+| 640 | 1 | `melee_ft::desc::bones::read_ground_pose` |
+| 603 | 1 | `melee_ft::desc::bones::EcbBones::read` |
+
+### melee-sim: 128 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 478 | 7 | `melee_ft::fighter::character::CharacterState::new` |
+| 282 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_main` |
+| 252 | 1 | `melee_ft::anim::root_motion::RootMotion::evaluate` |
+| 229 | 1 | `melee_ft::anim::blend::blend_rotation` |
+| 205 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::assets::FighterAssets>` |
+| 164 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_parts` |
+| 130 | 1 | `melee_ft::anim::blend::blend_pose` |
+| 110 | 1 | `melee_ft::anim::playback::animate_parts` |
+| 109 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::FighterCore>` |
+| 72 | 1 | `<melee_ft::fighter::state::FighterProc as core::fmt::Debug>::fmt` |
+| 56 | 1 | `<melee_ft::input::pad::PadSample as core::cmp::PartialEq>::eq` |
+| 54 | 1 | `<melee_ft::desc::animation::AnimationDescError as core::fmt::Debug>::fmt` |
+| 48 | 1 | `core::ptr::drop_in_place<melee_ft::desc::bones::FighterBones>` |
+| 41 | 1 | `core::ptr::drop_in_place<[core::option::Option<melee_ft::desc::bones::AnimationBoneSet>; 5]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::desc::animation::AnimationEntry]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::dynamics::DynamicSetDescriptor]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets; 2]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets]>` |
+| 38 | 1 | `core::ptr::drop_in_place<melee_ft::anim::playback::FighterAnimation>` |
+| 37 | 1 | `core::ptr::drop_in_place<melee_ft::anim::attach::MotionRemap>` |
+
+### ft-captain: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 83 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 7 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-falco: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox-family: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mario: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mars: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 67 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 42 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::guard_variant` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 5 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+
+### ft-peach: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 64 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::check_float_input` |
+| 55 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 52 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 49 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_resources_loaded` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 15 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 10 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::dynamics_first_force_bone` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+
+### ft-purin: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 61 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 4 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_attributes` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_animation` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-yoshi: 68 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 194 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 142 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 87 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_animated` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 60 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::FighterCore>::roll_input` |
+| 54 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 49 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 41 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_entered` |
+| 28 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 18 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::action_id` |
+| 17 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::input_shield` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 11 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::check_hurtbox_interaction` |
+
+<!-- perf-gate-v1
+{"architecture": "concrete-shell-v1", "date": "2026-09-10T08:08:48+00:00", "metrics": {"copies": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 845, "melee-sim": 128}, "load_ns": 166867234.74603173, "stripped_bytes": 3483104, "text_bytes": 3178496, "ticks_600_ns": 23946301.4}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "82459f14972807e09a89c41d59ec2498e68ba35b", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "PASS"}
+-->
+
+## 2026-09-10T08:10:28+00:00 — COMPLETE — PASS
+
+Evidence: `/Users/nikhilunni/Projects/melee-lanes/combat/target/perf/20260910T080958Z-957`. Revision `82459f14972807e09a89c41d59ec2498e68ba35b` (working tree included).
+
+rustc 1.96.0 (ac68faa20 2026-05-25); macOS-26.2-arm64-arm-64bit-Mach-O.
+
+Tolerance: time +10%, size +5%, copies +0 per compiling crate.
+Baseline: 2026-09-10T08:08:48+00:00.
+C15 fixed ceilings: 3,747,632 stripped bytes; 1,440 total copies; one definition per common label.
+
+| Measurement | Value |
+|---|---:|
+| Stripped binary | 3,483,104 bytes |
+| Text (`size`) | 3,178,496 bytes |
+| load mean | 165.646 ms (95% CI 165.459..165.846 ms) |
+| ticks_600 mean | 23.533 ms (95% CI 23.455..23.621 ms) |
+| Headless throughput | 25,496 ticks/s |
+| Total melee-ft copies | 1,440 |
+| Common definition labels audited across crates | 270 |
+
+Tool: `0.12.1`.
+
+Tool: `cargo-llvm-lines 0.4.48`.
+
+Per-crate text contribution (cargo-bloat estimates):
+```text
+File  .text     Size Crate
+12.8%  25.9% 614.3KiB melee_sim
+ 9.8%  19.7% 467.9KiB std
+ 7.1%  14.3% 340.0KiB melee_ft
+ 5.6%  11.2% 266.1KiB clap_builder
+ 1.7%   3.5%  82.1KiB melee_ef
+ 1.4%   2.8%  67.6KiB slp
+ 1.3%   2.7%  64.2KiB melee_mp
+ 1.2%   2.5%  59.3KiB melee_gr
+ 1.1%   2.1%  50.8KiB hsd_anim
+ 1.1%   2.1%  50.7KiB hsd_archive
+ 0.9%   1.7%  41.5KiB toml
+ 0.8%   1.7%  39.3KiB hsd_particle
+ 0.8%   1.5%  36.5KiB toml_parser
+ 0.7%   1.5%  35.5KiB serde_json
+ 0.4%   0.7%  16.9KiB serde_core
+ 0.3%   0.7%  15.4KiB melee_diff
+ 0.3%   0.6%  14.6KiB melee_lb
+ 0.3%   0.6%  14.6KiB ft_yoshi
+ 0.3%   0.6%  13.5KiB hsd_gobj
+ 0.2%   0.5%  11.1KiB melee_it
+ 0.2%   0.5%  10.8KiB melee_types
+ 0.2%   0.3%   8.0KiB ft_fox_family
+ 0.1%   0.3%   6.9KiB anyhow
+ 0.1%   0.2%   5.1KiB toml_datetime
+ 0.1%   0.2%   4.1KiB melee_cmd
+ 0.1%   0.1%   3.4KiB ft_peach
+ 0.1%   0.1%   3.4KiB melee_coll
+ 0.1%   0.1%   3.2KiB it_foxlaser
+ 0.1%   0.1%   3.2KiB [Unknown]
+ 0.1%   0.1%   3.1KiB ft_purin
+ 0.1%   0.1%   2.8KiB clap_lex
+ 0.1%   0.1%   2.7KiB gekko_math
+ 0.0%   0.1%   2.3KiB ft_mars
+ 0.0%   0.1%   2.2KiB ft_captain
+ 0.0%   0.1%   2.1KiB serde
+ 0.0%   0.1%   2.1KiB melee_if
+ 0.0%   0.1%   1.7KiB anstream
+ 0.0%   0.1%   1.6KiB anstyle
+ 0.0%   0.1%   1.6KiB ft_falco
+ 0.0%   0.1%   1.6KiB ft_fox
+ 0.0%   0.1%   1.4KiB strsim
+ 0.0%   0.0%   1.0KiB zmij
+ 0.0%   0.0%     960B itoa
+ 0.0%   0.0%     848B toml_writer
+ 0.0%   0.0%     312B winnow
+ 0.0%   0.0%     264B hsd_types
+ 0.0%   0.0%      20B __rustc
+ 0.0%   0.0%      16B colorchoice
+49.6% 100.0%   2.3MiB .text section size, the file size is 4.7MiB
+
+Note: numbers above are a result of guesswork. They are not 100% correct and never will be.
+```
+
+### melee-ft: 845 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 21966 | 1 | `melee_ft::fighter::assets::FighterAssets::load` |
+| 2411 | 1 | `melee_ft::fighter::damage::DamageParameters::read` |
+| 2091 | 1 | `melee_ft::fighter::state::common_table::common_table` |
+| 1682 | 1 | `melee_ft::fighter::shield::ShieldParameters::read` |
+| 1374 | 1 | `melee_ft::desc::common::CommonFighterData::read` |
+| 1231 | 1 | `melee_ft::dynamics::read_sets` |
+| 1123 | 1 | `melee_ft::input::common::InputCommonData::read` |
+| 1101 | 1 | `melee_ft::desc::playback::read_playback_motion` |
+| 1064 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::FighterCore>::prepare` |
+| 1042 | 1 | `melee_ft::desc::bones::read_fighter_bones` |
+| 950 | 1 | `melee_ft::fighter::commands::CommandState::step_inner` |
+| 929 | 1 | `melee_ft::desc::fox_attributes::FireFoxAttributes::read` |
+| 885 | 1 | `melee_ft::desc::attributes::FighterAttributes::read` |
+| 844 | 1 | `melee_ft::dynamics::read_motion_starts` |
+| 760 | 1 | `melee_ft::anim::attach::select_motion` |
+| 695 | 1 | `melee_ft::fighter::smash::read_overlay` |
+| 682 | 1 | `melee_ft::anim::playback::FighterAnimation::resume_dynamic_subtree` |
+| 659 | 1 | `melee_ft::desc::fox_attributes::IllusionAttributes::read` |
+| 640 | 1 | `melee_ft::desc::bones::read_ground_pose` |
+| 603 | 1 | `melee_ft::desc::bones::EcbBones::read` |
+
+### melee-sim: 128 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 478 | 7 | `melee_ft::fighter::character::CharacterState::new` |
+| 282 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_main` |
+| 252 | 1 | `melee_ft::anim::root_motion::RootMotion::evaluate` |
+| 229 | 1 | `melee_ft::anim::blend::blend_rotation` |
+| 205 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::assets::FighterAssets>` |
+| 164 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_parts` |
+| 130 | 1 | `melee_ft::anim::blend::blend_pose` |
+| 110 | 1 | `melee_ft::anim::playback::animate_parts` |
+| 109 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::FighterCore>` |
+| 72 | 1 | `<melee_ft::fighter::state::FighterProc as core::fmt::Debug>::fmt` |
+| 56 | 1 | `<melee_ft::input::pad::PadSample as core::cmp::PartialEq>::eq` |
+| 54 | 1 | `<melee_ft::desc::animation::AnimationDescError as core::fmt::Debug>::fmt` |
+| 48 | 1 | `core::ptr::drop_in_place<melee_ft::desc::bones::FighterBones>` |
+| 41 | 1 | `core::ptr::drop_in_place<[core::option::Option<melee_ft::desc::bones::AnimationBoneSet>; 5]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::desc::animation::AnimationEntry]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::dynamics::DynamicSetDescriptor]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets; 2]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets]>` |
+| 38 | 1 | `core::ptr::drop_in_place<melee_ft::anim::playback::FighterAnimation>` |
+| 37 | 1 | `core::ptr::drop_in_place<melee_ft::anim::attach::MotionRemap>` |
+
+### ft-captain: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 83 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 7 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-falco: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox-family: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mario: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mars: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 67 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 42 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::guard_variant` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 5 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+
+### ft-peach: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 64 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::check_float_input` |
+| 55 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 52 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 49 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_resources_loaded` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 15 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 10 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::dynamics_first_force_bone` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+
+### ft-purin: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 61 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 4 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_attributes` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_animation` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-yoshi: 68 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 194 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 142 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 87 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_animated` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 60 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::FighterCore>::roll_input` |
+| 54 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 49 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 41 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_entered` |
+| 28 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 18 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::action_id` |
+| 17 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::input_shield` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 11 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::check_hurtbox_interaction` |
+
+<!-- perf-gate-v1
+{"architecture": "concrete-shell-v1", "date": "2026-09-10T08:10:28+00:00", "metrics": {"copies": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 845, "melee-sim": 128}, "load_ns": 165645617.16011906, "stripped_bytes": 3483104, "text_bytes": 3178496, "ticks_600_ns": 23533140.1}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "82459f14972807e09a89c41d59ec2498e68ba35b", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "PASS"}
+-->
+
+## 2026-09-10T08:26:32+00:00 — COMPLETE — PASS
+
+Evidence: `/Users/nikhilunni/Projects/melee-lanes/combat/target/perf/20260910T082550Z-11098`. Revision `8d6e2eeb3926dd095ee24f8fb98d152172437569` (working tree included).
+
+rustc 1.96.0 (ac68faa20 2026-05-25); macOS-26.2-arm64-arm-64bit-Mach-O.
+
+Tolerance: time +10%, size +5%, copies +0 per compiling crate.
+Baseline: 2026-09-10T08:10:28+00:00.
+C15 fixed ceilings: 3,747,632 stripped bytes; 1,440 total copies; one definition per common label.
+
+| Measurement | Value |
+|---|---:|
+| Stripped binary | 3,483,104 bytes |
+| Text (`size`) | 3,178,496 bytes |
+| load mean | 168.174 ms (95% CI 167.755..168.546 ms) |
+| ticks_600 mean | 24.040 ms (95% CI 24.002..24.076 ms) |
+| Headless throughput | 24,958 ticks/s |
+| Total melee-ft copies | 1,440 |
+| Common definition labels audited across crates | 270 |
+
+Tool: `0.12.1`.
+
+Tool: `cargo-llvm-lines 0.4.48`.
+
+Per-crate text contribution (cargo-bloat estimates):
+```text
+File  .text     Size Crate
+12.8%  25.9% 614.3KiB melee_sim
+ 9.8%  19.7% 467.9KiB std
+ 7.1%  14.3% 340.0KiB melee_ft
+ 5.6%  11.2% 266.1KiB clap_builder
+ 1.7%   3.5%  82.1KiB melee_ef
+ 1.4%   2.8%  67.6KiB slp
+ 1.3%   2.7%  64.2KiB melee_mp
+ 1.2%   2.5%  59.3KiB melee_gr
+ 1.1%   2.1%  50.8KiB hsd_anim
+ 1.1%   2.1%  50.7KiB hsd_archive
+ 0.9%   1.7%  41.5KiB toml
+ 0.8%   1.7%  39.3KiB hsd_particle
+ 0.8%   1.5%  36.5KiB toml_parser
+ 0.7%   1.5%  35.5KiB serde_json
+ 0.4%   0.7%  16.9KiB serde_core
+ 0.3%   0.7%  15.4KiB melee_diff
+ 0.3%   0.6%  14.6KiB melee_lb
+ 0.3%   0.6%  14.6KiB ft_yoshi
+ 0.3%   0.6%  13.5KiB hsd_gobj
+ 0.2%   0.5%  11.1KiB melee_it
+ 0.2%   0.5%  10.8KiB melee_types
+ 0.2%   0.3%   8.0KiB ft_fox_family
+ 0.1%   0.3%   6.9KiB anyhow
+ 0.1%   0.2%   5.1KiB toml_datetime
+ 0.1%   0.2%   4.1KiB melee_cmd
+ 0.1%   0.1%   3.4KiB ft_peach
+ 0.1%   0.1%   3.4KiB melee_coll
+ 0.1%   0.1%   3.2KiB [Unknown]
+ 0.1%   0.1%   3.2KiB it_foxlaser
+ 0.1%   0.1%   3.1KiB ft_purin
+ 0.1%   0.1%   2.8KiB clap_lex
+ 0.1%   0.1%   2.7KiB gekko_math
+ 0.0%   0.1%   2.3KiB ft_mars
+ 0.0%   0.1%   2.2KiB ft_captain
+ 0.0%   0.1%   2.1KiB serde
+ 0.0%   0.1%   2.1KiB melee_if
+ 0.0%   0.1%   1.7KiB anstream
+ 0.0%   0.1%   1.6KiB ft_falco
+ 0.0%   0.1%   1.6KiB ft_fox
+ 0.0%   0.1%   1.6KiB anstyle
+ 0.0%   0.1%   1.4KiB strsim
+ 0.0%   0.0%   1.0KiB zmij
+ 0.0%   0.0%     960B itoa
+ 0.0%   0.0%     848B toml_writer
+ 0.0%   0.0%     312B winnow
+ 0.0%   0.0%     264B hsd_types
+ 0.0%   0.0%      20B __rustc
+ 0.0%   0.0%      16B colorchoice
+49.6% 100.0%   2.3MiB .text section size, the file size is 4.7MiB
+
+Note: numbers above are a result of guesswork. They are not 100% correct and never will be.
+```
+
+### melee-ft: 845 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 21966 | 1 | `melee_ft::fighter::assets::FighterAssets::load` |
+| 2411 | 1 | `melee_ft::fighter::damage::DamageParameters::read` |
+| 2091 | 1 | `melee_ft::fighter::state::common_table::common_table` |
+| 1682 | 1 | `melee_ft::fighter::shield::ShieldParameters::read` |
+| 1374 | 1 | `melee_ft::desc::common::CommonFighterData::read` |
+| 1231 | 1 | `melee_ft::dynamics::read_sets` |
+| 1123 | 1 | `melee_ft::input::common::InputCommonData::read` |
+| 1101 | 1 | `melee_ft::desc::playback::read_playback_motion` |
+| 1064 | 1 | `melee_ft::fighter::spawn::<impl melee_ft::fighter::FighterCore>::prepare` |
+| 1042 | 1 | `melee_ft::desc::bones::read_fighter_bones` |
+| 950 | 1 | `melee_ft::fighter::commands::CommandState::step_inner` |
+| 929 | 1 | `melee_ft::desc::fox_attributes::FireFoxAttributes::read` |
+| 885 | 1 | `melee_ft::desc::attributes::FighterAttributes::read` |
+| 844 | 1 | `melee_ft::dynamics::read_motion_starts` |
+| 760 | 1 | `melee_ft::anim::attach::select_motion` |
+| 695 | 1 | `melee_ft::fighter::smash::read_overlay` |
+| 682 | 1 | `melee_ft::anim::playback::FighterAnimation::resume_dynamic_subtree` |
+| 659 | 1 | `melee_ft::desc::fox_attributes::IllusionAttributes::read` |
+| 640 | 1 | `melee_ft::desc::bones::read_ground_pose` |
+| 603 | 1 | `melee_ft::desc::bones::EcbBones::read` |
+
+### melee-sim: 128 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 478 | 7 | `melee_ft::fighter::character::CharacterState::new` |
+| 282 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_main` |
+| 252 | 1 | `melee_ft::anim::root_motion::RootMotion::evaluate` |
+| 229 | 1 | `melee_ft::anim::blend::blend_rotation` |
+| 205 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::assets::FighterAssets>` |
+| 164 | 1 | `melee_ft::anim::playback::FighterAnimation::advance_parts` |
+| 130 | 1 | `melee_ft::anim::blend::blend_pose` |
+| 110 | 1 | `melee_ft::anim::playback::animate_parts` |
+| 109 | 1 | `core::ptr::drop_in_place<melee_ft::fighter::FighterCore>` |
+| 72 | 1 | `<melee_ft::fighter::state::FighterProc as core::fmt::Debug>::fmt` |
+| 56 | 1 | `<melee_ft::input::pad::PadSample as core::cmp::PartialEq>::eq` |
+| 54 | 1 | `<melee_ft::desc::animation::AnimationDescError as core::fmt::Debug>::fmt` |
+| 48 | 1 | `core::ptr::drop_in_place<melee_ft::desc::bones::FighterBones>` |
+| 41 | 1 | `core::ptr::drop_in_place<[core::option::Option<melee_ft::desc::bones::AnimationBoneSet>; 5]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::desc::animation::AnimationEntry]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::dynamics::DynamicSetDescriptor]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets; 2]>` |
+| 41 | 1 | `core::ptr::drop_in_place<[melee_ft::fighter::assets::FighterAssets]>` |
+| 38 | 1 | `core::ptr::drop_in_place<melee_ft::anim::playback::FighterAnimation>` |
+| 37 | 1 | `core::ptr::drop_in_place<melee_ft::anim::attach::MotionRemap>` |
+
+### ft-captain: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 83 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 7 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `<ft_captain::init::CaptainFalcon as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-falco: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_falco::init::Falco as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 79 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 55 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 29 | 1 | `<melee_ft::fighter::state::action::SpecialSlot as core::fmt::Debug>::fmt` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 9 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_muzzle` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::accessory` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::enter_special` |
+| 2 | 1 | `<ft_fox::init::Fox as melee_ft::fighter::CharacterCallbacks>::item_owner` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+
+### ft-fox-family: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mario: 0 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+
+### ft-mars: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 67 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 42 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::guard_variant` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 5 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 3 | 1 | `<ft_mars::init::Marth as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+
+### ft-peach: 67 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 65 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 64 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::check_float_input` |
+| 55 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 54 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 52 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 49 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_resources_loaded` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 15 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 10 | 1 | `<ft_peach::init::Peach as melee_ft::fighter::CharacterCallbacks>::dynamics_first_force_bone` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::multi_jump_animation` |
+| 5 | 1 | `melee_ft::fighter::CharacterCallbacks::on_costume_loaded` |
+
+### ft-purin: 66 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 61 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 19 | 1 | `melee_ft::fighter::CharacterCallbacks::escape_variant` |
+| 13 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 4 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_attributes` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::multi_jump_animation` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 3 | 1 | `<ft_purin::init::Jigglypuff as melee_ft::fighter::CharacterCallbacks>::on_reset` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::animate_shield` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_hold` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_guard_off` |
+| 2 | 1 | `melee_ft::fighter::CharacterCallbacks::enter_shield` |
+
+### ft-yoshi: 68 melee-ft copies
+
+| IR lines | Copies | Function (top 20 by IR lines) |
+|---:|---:|---|
+| 194 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::from_archive` |
+| 142 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_costume_loaded` |
+| 87 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_animated` |
+| 76 | 24 | `melee_ft::fighter::character::CharacterTable::new::{{closure}}` |
+| 60 | 1 | `melee_ft::fighter::escape::<impl melee_ft::fighter::FighterCore>::roll_input` |
+| 54 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved::{{closure}}` |
+| 49 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::on_load` |
+| 41 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::aerial_jump_entered` |
+| 28 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::restore_saved` |
+| 28 | 1 | `melee_ft::fighter::CharacterCallbacks::item_owner` |
+| 22 | 1 | `melee_ft::fighter::character::CharacterState::get` |
+| 21 | 1 | `melee_ft::fighter::character::CharacterState::get_mut` |
+| 18 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::action_id` |
+| 17 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::input_shield` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::air_dodge_tether` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::jab_variant` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::on_landing` |
+| 13 | 1 | `melee_ft::fighter::CharacterCallbacks::throw_variant` |
+| 12 | 1 | `melee_ft::fighter::CharacterCallbacks::forward_smash_variant` |
+| 11 | 1 | `<ft_yoshi::init::Yoshi as melee_ft::fighter::CharacterCallbacks>::check_hurtbox_interaction` |
+
+<!-- perf-gate-v1
+{"architecture": "concrete-shell-v1", "date": "2026-09-10T08:26:32+00:00", "metrics": {"copies": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 845, "melee-sim": 128}, "load_ns": 168173850.23817462, "stripped_bytes": 3483104, "text_bytes": 3178496, "ticks_600_ns": 24040444.5}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "8d6e2eeb3926dd095ee24f8fb98d152172437569", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "PASS"}
 -->

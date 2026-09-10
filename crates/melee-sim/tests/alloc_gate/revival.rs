@@ -57,7 +57,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
         hsd_archive::desc::read_public_jobj(costume, archive.descriptor.costumes[0].joint_symbol)
             .unwrap();
     let (tree, root) = hsd_anim::load::load_joint_tree(costume, &descriptor).unwrap();
-    let mut fighter = Fighter::prepare(player, character, resources, tree, root, &map);
+    let mut fighter = Fighter::prepare(player, character.into_state(), resources, tree, root, &map);
     let mut counter = SpawnCounter(1);
     let owners = owner_addresses(&fighter);
     let mut expected = None;
@@ -102,7 +102,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
     }
 }
 
-fn owner_addresses<C: CharacterCallbacks>(fighter: &Fighter<C>) -> [usize; 8] {
+fn owner_addresses(fighter: &Fighter) -> [usize; 8] {
     [
         fighter.skeleton.get(fighter.animation.root) as *const _ as usize,
         fighter.animation.blend_tree.get(fighter.animation.root) as *const _ as usize,

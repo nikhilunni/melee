@@ -1,6 +1,6 @@
 //! Multijump scratch and held-input behavior beyond the 49-key scene schema.
 use super::*;
-use crate::{scenario::Scenario, scene_fighter::SceneFighter};
+use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
 use std::{fs, path::Path};
 
@@ -35,9 +35,8 @@ fn puff_multijump_turn_and_input_age_match_retail_scratch() {
                 |offset: usize| u32::from_str_radix(&raw[offset * 2..offset * 2 + 8], 16).unwrap();
             simulation.tick().unwrap();
             let runtime = &simulation.runtime;
-            let SceneFighter::Jigglypuff(fighter) = &runtime.state.fighters[0] else {
-                panic!("Puff slot")
-            };
+            let fighter = &runtime.state.fighters[0];
+            let _ = fighter.character.get::<ft_purin::init::Jigglypuff>();
             if let MotionData::MultiJump(jump) = &fighter.state_data {
                 assert_eq!(
                     jump.turn_remaining as u32,
@@ -74,15 +73,14 @@ fn puff_held_jump_visits_all_five_states_then_exhausts_air_jumps() {
         return;
     };
     let mut initial = InitialState::from_savestate_traces(&scenario).unwrap();
-    let SceneFighter::Jigglypuff(fighter) = &mut initial.fighters[0] else {
-        panic!("Puff slot")
-    };
+    let fighter = &mut initial.fighters[0];
+    let _ = fighter.character.get::<ft_purin::init::Jigglypuff>();
     let assets = &initial.assets.fighters[0];
     // Isolate Anim/IASA while airborne: the retail scenarios gate physics and
     // collision. Hold X continuously after the first backward aerial jump.
     fighter.leave_ground();
     fighter
-        .change_motion_state(CommonMotionState::Fall, assets)
+        .change_motion_state(CommonMotionState::Fall.into(), assets)
         .unwrap();
     let held = PadSample {
         buttons: Buttons::X,

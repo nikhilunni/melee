@@ -8,7 +8,7 @@ use crate::{
 use gekko_math::rng::HsdRng;
 use melee_mp::CollMap;
 
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// Fighter_8006A360 (0x8006A360), s_link 1, fighter.c:1444-1701.
     /// Main playback precedes Wait_Anim and its immediate animation restart.
     pub fn proc_anim(

@@ -1,7 +1,7 @@
 //! Crouch entry, hold and release: ftCo_Squat.c / SquatWait.c / SquatRv.c.
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::input::{WaitContext, WaitPredicate as P, WaitTransition as T};
 use melee_types::{mp::line_flag, CommonMotionState};
@@ -12,10 +12,10 @@ pub struct SquatState {
     pub platform_drop_pending: bool,
     pub platform_drop_timer: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// ftCo_Squat_Enter (0x800D600C): immediate step, clear pass, show nametag.
     pub(super) fn enter_squat(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.change_motion_state(CommonMotionState::Squat, assets)?;
+        self.change_motion_state(CommonMotionState::Squat.into(), assets)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::Squat(SquatState::default());
         self.core.status.name_tag_timer = assets.name_tag_duration;
@@ -27,11 +27,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
     pub(super) fn squat_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(
-                if self.core.motion_state.id == CommonMotionState::Squat {
+                (if self.core.motion_state.id == CommonMotionState::Squat {
                     CommonMotionState::SquatWait
                 } else {
                     CommonMotionState::Wait
-                },
+                })
+                .into(),
                 assets,
             )?;
         }
@@ -117,7 +118,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
             if self.core.input.current.stick.y > -assets.movement.squat_release_threshold {
                 // ftCo_SquatRv_CheckInput/Enter (0x800D65D8/0x800D6620).
-                self.change_motion_state(CommonMotionState::SquatRv, assets)?;
+                self.change_motion_state(CommonMotionState::SquatRv.into(), assets)?;
             }
         }
         Ok(())

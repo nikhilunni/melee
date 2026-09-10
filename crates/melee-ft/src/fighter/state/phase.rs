@@ -36,8 +36,8 @@ pub struct CameraPhase<'a> {
     pub zoom: f32,
 }
 
-pub type AnimFn<C> = fn(&mut Fighter<C>, AnimationPhase<'_>) -> Result<Option<WaitChoice>>;
-pub type InputFn<C> = fn(&mut Fighter<C>, InputPhase<'_>);
-pub type PhysicsFn<C> = fn(&mut Fighter<C>, PhysicsPhase<'_>);
-pub type CollisionFn<C> = fn(&mut Fighter<C>, CollisionPhase<'_>) -> Result<()>;
-pub type CameraFn<C> = fn(&mut Fighter<C>, CameraPhase<'_>);
+pub type AnimFn = fn(&mut Fighter, AnimationPhase<'_>) -> Result<Option<WaitChoice>>;
+pub type InputFn = fn(&mut Fighter, InputPhase<'_>);
+pub type PhysicsFn = fn(&mut Fighter, PhysicsPhase<'_>);
+pub type CollisionFn = fn(&mut Fighter, CollisionPhase<'_>) -> Result<()>;
+pub type CameraFn = fn(&mut Fighter, CameraPhase<'_>);

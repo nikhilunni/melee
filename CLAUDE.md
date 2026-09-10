@@ -170,8 +170,10 @@ abstractions and clean organization.
 - Named constants with a one-line comment for every magic number whose
   meaning is known (`const LEDGE_GRAB_COOLDOWN_FRAMES: u32 = 30;`). Unknown
   ones get a `// TODO(meaning)` comment, not a bare literal.
-- Per-character state is an enum over per-character structs, never a
-  union or a bag of `f32`s.
+- Per-character state stays typed. `CharacterState` owns a fixed-size aligned
+  inline payload with checked typed accessors; the private store validates size,
+  alignment and table/type identity at construction and drops its value once.
+  Character callbacks borrow their own struct, never a union or a bag of `f32`s.
 - Exactness constraints are expressed in types and helpers
   (`fmadds`, `f64` promotion sites, `fctiwz`) so the reader sees *why* an
   odd operation order exists. Add a short comment when the order matters.
@@ -179,39 +181,48 @@ abstractions and clean organization.
   `tests/data/`, and prefer a table of cases to a wall of asserts.
 - When a clean abstraction would change floating-point operation order or
   width, exactness wins; say so in a comment.
-- **Character differences go through the `CharacterCallbacks` trait, never
+- **Character differences go through the static `CharacterTable`, never
   a `match kind` in shared code.** Retail's ftCommon states are shared by
   every character and branch on `fp->kind` in ~170 places (Yoshi's shield,
   Ness/Peach/Mewtwo/Yoshi double jumps, Samus/Yoshi rolls, walljumpers).
-  Each such branch becomes a trait method with a default implementation in
+  Each such branch becomes a `CharacterCallbacks` authoring hook with a default in
   `melee-ft` (e.g. `aerial_jump_variant()`, `shield_shape()`), overridden in
   the character's `ft-<char>` crate. Numeric differences stay in the attribute
-  data. Special moves are per-character modules reached through the trait.
+  data. `CharacterTable::new::<C>()` binds those hooks once in the character
+  crate; shared gameplay calls its fn pointers. Special moves are per-character
+  modules reached through that static table.
   A branch the current scenarios never take may stay an explicit
   `unimplemented!` with the C line, but when it is ported it becomes a hook.
-- **Motion states are tables, not matches.** A state is a `MotionRow<C>`
-  (anim id, flags, move id, five `fn(&mut Fighter<C>)` callbacks), exactly
-  retail's `MotionState`. The common table lives in `melee-ft`; a character
-  adds rows through `CharacterCallbacks::special_rows()` and enters them
-  from the `enter_special` hook. Dispatch is a table lookup; never a
-  `match` on the state or the kind to pick a callback.
+- **Motion states are tables, not matches.** A state is a concrete `MotionRow`
+  (anim id, scalar state metadata and five phase-specific `fn(&mut Fighter, ...)`
+  callbacks). One `state::COMMON` static lives in `melee-ft`; a character adds
+  concrete rows through `CharacterCallbacks::SPECIAL_ROWS` and enters them
+  from the table's `enter_special` hook. The installed live row owns dispatch
+  until the next transition; phases never re-look up callbacks. Motion entry
+  looks up a row; never use a `match` on state or kind to pick a callback.
 - **Kinds that share retail code share a family crate.** Fox and Falco
   (retail `ftFx_`), Marth and Roy, Mario and Dr. Mario, Pikachu and Pichu,
   Link and Young Link: the shared states live in `ft-<family>` as functions
   generic over a small family trait (item kinds, sound ids, attribute
   accessor, typed per-move scratch); each character crate implements the
-  trait and instantiates the table. Character crates never depend on each
-  other. Retail's `switch (kind)` inside the family code becomes a trait
+  trait and builds its special rows with `rows::<C>()`. Family callbacks accept
+  concrete `Fighter`; only member constants and typed scratch access stay generic.
+  Character crates never depend on each other. Retail's `switch (kind)` inside the family code becomes a trait
   constant or method.
 - **Per-move scratch is typed.** Retail's `fp->mv` union becomes a named
   struct in the character payload (`Fox { laser: SpecialNeutral, .. }`),
   visible only to that character's callbacks.
-- **Concrete core, thin generic shell.** Code that never calls a character
-  hook (physics, environment collision, animation player, subaction
-  interpreter, hitboxes) takes the non-generic fighter core, not
-  `Fighter<C>`. Only hook-calling code is generic. Monomorphization is the
-  one real cost of the trait design; keep the generic surface thin and
-  measure it (`cargo llvm-lines`, budget in `docs/PERF.md`).
+- **Concrete core and concrete shell, static character tables.** Hook-free
+  calculations take `FighterCore`. Shared motion behavior and pair helpers take
+  concrete `Fighter`, so they compile once across the roster. A new character
+  adds one `static TABLE: CharacterTable = CharacterTable::new::<Character>()`,
+  its typed data and special rows; `CharacterCallbacks::table()` returns that
+  static. It never instantiates the common shell. Construction converts the
+  payload with `into_state()`. Character/family callbacks use checked
+  `fighter.character.get::<C>()` / `get_mut::<C>()`, ending the scratch borrow
+  before calling a state transition. Motion entry takes concrete `ActionId`
+  (`state.into()` at callers). Measure per-crate and aggregate emitted copies
+  with `cargo llvm-lines`; `tools/perf-gate.sh` enforces `docs/PERF.md` budgets.
 
 ## Build-speed rules
 
@@ -234,8 +245,9 @@ keep it that way. Design notes and code sketches: `docs/STEEL_THREAD.md`.
 
 - Static dispatch only in the tick path: generics, associated consts and
   fn-pointer tables. No `dyn`, no `Box`, no `Rc<RefCell<..>>` per tick.
-  Heterogeneous runtime kinds (items, scene fighters) are an enum built by
-  one macro (`scene_characters!` is the model), not trait objects.
+  Heterogeneous items use static tables. Scene fighters have one concrete type
+  with a static character table; `scene_characters!` lists construction choices.
+  Neither gameplay path uses trait objects.
 - No heap allocation after initialization. Retail used fixed pools for
   items, effects and particles; so do we (`[T; N]`, fixed-capacity vectors).
   An allocation-count test asserts zero allocations per tick on a 600-tick

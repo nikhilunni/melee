@@ -2,7 +2,7 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    CharacterCallbacks, Fighter, MotionData,
+    Fighter, MotionData,
 };
 use crate::{
     input::{WaitContext, WaitPredicate as P},
@@ -24,10 +24,10 @@ pub struct RunBrakeState {
     /// mv.co.runbrake.frames (+2344): maximum remaining skid duration.
     pub remaining_frames: f32,
 }
-impl<C: CharacterCallbacks> Fighter<C> {
+impl Fighter {
     /// fn_800CA5F0 / ftCo_Run_Enter / ftCo_Run_Enter_Full (0x800CA5F0/800CA6F4/800CA71C).
     pub(super) fn enter_run(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.change_motion_state(CommonMotionState::Run, assets)?;
+        self.change_motion_state(CommonMotionState::Run.into(), assets)?;
         self.core.state_data = MotionData::Run(RunState {
             interrupt_delay: 0.0,
             slippery_animation_velocity: self.core.physics.ground_velocity,
@@ -79,7 +79,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
     fn enter_run_brake(&mut self, assets: &FighterAssets) -> Result<()> {
         self.core.commands.variables[0] = 0;
         self.core.commands.variables[1] = 0;
-        self.change_motion_state(CommonMotionState::RunBrake, assets)?;
+        self.change_motion_state(CommonMotionState::RunBrake.into(), assets)?;
         self.core.state_data = MotionData::RunBrake(RunBrakeState {
             animation_paused: false,
             remaining_frames: self.core.attributes.running.max_run_brake_frames,
@@ -113,7 +113,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if !(self.core.animation.frames_remaining(&self.core.skeleton)
             && brake.remaining_frames != 0.0)
         {
-            self.change_motion_state(CommonMotionState::Wait, assets)?;
+            self.change_motion_state(CommonMotionState::Wait.into(), assets)?;
         }
         Ok(())
     }
