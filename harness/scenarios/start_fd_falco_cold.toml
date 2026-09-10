@@ -3,7 +3,7 @@
 name = "start_fd_falco_cold"
 expected = "start_fd_falco"
 frames = 600
-seed = 0x32577A78
+seed = 0xE5909640
 stage = "FinalDestination"
 all_characters_unlocked = true
 inputs = []

@@ -3,7 +3,7 @@
 name = "start_ys_fox_cold"
 expected = "start_ys_fox"
 frames = 600
-seed = 968630801
+seed = 0x7EAF4473
 stage = "YoshisStory"
 all_characters_unlocked = true
 inputs = []

@@ -3,7 +3,7 @@
 name = "start_dl_fox_cold"
 expected = "start_dl_fox"
 frames = 600
-seed = 3759750154
+seed = 0x335EB253
 stage = "DreamLand"
 all_characters_unlocked = true
 inputs = []

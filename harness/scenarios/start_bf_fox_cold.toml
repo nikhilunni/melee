@@ -3,7 +3,7 @@
 name = "start_bf_fox_cold"
 expected = "start_bf_fox"
 frames = 600
-seed = 0x8AAA75D2
+seed = 0xFEDEF340
 stage = "Battlefield"
 all_characters_unlocked = true
 inputs = []

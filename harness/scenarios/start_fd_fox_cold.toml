@@ -3,9 +3,9 @@
 name = "start_fd_fox_cold"
 expected = "start_fd_fox"
 frames = 600
-seed = 0xCC51A0A5
+seed = 0x005B00E6
 stage = "FinalDestination"
-all_characters_unlocked = false
+all_characters_unlocked = true
 inputs = []
 
 [[fighters]]

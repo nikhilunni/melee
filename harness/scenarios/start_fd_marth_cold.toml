@@ -3,7 +3,7 @@
 name = "start_fd_marth_cold"
 expected = "start_fd_marth"
 frames = 600
-seed = 0x64080096
+seed = 0x33984782
 stage = "FinalDestination"
 all_characters_unlocked = true
 inputs = []
