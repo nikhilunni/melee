@@ -106,3 +106,23 @@ pub fn enter_special<C: FoxFamily>(
         melee_ft::fighter::SpecialSlot::Down => special_lw::enter::<C>(f, airborne, assets),
     }
 }
+
+/// ftFox_Init_MotionStateTable's FtMoveId values, shared with Falco.
+pub const fn special_moves() -> [Option<melee_ft::fighter::attack::stale::GroundMove>; 29] {
+    use melee_ft::fighter::attack::stale::GroundMove as M;
+    let mut moves = [None; 29];
+    let mut i = 0;
+    while i < 29 {
+        moves[i] = Some(if i < 6 {
+            M::SpecialNeutral
+        } else if i < 12 {
+            M::SpecialSide
+        } else if i < 19 {
+            M::SpecialUp
+        } else {
+            M::SpecialDown
+        });
+        i += 1;
+    }
+    moves
+}

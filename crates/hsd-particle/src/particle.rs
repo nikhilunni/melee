@@ -721,6 +721,10 @@ fn force_toward_joint(
 #[cfg(test)]
 mod point_force_tests {
     use super::force_toward_joint;
+    /// Provenance: particle.c:1635 case 0xB8, calling
+    /// hsd_803991D8 at 803991D8. The instruction is reached by Reflector's
+    /// effect particles at tick 37; the scene replay covers the unbound slot.
+    /// Distances here exercise the helper's exact <= boundary and 1/r^2 force.
     #[test]
     fn proximity_kills_before_acceleration_and_absent_joint_does_nothing() {
         let mut velocity = [1.0, 2.0, 3.0];

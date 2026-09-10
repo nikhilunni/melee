@@ -19,6 +19,10 @@ pub enum GroundMove {
     BackAir,
     UpAir,
     DownAir,
+    SpecialNeutral,
+    SpecialSide,
+    SpecialUp,
+    SpecialDown,
 }
 const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     let mut rows = [None; super::super::COMMON_COUNT];
@@ -58,6 +62,9 @@ pub struct StaleHistory {
     recorded: bool,
 }
 impl StaleHistory {
+    pub fn current_move(&self) -> Option<GroundMove> {
+        self.current
+    }
     /// ft_800890D0: a different move (or leaving attacks) starts a new instance.
     pub fn enter(&mut self, current: Option<GroundMove>) {
         if current.is_none() || current != self.current {

@@ -215,4 +215,5 @@ pub trait EffectOwner {
     fn effect_queue(&mut self) -> &mut EffectQueue;
     fn effect_matrix(&mut self, bone: Option<usize>) -> Mtx;
     fn effect_facing(&self) -> f32;
+    fn effect_scale(&self) -> hsd_types::Vec3;
 }

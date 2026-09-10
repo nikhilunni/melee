@@ -265,18 +265,18 @@ fn utilt_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("utilt_fd_fox");
 }
 
-// S3: full aerial Illusion and the grounded common-pose boundary.
+// S3: both Illusion scenes, including item keys and particle order.
 #[test]
-fn illusion_fd_fox_first_125_ticks_with_items_and_particle_order() {
-    special_gate_prefix("illusion_fd_fox", 125);
+fn illusion_fd_fox_300_ticks_with_items_and_particle_order() {
+    special_gate("illusion_fd_fox");
 }
 
 #[test]
 fn airillusion_fd_fox_300_ticks_with_items_and_particle_order() {
-    special_gate_prefix("airillusion_fd_fox", 300);
+    special_gate("airillusion_fd_fox");
 }
 
-fn special_gate_prefix(name: &str, ticks: usize) {
+fn special_gate(name: &str) {
     use melee_diff::{first_divergence, read_trace};
     use std::io::BufReader;
     let scenario = Scenario::load(
@@ -308,7 +308,6 @@ fn special_gate_prefix(name: &str, ticks: usize) {
         .iter()
         .zip(raw.lines())
         .zip(ledger.lines())
-        .take(ticks)
         .enumerate()
     {
         let actual = simulation.tick().unwrap();
@@ -510,7 +509,6 @@ fn cc_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
 }
 
 #[test]
-#[ignore = "blocked on S3 part 2: Marth SpecialHi (Dolphin Slash) entry at tick 119; un-ignore when it lands"]
 fn tumbledi_dolphinslash_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("tumbledi_dolphinslash_fd_marth");
 }
@@ -558,13 +556,13 @@ fn reflectorjc_fd_fox_300_ticks_and_ordered_particle_draws() {
 
 // S3 boundary: damage.rs combo recording needs character special move IDs.
 #[test]
-fn dolphinslash_fd_marth_first_123_ticks_before_special_combo_recording() {
-    special_gate_prefix("dolphinslash_fd_marth", 123);
+fn dolphinslash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    special_gate("dolphinslash_fd_marth");
 }
 
 #[test]
-fn shieldbreaker_fd_marth_prefix_before_special_combo_recording() {
-    special_gate_prefix("shieldbreaker_fd_marth", 165);
+fn shieldbreaker_fd_marth_300_ticks_and_ordered_particle_draws() {
+    special_gate("shieldbreaker_fd_marth");
 }
 
 #[test]
@@ -573,6 +571,6 @@ fn dancingblade_fd_marth_300_ticks_and_ordered_particle_draws() {
 }
 
 #[test]
-fn counter_fd_marth_first_60_ticks_before_candidate_hook_boundary() {
-    special_gate_prefix("counter_fd_marth", 60);
+fn counter_fd_marth_300_ticks_and_ordered_particle_draws() {
+    special_gate("counter_fd_marth");
 }

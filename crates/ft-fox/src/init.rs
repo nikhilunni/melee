@@ -35,6 +35,8 @@ impl CharacterCallbacks for Fox {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    const SPECIAL_MOVES: &'static [Option<melee_ft::fighter::attack::stale::GroundMove>] =
+        &ft_fox_family::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &ft_fox_family::rows::<Self>();
     fn enter_special(
         fighter: &mut melee_ft::fighter::Fighter,

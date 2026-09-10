@@ -14,6 +14,9 @@ impl EffectOwner for super::FighterCore {
         self.skeleton.setup_matrix(joint);
         self.skeleton.get(joint).mtx
     }
+    fn effect_scale(&self) -> hsd_types::Vec3 {
+        self.skeleton.scale(self.animation.root)
+    }
     fn effect_facing(&self) -> f32 {
         self.physics.facing
     }
@@ -100,10 +103,13 @@ impl super::FighterCore {
                 || id / 1000 == 30
                 || matches!(
                     id,
-                    0x3FA
+                    0x3F1
+                        | 0x3F2
+                        | 0x3FA
                         | 0x3FB
                         | 0x3FD
                         | 0x3F8
+                        | 0x3F9
                         | 0x406
                         | 0x514
                         | 0x3F3

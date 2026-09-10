@@ -204,7 +204,7 @@ fn end<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<Wa
         if f.physics.ground_or_air == GroundOrAir::Air {
             let a = &f.character.get::<C>().attributes().fire_fox;
             let (mobility, lag) = (a.freefall_mobility, a.landing_lag);
-            f.enter_special_fall(p.assets, false, true, mobility, lag)?;
+            f.enter_special_fall(p.assets, true, false, true, mobility, lag)?;
         } else {
             f.change_motion_state(CommonMotionState::Wait.into(), p.assets)?;
         }

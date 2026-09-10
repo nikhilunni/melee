@@ -81,6 +81,9 @@ impl Fighter {
             return;
         }
         self.core.status.require_supported();
+        if let Some(callback) = self.character.table().process_defense_hit {
+            callback(self, assets);
+        }
         self.process_damage(assets).expect("hit response");
         self.shield_proc(assets).expect("shield response");
         self.core.update_hurtbox_extents();
@@ -94,7 +97,7 @@ impl Fighter {
         }
         self.core.status.require_supported();
         self.core.update_dynamic_colliders();
-        self.solve_dynamics(None);
+        self.solve_dynamics(None, &[]);
     }
     /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
     pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
@@ -103,15 +106,36 @@ impl Fighter {
         }
         self.core.status.require_supported();
         self.core.update_dynamic_colliders();
-        self.solve_dynamics(Some(map));
+        self.solve_dynamics(Some(map), &[]);
     }
-    fn solve_dynamics(&mut self, mut map: Option<&mut CollMap>) {
+    pub fn proc_dynamics_with_forces(
+        &mut self,
+        map: &mut CollMap,
+        forces: &[melee_lb::dynamics::ForceField],
+    ) {
+        if self.core.status.disabled {
+            return;
+        }
+        self.core.status.require_supported();
+        self.core.update_dynamic_colliders();
+        self.solve_dynamics(Some(map), forces);
+    }
+    fn solve_dynamics(
+        &mut self,
+        mut map: Option<&mut CollMap>,
+        forces: &[melee_lb::dynamics::ForceField],
+    ) {
         let frame = self.core.dynamics_frame();
         let count = self.core.dynamics.len();
         for index in 0..count.min(self.core.dynamics_first_bone.len()) {
             let first_force_bone = self.character.dynamics_first_force_bone(index, count);
-            self.core
-                .solve_dynamic_set(index, first_force_bone, &frame, map.as_deref_mut());
+            self.core.solve_dynamic_set(
+                index,
+                first_force_bone,
+                &frame,
+                map.as_deref_mut(),
+                forces,
+            );
         }
     }
     /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:160-168: camera box first,
@@ -173,7 +197,8 @@ impl FighterCore {
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }
                         | super::MotionData::Down { .. }
-                ),
+                ) || (usize::from(self.motion_state.action.0) >= super::COMMON_COUNT
+                    && self.combat.stale.current_move().is_some()),
                 "attack requires attack state"
             ),
             _ => {}
@@ -553,11 +578,12 @@ impl FighterCore {
         first_force_bone: usize,
         frame: &DynamicsFrame,
         mut map: Option<&mut CollMap>,
+        forces: &[melee_lb::dynamics::ForceField],
     ) {
         let environment = melee_lb::dynamics::SolverEnvironment {
             disabled: false,
             colliders: &frame.colliders[..frame.collider_count],
-            forces: &[],
+            forces,
             first_force_bone,
             ground_check: frame.ground_check,
         };

@@ -59,6 +59,7 @@ pub struct Collider {
 
 /// Scene interaction field from lb_800100B0 / lb_800101C8. The scene owns
 /// allocation, lifetime and order; querying a field does not consume RNG.
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ForceField {
     pub direction_or_center: Vec3,
     pub rectangle: Option<[f32; 4]>,

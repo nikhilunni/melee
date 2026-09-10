@@ -1,18 +1,16 @@
 # S3 specials: partial port and ownership boundary
 
-S3 is **not complete**. **Part 2 stopped at the user-required existing-test
-contradiction:** `hsd-particle/tests/opcodes.rs:401` still classifies opcode
-0xB8 as unsupported; Reflector requires the retail point-joint force instruction.
-The expected value was not changed. See the final validation block below.
+S3 Part 3 is in progress. The user clarified that opcode 0xB8's old
+unsupported inventory encodes a port limitation, not a retail contradiction.
+The opcode is now supported and malformed operands remain rejected.
+Grounded Reflector's full particle replay passes after using the fighter root's
+local scale in `efLib_Create_Attach_Scale`, rather than matrix decomposition.
 
-Part 2 adds full 300-tick gates for both Fire Fox
-scenes, all three Reflector scenes, and Dancing Blade. Dolphin Slash matches
-through tick 122 and Shield Breaker through tick 164, then both reach the
-S5-owned special-move combo lookup. Counter matches through tick 59, then
-needs a mutable incoming-hit hook at tick 60. Fire Fox's full particle replay
-and zero-allocation gate pass; Counter's available prefix also allocates zero.
-Part 1's aerial Illusion remains fully gated; grounded Illusion retains the
-tick-125 common LegCorrection boundary owned by another lane.
+The rebased common damage and pose work lets grounded Illusion complete.
+Special actions now carry static stale/combo move metadata. Shield Breaker,
+Dolphin Slash, and S5's tumble-DI Dolphin Slash each pass the full release CLI
+gate. Dolphin Slash additionally required graphics 0x3F1 and the alternate
+FallSpecial gravity/capped mobility branch. Counter now also passes the full release CLI gate; full acceptance is running.
 
 ## Scene status
 
@@ -21,17 +19,17 @@ the recorded scenes; only the explicitly marked coverage is verified by this por
 
 | Scene | Recorded actor states | Target reaction | Current evidence / first boundary |
 |---|---|---|---|
-| illusion_fd_fox | 20 → 21 → 347 → 348 → 349 → 14 | 80 at 87 → 42 at 110 → 14 at 140 | Ticks 0–124 exact, including item keys and particle RNG sites; tick 125 common `LegCorrection` |
+| illusion_fd_fox | 20 → 21 → 347 → 348 → 349 → 14 | 80 at 87 → 42 at 110 → 14 at 140 | Part 3 release CLI: 300 ticks, 62 keys, 0 divergences; former tick-125 pose boundary resolved |
 | airillusion_fd_fox | 24 → 25 → 350 → 351 → 352 → 43 → 14 | idle | Full 300 ticks, 62 keys; ordered particle draws and full particle replay |
 | firefox_fd_fox | 353 → 356 → 358 → 35 → 43 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release scene and particle gates pass; 299 measured ticks, zero simulate allocations |
 | airfirefox_fd_fox | 24 → 25 → 354 → 356 → 358 → 35 → 43 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release scene and ordered particle RNG gates pass |
 | reflector_fd_fox | 360 → 361 → 363 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 and descriptor unit pass |
 | reflectorjc_fd_fox | 360 → 361 → 24 → 25 → 42 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
 | airreflector_fd_fox | 24 → 25 → 365 → 366 → 363 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
-| shieldbreaker_fd_marth | 20 → 21 → 23 → 14 → 341 → 342 → 343 → 14 | 80 → 42 | Ticks 0–164 exact in debug/release; tick 165 same S5 special combo-table boundary |
+| shieldbreaker_fd_marth | 20 → 21 → 23 → 14 → 341 → 342 → 343 → 14 | 80 → 42 | Part 3 release CLI: 300 ticks, 62 keys, 0 divergences; former tick-165 metadata boundary resolved |
 | dancingblade_fd_marth | 349 → 351 → 352 → 357 → 14 | miss | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
-| dolphinslash_fd_marth | 20 → 21 → 23 → 14 → 367 → 35 → 43 | 88 → 38 → 0 | Ticks 0–122 exact in debug/release; tick 123 S5-owned damage.rs indexes common combo table with special-row None |
-| counter_fd_marth | 369 → 370 → 14 | Fox 89 → 191 → 192 | Marth special entry unimplemented; 191/192 are `DownBoundD`/`DownWaitD` in melee-types |
+| dolphinslash_fd_marth | 20 → 21 → 23 → 14 → 367 → 35 → 43 | 88 → 38 → 0 | Part 3 release CLI: 300 ticks, 62 keys, 0 divergences; metadata, launch dust and tick-178 FallSpecial gravity resolved |
+| counter_fd_marth | 369 → 370 → 14 | Fox 89 → 191 → 192 | Part 3 release CLI: 300 ticks, 62 keys, 0 divergences; trigger, flash, AttackDash reaction and DownBoundD/DownWaitD verified |
 
 The grounded prefix is an additional boundary test, not a replacement for a full
 scene gate. None of the pre-existing tests or expected values were weakened.

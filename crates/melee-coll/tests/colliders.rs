@@ -131,3 +131,18 @@ fn hitlag_reports_only_expiry_and_preserves_zero_sign_when_inactive() {
     assert_eq!(remaining.to_bits(), (-0.0f32).to_bits());
     assert_eq!(melee_coll::damage::hitlag(5, 0.5, 3.0, 30.0), 5.0);
 }
+
+/// ftcoll.c:1742-1754 / lbColl_8000ACFC: a shield-recorded victim is
+/// excluded before clank testing, even while the attack capsule stays enabled.
+#[test]
+fn recorded_defense_contact_is_excluded_from_clank_candidates() {
+    let mut boxes: [Option<HitCapsule>; 4] = Default::default();
+    hitbox::spawn(&mut boxes, 0, &descriptor(1));
+    detection::record_victim(&mut boxes, 1, 42);
+    detection::require_uncontested_hit(&boxes, 42, GroundOrAir::Ground);
+    assert!(boxes[0].as_ref().unwrap().descriptor.clank);
+    assert_eq!(
+        PairCursor::default().next(&boxes, 7, GroundOrAir::Ground),
+        Some(0)
+    );
+}

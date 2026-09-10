@@ -95,7 +95,10 @@ pub struct CommandState {
     pub texture_frames: FixedVec<(usize, f32), TEXTURE_SLOT_COUNT>,
     /// ftAction_80072E4C requests, resolved at the calling proc boundary.
     pub landing_effects: FixedVec<u16, COMMAND_REQUEST_CAPACITY>,
-    /// ftAction_800728F8 (0x800728F8): controller-output requests, no RNG.
+    /// ftAction_80073118: radial dynamics requests, no RNG.
+    pub wind_effects: FixedVec<melee_cmd::WindEffect, COMMAND_REQUEST_CAPACITY>,
+    pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, COMMAND_REQUEST_CAPACITY>,
+    /// ftAction_800728F8: controller-output requests, no RNG.
     pub rumble_requests: FixedVec<RumbleRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80072CD8 (0x80072CD8) -> ftAction_80071B50 (0x80071B50).
     /// FD default terrain has no footstep particle; audio is an output request.
@@ -297,9 +300,9 @@ impl CommandState {
                         });
                     }
                 }
-                Command::WindEffect(_) => {
+                Command::WindEffect(wind) => {
                     if !seeking {
-                        unimplemented!("ftAction_80073118 -> ftCo_8009E714: dynamic wind effect");
+                        self.wind_effects.push(*wind);
                     }
                 }
                 Command::RandomSound(sound) => {

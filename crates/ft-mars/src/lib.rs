@@ -109,3 +109,23 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; 32] {
 }
 
 fn no_input(_: &mut melee_ft::fighter::Fighter, _: melee_ft::fighter::state::InputPhase<'_>) {}
+
+/// ftMars_Init_MotionStateTable's FtMoveId values, including aerial counterparts.
+pub const fn special_moves() -> [Option<melee_ft::fighter::attack::stale::GroundMove>; 32] {
+    use melee_ft::fighter::attack::stale::GroundMove as M;
+    let mut moves = [None; 32];
+    let mut i = 0;
+    while i < 32 {
+        moves[i] = Some(if i < 8 {
+            M::SpecialNeutral
+        } else if i < 26 {
+            M::SpecialSide
+        } else if i < 28 {
+            M::SpecialUp
+        } else {
+            M::SpecialDown
+        });
+        i += 1;
+    }
+    moves
+}

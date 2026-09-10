@@ -96,6 +96,7 @@ impl Fighter {
         self.enter_special_fall(
             assets,
             true,
+            true,
             false,
             assets.air_dodge.special_fall_mobility,
             assets.air_dodge.landing_lag,
@@ -106,6 +107,7 @@ impl Fighter {
     pub fn enter_special_fall(
         &mut self,
         assets: &super::assets::FighterAssets,
+        ordinary_gravity: bool,
         force_landing_lag: bool,
         allow_interrupt: bool,
         mobility: f32,
@@ -116,7 +118,7 @@ impl Fighter {
             animation: FallState::new(FallFamily::Special),
             // retail 8009696C fmuls; no multiply-add.
             mobility: self.core.attributes.air.air_drift_max * mobility,
-            ordinary_gravity: true,
+            ordinary_gravity,
             force_landing_lag,
             allow_interrupt,
             landing_lag,
@@ -133,13 +135,33 @@ impl Fighter {
         let MotionData::FallSpecial(fall) = &self.core.state_data else {
             panic!("special fall scratch missing")
         };
-        if !fall.ordinary_gravity {
-            unimplemented!("ftCo_FallSpecial.c:126-149: special-move gravity and mobility cap");
+        if fall.ordinary_gravity {
+            self.airborne_physics(assets);
+            return;
         }
-        // 80096BAC fmuls, 80096BC8 fadds, 80096BD4 fmuls are separate;
-        // 8007D140 forwards to the same drift clamp used by ordinary air physics.
-        // Retail xC != 0 does not apply the saved mobility cap.
-        self.airborne_physics(assets);
+        let mobility = fall.mobility;
+        let previous_y = self.physics.self_velocity.y;
+        self.apply_fall_gravity(assets);
+        let core = &mut self.core;
+        let air = &core.attributes.air;
+        if !core.physics.fast_fall {
+            core.physics.self_velocity.y =
+                crate::physics::airborne::gravity(previous_y, air.gravity, air.fast_fall_velocity);
+        }
+        let x = core.input.current.stick.x;
+        let acceleration = x * air.air_drift_stick_mul
+            + if x > 0.0 {
+                air.aerial_drift_base
+            } else {
+                -air.aerial_drift_base
+            };
+        let target = (x * air.air_drift_max).clamp(-mobility, mobility);
+        core.physics.animation_velocity.x = crate::physics::airborne::drift_acceleration(
+            core.physics.self_velocity.x,
+            acceleration,
+            target,
+            air,
+        );
     }
 
     /// ftCo_80096D28 (80096D28), ftCo_FallSpecial.c:170-180.

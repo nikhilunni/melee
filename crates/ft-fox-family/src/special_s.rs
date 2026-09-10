@@ -219,7 +219,7 @@ fn end<C: FoxFamily, const AIR: bool>(
         if AIR {
             let attrs = &f.character.get::<C>().attributes().illusion;
             let (mobility, lag) = (attrs.freefall_mobility, attrs.landing_lag);
-            f.enter_special_fall(p.assets, false, true, mobility, lag)?;
+            f.enter_special_fall(p.assets, true, false, true, mobility, lag)?;
         } else {
             f.change_motion_state(CommonMotionState::Wait.into(), p.assets)?;
         }

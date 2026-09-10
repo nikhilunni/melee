@@ -25,6 +25,8 @@ pub struct CombatState {
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
     pub dealt_damage: i32,
+    /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
+    pub minimum_hitlag: f32,
     pub shield_pushback: Option<(f32, f32)>,
     /// Legacy throw-entry guard; normal attacks use the fixed stale history.
     pub has_recorded_hit: bool,
@@ -228,6 +230,11 @@ pub fn detect_hit(victim: &mut Fighter, attacker: &mut Fighter, assets: &Fighter
         victim.core.spawn_number,
         victim.core.physics.ground_or_air,
     ) {
+        if let Some(contact) = victim.character.table().defense_contact {
+            if contact(victim, attacker, assets, id) {
+                continue;
+            }
+        }
         victim.character.check_hurtbox_interaction();
         detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id);
     }
@@ -434,11 +441,14 @@ impl Fighter {
                 // ftCommon_CalcHitlag, 8007DAF8 fmuls then fctiwz.
                 hitlag = fctiwz(hitlag * assets.damage.crouch_hitlag_scale) as f32;
             }
-            self.core.combat.hitlag_remaining = hitlag;
+            self.core.combat.hitlag_remaining = hitlag
+                .max(self.core.combat.minimum_hitlag)
+                .min(assets.damage.maximum_hitlag);
             if self.core.combat.hitlag_remaining > 0.0 {
                 self.core.status.interaction = Interaction::Hitlag;
             }
         }
+        self.core.combat.minimum_hitlag = 0.0;
         Ok(())
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
@@ -792,12 +802,24 @@ fn detect_eligible_hit(
     if let Some((contact, height)) = contact {
         if !matches!(
             victim.motion_state.id,
-            S::Wait | S::Landing | S::Squat | S::SquatWait
+            S::Wait | S::Landing | S::Squat | S::SquatWait | S::AttackDash
         ) && !matches!(victim.state_data, MotionData::Damage(_))
         {
             unimplemented!("ftColl_80079AB0: crouch/other damage modifiers outside idle victim");
         }
-        melee_coll::detection::require_uncontested_hit(&victim.commands.hitboxes);
+        // ftColl_80078C70, ftcoll.c:1758-1780: both attacks must allow
+        // clanking and both fighters must be grounded. Already recorded victims
+        // are excluded by lbColl_8000ACFC before the clank traversal.
+        if desc.clank
+            && victim.physics.ground_or_air == GroundOrAir::Ground
+            && attacker.physics.ground_or_air == GroundOrAir::Ground
+        {
+            melee_coll::detection::require_uncontested_hit(
+                &victim.commands.hitboxes,
+                attacker.spawn_number,
+                attacker.physics.ground_or_air,
+            );
+        }
         if contact.overlap < assets.damage.phantom_threshold {
             unimplemented!("ftcoll.c:589-623: phantom hit");
         }
@@ -828,7 +850,7 @@ fn detect_eligible_hit(
         attacker.combat.has_recorded_hit = true;
         attacker.combat.combo.record(
             victim.spawn_number,
-            super::attack::stale::GROUND_MOVES[attacker.motion_state.id as usize],
+            attacker.combat.stale.current_move(),
             &assets.combo,
         );
         attacker.combat.stale.record();

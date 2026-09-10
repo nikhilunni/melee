@@ -312,9 +312,7 @@ impl Effects {
                 effect.scale_attachment = false;
                 if id <= 0x48A || id >= 0x4F2 {
                     // efLib_Create_Attach_Scale: the fighter root supplies uniform scale.
-                    let root_matrix = fighter.effect_matrix(None);
-                    let mut scale = Vec3::ZERO;
-                    hsd_anim::mtx::hsd_mtx_get_scale(&root_matrix, &mut scale);
+                    let mut scale = fighter.effect_scale();
                     scale.x = scale.y;
                     scale.z = scale.y;
                     effect.tree.set_scale(effect.root, &scale);
@@ -341,9 +339,18 @@ impl Effects {
                 continue;
             }
             // S3: efAlt_Spawn 0x48D -> efLib_CreateGenerator_AppSRT_SetFacingDir.
-            if let EffectRequest::SyncAttached { id: 0x48D, bone } = request {
+            if let EffectRequest::SyncAttached {
+                id: id @ (0x48D | 0x4F1),
+                bone,
+            } = request
+            {
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
-                let mut spawn = SpawnRequest::new(3, 0xBC0, 0);
+                let (bank_id, kind) = if id == 0x48D {
+                    (3, 0xBC0)
+                } else {
+                    (16, 0x3E80)
+                };
+                let mut spawn = SpawnRequest::new(bank_id, kind, 0);
                 spawn.joint = Some((joint_id, fighter.effect_matrix(Some(bone))));
                 spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
                     rotation: Vec3::new(
@@ -358,7 +365,12 @@ impl Effects {
                     ..Default::default()
                 });
                 self.events.spawn(&spawn, false, false);
-                let bank = self.fox_bank.as_ref().context("Fox particle bank")?;
+                let bank = if id == 0x48D {
+                    self.fox_bank.as_ref()
+                } else {
+                    self.mars_bank.as_ref()
+                }
+                .context("special particle bank")?;
                 if let Some(id) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
                 {
                     let generator = particles.generator_mut(id).unwrap();

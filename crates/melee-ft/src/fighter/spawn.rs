@@ -279,7 +279,22 @@ impl Fighter {
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
         }
-        let animate = self.core.reset_motion(MotionState::new(row), assets);
+        let move_id = if usize::from(row.action.0) < super::COMMON_COUNT {
+            super::attack::stale::GROUND_MOVES
+                .get(state as usize)
+                .copied()
+                .flatten()
+        } else {
+            self.character
+                .table()
+                .special_moves
+                .get(usize::from(row.action.0) - super::COMMON_COUNT)
+                .copied()
+                .flatten()
+        };
+        let animate = self
+            .core
+            .reset_motion(MotionState::new(row), assets, move_id);
         self.motion_row = row;
         if !animate {
             return Ok(());
@@ -483,7 +498,12 @@ impl FighterCore {
     }
     /// Fighter_ChangeMotionState (fighter.c:950-1189): outgoing effects, scalar
     /// resets, row installation and pose setup, before the animated-shield hook.
-    fn reset_motion(&mut self, row: MotionState, assets: &FighterAssets) -> bool {
+    fn reset_motion(
+        &mut self,
+        row: MotionState,
+        assets: &FighterAssets,
+        move_id: Option<super::attack::stale::GroundMove>,
+    ) -> bool {
         let state = row.id;
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
@@ -498,10 +518,6 @@ impl FighterCore {
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
-        let move_id = super::attack::stale::GROUND_MOVES
-            .get(state as usize)
-            .copied()
-            .flatten();
         self.combat.stale.enter(move_id);
         self.commands.stale_multiplier =
             move_id.map(|_| self.combat.stale.multiplier(&assets.stale_weights));

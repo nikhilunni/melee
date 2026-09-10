@@ -220,7 +220,7 @@ fn end<C: FoxFamily, const AIR: bool>(
         f.character.get_mut::<C>().special_neutral().accessory_shot = false;
         if AIR && f.character.get::<C>().attributes().blaster.landing_lag != 0.0 {
             let lag = f.character.get::<C>().attributes().blaster.landing_lag;
-            f.enter_special_fall(phase.assets, false, true, 1.0, lag)?;
+            f.enter_special_fall(phase.assets, true, false, true, 1.0, lag)?;
         } else {
             f.change_motion_state(
                 (if AIR {

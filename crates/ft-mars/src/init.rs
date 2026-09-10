@@ -32,6 +32,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
 
 impl CharacterCallbacks for Marth {
+    const SPECIAL_MOVES: &'static [Option<melee_ft::fighter::attack::stale::GroundMove>] =
+        &crate::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
     fn enter_special(
         f: &mut melee_ft::fighter::Fighter,
@@ -50,11 +52,10 @@ impl CharacterCallbacks for Marth {
     fn accessory(f: &mut melee_ft::fighter::Fighter, a: &melee_ft::fighter::assets::FighterAssets) {
         crate::special_n::accessory(f, a);
     }
-    fn check_hurtbox_interaction(&self) {
-        if self.special_lw.volume.is_some() {
-            unimplemented!("Counter ftColl_8007B1B8: per-candidate hook needs mutable Fighter, incoming HitCapsule and assets to test the defense volume and call ftMs_SpecialLw_80139140");
-        }
-    }
+    const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
+        Some(crate::special_lw::contact);
+    const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
+        Some(crate::special_lw::process_hit);
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

@@ -39,7 +39,7 @@ pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>
     if !f.animation.frames_remaining(&f.skeleton) {
         let a = &f.character.get::<Marth>().attributes.dolphin_slash;
         let (mobility, lag) = (a.freefall_mobility, a.landing_lag);
-        f.enter_special_fall(p.assets, false, true, mobility, lag)?;
+        f.enter_special_fall(p.assets, false, true, false, mobility, lag)?;
     }
     Ok(None)
 }

@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+melee-lb = { path = "../melee-lb" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 hsd-types = { path = "../hsd-types" }

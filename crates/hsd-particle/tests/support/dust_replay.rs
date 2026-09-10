@@ -149,7 +149,12 @@ fn replay_fields(
     // Only scenes reaching these effects require the additional owned-disc asset.
     if matches!(
         name,
-        "laser_fd_fox" | "airillusion_fd_fox" | "firefox_fd_fox"
+        "laser_fd_fox"
+            | "airillusion_fd_fox"
+            | "firefox_fd_fox"
+            | "reflector_fd_fox"
+            | "airreflector_fd_fox"
+            | "reflectorjc_fd_fox"
     ) {
         let fox_path = root.join("roms/files/EfFxData.dat");
         if !melee_test_support::require_files([&fox_path]) {

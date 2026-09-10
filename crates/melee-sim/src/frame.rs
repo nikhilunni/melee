@@ -183,6 +183,7 @@ fn register(
     }
 }
 struct Runtime {
+    radial_forces: melee_lb::radial_force::RadialForces,
     item_objects: crate::scene_items::Objects,
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
@@ -380,6 +381,7 @@ impl Runtime {
                             &mut state.effects,
                             &mut state.particles,
                             &mut state.rng,
+                            &mut self.radial_forces,
                             match &state.stage {
                                 SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
                                 _ => Vec3::ZERO,
@@ -490,6 +492,9 @@ impl Runtime {
                             animation.update_collision(&mut state.map, &FD_COLLISION_BINDINGS);
                         }
                         animation.update_collision(&mut state.map, bindings);
+                    }
+                    if address == 0x8021_AAB0 {
+                        self.radial_forces.tick();
                     }
                     if continuation == Continuation::GroundCollision {
                         // grLast's controller already advanced; finish only its collision tail.
@@ -679,6 +684,7 @@ impl Simulation {
                 .percent))
         });
         let runtime = Box::new(Runtime {
+            radial_forces: Default::default(),
             item_objects: Default::default(),
             state,
             interface,
@@ -825,6 +831,7 @@ fn dispatch_fighter(
     effects: &mut melee_ef::Effects,
     particles: &mut hsd_particle::system::ParticleSystem,
     rng: &mut gekko_math::HsdRng,
+    radial_forces: &mut melee_lb::radial_force::RadialForces,
     wind: Vec3,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
@@ -870,9 +877,38 @@ fn dispatch_fighter(
         FighterProc::Grab => f.proc_grab(),
         FighterProc::HitDetection => f.proc_hit_detection(),
         FighterProc::ProcessHit => f.proc_process_hit(assets),
-        FighterProc::Dynamics => f.proc_dynamics_with_map(map),
+        FighterProc::Dynamics => f.proc_dynamics_with_forces(map, radial_forces.fields()),
         FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
+    }
+    // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
+    // operands; queue lifetime is owned by the scene's ground controller.
+    for wind in std::mem::take(&mut f.commands.wind_effects) {
+        let c = &mut f.core;
+        let center = melee_ft::fighter::caches::bone_position(
+            &mut c.skeleton,
+            c.animation.root,
+            usize::from(wind.bone),
+            Vec3::new(
+                0.003906 * f32::from(wind.x),
+                0.003906 * f32::from(wind.y),
+                0.0,
+            ),
+        );
+        radial_forces.insert(melee_lb::radial_force::RadialImpulse {
+            center,
+            frames: if wind.timer < 0 {
+                120
+            } else {
+                i32::from(wind.timer)
+            },
+            strength: 0.003906 * f32::from(wind.magnitude),
+            decay: 0.003906 * f32::from(wind.decay),
+            phase_step: 0.003906 * f32::from(wind.angle),
+        });
+    }
+    for impulse in std::mem::take(&mut f.commands.radial_impulses) {
+        radial_forces.insert(impulse);
     }
     // ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi per smash voice.
     for _ in 0..std::mem::take(&mut f.commands.smash_sound_requests) {
@@ -890,7 +926,26 @@ fn dispatch_fighter(
     }
     // S3: opcode 38 owns this draw before the following effect boundary.
     f.resolve_random_sound_commands(rng);
-    f.resolve_graphics_commands(assets, rng);
+    if proc.s_link() >= 9 && !f.commands.graphics.is_empty() {
+        // efAsync_Spawn (800679B0): link >=9 dispatches each command now,
+        // before the next graphics command draws its three random offsets.
+        let pending = std::mem::take(&mut f.effects);
+        for command in std::mem::take(&mut f.commands.graphics) {
+            f.commands.graphics.push(command);
+            f.resolve_graphics_commands(assets, rng);
+            effects.flush::<melee_ft::fighter::RetailTrig>(
+                melee_ef::EffectTiming::Deferred,
+                player,
+                &mut f.core,
+                &scene_assets.common_particle_bank,
+                particles,
+                rng,
+            )?;
+        }
+        f.effects = pending;
+    } else {
+        f.resolve_graphics_commands(assets, rng);
+    }
     effects.flush::<melee_ft::fighter::RetailTrig>(
         melee_ef::EffectTiming::Immediate,
         player,

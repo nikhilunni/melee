@@ -21,7 +21,7 @@ impl Effects {
             };
         // efAsync_Dispatch (80063930), efasync.c:274-278: 0x400 reverses
         // the direction passed to the same 0x5A generator (fneg, no fusion).
-        let facing = if matches!(id, REVERSE_BRAKE_DUST_REQUEST | 0x3EF) {
+        let facing = if matches!(id, REVERSE_BRAKE_DUST_REQUEST | 0x3EF | 0x3F1) {
             -facing
         } else {
             facing

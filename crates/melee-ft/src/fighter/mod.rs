@@ -54,6 +54,11 @@ pub use state::{
     COMMON_COUNT,
 };
 
+/// Per-candidate character defense callback, before ordinary hurtbox contact.
+pub type DefenseContact = fn(&mut Fighter, &mut Fighter, &assets::FighterAssets, usize) -> bool;
+/// Deferred character defense reaction at Fighter_ProcessHit.
+pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
+
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
 /// character crate. The implementation owns its typed special attributes.
@@ -77,6 +82,8 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.
     const SPECIAL_ROWS: &'static [MotionRow] = &[];
+    /// ftData special-row move IDs, indexed from action 341.
+    const SPECIAL_MOVES: &'static [Option<attack::stale::GroundMove>] = &[];
 
     fn special_rows() -> &'static [MotionRow] {
         Self::SPECIAL_ROWS
@@ -124,6 +131,11 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
             unimplemented!("ftCo_Throw.c: character throw callback hook");
         }
     }
+
+    /// ftColl candidate boundary: special defense may consume an eligible hit.
+    const DEFENSE_CONTACT: Option<DefenseContact> = None;
+    /// Fighter_ProcessHit: deferred special defense reaction, before hitlag.
+    const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
 
     /// Explicit boundary for a character-owned hurt-capsule layout.
     fn check_hurtbox_interaction(&self) {}
