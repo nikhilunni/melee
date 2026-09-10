@@ -4782,6 +4782,7 @@ Note: numbers above are a result of guesswork. They are not 100% correct and nev
 
 <!-- perf-gate-v1
 {"architecture": "concrete-shell-v1", "date": "2026-09-10T09:30:35+00:00", "metrics": {"copies": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 845, "melee-sim": 128}, "load_ns": 214694566.63333336, "stripped_bytes": 3500832, "text_bytes": 3194880, "ticks_600_ns": 33276160.4}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "631a3835f6a7f86aed6b2f28a803eba7bb7169e3", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "REGRESSION"}
+-->
 ## 2026-09-10T08:41:58+00:00 — COMPLETE — REGRESSION
 
 Evidence: `/Users/nikhilunni/Projects/melee-lanes/chars/target/perf/20260910T084103Z-29388`. Revision `631a3835f6a7f86aed6b2f28a803eba7bb7169e3` (working tree included).
@@ -7068,6 +7069,7 @@ Note: numbers above are a result of guesswork. They are not 100% correct and nev
 
 <!-- perf-gate-v1
 {"architecture": "concrete-shell-v1", "census": "duplicate-labels-v1", "date": "2026-09-10T09:45:54+00:00", "metrics": {"cross_crate_duplicate_labels": 99, "definitions": {"ft-captain": 66, "ft-falco": 67, "ft-fox": 67, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 66, "ft-peach": 67, "ft-purin": 66, "ft-yoshi": 68, "melee-ft": 852, "melee-sim": 128}, "duplicate_labels": {"ft-captain": 1, "ft-falco": 1, "ft-fox": 1, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 1, "ft-peach": 1, "ft-purin": 1, "ft-yoshi": 1, "melee-ft": 20, "melee-sim": 7}, "labels": {"ft-captain": 43, "ft-falco": 44, "ft-fox": 44, "ft-fox-family": 0, "ft-mario": 0, "ft-mars": 43, "ft-peach": 44, "ft-purin": 43, "ft-yoshi": 45, "melee-ft": 815, "melee-sim": 101}, "load_ns": 168325926.61087304, "stripped_bytes": 3483952, "text_bytes": 3178496, "ticks_600_ns": 30139720.9}, "platform": "macOS-26.2-arm64-arm-64bit-Mach-O", "revision": "631a3835f6a7f86aed6b2f28a803eba7bb7169e3", "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)", "status": "REGRESSION"}
+-->
 
 ## 2026-09-10T08:41:17+00:00 — COMPLETE — REGRESSION
 
