@@ -1,4 +1,4 @@
-//! Linked back throw: ftCo_Throw.c / ftCo_Thrown.c.
+//! Linked throws: ftCo_Throw.c / ftCo_Thrown.c.
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
@@ -19,45 +19,108 @@ pub struct ThrownPose {
     pub hip_translation: Vec3,
 }
 
-/// ftCo_800DD1E4 (800DD1E4): horizontal stick crossing before the other throws.
-pub fn back_throw_requested(f: &FighterCore, assets: &FighterAssets) -> bool {
+/// ftData_MotionStateList / ftCo_800DD4B0: matched captor and victim motions.
+#[derive(Clone, Copy, Debug)]
+pub struct Throw {
+    pub state: S,
+    pub victim_state: S,
+    pub victim_motion: i32,
+    pub weight_mask: u8,
+}
+pub static FORWARD: Throw = Throw {
+    state: S::ThrowF,
+    victim_state: S::ThrownF,
+    victim_motion: 262,
+    weight_mask: 1,
+};
+pub static BACK: Throw = Throw {
+    state: S::ThrowB,
+    victim_state: S::ThrownB,
+    victim_motion: 263,
+    weight_mask: 2,
+};
+pub static UP: Throw = Throw {
+    state: S::ThrowHi,
+    victim_state: S::ThrownHi,
+    victim_motion: 264,
+    weight_mask: 4,
+};
+pub static DOWN: Throw = Throw {
+    state: S::ThrowLw,
+    victim_state: S::ThrownLw,
+    victim_motion: 265,
+    weight_mask: 8,
+};
+
+/// ftCo_800DD1E4 (800DD1E4): horizontal crossing has priority over vertical.
+pub fn requested(f: &FighterCore, assets: &FighterAssets) -> Option<&'static Throw> {
     if f.motion_state.id != S::CatchWait {
-        return false;
+        return None;
     }
-    let x = f.input.current.stick.x;
-    let last = f.input.previous.stick.x;
+    let stick = f.input.current.stick;
+    let last = f.input.previous.stick;
     let threshold = assets.input.side_tilt_threshold;
-    if (last < threshold && x >= threshold) || (last > -threshold && x <= -threshold) {
-        if x * f.physics.facing > 0.0 {
-            unimplemented!("ftCo_800DD1E4: ThrowF");
-        }
-        return true;
+    if (last.x < threshold && stick.x >= threshold)
+        || (last.x > -threshold && stick.x <= -threshold)
+    {
+        return Some(if stick.x * f.physics.facing > 0.0 {
+            &FORWARD
+        } else {
+            &BACK
+        });
     }
-    if f.input.pressed.intersects(crate::input::Buttons::A) {
-        unimplemented!("fn_800DA4C0: CatchAttack");
+    if f.input.current.cstick != crate::input::Stick::default() {
+        unimplemented!("ftCo_800DD1E4: C-stick throw selection");
     }
-    false
+    if last.y < assets.input.up_tilt_threshold && stick.y >= assets.input.up_tilt_threshold {
+        return Some(&UP);
+    }
+    if last.y > assets.input.down_tilt_threshold && stick.y <= assets.input.down_tilt_threshold {
+        return Some(&DOWN);
+    }
+    None
+}
+
+/// Borrowed assets and remap live only for the victim's motion transition.
+#[derive(Clone, Copy)]
+pub(super) struct ThrowSource<'a> {
+    pub assets: &'a FighterAssets,
+    pub motion: &'a crate::anim::Motion,
+    pub remap: crate::anim::attach::MotionRemapView<'a>,
 }
 
 /// ftCo_800DD4B0 -> ftCo_800DD398 -> ftCo_800DE3FC.
-pub fn enter_back_throw(
+pub fn enter_throw(
+    throw: &Throw,
     victim: &mut Fighter,
     attacker: &mut Fighter,
     va: &FighterAssets,
     aa: &FighterAssets,
 ) -> Result<()> {
     attacker.character.throw_variant();
-    let rate = prepare_back_throw(&victim.core, &mut attacker.core, aa);
-    attacker.change_motion_state_with_rate(S::ThrowB.into(), aa, 0.0, rate)?;
+    let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
+    attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
-    let (saved_translation, motion) =
-        prepare_thrown_pose(&mut victim.core, &mut attacker.core, va, aa);
+    let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
+    let mut masks = [0; crate::desc::bones::MAX_JOINTS as usize];
+    for (mask, part) in masks.iter_mut().zip(&attacker.animation.parts) {
+        *mask = part.motion_mask;
+    }
+    let source = ThrowSource {
+        assets: aa,
+        motion: &aa.motions[&throw.victim_motion],
+        remap: crate::anim::attach::MotionRemapView {
+            source: &aa.parts,
+            destination: &va.parts,
+            source_masks: &masks[..attacker.animation.parts.len()],
+        },
+    };
     victim.change_motion_state_with_source(
-        S::ThrownB.into(),
+        throw.victim_state.into(),
         va,
         0.0,
         rate,
-        Some((aa, &motion)),
+        Some(source),
     )?;
     finish_thrown_pose(
         &mut victim.core,
@@ -142,7 +205,7 @@ impl FighterCore {
 }
 
 /// ftCo_800DDDE4 (800DDDE4) and ftCo_800DE7C0 (800DE7C0): release without hitlag.
-pub fn release_back_throw(
+pub fn release_throw(
     victim: &mut Fighter,
     attacker: &mut Fighter,
     va: &FighterAssets,
@@ -262,9 +325,15 @@ fn prepare_throw_release(
 }
 
 /// ftCo_800DD4B0: weight-dependent playback rate before captor motion entry.
-fn prepare_back_throw(victim: &FighterCore, attacker: &mut FighterCore, aa: &FighterAssets) -> f32 {
+fn prepare_throw(
+    throw: &Throw,
+    victim: &FighterCore,
+    attacker: &mut FighterCore,
+    aa: &FighterAssets,
+) -> f32 {
     // 800DD4B0 --fused: separate weight multiplication, reciprocal division.
-    let rate = if attacker.attributes.combat.weight_independent_throws_mask & 2 != 0 {
+    let rate = if attacker.attributes.combat.weight_independent_throws_mask & throw.weight_mask != 0
+    {
         1.0
     } else {
         1.0 / (victim.attributes.size.weight * aa.throw_weight_scale)
@@ -279,8 +348,7 @@ fn prepare_thrown_pose(
     victim: &mut FighterCore,
     attacker: &mut FighterCore,
     va: &FighterAssets,
-    aa: &FighterAssets,
-) -> (Vec3, crate::anim::Motion) {
+) -> Vec3 {
     attacker.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     let xrot =
         victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
@@ -295,19 +363,8 @@ fn prepare_thrown_pose(
         },
     );
     victim.physics.facing = attacker.physics.facing;
-    let mut motion = aa.motions[&263].clone();
-    motion.remap = Some(crate::anim::attach::MotionRemap {
-        source: aa.parts.clone(),
-        destination: va.parts.clone(),
-        source_masks: attacker
-            .animation
-            .parts
-            .iter()
-            .map(|part| part.motion_mask)
-            .collect(),
-    });
     victim.commands.thrown_by = Some(attacker.spawn_number);
-    (saved_translation, motion)
+    saved_translation
 }
 /// ftCo_800DE3FC: retain HipN and apply the constraint after victim entry.
 fn finish_thrown_pose(

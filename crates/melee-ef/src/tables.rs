@@ -31,7 +31,8 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 15] = [
         model: 0x14,
         attached: false,
     },
-    // S3: Reflector's script light, efAsync_Dispatch 0x3FA.
+    // S3/S7: efAsync_Dispatch 0x3FA, Reflector's script light and the positional throw
+    // flash (no orientation arguments); both lanes ported the same retail site.
     ModelSpawn {
         request: 0x3FA,
         source: ModelSource::Graphics,

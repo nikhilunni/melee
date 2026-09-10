@@ -260,7 +260,7 @@ impl Fighter {
         assets: &FighterAssets,
         start: f32,
         rate: f32,
-        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+        source: Option<super::grab_throw::ThrowSource<'_>>,
     ) -> Result<()> {
         self.change_motion_state_with_options(state, assets, start, rate, source)
     }
@@ -271,7 +271,7 @@ impl Fighter {
         assets: &FighterAssets,
         start: f32,
         rate: f32,
-        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+        source: Option<super::grab_throw::ThrowSource<'_>>,
     ) -> Result<()> {
         let row = self.row(state);
         let state = row.id;
@@ -380,6 +380,9 @@ impl FighterCore {
         // lbanim.h FigaTree::nodes is s8: reserve the full per-joint domain
         // once for this FighterPartsTable-sized skeleton.
         skeleton.reserve_animation_tracks(i8::MAX as usize);
+        // Throws constrain XRotN to the captor's joint. Keep its slot across releases.
+        let xrot = assets.parts.joint(melee_types::FtPart::XRotN).unwrap();
+        skeleton.reserve_position_constraint(animation.parts[usize::from(xrot)].joint);
         animation.translation_joint = Some(usize::from(assets.bones.model.animation_translation));
         animation.model_scale = assets.attributes.size.model_scaling;
         let bone = assets
@@ -486,14 +489,15 @@ impl FighterCore {
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
+            grab_handicap: 9, // gm default handicap, before any saved-player override.
             player,
         }
     }
     /// Fighter_ChangeMotionState (fighter.c:933-949), before OnGroundedMotion.
-    fn begin_motion_change(&mut self, source: Option<(&FighterAssets, &crate::anim::Motion)>) {
+    fn begin_motion_change(&mut self, source: Option<super::grab_throw::ThrowSource<'_>>) {
         self.status.require_supported();
         self.commands.smash_charge = None;
-        self.commands.borrowed_script = source.map(|(source, _)| source.commands.clone().into());
+        self.commands.borrowed_script = source.map(|source| source.assets.commands.clone());
         self.status.interaction = Interaction::Idle;
     }
     /// Fighter_ChangeMotionState (fighter.c:950-1189): outgoing effects, scalar
@@ -621,22 +625,35 @@ impl FighterCore {
         state: CommonMotionState,
         start: f32,
         rate: f32,
-        source: Option<(&FighterAssets, &crate::anim::Motion)>,
+        source: Option<super::grab_throw::ThrowSource<'_>>,
     ) -> Result<()> {
         let had_root_motion = self.animation.flags.contains(
             crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
         );
-        self.animation.set_animation(
-            &mut self.skeleton,
-            source.map_or(&assets.motions[&animation_id], |(_, motion)| motion),
-            start,
-            rate,
-        )?;
+        if let Some(source) = source {
+            self.animation.set_animation_remapped(
+                &mut self.skeleton,
+                source.motion,
+                start,
+                rate,
+                Some(source.remap),
+            )?;
+        } else {
+            self.animation.set_animation(
+                &mut self.skeleton,
+                &assets.motions[&animation_id],
+                start,
+                rate,
+            )?;
+        }
         self.animation.set_rate(&mut self.skeleton, rate, false);
         self.animation.frame = start - rate;
         self.animation.remainder = 0.0;
-        self.commands
-            .restart(source.map_or(assets, |(source, _)| source).command_entries[&animation_id]);
+        self.commands.restart(
+            source
+                .map_or(assets, |source| source.assets)
+                .command_entries[&animation_id],
+        );
         // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:
         // main animation then commands. Part blends run only in the ordinary
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.

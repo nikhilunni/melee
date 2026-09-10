@@ -6,7 +6,9 @@ use hsd_archive::desc::FigaTree;
 use hsd_types::Vec3;
 use melee_lb::anim::AttachError;
 
-use super::attach::{attach_motion, select_motion, AnimationPart, MotionRemap, PartFlags};
+use super::attach::{
+    attach_motion_remapped, select_motion, AnimationPart, MotionRemap, MotionRemapView, PartFlags,
+};
 use super::blend::{advance_blend, blend_pose, copy_pose};
 use super::root_motion::RootMotion;
 use super::wait_choice::{choose_wait_animation, WaitChoice, WaitEntry};
@@ -196,6 +198,23 @@ impl FighterAnimation {
         start: f32,
         rate: f32,
     ) -> Result<(), AttachError> {
+        self.set_animation_remapped(
+            tree,
+            motion,
+            start,
+            rate,
+            motion.remap.as_ref().map(MotionRemap::view),
+        )
+    }
+
+    pub(crate) fn set_animation_remapped(
+        &mut self,
+        tree: &mut JObjTree,
+        motion: &Motion,
+        start: f32,
+        rate: f32,
+        remap: Option<MotionRemapView<'_>>,
+    ) -> Result<(), AttachError> {
         // Selection depends only on links/part metadata. Validate before taking
         // the running tree, then reset and attach in the original order.
         select_motion(
@@ -207,7 +226,7 @@ impl FighterAnimation {
             &self.parts,
             &motion.animation,
             motion.flags.bone_mask(),
-            motion.remap.as_ref(),
+            remap,
         )?;
         let mut target = if motion.blend_frames == 0.0 {
             std::mem::take(tree)
@@ -216,12 +235,12 @@ impl FighterAnimation {
         };
         target.remove_anim_all_by_flags(self.root, 1);
         self.reset_pose(&mut target, motion.blend_frames != 0.0);
-        attach_motion(
+        attach_motion_remapped(
             &mut target,
             &self.parts,
             &motion.animation,
             motion.flags.bone_mask(),
-            motion.remap.as_ref(),
+            remap,
         )?;
         if motion.blend_frames == 0.0 {
             self.blend_tree.remove_anim_all_by_flags(self.root, 1);
@@ -268,7 +287,7 @@ impl FighterAnimation {
         let mut secondary = std::mem::take(&mut self.blend_tree);
         secondary.remove_anim_all_by_flags(self.root, 1);
         self.reset_pose(&mut secondary, true);
-        attach_motion(
+        attach_motion_remapped(
             &mut secondary,
             &self.parts,
             &motion.animation,
@@ -350,7 +369,7 @@ impl FighterAnimation {
             selected,
             &motion.animation,
             motion.flags.bone_mask(),
-            motion.remap.as_ref(),
+            motion.remap.as_ref().map(MotionRemap::view),
         )?;
         let mut target = if blending {
             std::mem::take(&mut self.blend_tree)
@@ -358,12 +377,12 @@ impl FighterAnimation {
             std::mem::take(tree)
         };
         self.reset_pose_range(&mut target, blending, bone, reset_end);
-        attach_motion(
+        attach_motion_remapped(
             &mut target,
             selected,
             &motion.animation,
             motion.flags.bone_mask(),
-            motion.remap.as_ref(),
+            motion.remap.as_ref().map(MotionRemap::view),
         )?;
         target.req_anim_all_by_flags(joint, 1, self.frame);
         configure_aobjs(
@@ -696,7 +715,7 @@ impl FighterAnimation {
         weight: f32,
     ) -> Result<(), AttachError> {
         if magnitude != 0.0 {
-            attach_motion(
+            attach_motion_remapped(
                 &mut self.blend_tree,
                 &self.parts,
                 &tilt.animation,

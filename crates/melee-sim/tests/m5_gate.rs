@@ -691,3 +691,50 @@ fn topko_usmash_long_fd_fox_340_ticks_and_ordered_particle_draws() {
 fn human_smoke_fd_marth_600_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("human_smoke_fd_marth", 600);
 }
+
+// S7/S8: complete acceptance remains enabled at the S5-owned damage boundaries.
+#[test]
+fn fthrow_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fthrow_fd_marth");
+}
+#[test]
+fn uthrow_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("uthrow_fd_marth");
+}
+#[test]
+fn dthrow_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dthrow_fd_marth");
+}
+#[test]
+fn pummel_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("pummel_fd_marth");
+}
+#[test]
+fn grabmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("grabmash_fd_marth");
+}
+#[test]
+fn ledgeattack_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ledgeattack_fd_fox");
+}
+#[test]
+fn ledgejump_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ledgejump_fd_fox");
+}
+#[test]
+fn ledgeroll_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ledgeroll_fd_fox");
+}
+
+#[test]
+fn s7_throws_and_pummel_before_s5_damage_boundaries() {
+    for (scene, ticks) in [
+        ("fthrow_fd_marth", 151),
+        ("uthrow_fd_marth", 150),
+        ("dthrow_fd_marth", 151),
+        ("pummel_fd_marth", 141),
+    ] {
+        special_gate_prefix(scene, ticks);
+        eprintln!("{scene}: {ticks} ticks, 49 keys, 0 divergences; S5 damage boundary prefix");
+    }
+}

@@ -417,12 +417,13 @@ impl Runtime {
                 if proc == FighterProc::Accessories {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         f.update_revival_platform();
-                        if f.motion_state.id == melee_types::CommonMotionState::ThrownB {
+                        if f.combat.thrown_pose.is_some() {
                             f.thrown_accessory(&state.assets.fighters[player]);
                         }
                     });
                 }
                 if proc == FighterProc::Animation {
+                    grab_pairs::escape(state, player)?;
                     grab_pairs::sync_wait(state, player)?;
                     grab_pairs::release(state, player)?;
                     let assets = &state.assets;

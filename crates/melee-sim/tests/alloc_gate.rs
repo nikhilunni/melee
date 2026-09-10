@@ -250,3 +250,18 @@ fn topko_usmash_long_fd_fox_allocation_budget() {
 fn human_smoke_fd_marth_allocation_budget() {
     allocation_budget("human_smoke_fd_marth", 0);
 }
+
+// S7/S8: capture mash and the first-use ledge attack.
+#[test]
+fn grabmash_fd_marth_allocation_budget() {
+    allocation_budget("grabmash_fd_marth", 0);
+}
+#[test]
+fn ledgeattack_fd_fox_allocation_budget() {
+    allocation_budget("ledgeattack_fd_fox", 0);
+}
+
+#[test]
+fn s7_back_throw_borrows_motion_and_commands_without_allocating() {
+    allocation_budget("grab_fd_marth", 0);
+}

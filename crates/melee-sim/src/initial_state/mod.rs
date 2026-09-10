@@ -186,6 +186,9 @@ impl InitialState {
             .expect("two players");
         for fighter in &mut fighters {
             crate::scene_fighter::with_fighter!(fighter, |f| {
+                // Player_GetHandicap, StaticPlayer +4B, stride E90.
+                f.grab_handicap =
+                    saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x4B, 1)[0];
                 // Player_GetStocks, StaticPlayer stride 0xE90.
                 f.player.stocks =
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];

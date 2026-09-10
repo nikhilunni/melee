@@ -65,8 +65,8 @@ C15_STRIPPED_LIMIT = 3_747_632
 C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
 PAIR_HELPERS = {
     "melee_ft::fighter::grab::capture_pair",
-    "melee_ft::fighter::grab_throw::enter_back_throw",
-    "melee_ft::fighter::grab_throw::release_back_throw",
+    "melee_ft::fighter::grab_throw::enter_throw",
+    "melee_ft::fighter::grab_throw::release_throw",
     "melee_ft::fighter::damage::detect_hit",
 }
 

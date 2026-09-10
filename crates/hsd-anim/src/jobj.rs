@@ -433,7 +433,7 @@ impl JointSpec {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct JObjTree {
     /// Resolved external positions for REFTYPE_JOBJ subtype 1 constraints.
-    position_constraints: std::collections::BTreeMap<JObjId, Vec3>,
+    position_constraints: std::collections::BTreeMap<JObjId, Option<Vec3>>,
     nodes: Vec<JObj>,
     /// Inactive joint track buffers, reserved once by fixed-skeleton owners.
     spare_tracks: Vec<Vec<crate::fobj::FObj>>,
@@ -494,15 +494,17 @@ impl JObjTree {
         JObjTree::default()
     }
 
+    /// Prepare an inactive constraint slot before animation updates begin.
+    pub fn reserve_position_constraint(&mut self, id: JObjId) {
+        self.position_constraints.entry(id).or_insert(None);
+    }
+
     /// lb_8000C1C0 / HSD_RObjUpdateAll: the scene resolves external joint ownership.
     pub fn set_position_constraint(&mut self, id: JObjId, position: Option<Vec3>) {
-        match position {
-            Some(position) => {
-                self.position_constraints.insert(id, position);
-            }
-            None => {
-                self.position_constraints.remove(&id);
-            }
+        if let Some(slot) = self.position_constraints.get_mut(&id) {
+            *slot = position;
+        } else if position.is_some() {
+            self.position_constraints.insert(id, position);
         }
         self.set_mtx_dirty_sub(id);
     }
@@ -1035,7 +1037,7 @@ impl JObjTree {
                     // jobj.c:1432-1438: HSD_RObjUpdateAll when robj != NULL. Deferred.
                 }
             }
-            if let Some(position) = self.position_constraints.get(&id).copied() {
+            if let Some(position) = self.position_constraints.get(&id).copied().flatten() {
                 // HSD_RObjGetGlobalPosition: accumulate from +0 then divide by
                 // the single target count. No fused instructions in retail.
                 let world = Vec3::new(0.0 + position.x, 0.0 + position.y, 0.0 + position.z);

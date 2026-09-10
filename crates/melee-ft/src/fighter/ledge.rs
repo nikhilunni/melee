@@ -194,7 +194,7 @@ impl Fighter {
             unimplemented!("ftCo_CliffWait.c:53-56 / ft_0DF1.c:130-159: C-stick ledge options");
         }
         if self.core.input.pressed.intersects(Buttons::A | Buttons::B) {
-            unimplemented!("ftCo_CliffAttack.c:29-49: CliffAttack entry");
+            return self.enter_cliff_option(assets, S::CliffAttackQuick);
         }
         if self.core.input.pressed.intersects(Buttons::SHIELD) {
             return self.enter_cliff_option(assets, S::CliffEscapeQuick);
@@ -354,7 +354,11 @@ impl Fighter {
         if landed {
             if matches!(
                 self.core.motion_state.id,
-                S::CliffClimbQuick | S::CliffEscapeQuick | S::CliffJumpQuick1 | S::CliffJumpSlow1
+                S::CliffClimbQuick
+                    | S::CliffAttackQuick
+                    | S::CliffEscapeQuick
+                    | S::CliffJumpQuick1
+                    | S::CliffJumpSlow1
             ) {
                 self.land();
             } else if self.core.physics.self_velocity.y > assets.soft_landing_speed {
@@ -449,4 +453,14 @@ impl FighterCore {
         self.physics.position.x = fmadds(translation.z, self.physics.facing, edge.x);
         self.physics.position.y = edge.y + translation.y;
     }
+}
+
+/// ftCo_CliffAttack_Anim (8009AF70): same completion as the ledge climb.
+pub fn attack_animation(
+    f: &mut Fighter,
+    phase: super::state::AnimationPhase<'_>,
+) -> Result<Option<crate::anim::WaitChoice>> {
+    f.step_animation(phase.assets);
+    f.cliff_climb_animation(phase.assets)?;
+    Ok(None)
 }

@@ -38,13 +38,21 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
         }
     }
     if let Some(other) = nearest {
+        // gm_8016C5C0 / fn_8016588C: stock standings, ties share a rank.
+        let stocks = with_fighter!(&state.fighters[other], |f| f.player.stocks);
+        let rank = state
+            .fighters
+            .iter()
+            .filter(|f| with_fighter!(f, |f| f.player.stocks > stocks))
+            .count() as u8;
         let (attacker, victim) = pair(&mut state.fighters, player, other);
         with_fighter!(attacker, |a| with_fighter!(victim, |v| grab::capture_pair(
             v,
             a,
             &state.assets.fighters[other],
             &state.assets.fighters[player],
-            &mut state.map
+            &mut state.map,
+            rank
         )))
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
     }
@@ -52,9 +60,7 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
 }
 
 pub(super) fn align(state: &mut InitialState, player: usize) {
-    if with_fighter!(&state.fighters[player], |f| f.motion_state.id
-        == melee_types::CommonMotionState::ThrownB)
-    {
+    if with_fighter!(&state.fighters[player], |f| f.combat.thrown_pose.is_some()) {
         return;
     }
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
@@ -103,11 +109,11 @@ pub(super) fn sync_wait(state: &mut InitialState, player: usize) -> Result<()> {
 }
 
 pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()> {
-    if !with_fighter!(&state.fighters[player], |f| {
-        grab_throw::back_throw_requested(f, &state.assets.fighters[player])
-    }) {
+    let Some(throw) = with_fighter!(&state.fighters[player], |f| {
+        grab_throw::requested(f, &state.assets.fighters[player])
+    }) else {
         return Ok(());
-    }
+    };
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
     let Some(GrabLink::Holding { victim, .. }) = link else {
         panic!("throw without victim");
@@ -119,7 +125,8 @@ pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()>
         .expect("live victim");
     let (attacker, victim) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
-        grab_throw::enter_back_throw(
+        grab_throw::enter_throw(
+            throw,
             v,
             a,
             &state.assets.fighters[other],
@@ -130,9 +137,7 @@ pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()>
 }
 
 pub(super) fn constrain(state: &mut InitialState, player: usize) {
-    if !with_fighter!(&state.fighters[player], |f| f.motion_state.id
-        == melee_types::CommonMotionState::ThrownB)
-    {
+    if !with_fighter!(&state.fighters[player], |f| f.combat.thrown_pose.is_some()) {
         return;
     }
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
@@ -156,9 +161,13 @@ pub(super) fn constrain(state: &mut InitialState, player: usize) {
 }
 
 pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
-    if !with_fighter!(&state.fighters[player], |f| f.motion_state.id
-        == melee_types::CommonMotionState::ThrowB
-        && f.commands.grab_release)
+    if !with_fighter!(&state.fighters[player], |f| matches!(
+        f.motion_state.id,
+        melee_types::CommonMotionState::ThrowF
+            | melee_types::CommonMotionState::ThrowB
+            | melee_types::CommonMotionState::ThrowHi
+            | melee_types::CommonMotionState::ThrowLw
+    ) && f.commands.grab_release)
     {
         return Ok(());
     }
@@ -173,13 +182,52 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
         .expect("live victim");
     let (attacker, victim) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
-        grab_throw::release_back_throw(
+        grab_throw::release_throw(
             v,
             a,
             &state.assets.fighters[other],
             &state.assets.fighters[player],
             &mut state.map,
             &mut state.rng,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// CaptureWait's timer is owned by the victim; release both before overlap.
+pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
+    let captor = with_fighter!(&state.fighters[player], |f| {
+        if f.motion_state.id == melee_types::CommonMotionState::CaptureWaitLw {
+            let melee_ft::fighter::MotionData::Capture(capture) = &f.state_data else {
+                panic!("capture scratch missing")
+            };
+            if capture.timer <= 0.0 {
+                let Some(GrabLink::Captured { captor }) = f.combat.grab else {
+                    panic!("capture without captor")
+                };
+                Some(captor)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+    let Some(captor) = captor else {
+        return Ok(());
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .expect("live captor");
+    let (victim, attacker) = pair(&mut state.fighters, player, other);
+    with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+        melee_ft::fighter::grab_escape::release(
+            v,
+            a,
+            &state.assets.fighters[player],
+            &state.assets.fighters[other],
         )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))

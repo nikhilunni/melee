@@ -127,6 +127,7 @@ pub fn capture_pair(
     victim_assets: &FighterAssets,
     attacker_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
+    victim_rank: u8,
 ) -> Result<()> {
     attacker.character.catch_variant();
     if victim.core.physics.ground_or_air != melee_types::GroundOrAir::Ground {
@@ -143,6 +144,12 @@ pub fn capture_pair(
     });
     victim.core.physics.facing = -attacker.core.physics.facing;
     victim.change_motion_state(S::CapturePulledLw.into(), victim_assets)?;
+    victim.core.state_data = MotionData::Capture(super::grab_escape::CaptureState::new(
+        victim.physics.percent,
+        victim.grab_handicap,
+        victim_rank,
+        &victim_assets.grab_escape,
+    ));
     finish_capture(&mut victim.core, &mut attacker.core, victim_assets);
     victim.capture_collision(victim_assets, map)?;
     Ok(())

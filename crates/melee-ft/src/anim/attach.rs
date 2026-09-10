@@ -52,6 +52,23 @@ pub struct MotionRemap {
     pub source_masks: Vec<u32>,
 }
 
+/// Borrowed cross-fighter metadata; throw entry builds only a fixed stack mask.
+#[derive(Clone, Copy)]
+pub struct MotionRemapView<'a> {
+    pub source: &'a PartTable,
+    pub destination: &'a PartTable,
+    pub source_masks: &'a [u32],
+}
+impl MotionRemap {
+    pub fn view(&self) -> MotionRemapView<'_> {
+        MotionRemapView {
+            source: &self.source,
+            destination: &self.destination,
+            source_masks: &self.source_masks,
+        }
+    }
+}
+
 /// Validate selection before changing AObjs. Disabled joints still consume a
 /// node and all of its tracks; mask-excluded joints consume neither.
 pub(super) fn select_motion<'a>(
@@ -59,7 +76,7 @@ pub(super) fn select_motion<'a>(
     parts: &'a [AnimationPart],
     animation: &FigaTree,
     motion_mask: u32,
-    remap: Option<&MotionRemap>,
+    remap: Option<MotionRemapView<'_>>,
 ) -> Result<[Option<&'a AnimationPart>; crate::desc::bones::MAX_JOINTS as usize], AttachError> {
     // ftparts.h MAX_FT_PARTS bounds the fighter's runtime part table.
     let mut selected = [None; crate::desc::bones::MAX_JOINTS as usize];
@@ -158,6 +175,22 @@ pub fn attach_motion(
     animation: &FigaTree,
     motion_mask: u32,
     remap: Option<&MotionRemap>,
+) -> Result<(), AttachError> {
+    attach_motion_remapped(
+        tree,
+        parts,
+        animation,
+        motion_mask,
+        remap.map(MotionRemap::view),
+    )
+}
+
+pub(super) fn attach_motion_remapped(
+    tree: &mut JObjTree,
+    parts: &[AnimationPart],
+    animation: &FigaTree,
+    motion_mask: u32,
+    remap: Option<MotionRemapView<'_>>,
 ) -> Result<(), AttachError> {
     let selected = select_motion(tree, parts, animation, motion_mask, remap)?;
     for (part, tracks) in selected.into_iter().zip(animation.iter_tracks_by_node()) {

@@ -17,6 +17,7 @@ pub mod entry;
 pub mod escape;
 pub mod fall;
 pub mod grab;
+pub mod grab_escape;
 pub mod grab_throw;
 pub mod hitbox;
 pub mod jump;
@@ -582,6 +583,8 @@ pub struct FighterCore {
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
     pub thrown_hitbox: caches::ThrownHitbox,
+    /// Player_GetHandicap; initialized by match setup or the saved player boundary.
+    pub grab_handicap: u8,
 }
 
 /// Retail inverse trig adapter used by HSD animation.
@@ -618,6 +621,7 @@ pub enum MotionData {
         wait_remaining: f32,
     },
     Catch,
+    Capture(grab_escape::CaptureState),
     #[default]
     None,
     Entry(entry::EntryState),

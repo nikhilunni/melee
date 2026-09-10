@@ -130,6 +130,7 @@ pub struct FighterAssets {
     pub stale_weights: [f32; 9],
     pub grab_friction_multiplier: f32,
     pub throw_weight_scale: f32,
+    pub grab_escape: super::grab_escape::Parameters,
     pub smash_sounds: Vec<u32>,
     /// ft_data->x4C_sfx->x1C / x20: the medium and heavy damage voice tables.
     pub medium_voices: Vec<u32>,
@@ -147,7 +148,7 @@ pub struct FighterAssets {
     pub movement: crate::desc::common::MovementParameters,
     pub squat_choices: Option<Vec<WaitEntry>>,
     pub wait_choices: Option<Vec<WaitEntry>>,
-    pub commands: Vec<Command>,
+    pub commands: std::sync::Arc<[Command]>,
     /// Archive-relative source locations for savestate import/diagnostics only.
     pub instruction_offsets: Vec<u32>,
     pub motion_table_offset: u32,
@@ -303,6 +304,7 @@ impl FighterAssets {
             medium_voices: read_sfx_array(data, root, 0x1C)?,
             heavy_voices: read_sfx_array(data, root, 0x20)?,
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
+            grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,
             bones: read_fighter_bones(data, root, descriptor.part_animation_count)?,
@@ -429,7 +431,7 @@ impl FighterAssets {
             },
             squat_choices,
             wait_choices,
-            commands,
+            commands: commands.into(),
             instruction_offsets: words.keys().copied().collect(),
             motion_table_offset: motion_table,
             revival_platform: {
@@ -667,6 +669,8 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     }
     // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).
     indices.extend(68..78);
+    // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
+    indices.extend([222, 245, 246, 247, 249, 250, 256, 257, 262, 264, 265]);
     indices
 }
 
