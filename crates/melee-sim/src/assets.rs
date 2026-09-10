@@ -10,6 +10,7 @@ use melee_ft::fighter::assets::{CharacterDescriptor, FighterAssets};
 use std::{fs, path::Path};
 
 pub struct Assets {
+    pub(crate) items: crate::scene_items::Resources,
     pub arena: melee_ft::fighter::life::Arena,
     pub fighters: [FighterAssets; 2],
     pub stage: Archive,
@@ -17,6 +18,7 @@ pub struct Assets {
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
     pub effects: Archive,
+    pub fox_effects: Archive,
     pub common_particle_bank: ParticleBank,
     pub characters: [CharacterArchive; 2],
 }
@@ -87,6 +89,7 @@ impl Assets {
             player_revival_markers: stage_desc.kind == melee_types::GrKind::Last,
         };
         Ok(Self {
+            items: crate::scene_items::Resources::load(files)?,
             arena,
             fighters: fighters.try_into().ok().expect("two character resources"),
             stage,
@@ -94,6 +97,7 @@ impl Assets {
             stage_desc,
             particle_bank,
             effects,
+            fox_effects: archive("EfFxData.dat")?,
             common_particle_bank,
             characters: characters.try_into().ok().expect("two character archives"),
         })

@@ -14,9 +14,11 @@ pub mod inputs;
 pub mod replay;
 pub mod scenario;
 pub mod trace;
+mod trace_items;
 
 mod countdown;
 
 mod scene_fighter;
+mod scene_items;
 
 pub mod scene_stage;

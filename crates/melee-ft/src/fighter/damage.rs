@@ -368,7 +368,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
             }
         }
         if let Some(hit) = self.core.combat.pending.take() {
-            hit_damage = self.begin_damage_reaction(hit, assets)?;
+            if hit.knockback == 0.0 {
+                // Fighter_ProcessHit (fighter.c:2958) / Fighter_UnkTakeDamage_8006CC30: zero-knockback damage
+                // updates percent without a damage-state transition or hitlag.
+                self.core.physics.percent += hit.descriptor.damage;
+            } else {
+                hit_damage = self.begin_damage_reaction(hit, assets)?;
+            }
         }
         if hit_damage != 0 {
             self.core.combat.hitlag_remaining = assets.damage.hitlag(hit_damage);
@@ -500,6 +506,91 @@ impl<C: CharacterCallbacks> Fighter<C> {
     }
 }
 impl FighterCore {
+    /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
+    pub fn detect_item_hit(
+        &mut self,
+        item: &mut melee_it::ItemCore,
+        assets: &FighterAssets,
+    ) -> Option<f32> {
+        if item.owner == Some(self.player.id)
+            || item.destroyed
+            || self.status.disabled
+            || self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
+            || self.status.ledge_intangibility != 0
+        {
+            return None;
+        }
+        let mut cursor = melee_coll::detection::PairCursor::default();
+        while let Some(id) = cursor.next(
+            &item.hitboxes,
+            self.spawn_number,
+            self.physics.ground_or_air,
+        ) {
+            if !item.hit_flags[id].hits_hurtboxes {
+                continue;
+            }
+            let hit = item.hitboxes[id].as_ref().unwrap();
+            if self.shield.active {
+                unimplemented!("item shield response");
+            }
+            let Some((contact, height)) =
+                melee_coll::detection::first_contact(self, hit, item.scale)
+            else {
+                continue;
+            };
+            if contact.overlap < assets.damage.phantom_threshold {
+                unimplemented!("item phantom hit");
+            }
+            let descriptor = hit.descriptor.clone();
+            let knockback = assets.damage.knockback(
+                &descriptor,
+                self.physics.percent,
+                self.attributes.size.weight,
+            );
+            self.combat.pending = Some(ReceivedHit {
+                descriptor: descriptor.clone(),
+                height,
+                knockback,
+                facing: if self.physics.position.x > item.position.x {
+                    -1.0
+                } else {
+                    1.0
+                },
+                facing_override: None,
+            });
+            melee_coll::detection::record_victim(
+                &mut item.hitboxes,
+                descriptor.group,
+                self.spawn_number,
+            );
+            // ftColl_8007A06C -> efSync_Spawn, shared with fighter hits.
+            self.effects
+                .push(melee_ef::request::EffectRequest::HitSpark {
+                    position: contact.position,
+                    element: descriptor.element,
+                    damage: fctiwz(descriptor.damage) as f32,
+                    large: knockback >= assets.damage.large_spark_threshold,
+                });
+            if descriptor.element == melee_types::HitElement::Normal
+                && descriptor.sound_severity >= 1
+            {
+                let variant = self.attributes.combat.hit_spark_variant;
+                if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize)
+                {
+                    self.effects
+                        .push(melee_ef::request::EffectRequest::NormalSparkExtra {
+                            position: contact.position,
+                            facing: self.physics.facing,
+                            variant,
+                            random_bound,
+                        });
+                }
+            }
+            return Some(descriptor.damage);
+        }
+        None
+    }
+
     /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.
     pub(super) fn contact_with_hurtboxes(
         &mut self,

@@ -1,0 +1,15 @@
+[package]
+name = "ft-fox-family"
+description = "Shared Fox and Falco special moves (retail ftFx_)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-lb = { path = "../melee-lb" }
+it-foxlaser = { path = "../it-foxlaser" }
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }

@@ -45,10 +45,10 @@ fn falco_root_loads_the_shared_layout_and_reset_keeps_registrations() {
         ItemKind::FalcoPhantasm,
     ];
     assert_eq!(falco.registered_items, registrations);
-    falco.blaster_present = true;
+    falco.special_neutral.blaster_present = true;
     falco.model_group = 7;
     falco.on_reset();
-    assert!(!falco.blaster_present);
+    assert!(!falco.special_neutral.blaster_present);
     assert_eq!(falco.model_group, 0);
     assert_eq!(falco.registered_items, registrations);
 }

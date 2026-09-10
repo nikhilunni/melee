@@ -1,4 +1,4 @@
-//! Allocation census and strict simulate-only budgets across combat and movement scenes.
+//! Allocation census and strict simulate-only budgets across combat, movement and item scenes.
 use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenario, trace};
 use std::{
     alloc::{GlobalAlloc, Layout, System},
@@ -155,4 +155,9 @@ fn jabcombo_fd_fox_allocation_budget() {
 #[test]
 fn fsmashcharge_fd_fox_allocation_budget() {
     allocation_budget("fsmashcharge_fd_fox", 0);
+}
+#[test]
+fn laser_fd_fox_allocation_budget() {
+    // Measured after the exact 300-tick port; existing scene ceilings stay unchanged.
+    allocation_budget("laser_fd_fox", 32);
 }

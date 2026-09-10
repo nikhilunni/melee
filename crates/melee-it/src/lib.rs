@@ -1,3 +1,8 @@
-//! Item logic (decomp src/melee/it). Split per item family if it grows past ~30k lines
-//!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! Concrete item engine; retail `it/item.c` and `it/types.h`.
+pub mod desc;
+mod engine;
+mod logic;
+mod spawn;
+pub use engine::*;
+pub use logic::*;
+pub use spawn::*;

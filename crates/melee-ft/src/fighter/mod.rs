@@ -66,8 +66,35 @@ pub trait CharacterCallbacks: Sized + 'static {
         Self::SPECIAL_ROWS
     }
 
-    fn enter_special(_fighter: &mut Fighter<Self>, _slot: SpecialSlot, _airborne: bool) {
+    fn enter_special(
+        _fighter: &mut Fighter<Self>,
+        _slot: SpecialSlot,
+        _airborne: bool,
+        _assets: &assets::FighterAssets,
+    ) {
         // retail: ftData_SpecialN[kind] etc.
+    }
+
+    /// Fighter_CallAcessoryCallbacks_8006C624: character-owned accessory4.
+    fn accessory(_fighter: &mut Fighter<Self>, _assets: &assets::FighterAssets) {}
+    fn item_muzzle(
+        _fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> Option<(Vec3, f32)> {
+        None
+    }
+
+    fn item_owner(
+        fighter: &mut Fighter<Self>,
+        _assets: &assets::FighterAssets,
+    ) -> melee_it::ItemOwner {
+        melee_it::ItemOwner {
+            position: fighter.physics.position,
+            facing: fighter.physics.facing,
+            hold_position: fighter.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+        }
     }
 
     fn kind(&self) -> FighterKind;
@@ -462,6 +489,15 @@ impl<C: CharacterCallbacks> std::ops::DerefMut for Fighter<C> {
     }
 }
 impl<C: CharacterCallbacks> Fighter<C> {
+    pub fn character_accessory(&mut self, assets: &assets::FighterAssets) {
+        C::accessory(self, assets);
+    }
+    pub fn item_muzzle(&mut self, assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
+        C::item_muzzle(self, assets)
+    }
+    pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
+        C::item_owner(self, assets)
+    }
     /// Install callback and scalar state together, including during savestate import.
     pub fn install_motion_row(&mut self, row: MotionRow<C>) {
         self.core.motion_state = MotionState::new(row);
@@ -495,6 +531,8 @@ pub struct FighterCore {
     pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,
     pub effects: melee_ef::request::EffectQueue,
+    /// Ordered item operations drained by the scene after each fighter phase.
+    pub item_requests: melee_types::fixed::FixedVec<melee_it::ItemRequest, 64>,
     pub capabilities: Capabilities,
     pub cpu: CpuState,
     pub status: Status,

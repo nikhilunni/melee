@@ -25,6 +25,9 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `crates/hsd-types`, `crates/melee-types` | Leaf type crates: vectors, enums, ids. No logic. |
 | `crates/hsd-archive` | `.dat` archive parsing. The only crate that knows on-disc layout. |
 | `crates/hsd-gobj`, `crates/hsd-anim` | HSD engine: scheduler, scene graph, animation. |
+| `crates/melee-it` | Fixed item storage, spawn descriptors, state/event logic rows and item script/physics phases. |
+| `crates/it-foxlaser` | Shared Fox/Falco laser and blaster item tables. |
+| `crates/ft-fox-family` | Shared Fox/Falco SpecialN states and typed move scratch. |
 | `crates/melee-cmd` | Shared typed subaction decoding, fixed interpreter control state and timers; consumers apply commands. |
 | `crates/melee-coll` | Hit/hurt capsules, collider pair traversal, contact geometry, damage math, clank priority and reflect/absorb descriptors. |
 | `crates/melee-ef` | Effect request queues, fixed model pools, efLib update and particle dispatch; independent of fighters/scenes. |

@@ -1,0 +1,144 @@
+//! Scene-owned item inventory and retail GObj scheduling; the engine knows no kinds.
+use anyhow::{Context, Result};
+use hsd_archive::Archive;
+use hsd_gobj::{GObjId, World};
+use melee_it::{
+    desc::{ItemAssets, ItemCommonData},
+    ItemPool, ItemRequest,
+};
+use melee_types::{fixed::FixedVec, ItemKind};
+use std::path::Path;
+
+melee_it::item_kinds! {
+    pub enum SceneItems {
+        FoxLaser: it_foxlaser::FoxLaser,
+        FalcoLaser: it_foxlaser::FalcoLaser,
+        FoxBlaster: it_foxlaser::FoxBlaster,
+        FalcoBlaster: it_foxlaser::FalcoBlaster,
+    }
+}
+
+pub struct Resources {
+    pub common: ItemCommonData,
+    kinds: Vec<(ItemKind, ItemAssets)>,
+}
+impl Resources {
+    pub fn load(files: &Path) -> Result<Self> {
+        let archive =
+            |file| -> Result<Archive> { Ok(Archive::parse(&std::fs::read(files.join(file))?)?) };
+        let common = archive("ItCo.dat")?;
+        let common = ItemCommonData::read(
+            &common,
+            common.public("itPublicData").context("itPublicData")?,
+        )?;
+        let mut kinds = Vec::new();
+        for (file, symbol, laser, blaster) in [
+            (
+                "PlFx.dat",
+                "ftDataFox",
+                ItemKind::FoxLaser,
+                ItemKind::FoxBlaster,
+            ),
+            (
+                "PlFc.dat",
+                "ftDataFalco",
+                ItemKind::FalcoLaser,
+                ItemKind::FalcoBlaster,
+            ),
+        ] {
+            let a = archive(file)?;
+            let root = a.public(symbol).context("family fighter data")?;
+            kinds.push((laser, ItemAssets::from_fighter(&a, root, 0, 2)?));
+            // Rows 9 and 10 have animation -1, so the archive contains nine animations.
+            kinds.push((blaster, ItemAssets::from_fighter(&a, root, 1, 9)?));
+        }
+        Ok(Self { common, kinds })
+    }
+    pub fn get(&self, kind: ItemKind) -> &ItemAssets {
+        &self
+            .kinds
+            .iter()
+            .find(|(k, _)| *k == kind)
+            .expect("registered item assets")
+            .1
+    }
+}
+
+pub const TAG_BASE: usize = 1 << 16;
+pub fn tag(id: u32, phase: u8) -> usize {
+    TAG_BASE + id as usize * 32 + usize::from(phase)
+}
+pub fn decode_tag(tag: usize) -> (u32, u8) {
+    (
+        ((tag - TAG_BASE) / 32) as u32,
+        ((tag - TAG_BASE) % 32) as u8,
+    )
+}
+pub type Objects = FixedVec<(u32, GObjId), { melee_it::ITEM_CAPACITY }>;
+
+/// Provision GObj/proc slabs and their LIFO free lists before allocation counting.
+pub fn prepare_scheduler(world: &mut World) {
+    let mut objects = Vec::with_capacity(melee_it::ITEM_CAPACITY);
+    for _ in 0..melee_it::ITEM_CAPACITY {
+        let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
+        for phase in melee_it::ITEM_PROCESS_LINKS {
+            world.add_tagged_proc(object, phase, TAG_BASE);
+        }
+        objects.push(object);
+    }
+    for object in objects {
+        world.destroy(object);
+    }
+}
+
+pub fn request(
+    pool: &mut ItemPool,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    request: ItemRequest,
+) {
+    let (spawn, ray) = match request {
+        ItemRequest::Spawn(spawn) => (spawn, None),
+        ItemRequest::SpawnLaser {
+            spawn,
+            angle,
+            speed,
+            motion,
+        } => (spawn, Some((angle, speed, motion))),
+        ItemRequest::Control {
+            owner,
+            kind,
+            control,
+        } => {
+            pool.control::<SceneItems>(owner, kind, control);
+            return;
+        }
+    };
+    let assets = resources.get(spawn.kind);
+    if let Some(id) = pool.spawn::<SceneItems>(spawn, assets) {
+        pool.get_mut(id)
+            .unwrap()
+            .initialize_collision(spawn, assets, map);
+        if let Some((angle, speed, motion)) = ray {
+            it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
+        }
+        let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
+        for phase in melee_it::ITEM_PROCESS_LINKS {
+            world.add_tagged_proc(object, phase, tag(id, phase));
+        }
+        objects.push((id, object));
+    }
+}
+
+pub fn cleanup(pool: &mut ItemPool, world: &mut World, objects: &mut Objects) {
+    for item in pool.iter().filter(|item| item.destroyed) {
+        let index = objects
+            .iter()
+            .position(|(id, _)| *id == item.id)
+            .expect("item GObj");
+        world.destroy(objects.remove(index).1);
+    }
+    pool.remove_destroyed::<SceneItems>();
+}

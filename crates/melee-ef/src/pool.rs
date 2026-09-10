@@ -40,6 +40,18 @@ impl ModelPool {
         }
         Ok(Self { models })
     }
+    pub(super) fn add(&mut self, initial: Effect) {
+        let mut free = FixedVec::default();
+        for _ in 0..SLOTS_PER_MODEL {
+            let mut effect = initial.clone();
+            effect
+                .tree
+                .events
+                .reserve_exact(initial.tree.events.capacity());
+            free.push(effect);
+        }
+        self.models.push(ModelSlots { initial, free });
+    }
     fn take(&mut self, descriptor: u32) -> Effect {
         self.models
             .iter_mut()
@@ -67,8 +79,10 @@ impl Effects {
             events: Default::default(),
             camera_quakes: Default::default(),
             draws: DrawLog(Vec::with_capacity(DRAW_CAPACITY)),
+            direct_draws: Default::default(),
             instances: Default::default(),
             models: ModelPool::load(archive)?,
+            fox_bank: None,
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
         })
@@ -177,5 +191,5 @@ impl Effect {
 /// Supported sync-load rows: shields/entry (efasync.c:407,429,453,751)
 /// and egg shells (efsync.c:84,228-292). All other modeled rows use async load.
 fn is_sync(descriptor: u32) -> bool {
-    matches!(descriptor, 0xB | 0xC | 0xD | 0x1E | 0x1F | 0x24)
+    matches!(descriptor, 0xB | 0xC | 0xD | 0x1E | 0x1F | 0x24 | 0xBBD)
 }

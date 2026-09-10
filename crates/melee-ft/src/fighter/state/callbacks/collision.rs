@@ -292,6 +292,36 @@ pub fn guard_set_off<C: CharacterCallbacks>(
     Ok(())
 }
 
+/// ftCo_AirCatchHit_Coll (80082B78): ordinary collision and soft landing,
+/// with no platform filtering or ledge-grab branch.
+pub fn air_catch_hit<C: CharacterCallbacks>(
+    fighter: &mut Fighter<C>,
+    phase: CollisionPhase<'_>,
+) -> Result<()> {
+    let assets = phase.assets.expect("airborne map needs fighter assets");
+    air::begin_map(
+        &fighter.core.physics,
+        &mut fighter.core.collision,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+    );
+    if air::collide_air_dodge(
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
+        phase.map,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+    ) {
+        if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
+            fighter.land();
+            fighter.change_motion_state(melee_types::CommonMotionState::Wait, assets)?;
+        } else {
+            fighter.enter_landing(assets)?;
+        }
+    }
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_Fall (29), ftCo_MS_FallAerial (32).
 pub fn fall<C: CharacterCallbacks>(
     fighter: &mut Fighter<C>,

@@ -12,7 +12,7 @@ use melee_types::snapshot::{PrefixSink, Snapshot, SnapshotSink};
 use std::{
     collections::BTreeSet,
     fs::File,
-    io::{BufReader, Write},
+    io::{BufRead, BufReader, Write},
 };
 
 impl Snapshot for InitialState {
@@ -104,8 +104,29 @@ pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
 }
 /// Unlike first_divergence alone, this also rejects extra keys/records.
 pub fn gate(scenario: &Scenario) -> Result<()> {
-    gate_with_recording(scenario, false)?;
+    gate_with_recording(scenario, false, false)?;
     Ok(())
+}
+
+/// Extend the existing fighter gate with every recorded item key in list order.
+pub fn gate_items(scenario: &Scenario) -> Result<()> {
+    gate_with_recording(scenario, false, true)?;
+    Ok(())
+}
+
+pub fn compared_keys(scenario: &Scenario) -> Result<usize> {
+    let first = BufReader::new(File::open(scenario.expected_path())?)
+        .lines()
+        .next()
+        .transpose()?
+        .ok_or_else(|| anyhow::anyhow!("empty expected trace"))?;
+    let json: serde_json::Value = serde_json::from_str(&first)?;
+    Ok(49
+        + if json.get("items").is_some() {
+            crate::trace_items::KEYS.len() + 1
+        } else {
+            0
+        })
 }
 
 /// Record caller inputs during the exact gate loop; no output file is opened
@@ -120,7 +141,7 @@ pub fn fixture_spawns(
         ticks > 0 && ticks <= scenario.frames,
         "fixture ticks must be within the scenario"
     );
-    let mut events = gate_with_recording(scenario, true)?;
+    let mut events = gate_with_recording(scenario, true, true)?;
     events.retain(|frame, _| *frame < ticks);
     let mut out = std::io::BufWriter::new(File::create(out)?);
     serde_json::to_writer_pretty(&mut out, &events)?;
@@ -132,8 +153,23 @@ pub fn fixture_spawns(
 fn gate_with_recording(
     scenario: &Scenario,
     record_spawns: bool,
+    compare_items: bool,
 ) -> Result<std::collections::BTreeMap<u64, Vec<serde_json::Value>>> {
     let expected = read_trace(BufReader::new(File::open(scenario.expected_path())?))?;
+    let item_rows = if compare_items {
+        BufReader::new(File::open(scenario.expected_path())?)
+            .lines()
+            .enumerate()
+            .map(|(frame, line)| {
+                crate::trace_items::expected(
+                    &serde_json::from_str::<serde_json::Value>(&line?)?,
+                    frame as u64,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        vec![None; expected.len()]
+    };
     ensure!(
         expected.len() as u64 == scenario.frames,
         "expected trace length {} differs from scenario {}",
@@ -147,7 +183,7 @@ fn gate_with_recording(
     if record_spawns {
         simulation.enable_spawn_recording();
     }
-    for expected in expected {
+    for (expected, expected_items) in expected.into_iter().zip(item_rows) {
         let mut actual = simulation.tick()?;
         if !scenario.replay_inputs.is_empty() {
             actual.frame -= 1;
@@ -160,6 +196,12 @@ fn gate_with_recording(
                 actual.frame,
                 simulation.rng_writers()
             );
+        }
+        if let Some(expected_items) = expected_items {
+            let actual_items = simulation.item_snapshot(actual.frame);
+            if let Some(diff) = first_divergence([&expected_items], [&actual_items]) {
+                anyhow::bail!("{diff}\n{} ticks matched (item list order)", actual.frame);
+            }
         }
     }
     Ok(if record_spawns {

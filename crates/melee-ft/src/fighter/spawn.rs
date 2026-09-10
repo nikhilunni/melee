@@ -452,6 +452,7 @@ impl FighterCore {
             shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
             effects: melee_ef::request::EffectQueue::default(),
+            item_requests: Default::default(),
             capabilities,
             cpu: CpuState {
                 buttons: 0,

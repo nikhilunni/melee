@@ -254,9 +254,11 @@ dependencies = [
 name = "ft-falco"
 version = "0.0.1"
 dependencies = [
+ "ft-fox-family",
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
  "melee-types",
 ]
@@ -265,11 +267,26 @@ dependencies = [
 name = "ft-fox"
 version = "0.0.1"
 dependencies = [
+ "ft-fox-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-fox-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "it-foxlaser",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
  "melee-types",
 ]
 
@@ -418,6 +435,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
+name = "it-foxlaser"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -507,6 +537,7 @@ dependencies = [
  "melee-diff",
  "melee-ef",
  "melee-gr",
+ "melee-it",
  "melee-lb",
  "melee-mp",
  "melee-test-support",
@@ -541,7 +572,12 @@ name = "melee-it"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
  "hsd-gobj",
+ "hsd-types",
+ "melee-cmd",
+ "melee-coll",
  "melee-lb",
  "melee-mp",
  "melee-types",
@@ -598,6 +634,7 @@ dependencies = [
  "hsd-gobj",
  "hsd-particle",
  "hsd-types",
+ "it-foxlaser",
  "melee-cmd",
  "melee-coll",
  "melee-cpu",

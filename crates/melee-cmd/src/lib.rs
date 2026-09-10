@@ -26,11 +26,18 @@ pub enum Command {
     EndLoop,
     /// ftAction_80071F78 (80071F78), Fighter +221E bit 4.
     ArticleVisibility(bool),
+    /// ftAction_80071F34: the ordinary held-item visibility flag.
+    HeldItemVisibility(bool),
     SpawnHitbox {
         id: usize,
         descriptor: melee_types::combat::HitboxDescriptor,
     },
     ClearHitbox(usize),
+    /// it_80279544: update an active item's capsule damage without respawning it.
+    SetHitboxDamage {
+        id: usize,
+        damage: f32,
+    },
     ClearHitboxes,
     JabFollowup(bool),
     RapidJab(bool),

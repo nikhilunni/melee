@@ -46,6 +46,7 @@ use std::{
 /// The sole trace-to-runtime boundary. No expected records or ledger draws are
 /// retained by Simulation. Imports vs archive-derived state are listed in M3.md.
 pub struct InitialState {
+    pub(crate) items: Box<melee_it::ItemPool>,
     pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
     pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
     pub(crate) assets: Assets,
@@ -334,8 +335,10 @@ impl InitialState {
                 .unwrap()
                 + 1,
         );
-        let effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
+        let mut effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
+        effects.load_fox(&assets.fox_effects)?;
         Ok(Self {
+            items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays,
             spawn_counter,
             countdown: None,

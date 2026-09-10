@@ -19,6 +19,7 @@ use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Callback {
+    Item { id: u32, phase: u8 },
     Countdown,
     Stage { map: Option<u8>, address: u32 },
     Fighter { player: usize, proc: FighterProc },
@@ -39,6 +40,19 @@ struct Registration {
 impl Registration {
     fn key(self) -> ProcKey {
         let callback = match self.callback {
+            Callback::Item { phase, .. } => match phase {
+                0 => 0x802693E4,
+                1 => 0x80269528,
+                4 => 0x802697D4,
+                5 => 0x80269978,
+                9 => 0x80269A9C,
+                11 => 0x80269B60,
+                12 => 0x80269BE4,
+                13 => 0x80269C5C,
+                14 => 0x8026A294,
+                16 => 0x8026A788,
+                _ => unreachable!(),
+            },
             Callback::Fighter { proc, .. } => match proc {
                 FighterProc::Status => 0x8006_A1BC,
                 FighterProc::Animation => 0x8006_A360,
@@ -169,6 +183,7 @@ fn register(
     }
 }
 struct Runtime {
+    item_objects: crate::scene_items::Objects,
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
     pads: PadScript,
@@ -181,7 +196,72 @@ struct Runtime {
     match_finished: bool,
 }
 impl Runtime {
-    fn dispatch(&mut self, row: Registration) -> Result<()> {
+    fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
+        use crate::scene_items::SceneItems;
+        let state = &mut self.state;
+        let Some(item) = state.items.get_mut(id) else {
+            return Ok(());
+        };
+        let kind = item.kind;
+        let owner_slot = item.owner;
+        let owner = owner_slot.and_then(|slot| {
+            let index = state.fighters.iter().position(|fighter| {
+                crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == slot)
+            })?;
+            Some(crate::scene_fighter::with_fighter!(
+                &mut state.fighters[index],
+                |f| f.item_owner(&state.assets.fighters[index])
+            ))
+        });
+        match phase {
+            0 => {}
+            1 => {
+                state
+                    .items
+                    .animate::<SceneItems>(id, state.assets.items.get(kind), owner.as_ref())
+            }
+            4 => state.items.physics::<SceneItems>(id, owner.as_ref()),
+            5 => {
+                let contact = state.items.stage_contact(id, &mut state.map);
+                state.items.collide::<SceneItems>(id, contact);
+            }
+            9 => {
+                let item = state.items.get_mut(id).unwrap();
+                if let melee_it::ItemScratch::Held(held) = &mut item.scratch {
+                    if held.shot_pending {
+                        held.shot_pending = false;
+                        let slot = owner_slot.expect("blaster owner");
+                        let index = state
+                            .fighters
+                            .iter()
+                            .position(|fighter| {
+                                crate::scene_fighter::with_fighter!(fighter, |f| f.player.id
+                                    == slot)
+                            })
+                            .expect("live blaster owner");
+                        let (position, angle) =
+                            crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+                                .item_muzzle(&state.assets.fighters[index]))
+                            .expect("blaster muzzle callback");
+                        state.effects.spawn_blaster_muzzle::<RetailTrig>(
+                            usize::from(slot),
+                            position,
+                            angle,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                }
+            }
+            11 => state.items.get_mut(id).unwrap().update_hitboxes(),
+            14 => state.items.process_events::<SceneItems>(id),
+            12 | 13 | 16 => {}
+            _ => unreachable!(),
+        }
+        Ok(())
+    }
+    fn dispatch(&mut self, row: Registration, world: &mut World) -> Result<()> {
         // fn_8016CFE0 -> gm_801A4634(4); gm_803DA888[4] freezes gameplay procs.
         const ELIMINATION_PAUSE_MASK: u64 = 0x800FFA;
         if self.match_finished
@@ -201,6 +281,9 @@ impl Runtime {
         let state = &mut self.state;
         let state_pads = &self.pads;
         match row.callback {
+            Callback::Item { id, phase } => {
+                self.dispatch_item(id, phase)?;
+            }
             Callback::Countdown => {
                 if state
                     .countdown
@@ -250,6 +333,15 @@ impl Runtime {
                         with_fighter!(victim, |v| with_fighter!(attacker, |a| {
                             melee_ft::fighter::damage::detect_hit(v, a, &assets.fighters[player])
                         }));
+                    }
+                    for item in state.items.iter_mut() {
+                        let hit = with_fighter!(&mut state.fighters[player], |f| {
+                            f.core.detect_item_hit(item, &assets.fighters[player])
+                        });
+                        if let Some(damage) = hit {
+                            // ftColl_80077C60 records contact; Item_8026A294 runs the callback at link 14.
+                            item.record_damage_dealt(damage);
+                        }
                     }
                 }
                 crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
@@ -322,6 +414,7 @@ impl Runtime {
                 }
                 if proc == FighterProc::Accessories {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        f.character_accessory(&state.assets.fighters[player]);
                         f.update_revival_platform();
                         if f.motion_state.id == melee_types::CommonMotionState::ThrownB {
                             f.thrown_accessory(&state.assets.fighters[player]);
@@ -484,6 +577,55 @@ impl Runtime {
                 .particles
                 .proc_aux::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
         }
+        let state = &mut self.state;
+        for fighter in &mut state.fighters {
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                while !f.item_requests.is_empty() {
+                    let request = f.item_requests.remove(0);
+                    crate::scene_items::request(
+                        &mut state.items,
+                        &state.assets.items,
+                        &mut state.map,
+                        world,
+                        &mut self.item_objects,
+                        request,
+                    );
+                }
+            });
+        }
+        // Item SFX use the same headless request sink as ft_PlaySFX.
+        for item in state.items.iter_mut() {
+            while !item.sound_requests.is_empty() {
+                let id = item.sound_requests.remove(0);
+                if let Some(fighter) = state.fighters.iter_mut().find(|fighter| {
+                    crate::scene_fighter::with_fighter!(fighter, |f| Some(f.player.id)
+                        == item.owner)
+                }) {
+                    crate::scene_fighter::with_fighter!(fighter, |f| {
+                        f.commands.footstep_sounds.push(
+                            melee_ft::fighter::commands::FootstepSound {
+                                channel: melee_ft::fighter::commands::SoundChannel::Ordinary,
+                                id,
+                                volume: 127,
+                                pan: 64,
+                            },
+                        );
+                    });
+                }
+            }
+        }
+        for item in state
+            .items
+            .iter()
+            .filter(|item| item.destroyed && matches!(item.scratch, melee_it::ItemScratch::Held(_)))
+        {
+            if let Some(owner) = item.owner {
+                state
+                    .effects
+                    .destroy_blaster_muzzles(usize::from(owner), &mut state.particles);
+            }
+        }
+        crate::scene_items::cleanup(&mut state.items, world, &mut self.item_objects);
         self.particle_draws.0.append(&mut state.effects.draws.0);
         Ok(())
     }
@@ -498,6 +640,9 @@ pub struct Simulation {
     registrations: Vec<Registration>,
 }
 impl Simulation {
+    pub fn item_snapshot(&self, frame: u64) -> Record {
+        crate::trace_items::actual(&self.runtime.state.items, frame)
+    }
     /// A simulation with neutral pads on every port.
     pub fn new(state: InitialState) -> Self {
         Self::with_inputs(state, PadScript::default())
@@ -535,6 +680,7 @@ impl Simulation {
                 .percent))
         });
         let runtime = Box::new(Runtime {
+            item_objects: Default::default(),
             state,
             interface,
             match_finished: false,
@@ -542,7 +688,7 @@ impl Simulation {
             frame: 0,
             error: None,
             // At most one writer per registered proc, plus match-start music.
-            rng_writers: Vec::with_capacity(rows.len() + 1),
+            rng_writers: Vec::with_capacity(rows.len() + 1 + melee_it::ITEM_CAPACITY * 10),
             particle_draws: DrawLog(Vec::with_capacity(4096)),
         });
         let mut world = World::new(WorldConfig::MELEE);
@@ -553,6 +699,7 @@ impl Simulation {
                 .or_insert_with(|| world.create(0, row.p_link, row.priority));
             world.add_tagged_proc(object, row.s_link, index);
         }
+        crate::scene_items::prepare_scheduler(&mut world);
         Self {
             world,
             runtime,
@@ -579,6 +726,7 @@ impl Simulation {
             runtime.state.effects.events.begin_tick(frame);
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
+            runtime.state.effects.direct_draws.clear();
             if let Some((music, unlocked)) = runtime.state.pending_music.take() {
                 runtime.state.selected_music = Some(music.select(unlocked, &mut runtime.state.rng));
                 let seed = runtime.state.rng.seed;
@@ -597,13 +745,24 @@ impl Simulation {
                 crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
             });
         let rows = &self.registrations;
-        self.world.run_procs_with(|_, _, index| {
-            let row = rows[index];
+        self.world.run_procs_with(|world, _, index| {
+            let row = if index >= crate::scene_items::TAG_BASE {
+                let (id, phase) = crate::scene_items::decode_tag(index);
+                Registration {
+                    s_link: phase,
+                    p_link: 9,
+                    priority: 0,
+                    object: u8::MAX,
+                    callback: Callback::Item { id, phase },
+                }
+            } else {
+                rows[index]
+            };
             if runtime.error.is_some() {
                 return;
             }
             let seed = runtime.state.rng.seed;
-            if let Err(error) = runtime.dispatch(row) {
+            if let Err(error) = runtime.dispatch(row, world) {
                 runtime.error =
                     Some(error.context(format!("frame {} proc {:?}", runtime.frame, row)));
             }
@@ -629,6 +788,16 @@ impl Simulation {
     /// Ordered particle branch sites observed in the last completed tick.
     pub fn particle_rng_sites(&self) -> Vec<u32> {
         self.runtime.particle_draws.0.clone()
+    }
+    /// Ordered direct hit-effect RNG sites, separate from particle interpreter sites.
+    pub fn effect_rng_sites(&self) -> Vec<u32> {
+        self.runtime
+            .state
+            .effects
+            .direct_draws
+            .iter()
+            .copied()
+            .collect()
     }
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
         self.runtime

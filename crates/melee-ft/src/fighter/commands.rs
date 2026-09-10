@@ -58,6 +58,7 @@ pub struct CommandState {
     pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
+    pub held_item_visible: bool,
     pub hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
@@ -207,6 +208,13 @@ impl CommandState {
                         self.hitboxes[*id] = None;
                     }
                 }
+                Command::SetHitboxDamage { id, damage } => {
+                    if !seeking {
+                        if let Some(hit) = &mut self.hitboxes[*id] {
+                            hit.descriptor.damage = *damage;
+                        }
+                    }
+                }
                 Command::ClearHitboxes => {
                     if !seeking {
                         self.hitboxes.fill(None);
@@ -259,6 +267,7 @@ impl CommandState {
                     self.model_selections.insert(*group, *variant);
                 }
                 Command::ArticleVisibility(visible) => self.articles_visible = *visible,
+                Command::HeldItemVisibility(visible) => self.held_item_visible = *visible,
                 Command::SmashCharge(charge) => self.smash_charge = Some(*charge),
                 Command::SetAirborne(state) => self.airborne_changes.push(*state),
                 Command::HurtStatus(status) => self.hurt_status = *status,

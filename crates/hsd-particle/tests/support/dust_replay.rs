@@ -126,13 +126,23 @@ fn replay_fields(
     }
     let stage = Archive::parse(&fs::read(&archives[0]).unwrap()).unwrap();
     let effect = Archive::parse(&fs::read(&archives[1]).unwrap()).unwrap();
-    let banks = BTreeMap::from([
+    let mut banks = BTreeMap::from([
         (
             30,
             ParticleBank::from_archive(&stage, "map_ptcl", "map_texg").unwrap(),
         ),
         (0, common_bank(&effect)),
     ]);
+    // Fox's effect models can request their registered particle bank 3.
+    // Only scenes reaching these effects require the additional owned-disc asset.
+    if name == "laser_fd_fox" {
+        let fox_path = root.join("roms/files/EfFxData.dat");
+        if !melee_test_support::require_files([&fox_path]) {
+            return 0;
+        }
+        let fox = Archive::parse(&fs::read(fox_path).unwrap()).unwrap();
+        banks.insert(3, effect_bank(&fox, "effFoxDataTable"));
+    }
     let initial = restore::read(&paths[0]);
     let states = restore::read(&paths[1]);
     let ledger: Vec<Json> = fs::read_to_string(&paths[2])
@@ -317,8 +327,11 @@ fn replay_fields(
 }
 
 pub fn common_bank(archive: &Archive) -> ParticleBank {
-    // efAsync_LoadSync (efasync.c:1287-1316): effCommonDataTable begins with command/texture pointers.
-    let table = archive.public("effCommonDataTable").unwrap();
+    effect_bank(archive, "effCommonDataTable")
+}
+fn effect_bank(archive: &Archive, symbol: &str) -> ParticleBank {
+    // efAsync_LoadSync (efasync.c:1287-1316): table begins with command/texture pointers.
+    let table = archive.public(symbol).unwrap();
     let commands = archive.link(table).unwrap().unwrap() as usize;
     let textures = archive.link(table + 4).unwrap().unwrap() as usize;
     ParticleBank::from_bytes(

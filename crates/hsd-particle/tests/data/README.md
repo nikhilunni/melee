@@ -27,6 +27,7 @@ cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/start_fd_fox.toml 
 cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/start_bf_fox.toml --out crates/hsd-particle/tests/data/start_bf_spawns.json
 cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/start_dl_fox.toml --out crates/hsd-particle/tests/data/start_dl_spawns.json
 cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/jab_fd_fox.toml --out crates/hsd-particle/tests/data/jab_fd_fox_spawns.json
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/laser_fd_fox.toml --out crates/hsd-particle/tests/data/laser_fd_fox_spawns.json
 ```
 
 Jump, dash and FD start now use the common JSON reader. Their former Rust

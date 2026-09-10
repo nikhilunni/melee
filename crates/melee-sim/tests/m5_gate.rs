@@ -2,6 +2,11 @@ use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenar
 use std::{fs, path::Path};
 
 #[test]
+fn laser_fd_fox_300_ticks_items_and_ordered_particle_draws() {
+    combat_gate("laser_fd_fox");
+}
+
+#[test]
 fn jab_fd_marth_300_ticks_and_ordered_particle_draws() {
     if let Some(draws) = combat_gate("jab_fd_marth") {
         assert!(
@@ -58,8 +63,19 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         return None;
     }
     assert_eq!(scenario.frames as usize, ticks);
-    trace::gate(&scenario).unwrap();
-    eprintln!("{ticks} ticks, 49 keys, 0 divergences");
+    if name == "laser_fd_fox" {
+        trace::gate_items(&scenario).unwrap();
+    } else {
+        trace::gate(&scenario).unwrap();
+    }
+    eprintln!(
+        "{ticks} ticks, {} keys, 0 divergences",
+        if name == "laser_fd_fox" {
+            trace::compared_keys(&scenario).unwrap()
+        } else {
+            49
+        }
+    );
     let mut simulation = Simulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         trace::pad_script(&scenario).unwrap(),
@@ -77,6 +93,20 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
             .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
             .collect();
         simulation.tick().unwrap();
+        if name == "laser_fd_fox" {
+            let effect_sites: Vec<u32> = row["rng_draws"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
+                .filter(|site| matches!(site, 0x8006_3990 | 0x8007_85CC | 0x8007_85FC))
+                .collect();
+            assert_eq!(
+                simulation.effect_rng_sites(),
+                effect_sites,
+                "tick {tick} direct hit-effect RNG order"
+            );
+        }
         assert_eq!(
             simulation.particle_rng_sites(),
             expected,

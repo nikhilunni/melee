@@ -74,8 +74,10 @@ impl InitialState {
                 .all_characters_unlocked
                 .expect("validated cold music rule"),
         ));
-        let effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
+        let mut effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
+        effects.load_fox(&assets.fox_effects)?;
         Ok(Self {
+            items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays: [None, None],
             spawn_counter: melee_ft::fighter::SpawnCounter(3),
             countdown: Some(crate::countdown::Countdown::load(&scenario.assets_path())?),

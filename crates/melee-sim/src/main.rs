@@ -128,8 +128,12 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Gate { scenario } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
-            melee_sim::trace::gate(&scenario)?;
-            println!("{} ticks, 49 keys, 0 divergences", scenario.frames);
+            melee_sim::trace::gate_items(&scenario)?;
+            println!(
+                "{} ticks, {} keys, 0 divergences",
+                scenario.frames,
+                melee_sim::trace::compared_keys(&scenario)?
+            );
             Ok(())
         }
         Command::FixtureSpawns {
@@ -140,8 +144,9 @@ fn main() -> anyhow::Result<()> {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
             melee_sim::trace::fixture_spawns(&scenario, &out, ticks)?;
             println!(
-                "{} ticks, 49 keys, 0 divergences; fixture {}",
+                "{} ticks, {} keys, 0 divergences; fixture {}",
                 scenario.frames,
+                melee_sim::trace::compared_keys(&scenario)?,
                 out.display()
             );
             Ok(())

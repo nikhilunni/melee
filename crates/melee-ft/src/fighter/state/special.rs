@@ -23,7 +23,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
             if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, &context)
                 == WaitTransition::Special
             {
-                C::enter_special(self, slot, airborne);
+                C::enter_special(self, slot, airborne, assets);
                 return;
             }
         }

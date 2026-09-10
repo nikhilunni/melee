@@ -16,6 +16,7 @@ members = [
     "crates/melee-mp",
     "crates/melee-gr",
     "crates/melee-it",
+    "crates/it-foxlaser",
     "crates/melee-ft",
     "crates/melee-cmd",
     "crates/melee-coll",
@@ -24,6 +25,7 @@ members = [
     "crates/melee-cpu",
     # Layer 3: one crate per character. Depend on melee-ft, never on each other.
     "crates/ft-fox",
+    "crates/ft-fox-family",
     "crates/ft-mars",
     "crates/ft-falco",
     "crates/ft-captain",

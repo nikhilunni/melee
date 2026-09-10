@@ -93,16 +93,33 @@ impl<C: CharacterCallbacks> Fighter<C> {
         &mut self,
         assets: &super::assets::FighterAssets,
     ) -> super::assets::Result<()> {
+        self.enter_special_fall(
+            assets,
+            true,
+            false,
+            assets.air_dodge.special_fall_mobility,
+            assets.air_dodge.landing_lag,
+        )
+    }
+
+    /// ftCo_80096900, ordinary-gravity path shared by air dodge and SpecialN.
+    pub fn enter_special_fall(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+        force_landing_lag: bool,
+        allow_interrupt: bool,
+        mobility: f32,
+        landing_lag: f32,
+    ) -> super::assets::Result<()> {
         self.change_motion_state(melee_types::CommonMotionState::FallSpecial, assets)?;
         self.core.state_data = MotionData::FallSpecial(SpecialFallState {
             animation: FallState::new(FallFamily::Special),
             // retail 8009696C fmuls; no multiply-add.
-            mobility: self.core.attributes.air.air_drift_max
-                * assets.air_dodge.special_fall_mobility,
+            mobility: self.core.attributes.air.air_drift_max * mobility,
             ordinary_gravity: true,
-            force_landing_lag: true,
-            allow_interrupt: false,
-            landing_lag: assets.air_dodge.landing_lag,
+            force_landing_lag,
+            allow_interrupt,
+            landing_lag,
         });
         if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
             unimplemented!("ftCo_FallSpecial.c:52-53: grounded special-fall entry");

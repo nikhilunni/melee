@@ -3,6 +3,7 @@ use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// ftColl_80078538: severity-dependent draw after the primary hit spark.
     /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
     EggShell {
         bone: usize,

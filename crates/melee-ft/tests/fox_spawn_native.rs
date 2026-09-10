@@ -111,7 +111,7 @@ fn fox_spawn_native() {
         );
         assert!(f.capabilities.can_walljump);
         assert_eq!(f.character.registered_items.len(), 3);
-        assert!(!f.character.blaster_present);
+        assert!(!f.character.special_neutral.blaster_present);
         assert_eq!(f.dynamics_first_bone, [0]);
         assert_eq!(f.bones.ecb.joints, [41, 55, 25, 13, 7, 4]);
         let expected = f.row(melee_types::CommonMotionState::Fall.into());

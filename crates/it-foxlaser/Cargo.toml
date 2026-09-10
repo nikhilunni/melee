@@ -1,17 +1,17 @@
 [package]
-name = "ft-falco"
-description = "Falco character data and callbacks (ftFalco)"
+name = "it-foxlaser"
+description = "Fox/Falco laser and blaster item state tables"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }
-ft-fox-family = { path = "../ft-fox-family" }
 melee-types = { path = "../melee-types" }
-melee-ft = { path = "../melee-ft" }
 hsd-types = { path = "../hsd-types" }
-hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
+melee-lb = { path = "../melee-lb" }
 
 [dev-dependencies]
+hsd-archive = { path = "../hsd-archive" }
 melee-test-support = { path = "../melee-test-support" }

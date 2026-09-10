@@ -48,25 +48,34 @@ pub struct Effects {
     pub events: crate::fixture_spawns::EventSink,
     camera_quakes: FixedVec<(u16, Vec3), { request::REQUEST_CAPACITY }>,
     pub draws: DrawLog,
+    /// Ordered direct efAsync/ftColl draws; diagnostics use fixed storage.
+    pub direct_draws: FixedVec<u32, 64>,
     instances: FixedVec<Effect, INSTANCE_CAPACITY>,
     models: ModelPool,
+    fox_bank: Option<ParticleBank>,
     next_joint: usize,
     fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
 }
 #[derive(Clone)]
 struct Effect {
     descriptor: u32,
+    bank: u8,
     velocity: Option<Vec3>,
     tree: JObjTree,
     root: JObjId,
     joints: Vec<JObjId>,
     attachment: Option<usize>,
-    owner: Option<usize>,
+    owner: Option<ModelOwner>,
     lifetime: u16,
     indefinite: bool,
     shield_bone: Option<usize>,
     joint_base: usize,
     paths: BTreeMap<usize, (JObjId, spline::Spline)>,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ModelOwner {
+    Fighter(usize),
+    Blaster(usize),
 }
 /// Retail efSync runs at the caller; efAsync drains at fighter link 9.
 #[derive(Clone, Copy)]
@@ -75,6 +84,69 @@ pub enum EffectTiming {
     Deferred,
 }
 impl Effects {
+    /// efAlt_Spawn(0x48E), efLib_Create_Attach_Pos(0xBBD): Fox table row 5.
+    /// Loading is initialization-only; all 64 synchronous model slots are warm.
+    pub fn load_fox(&mut self, archive: &Archive) -> Result<()> {
+        ensure!(self.fox_bank.is_none(), "Fox effects already loaded");
+        let table = archive
+            .public("effFoxDataTable")
+            .context("Fox effect table")?;
+        let commands = archive.link(table)?.context("Fox particle commands")? as usize;
+        let textures = archive.link(table + 4)?.context("Fox particle textures")? as usize;
+        self.fox_bank = Some(ParticleBank::from_bytes(
+            &archive.data()[commands..textures],
+            &archive.data()[textures..],
+        )?);
+        self.models
+            .add(Effect::load_table(archive, "effFoxDataTable", 5, 0xBBD, 3)?);
+        Ok(())
+    }
+    pub fn fox_particle_bank(&self) -> Option<&ParticleBank> {
+        self.fox_bank.as_ref()
+    }
+    pub fn spawn_blaster_muzzle<T: InverseTrig>(
+        &mut self,
+        owner: usize,
+        position: Vec3,
+        angle: f32,
+        common_bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut effect = self.acquire(0xBBD, particles);
+        effect.owner = Some(ModelOwner::Blaster(owner));
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        effect.tree.set_translate(effect.root, &position);
+        effect
+            .tree
+            .set_rotation_y(effect.root, std::f32::consts::FRAC_PI_2);
+        effect.tree.set_rotation_z(effect.root, angle);
+        effect.animate_banks::<T>(
+            (common_bank, self.fox_bank.as_ref()),
+            particles,
+            rng,
+            &mut self.draws,
+            &mut self.events,
+        )?;
+        self.instances.push(effect);
+        Ok(())
+    }
+    /// it_802AEAB4 -> efLib_DestroyAll(item): remove only this owner's muzzle models.
+    pub fn destroy_blaster_muzzles(&mut self, owner: usize, particles: &mut ParticleSystem) {
+        for effect in self
+            .instances
+            .iter()
+            .filter(|e| e.owner == Some(ModelOwner::Blaster(owner)))
+        {
+            for &joint in &effect.joints {
+                let id = effect.joint_base + joint.0;
+                self.events.expire_joint(id);
+                particles.expire_joint(id);
+            }
+        }
+        self.recycle_where(|e| e.owner == Some(ModelOwner::Blaster(owner)));
+    }
     /// Diagnostic matrices; intentionally allocates outside the tick path.
     pub fn matrices(&self) -> BTreeMap<usize, Mtx> {
         let mut matrices = BTreeMap::new();
@@ -137,10 +209,11 @@ impl Effects {
                 random_bound,
             } = request
             {
-                self.events.external_randi(
-                    if variant == 0 { 0x800785CC } else { 0x800785FC },
-                    random_bound,
-                );
+                let site = if variant == 0 { 0x800785CC } else { 0x800785FC };
+                // ftColl_80078538+0x94: the draw is an external RNG input to the
+                // particle pass and is listed among this tick's effect RNG sites.
+                self.events.external_randi(site, random_bound);
+                self.direct_draws.push(site);
                 let selected = rng.randi(random_bound) == 0;
                 if variant == 0 && selected {
                     self.spawn_dust_generator::<T>(0x3EF, position, facing, bank, particles, rng)?;
@@ -151,14 +224,14 @@ impl Effects {
                 for effect in self
                     .instances
                     .iter()
-                    .filter(|effect| effect.owner == Some(player))
+                    .filter(|effect| effect.owner == Some(ModelOwner::Fighter(player)))
                 {
                     for joint in effect.tree.depth_first(effect.root) {
                         self.events.expire_joint(effect.joint_base + joint.0);
                         particles.expire_joint(effect.joint_base + joint.0);
                     }
                 }
-                self.recycle_where(|effect| effect.owner == Some(player));
+                self.recycle_where(|effect| effect.owner == Some(ModelOwner::Fighter(player)));
                 continue;
             }
             if let EffectRequest::Attached { id, bone } = request {
@@ -246,7 +319,10 @@ impl Effects {
                 EffectRequest::HitSpark {
                     element: melee_types::HitElement::Normal,
                     ..
-                } => (if rng.randi(8) == 0 { 9 } else { 10 }, None),
+                } => {
+                    self.direct_draws.push(0x8006_3990);
+                    (if rng.randi(8) == 0 { 9 } else { 10 }, None)
+                }
                 EffectRequest::HitSpark {
                     element: melee_types::HitElement::Slash,
                     ..
@@ -279,7 +355,7 @@ impl Effects {
             effect.owner = if matches!(request, EffectRequest::HitSpark { .. }) {
                 None
             } else {
-                Some(player)
+                Some(ModelOwner::Fighter(player))
             };
             if let EffectRequest::Shield { bone, .. }
             | EffectRequest::Graphics {
@@ -451,7 +527,13 @@ impl Effects {
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
             }
-            effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            effect.animate_banks::<T>(
+                (bank, self.fox_bank.as_ref()),
+                particles,
+                rng,
+                &mut self.draws,
+                &mut self.events,
+            )?;
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -473,10 +555,17 @@ impl Effects {
 impl Effect {
     /// efLib_Create (eflib.c:433-536): table index, model, lifetime, animation.
     fn load(archive: &Archive, id: u32) -> Result<Self> {
-        let table = archive
-            .public("effCommonDataTable")
-            .context("effect table")?;
-        let offset = table + 8 + id * EFFECT_DESCRIPTOR_SIZE;
+        Self::load_table(archive, "effCommonDataTable", id, id, 0)
+    }
+    fn load_table(
+        archive: &Archive,
+        table_name: &str,
+        index: u32,
+        id: u32,
+        bank: u8,
+    ) -> Result<Self> {
+        let table = archive.public(table_name).context("effect table")?;
+        let offset = table + 8 + index * EFFECT_DESCRIPTOR_SIZE;
         let lifetime = archive.reader().f32(offset)? as u16;
 
         let descriptor =
@@ -524,6 +613,7 @@ impl Effect {
         tree.req_anim_all(root, 0.0);
         Ok(Self {
             descriptor: id,
+            bank,
             velocity: None,
             tree,
             root,
@@ -564,6 +654,16 @@ impl Effect {
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
+        self.animate_banks::<T>((bank, None), particles, rng, draws, sink)
+    }
+    fn animate_banks<T: InverseTrig>(
+        &mut self,
+        banks: (&ParticleBank, Option<&ParticleBank>),
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        sink: &mut crate::fixture_spawns::EventSink,
+    ) -> Result<()> {
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
         for index in 0..self.joints.len() {
             let joint = self.joints[index];
@@ -578,8 +678,16 @@ impl Effect {
                     JObjEvent::DPtcl { jobj, lo, hi } => {
                         // efLib_Cb_DPtcl -> efLib_SpawnParticleEffect,
                         // eflib.c:857-1013: these kinds take hsd_8039EFAC(0,...).
+                        let bank = match lo {
+                            0 => banks.0,
+                            3 => banks.1.context("Fox particle bank not loaded")?,
+                            _ => anyhow::bail!("unsupported effect particle bank {lo}"),
+                        };
                         ensure!(
-                            lo == 0 && PARTICLE_KINDS.contains(&hi),
+                            (lo == 0 && (PARTICLE_KINDS.contains(&hi) || hi == 0x102))
+                                || (self.bank == 3
+                                    && lo == 3
+                                    && bank.descriptor(hi as u32).is_some()),
                             "unsupported ef particle {lo}/{hi}"
                         );
                         if hi == 0xD4 {

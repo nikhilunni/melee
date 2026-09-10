@@ -215,9 +215,17 @@ impl Scenario {
     }
     /// Local assets/captures required to run this scenario's oracle.
     pub fn required_files(&self) -> Vec<PathBuf> {
-        let mut paths = ["PlCo.dat", self.stage_descriptor().file, "EfCoData.dat"]
-            .map(|n| self.assets_path().join(n))
-            .to_vec();
+        let mut paths = [
+            "PlCo.dat",
+            self.stage_descriptor().file,
+            "EfCoData.dat",
+            "EfFxData.dat",
+            "ItCo.dat",
+            "PlFx.dat",
+            "PlFc.dat",
+        ]
+        .map(|n| self.assets_path().join(n))
+        .to_vec();
         for fighter in &self.fighters {
             let descriptor = fighter.descriptor();
             paths.extend(

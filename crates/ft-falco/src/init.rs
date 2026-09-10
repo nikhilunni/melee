@@ -7,8 +7,7 @@ use melee_types::{FighterKind, ItemKind};
 #[derive(Clone, Debug)]
 pub struct Falco {
     pub attributes: FoxAttributes,
-    /// u.fx.x222C_blasterGObj; no blaster exists during Wait.
-    pub blaster_present: bool,
+    pub special_neutral: ft_fox_family::SpecialNeutral,
     /// ftParts_80074A4C(gobj, 0, 0), OnDeath: default model group state.
     pub model_group: i32,
     pub registered_items: Vec<ItemKind>,
@@ -17,13 +16,47 @@ impl Falco {
     pub fn new(attributes: FoxAttributes) -> Self {
         Self {
             attributes,
-            blaster_present: false,
+            special_neutral: Default::default(),
             model_group: 0,
             registered_items: Vec::new(),
         }
     }
 }
 impl CharacterCallbacks for Falco {
+    fn special_rows() -> &'static [melee_ft::fighter::MotionRow<Self>] {
+        static ROWS: [melee_ft::fighter::MotionRow<Falco>; ft_fox_family::FamilyState::COUNT] =
+            ft_fox_family::rows::<Falco>();
+        &ROWS
+    }
+    fn enter_special(
+        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        ft_fox_family::enter_special(fighter, slot, airborne, assets);
+    }
+    fn accessory(
+        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        ft_fox_family::special_n::accessory(fighter, assets);
+    }
+    fn item_owner(
+        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_it::ItemOwner {
+        ft_fox_family::special_n::item_owner(fighter, assets)
+    }
+    fn item_muzzle(
+        fighter: &mut melee_ft::fighter::Fighter<Self>,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) -> Option<(hsd_types::Vec3, f32)> {
+        Some(ft_fox_family::special_n::item_muzzle(
+            &mut fighter.core,
+            assets,
+        ))
+    }
     fn kind(&self) -> FighterKind {
         FighterKind::Falco
     }
@@ -47,7 +80,7 @@ impl CharacterCallbacks for Falco {
     }
     /// ftFc_Init_OnDeath (80149ACC), ftfalco.c:440-445; called at cold spawn.
     fn on_reset(&mut self) {
-        self.blaster_present = false;
+        self.special_neutral = Default::default();
         self.model_group = 0;
     }
 }
@@ -63,7 +96,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         animation_count: 327,
         part_count: 54,
         part_animation_count: 5,
-        additional_motions: &[],
+        additional_motions: &[295, 296, 297, 298, 299, 300],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
                 file: "PlFcNr.dat",
@@ -83,3 +116,20 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
             },
         ],
     };
+
+impl ft_fox_family::FoxFamily for Falco {
+    const LASER: ItemKind = ItemKind::FalcoLaser;
+    const BLASTER: ItemKind = ItemKind::FalcoBlaster;
+    const GHOST: ItemKind = ItemKind::FalcoPhantasm;
+    const SOUNDS: ft_fox_family::FamilySounds = ft_fox_family::FamilySounds {
+        fire: [100099, 100102],
+        holster: 100096,
+        throw_fire: 100105,
+    };
+    fn attributes(&self) -> &FoxAttributes {
+        &self.attributes
+    }
+    fn special_neutral(&mut self) -> &mut ft_fox_family::SpecialNeutral {
+        &mut self.special_neutral
+    }
+}
