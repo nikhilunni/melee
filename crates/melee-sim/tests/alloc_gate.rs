@@ -161,3 +161,9 @@ fn laser_fd_fox_allocation_budget() {
     // Measured after the exact 300-tick port; existing scene ceilings stay unchanged.
     allocation_budget("laser_fd_fox", 32);
 }
+
+// S3: item and trail creation remain inside the prepared pools.
+#[test]
+fn airillusion_fd_fox_allocation_budget() {
+    allocation_budget("airillusion_fd_fox", 0);
+}

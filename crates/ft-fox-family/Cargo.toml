@@ -6,6 +6,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+melee-ef = { path = "../melee-ef" }
+it-foxillusion = { path = "../it-foxillusion" }
 gekko-math = { path = "../gekko-math" }
 melee-ft = { path = "../melee-ft" }
 melee-it = { path = "../melee-it" }

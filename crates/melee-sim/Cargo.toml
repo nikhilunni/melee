@@ -6,6 +6,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+ft-fox-family = { path = "../ft-fox-family" }
+it-foxillusion = { path = "../it-foxillusion" }
 it-foxlaser = { path = "../it-foxlaser" }
 melee-coll = { path = "../melee-coll" }
 melee-cmd = { path = "../melee-cmd" }

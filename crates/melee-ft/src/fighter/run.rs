@@ -40,7 +40,8 @@ impl Fighter {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        self.reject_running_actions(
+        // S3: ftCo_Run_IASA keeps specials ahead of the grab/attack predicates.
+        if self.first_ground_transition(
             assets,
             context,
             &[
@@ -48,10 +49,13 @@ impl Fighter {
                 P::SpecialUp,
                 P::SpecialNeutral,
                 P::SpecialDown,
-                P::Grab,
             ],
-            "ftCo_Run.c:121-125",
-        );
+        ) == crate::input::WaitTransition::Special
+        {
+            self.enter_buffered_special(assets, false);
+            return Ok(());
+        }
+        self.reject_running_actions(assets, context, &[P::Grab], "ftCo_Run.c:125");
         if self.core.input.pressed.intersects(crate::input::Buttons::A) {
             return self.enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
         }

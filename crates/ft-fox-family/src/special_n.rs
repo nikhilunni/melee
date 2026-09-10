@@ -1,5 +1,5 @@
 //! ftfoxspecialn.c, SpecialNStart/Loop/End and aerial counterparts.
-use crate::{FoxFamily, SpecialNeutral};
+use crate::{FamilyState, FoxFamily, SpecialNeutral};
 use hsd_types::Vec3;
 use melee_ft::{
     anim::WaitChoice,
@@ -14,27 +14,8 @@ use melee_ft::{
 use melee_it::{ItemControl, ItemRequest, SpawnItem};
 use melee_types::{CommonMotionState, FtPart};
 
-#[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FamilyState {
-    SpecialNStart = 341,
-    SpecialNLoop,
-    SpecialNEnd,
-    SpecialAirNStart,
-    SpecialAirNLoop,
-    SpecialAirNEnd,
-}
-impl From<FamilyState> for ActionId {
-    fn from(value: FamilyState) -> Self {
-        Self(value as u16)
-    }
-}
-impl FamilyState {
-    pub const COUNT: usize = 6;
-}
-
 /// ftFx_Init_MotionStateTable (800E5534), first six rows, animations 295..300.
-pub const fn rows<C: FoxFamily>() -> [MotionRow; FamilyState::COUNT] {
+pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
     [
         row(
             FamilyState::SpecialNStart,
@@ -334,6 +315,7 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
 pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
     let action = f.motion_state.action.0;
     melee_it::ItemOwner {
+        illusion: None,
         position: f.physics.position,
         facing: f.physics.facing,
         hold_position: f.physics.position,

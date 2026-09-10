@@ -66,7 +66,7 @@ impl Fighter {
     /// ftCliffCommon_80081298 (80081298), ftcliffcommon.c:23-53.
     /// The caller must mark fighter interactions; occupied-ledge arbitration
     /// (ft_80082E3C) is outside the isolated Fox / idle-opponent slice.
-    pub(super) fn try_grab_ledge(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<bool> {
+    pub fn try_grab_ledge(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<bool> {
         if self.core.input.current.stick.y <= -assets.ledge.grab_down_threshold
             || self.core.status.ledge_grab_disabled
             || self.core.collision.data.env_flags as u32 & collide::LEDGE_GRAB_MASK == 0

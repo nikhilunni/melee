@@ -232,6 +232,42 @@ impl Effects {
                     }
                 }
                 self.recycle_where(|effect| effect.owner == Some(ModelOwner::Fighter(player)));
+                // S3: efLib_DestroyAll also walks the parent fighter skeleton.
+                for bone in 0..FIGHTER_JOINT_STRIDE {
+                    if self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] {
+                        let joint = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                        self.events.expire_joint(joint);
+                        particles.expire_joint(joint);
+                    }
+                }
+                continue;
+            }
+            // S3: efAlt_Spawn 0x48D -> efLib_CreateGenerator_AppSRT_SetFacingDir.
+            if let EffectRequest::SyncAttached { id: 0x48D, bone } = request {
+                let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                let mut spawn = SpawnRequest::new(3, 0xBC0, 0);
+                spawn.joint = Some((joint_id, fighter.effect_matrix(Some(bone))));
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    rotation: Vec3::new(
+                        0.0,
+                        if fighter.effect_facing() < 0.0 {
+                            -std::f32::consts::FRAC_PI_2
+                        } else {
+                            std::f32::consts::FRAC_PI_2
+                        },
+                        0.0,
+                    ),
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                let bank = self.fox_bank.as_ref().context("Fox particle bank")?;
+                if let Some(id) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
+                {
+                    let generator = particles.generator_mut(id).unwrap();
+                    self.events.flags(joint_id, 0x600, 0x800);
+                    generator.flags = (generator.flags & !0x600) | 0x800;
+                }
+                self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
             if let EffectRequest::Attached { id, bone } = request {
@@ -382,6 +418,7 @@ impl Effects {
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
+                | EffectRequest::SyncAttached { .. }
                 | EffectRequest::LedgeGrab { .. }
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
                 EffectRequest::Death {

@@ -1,5 +1,6 @@
 //! Scene-owned item inventory and retail GObj scheduling; the engine knows no kinds.
 use anyhow::{Context, Result};
+use ft_fox_family::FoxFamily;
 use hsd_archive::Archive;
 use hsd_gobj::{GObjId, World};
 use melee_it::{
@@ -12,6 +13,8 @@ use std::path::Path;
 melee_it::item_kinds! {
     pub enum SceneItems {
         FoxLaser: it_foxlaser::FoxLaser,
+        FoxIllusion: it_foxillusion::FoxIllusion,
+        FalcoPhantasm: it_foxillusion::FalcoPhantasm,
         FalcoLaser: it_foxlaser::FalcoLaser,
         FoxBlaster: it_foxlaser::FoxBlaster,
         FalcoBlaster: it_foxlaser::FalcoBlaster,
@@ -32,18 +35,22 @@ impl Resources {
             common.public("itPublicData").context("itPublicData")?,
         )?;
         let mut kinds = Vec::new();
-        for (file, symbol, laser, blaster) in [
+        for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
                 "PlFx.dat",
                 "ftDataFox",
                 ItemKind::FoxLaser,
                 ItemKind::FoxBlaster,
+                ItemKind::FoxIllusion,
+                ft_fox::init::Fox::GHOST_ARTICLE_INDEX,
             ),
             (
                 "PlFc.dat",
                 "ftDataFalco",
                 ItemKind::FalcoLaser,
                 ItemKind::FalcoBlaster,
+                ItemKind::FalcoPhantasm,
+                ft_falco::init::Falco::GHOST_ARTICLE_INDEX,
             ),
         ] {
             let a = archive(file)?;
@@ -51,6 +58,7 @@ impl Resources {
             kinds.push((laser, ItemAssets::from_fighter(&a, root, 0, 2)?));
             // Rows 9 and 10 have animation -1, so the archive contains nine animations.
             kinds.push((blaster, ItemAssets::from_fighter(&a, root, 1, 9)?));
+            kinds.push((ghost, ItemAssets::from_fighter(&a, root, ghost_index, 3)?));
         }
         Ok(Self { common, kinds })
     }

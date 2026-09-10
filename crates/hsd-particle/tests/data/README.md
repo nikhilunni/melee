@@ -118,3 +118,15 @@ cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/dsmash_fd_marth.to
 800785CC or 800785FC, along with the archive bound. It is consumed in fixture
 order, including when it follows an already-created primary spark generator.
 The independent ledger must identify HSD_Randi at 8038059C for those sites.
+
+S3 aerial Illusion trail (300 ticks, production callback ordering and item lifetime):
+
+```sh
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/airillusion_fd_fox.toml --out crates/hsd-particle/tests/data/airillusion_fd_fox_spawns.json
+cargo test -p hsd-particle --test live_airillusion_fd_fox
+```
+
+The fixture contains effect-boundary inputs, including the synchronous 0xBC0
+AppSRT attachment and its expiration. It contains no particle outputs. The
+full grounded Illusion fixture remains blocked at the shared pose dependency
+recorded in `docs/PORT_NOTES/S3_SPECIALS.md`.

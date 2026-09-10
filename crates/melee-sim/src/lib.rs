@@ -14,7 +14,7 @@ pub mod inputs;
 pub mod replay;
 pub mod scenario;
 pub mod trace;
-mod trace_items;
+pub mod trace_items;
 
 mod countdown;
 

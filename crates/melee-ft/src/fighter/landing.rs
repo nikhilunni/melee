@@ -58,7 +58,7 @@ pub fn iasa(
 }
 impl Fighter {
     /// ftCo_LandingFallSpecial_Enter (800D5CB0), ftCo_Landing.c:103-113.
-    pub(super) fn enter_special_landing(
+    pub fn enter_special_landing(
         &mut self,
         assets: &FighterAssets,
         allow_interrupt: bool,

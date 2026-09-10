@@ -414,7 +414,6 @@ impl Runtime {
                 }
                 if proc == FighterProc::Accessories {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
-                        f.character_accessory(&state.assets.fighters[player]);
                         f.update_revival_platform();
                         if f.motion_state.id == melee_types::CommonMotionState::ThrownB {
                             f.thrown_accessory(&state.assets.fighters[player]);
@@ -862,6 +861,10 @@ fn dispatch_fighter(
                 particles,
                 rng,
             )?;
+            // Fighter_8006C80C: accessory4 runs after efAsync_QueueFlush.
+            if !f.status.disabled && f.combat.hitlag_remaining == 0.0 {
+                f.character_accessory(assets);
+            }
             f.proc_hitbox_positions();
         }
         FighterProc::Grab => f.proc_grab(),

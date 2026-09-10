@@ -26,6 +26,8 @@ pub enum Command {
     EndLoop,
     /// ftAction_80071F78 (80071F78), Fighter +221E bit 4.
     ArticleVisibility(bool),
+    /// ftAction_80071FA0: Fighter +221E bit 5; true hides the fighter model.
+    FighterVisibility(bool),
     /// ftAction_80071F34: the ordinary held-item visibility flag.
     HeldItemVisibility(bool),
     SpawnHitbox {

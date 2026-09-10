@@ -23,6 +23,20 @@ impl Fighter {
             if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, &context)
                 == WaitTransition::Special
             {
+                if slot == SpecialSlot::Side && !airborne {
+                    // ftCo_SpecialS doEnter, 80096614/1C/24: fsubs, fmuls, fmadds.
+                    let retention = self
+                        .core
+                        .attributes
+                        .specials
+                        .specials_ground_speed_retention;
+                    let speed = self.core.physics.ground_velocity;
+                    let reduction = -(speed * (1.0 - retention));
+                    let terrain =
+                        crate::physics::grounded::floor_friction(&self.core.collision.data);
+                    self.core.physics.ground_velocity =
+                        gekko_math::fma::fmadds(reduction, terrain, speed);
+                }
                 (self.character.table().enter_special)(self, slot, airborne, assets);
                 return;
             }

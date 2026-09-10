@@ -37,6 +37,7 @@ pub enum ItemScratch {
 }
 #[derive(Clone, Debug)]
 pub struct ItemCore {
+    pub ground_or_air: melee_types::GroundOrAir,
     pub id: u32,
     pub kind: ItemKind,
     pub owner: Option<u8>,
@@ -226,6 +227,7 @@ impl ItemPool {
         let id = self.next_id;
         self.next_id += 1;
         let mut item = ItemCore {
+            ground_or_air: spawn.ground_or_air,
             id,
             kind: spawn.kind,
             owner: spawn.owner,

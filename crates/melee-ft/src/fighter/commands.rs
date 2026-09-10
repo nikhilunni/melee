@@ -58,6 +58,8 @@ pub struct CommandState {
     pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
+    /// Fighter +221E bit 5: hide the fighter model (ftdrawcommon.c:233).
+    pub fighter_hidden: bool,
     pub held_item_visible: bool,
     pub hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
     /// The first recorded contact affects subsequently created hitboxes of
@@ -266,6 +268,7 @@ impl CommandState {
                 Command::ModelSelection { group, variant } => {
                     self.model_selections.insert(*group, *variant);
                 }
+                Command::FighterVisibility(hidden) => self.fighter_hidden = *hidden,
                 Command::ArticleVisibility(visible) => self.articles_visible = *visible,
                 Command::HeldItemVisibility(visible) => self.held_item_visible = *visible,
                 Command::SmashCharge(charge) => self.smash_charge = Some(*charge),

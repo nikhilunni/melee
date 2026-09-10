@@ -60,6 +60,9 @@ pub fn integrate_velocity(state: &mut FighterPhysics) {
 }
 
 /// `Fighter_procUpdate` 0x8006BE48..BE7C: moving floor, then wind.
+// Keep this concrete integration body in melee-ft. Rust's cross-crate
+// inlining heuristic otherwise emits another copy in each special family.
+#[inline(never)]
 pub fn integrate_environment(state: &mut FighterPhysics, floor_speed: Option<Vec3>, wind: Vec3) {
     if let Some(speed) = floor_speed {
         state.position = add(state.position, speed);

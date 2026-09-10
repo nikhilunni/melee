@@ -494,6 +494,7 @@ impl FighterCore {
         self.status.on_ledge = false;
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         self.commands.articles_visible = true;
+        self.commands.fighter_hidden = false;
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
@@ -599,6 +600,9 @@ impl FighterCore {
         rate: f32,
         source: Option<(&FighterAssets, &crate::anim::Motion)>,
     ) -> Result<()> {
+        let had_root_motion = self.animation.flags.contains(
+            crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
+        );
         self.animation.set_animation(
             &mut self.skeleton,
             source.map_or(&assets.motions[&animation_id], |(_, motion)| motion),
@@ -644,6 +648,17 @@ impl FighterCore {
             );
         }
         self.apply_dynamic_commands(assets);
+        // Fighter_ChangeMotionState, fighter.c:1363-1368: leaving root motion
+        // clamps gr_vel to dash speed. Retail tests the new b0 twice.
+        if had_root_motion
+            && !self
+                .animation
+                .flags
+                .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            let max = self.attributes.running.dash_max_velocity;
+            self.physics.ground_velocity = self.physics.ground_velocity.clamp(-max, max);
+        }
         if state == CommonMotionState::Fall {
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 self.leave_ground();

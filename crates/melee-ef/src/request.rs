@@ -3,6 +3,11 @@ use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EffectRequest {
+    // S3: synchronous efAlt generator with a live fighter joint.
+    SyncAttached {
+        id: u16,
+        bone: usize,
+    },
     /// ftColl_80078538: severity-dependent draw after the primary hit spark.
     /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
     EggShell {
@@ -178,7 +183,8 @@ impl EffectRequest {
     fn is_immediate(&self) -> bool {
         matches!(
             self,
-            Self::Death { .. }
+            Self::SyncAttached { .. }
+                | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }
                 | Self::NormalSparkExtra { .. }
@@ -191,6 +197,7 @@ impl EffectRequest {
             Self::EggShell { bone, .. }
             | Self::CaptureFlash { bone }
             | Self::Attached { bone, .. }
+            | Self::SyncAttached { bone, .. }
             | Self::Graphics { bone, .. } => Some(bone),
             _ => None,
         }

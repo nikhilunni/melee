@@ -86,7 +86,7 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
         // retail: ftData_SpecialN[kind] etc.
     }
 
-    /// Fighter_CallAcessoryCallbacks_8006C624: character-owned accessory4.
+    /// Fighter_8006C80C: character-owned accessory4, after the deferred effect flush.
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
@@ -94,6 +94,7 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
 
     fn item_owner(fighter: &mut Fighter, _assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         melee_it::ItemOwner {
+            illusion: None,
             position: fighter.physics.position,
             facing: fighter.physics.facing,
             hold_position: fighter.physics.position,

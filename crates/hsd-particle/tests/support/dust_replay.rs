@@ -52,6 +52,13 @@ fn fixture_draw(draw: &Json) -> bool {
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
+        // S3: ftCo_8009F834, simple efAsync kind-2 offset jitter.
+        // These three Randf calls occur in fighter command dispatch, before
+        // the exported particle inputs; the production scene gate checks them.
+        0x8009_f930 | 0x8009_f954 | 0x8009_f978 => {
+            assert_eq!(word(draw, "pc"), 0x8038_054c);
+            false
+        }
         0x802f_496c | 0x802f_499c | 0x800a_123c | 0x800b_9718 | 0x8008_8a18 | 0x801c_26ac
         | 0x8006_3990 | 0x8006_3b70 | 0x8007_85cc | 0x8007_85fc | 0x802f_4d44 | 0x802f_4d54
         | 0x8008_a8bc | 0x8009_fcdc | 0x8009_fd00 | 0x8009_fd24 | 0x8021_affc | 0x8021_aec8
@@ -135,7 +142,7 @@ fn replay_fields(
     ]);
     // Fox's effect models can request their registered particle bank 3.
     // Only scenes reaching these effects require the additional owned-disc asset.
-    if name == "laser_fd_fox" {
+    if matches!(name, "laser_fd_fox" | "airillusion_fd_fox") {
         let fox_path = root.join("roms/files/EfFxData.dat");
         if !melee_test_support::require_files([&fox_path]) {
             return 0;

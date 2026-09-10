@@ -8,6 +8,7 @@ use melee_types::{FighterKind, ItemKind};
 pub struct Falco {
     pub attributes: FoxAttributes,
     pub special_neutral: ft_fox_family::SpecialNeutral,
+    pub special_side: ft_fox_family::special_s::SpecialSide,
     /// ftParts_80074A4C(gobj, 0, 0), OnDeath: default model group state.
     pub model_group: i32,
     pub registered_items: Vec<ItemKind>,
@@ -17,6 +18,7 @@ impl Falco {
         Self {
             attributes,
             special_neutral: Default::default(),
+            special_side: Default::default(),
             model_group: 0,
             registered_items: Vec::new(),
         }
@@ -43,12 +45,13 @@ impl CharacterCallbacks for Falco {
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) {
         ft_fox_family::special_n::accessory::<Self>(fighter, assets);
+        ft_fox_family::special_s::accessory::<Self>(fighter, assets);
     }
     fn item_owner(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_it::ItemOwner {
-        ft_fox_family::special_n::item_owner::<Self>(fighter, assets)
+        ft_fox_family::special_s::item_owner::<Self>(fighter, assets)
     }
     fn item_muzzle(
         fighter: &mut melee_ft::fighter::Fighter,
@@ -83,6 +86,7 @@ impl CharacterCallbacks for Falco {
     /// ftFc_Init_OnDeath (80149ACC), ftfalco.c:440-445; called at cold spawn.
     fn on_reset(&mut self) {
         self.special_neutral = Default::default();
+        self.special_side = Default::default();
         self.model_group = 0;
     }
 }
@@ -98,7 +102,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         animation_count: 327,
         part_count: 54,
         part_animation_count: 5,
-        additional_motions: &[295, 296, 297, 298, 299, 300],
+        additional_motions: &[295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
                 file: "PlFcNr.dat",
@@ -120,6 +124,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
     };
 
 impl ft_fox_family::FoxFamily for Falco {
+    const GHOST_ARTICLE_INDEX: u32 = 3;
     const LASER: ItemKind = ItemKind::FalcoLaser;
     const BLASTER: ItemKind = ItemKind::FalcoBlaster;
     const GHOST: ItemKind = ItemKind::FalcoPhantasm;
@@ -130,6 +135,9 @@ impl ft_fox_family::FoxFamily for Falco {
     };
     fn attributes(&self) -> &FoxAttributes {
         &self.attributes
+    }
+    fn special_side(&mut self) -> &mut ft_fox_family::special_s::SpecialSide {
+        &mut self.special_side
     }
     fn special_neutral(&mut self) -> &mut ft_fox_family::SpecialNeutral {
         &mut self.special_neutral

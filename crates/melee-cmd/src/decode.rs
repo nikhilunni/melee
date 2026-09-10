@@ -81,6 +81,7 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
         30 => Command::RapidJab(word & 0x03ff_ffff != 0),
         36 => Command::ArticleVisibility(word & 1 != 0),
+        37 => Command::FighterVisibility(word & 1 != 0),
         50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
         49 => Command::SwordTrail {
             duration: ((word << 7) as i32) >> 7,
