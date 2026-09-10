@@ -129,6 +129,69 @@ impl Fighter {
         self.core.revival_platform_active = true;
         Ok(())
     }
+    /// ftCo_RebirthWait_IASA (ft_0D4D.c): leave the revival platform on input.
+    ///
+    /// Priority inputs first (special, item pickup with LR+A, tether catch, air
+    /// dodge, item throw, aerial jump); otherwise a held shield bit, D-pad up, the
+    /// squat/turn/walk stick tests or a lost partner drop into Fall. Either way
+    /// the fighter receives the revival invincibility (`ftColl_8007B7A4` with
+    /// PlCo +5D8) and the intangibility colour flash (`ftCo_800BFFD0(fp, 9, 0)`).
+    pub(super) fn revival_input(&mut self, assets: &FighterAssets) -> Result<()> {
+        use crate::input::Buttons;
+        let common = &assets.input;
+        let facing = self.core.physics.facing;
+        let pressed = self.core.input.pressed;
+        let held = self.core.input.current.held;
+        let stick = self.core.input.current.stick;
+        // Retail also requires x683 >= PlCo +1C (the A-timer window); that constant is
+        // not loaded yet, so this superset stops explicitly whenever LR+A is pressed.
+        let lr_plus_a = held.intersects(Buttons::SHIELD) && pressed.intersects(Buttons::A);
+        // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
+        let priority = if pressed.intersects(Buttons::B) {
+            // ftCo_SpecialAir_CheckInput
+            self.enter_buffered_special(assets, true);
+            true
+        } else if lr_plus_a {
+            // ftCo_800D7100 / ftCo_800D705C: item pickup and the x209C catch timer.
+            unimplemented!("ftCo_RebirthWait_IASA: LR+A item pickup / catch timer");
+        } else if pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
+            // ftCo_800C3B10 is tether characters only; ftCo_80099A58 -> EscapeAir.
+            self.enter_air_dodge(assets)?;
+            true
+        } else if self.aerial_jump_requested(assets) {
+            // ftCo_800CB870 -> ftCo_JumpAerial_CheckInput.
+            self.enter_aerial_jump(assets)?;
+            true
+        } else {
+            false
+        };
+        if !priority {
+            let thresholds = &common.thresholds;
+            let fall = held.intersects(Buttons::SHIELD) // ftCo_80091A2C
+                || pressed.intersects(Buttons::UP) // ftCo_800DE9B8
+                || stick.y < -thresholds.squat_stick_threshold // fn_800D5F84
+                || stick.x * facing <= thresholds.turn_stick_threshold // ftCo_800C97A8
+                || stick.x * facing >= thresholds.walk_stick_threshold; // ftWalkCommon_800DFC70
+            if !fall {
+                return Ok(());
+            }
+            self.change_motion_state(S::Fall.into(), assets)?; // ftCo_Fall_Enter
+        }
+        // ftColl_8007B7A4(gobj, p_ftCommonData->x5D8): x1994 = max(x1994, dur); the x198C
+        // flash-type selector is renderer state and is not modelled.
+        self.core.status.ledge_intangibility = self
+            .core
+            .status
+            .ledge_intangibility
+            .max(assets.life.invincibility_duration);
+        self.core
+            .commands
+            .color_animations
+            .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+        // pl_80040374: stamps the stale-move table's platform-exit frame (xD60);
+        // it feeds no compared key or RNG draw.
+        Ok(())
+    }
     /// Rebirth_Anim (800D52F8), RebirthWait_Anim (800D56EC).
     pub(super) fn revival_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         match &mut self.core.state_data {

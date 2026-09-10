@@ -800,12 +800,13 @@ fn detect_eligible_hit(
     }
     let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
     if let Some((contact, height)) = contact {
-        if !matches!(
-            victim.motion_state.id,
-            S::Wait | S::Landing | S::Squat | S::SquatWait | S::AttackDash
-        ) && !matches!(victim.state_data, MotionData::Damage(_))
-        {
-            unimplemented!("ftColl_80079AB0: crouch/other damage modifiers outside idle victim");
+        // Retail's hit path reads the victim's state only for DamageIce
+        // (ftcoll.c:199/576/1155); crouch cancel (ftCo_Damage.c:124-127) and the
+        // airborne launch states (ftCo_Damage.c:543-558) are applied by the
+        // reaction in prepare_damage_reaction. Every other grounded victim state
+        // takes the ordinary path.
+        if victim.motion_state.id == S::DamageIce {
+            unimplemented!("ftcoll.c:199: DamageIce victim");
         }
         // ftColl_80078C70, ftcoll.c:1758-1780: both attacks must allow
         // clanking and both fighters must be grounded. Already recorded victims

@@ -34,6 +34,7 @@ mod snapshot;
 mod spawn;
 pub mod squat;
 pub mod state;
+pub mod teeter;
 pub mod turn;
 pub mod turn_run;
 pub mod walk;

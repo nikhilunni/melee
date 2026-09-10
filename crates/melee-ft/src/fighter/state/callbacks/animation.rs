@@ -349,3 +349,20 @@ pub fn rapid_loop(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
     fighter.rapid_loop_animation(phase.assets)?;
     Ok(None)
 }
+
+/// ftData_MotionStateList: ftCo_MS_Ottotto (245).
+pub fn ottotto(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.teeter_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_OttottoWait (246): ftCo_OttottoWait_Anim is empty.
+pub fn ottotto_wait(
+    fighter: &mut Fighter,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.step_animation(assets);
+    Ok(None)
+}

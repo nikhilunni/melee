@@ -70,6 +70,40 @@ pub fn collide_wait(
     }
 }
 
+/// `ft_800827A0`: ground collision that stops at the floor's edge without the
+/// Ottotto test (ftCo_Ottotto_Coll / ftCo_OttottoWait_Coll). `false` means the
+/// fighter lost the floor and the caller enters Fall.
+pub fn map_stop_at_edge(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    _stick_x: f32,
+) -> WaitGroundResult {
+    if environment.lock_frames != 0 {
+        environment.lock_frames = environment.lock_frames.wrapping_sub(1);
+        if environment.lock_frames == 0 {
+            environment.data.x130_flags &= !coll_data_x130::LOCKED;
+        }
+    }
+    environment.collision_flag = false;
+    tree.set_translate(root, &state.position);
+    let pose = EcbPose::read(tree, root, &environment.data);
+    assert_eq!(state.ground_or_air, GroundOrAir::Ground);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let supported = map.ground_collide_stop_at_edge(cd, Some(&|i| pose.position(i)));
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    if supported {
+        WaitGroundResult::Supported
+    } else {
+        WaitGroundResult::EnterFall
+    }
+}
+
 /// `Fighter_procMap` (0x8006C27C, fighter.c:2476-2516), s_link 6.
 /// Root translation is written both BEFORE bone sampling and AFTER correction.
 pub fn map_wait(

@@ -340,3 +340,18 @@ pub fn dash_attack(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         .core
         .dash_attack_physics(phase.assets, phase.map, phase.wind);
 }
+
+/// ftData_MotionStateList: ftCo_MS_Ottotto (245), ftCo_MS_OttottoWait (246).
+/// ftCo_Ottotto_Phys is empty; Fighter_procUpdate still runs its grounded tail
+/// (ground knockback decay, velocity and overlap-nudge integration, moving
+/// floor, wind).
+pub fn ottotto(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    let PhysicsPhase { assets, map, wind } = phase;
+    crate::physics::grounded::finish_ground_update(
+        &mut fighter.core.physics,
+        &fighter.core.collision.data,
+        &GroundedParameters::from_attributes(&fighter.core.attributes, &assets.common),
+        map,
+        wind,
+    );
+}

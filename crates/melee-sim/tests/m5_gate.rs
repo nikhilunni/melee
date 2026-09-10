@@ -574,3 +574,9 @@ fn dancingblade_fd_marth_300_ticks_and_ordered_particle_draws() {
 fn counter_fd_marth_300_ticks_and_ordered_particle_draws() {
     special_gate("counter_fd_marth");
 }
+
+// S10: the scripted four-stock match, start to GAME (RebirthWait drop, teeter, four KOs).
+#[test]
+fn match_fd_marth_scripted_1600_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("match_fd_marth_scripted", 1600);
+}

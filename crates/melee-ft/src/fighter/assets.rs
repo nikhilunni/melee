@@ -146,6 +146,7 @@ pub struct FighterAssets {
     pub instruction_offsets: Vec<u32>,
     pub motion_table_offset: u32,
     pub life: super::life::LifeParameters,
+    pub teeter: super::teeter::TeeterParameters,
     pub revival_platform: super::life::RevivalPlatform,
     pub charge_overlays: BTreeMap<u8, Vec<super::smash::OverlayCommand>>,
     pub camera_extents: [hsd_types::Vec3; 2],
@@ -444,6 +445,15 @@ impl FighterAssets {
                 invincibility_duration: common.reader().s32(common_data + 0x5D8)?,
                 death_effect_scale: common.reader().f32(common_data + 0x4F4)?,
             },
+            teeter: super::teeter::TeeterParameters {
+                walk_threshold: common.reader().f32(common_data + 0x474)?,
+                edge_distance: common.reader().f32(common_data + 0x478)?,
+                edge_margin: common.reader().f32(common_data + 0x47C)?,
+                sound: {
+                    let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+                    data.reader().u32(sound_table + 0x18)?
+                },
+            },
             charge_overlays,
             camera_extents: {
                 let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
@@ -613,7 +623,12 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
 /// instantiations when another common motion family adds its resources.
 fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTreeSet<u32> {
     let mut indices = idle.clone();
-    for list in [base, additional, super::down::MOTIONS] {
+    for list in [
+        base,
+        additional,
+        super::down::MOTIONS,
+        super::teeter::MOTIONS,
+    ] {
         indices.extend(list.iter().copied());
     }
     // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).

@@ -14,7 +14,8 @@ pub use human::{
     InputContext, InputEffects, InputSource,
 };
 pub use iasa::{
-    wait_iasa, wait_iasa_observe, WaitContext, WaitPredicate, WaitTransition, WAIT_PREDICATES,
+    iasa_with_predicates, wait_iasa, wait_iasa_observe, WaitContext, WaitPredicate, WaitTransition,
+    OTTOTTO_PREDICATES, WAIT_PREDICATES,
 };
 pub use pad::{Buttons, PadSample, Stick};
 pub use state::{AnalogTimers, ButtonTimers, FighterInput, InputFrame};

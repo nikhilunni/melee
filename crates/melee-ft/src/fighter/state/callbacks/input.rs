@@ -208,6 +208,14 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     }
 }
 
+/// ftData_MotionStateList: ftCo_MS_RebirthWait (13).
+pub fn revival(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    let InputPhase { assets } = phase;
+    fighter
+        .revival_input(assets)
+        .expect("revival platform exit");
+}
+
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
 pub fn fall_special(fighter: &mut Fighter, _phase: InputPhase<'_>) {
     fighter.core.input_fall_special(_phase)
@@ -319,4 +327,10 @@ pub fn rapid_loop(fighter: &mut Fighter, _phase: InputPhase<'_>) {
         panic!("rapid jab scratch")
     };
     rapid.edge_pressed |= pressed;
+}
+
+/// ftData_MotionStateList: ftCo_MS_Ottotto (245), ftCo_MS_OttottoWait (246).
+pub fn ottotto(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    let InputPhase { assets } = phase;
+    fighter.teeter_input(assets).expect("teeter input");
 }

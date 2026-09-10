@@ -42,7 +42,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::RebirthWait,
         animation: 2,
         anim: callbacks::animation::revival,
-        iasa: callbacks::input::catch,
+        iasa: callbacks::input::revival,
         physics: callbacks::physics::revival,
         collision: callbacks::collision::revival,
         camera: callbacks::camera::follow_fighter,
@@ -1323,6 +1323,29 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::jab,
         collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_Ottotto = 245, ftCo_MS_OttottoWait = 246: teetering at a floor edge.
+    rows[S::Ottotto as usize] = MotionRow {
+        action: ActionId(245),
+        id: S::Ottotto,
+        animation: 210,
+        anim: callbacks::animation::ottotto,
+        iasa: callbacks::input::ottotto,
+        physics: callbacks::physics::ottotto,
+        collision: callbacks::collision::ottotto,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::OttottoWait as usize] = MotionRow {
+        action: ActionId(246),
+        id: S::OttottoWait,
+        animation: 211,
+        anim: callbacks::animation::ottotto_wait,
+        iasa: callbacks::input::ottotto,
+        physics: callbacks::physics::ottotto,
+        collision: callbacks::collision::ottotto,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };

@@ -65,7 +65,10 @@ fn finish_ground(
             fighter.leave_ground();
             fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
         }
-        WaitGroundResult::EnterTeeter => unimplemented!("ft_081B.c:1092: Wait -> Ottotto"),
+        WaitGroundResult::EnterTeeter => {
+            let assets = assets.expect("teeter entry needs proc_map_with_assets");
+            fighter.enter_teeter(assets)?; // ftCo_8009A3C8 -> ftCo_8009A410
+        }
     }
     Ok(())
 }
@@ -368,4 +371,11 @@ impl FighterCore {
             .set_translate(self.animation.root, &self.physics.position);
         Ok(())
     }
+}
+
+/// ftData_MotionStateList: ftCo_MS_Ottotto (245), ftCo_MS_OttottoWait (246).
+pub fn ottotto(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let CollisionPhase { assets, map } = phase;
+    let assets = assets.expect("teeter collision needs proc_map_with_assets");
+    fighter.teeter_collision(assets, map)
 }

@@ -115,9 +115,11 @@ impl Scenario {
             crate::scene_stage::descriptor(&self.stage).is_some(),
             "unsupported stage"
         );
+        // Recordings are bounded by the tracer's run, not by the importer; the
+        // longest gate so far is the 1,600-tick scripted match (S10).
         ensure!(
-            (self.is_cold() && self.frames > 0) || (1..=600).contains(&self.frames),
-            "imported boundary supports 1..=600 ticks"
+            self.frames > 0 && self.frames <= 4_000,
+            "scenario frames must be in 1..=4000"
         );
         ensure!(self.fighters.len() == 2, "requires two fighters");
         let mut previous_port = None;

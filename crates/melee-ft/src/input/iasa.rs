@@ -73,6 +73,47 @@ pub const WAIT_PREDICATES: [WaitPredicate; 21] = [
     WaitPredicate::Walk,
 ];
 
+/// ftCo_Ottotto_IASA / ftCo_OttottoWait_IASA: Wait's checks without the spot
+/// dodge (ftCo_80099794) and Fox taunt (ftFx_AppealS) entries; Walk is tested
+/// by the caller with the teeter threshold (ftCo_Walk_CheckInput_Ottotto).
+pub const OTTOTTO_PREDICATES: &[WaitPredicate] = &[
+    WaitPredicate::SpecialSide,
+    WaitPredicate::SpecialUp,
+    WaitPredicate::SpecialNeutral,
+    WaitPredicate::SpecialDown,
+    WaitPredicate::Grab,
+    WaitPredicate::SmashSide,
+    WaitPredicate::SmashUp,
+    WaitPredicate::SmashDown,
+    WaitPredicate::TiltSide,
+    WaitPredicate::TiltUp,
+    WaitPredicate::TiltDown,
+    WaitPredicate::Jab,
+    WaitPredicate::Shield,
+    WaitPredicate::Taunt,
+    WaitPredicate::Jump,
+    WaitPredicate::Dash,
+    WaitPredicate::Squat,
+    WaitPredicate::Turn,
+];
+
+/// First matching predicate of an explicit list, in order (a state's RETURN_IF chain).
+pub fn iasa_with_predicates(
+    predicates: &[WaitPredicate],
+    input: &FighterInput,
+    common: &InputCommonData,
+    context: &WaitContext,
+) -> WaitTransition {
+    assert!(context.facing == 1.0 || context.facing == -1.0);
+    for &predicate in predicates {
+        let transition = evaluate(predicate, input, common, context);
+        if transition != WaitTransition::None {
+            return transition;
+        }
+    }
+    WaitTransition::None
+}
+
 /// State owned by the fighter/match, supplied to the pure decision path.
 #[derive(Debug, Clone)]
 pub struct WaitContext {

@@ -198,3 +198,9 @@ fn firefox_fd_fox_allocation_budget() {
 fn counter_fd_marth_allocation_budget() {
     allocation_budget("counter_fd_marth", 0);
 }
+
+// S10: four stocks of respawn, teeter and KO; ceiling measured on the exact tree.
+#[test]
+fn match_fd_marth_scripted_allocation_budget() {
+    allocation_budget("match_fd_marth_scripted", 0);
+}
