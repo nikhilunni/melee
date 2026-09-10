@@ -134,6 +134,46 @@ pub fn capture_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
     Ok(None)
 }
 
+/// ftCo_8008EC90 / ftCo_800DC3A4: damage without releasing or launching the victim.
+pub(super) fn capture_damage(
+    f: &mut Fighter,
+    hit: &melee_coll::damage::ReceivedHit,
+    assets: &FighterAssets,
+) -> Result<i32> {
+    if !matches!(f.motion_state.id, S::CaptureWaitLw | S::CaptureDamageLw) {
+        unimplemented!("ftCo_8008EC90: captured damage outside low capture");
+    }
+    f.core.physics.percent += hit.descriptor.damage;
+    f.core.input.pressed = Buttons::default();
+    f.core.input.released = Buttons::default();
+    f.change_motion_state(S::CaptureDamageLw.into(), assets)?;
+    let MotionData::Capture(capture) = &mut f.core.state_data else {
+        panic!("capture scratch missing")
+    };
+    capture.fast_remaining = 0.0;
+    f.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1))
+}
+
+/// ftCo_CaptureDamageLw_Anim (800DC470): count down without the wait state's escape check.
+pub fn capture_damage_animation(
+    f: &mut Fighter,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    f.step_animation(phase.assets);
+    let MotionData::Capture(capture) = &mut f.core.state_data else {
+        panic!("capture scratch missing")
+    };
+    // fn_800DB8A4: increment in f64, then subtract the f32 timer decrement and mash.
+    capture.elapsed = (f64::from(capture.elapsed) + 1.0) as f32;
+    capture.timer -= phase.assets.grab_escape.decrement;
+    capture.mash(&f.core.input, &phase.assets.grab_escape);
+    if !f.animation.frames_remaining(&f.skeleton) {
+        super::grab::capture_wait(f, phase.assets)?;
+    }
+    Ok(None)
+}
+
 /// fn_800DA4C0 / fn_800DA4FC: pummel has priority over all four throws.
 pub fn pummel_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
     if f.input.pressed.intersects(Buttons::A) {

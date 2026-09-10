@@ -29,6 +29,10 @@ impl MotionFlags {
     pub fn bone_mask(self) -> u32 {
         (self.0 >> 9) & 0x1fff
     }
+    /// Fighter.x597_bits, the skeleton that authored this FigaTree.
+    pub fn source_skeleton(self) -> u8 {
+        (self.0 & 0x3f) as u8
+    }
 }
 
 /// Loaded FigaTree and animation-table metadata. Id is a submotion id

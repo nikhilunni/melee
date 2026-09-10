@@ -60,7 +60,11 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
 }
 
 pub(super) fn align(state: &mut InitialState, player: usize) {
-    if with_fighter!(&state.fighters[player], |f| f.combat.thrown_pose.is_some()) {
+    // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during hitlag.
+    if with_fighter!(&state.fighters[player], |f| f.status.disabled
+        || f.combat.hitlag_remaining > 0.0
+        || f.combat.thrown_pose.is_some())
+    {
         return;
     }
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);

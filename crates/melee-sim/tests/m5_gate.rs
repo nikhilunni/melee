@@ -692,7 +692,7 @@ fn human_smoke_fd_marth_600_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("human_smoke_fd_marth", 600);
 }
 
-// S7/S8: complete acceptance remains enabled at the S5-owned damage boundaries.
+// S7/S8: complete throw, pummel, mash and quick ledge recordings.
 #[test]
 fn fthrow_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("fthrow_fd_marth");
@@ -727,14 +727,11 @@ fn ledgeroll_fd_fox_300_ticks_and_ordered_particle_draws() {
 }
 
 #[test]
-fn s7_throws_and_pummel_before_s5_damage_boundaries() {
-    for (scene, ticks) in [
-        ("fthrow_fd_marth", 151),
-        ("uthrow_fd_marth", 150),
-        ("dthrow_fd_marth", 151),
-        ("pummel_fd_marth", 141),
-    ] {
-        special_gate_prefix(scene, ticks);
-        eprintln!("{scene}: {ticks} ticks, 49 keys, 0 divergences; S5 damage boundary prefix");
-    }
+fn hi200_uthrow_fd_marth_420_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("hi200_uthrow_fd_marth", 420);
+}
+
+#[test]
+fn hi200_uthrow2_fd_marth_420_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("hi200_uthrow2_fd_marth", 420);
 }

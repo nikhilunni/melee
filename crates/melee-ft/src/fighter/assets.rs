@@ -364,24 +364,52 @@ impl FighterAssets {
                 descriptor.animation_count,
             )?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
-            motions: motion_indices(
-                &[
-                    2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-                    30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220,
-                    224, 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
-                ],
-                &idle_motions,
-                descriptor.additional_motions,
-            )
-            .into_iter()
-            .filter(|&id| table.entries[id as usize].aj_size != 0)
-            .map(|id| {
-                Ok((
-                    id as i32,
-                    read_playback_motion(data, root, &table, aj, id as usize)?,
-                ))
-            })
-            .collect::<Result<_>>()?,
+            motions: {
+                let mut motions: BTreeMap<i32, Motion> = motion_indices(
+                    &[
+                        2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27,
+                        28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
+                        217, 220, 224, 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
+                    ],
+                    &idle_motions,
+                    descriptor.additional_motions,
+                )
+                .into_iter()
+                .filter(|&id| table.entries[id as usize].aj_size != 0)
+                .map(|id| {
+                    Ok((
+                        id as i32,
+                        read_playback_motion(data, root, &table, aj, id as usize)?,
+                    ))
+                })
+                .collect::<Result<_>>()?;
+                // Borrowed throw motions own their prepared maps through the existing
+                // MotionRemap storage, keeping resource destruction in the same owners.
+                for throw in [
+                    &super::grab_throw::FORWARD,
+                    &super::grab_throw::BACK,
+                    &super::grab_throw::UP,
+                    &super::grab_throw::DOWN,
+                ] {
+                    if let Some(motion) = motions.get_mut(&throw.victim_motion) {
+                        let source = crate::desc::bones::AnimationSource::read(
+                            common,
+                            motion.flags.source_skeleton(),
+                            descriptor.part_count,
+                        )?;
+                        motion.remap = Some(crate::anim::attach::MotionRemap {
+                            source: source.parts,
+                            destination: read_part_table(
+                                common,
+                                descriptor.kind,
+                                descriptor.part_count,
+                            )?,
+                            source_masks: source.masks,
+                        });
+                    }
+                }
+                motions
+            },
             rotating_effect_bones: {
                 let table = data
                     .link(root + 0x54)?

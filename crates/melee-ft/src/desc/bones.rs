@@ -85,6 +85,47 @@ pub fn read_part_table(archive: &Archive, kind: FighterKind, part_count: u32) ->
     PartTable::read(archive, entry, part_count)
 }
 
+/// `ftAnim_8006FCE4`: an animation names its skeleton in x597_bits. The
+/// final table is the shared animation skeleton (FTKIND_NONE), not a fighter.
+pub struct AnimationSource {
+    pub parts: PartTable,
+    pub masks: Vec<u32>,
+}
+
+impl AnimationSource {
+    pub fn read(archive: &Archive, source: u8, part_count: u32) -> Result<Self> {
+        if i32::from(source) > FighterKind::MAX {
+            return Err(invalid("animation source", "outside part tables"));
+        }
+        let root = public(archive, "ftLoadCommonData")?;
+        let tables = required(archive, root, 4 * 4, "ftPartsTable")?;
+        let entry = required(archive, tables, u32::from(source) * 4, "animation parts")?;
+        let parts = PartTable::read(archive, entry, part_count)?;
+        let mut masks = vec![0; parts.joint_count()];
+        // ftParts_8007506C: each four-byte entry names one conditional joint.
+        let tables = required(archive, root, 5 * 4, "Fighter_804D6540")?;
+        if let Some(table) = archive.link(tables + u32::from(source) * 4)? {
+            let count = archive.reader().u32(table + 4)?;
+            if count > 32 {
+                return Err(invalid("animation masks", "more than 32 mask bits"));
+            }
+            if count != 0 {
+                let entries = required(archive, table, 0, "conditional joints")?;
+                for i in 0..count {
+                    let joint = usize::from(archive.reader().u8(entries + i * 4)?);
+                    let mask = masks.get_mut(joint).ok_or_else(|| {
+                        invalid("animation masks", "joint outside source skeleton")
+                    })?;
+                    if *mask == 0 {
+                        *mask = 1 << i;
+                    }
+                }
+            }
+        }
+        Ok(Self { parts, masks })
+    }
+}
+
 /// `ftData_x44_t`, ft/types.h:584-595, sizeof 0x1C. Six signed bone
 /// indices at +0,+2,+4,+6,+8,+A; center and ledge dimensions at +C..+18.
 /// These are unscaled data. ft_081B.c:53-61 applies *player* scale later.

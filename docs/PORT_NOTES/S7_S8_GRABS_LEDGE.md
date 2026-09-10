@@ -1,130 +1,161 @@
-# S7/S8: throw entry, pummel entry, grab mash and quick ledge options
+# S7/S8: throws, pummel, mash escape and quick ledge options
 
-2026-09-10, `lane/chars`; uncommitted. **Acceptance incomplete.** Four complete scenes are exact; the other four stop in S5-owned `damage.rs`. Those files were left untouched under the task's lane boundary. Full acceptance tests remain enabled, with separate exact-prefix tests. No expected values, existing ignores, scenarios, traces, ROMs or decomp files were changed.
+2026-09-10, `lane/chars`, resumed after the S3/S4/S5/S9/S10 rebase. All ten scene CLI gates are exact, including forward throw after correcting the animation-source skeleton. M4, M5 and allocation gates pass in both profiles. Full workspace acceptance remains blocked by the empty protected decomp directory, and merge-check by `main` advancing beyond this lane. No expected values, ignores, scenarios, traces, ROMs or decomp files were changed, and no Git write commands were used.
 
 ## Scene evidence
 
-Ticks are zero-based trace ordinals. All recordings have 300 records. Startup movement is omitted below. History lists observed failures during this implementation; no expected values were changed.
+Ticks below are zero-based trace ordinals. Startup movement is omitted. The two high-percent recordings contain 420 records; the other eight contain 300.
 
-| Scene | Retail states after grab/ledge wait | First-divergence history | Final outcome |
+| Scene | Retail states after grab/ledge wait | First-divergence history | Current CLI outcome |
 |---|---|---|---|
-| `fthrow_fd_marth` | Marth 219@141 → 14@164; Fox 239@141 → 86@151 → 29@181 → 0@221 | initial ThrowF input stop at 141; after port, S5 airborne-hit guard at 151 | 151 exact ticks; full gate blocked |
-| `uthrow_fd_marth` | Marth 221@141 → 14@174; Fox 241@141 → 90@150 → 183@184 → 184@210 | initial 141 `p0.cur_anim_frame` (12 vs 1.3333334); then graphics 0x3FA; then S5 airborne-hit guard at 150 | 150 exact ticks; full gate blocked |
-| `dthrow_fd_marth` | Marth 222@141 → 14@173; Fox 242@141 → 90@151 → 183@166 → 184@192 | initial 141 `p0.cur_anim_frame` (12 vs 1.3333334); then S5 airborne-hit guard at 151 | 151 exact ticks; full gate blocked |
-| `pummel_fd_marth` | Marth 217@135 → 216@162 → 218@206 → 14@236; Fox 228@141 → 227@164 → 229@206 → 14@236 | initial CatchAttack input stop at 135; then captured-victim hit guard at 141 | 141 exact ticks; full gate blocked |
-| `grabmash_fd_marth` | Marth 218@138 → 14@168; Fox 229@138 → 14@168 | initial 132 `p1.cur_anim_frame` (4 vs 5); timer/mash playback and reciprocal cut resolve it | 300 ticks exact |
-| `ledgeattack_fd_fox` | 257@231 → 14@285 | initial CliffAttack input stop at 231; new row and shared ledge physics resolve it | 300 ticks exact |
-| `ledgejump_fd_fox` | 262@231 → 263@245 → 42@282 | already exact before changes | 300 ticks exact |
-| `ledgeroll_fd_fox` | 259@231 → 14@280 | already exact before changes | 300 ticks exact |
+| `fthrow_fd_marth` | Marth 219@141 → 14@164; Fox 239@141 → 86@151 → 29@181 → 0@221 | Original input stop at 141; post-rebase airborne-hit stop at 151; after entry port, `p1.cur_pos.y` differed by one bit at 151; resolved by using the animation-declared source skeleton | 300 ticks exact |
+| `uthrow_fd_marth` | Marth 221@141 → 14@174; Fox 241@141 → 90@150 → 183@184 → 184@210 | Original 141 animation frame, then graphics 0x3FA; post-rebase airborne-hit stop at 150; resolved by thrown airborne entry | 300 ticks exact |
+| `dthrow_fd_marth` | Marth 222@141 → 14@173; Fox 242@141 → 90@151 → 183@166 → 184@192 | Original 141 animation frame; post-rebase airborne-hit stop at 151; resolved by explicit motion override | 300 ticks exact |
+| `pummel_fd_marth` | Marth 217@135 → 216@162 → 218@206 → 14@236; Fox 228@141 → 227@164 → 229@206 → 14@236 | Original input/captured-hit stops; post-rebase 141 animation frame 1 instead of 0; then 142 Y drift from alignment during hitlag; then hitlag-exit interaction assertion | 300 ticks exact |
+| `grabmash_fd_marth` | Marth 218@138 → 14@168; Fox 229@138 → 14@168 | Original 132 animation frame 5 instead of 4; exact before and after rebase | 300 ticks exact |
+| `ledgeattack_fd_fox` | 257@231 → 14@285 | Original input stop at 231; exact before and after rebase | 300 ticks exact |
+| `ledgejump_fd_fox` | 262@231 → 263@245 → 42@282 | Already exact before implementation and after rebase | 300 ticks exact |
+| `ledgeroll_fd_fox` | 259@231 → 14@280 | Already exact before implementation and after rebase | 300 ticks exact |
+| `hi200_uthrow_fd_marth` | Marth 221@140 → 14@173; Fox 241@140 → 90@149 → 38@225 → 191@281 → 192@307 | Post-rebase airborne-hit stop at 149; resolved by thrown airborne entry and merged S5/S9 behavior | 420 ticks exact |
+| `hi200_uthrow2_fd_marth` | Marth 221@146 → 14@179; Fox 241@146 → 90@155 → 38@231 → 191@287 → 192@313 | Post-rebase airborne-hit stop at 155; resolved by thrown airborne entry and merged S5/S9 behavior | 420 ticks exact |
 
-The current CLI includes item fields and prints `300 ticks, 62 keys, 0 divergences` for these recordings. `m5_gate` independently checks all 49 fighter/RNG keys and ordered particle RNG sites. The CLI/comparator was not modified to force a 49-key label. Exact-prefix tests also check the recorded items and particle order.
+The current CLI compares item fields too and prints **62 keys** for these recordings. M5 separately checks all 49 fighter/RNG keys and ordered particle RNG sites. The comparator was not changed to force the original task's 49-key CLI label.
 
-## S5 handoff: do not merge this as complete
+## Resumed implementation
 
-- `damage.rs`, `FighterCore::prepare_damage_reaction`: its airborne-entry guard only accepts `ThrownB`. It stops forward/up/down release at 151/150/151 respectively. Retail `ftCo_8008DCE0` must accept these airborne thrown states and select DamageAir3 for the forward throw. Existing `DownBoundU`/`DownWaitU` rows are present, but the release guard prevents reaching them.
-- Down throw additionally passes an animation-selection angle of 90 from `ftCo_800DE7C0` while the knockback descriptor retains the actual launch angle. The present `begin_damage_reaction(ReceivedHit, assets)` interface has no independent animation-angle override. Preserve that separation when extending the S5 entry API; do not change the throw descriptor to fabricate the animation choice.
-- `damage.rs`, `detect_eligible_hit`: pummel contact at 141 stops because CaptureWaitLw is outside its supported victim-state list. Retail needs captured-hit handling and CaptureDamageLw (228) entry, preserving the pair and timer, with the retail hitlag/percent/effect behavior. `ftCo_0DC2.c` supplies that state's timer and completion callbacks. It is not installed here because execution stops before contact acceptance.
-- The existing ignored raw ThrowB hitbox-phase tests are unchanged. This task does not claim to resolve that separate parked mismatch.
+`damage.rs` accepts ThrownF/B/Hi/Lw releases as airborne. The static airborne reaction array selects DamageAir3 for forward throw. An explicit `Option<CommonMotionState>` carries down throw's motion override into the existing damage entry. `ftCo_800DE7C0`'s misleadingly named `calcKnockbackAngle` returns a **motion ID**, not an animation-selection angle: 90 forces damage level 3 and overrides the selected motion after the existing DamageFlyRoll RNG draw. The launch descriptor's angle remains unchanged. This corrects the earlier version of this report. S9's queued heavy/medium sounds, voice handling, RNG arguments and draw order are preserved.
 
-## Ownership and implementation
+The captured-hit branch records when the selected attacker is the victim's captor. `grab_escape::capture_damage` applies percent and enters CaptureDamageLw without the ordinary launch or extra immediate animation step, preserving the linked pair and typed capture timer. The appended common row uses animation 256 and the per-concept completion/timer callback. Existing hit detection continues to own hitboxes, hit effects and hitlag. Pair alignment now skips hitlag, matching its retail physics callback; hitlag completion restores the pair's supported interaction instead of requiring ordinary attack scratch.
 
-New common rows are appended in one S7/S8 block: ThrowF/Hi/Lw, ThrownF/Hi/Lw, CatchAttack, CatchCut, CaptureCut and CliffAttackQuick. Existing common callbacks are reused; new behavior lives in `grab_escape.rs` and `ledge.rs`. There are no new generic fighters, generic phase callbacks, kind checks or character hooks. The existing `throw_variant` hook retains character-specific throw boundaries.
+Two new 420-tick M5 gates cover the high-percent throws. Up throw and pummel were added to the allocation suite at ceiling zero. The obsolete S7 prefix test and helper were removed after all ten complete scene gates passed.
 
-`grab_throw.rs` describes each throw using static captor/victim state, victim animation and weight-mask data. The shared pair traversal selects the descriptor in retail priority order, constrains all thrown states and releases through the existing damage API. Motion remapping now borrows the source animation and part tables with a fixed 140-entry stack mask. Asset command streams are shared immutable slices prepared at initialization. This removes the old throw-entry motion, remap and command-stream heap clones. The XRotN constraint slot is prepared with the fighter skeleton and retained after release, removing the remaining BTreeMap node allocation. The existing back-throw scene now has a zero-allocation regression gate alongside the two requested new scenes.
+No new `CharacterCallbacks` hooks, generic fighters or generic phase callbacks were added. Character differences still use the existing `throw_variant` hook and descriptor data. Shield-hit functions and all other excluded lane files were left untouched. Forward throw reaches DeadDown after the pair has already been released, so it does not reach S9's linked-death stop; `life.rs` was not changed.
 
-`grab_escape.rs` owns typed capture scratch and archive-derived timer/mash/cut parameters. The initial timer includes percent, handicap and current stock rank; the saved handicap is imported from StaticPlayer +4B, and stock ties share rank. Button edges cost one decrement even with several buttons; a change in either axis costs one additional decrement. Neutral retains the last signed direction. CaptureWait accelerates animation during a mash window; the victim-owned timer causes reciprocal CatchCut/CaptureCut before overlap. Two focused tests cover timer modifiers and stick/button counting. Pummel entry takes priority over throws and its completion returns to CatchWait without a second capture-flash request.
+## Earlier S7/S8 work retained through the rebase
 
-The 0x3FA up-throw graphics command uses the existing typed command/effect pipeline and retail model 0x15, prepared in the effect pool. Ledge attack uses ordinary subaction hitboxes and the existing ledge climb physics/collision. The recorded jump and roll callbacks required no behavior changes. Slow ledge options, airborne cut, C-stick throws, jump escape and unsupported character throw callbacks are outside the verified scene slice.
+Static throw descriptors pair each captor state with its victim state, animation and weight mask. Motion remapping borrows the source animation and part tables with source masks prepared during asset loading, command streams use prepared shared immutable slices, and XRotN constraint slots survive activation/deactivation. These remove throw-entry heap clones and constraint-node allocations; the existing back-throw allocation gate remains.
 
-## Assembly and environment
+`grab_escape.rs` owns capture scratch and archive-derived timer/mash/cut parameters. The timer includes percent, handicap and stock rank. Button edges and signed stick-direction changes apply the retail mash decrements, and the victim-owned timer releases both fighters into CatchCut/CaptureCut. Pummel input has priority over throws. Quick ledge attack uses an appended common row, ordinary subaction hitboxes and shared ledge physics/collision; the recorded jump and roll paths already passed.
 
-The lane's `third_party/melee-decomp` directory is empty. Source and split retail assembly were read from `/Users/nikhilunni/Projects/melee/third_party/melee-decomp`; the existing main-checkout `harness/asm.py` was run read-only. Neither decomp path was modified. The baseline workspace gate fails `dynamics_c_excerpts_match_decomp` with ENOENT at `melee-lb/tests/dynamics_ref_oracle.rs:168`.
+Up-throw graphics 0x3FA now uses S3's merged ModelSpawn implementation. The earlier duplicated effect path was resolved during the user's rebase. Slow ledge choices, airborne cut, C-stick throws and unsupported character throw variants remain outside this recorded slice. The two pre-existing ignored raw back-throw hitbox-phase tests are unchanged.
 
-New arithmetic audited: `fn_800DA8E4` uses fmadds at 800DA9CC/800DA9D4, with a separately rounded rank term and intervening addition. `ftCommon_GrabMash`, CaptureWait animation, CatchAttack entry/completion, CatchCut entry, CaptureCut entry/physics and CliffAttack entry contain no fused sites. Throw weight scaling retains the existing audited separate multiply/divide. Existing thrown-pose and ledge FMA sites remain unchanged. Graphics 0x3FA follows ftCo_8009F834's existing audited randomized-offset block and efAsync_Dispatch's positional model branch.
+## Forward-throw root cause and reviewer follow-up
+
+The original tick-151 failure was `p1.cur_pos.y`: expected `1.5432478189468384` (`0x3FC58925`), actual `1.543247938156128` (`0x3FC58926`). X and both knockback components matched; the full actual trace had no other differing tick/key.
+
+The cause was **the wrong animation-source part table**. At tick 150 the raw victim has `x594_s32 = 0x80000021`; its low six bits declare source skeleton 33 (`FTKIND_NONE`, the shared animation skeleton). The port selected Marth's part table because Marth owns the borrowed animation. Retail instead reads `x597_bits` from the animation flags: `8006FD08` loads byte +597, `8006FD18` keeps its low six bits, and `8006FD28` / `8006FD50` pass that source to the conditional-mask lookup and `ftPartsRemap`. `ftPartsRemap` at `80075028..80075060` maps source joint → semantic part → victim joint.
+
+The raw Fighter snapshot supplied enough pose evidence without another Dolphin capture. Its cached HipN hurtbox endpoints match the old port exactly, but the limb endpoints differ before release. For example, bone 13's zero-offset endpoint at tick 150 is `(74.26688385, 8.19471550, 3.99870968)` in retail versus `(70.20452, 2.989437, 4.364431)` in the old port. This identifies a body-pose mismatch despite the matching saved XRotN and HipN translations.
+
+`MotionFlags::source_skeleton` now decodes the declared source. `AnimationSource` reads its PlCo part map, including the final shared-skeleton table, and `ftParts_8007506C` conditional masks. Asset loading prepares the borrowed throw motions in the existing `Motion.remap` storage. An initial separate source-table map introduced five cross-crate destructor copies; reusing the existing owner removes that additional storage type. Throw entry borrows that source and its masks while retaining the victim's destination table. There are no per-tick allocations or character-kind branches.
+
+### Collision audit and corrected snap chronology
+
+Fresh instrumentation of the rebased code confirmed that both snaps were **inside the same** `air_collide_pass`; `begin_damage_reaction` did not snap again. The reviewer correctly identified the final post-call value, but that value did not reveal the internal movement substeps.
+
+| Old port stage | Y / relevant ECB state |
+|---|---|
+| Release target from TransN2 + root offset | `-6.6853075` |
+| Collision `last_pos` from captor ECB center | `5.9530954` |
+| `mpColl_80043754` movement subdivision | Three steps; delta Y `-4.212801` |
+| Second substep, first floor probe | `-2.4725065`; interpolated bottom `0` |
+| First additive floor snap | `0x38D18000` (the exact retail pre-integration Y) |
+| Repeated floor check in `mpColl_80046904` | Zero bottom allows another contact within retail's intersection epsilon |
+| Second additive floor snap in that call | `0x38D1B717` (`0.0001f`) |
+
+The C and assembly support this floor-crossing/probe path and the settle loop. The operand magnitude 2..4 comes from movement subdivision, even though the release target is −6.685. The old pose produced desired bottom zero; retail's recorded release ECB history has bottom `1.8834445476531982` and top `4.552462577819824`. Correcting the source skeleton fixes the pose and the complete forward-throw gate without altering mp collision branches, contact constants, FMA order or integration arithmetic.
+
+Constraint invalidation, root-map writes and eager matrix evaluation did not resolve the mismatch. Those experiments and every diagnostic print were removed. The earlier headless probe attempt failed before capture in macOS LaunchServices; it is no longer a prerequisite. No numeric correction, tolerance or expected-value change was introduced.
+
+## Source and arithmetic audit
+
+The lane's decomp directory is empty. Source and retail assembly were read from `/Users/nikhilunni/Projects/melee/third_party/melee-decomp`, using the main checkout's `harness/asm.py` read-only. Neither decomp path was modified.
+
+The resumed damage changes select existing arithmetic paths and preserve S9's RNG/sound ordering. CaptureDamage uses `fn_800DB8A4`'s f64 elapsed-counter increment, f32 timer decrement and existing audited mash helper. The earlier capture-timer setup retains fmadds at 800DA9CC/800DA9D4 with its separately rounded rank term; throw weight scaling retains its audited separate multiply/divide. Existing thrown-pose and ledge FMA sites are unchanged.
+
+## Files changed in this resumed session
+
+- `crates/melee-ft/src/fighter/damage.rs`: thrown airborne entry, forced motion and captured-hit routing/hitlag completion.
+- `crates/melee-ft/src/fighter/grab_throw.rs`: down-throw motion override and animation-declared source remap.
+- `crates/melee-ft/src/anim/playback.rs`, `desc/bones.rs`, `fighter/assets.rs`: source-skeleton decoding and prepared part maps/masks.
+- `crates/melee-ft/src/fighter/grab_escape.rs`, `grab.rs`: captured damage entry, timer/completion and low-capture collision support.
+- `crates/melee-ft/src/fighter/state/common_table.rs`: appended CaptureDamageLw row.
+- `crates/melee-sim/src/frame/grab_pairs.rs`: skip captured alignment during hitlag.
+- `crates/melee-sim/tests/m5_gate.rs`, `alloc_gate.rs`: high-percent full gates, removal of obsolete prefixes and two zero-allocation scenes.
+- `docs/PERF.md`: performance gate generated evidence; no budget changes.
+- `TRACKER.md`, this report: current evidence and remaining work.
 
 ## Final validation
 
-Commands use the checked-out uncommitted tree. `--no-fail-fast` lets workspace validation continue after the known blockers; it does not skip any test.
+Final commands and exit codes are recorded in `/tmp/s7-final-validation.json`, with separate command logs at `/tmp/s7-final-*.log`. Both workspace profiles completed all 184 test targets: **1,100 passed, 1 failed, 3 ignored**. The sole failure is the unmodified `dynamics_c_excerpts_match_decomp` test: the lane's empty decomp directory prevents it from finding `src/melee/lb/lb_00F9.c`. The native-C numerical oracle passes in both profiles. Running the identical excerpt comparisons read-only against the main checkout also passes (`/tmp/s7-review-main-decomp-excerpts.log`); that does not change the workspace command's failure status.
 
-| Command | Result |
-|---|---|
-| `cargo gate --no-fail-fast` | DEBUG_RESULT_PENDING |
-| `cargo gate --release --no-fail-fast` | 1,065 passed, 5 failed, 4 ignored across 180 unit/integration/doc targets; only `dynamics_ref_oracle` and `m5_gate` fail |
-| `cargo test -p melee-sim --test m4_gate` | 261 passed, 0 failed |
-| M5 in both workspace profiles | M5_RESULT_PENDING |
-| `cargo test --release -p melee-sim --test alloc_gate` | 17 passed, 0 failed; new mash, ledge attack and existing back-throw scene each allocate zero during simulate-only ticks |
-| `cargo clippy --workspace --all-targets -- -D warnings` | PASS |
-| `cargo fmt --all --check`; `git diff --check` | PASS |
-| `tools/check-release-math.sh` | PASS: math suite in debug/release and fused math at opt levels 0, 1, 2, 3, s, z |
-| `python3 -m unittest discover -s tools/tests -p test_perf_gate.py` | 11 passed |
-| `tools/perf-gate.sh` | PERF_RESULT_PENDING |
-| `tools/merge-check.sh lane/chars` | Stops before build at ancestry check; no Git writes performed |
+| Suite | Debug exact result line | Release exact result line |
+|---|---|---|
+| M4 | `test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 106.82s` | `test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.06s` |
+| M5 | `test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.77s` | `test result: ok. 79 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.15s` |
+| Allocation | `test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.14s` | `test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s` |
 
-Exact CLI output for each of `grabmash_fd_marth`, `ledgeattack_fd_fox`, `ledgejump_fd_fox`, `ledgeroll_fd_fox`:
+The separately requested `cargo test -p melee-sim --test m4_gate` also passes: `test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 97.63s`. Up throw and pummel each measure 299 simulation ticks with **0 allocations, peak 0, allocating ticks 0** in both profiles. No allocation ceiling increased.
+
+Both `cargo gate --no-fail-fast` and `cargo gate --release --no-fail-fast` exit 101 with the same final diagnostic:
 
 ```text
-300 ticks, 62 keys, 0 divergences
-```
-
-Forward/up/down throw CLI exits 101 with:
-
-```text
-not implemented: ftCo_Damage.c:346: airborne hit
-```
-
-Pummel CLI exits 101 with:
-
-```text
-not implemented: ftColl_80079AB0: crouch/other damage modifiers outside idle victim
-```
-
-Exact M4 and allocation test summaries:
-
-```text
-test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 202.14s
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.65s
-```
-
-Exact release prefix output (`m5_gate s7_throws_and_pummel_before_s5_damage_boundaries -- --nocapture`):
-
-```text
-fthrow_fd_marth: 151 ticks, 49 keys, 0 divergences; S5 damage boundary prefix
-uthrow_fd_marth: 150 ticks, 49 keys, 0 divergences; S5 damage boundary prefix
-dthrow_fd_marth: 151 ticks, 49 keys, 0 divergences; S5 damage boundary prefix
-pummel_fd_marth: 141 ticks, 49 keys, 0 divergences; S5 damage boundary prefix
-```
-
-The release workspace ends with:
-
-```text
-error: 2 targets failed:
+error: 1 target failed:
     `-p melee-lb --test dynamics_ref_oracle`
-    `-p melee-sim --test m5_gate`
 ```
 
-`merge-check` ends with:
+| Other required command | Final result |
+|---|---|
+| `cargo build -q` | PASS, exit 0 |
+| `cargo clippy --workspace --all-targets -- -D warnings` | PASS, exit 0 |
+| `cargo fmt --all --check` | PASS, exit 0 |
+| `tools/check-release-math.sh` | PASS, exit 0; debug/release math oracles and all six optimization levels |
+| `tools/perf-gate.sh` | PASS, exit 0; final standalone run `20260910T153747Z-33219` |
+| `tools/merge-check.sh lane/chars` | Exit 1 after both data checks pass: `[FAIL] rebase: main is not an ancestor of lane/chars (or ref lookup failed)` |
+
+At final validation `main` is `1994cff`, while this lane remains at `22ba99f` with the edits uncommitted. The requested no-Git-write boundary prevents rebasing here. No source test was redirected and no protected directory was populated to hide the environment failure. The owner must restore the lane's decomp checkout and rebase before rerunning the complete merge chain.
+
+### Exact final CLI output
+
+Every scene was run as `cargo run -q --release -p melee-sim -- gate harness/scenarios/<scene>.toml` after the source-skeleton correction.
+
+| Scene | Exact final line |
+|---|---|
+| `fthrow_fd_marth` | `300 ticks, 62 keys, 0 divergences` |
+| `uthrow_fd_marth` | `300 ticks, 62 keys, 0 divergences` |
+| `dthrow_fd_marth` | `300 ticks, 62 keys, 0 divergences` |
+| `pummel_fd_marth` | `300 ticks, 62 keys, 0 divergences` |
+| `grabmash_fd_marth` | `300 ticks, 62 keys, 0 divergences` |
+| `ledgeattack_fd_fox` | `300 ticks, 62 keys, 0 divergences` |
+| `ledgejump_fd_fox` | `300 ticks, 62 keys, 0 divergences` |
+| `ledgeroll_fd_fox` | `300 ticks, 62 keys, 0 divergences` |
+| `hi200_uthrow_fd_marth` | `420 ticks, 62 keys, 0 divergences` |
+| `hi200_uthrow2_fd_marth` | `420 ticks, 62 keys, 0 divergences` |
+
+### Performance audit
+
+The first source-skeleton implementation stored an additional map in `FighterAssets`. Its five new cross-crate destructor copies exceeded the zero-growth budget. Reusing `Motion.remap` removed all five. The final census is:
+
+| Crate | Labels | Definitions | Duplicate labels |
+|---|---:|---:|---:|
+| `melee-ft` | 874 | 908 | 19 |
+| `melee-sim` | 102 | 129 | 7 |
+| `ft-captain` | 43 | 66 | 1 |
+| `ft-falco` | 44 | 67 | 1 |
+| `ft-fox` | 44 | 67 | 1 |
+| `ft-fox-family` | 0 | 0 | 0 |
+| `ft-mario` | 0 | 0 | 0 |
+| `ft-mars` | 44 | 67 | 1 |
+| `ft-peach` | 44 | 67 | 1 |
+| `ft-purin` | 43 | 66 | 1 |
+| `ft-yoshi` | 45 | 68 | 1 |
+
+Across crates: **100 duplicate labels**, equal to the reviewed ceiling. Stripped size is **3,621,408 bytes**, text **3,309,568 bytes**; size and every copy budget pass.
+
+Timing history is retained in the generated `docs/PERF.md` entries, including failures. The separate-map run measured load 249.597 ms / ticks 23.831 ms; the first existing-owner run measured 199.802 / 24.182 ms; restoring the original asset-load order measured 205.798 / 37.041 ms. No tolerance, benchmark or budget was changed. Alternating six runs each of the saved passing binary and the final binary on the same 600-tick scene measured mean CPU time 295.470 versus 296.002 ms (all twelve runs exact). That comparison showed little CPU-cost change but did not substitute for the required wall-time gate.
+
+After all acceptance test processes finished, the standalone gate passed with the same final source: load **164.696 ms**, 600 ticks **23.358 ms**, below the fixed 182.600 / 25.947 ms ceilings. Evidence is in `target/perf/20260910T153747Z-33219`, `docs/PERF.md`, and `/tmp/s7-final-standalone-perf.log`. Exact final line:
 
 ```text
-[PASS] data: no tracked game data or protected lane changes
-[PASS] data: oracle traces present
-[FAIL] rebase: main is not an ancestor of lane/chars (or ref lookup failed)
+[PASS] perf-gate: 3621408 stripped bytes, 3309568 text bytes; load 164.696 ms; ticks_600 23.358 ms
 ```
-
-Raw command output is in `/tmp/s7s8-gate-{debug,release}-final.log`, `/tmp/s7s8-m4-debug.log`, `/tmp/s7s8-alloc-final.log`, `/tmp/s7s8-clippy-verified.log`, `/tmp/s7s8-release-math.log`, `/tmp/s7s8-perf-parser-tests.log`, `/tmp/s7s8-merge-check.log`, and `/tmp/s7s8-cli-<scene>.log`.
-
-## Changed files
-
-| Files | Change |
-|---|---|
-| `crates/melee-ft/src/fighter/grab_escape.rs` (new) | Capture scratch, timer/mash, pummel and cut callbacks; timer/input tests |
-| `crates/melee-ft/src/fighter/grab.rs`, `grab_throw.rs`, `ledge.rs` | Capture initialization, static throw descriptors and borrowed victim motions, quick ledge attack |
-| `crates/melee-ft/src/fighter/state/common_table.rs` | One appended S7/S8 row block |
-| `crates/melee-ft/src/fighter/mod.rs`, `spawn.rs`, `assets.rs` | Typed scratch, saved handicap, prepared constraint storage and immutable command assets |
-| `crates/melee-ft/src/anim/attach.rs`, `playback.rs` | Borrowed motion remapping; existing owned API preserved |
-| `crates/hsd-anim/src/jobj.rs` | Prepared constraint slots survive activation/deactivation |
-| `crates/melee-ft/src/fighter/effects.rs`; `crates/melee-ef/src/lib.rs`, `pool.rs`, `tables.rs` | Up-throw graphics model 0x15 through the existing command/effect pipeline |
-| `crates/melee-sim/src/frame.rs`, `frame/grab_pairs.rs`, `initial_state/mod.rs` | Pair escape order, throw dispatch/geometry, stock rank and handicap |
-| `crates/melee-sim/tests/m5_gate.rs`, `alloc_gate.rs` | Eight full acceptance scenes, four exact prefixes, three zero-allocation scenes |
-| `tools/perf_report.py` | Keep the concrete-pair census tracking the renamed throw helpers; no budget changes |
-| `docs/PERF.md` | Repair two pre-existing missing JSON comment terminators; append generated performance evidence |
-| `TRACKER.md`, this report | Partial completion and exact S5 handoff |

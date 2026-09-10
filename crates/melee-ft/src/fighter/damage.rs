@@ -24,6 +24,8 @@ pub struct CombatState {
     pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
+    /// ftColl_8007A06C: the selected hit came from this captured fighter's captor.
+    pub pending_from_captor: bool,
     /// Fighter.dmg.x1908 / x190C: the hit sound and voice set queued by the
     /// launch calculation, played by the next hit proc that starts no hitlag
     /// (Fighter_ProcessHit's else branch -> ftCo_80090718).
@@ -486,12 +488,15 @@ impl Fighter {
             }
         }
         if let Some(hit) = self.core.combat.pending.take() {
-            if hit.knockback == 0.0 {
+            if std::mem::take(&mut self.core.combat.pending_from_captor) {
+                // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
+                hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
+            } else if hit.knockback == 0.0 {
                 // Fighter_ProcessHit (fighter.c:2958) / Fighter_UnkTakeDamage_8006CC30: zero-knockback damage
                 // updates percent without a damage-state transition or hitlag.
                 self.core.physics.percent += hit.descriptor.damage;
             } else {
-                hit_damage = self.begin_damage_reaction(hit, assets, rng)?;
+                hit_damage = self.begin_damage_reaction(hit, None, assets, rng)?;
             }
         }
         if hit_damage == 0 {
@@ -519,6 +524,7 @@ impl Fighter {
     pub(super) fn begin_damage_reaction(
         &mut self,
         mut hit: ReceivedHit,
+        forced_motion: Option<S>,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
@@ -526,7 +532,9 @@ impl Fighter {
             // ftCo_Damage_CalcKnockback, 8008D974: separate fmuls.
             hit.knockback *= assets.damage.crouch_knockback_scale;
         }
-        let (state, stun) = self.core.prepare_damage_reaction(&hit, assets, rng);
+        let (state, stun) = self
+            .core
+            .prepare_damage_reaction(&hit, forced_motion, assets, rng);
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         let result = self.core.finish_damage_reaction(hit, stun, assets)?;
@@ -861,6 +869,9 @@ impl FighterCore {
             } else if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
                 self.status.interaction = Interaction::Shield;
+            } else if self.combat.grab.is_some() {
+                // Pummel freezes both members of the pair without damage-state scratch.
+                self.status.interaction = Interaction::Idle;
             } else {
                 self.status.interaction = Interaction::Attack;
             }
@@ -934,6 +945,12 @@ fn detect_eligible_hit(
             victim.attributes.size.weight,
             hit.knockback_damage,
         );
+        if let Some(super::grab::GrabLink::Captured { captor }) = victim.combat.grab {
+            if captor != attacker.spawn_number {
+                unimplemented!("ftCo_8008EC90: third-party hit on a captured fighter");
+            }
+            victim.combat.pending_from_captor = true;
+        }
         victim.combat.pending = Some(ReceivedHit {
             descriptor: descriptor.clone(),
             height,
@@ -994,19 +1011,32 @@ impl FighterCore {
     fn prepare_damage_reaction(
         &mut self,
         hit: &ReceivedHit,
+        forced_motion: Option<S>,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> (S, f32) {
-        if self.physics.ground_or_air != GroundOrAir::Ground && self.motion_state.id != S::ThrownB {
+        let airborne = self.physics.ground_or_air == GroundOrAir::Air;
+        if airborne
+            && !matches!(
+                self.motion_state.id,
+                S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw
+            )
+        {
             unimplemented!("ftCo_Damage.c:346: airborne hit");
         }
         let stun = hit.knockback * assets.damage.hitstun_scale;
-        let level = assets
+        let base_level = assets
             .damage
             .reaction_thresholds
             .iter()
             .position(|&t| stun < t)
             .unwrap_or(3);
+        // ftCo_8008DCE0 block_9: an explicit motion forces level 3, not the angle.
+        let level = if forced_motion.is_some() {
+            3
+        } else {
+            base_level
+        };
         // ftCo_803C5520: reaction depends on hit strength and hurtbox height.
         const REACTIONS: [[S; 3]; 4] = [
             [S::DamageLw1, S::DamageN1, S::DamageHi1],
@@ -1019,7 +1049,12 @@ impl FighterCore {
             HurtHeight::Middle => 1,
             HurtHeight::High => 2,
         };
-        let mut state = REACTIONS[level][height];
+        const AIR_REACTIONS: [S; 3] = [S::DamageAir1, S::DamageAir2, S::DamageAir3];
+        let mut state = if airborne && level < 3 {
+            AIR_REACTIONS[level]
+        } else {
+            REACTIONS[level][height]
+        };
         self.physics.percent += hit.descriptor.damage;
         let angle = assets.damage.launch_angle(
             hit.descriptor.angle,
@@ -1044,6 +1079,10 @@ impl FighterCore {
             && rng.randf() < assets.damage.fly_roll_chance
         {
             state = S::DamageFlyRoll;
+        }
+        // Retail block_36 overrides the motion only after the fly-roll draw.
+        if let Some(forced_motion) = forced_motion {
+            state = forced_motion;
         }
         // ftCo_Damage.c block_70: queue the hit sound and voice set by scaled
         // knockback (var_r27 is only cleared on the unported steep-floor path).

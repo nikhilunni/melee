@@ -203,7 +203,7 @@ impl Fighter {
         self.catch_collision(assets, map)?;
         if !matches!(
             self.core.motion_state.id,
-            S::CapturePulledLw | S::CaptureWaitLw
+            S::CapturePulledLw | S::CaptureWaitLw | S::CaptureDamageLw
         ) {
             unimplemented!("fn_800DB230: captured fighter leaves ground");
         }

@@ -102,17 +102,15 @@ pub fn enter_throw(
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
     let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
-    let mut masks = [0; crate::desc::bones::MAX_JOINTS as usize];
-    for (mask, part) in masks.iter_mut().zip(&attacker.animation.parts) {
-        *mask = part.motion_mask;
-    }
+    let motion = &aa.motions[&throw.victim_motion];
+    let remap = motion.remap.as_ref().expect("prepared throw skeleton");
     let source = ThrowSource {
         assets: aa,
-        motion: &aa.motions[&throw.victim_motion],
+        motion,
         remap: crate::anim::attach::MotionRemapView {
-            source: &aa.parts,
+            source: &remap.source,
             destination: &va.parts,
-            source_masks: &masks[..attacker.animation.parts.len()],
+            source_masks: &remap.source_masks,
         },
     };
     victim.change_motion_state_with_source(
@@ -213,8 +211,10 @@ pub fn release_throw(
     map: &mut melee_mp::CollMap,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
+    // ftCo_800DE7C0's integer argument is a motion override (90), not an angle.
+    let forced_motion = (attacker.motion_state.id == S::ThrowLw).then_some(S::DamageFlyTop);
     let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
-    victim.begin_damage_reaction(hit, va, rng)?;
+    victim.begin_damage_reaction(hit, forced_motion, va, rng)?;
     Ok(())
 }
 

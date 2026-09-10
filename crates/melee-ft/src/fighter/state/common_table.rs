@@ -1509,5 +1509,12 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         physics: crate::fighter::grab_escape::cut_physics,
         ..rows[S::CatchCut as usize]
     };
+    rows[S::CaptureDamageLw as usize] = MotionRow {
+        action: ActionId(228),
+        id: S::CaptureDamageLw,
+        animation: 256,
+        anim: crate::fighter::grab_escape::capture_damage_animation,
+        ..rows[S::CaptureWaitLw as usize]
+    };
     rows
 }

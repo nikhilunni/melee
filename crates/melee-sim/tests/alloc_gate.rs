@@ -265,3 +265,13 @@ fn ledgeattack_fd_fox_allocation_budget() {
 fn s7_back_throw_borrows_motion_and_commands_without_allocating() {
     allocation_budget("grab_fd_marth", 0);
 }
+
+#[test]
+fn uthrow_fd_marth_allocation_budget() {
+    allocation_budget("uthrow_fd_marth", 0);
+}
+
+#[test]
+fn pummel_fd_marth_allocation_budget() {
+    allocation_budget("pummel_fd_marth", 0);
+}
