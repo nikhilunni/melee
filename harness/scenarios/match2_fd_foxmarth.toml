@@ -4,7 +4,7 @@
 # Recorded from start_fd_marth4.sav (stock 4, match start); frames is rewritten to the recorded count at GAME.
 name = "match2_fd_foxmarth"
 savestate = "harness/roms/start_fd_marth4.sav"
-frames = 28800
+frames = 10059
 seed = 1
 stage = "FinalDestination"
 
