@@ -106,7 +106,7 @@ fn allocation_budget(name: &str, ceiling: usize) {
 #[test]
 fn start_fd_fox_allocation_budget() {
     // Remaining: entry-effect queues/models and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("start_fd_fox", 2_621);
+    allocation_budget("start_fd_fox", 1_694);
 }
 #[test]
 fn idle_fd_fox_allocation_budget() {
@@ -116,15 +116,15 @@ fn idle_fd_fox_allocation_budget() {
 #[test]
 fn jab_fd_marth_allocation_budget() {
     // Remaining: effect queues/models and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("jab_fd_marth", 1_018);
+    allocation_budget("jab_fd_marth", 639);
 }
 #[test]
 fn ko_fd_marth_allocation_budget() {
     // Remaining: death/respawn effect storage and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("ko_fd_marth", 2_386);
+    allocation_budget("ko_fd_marth", 1_517);
 }
 #[test]
 fn start_bf_fox_allocation_budget() {
     // Remaining: entry-effect storage and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("start_bf_fox", 2_358);
+    allocation_budget("start_bf_fox", 1_431);
 }
