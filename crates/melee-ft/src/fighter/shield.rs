@@ -35,6 +35,7 @@ pub struct ShieldParameters {
     pub reflect_damage: f32,
     pub reflect_speed: f32,
     pub powershield_frames: f32,
+    pub powershield_interrupt_frames: i32,
     pub size_range: [f32; 2],
     pub drain_range: [f32; 2],
     pub alpha: f32,
@@ -67,6 +68,7 @@ impl ShieldParameters {
             reflect_damage: r.f32(p + 0x2AC)?,
             reflect_speed: r.f32(p + 0x2B0)?,
             powershield_frames: r.f32(p + 0x2B4)?,
+            powershield_interrupt_frames: r.s32(p + 0x2B8)?,
             size_range: [r.f32(p + 0x2D4)?, r.f32(p + 0x2D8)?],
             drain_range: [r.f32(p + 0x2EC)?, r.f32(p + 0x2F0)?],
             alpha: r.f32(p + 0x2F4)?,
@@ -166,11 +168,9 @@ impl ShieldState {
 impl Fighter {
     /// ftCo_80092E50 -> ftCo_80092F2C (80092F2C): shield stun and defender pushback.
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
-        if self.core.shield.powershield_window {
-            unimplemented!("ftCo_80092F2C: powershield impact");
-        }
         self.character.guard_variant(&mut self.core.commands);
         self.change_motion_state(S::GuardSetOff.into(), assets)?;
+        eprintln!("S6 impact graphics {:?}", self.core.commands.graphics);
         self.core.apply_shield_impact(impact, assets)
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
@@ -609,7 +609,9 @@ impl FighterCore {
     /// ftCo_80092F2C (80092F2C): shield stun and push after motion entry.
     fn apply_shield_impact(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
         self.input.horizontal.tilt = 254;
-        self.queue_shield_effect(0x419);
+        if !self.shield.powershield_window {
+            self.queue_shield_effect(0x419);
+        }
         let p = &assets.shield;
         // retail 80093038 and 8009305C: fmadds with a rounded damage product.
         let light = fmadds(
@@ -630,8 +632,11 @@ impl FighterCore {
         if impact.element == melee_types::HitElement::Cape {
             unimplemented!("ftCo_80092E50: cape shield response");
         }
-        let push = ((frames * p.pushback_multiplier) * p.ordinary_pushback_multiplier)
-            .min(p.pushback_maximum);
+        let mut push = frames * p.pushback_multiplier;
+        if !self.shield.powershield_window {
+            push *= p.ordinary_pushback_multiplier;
+        }
+        let push = push.min(p.pushback_maximum);
         self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
         self.install_shield();
         self.update_shield_size(assets);

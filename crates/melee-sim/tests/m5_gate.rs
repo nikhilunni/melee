@@ -597,3 +597,87 @@ fn hi200_utilt_fd_marth_420_ticks_and_ordered_particle_draws() {
 fn hi200_dolphinslash_fd_marth_420_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("hi200_dolphinslash_fd_marth", 420);
 }
+
+// S6: shield scenes and the prefix before the S3 Marth special boundary.
+#[test]
+fn shieldstun_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("shieldstun_ftilt_fd_marth");
+}
+
+#[test]
+fn shieldtilt_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("shieldtilt_ftilt_fd_marth");
+}
+
+#[test]
+fn powershield_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("powershield_ftilt_fd_marth");
+}
+
+#[test]
+fn lightshield_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("lightshield_ftilt_fd_marth");
+}
+
+#[test]
+#[ignore = "blocked on S3 part 3: Marth Shield Breaker rows; un-ignore when merged"]
+fn shieldbreak_fd_marth_520_ticks_and_ordered_particle_draws() {
+    // S3-owned Marth SpecialN first diverges at tick 119.
+    combat_gate_ticks("shieldbreak_fd_marth", 520);
+}
+
+#[test]
+fn s6_shield_scenes_before_cross_lane_boundaries() {
+    for (name, frames, prefix) in [
+        ("powershield_ftilt_fd_marth", 300, 125),
+        ("shieldbreak_fd_marth", 520, 118),
+    ] {
+        s6_shield_prefix(name, frames, prefix);
+    }
+}
+
+fn s6_shield_prefix(name: &str, frames: usize, prefix: usize) {
+    use melee_diff::{first_divergence, read_trace};
+    let scenario = Scenario::load(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml")),
+    )
+    .unwrap();
+    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger_path.clone()]),
+    ) {
+        return;
+    }
+    assert_eq!(scenario.frames as usize, frames);
+    let expected = read_trace(std::io::BufReader::new(
+        fs::File::open(scenario.expected_path()).unwrap(),
+    ))
+    .unwrap();
+    let ledger = fs::read_to_string(ledger_path).unwrap();
+    assert_eq!(expected.len(), frames);
+    assert_eq!(ledger.lines().count(), frames);
+    assert!(prefix < frames);
+    let mut simulation = Simulation::with_inputs(
+        InitialState::from_savestate_traces(&scenario).unwrap(),
+        trace::pad_script(&scenario).unwrap(),
+    );
+    for (tick, (expected, line)) in expected.iter().zip(ledger.lines()).take(prefix).enumerate() {
+        let actual = simulation.tick().unwrap();
+        trace::check_schema(&actual).unwrap();
+        let divergence = first_divergence([expected], [&actual]);
+        assert!(divergence.is_none(), "{name} tick {tick}: {divergence:?}");
+        let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        let sites: Vec<u32> = row["rng_draws"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
+            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
+            .collect();
+        assert_eq!(simulation.particle_rng_sites(), sites, "{name} tick {tick}");
+    }
+    eprintln!("{name}: {prefix} ticks, 49 keys, 0 divergences; cross-lane boundary prefix only");
+}

@@ -219,3 +219,14 @@ fn hi200_utilt_fd_marth_allocation_budget() {
 fn hi200_dolphinslash_fd_marth_allocation_budget() {
     allocation_budget("hi200_dolphinslash_fd_marth", 0);
 }
+
+// S6: tilted and analog shields, including contact and shieldstun recovery.
+#[test]
+fn shieldtilt_ftilt_fd_marth_allocation_budget() {
+    allocation_budget("shieldtilt_ftilt_fd_marth", 0);
+}
+
+#[test]
+fn lightshield_ftilt_fd_marth_allocation_budget() {
+    allocation_budget("lightshield_ftilt_fd_marth", 0);
+}

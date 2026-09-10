@@ -8,6 +8,8 @@ pub enum EffectRequest {
         model: u32,
         rotation: Vec3,
     },
+    // S6: ftColl_80076CBC, efSync_Spawn(27) at the physical powershield contact.
+    PowershieldSpark { position: Vec3 },
     // S3: synchronous efAlt generator with a live fighter joint.
     SyncAttached {
         id: u16,
@@ -191,6 +193,7 @@ impl EffectRequest {
         matches!(
             self,
             Self::OwnedRotation { .. }
+                | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }

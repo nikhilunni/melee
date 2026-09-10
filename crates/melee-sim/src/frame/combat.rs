@@ -171,3 +171,41 @@ fn replay_scratch_until(name: &str, ticks: usize) {
         }
     }
 }
+
+// S6: supplement canonical gates with retail shield health, analog amount,
+// both pushback owners, hitlag and animation-rate words on every tick.
+#[test]
+fn shieldstun_ftilt_matches_retail_scratch() {
+    replay_scratch("shieldstun_ftilt_fd_marth");
+}
+
+#[test]
+fn shieldtilt_ftilt_matches_retail_scratch() {
+    replay_scratch("shieldtilt_ftilt_fd_marth");
+}
+
+#[test]
+fn lightshield_ftilt_matches_retail_scratch() {
+    replay_scratch("lightshield_ftilt_fd_marth");
+}
+
+#[test]
+fn powershield_ftilt_matches_retail_scratch() {
+    replay_scratch("powershield_ftilt_fd_marth");
+}
+
+#[test]
+fn s6_particle_diagnostic() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let scenario = Scenario::load(&root.join("harness/scenarios/powershield_ftilt_fd_marth.toml")).unwrap();
+    let mut sim = Simulation::with_inputs(InitialState::from_savestate_traces(&scenario).unwrap(), crate::trace::pad_script(&scenario).unwrap());
+    let ledger=fs::read_to_string(scenario.trace_path("ledger.raw.jsonl")).unwrap();
+    for (tick,line) in ledger.lines().take(126).enumerate() {
+        sim.tick().unwrap();
+        if tick == 125 {
+            let v: serde_json::Value=serde_json::from_str(line).unwrap();
+            let sites: Vec<u32>=v["rng_draws"].as_array().unwrap().iter().map(|v|v["lr"].as_u64().unwrap() as u32-4).filter(|s|(0x80398f8c..0x8039f6cc).contains(s)).collect();
+            eprintln!("expected {sites:X?} actual {:X?}",sim.particle_rng_sites());
+        }
+    }
+}

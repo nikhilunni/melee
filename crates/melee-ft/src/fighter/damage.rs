@@ -271,11 +271,9 @@ fn record_shield_hit(
     attacker: &mut FighterCore,
     desc: &HitboxDescriptor,
     contact: Contact,
+    assets: &FighterAssets,
 ) {
     // ftColl_80076CBC (80076CBC): shield contact wins over hurtboxes.
-    if victim.shield.powershield_window {
-        unimplemented!("ftColl_80076CBC: powershield contact");
-    }
     if victim.shield.impact.is_some() {
         unimplemented!("ftColl_80076CBC: simultaneous shield impact selection");
     }
@@ -285,7 +283,9 @@ fn record_shield_hit(
     } else {
         1.0
     };
-    victim.shield.damage_taken += (damage + i32::from(desc.shield_damage)).max(0);
+    if !victim.shield.powershield_window {
+        victim.shield.damage_taken += (damage + i32::from(desc.shield_damage)).max(0);
+    }
     victim.shield.impact = Some(super::shield::ShieldImpact {
         damage,
         facing,
@@ -302,11 +302,25 @@ fn record_shield_hit(
         group,
         victim.spawn_number,
     );
-    victim
-        .effects
-        .push(melee_ef::request::EffectRequest::ShieldSpark {
+    if victim.shield.powershield_window {
+        // ftCo_80094138: permit attacks during GuardOff and clear minimum hold.
+        victim.guard().interrupt_frames = assets.shield.powershield_interrupt_frames;
+        victim.guard().minimum_hold = 0.0;
+        victim.commands.color_animations.push(melee_cmd::ColorAnimationRequest { id: 118, duration: 0 });
+        victim.commands.footstep_sounds.push(super::commands::FootstepSound {
+            channel: super::commands::SoundChannel::Ordinary,
+            id: 104,
+            volume: 127,
+            pan: 64,
+        });
+        victim.effects.push(melee_ef::request::EffectRequest::PowershieldSpark {
             position: contact.position,
         });
+    } else {
+        victim.effects.push(melee_ef::request::EffectRequest::ShieldSpark {
+            position: contact.position,
+        });
+    }
 }
 impl Fighter {
     /// ftCo_Damage_Phys (8008FB18): gravity/friction during hitstun, drift after it.
@@ -862,7 +876,7 @@ fn detect_eligible_hit(
     if victim.shield.active {
         if let Some(contact) = victim.shield_contact(hit, attacker.player.scale) {
             let descriptor = desc.clone();
-            record_shield_hit(victim, attacker, &descriptor, contact);
+            record_shield_hit(victim, attacker, &descriptor, contact, assets);
             return;
         }
     }

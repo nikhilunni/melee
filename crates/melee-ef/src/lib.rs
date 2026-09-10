@@ -399,6 +399,10 @@ impl Effects {
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
+            if let EffectRequest::PowershieldSpark { position } = request {
+                self.spawn_dust_generator::<T>(27, position, fighter.effect_facing(), bank, particles, rng)?;
+                continue;
+            }
             if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
                 request
             {
@@ -531,6 +535,7 @@ impl Effects {
                 | EffectRequest::Attached { .. }
                 | EffectRequest::SyncAttached { .. }
                 | EffectRequest::LedgeGrab { .. }
+                | EffectRequest::PowershieldSpark { .. }
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
                 EffectRequest::Death {
                     position: origin,
