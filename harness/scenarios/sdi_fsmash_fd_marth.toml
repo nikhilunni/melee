@@ -1,0 +1,32 @@
+# S5: Marth charged fsmash; Fox taps away three times during hitlag (SDI).
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "sdi_fsmash_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 105, buttons = { StickX = 1.0, A = true } },
+  { frame = 107, buttons = { A = true } },
+  { frame = 140, buttons = {  } },
+  { frame = 150, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 151, port = 1, buttons = {  } },
+  { frame = 152, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 153, port = 1, buttons = {  } },
+  { frame = 154, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 155, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

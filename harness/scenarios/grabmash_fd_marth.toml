@@ -1,0 +1,40 @@
+# S7: Marth grabs and holds; Fox mashes stick and buttons to escape.
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "grabmash_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 88, buttons = {  } },
+  { frame = 120, buttons = { Z = true } },
+  { frame = 122, buttons = {  } },
+  { frame = 129, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 130, port = 1, buttons = { StickY = 1.0, A = true } },
+  { frame = 131, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 132, port = 1, buttons = { StickY = -1.0, B = true } },
+  { frame = 133, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 134, port = 1, buttons = { StickY = 1.0, A = true } },
+  { frame = 135, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 136, port = 1, buttons = { StickY = -1.0, B = true } },
+  { frame = 137, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 138, port = 1, buttons = { StickY = 1.0, A = true } },
+  { frame = 139, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 140, port = 1, buttons = { StickY = -1.0, B = true } },
+  { frame = 141, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 142, port = 1, buttons = { StickY = 1.0, A = true } },
+  { frame = 143, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

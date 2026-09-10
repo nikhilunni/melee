@@ -1,0 +1,29 @@
+# S6: Fox shields; Marth's ftilt hits the shield (stun, pushback).
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "shieldstun_ftilt_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 86, buttons = {  } },
+  { frame = 110, port = 1, buttons = { L = true } },
+  { frame = 112, buttons = { StickX = 0.3 } },
+  { frame = 118, buttons = { StickX = 0.3, A = true } },
+  { frame = 120, buttons = { StickX = 0.3 } },
+  { frame = 124, buttons = {  } },
+  { frame = 170, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
