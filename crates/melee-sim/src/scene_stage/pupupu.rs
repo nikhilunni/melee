@@ -72,6 +72,7 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -
         for event in animation.evaluate_initial_frame::<RetailTrig>() {
             let mut request = SpawnRequest::new(event.bank, event.kind, 0);
             request.joint = Some((joint_id(map, event.joint), event.matrix));
+            state.effects.events.spawn(&request, false, false);
             state.particles.spawn::<RetailTrig>(
                 &state.assets.particle_bank,
                 request,

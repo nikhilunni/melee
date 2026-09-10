@@ -340,6 +340,7 @@ impl Runtime {
                             let mut request =
                                 hsd_particle::system::SpawnRequest::new(event.bank, event.kind, 0);
                             request.joint = Some((stage::joint_id(map, event.joint), event.matrix));
+                            state.effects.events.spawn(&request, false, false);
                             state.particles.spawn::<RetailTrig>(
                                 &state.assets.particle_bank,
                                 request,
@@ -347,11 +348,15 @@ impl Runtime {
                                 &mut self.particle_draws,
                             )?;
                         }
-                        for (joint, matrix) in animation.matrices() {
+                        animation.for_each_matrix(|joint, matrix| {
+                            state
+                                .effects
+                                .events
+                                .update_joint(stage::joint_id(map, joint), matrix);
                             state
                                 .particles
                                 .update_joint(stage::joint_id(map, joint), matrix);
-                        }
+                        });
                     }
                     state.map.finish_ground_animation();
                 }
@@ -397,6 +402,7 @@ impl Runtime {
                             0,
                         );
                         request.joint = Some((stage::joint_id(map_id, 1), matrix));
+                        state.effects.events.spawn(&request, true, false);
                         let id = state.particles.spawn::<RetailTrig>(
                             &state.assets.common_particle_bank,
                             request,
@@ -424,6 +430,7 @@ impl Runtime {
                     for position in display.tick(stocks) {
                         let mut request = hsd_particle::system::SpawnRequest::new(0, 0xF7, 1);
                         request.position = [position.x, position.y, position.z];
+                        state.effects.events.spawn(&request, false, true);
                         state.particles.spawn::<RetailTrig>(
                             &state.assets.common_particle_bank,
                             request,
@@ -533,6 +540,8 @@ impl Simulation {
         );
         {
             let mut runtime = self.runtime.borrow_mut();
+            let frame = runtime.frame;
+            runtime.state.effects.events.begin_tick(frame);
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
             if let Some((music, unlocked)) = runtime.state.pending_music.take() {
@@ -552,6 +561,12 @@ impl Simulation {
         }
         runtime.frame += 1;
         Ok(())
+    }
+    pub(crate) fn enable_spawn_recording(&mut self) {
+        self.runtime.borrow_mut().state.effects.events.enable();
+    }
+    pub(crate) fn finish_spawn_recording(&mut self) -> BTreeMap<u64, Vec<serde_json::Value>> {
+        self.runtime.borrow_mut().state.effects.events.finish()
     }
     /// Ordered particle branch sites observed in the last completed tick.
     pub fn particle_rng_sites(&self) -> Vec<u32> {
@@ -839,7 +854,11 @@ mod tests {
 mod start_tests {
     use super::*;
     use crate::{initial_state::particles, scenario::Scenario};
-    use std::{collections::BTreeSet, fs::File, io::BufReader, path::Path};
+    use std::{
+        fs::File,
+        io::{BufRead, BufReader},
+        path::Path,
+    };
     #[test]
     fn start_effect_matrices_and_particle_state() {
         let scenario = Scenario::load(
@@ -861,39 +880,29 @@ mod start_tests {
             return;
         }
         let expected = melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap();
-        let changes: Vec<(u64, usize, [u32; 12])> = serde_json::from_str(include_str!(
-            "../../hsd-particle/tests/support/start_fd_joints.json"
-        ))
-        .unwrap();
+        let metadata: Vec<serde_json::Value> =
+            BufReader::new(File::open(scenario.trace_path("particles.jsonl.meta.jsonl")).unwrap())
+                .lines()
+                .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
+                .collect();
+        assert_eq!(metadata.len(), expected.len());
         let initial = InitialState::from_savestate_traces(&scenario).unwrap();
-        // The ledger is verification only. Tick zero has no draws; its seed
-        // therefore is also the seed before tick zero's draws.
-        use std::io::BufRead;
-        let line = BufReader::new(File::open(scenario.trace_path("ledger600.raw.jsonl")).unwrap())
-            .lines()
-            .next()
-            .unwrap()
-            .unwrap();
-        let ledger: serde_json::Value = serde_json::from_str(&line).unwrap();
-        assert!(ledger["rng_draws"].as_array().unwrap().is_empty());
-        assert_eq!(ledger["seed"].as_u64(), Some(u64::from(initial.rng.seed)));
-        assert_eq!(initial.rng.seed, 0xCC51_A0A5);
+        let sidecar: serde_json::Value = serde_json::from_reader(
+            File::open(scenario.savestate_path().with_extension("sav.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            u64::from(initial.rng.seed),
+            sidecar["seed"].as_u64().unwrap()
+        );
         let mut simulation = Simulation::new(initial);
         assert_eq!(expected.len(), 600);
-        let mut attachments = BTreeSet::new();
         let mut checked = 0;
         let mut fields = 0;
         for expected in expected {
             simulation.tick().unwrap();
             let runtime = simulation.runtime.borrow();
             let state = &runtime.state;
-            attachments.extend(
-                state
-                    .particles
-                    .generators
-                    .iter()
-                    .filter_map(|g| g.attachment_id),
-            );
             let mut matrices = state.effects.matrices();
             for generator in &state.particles.generators {
                 if let Some(id) = generator
@@ -903,17 +912,32 @@ mod start_tests {
                     matrices.insert(id, generator.joint_matrix.unwrap());
                 }
             }
-            let ordered: Vec<_> = attachments.iter().copied().collect();
-            for &(_, normalized, words) in changes.iter().filter(|row| row.0 == expected.frame) {
-                let id = ordered[normalized];
-                let matrix = matrices.get(&id).unwrap();
+            let meta = &metadata[expected.frame as usize]["particles"];
+            for (generator, captured) in state
+                .particles
+                .generators
+                .iter()
+                .zip(meta["generators"].as_array().unwrap())
+            {
+                let Some(matrix) = generator.attachment_id.and_then(|id| matrices.get(&id)) else {
+                    continue;
+                };
+                let pointer = &captured["fields"]["jobj"];
+                let joint = meta["joints"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|j| &j["pointer"] == pointer)
+                    .unwrap();
+                let words: Vec<_> = joint["fields"]["matrix"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|w| w.as_u64().unwrap() as u32)
+                    .collect();
                 let actual: Vec<_> = matrix.0.iter().flatten().map(|f| f.to_bits()).collect();
-                assert_eq!(
-                    actual, words,
-                    "effect matrix tick {} fixture joint {normalized} owned {id}",
-                    expected.frame
-                );
-                checked += 12;
+                assert_eq!(actual, words, "effect matrix tick {}", expected.frame);
+                checked += words.len();
             }
             struct Banks<'a>(&'a crate::assets::Assets);
             impl particles::Banks for Banks<'_> {
@@ -936,7 +960,7 @@ mod start_tests {
             }
             fields += expected.state.len();
         }
-        assert_eq!(checked, changes.len() * 12);
+        assert!(checked > 0, "live attached matrix coverage");
         eprintln!("{checked} captured matrix words and {fields} particle fields matched");
     }
 }

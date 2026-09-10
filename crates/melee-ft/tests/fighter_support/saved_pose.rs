@@ -39,6 +39,19 @@ impl SavedPose {
             ram_offset,
         }
     }
+    pub fn fighter_bytes(&self, address: u32, length: usize) -> Vec<u8> {
+        self.bytes(address, length).to_vec()
+    }
+    pub fn resume_link(&self) -> u8 {
+        let current_proc = word(self.bytes(0x804D_7838, 4), 0);
+        let link = word(self.bytes(0x804D_7834, 4), 0);
+        if current_proc == 0 && link == 24 {
+            return 0;
+        }
+        assert_eq!(link, 4, "idle test supports the physics resume boundary");
+        assert_eq!(word(self.bytes(current_proc + 0x14, 4), 0), 0x8006_B82C);
+        link as u8
+    }
     fn bytes(&self, address: u32, length: usize) -> &[u8] {
         assert!((0x8000_0000..0x8180_0000).contains(&address));
         let offset = self.ram_offset + (address - 0x8000_0000) as usize;
@@ -65,12 +78,70 @@ impl SavedPose {
         let scale = word(data, 0x74);
         joint.scl = (scale != 0).then(|| vector(self.bytes(scale, 12), 0));
     }
+    /// Restore exact saved AObj/FObj cursors for a mid-tick animation boundary.
+    /// Requesting the motion at its scalar frame cannot recover pending stream
+    /// interpolation or the independently advancing blend/part tree.
+    fn joint_animation(&self, joint: &mut JObj, address: u32) {
+        use hsd_anim::{aobj::AObj, fobj::FObj};
+        let pointer = word(self.bytes(address, 0x88), 0x7C);
+        if pointer == 0 {
+            joint.aobj = None;
+            return;
+        }
+        let data = self.bytes(pointer, 0x1C);
+        let mut tracks = Vec::new();
+        let mut track = word(data, 0x14);
+        while track != 0 {
+            let f = self.bytes(track, 0x34);
+            let head = word(f, 8);
+            let length = word(f, 12);
+            let mut decoded = FObj::new(
+                self.bytes(head, length as usize),
+                0.0,
+                f[0x13],
+                f[0x14],
+                f[0x15],
+            );
+            decoded.pos = word(f, 4)
+                .checked_sub(head)
+                .expect("FObj cursor before stream") as usize;
+            decoded.flags = f[0x10];
+            decoded.op = f[0x11];
+            decoded.op_intrp = f[0x12];
+            decoded.nb_pack = u16::from_be_bytes(f[0x16..0x18].try_into().unwrap());
+            decoded.startframe = i16::from_be_bytes(f[0x18..0x1A].try_into().unwrap());
+            decoded.fterm = u16::from_be_bytes(f[0x1A..0x1C].try_into().unwrap());
+            decoded.time = float(f, 0x1C);
+            decoded.p0 = float(f, 0x20);
+            decoded.p1 = float(f, 0x24);
+            decoded.d0 = float(f, 0x28);
+            decoded.d1 = float(f, 0x2C);
+            tracks.push(decoded);
+            track = word(f, 0);
+        }
+        joint.aobj = Some(AObj {
+            flags: word(data, 0),
+            curr_frame: float(data, 4),
+            rewind_frame: float(data, 8),
+            end_frame: float(data, 12),
+            framerate: float(data, 16),
+            fobj: tracks,
+        });
+    }
     pub fn restore<C: CharacterCallbacks>(&self, fighter: &mut Fighter<C>, raw: &[u8]) {
         let gobj = word(raw, 0);
         let address = word(self.bytes(gobj, 0x30), 0x2C);
-        assert_eq!(&self.bytes(address, 256)[..256], &raw[..256]);
-        // These animation and command scalars must describe the same boundary.
-        assert_eq!(self.bytes(address + 0x894, 0x18), &raw[0x894..0x8AC]);
+        // A savestate may interrupt a tick; the trace records its completed
+        // boundary. Only object identities survive the remaining procs unchanged:
+        // Wait-animation data, the secondary animation table and bone-parts
+        // array. Animation scalars, positions and state counters can advance
+        // before the trace is captured.
+        for offset in [0x24, 0x28, 0x5E8] {
+            assert_eq!(
+                word(self.bytes(address + offset as u32, 4), 0),
+                word(raw, offset)
+            );
+        }
         fighter.dynamics_use_floor_plane = raw[0x2228] & 0x40 != 0;
         for (i, set) in fighter.dynamics.iter_mut().enumerate() {
             let desc = 0x2F4 + i * 0x18;
@@ -107,6 +178,11 @@ impl SavedPose {
             part.flags.0 = data[8];
             self.joint(fighter.skeleton.get_mut(part.joint), word(data, 0));
             self.joint(
+                fighter.animation.blend_tree.get_mut(part.joint),
+                word(data, 4),
+            );
+            self.joint_animation(fighter.skeleton.get_mut(part.joint), word(data, 0));
+            self.joint_animation(
                 fighter.animation.blend_tree.get_mut(part.joint),
                 word(data, 4),
             );
@@ -150,48 +226,6 @@ fn decode_block(input: &[u8], output: &mut Vec<u8>, limit: usize) {
         assert!(output.len() + count <= limit);
         for _ in 0..count {
             output.push(output[output.len() - offset]);
-        }
-    }
-}
-
-/// Main-tree SRT and cached matrices at the *initial* scheduler boundary.
-/// The bone oracle has no flags, accumulated scale, blend tree or dynamics
-/// heap state; those remain imported from the owned savestate and raw Fighter.
-/// Later oracle rows must never call this function.
-pub fn restore_oracle_boundary<C: CharacterCallbacks>(
-    fighter: &mut Fighter<C>,
-    player: usize,
-    row: &serde_json::Value,
-) {
-    assert_eq!(row["frame"].as_u64(), Some(0));
-    assert_eq!(row["state"].as_object().unwrap().len(), 3212);
-    for (bone, part) in fighter.animation.parts.iter().enumerate() {
-        let scalar = |field: &str, index: usize| {
-            let key = format!("p{player}.bone[{bone}].{field}[{index}]");
-            f32::from_bits(
-                row["state"][&key]["v"]["bits"]
-                    .as_u64()
-                    .unwrap()
-                    .try_into()
-                    .unwrap(),
-            )
-        };
-        let joint = fighter.skeleton.get_mut(part.joint);
-        joint.rotate = Quaternion::new(
-            scalar("rotate", 0),
-            scalar("rotate", 1),
-            scalar("rotate", 2),
-            scalar("rotate", 3),
-        );
-        joint.scale =
-            hsd_types::Vec3::new(scalar("scale", 0), scalar("scale", 1), scalar("scale", 2));
-        joint.translate = hsd_types::Vec3::new(
-            scalar("translate", 0),
-            scalar("translate", 1),
-            scalar("translate", 2),
-        );
-        for (index, value) in joint.mtx.0.iter_mut().flatten().enumerate() {
-            *value = scalar("mtx", index);
         }
     }
 }

@@ -35,6 +35,15 @@ enum Command {
     },
     /// Run and compare every key against the scenario's canonical tick trace.
     Gate { scenario: PathBuf },
+    /// Gate a scenario and record external particle spawn/joint/flag inputs.
+    FixtureSpawns {
+        scenario: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        /// Export only this many initial ticks; the entire scenario is still gated.
+        #[arg(long)]
+        ticks: Option<u64>,
+    },
     /// Emit Fox Wait1 bone matrices and SRT with an identity world transform.
     Bones {
         #[arg(long, value_parser = ["fox"])]
@@ -121,6 +130,20 @@ fn main() -> anyhow::Result<()> {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
             melee_sim::trace::gate(&scenario)?;
             println!("{} ticks, 49 keys, 0 divergences", scenario.frames);
+            Ok(())
+        }
+        Command::FixtureSpawns {
+            scenario,
+            out,
+            ticks,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            melee_sim::trace::fixture_spawns(&scenario, &out, ticks)?;
+            println!(
+                "{} ticks, 49 keys, 0 divergences; fixture {}",
+                scenario.frames,
+                out.display()
+            );
             Ok(())
         }
     }

@@ -17,6 +17,7 @@ pub mod trace;
 
 mod countdown;
 mod effects;
+mod fixture_spawns;
 
 mod scene_fighter;
 

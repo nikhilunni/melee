@@ -298,8 +298,15 @@ impl ParticleSystem {
     pub fn sort_for_display(&mut self, links: u16) {
         for (link, particles) in self.particles.iter_mut().enumerate() {
             if links & (1 << link) != 0 {
-                particles
-                    .sort_by_key(|p| ((p.kind >> 25) & 7) + if p.kind & 8 == 0 { 8 } else { 0 });
+                let bucket =
+                    |p: &Particle| ((p.kind >> 25) & 7) + if p.kind & 8 == 0 { 8 } else { 0 };
+                // Stable sort allocates scratch before detecting an already
+                // ordered list. Most stage-only lists stay in one bucket.
+                // Preserve the exact order (including equal-key ties) in that
+                // case without paying a population-dependent allocation.
+                if !particles.is_sorted_by_key(bucket) {
+                    particles.sort_by_key(bucket);
+                }
             }
         }
     }

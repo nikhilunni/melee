@@ -42,7 +42,7 @@ impl Effects {
         }
         // efLib_AnimQueue is drained in reverse creation order by efSync_Spawn.
         for effect in shells.iter_mut().rev() {
-            effect.animate(bank, particles, rng, &mut self.draws)?;
+            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
         }
         self.instances.extend(shells);
         Ok(())

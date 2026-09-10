@@ -90,20 +90,20 @@ fn ledger_links_tick_end_to_next_scheduler_start_even_with_repeated_vi_frames() 
     let expected = lines(&expected);
     assert_eq!(rows.len(), 600);
     assert_eq!(expected.len(), 600);
-    // Reset observation; first full Slippi scheduler frame follows this.
-    assert_eq!(rows[0]["tick"], 0);
-    assert_eq!(rows[0]["seed"], 0xcc51_a0a5_u32);
-    assert_eq!(rows[1]["tick"], 1);
-    assert_eq!(rows[1]["seed"], 0xc37a_8245_u32);
-    assert_eq!(rows[0]["vi_frame"], rows[1]["vi_frame"]);
-    for tick in 1..rows.len() {
-        let mut seed = rows[tick - 1]["seed"].as_u64().unwrap() as u32;
-        assert_eq!(
-            u64::from(seed),
-            expected[tick - 1]["state"]["rng.seed"]["v"]
-                .as_u64()
-                .unwrap()
-        );
+    let sidecar: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(traces().join("../roms/start_fd_fox.sav.json")).unwrap(),
+    )
+    .unwrap();
+    let mut seed = sidecar["seed"].as_u64().unwrap() as u32;
+    for tick in 0..rows.len() {
+        assert_eq!(rows[tick]["frame"].as_u64(), Some(tick as u64));
+        if tick > 0 {
+            assert!(
+                rows[tick]["vi_frame"].as_u64().unwrap()
+                    >= rows[tick - 1]["vi_frame"].as_u64().unwrap(),
+                "VI ordinals may repeat but cannot go backwards"
+            );
+        }
         for draw in rows[tick]["rng_draws"].as_array().unwrap() {
             seed = seed.wrapping_mul(214013).wrapping_add(2531011);
             assert_eq!(
@@ -111,13 +111,19 @@ fn ledger_links_tick_end_to_next_scheduler_start_even_with_repeated_vi_frames() 
                 draw["seed"].as_u64().unwrap(),
                 "tick {tick}"
             );
-            // Every observed caller belongs to scheduled animation/stage/
-            // particle work; no render-time or pre-scheduler caller occurs.
+            // Tick zero includes match-start music selection (grLib_801C26B0);
+            // the remaining callers are animation, stage and particle work.
             let lr = draw["lr"].as_u64().unwrap();
             assert!(
                 matches!(
                     lr,
-                    0x8008a8c0 | 0x8009fce0 | 0x8009fd04 | 0x8009fd28 | 0x8021aecc | 0x8021b000
+                    0x801c26b0
+                        | 0x8008a8c0
+                        | 0x8009fce0
+                        | 0x8009fd04
+                        | 0x8009fd28
+                        | 0x8021aecc
+                        | 0x8021b000
                 ) || (0x8039930c..0x8039f258).contains(&lr),
                 "unknown RNG caller {lr:#x}"
             );
@@ -152,6 +158,6 @@ fn physical_bits_alone_and_dead_zoned_sticks_are_not_full_pad_copies() {
         pad_bits(replay_pad(&raw_available).unwrap())
     );
     let mut corrupt = input;
-    corrupt.triggers[0] = f32::from_bits(0x65000c80);
+    corrupt.triggers[0] = f32::MAX;
     assert!(replay_pad(&corrupt).is_err());
 }

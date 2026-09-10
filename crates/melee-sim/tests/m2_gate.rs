@@ -13,23 +13,6 @@ use hsd_types::Vec3;
 use melee_diff::{read_trace, Record, Value};
 use melee_sim::bones::{default_assets, write_fox_wait1_bones, FighterPose};
 
-/// Where the savestate put Fox: Yoshi's Story side platform, facing right.
-/// Values are what `harness/traces/idle_ys_fox.expected.jsonl` records at
-/// frame 0 (`p0.cur_pos`, `p0.facing_dir`, `p0.cur_anim_frame`).
-const FOX_POSITION: Vec3 = Vec3 {
-    x: -42.0,
-    y: 23.450098,
-    z: 0.0,
-};
-const FOX_FACING: f32 = 1.0;
-const FOX_MODEL_SCALE: f32 = 0.96;
-const FOX_ANIM_FRAME: f32 = 6.0;
-/// Retail scales this bone by 1/model_scale. TODO(meaning): find the site.
-const INVERSE_SCALED_BONE: (usize, f32) = (67, 1.0416667);
-/// Bones whose cached matrix the game had not recomputed at the savestate
-/// (`dirty_bones` in the oracle's `.meta.jsonl`); their oracle values are stale.
-const DIRTY_BONES: [usize; 3] = [67, 71, 72];
-
 fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -59,21 +42,70 @@ fn fox_wait1_bones_match_the_real_game_bit_for_bit() {
     }
     let oracle = by_key(read_trace(&std::fs::read(&oracle_path).unwrap()[..]).unwrap());
 
+    // Use the metadata captured alongside this exact bone trace. Savestate
+    // identity alone is insufficient after a recording is replaced.
+    let metadata: Vec<serde_json::Value> =
+        std::fs::read_to_string(oracle_path.with_extension("jsonl.meta.jsonl"))
+            .expect("bone trace requires its capture metadata")
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+    assert!(!metadata.is_empty());
+    let float = |value: &serde_json::Value| f32::from_bits(value.as_u64().unwrap() as u32);
+    let first = &metadata[0];
+    let archive =
+        hsd_archive::Archive::parse(&std::fs::read(default_assets().join("PlFx.dat")).unwrap())
+            .unwrap();
+    let data = archive.public("ftDataFox").unwrap();
+    let attributes = melee_ft::desc::read_fighter_attributes(&archive, data).unwrap();
+    let bones = melee_ft::desc::read_fighter_bones(&archive, data, 5).unwrap();
+    let model_scale = attributes.size.model_scaling;
     let pose = FighterPose {
-        position: Some(FOX_POSITION),
-        facing_dir: Some(FOX_FACING),
-        model_scale: Some(FOX_MODEL_SCALE),
-        bone_scales: vec![INVERSE_SCALED_BONE],
+        position: Some(Vec3::new(
+            float(&first["cur_pos"][0]),
+            float(&first["cur_pos"][1]),
+            float(&first["cur_pos"][2]),
+        )),
+        facing_dir: Some(float(&first["facing_dir"])),
+        model_scale: Some(model_scale),
+        bone_scales: bones
+            .scaled_joint
+            .map(|joint| (joint as usize, 1.0 / model_scale))
+            .into_iter()
+            .collect(),
     };
     let mut ours = Vec::new();
-    write_fox_wait1_bones(&default_assets(), FOX_ANIM_FRAME, 2, &pose, &mut ours).unwrap();
+    write_fox_wait1_bones(
+        &default_assets(),
+        float(&first["cur_anim_frame"]),
+        metadata.len() as u64,
+        &pose,
+        &mut ours,
+    )
+    .unwrap();
     let ours = by_key(read_trace(&ours[..]).unwrap());
 
-    let dirty: HashSet<usize> = DIRTY_BONES.into_iter().collect();
+    let dirty: Vec<HashSet<usize>> = metadata
+        .iter()
+        .map(|row| {
+            row["dirty_bones"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|bone| bone.as_u64().unwrap() as usize)
+                .collect()
+        })
+        .collect();
+    let expected_words: usize = metadata
+        .iter()
+        .zip(&dirty)
+        .map(|(row, dirty)| (row["joints"].as_array().unwrap().len() - dirty.len()) * 22)
+        .sum();
+    assert_eq!(ours.len(), oracle.len(), "complete bone-word coverage");
     let mut mismatches = Vec::new();
     let mut compared = 0;
     for (key, expected) in &oracle {
-        if dirty.contains(&bone_index(&key.1)) {
+        if dirty[key.0 as usize].contains(&bone_index(&key.1)) {
             continue;
         }
         let actual = ours.get(key).unwrap_or_else(|| panic!("missing {key:?}"));
@@ -83,9 +115,8 @@ fn fox_wait1_bones_match_the_real_game_bit_for_bit() {
         }
     }
     assert_eq!(
-        compared,
-        2 * 70 * 22,
-        "two frames of 70 live bones x 22 words"
+        compared, expected_words,
+        "all non-dirty bones in each capture x 22 words"
     );
     assert!(
         mismatches.is_empty(),

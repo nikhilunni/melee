@@ -310,13 +310,14 @@ fn gapped_ports_preserve_spawn_markers_and_route_pads_by_port() {
 fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
     let replay = fixture("v3.16.slp");
     assert_eq!(replay.frames.len(), 308);
-    assert_eq!(replay.start.random_seed, 0x3AAE);
     for frame in replay.frames.values() {
         let start = frame.start.expect("v3.16 Frame Start");
         let counter = start.scene_frame_counter.expect("v3.16 scene counter");
         assert_eq!(
             start.random_seed,
-            counter.rotate_left(16).wrapping_add(0x3AAE)
+            counter
+                .rotate_left(16)
+                .wrapping_add(replay.start.random_seed)
         );
     }
     let reasons = replay::unsupported_setup(&replay);

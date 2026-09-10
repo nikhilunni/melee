@@ -99,10 +99,34 @@ fn replay_config(
         16,
     )
     .unwrap();
+    let mut resume_link = None;
     if !callbacks_only {
         let saved = saved_pose::SavedPose::load(&save_path, &first_raw, address);
+        let link = saved.resume_link();
+        // Entry is observed before this match's scheduler starts. A Wait save
+        // between ticks requires a complete first pass, like melee-sim.
+        resume_link = Some(if link == 0 && word(&first_raw, 0x10) == 322 {
+            24
+        } else {
+            link
+        });
         for (player, fighter) in fighters.iter_mut().enumerate() {
-            saved.restore(fighter, &raw(&raw_trace[0], player));
+            let row = raw_trace[0]["fighters"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| {
+                    u8::from_str_radix(&row["bytes"].as_str().unwrap()[24..26], 16).unwrap()
+                        as usize
+                        == player
+                })
+                .unwrap();
+            let address =
+                u32::from_str_radix(row["base"].as_str().unwrap().trim_start_matches("0x"), 16)
+                    .unwrap();
+            let bytes = saved.fighter_bytes(address, raw(&raw_trace[0], player).len());
+            *fighter = fixture.import(&bytes);
+            saved.restore(fighter, &bytes);
         }
     }
     let bones = compare_bones.then(|| json_lines(&bones_path));
@@ -118,17 +142,21 @@ fn replay_config(
     }
     if let Some(rows) = &bones {
         assert_eq!(rows.len(), ticks);
-        // This single row is the scheduler-boundary pose, not a later input.
-        // Import the entire main tree: idle also has stale palm caches on
-        // bones 26/56, outside the dynamics/part-animation bone lists.
-        for (player, fighter) in fighters.iter_mut().enumerate() {
-            saved_pose::restore_oracle_boundary(fighter, player, &rows[0]);
-        }
+        // Pose inputs come entirely from the savestate; even row zero is an
+        // independent comparison after completing its pending scheduler work.
     }
     let mut first_bone_mismatch = None;
     let mut matched = [0; 2];
     let mut total_draws = 0;
-    let mut rng = HsdRng::new(ledger[0]["seed"].as_u64().unwrap() as u32);
+    let initial_seed = if resume_link.is_some() {
+        let sidecar: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(save_path.with_extension("sav.json")).unwrap())
+                .unwrap();
+        sidecar["seed"].as_u64().unwrap() as u32
+    } else {
+        ledger[0]["seed"].as_u64().unwrap() as u32
+    };
+    let mut rng = HsdRng::new(initial_seed);
     for tick in 0..ticks {
         assert_eq!(trace[tick]["tick"], ledger[tick]["tick"]);
         assert_eq!(trace[tick]["tick"], raw_trace[tick]["tick"]);
@@ -151,8 +179,16 @@ fn replay_config(
             "dynamics unexpectedly drew RNG at tick {tick}"
         );
         let mut used = 0;
-        if tick != 0 {
+        if tick != 0 || resume_link.is_some() {
             for (proc, player) in interleaved_order(fighters.len()) {
+                if tick == 0
+                    && resume_link.is_some_and(|link| {
+                        proc.s_link() < link
+                            || (link == 4 && proc == FighterProc::Update && player == 0)
+                    })
+                {
+                    continue;
+                }
                 if callbacks_only
                     && !(shield_scene && proc == FighterProc::ProcessHit)
                     && !matches!(
@@ -172,7 +208,11 @@ fn replay_config(
                 // fighter callback. All draws inside one callback are contiguous.
                 if let Some((index, _)) = sites.get(used) {
                     rng.seed = if *index == 0 {
-                        ledger[tick - 1]["seed"].as_u64().unwrap()
+                        if tick == 0 {
+                            u64::from(initial_seed)
+                        } else {
+                            ledger[tick - 1]["seed"].as_u64().unwrap()
+                        }
                     } else {
                         draws[index - 1]["seed"].as_u64().unwrap()
                     } as u32;
@@ -298,9 +338,25 @@ fn replay_config(
             matched[player] += 1;
         }
     }
-    if scene == "start" && ticks == 600 {
-        assert_eq!(total_draws, 16);
-    }
+    let expected_draws: usize = ledger
+        .iter()
+        .take(ticks)
+        .skip(usize::from(resume_link.is_none()))
+        .map(|row| {
+            row["rng_draws"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|draw| {
+                    matches!(
+                        draw["lr"].as_u64().unwrap() - 4,
+                        0x8008_A8BC | 0x8009_FCDC | 0x8009_FD00 | 0x8009_FD24
+                    )
+                })
+                .count()
+        })
+        .sum();
+    assert_eq!(total_draws, expected_draws);
     assert_eq!(matched, [ticks, ticks]);
     assert!(
         first_bone_mismatch.is_none(),
@@ -320,7 +376,13 @@ fn compare_pose(
     let mut details = Vec::new();
     let mut mismatches = std::collections::BTreeMap::<(usize, usize, String), usize>::new();
     assert_eq!(expected["frame"].as_u64().unwrap(), tick as u64);
-    assert_eq!(expected["state"].as_object().unwrap().len(), 3212);
+    assert_eq!(
+        expected["state"].as_object().unwrap().len(),
+        fighters
+            .iter()
+            .map(|f| f.animation.parts.len() * 22)
+            .sum::<usize>()
+    );
     for (player, fighter) in fighters.iter().enumerate() {
         for (bone, part) in fighter.animation.parts.iter().enumerate() {
             let joint = fighter.skeleton.get(part.joint);

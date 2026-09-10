@@ -11,6 +11,8 @@ use hsd_types::Mtx;
 pub struct BackgroundAnimation {
     tree: JObjTree,
     root: JObjId,
+    // Animation replacement preserves the model hierarchy and these identities.
+    joints: Vec<JObjId>,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
@@ -45,7 +47,9 @@ impl BackgroundAnimation {
             }
         }
         tree.req_anim_all(root, 0.0);
-        Ok(Self { tree, root })
+        let mut joints = Vec::new();
+        tree.walk_tree(root, &mut |joint, _| joints.push(joint));
+        Ok(Self { tree, root, joints })
     }
     /// grAnime_801C8138: replace all joint tracks without replacing the model.
     pub fn select_animation(
@@ -147,16 +151,16 @@ impl BackgroundAnimation {
         }
     }
     pub fn matrices(&mut self) -> Vec<(usize, Mtx)> {
-        let mut joints = Vec::new();
-        self.tree
-            .walk_tree(self.root, &mut |joint, _| joints.push(joint));
-        joints
-            .into_iter()
-            .map(|joint| {
-                self.tree.setup_matrix(joint);
-                (joint.0, self.tree.get(joint).mtx)
-            })
-            .collect()
+        let mut matrices = Vec::with_capacity(self.joints.len());
+        self.for_each_matrix(|joint, matrix| matrices.push((joint, matrix)));
+        matrices
+    }
+    /// Visit in the same model traversal order without building a per-tick list.
+    pub fn for_each_matrix(&mut self, mut visit: impl FnMut(usize, Mtx)) {
+        for &joint in &self.joints {
+            self.tree.setup_matrix(joint);
+            visit(joint.0, self.tree.get(joint).mtx);
+        }
     }
     /// Ground_801C1CD0 (ground.c): evaluate the stage animation at s_link 1.
     pub fn tick<T: InverseTrig>(&mut self) -> Vec<ParticleRequest> {

@@ -157,7 +157,13 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
     let Some(mut fixture) = Fixture::load() else {
         return;
     };
-    let boundary = raw(&json_lines(&path)[0], 0);
+    let raw_trace = json_lines(&path);
+    let boundary = raw(&raw_trace[0], 0);
+    let catch_tick = raw_trace
+        .iter()
+        .position(|row| fighter_support::word(&raw(row, 0), 0x10) == S::CliffCatch as u32)
+        .expect("recording reaches CliffCatch");
+    let initial_facing = fighter_support::word(&boundary, 0x2C);
     let pads = json_lines(&pads);
     for (cooldown, down, disabled, catches) in [
         (0, false, false, true),
@@ -168,14 +174,14 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
     ] {
         let mut fighter = fixture.import(&boundary);
         let mut rng = HsdRng::new(1);
-        for (tick, pad) in pads.iter().enumerate().take(71).skip(1) {
+        for (tick, pad) in pads.iter().enumerate().take(catch_tick + 1).skip(1) {
             fighter.proc_anim(&fixture.assets, &mut rng).unwrap();
             fighter.proc_input(&fixture.assets, &recorded_pad(pad, 0));
-            if tick == 70 {
+            if tick == catch_tick {
                 fighter.status.ledge_cooldown = cooldown;
             }
             fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
-            if tick == 70 {
+            if tick == catch_tick {
                 fighter.status.ledge_grab_disabled = disabled;
                 if down {
                     fighter.input.current.stick.y = -fixture.assets.ledge.grab_down_threshold;
@@ -190,7 +196,7 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
             fighter.motion_state.id,
             if catches { S::CliffCatch } else { S::JumpB }
         );
-        assert_eq!(fighter.physics.facing.to_bits(), 1.0f32.to_bits());
+        assert_eq!(fighter.physics.facing.to_bits(), initial_facing);
         assert_eq!(fighter.status.ledge_cooldown, (cooldown - 1).max(0));
     }
 }

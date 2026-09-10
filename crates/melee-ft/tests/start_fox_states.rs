@@ -137,7 +137,24 @@ fn start_fox_state_callbacks_600() {
             matched[player] += 1;
         }
     }
-    assert_eq!(total_draws, 16);
+    let expected_draws: usize = ledger
+        .iter()
+        .skip(1)
+        .map(|row| {
+            row["rng_draws"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|draw| {
+                    matches!(
+                        draw["lr"].as_u64().unwrap() - 4,
+                        0x8008_A8BC | 0x8009_FCDC | 0x8009_FD00 | 0x8009_FD24
+                    )
+                })
+                .count()
+        })
+        .sum();
+    assert_eq!(total_draws, expected_draws);
     assert_eq!(matched, [600, 600]);
-    eprintln!("P0: 600/600; P1: 600/600; 24 fields each, first mismatch: none; all 16 fighter draws matched (frame 0 + 599 transitions)");
+    eprintln!("P0: 600/600; P1: 600/600; 24 fields each, first mismatch: none; all {total_draws} fighter draws matched (frame 0 + 599 transitions)");
 }

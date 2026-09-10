@@ -104,6 +104,35 @@ pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
 }
 /// Unlike first_divergence alone, this also rejects extra keys/records.
 pub fn gate(scenario: &Scenario) -> Result<()> {
+    gate_with_recording(scenario, false)?;
+    Ok(())
+}
+
+/// Record caller inputs during the exact gate loop; no output file is opened
+/// until all comparisons succeed, so a failed import/gate preserves its target.
+pub fn fixture_spawns(
+    scenario: &Scenario,
+    out: &std::path::Path,
+    ticks: Option<u64>,
+) -> Result<()> {
+    let ticks = ticks.unwrap_or(scenario.frames);
+    ensure!(
+        ticks > 0 && ticks <= scenario.frames,
+        "fixture ticks must be within the scenario"
+    );
+    let mut events = gate_with_recording(scenario, true)?;
+    events.retain(|frame, _| *frame < ticks);
+    let mut out = std::io::BufWriter::new(File::create(out)?);
+    serde_json::to_writer_pretty(&mut out, &events)?;
+    writeln!(out)?;
+    out.flush()?;
+    Ok(())
+}
+
+fn gate_with_recording(
+    scenario: &Scenario,
+    record_spawns: bool,
+) -> Result<std::collections::BTreeMap<u64, Vec<serde_json::Value>>> {
     let expected = read_trace(BufReader::new(File::open(scenario.expected_path())?))?;
     ensure!(
         expected.len() as u64 == scenario.frames,
@@ -114,6 +143,9 @@ pub fn gate(scenario: &Scenario) -> Result<()> {
     let mut simulation = simulation(scenario)?;
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
+    }
+    if record_spawns {
+        simulation.enable_spawn_recording();
     }
     for expected in expected {
         let mut actual = simulation.tick()?;
@@ -130,5 +162,14 @@ pub fn gate(scenario: &Scenario) -> Result<()> {
             );
         }
     }
-    Ok(())
+    Ok(if record_spawns {
+        let offset = u64::from(!scenario.replay_inputs.is_empty());
+        simulation
+            .finish_spawn_recording()
+            .into_iter()
+            .map(|(frame, events)| (frame - offset, events))
+            .collect()
+    } else {
+        std::collections::BTreeMap::new()
+    })
 }

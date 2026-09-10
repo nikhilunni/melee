@@ -66,6 +66,7 @@ impl Effects {
             bank.descriptor(kind).is_some(),
             "particle descriptor {kind} absent from supplied bank"
         );
+        self.events.spawn(&request, false, false);
         particles.spawn::<RetailTrig>(bank, request, rng, &mut self.draws)?;
         Ok(())
     }

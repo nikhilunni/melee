@@ -13,7 +13,6 @@ use hsd_types::Mtx;
 use serde_json::Value as Json;
 use std::{fs, path::PathBuf};
 
-const SAVESTATE_SEED: u32 = 1_286_746_018;
 const RANDF_PC: u32 = 0x8038_054c;
 const RANDI_PC: u32 = 0x8038_059c;
 
@@ -23,7 +22,7 @@ struct Capture {
     states: Vec<melee_diff::Record>,
     ticks: Vec<melee_diff::Record>,
     ledger: Vec<Json>,
-    joint: Mtx,
+    joints: Vec<Option<Mtx>>,
 }
 fn capture() -> Option<Capture> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness");
@@ -49,24 +48,36 @@ fn capture() -> Option<Capture> {
     let metadata: Json = serde_json::from_slice(&fs::read(&paths[1]).unwrap()).unwrap();
     assert_eq!(
         metadata["particles"]["seed"].as_u64().unwrap(),
-        u64::from(SAVESTATE_SEED)
+        restore::uint(&initial[0], "rng.seed")
     );
     assert_eq!(metadata["sampling"], "savestate_loaded_before_first_tick");
     // The attached cached JObj is outside canonical records. Restore its
     // actual matrix from metadata, resolving the pointer instead of assuming
     // identity. FD animation 0's only track on this joint is the spawn key.
     let particle_meta = &metadata["particles"];
-    let joint_pointer = &particle_meta["generators"][0]["fields"]["jobj"];
-    let joint = particle_meta["joints"]
+    let joints = particle_meta["generators"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|j| &j["pointer"] == joint_pointer)
-        .unwrap();
-    let words = joint["fields"]["matrix"].as_array().unwrap();
-    let joint = Mtx(std::array::from_fn(|row| {
-        std::array::from_fn(|col| f32::from_bits(words[row * 4 + col].as_u64().unwrap() as u32))
-    }));
+        .map(|generator| {
+            let pointer = &generator["fields"]["jobj"];
+            if pointer == 0 {
+                return None;
+            }
+            let joint = particle_meta["joints"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|joint| &joint["pointer"] == pointer)
+                .unwrap();
+            let words = joint["fields"]["matrix"].as_array().unwrap();
+            Some(Mtx(std::array::from_fn(|row| {
+                std::array::from_fn(|col| {
+                    f32::from_bits(words[row * 4 + col].as_u64().unwrap() as u32)
+                })
+            })))
+        })
+        .collect();
     let states = restore::read(&paths[2]);
     let ledger = fs::read_to_string(&paths[3])
         .unwrap()
@@ -87,7 +98,7 @@ fn capture() -> Option<Capture> {
         states,
         ticks,
         ledger,
-        joint,
+        joints,
     })
 }
 
@@ -105,10 +116,12 @@ fn particle_draw(draw: &Json) -> bool {
         true
     } else {
         // Exact external callers, not a broad PC range that could hide new
-        // particle draws. grLast_8021ADD0 + 0x22C also occurs at tick 509.
+        // particle draws. These branches belong to grLast_8021ADD0.
         match site {
             0x8008_a8bc => assert_eq!(word(draw, "pc"), RANDI_PC),
-            0x8021_b040 | 0x8021_af0c | 0x8021_affc => assert_eq!(word(draw, "pc"), RANDF_PC),
+            0x8021_b040 | 0x8021_af0c | 0x8021_affc | 0x8021_aec8 => {
+                assert_eq!(word(draw, "pc"), RANDF_PC)
+            }
             _ => panic!("unclassified RNG caller {site:#010x}"),
         }
         false
@@ -117,9 +130,11 @@ fn particle_draw(draw: &Json) -> bool {
 
 fn replay(capture: Capture, ticks: usize, compare_state: bool) {
     let mut system = restore::restore(&capture.initial, &capture.bank);
-    assert_eq!(system.generators.len(), 1);
-    system.generators[0].joint_matrix = Some(capture.joint);
-    let mut rng = HsdRng::new(SAVESTATE_SEED);
+    assert_eq!(system.generators.len(), capture.joints.len());
+    for (generator, matrix) in system.generators.iter_mut().zip(capture.joints) {
+        generator.joint_matrix = matrix;
+    }
+    let mut rng = HsdRng::new(restore::uint(&capture.initial, "rng.seed") as u32);
     assert_eq!(
         restore::uint(&capture.initial, "rng.seed"),
         u64::from(rng.seed)

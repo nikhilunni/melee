@@ -118,10 +118,9 @@ fn fox_wait_playback_600() {
             (tree, animation)
         })
         .collect();
-    assert_eq!(
-        [frame_bits(&trace[0], 0), frame_bits(&trace[0], 1)],
-        [5.0f32.to_bits(), 0]
-    );
+    for (player, (_, animation)) in fighters.iter().enumerate() {
+        assert_eq!(animation.frame.to_bits(), frame_bits(&trace[0], player));
+    }
     let mut total_draws = 0;
     let mut matched = [0; 2];
     for tick in 0..600 {
@@ -199,9 +198,21 @@ fn fox_wait_playback_600() {
         }
         assert_eq!(used, sites.len(), "unconsumed Wait draws tick {tick}");
     }
-    assert_eq!(total_draws, 9);
+    let expected_draws: usize = ledger
+        .iter()
+        .skip(1)
+        .map(|row| {
+            row["rng_draws"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|draw| draw["lr"].as_u64().unwrap() - 4 == 0x8008_a8bc)
+                .count()
+        })
+        .sum();
+    assert_eq!(total_draws, expected_draws);
     assert_eq!(matched, [600, 600]);
     eprintln!(
-        "P0: 600/600; P1: 600/600 frame/id/remainder/rate/blend states; all 9 Wait draws matched"
+        "P0: 600/600; P1: 600/600 frame/id/remainder/rate/blend states; all {total_draws} Wait draws matched"
     );
 }

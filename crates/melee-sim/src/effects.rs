@@ -52,10 +52,11 @@ const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
 // EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 13] = [2, 9, 10, 45, 212, 261, 267, 306, 307, 364, 445, 448, 449];
+const PARTICLE_KINDS: [i32; 14] = [2, 6, 9, 10, 45, 212, 261, 267, 306, 307, 364, 445, 448, 449];
 
 #[derive(Default)]
 pub(crate) struct Effects {
+    pub(crate) events: crate::fixture_spawns::EventSink,
     camera_quakes: Vec<(u16, Vec3)>,
     pub(crate) draws: DrawLog,
     instances: Vec<Effect>,
@@ -143,6 +144,7 @@ impl Effects {
                     .filter(|effect| effect.owner == Some(player))
                 {
                     for joint in effect.tree.depth_first(effect.root) {
+                        self.events.expire_joint(effect.joint_base + joint.0);
                         particles.expire_joint(effect.joint_base + joint.0);
                     }
                 }
@@ -165,6 +167,7 @@ impl Effects {
                     joint_id,
                     resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
                 ));
+                self.events.spawn(&spawn, false, false);
                 particles.spawn::<RetailTrig>(bank, spawn, rng, &mut self.draws)?;
                 self.fighter_joints.insert(joint_id, (player, bone));
                 continue;
@@ -317,6 +320,7 @@ impl Effects {
                             .tree
                             .set_scale(effect.root, &Vec3::new(scale, scale, scale));
                     } else {
+                        self.events.external_randf(0x8006_3b70);
                         // efasync.c:34-36: M_TAU is double, multiply then round.
                         effect.tree.set_rotation_z(
                             effect.root,
@@ -363,7 +367,7 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            effect.animate(bank, particles, rng, &mut self.draws)?;
+            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
             self.instances.push(effect);
         }
         self.requests = requests;
@@ -385,7 +389,9 @@ impl Effects {
         });
         for (&id, &(player, bone)) in &self.fighter_joints {
             let fighter = &mut fighters[player];
-            particles.update_joint(id, fighter.bone_matrix(Some(bone)));
+            let matrix = fighter.bone_matrix(Some(bone));
+            self.events.update_joint(id, matrix);
+            particles.update_joint(id, matrix);
         }
         for effect in &mut self.instances {
             if !effect.indefinite && effect.lifetime != 0 {
@@ -413,7 +419,7 @@ impl Effects {
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
             }
-            effect.animate(bank, particles, rng, &mut self.draws)?;
+            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -511,6 +517,7 @@ impl Effect {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
+        sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
         for index in 0..self.joints.len() {
@@ -545,12 +552,13 @@ impl Effect {
                                     scale: self.tree.scale(self.root),
                                     ..Default::default()
                                 });
+                            sink.spawn(&request, false, false);
                             particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
                             continue;
                         }
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
-                        if matches!(hi, 2 | 306 | 307) {
+                        if matches!(hi, 2 | 6 | 306 | 307) {
                             // efLib_SpawnParticleEffect (8005D174): inherit root scale.
                             request.application_transform =
                                 Some(hsd_particle::generator::ApplicationTransform {
@@ -558,10 +566,12 @@ impl Effect {
                                     ..Default::default()
                                 });
                         }
+                        sink.spawn(&request, false, false);
                         let id = particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
-                        if matches!(hi, 2 | 306 | 307) {
+                        if matches!(hi, 2 | 6 | 306 | 307) {
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
+                                sink.flags(self.joint_base + jobj.0, 0x600, 0x800);
                                 generator.flags = (generator.flags & !0x600) | 0x800;
                             }
                         }
@@ -569,6 +579,7 @@ impl Effect {
                             // efLib_SpawnParticleEffect (8005D174), eflib.c:882-890.
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
+                                sink.flags(self.joint_base + jobj.0, 0x600, 0x1800);
                                 generator.flags = (generator.flags & !0x600) | 0x1800;
                             }
                         }
@@ -582,6 +593,7 @@ impl Effect {
         for index in 0..self.joints.len() {
             let joint = self.joints[index];
             let matrix = self.matrix(joint);
+            sink.update_joint(self.joint_base + joint.0, matrix);
             particles.update_joint(self.joint_base + joint.0, matrix);
         }
         Ok(())

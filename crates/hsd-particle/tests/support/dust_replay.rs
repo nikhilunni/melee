@@ -53,13 +53,29 @@ fn particle_draw(draw: &Json) -> bool {
         _ => panic!("unclassified draw {site:#010x}"),
     }
 }
+#[allow(dead_code)] // The strict FD-start test uses replay_strict instead.
 pub fn replay(name: &str, tick_count: usize) -> usize {
     replay_prefix(name, tick_count, tick_count)
 }
 
 /// Explicit partial-port evidence. The complete recording length is still checked;
 /// existing full replays always compare every frame through `replay` above.
+#[allow(dead_code)] // Used by the prefix and ordinary replay entry points.
 pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> usize {
+    replay_fields(name, recording_ticks, tick_count, true)
+}
+
+#[allow(dead_code)] // Only FD start requires strict display-cache comparison.
+pub fn replay_strict(name: &str, ticks: usize) -> usize {
+    replay_fields(name, ticks, ticks, false)
+}
+
+fn replay_fields(
+    name: &str,
+    recording_ticks: usize,
+    tick_count: usize,
+    allow_display_cache: bool,
+) -> usize {
     assert!(tick_count > 0 && tick_count <= recording_ticks);
     // `name` is the full scene name (e.g. "dash_fd_fox", "start_bf_fox").
     let battlefield = name.contains("_bf_");
@@ -258,7 +274,7 @@ pub fn replay_prefix(name: &str, recording_ticks: usize, tick_count: usize) -> u
             "tick {tick} field coverage"
         );
         for (field, expected) in &states[tick].state {
-            if is_display_cache(field) {
+            if allow_display_cache && is_display_cache(field) {
                 display_cache_fields += 1;
                 continue;
             }

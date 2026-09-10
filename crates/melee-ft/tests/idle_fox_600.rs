@@ -26,10 +26,6 @@ fn idle_fox_600() {
     let ledger = json_lines(&ledger_path);
     assert_eq!(trace.len(), 600);
     assert_eq!(ledger.len(), 600);
-    let mut fighters = [
-        fixture.import(&raw(&ledger[0], 0)),
-        fixture.import(&raw(&ledger[0], 1)),
-    ];
     let saved = saved_pose::SavedPose::load(
         &saved_path,
         &raw(&ledger[0], 0),
@@ -42,12 +38,33 @@ fn idle_fox_600() {
         )
         .unwrap(),
     );
-    for (player, fighter) in fighters.iter_mut().enumerate() {
-        saved.restore(fighter, &raw(&ledger[0], player));
-    }
+    let mut fighters = std::array::from_fn::<_, 2, _>(|player| {
+        let ledger_raw = raw(&ledger[0], player);
+        let row = ledger[0]["fighters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| {
+                u8::from_str_radix(&row["bytes"].as_str().unwrap()[24..26], 16).unwrap() as usize
+                    == player
+            })
+            .unwrap();
+        let address =
+            u32::from_str_radix(row["base"].as_str().unwrap().trim_start_matches("0x"), 16)
+                .unwrap();
+        let saved_raw = saved.fighter_bytes(address, ledger_raw.len());
+        let mut fighter = fixture.import(&saved_raw);
+        saved.restore(&mut fighter, &saved_raw);
+        fighter
+    });
+    let resume_link = saved.resume_link();
     let mut matched = [0; 2];
     let mut total_draws = 0;
-    let mut rng = HsdRng::new(ledger[0]["seed"].as_u64().unwrap() as u32);
+    let sidecar: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(saved_path.with_extension("sav.json")).unwrap())
+            .unwrap();
+    let initial_seed = sidecar["seed"].as_u64().unwrap() as u32;
+    let mut rng = HsdRng::new(initial_seed);
     for tick in 0..600 {
         assert_eq!(trace[tick]["tick"], ledger[tick]["tick"]);
         let draws = ledger[tick]["rng_draws"].as_array().unwrap();
@@ -57,8 +74,14 @@ fn idle_fox_600() {
             .filter(|(_, d)| d["lr"].as_u64().unwrap() - 4 == 0x8008_A8BC)
             .collect::<Vec<_>>();
         let mut used = 0;
-        if tick != 0 {
+        {
             for (proc, player) in interleaved_order(fighters.len()) {
+                if tick == 0
+                    && (proc.s_link() < resume_link
+                        || (resume_link == 4 && proc == FighterProc::Update && player == 0))
+                {
+                    continue;
+                }
                 let f = &mut fighters[player];
                 match proc {
                     FighterProc::Status => f.proc_status(),
@@ -67,7 +90,11 @@ fn idle_fox_600() {
                         // stream before each fighter draw from the call ledger.
                         if let Some((index, _)) = sites.get(used) {
                             rng.seed = if *index == 0 {
-                                ledger[tick - 1]["seed"].as_u64().unwrap()
+                                if tick == 0 {
+                                    u64::from(initial_seed)
+                                } else {
+                                    ledger[tick - 1]["seed"].as_u64().unwrap()
+                                }
                             } else {
                                 draws[index - 1]["seed"].as_u64().unwrap()
                             } as u32;
@@ -179,7 +206,18 @@ fn idle_fox_600() {
             matched[player] += 1;
         }
     }
-    assert_eq!(total_draws, 9);
+    let expected_draws: usize = ledger
+        .iter()
+        .map(|row| {
+            row["rng_draws"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|draw| draw["lr"].as_u64().unwrap() - 4 == 0x8008_a8bc)
+                .count()
+        })
+        .sum();
+    assert_eq!(total_draws, expected_draws);
     assert_eq!(matched, [600, 600]);
-    eprintln!("P0: 600/600; P1: 600/600; 24 fields each, first mismatch: none; all 9 Wait draws matched (frame 0 + 599 transitions)");
+    eprintln!("P0: 600/600; P1: 600/600; 24 fields each, first mismatch: none; all {total_draws} Wait draws matched (frame 0 + 599 transitions)");
 }
