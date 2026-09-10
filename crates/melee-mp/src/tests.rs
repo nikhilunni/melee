@@ -1325,6 +1325,34 @@ mod mpcoll {
     }
 
     #[test]
+    fn resumed_ground_step_preserves_ecb_and_environment_history() {
+        let mut complete_map = fd();
+        let mut before = fixed_body(&complete_map, Vec3::ZERO);
+        before.floor.index = FLOOR;
+        before.env_flags = collide::FLOOR_PUSH as i32;
+        // The next pose grows, so replaying interpolation would destroy history.
+        let EcbSourceParams::Fixed { ref mut up, .. } = before.ecb_source.params else {
+            unreachable!()
+        };
+        *up = 10.0;
+        let mut complete = before;
+        assert!(complete_map.ground_collide_teeter(&mut complete, None));
+
+        let mut suspended = before;
+        crate::coll_prev(&mut suspended);
+        crate::load_ecb_with_flags(&mut suspended, 5, None);
+        suspended.prev_env_flags = suspended.env_flags;
+        suspended.env_flags = 0;
+        suspended.x34_flags.b5 = false;
+        interpolate_ecb(&mut suspended, 1.0);
+        suspended.prev_pos = suspended.cur_pos;
+        assert_ne!(suspended.ecb, suspended.prev_ecb);
+        let mut resumed_map = fd();
+        assert!(resumed_map.resume_ground_teeter(&mut suspended, None, true));
+        assert_eq!(suspended, complete);
+    }
+
+    #[test]
     fn ledge_grabs_both_sides() {
         let mut m = fd();
         // Falling beside the stage's left edge, facing right.

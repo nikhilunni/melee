@@ -85,7 +85,7 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.shy_guys", &(stage.shy_guys.len() as u32));
         }
     }
-    sink.field("scheduler.resume_s_link", &state.resume_s_link);
+    sink.field("scheduler.resume_s_link", &state.resume.s_link);
     output.finish()
 }
 

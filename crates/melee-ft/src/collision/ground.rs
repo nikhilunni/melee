@@ -94,6 +94,25 @@ pub fn map_wait(
     result
 }
 
+/// Resume the stationary Wait collision inside mpColl_8004B4B0. Position,
+/// lock and history prologues already ran; the importer validates this scope.
+pub fn resume_wait(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    in_sweep: bool,
+) {
+    tree.set_translate(root, &state.position);
+    let pose = EcbPose::read(tree, root, &environment.data);
+    let supported =
+        map.resume_ground_teeter(&mut environment.data, Some(&|i| pose.position(i)), in_sweep);
+    assert!(supported, "suspended stationary Wait lost its floor");
+    state.position = environment.data.cur_pos;
+    tree.set_translate(root, &state.position);
+}
+
 /// ft_80083F88 (0x80083F88) -> ft_80082708 (0x80082708):
 /// Squat/Turn use ordinary ground collision, without Wait's teeter predicate.
 pub fn map_ground_action(

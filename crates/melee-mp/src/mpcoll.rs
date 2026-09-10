@@ -3545,6 +3545,31 @@ impl CollMap {
         self.run(CollideMode::Ground, cd, 1, false, None)
     }
 
+    /// Continue mpColl_8004B4B0 after its saved position prologue. During
+    /// the ECB loader only pure bone fitting is repeated. During the final
+    /// contact-free step, retain the already interpolated ECB and history;
+    /// resume the geometry probes, then the 800439B4 and mpCollEnd tails.
+    /// The savestate adapter validates the instruction and one-step invariant.
+    pub fn resume_ground_teeter(
+        &mut self,
+        cd: &mut CollData,
+        bones: Option<BoneLookup<'_>>,
+        in_sweep: bool,
+    ) -> bool {
+        if !in_sweep {
+            load_ecb_with_flags(cd, 5, bones);
+            return self.run(CollideMode::Ground, cd, 1, false, None);
+        }
+        self.coll.is_ecb_tiny = cd.xe4_ecb.top.y - cd.xe4_ecb.bottom.y < 6.0
+            && cd.xe4_ecb.right.y - cd.xe4_ecb.left.y < 6.0;
+        self.coll_check_bounding(cd, 1);
+        let supported = self.ground_collide(cd, 1);
+        self.uncheck_bounding();
+        cd.x38 = self.coll_804d64ac;
+        self.coll_end(cd, supported, false);
+        supported
+    }
+
     /// `mpColl_8004B5C4` (retail `0x8004B5C4`): grounded, teetering, ECB
     /// load 9.
     pub fn ground_collide_teeter_ecb9(

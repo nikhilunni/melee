@@ -16,11 +16,21 @@ pub(super) fn fighter(
     rng: &mut HsdRng,
 ) -> Result<SceneFighter> {
     let (registers, pc) = saved.cpu_general_registers()?;
-    // HSD_MObjAlloc, during Fighter_UnkUpdateCostumeJoint_800686E4.
+    // HSD_MObjAlloc, or HSD_MemAlloc just after OSAllocFromHeap (8037F210),
+    // during Fighter_UnkUpdateCostumeJoint_800686E4. The latter comes from
+    // HSD_SListAlloc in loadEnvelopeDesc (PObj skinning envelopes), under
+    // lbRefract_PObjLoad -> HSD_DObjLoadDesc -> JObjLoad.
+    // Both precede Fighter_UnkProcessDeath and its CPU RNG initialization.
     ensure!(
-        (0x8036_3CA4..0x8036_3D00).contains(&pc),
+        (0x8036_3CA4..0x8036_3D00).contains(&pc) || pc == 0x8037_F210,
         "unsupported unfinished fighter creation PC {pc:08X}"
     );
+    if pc == 0x8037_F210 {
+        ensure!(
+            (0x8000_0000..0x8180_0000).contains(&registers[3]),
+            "saved HSD allocation failed"
+        );
+    }
     let mut stack = registers[1];
     let mut in_create = false;
     // Recursive joint loading can place more than 70 frames above Create.

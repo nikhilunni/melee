@@ -10,6 +10,7 @@ pub(crate) use melee_mp::CollMap;
 pub(crate) use saved_pose::SavedPose;
 pub(crate) mod particles;
 mod saved_pose;
+pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
 use hsd_types::Vec3;
@@ -61,9 +62,7 @@ pub struct InitialState {
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
     pub(crate) selected_music: Option<i32>,
     pub(crate) countdown: Option<crate::countdown::Countdown>,
-    /// First unfinished phase: 0 between idle ticks, 14 inside the older idle
-    /// capture, 15 within particle emission, 17 in the stock HUD, or 24 before match start.
-    pub(crate) resume_s_link: u8,
+    pub(crate) resume: scheduler_resume::SchedulerResume,
 }
 fn first_json(path: &Path) -> Result<Json> {
     let line =
@@ -133,76 +132,10 @@ impl InitialState {
             word(&bytes[1], 0x10) == word(&bytes[0], 0x10),
             "fighters must share the imported Wait/Entry boundary"
         );
-        let current_proc = word(saved.bytes(0x804D_7838, 4), 0);
-        let saved_link = word(saved.bytes(0x804D_7834, 4), 0);
-        let mut partial_emission = false;
-        let resume_s_link = if current_proc == 0 && saved_link == 24 {
-            // Entry is observed before this match's scheduler starts. An idle
-            // savestate between ticks instead needs one complete scheduler pass.
-            if match_start {
-                24
-            } else {
-                0
-            }
-        } else {
-            ensure!(
-                current_proc != 0 && !match_start,
-                "unsupported scheduler boundary"
-            );
-            let proc = saved.bytes(current_proc, 0x18);
-            ensure!(
-                u32::from(proc[12]) == saved_link,
-                "saved scheduler link mismatch"
-            );
-            match (saved_link, word(proc, 0x14)) {
-                (4, 0x8006_B82C) => {
-                    let (registers, pc) = saved.cpu_general_registers()?;
-                    ensure!(
-                        pc == 0x8006_BF28
-                            && registers[31] == address
-                            && word(proc, 0x10) == word(&bytes[0], 0),
-                        "unsupported Fighter_procUpdate instruction/owner"
-                    );
-                    // Physics and wind are already integrated. Remaining retail
-                    // work is the inactive knockback flag and collision cache update.
-                    ensure!(word(&bytes[0], 0x10) == 14, "physics resume requires Wait");
-                }
-                (14, 0x8006_D1EC) => {
-                    ensure!(
-                        word(proc, 0x10) == word(&bytes[0], 0),
-                        "unsupported ProcessHit owner"
-                    );
-                }
-                (15, 0x8005_C9A4) => partial_emission = true,
-                (17, 0x802F_9410) => {
-                    // ifstock.c:478-492. Fighter/particle/dynamic procs have
-                    // completed; only an inactive stock HUD may be omitted.
-                    let owner = word(proc, 0x10);
-                    let user = word(saved.bytes(owner, 0x30), 0x2C);
-                    let hud = saved.bytes(user, 12);
-                    ensure!(hud[0] < 6 && hud[1] <= 1, "unsupported stock HUD mode");
-                    if hud[1] == 0 {
-                        // ifStock_802F8298 (802F8298): missing-stock animation
-                        // frame zero and active steals can emit particles.
-                        let stocks = word(
-                            saved.bytes(0x804A_1378 + 0x54 + u32::from(hud[0]) * 0x50, 4),
-                            0,
-                        ) as usize;
-                        ensure!(
-                            (1..=5).contains(&stocks)
-                                && (hud[2] == 0 || hud[5 + stocks..10].iter().all(|&v| v != 0))
-                                && hud[10..12] == [0, 0],
-                            "pending stock HUD effects: {hud:?}, stocks {stocks}"
-                        );
-                    }
-                }
-                _ => anyhow::bail!(
-                    "unsupported scheduler resume boundary: link {saved_link}, callback {:08X}",
-                    word(proc, 0x14)
-                ),
-            }
-            proc[12]
-        };
+        let resume = scheduler_resume::SchedulerResume::restore(&saved, match_start)?;
+        let partial_emission = resume
+            .current
+            .is_some_and(|(_, action)| action == scheduler_resume::Continuation::ParticleEmission);
         // The raw tick-zero row locates MEM1; it may be one full tick after
         // the saved idle boundary. Runtime imports always use saved memory.
         let saved_bytes = rows
@@ -219,6 +152,17 @@ impl InitialState {
             })
             .collect::<Result<Vec<_>>>()?;
         let bytes = saved_bytes;
+        for (slot, raw) in bytes.iter().enumerate() {
+            let unfinished = match_start && word(raw, 0x10) == 0 && word(raw, 0x2C) == 0;
+            ensure!(
+                unfinished
+                    || (usize::from(raw[12]) == slot
+                        && word(raw, 4)
+                            == i32::from(assets.characters[slot].descriptor.kind) as u32
+                        && matches!(word(raw, 0x10), 14 | 322)),
+                "unsupported saved fighter boundary"
+            );
+        }
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
         let mut fighters: [SceneFighter; 2] = (0..2)
             .map(|p| {
@@ -251,7 +195,10 @@ impl InitialState {
         }
         let mut fighter_expected = expected;
         fighter_expected.state.remove("rng.seed");
-        if resume_s_link != 0 {
+        // Earlier cursors can still owe animation and collision. Their end-of-tick
+        // comparison belongs to the ordinary frame-zero gate after continuation;
+        // comparing saved partial state to a completed tick would be invalid.
+        if resume.s_link >= 14 {
             if let Some(diff) = first_divergence([&fighter_expected], [&sink.finish()]) {
                 anyhow::bail!("imported fighter boundary: {diff}");
             }
@@ -336,6 +283,7 @@ impl InitialState {
             &mut particles,
             &metadata,
         )?;
+        crate::frame::validate_saved_resume(&resume, &stage)?;
         if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
             for (&id, animation) in &mut stage_animations {
                 let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
@@ -398,7 +346,7 @@ impl InitialState {
             particles,
             pending_emission,
             rng,
-            resume_s_link,
+            resume,
             stage_animations,
             effects: crate::effects::Effects::default(),
         })

@@ -1,5 +1,6 @@
 //! Scene composition through HSD's real scheduler. Registrations, rather than
 //! a sorted callback replay, preserve same-tick insertion/deferred destruction.
+use crate::initial_state::scheduler_resume::{Continuation, ProcKey};
 use crate::initial_state::stage;
 use crate::scene_stage::SceneStage;
 use crate::{initial_state::InitialState, inputs::PadScript};
@@ -32,6 +33,46 @@ struct Registration {
     /// Local object identity within a p_link; maps and fighters use list order.
     object: u8,
     callback: Callback,
+}
+impl Registration {
+    fn key(self) -> ProcKey {
+        let callback = match self.callback {
+            Callback::Fighter { proc, .. } => match proc {
+                FighterProc::Status => 0x8006_A1BC,
+                FighterProc::Animation => 0x8006_A360,
+                FighterProc::CpuGate => 0x8006_ABA0,
+                FighterProc::Input => 0x8006_AD10,
+                FighterProc::Update => 0x8006_B82C,
+                FighterProc::Map => 0x8006_C27C,
+                FighterProc::Pose => 0x8006_C5F4,
+                FighterProc::Accessories => 0x8006_C624,
+                FighterProc::HitboxPositions => 0x8006_C80C,
+                FighterProc::Grab => 0x8006_CA5C,
+                FighterProc::HitDetection => 0x8006_CB94,
+                FighterProc::ProcessHit => 0x8006_D1EC,
+                FighterProc::Dynamics => 0x8006_D9AC,
+                FighterProc::Camera => 0x8006_D9EC,
+                FighterProc::PlayerMirror => 0x8006_DA4C,
+            },
+            Callback::Stage { address, .. } => address,
+            Callback::Interface { .. } => 0x802F_9410,
+            Callback::ParticlesMain => 0x8005_C9A4,
+            // These identities are only used when resuming their own s_link.
+            Callback::ParticlesAux => 0x8005_C9D0,
+            Callback::Effects => 0x8005_BC50,
+            // Cold-only composite callback has no single retail proc identity.
+            Callback::Countdown => 0,
+        };
+        ProcKey {
+            p_link: self.p_link,
+            object: if matches!(self.p_link, 5 | 8 | 15) {
+                self.object
+            } else {
+                u8::MAX
+            },
+            callback,
+        }
+    }
 }
 fn registrations(stage: &SceneStage) -> Vec<Registration> {
     let mut rows: Vec<_> = stage
@@ -89,6 +130,24 @@ fn registrations(stage: &SceneStage) -> Vec<Registration> {
     ]);
     rows
 }
+/// Every imported cursor must identify exactly one modeled registration.
+/// Otherwise an unported callback could be silently omitted on tick zero.
+pub(crate) fn validate_saved_resume(
+    resume: &crate::initial_state::scheduler_resume::SchedulerResume,
+    stage: &SceneStage,
+) -> Result<()> {
+    if let Some((key, _)) = resume.current {
+        ensure!(
+            registrations(stage)
+                .iter()
+                .filter(|row| row.s_link == resume.s_link && row.key() == key)
+                .count()
+                == 1,
+            "saved cursor does not identify one modeled callback: {key:?}"
+        );
+    }
+    Ok(())
+}
 fn register(
     world: &mut World,
     rows: &[Registration],
@@ -119,24 +178,12 @@ struct Runtime {
 }
 impl Runtime {
     fn dispatch(&mut self, row: Registration) -> Result<()> {
-        // A savestate can stop inside a tick. All earlier procs already ran.
-        // ProcessHit is idempotent on the asserted idle path; completing it
-        // rebuilds derived collision caches before the remaining phases.
-        if self.frame == 0 && row.s_link < self.state.resume_s_link {
-            return Ok(());
-        }
-        if self.frame == 0
-            && self.state.resume_s_link == 4
-            && row.s_link == 4
-            && matches!(
-                row.callback,
-                Callback::Stage { .. }
-                    | Callback::Fighter {
-                        player: 0,
-                        proc: FighterProc::Update
-                    }
-            )
-        {
+        let continuation = if self.frame == 0 {
+            self.state.resume.action(row.s_link, row.key())
+        } else {
+            Continuation::Invoke
+        };
+        if continuation == Continuation::Complete {
             return Ok(());
         }
         let state = &mut self.state;
@@ -183,22 +230,47 @@ impl Runtime {
                     }
                 }
                 crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
-                    dispatch_fighter(
-                        f,
-                        proc,
-                        player,
-                        self.frame,
-                        state_pads,
-                        assets,
-                        &mut state.map,
-                        &mut state.effects,
-                        &mut state.particles,
-                        &mut state.rng,
-                        match &state.stage {
-                            SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
-                            _ => Vec3::ZERO,
-                        },
-                    )
+                    if let Continuation::Animation {
+                        restart,
+                        configuring,
+                    } = continuation
+                    {
+                        f.resume_wait_animation(
+                            &assets.fighters[player],
+                            &mut state.rng,
+                            restart,
+                            configuring,
+                        )
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        Ok(())
+                    } else if let Continuation::Collision { in_sweep } = continuation {
+                        melee_ft::collision::ground::resume_wait(
+                            &mut f.physics,
+                            &mut f.collision,
+                            &mut state.map,
+                            &mut f.skeleton,
+                            f.animation.root,
+                            in_sweep,
+                        );
+                        Ok(())
+                    } else {
+                        dispatch_fighter(
+                            f,
+                            proc,
+                            player,
+                            self.frame,
+                            state_pads,
+                            assets,
+                            &mut state.map,
+                            &mut state.effects,
+                            &mut state.particles,
+                            &mut state.rng,
+                            match &state.stage {
+                                SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
+                                _ => Vec3::ZERO,
+                            },
+                        )
+                    }
                 })?;
                 if proc == FighterProc::Animation {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
@@ -307,6 +379,10 @@ impl Runtime {
                             animation.update_collision(&mut state.map, &FD_COLLISION_BINDINGS);
                         }
                         animation.update_collision(&mut state.map, bindings);
+                    }
+                    if continuation == Continuation::GroundCollision {
+                        // grLast's controller already advanced; finish only its collision tail.
+                        return Ok(());
                     }
                     if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
@@ -586,6 +662,21 @@ mod tests {
             mode: MatchMode::Versus,
             actions: vec![],
         }))
+    }
+    #[test]
+    fn saved_cursor_must_resolve_to_a_modeled_owner() {
+        let mut resume =
+            crate::initial_state::scheduler_resume::SchedulerResume::between_ticks(false);
+        resume.s_link = 1;
+        let key = ProcKey {
+            p_link: 8,
+            object: 0,
+            callback: 0x8006_A360,
+        };
+        resume.current = Some((key, Continuation::Invoke));
+        assert!(validate_saved_resume(&resume, &stage()).is_ok());
+        resume.current = Some((ProcKey { object: 9, ..key }, Continuation::Invoke));
+        assert!(validate_saved_resume(&resume, &stage()).is_err());
     }
     #[test]
     fn m3_proc_order() {

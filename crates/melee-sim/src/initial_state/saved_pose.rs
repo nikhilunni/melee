@@ -10,6 +10,14 @@ pub struct SavedPose {
     ram_offset: usize,
 }
 impl SavedPose {
+    #[cfg(test)]
+    pub(super) fn test_memory(payload: Vec<u8>) -> Self {
+        Self {
+            payload,
+            ram_offset: 0,
+        }
+    }
+
     pub fn load(path: &Path, fighter: &[u8], address: u32) -> Self {
         let file = fs::read(path).unwrap();
         assert_eq!(&file[..6], b"GALE01");
@@ -77,6 +85,24 @@ impl SavedPose {
             "ambiguous saved CPU register record"
         );
         Ok(result)
+    }
+    /// Saved linkage areas, bounded and strictly ascending within MEM1.
+    pub(super) fn stack_returns(&self, mut stack: u32) -> anyhow::Result<Vec<(u32, u32)>> {
+        let mut result = Vec::new();
+        for _ in 0..128 {
+            let frame = self.bytes(stack, 8);
+            result.push((stack, word(frame, 4)));
+            let next = word(frame, 0);
+            if !(0x8000_0000..0x8180_0000).contains(&next) {
+                return Ok(result);
+            }
+            anyhow::ensure!(
+                next > stack && next.is_multiple_of(4),
+                "invalid saved stack chain"
+            );
+            stack = next;
+        }
+        anyhow::bail!("saved stack exceeds 128 frames")
     }
     fn joint(&self, joint: &mut JObj, address: u32) {
         // HSD_JObj, jobj.h:104-125. Keep owned links/AObjs; restore saved SRT,

@@ -269,6 +269,52 @@ impl<C: CharacterCallbacks> Fighter<C> {
         }
         self.update_idle_animation(assets, rng)
     }
+    /// Finish ftAnim_8006E9B4 suspended in the blend-tree evaluator, or the
+    /// Wait restart's ftAnim_8006EBE8 rate setup. The importer validates that
+    /// the main pose has not been blended yet (return PC 8006EB18).
+    pub fn resume_wait_animation(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut HsdRng,
+        restart: bool,
+        configuring: bool,
+    ) -> Result<Option<WaitChoice>> {
+        assert_eq!(self.motion_state.id, melee_types::CommonMotionState::Wait);
+        assert!(!self
+            .animation
+            .flags
+            .contains(crate::anim::playback::MotionFlags::ROOT_MOTION));
+        assert!(self
+            .animation
+            .part_animations
+            .iter()
+            .all(|part| part.current == -1));
+        let motion = &assets.motions[&self.animation.motion_id];
+        // The sampled HSD evaluator only writes the secondary pose. Re-request
+        // its pure archive tracks at the interrupted frame, then blend once
+        // into the untouched saved main pose. No counters or RNG are replayed.
+        let frame = if restart {
+            0.0
+        } else {
+            self.animation.frame + self.animation.speed
+        };
+        self.animation
+            .blend_tree
+            .req_anim_all_by_flags(self.animation.root, 1, frame);
+        if configuring {
+            self.animation.blend_duration = motion.blend_frames;
+            self.animation.blend_progress = 0.0;
+        } else {
+            // retail 8006EA70 already incremented this saved word.
+            self.animation.blend_progress -= self.animation.speed;
+        }
+        if restart {
+            self.commands
+                .restart(assets.command_entries[&self.animation.motion_id]);
+        }
+        self.step_animation(assets);
+        self.update_idle_animation(assets, rng)
+    }
     fn update_idle_animation(
         &mut self,
         assets: &FighterAssets,
