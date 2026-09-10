@@ -41,16 +41,23 @@ def duplicate_census(contributions):
     return metrics, labels
 
 
-def compare_duplicates(current, previous):
+def compare_duplicates(current, previous, reviewed=None):
+    """Zero tolerance against the previous block, except where the reviewed baseline
+    (tools/data/c15-duplicate-baseline.json, ratcheted by hand with a named reason in
+    its `notes`) allows more: the reviewed file is the documented ratchet."""
     failures = []
+    reviewed = reviewed or {}
     old = previous.get("duplicate_labels", {})
     new = current.get("duplicate_labels", {})
+    allowed_by_crate = reviewed.get("duplicate_labels", {})
     for crate in sorted(old.keys() | new.keys()):
-        if new.get(crate, 0) > old.get(crate, 0):
-            failures.append(f"{crate} duplicate labels: {new[crate]} > {old.get(crate, 0)} + 0")
+        allowed = max(old.get(crate, 0), allowed_by_crate.get(crate, 0))
+        if new.get(crate, 0) > allowed:
+            failures.append(f"{crate} duplicate labels: {new[crate]} > {allowed} + 0")
     name = "cross_crate_duplicate_labels"
-    if current.get(name, 0) > previous.get(name, 0):
-        failures.append(f"cross-crate duplicate labels: {current[name]} > {previous.get(name, 0)} + 0")
+    allowed = max(previous.get(name, 0), reviewed.get(name, 0))
+    if current.get(name, 0) > allowed:
+        failures.append(f"cross-crate duplicate labels: {current[name]} > {allowed} + 0")
     return failures
 
 
@@ -153,7 +160,7 @@ def compare(current, previous, time_percent, size_percent):
         limit = previous[name] * (1 + percent / 100)
         if current[name] > limit:
             failures.append(f"{name}: {current[name]:.3f} > {limit:.3f} (previous {previous[name]:.3f}, +{percent:g}%)")
-    failures += compare_duplicates(current, previous)
+    failures += compare_duplicates(current, previous, c15_census())
     return failures
 
 
