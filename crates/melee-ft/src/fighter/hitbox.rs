@@ -1,154 +1,18 @@
-//! ftAction_8007121C and ftColl_8007AD18: owned attack capsules.
-use super::{assets::Result, caches::bone_position};
+//! Fighter bone sampling for shared attack capsules.
+use super::caches::bone_position;
 use hsd_anim::jobj::{JObjId, JObjTree};
-use hsd_archive::Archive;
 use hsd_types::Vec3;
-
-#[derive(Clone, Debug)]
-pub struct HitboxDescriptor {
-    pub group: u8,
-    pub bone: usize,
-    pub common_bone: bool,
-    pub requires_throw_owner: bool,
-    pub damage: f32,
-    pub shield_damage: i8,
-    pub sound_severity: u8,
-    pub radius: f32,
-    pub offset: Vec3,
-    pub angle: u16,
-    pub growth: u16,
-    pub weight_knockback: u16,
-    pub base_knockback: u16,
-    pub element: melee_types::HitElement,
-    pub hit_ground: bool,
-    pub hit_air: bool,
-    pub ignore_scale: bool,
-    pub clank: bool,
-    pub rebound: bool,
-}
-impl HitboxDescriptor {
-    /// ftAction_8007121C (8007121C), lb/types.h:769-812.
-    pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
-        let r = archive.reader();
-        let first = r.u32(offset)?;
-        let flags = r.u32(offset + 12)?;
-        let last = r.u32(offset + 16)?;
-        // ftAction_8007121C --fused: none. Literal is 0.003906f, not 1/256.
-        const SCALE: f32 = 0.003906;
-        Ok(Self {
-            requires_throw_owner: flags & 8 != 0,
-            common_bone: first & (1 << 10) != 0,
-            group: ((first >> 20) & 7) as u8,
-            bone: ((first >> 11) & 255) as usize,
-            damage: (first & 1023) as f32,
-            shield_damage: (last >> 10) as u8 as i8,
-            sound_severity: ((last >> 7) & 7) as u8,
-            radius: SCALE * f32::from(r.u16(offset + 4)?),
-            offset: Vec3::new(
-                SCALE * f32::from(r.u16(offset + 6)? as i16),
-                SCALE * f32::from(r.u16(offset + 8)? as i16),
-                SCALE * f32::from(r.u16(offset + 10)? as i16),
-            ),
-            angle: (flags >> 23) as u16,
-            growth: ((flags >> 14) & 511) as u16,
-            weight_knockback: ((flags >> 5) & 511) as u16,
-            base_knockback: (last >> 23) as u16,
-            element: melee_types::HitElement::try_from(((last >> 18) & 31) as i32)?,
-            hit_ground: last & 2 != 0,
-            hit_air: last & 1 != 0,
-            ignore_scale: flags & 4 != 0,
-            clank: flags & 2 != 0,
-            rebound: flags & 1 != 0,
-        })
+pub fn update(
+    hit: &mut melee_coll::hitbox::HitCapsule,
+    tree: &mut JObjTree,
+    root: JObjId,
+    scale: f32,
+) {
+    let mut offset = hit.descriptor.offset;
+    if hit.descriptor.ignore_scale {
+        let inverse = 1.0 / scale;
+        offset = Vec3::new(offset.x * inverse, offset.y * inverse, offset.z * inverse);
     }
-}
-/// ftAction_80071E04 (80071E04): throw/pummel damage records have no geometry.
-#[derive(Clone, Debug)]
-pub struct ThrowHitbox {
-    pub damage: f32,
-    pub angle: u16,
-    pub growth: u16,
-    pub weight_knockback: u16,
-    pub base_knockback: u16,
-    pub element: melee_types::HitElement,
-    pub sound_severity: u8,
-    pub sound_kind: u8,
-}
-impl ThrowHitbox {
-    /// Three command words, lb/types.h set_throw_hitbox_0/1/2.
-    /// ftAction_80071E04 and ftColl_8007ABD0 have no fused arithmetic.
-    pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
-        let r = archive.reader();
-        let first = r.u32(offset)?;
-        let second = r.u32(offset + 4)?;
-        let third = r.u32(offset + 8)?;
-        Ok(Self {
-            damage: (first & 0x7f_ffff) as f32,
-            angle: (second >> 23) as u16,
-            growth: ((second >> 14) & 511) as u16,
-            weight_knockback: ((second >> 5) & 511) as u16,
-            base_knockback: (third >> 23) as u16,
-            element: melee_types::HitElement::try_from(((third >> 19) & 15) as i32)?,
-            sound_severity: ((third >> 16) & 7) as u8,
-            sound_kind: ((third >> 12) & 15) as u8,
-        })
-    }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CapsulePhase {
-    Enabled,
-    FirstPosition,
-    Sweeping,
-}
-#[derive(Clone, Debug)]
-pub struct HitCapsule {
-    pub descriptor: HitboxDescriptor,
-    pub phase: CapsulePhase,
-    pub position: Vec3,
-    pub previous_position: Vec3,
-    pub victims: Vec<u32>,
-}
-/// ftColl_800768A0 (800768A0): new group members inherit victims.
-pub fn spawn(boxes: &mut [Option<HitCapsule>; 4], id: usize, descriptor: &HitboxDescriptor) {
-    assert!(id < boxes.len(), "fighter hitbox id");
-    if let Some(hit) = &mut boxes[id] {
-        if hit.descriptor.group == descriptor.group {
-            hit.descriptor = descriptor.clone();
-            return;
-        }
-    }
-    let victims = boxes
-        .iter()
-        .flatten()
-        .find(|hit| hit.descriptor.group == descriptor.group)
-        .map_or_else(Vec::new, |hit| hit.victims.clone());
-    boxes[id] = Some(HitCapsule {
-        descriptor: descriptor.clone(),
-        phase: CapsulePhase::Enabled,
-        position: Vec3::ZERO,
-        previous_position: Vec3::ZERO,
-        victims,
-    });
-}
-impl HitCapsule {
-    /// ftColl_8007AD18 (8007AD18): first position starts a degenerate sweep.
-    pub fn update(&mut self, tree: &mut JObjTree, root: JObjId, scale: f32) {
-        let mut offset = self.descriptor.offset;
-        if self.descriptor.ignore_scale {
-            let inverse = 1.0 / scale;
-            offset = Vec3::new(offset.x * inverse, offset.y * inverse, offset.z * inverse);
-        }
-        let position = bone_position(tree, root, self.descriptor.bone, offset);
-        self.previous_position = if self.phase == CapsulePhase::Enabled {
-            position
-        } else {
-            self.position
-        };
-        self.phase = if self.phase == CapsulePhase::Enabled {
-            CapsulePhase::FirstPosition
-        } else {
-            CapsulePhase::Sweeping
-        };
-        self.position = position;
-    }
+    let position = bone_position(tree, root, hit.descriptor.bone, offset);
+    hit.update_position(position);
 }

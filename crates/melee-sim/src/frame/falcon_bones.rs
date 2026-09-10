@@ -89,7 +89,7 @@ fn replay(name: &str, ticks: usize) {
         assert_eq!(row["frame"].as_u64(), Some(tick as u64));
         assert_eq!(row["state"].as_object().unwrap().len(), (63 + 73) * 22);
         simulation.tick().unwrap();
-        let runtime = simulation.runtime.borrow();
+        let runtime = &simulation.runtime;
         for (player, fighter) in runtime.state.fighters.iter().enumerate() {
             words +=
                 crate::scene_fighter::with_fighter!(fighter, |f| compare(f, row, player, tick));
@@ -136,7 +136,7 @@ fn idle_falcon_partial_emission_particles_600() {
     let mut words = 0;
     for row in expected {
         simulation.tick().unwrap();
-        let runtime = simulation.runtime.borrow();
+        let runtime = &simulation.runtime;
         let state = &runtime.state;
         assert!(state.pending_emission.is_none());
         let actual = particles::snapshot(

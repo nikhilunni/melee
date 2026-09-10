@@ -12,7 +12,7 @@ pub struct RenderedPose {
 impl Simulation {
     /// Evaluate the display-demanded pose of a fighter after a completed tick.
     pub fn rendered_fighter_pose(&self, player: usize) -> RenderedPose {
-        let runtime = self.runtime.borrow();
+        let runtime = &self.runtime;
         crate::scene_fighter::with_fighter!(&runtime.state.fighters[player], |fighter| {
             let position = fighter.physics.position;
             let key =

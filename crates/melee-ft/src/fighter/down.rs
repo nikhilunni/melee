@@ -61,7 +61,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core
             .commands
             .graphics
-            .push(super::effects::GraphicsCommand {
+            .push(melee_types::combat::GraphicsCommand {
                 id: 0x407,
                 bone: 0,
                 common_bone: false,

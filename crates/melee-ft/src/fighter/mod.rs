@@ -505,7 +505,7 @@ pub struct FighterCore {
     pub previous_collision_bounds: Vec3,
     /// x890_cameraBox: target subject updated at s_link 18.
     pub camera: CameraSubject,
-    pub hurtboxes: Vec<caches::Hurtbox>,
+    pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
     pub thrown_hitbox: caches::ThrownHitbox,

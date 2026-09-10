@@ -22,7 +22,7 @@ pub struct Yoshi {
     pub shield_material_frame: f32,
     pub shield_maximum_health: f32,
     pub egg_body: bool,
-    pub egg_hurtbox: Option<melee_ft::fighter::caches::Hurtbox>,
+    pub egg_hurtbox: Option<melee_coll::hurtbox::HurtCapsule>,
     /// Aerial-jump turning countdown (mv.co.jumpaerial.x0).
     pub jump_turn_remaining: i32,
 }

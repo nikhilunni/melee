@@ -398,10 +398,10 @@ impl FighterCore {
     /// lbColl_80007BCC (80007BCC): a shield is a point capsule in its bone's scale.
     pub(super) fn shield_contact(
         &mut self,
-        hit: &super::hitbox::HitCapsule,
+        hit: &melee_coll::hitbox::HitCapsule,
         attacker_scale: f32,
-    ) -> Option<melee_lb::collision::Contact> {
-        use melee_lb::collision::{capsule_contact, Capsule};
+    ) -> Option<melee_coll::geometry::Contact> {
+        use melee_coll::geometry::{capsule_contact, Capsule};
         let volume = &mut self.shield.hit;
         if !volume.position_cached {
             volume.position = super::caches::bone_position(

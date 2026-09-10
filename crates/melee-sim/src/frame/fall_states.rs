@@ -80,7 +80,7 @@ fn falls_match_retail_scratch_and_command_clocks() {
                 .chunks_exact(2)
                 .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
                 .collect();
-            let runtime = simulation.runtime.borrow();
+            let runtime = &simulation.runtime;
             assert_eq!(bytes[12], 0, "P0 ledger ordering {name} tick {tick}");
             fall_ticks +=
                 crate::scene_fighter::with_fighter!(&runtime.state.fighters[0], |f| compare(

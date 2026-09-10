@@ -24,3 +24,5 @@ pub mod msl;
 pub mod rng;
 
 pub use rng::HsdRng;
+
+pub mod matrix;

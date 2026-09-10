@@ -7,35 +7,7 @@ use super::{
 use crate::input::Buttons;
 use melee_types::CommonMotionState as S;
 
-#[derive(Clone, Copy, Debug)]
-pub enum ChargePhase {
-    PreCharge,
-    Charging,
-    Release,
-}
-#[derive(Clone, Copy, Debug)]
-pub struct SmashCharge {
-    pub phase: ChargePhase,
-    pub frames: f32,
-    pub maximum_frames: f32,
-    pub maximum_multiplier: f32,
-    pub saved_rate: f32,
-    pub color_animation: u8,
-}
-impl SmashCharge {
-    /// ftCo_800DEEB8: retail 800DEEDC fmadds, then fmuls.
-    pub fn scale_damage(&self, damage: f32) -> f32 {
-        if !matches!(self.phase, ChargePhase::Release) {
-            return damage;
-        }
-        damage
-            * gekko_math::fma::fmadds(
-                self.maximum_multiplier - 1.0,
-                self.frames / self.maximum_frames,
-                1.0,
-            )
-    }
-}
+use melee_cmd::ChargePhase;
 impl<C: CharacterCallbacks> Fighter<C> {
     /// doEnter (8008C3E0), ftCo_AttackS4.c; no fused sites in this unit.
     pub(super) fn enter_forward_smash(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -89,12 +61,12 @@ impl FighterCore {
                     charge.saved_rate = self.animation.speed;
                     self.animation.set_rate(&mut self.skeleton, 0.0, false);
                     if charge.color_animation != 0x7B {
-                        self.commands.color_animations.push(
-                            super::commands::ColorAnimationRequest {
+                        self.commands
+                            .color_animations
+                            .push(melee_cmd::ColorAnimationRequest {
                                 id: charge.color_animation,
                                 duration: 0,
-                            },
-                        );
+                            });
                     }
                 } else {
                     self.commands.smash_charge = None;

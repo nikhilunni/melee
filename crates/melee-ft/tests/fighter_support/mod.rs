@@ -238,7 +238,7 @@ impl Fixture {
             state.current = raw[offset + 17] as i8;
             state.joints = f.core.bones.animation_sets[index]
                 .as_ref()
-                .map_or_else(Vec::new, |set| {
+                .map_or_else(Default::default, |set| {
                     set.joints.iter().map(|&joint| usize::from(joint)).collect()
                 });
         }

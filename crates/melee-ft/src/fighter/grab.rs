@@ -95,7 +95,7 @@ pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32
         || victim.combat.grab.is_some()
         || victim.status.grab_exclusions.0 & 1 != 0
         || victim.status.ledge_intangibility != 0
-        || victim.commands.hurt_status != super::escape::HurtStatus::Normal
+        || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal
     {
         return None;
     }

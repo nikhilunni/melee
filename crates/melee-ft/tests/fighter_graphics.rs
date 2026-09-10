@@ -4,7 +4,8 @@ mod fighter_support;
 use fighter_support::Fixture;
 use gekko_math::HsdRng;
 use hsd_types::Vec3;
-use melee_ft::fighter::{effects::GraphicsCommand, Fighter};
+use melee_ft::fighter::Fighter;
+use melee_types::combat::GraphicsCommand;
 use melee_types::CommonMotionState;
 
 #[test]

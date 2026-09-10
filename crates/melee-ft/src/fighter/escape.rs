@@ -7,14 +7,6 @@ use super::{
 use gekko_math::msl::fabsf;
 use melee_types::CommonMotionState as S;
 
-/// ftColl_8007B0C0 / Fighter.x1988: subaction-controlled vulnerability.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum HurtStatus {
-    #[default]
-    Normal,
-    Invincible,
-    Intangible,
-}
 #[derive(Clone, Debug)]
 pub struct EscapeState {
     /// Guard scratch survives in the retail union during a roll.

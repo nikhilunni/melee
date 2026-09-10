@@ -1,0 +1,10 @@
+[package]
+name = "melee-coll"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+gekko-math = { path = "../gekko-math" }
+hsd-types = { path = "../hsd-types" }

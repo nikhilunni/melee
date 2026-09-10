@@ -81,7 +81,7 @@ fn replay(name: &str, ticks: usize) {
         assert_eq!(row["frame"].as_u64(), Some(tick as u64));
         assert_eq!(row["state"].as_object().unwrap().len(), (50 + 73) * 22);
         simulation.tick().unwrap();
-        let runtime = simulation.runtime.borrow();
+        let runtime = &simulation.runtime;
         for (player, fighter) in runtime.state.fighters.iter().enumerate() {
             words +=
                 crate::scene_fighter::with_fighter!(fighter, |f| compare(f, row, player, tick));

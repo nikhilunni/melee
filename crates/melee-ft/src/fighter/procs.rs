@@ -344,7 +344,12 @@ impl FighterCore {
         if !self.status.disabled {
             self.status.require_supported();
             for hit in self.commands.hitboxes.iter_mut().flatten() {
-                hit.update(&mut self.skeleton, self.animation.root, self.player.scale);
+                super::hitbox::update(
+                    hit,
+                    &mut self.skeleton,
+                    self.animation.root,
+                    self.player.scale,
+                );
             }
             self.thrown_hitbox
                 .update(&mut self.skeleton, self.animation.root);
@@ -454,7 +459,7 @@ impl FighterCore {
     }
     fn resolve_landing_effects(&mut self, rng: &mut HsdRng) -> Result<usize> {
         let mut draws = 0;
-        for id in self.commands.landing_effects.drain(..) {
+        for id in std::mem::take(&mut self.commands.landing_effects) {
             // ftCo_8009F834 block_70. Even a zero range consumes three draws.
             let mut offset = Vec3::ZERO;
             for component in [&mut offset.x, &mut offset.y, &mut offset.z] {

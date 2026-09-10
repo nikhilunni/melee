@@ -3,7 +3,7 @@ use gekko_math::{
     fma::{fmadd, fmadds, fmsubs, negate_rounded},
     msl::sqrtf,
 };
-use hsd_anim::mtx;
+
 use hsd_types::{Mtx, Vec3};
 
 #[derive(Clone, Copy, Debug)]
@@ -151,11 +151,9 @@ pub fn capsule_contact(
             overlap: (hit.radius + hurt.radius) - distance,
         });
     }
-    let mut inverse = Mtx::default();
-    mtx::hsd_mtx_inverse(hurt_matrix, &mut inverse);
-    let (mut local_hit, mut local_hurt) = (Vec3::ZERO, Vec3::ZERO);
-    mtx::mtx_mult_vec(&inverse, &hc, &mut local_hit);
-    mtx::mtx_mult_vec(&inverse, &uc, &mut local_hurt);
+    let inverse = gekko_math::matrix::inverse(&hurt_matrix.0);
+    let local_hit = gekko_math::matrix::transform_point(&inverse, [hc.x, hc.y, hc.z]).into();
+    let local_hurt = gekko_math::matrix::transform_point(&inverse, [uc.x, uc.y, uc.z]).into();
     let local = difference(local_hit, local_hurt);
     // retail 8000768C/7690; sqrt refinement 76B4/76C4/76D4.
     let local_distance = sqrtf(dot(local, local));

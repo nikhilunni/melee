@@ -2,8 +2,6 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    caches::{bone_position, HurtHeight},
-    hitbox::{HitCapsule, HitboxDescriptor},
     CharacterCallbacks, Fighter, Interaction, MotionData,
 };
 use gekko_math::{
@@ -12,7 +10,8 @@ use gekko_math::{
 };
 use hsd_archive::Archive;
 use hsd_types::Vec3;
-use melee_lb::collision::{capsule_contact, Capsule, Contact};
+use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
+use melee_types::combat::HitboxDescriptor;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
 #[derive(Default)]
@@ -34,13 +33,7 @@ pub struct CombatState {
 pub struct DamageState {
     pub hitstun: f32,
 }
-pub struct ReceivedHit {
-    pub descriptor: HitboxDescriptor,
-    pub height: HurtHeight,
-    pub facing: f32,
-    pub knockback: f32,
-    pub facing_override: Option<f32>,
-}
+use melee_coll::damage::ReceivedHit;
 pub struct DamageParameters {
     pub weight_scale: f32,
     pub throw_weight: f32,
@@ -111,32 +104,18 @@ impl DamageParameters {
             large_spark_threshold: r.f32(p + 0x3f0)?,
         })
     }
-    /// ftColl_80079AB0 (80079AB0), ordinary Vs 1.0 attack/defense/stage ratios.
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
-        let w = weight * self.weight_scale;
-        let factor = self.weight_decay - (w * self.weight_decay) / (1.0 + w);
-        let (p, d) = if hit.weight_knockback != 0 {
-            (self.fixed_percent, f32::from(hit.weight_knockback))
-        } else {
-            (
-                fctiwz(percent) as f32 + hit.damage,
-                fctiwz(hit.damage) as f32,
-            )
-        };
-        // retail 80079C34 (normal) / 80079B48 (fixed weight): fmadds.
-        let inner = fmadds(self.percent_scale, p, self.damage_scale * (d * p));
-        // retail 80079C40/C44 (fixed: 9B50/9B54).
-        let scaled = fmadds(self.growth_scale, factor * inner, self.base);
-        let result = fmadds(
-            0.01 * f32::from(hit.growth),
-            scaled,
-            f32::from(hit.base_knockback),
-        );
-        if result >= self.maximum {
-            self.maximum
-        } else {
-            result
+        melee_coll::damage::KnockbackParameters {
+            weight_scale: self.weight_scale,
+            weight_decay: self.weight_decay,
+            fixed_percent: self.fixed_percent,
+            percent_scale: self.percent_scale,
+            damage_scale: self.damage_scale,
+            growth_scale: self.growth_scale,
+            base: self.base,
+            maximum: self.maximum,
         }
+        .knockback(hit, percent, weight)
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
     fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
@@ -159,8 +138,12 @@ impl DamageParameters {
     }
     /// ftCommon_CalcHitlag (8007DA74), 8007DAA8 fmadds then fctiwz.
     pub fn hitlag(&self, damage: i32) -> f32 {
-        (fctiwz(fmadds(damage as f32, self.hitlag_scale, self.hitlag_base)) as f32)
-            .min(self.maximum_hitlag)
+        melee_coll::damage::hitlag(
+            damage,
+            self.hitlag_scale,
+            self.hitlag_base,
+            self.maximum_hitlag,
+        )
     }
 }
 /// ftColl_80078C70 (80078C70): receiver first, other fighters then hitbox IDs,
@@ -176,21 +159,12 @@ pub fn detect_hit<V: CharacterCallbacks, A: CharacterCallbacks>(
     {
         return;
     }
-    for id in 0..attacker.core.commands.hitboxes.len() {
-        let Some(hit) = &attacker.core.commands.hitboxes[id] else {
-            continue;
-        };
-        if hit.victims.contains(&victim.core.spawn_number) {
-            continue;
-        }
-        let desc = &hit.descriptor;
-        if desc.element == melee_types::HitElement::Catch {
-            continue;
-        }
-        let grounded = victim.core.physics.ground_or_air == GroundOrAir::Ground;
-        if (grounded && !desc.hit_ground) || (!grounded && !desc.hit_air) {
-            continue;
-        }
+    let mut cursor = melee_coll::detection::PairCursor::default();
+    while let Some(id) = cursor.next(
+        &attacker.core.commands.hitboxes,
+        victim.core.spawn_number,
+        victim.core.physics.ground_or_air,
+    ) {
         victim.character.check_hurtbox_interaction();
         detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id);
     }
@@ -227,15 +201,11 @@ fn record_shield_hit(
             Some((victim.shield.lightshield * damage as f32, -facing));
     }
     let group = desc.group;
-    for hit in attacker
-        .commands
-        .hitboxes
-        .iter_mut()
-        .flatten()
-        .filter(|h| h.descriptor.group == group)
-    {
-        hit.victims.push(victim.spawn_number);
-    }
+    melee_coll::detection::record_victim(
+        &mut attacker.commands.hitboxes,
+        group,
+        victim.spawn_number,
+    );
     victim
         .effects
         .push(melee_ef::request::EffectRequest::ShieldSpark {
@@ -468,45 +438,7 @@ impl FighterCore {
         hit: &HitCapsule,
         attacker_scale: f32,
     ) -> Option<(Contact, HurtHeight)> {
-        let desc = &hit.descriptor;
-        for hurt in &mut self.hurtboxes {
-            if desc.element == melee_types::HitElement::Catch && !hurt.grabbable {
-                continue;
-            }
-            if !hurt.cached {
-                hurt.positions = hurt.offsets.map(|offset| {
-                    bone_position(&mut self.skeleton, self.animation.root, hurt.bone, offset)
-                });
-                hurt.cached = true;
-            }
-            let bone = self
-                .skeleton
-                .bone(self.animation.root, hurt.bone)
-                .expect("hurt bone");
-            let matrix = *self.skeleton.get_mtx(bone);
-            if let Some(c) = capsule_contact(
-                Capsule {
-                    start: hit.previous_position,
-                    end: hit.position,
-                    radius: desc.radius
-                        * if desc.ignore_scale {
-                            1.0
-                        } else {
-                            attacker_scale
-                        },
-                },
-                Capsule {
-                    start: hurt.positions[0],
-                    end: hurt.positions[1],
-                    radius: hurt.radius,
-                },
-                &matrix,
-                3.0 * self.player.scale,
-            ) {
-                return Some((c, hurt.height));
-            }
-        }
-        None
+        melee_coll::detection::first_contact(self, hit, attacker_scale)
     }
 
     /// Fighter_procUpdate (8006B82C): decay follows the state's air physics.
@@ -529,25 +461,21 @@ impl FighterCore {
     }
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
-        if self.combat.hitlag_remaining > 0.0 {
-            self.combat.hitlag_remaining -= 1.0;
-            if self.combat.hitlag_remaining <= 0.0 {
-                self.combat.hitlag_remaining = 0.0;
-                if matches!(self.state_data, MotionData::Damage(_)) {
-                    if self.input.current.stick.x != 0.0
-                        || self.input.current.stick.y != 0.0
-                        || self.input.current.cstick.x != 0.0
-                        || self.input.current.cstick.y != 0.0
-                    {
-                        unimplemented!("ftCo_Damage.c:624-664: ASDI/DI");
-                    }
-                    self.status.interaction = Interaction::Damage;
-                } else if matches!(self.state_data, MotionData::Guard(_)) {
-                    self.shield.allow_sdi = false;
-                    self.status.interaction = Interaction::Shield;
-                } else {
-                    self.status.interaction = Interaction::Attack;
+        if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
+            if matches!(self.state_data, MotionData::Damage(_)) {
+                if self.input.current.stick.x != 0.0
+                    || self.input.current.stick.y != 0.0
+                    || self.input.current.cstick.x != 0.0
+                    || self.input.current.cstick.y != 0.0
+                {
+                    unimplemented!("ftCo_Damage.c:624-664: ASDI/DI");
                 }
+                self.status.interaction = Interaction::Damage;
+            } else if matches!(self.state_data, MotionData::Guard(_)) {
+                self.shield.allow_sdi = false;
+                self.status.interaction = Interaction::Shield;
+            } else {
+                self.status.interaction = Interaction::Attack;
             }
         }
     }
@@ -568,7 +496,7 @@ fn detect_eligible_hit(
     if victim.combat.armor != 0.0 {
         unimplemented!("ftColl_80079AB0: double-jump armor damage response");
     }
-    if victim.commands.hurt_status == super::escape::HurtStatus::Intangible
+    if victim.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
         || victim.status.ledge_intangibility != 0
     {
         return;
@@ -588,13 +516,11 @@ fn detect_eligible_hit(
         if attacker.combat.has_recorded_hit {
             unimplemented!("ftColl_8007ABD0: stale-move damage after the first recorded hit");
         }
-        if victim.commands.hitboxes.iter().any(Option::is_some) {
-            unimplemented!("ftcoll.c:1758-1801: attack clanking");
-        }
+        melee_coll::detection::require_uncontested_hit(&victim.commands.hitboxes);
         if contact.overlap < assets.damage.phantom_threshold {
             unimplemented!("ftcoll.c:589-623: phantom hit");
         }
-        if victim.commands.hurt_status != super::escape::HurtStatus::Normal {
+        if victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal {
             unimplemented!("ftcoll.c:658-662: invincible contact");
         }
         if victim.combat.pending.is_some() {
@@ -627,15 +553,11 @@ fn detect_eligible_hit(
         // queue entry is visible to later hitbox commands of this same move.
         attacker.commands.first_hit_stale_penalty = Some(assets.first_stale_penalty);
         attacker.combat.dealt_damage = fctiwz(descriptor.damage).max(1);
-        for hit in attacker
-            .commands
-            .hitboxes
-            .iter_mut()
-            .flatten()
-            .filter(|h| h.descriptor.group == descriptor.group)
-        {
-            hit.victims.push(victim.spawn_number);
-        }
+        melee_coll::detection::record_victim(
+            &mut attacker.commands.hitboxes,
+            descriptor.group,
+            victim.spawn_number,
+        );
         // ftColl_8007A06C -> efSync_Spawn; slash uses effect 1004.
         victim
             .effects

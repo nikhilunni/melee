@@ -5,11 +5,11 @@ use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     assets::{FighterAssets, Result},
     commands::{FootstepSound, SoundChannel},
-    escape::HurtStatus,
     shield::{GuardState, ReflectHitCallback, ReflectVolume, ShieldVolume},
     Fighter, MotionData,
 };
 use melee_ft::input::Buttons;
+use melee_types::combat::HurtStatus;
 use melee_types::{CommonMotionState as S, FtPart};
 
 /// ftYs_Init_MotionStateTable (ftyoshi.c): custom rows reuse common motion IDs.
@@ -41,8 +41,8 @@ fn size(fighter: &mut Fighter<Yoshi>) {
 /// ftYs_Init_8012BDA0: intangible body and one normal, grabbable egg capsule.
 fn egg_body(fighter: &mut Fighter<Yoshi>) {
     fighter.character.egg_body = true;
-    fighter.character.egg_hurtbox = Some(melee_ft::fighter::caches::Hurtbox {
-        height: melee_ft::fighter::caches::HurtHeight::Middle,
+    fighter.character.egg_hurtbox = Some(melee_coll::hurtbox::HurtCapsule {
+        height: melee_coll::hurtbox::HurtHeight::Middle,
         grabbable: true,
         bone: usize::from(fighter.bones.model.shield),
         offsets: [Vec3::ZERO; 2],

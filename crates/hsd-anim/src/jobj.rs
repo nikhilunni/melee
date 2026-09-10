@@ -1423,6 +1423,37 @@ impl JObjTree {
         }
     }
 
+    /// Attach an initialization-loaded joint animation using the skeleton's
+    /// reserved FObj storage. Same reset, sorting and flags as add_anim; part
+    /// animation owners can repeat this without importing tracks in the tick.
+    pub fn add_prepared_joint_anim(&mut self, id: JObjId, joint: &AnimJoint, prepared: &AObj) {
+        let mut tracks = self.take_animation_tracks(id);
+        assert!(
+            tracks.capacity() >= prepared.fobj.len(),
+            "unreserved part tracks"
+        );
+        tracks.clear();
+        tracks.extend(prepared.fobj.iter().cloned());
+        let mut aobj = AObj {
+            flags: prepared.flags,
+            curr_frame: prepared.curr_frame,
+            rewind_frame: prepared.rewind_frame,
+            end_frame: prepared.end_frame,
+            framerate: prepared.framerate,
+            fobj: tracks,
+        };
+        jobj_sort_anim(&mut aobj);
+        self.nodes[id.0].aobj = Some(aobj);
+        if joint.flags & 1 != 0 {
+            self.set_flags(id, JOBJ_CLASSICAL_SCALE);
+        } else {
+            self.clear_flags(id, JOBJ_CLASSICAL_SCALE);
+        }
+        if self.nodes[id.0].union_type_dobj() {
+            DObj::add_anim_all(&mut self.nodes[id.0].dobj, &[]);
+        }
+    }
+
     /// `HSD_JObjAddAnimAll` (`jobj.c:323`): [`JObjTree::add_anim`] down the
     /// tree, pairing children positionally with the anim trees' children;
     /// once an anim chain runs out the remaining joints get `None`.

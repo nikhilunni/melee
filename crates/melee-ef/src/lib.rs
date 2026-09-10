@@ -6,14 +6,12 @@
 //! No spawn schedules or captured matrices are runtime inputs.
 mod dust;
 mod egg_shell;
-pub mod fixed;
 pub mod fixture_spawns;
 mod pool;
 pub mod request;
 mod spline;
 mod tables;
 use anyhow::{ensure, Context, Result};
-use fixed::FixedVec;
 use gekko_math::HsdRng;
 use hsd_anim::mtx::InverseTrig;
 use hsd_anim::{
@@ -29,6 +27,7 @@ use hsd_particle::{
     system::{ParticleSystem, SpawnRequest},
 };
 use hsd_types::{Mtx, Vec3};
+use melee_types::fixed::FixedVec;
 use pool::{ModelPool, INSTANCE_CAPACITY};
 use request::{EffectOwner, EffectRequest};
 use std::collections::BTreeMap;

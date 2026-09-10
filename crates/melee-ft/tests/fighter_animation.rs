@@ -201,7 +201,7 @@ fn part_animation_runs_between_command_and_accessory_hooks_without_main_motion()
                 duration: 2.0,
                 rate: 1.0,
                 current: 0,
-                joints: vec![1],
+                joints: [1].into_iter().collect(),
                 ..PartAnimation::default()
             };
         },

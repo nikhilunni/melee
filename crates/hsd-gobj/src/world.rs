@@ -272,8 +272,9 @@ pub struct Proc {
     /// running tag (0..=2).
     frame_tag: u8,
     gobj: GObjId,
-    /// `None` only while the callback is executing.
+    /// `None` for tagged procs or while an owned callback is executing.
     callback: Option<Box<ProcFn>>,
+    dispatch_tag: Option<usize>,
 }
 
 impl Proc {
@@ -1028,6 +1029,23 @@ impl World {
     where
         F: FnMut(&mut World, GObjId) + 'static,
     {
+        self.add_proc_slot(gobj, priority, Some(Box::new(callback)), None)
+    }
+
+    /// Register a typed external dispatcher token without capturing its owner.
+    /// The owner is borrowed once by run_procs_with; list and mutation semantics
+    /// are identical to ordinary HSD callbacks.
+    pub fn add_tagged_proc(&mut self, gobj: GObjId, priority: u8, tag: usize) -> ProcId {
+        self.add_proc_slot(gobj, priority, None, Some(tag))
+    }
+
+    fn add_proc_slot(
+        &mut self,
+        gobj: GObjId,
+        priority: u8,
+        callback: Option<Box<ProcFn>>,
+        dispatch_tag: Option<usize>,
+    ) -> ProcId {
         assert!(
             priority <= self.config.gproc_pri_max,
             "proc priority {priority} > gproc_pri_max {}",
@@ -1043,7 +1061,8 @@ impl World {
             flag2: false,
             frame_tag: 3,
             gobj,
-            callback: Some(Box::new(callback)),
+            callback,
+            dispatch_tag,
         }));
         self.link_proc(pid);
         pid
@@ -1142,6 +1161,12 @@ impl World {
     ///
     /// Not re-entrant: a callback must not call `run_procs`.
     pub fn run_procs(&mut self) {
+        self.run_procs_with(|_, _, _| panic!("tagged proc needs an external dispatcher"));
+    }
+
+    /// Run the same scheduler with a borrowed, statically dispatched owner for
+    /// tagged registrations. Ordinary callbacks remain available to engine users.
+    pub fn run_procs_with(&mut self, mut dispatch: impl FnMut(&mut World, GObjId, usize)) {
         assert!(!self.running, "run_procs is not re-entrant");
         self.running = true;
         let pause_mask = self.pause_mask;
@@ -1167,7 +1192,11 @@ impl World {
                     if pause_mask & (1u64 << p_link) == 0 && !paused && !flag2 {
                         self.cur_gobj = Some(gobj);
                         self.cur_proc = Some(pid);
-                        self.invoke(pid, gobj);
+                        if let Some(tag) = self.proc(pid).dispatch_tag {
+                            dispatch(self, gobj, tag);
+                        } else {
+                            self.invoke(pid, gobj);
+                        }
                         // gobj.c:115. The running proc is never freed during
                         // its own callback (removal is deferred), so it is
                         // still here.

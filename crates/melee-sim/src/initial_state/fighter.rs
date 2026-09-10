@@ -99,23 +99,7 @@ pub(crate) fn import<C: CharacterCallbacks>(
     f.dynamics_first_bone = (0..word(raw, 0x3E0) as usize)
         .map(|i| word(raw, 0x2F0 + i * 0x18))
         .collect();
-    // Fighter.x8B0[5], stride 0x14 (ft/types.h:1301-1308).
-    // ftAnim_800707B0 ignores a slot only when current is -1. Preserve
-    // even inactive scalar words rather than infer defaults from a pose.
-    for (index, state) in f.core.animation.part_animations.iter_mut().enumerate() {
-        let offset = 0x8B0 + index * 0x14;
-        state.state = word(raw, offset) as i32;
-        state.duration = float(raw, offset + 4);
-        state.progress = float(raw, offset + 8);
-        state.rate = float(raw, offset + 12);
-        state.previous = raw[offset + 16] as i8;
-        state.current = raw[offset + 17] as i8;
-        state.joints = f.core.bones.animation_sets[index]
-            .as_ref()
-            .map_or_else(Vec::new, |set| {
-                set.joints.iter().map(|&joint| usize::from(joint)).collect()
-            });
-    }
+    restore_part_animations(&mut f.core, raw);
     let archive_base = word(raw, 0x24) - assets.motion_table_offset;
     let pc = word(raw, 0x3EC).wrapping_sub(archive_base);
     f.commands.instruction = (word(raw, 0x3EC) != 0).then(|| {
@@ -134,7 +118,7 @@ pub(crate) fn import<C: CharacterCallbacks>(
         // lbcommand.c Command_03/05 share a stack: loop body + count,
         // or one subroutine continuation. Recover the typed owners from
         // the command preceding each saved address, never from trace history.
-        use melee_ft::fighter::commands::{Command, CommandLoop};
+        use melee_cmd::{Command, CommandLoop};
         let depth = word(raw, 0x3F0) as usize;
         assert!(depth <= 5, "CommandInfo stack capacity");
         let mut slot = 0;
@@ -192,6 +176,26 @@ pub(crate) fn import<C: CharacterCallbacks>(
     }
 
     f
+}
+/// Restore the shared part-animation owner once, outside character imports.
+fn restore_part_animations(core: &mut melee_ft::fighter::FighterCore, raw: &[u8]) {
+    // Fighter.x8B0[5], stride 0x14 (ft/types.h:1301-1308).
+    // ftAnim_800707B0 ignores a slot only when current is -1. Preserve
+    // even inactive scalar words rather than infer defaults from a pose.
+    for (index, state) in core.animation.part_animations.iter_mut().enumerate() {
+        let offset = 0x8B0 + index * 0x14;
+        state.state = word(raw, offset) as i32;
+        state.duration = float(raw, offset + 4);
+        state.progress = float(raw, offset + 8);
+        state.rate = float(raw, offset + 12);
+        state.previous = raw[offset + 16] as i8;
+        state.current = raw[offset + 17] as i8;
+        state.joints = core.bones.animation_sets[index]
+            .as_ref()
+            .map_or_else(Default::default, |set| {
+                set.joints.iter().map(|&joint| usize::from(joint)).collect()
+            });
+    }
 }
 fn import_input(raw: &[u8]) -> FighterInput {
     let frame = |i: usize| InputFrame {

@@ -17,6 +17,8 @@ members = [
     "crates/melee-gr",
     "crates/melee-it",
     "crates/melee-ft",
+    "crates/melee-cmd",
+    "crates/melee-coll",
     "crates/melee-ef",
     "crates/melee-if",
     "crates/melee-cpu",

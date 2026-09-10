@@ -111,6 +111,12 @@ impl From<Mtx> for [[f32; 4]; 3] {
     }
 }
 
+impl From<[f32; 3]> for Vec3 {
+    fn from([x, y, z]: [f32; 3]) -> Self {
+        Self { x, y, z }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

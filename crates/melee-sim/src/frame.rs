@@ -13,7 +13,9 @@ use melee_ft::{
     fighter::{FighterProc, RetailTrig},
     input::PadSample,
 };
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Callback {
@@ -148,6 +150,7 @@ pub(crate) fn validate_saved_resume(
     }
     Ok(())
 }
+#[cfg(test)]
 fn register(
     world: &mut World,
     rows: &[Registration],
@@ -319,11 +322,11 @@ impl Runtime {
                         with_fighter!(&state.fighters[slot], |f| f
                             .overlap_body(&assets.fighters[slot]))
                     });
-                    let nudge = melee_ft::fighter::overlap::nudge(
+                    let nudge = melee_coll::overlap::nudge(
                         player,
                         &bodies,
                         &assets.fighters[player].overlap,
-                        &state.map,
+                        |floor| [state.map.line_next(floor), state.map.line_prev(floor)],
                     );
                     with_fighter!(&mut state.fighters[player], |f| f.physics.player_nudge =
                         nudge);
@@ -471,7 +474,10 @@ impl Runtime {
 /// ledger, seed, or frame-specific argument: the input script is fixed up front.
 pub struct Simulation {
     world: World,
-    runtime: Rc<RefCell<Runtime>>,
+    // Unique initialization-time storage keeps cold-start call stacks small.
+    // The scheduler borrows this owner; no reference counts or runtime borrows.
+    runtime: Box<Runtime>,
+    registrations: Vec<Registration>,
 }
 impl Simulation {
     /// A simulation with neutral pads on every port.
@@ -495,7 +501,7 @@ impl Simulation {
                 .physics
                 .percent))
         });
-        let runtime = Rc::new(RefCell::new(Runtime {
+        let runtime = Box::new(Runtime {
             state,
             interface,
             pads,
@@ -504,42 +510,37 @@ impl Simulation {
             // At most one writer per registered proc, plus match-start music.
             rng_writers: Vec::with_capacity(rows.len() + 1),
             particle_draws: DrawLog::default(),
-        }));
-        let shared = Rc::clone(&runtime);
-        let mut world = World::new(WorldConfig::MELEE);
-        register(&mut world, &rows, move |_, row| {
-            let mut runtime = shared.borrow_mut();
-            if runtime.error.is_some() {
-                return;
-            }
-            let seed = runtime.state.rng.seed;
-            if let Err(error) = runtime.dispatch(row) {
-                runtime.error =
-                    Some(error.context(format!("frame {} proc {:?}", runtime.frame, row)));
-            }
-            if seed != runtime.state.rng.seed {
-                let seed = runtime.state.rng.seed;
-                runtime.rng_writers.push((Some(row.callback), seed));
-            }
         });
-        Self { world, runtime }
+        let mut world = World::new(WorldConfig::MELEE);
+        let mut objects = BTreeMap::new();
+        for (index, row) in rows.iter().enumerate() {
+            let object = *objects
+                .entry((row.p_link, row.object))
+                .or_insert_with(|| world.create(0, row.p_link, row.priority));
+            world.add_tagged_proc(object, row.s_link, index);
+        }
+        Self {
+            world,
+            runtime,
+            registrations: rows,
+        }
     }
     /// Complete the imported partial tick first, then one full scheduler pass
     /// per call. Errors poison the simulation: a partial tick cannot be retried.
     pub fn tick(&mut self) -> Result<Record> {
         self.tick_without_snapshot()?;
-        let runtime = self.runtime.borrow();
+        let runtime = &self.runtime;
         Ok(crate::trace::snapshot(&runtime.state, runtime.frame - 1))
     }
     /// Advance the same scheduler without constructing a diagnostic trace record.
     /// Use this for headless throughput and allocation measurements.
     pub fn tick_without_snapshot(&mut self) -> Result<()> {
         ensure!(
-            self.runtime.borrow().error.is_none(),
+            self.runtime.error.is_none(),
             "simulation is poisoned by a prior tick error"
         );
         {
-            let mut runtime = self.runtime.borrow_mut();
+            let runtime = self.runtime.as_mut();
             let frame = runtime.frame;
             runtime.state.effects.events.begin_tick(frame);
             runtime.rng_writers.clear();
@@ -554,8 +555,25 @@ impl Simulation {
                 runtime.state.particles.sort_for_display(7);
             }
         }
-        self.world.run_procs();
-        let mut runtime = self.runtime.borrow_mut();
+        let runtime = self.runtime.as_mut();
+        let rows = &self.registrations;
+        self.world.run_procs_with(|_, _, index| {
+            let row = rows[index];
+            if runtime.error.is_some() {
+                return;
+            }
+            let seed = runtime.state.rng.seed;
+            if let Err(error) = runtime.dispatch(row) {
+                runtime.error =
+                    Some(error.context(format!("frame {} proc {:?}", runtime.frame, row)));
+            }
+            if seed != runtime.state.rng.seed {
+                runtime
+                    .rng_writers
+                    .push((Some(row.callback), runtime.state.rng.seed));
+            }
+        });
+        let runtime = self.runtime.as_mut();
         if let Some(error) = &runtime.error {
             anyhow::bail!("{error:#}");
         }
@@ -563,18 +581,17 @@ impl Simulation {
         Ok(())
     }
     pub(crate) fn enable_spawn_recording(&mut self) {
-        self.runtime.borrow_mut().state.effects.events.enable();
+        self.runtime.state.effects.events.enable();
     }
     pub(crate) fn finish_spawn_recording(&mut self) -> BTreeMap<u64, Vec<serde_json::Value>> {
-        self.runtime.borrow_mut().state.effects.events.finish()
+        self.runtime.state.effects.events.finish()
     }
     /// Ordered particle branch sites observed in the last completed tick.
     pub fn particle_rng_sites(&self) -> Vec<u32> {
-        self.runtime.borrow().particle_draws.0.clone()
+        self.runtime.particle_draws.0.clone()
     }
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
         self.runtime
-            .borrow()
             .rng_writers
             .iter()
             .map(|&(callback, seed)| {
@@ -892,7 +909,7 @@ mod start_tests {
         let mut fields = 0;
         for expected in expected {
             simulation.tick().unwrap();
-            let runtime = simulation.runtime.borrow();
+            let runtime = &simulation.runtime;
             let state = &runtime.state;
             let mut matrices = state.effects.matrices();
             for generator in &state.particles.generators {

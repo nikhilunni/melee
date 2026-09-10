@@ -29,7 +29,7 @@ fn replay(name: &str) {
         let word =
             |offset: usize| u32::from_str_radix(&raw[offset * 2..offset * 2 + 8], 16).unwrap();
         simulation.tick().unwrap();
-        let runtime = simulation.runtime.borrow();
+        let runtime = &simulation.runtime;
         let SceneFighter::Yoshi(fighter) = &runtime.state.fighters[0] else {
             panic!("Yoshi slot")
         };

@@ -1,6 +1,6 @@
 //! efAsync/efSync caller requests and outgoing-pose flush storage.
-use crate::fixed::FixedVec;
 use hsd_types::{Mtx, Vec3};
+use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EffectRequest {
     /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
@@ -85,6 +85,10 @@ pub struct EffectQueue {
 }
 impl EffectQueue {
     pub fn push(&mut self, request: EffectRequest) {
+        assert!(
+            self.entries.len() < REQUEST_CAPACITY,
+            "effect storage capacity {REQUEST_CAPACITY} exhausted"
+        );
         self.entries.push(QueuedEffect {
             request,
             matrix: None,

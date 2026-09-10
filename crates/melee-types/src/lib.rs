@@ -296,3 +296,6 @@ pub mod snapshot;
 
 mod hit;
 pub use hit::HitElement;
+
+pub mod combat;
+pub mod fixed;

@@ -5,32 +5,7 @@ use hsd_anim::{
 };
 use hsd_types::Vec3;
 
-#[derive(Clone, Copy, Debug)]
-pub enum HurtHeight {
-    Low,
-    Middle,
-    High,
-}
-impl HurtHeight {
-    pub fn from_retail(value: u32) -> Self {
-        match value {
-            0 => Self::Low,
-            1 => Self::Middle,
-            2 => Self::High,
-            _ => panic!("hurtbox height {value}"),
-        }
-    }
-}
-#[derive(Clone, Debug)]
-pub struct Hurtbox {
-    pub grabbable: bool,
-    pub height: HurtHeight,
-    pub bone: usize,
-    pub offsets: [Vec3; 2],
-    pub radius: f32,
-    pub positions: [Vec3; 2],
-    pub cached: bool,
-}
+use melee_coll::hurtbox::HurtCapsule;
 #[derive(Clone, Debug)]
 pub struct DynamicCollider {
     pub bone: usize,
@@ -85,7 +60,7 @@ pub fn bone_position(tree: &mut JObjTree, root: JObjId, bone: usize, offset: Vec
 /// ftCo_800A0DA4 (0x800A0DA4), ftCo_0A01.c:553-609. The caller clears
 /// caches at s_link 4; collision consumers can evaluate them before s_link 14.
 pub fn hurtbox_extents(
-    boxes: &mut [Hurtbox],
+    boxes: &mut [HurtCapsule],
     tree: &mut JObjTree,
     root: JObjId,
     position: Vec3,
@@ -123,4 +98,31 @@ pub fn hurtbox_extents(
     };
     // C uses double 0.5 after the single-precision addition, then rounds.
     [front, back, (0.5_f64 * f64::from(front + back)) as f32, top]
+}
+
+impl melee_coll::detection::Collider for super::FighterCore {
+    fn hurt_count(&self) -> usize {
+        self.hurtboxes.len()
+    }
+    fn grabbable(&self, index: usize) -> bool {
+        self.hurtboxes[index].grabbable
+    }
+    fn sample_hurt(&mut self, index: usize) -> (HurtCapsule, hsd_types::Mtx) {
+        let hurt = &mut self.hurtboxes[index];
+        if !hurt.cached {
+            hurt.positions = hurt.offsets.map(|offset| {
+                bone_position(&mut self.skeleton, self.animation.root, hurt.bone, offset)
+            });
+            hurt.cached = true;
+        }
+        let bone = self
+            .skeleton
+            .bone(self.animation.root, hurt.bone)
+            .expect("hurt bone");
+        let matrix = *self.skeleton.get_mtx(bone);
+        (hurt.clone(), matrix)
+    }
+    fn scale(&self) -> f32 {
+        self.player.scale
+    }
 }

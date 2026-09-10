@@ -565,9 +565,9 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         "fighter nudge exclusion tick {tick}"
     );
     let hurt = match fighter.commands.hurt_status {
-        melee_ft::fighter::escape::HurtStatus::Normal => 0,
-        melee_ft::fighter::escape::HurtStatus::Invincible => 1,
-        melee_ft::fighter::escape::HurtStatus::Intangible => 2,
+        melee_types::combat::HurtStatus::Normal => 0,
+        melee_types::combat::HurtStatus::Invincible => 1,
+        melee_types::combat::HurtStatus::Intangible => 2,
     };
     assert_eq!(
         hurt,
@@ -654,9 +654,9 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
                 );
             }
             let hurt = match fighter.commands.hurt_status {
-                melee_ft::fighter::escape::HurtStatus::Normal => 0,
-                melee_ft::fighter::escape::HurtStatus::Invincible => 1,
-                melee_ft::fighter::escape::HurtStatus::Intangible => 2,
+                melee_types::combat::HurtStatus::Normal => 0,
+                melee_types::combat::HurtStatus::Invincible => 1,
+                melee_types::combat::HurtStatus::Intangible => 2,
             };
             assert_eq!(hurt, word(bytes, 0x1988), "hurt status tick {tick}");
         }

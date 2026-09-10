@@ -1,5 +1,5 @@
 //! Requests at the fighter/effect boundary; particle lifetimes belong to ef.
-use hsd_types::{Mtx, Vec3};
+use hsd_types::Mtx;
 // ftCo_09F7.c:75-97: special part selectors bypass the common part table.
 const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
@@ -31,18 +31,6 @@ impl super::FighterCore {
     }
 }
 
-/// ftAction_80071028's five command words, decoded at the archive boundary.
-#[derive(Clone, Debug)]
-pub struct GraphicsCommand {
-    pub bone: usize,
-    pub common_bone: bool,
-    pub item_bone: bool,
-    pub destroy_on_state_change: bool,
-    pub id: u16,
-    pub parameter: f32,
-    pub offset: Vec3,
-    pub range: Vec3,
-}
 /// Fighter flags x2219_b0 and x2220_b0 (three-bit rotating index).
 #[derive(Clone, Debug, Default)]
 pub struct FighterEffects {

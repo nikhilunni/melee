@@ -10,92 +10,16 @@ use hsd_anim::{
     jobj::{JObjTree, JOBJ_USE_QUATERNION},
 };
 
-/// ftAction_80072A5C (80072A5C) -> ftCo_800BFFD0 (800BFFD0).
-/// Color animation is renderer output; the command retains its ID and duration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ColorAnimationRequest {
-    pub id: u8,
-    pub duration: u32,
-}
+use melee_cmd::{ColorAnimationRequest, Command};
+use melee_types::fixed::FixedVec;
 
-#[derive(Clone, Debug)]
-pub enum Command {
-    SmashCharge(super::smash::SmashCharge),
-    SetAirborne(melee_types::GroundOrAir),
-    SmashSound,
-    ThrowAccessory,
-    GrabRelease,
-    ThrowReverse,
-    SetThrowHitbox {
-        id: usize,
-        descriptor: super::hitbox::ThrowHitbox,
-    },
-    BeginLoop(u32),
-    EndLoop,
-    /// ftAction_80071F78 (80071F78), Fighter +221E bit 4.
-    ArticleVisibility(bool),
-    SpawnHitbox {
-        id: usize,
-        descriptor: super::hitbox::HitboxDescriptor,
-    },
-    ClearHitbox(usize),
-    ClearHitboxes,
-    JabFollowup(bool),
-    /// ftAction_80071AE8: enable the jab combo flag (x2218_b1).
-    JabCombo {
-        disabled: bool,
-    },
-    SwordTrail {
-        duration: i32,
-        reverse: bool,
-    },
-    ColorAnimation(ColorAnimationRequest),
-    /// ftAction_80072B94: toggle animation ownership of a dynamic joint.
-    ToggleDynamics(i32),
-    ModelSelection {
-        group: i32,
-        variant: i32,
-    },
-    HurtStatus(super::escape::HurtStatus),
-    AllowInterrupt,
-    End,
-    Graphics(super::effects::GraphicsCommand),
-    SetVariable {
-        index: usize,
-        value: u32,
-    },
-    Goto(usize),
-    WaitAnimationLoop,
-    LandingEffect(u16),
-    Rumble {
-        all_players: bool,
-        id: u16,
-        duration: u16,
-    },
-    FootstepSound {
-        behavior: u8,
-        id: u32,
-        volume: u8,
-        pan: u8,
-    },
-    Wait(f32),
-    AtFrame(f32),
-    Call {
-        target: usize,
-        continuation: usize,
-    },
-    Return,
-    Part {
-        group: usize,
-        variant: usize,
-        blend: f32,
-    },
-    GroundPose(u8),
-    Texture {
-        indices: Vec<usize>,
-        frame: f32,
-    },
-}
+/// Explicit port bound for side requests; consumers drain before exhaustion.
+pub const COMMAND_REQUEST_CAPACITY: usize = 64;
+/// Opcode 40 carries seven-bit texture indices.
+const TEXTURE_SLOT_COUNT: usize = 128;
+/// Opcode 31 carries a signed seven-bit model group.
+const MODEL_GROUP_COUNT: usize = 128;
+const MODEL_GROUP_BIAS: i32 = 64;
 /// ftAction_800728F8 (0x800728F8), forwarded to the controller-output owner.
 #[derive(Clone, Debug)]
 pub struct RumbleRequest {
@@ -121,26 +45,20 @@ pub struct FootstepSound {
     pub pan: u8,
 }
 
-/// Command_03/04: counted loop, independent of the subroutine return stack.
-#[derive(Clone, Debug)]
-pub struct CommandLoop {
-    pub start: usize,
-    pub remaining: u32,
-}
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
-    pub smash_charge: Option<super::smash::SmashCharge>,
-    pub airborne_changes: Vec<melee_types::GroundOrAir>,
+    pub smash_charge: Option<melee_cmd::SmashCharge>,
+    pub airborne_changes: FixedVec<melee_types::GroundOrAir, COMMAND_REQUEST_CAPACITY>,
     pub thrown_by: Option<u32>,
     pub smash_sound_requests: usize,
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
     pub throw_reverse: bool,
-    pub throw_hitboxes: [Option<super::hitbox::ThrowHitbox>; 2],
+    pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
-    pub hitboxes: [Option<super::hitbox::HitCapsule>; 4],
+    pub hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
     pub first_hit_stale_penalty: Option<f32>,
@@ -149,46 +67,32 @@ pub struct CommandState {
     pub jab_combo: bool,
     pub sword_trail: Option<(i32, bool)>,
     /// Ordered ftCo_8009E318 requests, consumed immediately after commands.
-    pub dynamic_toggles: Vec<usize>,
-    pub color_animations: Vec<ColorAnimationRequest>,
+    pub dynamic_toggles: FixedVec<usize, COMMAND_REQUEST_CAPACITY>,
+    pub color_animations: FixedVec<ColorAnimationRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
-    pub model_selections: std::collections::BTreeMap<i32, i32>,
-    pub hurt_status: super::escape::HurtStatus,
+    pub model_selections: ModelSelections,
+    pub hurt_status: melee_types::combat::HurtStatus,
     pub allow_interrupt: bool,
     /// cmd_vars (+2200): subaction-controlled state variables.
     pub variables: [u32; 4],
-    pub graphics: melee_ef::fixed::FixedVec<
-        super::effects::GraphicsCommand,
+    pub graphics: melee_types::fixed::FixedVec<
+        melee_types::combat::GraphicsCommand,
         { melee_ef::request::REQUEST_CAPACITY },
     >,
-    /// x3E4_fighterCmdScript.u (+3EC); index, not a retail address.
-    pub instruction: Option<usize>,
-    /// CommandInfo.timer, Fighter +3E4.
-    pub timer: f32,
-    /// CommandInfo.frame_count, Fighter +3E8.
-    pub frame: f32,
-    /// CommandInfo.event_return / loop_count (+3F4/+3F0).
-    pub return_stack: Vec<usize>,
-    pub loops: Vec<CommandLoop>,
+    pub script: melee_cmd::ScriptState,
     /// Requests to costume TObjs (ftAnim_800704F0). Rendering consumes these;
     /// TObj/GX execution remains M8, like the existing HSD model loader.
-    pub texture_frames: Vec<(usize, f32)>,
+    pub texture_frames: FixedVec<(usize, f32), TEXTURE_SLOT_COUNT>,
     /// ftAction_80072E4C requests, resolved at the calling proc boundary.
-    pub landing_effects: Vec<u16>,
+    pub landing_effects: FixedVec<u16, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_800728F8 (0x800728F8): controller-output requests, no RNG.
-    pub rumble_requests: Vec<RumbleRequest>,
+    pub rumble_requests: FixedVec<RumbleRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80072CD8 (0x80072CD8) -> ftAction_80071B50 (0x80071B50).
     /// FD default terrain has no footstep particle; audio is an output request.
-    pub footstep_sounds: Vec<FootstepSound>,
+    pub footstep_sounds: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
 }
 impl CommandState {
-    pub fn restart(&mut self, instruction: usize) {
-        self.instruction = Some(instruction);
-        self.timer = 0.0;
-        self.return_stack.clear();
-        self.loops.clear();
-    }
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
     pub fn step(
         &mut self,
@@ -222,24 +126,19 @@ impl CommandState {
     ) {
         let borrowed_script = self.borrowed_script.clone();
         let script = borrowed_script.as_deref().unwrap_or(&assets.commands);
-        self.frame = animation.frame + animation.remainder;
-        if self.instruction.is_none() {
-            return;
-        }
-        if self.timer != f32::MAX {
-            self.timer -= animation.speed;
-        }
-        while let Some(pc) = self.instruction {
-            if self.timer == f32::MAX {
-                if self.frame >= animation.speed {
-                    break;
-                }
-                self.timer = -self.frame;
-            } else if self.timer > 0.0 {
-                break;
-            }
-            self.instruction = Some(pc + 1);
-            match &script[pc] {
+        self.script
+            .begin_frame(animation.frame + animation.remainder, animation.speed);
+        while let Some(command) = self.script.next(script, animation.speed) {
+            match command {
+                Command::BeginLoop(_)
+                | Command::EndLoop
+                | Command::End
+                | Command::Goto(_)
+                | Command::WaitAnimationLoop
+                | Command::Wait(_)
+                | Command::AtFrame(_)
+                | Command::Call { .. }
+                | Command::Return => unreachable!("interpreter consumes control flow"),
                 Command::ThrowAccessory => {
                     unimplemented!("ftAction_80071974: character throw accessory")
                 }
@@ -278,7 +177,7 @@ impl CommandState {
                         if let Some(charge) = &self.smash_charge {
                             descriptor.damage = charge.scale_damage(descriptor.damage);
                         }
-                        super::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
+                        melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     }
                 }
                 Command::ClearHitbox(id) => {
@@ -333,29 +232,6 @@ impl CommandState {
                     }
                 }
                 Command::SetVariable { index, value } => self.variables[*index] = *value,
-                Command::BeginLoop(count) => self.loops.push(CommandLoop {
-                    start: self.instruction.expect("loop body"),
-                    remaining: *count,
-                }),
-                Command::EndLoop => {
-                    let loop_state = self
-                        .loops
-                        .last_mut()
-                        .expect("Command_04 without Command_03");
-                    loop_state.remaining = loop_state.remaining.wrapping_sub(1);
-                    if loop_state.remaining != 0 {
-                        self.instruction = Some(loop_state.start);
-                    } else {
-                        self.loops.pop();
-                    }
-                }
-                Command::End => self.instruction = None,
-                Command::Goto(target) => self.instruction = Some(*target),
-                // Command_08 (0x80005B00, lbcommand.c:85): resume after the animation wraps.
-                Command::WaitAnimationLoop => {
-                    self.timer = f32::MAX;
-                    break;
-                }
                 Command::Rumble {
                     all_players,
                     id,
@@ -395,22 +271,6 @@ impl CommandState {
                         self.landing_effects.push(*id);
                     }
                 }
-                Command::Wait(frames) => self.timer += frames,
-                Command::AtFrame(frame) => self.timer = frame - self.frame,
-                Command::Call {
-                    target,
-                    continuation,
-                } => {
-                    self.return_stack.push(*continuation);
-                    self.instruction = Some(*target);
-                }
-                Command::Return => {
-                    self.instruction = Some(
-                        self.return_stack
-                            .pop()
-                            .expect("command return without call"),
-                    );
-                }
                 Command::GroundPose(flags) => {
                     pose.0 = *flags;
                     if flags & 4 == 0 {
@@ -431,9 +291,8 @@ impl CommandState {
                 ),
                 Command::Texture { indices, frame } => {
                     for &index in indices {
-                        if let Some(entry) =
-                            self.texture_frames.iter_mut().find(|(i, _)| *i == index)
-                        {
+                        let existing = self.texture_frames.iter_mut().find(|(i, _)| *i == index);
+                        if let Some(entry) = existing {
                             entry.1 = *frame;
                         } else {
                             self.texture_frames.push((index, *frame));
@@ -466,22 +325,23 @@ fn apply_part(
     } else {
         0.0
     };
-    state.joints = assets.bones.animation_sets[group]
-        .as_ref()
-        .unwrap()
-        .joints
-        .iter()
-        .map(|&x| usize::from(x))
-        .collect();
+    state.joints.clear();
+    for &joint in &assets.bones.animation_sets[group].as_ref().unwrap().joints {
+        state.joints.push(usize::from(joint));
+    }
     let mut index = resource.root;
-    for node in &resource.nodes {
+    for (node, prepared) in resource.nodes.iter().zip(&resource.prepared) {
         while animation.parts[index].motion_mask != 0 {
             index += 1;
         }
         let part = &mut animation.parts[index];
         if !part.flags.contains(PartFlags::LOCKED) && node.aobjdesc.is_some() {
             let joint = part.joint;
-            animation.blend_tree.add_anim(joint, Some(node), None);
+            animation.blend_tree.add_prepared_joint_anim(
+                joint,
+                node,
+                prepared.as_ref().expect("part animation"),
+            );
             animation.blend_tree.clear_flags(joint, JOBJ_USE_QUATERNION);
             animation.blend_tree.req_anim(joint, 0.0);
             animation
@@ -504,7 +364,7 @@ pub(super) fn reset_parts(
 ) {
     for slot in &mut animation.part_animations {
         if slot.current != -1 {
-            for &bone in &slot.joints {
+            for &bone in slot.joints.iter() {
                 animation.parts[bone].flags.0 &= !PartFlags::PART_ANIMATION;
             }
             slot.current = -1;
@@ -515,5 +375,41 @@ pub(super) fn reset_parts(
         if previous != -1 {
             apply_part(animation, tree, assets, group, previous as usize, 0.0);
         }
+    }
+}
+
+impl std::ops::Deref for CommandState {
+    type Target = melee_cmd::ScriptState;
+    fn deref(&self) -> &Self::Target {
+        &self.script
+    }
+}
+impl std::ops::DerefMut for CommandState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.script
+    }
+}
+
+/// Model selector is signed seven-bit data in opcode 31 (ftAction_80071D40).
+#[derive(Clone, Debug)]
+pub struct ModelSelections {
+    entries: [Option<i32>; MODEL_GROUP_COUNT],
+}
+impl Default for ModelSelections {
+    fn default() -> Self {
+        Self {
+            entries: [None; MODEL_GROUP_COUNT],
+        }
+    }
+}
+impl ModelSelections {
+    pub fn insert(&mut self, group: i32, variant: i32) -> Option<i32> {
+        self.entries[usize::try_from(group + MODEL_GROUP_BIAS).expect("model group")]
+            .replace(variant)
+    }
+    pub fn get(&self, group: &i32) -> Option<&i32> {
+        self.entries
+            .get(usize::try_from(group + MODEL_GROUP_BIAS).ok()?)
+            .and_then(Option::as_ref)
     }
 }

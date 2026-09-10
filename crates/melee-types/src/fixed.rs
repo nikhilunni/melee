@@ -20,9 +20,21 @@ impl<T, const N: usize> FixedVec<T, N> {
         self.len == 0
     }
     pub fn push(&mut self, value: T) {
-        assert!(self.len < N, "effect storage capacity {N} exhausted");
+        assert!(self.len < N, "inline storage capacity {N} exhausted");
         self.entries[self.len] = Some(value);
         self.len += 1;
+    }
+    pub fn clear(&mut self) {
+        while self.pop().is_some() {}
+    }
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        self.entries[..self.len].last_mut().and_then(Option::as_mut)
+    }
+    pub fn contains(&self, value: &T) -> bool
+    where
+        T: PartialEq,
+    {
+        self.iter().any(|entry| entry == value)
     }
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
@@ -45,5 +57,29 @@ impl<T, const N: usize> FixedVec<T, N> {
         self.entries[..self.len]
             .iter_mut()
             .map(|v| v.as_mut().unwrap())
+    }
+}
+
+impl<T, const N: usize> IntoIterator for FixedVec<T, N> {
+    type Item = T;
+    type IntoIter = std::iter::Flatten<std::array::IntoIter<Option<T>, N>>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.into_iter().flatten()
+    }
+}
+
+impl<T, const N: usize> std::ops::Index<usize> for FixedVec<T, N> {
+    type Output = T;
+    fn index(&self, index: usize) -> &T {
+        self.entries[..self.len][index].as_ref().unwrap()
+    }
+}
+impl<T, const N: usize> FromIterator<T> for FixedVec<T, N> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut result = Self::default();
+        for value in iter {
+            result.push(value);
+        }
+        result
     }
 }

@@ -322,6 +322,7 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-coll",
  "melee-ef",
  "melee-ft",
  "melee-test-support",
@@ -438,6 +439,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "melee-cmd"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "melee-types",
+]
+
+[[package]]
+name = "melee-coll"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-types",
+]
+
+[[package]]
 name = "melee-cpu"
 version = "0.0.1"
 dependencies = [
@@ -484,6 +502,8 @@ dependencies = [
  "hsd-archive",
  "hsd-gobj",
  "hsd-types",
+ "melee-cmd",
+ "melee-coll",
  "melee-diff",
  "melee-ef",
  "melee-gr",
@@ -578,6 +598,8 @@ dependencies = [
  "hsd-gobj",
  "hsd-particle",
  "hsd-types",
+ "melee-cmd",
+ "melee-coll",
  "melee-cpu",
  "melee-diff",
  "melee-ef",

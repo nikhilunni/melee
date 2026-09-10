@@ -1,5 +1,4 @@
 //! Owned resources needed by a Wait fighter; Melee archive layout stays here.
-use super::commands::Command;
 use crate::{
     anim::{Motion, WaitEntry},
     desc::{
@@ -12,12 +11,14 @@ use crate::{
 };
 use hsd_anim::{aobj::AObjDesc, fobj::FObjDesc, jobj::AnimJoint};
 use hsd_archive::{desc, Archive};
+use melee_cmd::Command;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct PartResource {
     pub root: usize,
     pub nodes: Vec<AnimJoint>,
+    pub prepared: Vec<Option<hsd_anim::aobj::AObj>>,
     pub duration: f32,
 }
 /// Character metadata from ftdata.c, ftparts.c's PlCo tables and costume strings.
@@ -118,8 +119,8 @@ pub struct FighterAssets {
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub damage: super::damage::DamageParameters,
-    pub overlap: super::overlap::OverlapParameters,
-    pub hurtboxes: Vec<super::caches::Hurtbox>,
+    pub overlap: melee_coll::overlap::OverlapParameters,
+    pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub first_stale_penalty: f32,
     pub grab_friction_multiplier: f32,
     pub throw_weight_scale: f32,
@@ -143,7 +144,7 @@ pub struct FighterAssets {
     pub motion_table_offset: u32,
     pub life: super::life::LifeParameters,
     pub revival_platform: super::life::RevivalPlatform,
-    pub charge_start_graphics: BTreeMap<u8, super::effects::GraphicsCommand>,
+    pub charge_start_graphics: BTreeMap<u8, melee_types::combat::GraphicsCommand>,
     pub camera_extents: [hsd_types::Vec3; 2],
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
@@ -265,6 +266,10 @@ impl FighterAssets {
                 (group, variant),
                 PartResource {
                     root: usize::from(data.reader().u16(set)?),
+                    prepared: nodes
+                        .iter()
+                        .map(|node| node.aobjdesc.as_ref().map(hsd_anim::aobj::AObj::load_desc))
+                        .collect(),
                     nodes,
                     duration,
                 },
@@ -316,7 +321,7 @@ impl FighterAssets {
                     .link(common_root + 12)?
                     .ok_or("missing stale weights")?,
             )?,
-            overlap: super::overlap::OverlapParameters {
+            overlap: melee_coll::overlap::OverlapParameters {
                 center: data
                     .reader()
                     .f32(data.link(root + 0x50)?.ok_or("missing push shape")?)?,
@@ -447,128 +452,18 @@ fn read_script(
     while !commands.contains_key(&offset) {
         let word = archive.reader().u32(offset)?;
         let opcode = word >> 26;
-        let command = match opcode {
-            0 => Command::End,
-            1 => Command::Wait((word & 0x03ff_ffff) as f32),
-            2 => Command::AtFrame((word & 0x03ff_ffff) as f32),
-            3 => Command::BeginLoop(word & 0x03ff_ffff),
-            4 => Command::EndLoop,
-            5 => Command::Call {
-                target: archive.link(offset + 4)?.ok_or("null command call")? as usize,
-                continuation: (offset + 8) as usize,
-            },
-            6 => Command::Return,
-            7 => Command::Goto(archive.link(offset + 4)?.ok_or("null command goto")? as usize),
-            8 => Command::WaitAnimationLoop,
-            // ftAction_80071D40: signed 7-bit model index, signed 19-bit selection.
-            31 => Command::ModelSelection {
-                group: ((word << 6) as i32) >> 25,
-                variant: ((word << 13) as i32) >> 13,
-            },
-            // ftAction_80072A5C (80072A80/84): eight-bit ID, low 18-bit duration.
-            46 => Command::ColorAnimation(super::commands::ColorAnimationRequest {
-                id: ((word >> 18) & 255) as u8,
-                duration: word & 0x3FFFF,
-            }),
-            18 => Command::SmashSound,
-            24 => Command::ThrowAccessory,
-            19 => Command::SetVariable {
-                index: ((word >> 24) & 3) as usize,
-                value: word & 0xFFFFFF,
-            },
-            10 => Command::Graphics(read_graphics(archive, offset)?),
-            // ftAction_8007121C: five command words per attack capsule.
-            11 => Command::SpawnHitbox {
-                id: ((word >> 23) & 7) as usize,
-                descriptor: super::hitbox::HitboxDescriptor::read(archive, offset)?,
-            },
-            34 => {
-                let id = ((word >> 23) & 7) as usize;
-                assert!(id < 2, "ftAction_80071E04: throw hitbox index");
-                Command::SetThrowHitbox {
-                    id,
-                    descriptor: super::hitbox::ThrowHitbox::read(archive, offset)?,
-                }
-            }
-            20 => match (word >> 23) & 7 {
-                0 => Command::GrabRelease,
-                1 => Command::ThrowReverse,
-                value => return Err(format!("unknown throw flag {value}").into()),
-            },
-            15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
-            16 => Command::ClearHitboxes,
-            // ftAction_80071AE8 (80071AE8): x2218_b1 unless disabled (or holding an item).
-            28 => Command::JabCombo {
-                disabled: word & 0x03ff_ffff != 0,
-            },
-            29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
-            36 => Command::ArticleVisibility(word & 1 != 0),
-            50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
-            49 => Command::SwordTrail {
-                duration: ((word << 7) as i32) >> 7,
-                reverse: word & (1 << 25) != 0,
-            },
-            // ftAction_80073008: separate fmuls at retail 80073048.
-            56 => Command::SmashCharge(super::smash::SmashCharge {
-                phase: super::smash::ChargePhase::PreCharge,
-                frames: 0.0,
-                maximum_frames: ((word >> 16) & 1023) as f32,
-                maximum_multiplier: 0.003906 * f32::from(word as u16),
-                saved_rate: 1.0,
-                color_animation: (archive.reader().u32(offset + 4)? >> 24) as u8,
-            }),
-            25 => Command::SetAirborne(match word & 0x03ff_ffff {
-                0 => melee_types::GroundOrAir::Ground,
-                1 => melee_types::GroundOrAir::Air,
-                value => {
-                    return Err(
-                        format!("ftAction_80071998: unsupported airborne mode {value}").into(),
-                    )
-                }
-            }),
-            23 => Command::AllowInterrupt,
-            // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
-            26 => Command::HurtStatus(match word & 0x03ff_ffff {
-                0 => super::escape::HurtStatus::Normal,
-                1 => super::escape::HurtStatus::Invincible,
-                2 => super::escape::HurtStatus::Intangible,
-                value => return Err(format!("unknown hurt status {value}").into()),
-            }),
-            41 => Command::Part {
-                group: ((word >> 19) & 127) as usize,
-                variant: ((word >> 12) & 127) as usize,
-                blend: (word & 4095) as f32,
-            },
-            43 => Command::Rumble {
-                all_players: word & (1 << 25) != 0,
-                id: ((word >> 13) & 4095) as u16,
-                duration: (word & 8191) as u16,
-            },
-            17 | 54 => Command::FootstepSound {
-                behavior: ((word >> 18) & 255) as u8,
-                id: archive.reader().u32(offset + 4)?,
-                volume: (archive.reader().u32(offset + 8)? >> 8) as u8,
-                pan: archive.reader().u32(offset + 8)? as u8,
-            },
-            55 => Command::LandingEffect((word & 0xFFFF) as u16),
-            52 => Command::GroundPose((word & 7) as u8),
-            40 => {
-                let mut indices = vec![((word >> 18) & 127) as usize];
-                if word & (1 << 25) != 0 {
-                    indices.push(((word >> 11) & 127) as usize);
-                }
-                Command::Texture {
-                    indices,
-                    frame: (word & 2047) as f32,
-                }
-            }
-            _ => {
-                return Err(format!(
-                    "unsupported fighter opcode {opcode} at {offset:#x} (ftaction.c:1344)"
-                )
-                .into())
-            }
+        let mut words = [0; 5];
+        let count = melee_cmd::decode::word_count(opcode);
+        for (index, word) in words[..count].iter_mut().enumerate() {
+            *word = archive.reader().u32(offset + index as u32 * 4)?;
+        }
+        let target = if matches!(opcode, 5 | 7) {
+            archive.link(offset + 4)?.map(|x| x as usize)
+        } else {
+            None
         };
+        let command = melee_cmd::decode::decode(&words[..count], target, (offset + 8) as usize)
+            .map_err(|error| format!("{error} at {offset:#x}, opcode {opcode}"))?;
         commands.insert(offset, command.clone());
         match command {
             Command::End | Command::Return => break,
@@ -639,7 +534,7 @@ fn read_vec(archive: &Archive, offset: u32) -> Result<hsd_types::Vec3> {
     ))
 }
 
-fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<super::caches::Hurtbox>> {
+fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<melee_coll::hurtbox::HurtCapsule>> {
     let table = a.link(root + 0x30)?.ok_or("missing hurtboxes")?;
     let count = a.reader().u32(table)?;
     let base = a.link(table + 4)?.ok_or("missing hurtbox records")?;
@@ -647,10 +542,10 @@ fn read_hurtboxes(a: &Archive, root: u32) -> Result<Vec<super::caches::Hurtbox>>
     (0..count)
         .map(|i| {
             let p = base + i * 0x28;
-            Ok(super::caches::Hurtbox {
+            Ok(melee_coll::hurtbox::HurtCapsule {
                 grabbable: a.reader().u32(p + 8)? != 0,
                 bone: a.reader().u32(p)? as usize,
-                height: super::caches::HurtHeight::from_retail(a.reader().u32(p + 4)?),
+                height: melee_coll::hurtbox::HurtHeight::from_retail(a.reader().u32(p + 4)?),
                 offsets: [read_vec(a, p + 12)?, read_vec(a, p + 24)?],
                 radius: a.reader().f32(p + 36)?,
                 positions: [hsd_types::Vec3::ZERO; 2],
@@ -696,28 +591,10 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
         .collect())
 }
 
-fn read_graphics(archive: &Archive, offset: u32) -> Result<super::effects::GraphicsCommand> {
-    let word = archive.reader().u32(offset)?;
-    // ftAction_80071028 (0x80071028): signed offsets, unsigned ranges.
-    // Retail uses the literal 0.003906f, not exact 1/256; no fusion.
-    const SCALE: f32 = 0.003906;
-    let r = archive.reader();
-    Ok(super::effects::GraphicsCommand {
-        bone: ((word >> 18) & 255) as usize,
-        common_bone: word & (1 << 17) != 0,
-        destroy_on_state_change: word & (1 << 16) != 0,
-        item_bone: word & (1 << 15) != 0,
-        id: r.u16(offset + 4)?,
-        parameter: f32::from(r.u16(offset + 6)?),
-        offset: hsd_types::Vec3::new(
-            SCALE * f32::from(r.u16(offset + 8)? as i16),
-            SCALE * f32::from(r.u16(offset + 10)? as i16),
-            SCALE * f32::from(r.u16(offset + 12)? as i16),
-        ),
-        range: hsd_types::Vec3::new(
-            SCALE * f32::from(r.u16(offset + 14)?),
-            SCALE * f32::from(r.u16(offset + 16)?),
-            SCALE * f32::from(r.u16(offset + 18)?),
-        ),
-    })
+fn read_graphics(archive: &Archive, offset: u32) -> Result<melee_types::combat::GraphicsCommand> {
+    let mut words = [0; 5];
+    for (i, word) in words.iter_mut().enumerate() {
+        *word = archive.reader().u32(offset + i as u32 * 4)?;
+    }
+    Ok(melee_cmd::decode::graphics(&words))
 }

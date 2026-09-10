@@ -21,10 +21,12 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 |---|---|
 | `TRACKER.md` | Milestones, tasks, blockers, decisions, session log. **Update it every session.** |
 | `crates/` | Rust workspace, layered for build speed (rules below). |
-| `crates/gekko-math` | Bit-exact PowerPC float semantics and MSL libm. All arithmetic goes through here. |
+| `crates/gekko-math` | Bit-exact PowerPC float semantics, MSL libm and shared matrix kernels. All arithmetic goes through here. |
 | `crates/hsd-types`, `crates/melee-types` | Leaf type crates: vectors, enums, ids. No logic. |
 | `crates/hsd-archive` | `.dat` archive parsing. The only crate that knows on-disc layout. |
 | `crates/hsd-gobj`, `crates/hsd-anim` | HSD engine: scheduler, scene graph, animation. |
+| `crates/melee-cmd` | Shared typed subaction decoding, fixed interpreter control state and timers; consumers apply commands. |
+| `crates/melee-coll` | Hit/hurt capsules, collider pair traversal, contact geometry, damage math, clank priority and reflect/absorb descriptors. |
 | `crates/melee-ef` | Effect request queues, fixed model pools, efLib update and particle dispatch; independent of fighters/scenes. |
 | `crates/melee-lb/mp/gr/it/ft/cpu` | Melee subsystems, one crate each, mirroring decomp directories. |
 | `crates/ft-<name>` | One crate per playable character. |

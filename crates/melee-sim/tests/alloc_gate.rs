@@ -105,26 +105,26 @@ fn allocation_budget(name: &str, ceiling: usize) {
 
 #[test]
 fn start_fd_fox_allocation_budget() {
-    // Remaining: entry-effect queues/models and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("start_fd_fox", 1_694);
+    // Remaining: particle/generator/AppSRT storage; shared commands allocate nothing.
+    allocation_budget("start_fd_fox", 17);
 }
 #[test]
 fn idle_fd_fox_allocation_budget() {
-    // Remaining: effect queues and CommandState::step_inner/apply_part loaders; C4/C8 bring this to zero.
-    allocation_budget("idle_fd_fox", 2_116);
+    // Remaining: one particle-storage growth allocation.
+    allocation_budget("idle_fd_fox", 1);
 }
 #[test]
 fn jab_fd_marth_allocation_budget() {
-    // Remaining: effect queues/models and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("jab_fd_marth", 639);
+    // Remaining: particle/generator/AppSRT storage.
+    allocation_budget("jab_fd_marth", 12);
 }
 #[test]
 fn ko_fd_marth_allocation_budget() {
-    // Remaining: death/respawn effect storage and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("ko_fd_marth", 1_517);
+    // Remaining: full fighter reconstruction on revival (peak 668), plus particle storage.
+    allocation_budget("ko_fd_marth", 690);
 }
 #[test]
 fn start_bf_fox_allocation_budget() {
-    // Remaining: entry-effect storage and command part attachment; C4/C8 bring this to zero.
-    allocation_budget("start_bf_fox", 1_431);
+    // Remaining: particle/generator/AppSRT storage.
+    allocation_budget("start_bf_fox", 17);
 }

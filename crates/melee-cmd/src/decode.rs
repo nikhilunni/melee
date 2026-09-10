@@ -1,0 +1,217 @@
+//! Typed decoding of the supported ftaction.c subaction vocabulary.
+use crate::Command;
+pub type Result<T> = std::result::Result<T, &'static str>;
+/// Number of words consumed, including the opcode; unsupported codes fail closed.
+pub fn word_count(opcode: u32) -> usize {
+    match opcode {
+        5 | 7 | 56 => 2,
+        10 | 11 => 5,
+        17 | 34 | 54 | 55 => 3,
+        _ => 1,
+    }
+}
+pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Result<Command> {
+    let word = *words.first().ok_or("empty command")?;
+    let opcode = word >> 26;
+    if words.len() < word_count(opcode) {
+        return Err("truncated command");
+    }
+    Ok(match opcode {
+        0 => Command::End,
+        1 => Command::Wait((word & 0x03ff_ffff) as f32),
+        2 => Command::AtFrame((word & 0x03ff_ffff) as f32),
+        3 => Command::BeginLoop(word & 0x03ff_ffff),
+        4 => Command::EndLoop,
+        5 => Command::Call {
+            target: target.ok_or("null command call")?,
+            continuation,
+        },
+        6 => Command::Return,
+        7 => Command::Goto(target.ok_or("null command goto")?),
+        8 => Command::WaitAnimationLoop,
+        // ftAction_80071D40: signed 7-bit model index, signed 19-bit selection.
+        31 => Command::ModelSelection {
+            group: ((word << 6) as i32) >> 25,
+            variant: ((word << 13) as i32) >> 13,
+        },
+        // ftAction_80072A5C (80072A80/84): eight-bit ID, low 18-bit duration.
+        46 => Command::ColorAnimation(crate::ColorAnimationRequest {
+            id: ((word >> 18) & 255) as u8,
+            duration: word & 0x3FFFF,
+        }),
+        18 => Command::SmashSound,
+        24 => Command::ThrowAccessory,
+        19 => Command::SetVariable {
+            index: ((word >> 24) & 3) as usize,
+            value: word & 0xFFFFFF,
+        },
+        10 => Command::Graphics(graphics(
+            words[..5].try_into().expect("validated graphics length"),
+        )),
+        // ftAction_8007121C: five command words per attack capsule.
+        11 => Command::SpawnHitbox {
+            id: ((word >> 23) & 7) as usize,
+            descriptor: hitbox(words)?,
+        },
+        34 => {
+            let id = ((word >> 23) & 7) as usize;
+            assert!(id < 2, "ftAction_80071E04: throw hitbox index");
+            Command::SetThrowHitbox {
+                id,
+                descriptor: throw_hitbox(words)?,
+            }
+        }
+        20 => match (word >> 23) & 7 {
+            0 => Command::GrabRelease,
+            1 => Command::ThrowReverse,
+            _ => return Err("unknown throw flag"),
+        },
+        15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
+        16 => Command::ClearHitboxes,
+        // ftAction_80071AE8 (80071AE8): x2218_b1 unless disabled (or holding an item).
+        28 => Command::JabCombo {
+            disabled: word & 0x03ff_ffff != 0,
+        },
+        29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
+        36 => Command::ArticleVisibility(word & 1 != 0),
+        50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
+        49 => Command::SwordTrail {
+            duration: ((word << 7) as i32) >> 7,
+            reverse: word & (1 << 25) != 0,
+        },
+        // ftAction_80073008: separate fmuls at retail 80073048.
+        56 => Command::SmashCharge(crate::SmashCharge {
+            phase: crate::ChargePhase::PreCharge,
+            frames: 0.0,
+            maximum_frames: ((word >> 16) & 1023) as f32,
+            maximum_multiplier: 0.003906 * f32::from(word as u16),
+            saved_rate: 1.0,
+            color_animation: (words[1] >> 24) as u8,
+        }),
+        25 => Command::SetAirborne(match word & 0x03ff_ffff {
+            0 => melee_types::GroundOrAir::Ground,
+            1 => melee_types::GroundOrAir::Air,
+            _ => return Err("unsupported airborne mode"),
+        }),
+        23 => Command::AllowInterrupt,
+        // ftAction_80071A14 (80071A30 clrlwi): low 26-bit vulnerability enum.
+        26 => Command::HurtStatus(match word & 0x03ff_ffff {
+            0 => melee_types::combat::HurtStatus::Normal,
+            1 => melee_types::combat::HurtStatus::Invincible,
+            2 => melee_types::combat::HurtStatus::Intangible,
+            _ => return Err("unknown hurt status"),
+        }),
+        41 => Command::Part {
+            group: ((word >> 19) & 127) as usize,
+            variant: ((word >> 12) & 127) as usize,
+            blend: (word & 4095) as f32,
+        },
+        43 => Command::Rumble {
+            all_players: word & (1 << 25) != 0,
+            id: ((word >> 13) & 4095) as u16,
+            duration: (word & 8191) as u16,
+        },
+        17 | 54 => Command::FootstepSound {
+            behavior: ((word >> 18) & 255) as u8,
+            id: words[1],
+            volume: (words[2] >> 8) as u8,
+            pan: words[2] as u8,
+        },
+        55 => Command::LandingEffect((word & 0xFFFF) as u16),
+        52 => Command::GroundPose((word & 7) as u8),
+        40 => {
+            let mut indices = vec![((word >> 18) & 127) as usize];
+            if word & (1 << 25) != 0 {
+                indices.push(((word >> 11) & 127) as usize);
+            }
+            Command::Texture {
+                indices,
+                frame: (word & 2047) as f32,
+            }
+        }
+        _ => return Err("unsupported subaction opcode"),
+    })
+}
+fn half(words: &[u32], index: usize) -> u16 {
+    (words[index / 2] >> if index.is_multiple_of(2) { 16 } else { 0 }) as u16
+}
+fn hitbox(words: &[u32]) -> Result<melee_types::combat::HitboxDescriptor> {
+    let first = words[0];
+    let flags = words[3];
+    let last = words[4];
+    // ftAction_8007121C --fused: none. Literal is 0.003906f, not 1/256.
+    const SCALE: f32 = 0.003906;
+    Ok(melee_types::combat::HitboxDescriptor {
+        requires_throw_owner: flags & 8 != 0,
+        common_bone: first & (1 << 10) != 0,
+        group: ((first >> 20) & 7) as u8,
+        bone: ((first >> 11) & 255) as usize,
+        damage: (first & 1023) as f32,
+        shield_damage: (last >> 10) as u8 as i8,
+        sound_severity: ((last >> 7) & 7) as u8,
+        radius: SCALE * f32::from(half(words, 2)),
+        offset: [
+            SCALE * f32::from(half(words, 3) as i16),
+            SCALE * f32::from(half(words, 4) as i16),
+            SCALE * f32::from(half(words, 5) as i16),
+        ]
+        .into(),
+        angle: (flags >> 23) as u16,
+        growth: ((flags >> 14) & 511) as u16,
+        weight_knockback: ((flags >> 5) & 511) as u16,
+        base_knockback: (last >> 23) as u16,
+        element: melee_types::HitElement::try_from(((last >> 18) & 31) as i32)
+            .map_err(|_| "invalid hit element")?,
+        hit_ground: last & 2 != 0,
+        hit_air: last & 1 != 0,
+        ignore_scale: flags & 4 != 0,
+        clank: flags & 2 != 0,
+        rebound: flags & 1 != 0,
+    })
+}
+fn throw_hitbox(words: &[u32]) -> Result<melee_types::combat::ThrowHitbox> {
+    let first = words[0];
+    let second = words[1];
+    let third = words[2];
+    Ok(melee_types::combat::ThrowHitbox {
+        damage: (first & 0x7f_ffff) as f32,
+        angle: (second >> 23) as u16,
+        growth: ((second >> 14) & 511) as u16,
+        weight_knockback: ((second >> 5) & 511) as u16,
+        base_knockback: (third >> 23) as u16,
+        element: melee_types::HitElement::try_from(((third >> 19) & 15) as i32)
+            .map_err(|_| "invalid hit element")?,
+        sound_severity: ((third >> 16) & 7) as u8,
+        sound_kind: ((third >> 12) & 15) as u8,
+    })
+}
+/// Shared graphics payload: fighter opcode 10 and color-overlay opcode 21.
+// The script decoder and overlay loader share this initialization-only body.
+// Keep it out of downstream IR rather than cloning it into each loader.
+#[inline(never)]
+pub fn graphics(words: &[u32; 5]) -> melee_types::combat::GraphicsCommand {
+    let word = words[0];
+    // ftAction_80071028 (0x80071028): signed offsets, unsigned ranges.
+    // Retail uses the literal 0.003906f, not exact 1/256; no fusion.
+    const SCALE: f32 = 0.003906;
+    melee_types::combat::GraphicsCommand {
+        bone: ((word >> 18) & 255) as usize,
+        common_bone: word & (1 << 17) != 0,
+        destroy_on_state_change: word & (1 << 16) != 0,
+        item_bone: word & (1 << 15) != 0,
+        id: half(words, 2),
+        parameter: f32::from(half(words, 3)),
+        offset: [
+            SCALE * f32::from(half(words, 4) as i16),
+            SCALE * f32::from(half(words, 5) as i16),
+            SCALE * f32::from(half(words, 6) as i16),
+        ]
+        .into(),
+        range: [
+            SCALE * f32::from(half(words, 7)),
+            SCALE * f32::from(half(words, 8)),
+            SCALE * f32::from(half(words, 9)),
+        ]
+        .into(),
+    }
+}

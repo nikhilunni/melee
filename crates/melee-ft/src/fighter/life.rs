@@ -114,7 +114,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         });
         self.core.status.input_frozen = false;
         self.core.status.ignore_fighter_nudge = true;
-        self.core.commands.hurt_status = super::escape::HurtStatus::Intangible;
+        self.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
         let mut platform = assets.revival_platform.clone();
         // ftCoD4FF4 (800D51C0): separate model-scale product, no FMA.
         let scale = self.core.player.scale
@@ -147,7 +147,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
                         target,
                     });
                     self.core.status.ignore_fighter_nudge = true;
-                    self.core.commands.hurt_status = super::escape::HurtStatus::Intangible;
+                    self.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
                 }
             }
             MotionData::Life(LifeState::PlatformWait { remaining, .. }) => {

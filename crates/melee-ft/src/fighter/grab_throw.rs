@@ -156,7 +156,7 @@ fn prepare_throw_release(
     va: &FighterAssets,
     aa: &FighterAssets,
     map: &mut melee_mp::CollMap,
-) -> super::damage::ReceivedHit {
+) -> melee_coll::damage::ReceivedHit {
     attacker.commands.grab_release = false;
     if victim.input.current.stick != crate::input::Stick::default() {
         unimplemented!("ftCo_8008E5A4: throw DI");
@@ -165,7 +165,7 @@ fn prepare_throw_release(
         .as_ref()
         .expect("throw damage");
     // Throw records use the same damage shape, with unused collision fields zero.
-    let descriptor = super::hitbox::HitboxDescriptor {
+    let descriptor = melee_types::combat::HitboxDescriptor {
         group: 0,
         bone: 0,
         common_bone: false,
@@ -241,7 +241,7 @@ fn prepare_throw_release(
         .set_translate(victim.animation.root, &victim.physics.position);
     victim.combat.grab = None;
     attacker.combat.grab = None;
-    super::damage::ReceivedHit {
+    melee_coll::damage::ReceivedHit {
         facing: -attacker.physics.facing,
         facing_override: if descriptor.angle > 90 && descriptor.angle < 270 {
             Some(attacker.physics.facing)
@@ -249,7 +249,7 @@ fn prepare_throw_release(
             None
         },
         descriptor,
-        height: super::caches::HurtHeight::Middle,
+        height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,
     }
 }

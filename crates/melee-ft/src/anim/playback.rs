@@ -54,7 +54,7 @@ pub struct PartAnimation {
     /// +10/+11, -1 means unselected/inactive.
     pub previous: i8,
     pub current: i8,
-    pub joints: Vec<usize>,
+    pub joints: melee_types::fixed::FixedVec<usize, { crate::desc::bones::MAX_JOINTS as usize }>,
 }
 impl Default for PartAnimation {
     fn default() -> Self {
@@ -65,7 +65,7 @@ impl Default for PartAnimation {
             rate: 0.0,
             previous: -1,
             current: -1,
-            joints: Vec::new(),
+            joints: Default::default(),
         }
     }
 }
@@ -507,7 +507,7 @@ impl FighterAnimation {
             }
             let (weight, inverse) =
                 advance_blend(animation.duration, &mut animation.progress, animation.rate);
-            for &index in &animation.joints {
+            for &index in animation.joints.iter() {
                 let part = &self.parts[index];
                 if part.flags.contains(PartFlags::PART_ANIMATION) {
                     let source = self.blend_tree.get(part.joint);

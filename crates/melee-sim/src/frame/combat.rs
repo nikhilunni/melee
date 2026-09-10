@@ -2,7 +2,8 @@
 //! state and pad samples drive simulation; subsequent retail bytes are assertions.
 use super::*;
 use crate::scenario::Scenario;
-use melee_ft::fighter::{hitbox::CapsulePhase, CharacterCallbacks, Fighter, MotionData};
+use melee_coll::hitbox::CapsulePhase;
+use melee_ft::fighter::{CharacterCallbacks, Fighter, MotionData};
 use std::{fs, path::Path};
 
 fn word(bytes: &[u8], offset: usize) -> u32 {
@@ -154,7 +155,7 @@ fn replay_scratch_until(name: &str, ticks: usize) {
     for (tick, line) in raw.lines().take(ticks).enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
         simulation.tick().unwrap();
-        let runtime = simulation.runtime.borrow();
+        let runtime = &simulation.runtime;
         for slot in 0..2 {
             let bytes: Vec<u8> = row["fighters"][slot]["bytes"]
                 .as_str()

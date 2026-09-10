@@ -485,7 +485,7 @@ impl FighterCore {
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
-        self.commands.hurt_status = super::escape::HurtStatus::Normal;
+        self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         if !matches!(
             state,
