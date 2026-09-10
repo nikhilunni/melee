@@ -19,6 +19,12 @@ pub struct ShieldParameters {
     pub minimum_hold: f32,
     pub drain: f32,
     pub regeneration: f32,
+    pub break_health: f32,
+    pub dizzy_base: f32,
+    pub dizzy_extra: f32,
+    pub dizzy_decay: f32,
+    pub dizzy_mash: f32,
+    pub mash_stick_threshold: f32,
     pub frame_damage: f32,
     pub damage_multiplier: f32,
     pub damage_lightshield: [f32; 2],
@@ -52,6 +58,12 @@ impl ShieldParameters {
             minimum_hold: r.f32(p + 0x268)?,
             drain: r.f32(p + 0x278)?,
             regeneration: r.f32(p + 0x27C)?,
+            break_health: r.f32(p + 0x280)?,
+            dizzy_base: r.f32(p + 0x2F8)?,
+            dizzy_extra: r.f32(p + 0x2FC)?,
+            dizzy_decay: r.f32(p + 0x300)?,
+            dizzy_mash: r.f32(p + 0x304)?,
+            mash_stick_threshold: r.f32(p + 0x308)?,
             frame_damage: r.f32(p + 0x288)?,
             damage_multiplier: r.f32(p + 0x284)?,
             damage_lightshield: [r.f32(p + 0x2dc)?, r.f32(p + 0x2e0)?],
@@ -132,6 +144,8 @@ pub struct ShieldImpact {
 /// Persistent Fighter shield fields and typed collision callbacks.
 #[derive(Clone, Debug, Default)]
 pub struct ShieldState {
+    /// lb_80014258: powershield flash script; advances through hitlag.
+    pub flash: Option<super::smash::ChargeOverlay>,
     pub enabled: bool,
     pub active: bool,
     pub reflecting: bool,
@@ -170,7 +184,7 @@ impl Fighter {
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
         self.character.guard_variant(&mut self.core.commands);
         self.change_motion_state(S::GuardSetOff.into(), assets)?;
-        eprintln!("S6 impact graphics {:?}", self.core.commands.graphics);
+        self.core.advance_shield_flash(assets);
         self.core.apply_shield_impact(impact, assets)
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
@@ -278,6 +292,12 @@ impl Fighter {
             return Ok(());
         }
         self.drain_shield(assets);
+        if self.core.status.shield_health < 0.0 {
+            self.core.status.shield_health = 0.0;
+            self.enter_shield_break(assets)?;
+            self.core.shield_sound(129);
+            return Ok(());
+        }
         if state != S::Guard && self.guard().elapsed >= assets.motions[&37].animation.frames {
             self.enter_guard_hold(assets)
         } else {
@@ -389,9 +409,18 @@ impl Fighter {
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), fighter.c:2816-2843.
     pub(super) fn shield_proc(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.core.update_shield_health(assets);
+        let exhausted = self.core.update_shield_health(assets);
         if let Some(impact) = self.core.shield.impact.take() {
-            self.take_shield_hit(impact, assets)?;
+            if exhausted {
+                self.enter_shield_break(assets)?;
+                // efAsync_Spawn at link 14 dispatches immediately.
+                self.core.flush_effects_on_motion_change();
+                self.core.shield_sound(130);
+                self.core.combat.hitlag_remaining = assets.damage.hitlag(impact.damage);
+                self.core.status.interaction = super::Interaction::Hitlag;
+            } else {
+                self.take_shield_hit(impact, assets)?;
+            }
         }
         self.core.shield.damage_taken = 0;
         Ok(())
@@ -501,7 +530,7 @@ impl FighterCore {
                 p.drain_range[0],
             );
         if self.status.shield_health < 0.0 {
-            unimplemented!("ftCo_Guard.c:428-436: shield exhaustion -> ShieldBreakFly");
+            return; // Guard Anim owns the motion transition.
         }
         if self.guard().minimum_hold > 0.0 {
             self.guard().minimum_hold = (self.guard().minimum_hold - 1.0).max(0.0);
@@ -584,7 +613,7 @@ impl FighterCore {
 
 impl FighterCore {
     /// Fighter_ProcessHit (fighter.c:2816-2843), before the shield-response entry.
-    fn update_shield_health(&mut self, assets: &FighterAssets) {
+    fn update_shield_health(&mut self, assets: &FighterAssets) -> bool {
         if self.shield.enabled {
             let p = &assets.shield;
             // Fighter_ProcessHit, retail 8006D2AC / 8006D2CC: fmadds.
@@ -599,12 +628,14 @@ impl FighterCore {
                 p.frame_damage,
             );
             if self.status.shield_health < 0.0 {
-                unimplemented!("fighter.c:2837-2843: shield break");
+                self.status.shield_health = p.break_health;
+                return true;
             }
         } else if self.status.shield_health < assets.shield_health {
             self.status.shield_health =
                 (self.status.shield_health + assets.shield.regeneration).min(assets.shield_health);
         }
+        false
     }
     /// ftCo_80092F2C (80092F2C): shield stun and push after motion entry.
     fn apply_shield_impact(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
@@ -648,5 +679,14 @@ impl FighterCore {
             super::Interaction::Shield
         };
         Ok(())
+    }
+}
+
+impl FighterCore {
+    /// ftCo_800C0408 -> lb_80014258: color 118 includes an effect command.
+    pub(super) fn advance_shield_flash(&mut self, assets: &FighterAssets) {
+        if let Some(flash) = &mut self.shield.flash {
+            flash.step(&assets.charge_overlays[&118], &mut self.commands.graphics);
+        }
     }
 }

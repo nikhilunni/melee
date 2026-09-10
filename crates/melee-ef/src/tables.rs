@@ -16,7 +16,14 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 14] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 15] = [
+    // S6: color-overlay landing dust, same efAsync row as the landing opcode.
+    ModelSpawn {
+        request: 0x404,
+        source: ModelSource::Graphics,
+        model: 0x18,
+        attached: false,
+    },
     // S3: Counter script dust, efasync.c:221-227.
     ModelSpawn {
         request: 0x3F9,
@@ -118,7 +125,13 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 9] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 10] = [
+    // S6: dizzy animation sparkle, efasync.c:117-119.
+    DustSpawn {
+        request: 0x3E9,
+        particle: 0xC,
+        directional: false,
+    },
     // S3: efasync.c:174-185, Dolphin Slash launch dust.
     DustSpawn {
         request: 0x3F1,

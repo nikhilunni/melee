@@ -117,7 +117,7 @@ pub struct ChargeOverlay {
     sound_played: bool,
 }
 impl ChargeOverlay {
-    fn step(
+    pub(super) fn step(
         &mut self,
         script: &[OverlayCommand],
         graphics: &mut melee_types::fixed::FixedVec<

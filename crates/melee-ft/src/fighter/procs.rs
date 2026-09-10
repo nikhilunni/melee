@@ -16,11 +16,16 @@ impl Fighter {
         assets: &FighterAssets,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
-        if !self.core.begin_animation_phase() {
-            return Ok(None);
+        let choice = if self.core.begin_animation_phase() {
+            self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
+            (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })?
+        } else {
+            None
+        };
+        if !self.core.status.disabled {
+            self.core.advance_shield_flash(assets);
         }
-        self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
-        (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })
+        Ok(choice)
     }
     /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
     pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {

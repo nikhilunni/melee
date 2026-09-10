@@ -29,6 +29,7 @@ mod pass;
 mod procs;
 pub mod run;
 pub mod shield;
+mod shield_break;
 pub mod smash;
 mod snapshot;
 mod spawn;
@@ -426,6 +427,8 @@ pub struct Status {
     pub shield_health: f32,
     /// x2064_ledgeCooldown (+2064).
     pub ledge_cooldown: i32,
+    /// x2222_b3: count a top exit without upward knockback.
+    pub unconditional_top_exit: bool,
     /// x2228_b2: suppress grabs while another state owns ledge detection.
     pub ledge_grab_disabled: bool,
     /// x221D_b7: hanging/ledge-option state, cleared on motion entry.
@@ -453,6 +456,7 @@ impl Status {
             time_since_smash: -1.0,
             shield_health,
             ledge_cooldown: 0,
+            unconditional_top_exit: false,
             ledge_grab_disabled: false,
             on_ledge: false,
             grab_exclusions: ledge::GrabExclusions::NONE,
@@ -628,6 +632,7 @@ pub enum MotionData {
     },
     Damage(damage::DamageState),
     Guard(shield::GuardState),
+    Dizzy(shield_break::DizzyState),
     Escape(escape::EscapeState),
     EscapeAir(air_dodge::AirDodgeState),
     Cliff(ledge::CliffState),

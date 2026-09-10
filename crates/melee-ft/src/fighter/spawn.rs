@@ -508,6 +508,7 @@ impl FighterCore {
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
         self.shield.clear_collision();
+        self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
         self.combat.combo.grace = assets.combo.grace_frames;

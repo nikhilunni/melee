@@ -1396,5 +1396,50 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // S6: shield-break and dizzy rows, ftData_MotionStateList[205..211].
+    rows[S::ShieldBreakFly as usize] = MotionRow {
+        action: ActionId(205),
+        id: S::ShieldBreakFly,
+        animation: 286,
+        anim: crate::fighter::shield_break::fly_animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::shield_break::fly_physics,
+        collision: crate::fighter::shield_break::fly_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::ShieldBreakDownU as usize] = MotionRow {
+        action: ActionId(207),
+        id: S::ShieldBreakDownU,
+        animation: 288,
+        anim: crate::fighter::shield_break::down_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::ShieldBreakStandU as usize] = MotionRow {
+        action: ActionId(209),
+        id: S::ShieldBreakStandU,
+        animation: 290,
+        anim: crate::fighter::shield_break::stand_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::Furafura as usize] = MotionRow {
+        action: ActionId(211),
+        id: S::Furafura,
+        animation: 205,
+        anim: crate::fighter::shield_break::dizzy_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows
 }

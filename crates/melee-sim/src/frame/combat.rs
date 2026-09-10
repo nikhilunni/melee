@@ -194,18 +194,64 @@ fn powershield_ftilt_matches_retail_scratch() {
     replay_scratch("powershield_ftilt_fd_marth");
 }
 
+/// shieldbreak_fd_marth.tick.raw.jsonl, ticks 220/257/283/313:
+/// depletion resets health to PlCo+280, launches with intangibility, then
+/// retains it through Down/Stand and clears it at dizzy entry.
 #[test]
-fn s6_particle_diagnostic() {
+fn shield_exhaustion_and_dizzy_match_retail_milestones() {
+    use melee_ft::fighter::MotionData;
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let scenario = Scenario::load(&root.join("harness/scenarios/powershield_ftilt_fd_marth.toml")).unwrap();
-    let mut sim = Simulation::with_inputs(InitialState::from_savestate_traces(&scenario).unwrap(), crate::trace::pad_script(&scenario).unwrap());
-    let ledger=fs::read_to_string(scenario.trace_path("ledger.raw.jsonl")).unwrap();
-    for (tick,line) in ledger.lines().take(126).enumerate() {
+    let scenario =
+        Scenario::load(&root.join("harness/scenarios/shieldbreak_fd_marth.toml")).unwrap();
+    let raw_path = scenario.trace_path("tick.raw.jsonl");
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([raw_path.clone()]),
+    ) {
+        return;
+    }
+    let mut sim = Simulation::with_inputs(
+        InitialState::from_savestate_traces(&scenario).unwrap(),
+        crate::trace::pad_script(&scenario).unwrap(),
+    );
+    let raw = fs::read_to_string(raw_path).unwrap();
+    let milestones = [(220, 205), (257, 207), (283, 209), (313, 211), (519, 211)];
+    for (tick, line) in raw.lines().enumerate() {
         sim.tick().unwrap();
-        if tick == 125 {
-            let v: serde_json::Value=serde_json::from_str(line).unwrap();
-            let sites: Vec<u32>=v["rng_draws"].as_array().unwrap().iter().map(|v|v["lr"].as_u64().unwrap() as u32-4).filter(|s|(0x80398f8c..0x8039f6cc).contains(s)).collect();
-            eprintln!("expected {sites:X?} actual {:X?}",sim.particle_rng_sites());
+        if let Some(&(_, state)) = milestones.iter().find(|&&(t, _)| t == tick) {
+            let f = &sim.runtime.state.fighters[1];
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            let bytes: Vec<u8> = row["fighters"][1]["bytes"]
+                .as_str()
+                .unwrap()
+                .as_bytes()
+                .chunks_exact(2)
+                .map(|v| u8::from_str_radix(std::str::from_utf8(v).unwrap(), 16).unwrap())
+                .collect();
+            assert_eq!(f.motion_state.action.0, state, "tick {tick}");
+            compare(f, &bytes);
+            assert_eq!(
+                f.commands.hurt_status as u32,
+                word(&bytes, 0x1988),
+                "tick {tick} intangibility"
+            );
+            assert!(!f.shield.enabled);
+            assert!(
+                !f.status.unconditional_top_exit,
+                "Fox uses the ordinary top-exit test"
+            );
+            if tick == 220 {
+                assert_eq!(f.status.shield_health.to_bits(), 30.0_f32.to_bits());
+            }
+            if let MotionData::Dizzy(dizzy) = &f.state_data {
+                assert_eq!(
+                    dizzy.remaining.to_bits(),
+                    word(&bytes, 0x1a4c),
+                    "tick {tick} dizzy timer"
+                );
+            }
         }
     }
 }

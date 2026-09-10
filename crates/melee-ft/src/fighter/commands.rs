@@ -39,6 +39,10 @@ pub enum SoundChannel {
     FighterVoice,
     /// ft_80088510: Fighter +2150, AX channel 0x42 + player * 2.
     Effect,
+    /// ft_800885A8: Fighter +2154, AX channel 0x4E + player * 2.
+    StatusEffect,
+    /// ft_80088328: stop the two voice channels, then use Fighter +2148.
+    OverrideVoice,
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
@@ -325,6 +329,8 @@ impl CommandState {
                             1 => SoundChannel::Action,
                             2 => SoundChannel::FighterVoice,
                             3 => SoundChannel::Effect,
+                            4 => SoundChannel::StatusEffect,
+                            6 => SoundChannel::OverrideVoice,
                             _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
                         };
                         self.footstep_sounds.push(FootstepSound {

@@ -230,3 +230,13 @@ fn shieldtilt_ftilt_fd_marth_allocation_budget() {
 fn lightshield_ftilt_fd_marth_allocation_budget() {
     allocation_budget("lightshield_ftilt_fd_marth", 0);
 }
+
+#[test]
+fn powershield_ftilt_fd_marth_allocation_budget() {
+    allocation_budget("powershield_ftilt_fd_marth", 0);
+}
+
+#[test]
+fn shieldbreak_fd_marth_allocation_budget() {
+    allocation_budget("shieldbreak_fd_marth", 0);
+}

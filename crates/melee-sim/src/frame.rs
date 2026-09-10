@@ -929,6 +929,14 @@ fn dispatch_fighter(
     if proc.s_link() >= 9 && !f.commands.graphics.is_empty() {
         // efAsync_Spawn (800679B0): link >=9 dispatches each command now,
         // before the next graphics command draws its three random offsets.
+        effects.flush::<melee_ft::fighter::RetailTrig>(
+            melee_ef::EffectTiming::BeforeGraphics,
+            player,
+            &mut f.core,
+            &scene_assets.common_particle_bank,
+            particles,
+            rng,
+        )?;
         let pending = std::mem::take(&mut f.effects);
         for command in std::mem::take(&mut f.commands.graphics) {
             f.commands.graphics.push(command);

@@ -94,6 +94,14 @@ impl super::FighterCore {
                 });
                 continue;
             }
+            if id == 0x429 {
+                // ftCo_09F7.c:142-150: dizzy stars use character effect scale.
+                self.effects.push(EffectRequest::DizzyStars {
+                    bone,
+                    scale: self.attributes.size.unknown_168,
+                });
+                continue;
+            }
             if matches!(id, 0x402 | 0x403) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
                 self.effects.push(EffectRequest::Attached { id, bone });
@@ -103,7 +111,9 @@ impl super::FighterCore {
                 || id / 1000 == 30
                 || matches!(
                     id,
-                    0x3F1
+                    0x404
+                        | 0x3E9
+                        | 0x3F1
                         | 0x3F2
                         | 0x3FA
                         | 0x3FB
@@ -112,6 +122,7 @@ impl super::FighterCore {
                         | 0x3F9
                         | 0x406
                         | 0x514
+                        | 0x515
                         | 0x3F3
                         | 0x3F7
                         | 0x407

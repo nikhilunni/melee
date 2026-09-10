@@ -1,89 +1,104 @@
-# S6: shield verification and cross-lane boundaries
+# S6: shield stun, powershield, shield break and dizzy
 
-2026-09-10, `lane/battlefield`. **Acceptance incomplete.** Three complete scenes
-were already exact on entry. This change adds their canonical/particle gates,
-raw combat-scratch regressions, two zero-allocation gates, and exact prefixes
-for the two blocked scenes. No production gameplay code was changed.
+2026-09-10, `lane/battlefield`, following the S3/S4/S5/S9/S10 integration.
+All five requested scene CLI gates now pass. Performance passes; full workspace
+and merge acceptance remain blocked by the lane's empty decomp directory.
+No scenario, recording, game data, decomp or expected value was changed. No
+commit or Git write command was run by this session.
 
-The task explicitly assigns `damage.rs` to S5 and Marth specials to S3, and
-requires stopping when either is needed. Those boundaries are retained. All
-five full acceptance gates are added and enabled; two fail visibly. No existing
-test, expected word, ignore, allocation ceiling or comparator was changed.
-There are no new hooks, motion rows, generic fighter instantiations or tick-path
-allocations. No Git write command, commit or protected-path write was performed.
-The decomp symlink type-change predates this task.
+## Scene evidence and first-divergence history
 
-## Scene evidence
+Ticks are zero based. Marth's approach is Wait 14 → Dash 20@31 → Run 21@46 →
+RunBrake 23@87. The four tilt scenes add WalkSlow 15@113 and AttackS3S 53@119.
 
-Tick ordinals below come from the current local recordings. Startup movement is
-omitted from the table: Marth starts Wait 14, then Dash 20@31, Run 21@46 and
-RunBrake 23@87. In the four tilt scenes it walks (15@113), attacks (53@119), and
-returns to Wait (14@159). Every prefix compares both fighters and RNG, not only
-Fox. The additional prefix test also checks ordered particle callsites.
-
-| Scene | Marth attack states | Fox state sequence | First-divergence history | Final scope |
+| Scene | Marth attack states | Fox shield/reaction states | First-divergence history | Final release CLI |
 |---|---|---|---|---|
-| `shieldstun_ftilt_fd_marth` | 53@119 → 14@159 | 14 → 182@111 → 179@119 → 181@125 → 179@137 → 180@171 → 14@186 | Already exact; no gameplay changes | 300 ticks exact |
-| `shieldtilt_ftilt_fd_marth` | 53@119 → 14@159 | 14 → 182@111 → 179@119 → 181@125 → 179@137 → 180@171 → 14@186 | Already exact; no gameplay changes | 300 ticks exact |
-| `lightshield_ftilt_fd_marth` | 53@119 → 14@159 | 14 → 178@111 → 179@119 → 181@125 → 179@138 → 180@171 → 14@186 | Already exact; no gameplay changes | 300 ticks exact |
-| `powershield_ftilt_fd_marth` | 53@119 → 14@159 | 14 → 182@124 → 181@125 → 179@137 → 180@171 → 14@186 | Tick 125: `damage.rs:244`, `ftColl_80076CBC: powershield contact` | 125 exact ticks, 0..124; full gate fails |
-| `shieldbreak_fd_marth` | 341@119 → 342@130 → 343@216 → 14@256 | 14 → 182@111 → 179@119 → 205@220 → 207@257 → 209@283 → 211@313 | Tick 119: `p0.cur_anim_frame`, expected 1 (`0x3F800000`), actual 6 (`0x40C00000`) | 119 exact ticks, 0..118; full gate fails |
+| `shieldstun_ftilt_fd_marth` | 53@119 → 14@159 | 182@111 → 179@119 → 181@125 → 179@137 → 180@171 → 14@186 | Exact before and after the port | `300 ticks, 62 keys, 0 divergences` |
+| `shieldtilt_ftilt_fd_marth` | 53@119 → 14@159 | 182@111 → 179@119 → 181@125 → 179@137 → 180@171 → 14@186 | Exact before and after the port | `300 ticks, 62 keys, 0 divergences` |
+| `lightshield_ftilt_fd_marth` | 53@119 → 14@159 | 178@111 → 179@119 → 181@125 → 179@138 → 180@171 → 14@186 | Exact before and after the port | `300 ticks, 62 keys, 0 divergences` |
+| `powershield_ftilt_fd_marth` | 53@119 → 14@159 | 182@124 → 181@125 → 179@137 → 180@171 → 14@186 | Original contact stop at 125 → all fighter scratch exact, RNG `C40288F8` vs `4EEE4E83` → color 118 graphics decoded, RNG `3FC52AE7` → old shield destruction moved before new graphics → exact | `300 ticks, 62 keys, 0 divergences` |
+| `shieldbreak_fd_marth` | 341@119 → 342@130 → 343@216 → 14@256 | 182@111 → 179@119 → 205@220 → 207@257 → 209@283 → 211@313 | Original Marth divergence at 119; resolved by S3 → exhaustion stop at 220 → break effect timing (`AE9BF8A7` vs `3802DEC5`) → script effects 0x3E9/0x515/0x429 and sound behavior 6 → exact | `520 ticks, 62 keys, 0 divergences` |
 
-182 is GuardReflect, 178 GuardOn, 179 Guard, 181 GuardSetOff and 180 GuardOff.
-The break recording stays Furafura through its last tick, 519. It does not
-exercise ShieldBreakFall 206. These later break states are recording evidence,
-not a claim that the simulator reached them.
+182 is GuardReflect, 178 GuardOn, 179 Guard, 180 GuardOff and 181 GuardSetOff.
+Fox remains dizzy through tick 519. ShieldBreakFall 206 is unrecorded and
+explicitly unimplemented. The 520-tick M5 gate is enabled; its former S3 ignore
+has been removed. The additional 118-tick prefix test is retained.
 
-The requested release CLI commands report **62 keys**, because the existing
-CLI calls `gate_items` whenever item records exist, including empty item arrays.
-Its successful line is `300 ticks, 62 keys, 0 divergences`. The M5 helper calls
-the existing 49-key fighter/RNG gate and additionally verifies particle order.
-The comparator was not changed to manufacture the requested 49-key CLI text.
+The existing CLI includes 13 item keys, even for an empty item list, and prints
+62 keys. The M5 helper verifies the requested 49 fighter/RNG keys and ordered
+particle RNG callsites independently. CLI output was not changed to claim 49.
 
-## Exact work needed across the lane boundaries
+## Powershield contact and effect order
 
-At tick 125, powershield reaches `record_shield_hit` in S5-owned
-`crates/melee-ft/src/fighter/damage.rs`. Retail `ftcoll.c:450-508`
-(`ftColl_80076CBC`) records attacker hitlag/pushback and defender impact even
-during powershield, but omits accumulated shield damage and ordinary spark
-1052. Its powershield branch clears minimum hold, grants the GuardOff attack
-interrupt window (`ftCo_80094138`), requests effect 27, and plays sound 104.
-This branch must be ported by the owner or reassigned before this scene can
-advance. Removing the stop alone would produce the wrong health and effects.
+`ftColl_80076CBC` retains attacker hitlag/pushback and defender impact. Its
+physical powershield branch omits accumulated shield damage and spark 1052,
+clears minimum hold and installs PlCo +0x2B8 (4) as the GuardOff attack-interrupt
+window (`ftCo_80094138`). It requests effect 27, color animation 118 and sound
+104. `take_shield_hit` retains shieldstun while omitting effect 1049 and the
+ordinary 0.6 pushback multiplier. At tick 125 the raw recording and port agree
+on velocity **1.2100000381469727** and shield health **59.720001220703125**.
 
-After that dependency, S6 must finish the separate existing stop in
-`shield.rs::take_shield_hit`: powershield keeps shieldstun, omits effect 1049,
-and omits the ordinary 0.6 pushback multiplier (Guard.c:659-717).
-The recorded tick-125 Fox ground velocity is `1.2100000381469727`, compared
-with `0.7260000705718994` for ordinary shielding. Its health is
-`59.720001220703125`: ordinary frame drain happened, contact damage did not.
-Both have animation rate `3.3223140239715576` and six hitlag frames.
+Color animation 118 is not solely renderer output: its PlCo program contains
+effect 0x404. `ftCo_800C0408`/`lb_80014258` invoke the ordinary graphics command,
+which consumes three offset draws even for zero ranges. The existing decoded
+overlay interpreter now executes this program, including during hitlag; no
+recording-derived random value or schedule is inserted into production code.
 
-Projectile powershield is a separate path: Guard.c:859-887 builds the reflect
-volume and responds via `ftCo_80093790`; `fighter.c:2941-2947` routes reflect
-overflow to shield break or invokes the callback. The current reflect response
-and item shield response remain explicit port gaps. None of these five scenes
-contains a projectile, so they cannot certify projectile reflection.
-The loaded descriptor uses radius 0.75, damage multiplier 0.5, speed multiplier
-0.7 and current shield health as maximum damage. The reflect timer starts at 1
-and the physical powershield timer at 3; Guard.c:980-1002 expires each only
-after its decremented value becomes negative.
+Motion entry destroys the old shield before executing the new overlay's
+synchronous dust. The effect queue's `BeforeGraphics` boundary drains the
+already sealed outgoing requests through `DestroyOwned`, preserving the new
+dust. Previously the delayed destruction also removed the new dust, losing
+its particle draws. Powershield effect 27 itself uses the existing positional
+particle generator path.
 
-Shield Breaker entry is missing from the checked-out Marth implementation.
-The first divergence at tick 119 is Marth's animation, before Fox's break at
-220. Under the task's explicit fallback, the enabled prefix test stops before
-119; it does not drive Fox using later oracle state, fabricate a Marth special,
-or claim coverage of Fox's break/down/stand/dizzy path. S3 must supply the
-341 → 342 → 343 sequence before that full-scene port can be validated.
+Projectile powershield reflection remains the existing explicit unsupported
+branch; none of the five recordings exercises a reflected projectile.
 
-## Shield formulas and analog mapping
+## Exhaustion, break states and typed scratch
 
-Sources below are the current pinned decomp under
-`third_party/melee-decomp/src/melee/ft/`. Numbers are decoded from the local
-PlCo `ftLoadCommonData` slot 0; decimal constants denote their stored `f32`
-values. These explanatory formulas preserve the implementation's rounding
-boundaries; `fma(a,c,b)` denotes the Gekko fused operation in that order.
-Use the loaded parameters, not these decimal summaries, in production code.
+Damage exhaustion resets health to PlCo +0x280 (30), enters 205 and applies
+hitlag from the shield impact (`fighter.c:2835-2841,2910-2920` in the available
+reference; the response is `2941-2947` in the task's source revision).
+Continuous drain exhaustion (`Guard.c:428-436`) clamps health to
+zero, enters the same launch and requests its distinct sound 129. Break entry
+uses the character's initial vertical velocity, performs the retail immediate
+animation step, emits effect 1051 and sets intangible hurt status. Down and
+stand retain that status; dizzy entry clears it.
+
+| Recording tick | State | Shield health | Vertical velocity | Hurt status | Dizzy timer |
+|---|---|---|---|---|---|
+| 220 | ShieldBreakFly 205 | 30 | 3.299999952316284 | 2 | — |
+| 257 | ShieldBreakDownU 207 | 32.589988708496094 | -2.799999952316284 | 2 | — |
+| 283 | ShieldBreakStandU 209 | 34.40998077392578 | 0 | 2 | — |
+| 313 | Furafura 211 | 30.06999969482422 | 0 | 0 | 490 |
+| 519 | Furafura 211 | 30.06999969482422 | 0 | 0 | 284 |
+
+The unit test replays real inputs and compares these milestone states plus raw
+combat scratch, health, hurt status and dizzy timer against the recording.
+Subsequent trace bytes are assertions only. The health at dizzy frame end is
+30 plus one regeneration step because Anim writes 30 before ProcessHit.
+
+`DizzyState` owns the remaining timer and two signed stick directions. Returning
+to neutral retains the last direction; crossing to a new signed direction
+counts one mash, even if both axes change. Button and stick mashes can each
+subtract 3 in one tick (`ftCommon_GrabMash`). State callbacks live in the new
+`shield_break.rs`; four rows are appended to the one common table.
+Animations 286/288/290/205 are prepared during initialization.
+
+New descriptor data: `CommonBehavior::shield_break_top_exit` supplies retail's
+Purin difference. `Status::unconditional_top_exit` represents x2222_b3, is
+cleared on motion change (`fighter.c:1075`), and replaces S9's ShieldBreakFly
+stop in the top-exit test. No new character callback function or generic
+fighter shell was introduced. Fox's false flag is checked by the unit test;
+no new Jigglypuff shield-break recording is claimed.
+
+The break burst uses generator 0x31 with the shield joint's local scale and
+world translation. Dizzy stars use generator 0xCE attached through an AppSRT,
+with character attribute +0x168. Script effect 0x3E9 maps to generator 0xC;
+0x515 records quake 4. Sound behaviors 4 and 6 retain their distinct channels
+as output requests. All new queues and state use fixed storage.
+
+## Retail formulas
 
 **Trigger and size.** `fighter.c:1832-1894` takes the maximum normalized
 shoulder trigger, applies the 0.3 deadzone, and forces it to 1 for digital L/R.
@@ -130,7 +145,7 @@ damage_lightshield = [0.1, 0.3]; damage_multiplier = 1; frame_damage = 0
 Without the shield-enabled flag, health below 60 regenerates by 0.07, capped at
 60 (`fighter.c:2817-2826`). Drain exhaustion clamps health to zero and enters
 ShieldBreakFly; damage exhaustion resets it to PlCo +0x280 (30) and marks the
-break response. Those exhaustion branches are not implemented in this task.
+break response. Both exhaustion branches are implemented.
 
 **Stun and pushback.** Guard.c:650-717 uses integer hit damage `d`:
 
@@ -165,198 +180,130 @@ canonical and combat-scratch tests do not constitute a new rendered-bone oracle.
 
 **Break and dizzy follow-up.** `ftCo_ShieldBreakFly.c:22-37` enters airborne
 205, sets vertical velocity from character attributes, requests effect 1051
-and intangible hurt status. Jigglypuff's branch must use a character hook.
-Fly completion enters 206; landing selects 207/208 from the existing HipN
-orientation test (`ftCo_ShieldBreakDown.c:19-35`). Down completion enters
-209/210, then 211 (`ftCo_ShieldBreakStand.c:15-34`). Furafura sets shield health
+and intangible hurt status. The descriptor supplies Jigglypuff's top-exit flag;
+common gameplay has no kind check. Fly completion remains an explicit
+unimplemented 206; landing selects orientation from HipN
+(`ftCo_ShieldBreakDown.c:19-35`). Face-up landing enters 207, then
+209, then 211 (`ftCo_ShieldBreakStand.c:15-34`). Furafura sets shield health
 to 30 and initializes `max(400 - percent, 0) + 90` timer units. Every animation
 tick subtracts 1 plus the input mash contribution at scale 3; expiry returns to
-Wait (`ftCo_Furafura.c:16-47`). None of this post-blocker behavior is claimed as
-implemented or validated by this change.
+Wait (`ftCo_Furafura.c:16-47`). The recording and new exhaustion test cover
+205, 207, 209 and 211. The unrecorded face-down break entries remain explicit
+stops.
 
-## Assembly and architecture audit
+## Assembly audit
 
-Read-only `python3 harness/asm.py <symbol> --fused` checks confirmed:
-
-- Size: `ftCo_80091D58`, 80091DAC/80091DB4 `fmadds`.
-- Drain: `ftCo_800925A4`, 80092624 `fmadds`.
-- Health/attacker push: `Fighter_ProcessHit_8006D1EC`,
-  8006D2AC/8006D2CC/8006D8D8 `fmadds`.
-- Stun/size: `ftCo_80092F2C`, 80093038/8009305C and 80093164/8009316C.
-- Tilt: `ftCo_80091BC4`, 80091C78/80091D3C `fmadds`; the square-root Newton
-  steps retain the double `fnmsub` operations at 80091CE0/CF0/D00.
-- Trigger initialization and `ftColl_80076CBC` have no fused instructions.
-
-The existing 178..182 rows remain in the single concrete `state::COMMON`.
-They dispatch through installed phase callbacks and existing shield hooks in
-the static `CharacterTable`. No alternate callback dispatch or character-kind
-branch was added. Hitboxes remain supplied by melee-cmd/melee-coll.
-
-## Validation
-
-The complete final commands used `--no-fail-fast` on both workspace profiles
-so the two known S6 failures did not hide later suites or doctests. Both finish
-with **1,065 passed, 2 failed, 4 pre-existing ignored**. Only the new full
-powershield and shield-break gates fail. All pre-existing suites pass unchanged.
-M5 is **59 passed / 2 failed / 1 pre-existing ignored** in both profiles.
-The four existing ignores are two raw throw probes, the S3-blocked Dolphin
-Slash scene, and the schema doctest. No new ignore was added.
-
-| Command | Result |
-|---|---|
-| Each requested release scene CLI | Three exact 300-tick scenes; powershield stops at 125; break diverges at 119 |
-| `cargo gate --no-fail-fast` | 1,065 passed / 2 known failures / 4 existing ignores |
-| `cargo gate --release --no-fail-fast` | Same results |
-| `cargo test -p melee-sim --test m4_gate` | 261 passed |
-| Allocation suite, both workspace profiles | 16 passed; both S6 scenes zero allocations |
-| Three new raw-scratch tests, both profiles | All passed |
-| `cargo clippy --workspace --all-targets -- -D warnings` | PASS |
-| `tools/check-release-math.sh` | PASS |
-| `cargo fmt --all -- --check` | PASS, no output |
-| `tools/merge-check.sh lane/battlefield` | BLOCKED at ancestry prerequisite |
-
-Exact final M5 lines, debug then release:
-
-```text
-test result: FAILED. 59 passed; 2 failed; 1 ignored; 0 measured; 0 filtered out; finished in 34.86s
-test result: FAILED. 59 passed; 2 failed; 1 ignored; 0 measured; 0 filtered out; finished in 5.40s
-```
-
-Exact standalone M4, clippy and math final lines:
-
-```text
-test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 105.87s
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 33s
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-```
-
-Both new allocation checks, in both profiles:
-
-```text
-lightshield_ftilt_fd_marth: 299 measured ticks; simulate-only 0 (0.000000/tick), peak 0, allocating ticks 0; with snapshot 37375 (125.000000/tick), peak 125; snapshot overhead 37375 (125.000000/tick)
-shieldtilt_ftilt_fd_marth: 299 measured ticks; simulate-only 0 (0.000000/tick), peak 0, allocating ticks 0; with snapshot 37375 (125.000000/tick), peak 125; snapshot overhead 37375 (125.000000/tick)
-```
-
-Exact release prefix lines:
-
-```text
-powershield_ftilt_fd_marth: 125 ticks, 49 keys, 0 divergences; cross-lane boundary prefix only
-shieldbreak_fd_marth: 119 ticks, 49 keys, 0 divergences; cross-lane boundary prefix only
-```
-
-The initial merge-check also emitted a sandbox fsmonitor IPC diagnostic.
-Repeating with the process-only settings `GIT_CONFIG_COUNT=1`,
-`GIT_CONFIG_KEY_0=core.fsmonitor`, `GIT_CONFIG_VALUE_0=false` removed that
-unrelated diagnostic and retained the same exit 1:
-
-```text
-[PASS] data: no tracked game data or protected lane changes
-[PASS] data: oracle traces present
-[FAIL] rebase: main is not an ancestor of lane/battlefield (or ref lookup failed)
-```
-
-No rebase or ancestry bypass was attempted. Build/test steps inside merge-check
-did not run; the independent validation above is not a merged-tree pass.
-The first `cargo gate` was started before additions and discovered the new
-S6 tests while still running; it is not reported as a pristine baseline.
-The final complete profile runs above were started after all Rust edits.
-
-Logs: `/tmp/s6-validation.json`, `/tmp/s6-final-{debug,release,m4,clippy,math,fmt}.log`,
-`/tmp/s6-focused-release.log` and `/tmp/s6-final-merge-no-fsmonitor.log`.
-The first isolated perf run produced fresh timing/census evidence but exited 1:
-`perf-gate: invalid or missing evidence: Extra data: line 2 column 1 (char 567)`.
-Inspection found two missing `-->` delimiters in pre-existing `docs/PERF.md`
-history comments (after original lines 4784 and 7070). Two earlier REGRESSION
-records swallowed following Markdown and the next JSON block. Adding only the
-two closing delimiters made all 29 history records parse. Every existing JSON
-evidence line was verified byte-identical; no result, cap, tolerance or passing
-baseline was altered. This was a report-formatting defect, not a retail-test
-contradiction. The first run and its failure remain in
-`/tmp/s6-final-perf.log`; its evidence directory is
-`target/perf/20260910T103805Z-6246`.
-
-The final isolated command was:
-
-```sh
-CARGO_HOME=/private/tmp/p1-cargo-home CARGO_NET_OFFLINE=true tools/perf-gate.sh
-```
-
-It exits **1 (REGRESSION)**. Duplication and size pass; load and tick timing
-exceed both the previous PASS tolerance and fixed P1 caps. Exact final census:
-
-```text
-Duplicate-definition census (tolerance +0; label/definition totals informational):
-  ft-captain: 1 duplicate labels; 43 labels; 66 definitions
-  ft-falco: 1 duplicate labels; 44 labels; 67 definitions
-  ft-fox: 1 duplicate labels; 44 labels; 67 definitions
-  ft-fox-family: 0 duplicate labels; 0 labels; 0 definitions
-  ft-mario: 0 duplicate labels; 0 labels; 0 definitions
-  ft-mars: 1 duplicate labels; 43 labels; 66 definitions
-  ft-peach: 1 duplicate labels; 44 labels; 67 definitions
-  ft-purin: 1 duplicate labels; 43 labels; 66 definitions
-  ft-yoshi: 1 duplicate labels; 45 labels; 68 definitions
-  melee-ft: 20 duplicate labels; 817 labels; 852 definitions
-  melee-sim: 7 duplicate labels; 101 labels; 128 definitions
-  across crates: 99 duplicate labels
-[REGRESSION] perf-gate: 3518384 stripped bytes, 3211264 text bytes; load 722.268 ms; ticks_600 133.791 ms
-```
-
-Exact timing failures:
-
-```text
-load_ns: 722267783.500 > 185636190.768 (previous 168760173.425, +10%)
-ticks_600_ns: 133790725.300 > 26042917.120 (previous 23675379.200, +10%)
-P1 time ceiling load_ns: 722267783.500 > 182600000
-P1 time ceiling ticks_600_ns: 133790725.300 > 25947000
-```
-
-Both isolated runs built the **same byte-identical stripped executable**:
-3,518,384 bytes, SHA-256
-`aa6ddd8c2d04a2dc7ef44ad23a42377b6e4d7f0a6fbe428f247725ab083c6e89`.
-The first run's Criterion JSON reports load **167.650 ms**, 600 ticks
-**23.803 ms**; the second reports **722.268 ms** and **133.791 ms**. This rules
-out a changed executable between the two measurements. It does not establish
-which host resource caused the slowdown or turn the final failure into a pass.
-No measurements were discarded and no threshold was loosened. A stable-host
-performance rerun remains necessary for full acceptance.
-
-Final evidence: `target/perf/20260910T104031Z-10332`,
-`/tmp/s6-final-perf-repaired.log`, and the appended REGRESSION in `docs/PERF.md`.
-Only the two delimiter additions alter historical report text. The new census
-retains the C15 duplicate counts: **20 / 7 / 1 per compiling character / 99
-across crates**; total definitions are informational (**1,447**).
-
-The initial three successful release CLI commands each printed exactly:
-
-```text
-300 ticks, 62 keys, 0 divergences
-```
-
-Their matching M5 helper lines in `/tmp/s6-focused-release.log` each print:
-
-```text
-300 ticks, 49 keys, 0 divergences
-```
-
-The final full workspace logs end with the same nonzero-target diagnostic:
-
-```text
-error: 1 target failed:
-    `-p melee-sim --test m5_gate`
-```
-
-S6 is not ready to merge: two full-scene gates, the timing gate and the
-merge-check ancestry prerequisite remain unresolved.
+Read-only disassembly checks used the main checkout's decomp reference because
+the rebased lane's decomp directory is empty; it was not modified. Size uses
+80091DAC/80091DB4 `fmadds`; drain uses 80092624; ProcessHit uses
+8006D2AC/8006D2CC/8006D8D8; stun uses 80093038/8009305C and size
+80093164/8009316C; tilt uses 80091C78/80091D3C. `ftColl_80076CBC`,
+`ftCo_80098B20`, `ftCo_80099010`, `ftCo_Furafura_Anim`, `ftCommon_GrabMash`
+and `ft_80084EEC` have no fused sites. Existing audited gravity, friction,
+collision and matrix helpers are reused.
 
 ## Changed files
 
-- `crates/melee-sim/tests/m5_gate.rs`: one appended S6 block; five full gates
-  plus one two-scene prefix test.
-- `crates/melee-sim/tests/alloc_gate.rs`: one appended S6 block; tilted and
-  analog shield ceilings are zero.
-- `crates/melee-sim/src/frame/combat.rs`: appended calls to the unchanged raw
-  scratch comparator for the three complete scenes.
-- `TRACKER.md`: S6 status and session evidence.
-- `docs/PERF.md`: two missing comment terminators restored without altering
-  historical JSON; the performance tool appends its fresh result.
-- `docs/PORT_NOTES/S6_SHIELD.md`: this report.
+- `crates/melee-ft/src/fighter/shield_break.rs` (new), `shield.rs`,
+  `state/common_table.rs`: exhaustion and the four common state rows.
+- `crates/melee-ft/src/fighter/damage.rs` (shield function only), `smash.rs`,
+  `procs.rs`: powershield color program and its advancement.
+- `crates/melee-ft/src/fighter/assets.rs`, `mod.rs`, `spawn.rs`, `life.rs`:
+  archive preparation, typed scratch and the motion-cleared top-exit flag.
+- `crates/melee-ft/src/fighter/commands.rs`, `effects.rs`;
+  `crates/melee-ef/src/{lib,request,tables}.rs`; `crates/melee-sim/src/frame.rs`:
+  effect generators, sound channels and outgoing-effect ordering.
+- `crates/melee-sim/src/frame/combat.rs`, `tests/{m5_gate,alloc_gate}.rs`:
+  milestone assertions, enabled full gate and zero-allocation budgets.
+- This report, `TRACKER.md` and the generated performance entry in `docs/PERF.md`.
+
+## Final validation
+
+The five release CLI commands were rerun on the final code with
+`cargo run -q --release -p melee-sim -- gate harness/scenarios/<scene>.toml`.
+Their exact final lines appear in the scene table above.
+
+| Check | Result |
+|---|---|
+| `cargo build -q` | PASS |
+| `cargo gate` | FAIL: the rebased lane's decomp source directory is empty |
+| `cargo gate --no-fail-fast` | 1,098 passed, 1 failed, 3 existing ignores; the sole failure is the missing-source oracle below |
+| `cargo gate --release --no-fail-fast` | Same 1,098 / 1 / 3; same sole failure |
+| M4 in both workspace profiles | `261 passed; 0 failed; 0 ignored` |
+| M5 in both workspace profiles | `75 passed; 0 failed; 0 ignored` |
+| Allocation gate in both workspace profiles | `24 passed; 0 failed; 0 ignored`; powershield 299 measured ticks: 0 allocations; shield break 519 measured ticks: 0 allocations |
+| `tools/check-release-math.sh` | PASS: both profiles and opt levels 0, 1, 2, 3, s, z |
+| `cargo clippy --workspace --all-targets -- -D warnings` | PASS |
+| `cargo fmt --all -- --check` | PASS |
+| `tools/perf-gate.sh` | PASS on the warm-cache rerun; first timing failure retained below and in `docs/PERF.md` |
+| `tools/merge-check.sh lane/battlefield` | Data, oracle presence, ancestry and build PASS; `[FAIL] gate` at the same missing-source oracle; later steps not reached |
+
+The environmental failure is
+`melee-lb::dynamics_ref_oracle::dynamics_c_excerpts_match_decomp`, at line 168:
+
+```text
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+error: 1 target failed:
+    `-p melee-lb --test dynamics_ref_oracle`
+```
+
+It requires `third_party/melee-decomp/src/melee/lb/lb_00F9.c` under this lane.
+There is no supported external path override for this test. The user was asked
+to restore the reference checkout; the protected directory was left untouched.
+Other optional source-excerpt checks also need that checkout to exercise their
+source comparisons. No test expectation, ignore or gate threshold was weakened.
+
+Standalone `cargo test -p melee-sim --test m4_gate` also passed:
+
+```text
+test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 195.84s
+```
+
+### Performance census
+
+Command: `CARGO_HOME=/private/tmp/p1-cargo-home CARGO_NET_OFFLINE=true
+tools/perf-gate.sh` (the existing local dependency cache). The first run's
+evidence is `target/perf/20260910T140500Z-45450`, also appended by the tool to
+`docs/PERF.md`. All size and duplicate-definition limits pass, including one
+definition for each of the 303 common-shell labels. Totals are informational:
+
+| Compiling crate | Labels | Definitions | Duplicate labels |
+|---|---:|---:|---:|
+| melee-ft | 879 | 914 | 20 |
+| melee-sim | 102 | 129 | 7 |
+| ft-captain | 43 | 66 | 1 |
+| ft-falco | 44 | 67 | 1 |
+| ft-fox | 44 | 67 | 1 |
+| ft-fox-family | 0 | 0 | 0 |
+| ft-mario | 0 | 0 | 0 |
+| ft-mars | 44 | 67 | 1 |
+| ft-peach | 44 | 67 | 1 |
+| ft-purin | 43 | 66 | 1 |
+| ft-yoshi | 45 | 68 | 1 |
+
+Total definitions: **1,511**. Cross-crate duplicate labels: **100**, equal to
+the reviewed S3 ceiling. No `Fighter<C>` shell, new common callback
+specializations or relaxed budgets were introduced.
+
+The first timing measurement failed. During its benchmark, `os.getloadavg()`
+reported `(386.46, 183.74, 94.83)` on a 12-CPU host; after it finished the
+one-minute average fell from 320.80 to 182.25. This supports host contention as
+a cause, but does not turn a failed timing gate into a pass. Exact final line:
+
+```text
+[REGRESSION] perf-gate: 3620912 stripped bytes, 3309568 text bytes; load 296.516 ms; ticks_600 56.169 ms
+```
+
+The warm-cache rerun at `2026-09-10T14:10:13+00:00` passed, with unchanged
+code, thresholds, size and census. Its initial build took 0.07 seconds; the
+load average during collection had fallen to `(117.67, 165.46, 109.07)`.
+Evidence: `target/perf/20260910T140939Z-51950`. Exact final line:
+
+```text
+[PASS] perf-gate: 3620912 stripped bytes, 3309568 text bytes; load 172.185 ms; ticks_600 24.185 ms
+```
+
+Full acceptance still requires restoring the lane's decomp reference externally
+and rerunning `cargo gate`, `cargo gate --release`, and
+`tools/merge-check.sh lane/battlefield`. The reference was still absent at the
+final check. No code/test failure or retail-vs-test contradiction was found.

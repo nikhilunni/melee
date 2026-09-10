@@ -149,11 +149,8 @@ impl Fighter {
             return self.enter_side_death(assets, arena, Side::Left);
         }
         if p.y > arena.top {
-            // x2222_b3 is raised only by the DamageIce and ShieldBreakFly entries.
-            if self.core.motion_state.id == S::ShieldBreakFly {
-                unimplemented!("ftCo_ShieldBreakFly.c:30: x2222_b3 top-exit flag");
-            }
             let counts = self.core.physics.ground_or_air == GroundOrAir::Ground
+                || self.core.status.unconditional_top_exit
                 || self.core.physics.knockback_velocity.y > assets.life.top_knockback_threshold;
             if counts {
                 // Player_GetMoreFlagsBit5 (plain DeadUp) and Camera_8003010C (the fixed

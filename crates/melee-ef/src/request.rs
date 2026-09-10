@@ -9,7 +9,19 @@ pub enum EffectRequest {
         rotation: Vec3,
     },
     // S6: ftColl_80076CBC, efSync_Spawn(27) at the physical powershield contact.
-    PowershieldSpark { position: Vec3 },
+    PowershieldSpark {
+        position: Vec3,
+    },
+    /// S6: efAsync kind 0 / effect 1051, shield-joint translation and local scale.
+    ShieldBreak {
+        bone: usize,
+        scale: f32,
+    },
+    /// S6: efAsync 0x429, attached generator 0xCE and its shared AppSRT.
+    DizzyStars {
+        bone: usize,
+        scale: f32,
+    },
     // S3: synchronous efAlt generator with a live fighter joint.
     SyncAttached {
         id: u16,
@@ -158,6 +170,21 @@ impl EffectQueue {
     ) -> FixedVec<QueuedEffect, REQUEST_CAPACITY> {
         let mut drained = FixedVec::default();
         match timing {
+            crate::EffectTiming::BeforeGraphics => {
+                let end = self
+                    .entries
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| matches!(e.request, EffectRequest::DestroyOwned))
+                    .map(|(i, _)| i + 1)
+                    .last()
+                    .unwrap_or(0);
+                for _ in 0..end {
+                    let entry = self.entries.remove(0);
+                    assert!(entry.immediate(), "motion entry must seal outgoing effects");
+                    drained.push(entry);
+                }
+            }
             crate::EffectTiming::Immediate => {
                 let mut index = 0;
                 while index < self.entries.len() {
@@ -205,7 +232,9 @@ impl EffectRequest {
     }
     fn bone(&self) -> Option<usize> {
         match *self {
-            Self::EggShell { bone, .. }
+            Self::DizzyStars { bone, .. }
+            | Self::ShieldBreak { bone, .. }
+            | Self::EggShell { bone, .. }
             | Self::CaptureFlash { bone }
             | Self::Attached { bone, .. }
             | Self::SyncAttached { bone, .. }

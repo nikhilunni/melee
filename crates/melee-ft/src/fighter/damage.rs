@@ -306,22 +306,37 @@ fn record_shield_hit(
         // ftCo_80094138: permit attacks during GuardOff and clear minimum hold.
         victim.guard().interrupt_frames = assets.shield.powershield_interrupt_frames;
         victim.guard().minimum_hold = 0.0;
-        victim.commands.color_animations.push(melee_cmd::ColorAnimationRequest { id: 118, duration: 0 });
-        victim.commands.footstep_sounds.push(super::commands::FootstepSound {
-            channel: super::commands::SoundChannel::Ordinary,
-            id: 104,
-            volume: 127,
-            pan: 64,
-        });
-        victim.effects.push(melee_ef::request::EffectRequest::PowershieldSpark {
-            position: contact.position,
-        });
+        victim.shield.flash = Some(super::smash::ChargeOverlay::default());
+        victim
+            .commands
+            .color_animations
+            .push(melee_cmd::ColorAnimationRequest {
+                id: 118,
+                duration: 0,
+            });
+        victim
+            .commands
+            .footstep_sounds
+            .push(super::commands::FootstepSound {
+                channel: super::commands::SoundChannel::Ordinary,
+                id: 104,
+                volume: 127,
+                pan: 64,
+            });
+        victim
+            .effects
+            .push(melee_ef::request::EffectRequest::PowershieldSpark {
+                position: contact.position,
+            });
     } else {
-        victim.effects.push(melee_ef::request::EffectRequest::ShieldSpark {
-            position: contact.position,
-        });
+        victim
+            .effects
+            .push(melee_ef::request::EffectRequest::ShieldSpark {
+                position: contact.position,
+            });
     }
 }
+
 impl Fighter {
     /// ftCo_Damage_Phys (8008FB18): gravity/friction during hitstun, drift after it.
     pub(super) fn damage_physics(

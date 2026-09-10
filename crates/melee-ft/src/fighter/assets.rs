@@ -54,6 +54,8 @@ pub struct CommonBehavior {
     pub landing_reset: bool,
     /// ftCo_Escape.c:83-85, rolling-only morph-ball setup.
     pub morph_ball_roll: bool,
+    /// ftCo_ShieldBreakFly.c:30: Jigglypuff can KO above the top boundary.
+    pub shield_break_top_exit: bool,
 }
 impl CommonBehavior {
     /// Descriptor-layer defaults transcribed from retail's kind selections.
@@ -94,6 +96,7 @@ impl CommonBehavior {
                     | FighterKind::Mewtwo
             ),
             morph_ball_roll: matches!(kind, FighterKind::Samus),
+            shield_break_top_exit: matches!(kind, FighterKind::Purin),
         }
     }
 }
@@ -228,6 +231,11 @@ impl FighterAssets {
             .collect::<Vec<_>>();
         let color_table = common.link(common_root + 6 * 4)?.ok_or("color table")?;
         let mut charge_overlays = BTreeMap::new();
+        // S6: powershield color script also contains a gameplay-RNG graphics command.
+        let powershield = common
+            .link(color_table + 118 * 8)?
+            .ok_or("powershield color script")?;
+        charge_overlays.insert(118, super::smash::read_overlay(common, powershield)?);
         for command in &commands {
             if let Command::SmashCharge(charge) = command {
                 let entry = common
@@ -652,6 +660,7 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
         base,
         additional,
         super::down::MOTIONS,
+        super::shield_break::MOTIONS,
         super::teeter::MOTIONS,
     ] {
         indices.extend(list.iter().copied());

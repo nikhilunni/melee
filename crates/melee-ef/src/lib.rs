@@ -83,6 +83,8 @@ enum ModelOwner {
 /// Retail efSync runs at the caller; efAsync drains at fighter link 9.
 #[derive(Clone, Copy)]
 pub enum EffectTiming {
+    /// Motion-entry destruction precedes graphics from the newly installed script.
+    BeforeGraphics,
     Immediate,
     Deferred,
 }
@@ -399,8 +401,51 @@ impl Effects {
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
+            if let EffectRequest::DizzyStars { bone, scale } = request {
+                // efLib_CreateGenerator_AppSRT_SetScale (8005CE48).
+                let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                let mut spawn = SpawnRequest::new(0, 0xCE, 0);
+                spawn.joint = Some((
+                    joint_id,
+                    resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),
+                ));
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    scale: Vec3::new(scale, scale, scale),
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                if let Some(id) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
+                {
+                    self.events.flags(joint_id, 0x600, 0x800);
+                    let generator = particles.generator_mut(id).unwrap();
+                    generator.flags = (generator.flags & !0x600) | 0x800;
+                }
+                self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+                continue;
+            }
+            if let EffectRequest::ShieldBreak { bone, scale } = request {
+                // efasync.c:506-519 -> efLib_CreateGenerator_AddAppSRT(0x31).
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                let mut spawn = SpawnRequest::new(0, 0x31, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                    scale: Vec3::new(scale, scale, scale),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
             if let EffectRequest::PowershieldSpark { position } = request {
-                self.spawn_dust_generator::<T>(27, position, fighter.effect_facing(), bank, particles, rng)?;
+                self.spawn_dust_generator::<T>(
+                    27,
+                    position,
+                    fighter.effect_facing(),
+                    bank,
+                    particles,
+                    rng,
+                )?;
                 continue;
             }
             if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
@@ -454,9 +499,9 @@ impl Effects {
                         &offset,
                         &mut position,
                     );
-                    if id == 0x514 {
+                    if matches!(id, 0x514 | 0x515) {
                         // efAsync kind 8 -> Camera_RequestQuake(3), no particle spawn.
-                        self.camera_quakes.push((3, position));
+                        self.camera_quakes.push((id - 0x511, position));
                     } else {
                         self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)?;
                     }
@@ -535,6 +580,8 @@ impl Effects {
                 | EffectRequest::Attached { .. }
                 | EffectRequest::SyncAttached { .. }
                 | EffectRequest::LedgeGrab { .. }
+                | EffectRequest::DizzyStars { .. }
+                | EffectRequest::ShieldBreak { .. }
                 | EffectRequest::PowershieldSpark { .. }
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
                 EffectRequest::Death {
@@ -581,7 +628,7 @@ impl Effects {
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    if !matches!(id, 0x3FA | 0x3FB | 0x406 | 0x423 | 0x424) {
+                    if !matches!(id, 0x3FA | 0x3FB | 0x404 | 0x406 | 0x423 | 0x424) {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {

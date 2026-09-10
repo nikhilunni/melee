@@ -620,9 +620,7 @@ fn lightshield_ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
 }
 
 #[test]
-#[ignore = "blocked on S3 part 3: Marth Shield Breaker rows; un-ignore when merged"]
 fn shieldbreak_fd_marth_520_ticks_and_ordered_particle_draws() {
-    // S3-owned Marth SpecialN first diverges at tick 119.
     combat_gate_ticks("shieldbreak_fd_marth", 520);
 }
 
