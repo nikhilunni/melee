@@ -192,12 +192,14 @@ pub fn vec_cross_product(a: &Vec3, b: &Vec3, dst: &mut Vec3) {
     let f4_0 = b.x * a.z;
     let f4_1 = b.y * a.z;
     let f7_1 = b.y * a.x;
-    let f5_0 = fmsubs(a.x, b.z, f4_0);
+    // ps_msub then ps_neg: use the rounded-result negation helper so LLVM
+    // cannot move the sign into the FMA and lose an exact zero (C14).
+    let neg_f5_0 = fnmsubs(a.x, b.z, f4_0);
     let f5_1 = fmsubs(a.y, b.z, f4_1);
-    let f8_1 = fmsubs(a.y, b.x, f7_1);
+    let neg_f8_1 = fnmsubs(a.y, b.x, f7_1);
     dst.x = f5_1;
-    dst.y = -f5_0;
-    dst.z = -f8_1;
+    dst.y = neg_f5_0;
+    dst.z = neg_f8_1;
 }
 
 // ---------------------------------------------------------------------------

@@ -409,7 +409,7 @@ fn segment_sphere(start: Vec3, end: Vec3, center: Vec3, radius: f32) -> bool {
     let amount = if near_zero(square) {
         0.0
     } else {
-        (-dot / square).clamp(0.0, 1.0)
+        (gekko_math::fma::negate_rounded(dot) / square).clamp(0.0, 1.0)
     };
     // retail 80005E5C/E60/E64: fmadds.
     let nearest = endpoint(start, d, amount);

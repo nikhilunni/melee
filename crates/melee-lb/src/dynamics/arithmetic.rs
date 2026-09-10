@@ -85,10 +85,14 @@ pub fn rotate(v: Vec3, axis: Vec3, a: f32) -> Vec3 {
     let y3 = fmadds(x2, s, y * c);
     // retail 8000DABC/DAC0.
     let x = fmadds(x3, len, z2 * axis.x);
-    let z = fmadds(-x3, axis.x, z2 * len);
+    let z = fmadds(gekko_math::fma::negate_rounded(x3), axis.x, z2 * len);
     if len > 1e-10 {
         // retail 8000DAD8/DADC.
-        Vec3::new(x, fmadds(y3, uy, z * uz), fmadds(-y3, uz, z * uy))
+        Vec3::new(
+            x,
+            fmadds(y3, uy, z * uz),
+            fmadds(gekko_math::fma::negate_rounded(y3), uz, z * uy),
+        )
     } else {
         Vec3::new(x, y3, z)
     }

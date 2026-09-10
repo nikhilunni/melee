@@ -496,8 +496,11 @@ impl<C: CharacterCallbacks> Fighter<C> {
                     assets.shield.attacker_pushback_multiplier,
                     assets.shield.attacker_pushback_base,
                 );
-                self.physics.ground_shield_knockback_velocity =
-                    if direction < 0.0 { push } else { -push };
+                self.physics.ground_shield_knockback_velocity = if direction < 0.0 {
+                    push
+                } else {
+                    gekko_math::fma::negate_rounded(push)
+                };
                 let normal = self.collision.data.floor.normal;
                 let speed = self.physics.ground_shield_knockback_velocity;
                 // ftCommon_8007E2A4 (8007E2A4): separate tangent products.

@@ -1,6 +1,6 @@
 //! Capsule contact geometry, lbcollision.c. Operations follow the retail audit.
 use gekko_math::{
-    fma::{fmadd, fmadds, fmsubs},
+    fma::{fmadd, fmadds, fmsubs, negate_rounded},
     msl::sqrtf,
 };
 use hsd_anim::mtx;
@@ -50,7 +50,7 @@ fn endpoint_projection(start: Vec3, end: Vec3, target: Vec3) -> (f32, f32) {
     let delta = difference(end, start);
     let offset = difference(start, target);
     // retail 80005F14/5F28, 5F4C/5F50; closest point 5F80/5F8C/5F9C.
-    let t = parameter(-dot(delta, offset) / dot(delta, delta));
+    let t = parameter(negate_rounded(dot(delta, offset)) / dot(delta, delta));
     let separation = difference(point(start, delta, t), target);
     // retail 80005FB0/5FB4.
     (dot(separation, separation), t)
@@ -113,7 +113,7 @@ pub fn capsule_contact(
         };
         let selected = if ht == 0.0 { hit.start } else { hit.end };
         // inlined projection, 80007320/7324 or 73DC/73E0.
-        ut = parameter(-dot(axis, difference(hurt.start, selected)) / hurt_length);
+        ut = parameter(negate_rounded(dot(axis, difference(hurt.start, selected))) / hurt_length);
     } else {
         // retail 80007420/7424 fmsubs; right products round first.
         ht = fmsubs(segment_dot, hurt_dot, hurt_length * hit_dot) / denominator;

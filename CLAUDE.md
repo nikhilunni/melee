@@ -51,6 +51,7 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 ```sh
 git submodule update --init          # once
 cargo gate                           # alias: cargo test --workspace
+cargo gate --release                 # same bit-exact oracles under optimization
 cargo clippy --workspace --all-targets -- -D warnings
 cd harness && uv sync && uv run python -m pytest -q
 cd harness && uv run python gen_schema.py --check
@@ -67,6 +68,8 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 ```sh
 cargo gate                                                   # every unit/oracle test
 tools/perf-gate.sh                                            # separate release performance/size/instantiation regressions
+cargo gate --release                                         # every unit/oracle test, optimized
+tools/check-release-math.sh                                  # fused semantics at every opt level
 cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml   # M3: 600 ticks x 49 keys vs Dolphin
 cargo run -q -p melee-sim -- gate harness/scenarios/start_fd_fox.toml  # match start: entry, fall, landing, idle
 cargo test -p melee-ft --test start_fox_bones_130                      # 73 bones incl. tail dynamics vs Dolphin
@@ -230,9 +233,11 @@ keep it that way. Design notes and code sketches: `docs/STEEL_THREAD.md`.
   scene once it exists (C5).
 - Tables are `static`/`const` data (retail's `.data` tables), rows are
   `Copy`, indices are enums so bounds checks vanish.
-- Bit-exactness and optimization do not fight: Rust never reassociates or
-  contracts floats, so fat LTO, one codegen unit and native CPU targeting
-  are safe in release. Fused ops stay explicit (`fmadds`), never inferred.
+- Rust does not enable fast-math or implicit FMA contraction. LLVM can
+  still fold negations around an explicit FMA incorrectly for signed zero
+  (C14); use the audited `gekko-math` helpers and gate both profiles.
+  Fused ops stay explicit (`fmadds`), never inferred. Changes to LTO,
+  codegen units or CPU targeting must also pass the optimized oracles.
 - Performance, binary size and instantiation counts are regression gates
   (`tools/perf-gate.sh`, `docs/PERF.md`), not bit-exact ones; they fail on
   regression against the recorded baseline.
