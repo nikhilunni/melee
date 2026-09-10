@@ -299,6 +299,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MissFoot: backward ledge slip, common submotion 215.
+    rows[S::MissFoot as usize] = MotionRow {
+        action: ActionId(251),
+        id: S::MissFoot,
+        animation: 215,
+        anim: super::super::teeter::missed_footing_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::fall,
+        collision: callbacks::collision::pass,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_DamageFall = 38; ftData_MotionStateList[38].
     rows[S::DamageFall as usize] = MotionRow {
         action: ActionId(38),
@@ -875,6 +887,29 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_Passive.c / ftCo_PassiveStand.c: neutral and forward tech.
+    rows[S::Passive as usize] = MotionRow {
+        action: ActionId(199),
+        id: S::Passive,
+        animation: 199,
+        anim: callbacks::animation::tech_roll,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::down,
+        collision: callbacks::collision::ground_action,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::PassiveStandF as usize] = MotionRow {
+        action: ActionId(200),
+        id: S::PassiveStandF,
+        animation: 200,
+        anim: callbacks::animation::tech_roll,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_PassiveStandB = 201; ftData_MotionStateList[201].
     rows[S::PassiveStandB as usize] = MotionRow {
         action: ActionId(201),
@@ -910,6 +945,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         collision: callbacks::collision::catch,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
+    };
+    rows[S::CatchDash as usize] = MotionRow {
+        action: ActionId(214),
+        id: S::CatchDash,
+        animation: 243,
+        physics: callbacks::physics::catch_dash,
+        ..rows[S::Catch as usize]
+    };
+    rows[S::CatchDashPull as usize] = MotionRow {
+        action: ActionId(215),
+        id: S::CatchDashPull,
+        animation: 243,
+        ..rows[S::CatchPull as usize]
     };
     // ftCo_MS_CatchWait = 216; ftData_MotionStateList[216].
     rows[S::CatchWait as usize] = MotionRow {

@@ -108,6 +108,7 @@ pub const REQUEST_CAPACITY: usize = 64;
 pub(crate) struct QueuedEffect {
     pub request: EffectRequest,
     pub matrix: Option<Mtx>,
+    after_graphics: bool,
 }
 impl QueuedEffect {
     fn immediate(&self) -> bool {
@@ -127,10 +128,33 @@ impl EffectQueue {
             self.entries.len() < REQUEST_CAPACITY,
             "effect storage capacity {REQUEST_CAPACITY} exhausted"
         );
+        let index = self
+            .entries
+            .iter()
+            .position(|e| e.after_graphics)
+            .unwrap_or(self.entries.len());
+        self.entries.insert(
+            index,
+            QueuedEffect {
+                request,
+                matrix: None,
+                after_graphics: false,
+            },
+        );
+    }
+    /// An entry callback runs after its motion script, whose graphics await the
+    /// proc's RNG boundary. Keep this request behind those graphics when resolved.
+    pub fn push_after_graphics(&mut self, request: EffectRequest) {
         self.entries.push(QueuedEffect {
             request,
             matrix: None,
+            after_graphics: true,
         });
+    }
+    pub fn finish_graphics(&mut self) {
+        for entry in self.entries.iter_mut() {
+            entry.after_graphics = false;
+        }
     }
     pub fn pop(&mut self) -> Option<EffectRequest> {
         self.entries.pop().map(|e| e.request)

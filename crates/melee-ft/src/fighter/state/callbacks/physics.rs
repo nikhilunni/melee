@@ -39,6 +39,12 @@ pub fn catch(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_catch(phase)
 }
 
+pub fn catch_dash(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    fighter
+        .core
+        .dash_catch_physics(phase.assets, phase.map, phase.wind)
+}
+
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
 pub fn damage(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {

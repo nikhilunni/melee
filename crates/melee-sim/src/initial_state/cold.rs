@@ -148,20 +148,7 @@ fn initialize_stage(
         GrKind::Last => {
             let mut stage = FinalDestination::initialize(&assets.stage_desc, rng);
             stage.actions.clear();
-            // grLast_8021B920 requests this animation without evaluating
-            // its first DPtcl key; Ground's first scheduler pass does that.
-            stage_animations.insert(
-                4,
-                BackgroundAnimation::load(&assets.stage, &assets.stage_desc)
-                    .map_err(|e| anyhow::anyhow!("{e}"))?,
-            );
-            // grLast_804D4968: collision joint 0 belongs to map 3, root bone; the
-            // scene applies its transform through the same animation table.
-            stage_animations.insert(
-                3,
-                BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[3])
-                    .map_err(|e| anyhow::anyhow!("{e}"))?,
-            );
+            stage_animations = crate::scene_stage::last::load_animations(assets)?;
             SceneStage::FinalDestination(Box::new(stage))
         }
         GrKind::Battle => {

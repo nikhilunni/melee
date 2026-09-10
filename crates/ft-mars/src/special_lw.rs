@@ -116,7 +116,7 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
     let minimum = scratch.collision_multiplier;
     f.combat.minimum_hitlag = minimum;
     attacker.combat.minimum_hitlag = minimum;
-    attacker.combat.dealt_damage = attacker.combat.dealt_damage.max(damage);
+    attacker.record_shield_recoil(damage, f.shield.lightshield, -facing);
     melee_coll::detection::record_victim(&mut attacker.commands.hitboxes, group, f.spawn_number);
     f.effects
         .push(melee_ef::request::EffectRequest::ShieldSpark {

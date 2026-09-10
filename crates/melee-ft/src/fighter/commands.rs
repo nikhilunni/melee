@@ -66,6 +66,8 @@ pub struct CommandState {
     pub grab_release: bool,
     pub throw_reverse: bool,
     pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
+    /// HitCapsule.unk_count is captured before the stale multiplier.
+    pub throw_damage_counts: [u32; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
     /// Fighter +221E bit 5: hide the fighter model (ftdrawcommon.c:233).
@@ -186,6 +188,8 @@ impl CommandState {
                     // ftAction_80071F0C skips these records when seeking.
                     if !seeking {
                         let mut descriptor = descriptor.clone();
+                        self.throw_damage_counts[*id] =
+                            gekko_math::msl::fctiwz(descriptor.damage) as u32;
                         if let Some(multiplier) = self.stale_multiplier {
                             // retail 8008927C: fmuls only if staled.
                             if multiplier != 1.0 {

@@ -9,6 +9,20 @@ use melee_types::CommonMotionState as S;
 
 use melee_cmd::ChargePhase;
 impl Fighter {
+    /// ftCo_AttackS4_8008C114: Dash uses facing, without the stick-age check.
+    pub(super) fn try_dash_forward_smash(&mut self, assets: &FighterAssets) -> Result<bool> {
+        let threshold = assets.input.thresholds.dash_smash_stick_threshold;
+        let input = &self.input;
+        let forward = input.pressed.intersects(Buttons::A)
+            && input.current.stick.x * self.physics.facing >= threshold;
+        let cstick = gekko_math::msl::fabsf(input.previous.cstick.x) < threshold
+            && gekko_math::msl::fabsf(input.current.cstick.x) >= threshold;
+        if forward || cstick {
+            self.enter_forward_smash(assets)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
     /// doEnter (8008C3E0), ftCo_AttackS4.c; no fused sites in this unit.
     pub(super) fn enter_forward_smash(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.forward_smash_variant();
@@ -46,6 +60,7 @@ impl FighterCore {
             overlay.step(
                 &assets.charge_overlays[&charge.color_animation],
                 &mut self.commands.graphics,
+                &mut self.commands.footstep_sounds,
             );
             if !overlay.sound_played && charge.frames >= assets.attacks.charge_sound_frame {
                 self.commands
@@ -104,13 +119,18 @@ impl FighterCore {
 pub enum OverlayCommand {
     Color { rgba: u32, frames: u32 },
     Graphics(melee_types::combat::GraphicsCommand),
+    Sound(super::commands::FootstepSound),
     Wait(u32),
     Goto(usize),
+    Loop(u32),
+    LoopEnd,
+    ClearColor,
     End,
 }
 #[derive(Clone, Debug, Default)]
 pub struct ChargeOverlay {
     instruction: usize,
+    loops: melee_types::fixed::FixedVec<(usize, u32), 4>,
     timer: u32,
     /// Renderer-facing target and blend duration; no gameplay depends on color.
     pub color: Option<(u32, u32)>,
@@ -124,17 +144,33 @@ impl ChargeOverlay {
             melee_types::combat::GraphicsCommand,
             { melee_ef::request::REQUEST_CAPACITY },
         >,
+        sounds: &mut melee_types::fixed::FixedVec<
+            super::commands::FootstepSound,
+            { super::commands::COMMAND_REQUEST_CAPACITY },
+        >,
     ) {
         self.timer = self.timer.saturating_sub(1);
         while self.timer == 0 {
             match &script[self.instruction] {
                 OverlayCommand::Color { rgba, frames } => self.color = Some((*rgba, *frames)),
                 OverlayCommand::Graphics(command) => graphics.push(command.clone()),
+                OverlayCommand::Sound(sound) => sounds.push(sound.clone()),
                 OverlayCommand::Wait(frames) => self.timer = *frames,
                 OverlayCommand::Goto(target) => {
                     self.instruction = *target;
                     continue;
                 }
+                OverlayCommand::Loop(count) => self.loops.push((self.instruction + 1, *count)),
+                OverlayCommand::LoopEnd => {
+                    let (target, count) = self.loops.last_mut().expect("overlay loop stack");
+                    *count = count.wrapping_sub(1);
+                    if *count != 0 {
+                        self.instruction = *target;
+                        continue;
+                    }
+                    self.loops.pop();
+                }
+                OverlayCommand::ClearColor => self.color = None,
                 OverlayCommand::End => break,
             }
             self.instruction += 1;
@@ -143,6 +179,14 @@ impl ChargeOverlay {
 }
 /// Archive-only adapter for the color overlay vocabulary (lb_013B.c).
 pub fn read_overlay(archive: &hsd_archive::Archive, entry: u32) -> Result<Vec<OverlayCommand>> {
+    read_overlay_inner(archive, entry, 0)
+}
+fn read_overlay_inner(
+    archive: &hsd_archive::Archive,
+    entry: u32,
+    depth: u8,
+) -> Result<Vec<OverlayCommand>> {
+    assert!(depth < 8, "color script subroutine depth");
     let r = archive.reader();
     let mut commands = Vec::new();
     let mut offsets = Vec::new();
@@ -152,6 +196,26 @@ pub fn read_overlay(archive: &hsd_archive::Archive, entry: u32) -> Result<Vec<Ov
         let word = r.u32(offset)?;
         let opcode = word >> 26;
         let command = match opcode {
+            5 => {
+                let target = archive.link(offset + 4)?.ok_or("overlay subroutine")?;
+                let mut body = read_overlay_inner(archive, target, depth + 1)?;
+                assert!(
+                    matches!(body.pop(), Some(OverlayCommand::End)),
+                    "overlay subroutine return"
+                );
+                let base = commands.len();
+                for command in &mut body {
+                    if let OverlayCommand::Goto(target) = command {
+                        *target += base;
+                    }
+                }
+                commands.extend(body);
+                offset += 8;
+                continue;
+            }
+            3 => OverlayCommand::Loop(word & 0x03ff_ffff),
+            4 => OverlayCommand::LoopEnd,
+            12 | 20 => OverlayCommand::ClearColor,
             7 => {
                 let target = archive.link(offset + 4)?.ok_or("overlay goto")?;
                 commands.push(OverlayCommand::Goto(
@@ -162,7 +226,7 @@ pub fn read_overlay(archive: &hsd_archive::Archive, entry: u32) -> Result<Vec<Ov
                 ));
                 break;
             }
-            10 => {
+            0 | 6 | 10 => {
                 commands.push(OverlayCommand::End);
                 break;
             }
@@ -174,6 +238,28 @@ pub fn read_overlay(archive: &hsd_archive::Archive, entry: u32) -> Result<Vec<Ov
                     rgba,
                     frames: if opcode == 18 { 0 } else { word & 0x03ff_ffff },
                 }
+            }
+            22 => {
+                use super::commands::{FootstepSound, SoundChannel};
+                let behavior = (word >> 18) & 255;
+                let channel = match behavior {
+                    0 => SoundChannel::Ordinary,
+                    1 => SoundChannel::Action,
+                    2 => SoundChannel::FighterVoice,
+                    3 => SoundChannel::Effect,
+                    4 => SoundChannel::StatusEffect,
+                    6 => SoundChannel::OverrideVoice,
+                    _ => return Err(format!("unported overlay sound behavior {behavior}").into()),
+                };
+                let id = r.u32(offset + 4)?;
+                let volume_pan = r.u32(offset + 8)?;
+                offset += 8;
+                OverlayCommand::Sound(FootstepSound {
+                    channel,
+                    id,
+                    volume: (volume_pan >> 8) as u8,
+                    pan: volume_pan as u8,
+                })
             }
             21 => {
                 let words = [

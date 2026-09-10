@@ -27,6 +27,10 @@ pub struct InputCommonData {
     /// PlCo +218/+21C, special direction thresholds.
     pub special_side_threshold: f32,
     pub special_vertical_threshold: f32,
+    /// PlCo +220: facing reversal threshold for side specials.
+    pub special_reverse_threshold: f32,
+    /// PlCo +224: age of the last horizontal smash for aerial neutral-B reversal.
+    pub neutral_reverse_window: i32,
     /// PlCo +2A0 (powershield_input_window).
     pub powershield_window: i32,
     /// PlCo +314/+318, spot-dodge stick threshold and window.
@@ -62,6 +66,8 @@ impl InputCommonData {
             down_smash_window: r.f32(0xD8)?,
             special_side_threshold: r.f32(0x218)?,
             special_vertical_threshold: r.f32(0x21C)?,
+            special_reverse_threshold: r.f32(0x220)?,
+            neutral_reverse_window: r.s32(0x224)?,
             powershield_window: r.s32(0x2A0)?,
             escape_threshold: r.f32(0x314)?,
             escape_window: r.s32(0x318)?,

@@ -686,7 +686,11 @@ impl FighterCore {
     /// ftCo_800C0408 -> lb_80014258: color 118 includes an effect command.
     pub(super) fn advance_shield_flash(&mut self, assets: &FighterAssets) {
         if let Some(flash) = &mut self.shield.flash {
-            flash.step(&assets.charge_overlays[&118], &mut self.commands.graphics);
+            flash.step(
+                &assets.charge_overlays[&118],
+                &mut self.commands.graphics,
+                &mut self.commands.footstep_sounds,
+            );
         }
     }
 }

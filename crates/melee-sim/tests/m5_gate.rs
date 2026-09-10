@@ -2,74 +2,13 @@ use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenar
 use std::{fs, path::Path};
 
 #[test]
-fn match_fd_foxmarth_exact_prefix_and_ordered_particle_draws() {
-    human_match_prefix(846);
+fn match_fd_foxmarth_6083_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("match_fd_foxmarth", 6083);
 }
 
-/// S11 progress ratchet: every canonical key, item key and ordered particle draw.
-fn human_match_prefix(prefix: usize) {
-    use melee_diff::{first_divergence, read_trace};
-    let scenario = Scenario::load(
-        &Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../harness/scenarios/match_fd_foxmarth.toml"),
-    )
-    .unwrap();
-    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
-    if !melee_test_support::require_files(
-        scenario
-            .required_files()
-            .into_iter()
-            .chain([ledger_path.clone()]),
-    ) {
-        return;
-    }
-    let expected = read_trace(std::io::BufReader::new(
-        fs::File::open(scenario.expected_path()).unwrap(),
-    ))
-    .unwrap();
-    let raw = fs::read_to_string(scenario.expected_path()).unwrap();
-    let ledger = fs::read_to_string(ledger_path).unwrap();
-    assert_eq!(scenario.frames, 6083);
-    assert_eq!(expected.len(), 6083);
-    assert_eq!(ledger.lines().count(), 6083);
-    let mut simulation = Simulation::with_inputs(
-        InitialState::from_savestate_traces(&scenario).unwrap(),
-        trace::pad_script(&scenario).unwrap(),
-    );
-    for (tick, ((expected, raw), ledger)) in expected
-        .iter()
-        .zip(raw.lines())
-        .zip(ledger.lines())
-        .take(prefix)
-        .enumerate()
-    {
-        let actual = simulation.tick().unwrap();
-        trace::check_schema(&actual).unwrap();
-        let divergence = first_divergence([expected], [&actual]);
-        assert!(divergence.is_none(), "tick {tick}: {divergence:?}");
-        let raw = serde_json::from_str(raw).unwrap();
-        let items = melee_sim::trace_items::expected(&raw, tick as u64)
-            .unwrap()
-            .expect("recorded item keys");
-        let divergence = first_divergence([&items], [&simulation.item_snapshot(tick as u64)]);
-        assert!(divergence.is_none(), "tick {tick} items: {divergence:?}");
-        let row: serde_json::Value = serde_json::from_str(ledger).unwrap();
-        let sites: Vec<u32> = row["rng_draws"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
-            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
-            .collect();
-        assert_eq!(
-            simulation.particle_rng_sites(),
-            sites,
-            "tick {tick} particle RNG order"
-        );
-    }
-    eprintln!(
-        "match_fd_foxmarth: {prefix} ticks, 62 keys, 0 divergences; ordered particle draws exact"
-    );
+#[test]
+fn match2_fd_foxmarth_10059_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("match2_fd_foxmarth", 10059);
 }
 
 #[test]
@@ -134,14 +73,18 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         return None;
     }
     assert_eq!(scenario.frames as usize, ticks);
-    if name == "laser_fd_fox" {
+    let compare_items = matches!(
+        name,
+        "laser_fd_fox" | "match_fd_foxmarth" | "match2_fd_foxmarth"
+    );
+    if compare_items {
         trace::gate_items(&scenario).unwrap();
     } else {
         trace::gate(&scenario).unwrap();
     }
     eprintln!(
         "{ticks} ticks, {} keys, 0 divergences",
-        if name == "laser_fd_fox" {
+        if compare_items {
             trace::compared_keys(&scenario).unwrap()
         } else {
             49

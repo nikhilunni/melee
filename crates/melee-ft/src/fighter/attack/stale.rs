@@ -1,29 +1,7 @@
 //! plStale_UpdateStaleMovesFromFighter (8003722C), ft_80089118.
 //! Fixed history in newest-first order; current attack instances register once.
+use melee_types::combat::{AttackInstance, StaleMove as GroundMove};
 use melee_types::CommonMotionState as S;
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum GroundMove {
-    Jab1,
-    Jab2,
-    Jab3,
-    RapidJab,
-    Dash,
-    SideTilt,
-    UpTilt,
-    DownTilt,
-    SideSmash,
-    UpSmash,
-    DownSmash,
-    NeutralAir,
-    ForwardAir,
-    BackAir,
-    UpAir,
-    DownAir,
-    SpecialNeutral,
-    SpecialSide,
-    SpecialUp,
-    SpecialDown,
-}
 const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     let mut rows = [None; super::super::COMMON_COUNT];
     rows[S::Attack11 as usize] = Some(GroundMove::Jab1);
@@ -52,14 +30,19 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::AttackAirB as usize] = Some(GroundMove::BackAir);
     rows[S::AttackAirHi as usize] = Some(GroundMove::UpAir);
     rows[S::AttackAirLw as usize] = Some(GroundMove::DownAir);
+    rows[S::CatchAttack as usize] = Some(GroundMove::Pummel);
+    rows[S::ThrowF as usize] = Some(GroundMove::ThrowForward);
+    rows[S::ThrowB as usize] = Some(GroundMove::ThrowBack);
+    rows[S::ThrowHi as usize] = Some(GroundMove::ThrowUp);
+    rows[S::ThrowLw as usize] = Some(GroundMove::ThrowDown);
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();
 #[derive(Default)]
 pub struct StaleHistory {
-    entries: [Option<GroundMove>; 10],
+    entries: [Option<AttackInstance>; 10],
     current: Option<GroundMove>,
-    recorded: bool,
+    serial: u64,
 }
 impl StaleHistory {
     pub fn current_move(&self) -> Option<GroundMove> {
@@ -68,29 +51,43 @@ impl StaleHistory {
     /// ft_800890D0: a different move (or leaving attacks) starts a new instance.
     pub fn enter(&mut self, current: Option<GroundMove>) {
         if current.is_none() || current != self.current {
-            self.recorded = false;
+            self.serial += 1;
         }
         self.current = current;
     }
     /// ft_800892A0: rapid-jab animation wrap starts a fresh instance.
     pub fn new_instance(&mut self) {
-        self.recorded = false;
+        self.serial += 1;
+    }
+    pub fn attack(&self) -> Option<AttackInstance> {
+        self.current.map(|move_id| AttackInstance {
+            move_id,
+            serial: self.serial,
+        })
     }
     pub fn record(&mut self) {
-        if self.current.is_some() && !self.recorded {
+        if let Some(attack) = self.attack() {
+            self.record_attack(attack);
+        }
+    }
+    /// plStale_UpdateStaleMovesFromItem: use the instance captured at item creation.
+    pub fn record_attack(&mut self, attack: AttackInstance) {
+        if !self.entries.contains(&Some(attack)) {
             self.entries.rotate_right(1);
-            self.entries[0] = self.current;
-            self.recorded = true;
+            self.entries[0] = Some(attack);
         }
     }
     /// ft_80089118: subtract each of nine matching weights in retail order.
     pub fn multiplier(&self, weights: &[f32; 9]) -> f32 {
+        self.multiplier_for(self.current, weights)
+    }
+    pub fn multiplier_for(&self, current: Option<GroundMove>, weights: &[f32; 9]) -> f32 {
         let mut multiplier = 1.0;
         for (entry, weight) in self.entries.iter().zip(weights) {
             if entry.is_none() {
                 break;
             }
-            if *entry == self.current {
+            if entry.map(|attack| attack.move_id) == current {
                 multiplier -= weight;
             }
         }

@@ -275,3 +275,13 @@ fn uthrow_fd_marth_allocation_budget() {
 fn pummel_fd_marth_allocation_budget() {
     allocation_budget("pummel_fd_marth", 0);
 }
+
+#[test]
+fn match_fd_foxmarth_allocation_budget() {
+    allocation_budget("match_fd_foxmarth", 0);
+}
+
+#[test]
+fn match2_fd_foxmarth_allocation_budget() {
+    allocation_budget("match2_fd_foxmarth", 0);
+}

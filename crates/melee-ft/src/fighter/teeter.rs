@@ -8,7 +8,7 @@ use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
 
 /// ftCo_SM_Ottotto / ftCo_SM_OttottoWait: the motions these rows play.
-pub const MOTIONS: &[u32] = &[210, 211];
+pub const MOTIONS: &[u32] = &[210, 211, 215];
 
 /// PlCo teeter parameters.
 #[derive(Clone, Copy, Debug)]
@@ -116,4 +116,37 @@ impl Fighter {
             }
         }
     }
+}
+
+impl Fighter {
+    /// ftCo_8009F39C: backward floor departure during damage.
+    pub(super) fn enter_missed_footing(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.physics.knockback_velocity.y = 0.0;
+        self.change_motion_state(S::MissFoot.into(), assets)?;
+        let maximum = self.attributes.air.air_drift_max;
+        self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-maximum, maximum);
+        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            self.leave_ground();
+        }
+        Ok(())
+    }
+}
+/// ftCo_MissFoot_Anim -> ftCo_80090780: finish into controllable tumble.
+pub(super) fn missed_footing_animation(
+    fighter: &mut Fighter,
+    phase: super::state::AnimationPhase<'_>,
+) -> Result<Option<crate::anim::WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    if !fighter.animation.frames_remaining(&fighter.skeleton) {
+        fighter.change_motion_state(S::DamageFall.into(), phase.assets)?;
+        let maximum = fighter.attributes.air.air_drift_max;
+        fighter.physics.self_velocity.x = fighter.physics.self_velocity.x.clamp(-maximum, maximum);
+        fighter.state_data = super::MotionData::Damage(super::damage::DamageState {
+            hitstun: 0.0,
+            jump_buffer: 0.0,
+            trail_timer: 0,
+            influence: phase.assets.damage.influence,
+        });
+    }
+    Ok(None)
 }

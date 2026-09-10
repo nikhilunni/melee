@@ -200,6 +200,11 @@ impl Fighter {
         context: &WaitContext,
     ) -> Result<()> {
         let transition = self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab]);
+        // ftCo_KneeBend_IASA -> ftCo_Catch_CheckInput (800D8990): the
+        // standing Catch entry wins over up-smash and short-hop bookkeeping.
+        if transition == T::Grab {
+            return self.enter_catch(assets);
+        }
         if transition != T::None {
             unimplemented!("ftCo_KneeBend.c:63-65: jump cancel {transition:?}");
         }

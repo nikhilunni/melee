@@ -13,6 +13,29 @@ pub struct CaptureGeometry {
     pub hip_scale: f32,
     pub root_offset: Vec3,
 }
+impl CaptureGeometry {
+    /// Fighter_UnkUpdateVecFromBones_8006876C: unscaled costume geometry.
+    pub(super) fn from_skeleton(
+        tree: &mut hsd_anim::jobj::JObjTree,
+        root: hsd_anim::jobj::JObjId,
+        assets: &FighterAssets,
+    ) -> Self {
+        let xrot = usize::from(assets.parts.joint(FtPart::XRotN).expect("XRotN"));
+        let trans = usize::from(assets.parts.joint(FtPart::TransN).expect("TransN"));
+        // retail 800687DC: fdivs; 80068814/24/34: separate fsubs.
+        let hip_scale = tree.translation(tree.bone(root, xrot).unwrap()).y / 8.55;
+        let origin = bone_position(tree, root, xrot, Vec3::ZERO);
+        let translation = bone_position(tree, root, trans, Vec3::ZERO);
+        Self {
+            hip_scale,
+            root_offset: Vec3::new(
+                translation.x - origin.x,
+                translation.y - origin.y,
+                translation.z - origin.z,
+            ),
+        }
+    }
+}
 #[derive(Clone, Copy, Debug)]
 pub struct ThrownPose {
     pub saved_translation: Vec3,
@@ -215,6 +238,16 @@ pub fn release_throw(
     let forced_motion = (attacker.motion_state.id == S::ThrowLw).then_some(S::DamageFlyTop);
     let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
     victim.begin_damage_reaction(hit, forced_motion, va, rng)?;
+    // ftCo_800DE7C0 installs fn_800DE798, which restores the throw exception
+    // after Damage motion entry (ftColl_8007B8CC).
+    victim.commands.thrown_by = Some(attacker.spawn_number);
+    // ftCo_800DE7C0: throw DI follows damage entry, without hitlag/ASDI.
+    let stick = victim.input.current.stick;
+    super::damage::apply_directional_influence(
+        &mut victim.physics.knockback_velocity,
+        stick,
+        va.damage.influence.maximum_angle_degrees,
+    );
     Ok(())
 }
 
@@ -228,9 +261,6 @@ fn prepare_throw_release(
     map: &mut melee_mp::CollMap,
 ) -> melee_coll::damage::ReceivedHit {
     attacker.commands.grab_release = false;
-    if victim.input.current.stick != crate::input::Stick::default() {
-        unimplemented!("ftCo_8008E5A4: throw DI");
-    }
     let hit = attacker.commands.throw_hitboxes[0]
         .as_ref()
         .expect("throw damage");
@@ -256,10 +286,16 @@ fn prepare_throw_release(
         clank: false,
         rebound: false,
     };
-    let knockback =
-        va.damage
-            .knockback(&descriptor, victim.physics.percent, va.damage.throw_weight);
+    let knockback = va.damage.knockback_with_damage(
+        &descriptor,
+        victim.physics.percent,
+        va.damage.throw_weight,
+        attacker.commands.throw_damage_counts[0],
+    );
     attacker.combat.has_recorded_hit = true;
+    // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: one entry per throw.
+    attacker.combat.stale.record();
+    attacker.commands.stale_multiplier = Some(attacker.combat.stale.multiplier(&aa.stale_weights));
     attacker.commands.first_hit_stale_penalty = Some(aa.first_stale_penalty);
     let mut position = bone_position(
         &mut attacker.skeleton,

@@ -1,7 +1,7 @@
 //! Repeated-hit separation, ftColl_800763C0 / ftColl_80076528.
-use super::stale::GroundMove;
 use crate::fighter::{assets::Result, FighterCore};
 use hsd_archive::Archive;
+use melee_types::combat::StaleMove as GroundMove;
 use melee_types::GroundOrAir;
 
 pub struct ComboParameters {

@@ -195,7 +195,7 @@ impl FighterAssets {
             &[
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
                 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
-                46, 58, 167, 168, 169, 209, 242,
+                46, 58, 167, 168, 169, 209, 242, 243,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -237,6 +237,12 @@ impl FighterAssets {
             .link(color_table + 118 * 8)?
             .ok_or("powershield color script")?;
         charge_overlays.insert(118, super::smash::read_overlay(common, powershield)?);
+        for id in 15..=18 {
+            let entry = common
+                .link(color_table + u32::from(id) * 8)?
+                .ok_or("electric damage color script")?;
+            charge_overlays.insert(id, super::smash::read_overlay(common, entry)?);
+        }
         for command in &commands {
             if let Command::SmashCharge(charge) = command {
                 let entry = common
@@ -370,6 +376,7 @@ impl FighterAssets {
                         2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27,
                         28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
                         217, 220, 224, 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
+                        243,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,

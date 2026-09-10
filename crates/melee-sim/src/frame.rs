@@ -221,7 +221,15 @@ impl Runtime {
                     .items
                     .animate::<SceneItems>(id, state.assets.items.get(kind), owner.as_ref())
             }
-            4 => state.items.physics::<SceneItems>(id, owner.as_ref()),
+            4 => state.items.physics::<SceneItems>(
+                id,
+                owner.as_ref(),
+                &melee_it::ItemBounds {
+                    left: state.assets.arena.left,
+                    right: state.assets.arena.right,
+                    bottom: state.assets.arena.bottom,
+                },
+            ),
             5 => {
                 let contact = state.items.stage_contact(id, &mut state.map);
                 state.items.collide::<SceneItems>(id, contact);
@@ -296,6 +304,11 @@ impl Runtime {
                             false);
                     }
                     state.countdown = None;
+                    // Ground_801C0FB8 invokes the stage's deferred start callback
+                    // when Versus releases the countdown (grLast_8021A9AC).
+                    if let SceneStage::FinalDestination(stage) = &mut state.stage {
+                        stage.ground.start();
+                    }
                 }
             }
             Callback::Fighter { player, proc } => {
@@ -336,10 +349,24 @@ impl Runtime {
                         }));
                     }
                     for item in state.items.iter_mut() {
+                        let owner = state
+                            .fighters
+                            .iter()
+                            .position(|f| Some(f.player.id) == item.owner);
+                        let multiplier = owner.map_or(1.0, |index| {
+                            state.fighters[index].combat.stale.multiplier_for(
+                                item.stale_source.map(|a| a.move_id),
+                                &assets.fighters[index].stale_weights,
+                            )
+                        });
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
-                            f.core.detect_item_hit(item, &assets.fighters[player])
+                            f.core
+                                .detect_item_hit(item, &assets.fighters[player], multiplier)
                         });
                         if let Some(damage) = hit {
+                            if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
+                                state.fighters[owner].combat.stale.record_attack(attack);
+                            }
                             // ftColl_80077C60 records contact; Item_8026A294 runs the callback at link 14.
                             item.record_damage_dealt(damage);
                         }
@@ -501,7 +528,13 @@ impl Runtime {
                         // grLast's controller already advanced; finish only its collision tail.
                         return Ok(());
                     }
-                    if matches!(state.stage, SceneStage::Pupupu(_)) {
+                    if matches!(state.stage, SceneStage::FinalDestination(_)) {
+                        crate::scene_stage::last::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
                             state,
                             map_id,
@@ -586,7 +619,15 @@ impl Runtime {
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
                 while !f.item_requests.is_empty() {
-                    let request = f.item_requests.remove(0);
+                    let mut request = f.item_requests.remove(0);
+                    match &mut request {
+                        melee_it::ItemRequest::Spawn(spawn)
+                        | melee_it::ItemRequest::SpawnHeld(spawn)
+                        | melee_it::ItemRequest::SpawnLaser { spawn, .. } => {
+                            spawn.stale_source = f.combat.stale.attack()
+                        }
+                        melee_it::ItemRequest::Control { .. } => {}
+                    }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));
                     crate::scene_items::request(
@@ -732,6 +773,12 @@ impl Simulation {
         {
             let runtime = self.runtime.as_mut();
             let frame = runtime.frame;
+            // Audio and controller output belong to one completed frame. The
+            // headless sink retires them before the next frame's callbacks.
+            for fighter in &mut runtime.state.fighters {
+                fighter.0.commands.footstep_sounds.clear();
+                fighter.0.commands.rumble_requests.clear();
+            }
             runtime.state.effects.events.begin_tick(frame);
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
@@ -1283,3 +1330,6 @@ mod grab_pairs;
 mod yoshi_state;
 
 pub mod rendered_pose;
+
+#[cfg(test)]
+mod fd_background;

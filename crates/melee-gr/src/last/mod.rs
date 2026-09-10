@@ -5,6 +5,7 @@ pub mod animation;
 pub mod background;
 pub mod init;
 pub mod lights;
+mod prepared;
 pub mod procs;
 
 use crate::ground::Ground;

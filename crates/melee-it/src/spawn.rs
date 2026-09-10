@@ -6,6 +6,7 @@ use melee_types::{GroundOrAir, ItemKind};
 #[derive(Clone, Copy, Debug)]
 pub struct SpawnItem {
     pub owner: Option<u8>,
+    pub stale_source: Option<melee_types::combat::AttackInstance>,
     pub secondary_owner: Option<u8>,
     pub kind: ItemKind,
     pub hold_kind: u8,
@@ -27,6 +28,7 @@ impl SpawnItem {
         position.z = 0.0;
         Self {
             owner: Some(owner),
+            stale_source: None,
             secondary_owner: Some(owner),
             kind,
             hold_kind: 8,

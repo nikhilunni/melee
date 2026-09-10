@@ -73,7 +73,15 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
     initialize_laser(pool.get_mut(ray).unwrap(), &laser, 0.0, 7.0, 0);
     assert_eq!(pool.iter().map(|i| i.id).collect::<Vec<_>>(), [gun, ray]);
     pool.animate::<Items>(ray, &laser, None);
-    pool.physics::<Items>(ray, None);
+    pool.physics::<Items>(
+        ray,
+        None,
+        &melee_it::ItemBounds {
+            left: -246.0,
+            right: 246.0,
+            bottom: -140.0,
+        },
+    );
     let item = pool.get_mut(ray).unwrap();
     assert_eq!(item.position.x.to_bits(), 7.0f32.to_bits());
     assert_eq!(

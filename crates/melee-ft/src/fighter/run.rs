@@ -55,7 +55,9 @@ impl Fighter {
             self.enter_buffered_special(assets, false);
             return Ok(());
         }
-        self.reject_running_actions(assets, context, &[P::Grab], "ftCo_Run.c:125");
+        if self.try_dash_catch(assets, context)? {
+            return Ok(());
+        }
         if self.core.input.pressed.intersects(crate::input::Buttons::A) {
             return self.enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
         }

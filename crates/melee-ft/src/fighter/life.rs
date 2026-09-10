@@ -441,10 +441,10 @@ impl Fighter {
         }
         // ftColl_8007B7A4(gobj, p_ftCommonData->x5D8): x1994 = max(x1994, dur); the x198C
         // flash-type selector is renderer state and is not modelled.
-        self.core.status.ledge_intangibility = self
+        self.core.status.revival_invincibility = self
             .core
             .status
-            .ledge_intangibility
+            .revival_invincibility
             .max(assets.life.invincibility_duration);
         self.core
             .commands
@@ -512,7 +512,12 @@ impl FighterCore {
             self.attributes.size.weight,
         ));
         self.state_data = MotionData::None;
-        self.combat = super::damage::CombatState::default();
+        // Fighter_UnkInitReset retains the costume geometry computed once by
+        // Fighter_UnkUpdateVecFromBones_8006876C, including across stock losses.
+        self.combat = super::damage::CombatState {
+            capture_geometry: self.combat.capture_geometry,
+            ..Default::default()
+        };
         self.shield = super::shield::ShieldState::default();
         self.effect_state = super::effects::FighterEffects::default();
         self.effects = melee_ef::request::EffectQueue::default();

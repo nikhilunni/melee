@@ -24,6 +24,11 @@ impl<T, const N: usize> FixedVec<T, N> {
         self.entries[self.len] = Some(value);
         self.len += 1;
     }
+    pub fn insert(&mut self, index: usize, value: T) {
+        assert!(index <= self.len);
+        self.push(value);
+        self.entries[index..self.len].rotate_right(1);
+    }
     pub fn clear(&mut self) {
         while self.pop().is_some() {}
     }

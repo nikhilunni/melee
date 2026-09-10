@@ -86,6 +86,7 @@ pub(crate) fn import(
     f.status.name_tag_timer = u16::from_be_bytes([raw[0x209A], raw[0x209B]]);
     f.status.ledge_cooldown = word(raw, 0x2064) as i32;
     f.status.ledge_intangibility = word(raw, 0x1990) as i32;
+    f.status.revival_invincibility = word(raw, 0x1994) as i32;
     f.status.on_ledge = raw[0x221D] & 1 != 0;
     f.status.grab_exclusions =
         melee_ft::fighter::ledge::GrabExclusions(u16::from_be_bytes([raw[0x1A6A], raw[0x1A6B]]));

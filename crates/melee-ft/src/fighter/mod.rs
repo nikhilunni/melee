@@ -51,7 +51,7 @@ use crate::{
 use hsd_anim::jobj::JObjTree;
 use hsd_types::{Vec2, Vec3};
 use melee_types::{FighterKind, PlayerKind};
-pub use spawn::{PlayerSlot, SpawnContext, SpawnCounter};
+pub use spawn::{MotionPreservation, PlayerSlot, SpawnContext, SpawnCounter};
 pub use state::{
     common_table, interleaved_order, ActionId, FighterProc, MotionRow, MotionState, SpecialSlot,
     COMMON_COUNT,
@@ -86,7 +86,7 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
     /// character shield states also live here.
     const SPECIAL_ROWS: &'static [MotionRow] = &[];
     /// ftData special-row move IDs, indexed from action 341.
-    const SPECIAL_MOVES: &'static [Option<attack::stale::GroundMove>] = &[];
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &[];
 
     fn special_rows() -> &'static [MotionRow] {
         Self::SPECIAL_ROWS
@@ -103,6 +103,8 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
 
     /// Fighter_8006C80C: character-owned accessory4, after the deferred effect flush.
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+    /// ftCommon_8007DB58: character take-damage callback before damage entry.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }
@@ -438,6 +440,8 @@ pub struct Status {
     pub grab_exclusions: ledge::GrabExclusions,
     /// x1990: timed intangibility, independent of subaction hurt status.
     pub ledge_intangibility: i32,
+    /// Fighter +1994: revival protection allows contact sparks but no damage.
+    pub revival_invincibility: i32,
 
     /// x2100 (+2100), -1 disables sword afterimages.
     pub sword_trail: i32,
@@ -462,6 +466,7 @@ impl Status {
             on_ledge: false,
             grab_exclusions: ledge::GrabExclusions::NONE,
             ledge_intangibility: 0,
+            revival_invincibility: 0,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,

@@ -22,6 +22,8 @@ pub struct BackgroundMotion {
     pub yaw_acceleration: f32,
     pub amplitude: f32,
     pub generator_present: bool,
+    /// Engine handle for the active tilt generator; its children share the AppSRT.
+    pub generator_id: Option<usize>,
     /// Plain data outputs for the root JObj's rotation.
     pub applied_pitch: f32,
     pub applied_yaw: f32,

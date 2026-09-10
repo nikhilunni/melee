@@ -1,12 +1,13 @@
 //! Composition root for stage-specific resources and callbacks.
+pub(crate) mod last;
 pub(crate) mod pupupu;
-use anyhow::{ensure, Result};
+use anyhow::Result;
 use gekko_math::HsdRng;
 use hsd_archive::Archive;
 use melee_gr::{
     battle::Battlefield,
     desc::{ReadResult, StageDesc},
-    last::{procs::ProcRegistration, AnimationStatus, FinalDestination},
+    last::{procs::ProcRegistration, FinalDestination},
 };
 
 pub struct StageDescriptor {
@@ -62,14 +63,7 @@ impl SceneStage {
     pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<bool> {
         match self {
             Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),
-            Self::FinalDestination(stage) => {
-                stage.run_stage_proc(map, &AnimationStatus::default(), rng);
-                ensure!(
-                    stage.actions.is_empty(),
-                    "FD transition outside restored interval: {:?}",
-                    stage.actions
-                );
-            }
+            Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
                 3 => stage.tick_shy_guys(rng),

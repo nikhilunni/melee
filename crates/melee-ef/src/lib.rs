@@ -91,6 +91,10 @@ pub enum EffectTiming {
 impl Effects {
     /// efAlt_Spawn(0x48E), efLib_Create_Attach_Pos(0xBBD): Fox table row 5.
     /// Loading is initialization-only; all 64 synchronous model slots are warm.
+    /// Camera_RequestQuake: retained headless camera-output request.
+    pub fn request_camera_quake(&mut self, kind: u16, position: Vec3) {
+        self.camera_quakes.push((kind, position));
+    }
     pub fn load_fox(&mut self, archive: &Archive) -> Result<()> {
         ensure!(self.fox_bank.is_none(), "Fox effects already loaded");
         let table = archive
@@ -448,6 +452,23 @@ impl Effects {
                 )?;
                 continue;
             }
+            if let EffectRequest::HitSpark {
+                position,
+                element: melee_types::HitElement::Electric,
+                ..
+            } = request
+            {
+                // ftColl hit_effect_ids[Electric] -> efAsync_Dispatch 0x3E9.
+                self.spawn_dust_generator::<T>(
+                    0x3E9,
+                    position,
+                    fighter.effect_facing(),
+                    bank,
+                    particles,
+                    rng,
+                )?;
+                continue;
+            }
             if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
                 request
             {
@@ -501,8 +522,8 @@ impl Effects {
                         &offset,
                         &mut position,
                     );
-                    if matches!(id, 0x514 | 0x515) {
-                        // efAsync kind 8 -> Camera_RequestQuake(3), no particle spawn.
+                    if matches!(id, 0x513..=0x515) {
+                        // efAsync kind 8 -> Camera_RequestQuake(2/3/4), no particle spawn.
                         self.camera_quakes.push((id - 0x511, position));
                     } else {
                         self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)?;

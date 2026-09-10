@@ -84,23 +84,29 @@ impl Fighter {
         };
         let frame = self.core.animation.frame;
         let common = &assets.running;
+        if ((dash.early_interrupts && frame <= common.early_interrupt_frames)
+            || frame <= common.redash_frames)
+            && self.first_ground_transition(assets, context, &[P::SpecialSide]) == T::Special
+        {
+            self.enter_buffered_special(assets, false);
+            self.apply_dash_interrupt_friction(assets);
+            return Ok(());
+        }
         if dash.early_interrupts && frame <= common.early_interrupt_frames {
-            self.reject_running_actions(
-                assets,
-                context,
-                &[P::SpecialSide, P::Grab, P::SmashSide],
-                "ftCo_Dash.c:90-98",
-            );
+            if self.try_dash_catch(assets, context)? {
+                return Ok(());
+            }
+            if self.try_dash_forward_smash(assets)? {
+                self.apply_dash_interrupt_friction(assets);
+                return Ok(());
+            }
             if frame <= common.early_escape_frames {
                 self.reject_running_actions(assets, context, &[P::Escape], "ftCo_Dash.c:100-101");
             }
         } else if frame <= common.redash_frames {
-            self.reject_running_actions(
-                assets,
-                context,
-                &[P::SpecialSide, P::Grab],
-                "ftCo_Dash.c:109-114",
-            );
+            if self.try_dash_catch(assets, context)? {
+                return Ok(());
+            }
             if self.core.input.pressed.intersects(crate::input::Buttons::A) {
                 return self
                     .enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
@@ -112,7 +118,9 @@ impl Fighter {
             }
             self.reject_running_actions(assets, context, &[P::Shield], "ftCo_Dash.c:121-123");
         } else {
-            self.reject_running_actions(assets, context, &[P::Grab], "ftCo_Dash.c:131");
+            if self.try_dash_catch(assets, context)? {
+                return Ok(());
+            }
             if self.try_redash(assets)? {
                 return Ok(());
             }
@@ -142,18 +150,20 @@ impl Fighter {
                 self.enter_dash(assets, true)?;
             }
             // ftCo_Dash_IASA's tail after a successful dash predicate.
-            let terrain = crate::physics::grounded::floor_friction(&self.core.collision.data);
-            let reduction =
-                -(self.core.physics.ground_velocity * assets.running.interrupt_friction);
-            // retail 0x800CA51C: fmadds.
-            self.core.physics.ground_velocity =
-                gekko_math::fma::fmadds(reduction, terrain, self.core.physics.ground_velocity);
+            self.apply_dash_interrupt_friction(assets);
             return Ok(true);
         }
         Ok(false)
     }
 }
 impl FighterCore {
+    /// ftCo_Dash_IASA's shared successful-special/redash tail, 800CA51C: fmadds.
+    fn apply_dash_interrupt_friction(&mut self, assets: &FighterAssets) {
+        let terrain = crate::physics::grounded::floor_friction(&self.collision.data);
+        let reduction = -(self.physics.ground_velocity * assets.running.interrupt_friction);
+        self.physics.ground_velocity =
+            gekko_math::fma::fmadds(reduction, terrain, self.physics.ground_velocity);
+    }
     pub(super) fn reject_running_actions(
         &self,
         assets: &FighterAssets,

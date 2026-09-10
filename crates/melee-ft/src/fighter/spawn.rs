@@ -12,7 +12,15 @@ struct MotionChange<'a> {
     rate: f32,
     source: Option<super::grab_throw::ThrowSource<'a>>,
     ground_air: bool,
-    keep_hit_status: bool,
+    preserve: MotionPreservation,
+}
+
+/// Retail motion-entry flags retained across a ground/air counterpart change.
+#[derive(Clone, Copy, Default)]
+pub struct MotionPreservation {
+    pub hit_status: bool,
+    pub hitboxes: bool,
+    pub effects: bool,
 }
 
 /// Spawn inputs read from Player, pl/player.c:228-240 and fighter.c:688-739.
@@ -298,7 +306,7 @@ impl Fighter {
         &mut self,
         state: ActionId,
         assets: &FighterAssets,
-        keep_hit_status: bool,
+        preserve: MotionPreservation,
     ) -> Result<()> {
         self.change_motion_state_with_options(
             state,
@@ -307,7 +315,7 @@ impl Fighter {
                 start: self.animation.frame,
                 rate: 1.0,
                 ground_air: true,
-                keep_hit_status,
+                preserve,
                 ..Default::default()
             },
         )
@@ -468,6 +476,8 @@ impl FighterCore {
                 )
             })
             .collect();
+        let capture_geometry =
+            super::grab_throw::CaptureGeometry::from_skeleton(&mut skeleton, root, assets);
         skeleton.set_translate(root, &position);
         // Fighter_UpdateModelScale / ftCommon_GetModelScale:
         // retail 0x8007F69C fmuls, no contraction.
@@ -508,7 +518,10 @@ impl FighterCore {
             skeleton,
             motion_state,
             state_data: MotionData::None,
-            combat: super::damage::CombatState::default(),
+            combat: super::damage::CombatState {
+                capture_geometry,
+                ..Default::default()
+            },
             shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
             effects: melee_ef::request::EffectQueue::default(),
@@ -545,6 +558,11 @@ impl FighterCore {
         self.status.require_supported();
         self.commands.smash_charge = None;
         self.commands.borrowed_script = source.map(|source| source.assets.commands.clone());
+        // Fighter_ChangeMotionState (800693AC): clear the throw exception on
+        // ordinary entry. Borrowed thrown scripts still need their source owner.
+        if source.is_none() {
+            self.commands.thrown_by = None;
+        }
         self.status.interaction = Interaction::Idle;
     }
     /// Fighter_ChangeMotionState (fighter.c:950-1189): outgoing effects, scalar
@@ -553,7 +571,7 @@ impl FighterCore {
         &mut self,
         row: MotionState,
         assets: &FighterAssets,
-        move_id: Option<super::attack::stale::GroundMove>,
+        move_id: Option<melee_types::combat::StaleMove>,
         change: MotionChange<'_>,
     ) -> bool {
         let state = row.id;
@@ -571,12 +589,14 @@ impl FighterCore {
             self.commands.fighter_hidden = false;
         }
         self.commands.allow_interrupt = false;
-        self.commands.hitboxes.fill(None);
+        if !change.preserve.hitboxes {
+            self.commands.hitboxes.fill(None);
+        }
         self.commands.first_hit_stale_penalty = None;
         self.combat.stale.enter(move_id);
         self.commands.stale_multiplier =
             move_id.map(|_| self.combat.stale.multiplier(&assets.stale_weights));
-        if !change.keep_hit_status {
+        if !change.preserve.hit_status {
             self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
             self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
         }
@@ -600,7 +620,7 @@ impl FighterCore {
         if !preserve_name_tag {
             self.status.name_tag_timer = 0;
         }
-        if self.effect_state.destroy_on_state_change {
+        if self.effect_state.destroy_on_state_change && !change.preserve.effects {
             self.effect_state.destroy_on_state_change = false;
             self.effects
                 .push(melee_ef::request::EffectRequest::DestroyOwned);
@@ -761,6 +781,7 @@ impl FighterCore {
                 assets,
             );
         } else {
+            self.advance_damage_overlay(assets);
             self.commands.step(
                 &mut self.animation,
                 &mut self.skeleton,

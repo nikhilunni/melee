@@ -35,15 +35,24 @@ macro_rules! scene_characters {
                 delay: i32,
                 context: melee_ft::fighter::SpawnContext<'_>,
             ) -> anyhow::Result<Self> {
+                let character = Self::character_for_costume(archive, player.costume)?;
+                let (skeleton, root) = archive.model(player.costume);
+                Ok(Self(Box::new(Fighter::spawn_for_match(
+                    player, character, resources, skeleton, root, context, delay,
+                ).map_err(|e| anyhow::anyhow!("{e}"))?)))
+            }
+            // Keep the concrete Fighter result outside the roster expansion.
+            // At opt-level 0 each expanded result otherwise occupies stack space.
+            fn character_for_costume(
+                archive: &CharacterArchive,
+                costume: u8,
+            ) -> anyhow::Result<melee_ft::fighter::CharacterState> {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
                         let mut character = <$ty as CharacterCallbacks>::from_archive(&archive.data)
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
-                        character.on_costume_loaded(archive.costume(player.costume), player.costume).map_err(|e| anyhow::anyhow!("{e}"))?;
-                        let (skeleton, root) = archive.model(player.costume);
-                        return Ok(Self(Box::new(Fighter::spawn_for_match(
-                            player, character.into_state(), resources, skeleton, root, context, delay,
-                        ).map_err(|e| anyhow::anyhow!("{e}"))?)));
+                        character.on_costume_loaded(archive.costume(costume), costume).map_err(|e| anyhow::anyhow!("{e}"))?;
+                        return Ok(character.into_state());
                     }
                 )*
                 unreachable!("validated character descriptor")

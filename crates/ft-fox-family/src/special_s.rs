@@ -389,7 +389,10 @@ fn ground_collision(
             f.change_ground_air_motion(
                 air_state.into(),
                 p.assets.expect("Illusion collision assets"),
-                travel,
+                melee_ft::fighter::MotionPreservation {
+                    hit_status: travel,
+                    ..Default::default()
+                },
             )?;
             if travel {
                 f.commands.variables[2] = 0;

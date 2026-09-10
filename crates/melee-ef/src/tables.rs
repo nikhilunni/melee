@@ -187,7 +187,7 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 11] = [
     },
 ];
 // efasync.c:282-287, live-joint generator dispatch.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 2] = [(0x402, 0x59), (0x403, 0x5E)];
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 3] = [(0x402, 0x59), (0x403, 0x5E), (0x412, 0x13)];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 pub(super) static PARTICLE_KINDS: [i32; 22] = [
     2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 445, 448,

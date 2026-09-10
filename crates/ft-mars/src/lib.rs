@@ -20,44 +20,64 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; 32] {
         i += 1;
     }
     i = 0;
-    while i < 4 {
+    while i < 8 {
         rows[i] = melee_ft::fighter::MotionRow {
             action: ActionId(341 + i as u16),
             id: melee_types::CommonMotionState::None,
             animation: 295 + i as i32,
-            anim: if i == 0 {
+            anim: if i % 4 == 0 {
                 special_n::start
-            } else if i == 1 {
+            } else if i % 4 == 1 {
                 special_n::hold
             } else {
                 special_n::end
             },
-            iasa: if i == 1 { special_n::input } else { no_input },
-            physics: if i == 0 {
+            iasa: if i % 4 == 1 {
+                special_n::input
+            } else {
+                no_input
+            },
+            physics: if i >= 4 {
+                special_n::air_physics
+            } else if i == 0 {
                 special_n::startup_physics
             } else {
                 callbacks::physics::guard_on
             },
-            collision: special_n::collision,
+            collision: if i >= 4 {
+                special_n::air_collision
+            } else {
+                special_n::collision
+            },
             camera: callbacks::camera::follow_fighter,
             implemented: true,
         };
         i += 1;
     }
     i = 8;
-    while i < 17 {
+    while i < 26 {
         rows[i] = melee_ft::fighter::MotionRow {
             action: ActionId(341 + i as u16),
             id: melee_types::CommonMotionState::None,
             animation: 295 + i as i32,
             anim: special_s::anim,
-            iasa: if i < 14 { special_s::input } else { no_input },
-            physics: if i < 11 {
+            iasa: if (i - 8) % 9 < 6 {
+                special_s::input
+            } else {
+                no_input
+            },
+            physics: if i >= 17 {
+                special_s::air_physics
+            } else if i < 11 {
                 callbacks::physics::guard_on
             } else {
                 callbacks::physics::jab
             },
-            collision: special_s::collision,
+            collision: if i >= 17 {
+                special_s::air_collision
+            } else {
+                special_s::collision
+            },
             camera: callbacks::camera::follow_fighter,
             implemented: true,
         };
@@ -111,8 +131,8 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; 32] {
 fn no_input(_: &mut melee_ft::fighter::Fighter, _: melee_ft::fighter::state::InputPhase<'_>) {}
 
 /// ftMars_Init_MotionStateTable's FtMoveId values, including aerial counterparts.
-pub const fn special_moves() -> [Option<melee_ft::fighter::attack::stale::GroundMove>; 32] {
-    use melee_ft::fighter::attack::stale::GroundMove as M;
+pub const fn special_moves() -> [Option<melee_types::combat::StaleMove>; 32] {
+    use melee_types::combat::StaleMove as M;
     let mut moves = [None; 32];
     let mut i = 0;
     while i < 32 {

@@ -160,6 +160,8 @@ fn start<C: FoxFamily, const AIR: bool>(
             .into(),
             phase.assets,
         )?;
+        // ftFx_SpecialN_OnChangeAction -> ft_800892A0: each firing cycle is a new instance.
+        f.combat.stale.new_instance();
         f.character.get_mut::<C>().special_neutral().accessory_shot = true;
         control::<C>(f, ItemControl::Visibility(1));
     }
@@ -184,6 +186,8 @@ fn firing<C: FoxFamily, const AIR: bool>(
                 phase.assets,
             )?;
             f.character.get_mut::<C>().special_neutral().repeat = false;
+            // ftFx_SpecialN_OnChangeAction -> ft_800892A0: each firing cycle is a new instance.
+            f.combat.stale.new_instance();
             f.character.get_mut::<C>().special_neutral().accessory_shot = true;
         } else {
             f.change_motion_state(
@@ -303,6 +307,13 @@ fn fire<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
         volume: 127,
         pan: 64,
     });
+}
+
+/// ftFx_SpecialN_RemoveBlaster (800E5EBC): synchronous take-damage cleanup.
+pub fn remove_blaster<C: FoxFamily>(f: &mut Fighter) {
+    control::<C>(f, ItemControl::Remove);
+    f.character.get_mut::<C>().special_neutral().blaster_present = false;
+    f.character.get_mut::<C>().special_neutral().accessory_shot = false;
 }
 
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {

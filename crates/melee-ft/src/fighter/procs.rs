@@ -24,6 +24,7 @@ impl Fighter {
         };
         if !self.core.status.disabled {
             self.core.advance_shield_flash(assets);
+            self.core.advance_damage_overlay(assets);
         }
         Ok(choice)
     }
@@ -444,6 +445,9 @@ impl FighterCore {
         }
         if self.status.ledge_intangibility != 0 {
             self.status.ledge_intangibility -= 1;
+        }
+        if self.status.revival_invincibility != 0 {
+            self.status.revival_invincibility -= 1;
         }
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
             self.status.name_tag_timer -= 1;

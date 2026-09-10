@@ -43,6 +43,10 @@ impl Fighter {
                 return self.enter_simple_attack(state, assets);
             }
         }
+        self.enter_jab(assets)
+    }
+    /// checkAttack11 (8008ABC0), also used by a looping jab combo.
+    fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.jab_variant();
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
@@ -230,6 +234,11 @@ impl Fighter {
             } else {
                 self.character.third_jab_state()
             };
+            if state == S::Attack11 {
+                // doAttack13 -> doAttack12Rapid -> checkAttack11: restart entry
+                // includes ftAnim_8006EBA4 and the jab-2 window, unlike jab 2/3.
+                return self.enter_jab(assets);
+            }
             self.core.commands.jab_followup = false;
             self.change_motion_state(state.into(), assets)?;
             self.core.state_data = MotionData::Jab(JabState {

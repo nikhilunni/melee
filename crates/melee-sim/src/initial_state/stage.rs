@@ -116,18 +116,9 @@ pub(super) fn restore_scene(
                 particles.generators.len() == usize::from(!match_start),
                 "unexpected initial FD generator population"
             );
-            let mut animations = BTreeMap::new();
-            animations.insert(
-                3,
-                BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[3])
-                    .map_err(|e| anyhow::anyhow!("{e}"))?,
-            );
-            if match_start {
-                animations.insert(
-                    4,
-                    BackgroundAnimation::load(&assets.stage, &assets.stage_desc)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?,
-                );
+            let mut animations = crate::scene_stage::last::load_animations(assets)?;
+            if !match_start {
+                restore_fd_clocks(saved, &mut animations);
             }
             Ok((SceneStage::FinalDestination(Box::new(stage)), animations))
         }
@@ -137,6 +128,34 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Story => restore_story(saved, assets),
         melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
         _ => unreachable!("registered stage descriptor"),
+    }
+}
+
+/// Restore each independently running background clock from the saved boundary.
+fn restore_fd_clocks(saved: &SavedPose, animations: &mut Animations) {
+    let entities = word(saved.bytes(0x804D_782C, 4), 0);
+    let mut gobj = word(saved.bytes(entities + 5 * 4, 4), 0);
+    while gobj != 0 {
+        let object = saved.bytes(gobj, 0x30);
+        let ground = word(object, 0x2C);
+        if ground != 0 {
+            let map = word(saved.bytes(ground + 0x14, 4), 0) as u8;
+            if let Some(animation) = animations.get_mut(&map) {
+                let mut joints = Vec::new();
+                let root = word(object, 0x28);
+                saved_joints(saved, word(saved.bytes(root + 0x10, 4), 0), &mut joints);
+                for (index, joint) in joints.into_iter().enumerate() {
+                    let aobj = word(saved.bytes(joint + 0x7C, 4), 0);
+                    if aobj != 0 {
+                        animation.restore_joint_clock::<RetailTrig>(
+                            index,
+                            float(saved.bytes(aobj, 0x20), 4),
+                        );
+                    }
+                }
+            }
+        }
+        gobj = word(object, 8);
     }
 }
 

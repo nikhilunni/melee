@@ -270,6 +270,15 @@ impl ParticleSystem {
         if generator.flags & 0x1000 != 0 {
             hsd_anim::mtx::hsd_mtx_get_scale(&matrix, &mut transform.scale);
         }
+        self.set_application_transform(id, transform);
+    }
+
+    /// Caller-owned AppSRT writes are shared by the generator and its live children.
+    pub fn set_application_transform(
+        &mut self,
+        id: usize,
+        transform: crate::generator::ApplicationTransform,
+    ) {
         let transform = self.share_application_transform(transform);
         for generator in &mut self.generators {
             if generator.appsrt_id == Some(id) {
@@ -370,6 +379,13 @@ impl ParticleSystem {
         }
     }
 
+    /// grLib_801C9834 -> hsd_8039D4DC: stop one generator while retaining its children.
+    pub fn expire_generator(&mut self, id: usize) {
+        if let Some(index) = self.generators.iter().position(|g| g.id == id) {
+            self.expire(index);
+        }
+        self.release_external_transforms();
+    }
     /// hsd_8039D688 (0x8039D688): effect destruction visits each owned joint.
     /// Existing children retain a zero-rate generator, except attached AppSRT
     /// generators, whose particles are removed by the type-0x80 path.

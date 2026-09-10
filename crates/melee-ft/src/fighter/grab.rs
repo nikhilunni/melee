@@ -10,9 +10,28 @@ use melee_types::CommonMotionState as S;
 impl Fighter {
     /// ftCo_800D8C54 (800D8C54): Catch begins at frame zero without an immediate step.
     pub(super) fn enter_catch(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.enter_catch_motion(S::Catch, assets)
+    }
+
+    /// ftCo_800D8A38: the running predicate selects the CatchDash row.
+    pub(super) fn try_dash_catch(
+        &mut self,
+        assets: &FighterAssets,
+        context: &crate::input::WaitContext,
+    ) -> Result<bool> {
+        if self.first_ground_transition(assets, context, &[crate::input::WaitPredicate::Grab])
+            != crate::input::WaitTransition::Grab
+        {
+            return Ok(false);
+        }
+        self.enter_catch_motion(S::CatchDash, assets)?;
+        Ok(true)
+    }
+
+    fn enter_catch_motion(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         self.character.catch_variant();
         self.core.physics.animation_velocity = Vec3::ZERO;
-        self.change_motion_state(S::Catch.into(), assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Catch;
         Ok(())
     }
@@ -41,13 +60,53 @@ impl Fighter {
             self.core.input.current.stick.x,
         ) == WaitGroundResult::EnterFall
         {
-            self.leave_ground();
+            // ftCo_Fall_Enter converts only a grounded source; DownBound may
+            // already be airborne, with an expired ECB lock.
             self.change_motion_state(S::Fall.into(), assets)?;
         }
         Ok(())
     }
 }
 impl FighterCore {
+    /// ftCo_CatchDash_Phys (800D8DD0) -> ft_80085030: TransN motion or friction.
+    pub(super) fn dash_catch_physics(
+        &mut self,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Vec3,
+    ) {
+        if !self
+            .animation
+            .flags
+            .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            return self.catch_physics(assets, map, wind);
+        }
+        let offset = self
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("CatchDash TransN")
+            .primary_history
+            .offset
+            .z;
+        // retail ft_80085030, 8008505C: fmsubs.
+        self.physics.ground_acceleration =
+            gekko_math::fma::fmsubs(offset, self.physics.facing, self.physics.ground_velocity);
+        use crate::physics::grounded::{self, GroundedParameters};
+        grounded::apply_ground_movement(
+            &mut self.physics,
+            self.collision.data.floor.normal,
+            map.floor_speed_scale(&self.collision.data),
+        );
+        grounded::finish_ground_update(
+            &mut self.physics,
+            &self.collision.data,
+            &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+            map,
+            wind,
+        );
+    }
     /// ftCo_Catch_Phys (800D8D88): separate multiplier product; no fused sites.
     pub(super) fn catch_physics(
         &mut self,
@@ -90,11 +149,12 @@ pub enum GrabLink {
 pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32> {
     use melee_types::{GroundOrAir, HitElement};
     if attacker.status.disabled
-        || attacker.motion_state.id != S::Catch
+        || !matches!(attacker.motion_state.id, S::Catch | S::CatchDash)
         || victim.status.disabled
         || victim.combat.grab.is_some()
         || victim.status.grab_exclusions.0 & 1 != 0
         || victim.status.ledge_intangibility != 0
+        || victim.status.revival_invincibility != 0
         || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal
     {
         return None;
@@ -137,7 +197,12 @@ pub fn capture_pair(
     let frame = attacker.core.animation.frame;
     attacker.core.commands.grab_release = false;
     attacker.core.commands.throw_reverse = false;
-    attacker.change_motion_state_at(S::CatchPull.into(), attacker_assets, frame)?;
+    let pull = if attacker.motion_state.id == S::Catch {
+        S::CatchPull
+    } else {
+        S::CatchDashPull
+    };
+    attacker.change_motion_state_at(pull.into(), attacker_assets, frame)?;
     attacker.core.combat.grab = Some(GrabLink::Holding {
         victim: victim.core.spawn_number,
         vertical_offset: 0.0,

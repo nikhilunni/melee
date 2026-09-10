@@ -35,7 +35,7 @@ impl CharacterCallbacks for Fox {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
-    const SPECIAL_MOVES: &'static [Option<melee_ft::fighter::attack::stale::GroundMove>] =
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_fox_family::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &ft_fox_family::rows::<Self>();
     fn enter_special(
@@ -55,6 +55,8 @@ impl CharacterCallbacks for Fox {
         ft_fox_family::special_hi::accessory::<Self>(fighter, assets);
         ft_fox_family::special_lw::accessory::<Self>(fighter, assets);
     }
+    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(ft_fox_family::special_n::remove_blaster::<Self>);
     fn item_owner(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,

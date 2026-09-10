@@ -13,6 +13,13 @@ pub const ITEM_CAPACITY: usize = 128;
 pub const ITEM_GOBJ_LINK: u8 = 9;
 pub const ITEM_GOBJ_PRIORITY: u8 = 0;
 pub const ITEM_PROCESS_LINKS: [u8; 10] = [0, 1, 4, 5, 9, 11, 12, 13, 14, 16];
+/// Stage offsets consumed by Item_802696CC. Items use a fixed 10,000-unit ceiling.
+#[derive(Clone, Copy, Debug)]
+pub struct ItemBounds {
+    pub left: f32,
+    pub right: f32,
+    pub bottom: f32,
+}
 #[derive(Clone, Debug, Default)]
 pub struct RayState {
     pub angle: f32,
@@ -41,6 +48,7 @@ pub struct ItemCore {
     pub id: u32,
     pub kind: ItemKind,
     pub owner: Option<u8>,
+    pub stale_source: Option<melee_types::combat::AttackInstance>,
     pub hold_kind: u8,
     pub position: Vec3,
     pub previous_position: Vec3,
@@ -231,6 +239,7 @@ impl ItemPool {
             id,
             kind: spawn.kind,
             owner: spawn.owner,
+            stale_source: spawn.stale_source,
             hold_kind: spawn.hold_kind,
             position: if spawn.initial_collision {
                 spawn.previous_position
@@ -325,7 +334,12 @@ impl ItemPool {
         let row = D::logic(item.kind).states[item.motion as usize];
         item.destroyed |= (row.animation)(item, &ItemAnimationContext { owner, assets });
     }
-    pub fn physics<D: ItemDispatch>(&mut self, id: u32, owner: Option<&ItemOwner>) {
+    pub fn physics<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        owner: Option<&ItemOwner>,
+        bounds: &ItemBounds,
+    ) {
         let Some(item) = self.get_mut(id) else {
             return;
         };
@@ -335,7 +349,7 @@ impl ItemPool {
                 &ItemPhysicsContext { owner },
             );
         }
-        integrate(item);
+        integrate(item, bounds);
     }
     /// it_8026E9A4 -> mpCheckAllRemap, used by ray state collision callbacks.
     pub fn stage_contact(&self, id: u32, map: &mut melee_mp::CollMap) -> bool {
@@ -378,10 +392,21 @@ impl ItemPool {
 }
 /// Item_802697D4: audited retail uses four PSVECAdd calls; never reassociate
 /// velocity+nudge, position+delta, environmental movement, platform movement.
-fn integrate(item: &mut ItemCore) {
+fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
     if !item.attached && !item.frozen {
         let delta = add(item.velocity, item.nudge);
         item.position = add(item.position, delta);
+    }
+    // Item_802697D4 -> Item_802696CC, before environmental/platform movement.
+    // Item_802680CC enables all four bounds; attachment skips this whole block.
+    if !item.attached
+        && (item.position.x > bounds.right
+            || item.position.x < bounds.left
+            || item.position.y > 10000.0
+            || item.position.y < bounds.bottom)
+    {
+        item.destroyed = true;
+        return;
     }
     item.position = add(item.position, item.environmental_velocity);
     item.position = add(item.position, item.platform_velocity);
@@ -452,7 +477,14 @@ mod tests {
         let item = pool.get_mut(id).unwrap();
         item.velocity.x = -16777216.0;
         item.nudge.x = -1.0;
-        integrate(item);
+        integrate(
+            item,
+            &ItemBounds {
+                left: f32::NEG_INFINITY,
+                right: f32::INFINITY,
+                bottom: f32::NEG_INFINITY,
+            },
+        );
         assert_eq!(item.position.x.to_bits(), 0.0f32.to_bits());
     }
 }

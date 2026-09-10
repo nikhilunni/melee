@@ -9,11 +9,13 @@ use hsd_archive::Archive;
 use hsd_types::Mtx;
 
 pub struct BackgroundAnimation {
-    tree: JObjTree,
-    root: JObjId,
+    pub(super) tree: JObjTree,
+    pub(super) root: JObjId,
     // Animation replacement preserves the model hierarchy and these identities.
-    joints: Vec<JObjId>,
+    pub(super) joints: Vec<JObjId>,
     requests: Vec<ParticleRequest>,
+    pub(super) prepared: Vec<Vec<Option<hsd_anim::aobj::AObj>>>,
+    pub(super) subtree_ends: Vec<usize>,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
@@ -57,7 +59,13 @@ impl BackgroundAnimation {
             root,
             joints,
             requests,
+            prepared: Vec::new(),
+            subtree_ends: Vec::new(),
         })
+    }
+    pub(super) fn reserve_events(&mut self, tracks: usize) {
+        self.tree.reserve_animation_tracks(tracks);
+        self.requests.reserve(self.tree.events.capacity());
     }
     /// grAnime_801C8138: replace all joint tracks without replacing the model.
     pub fn select_animation(
@@ -75,11 +83,8 @@ impl BackgroundAnimation {
         )
     }
     pub fn clear_animation(&mut self) {
-        let mut joints = Vec::new();
-        self.tree
-            .walk_tree(self.root, &mut |joint, _| joints.push(joint));
-        for joint in joints {
-            self.tree.get_mut(joint).aobj = None;
+        for &joint in &self.joints {
+            self.tree.remove_anim(joint);
         }
     }
     /// grAnime_801C83D0: completion flag of the first joint AObj.

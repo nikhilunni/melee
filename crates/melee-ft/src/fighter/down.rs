@@ -8,7 +8,7 @@ use hsd_types::Vec3;
 use melee_types::{CommonMotionState as S, FtPart};
 
 /// Shared getup animations from ftData_MotionStateList, prepared at asset load.
-pub(super) const MOTIONS: &[u32] = &[186, 187, 188, 189, 194, 195, 196, 197];
+pub(super) const MOTIONS: &[u32] = &[186, 187, 188, 189, 194, 195, 196, 197, 199, 200];
 
 impl Fighter {
     /// ftCo_80098400 / ftCo_800984D4: buffered AB at bounce completion,
@@ -105,17 +105,27 @@ impl Fighter {
             return Ok(false);
         }
         let stick = self.core.input.current.stick.x;
-        if gekko_math::msl::fabsf(stick) < assets.damage.tech_roll_threshold {
-            unimplemented!("ftCo_800987D0: neutral tech");
-        }
-        if stick * self.core.physics.facing >= 0.0 {
-            unimplemented!("ftCo_800989D4: PassiveStandF");
-        }
+        let state = if gekko_math::msl::fabsf(stick) < assets.damage.tech_roll_threshold {
+            S::Passive
+        } else if stick * self.core.physics.facing >= 0.0 {
+            S::PassiveStandF
+        } else {
+            S::PassiveStandB
+        };
         self.land();
-        self.change_motion_state(S::PassiveStandB.into(), assets)?;
+        self.change_motion_state(state.into(), assets)?;
+        if state == S::Passive {
+            self.core.project_ground_knockback(assets);
+            self.commands
+                .color_animations
+                .push(melee_cmd::ColorAnimationRequest {
+                    id: 120,
+                    duration: 0,
+                });
+        }
         self.core
             .effects
-            .push(melee_ef::request::EffectRequest::CaptureFlash { bone: 0 });
+            .push_after_graphics(melee_ef::request::EffectRequest::CaptureFlash { bone: 0 });
         Ok(true)
     }
     /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN.
@@ -163,14 +173,7 @@ impl Fighter {
                 offset: Vec3::ZERO,
                 range: Vec3::ZERO,
             });
-        // ftCommon_8007CCE8 (8007CCE8 --fused: no sites): project residual KB.
-        if self.core.physics.ground_knockback_velocity == 0.0 {
-            let limit = assets.damage.ground_knockback_limit;
-            let speed = self.core.physics.knockback_velocity.x.clamp(-limit, limit);
-            self.core.physics.ground_knockback_velocity = speed;
-            self.core.physics.knockback_velocity.x = normal.y * speed;
-            self.core.physics.knockback_velocity.y = -normal.x * speed;
-        }
+        self.core.project_ground_knockback(assets);
         Ok(())
     }
 
@@ -240,6 +243,19 @@ pub(super) fn recovery_animation(
     Ok(None)
 }
 impl FighterCore {
+    /// ftCommon_8007CCE8 (8007CCE8): clamp and project residual ground knockback.
+    fn project_ground_knockback(&mut self, assets: &FighterAssets) {
+        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground
+            && self.physics.ground_knockback_velocity == 0.0
+        {
+            let normal = self.collision.data.floor.normal;
+            let limit = assets.damage.ground_knockback_limit;
+            let speed = self.physics.knockback_velocity.x.clamp(-limit, limit);
+            self.physics.ground_knockback_velocity = speed;
+            self.physics.knockback_velocity.x = normal.y * speed;
+            self.physics.knockback_velocity.y = -normal.x * speed;
+        }
+    }
     /// ftCo_DownBound_Phys -> ft_80084F3C, even while the bounce script marks air.
     pub(super) fn down_physics(
         &mut self,

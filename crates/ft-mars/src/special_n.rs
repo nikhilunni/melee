@@ -19,25 +19,39 @@ pub struct SpecialN {
     pub pending_effect: bool,
 }
 pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
-    if air {
-        unimplemented!("ftMs_SpecialAirN_Enter");
-    }
-    f.physics.ground_velocity /= f
+    let divisor = f
         .character
         .get::<Marth>()
         .attributes
         .shield_breaker
         .momentum_divisor;
+    if air {
+        f.physics.self_velocity.x /= divisor;
+        if f.physics.self_velocity.y <= 0.0 {
+            f.physics.self_velocity.y = 0.0;
+        }
+    } else {
+        f.physics.ground_velocity /= divisor;
+    }
     f.commands.variables[0] = 0;
     f.character.get_mut::<Marth>().special_n = Default::default();
-    f.change_motion_state(ActionId(341), a)
+    f.change_motion_state(ActionId(if air { 345 } else { 341 }), a)
         .expect("Shield Breaker assets");
     f.step_animation(a);
 }
 pub fn start(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
-        f.change_motion_state(ActionId(342), p.assets)?;
+        f.change_motion_state(
+            ActionId(
+                if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+                    346
+                } else {
+                    342
+                },
+            ),
+            p.assets,
+        )?;
         f.commands
             .color_animations
             .push(melee_cmd::ColorAnimationRequest {
@@ -64,7 +78,12 @@ pub fn hold(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>
     Ok(None)
 }
 fn release(f: &mut Fighter, full: bool, a: &FighterAssets) -> Result<()> {
-    f.change_motion_state_at(ActionId(if full { 344 } else { 343 }), a, 1.0)?;
+    let base = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        347
+    } else {
+        343
+    };
+    f.change_motion_state_at(ActionId(base + u16::from(full)), a, 1.0)?;
     f.commands.variables[0] = u32::from(full);
     f.character.get_mut::<Marth>().special_n.pending_effect = true;
     Ok(())
@@ -89,7 +108,12 @@ pub fn end(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>>
         }
     }
     if !f.animation.frames_remaining(&f.skeleton) {
-        f.change_motion_state(melee_types::CommonMotionState::Wait.into(), p.assets)?;
+        let state = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+            melee_types::CommonMotionState::Fall
+        } else {
+            melee_types::CommonMotionState::Wait
+        };
+        f.change_motion_state(state.into(), p.assets)?;
     }
     Ok(None)
 }
@@ -129,14 +153,96 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         ),
         melee_ft::collision::ground::WaitGroundResult::Supported
     ) {
-        unimplemented!("Shield Breaker preserved ground-to-air transition");
+        let state = f.motion_state.action.0;
+        assert!(
+            (341..=344).contains(&state),
+            "non-Shield Breaker transition"
+        );
+        f.leave_ground_with_spent_jumps();
+        f.change_ground_air_motion(
+            ActionId(state + 4),
+            p.assets.expect("Shield Breaker collision assets"),
+            preservation(state),
+        )?;
     }
     Ok(())
 }
 pub fn accessory(f: &mut Fighter, _: &FighterAssets) {
     if std::mem::take(&mut f.character.get_mut::<Marth>().special_n.pending_effect) {
+        let id = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+            0x4F3
+        } else {
+            0x4F2
+        };
         f.effects
-            .push(melee_ef::request::EffectRequest::SyncAttached { id: 0x4F2, bone: 0 });
+            .push(melee_ef::request::EffectRequest::SyncAttached { id, bone: 0 });
         f.effect_state.destroy_on_state_change = true;
+    }
+}
+
+/// ftMs_SpecialAirNStart_Phys / Loop_Phys / End_Phys: gravity and friction.
+pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    use melee_ft::physics::{airborne, integrate};
+    let friction = if f.motion_state.action.0 == 345 {
+        f.character
+            .get::<Marth>()
+            .attributes
+            .shield_breaker
+            .friction
+    } else {
+        f.attributes.air.aerial_friction
+    };
+    f.physics.self_velocity.y = airborne::gravity(
+        f.physics.self_velocity.y,
+        f.attributes.air.gravity,
+        f.attributes.air.terminal_velocity,
+    );
+    // ftCommon_ApplyFrictionAir (8007CE94): inclusive magnitude comparison.
+    let x = f.physics.self_velocity.x;
+    f.physics.animation_velocity.x = if friction.abs() >= x.abs() {
+        -x
+    } else if x > 0.0 {
+        -friction
+    } else {
+        friction
+    };
+    f.decay_air_knockback(p.assets);
+    integrate::integrate_velocity(&mut f.physics);
+    integrate::integrate_environment(&mut f.physics, None, p.wind);
+}
+/// ftMs_SpecialAirN*_Coll -> ft_80081D0C; preserved ground counterpart.
+pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    use melee_ft::collision::air;
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    if air::collide_air_dodge(
+        &mut c.physics,
+        &mut c.collision,
+        p.map,
+        &mut c.skeleton,
+        c.animation.root,
+    ) {
+        let state = f.motion_state.action.0;
+        f.land();
+        f.change_ground_air_motion(
+            ActionId(state - 4),
+            p.assets.expect("Shield Breaker landing assets"),
+            preservation(state),
+        )?;
+    }
+    Ok(())
+}
+
+fn preservation(state: u16) -> melee_ft::fighter::MotionPreservation {
+    let phase = (state - 341) % 4;
+    melee_ft::fighter::MotionPreservation {
+        hit_status: true,
+        hitboxes: phase >= 2,
+        effects: phase != 0,
     }
 }

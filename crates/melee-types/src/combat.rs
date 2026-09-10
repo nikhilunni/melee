@@ -54,3 +54,40 @@ pub struct GraphicsCommand {
     pub offset: Vec3,
     pub range: Vec3,
 }
+
+/// Move identity shared by fighters and their projectile attacks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StaleMove {
+    Jab1,
+    Jab2,
+    Jab3,
+    RapidJab,
+    Dash,
+    SideTilt,
+    UpTilt,
+    DownTilt,
+    SideSmash,
+    UpSmash,
+    DownSmash,
+    NeutralAir,
+    ForwardAir,
+    BackAir,
+    UpAir,
+    DownAir,
+    SpecialNeutral,
+    SpecialSide,
+    SpecialUp,
+    SpecialDown,
+    Pummel,
+    ThrowForward,
+    ThrowBack,
+    ThrowUp,
+    ThrowDown,
+}
+
+/// One attack instance retained by projectiles after their owner changes motion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AttackInstance {
+    pub move_id: StaleMove,
+    pub serial: u64,
+}
