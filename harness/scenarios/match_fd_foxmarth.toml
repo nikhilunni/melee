@@ -4,7 +4,7 @@
 # ends (GAME) before 28,800 ticks. The port replays the per-tick pads the tick tracer recorded for both ports.
 name = "match_fd_foxmarth"
 savestate = "harness/roms/start_fd_marth4.sav"
-frames = 28800
+frames = 6083
 seed = 1
 stage = "FinalDestination"
 

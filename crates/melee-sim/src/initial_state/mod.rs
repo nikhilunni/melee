@@ -312,6 +312,8 @@ impl InitialState {
         // ifStock_804A1378: import only the saved HUD boundary, never later trace rows.
         let stock_displays = std::array::from_fn(|slot| {
             if match_start {
+                // The HUD is built during the first match ticks (not in a match-start
+                // savestate); ifStock creation is not ported yet.
                 return None;
             }
             let player = saved.bytes(0x804A_1378 + 8 + slot as u32 * 0x50, 0x50);
@@ -342,7 +344,14 @@ impl InitialState {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays,
             spawn_counter,
-            countdown: None,
+            // A match-start savestate is taken before the first countdown tick, so the
+            // Versus countdown (and its input release, ftLib_800868A4 at tick 85) starts
+            // from frame 0 exactly as in a cold start.
+            countdown: if match_start {
+                Some(crate::countdown::Countdown::load(&scenario.assets_path())?)
+            } else {
+                None
+            },
             pending_music,
             selected_music: None,
             assets,
