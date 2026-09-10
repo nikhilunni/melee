@@ -1,0 +1,57 @@
+# S10: scripted four-stock match. Marth KOs Fox with charged forward smashes; after each respawn
+# Fox drops from the revival platform on a stick tap, walks slowly to the left edge (teeters there),
+# and is smashed off once his respawn invincibility has expired. Ends past the GAME banner.
+# Recorded from idle_fd_marth4.sav (stock 4; P1 Marth at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "match_fd_marth_scripted"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 1600
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 105, buttons = { StickX = 1.0, A = true } },
+  { frame = 107, buttons = { A = true } },
+  { frame = 140, buttons = {  } },
+  { frame = 289, buttons = { StickX = -1.0 } },
+  { frame = 324, buttons = {  } },
+  { frame = 369, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 372, port = 1, buttons = {  } },
+  { frame = 399, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 402, port = 1, buttons = {  } },
+  { frame = 420, port = 1, buttons = { StickX = -0.3 } },
+  { frame = 500, port = 1, buttons = {  } },
+  { frame = 530, buttons = { StickX = -1.0, A = true } },
+  { frame = 532, buttons = { A = true } },
+  { frame = 565, buttons = {  } },
+  { frame = 794, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 797, port = 1, buttons = {  } },
+  { frame = 824, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 827, port = 1, buttons = {  } },
+  { frame = 845, port = 1, buttons = { StickX = -0.3 } },
+  { frame = 925, port = 1, buttons = {  } },
+  { frame = 955, buttons = { StickX = -1.0, A = true } },
+  { frame = 957, buttons = { A = true } },
+  { frame = 990, buttons = {  } },
+  { frame = 1245, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 1248, port = 1, buttons = {  } },
+  { frame = 1275, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 1278, port = 1, buttons = {  } },
+  { frame = 1296, port = 1, buttons = { StickX = -0.3 } },
+  { frame = 1376, port = 1, buttons = {  } },
+  { frame = 1406, buttons = { StickX = -1.0, A = true } },
+  { frame = 1408, buttons = { A = true } },
+  { frame = 1441, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
