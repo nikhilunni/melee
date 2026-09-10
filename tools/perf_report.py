@@ -151,7 +151,7 @@ def estimate(path):
     return {"ns": numbers[0], "lower_ns": numbers[1], "upper_ns": numbers[2]}
 
 
-def compare(current, previous, time_percent, size_percent):
+def compare(current, previous, time_percent, size_percent, reviewed=None):
     failures = []
     for name in ("stripped_bytes", "text_bytes", "load_ns", "ticks_600_ns"):
         if name not in previous or name not in current:
@@ -160,7 +160,7 @@ def compare(current, previous, time_percent, size_percent):
         limit = previous[name] * (1 + percent / 100)
         if current[name] > limit:
             failures.append(f"{name}: {current[name]:.3f} > {limit:.3f} (previous {previous[name]:.3f}, +{percent:g}%)")
-    failures += compare_duplicates(current, previous, c15_census())
+    failures += compare_duplicates(current, previous, reviewed if reviewed is not None else c15_census())
     return failures
 
 

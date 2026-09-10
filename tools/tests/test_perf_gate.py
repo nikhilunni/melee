@@ -19,16 +19,16 @@ class PerformanceBudget(unittest.TestCase):
                    duplicate_labels={"melee-sim": 8, "ft-fox": 2}, cross_crate_duplicate_labels=3)
         current = dict(old, stripped_bytes=105, text_bytes=105, load_ns=110,
                        ticks_600_ns=110, duplicate_labels={"melee-sim": 8, "ft-fox": 2}, cross_crate_duplicate_labels=3)
-        self.assertEqual(perf.compare(current, old, 10, 5), [])
+        self.assertEqual(perf.compare(current, old, 10, 5, reviewed={}), [])
         for key in ("stripped_bytes", "text_bytes", "load_ns", "ticks_600_ns"):
             with self.subTest(key=key):
                 bad = dict(current)
                 bad[key] += 1
-                self.assertEqual(len(perf.compare(bad, old, 10, 5)), 1)
+                self.assertEqual(len(perf.compare(bad, old, 10, 5, reviewed={})), 1)
         current["duplicate_labels"] = {"melee-sim": 9, "ft-fox": 1, "ft-new": 1}
-        self.assertEqual(len(perf.compare(current, old, 10, 5)), 2)
+        self.assertEqual(len(perf.compare(current, old, 10, 5, reviewed={})), 2)
         current["cross_crate_duplicate_labels"] = 4
-        self.assertEqual(len(perf.compare(current, old, 10, 5)), 3)
+        self.assertEqual(len(perf.compare(current, old, 10, 5, reviewed={})), 3)
 
     def test_platform_size_formats_and_invalid_evidence(self):
         self.assertEqual(perf.read_text_size("__TEXT __DATA __OBJC others dec hex\n3604480 1 0 0 0 0\n"), 3604480)
