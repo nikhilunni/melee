@@ -245,3 +245,8 @@ fn shieldbreak_fd_marth_allocation_budget() {
 fn topko_usmash_long_fd_fox_allocation_budget() {
     allocation_budget("topko_usmash_long_fd_fox", 0);
 }
+
+#[test]
+fn human_smoke_fd_marth_allocation_budget() {
+    allocation_budget("human_smoke_fd_marth", 0);
+}

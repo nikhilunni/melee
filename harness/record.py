@@ -21,6 +21,8 @@ import time
 import tomllib
 from pathlib import Path
 
+import pads_to_inputs
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 DOLPHIN = Path.home() / "Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin"
@@ -84,6 +86,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-particles", action="store_true")
     ap.add_argument("--ledger-suffix", default="ledger", help="ledger file suffix (the 600-tick idle/start scenes use ledger600)")
     ap.add_argument("--timeout", type=float, default=600.0)
+    ap.add_argument("--reuse-tick", action="store_true",
+                    help="human scenes: keep the existing tick trace (and pad log) and run the rest")
+    ap.add_argument("--particle-ticks", type=int, default=0,
+                    help="cap the particle dump at N ticks (the gate needs the initial state; a full "
+                         "eight-minute dump is ~4 GB)")
     a = ap.parse_args(argv)
 
     scenario_path = a.scenario.resolve()
@@ -94,18 +101,60 @@ def main(argv: list[str] | None = None) -> None:
     traces = HERE / "traces"
     traces.mkdir(exist_ok=True)
 
-    print(f"== {name}: tick trace ({frames} ticks)")
-    subprocess.run([sys.executable, str(HERE / "dolphin/run_scenario.py"), str(scenario_path),
-                    "--tick-trace", "--video", "OGL", "--ports", "2"], check=True,
-                   stdout=subprocess.DEVNULL)
+    human_ports = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
+                   if f.get("controller") == "human"]
+    tick_cmd = [sys.executable, str(HERE / "dolphin/run_scenario.py"), str(scenario_path),
+                "--tick-trace", "--video", "OGL", "--ports", "2"]
+    if human_ports:
+        tick_cmd += ["--speed", "1", "--timeout", str(a.timeout), "--background-input"]
+        keypad = Path(os.environ.setdefault("MELEE_KEYPAD", str(HERE / "roms" / ".remote" / "keypad.json")))
+        if not keypad.exists():
+            sys.exit(f"start the terminal gamepad first (another terminal): cd {HERE} && uv run python keypad.py")
+        print(f"== {name}: HUMAN tick trace ({frames} ticks at speed 1; ports {human_ports} on the real "
+              "controller). Play from the keypad.py terminal (keep it focused): arrows = stick, X/Z/C/S = A/B/X/Y, "
+              "D = Z, Q/W = L/R, I/J/K/L = C-stick, Shift = half tilt.")
+    else:
+        print(f"== {name}: tick trace ({frames} ticks)")
+    if human_ports and a.reuse_tick and (traces / f"{name}.tick.raw.jsonl.done").exists():
+        print("   reusing the recorded tick trace and pad log")
+        import validate_ticks
+        if validate_ticks.main([str(traces / f"{name}.tick.expected.jsonl"), "--max-draws", "256", "--scripted"]):
+            sys.exit(1)
+    else:
+        subprocess.run(tick_cmd, check=True, stdout=None if human_ports else subprocess.DEVNULL)
     expected = traces / f"{name}.tick.expected.jsonl"
-    print("   p0 (tick, motion, x, y):", motions(expected))
+    print("   p0 (tick, motion, x, y):", motions(expected)[:40])
+    replay_path = scenario_path
+    if human_ports:
+        summary = json.loads((traces / f"{name}.tick.raw.jsonl.done").read_text())
+        ticks = int(summary["ticks"])
+        if ticks != frames:
+            # The match ended (GAME scene reset) before the requested count: the committed
+            # scenario keeps the count actually recorded so the gates line up.
+            text = scenario_path.read_text()
+            scenario_path.write_text(text.replace(f"frames = {frames}", f"frames = {ticks}", 1))
+            print(f"   match ended early: frames = {ticks} written to {scenario_path.name}")
+            frames = ticks
+        pads = traces / f"{name}.tick.raw.jsonl.pads.jsonl"
+        steps = pads_to_inputs.steps_from_pads(pads.open())
+        replay_path = traces / f"{name}.replay.toml"
+        pads_to_inputs.write_replay_toml(scenario, steps, frames, f"{name}_replaycheck", replay_path)
+        print(f"== {name}: {len(steps)} human pad steps -> {replay_path.name}; replaying the tick trace to verify")
+        subprocess.run([sys.executable, str(HERE / "dolphin/run_scenario.py"), str(replay_path),
+                        "--tick-trace", "--video", "OGL", "--ports", "2"], check=True, stdout=subprocess.DEVNULL)
+        check = traces / f"{name}_replaycheck.tick.expected.jsonl"
+        for index, (human, replay) in enumerate(zip(expected.open(), check.open())):
+            h, r = json.loads(human), json.loads(replay)
+            if h.get("state") != r.get("state") or h.get("inputs") != r.get("inputs"):
+                diff = [k for k in h.get("state", {}) if h["state"][k] != r.get("state", {}).get(k)]
+                sys.exit(f"replayed pads diverge from the human recording at tick {index}: {diff[:8]}")
+        print(f"   replay verified: {frames} ticks identical (fighter state and pads)")
 
     if not a.no_ledger:
         out = traces / f"{name}.{a.ledger_suffix}.raw.jsonl"
         print(f"== {name}: RNG ledger -> {out.name}")
         run_dolphin_until(HERE / "dolphin/rng_ledger.py",
-                          {"MELEE_SCENARIO": str(scenario_path), "MELEE_RAW_OUT": str(out)},
+                          {"MELEE_SCENARIO": str(replay_path), "MELEE_RAW_OUT": str(out)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
                           traces / f"{name}.ledger.dolphin.out", a.timeout)
         report = subprocess.run([sys.executable, str(HERE / "rng_ledger_report.py"), str(out), "--ticks", "1"],
@@ -120,11 +169,12 @@ def main(argv: list[str] | None = None) -> None:
 
     if not a.no_particles:
         out = traces / f"{name}.particles.jsonl"
-        print(f"== {name}: particle dump ({frames} ticks)")
+        particle_ticks = min(frames, a.particle_ticks) if a.particle_ticks else frames
+        print(f"== {name}: particle dump ({particle_ticks} ticks)")
         run_dolphin_until(HERE / "dolphin_particle_snippet.py",
-                          {"MELEE_PARTICLES_SCENARIO": str(scenario_path),
+                          {"MELEE_PARTICLES_SCENARIO": str(replay_path),
                            "MELEE_PARTICLES_SAVESTATE": str(savestate),
-                           "MELEE_PARTICLES_OUT": str(out), "MELEE_PARTICLES_TICKS": str(frames)},
+                           "MELEE_PARTICLES_OUT": str(out), "MELEE_PARTICLES_TICKS": str(particle_ticks)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
                           traces / f"{name}.particles.dolphin.out", a.timeout)
 
@@ -133,7 +183,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"== {name}: bone dump ({a.bones} ticks)")
         run_dolphin_until(HERE / "dolphin_bones_tick_snippet.py",
                           {"MELEE_BONES_ANY_ANIM": "1", "MELEE_BONES_SAVESTATE": str(savestate),
-                           "MELEE_BONES_SCENARIO": str(scenario_path),
+                           "MELEE_BONES_SCENARIO": str(replay_path),
                            "MELEE_BONES_OUT": str(out), "MELEE_BONES_TICKS": str(a.bones)},
                           # the snippet writes <name>.bones.raw.jsonl(.done/.err) beside the dump
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),

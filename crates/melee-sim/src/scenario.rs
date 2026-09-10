@@ -116,10 +116,10 @@ impl Scenario {
             "unsupported stage"
         );
         // Recordings are bounded by the tracer's run, not by the importer; the
-        // longest gate so far is the 1,600-tick scripted match (S10).
+        // eight-minute acceptance match (S11) is 28,800 ticks.
         ensure!(
-            self.frames > 0 && self.frames <= 4_000,
-            "scenario frames must be in 1..=4000"
+            self.frames > 0 && self.frames <= 30_000,
+            "scenario frames must be in 1..=30000"
         );
         ensure!(self.fighters.len() == 2, "requires two fighters");
         let mut previous_port = None;
@@ -130,7 +130,7 @@ impl Scenario {
                     && previous_port.is_none_or(|p| p < fighter.slot))
                     || (!self.is_cold() && usize::from(fighter.slot) == slot))
                     && crate::scene_fighter::SceneFighter::NAMES.contains(&fighter.kind.as_str())
-                    && matches!(fighter.controller.as_str(), "scripted" | "idle"),
+                    && matches!(fighter.controller.as_str(), "scripted" | "idle" | "human"),
                 "requires ascending distinct human ports with a registered character kind"
             );
             previous_port = Some(fighter.slot);

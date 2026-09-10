@@ -121,6 +121,14 @@ class Tracer:
         # Current pad state per port; a step at frame N holds until that port's
         # next step. Frames count VI callbacks from the savestate load.
         self.held: dict[int, dict] = {0: {}}
+        # `controller = "human"` fighters keep their real controller: the tracer never
+        # overrides those ports (an override lasts one VI frame and would mask the pad).
+        self.human_ports = sorted(int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
+                                  if f.get("controller") == "human")
+        for port in self.human_ports:
+            self.held.pop(port, None)
+        if any(int(step.get("port", 0)) in self.human_ports for step in self.inputs):
+            raise ValueError("scripted input steps target a human port")
         self.needs_load = savestate_path is not None
         self.load_info: dict = {}
         self.done = False

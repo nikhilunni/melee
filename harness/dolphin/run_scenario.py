@@ -42,7 +42,7 @@ SI_GC_CONTROLLER, SI_NONE = 6, 0   # SerialInterface::SIDevices
 
 
 def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
-                    tick_trace: bool = False) -> list[str]:
+                    tick_trace: bool = False, background_input: bool = False) -> list[str]:
     """Same SI setup as drive.py launch: the savestate was recorded with `ports`
     emulated controllers plugged in and Dolphin should see the same devices."""
     script = "tick_trace.py" if tick_trace else "trace_scenario.py"
@@ -50,6 +50,10 @@ def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
            "-C", f"Dolphin.Core.EmulationSpeed={speed}"]
     if video:
         cmd += ["-v", video]
+    if background_input:
+        # A human port: the keyboard reaches the emulated pad even when the render
+        # window is not focused.
+        cmd += ["-C", "Dolphin.Input.BackgroundInput=True"]
     for i in range(4):
         cmd += ["-C", f"Dolphin.Core.SIDevice{i}={SI_GC_CONTROLLER if i < ports else SI_NONE}"]
     return cmd
@@ -75,11 +79,28 @@ def stop(proc: subprocess.Popen) -> None:
             proc.kill()
 
 
+def dolphin_pids() -> list[int]:
+    out = subprocess.run(["pgrep", "-f", str(DOLPHIN)], capture_output=True, text=True).stdout
+    return [int(x) for x in out.split()]
+
+
+def stop_pid(pid: int) -> None:
+    try:
+        os.kill(pid, signal.SIGTERM)
+        for _ in range(30):
+            os.kill(pid, 0)
+            time.sleep(0.5)
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scenario", type=Path)
     ap.add_argument("--out", type=Path, default=HARNESS / "traces", help="output directory")
     ap.add_argument("--speed", type=float, default=0.0, help="Dolphin EmulationSpeed; 0 = unlimited")
+    ap.add_argument("--background-input", action="store_true", help="keyboard input without window focus")
     ap.add_argument("--video", default=None, help="video backend, e.g. Null")
     ap.add_argument("--ports", type=int, default=2, choices=[1, 2, 3, 4],
                     help="emulated GC controllers plugged in (match the savestate)")
@@ -102,14 +123,47 @@ def main(argv: list[str] | None = None) -> None:
     env = {**os.environ, "MELEE_SCENARIO": str(a.scenario.resolve()), "MELEE_RAW_OUT": str(raw)}
     log = (a.out / f"{stem}.dolphin.out").open("wb")
     t0 = time.monotonic()
-    proc = subprocess.Popen(dolphin_command(ISO, a.speed, a.video, a.ports, a.tick_trace), env=env, stdout=log,
-                            stderr=subprocess.STDOUT, start_new_session=True)
-    print(f"dolphin pid {proc.pid}; waiting for {done}")
-    try:
-        wait_for(done, err, a.timeout)
-    finally:
-        if not a.keep:
-            stop(proc)
+    command = dolphin_command(ISO, a.speed, a.video, a.ports, a.tick_trace, a.background_input)
+    if a.background_input:
+        # A human port reads the keyboard through CGEventSourceKeyState, which macOS gates
+        # on Input Monitoring for the *responsible* app. Spawned from a shell, Dolphin's
+        # responsible app is the terminal; launched through LaunchServices it is Dolphin
+        # itself, so only Dolphin needs the permission.
+        log.close()
+        app = Path(command[0]).parents[2]
+        before = set(dolphin_pids())
+        proc = subprocess.Popen(["open", "-n", "-a", str(app), "--stdout", str(log.name),
+                                 "--stderr", str(log.name),
+                                 "--env", f"MELEE_SCENARIO={env['MELEE_SCENARIO']}",
+                                 "--env", f"MELEE_RAW_OUT={env['MELEE_RAW_OUT']}",
+                                 *(["--env", f"MELEE_KEYPAD={os.environ['MELEE_KEYPAD']}"]
+                                   if os.environ.get("MELEE_KEYPAD") else []),
+                                 "--args", *command[1:]])
+        proc.wait(30)
+        pid = None
+        for _ in range(60):
+            new = set(dolphin_pids()) - before
+            if new:
+                pid = max(new)
+                break
+            time.sleep(0.5)
+        if pid is None:
+            sys.exit("Dolphin did not start through LaunchServices")
+        print(f"dolphin pid {pid} (LaunchServices); waiting for {done}")
+        try:
+            wait_for(done, err, a.timeout)
+        finally:
+            if not a.keep:
+                stop_pid(pid)
+    else:
+        proc = subprocess.Popen(command, env=env, stdout=log,
+                                stderr=subprocess.STDOUT, start_new_session=True)
+        print(f"dolphin pid {proc.pid}; waiting for {done}")
+        try:
+            wait_for(done, err, a.timeout)
+        finally:
+            if not a.keep:
+                stop(proc)
     wall = time.monotonic() - t0
     summary = json.loads(done.read_text())
     decode.main(raw, expected)
@@ -119,11 +173,16 @@ def main(argv: list[str] | None = None) -> None:
     if a.tick_trace:
         import validate_ticks
 
-        if records != scenario["frames"] or summary.get("ticks") != records:
+        wanted = scenario["frames"]
+        if summary.get("ended_early"):
+            wanted = summary["ticks"]
+            print(f"match ended early: {wanted} ticks recorded of {scenario['frames']} requested")
+        if records != wanted or summary.get("ticks") != records:
             sys.exit("tick trace record count does not match the scenario and .done marker")
         flags = ["--max-draws", "256"]
-        if any(step.get("buttons") for step in scenario.get("inputs", [])):
-            flags.append("--scripted")
+        if any(step.get("buttons") for step in scenario.get("inputs", [])) or any(
+                f.get("controller") == "human" for f in scenario.get("fighters", [])):
+            flags.append("--scripted")  # inputs drive the fighters: animation rates vary
         if validate_ticks.main([str(expected), *flags]):
             sys.exit(1)
 

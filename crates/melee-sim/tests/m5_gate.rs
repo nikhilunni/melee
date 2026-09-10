@@ -685,3 +685,9 @@ fn s6_shield_prefix(name: &str, frames: usize, prefix: usize) {
 fn topko_usmash_long_fd_fox_340_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("topko_usmash_long_fd_fox", 340);
 }
+
+// S11 pipeline: a human-played scene (P1 Marth from the terminal gamepad, P2 Fox idle).
+#[test]
+fn human_smoke_fd_marth_600_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("human_smoke_fd_marth", 600);
+}
