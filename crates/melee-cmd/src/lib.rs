@@ -33,9 +33,11 @@ pub enum Command {
     ClearHitbox(usize),
     ClearHitboxes,
     JabFollowup(bool),
-    /// ftAction_80071AE8: enable the jab combo flag (x2218_b1).
-    JabCombo {
-        disabled: bool,
+    RapidJab(bool),
+    /// ftAction_80071A58 / 80071A9C: all capsules or one bone.
+    HurtCapsuleStatus {
+        bone: Option<usize>,
+        status: melee_types::combat::HurtStatus,
     },
     SwordTrail {
         duration: i32,

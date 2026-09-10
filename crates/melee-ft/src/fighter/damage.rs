@@ -18,6 +18,7 @@ use melee_types::{CommonMotionState as S, GroundOrAir};
 pub struct CombatState {
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
+    pub charge_overlay: super::smash::ChargeOverlay,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,
@@ -25,13 +26,15 @@ pub struct CombatState {
     pub pending: Option<ReceivedHit>,
     pub dealt_damage: i32,
     pub shield_pushback: Option<(f32, f32)>,
-    /// The stale-move queue is outside this first-hit slice. Do not silently
-    /// treat a subsequent contact as another unstaled attack.
+    /// Legacy throw-entry guard; normal attacks use the fixed stale history.
     pub has_recorded_hit: bool,
+    pub stale: super::attack::stale::StaleHistory,
+    pub combo: super::attack::combo::ComboState,
 }
 #[derive(Clone, Debug)]
 pub struct DamageState {
     pub hitstun: f32,
+    pub trail_timer: u32,
 }
 use melee_coll::damage::ReceivedHit;
 pub struct DamageParameters {
@@ -43,6 +46,9 @@ pub struct DamageParameters {
     pub tech_roll_threshold: f32,
     pub ground_knockback_limit: f32,
     pub trail_threshold: f32,
+    pub trail_thresholds: [f32; 4],
+    pub trail_intervals: [u32; 4],
+    pub top_angle_range: [f32; 2],
     pub weight_decay: f32,
     pub velocity_scale: f32,
     pub maximum: f32,
@@ -66,6 +72,7 @@ pub struct DamageParameters {
     pub maximum_hitlag: f32,
     pub phantom_threshold: f32,
     pub large_spark_threshold: f32,
+    pub extra_spark_bounds: [i32; 2],
 }
 impl DamageParameters {
     pub fn read(a: &Archive, p: u32) -> Result<Self> {
@@ -78,6 +85,19 @@ impl DamageParameters {
             ground_knockback_limit: r.f32(p + 0x164)?,
             throw_weight: r.f32(p + 0x10C)?,
             trail_threshold: r.f32(p + 0x568)?,
+            trail_thresholds: [
+                r.f32(p + 0x570)?,
+                r.f32(p + 0x574)?,
+                r.f32(p + 0x578)?,
+                f32::INFINITY,
+            ],
+            trail_intervals: [
+                r.u32(p + 0x57C)?,
+                r.u32(p + 0x580)?,
+                r.u32(p + 0x584)?,
+                r.u32(p + 0x588)?,
+            ],
+            top_angle_range: [r.f32(p + 0x234)?, r.f32(p + 0x238)?],
             weight_scale: r.f32(p + 0xf4)?,
             weight_decay: r.f32(p + 0xf8)?,
             velocity_scale: r.f32(p + 0x100)?,
@@ -102,9 +122,19 @@ impl DamageParameters {
             maximum_hitlag: r.f32(p + 0x194)?,
             phantom_threshold: r.f32(p + 0x7a8)?,
             large_spark_threshold: r.f32(p + 0x3f0)?,
+            extra_spark_bounds: [r.s32(p + 0x3f4)?, r.s32(p + 0x3f8)?],
         })
     }
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
+        self.knockback_with_damage(hit, percent, weight, fctiwz(hit.damage) as u32)
+    }
+    fn knockback_with_damage(
+        &self,
+        hit: &HitboxDescriptor,
+        percent: f32,
+        weight: f32,
+        damage: u32,
+    ) -> f32 {
         melee_coll::damage::KnockbackParameters {
             weight_scale: self.weight_scale,
             weight_decay: self.weight_decay,
@@ -115,7 +145,7 @@ impl DamageParameters {
             base: self.base,
             maximum: self.maximum,
         }
-        .knockback(hit, percent, weight)
+        .knockback_with_damage(hit, percent, weight, damage)
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
     fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
@@ -213,7 +243,7 @@ fn record_shield_hit(
         });
 }
 impl<C: CharacterCallbacks> Fighter<C> {
-    /// ftCo_Damage_Phys (8008FB04): gravity/friction during hitstun, drift after it.
+    /// ftCo_Damage_Phys (8008FB18): gravity/friction during hitstun, drift after it.
     pub(super) fn damage_physics(
         &mut self,
         assets: &FighterAssets,
@@ -292,7 +322,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         );
         self.core.collision.data.ledge_snap_height = ledge_height;
         if landed {
-            if matches!(self.core.motion_state.id, S::DamageFlyN | S::DamageFall) {
+            if is_tumble(self.core.motion_state.id) || self.core.motion_state.id == S::DamageFall {
                 if self.try_tech(assets)? {
                     return Ok(());
                 }
@@ -302,12 +332,15 @@ impl<C: CharacterCallbacks> Fighter<C> {
             // retail 8008FBD4..E0: two fmuls then fadds, no contraction.
             let magnitude = sqrtf(v.x * v.x + v.y * v.y);
             if magnitude >= assets.damage.tumble_landing_threshold {
-                unimplemented!("ftCo_Damage_Coll: high-speed landing -> DownBound");
+                return self.enter_down_bound(assets);
             } else if magnitude >= assets.damage.landing_threshold {
                 self.enter_landing(assets)?;
             } else {
                 self.land();
             }
+        }
+        if !landed && self.core.motion_state.id == S::DamageFall {
+            self.try_grab_ledge(assets, map)?;
         }
         Ok(())
     }
@@ -354,20 +387,55 @@ impl<C: CharacterCallbacks> Fighter<C> {
         let (state, stun) = self.core.prepare_damage_reaction(&hit, assets);
         self.change_motion_state(state, assets)?;
         self.step_animation(assets);
-        self.core.finish_damage_reaction(hit, stun)
+        let result = self.core.finish_damage_reaction(hit, stun)?;
+        if let MotionData::Damage(damage) = &mut self.core.state_data {
+            let velocity = self.core.physics.knockback_velocity;
+            // ftCo_Damage_SetMv8FromKbThreshold: separate products and sums.
+            let speed = if self.core.physics.ground_or_air == GroundOrAir::Air {
+                sqrtf(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z)
+            } else {
+                gekko_math::msl::fabsf(self.core.physics.ground_knockback_velocity)
+            };
+            damage.trail_timer = u32::from(speed >= assets.damage.trail_threshold);
+        }
+        Ok(result)
     }
     /// ftCo_Damage_Anim (8008F7F0) -> ftCo_8008F744 (8008F744).
     pub(super) fn damage_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         let MotionData::Damage(damage) = &mut self.core.state_data else {
             panic!("damage scratch missing")
         };
+        if is_tumble(self.core.motion_state.id) && damage.trail_timer != 0 {
+            damage.trail_timer -= 1;
+            if damage.trail_timer == 0 {
+                let v = self.core.physics.knockback_velocity;
+                let trajectory = melee_lb::trigf::atan2f(-v.x, v.y);
+                self.core
+                    .effects
+                    .push(melee_ef::request::EffectRequest::DamageTrail { trajectory });
+                // ftCo_Damage_SetMv8FromKbThreshold: separate products/adds, no fused sites.
+                let speed = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+                if speed >= assets.damage.trail_threshold {
+                    let index = assets
+                        .damage
+                        .trail_thresholds
+                        .iter()
+                        .position(|&threshold| speed < threshold)
+                        .unwrap_or(3);
+                    damage.trail_timer = assets.damage.trail_intervals[index];
+                }
+            }
+        }
         if damage.hitstun > 0.0 {
             damage.hitstun -= 1.0;
+            if damage.hitstun <= 0.0 {
+                self.core.combat.combo.grace = assets.combo.grace_frames;
+            }
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) && damage.hitstun <= 0.0 {
             self.change_motion_state(
                 if self.core.physics.ground_or_air == GroundOrAir::Air {
-                    if self.core.motion_state.id == S::DamageFlyN {
+                    if is_tumble(self.core.motion_state.id) {
                         S::DamageFall
                     } else {
                         S::Fall
@@ -510,11 +578,10 @@ fn detect_eligible_hit(
     }
     let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
     if let Some((contact, height)) = contact {
-        if victim.motion_state.id != S::Wait {
+        if !matches!(victim.motion_state.id, S::Wait | S::Landing)
+            && !matches!(victim.state_data, MotionData::Damage(_))
+        {
             unimplemented!("ftColl_80079AB0: crouch/other damage modifiers outside idle victim");
-        }
-        if attacker.combat.has_recorded_hit {
-            unimplemented!("ftColl_8007ABD0: stale-move damage after the first recorded hit");
         }
         melee_coll::detection::require_uncontested_hit(&victim.commands.hitboxes);
         if contact.overlap < assets.damage.phantom_threshold {
@@ -527,16 +594,12 @@ fn detect_eligible_hit(
             unimplemented!("ftcoll.c:2534: simultaneous damage log selection");
         }
         let descriptor = desc.clone();
-        let knockback = assets.damage.knockback(
+        let knockback = assets.damage.knockback_with_damage(
             &descriptor,
             victim.physics.percent,
             victim.attributes.size.weight,
+            hit.knockback_damage,
         );
-        if descriptor.element == melee_types::HitElement::Normal
-            && (knockback >= assets.damage.large_spark_threshold || descriptor.sound_severity >= 1)
-        {
-            unimplemented!("ftColl_80078538: large normal spark / severity-specific extra spark");
-        }
         victim.combat.pending = Some(ReceivedHit {
             descriptor: descriptor.clone(),
             height,
@@ -549,6 +612,14 @@ fn detect_eligible_hit(
             facing_override: None,
         });
         attacker.combat.has_recorded_hit = true;
+        attacker.combat.combo.record(
+            victim.spawn_number,
+            super::attack::stale::GROUND_MOVES[attacker.motion_state.id as usize],
+            &assets.combo,
+        );
+        attacker.combat.stale.record();
+        attacker.commands.stale_multiplier =
+            Some(attacker.combat.stale.multiplier(&assets.stale_weights));
         // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: the first
         // queue entry is visible to later hitbox commands of this same move.
         attacker.commands.first_hit_stale_penalty = Some(assets.first_stale_penalty);
@@ -564,8 +635,23 @@ fn detect_eligible_hit(
             .push(melee_ef::request::EffectRequest::HitSpark {
                 position: contact.position,
                 element: descriptor.element,
-                damage: descriptor.damage,
+                // ftColl_8007A06C: the effect receives entry->x20 converted to u32.
+                damage: fctiwz(descriptor.damage) as f32,
+                large: knockback >= assets.damage.large_spark_threshold,
             });
+        if descriptor.element == melee_types::HitElement::Normal && descriptor.sound_severity >= 1 {
+            let variant = victim.attributes.combat.hit_spark_variant;
+            if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize) {
+                victim
+                    .effects
+                    .push(melee_ef::request::EffectRequest::NormalSparkExtra {
+                        position: contact.position,
+                        facing: victim.physics.facing,
+                        variant,
+                        random_bound,
+                    });
+            }
+        }
     }
 }
 
@@ -583,22 +669,30 @@ impl FighterCore {
             .position(|&t| stun < t)
             .unwrap_or(3);
         // ftCo_803C5520: reaction depends on hit strength and hurtbox height.
-        let state = match (level, hit.height) {
-            (0, HurtHeight::Middle) => S::DamageN1,
-            (1, HurtHeight::Middle) => S::DamageN2,
-            (2, HurtHeight::High) => S::DamageHi3,
-            (3, HurtHeight::Middle) => S::DamageFlyN,
-            _ => unimplemented!(
-                "ftCo_Damage.c:63: damage level {level}, height {:?}",
-                hit.height
-            ),
+        const REACTIONS: [[S; 3]; 4] = [
+            [S::DamageLw1, S::DamageN1, S::DamageHi1],
+            [S::DamageLw2, S::DamageN2, S::DamageHi2],
+            [S::DamageLw3, S::DamageN3, S::DamageHi3],
+            [S::DamageFlyLw, S::DamageFlyN, S::DamageFlyHi],
+        ];
+        let height = match hit.height {
+            HurtHeight::Low => 0,
+            HurtHeight::Middle => 1,
+            HurtHeight::High => 2,
         };
+        let mut state = REACTIONS[level][height];
         self.physics.percent += hit.descriptor.damage;
         let angle = assets.damage.launch_angle(
             hit.descriptor.angle,
             hit.knockback,
             self.physics.ground_or_air,
         );
+        if level == 3
+            && angle > assets.damage.top_angle_range[0]
+            && angle < assets.damage.top_angle_range[1]
+        {
+            state = S::DamageFlyTop;
+        }
         let speed = hit.knockback * assets.damage.velocity_scale;
         self.physics.facing = hit.facing;
         // ftCo_8008DCE0, 8008DFCC..E0F4: separate products.
@@ -624,15 +718,13 @@ impl FighterCore {
         if let Some(facing) = hit.facing_override {
             self.physics.facing = facing;
         }
-        if state == S::DamageFlyN && speed >= assets.damage.trail_threshold {
-            unimplemented!("ftCo_Damage_SetMv8FromKbThreshold: damage fly smoke");
-        }
         (state, stun)
     }
     /// ftCo_8008DCE0: hitstun, timers and input ages after frame-zero playback.
     fn finish_damage_reaction(&mut self, hit: ReceivedHit, stun: f32) -> Result<i32> {
         self.state_data = MotionData::Damage(DamageState {
             hitstun: (fctiwz(stun).max(1)) as f32,
+            trail_timer: 0,
         });
         self.status.time_since_hit = 0;
         self.status.interaction = Interaction::Damage;
@@ -640,4 +732,11 @@ impl FighterCore {
         self.input.vertical.tilt = 254;
         Ok(fctiwz(hit.descriptor.damage).max(1))
     }
+}
+
+fn is_tumble(state: S) -> bool {
+    matches!(
+        state,
+        S::DamageFlyHi | S::DamageFlyN | S::DamageFlyLw | S::DamageFlyTop | S::DamageFlyRoll
+    )
 }

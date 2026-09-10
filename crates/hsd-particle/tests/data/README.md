@@ -97,7 +97,23 @@ must stop consuming the unrecorded external prefix at either a particle draw or
 this fixture-recorded draw, even when the effect draw occurs first. Otherwise it
 consumes that RNG input twice.
 
-Only this exact ef site is accepted as a fixture RNG event, with the Randf PC
+For Randf events, only this exact ef site is accepted, with the Randf PC
 checked. It stays in the ordered draw/count comparison alongside every particle
 draw; unknown sites and unsupported interleavings still fail. No format or
 fixture changes were needed for the Marth jab/up-tilt repair.
+
+## S1 ground-attack fixtures
+
+The four new 300-tick replays are exported from fully passing scene gates:
+
+```sh
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/fsmashcharge_fd_fox.toml --out crates/hsd-particle/tests/data/fsmashcharge_fd_fox_spawns.json
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/usmash_fd_fox.toml --out crates/hsd-particle/tests/data/usmash_fd_fox_spawns.json
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/dsmash_fd_fox.toml --out crates/hsd-particle/tests/data/dsmash_fd_fox_spawns.json
+cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/dsmash_fd_marth.toml --out crates/hsd-particle/tests/data/dsmash_fd_marth_spawns.json
+```
+
+`external_randi` records ftColl_80078538's optional normal-spark draw at
+800785CC or 800785FC, along with the archive bound. It is consumed in fixture
+order, including when it follows an already-created primary spark generator.
+The independent ledger must identify HSD_Randi at 8038059C for those sites.

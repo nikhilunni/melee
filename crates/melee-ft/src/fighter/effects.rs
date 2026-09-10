@@ -74,6 +74,23 @@ impl super::FighterCore {
                 _ => bone,
             };
             let id = command.id;
+            if matches!(id, 0x423 | 0x424) {
+                let normal = self.collision.data.floor.normal;
+                let floor_angle = if self.physics.ground_or_air == melee_types::GroundOrAir::Ground
+                {
+                    melee_lb::trigf::atan2f(-normal.x, normal.y)
+                } else {
+                    0.0
+                };
+                self.effects.push(EffectRequest::Graphics {
+                    id,
+                    bone,
+                    offset: hsd_types::Vec3::ZERO,
+                    facing: self.physics.facing,
+                    floor_angle,
+                });
+                continue;
+            }
             if matches!(id, 0x402 | 0x403) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
                 self.effects.push(EffectRequest::Attached { id, bone });
@@ -83,7 +100,9 @@ impl super::FighterCore {
                 || id / 1000 == 30
                 || matches!(
                     id,
-                    0x3F8
+                    0x3FB
+                        | 0x3FD
+                        | 0x3F8
                         | 0x406
                         | 0x514
                         | 0x3F3

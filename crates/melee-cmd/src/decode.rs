@@ -68,11 +68,17 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         },
         15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
         16 => Command::ClearHitboxes,
-        // ftAction_80071AE8 (80071AE8): x2218_b1 unless disabled (or holding an item).
-        28 => Command::JabCombo {
-            disabled: word & 0x03ff_ffff != 0,
+        27 => Command::HurtCapsuleStatus {
+            bone: None,
+            status: hurt_status(word & 0x03ff_ffff)?,
         },
+        28 => Command::HurtCapsuleStatus {
+            bone: Some(((word >> 18) & 255) as usize),
+            status: hurt_status(word & 0x3ffff)?,
+        },
+        // ftAction_80071AE8: enable ordinary jab continuation.
         29 => Command::JabFollowup(word & 0x03ff_ffff != 0),
+        30 => Command::RapidJab(word & 0x03ff_ffff != 0),
         36 => Command::ArticleVisibility(word & 1 != 0),
         50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
         49 => Command::SwordTrail {
@@ -213,5 +219,15 @@ pub fn graphics(words: &[u32; 5]) -> melee_types::combat::GraphicsCommand {
             SCALE * f32::from(half(words, 9)),
         ]
         .into(),
+    }
+}
+
+fn hurt_status(value: u32) -> Result<melee_types::combat::HurtStatus> {
+    use melee_types::combat::HurtStatus;
+    match value {
+        0 => Ok(HurtStatus::Normal),
+        1 => Ok(HurtStatus::Invincible),
+        2 => Ok(HurtStatus::Intangible),
+        _ => Err("unknown hurt capsule status"),
     }
 }

@@ -77,6 +77,12 @@ impl Scenario {
             .and_then(Path::parent)
             .context("scenario must be under harness/scenarios")?
             .to_path_buf();
+        // The decomp and new recordings use Mars for Marth's retail kind.
+        for fighter in &mut scenario.fighters {
+            if fighter.kind == "Mars" {
+                fighter.kind = "Marth".into();
+            }
+        }
         scenario.validate()?;
         Ok(scenario)
     }

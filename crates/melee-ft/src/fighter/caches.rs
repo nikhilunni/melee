@@ -104,6 +104,13 @@ impl melee_coll::detection::Collider for super::FighterCore {
     fn hurt_count(&self) -> usize {
         self.hurtboxes.len()
     }
+    fn hurt_status(&self, index: usize) -> melee_types::combat::HurtStatus {
+        self.commands
+            .capsule_overrides
+            .iter()
+            .find(|entry| entry.0 == self.hurtboxes[index].bone)
+            .map_or(self.commands.capsule_status, |entry| entry.1)
+    }
     fn grabbable(&self, index: usize) -> bool {
         self.hurtboxes[index].grabbable
     }

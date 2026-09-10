@@ -178,9 +178,18 @@ struct Runtime {
     rng_writers: Vec<(Option<Callback>, u32)>,
     particle_draws: DrawLog,
     interface: [melee_if::PercentDisplay; 2],
+    match_finished: bool,
 }
 impl Runtime {
     fn dispatch(&mut self, row: Registration) -> Result<()> {
+        // fn_8016CFE0 -> gm_801A4634(4); gm_803DA888[4] freezes gameplay procs.
+        const ELIMINATION_PAUSE_MASK: u64 = 0x800FFA;
+        if self.match_finished
+            && ELIMINATION_PAUSE_MASK & (1u64 << row.p_link) != 0
+            && !matches!(row.callback, Callback::Effects)
+        {
+            return Ok(());
+        }
         let continuation = if self.frame == 0 {
             self.state.resume.action(row.s_link, row.key())
         } else {
@@ -206,6 +215,17 @@ impl Runtime {
                 }
             }
             Callback::Fighter { player, proc } => {
+                if proc == FighterProc::Animation {
+                    use crate::scene_fighter::with_fighter;
+                    let victim = with_fighter!(&state.fighters[player], |f| f.combat.combo.victim);
+                    let expired = victim.is_some_and(|id| state.fighters.iter().any(|other| {
+                        with_fighter!(other, |f| f.spawn_number == id && f.combat.combo.grace == 0 && !matches!(&f.state_data, melee_ft::fighter::MotionData::Damage(d) if d.hitstun > 0.0))
+                    }));
+                    if expired {
+                        with_fighter!(&mut state.fighters[player], |f| f.combat.combo.victim =
+                            None);
+                    }
+                }
                 grab_pairs::constrain(state, player);
                 if proc == FighterProc::Grab {
                     grab_pairs::select(state, player)?;
@@ -438,12 +458,15 @@ impl Runtime {
                     }
                 }
             }
-            Callback::Effects => state.effects.tick::<melee_ft::fighter::RetailTrig>(
-                |player, bone| state.fighters[player].bone_matrix(bone),
-                &state.assets.common_particle_bank,
-                &mut state.particles,
-                &mut state.rng,
-            )?,
+            Callback::Effects => state
+                .effects
+                .tick_with_pause::<melee_ft::fighter::RetailTrig>(
+                    self.match_finished,
+                    |player, bone| state.fighters[player].bone_matrix(bone),
+                    &state.assets.common_particle_bank,
+                    &mut state.particles,
+                    &mut state.rng,
+                )?,
             Callback::ParticlesMain => {
                 if let Some(pending) = state.pending_emission.take() {
                     pending.finish(
@@ -479,7 +502,22 @@ impl Simulation {
     pub fn new(state: InitialState) -> Self {
         Self::with_inputs(state, PadScript::default())
     }
-    pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
+    pub fn with_inputs(mut state: InitialState, pads: PadScript) -> Self {
+        // Prepare ordinary combat storage before ticks. These reserve budgets
+        // do not change retail allocation limits or particle failure behavior.
+        const GENERATOR_RESERVE: usize = 128;
+        const PARTICLES_PER_LINK_RESERVE: usize = 256;
+        state
+            .particles
+            .generators
+            .reserve(GENERATOR_RESERVE.saturating_sub(state.particles.generators.len()));
+        state
+            .particles
+            .pending_generators
+            .reserve(GENERATOR_RESERVE);
+        for link in &mut state.particles.particles {
+            link.reserve(PARTICLES_PER_LINK_RESERVE.saturating_sub(link.len()));
+        }
         let mut rows = registrations(&state.stage);
         if state.countdown.is_some() {
             rows.push(Registration {
@@ -499,12 +537,13 @@ impl Simulation {
         let runtime = Box::new(Runtime {
             state,
             interface,
+            match_finished: false,
             pads,
             frame: 0,
             error: None,
             // At most one writer per registered proc, plus match-start music.
             rng_writers: Vec::with_capacity(rows.len() + 1),
-            particle_draws: DrawLog::default(),
+            particle_draws: DrawLog(Vec::with_capacity(4096)),
         });
         let mut world = World::new(WorldConfig::MELEE);
         let mut objects = BTreeMap::new();
@@ -551,6 +590,12 @@ impl Simulation {
             }
         }
         let runtime = self.runtime.as_mut();
+        // gm_GetFFAOutcome (8016BF74): the supported two-player stock match ends
+        // when only one player retains stocks. The pause takes effect next tick.
+        runtime.match_finished |=
+            runtime.state.fighters.iter().any(|fighter| {
+                crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
+            });
         let rows = &self.registrations;
         self.world.run_procs_with(|_, _, index| {
             let row = rows[index];

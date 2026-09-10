@@ -95,6 +95,10 @@ pub trait CharacterCallbacks: Sized + 'static {
             unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook");
         }
     }
+    /// ftCo_Attack1 doAttack13 (8008B194): Marth restarts Attack11.
+    fn third_jab_state(&self) -> melee_types::CommonMotionState {
+        melee_types::CommonMotionState::Attack13
+    }
     /// The character's on-disc resources (`ft<Char>_Init_*` strings, part and
     /// animation counts). The scene loads archives through this.
     fn descriptor() -> &'static assets::CharacterDescriptor
@@ -556,6 +560,10 @@ pub enum MotionData {
     None,
     Entry(entry::EntryState),
     Jab(attack::JabState),
+    RapidJab(attack::RapidJabState),
+    DownTilt {
+        repeat_pressed: bool,
+    },
     Tilt,
     Damage(damage::DamageState),
     Guard(shield::GuardState),

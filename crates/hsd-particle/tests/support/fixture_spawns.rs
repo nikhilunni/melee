@@ -59,6 +59,10 @@ impl Spawns {
                 assert_eq!(word(site), 0x8006_3b70);
                 rng.randf();
                 draws.0.push(word(site));
+            } else if let Some(site) = event.get("external_randi") {
+                assert!(matches!(word(site), 0x8007_85cc | 0x8007_85fc));
+                rng.randi(event["bound"].as_i64().unwrap() as i32);
+                draws.0.push(word(site));
             } else if let Some(kind) = event.get("spawn") {
                 let bank = word(&event["bank"]) as u8;
                 let mut request = SpawnRequest::new(bank, word(kind), word(&event["link"]) as u8);

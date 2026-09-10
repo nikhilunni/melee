@@ -295,3 +295,24 @@ impl FighterCore {
         }
     }
 }
+
+/// ftCo_AttackLw3_IASA.
+pub fn down_tilt<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: InputPhase<'_>) {
+    let context = WaitContext {
+        facing: fighter.core.physics.facing,
+        ..WaitContext::default()
+    };
+    fighter
+        .down_tilt_input(phase.assets, &context)
+        .expect("down tilt IASA");
+}
+
+/// ftCo_Attack100Loop_IASA: both A edges keep the rapid attack alive.
+pub fn rapid_loop<C: CharacterCallbacks>(fighter: &mut Fighter<C>, _phase: InputPhase<'_>) {
+    let pressed = (fighter.core.input.pressed | fighter.core.input.released)
+        .intersects(crate::input::Buttons::A);
+    let MotionData::RapidJab(rapid) = &mut fighter.core.state_data else {
+        panic!("rapid jab scratch")
+    };
+    rapid.edge_pressed |= pressed;
+}

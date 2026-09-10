@@ -333,3 +333,10 @@ impl FighterCore {
         crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
     }
 }
+
+/// ftCo_AttackDash_Phys: concrete root-motion/friction implementation.
+pub fn dash_attack<C: CharacterCallbacks>(fighter: &mut Fighter<C>, phase: PhysicsPhase<'_>) {
+    fighter
+        .core
+        .dash_attack_physics(phase.assets, phase.map, phase.wind);
+}

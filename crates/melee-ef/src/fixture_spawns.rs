@@ -98,6 +98,17 @@ impl EventSink {
         }
     }
 
+    /// ftColl_80078538: optional normal hit spark after the primary generator.
+    #[inline]
+    pub fn external_randi(&mut self, site: u32, bound: i32) {
+        if let Some(recording) = &mut self.0 {
+            recording.events.push((
+                recording.frame,
+                json!({"external_randi": site, "bound": bound}),
+            ));
+        }
+    }
+
     pub fn finish(&mut self) -> BTreeMap<u64, Vec<Value>> {
         let recording = self.0.take().expect("fixture recording enabled");
         let joints: BTreeSet<_> = recording

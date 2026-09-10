@@ -56,7 +56,8 @@ pub struct InitialState {
     pub(crate) pending_emission: Option<particle_resume::PendingEmission>,
     pub(crate) stage_animations:
         std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
-    pub(crate) effects: melee_ef::Effects,
+    // Unique storage allocated at setup keeps cold-start state moves off the stack.
+    pub(crate) effects: Box<melee_ef::Effects>,
     pub(crate) rng: HsdRng,
     /// Match setup still owes Stage_80225074 before the first observation.
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
@@ -333,7 +334,7 @@ impl InitialState {
                 .unwrap()
                 + 1,
         );
-        let effects = melee_ef::Effects::load(&assets.effects)?;
+        let effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
         Ok(Self {
             stock_displays,
             spawn_counter,

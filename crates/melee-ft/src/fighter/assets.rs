@@ -119,9 +119,12 @@ pub struct FighterAssets {
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub damage: super::damage::DamageParameters,
+    pub attacks: super::attack::AttackParameters,
+    pub combo: super::attack::combo::ComboParameters,
     pub overlap: melee_coll::overlap::OverlapParameters,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub first_stale_penalty: f32,
+    pub stale_weights: [f32; 9],
     pub grab_friction_multiplier: f32,
     pub throw_weight_scale: f32,
     pub smash_sounds: Vec<u32>,
@@ -144,7 +147,7 @@ pub struct FighterAssets {
     pub motion_table_offset: u32,
     pub life: super::life::LifeParameters,
     pub revival_platform: super::life::RevivalPlatform,
-    pub charge_start_graphics: BTreeMap<u8, melee_types::combat::GraphicsCommand>,
+    pub charge_overlays: BTreeMap<u8, Vec<super::smash::OverlayCommand>>,
     pub camera_extents: [hsd_types::Vec3; 2],
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
@@ -190,6 +193,9 @@ impl FighterAssets {
         .chain(descriptor.additional_motions.iter().copied())
         .collect::<BTreeSet<_>>()
         {
+            if table.entries[id as usize].aj_size == 0 {
+                continue;
+            }
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -216,23 +222,17 @@ impl FighterAssets {
                 other => other.clone(),
             })
             .collect::<Vec<_>>();
-        // lb_80014258 / ft_800BFF34: the charge overlay starts on the next Anim.
-        // This prefix is SetColor, Graphics, Wait; sustained charging is guarded.
         let color_table = common.link(common_root + 6 * 4)?.ok_or("color table")?;
-        let mut charge_start_graphics = BTreeMap::new();
+        let mut charge_overlays = BTreeMap::new();
         for command in &commands {
             if let Command::SmashCharge(charge) = command {
                 let entry = common
                     .link(color_table + u32::from(charge.color_animation) * 8)?
                     .ok_or("charge color script")?;
-                if common.reader().u32(entry)? >> 26 != 18
-                    || common.reader().u32(entry + 8)? >> 26 != 21
-                    || common.reader().u32(entry + 28)? != (11 << 26 | 1)
-                {
-                    return Err("unsupported charge overlay prefix".into());
-                }
-                charge_start_graphics
-                    .insert(charge.color_animation, read_graphics(common, entry + 8)?);
+                charge_overlays.insert(
+                    charge.color_animation,
+                    super::smash::read_overlay(common, entry)?,
+                );
             }
         }
         let groups = commands
@@ -314,6 +314,8 @@ impl FighterAssets {
                 }
             },
             damage: super::damage::DamageParameters::read(common, common_data)?,
+            attacks: super::attack::AttackParameters::read(common, common_data)?,
+            combo: super::attack::combo::ComboParameters::read(common, common_data)?,
             grab_friction_multiplier: common.reader().f32(common_data + 0x64)?,
             // Fighter_LoadCommonData: pData[3] -> Fighter_804D6548 stale weights.
             first_stale_penalty: common.reader().f32(
@@ -321,6 +323,14 @@ impl FighterAssets {
                     .link(common_root + 12)?
                     .ok_or("missing stale weights")?,
             )?,
+            stale_weights: {
+                let table = common.link(common_root + 12)?.ok_or("stale weights")?;
+                let mut weights = [0.0; 9];
+                for (i, weight) in weights.iter_mut().enumerate() {
+                    *weight = common.reader().f32(table + i as u32 * 4)?;
+                }
+                weights
+            },
             overlap: melee_coll::overlap::OverlapParameters {
                 center: data
                     .reader()
@@ -429,7 +439,7 @@ impl FighterAssets {
                 invincibility_duration: common.reader().s32(common_data + 0x5D8)?,
                 death_effect_scale: common.reader().f32(common_data + 0x4F4)?,
             },
-            charge_start_graphics,
+            charge_overlays,
             camera_extents: {
                 let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
                 [read_vec(data, p)?, read_vec(data, p + 12)?]
@@ -589,12 +599,4 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
         .depth_first(root)
         .map(|id| tree.get(id).clone())
         .collect())
-}
-
-fn read_graphics(archive: &Archive, offset: u32) -> Result<melee_types::combat::GraphicsCommand> {
-    let mut words = [0; 5];
-    for (i, word) in words.iter_mut().enumerate() {
-        *word = archive.reader().u32(offset + i as u32 * 4)?;
-    }
-    Ok(melee_cmd::decode::graphics(&words))
 }

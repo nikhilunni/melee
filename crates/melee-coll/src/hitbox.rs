@@ -13,6 +13,8 @@ pub enum CapsulePhase {
 #[derive(Clone, Debug)]
 pub struct HitCapsule {
     pub descriptor: HitboxDescriptor,
+    /// ftColl_8007ABD0 (8007ABD0): charged damage before staling.
+    pub knockback_damage: u32,
     pub phase: CapsulePhase,
     pub position: Vec3,
     pub previous_position: Vec3,
@@ -25,6 +27,7 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
     assert!(id < boxes.len(), "hitbox id");
     if let Some(hit) = &mut boxes[id] {
         if hit.descriptor.group == descriptor.group {
+            hit.knockback_damage = gekko_math::msl::fctiwz(descriptor.damage) as u32;
             hit.descriptor = descriptor.clone();
             return;
         }
@@ -32,6 +35,7 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
     let victims = group_history(boxes, descriptor.group);
     boxes[id] = Some(HitCapsule {
         descriptor: descriptor.clone(),
+        knockback_damage: gekko_math::msl::fctiwz(descriptor.damage) as u32,
         phase: CapsulePhase::Enabled,
         position: Vec3::ZERO,
         previous_position: Vec3::ZERO,

@@ -101,7 +101,10 @@ impl<C: CharacterCallbacks> Fighter<C> {
                 &[P::SpecialSide, P::Grab],
                 "ftCo_Dash.c:109-114",
             );
-            self.reject_dash_attack("ftCo_Dash.c:111-114");
+            if self.core.input.pressed.intersects(crate::input::Buttons::A) {
+                return self
+                    .enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
+            }
             if self.core.input.current.stick.x * self.core.physics.facing < 0.0
                 && self.try_redash(assets)?
             {
@@ -159,11 +162,6 @@ impl FighterCore {
         let transition = self.first_ground_transition(assets, context, predicates);
         if transition != T::None {
             unimplemented!("{source}: {transition:?} transition body");
-        }
-    }
-    pub(super) fn reject_dash_attack(&self, source: &str) {
-        if self.input.pressed.intersects(crate::input::Buttons::A) {
-            unimplemented!("{source}: attack dash/item throw");
         }
     }
     /// fn_800CAF78 (0x800CAF78), ftCo_Jump.c:62-88.

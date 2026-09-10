@@ -8,6 +8,9 @@ pub enum EffectRequest {
         bone: usize,
         scale: f32,
     },
+    DamageTrail {
+        trajectory: f32,
+    },
     Death {
         position: Vec3,
         scale: f32,
@@ -25,10 +28,17 @@ pub enum EffectRequest {
     ShieldSpark {
         position: Vec3,
     },
+    NormalSparkExtra {
+        position: Vec3,
+        facing: f32,
+        variant: i32,
+        random_bound: i32,
+    },
     HitSpark {
         position: Vec3,
         element: melee_types::HitElement,
         damage: f32,
+        large: bool,
     },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
@@ -170,6 +180,7 @@ impl EffectRequest {
             Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }
+                | Self::NormalSparkExtra { .. }
                 | Self::ShieldSpark { .. }
                 | Self::DestroyOwned
         )

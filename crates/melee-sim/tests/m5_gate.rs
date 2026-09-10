@@ -138,3 +138,99 @@ fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
     }
     eprintln!("127 ticks, 49 keys, 0 divergences; linked capture at tick 127 remains unsupported");
 }
+
+// S1: every recorded ground-attack scene, including the pre-existing Fox up tilt.
+#[test]
+fn dashattack_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dashattack_fd_fox");
+}
+
+#[test]
+fn ftilt_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftilt_fd_fox");
+}
+
+#[test]
+fn ftiltup_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftiltup_fd_fox");
+}
+
+#[test]
+fn ftiltdown_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftiltdown_fd_fox");
+}
+
+#[test]
+fn dtilt_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dtilt_fd_fox");
+}
+
+#[test]
+fn fsmashcharge_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmashcharge_fd_fox");
+}
+
+#[test]
+fn usmash_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("usmash_fd_fox");
+}
+
+#[test]
+fn dsmash_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dsmash_fd_fox");
+}
+
+#[test]
+fn jabcombo_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jabcombo_fd_fox");
+}
+
+#[test]
+fn dashattack_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dashattack_fd_marth");
+}
+
+#[test]
+fn ftilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftilt_fd_marth");
+}
+
+#[test]
+fn ftiltup_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftiltup_fd_marth");
+}
+
+#[test]
+fn ftiltdown_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("ftiltdown_fd_marth");
+}
+
+#[test]
+fn dtilt_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dtilt_fd_marth");
+}
+
+#[test]
+fn fsmashcharge_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmashcharge_fd_marth");
+}
+
+#[test]
+fn usmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("usmash_fd_marth");
+}
+
+#[test]
+fn dsmash_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dsmash_fd_marth");
+}
+
+#[test]
+fn jabcombo_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jabcombo_fd_marth");
+}
+
+#[test]
+fn utilt_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("utilt_fd_fox");
+}

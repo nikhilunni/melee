@@ -40,12 +40,29 @@ impl FighterCore {
         if matches!(charge.phase, ChargePhase::Charging) {
             charge.frames += 1.0;
             if charge.frames == 1.0 {
-                self.commands
-                    .graphics
-                    .push(assets.charge_start_graphics[&charge.color_animation].clone());
+                self.combat.charge_overlay = ChargeOverlay::default();
             }
-            if charge.frames > 1.0 {
-                unimplemented!("ftCo_800DEF38: sustained charge shake and sound");
+            let overlay = &mut self.combat.charge_overlay;
+            overlay.step(
+                &assets.charge_overlays[&charge.color_animation],
+                &mut self.commands.graphics,
+            );
+            if !overlay.sound_played && charge.frames >= assets.attacks.charge_sound_frame {
+                self.commands
+                    .footstep_sounds
+                    .push(super::commands::FootstepSound {
+                        channel: super::commands::SoundChannel::Ordinary,
+                        id: 0x7B,
+                        volume: 127,
+                        pan: 64,
+                    });
+                overlay.sound_played = true;
+            }
+            if charge.frames >= charge.maximum_frames {
+                charge.frames = charge.maximum_frames;
+                charge.phase = ChargePhase::Release;
+                self.animation
+                    .set_rate(&mut self.skeleton, charge.saved_rate, false);
             }
         }
     }
@@ -80,4 +97,99 @@ impl FighterCore {
             _ => {}
         }
     }
+}
+
+/// lb_80014258 / ft_800BFF34: decoded charge-overlay program.
+#[derive(Clone, Debug)]
+pub enum OverlayCommand {
+    Color { rgba: u32, frames: u32 },
+    Graphics(melee_types::combat::GraphicsCommand),
+    Wait(u32),
+    Goto(usize),
+    End,
+}
+#[derive(Clone, Debug, Default)]
+pub struct ChargeOverlay {
+    instruction: usize,
+    timer: u32,
+    /// Renderer-facing target and blend duration; no gameplay depends on color.
+    pub color: Option<(u32, u32)>,
+    sound_played: bool,
+}
+impl ChargeOverlay {
+    fn step(
+        &mut self,
+        script: &[OverlayCommand],
+        graphics: &mut melee_types::fixed::FixedVec<
+            melee_types::combat::GraphicsCommand,
+            { melee_ef::request::REQUEST_CAPACITY },
+        >,
+    ) {
+        self.timer = self.timer.saturating_sub(1);
+        while self.timer == 0 {
+            match &script[self.instruction] {
+                OverlayCommand::Color { rgba, frames } => self.color = Some((*rgba, *frames)),
+                OverlayCommand::Graphics(command) => graphics.push(command.clone()),
+                OverlayCommand::Wait(frames) => self.timer = *frames,
+                OverlayCommand::Goto(target) => {
+                    self.instruction = *target;
+                    continue;
+                }
+                OverlayCommand::End => break,
+            }
+            self.instruction += 1;
+        }
+    }
+}
+/// Archive-only adapter for the color overlay vocabulary (lb_013B.c).
+pub fn read_overlay(archive: &hsd_archive::Archive, entry: u32) -> Result<Vec<OverlayCommand>> {
+    let r = archive.reader();
+    let mut commands = Vec::new();
+    let mut offsets = Vec::new();
+    let mut offset = entry;
+    loop {
+        offsets.push(offset);
+        let word = r.u32(offset)?;
+        let opcode = word >> 26;
+        let command = match opcode {
+            7 => {
+                let target = archive.link(offset + 4)?.ok_or("overlay goto")?;
+                commands.push(OverlayCommand::Goto(
+                    offsets
+                        .iter()
+                        .position(|&p| p == target)
+                        .ok_or("overlay forward goto")?,
+                ));
+                break;
+            }
+            10 => {
+                commands.push(OverlayCommand::End);
+                break;
+            }
+            11 => OverlayCommand::Wait(word & 0x03ff_ffff),
+            18 | 19 => {
+                let rgba = r.u32(offset + 4)?;
+                offset += 4;
+                OverlayCommand::Color {
+                    rgba,
+                    frames: if opcode == 18 { 0 } else { word & 0x03ff_ffff },
+                }
+            }
+            21 => {
+                let words = [
+                    word,
+                    r.u32(offset + 4)?,
+                    r.u32(offset + 8)?,
+                    r.u32(offset + 12)?,
+                    r.u32(offset + 16)?,
+                ];
+                offset += 16;
+                OverlayCommand::Graphics(melee_cmd::decode::graphics(&words))
+            }
+            _ => return Err(format!("unported charge overlay opcode {opcode}").into()),
+        };
+        commands.push(command);
+        offset += 4;
+    }
+    Ok(commands)
 }

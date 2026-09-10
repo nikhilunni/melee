@@ -102,9 +102,49 @@ impl Effects {
         for queued in requests.iter() {
             let request = queued.request;
             let resolved_matrix = queued.matrix;
+            if let EffectRequest::DamageTrail { trajectory } = request {
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(None));
+                let mut spawn = SpawnRequest::new(0, 0x3E, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                    rotation: Vec3::new(0.0, 0.0, trajectory),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
             if let EffectRequest::EggShell { bone, scale } = request {
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
                 self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale)?;
+                continue;
+            }
+            if let EffectRequest::HitSpark {
+                position,
+                large: true,
+                element: melee_types::HitElement::Normal,
+                ..
+            } = request
+            {
+                self.spawn_dust_generator::<T>(0x3F3, position, 1.0, bank, particles, rng)?;
+                continue;
+            }
+            if let EffectRequest::NormalSparkExtra {
+                position,
+                facing,
+                variant,
+                random_bound,
+            } = request
+            {
+                self.events.external_randi(
+                    if variant == 0 { 0x800785CC } else { 0x800785FC },
+                    random_bound,
+                );
+                let selected = rng.randi(random_bound) == 0;
+                if variant == 0 && selected {
+                    self.spawn_dust_generator::<T>(0x3EF, position, facing, bank, particles, rng)?;
+                }
                 continue;
             }
             if matches!(request, EffectRequest::DestroyOwned) {
@@ -241,7 +281,13 @@ impl Effects {
             } else {
                 Some(player)
             };
-            if let EffectRequest::Shield { bone, .. } = request {
+            if let EffectRequest::Shield { bone, .. }
+            | EffectRequest::Graphics {
+                id: 0x423 | 0x424,
+                bone,
+                ..
+            } = request
+            {
                 effect.shield_bone = Some(bone);
             }
             let bone = if let EffectRequest::CaptureFlash { bone }
@@ -256,6 +302,8 @@ impl Effects {
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
                 EffectRequest::EggShell { .. }
+                | EffectRequest::DamageTrail { .. }
+                | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. }
@@ -273,6 +321,7 @@ impl Effects {
                     position: contact,
                     element,
                     damage,
+                    ..
                 } => {
                     position = contact;
                     if element == melee_types::HitElement::Normal {
@@ -300,7 +349,7 @@ impl Effects {
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    if id != 0x406 {
+                    if !matches!(id, 0x3FB | 0x406 | 0x423 | 0x424) {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {
@@ -337,6 +386,17 @@ impl Effects {
     /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
     pub fn tick<T: InverseTrig>(
         &mut self,
+        bone_matrix: impl FnMut(usize, Option<usize>) -> Mtx,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        self.tick_with_pause::<T>(false, bone_matrix, bank, particles, rng)
+    }
+    /// gm_803DA888[4] pauses p_link 11; KO models on p_link 12 keep updating.
+    pub fn tick_with_pause<T: InverseTrig>(
+        &mut self,
+        pause_async: bool,
         mut bone_matrix: impl FnMut(usize, Option<usize>) -> Mtx,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
@@ -364,6 +424,9 @@ impl Effects {
             }
         }
         for effect in self.instances.iter_mut() {
+            if pause_async && effect.descriptor != 0x19 {
+                continue;
+            }
             if !effect.indefinite && effect.lifetime != 0 {
                 effect.lifetime -= 1;
                 if effect.lifetime == 0 {

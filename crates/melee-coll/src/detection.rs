@@ -11,6 +11,9 @@ use melee_types::{GroundOrAir, HitElement};
 /// the retail cache/evaluation boundary; character callbacks remain with ft.
 pub trait Collider {
     fn hurt_count(&self) -> usize;
+    fn hurt_status(&self, _index: usize) -> melee_types::combat::HurtStatus {
+        melee_types::combat::HurtStatus::Normal
+    }
     fn grabbable(&self, index: usize) -> bool;
     fn sample_hurt(&mut self, index: usize) -> (HurtCapsule, Mtx);
     fn scale(&self) -> f32;
@@ -80,6 +83,9 @@ pub fn first_contact<C: Collider>(
         if desc.element == HitElement::Catch && !victim.grabbable(index) {
             continue;
         }
+        if victim.hurt_status(index) == melee_types::combat::HurtStatus::Intangible {
+            continue;
+        }
         let (hurt, matrix) = victim.sample_hurt(index);
         if let Some(contact) = capsule_contact(
             Capsule {
@@ -100,6 +106,9 @@ pub fn first_contact<C: Collider>(
             &matrix,
             3.0 * victim.scale(),
         ) {
+            if victim.hurt_status(index) == melee_types::combat::HurtStatus::Invincible {
+                unimplemented!("ftColl_80078C70: invincible capsule contact")
+            }
             return Some((contact, hurt.height));
         }
     }

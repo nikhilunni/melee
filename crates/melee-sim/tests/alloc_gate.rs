@@ -1,4 +1,4 @@
-//! Allocation census and strict simulate-only budgets across five scene types.
+//! Allocation census and strict simulate-only budgets across combat and movement scenes.
 use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenario, trace};
 use std::{
     alloc::{GlobalAlloc, Layout, System},
@@ -146,4 +146,13 @@ fn ko_fd_marth_allocation_budget() {
 fn start_bf_fox_allocation_budget() {
     // Remaining: particle/generator/AppSRT storage.
     allocation_budget("start_bf_fox", 17);
+}
+
+#[test]
+fn jabcombo_fd_fox_allocation_budget() {
+    allocation_budget("jabcombo_fd_fox", 0);
+}
+#[test]
+fn fsmashcharge_fd_fox_allocation_budget() {
+    allocation_budget("fsmashcharge_fd_fox", 0);
 }

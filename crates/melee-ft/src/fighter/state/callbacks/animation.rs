@@ -421,3 +421,33 @@ impl FighterCore {
         self.update_idle_animation(assets, rng)
     }
 }
+
+/// ftCo_AttackLw3_Anim, after ordinary animation/charge processing.
+pub fn down_tilt<C: CharacterCallbacks>(
+    fighter: &mut Fighter<C>,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    fighter.advance_smash_charge(phase.assets);
+    fighter.down_tilt_animation(phase.assets)?;
+    Ok(None)
+}
+
+pub fn rapid_start<C: CharacterCallbacks>(
+    fighter: &mut Fighter<C>,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    fighter.advance_smash_charge(phase.assets);
+    fighter.rapid_start_animation(phase.assets)?;
+    Ok(None)
+}
+pub fn rapid_loop<C: CharacterCallbacks>(
+    fighter: &mut Fighter<C>,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    fighter.advance_smash_charge(phase.assets);
+    fighter.rapid_loop_animation(phase.assets)?;
+    Ok(None)
+}

@@ -43,6 +43,9 @@ impl SpawnRequest {
 }
 
 /// Owned equivalents of `hsd_804D78FC` and `hsd_804D0908[16]`.
+/// Port storage bound for simultaneously retained AppSRT versions.
+const APPLICATION_TRANSFORM_CAPACITY: usize = 256;
+
 /// Vectors are in linked-list order; removal preserves all remaining order.
 #[derive(Debug)]
 pub struct ParticleSystem {
@@ -60,6 +63,7 @@ pub struct ParticleSystem {
     /// hsd_804D78F4 SList.data (+0x04), owned generator IDs in pending order.
     pub pending_generators: Vec<Option<usize>>,
     generator_cursor: Option<usize>,
+    application_pool: Vec<Arc<crate::generator::ApplicationTransform>>,
 }
 impl Default for ParticleSystem {
     fn default() -> Self {
@@ -75,10 +79,48 @@ impl Default for ParticleSystem {
             family_counter: 0x100,
             pending_generators: Vec::new(),
             generator_cursor: None,
+            // Port bound: preallocate shared AppSRT owners; exhaustion is explicit.
+            application_pool: (0..APPLICATION_TRANSFORM_CAPACITY)
+                .map(|_| Arc::new(Default::default()))
+                .collect(),
         }
     }
 }
 impl ParticleSystem {
+    /// HSD AppSRT shared lifetime, with storage prepared before simulation.
+    /// A slot can be overwritten only after every generator/particle alias expires.
+    fn share_application_transform(
+        &mut self,
+        value: crate::generator::ApplicationTransform,
+    ) -> Arc<crate::generator::ApplicationTransform> {
+        let slot = self
+            .application_pool
+            .iter_mut()
+            .find(|slot| Arc::strong_count(slot) == 1)
+            .expect("application transform pool exhausted");
+        *Arc::get_mut(slot).expect("unshared application transform") = value;
+        Arc::clone(slot)
+    }
+
+    /// An external Arc may outlive its last simulated owner. Transfer that
+    /// allocation out of the pool so its lifetime remains caller-owned. Normal
+    /// simulation has no external aliases and keeps every prepared slot.
+    fn release_external_transforms(&mut self) {
+        self.application_pool.retain(|transform| {
+            Arc::strong_count(transform) == 1
+                || self.generators.iter().any(|g| {
+                    g.application_transform
+                        .as_ref()
+                        .is_some_and(|t| Arc::ptr_eq(t, transform))
+                })
+                || self.particles.iter().flatten().any(|p| {
+                    p.application_transform
+                        .as_ref()
+                        .is_some_and(|t| Arc::ptr_eq(t, transform))
+                })
+        });
+    }
+
     /// Restore head-to-tail lists without allocation, insertion or RNG draws.
     /// Generator IDs and particle associations must already be normalized.
     pub fn from_live_lists(
@@ -107,7 +149,11 @@ impl ParticleSystem {
         generator.family_id = self.family_counter;
         if let Some(transform) = &mut generator.application_transform {
             generator.appsrt_id = Some(id);
-            Arc::make_mut(transform).family_id = self.family_counter;
+            if transform.family_id != self.family_counter {
+                let mut value = (**transform).clone();
+                value.family_id = self.family_counter;
+                *transform = self.share_application_transform(value);
+            }
         }
         let insertion = self
             .generator_cursor
@@ -154,7 +200,10 @@ impl ParticleSystem {
         if descriptor.kind & 0x20000 != 0 {
             application_transform.as_mut().unwrap().camera_facing = 1;
         }
-        let application_transform = application_transform.map(Arc::new);
+        let application_transform = application_transform.map(|mut value| {
+            value.family_id = self.family_counter.wrapping_add(1).max(0x100);
+            self.share_application_transform(value)
+        });
         let mut generator = Generator::with_application_transform::<T>(
             descriptor,
             bank_id,
@@ -210,7 +259,7 @@ impl ParticleSystem {
         if id != generator.id || generator.flags & 0x1800 == 0 {
             return;
         }
-        let transform = Arc::make_mut(transform);
+        let mut transform = (**transform).clone();
         if generator.flags & 0x800 != 0 {
             transform.translation =
                 hsd_types::Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
@@ -218,7 +267,7 @@ impl ParticleSystem {
         if generator.flags & 0x1000 != 0 {
             hsd_anim::mtx::hsd_mtx_get_scale(&matrix, &mut transform.scale);
         }
-        let transform = generator.application_transform.as_ref().unwrap().clone();
+        let transform = self.share_application_transform(transform);
         for generator in &mut self.generators {
             if generator.appsrt_id == Some(id) {
                 generator.application_transform = Some(transform.clone());
@@ -333,6 +382,7 @@ impl ParticleSystem {
             }
             index += 1;
         }
+        self.release_external_transforms();
     }
 
     pub fn generator_mut(&mut self, id: usize) -> Option<&mut Generator> {
@@ -453,6 +503,7 @@ impl ParticleSystem {
             self.generator_cursor = Some(id);
             index += 1;
         }
+        self.release_external_transforms();
         Ok(())
     }
 

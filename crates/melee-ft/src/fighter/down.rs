@@ -37,10 +37,12 @@ impl<C: CharacterCallbacks> Fighter<C> {
             [usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"))]
         .joint;
         let matrix = self.core.skeleton.get_mtx(hip);
-        if matrix.0[1][1] > 0.0 {
-            unimplemented!("ftCo_8009794C: DownBoundU");
-        }
-        self.change_motion_state(S::DownBoundD, assets)?;
+        let state = if matrix.0[1][1] > 0.0 {
+            S::DownBoundU
+        } else {
+            S::DownBoundD
+        };
+        self.change_motion_state(state, assets)?;
         self.core.state_data = MotionData::Down {
             wait_remaining: 0.0,
         };
@@ -84,14 +86,21 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     /// DownBound_Anim (80097DE8), DownWait_Anim (80097FD0).
     pub(super) fn down_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.core.motion_state.id == S::DownBoundD {
+        if matches!(self.core.motion_state.id, S::DownBoundU | S::DownBoundD) {
             if !self.core.animation.frames_remaining(&self.core.skeleton) {
                 if self.core.input.current.stick != crate::input::Stick::default()
                     || self.core.input.pressed.0 != 0
                 {
                     unimplemented!("ftCo_DownBound_Anim: recovery input");
                 }
-                self.change_motion_state(S::DownWaitD, assets)?;
+                self.change_motion_state(
+                    if self.core.motion_state.id == S::DownBoundU {
+                        S::DownWaitU
+                    } else {
+                        S::DownWaitD
+                    },
+                    assets,
+                )?;
                 self.core.state_data = MotionData::Down {
                     wait_remaining: assets.damage.down_wait_frames,
                 };

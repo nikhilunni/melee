@@ -62,9 +62,12 @@ pub struct CommandState {
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
     pub first_hit_stale_penalty: Option<f32>,
+    pub stale_multiplier: Option<f32>,
     pub jab_followup: bool,
-    /// x2218_b1, set by subaction opcode 28 (`set_jab_combo`).
-    pub jab_combo: bool,
+    pub rapid_jab: bool,
+    pub rapid_jab_loop_end: bool,
+    pub capsule_status: melee_types::combat::HurtStatus,
+    pub capsule_overrides: FixedVec<(usize, melee_types::combat::HurtStatus), 64>,
     pub sword_trail: Option<(i32, bool)>,
     /// Ordered ftCo_8009E318 requests, consumed immediately after commands.
     pub dynamic_toggles: FixedVec<usize, COMMAND_REQUEST_CAPACITY>,
@@ -147,13 +150,22 @@ impl CommandState {
                         self.smash_sound_requests += 1;
                     }
                 }
-                Command::GrabRelease => self.grab_release = true,
+                Command::GrabRelease => {
+                    // ftAction_800718A4: throw_flags_b3 is also the rapid-jab loop checkpoint.
+                    self.grab_release = true;
+                    self.rapid_jab_loop_end = true;
+                }
                 Command::ThrowReverse => self.throw_reverse = true,
                 Command::SetThrowHitbox { id, descriptor } => {
                     // ftAction_80071F0C skips these records when seeking.
                     if !seeking {
                         let mut descriptor = descriptor.clone();
-                        if let Some(penalty) = self.first_hit_stale_penalty {
+                        if let Some(multiplier) = self.stale_multiplier {
+                            // retail 8008927C: fmuls only if staled.
+                            if multiplier != 1.0 {
+                                descriptor.damage *= multiplier;
+                            }
+                        } else if let Some(penalty) = self.first_hit_stale_penalty {
                             descriptor.damage *= 1.0 - penalty;
                         }
                         self.throw_hitboxes[*id] = Some(descriptor);
@@ -169,15 +181,25 @@ impl CommandState {
                             );
                             descriptor.common_bone = false;
                         }
-                        if let Some(penalty) = self.first_hit_stale_penalty {
+                        if let Some(charge) = &self.smash_charge {
+                            descriptor.damage = charge.scale_damage(descriptor.damage);
+                        }
+                        let knockback_damage = gekko_math::msl::fctiwz(descriptor.damage) as u32;
+                        if let Some(multiplier) = self.stale_multiplier {
+                            // retail 8008927C: fmuls only if staled.
+                            if multiplier != 1.0 {
+                                descriptor.damage *= multiplier;
+                            }
+                        } else if let Some(penalty) = self.first_hit_stale_penalty {
                             // ft_80089118 subtracts the first table weight; the
                             // separate multiplication is retail 8008927C (fmuls).
                             descriptor.damage *= 1.0 - penalty;
                         }
-                        if let Some(charge) = &self.smash_charge {
-                            descriptor.damage = charge.scale_damage(descriptor.damage);
-                        }
                         melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
+                        self.hitboxes[*id]
+                            .as_mut()
+                            .expect("spawned hitbox")
+                            .knockback_damage = knockback_damage;
                     }
                 }
                 Command::ClearHitbox(id) => {
@@ -201,15 +223,30 @@ impl CommandState {
                         self.sword_trail = Some((*duration, *reverse));
                     }
                 }
+                Command::RapidJab(enabled) => self.rapid_jab = *enabled,
                 Command::JabFollowup(disabled) => {
                     if !disabled {
                         self.jab_followup = true;
                     }
                 }
-                Command::JabCombo { disabled } => {
-                    // ftAction_80071AE8: `|| fp->x197C != NULL` (held item) is never true here.
-                    if !disabled {
-                        self.jab_combo = true;
+                Command::HurtCapsuleStatus { bone, status } => {
+                    if let Some(bone) = bone {
+                        let index = self
+                            .capsule_overrides
+                            .iter()
+                            .position(|entry| entry.0 == *bone);
+                        if let Some(index) = index {
+                            self.capsule_overrides
+                                .iter_mut()
+                                .nth(index)
+                                .expect("capsule override")
+                                .1 = *status;
+                        } else {
+                            self.capsule_overrides.push((*bone, *status));
+                        }
+                    } else {
+                        self.capsule_status = *status;
+                        self.capsule_overrides.clear();
                     }
                 }
                 Command::ColorAnimation(request) => {

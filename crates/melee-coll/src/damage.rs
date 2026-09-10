@@ -22,15 +22,22 @@ pub struct KnockbackParameters {
 impl KnockbackParameters {
     /// ftColl_80079AB0 (80079AB0), ordinary Vs 1.0 attack/defense/stage ratios.
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
+        self.knockback_with_damage(hit, percent, weight, fctiwz(hit.damage) as u32)
+    }
+    /// ftColl_80079AB0: the logged damage count precedes stale scaling.
+    pub fn knockback_with_damage(
+        &self,
+        hit: &HitboxDescriptor,
+        percent: f32,
+        weight: f32,
+        damage: u32,
+    ) -> f32 {
         let w = weight * self.weight_scale;
         let factor = self.weight_decay - (w * self.weight_decay) / (1.0 + w);
         let (p, d) = if hit.weight_knockback != 0 {
             (self.fixed_percent, f32::from(hit.weight_knockback))
         } else {
-            (
-                fctiwz(percent) as f32 + hit.damage,
-                fctiwz(hit.damage) as f32,
-            )
+            (fctiwz(percent) as f32 + hit.damage, damage as f32)
         };
         // retail 80079C34 (normal) / 80079B48 (fixed weight): fmadds.
         let inner = fmadds(self.percent_scale, p, self.damage_scale * (d * p));

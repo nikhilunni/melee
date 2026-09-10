@@ -16,7 +16,31 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 8] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 12] = [
+    ModelSpawn {
+        request: 0x3FB,
+        source: ModelSource::Graphics,
+        model: 0x16,
+        attached: false,
+    },
+    ModelSpawn {
+        request: 0x423,
+        source: ModelSource::Graphics,
+        model: 1,
+        attached: true,
+    },
+    ModelSpawn {
+        request: 0x3FD,
+        source: ModelSource::Graphics,
+        model: 3,
+        attached: false,
+    },
+    ModelSpawn {
+        request: 0x424,
+        source: ModelSource::Graphics,
+        model: 2,
+        attached: true,
+    },
     ModelSpawn {
         request: 0x3F7,
         source: ModelSource::Graphics,
@@ -80,7 +104,12 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 6] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 7] = [
+    DustSpawn {
+        request: 0x3EF,
+        particle: 0x42,
+        directional: true,
+    },
     DustSpawn {
         request: 0x3F3,
         particle: 0xB,
@@ -115,5 +144,6 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 6] = [
 // efasync.c:282-287, live-joint generator dispatch.
 pub(super) static ATTACHED_SPAWNS: [(u16, u32); 2] = [(0x402, 0x59), (0x403, 0x5E)];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 14] =
-    [2, 6, 9, 10, 45, 212, 261, 267, 306, 307, 364, 445, 448, 449];
+pub(super) static PARTICLE_KINDS: [i32; 17] = [
+    2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 373, 445, 448, 449,
+];

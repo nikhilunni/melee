@@ -52,7 +52,9 @@ impl<C: CharacterCallbacks> Fighter<C> {
             ],
             "ftCo_Run.c:121-125",
         );
-        self.reject_dash_attack("ftCo_Run.c:127-130");
+        if self.core.input.pressed.intersects(crate::input::Buttons::A) {
+            return self.enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
+        }
         self.reject_running_actions(
             assets,
             context,

@@ -335,6 +335,66 @@ pub const fn common_table<C: CharacterCallbacks>() -> [MotionRow<C>; COMMON_COUN
         camera: callbacks::camera::follow_fighter::<C>,
         implemented: true,
     };
+    // ftData_MotionStateList[45].
+    rows[S::Attack12 as usize] = MotionRow {
+        action: ActionId(45),
+        id: S::Attack12,
+        animation: 47,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::jab::<C>,
+        physics: callbacks::physics::jab::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[46].
+    rows[S::Attack13 as usize] = MotionRow {
+        action: ActionId(46),
+        id: S::Attack13,
+        animation: 48,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::jab::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[47].
+    rows[S::Attack100Start as usize] = MotionRow {
+        action: ActionId(47),
+        id: S::Attack100Start,
+        animation: 49,
+        anim: callbacks::animation::rapid_start::<C>,
+        iasa: callbacks::input::catch::<C>,
+        physics: callbacks::physics::jab::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[48].
+    rows[S::Attack100Loop as usize] = MotionRow {
+        action: ActionId(48),
+        id: S::Attack100Loop,
+        animation: 50,
+        anim: callbacks::animation::rapid_loop::<C>,
+        iasa: callbacks::input::rapid_loop::<C>,
+        physics: callbacks::physics::jab::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[49].
+    rows[S::Attack100End as usize] = MotionRow {
+        action: ActionId(49),
+        id: S::Attack100End,
+        animation: 51,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::catch::<C>,
+        physics: callbacks::physics::jab::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
     // ftCo_MS_AttackHi3 = 56; ftData_MotionStateList[56].
     rows[S::AttackHi3 as usize] = MotionRow {
         action: ActionId(56),
@@ -404,6 +464,282 @@ pub const fn common_table<C: CharacterCallbacks>() -> [MotionRow<C>; COMMON_COUN
         iasa: callbacks::input::damage::<C>,
         physics: callbacks::physics::damage::<C>,
         collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[51], retail ftmotionstates.c.
+    rows[S::AttackS3Hi as usize] = MotionRow {
+        action: ActionId(51),
+        id: S::AttackS3Hi,
+        animation: 53,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[52], retail ftmotionstates.c.
+    rows[S::AttackS3HiS as usize] = MotionRow {
+        action: ActionId(52),
+        id: S::AttackS3HiS,
+        animation: 54,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[53], retail ftmotionstates.c.
+    rows[S::AttackS3S as usize] = MotionRow {
+        action: ActionId(53),
+        id: S::AttackS3S,
+        animation: 55,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[54], retail ftmotionstates.c.
+    rows[S::AttackS3LwS as usize] = MotionRow {
+        action: ActionId(54),
+        id: S::AttackS3LwS,
+        animation: 56,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[55], retail ftmotionstates.c.
+    rows[S::AttackS3Lw as usize] = MotionRow {
+        action: ActionId(55),
+        id: S::AttackS3Lw,
+        animation: 57,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[63], retail ftmotionstates.c.
+    rows[S::AttackHi4 as usize] = MotionRow {
+        action: ActionId(63),
+        id: S::AttackHi4,
+        animation: 66,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[64], retail ftmotionstates.c.
+    rows[S::AttackLw4 as usize] = MotionRow {
+        action: ActionId(64),
+        id: S::AttackLw4,
+        animation: 67,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[50], retail ftmotionstates.c.
+    rows[S::AttackDash as usize] = MotionRow {
+        action: ActionId(50),
+        id: S::AttackDash,
+        animation: 52,
+        anim: callbacks::animation::jab::<C>,
+        iasa: callbacks::input::tilt::<C>,
+        physics: callbacks::physics::dash_attack::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[57], retail ftmotionstates.c.
+    rows[S::AttackLw3 as usize] = MotionRow {
+        action: ActionId(57),
+        id: S::AttackLw3,
+        animation: 59,
+        anim: callbacks::animation::down_tilt::<C>,
+        iasa: callbacks::input::down_tilt::<C>,
+        physics: callbacks::physics::guard_on::<C>,
+        collision: callbacks::collision::escape::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[75], retail ftmotionstates.c.
+    rows[S::DamageHi1 as usize] = MotionRow {
+        action: ActionId(75),
+        id: S::DamageHi1,
+        animation: 165,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[76], retail ftmotionstates.c.
+    rows[S::DamageHi2 as usize] = MotionRow {
+        action: ActionId(76),
+        id: S::DamageHi2,
+        animation: 166,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[80], retail ftmotionstates.c.
+    rows[S::DamageN3 as usize] = MotionRow {
+        action: ActionId(80),
+        id: S::DamageN3,
+        animation: 170,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[81], retail ftmotionstates.c.
+    rows[S::DamageLw1 as usize] = MotionRow {
+        action: ActionId(81),
+        id: S::DamageLw1,
+        animation: 171,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[82], retail ftmotionstates.c.
+    rows[S::DamageLw2 as usize] = MotionRow {
+        action: ActionId(82),
+        id: S::DamageLw2,
+        animation: 172,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[83], retail ftmotionstates.c.
+    rows[S::DamageLw3 as usize] = MotionRow {
+        action: ActionId(83),
+        id: S::DamageLw3,
+        animation: 173,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[84], retail ftmotionstates.c.
+    rows[S::DamageAir1 as usize] = MotionRow {
+        action: ActionId(84),
+        id: S::DamageAir1,
+        animation: 174,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[85], retail ftmotionstates.c.
+    rows[S::DamageAir2 as usize] = MotionRow {
+        action: ActionId(85),
+        id: S::DamageAir2,
+        animation: 175,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[86], retail ftmotionstates.c.
+    rows[S::DamageAir3 as usize] = MotionRow {
+        action: ActionId(86),
+        id: S::DamageAir3,
+        animation: 176,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[87], retail ftmotionstates.c.
+    rows[S::DamageFlyHi as usize] = MotionRow {
+        action: ActionId(87),
+        id: S::DamageFlyHi,
+        animation: 177,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[89], retail ftmotionstates.c.
+    rows[S::DamageFlyLw as usize] = MotionRow {
+        action: ActionId(89),
+        id: S::DamageFlyLw,
+        animation: 179,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[90], retail ftmotionstates.c.
+    rows[S::DamageFlyTop as usize] = MotionRow {
+        action: ActionId(90),
+        id: S::DamageFlyTop,
+        animation: 180,
+        anim: callbacks::animation::damage::<C>,
+        iasa: callbacks::input::damage::<C>,
+        physics: callbacks::physics::damage::<C>,
+        collision: callbacks::collision::damage::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[183], retail ftmotionstates.c.
+    rows[S::DownBoundU as usize] = MotionRow {
+        action: ActionId(183),
+        id: S::DownBoundU,
+        animation: 183,
+        anim: callbacks::animation::down_bound::<C>,
+        iasa: callbacks::input::catch::<C>,
+        physics: callbacks::physics::down::<C>,
+        collision: callbacks::collision::catch::<C>,
+        camera: callbacks::camera::follow_fighter::<C>,
+        implemented: true,
+    };
+    // ftData_MotionStateList[184], retail ftmotionstates.c.
+    rows[S::DownWaitU as usize] = MotionRow {
+        action: ActionId(184),
+        id: S::DownWaitU,
+        animation: 184,
+        anim: callbacks::animation::down_bound::<C>,
+        iasa: callbacks::input::catch::<C>,
+        physics: callbacks::physics::down::<C>,
+        collision: callbacks::collision::catch::<C>,
         camera: callbacks::camera::follow_fighter::<C>,
         implemented: true,
     };

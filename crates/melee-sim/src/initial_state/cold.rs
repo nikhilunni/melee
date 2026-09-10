@@ -74,7 +74,7 @@ impl InitialState {
                 .all_characters_unlocked
                 .expect("validated cold music rule"),
         ));
-        let effects = melee_ef::Effects::load(&assets.effects)?;
+        let effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
         Ok(Self {
             stock_displays: [None, None],
             spawn_counter: melee_ft::fighter::SpawnCounter(3),

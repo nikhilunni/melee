@@ -19,6 +19,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         if !self.core.begin_animation_phase() {
             return Ok(None);
         }
+        self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
         (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })
     }
     /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
@@ -31,10 +32,13 @@ impl<C: CharacterCallbacks> Fighter<C> {
 
     /// Fighter_procUpdate (0x8006B82C), s_link 4, fighter.c:2150-2438.
     pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Vec3) {
-        if !self.core.begin_physics_phase() {
+        if self.core.status.disabled {
             return;
         }
-        (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
+        if self.core.begin_physics_phase() {
+            (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
+        }
+        self.core.apply_combo_push(&assets.combo);
         self.core.invalidate_collision_positions();
     }
     /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
@@ -159,7 +163,11 @@ impl FighterCore {
             super::Interaction::Attack => assert!(
                 matches!(
                     self.state_data,
-                    super::MotionData::Jab(_) | super::MotionData::Tilt | super::MotionData::Smash
+                    super::MotionData::Jab(_)
+                        | super::MotionData::RapidJab(_)
+                        | super::MotionData::Tilt
+                        | super::MotionData::Smash
+                        | super::MotionData::DownTilt { .. }
                 ),
                 "attack requires attack state"
             ),

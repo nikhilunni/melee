@@ -164,3 +164,35 @@ fn graphics_payload_is_shared_with_color_overlay_opcode() {
     assert_eq!(ordinary.id, overlay.id);
     assert_eq!(ordinary.offset.x.to_bits(), overlay.offset.x.to_bits());
 }
+
+#[test]
+fn capsule_status_and_jab_flags_decode_independently() {
+    use melee_types::combat::HurtStatus;
+    assert!(matches!(
+        decode(&[28 << 26 | 17 << 18 | 2], None, 1).unwrap(),
+        Command::HurtCapsuleStatus {
+            bone: Some(17),
+            status: HurtStatus::Intangible
+        }
+    ));
+    assert!(matches!(
+        decode(&[27 << 26], None, 1).unwrap(),
+        Command::HurtCapsuleStatus {
+            bone: None,
+            status: HurtStatus::Normal
+        }
+    ));
+    assert!(matches!(
+        decode(&[29 << 26], None, 1).unwrap(),
+        Command::JabFollowup(false)
+    ));
+    assert!(matches!(
+        decode(&[30 << 26 | 1], None, 1).unwrap(),
+        Command::RapidJab(true)
+    ));
+    // ftAction_800718A4's shared throw_flags_b3 is a rapid-jab loop checkpoint.
+    assert!(matches!(
+        decode(&[20 << 26], None, 1).unwrap(),
+        Command::GrabRelease
+    ));
+}

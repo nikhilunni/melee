@@ -494,13 +494,23 @@ impl FighterCore {
         self.shield.clear_collision();
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
+        self.combat.combo.grace = assets.combo.grace_frames;
         self.status.on_ledge = false;
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         self.commands.articles_visible = true;
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
+        let move_id = super::attack::stale::GROUND_MOVES
+            .get(state as usize)
+            .copied()
+            .flatten();
+        self.combat.stale.enter(move_id);
+        self.commands.stale_multiplier =
+            move_id.map(|_| self.combat.stale.multiplier(&assets.stale_weights));
         self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
+        self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
+        self.commands.capsule_overrides.clear();
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         if !matches!(
             state,
