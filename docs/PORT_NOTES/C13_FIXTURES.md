@@ -428,3 +428,142 @@ cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/ko_fd_marth.toml -
 - Documentation: `hsd-particle/tests/data/README.md`, `hsd-particle/START_FD.md`, this report.
 
 Paths in this list are under `crates/` unless prefixed with `docs/`.
+
+## Post-merge follow-up — ef RNG prefix ownership (2026-09-09)
+
+The two Marth replay failures were caused by consuming a fixture-owned RNG
+draw twice. The reported decimal value `2147892080` is **0x80063B70**, not
+0x80063770; `2151280384` is **0x8039EF00**, not 0x8039F000.
+`symbols.txt:1378` assigns 0x80063930..0x8006729B to `efAsync_Dispatch`;
+0x80063B70 is its +0x240 call to `HSD_Randf`. The retail assembly explicitly
+shows `80063B70: bl HSD_Randf` after `efLib_Create_Attach_Pos(8, ...)`.
+This is efasync.c case 0x3EC, line 133, through the inline
+`efAsync_SetEffectRandomRotationZ` helper at lines 34–36. The hex address
+0x80063770 in the question instead falls inside `efAlt_Spawn` (symbols.txt:1377);
+it is not the call recorded by either failing ledger.
+
+At jab tick 124, the ledger begins with 0x80063B70 then 0x8039EF00. At up-tilt
+tick 126, three landing-offset draws precede that same pair. Both fixtures
+already contain the orientation `external_randf` event, correctly ordered before
+the slash spawn. The old prefix scan consumed all non-particle draws before the
+first particle draw, including that event; replaying the fixture consumed it
+again and shifted the draw comparison and RNG state.
+
+`dust_replay.rs` now stops the external-prefix scan at a particle draw **or**
+the exact fixture-owned site 0x80063B70. The latter must have Randf PC 0x8038054C.
+The existing fixture reader consumes it once and includes it in the exact
+ordered site/count comparison. Particle classification, every particle draw,
+LCG verification of every ledger entry, final seeds, field comparisons and
+unknown-site/interleaving rejection are retained. There is no broad ef range
+exclusion and no production-code or fixture-format change. Existing KO coverage
+also exercises orientation events interleaved with particle constructor draws.
+
+Changed files in this follow-up: `crates/hsd-particle/tests/support/dust_replay.rs`,
+`crates/hsd-particle/tests/data/README.md`, and this report. README now records
+that C12 and the eleven deferred regenerations have landed, and explains event
+ownership at the prefix boundary. No git commands or TRACKER edits.
+
+The temporary re-exports confirm that the existing format and fixture contents
+are correct; neither checked-in JSON was overwritten:
+
+```text
+CARGO_HOME=/tmp/c13-cargo-home cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/jab_fd_marth.toml --out /tmp/c13-followup-jab.json
+300 ticks, 49 keys, 0 divergences; fixture /tmp/c13-followup-jab.json
+CARGO_HOME=/tmp/c13-cargo-home cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/utilt_fd_marth.toml --out /tmp/c13-followup-utilt.json
+300 ticks, 49 keys, 0 divergences; fixture /tmp/c13-followup-utilt.json
+jab_fd_marth: regenerated JSON equals checked-in fixture
+utilt_fd_marth: regenerated JSON equals checked-in fixture
+
+CARGO_HOME=/tmp/c13-cargo-home cargo test -p melee-sim --test m5_gate
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.47s
+
+CARGO_HOME=/tmp/c13-cargo-home cargo fmt --all
+exit 0
+CARGO_HOME=/tmp/c13-cargo-home cargo clippy --workspace --all-targets -- -D warnings
+exit 0
+```
+
+Full particle validation (`CARGO_HOME=/tmp/c13-cargo-home cargo test -p
+hsd-particle`) passed: 75 tests, zero failures/ignored, across all 29 unit/integration
+binaries plus doc tests. Exact result lines per binary follow:
+
+```text
+Running unittests src/lib.rs (target/debug/deps/hsd_particle-db66684c16b83668)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Running tests/lifecycle.rs (target/debug/deps/lifecycle-436a00bf7b585947)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Running tests/live_bf_idle.rs (target/debug/deps/live_bf_idle-fea824b16b9c7543)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 53.86s
+Running tests/live_bf_start.rs (target/debug/deps/live_bf_start-71330e181852a515)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.25s
+Running tests/live_dl_idle.rs (target/debug/deps/live_dl_idle-f8637d625a6a6db5)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+Running tests/live_dl_start.rs (target/debug/deps/live_dl_start-a245c385bd0130bf)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.76s
+Running tests/live_fd.rs (target/debug/deps/live_fd-c68dcb718e95abed)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.38s
+Running tests/live_fd_airdodge.rs (target/debug/deps/live_fd_airdodge-1652ce294d48c8df)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.59s
+Running tests/live_fd_dash.rs (target/debug/deps/live_fd_dash-18689f5ce16a1f1f)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.51s
+Running tests/live_fd_jab_marth.rs (target/debug/deps/live_fd_jab_marth-cc0c27399e234fc5)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.83s
+Running tests/live_fd_jump.rs (target/debug/deps/live_fd_jump-575d5856db92a222)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.21s
+Running tests/live_fd_ledge.rs (target/debug/deps/live_fd_ledge-b24e5bd0a4ac5856)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.63s
+Running tests/live_fd_roll.rs (target/debug/deps/live_fd_roll-89d3680f45569c11)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.36s
+Running tests/live_fd_shield.rs (target/debug/deps/live_fd_shield-b6d3074ad2824617)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.14s
+Running tests/live_fd_spotdodge.rs (target/debug/deps/live_fd_spotdodge-3cf8020c312d67c7)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.40s
+Running tests/live_fd_start.rs (target/debug/deps/live_fd_start-4f8109f3a14bafaf)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.93s
+Running tests/live_fd_wavedash.rs (target/debug/deps/live_fd_wavedash-58e297c312b6a69c)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.54s
+Running tests/live_grab_fd_marth.rs (target/debug/deps/live_grab_fd_marth-cbe796f7f3c0458f)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.83s
+Running tests/live_jab_fd_fox.rs (target/debug/deps/live_jab_fd_fox-dcee3d6a81e15500)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+Running tests/live_ko_fd_marth.rs (target/debug/deps/live_ko_fd_marth-3b0dd151ee66136a)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.58s
+Running tests/live_shieldhit_fd_marth.rs (target/debug/deps/live_shieldhit_fd_marth-85eccb3bf2338080)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+Running tests/live_tech_fd_marth.rs (target/debug/deps/live_tech_fd_marth-201256787c7342f5)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.73s
+Running tests/live_utilt_fd_marth.rs (target/debug/deps/live_utilt_fd_marth-fb7b5bcf7752aae4)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.99s
+Running tests/live_ys_idle.rs (target/debug/deps/live_ys_idle-c3f8ed14d2a7d0ad)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+Running tests/live_ys_start.rs (target/debug/deps/live_ys_start-aa617242786dba9b)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+Running tests/opcodes.rs (target/debug/deps/opcodes-1110184e69b1bc41)
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Running tests/real_fd_bank.rs (target/debug/deps/real_fd_bank-3f4fefa104e2c14d)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Running tests/real_fd_particles.rs (target/debug/deps/real_fd_particles-0b8f58405da803ab)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Running tests/start_paths.rs (target/debug/deps/start_paths-3ffb5f1800c1bffe)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+The additional workspace `cargo gate` is **not green**. It reaches an unrelated
+unchanged melee-sim test, `frame::falcon_bones::idle_falcon_partial_emission_particles_600`,
+and fails at `src/frame/falcon_bones.rs:138` on
+`assert!(initial.pending_emission.is_some())`, before simulation begins. This
+unit test imports the Falcon savestate directly and does not compile or call
+`hsd-particle/tests/support/dust_replay.rs`. Its boundary-shape assumption was
+not changed or weakened for this follow-up. The focused rerun reproduces it:
+
+```text
+CARGO_HOME=/tmp/c13-cargo-home cargo gate
+test result: FAILED. 50 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 31.92s
+error: test failed, to rerun pass `-p melee-sim --lib`
+
+CARGO_HOME=/tmp/c13-cargo-home cargo test -p melee-sim --lib frame::falcon_bones::idle_falcon_partial_emission_particles_600
+assertion failed: initial.pending_emission.is_some()
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 52 filtered out; finished in 4.93s
+error: test failed, to rerun pass `-p melee-sim --lib`
+```

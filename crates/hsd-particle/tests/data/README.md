@@ -34,10 +34,10 @@ schedules, alternate jump JSON, captured start-joint JSON and address-specific
 Python extractor were removed. `live_fd` restores idle FD directly from its
 initial capture and needs no external spawn fixture.
 
-## Regenerate after C12
+## Fixtures regenerated after C12
 
-These files remain unchanged because the current importer rejects their saved
-scheduler resume boundaries. These are the exact commands to run after C12:
+C12 is merged. These eleven formerly deferred fixtures were regenerated on main
+with the same command against zero-divergence gates. Their regeneration commands:
 
 ```sh
 cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/idle_bf_fox.toml --out crates/hsd-particle/tests/data/idle_bf_spawns.json
@@ -53,9 +53,8 @@ cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/tech_fd_marth.toml
 cargo run -q -p melee-sim -- fixture-spawns harness/scenarios/ko_fd_marth.toml --out crates/hsd-particle/tests/data/ko_fd_marth_spawns.json
 ```
 
-All Marth/Falco/Falcon/Peach/Yoshi/Puff scenes also remain blocked on C12,
-including those without a checked-in spawn fixture. Do not regenerate their
-inputs from a partial run.
+Every export validates the full scenario; do not generate inputs from a partial
+run.
 
 ## Format and provenance
 
@@ -88,3 +87,17 @@ calls, running a gate and removing the instrumentation. The permanent command
 replaces that recipe for every file above. See
 [the C13 report](../../../../docs/PORT_NOTES/C13_FIXTURES.md) for validation and
 the recording-constant audit.
+
+## Ef-side RNG ordering follow-up
+
+`external_randf: 2147892080` is retail call site `0x80063B70`
+(`efAsync_Dispatch+0x240`, efasync.c case 0x3EC), the slash-orientation draw.
+The fixtures already record it in the exact effect/spawn call order. The replay
+must stop consuming the unrecorded external prefix at either a particle draw or
+this fixture-recorded draw, even when the effect draw occurs first. Otherwise it
+consumes that RNG input twice.
+
+Only this exact ef site is accepted as a fixture RNG event, with the Randf PC
+checked. It stays in the ordered draw/count comparison alongside every particle
+draw; unknown sites and unsupported interleavings still fail. No format or
+fixture changes were needed for the Marth jab/up-tilt repair.

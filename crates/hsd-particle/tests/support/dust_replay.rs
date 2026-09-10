@@ -35,6 +35,17 @@ fn is_display_cache(field: &str) -> bool {
 fn word(draw: &Json, key: &str) -> u32 {
     draw[key].as_u64().unwrap().try_into().unwrap()
 }
+fn fixture_draw(draw: &Json) -> bool {
+    // efAsync_Dispatch's slash orientation (efasync.c:133, inline helper:34).
+    // The fixture consumes this draw in call order, even before the first
+    // particle draw. It must not also be consumed as an external prefix.
+    if word(draw, "lr") - 4 == 0x8006_3b70 {
+        assert_eq!(word(draw, "pc"), 0x8038_054c);
+        true
+    } else {
+        false
+    }
+}
 fn particle_draw(draw: &Json) -> bool {
     let site = word(draw, "lr") - 4;
     match site {
@@ -204,12 +215,12 @@ fn replay_fields(
             .unwrap_or(expected.len());
         let external = expected[..interface]
             .iter()
-            .take_while(|d| !particle_draw(d))
+            .take_while(|d| !particle_draw(d) && !fixture_draw(d))
             .count();
         assert!(
             expected[external..interface]
                 .iter()
-                .all(|d| particle_draw(d) || word(d, "lr") - 4 == 0x8006_3b70),
+                .all(|d| particle_draw(d) || fixture_draw(d)),
             "tick {tick} external draws interleaved"
         );
         for draw in &expected[..external] {
