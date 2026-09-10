@@ -1,12 +1,10 @@
 //! Command effect flags and common-bone selection are independent of particle simulation.
+use melee_ef::request::EffectRequest;
 mod fighter_support;
 use fighter_support::Fixture;
 use gekko_math::HsdRng;
 use hsd_types::Vec3;
-use melee_ft::fighter::{
-    effects::{EffectRequest, GraphicsCommand},
-    Fighter,
-};
+use melee_ft::fighter::{effects::GraphicsCommand, Fighter};
 use melee_types::CommonMotionState;
 
 #[test]

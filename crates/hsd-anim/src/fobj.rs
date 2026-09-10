@@ -306,6 +306,29 @@ pub struct FObj {
     /// `d1`: slope at `p1`.
     pub d1: f32,
 }
+impl FObj {
+    /// Restore a preloaded track's playback state without copying its immutable
+    /// byte stream. The caller must supply the same track/stream (fixed pools).
+    pub fn restore_playback(&mut self, initial: &Self) {
+        debug_assert_eq!(self.ad, initial.ad);
+        self.pos = initial.pos;
+        self.length = initial.length;
+        self.flags = initial.flags;
+        self.op = initial.op;
+        self.op_intrp = initial.op_intrp;
+        self.obj_type = initial.obj_type;
+        self.frac_value = initial.frac_value;
+        self.frac_slope = initial.frac_slope;
+        self.nb_pack = initial.nb_pack;
+        self.startframe = initial.startframe;
+        self.fterm = initial.fterm;
+        self.time = initial.time;
+        self.p0 = initial.p0;
+        self.p1 = initial.p1;
+        self.d0 = initial.d0;
+        self.d1 = initial.d1;
+    }
+}
 
 /// PowerPC `slw`: a 32-bit shift left that yields 0 when bit 5 of the shift
 /// amount is set. The var-int readers shift by `7 * k`, which the C leaves

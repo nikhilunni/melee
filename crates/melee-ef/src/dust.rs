@@ -1,13 +1,8 @@
 //! efAsync_Dispatch positional generator branches (efasync.c:255-282).
 use super::*;
-// efasync.c:255-282 maps animation GFX requests to particle descriptors.
-const RUN_DUST_REQUEST: u16 = 0x3FE;
 const REVERSE_BRAKE_DUST_REQUEST: u16 = 0x400;
-const BRAKE_DUST_REQUEST: u16 = 0x401;
-const RUN_DUST_GENERATOR: u32 = 0x107;
-const BRAKE_DUST_GENERATOR: u32 = 0x5A;
 impl Effects {
-    pub(super) fn spawn_dust_generator(
+    pub(super) fn spawn_dust_generator<T: InverseTrig>(
         &mut self,
         id: u16,
         position: Vec3,
@@ -16,15 +11,14 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let (kind, directional) = match id {
-            0x3F3 => (0xB, false),  // efasync.c:186-188, roll smoke
-            0x41C => (0x5D, false), // efasync.c:521-523, ledge grab
-            0x407 => (0x3C, false), // efasync.c:305-307, spot dodge
-            RUN_DUST_REQUEST => (RUN_DUST_GENERATOR, true),
-            REVERSE_BRAKE_DUST_REQUEST | BRAKE_DUST_REQUEST => (BRAKE_DUST_GENERATOR, true),
-            id if id < 0x250 || id / 1000 == 30 => (u32::from(id), false),
-            _ => anyhow::bail!("efasync.c:255-282: unsupported dust {id:#x}"),
-        };
+        let (kind, directional) =
+            if let Some(row) = DUST_SPAWNS.iter().find(|row| row.request == id) {
+                (row.particle, row.directional)
+            } else if id < 0x250 || id / 1000 == 30 {
+                (u32::from(id), false)
+            } else {
+                anyhow::bail!("efasync.c:255-282: unsupported dust {id:#x}");
+            };
         // efAsync_Dispatch (80063930), efasync.c:274-278: 0x400 reverses
         // the direction passed to the same 0x5A generator (fneg, no fusion).
         let facing = if id == REVERSE_BRAKE_DUST_REQUEST {
@@ -67,7 +61,7 @@ impl Effects {
             "particle descriptor {kind} absent from supplied bank"
         );
         self.events.spawn(&request, false, false);
-        particles.spawn::<RetailTrig>(bank, request, rng, &mut self.draws)?;
+        spawn_particle::<T>(particles, bank, request, rng, &mut self.draws)?;
         Ok(())
     }
 }

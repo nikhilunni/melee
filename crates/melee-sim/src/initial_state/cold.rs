@@ -74,6 +74,7 @@ impl InitialState {
                 .all_characters_unlocked
                 .expect("validated cold music rule"),
         ));
+        let effects = melee_ef::Effects::load(&assets.effects)?;
         Ok(Self {
             stock_displays: [None, None],
             spawn_counter: melee_ft::fighter::SpawnCounter(3),
@@ -90,7 +91,7 @@ impl InitialState {
             resume: super::scheduler_resume::SchedulerResume::between_ticks(true),
             // A cold match has no emission interrupted by a save boundary.
             pending_emission: None,
-            effects: crate::effects::Effects::default(),
+            effects,
         })
     }
 }

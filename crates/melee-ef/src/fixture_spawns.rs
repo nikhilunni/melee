@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Concrete optional sink: no trait object, shared owner, or allocation on the
 /// normal path. All JSON construction is behind the `Some` branch.
 #[derive(Default)]
-pub(crate) struct EventSink(Option<Recording>);
+pub struct EventSink(Option<Recording>);
 
 #[derive(Default)]
 struct Recording {
@@ -17,19 +17,19 @@ struct Recording {
 }
 
 impl EventSink {
-    pub(crate) fn enable(&mut self) {
+    pub fn enable(&mut self) {
         self.0 = Some(Recording::default());
     }
 
     #[inline]
-    pub(crate) fn begin_tick(&mut self, frame: u64) {
+    pub fn begin_tick(&mut self, frame: u64) {
         if let Some(recording) = &mut self.0 {
             recording.frame = frame;
         }
     }
 
     #[inline]
-    pub(crate) fn spawn(&mut self, request: &SpawnRequest, detach: bool, after_particles: bool) {
+    pub fn spawn(&mut self, request: &SpawnRequest, detach: bool, after_particles: bool) {
         if let Some(recording) = &mut self.0 {
             // The existing fixture reader has no velocity override form. Fail
             // explicitly rather than silently producing an incomplete fixture.
@@ -62,7 +62,7 @@ impl EventSink {
     }
 
     #[inline]
-    pub(crate) fn update_joint(&mut self, id: usize, m: Mtx) {
+    pub fn update_joint(&mut self, id: usize, m: Mtx) {
         if let Some(recording) = &mut self.0 {
             recording
                 .events
@@ -71,7 +71,7 @@ impl EventSink {
     }
 
     #[inline]
-    pub(crate) fn expire_joint(&mut self, id: usize) {
+    pub fn expire_joint(&mut self, id: usize) {
         if let Some(recording) = &mut self.0 {
             recording
                 .events
@@ -80,7 +80,7 @@ impl EventSink {
     }
 
     #[inline]
-    pub(crate) fn flags(&mut self, joint: usize, clear: u16, set: u16) {
+    pub fn flags(&mut self, joint: usize, clear: u16, set: u16) {
         if let Some(recording) = &mut self.0 {
             recording.events.push((
                 recording.frame,
@@ -90,7 +90,7 @@ impl EventSink {
     }
 
     #[inline]
-    pub(crate) fn external_randf(&mut self, site: u32) {
+    pub fn external_randf(&mut self, site: u32) {
         if let Some(recording) = &mut self.0 {
             recording
                 .events
@@ -98,7 +98,7 @@ impl EventSink {
         }
     }
 
-    pub(crate) fn finish(&mut self) -> BTreeMap<u64, Vec<Value>> {
+    pub fn finish(&mut self) -> BTreeMap<u64, Vec<Value>> {
         let recording = self.0.take().expect("fixture recording enabled");
         let joints: BTreeSet<_> = recording
             .events

@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+melee-ef = { path = "../melee-ef" }
 slp = { path = "../slp" }
 melee-if = { path = "../melee-if" }
 melee-types = { path = "../melee-types" }

@@ -3,151 +3,31 @@ use hsd_types::{Mtx, Vec3};
 // ftCo_09F7.c:75-97: special part selectors bypass the common part table.
 const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
-#[derive(Clone, Debug, PartialEq)]
-pub enum EffectRequest {
-    /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
-    EggShell {
-        bone: usize,
-        scale: f32,
-    },
-    Death {
-        position: Vec3,
-        scale: f32,
-    },
-    /// fn_800DA1D8: async kind 1, hold-bone position sampled at queue flush.
-    CaptureFlash {
-        bone: usize,
-    },
-    /// Fighter_ChangeMotionState flushes the queue using the outgoing pose.
-    /// The scene consumes this batch at the owning proc boundary, in order.
-    FlushDeferred(Vec<ResolvedEffect>),
-    /// efSync_Spawn: shield model attached to the shield joint.
-    Shield {
-        id: u16,
-        bone: usize,
-    },
-    /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
-    ShieldSpark {
-        position: Vec3,
-    },
-    HitSpark {
-        position: Vec3,
-        element: melee_types::HitElement,
-        damage: f32,
-    },
-    /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
-    DestroyOwned,
-    /// ftCliffCommon_80081370: async kind 2 with no bone, absolute position.
-    LedgeGrab {
-        position: Vec3,
-    },
-    /// efAsync kind 0 passes the live fighter joint without offset RNG.
-    Attached {
-        id: u16,
-        bone: usize,
-    },
-    /// efAsync kinds 2/5/6 retain the bone and local offset until s_link 9.
-    Graphics {
-        id: u16,
-        bone: usize,
-        offset: Vec3,
-        facing: f32,
-        floor_angle: f32,
-    },
-    /// efAsync_Spawn(..., 3, 0x43E, root, scale), ft_0C31.c:130.
-    EntryWarp {
-        id: u16,
-        scale: Vec3,
-    },
-    /// ftAction_80072E4C / ftCo_8009F834: root-relative landing dust.
-    Landing {
-        id: u16,
-        offset: Vec3,
-        floor_angle: f32,
-    },
-}
-/// A deferred request whose joint transform was sampled at its retail flush.
-#[derive(Clone, Debug, PartialEq)]
-pub struct ResolvedEffect {
-    pub request: EffectRequest,
-    pub matrix: Mtx,
-}
-/// Scene implementations drain Fighter.effects through this interface.
-pub trait EffectSink {
-    fn spawn_effect(&mut self, request: EffectRequest);
-}
-impl EffectSink for Vec<EffectRequest> {
-    fn spawn_effect(&mut self, request: EffectRequest) {
-        self.push(request);
+use melee_ef::request::{EffectOwner, EffectQueue, EffectRequest};
+
+impl EffectOwner for super::FighterCore {
+    fn effect_queue(&mut self) -> &mut EffectQueue {
+        &mut self.effects
+    }
+    fn effect_matrix(&mut self, bone: Option<usize>) -> Mtx {
+        let joint = bone.map_or(self.animation.root, |bone| self.animation.parts[bone].joint);
+        self.skeleton.setup_matrix(joint);
+        self.skeleton.get(joint).mtx
+    }
+    fn effect_facing(&self) -> f32 {
+        self.physics.facing
     }
 }
 
 impl super::FighterCore {
-    /// Fighter_ChangeMotionState (800693AC), fighter.c:950-951:
-    /// translate the root, then efAsync_QueueFlush before replacing the pose.
+    /// Fighter_ChangeMotionState (800693AC), fighter.c:950-951: flush
+    /// efAsync against the outgoing pose before motion resources are replaced.
     pub(super) fn flush_effects_on_motion_change(&mut self) {
         self.skeleton
             .set_translate(self.animation.root, &self.physics.position);
-        let mut pending = Vec::new();
-        let mut immediate = Vec::new();
-        for request in std::mem::take(&mut self.effects) {
-            if request.is_immediate() {
-                immediate.push(request);
-            } else {
-                pending.push(request);
-            }
-        }
-        let mut resolved = Vec::new();
-        for request in pending.into_iter().rev() {
-            let joint = match &request {
-                EffectRequest::EggShell { bone, .. }
-                | EffectRequest::CaptureFlash { bone }
-                | EffectRequest::Attached { bone, .. }
-                | EffectRequest::Graphics { bone, .. } => self.animation.parts[*bone].joint,
-                _ => self.animation.root,
-            };
-            self.skeleton.setup_matrix(joint);
-            resolved.push(ResolvedEffect {
-                request,
-                matrix: self.skeleton.get(joint).mtx,
-            });
-        }
-        if !resolved.is_empty() {
-            immediate.push(EffectRequest::FlushDeferred(resolved));
-        }
-        self.effects = immediate;
-    }
-    /// efSync_Spawn / efLib_DestroyAll: dispatch at the owning fighter callback.
-    /// Deferred efAsync requests retain their original order until link 9.
-    pub fn drain_immediate_effects(&mut self, sink: &mut impl EffectSink) {
-        let mut deferred = Vec::new();
-        for effect in self.effects.drain(..) {
-            if effect.is_immediate() {
-                sink.spawn_effect(effect);
-            } else {
-                deferred.push(effect);
-            }
-        }
-        self.effects = deferred;
-    }
-    /// Forward requests in call order; rendering/particle code supplies the sink.
-    pub fn drain_effects(&mut self, sink: &mut impl EffectSink) {
-        for effect in self.effects.drain(..) {
-            sink.spawn_effect(effect);
-        }
-    }
-}
-impl EffectRequest {
-    fn is_immediate(&self) -> bool {
-        matches!(
-            self,
-            Self::Death { .. }
-                | Self::Shield { .. }
-                | Self::HitSpark { .. }
-                | Self::ShieldSpark { .. }
-                | Self::DestroyOwned
-                | Self::FlushDeferred(_)
-        )
+        let mut queue = std::mem::take(&mut self.effects);
+        queue.resolve_pending(|bone| self.effect_matrix(bone));
+        self.effects = queue;
     }
 }
 
@@ -179,7 +59,9 @@ impl super::FighterCore {
         rng: &mut gekko_math::HsdRng,
     ) -> usize {
         let mut draws = 0;
-        for command in std::mem::take(&mut self.commands.graphics) {
+        let mut graphics = std::mem::take(&mut self.commands.graphics);
+        while !graphics.is_empty() {
+            let command = graphics.remove(0);
             if self.effect_state.invisible {
                 continue;
             }
@@ -255,6 +137,7 @@ impl super::FighterCore {
                 floor_angle,
             });
         }
+        self.commands.graphics = graphics;
         draws
     }
 }

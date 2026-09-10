@@ -25,6 +25,7 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `crates/hsd-types`, `crates/melee-types` | Leaf type crates: vectors, enums, ids. No logic. |
 | `crates/hsd-archive` | `.dat` archive parsing. The only crate that knows on-disc layout. |
 | `crates/hsd-gobj`, `crates/hsd-anim` | HSD engine: scheduler, scene graph, animation. |
+| `crates/melee-ef` | Effect request queues, fixed model pools, efLib update and particle dispatch; independent of fighters/scenes. |
 | `crates/melee-lb/mp/gr/it/ft/cpu` | Melee subsystems, one crate each, mirroring decomp directories. |
 | `crates/ft-<name>` | One crate per playable character. |
 | `crates/melee-sim` | Headless simulator binary. Emits canonical traces. |

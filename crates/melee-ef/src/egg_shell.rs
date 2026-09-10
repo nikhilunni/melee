@@ -1,20 +1,24 @@
 //! efSync_Spawn (8005FDDC), efsync.c:228-292, request 0x4CF.
 use super::*;
+// efLib_Create, eflib.c:524-528: 32 queued initial animations.
+const ANIMATION_QUEUE_CAPACITY: usize = 32;
+// efsync.c:228-292 emits twelve shell fragments per burst.
+const SHELL_COUNT: usize = 12;
 impl Effects {
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn spawn_egg_shell(
+    pub(super) fn spawn_egg_shell<T: InverseTrig>(
         &mut self,
-        archive: &Archive,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
         matrix: &Mtx,
         scale: f32,
     ) -> Result<()> {
-        let mut shells = Vec::new();
-        for _ in 0..12 {
+        self.make_room(0x1E, SHELL_COUNT, particles);
+        let mut shells = FixedVec::<_, ANIMATION_QUEUE_CAPACITY>::default();
+        for _ in 0..SHELL_COUNT {
             let id = if rng.randf() < 0.5 { 0x1E } else { 0x1F };
-            let mut effect = Effect::load(archive, id)?;
+            let mut effect = self.acquire(id, particles);
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.lifetime = 50;
@@ -42,9 +46,11 @@ impl Effects {
         }
         // efLib_AnimQueue is drained in reverse creation order by efSync_Spawn.
         for effect in shells.iter_mut().rev() {
-            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
         }
-        self.instances.extend(shells);
+        while !shells.is_empty() {
+            self.instances.push(shells.remove(0));
+        }
         Ok(())
     }
 }

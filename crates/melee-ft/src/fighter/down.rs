@@ -27,7 +27,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.change_motion_state(S::PassiveStandB, assets)?;
         self.core
             .effects
-            .push(super::effects::EffectRequest::CaptureFlash { bone: 0 });
+            .push(melee_ef::request::EffectRequest::CaptureFlash { bone: 0 });
         Ok(true)
     }
     /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN.
@@ -50,7 +50,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         // ftCo_800978D4: direct async kind 4 has no randomized offset.
         self.core
             .effects
-            .push(super::effects::EffectRequest::Graphics {
+            .push(melee_ef::request::EffectRequest::Graphics {
                 id: 0x406,
                 bone: 0,
                 offset: Vec3::ZERO,

@@ -216,7 +216,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         self.core
             .effects
-            .push(super::effects::EffectRequest::CaptureFlash {
+            .push(melee_ef::request::EffectRequest::CaptureFlash {
                 bone: usize::from(self.core.bones.model.shield),
             });
         Ok(())

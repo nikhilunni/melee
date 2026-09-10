@@ -483,7 +483,7 @@ pub struct FighterCore {
     pub combat: damage::CombatState,
     pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,
-    pub effects: Vec<effects::EffectRequest>,
+    pub effects: melee_ef::request::EffectQueue,
     pub capabilities: Capabilities,
     pub cpu: CpuState,
     pub status: Status,

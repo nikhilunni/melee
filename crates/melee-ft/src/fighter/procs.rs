@@ -464,11 +464,12 @@ impl FighterCore {
                 draws += 1;
             }
             let normal = self.collision.data.floor.normal;
-            self.effects.push(super::effects::EffectRequest::Landing {
-                id,
-                offset,
-                floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
-            });
+            self.effects
+                .push(melee_ef::request::EffectRequest::Landing {
+                    id,
+                    offset,
+                    floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
+                });
         }
         Ok(draws)
     }

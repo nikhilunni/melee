@@ -1,7 +1,6 @@
 //! The CLI fixture is a reproducible gate product; a disabled recorder does no
 //! serialization or allocation, even when handed unsupported fixture inputs.
-#[path = "../src/fixture_spawns.rs"]
-mod recorder;
+use melee_ef::fixture_spawns as recorder;
 
 use std::{
     alloc::{GlobalAlloc, Layout, System},

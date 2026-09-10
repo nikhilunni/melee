@@ -2,10 +2,10 @@
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
-    effects::EffectRequest,
     CharacterCallbacks, Fighter, MotionData,
 };
 use hsd_types::Vec3;
+use melee_ef::request::EffectRequest;
 use melee_types::{mp::FtCollisionBox, CommonMotionState, GroundOrAir};
 
 #[derive(Clone, Copy, Debug)]

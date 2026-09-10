@@ -98,7 +98,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.core.effect_state.invisible = true;
         self.core
             .effects
-            .push(super::effects::EffectRequest::Death {
+            .push(melee_ef::request::EffectRequest::Death {
                 position: p,
                 scale: assets.life.death_effect_scale,
             });

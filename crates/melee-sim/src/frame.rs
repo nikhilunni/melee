@@ -440,8 +440,8 @@ impl Runtime {
                     }
                 }
             }
-            Callback::Effects => state.effects.tick(
-                &mut state.fighters,
+            Callback::Effects => state.effects.tick::<melee_ft::fighter::RetailTrig>(
+                |player, bone| state.fighters[player].bone_matrix(bone),
                 &state.assets.common_particle_bank,
                 &mut state.particles,
                 &mut state.rng,
@@ -597,7 +597,7 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
     state_pads: &PadScript,
     scene_assets: &crate::assets::Assets,
     map: &mut melee_mp::CollMap,
-    effects: &mut crate::effects::Effects,
+    effects: &mut melee_ef::Effects,
     particles: &mut hsd_particle::system::ParticleSystem,
     rng: &mut gekko_math::HsdRng,
     wind: Vec3,
@@ -628,11 +628,10 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
         FighterProc::Pose => f.proc_pose(map),
         FighterProc::Accessories => f.proc_accessories(),
         FighterProc::HitboxPositions => {
-            effects.flush(
-                crate::effects::EffectTiming::Deferred,
+            effects.flush::<melee_ft::fighter::RetailTrig>(
+                melee_ef::EffectTiming::Deferred,
                 player,
-                f,
-                &scene_assets.effects,
+                &mut f.core,
                 &scene_assets.common_particle_bank,
                 particles,
                 rng,
@@ -661,11 +660,10 @@ fn dispatch_fighter<C: melee_ft::fighter::CharacterCallbacks>(
         }
     }
     f.resolve_graphics_commands(assets, rng);
-    effects.flush(
-        crate::effects::EffectTiming::Immediate,
+    effects.flush::<melee_ft::fighter::RetailTrig>(
+        melee_ef::EffectTiming::Immediate,
         player,
-        f,
-        &scene_assets.effects,
+        &mut f.core,
         &scene_assets.common_particle_bank,
         particles,
         rng,
@@ -900,7 +898,7 @@ mod start_tests {
             for generator in &state.particles.generators {
                 if let Some(id) = generator
                     .attachment_id
-                    .filter(|&id| id < crate::effects::FIRST_EFFECT_JOINT)
+                    .filter(|&id| id < melee_ef::FIRST_EFFECT_JOINT)
                 {
                     matrices.insert(id, generator.joint_matrix.unwrap());
                 }

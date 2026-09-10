@@ -452,7 +452,7 @@ impl FighterCore {
     }
     pub(super) fn queue_shield_effect(&mut self, id: u16) {
         self.effect_state.destroy_on_state_change = true;
-        self.effects.push(super::effects::EffectRequest::Shield {
+        self.effects.push(melee_ef::request::EffectRequest::Shield {
             id,
             bone: usize::from(self.bones.model.shield),
         });

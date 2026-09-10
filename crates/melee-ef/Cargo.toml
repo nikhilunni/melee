@@ -1,0 +1,19 @@
+[package]
+name = "melee-ef"
+description = "Effect requests, fixed model pools and efLib animation/particle dispatch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+hsd-particle = { path = "../hsd-particle" }
+hsd-anim = { path = "../hsd-anim" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+melee-types = { path = "../melee-types" }
+gekko-math = { path = "../gekko-math" }
+anyhow.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+melee-lb = { path = "../melee-lb" }

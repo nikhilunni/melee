@@ -17,6 +17,7 @@ members = [
     "crates/melee-gr",
     "crates/melee-it",
     "crates/melee-ft",
+    "crates/melee-ef",
     "crates/melee-if",
     "crates/melee-cpu",
     # Layer 3: one crate per character. Depend on melee-ft, never on each other.

@@ -238,7 +238,7 @@ fn record_shield_hit(
     }
     victim
         .effects
-        .push(super::effects::EffectRequest::ShieldSpark {
+        .push(melee_ef::request::EffectRequest::ShieldSpark {
             position: contact.position,
         });
 }
@@ -639,7 +639,7 @@ fn detect_eligible_hit(
         // ftColl_8007A06C -> efSync_Spawn; slash uses effect 1004.
         victim
             .effects
-            .push(super::effects::EffectRequest::HitSpark {
+            .push(melee_ef::request::EffectRequest::HitSpark {
                 position: contact.position,
                 element: descriptor.element,
                 damage: descriptor.damage,

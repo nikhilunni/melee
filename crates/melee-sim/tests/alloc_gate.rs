@@ -74,18 +74,16 @@ fn start_fd_fox_allocation_budget() {
     use std::io::Write;
     writeln!(std::io::stdout().lock(), "599 measured ticks: simulate-only {simulate} allocations ({:.6}/tick); with snapshot {snapshot} allocations ({:.6}/tick); snapshot overhead {} ({:.6}/tick)",
         simulate as f64 / 599.0, snapshot as f64 / 599.0, snapshot - simulate, (snapshot - simulate) as f64 / 599.0).unwrap();
-    // Provisional C5 budget, not a zero-allocation claim. Remaining sites include
-    // melee-ft fighter/effects.rs (deferred C4/C5-ft), anim/playback.rs and
-    // collision/ecb.rs; melee-gr last/animation.rs; particle storage/draw logs;
-    // and sim Effect::load. See PORT_NOTES/C5_C6_C10_PERF_LANE.md for the census.
-    // A budget is an upper bound: recording changes may alter particle counts,
-    // but must not raise either pre-existing allocation ceiling.
+    // C4 removes effect-owned tick allocation; C5 still includes fighter
+    // animation/ECB and hsd-particle generator/particle ownership. These tighter
+    // ceilings preserve the reduction against the measured 22,588 / 97,464
+    // baseline; see PORT_NOTES/C4_MELEE_EF.md for the allocation census.
     assert!(
-        simulate <= 27_301,
+        simulate <= 21_700,
         "simulate-only allocation budget exceeded: {simulate}"
     );
     assert!(
-        snapshot <= 102_175,
+        snapshot <= 96_600,
         "record-producing allocation budget exceeded: {snapshot}"
     );
 }

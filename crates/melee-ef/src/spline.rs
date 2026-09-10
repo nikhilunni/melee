@@ -9,6 +9,7 @@ use gekko_math::{
 use hsd_archive::Archive;
 use hsd_types::Vec3;
 
+#[derive(Clone)]
 pub(super) struct Spline {
     count: usize,
     points: Vec<[f32; 3]>,

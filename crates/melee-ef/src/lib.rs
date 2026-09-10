@@ -1,5 +1,4 @@
-//! Headless ef subset. This should become `melee-ef` once that workspace member
-//! is added: effect descriptor loading, efAsync request dispatch, attached and
+//! Headless ef subsystem: effect descriptor loading, efAsync request dispatch, attached and
 //! positional effect instances, lifetime/animation procs, and DPtcl routing.
 //! Async kind 2 transforms a queued bone-local offset before generator dispatch;
 //! running dust also uses kinds 5/6 for facing and floor-angle parameters.
@@ -7,10 +6,16 @@
 //! No spawn schedules or captured matrices are runtime inputs.
 mod dust;
 mod egg_shell;
+pub mod fixed;
+pub mod fixture_spawns;
+mod pool;
+pub mod request;
 mod spline;
-use crate::scene_fighter::SceneFighter;
+mod tables;
 use anyhow::{ensure, Context, Result};
+use fixed::FixedVec;
 use gekko_math::HsdRng;
+use hsd_anim::mtx::InverseTrig;
 use hsd_anim::{
     aobj::AObjDesc,
     fobj::FObjDesc,
@@ -24,47 +29,34 @@ use hsd_particle::{
     system::{ParticleSystem, SpawnRequest},
 };
 use hsd_types::{Mtx, Vec3};
-use melee_ft::fighter::CharacterCallbacks;
-use melee_ft::fighter::{effects::EffectRequest, Fighter, RetailTrig};
+use pool::{ModelPool, INSTANCE_CAPACITY};
+use request::{EffectOwner, EffectRequest};
 use std::collections::BTreeMap;
+use tables::*;
 
-// efasync.c:288-293,750-756: request IDs select common effect descriptors.
-const ENTRY_WARP_REQUEST: u16 = 0x43E;
-const ENTRY_WARP_EFFECT: u32 = 0x24;
-const LANDING_REQUEST: u16 = 0x404;
-const LANDING_EFFECT: u32 = 0x18;
-// efasync.c:262-268: stationary model effect, with facing and floor rotation.
-const DASH_DUST_REQUEST: u16 = 0x3FF;
-const DASH_DUST_EFFECT: u32 = 5;
-// efasync.c:205-212: jump flash model, also with facing and floor rotation.
-const JUMP_FLASH_REQUEST: u16 = 0x3F7;
-const JUMP_FLASH_EFFECT: u32 = 0x12;
-// efasync.c:282-287: direct joint attachment, without a model effect.
-const JUMP_DUST_REQUEST: u16 = 0x402;
-const AERIAL_JUMP_DUST_REQUEST: u16 = 0x403;
-const JUMP_DUST_PARTICLE: u32 = 0x59;
-const AERIAL_JUMP_DUST_PARTICLE: u32 = 0x5E;
 // Stable fighter-bone identities occupy a range beyond effect model joints.
 const FIRST_FIGHTER_JOINT: usize = 1 << 24;
 const FIGHTER_JOINT_STRIDE: usize = 256;
 // EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
 const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
+// Port-only diagnostic budget, drained by the scheduler each tick. Retail has
+// no Rust draw log; fail explicitly rather than growing this observation buffer.
+const DRAW_CAPACITY: usize = 4096;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
-pub(crate) const FIRST_EFFECT_JOINT: usize = 1 << 16;
-// EfCoData animation outputs supported by efLib_SpawnParticleEffect's ordinary branch.
-const PARTICLE_KINDS: [i32; 14] = [2, 6, 9, 10, 45, 212, 261, 267, 306, 307, 364, 445, 448, 449];
+pub const FIRST_EFFECT_JOINT: usize = 1 << 16;
 
-#[derive(Default)]
-pub(crate) struct Effects {
-    pub(crate) events: crate::fixture_spawns::EventSink,
-    camera_quakes: Vec<(u16, Vec3)>,
-    pub(crate) draws: DrawLog,
-    instances: Vec<Effect>,
-    requests: Vec<EffectRequest>,
+pub struct Effects {
+    pub events: crate::fixture_spawns::EventSink,
+    camera_quakes: FixedVec<(u16, Vec3), { request::REQUEST_CAPACITY }>,
+    pub draws: DrawLog,
+    instances: FixedVec<Effect, INSTANCE_CAPACITY>,
+    models: ModelPool,
     next_joint: usize,
-    fighter_joints: BTreeMap<usize, (usize, usize)>,
+    fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
 }
+#[derive(Clone)]
 struct Effect {
+    descriptor: u32,
     velocity: Option<Vec3>,
     tree: JObjTree,
     root: JObjId,
@@ -84,10 +76,10 @@ pub enum EffectTiming {
     Deferred,
 }
 impl Effects {
-    #[cfg(test)]
+    /// Diagnostic matrices; intentionally allocates outside the tick path.
     pub fn matrices(&self) -> BTreeMap<usize, Mtx> {
         let mut matrices = BTreeMap::new();
-        for effect in &self.instances {
+        for effect in self.instances.iter() {
             let joints: Vec<_> = effect.tree.depth_first(effect.root).collect();
             for joint in joints {
                 matrices.insert(effect.joint_base + joint.0, effect.tree.get(joint).mtx);
@@ -98,43 +90,22 @@ impl Effects {
     /// efAsync_QueueProcessDeferred (efasync.c:1321-1381), drained by
     /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557).
     #[allow(clippy::too_many_arguments)] // Fighter, effect assets and particle runtime stay in their own layers.
-    pub fn flush<C: CharacterCallbacks>(
+    pub fn flush<T: InverseTrig>(
         &mut self,
         timing: EffectTiming,
         player: usize,
-        fighter: &mut Fighter<C>,
-        archive: &Archive,
+        fighter: &mut impl EffectOwner,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let mut requests = std::mem::take(&mut self.requests);
-        match timing {
-            EffectTiming::Immediate => fighter.drain_immediate_effects(&mut requests),
-            EffectTiming::Deferred => {
-                fighter.drain_effects(&mut requests);
-                // efAsync_Spawn prepends to the pending list.
-                requests.reverse();
-            }
-        }
-        // Motion changes have already sealed earlier queues with their outgoing
-        // transforms. Preserve those flushes relative to immediate destruction.
-        let pending = requests.drain(..).flat_map(|request| {
-            let (batch, single) = match request {
-                EffectRequest::FlushDeferred(batch) => (batch, None),
-                request => (Vec::new(), Some((request, None))),
-            };
-            batch
-                .into_iter()
-                .map(|resolved| (resolved.request, Some(resolved.matrix)))
-                .chain(single)
-        });
-        for (request, resolved_matrix) in pending {
+        let requests = fighter.effect_queue().drain(timing);
+        for queued in requests.iter() {
+            let request = queued.request;
+            let resolved_matrix = queued.matrix;
             if let EffectRequest::EggShell { bone, scale } = request {
-                let joint = fighter.animation.parts[bone].joint;
-                fighter.skeleton.setup_matrix(joint);
-                let matrix = resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx);
-                self.spawn_egg_shell(archive, bank, particles, rng, &matrix, scale)?;
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale)?;
                 continue;
             }
             if matches!(request, EffectRequest::DestroyOwned) {
@@ -148,37 +119,35 @@ impl Effects {
                         particles.expire_joint(effect.joint_base + joint.0);
                     }
                 }
-                self.instances.retain(|effect| effect.owner != Some(player));
+                self.recycle_where(|effect| effect.owner == Some(player));
                 continue;
             }
             if let EffectRequest::Attached { id, bone } = request {
                 // efasync.c:282-287: kind 0, hsd_8039EFAC on the live bone.
-                let kind = match id {
-                    JUMP_DUST_REQUEST => JUMP_DUST_PARTICLE,
-                    AERIAL_JUMP_DUST_REQUEST => AERIAL_JUMP_DUST_PARTICLE,
-                    _ => anyhow::bail!("unsupported attached effect {id:#x}"),
-                };
+                let kind = ATTACHED_SPAWNS
+                    .iter()
+                    .find(|&&(request, _)| request == id)
+                    .map(|&(_, particle)| particle)
+                    .with_context(|| format!("unsupported attached effect {id:#x}"))?;
                 assert!(bone < FIGHTER_JOINT_STRIDE);
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
-                let joint = fighter.animation.parts[bone].joint;
-                fighter.skeleton.setup_matrix(joint);
                 let mut spawn = SpawnRequest::new(0, kind, 0);
                 spawn.joint = Some((
                     joint_id,
-                    resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                    resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),
                 ));
                 self.events.spawn(&spawn, false, false);
-                particles.spawn::<RetailTrig>(bank, spawn, rng, &mut self.draws)?;
-                self.fighter_joints.insert(joint_id, (player, bone));
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
             if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
                 request
             {
-                self.spawn_dust_generator(
+                self.spawn_dust_generator::<T>(
                     0x41C,
                     position,
-                    fighter.physics.facing,
+                    fighter.effect_facing(),
                     bank,
                     particles,
                     rng,
@@ -189,18 +158,16 @@ impl Effects {
                 id: 0x407, offset, ..
             } = request
             {
-                let joint = fighter.animation.root;
-                fighter.skeleton.setup_matrix(joint);
                 let mut position = Vec3::ZERO;
                 mtx_mult_vec(
-                    &resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                    &resolved_matrix.unwrap_or(fighter.effect_matrix(None)),
                     &offset,
                     &mut position,
                 );
-                self.spawn_dust_generator(
+                self.spawn_dust_generator::<T>(
                     0x407,
                     position,
-                    fighter.physics.facing,
+                    fighter.effect_facing(),
                     bank,
                     particles,
                     rng,
@@ -215,12 +182,13 @@ impl Effects {
                 ..
             } = request
             {
-                if !matches!(id, 0x3F8 | 0x406 | DASH_DUST_REQUEST | JUMP_FLASH_REQUEST) {
-                    let joint = fighter.animation.parts[bone].joint;
-                    fighter.skeleton.setup_matrix(joint);
+                if !MODEL_SPAWNS
+                    .iter()
+                    .any(|row| row.request == id && row.source == ModelSource::Graphics)
+                {
                     let mut position = Vec3::ZERO;
                     mtx_mult_vec(
-                        &resolved_matrix.unwrap_or(fighter.skeleton.get(joint).mtx),
+                        &resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),
                         &offset,
                         &mut position,
                     );
@@ -228,7 +196,7 @@ impl Effects {
                         // efAsync kind 8 -> Camera_RequestQuake(3), no particle spawn.
                         self.camera_quakes.push((3, position));
                     } else {
-                        self.spawn_dust_generator(id, position, facing, bank, particles, rng)?;
+                        self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)?;
                     }
                     continue;
                 }
@@ -236,8 +204,6 @@ impl Effects {
             let (id, attachment) = match request {
                 EffectRequest::Death { .. } => (0x19, None),
                 EffectRequest::CaptureFlash { .. } => (0xF, None),
-                EffectRequest::Graphics { id: 0x3F8, .. } => (0x13, None),
-                EffectRequest::Graphics { id: 0x406, .. } => (4, None),
                 EffectRequest::HitSpark {
                     element: melee_types::HitElement::Normal,
                     ..
@@ -246,28 +212,27 @@ impl Effects {
                     element: melee_types::HitElement::Slash,
                     ..
                 } => (8, None),
-                EffectRequest::Shield { id: 0x417, .. } => (0xB, Some(player)),
-                EffectRequest::Shield { id: 0x419, .. } => (0xD, Some(player)),
-                EffectRequest::Shield { id: 0x418, .. } => (0xC, Some(player)),
-                EffectRequest::EntryWarp {
-                    id: ENTRY_WARP_REQUEST,
-                    ..
-                } => (ENTRY_WARP_EFFECT, Some(player)),
-                EffectRequest::Landing {
-                    id: LANDING_REQUEST,
-                    ..
-                } => (LANDING_EFFECT, None),
-                EffectRequest::Graphics {
-                    id: DASH_DUST_REQUEST,
-                    ..
-                } => (DASH_DUST_EFFECT, None),
-                EffectRequest::Graphics {
-                    id: JUMP_FLASH_REQUEST,
-                    ..
-                } => (JUMP_FLASH_EFFECT, None),
+                EffectRequest::Graphics { id, .. }
+                | EffectRequest::Shield { id, .. }
+                | EffectRequest::EntryWarp { id, .. }
+                | EffectRequest::Landing { id, .. } => {
+                    let source = match request {
+                        EffectRequest::Graphics { .. } => ModelSource::Graphics,
+                        EffectRequest::Shield { .. } => ModelSource::Shield,
+                        EffectRequest::Landing { .. } => ModelSource::Landing,
+                        EffectRequest::EntryWarp { .. } => ModelSource::Entry,
+                        _ => unreachable!(),
+                    };
+                    let row = MODEL_SPAWNS
+                        .iter()
+                        .chain(std::iter::once(&WARP_SPAWN))
+                        .find(|row| row.request == id && row.source == source)
+                        .context("unsupported model effect")?;
+                    (row.model, row.attached.then_some(player))
+                }
                 _ => anyhow::bail!("unsupported fighter effect {request:?}"),
             };
-            let mut effect = Effect::load(archive, id)?;
+            let mut effect = self.acquire(id, particles);
             // Reserve disjoint owned joint identities; stage IDs occupy 0..65536.
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
@@ -280,20 +245,18 @@ impl Effects {
             if let EffectRequest::Shield { bone, .. } = request {
                 effect.shield_bone = Some(bone);
             }
-            let root = if let EffectRequest::CaptureFlash { bone }
+            let bone = if let EffectRequest::CaptureFlash { bone }
             | EffectRequest::Graphics { bone, .. }
             | EffectRequest::Shield { bone, .. } = request
             {
-                fighter.animation.parts[bone].joint
+                Some(bone)
             } else {
-                fighter.animation.root
+                None
             };
-            fighter.skeleton.setup_matrix(root);
-            let matrix = resolved_matrix.unwrap_or(fighter.skeleton.get(root).mtx);
+            let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(bone));
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
                 EffectRequest::EggShell { .. }
-                | EffectRequest::FlushDeferred(_)
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
                 | EffectRequest::LedgeGrab { .. }
@@ -367,33 +330,41 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
             self.instances.push(effect);
         }
-        self.requests = requests;
         Ok(())
     }
     /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
-    pub fn tick(
+    pub fn tick<T: InverseTrig>(
         &mut self,
-        fighters: &mut [SceneFighter; 2],
+        mut bone_matrix: impl FnMut(usize, Option<usize>) -> Mtx,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        self.fighter_joints.retain(|id, _| {
-            particles
+        // Camera requests have no simulation/RNG output. Bound their lifetime
+        // to the owning frame; a renderer may drain them before this update.
+        while self.camera_quakes.pop().is_some() {}
+        for (index, active) in self.fighter_joints.iter_mut().enumerate() {
+            if !*active {
+                continue;
+            }
+            let id = FIRST_FIGHTER_JOINT + index;
+            *active = particles
                 .generators
                 .iter()
-                .any(|g| g.attachment_id == Some(*id))
-        });
-        for (&id, &(player, bone)) in &self.fighter_joints {
-            let fighter = &mut fighters[player];
-            let matrix = fighter.bone_matrix(Some(bone));
-            self.events.update_joint(id, matrix);
-            particles.update_joint(id, matrix);
+                .any(|g| g.attachment_id == Some(id));
+            if *active {
+                let matrix = bone_matrix(
+                    index / FIGHTER_JOINT_STRIDE,
+                    Some(index % FIGHTER_JOINT_STRIDE),
+                );
+                self.events.update_joint(id, matrix);
+                particles.update_joint(id, matrix);
+            }
         }
-        for effect in &mut self.instances {
+        for effect in self.instances.iter_mut() {
             if !effect.indefinite && effect.lifetime != 0 {
                 effect.lifetime -= 1;
                 if effect.lifetime == 0 {
@@ -401,8 +372,7 @@ impl Effects {
                 }
             }
             if let Some(player) = effect.attachment {
-                let fighter = &mut fighters[player];
-                let matrix = fighter.bone_matrix(effect.shield_bone);
+                let matrix = bone_matrix(player, effect.shield_bone);
                 if effect.shield_bone.is_some() {
                     // efLib_Update (8005BC50), eflib.c:406-425: world Y scale,
                     // broadcast to all three axes. HSD_MtxGetScale is audited.
@@ -419,7 +389,7 @@ impl Effects {
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
             }
-            effect.animate(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -434,8 +404,7 @@ impl Effects {
                 );
             }
         }
-        self.instances
-            .retain(|effect| effect.indefinite || effect.lifetime != 0);
+        self.recycle_where(|effect| !effect.indefinite && effect.lifetime == 0);
         Ok(())
     }
 }
@@ -477,8 +446,22 @@ impl Effect {
             };
             paths.insert(id.0, (ids[index], spline::Spline::read(archive, offset)?));
         }
+        // KEY packs can emit multiple callbacks in one step. Bound each joint
+        // by its stream bytes plus endpoint callbacks, including an AObj rewind's
+        // stop+interpret pair. The event buffer is drained after each joint.
+        let event_capacity = ids
+            .iter()
+            .map(|&id| {
+                tree.get(id).aobj.as_ref().map_or(0, |a| {
+                    2 * a.fobj.iter().map(|f| f.stream().len() + 2).sum::<usize>()
+                })
+            })
+            .max()
+            .unwrap_or(0);
+        tree.events.reserve_exact(event_capacity);
         tree.req_anim_all(root, 0.0);
         Ok(Self {
+            descriptor: id,
             velocity: None,
             tree,
             root,
@@ -511,7 +494,7 @@ impl Effect {
         }
         self.tree.get(joint).mtx
     }
-    fn animate(
+    fn animate<T: InverseTrig>(
         &mut self,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
@@ -522,7 +505,7 @@ impl Effect {
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
         for index in 0..self.joints.len() {
             let joint = self.joints[index];
-            self.tree.anim::<RetailTrig>(joint, &mut cb);
+            self.tree.anim::<T>(joint, &mut cb);
             let mut events = std::mem::take(&mut self.tree.events);
             for event in events.drain(..) {
                 match event {
@@ -553,7 +536,7 @@ impl Effect {
                                     ..Default::default()
                                 });
                             sink.spawn(&request, false, false);
-                            particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                            spawn_particle::<T>(particles, bank, request, rng, draws)?;
                             continue;
                         }
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
@@ -567,7 +550,7 @@ impl Effect {
                                 });
                         }
                         sink.spawn(&request, false, false);
-                        let id = particles.spawn::<RetailTrig>(bank, request, rng, draws)?;
+                        let id = spawn_particle::<T>(particles, bank, request, rng, draws)?;
                         if matches!(hi, 2 | 6 | 306 | 307) {
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
@@ -666,4 +649,23 @@ fn attach(
         "effect animation tree mismatch"
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests;
+
+/// Generator creation (hsd_8039F05C) records at most its one initial emission
+/// draw. Particle storage/texture/descriptor ownership remains in hsd-particle.
+fn spawn_particle<T: InverseTrig>(
+    particles: &mut ParticleSystem,
+    bank: &ParticleBank,
+    request: SpawnRequest,
+    rng: &mut HsdRng,
+    draws: &mut DrawLog,
+) -> Result<Option<usize>> {
+    assert!(
+        draws.0.len() < DRAW_CAPACITY,
+        "effect draw log capacity exhausted"
+    );
+    Ok(particles.spawn::<T>(bank, request, rng, draws)?)
 }

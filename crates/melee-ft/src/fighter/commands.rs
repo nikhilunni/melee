@@ -158,7 +158,10 @@ pub struct CommandState {
     pub allow_interrupt: bool,
     /// cmd_vars (+2200): subaction-controlled state variables.
     pub variables: [u32; 4],
-    pub graphics: Vec<super::effects::GraphicsCommand>,
+    pub graphics: melee_ef::fixed::FixedVec<
+        super::effects::GraphicsCommand,
+        { melee_ef::request::REQUEST_CAPACITY },
+    >,
     /// x3E4_fighterCmdScript.u (+3EC); index, not a retail address.
     pub instruction: Option<usize>,
     /// CommandInfo.timer, Fighter +3E4.

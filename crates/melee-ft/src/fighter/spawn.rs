@@ -433,7 +433,7 @@ impl FighterCore {
             combat: super::damage::CombatState::default(),
             shield: super::shield::ShieldState::default(),
             effect_state: super::effects::FighterEffects::default(),
-            effects: Vec::new(),
+            effects: melee_ef::request::EffectQueue::default(),
             capabilities,
             cpu: CpuState {
                 buttons: 0,
@@ -505,7 +505,7 @@ impl FighterCore {
         if self.effect_state.destroy_on_state_change {
             self.effect_state.destroy_on_state_change = false;
             self.effects
-                .push(super::effects::EffectRequest::DestroyOwned);
+                .push(melee_ef::request::EffectRequest::DestroyOwned);
         }
         super::commands::reset_parts(&mut self.animation, &mut self.skeleton, assets);
         if matches!(

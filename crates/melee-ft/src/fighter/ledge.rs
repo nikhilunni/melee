@@ -107,7 +107,7 @@ impl<C: CharacterCallbacks> Fighter<C> {
         self.ledge_physics(assets, map)?;
         self.core
             .effects
-            .push(super::effects::EffectRequest::LedgeGrab {
+            .push(melee_ef::request::EffectRequest::LedgeGrab {
                 position: self.ledge_position(map, ledge_id),
             });
         Ok(())

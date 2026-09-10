@@ -322,6 +322,7 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-ef",
  "melee-ft",
  "melee-test-support",
  "melee-types",
@@ -459,6 +460,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "melee-ef"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
+ "hsd-particle",
+ "hsd-types",
+ "melee-lb",
+ "melee-types",
+ "serde_json",
+]
+
+[[package]]
 name = "melee-ft"
 version = "0.0.1"
 dependencies = [
@@ -469,6 +485,7 @@ dependencies = [
  "hsd-gobj",
  "hsd-types",
  "melee-diff",
+ "melee-ef",
  "melee-gr",
  "melee-lb",
  "melee-mp",
@@ -563,6 +580,7 @@ dependencies = [
  "hsd-types",
  "melee-cpu",
  "melee-diff",
+ "melee-ef",
  "melee-ft",
  "melee-gr",
  "melee-if",

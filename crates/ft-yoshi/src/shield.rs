@@ -1,10 +1,10 @@
 //! Egg shield callbacks, ftYoshi/ftyoshiguard.c and ftCommon/ftCo_Escape.c.
 use crate::init::Yoshi;
 use hsd_types::Vec3;
+use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     assets::{FighterAssets, Result},
     commands::{FootstepSound, SoundChannel},
-    effects::EffectRequest,
     escape::HurtStatus,
     shield::{GuardState, ReflectHitCallback, ReflectVolume, ShieldVolume},
     Fighter, MotionData,
