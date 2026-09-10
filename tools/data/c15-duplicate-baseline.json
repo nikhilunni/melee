@@ -15,7 +15,7 @@
   },
   "method": "read-only git archive of committed C15; clean temporary Cargo target; same native compiler; no data needed",
   "metrics": {
-    "cross_crate_duplicate_labels": 99,
+    "cross_crate_duplicate_labels": 100,
     "definitions": {
       "ft-captain": 66,
       "ft-falco": 67,
@@ -56,6 +56,9 @@
       "melee-sim": 101
     }
   },
+  "notes": [
+    "2026-09-10 S3: cross-crate 99 -> 100: melee_ft::physics::airborne::drift_acceleration, a 20-line leaf that rustc auto-inlines into ft-mars (Dolphin Slash drift); a cross-crate inline of a concrete leaf, not a per-character instantiation."
+  ],
   "revision": "4bb9f072f7794c8663c4a02e5c1dbb30a8c9e96a",
   "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)"
 }

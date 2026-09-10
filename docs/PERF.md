@@ -1,5 +1,8 @@
 # Performance regression history
 
+Ratchet note (2026-09-10, S3): the cross-crate duplicate-label baseline moved 99 -> 100 for `melee_ft::physics::airborne::drift_acceleration`, a concrete 20-line leaf that rustc auto-inlines into ft-mars. Cross-crate inlining of concrete leaves is not the duplication this metric guards (per-character instantiation of the shell); such moves are recorded here with the label named.
+
+
 Run `tools/perf-gate.sh` separately from `cargo gate`, on an otherwise idle
 machine. It builds the native release CLI, strips a copy, runs `size` and
 `cargo bloat --release -p melee-sim --bin melee-sim --crates -n 0`, counts
