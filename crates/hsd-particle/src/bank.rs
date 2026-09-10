@@ -1,7 +1,17 @@
 //! Owned particle programs and texture metadata. Bank-internal offsets are
 //! relative to the public bank, independently of the enclosing DAT relocations.
 use hsd_archive::{Archive, Reader};
-use std::fmt;
+use std::{
+    fmt,
+    sync::{Arc, LazyLock},
+};
+
+// Empty texture groups still share one owner; constructing an empty Arc for
+// every particle allocates a reference-count header even with no image bytes.
+static EMPTY_IMAGES: LazyLock<Arc<[bool]>> = LazyLock::new(|| Arc::from([]));
+pub(crate) fn empty_images() -> Arc<[bool]> {
+    Arc::clone(&EMPTY_IMAGES)
+}
 
 /// `HSD_PSCmdList` (psstructs.h), loaded by `psInitDataBankLocate` (0x80398614).
 #[derive(Clone, Debug, PartialEq)]
@@ -20,7 +30,7 @@ pub struct Descriptor {
     pub size: f32,
     pub parameters: [f32; 3],
     /// Bytecode plus any alignment padding before the next descriptor.
-    pub program: Vec<u8>,
+    pub program: Arc<[u8]>,
 }
 
 /// `HSD_PSTexGroup` (psstructs.h); texture pixels stay outside simulation.
@@ -31,7 +41,7 @@ pub struct TextureGroup {
     pub width: u32,
     pub height: u32,
     pub palette_flags: u16,
-    pub images: Vec<bool>,
+    pub images: Arc<[bool]>,
     pub palettes: Vec<bool>,
 }
 
@@ -40,8 +50,8 @@ pub struct TextureGroup {
 pub struct ParticleBank {
     pub version: u16,
     pub first_descriptor_id: u32,
-    pub descriptors: Vec<Option<Descriptor>>,
-    pub textures: Vec<Option<TextureGroup>>,
+    pub descriptors: Arc<[Option<Descriptor>]>,
+    pub textures: Arc<[Option<TextureGroup>]>,
 }
 
 #[derive(Debug)]
@@ -126,7 +136,7 @@ impl ParticleBank {
         Ok(Self {
             version,
             first_descriptor_id,
-            descriptors,
+            descriptors: descriptors.into(),
             textures,
         })
     }
@@ -175,7 +185,7 @@ fn read_descriptor(r: Reader<'_>) -> Result<Descriptor> {
         emission_rate: r.f32(40)?,
         size: r.f32(44)?,
         parameters: [r.f32(48)?, r.f32(52)?, r.f32(56)?],
-        program: r.slice(60, (r.len() - 60) as u32)?.to_vec(),
+        program: r.slice(60, (r.len() - 60) as u32)?.into(),
     })
 }
 
@@ -252,7 +262,7 @@ mod tests {
             assert_eq!(descriptor.texture_group, 2);
             assert_eq!(descriptor.kind, 0xf9ff_ffff);
             assert_eq!(descriptor.velocity[0].to_bits(), (-0.0f32).to_bits());
-            assert_eq!(descriptor.program, [0xff, 0, 0, 0]);
+            assert_eq!(descriptor.program.as_ref(), [0xff, 0, 0, 0]);
             assert!(bank.descriptor(first + 1).is_none());
             assert!(bank.descriptor(first + 2).is_none());
         }
@@ -272,7 +282,7 @@ mod tests {
             word(&mut textures, 36, 76);
             let bank = ParticleBank::from_bytes(&commands(0, 0), &textures).unwrap();
             let texture = bank.textures[0].as_ref().unwrap();
-            assert_eq!(texture.images, [true, false]);
+            assert_eq!(texture.images.as_ref(), [true, false]);
             assert_eq!(texture.palettes.len(), expected);
             assert!(bank.textures[1].is_none());
         }

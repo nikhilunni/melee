@@ -11,7 +11,7 @@ use super::read::{block, invalid, pointer, public, required, Result};
 /// `FTPART_INVALID`, ft/types.h:43.
 const INVALID_PART: u8 = 0xFF;
 /// Runtime allocation bound, ft/ftparts.h:50-51.
-const MAX_JOINTS: u32 = 140;
+pub const MAX_JOINTS: u32 = 140;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartTable {

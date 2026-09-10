@@ -71,6 +71,7 @@ class PerformanceBudget(unittest.TestCase):
             (run / "llvm-version.txt").write_text("synthetic test llvm-lines")
             (run / "characters.txt").write_text("ft-fox\n")
             (run / "llvm-melee-sim.txt").write_text("100 7 (TOTAL)\n100 (100%, 100%) 7 (100%, 100%) melee_ft::function<C>\n")
+            (run / "llvm-melee-ft.txt").write_text("100 1 (TOTAL)\n100 (100%, 100%) 1 (100%, 100%) melee_ft::core_function\n")
             (run / "llvm-ft-fox.txt").write_text("100 1 (TOTAL)\n100 (100%, 100%) 1 (100%, 100%) ft_fox::function\n")
             for name in ("load", "ticks_600"):
                 path = run / f"criterion/start_fd_fox/{name}/new/estimates.json"
@@ -84,6 +85,8 @@ class PerformanceBudget(unittest.TestCase):
                 self.assertEqual(perf.main(run, report), 1)
             self.assertEqual(report.read_text().count('"status": "PASS"'), 1)
             self.assertEqual(report.read_text().count('"status": "REGRESSION"'), 2)
+            self.assertIn("COMPLETE — PASS", report.read_text())
+            self.assertIn("### melee-ft: 1 melee-ft copies", report.read_text())
 
 
 if __name__ == "__main__":

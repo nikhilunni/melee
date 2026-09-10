@@ -272,7 +272,7 @@ pub struct FObjDesc {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FObj {
     /// `ad_head`: the keyframe stream.
-    ad: Box<[u8]>,
+    ad: std::sync::Arc<[u8]>,
     /// `ad - ad_head`: read cursor into `ad`.
     pub pos: usize,
     /// `length`.
@@ -460,18 +460,38 @@ impl FObj {
     /// halfword store keeps the low 16 bits). `flags` starts at 0 (state 0,
     /// not animating) until `req_anim`.
     pub fn load_desc(desc: &FObjDesc) -> FObj {
+        Self::from_shared_stream(
+            desc.ad.as_slice().into(),
+            desc.length,
+            desc.startframe,
+            desc.obj_type,
+            desc.frac_value,
+            desc.frac_slope,
+        )
+    }
+
+    /// The same descriptor initialization with archive-owned immutable bytes.
+    /// Fighter motion attachment reuses these bytes across state transitions.
+    pub fn from_shared_stream(
+        ad: std::sync::Arc<[u8]>,
+        length: u32,
+        startframe: f32,
+        obj_type: u8,
+        frac_value: u8,
+        frac_slope: u8,
+    ) -> FObj {
         FObj {
-            ad: desc.ad.clone().into_boxed_slice(),
+            ad,
             pos: 0,
-            length: desc.length,
+            length,
             flags: 0,
             op: 0,
             op_intrp: 0,
-            obj_type: desc.obj_type,
-            frac_value: desc.frac_value,
-            frac_slope: desc.frac_slope,
+            obj_type,
+            frac_value,
+            frac_slope,
             nb_pack: 0,
-            startframe: gekko_math::msl::fctiwz(desc.startframe) as i16,
+            startframe: gekko_math::msl::fctiwz(startframe) as i16,
             fterm: 0,
             time: 0.0,
             p0: 0.0,

@@ -88,7 +88,7 @@ def main(run, report):
     metrics.update({f"{name}_ns": estimate["ns"] for name, estimate in estimates.items()})
     contributions = {}
     if (run / "llvm-version.txt").exists():
-        for package in ["melee-sim", *(run / "characters.txt").read_text().splitlines()]:
+        for package in ["melee-ft", "melee-sim", *(run / "characters.txt").read_text().splitlines()]:
             try:
                 if (run / f"llvm-{package}.failed").exists():
                     raise ValueError("command failed")
@@ -97,6 +97,8 @@ def main(run, report):
                 missing.append(f"llvm-lines {package}: {error}")
         if not contributions.get("melee-sim"):
             missing.append("llvm-lines: no melee-ft functions found in the sim library")
+        if not contributions.get("melee-ft"):
+            missing.append("llvm-lines: concrete melee-ft core census is empty")
     else:
         missing.append("cargo-llvm-lines unavailable; installation failed")
     if not (run / "bloat.txt").exists() or (run / "bloat.failed").exists():
@@ -121,7 +123,8 @@ def main(run, report):
              "rustc": (run / "rustc.txt").read_text().strip(),
              "platform": platform.platform(),
              "revision": (run / "revision.txt").read_text().strip()}
-    lines = [f"\n## {now} — {status}\n", f"Evidence: `{run}`. Revision `{block['revision']}` (working tree included).",
+    heading = status if missing else f"COMPLETE — {status}"
+    lines = [f"\n## {now} — {heading}\n", f"Evidence: `{run}`. Revision `{block['revision']}` (working tree included).",
              f"\n{block['rustc']}; {block['platform']}.",
              f"\nTolerance: time +{time_percent:g}%, size +{size_percent:g}%, copies +{copies_allowed} per compiling crate.",
              f"Baseline: {previous['date'] if previous else '2026-09-09 main size measurements; timing/copies not yet baselined'}.",

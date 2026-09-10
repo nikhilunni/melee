@@ -94,7 +94,7 @@ impl Fields<'_> {
     fn program(&mut self, bank: &ParticleBank, bytes: &[u8]) {
         let id = bank.descriptors.iter().enumerate().find_map(|(index, d)| {
             d.as_ref()
-                .filter(|d| d.program == bytes)
+                .filter(|d| d.program.as_ref() == bytes)
                 .map(|_| bank.first_descriptor_id + index as u32)
         });
         let resolved = u8::from(id.is_some());
@@ -254,8 +254,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
             .as_ref()
             .unwrap()
             .images
-            .clone()
-            .into();
+            .clone();
         assert!(
             generator.appsrt_id.is_none(),
             "AppSRT execution unsupported"
@@ -285,8 +284,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
                     .as_ref()
                     .unwrap()
                     .images
-                    .clone()
-                    .into();
+                    .clone();
                 assert!(particle.appsrt_id.is_none(), "AppSRT execution unsupported");
                 particle
             })

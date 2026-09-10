@@ -54,30 +54,39 @@ pub fn world_position(tree: &mut JObjTree, joint: JObjId) -> Vec3 {
 
 /// Snapshot only the referenced joints so `melee-mp`'s immutable BoneLookup
 /// can consume positions after JObjTree has lazily rebuilt their matrices.
-pub struct EcbPose(Vec<(u32, Vec3)>);
+pub struct EcbPose {
+    // CollData's JObj source has six extent joints and one center joint
+    // (lb/types.h:186-187, x10C_joint[6] and x108_joint).
+    positions: [(u32, Vec3); 7],
+    len: usize,
+}
 impl EcbPose {
     pub fn read(tree: &mut JObjTree, root: JObjId, collision: &CollData) -> Self {
-        let mut positions = Vec::with_capacity(7);
+        let mut pose = Self {
+            positions: [(0, Vec3::ZERO); 7],
+            len: 0,
+        };
         if let EcbSourceParams::JObj {
             x108_joint,
             x10c_joint,
         } = collision.ecb_source.params
         {
             for index in x10c_joint.into_iter().chain([x108_joint]).flatten() {
-                if positions.iter().any(|&(i, _)| i == index) {
+                if pose.positions[..pose.len].iter().any(|&(i, _)| i == index) {
                     continue;
                 }
                 let joint = tree
                     .bone(root, index as usize)
                     .expect("ECB bone outside skeleton");
-                positions.push((index, world_position(tree, joint)));
+                pose.positions[pose.len] = (index, world_position(tree, joint));
+                pose.len += 1;
             }
         }
-        Self(positions)
+        pose
     }
     pub fn position(&self, index: Option<u32>) -> Vec3 {
         let index = index.expect("NULL ECB bone");
-        self.0
+        self.positions[..self.len]
             .iter()
             .find(|&&(i, _)| i == index)
             .expect("unsampled ECB bone")

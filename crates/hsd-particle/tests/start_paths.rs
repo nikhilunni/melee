@@ -15,7 +15,7 @@ fn bank(descriptors: Vec<hsd_particle::bank::Descriptor>) -> ParticleBank {
         version: 0x42,
         first_descriptor_id: 0,
         descriptors: descriptors.into_iter().map(Some).collect(),
-        textures: vec![],
+        textures: [].into(),
     }
 }
 

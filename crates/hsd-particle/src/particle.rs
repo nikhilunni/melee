@@ -25,6 +25,9 @@ pub const TEXTURED: u32 = 0x400;
 /// Owned `HSD_Particle` state (psstructs.h, retail allocation 0x80398C04).
 #[derive(Debug, Clone)]
 pub struct Particle {
+    /// Input ordinal for allocation-free stable display bucketing. Not retail
+    /// state; rewritten before sorting and never read by simulation math.
+    pub(crate) display_order: usize,
     pub generator_id: Option<usize>,
     pub family_id: u16,
     pub bank: u8,
@@ -77,6 +80,7 @@ impl Particle {
             return Err(Error::InvalidLink(link));
         }
         Ok(Self {
+            display_order: 0,
             generator_id: None,
             family_id: 0,
             bank,
@@ -85,7 +89,7 @@ impl Particle {
             texture_group: descriptor.texture_group as u8,
             pose: 0,
             palette: 255,
-            program: descriptor.program.clone().into(),
+            program: Arc::clone(&descriptor.program),
             pc: 0,
             mark: 0,
             loop_start: 0,
@@ -113,7 +117,7 @@ impl Particle {
             ambient: BytePairTrack::new([255; 2]),
             appsrt_id: None,
             application_transform: None,
-            texture_images: Arc::from([]),
+            texture_images: crate::bank::empty_images(),
         })
     }
 

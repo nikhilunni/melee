@@ -9,7 +9,7 @@ use crate::{
 use gekko_math::{fma::fmadds, rng::HsdRng};
 use hsd_anim::mtx::InverseTrig;
 use hsd_types::Mtx;
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 pub const MAIN_SKIP_MASK: u32 = 0x0006_0000;
 pub const AUX_SKIP_MASK: u32 = 0x0001_0000;
@@ -52,7 +52,9 @@ pub struct ParticleSystem {
     /// draws still happen on failure; immediate interpreter draws do not.
     pub particle_capacity: usize,
     next_id: usize,
-    banks: BTreeMap<u8, Arc<ParticleBank>>,
+    // psInitDataBank's bank < 65 guard (particle.c:329); cloning a bank only
+    // shares its immutable descriptor and texture tables, allocated at load.
+    banks: [Option<ParticleBank>; 65],
     /// lbl_804D6368 (0x804D6368), the u16 family-ID allocator.
     pub family_counter: u16,
     /// hsd_804D78F4 SList.data (+0x04), owned generator IDs in pending order.
@@ -61,12 +63,15 @@ pub struct ParticleSystem {
 }
 impl Default for ParticleSystem {
     fn default() -> Self {
+        // Initialize the shared empty texture owner before the first spawn,
+        // including scenes whose imported particle lists are initially empty.
+        drop(crate::bank::empty_images());
         Self {
             generators: Vec::new(),
             particles: std::array::from_fn(|_| Vec::new()),
             particle_capacity: usize::MAX,
             next_id: 0,
-            banks: BTreeMap::new(),
+            banks: std::array::from_fn(|_| None),
             family_counter: 0x100,
             pending_generators: Vec::new(),
             generator_cursor: None,
@@ -159,7 +164,7 @@ impl ParticleSystem {
             draws,
         )?;
         if let Some(Some(texture)) = bank.textures.get(usize::from(descriptor.texture_group)) {
-            generator.texture_images = texture.images.clone().into();
+            generator.texture_images = Arc::clone(&texture.images);
             if texture.palette_flags != 0 {
                 generator.descriptor.kind |= 0x10;
             }
@@ -175,9 +180,7 @@ impl ParticleSystem {
             generator.attachment_id = Some(id);
             generator.attach_joint(matrix);
         }
-        self.banks
-            .entry(bank_id)
-            .or_insert_with(|| Arc::new(bank.clone()));
+        self.banks[usize::from(bank_id)].get_or_insert_with(|| bank.clone());
         Ok(Some(self.insert_generator(generator)))
     }
 
@@ -256,13 +259,13 @@ impl ParticleSystem {
             rng,
             draws,
             &mut |parent, kind, blend, rng, draws| {
-                let bank =
-                    self.banks
-                        .get(&parent.bank)
-                        .cloned()
-                        .ok_or(Error::UnsupportedFeature(
-                            "child generator bank not registered",
-                        ))?;
+                let bank = self
+                    .banks
+                    .get(usize::from(parent.bank))
+                    .and_then(Clone::clone)
+                    .ok_or(Error::UnsupportedFeature(
+                        "child generator bank not registered",
+                    ))?;
                 let attachment = parent
                     .generator_id
                     .and_then(|id| self.generators.iter().find(|g| g.id == id))
@@ -300,12 +303,14 @@ impl ParticleSystem {
             if links & (1 << link) != 0 {
                 let bucket =
                     |p: &Particle| ((p.kind >> 25) & 7) + if p.kind & 8 == 0 { 8 } else { 0 };
-                // Stable sort allocates scratch before detecting an already
-                // ordered list. Most stage-only lists stay in one bucket.
-                // Preserve the exact order (including equal-key ties) in that
-                // case without paying a population-dependent allocation.
+                // Retail links each of 16 buckets in input order. An explicit
+                // input ordinal makes the same ordering a total key, allowing
+                // Rust's in-place sort without population-sized scratch.
                 if !particles.is_sorted_by_key(bucket) {
-                    particles.sort_by_key(bucket);
+                    for (order, particle) in particles.iter_mut().enumerate() {
+                        particle.display_order = order;
+                    }
+                    particles.sort_unstable_by_key(|p| (bucket(p), p.display_order));
                 }
             }
         }
@@ -407,14 +412,14 @@ impl ParticleSystem {
     ) -> Result<(), Error> {
         // hsd_8039EE24 (8039EE24), generator.c:970-977: queued one-shot
         // attachments are baked and released before generator iteration.
-        for id in std::mem::take(&mut self.pending_generators)
-            .into_iter()
-            .flatten()
-        {
-            if let Some(generator) = self.generator_mut(id) {
-                generator.detach_joint();
+        for index in 0..self.pending_generators.len() {
+            if let Some(id) = self.pending_generators[index] {
+                if let Some(generator) = self.generator_mut(id) {
+                    generator.detach_joint();
+                }
             }
         }
+        self.pending_generators.clear();
         self.generator_cursor = None;
         let mut index = 0;
         while index < self.generators.len() {

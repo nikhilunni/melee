@@ -6,7 +6,7 @@ use hsd_archive::desc::FigaTree;
 use hsd_types::Vec3;
 use melee_lb::anim::AttachError;
 
-use super::attach::{attach_motion, AnimationPart, MotionRemap, PartFlags};
+use super::attach::{attach_motion, select_motion, AnimationPart, MotionRemap, PartFlags};
 use super::blend::{advance_blend, blend_pose, copy_pose};
 use super::root_motion::RootMotion;
 use super::wait_choice::{choose_wait_animation, WaitChoice, WaitEntry};
@@ -114,6 +114,9 @@ impl FighterAnimation {
             blend_tree.get_mut(id).dobj.clear();
             blend_tree.get_mut(id).aobj = None;
         }
+        // FigaTree node counts are signed bytes (lbanim.h); -1 terminates
+        // the table, so a joint can own at most 127 tracks.
+        blend_tree.reserve_animation_tracks(i8::MAX as usize);
         let parts = tree
             .depth_first(root)
             .map(|joint| {
@@ -163,11 +166,23 @@ impl FighterAnimation {
         start: f32,
         rate: f32,
     ) -> Result<(), AttachError> {
-        // Validate on an owned candidate before removing the running animation.
+        // Selection depends only on links/part metadata. Validate before taking
+        // the running tree, then reset and attach in the original order.
+        select_motion(
+            if motion.blend_frames == 0.0 {
+                tree
+            } else {
+                &self.blend_tree
+            },
+            &self.parts,
+            &motion.animation,
+            motion.flags.bone_mask(),
+            motion.remap.as_ref(),
+        )?;
         let mut target = if motion.blend_frames == 0.0 {
-            tree.clone()
+            std::mem::take(tree)
         } else {
-            self.blend_tree.clone()
+            std::mem::take(&mut self.blend_tree)
         };
         target.remove_anim_all_by_flags(self.root, 1);
         self.reset_pose(&mut target, motion.blend_frames != 0.0);
@@ -178,23 +193,23 @@ impl FighterAnimation {
             motion.flags.bone_mask(),
             motion.remap.as_ref(),
         )?;
-        tree.remove_anim_all_by_flags(self.root, 1);
-        self.blend_tree.remove_anim_all_by_flags(self.root, 1);
         if motion.blend_frames == 0.0 {
+            self.blend_tree.remove_anim_all_by_flags(self.root, 1);
             *tree = target;
         } else {
+            tree.remove_anim_all_by_flags(self.root, 1);
             self.blend_tree = target;
         }
         self.flags = motion.flags;
         self.motion_id = motion.id;
         let configure = |active: &mut JObjTree| {
             active.req_anim_all_by_flags(self.root, 1, start);
-            for_each_aobj(active, self.root, |aobj| {
-                if motion.flags.contains(MotionFlags::LOOP) {
-                    aobj.set_flags(AOBJ_LOOP);
-                }
-                aobj.set_rate(rate);
-            });
+            configure_aobjs(
+                active,
+                self.root,
+                rate,
+                motion.flags.contains(MotionFlags::LOOP),
+            );
         };
         if motion.blend_frames != 0.0 {
             configure(&mut self.blend_tree);
@@ -213,7 +228,14 @@ impl FighterAnimation {
         start: f32,
         rate: f32,
     ) -> Result<(), AttachError> {
-        let mut secondary = self.blend_tree.clone();
+        select_motion(
+            &self.blend_tree,
+            &self.parts,
+            &motion.animation,
+            self.flags.bone_mask(),
+            None,
+        )?;
+        let mut secondary = std::mem::take(&mut self.blend_tree);
         secondary.remove_anim_all_by_flags(self.root, 1);
         self.reset_pose(&mut secondary, true);
         attach_motion(
@@ -224,12 +246,12 @@ impl FighterAnimation {
             None,
         )?;
         secondary.req_anim_all(self.root, start);
-        for_each_aobj(&mut secondary, self.root, |a| {
-            if motion.flags.contains(MotionFlags::LOOP) {
-                a.set_flags(AOBJ_LOOP);
-            }
-            a.set_rate(rate);
-        });
+        configure_aobjs(
+            &mut secondary,
+            self.root,
+            rate,
+            motion.flags.contains(MotionFlags::LOOP),
+        );
         self.blend_tree = secondary;
         Ok(())
     }
@@ -279,46 +301,56 @@ impl FighterAnimation {
             .find(|&i| self.parts[i].depth <= depth)
             .unwrap_or(self.parts.len());
         let blending = self.blend_duration != 0.0;
-        let mut target = if blending {
-            self.blend_tree.clone()
-        } else {
-            tree.clone()
-        };
         // ftAnim_GetNextJointInTree also visits the starting descriptor's
         // following siblings. Attachment and evaluation stop at the subtree.
         let reset_end = (bone + 1..self.parts.len())
             .find(|&i| self.parts[i].depth < depth)
             .unwrap_or(self.parts.len());
-        self.reset_pose_range(&mut target, blending, bone, reset_end);
-        let mut selected = self.parts.clone();
+        // MAX_FT_PARTS (ftparts.h); only the character's actual parts are used.
+        let mut storage = [self.parts[0]; crate::desc::bones::MAX_JOINTS as usize];
+        let selected = &mut storage[..self.parts.len()];
+        selected.copy_from_slice(&self.parts);
         for (index, part) in selected.iter_mut().enumerate() {
             if index < bone || index >= end {
                 part.flags.0 |= PartFlags::LOCKED;
             }
         }
+        select_motion(
+            if blending { &self.blend_tree } else { tree },
+            selected,
+            &motion.animation,
+            motion.flags.bone_mask(),
+            motion.remap.as_ref(),
+        )?;
+        let mut target = if blending {
+            std::mem::take(&mut self.blend_tree)
+        } else {
+            std::mem::take(tree)
+        };
+        self.reset_pose_range(&mut target, blending, bone, reset_end);
         attach_motion(
             &mut target,
-            &selected,
+            selected,
             &motion.animation,
             motion.flags.bone_mask(),
             motion.remap.as_ref(),
         )?;
         target.req_anim_all_by_flags(joint, 1, self.frame);
-        for_each_aobj(&mut target, joint, |aobj| {
-            if self.flags.contains(MotionFlags::LOOP) {
-                aobj.set_flags(AOBJ_LOOP);
-            }
-            aobj.set_rate(self.speed);
-        });
+        configure_aobjs(
+            &mut target,
+            joint,
+            self.speed,
+            self.flags.contains(MotionFlags::LOOP),
+        );
         if blending {
             self.blend_tree = target;
             tree.req_anim_all_by_flags(joint, 1, self.frame);
-            for_each_aobj(tree, joint, |aobj| {
-                if self.flags.contains(MotionFlags::LOOP) {
-                    aobj.set_flags(AOBJ_LOOP);
-                }
-                aobj.set_rate(self.speed);
-            });
+            configure_aobjs(
+                tree,
+                joint,
+                self.speed,
+                self.flags.contains(MotionFlags::LOOP),
+            );
             self.blend_tree.anim_all::<T>(joint);
         } else {
             *tree = target;
@@ -339,8 +371,8 @@ impl FighterAnimation {
             self.saved_speed = rate;
             return;
         }
-        for_each_aobj(tree, self.root, |a| a.set_rate(rate));
-        for_each_aobj(&mut self.blend_tree, self.root, |a| a.set_rate(rate));
+        configure_aobjs(tree, self.root, rate, false);
+        configure_aobjs(&mut self.blend_tree, self.root, rate, false);
         self.speed = rate;
     }
 
@@ -593,8 +625,16 @@ fn first_aobj(tree: &JObjTree, root: JObjId) -> Option<&AObj> {
 
 /// HSD_ForeachAnim's reachable JObj and material AObjs. TObj/PObj animation
 /// is not represented by hsd-anim yet; preserve that engine boundary.
-fn for_each_aobj(tree: &mut JObjTree, root: JObjId, mut visit: impl FnMut(&mut AObj)) {
-    for id in tree.depth_first(root).collect::<Vec<_>>() {
+fn configure_aobjs(tree: &mut JObjTree, root: JObjId, rate: f32, set_loop: bool) {
+    let visit = |aobj: &mut AObj| {
+        if set_loop {
+            aobj.set_flags(AOBJ_LOOP);
+        }
+        aobj.set_rate(rate);
+    };
+    let mut next = Some(root);
+    while let Some(id) = next {
+        next = tree.next_depth_first(id);
         let joint = tree.get_mut(id);
         if let Some(aobj) = &mut joint.aobj {
             visit(aobj);
@@ -635,7 +675,7 @@ impl FighterAnimation {
             )?;
             self.blend_tree.req_anim_all(self.root, frame);
             // ftAnim_8006FB88 resets SRT while preserving the newly attached AObjs.
-            let mut reset = self.blend_tree.clone();
+            let mut reset = std::mem::take(&mut self.blend_tree);
             self.reset_pose(&mut reset, true);
             self.blend_tree = reset;
             self.blend_tree.anim_all::<T>(self.root);

@@ -11,7 +11,7 @@
 use std::{collections::HashSet, fmt};
 
 use hsd_anim::aobj::AObj;
-use hsd_anim::fobj::{FObj, FObjDesc};
+use hsd_anim::fobj::FObj;
 use hsd_anim::jobj::{jobj_sort_anim, JObjId, JObjTree, JOBJ_CLASSICAL_SCALE, JOBJ_INSTANCE};
 use hsd_archive::desc::{FigaTrack, FigaTree};
 
@@ -49,16 +49,16 @@ impl std::error::Error for AttachError {}
 /// `lbAnim_InitFrames` (`lbanim.c`, retail `0x8001E560`): copy one track
 /// into the zeroed HSD runtime state. No floating-point arithmetic in retail.
 fn load_track(track: &FigaTrack) -> FObj {
-    FObj::load_desc(&FObjDesc {
-        length: u32::from(track.length),
+    FObj::from_shared_stream(
+        track.ad.clone(),
+        u32::from(track.length),
         // retail 0x8001E5A0/0x8001E5AC: lha + sth, signed 16-bit bit copy.
         // All i16 values are exactly representable by the descriptor's f32.
-        startframe: f32::from(track.startframe as i16),
-        obj_type: track.obj_type,
-        frac_value: track.frac_value,
-        frac_slope: track.frac_slope,
-        ad: track.ad.clone(),
-    })
+        f32::from(track.startframe as i16),
+        track.obj_type,
+        track.frac_value,
+        track.frac_slope,
+    )
 }
 
 /// `fn_8001E60C` / `lbAnim_8001E7E8` (`lbanim.c`, 0x8001E60C/0x8001E7E8).
@@ -108,7 +108,10 @@ pub fn attach_joint_tracks(
     aobj.set_flags(animation.flags);
     aobj.set_rewind_frame(0.0);
     aobj.set_end_frame(animation.frames);
-    aobj.set_fobj(tracks.iter().map(load_track).collect());
+    let mut runtime_tracks = tree.take_animation_tracks(joint);
+    runtime_tracks.clear();
+    runtime_tracks.extend(tracks.iter().map(load_track));
+    aobj.set_fobj(runtime_tracks);
     jobj_sort_anim(&mut aobj);
     tree.get_mut(joint).aobj = Some(aobj);
     if animation.type_ & 1 != 0 {

@@ -353,6 +353,9 @@ impl FighterCore {
         let mut physics = FighterPhysics::standing(position, player.facing);
         physics.percent = player.damage;
         let mut animation = FighterAnimation::new(&skeleton, root);
+        // lbanim.h FigaTree::nodes is s8: reserve the full per-joint domain
+        // once for this FighterPartsTable-sized skeleton.
+        skeleton.reserve_animation_tracks(i8::MAX as usize);
         animation.translation_joint = Some(usize::from(assets.bones.model.animation_translation));
         animation.model_scale = assets.attributes.size.model_scaling;
         let bone = assets

@@ -487,7 +487,10 @@ impl FighterCore {
 
 /// Dynamics inputs sampled once before the per-set character hooks.
 struct DynamicsFrame {
-    colliders: Vec<melee_lb::dynamics::Collider>,
+    // Fighter +0x1670..0x1828 holds eleven 0x28-byte collider records
+    // (ft/types.h); assets::read_dynamic_colliders already enforces this bound.
+    colliders: [melee_lb::dynamics::Collider; 11],
+    collider_count: usize,
     ground_check: bool,
     plane: bool,
     height: f32,
@@ -505,16 +508,20 @@ impl FighterCore {
         }
     }
     fn dynamics_frame(&self) -> DynamicsFrame {
-        let colliders = self
-            .dynamic_colliders
-            .iter()
-            .map(|c| melee_lb::dynamics::Collider {
-                position: c.position,
-                radius: c.radius,
-            })
-            .collect();
+        let mut colliders = std::array::from_fn(|_| melee_lb::dynamics::Collider {
+            position: hsd_types::Vec3::ZERO,
+            radius: 0.0,
+        });
+        assert!(self.dynamic_colliders.len() <= colliders.len());
+        for (source, destination) in self.dynamic_colliders.iter().zip(&mut colliders) {
+            *destination = melee_lb::dynamics::Collider {
+                position: source.position,
+                radius: source.radius,
+            };
+        }
         DynamicsFrame {
             colliders,
+            collider_count: self.dynamic_colliders.len(),
             ground_check: self.player.scale == 1.0
                 && self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
             plane: self.dynamics_use_floor_plane,
@@ -531,7 +538,7 @@ impl FighterCore {
     ) {
         let environment = melee_lb::dynamics::SolverEnvironment {
             disabled: false,
-            colliders: &frame.colliders,
+            colliders: &frame.colliders[..frame.collider_count],
             forces: &[],
             first_force_bone,
             ground_check: frame.ground_check,

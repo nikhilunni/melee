@@ -13,6 +13,7 @@ pub struct BackgroundAnimation {
     root: JObjId,
     // Animation replacement preserves the model hierarchy and these identities.
     joints: Vec<JObjId>,
+    requests: Vec<ParticleRequest>,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
@@ -49,7 +50,14 @@ impl BackgroundAnimation {
         tree.req_anim_all(root, 0.0);
         let mut joints = Vec::new();
         tree.walk_tree(root, &mut |joint, _| joints.push(joint));
-        Ok(Self { tree, root, joints })
+        // At most one callback per loaded FObj in one animation evaluation.
+        let requests = Vec::with_capacity(tree.events.capacity());
+        Ok(Self {
+            tree,
+            root,
+            joints,
+            requests,
+        })
     }
     /// grAnime_801C8138: replace all joint tracks without replacing the model.
     pub fn select_animation(
@@ -163,34 +171,37 @@ impl BackgroundAnimation {
         }
     }
     /// Ground_801C1CD0 (ground.c): evaluate the stage animation at s_link 1.
-    pub fn tick<T: InverseTrig>(&mut self) -> Vec<ParticleRequest> {
+    pub fn tick<T: InverseTrig>(&mut self) -> &[ParticleRequest] {
         self.evaluate::<T>(true)
     }
     /// grAnime_801C8138 evaluates frame zero during Ground creation.
     /// grLib_801C99C0 attaches the JObj pointer without requesting its matrix;
     /// retain the newly loaded cache until the first scheduler update.
-    pub fn evaluate_initial_frame<T: InverseTrig>(&mut self) -> Vec<ParticleRequest> {
+    pub fn evaluate_initial_frame<T: InverseTrig>(&mut self) -> &[ParticleRequest] {
         self.evaluate::<T>(false)
     }
-    fn evaluate<T: InverseTrig>(&mut self, refresh_matrices: bool) -> Vec<ParticleRequest> {
+    fn evaluate<T: InverseTrig>(&mut self, refresh_matrices: bool) -> &[ParticleRequest] {
         self.tree.anim_all::<T>(self.root);
-        std::mem::take(&mut self.tree.events)
-            .into_iter()
-            .filter_map(|event| match event {
+        self.requests.clear();
+        let mut events = std::mem::take(&mut self.tree.events);
+        for event in events.drain(..) {
+            match event {
                 JObjEvent::DPtcl { jobj, lo, hi } => {
                     if refresh_matrices {
                         self.tree.setup_matrix(jobj);
                     }
-                    Some(ParticleRequest {
+                    self.requests.push(ParticleRequest {
                         bank: lo as u8,
                         kind: hi as u32,
                         joint: jobj.0,
                         matrix: self.tree.get(jobj).mtx,
-                    })
+                    });
                 }
                 JObjEvent::Path { .. } => unimplemented!("jobj.c:287-292: stage spline animation"),
-                _ => None,
-            })
-            .collect()
+                _ => {}
+            }
+        }
+        self.tree.events = events;
+        &self.requests
     }
 }

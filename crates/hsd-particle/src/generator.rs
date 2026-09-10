@@ -151,7 +151,7 @@ impl Generator {
             shape,
             joint_matrix: None,
             attachment_id: None,
-            texture_images: Arc::from([]),
+            texture_images: crate::bank::empty_images(),
         })
     }
 

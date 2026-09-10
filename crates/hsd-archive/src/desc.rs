@@ -79,7 +79,6 @@
 //! owned copies.
 
 use core::fmt;
-use std::collections::HashSet;
 
 use crate::archive::Archive;
 use crate::error::Error;
@@ -267,7 +266,9 @@ pub type Result<T> = core::result::Result<T, DescError>;
 /// traversal path, the `child` depth and the node budget.
 pub(crate) struct Ctx<'a> {
     archive: &'a Archive,
-    path: HashSet<u32>,
+    // Membership only: retain storage across visits without hash-table tombstones
+    // making descriptor-load allocations depend on a random hash seed.
+    path: Vec<u32>,
     depth: usize,
     nodes: usize,
 }
@@ -276,7 +277,7 @@ impl<'a> Ctx<'a> {
     pub(crate) fn new(archive: &'a Archive) -> Self {
         Self {
             archive,
-            path: HashSet::new(),
+            path: Vec::new(),
             depth: 0,
             nodes: 0,
         }
@@ -353,15 +354,18 @@ impl<'a> Ctx<'a> {
         if self.nodes >= MAX_NODES {
             return Err(DescError::TooManyNodes { what, offset });
         }
-        if !self.path.insert(offset) {
+        if self.path.contains(&offset) {
             return Err(DescError::Cycle { what, offset });
         }
+        self.path.push(offset);
         self.nodes += 1;
         Ok(())
     }
 
     pub(crate) fn leave(&mut self, offset: u32) {
-        self.path.remove(&offset);
+        if let Some(index) = self.path.iter().position(|&entry| entry == offset) {
+            self.path.remove(index);
+        }
     }
 
     /// Step one level down the `child` axis. Must be paired with

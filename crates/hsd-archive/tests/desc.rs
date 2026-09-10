@@ -1089,16 +1089,16 @@ fn reads_figatree() {
     assert_eq!(tr.frac_slope, 0x00);
     assert_eq!(tr.pad, 0);
     assert_eq!(tr.ad_offset, Some(s0));
-    assert_eq!(tr.ad, &[1, 2, 3, 4, 5]);
+    assert_eq!(tr.ad.as_ref(), &[1, 2, 3, 4, 5]);
     let tr = &t.tracks[1];
     assert_eq!(tr.offset, tracks + FIGATRACK_SIZE);
     assert_eq!((tr.length, tr.startframe, tr.obj_type), (2, 3, 5));
     assert_eq!((tr.frac_value, tr.frac_slope), (0x21, 0x22));
-    assert_eq!(tr.ad, &[9, 8]);
+    assert_eq!(tr.ad.as_ref(), &[9, 8]);
     let tr = &t.tracks[2];
     assert_eq!(tr.offset, tracks + 2 * FIGATRACK_SIZE);
     assert_eq!((tr.length, tr.startframe, tr.obj_type), (6, 7, 9));
-    assert_eq!(tr.ad, &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+    assert_eq!(tr.ad.as_ref(), &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
 
     let by_node = t.tracks_by_node();
     assert_eq!(by_node.len(), 3);

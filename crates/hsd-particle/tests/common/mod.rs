@@ -27,7 +27,7 @@ pub fn descriptor(program: Vec<u8>) -> Descriptor {
         emission_rate: -1.0,
         size: 1.0,
         parameters: [0.0; 3],
-        program,
+        program: program.into(),
     }
 }
 pub fn float(program: &mut Vec<u8>, value: f32) {

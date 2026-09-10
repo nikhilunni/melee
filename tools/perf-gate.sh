@@ -50,9 +50,10 @@ fi
 if command -v cargo-llvm-lines >/dev/null 2>&1; then
     cargo llvm-lines --version >"$run_dir/llvm-version.txt"
     # Monomorphizations are charged to their compiling crate. Inspect the sim
-    # library (which owns the generic scene dispatch), plus each character crate.
+    # library (which owns the generic scene dispatch), the concrete melee-ft
+    # core, plus each character crate. C2 moved core bodies out of the sim IR.
     cargo metadata --no-deps --format-version=1 | python3 -c 'import json,sys; print("\n".join(sorted(p["name"] for p in json.load(sys.stdin)["packages"] if p["name"].startswith("ft-"))))' >"$run_dir/characters.txt"
-    for package in melee-sim $(cat "$run_dir/characters.txt"); do
+    for package in melee-ft melee-sim $(cat "$run_dir/characters.txt"); do
         if ! cargo llvm-lines -p "$package" --release --lib >"$run_dir/llvm-$package.txt" 2>"$run_dir/llvm-$package-error.txt"; then
             touch "$run_dir/llvm-$package.failed"
         fi

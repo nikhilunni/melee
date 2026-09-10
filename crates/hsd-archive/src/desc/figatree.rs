@@ -83,7 +83,7 @@ pub struct FigaTrack {
     pub ad_offset: Option<u32>,
     /// The `length` bytes of key-frame data at `ad_offset`. Empty when
     /// `ad_head` is null.
-    pub ad: Vec<u8>,
+    pub ad: std::sync::Arc<[u8]>,
 }
 
 impl FigaTrack {
@@ -109,7 +109,7 @@ impl FigaTrack {
             frac_slope: r.u8(add_offset(off, track_off::FRAC_SLOPE)?)?,
             pad: r.u8(add_offset(off, track_off::PAD)?)?,
             ad_offset,
-            ad,
+            ad: ad.into(),
         })
     }
 }
@@ -208,13 +208,17 @@ impl FigaTree {
     /// `nodes[i]` entries and is what `lbAnim_8001E6D8` receives as
     /// `(track, frames)` for the `i`-th animated joint.
     pub fn tracks_by_node(&self) -> Vec<&[FigaTrack]> {
-        let mut out = Vec::with_capacity(self.nodes.len());
+        self.iter_tracks_by_node().collect()
+    }
+
+    /// Borrow each node's tracks without allocating a grouping buffer.
+    pub fn iter_tracks_by_node(&self) -> impl Iterator<Item = &[FigaTrack]> {
         let mut cursor = 0usize;
-        for &n in &self.nodes {
+        self.nodes.iter().map(move |&n| {
             let n = n as usize;
-            out.push(self.tracks.get(cursor..cursor + n).unwrap_or(&[]));
+            let tracks = self.tracks.get(cursor..cursor + n).unwrap_or(&[]);
             cursor += n;
-        }
-        out
+            tracks
+        })
     }
 }

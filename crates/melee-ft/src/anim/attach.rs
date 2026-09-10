@@ -32,7 +32,7 @@ impl PartFlags {
 }
 
 /// `Fighter.parts` (+0x5E8), indexed by runtime bone, not semantic FtPart.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct AnimationPart {
     /// FighterBone.joint (+0); the blend tree uses the same owned id mapping.
     pub joint: JObjId,
@@ -54,16 +54,20 @@ pub struct MotionRemap {
 
 /// Validate selection before changing AObjs. Disabled joints still consume a
 /// node and all of its tracks; mask-excluded joints consume neither.
-pub fn attach_motion(
-    tree: &mut JObjTree,
-    parts: &[AnimationPart],
+pub(super) fn select_motion<'a>(
+    tree: &JObjTree,
+    parts: &'a [AnimationPart],
     animation: &FigaTree,
     motion_mask: u32,
     remap: Option<&MotionRemap>,
-) -> Result<(), AttachError> {
-    let mut selected = Vec::new();
+) -> Result<[Option<&'a AnimationPart>; crate::desc::bones::MAX_JOINTS as usize], AttachError> {
+    // ftparts.h MAX_FT_PARTS bounds the fighter's runtime part table.
+    let mut selected = [None; crate::desc::bones::MAX_JOINTS as usize];
+    if animation.nodes.len() > selected.len() {
+        return Err(AttachError::InvalidTracks);
+    }
     let mut index = 0;
-    for _ in &animation.nodes {
+    for slot in selected.iter_mut().take(animation.nodes.len()) {
         let destination = if let Some(remap) = remap {
             loop {
                 let mask = *remap
@@ -114,7 +118,7 @@ pub fn attach_motion(
                 return Err(AttachError::InvalidJoint(part.joint));
             }
         }
-        selected.push(part.filter(|p| {
+        *slot = part.filter(|p| {
             if remap.is_some() {
                 p.flags.eligible()
             } else {
@@ -122,7 +126,7 @@ pub fn attach_motion(
                 // again afterwards. FCE4 does check the remapped destination.
                 p.flags.0 & (PartFlags::LOCKED | PartFlags::PART_ANIMATION) == 0
             }
-        }));
+        });
         index += 1;
     }
     let total = animation.nodes.iter().try_fold(0usize, |n, &count| {
@@ -137,14 +141,26 @@ pub fn attach_motion(
         return Err(AttachError::InvalidTracks);
     }
     // Check retail's undefined empty-prefix case before any joint is changed.
-    for (part, tracks) in selected.iter().zip(animation.tracks_by_node()) {
+    for (part, tracks) in selected.iter().zip(animation.iter_tracks_by_node()) {
         if part.is_some_and(|p| remap.is_some() && !p.flags.contains(PartFlags::TRANSLATION))
             && tracks.first().is_some_and(|t| matches!(t.obj_type, 5..=7))
         {
             return Err(AttachError::NoAcceptedTracks);
         }
     }
-    for (part, tracks) in selected.into_iter().zip(animation.tracks_by_node()) {
+    Ok(selected)
+}
+
+/// Validate all selections before installing any joint animation.
+pub fn attach_motion(
+    tree: &mut JObjTree,
+    parts: &[AnimationPart],
+    animation: &FigaTree,
+    motion_mask: u32,
+    remap: Option<&MotionRemap>,
+) -> Result<(), AttachError> {
+    let selected = select_motion(tree, parts, animation, motion_mask, remap)?;
+    for (part, tracks) in selected.into_iter().zip(animation.iter_tracks_by_node()) {
         if let Some(part) = part {
             if remap.is_some() && !part.flags.contains(PartFlags::TRANSLATION) {
                 attach_joint_tracks_without_translation(tree, part.joint, animation, tracks)?;

@@ -435,6 +435,8 @@ pub struct JObjTree {
     /// Resolved external positions for REFTYPE_JOBJ subtype 1 constraints.
     position_constraints: std::collections::BTreeMap<JObjId, Vec3>,
     nodes: Vec<JObj>,
+    /// Inactive joint track buffers, reserved once by fixed-skeleton owners.
+    spare_tracks: Vec<Vec<crate::fobj::FObj>>,
     /// Callback invocations recorded by [`JObjTree::update_func`], oldest
     /// first. The caller drains them.
     pub events: Vec<JObjEvent>,
@@ -453,8 +455,17 @@ impl<'a> Iterator for DepthFirst<'a> {
 
     fn next(&mut self) -> Option<JObjId> {
         let id = self.cur?;
-        let node = &self.tree.nodes[id.0];
-        self.cur = if node.flags & JOBJ_INSTANCE == 0 && node.child.is_some() {
+        self.cur = self.tree.next_depth_first(id);
+        Some(id)
+    }
+}
+
+impl JObjTree {
+    /// Successor in `depth_first` order, without retaining a tree borrow.
+    /// Callers may update a node between steps when its links stay unchanged.
+    pub fn next_depth_first(&self, id: JObjId) -> Option<JObjId> {
+        let node = &self.nodes[id.0];
+        if node.flags & JOBJ_INSTANCE == 0 && node.child.is_some() {
             // Descend the left side of the tree.
             node.child
         } else if node.next.is_some() {
@@ -464,18 +475,17 @@ impl<'a> Iterator for DepthFirst<'a> {
             // Go back up the tree until we can continue to the right.
             let mut j = id;
             loop {
-                match self.tree.nodes[j.0].parent {
+                match self.nodes[j.0].parent {
                     None => break None,
                     Some(p) => {
-                        if let Some(pn) = self.tree.nodes[p.0].next {
+                        if let Some(pn) = self.nodes[p.0].next {
                             break Some(pn);
                         }
                         j = p;
                     }
                 }
             }
-        };
-        Some(id)
+        }
     }
 }
 
@@ -1280,10 +1290,40 @@ impl JObjTree {
     /// AObj; the DObj list gets the same flags. RObj deferred.
     pub fn remove_anim_by_flags(&mut self, id: JObjId, flags: u32) {
         if flags & 1 != 0 {
-            self.nodes[id.0].aobj = None;
+            if let Some(mut aobj) = self.nodes[id.0].aobj.take() {
+                if let Some(spare) = self.spare_tracks.get_mut(id.0) {
+                    aobj.fobj.clear();
+                    *spare = aobj.fobj;
+                }
+            }
         }
         if self.nodes[id.0].union_type_dobj() {
             DObj::remove_anim_all_by_flags(&mut self.nodes[id.0].dobj, flags);
+        }
+    }
+
+    /// Allocate track storage for a fixed skeleton before simulation begins.
+    /// `per_joint` comes from the caller's archive format's track-count bound.
+    pub fn reserve_animation_tracks(&mut self, per_joint: usize) {
+        self.spare_tracks.resize_with(self.nodes.len(), Vec::new);
+        for (joint, spare) in self.nodes.iter_mut().zip(&mut self.spare_tracks) {
+            let tracks = joint.aobj.as_mut().map_or(spare, |a| &mut a.fobj);
+            tracks.reserve(per_joint.saturating_sub(tracks.len()));
+        }
+        // FObjInterpretAnim emits at most one value per track per evaluation.
+        self.events.reserve(self.nodes.len() * per_joint);
+    }
+
+    /// Recycle the replaced joint animation's storage, retaining archive owners
+    /// until the caller clears it. Unreserved loader callers get an empty Vec.
+    pub fn take_animation_tracks(&mut self, id: JObjId) -> Vec<crate::fobj::FObj> {
+        if let Some(aobj) = self.nodes[id.0].aobj.take() {
+            aobj.fobj
+        } else {
+            self.spare_tracks
+                .get_mut(id.0)
+                .map(std::mem::take)
+                .unwrap_or_default()
         }
     }
 
@@ -1360,6 +1400,17 @@ impl JObjTree {
                 jobj_sort_anim(a);
             }
             self.nodes[id.0].aobj = aobj;
+            // Archive attachment is the construction boundary for engine
+            // animations. Reserve one callback per track in the loaded tree;
+            // scene callers drain this buffer between animation evaluations.
+            let event_bound: usize = self
+                .nodes
+                .iter()
+                .filter_map(|node| node.aobj.as_ref())
+                .map(|aobj| aobj.fobj.len())
+                .sum();
+            self.events
+                .reserve(event_bound.saturating_sub(self.events.len()));
             if aj.flags & 1 != 0 {
                 self.set_flags(id, JOBJ_CLASSICAL_SCALE);
             } else {

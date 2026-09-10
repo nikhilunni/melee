@@ -84,7 +84,9 @@ impl RootMotion {
         secondary_in_tree: bool,
     ) {
         let mut cb = AObjEndCallback::default();
-        for id in tree.depth_first(root).collect::<Vec<_>>() {
+        let mut next = Some(root);
+        while let Some(id) = next {
+            next = tree.next_depth_first(id);
             tree.anim::<T>(id, &mut cb);
             if id == self.translation {
                 self.primary_history.sample(tree.translation(id), scale);
