@@ -7,6 +7,54 @@ use std::{
 };
 
 #[test]
+fn fd_unobserved_animation_clocks_and_late_matrix_reads_match_eager() {
+    let scenario = crate::scenario::Scenario::load(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/start_fd_fox.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+    let mut eager = crate::scene_stage::last::load_animations(&initial.assets).unwrap();
+    let mut lazy = crate::scene_stage::last::load_animations(&initial.assets).unwrap();
+    let bits = |matrix: hsd_types::Mtx| matrix.0.map(|row| row.map(f32::to_bits));
+    for frame in 0..600 {
+        for (&map, eager) in &mut eager {
+            let lazy = lazy.get_mut(&map).unwrap();
+            let eager_requests = eager.tick::<RetailTrig>();
+            let lazy_requests = lazy.tick::<RetailTrig>();
+            assert_eq!(eager_requests.len(), lazy_requests.len());
+            for (a, b) in eager_requests.iter().zip(lazy_requests) {
+                assert_eq!((a.bank, a.kind, a.joint), (b.bank, b.kind, b.joint));
+                assert_eq!(
+                    bits(a.matrix),
+                    bits(b.matrix),
+                    "spawn map {map} tick {frame}"
+                );
+            }
+            eager.for_each_matrix(|_, _| {});
+            for joint in 0..eager.joint_count() {
+                assert_eq!(
+                    eager.joint_frame(joint).map(f32::to_bits),
+                    lazy.joint_frame(joint).map(f32::to_bits),
+                    "clock map {map} joint {joint} tick {frame}"
+                );
+                // A first consumer can arrive after hundreds of unobserved ticks,
+                // disappear, and return without changing any matrix bits.
+                if frame == 239 || frame == 599 {
+                    assert_eq!(
+                        bits(eager.joint_matrix(joint)),
+                        bits(lazy.joint_matrix(joint)),
+                        "late read map {map} joint {joint} tick {frame}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn human_match_fd_transition_attachments() {
     let scenario = crate::scenario::Scenario::load(
         &Path::new(env!("CARGO_MANIFEST_DIR"))

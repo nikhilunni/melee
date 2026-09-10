@@ -236,6 +236,13 @@ impl ParticleSystem {
         Ok(Some(self.insert_generator(generator)))
     }
 
+    /// Includes inherited child attachments and zero-rate generators retained by particles.
+    pub fn has_joint_attachment(&self, id: usize) -> bool {
+        self.generators
+            .iter()
+            .any(|generator| generator.attachment_id == Some(id))
+    }
+
     /// Refresh a caller-owned animated joint, including inherited child attachments.
     pub fn update_joint(&mut self, id: usize, matrix: Mtx) {
         for generator in &mut self.generators {

@@ -80,7 +80,20 @@ impl BackgroundAnimation {
             0,
             &model.animations[index],
             model.animation_loops[index],
-        )
+        )?;
+        // Replacement frame-zero particle requests read the outgoing pose's
+        // matrix cache. Materialize those targets before evaluating new SRTs;
+        // unattached joints may have remained dirty throughout the old animation.
+        for &joint in &self.joints {
+            if self.tree.get(joint).aobj.as_ref().is_some_and(|a| {
+                a.fobj
+                    .iter()
+                    .any(|f| f.obj_type == hsd_anim::jobj::HSD_A_J_DPTCL)
+            }) {
+                self.tree.setup_matrix(joint);
+            }
+        }
+        Ok(())
     }
     pub fn clear_animation(&mut self) {
         for &joint in &self.joints {

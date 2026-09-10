@@ -58,14 +58,12 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -
             .get_mut(&7)
             .unwrap()
             .set_background_rotation(bg.applied_pitch, bg.applied_yaw);
-        state
-            .stage_animations
-            .get_mut(&7)
-            .unwrap()
-            .for_each_matrix(|bone, matrix| {
-                state.particles.update_joint(joint_id(7, bone), matrix);
-                state.effects.events.update_joint(joint_id(7, bone), matrix);
-            });
+        super::publish_joint_matrices(
+            state.stage_animations.get_mut(&7).unwrap(),
+            7,
+            &mut state.particles,
+            &mut state.effects.events,
+        );
     }
     for action in stage.actions.drain(..) {
         match action {

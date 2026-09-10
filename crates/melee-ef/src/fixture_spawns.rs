@@ -21,6 +21,12 @@ impl EventSink {
         self.0 = Some(Recording::default());
     }
 
+    /// `finish` retains updates even before the first recorded spawn on a joint.
+    /// Preserve that history when recording; normal simulation needs only live attachments.
+    pub fn needs_joint_history(&self) -> bool {
+        self.0.is_some()
+    }
+
     #[inline]
     pub fn begin_tick(&mut self, frame: u64) {
         if let Some(recording) = &mut self.0 {

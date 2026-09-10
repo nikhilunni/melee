@@ -10,6 +10,24 @@ use melee_gr::{
     last::{procs::ProcRegistration, FinalDestination},
 };
 
+/// Animation clocks advance independently. Materialize world matrices only for
+/// live consumers; the fixture recorder also consumes pre-attachment history.
+pub(crate) fn publish_joint_matrices(
+    animation: &mut melee_gr::last::animation::BackgroundAnimation,
+    map: u8,
+    particles: &mut hsd_particle::system::ParticleSystem,
+    events: &mut melee_ef::fixture_spawns::EventSink,
+) {
+    for joint in 0..animation.joint_count() {
+        let id = crate::initial_state::stage::joint_id(map, joint);
+        if events.needs_joint_history() || particles.has_joint_attachment(id) {
+            let matrix = animation.joint_matrix(joint);
+            events.update_joint(id, matrix);
+            particles.update_joint(id, matrix);
+        }
+    }
+}
+
 pub struct StageDescriptor {
     pub name: &'static str,
     pub file: &'static str,

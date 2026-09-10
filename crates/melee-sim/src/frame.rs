@@ -488,15 +488,12 @@ impl Runtime {
                                 &mut self.particle_draws,
                             )?;
                         }
-                        animation.for_each_matrix(|joint, matrix| {
-                            state
-                                .effects
-                                .events
-                                .update_joint(stage::joint_id(map, joint), matrix);
-                            state
-                                .particles
-                                .update_joint(stage::joint_id(map, joint), matrix);
-                        });
+                        crate::scene_stage::publish_joint_matrices(
+                            animation,
+                            map,
+                            &mut state.particles,
+                            &mut state.effects.events,
+                        );
                     }
                     state.map.finish_ground_animation();
                 }
@@ -543,8 +540,11 @@ impl Runtime {
                     } else if state.stage.run_stage_proc(map_id, &mut state.rng)? {
                         // grLib_801C97DC (0x801C97DC): detached puff at the
                         // current world position of archive descendant 1.
-                        let matrix =
-                            state.stage_animations.get_mut(&map_id).unwrap().matrices()[1].1;
+                        let matrix = state
+                            .stage_animations
+                            .get_mut(&map_id)
+                            .unwrap()
+                            .joint_matrix(1);
                         let mut request = hsd_particle::system::SpawnRequest::new(
                             0,
                             melee_gr::story::PUFF_PARTICLE,
