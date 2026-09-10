@@ -1,0 +1,28 @@
+# S9/S5: 200% Fox (fighter x1830 and player-block damage RAM-poked to 200 in idle_fd_marth4_fox200.sav; stock-4 rules). No top KO: Marth's launches at 200% reach the side blast zone (utilt, Dolphin Slash: DeadRight 2) or peak at y=115 (uthrow: tumble -> DownBoundD 191).
+# S7: Marth grabs and up-throws.
+# Recorded from idle_fd_marth4_fox200.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "hi200_uthrow2_fd_marth"
+savestate = "harness/roms/idle_fd_marth4_fox200.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 88, buttons = {  } },
+  { frame = 126, buttons = { Z = true } },
+  { frame = 128, buttons = {  } },
+  { frame = 146, buttons = { StickY = 1.0 } },
+  { frame = 151, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
