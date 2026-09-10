@@ -1116,5 +1116,116 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // S2: ftData_MotionStateList[65..74], aerials and directional landing lag.
+    rows[S::AttackAirN as usize] = MotionRow {
+        action: ActionId(65),
+        id: S::AttackAirN,
+        animation: 68,
+        anim: crate::fighter::attack::aerial::animation,
+        iasa: crate::fighter::attack::aerial::input,
+        physics: callbacks::physics::fall,
+        collision: crate::fighter::attack::aerial::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LandingAirN as usize] = MotionRow {
+        action: ActionId(70),
+        id: S::LandingAirN,
+        animation: 73,
+        anim: callbacks::animation::landing,
+        iasa: callbacks::input::entry, // ftCo_LandingAir_IASA: empty.
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::AttackAirF as usize] = MotionRow {
+        action: ActionId(66),
+        id: S::AttackAirF,
+        animation: 69,
+        anim: crate::fighter::attack::aerial::animation,
+        iasa: crate::fighter::attack::aerial::input,
+        physics: callbacks::physics::fall,
+        collision: crate::fighter::attack::aerial::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LandingAirF as usize] = MotionRow {
+        action: ActionId(71),
+        id: S::LandingAirF,
+        animation: 74,
+        anim: callbacks::animation::landing,
+        iasa: callbacks::input::entry, // ftCo_LandingAir_IASA: empty.
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::AttackAirB as usize] = MotionRow {
+        action: ActionId(67),
+        id: S::AttackAirB,
+        animation: 70,
+        anim: crate::fighter::attack::aerial::animation,
+        iasa: crate::fighter::attack::aerial::input,
+        physics: callbacks::physics::fall,
+        collision: crate::fighter::attack::aerial::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LandingAirB as usize] = MotionRow {
+        action: ActionId(72),
+        id: S::LandingAirB,
+        animation: 75,
+        anim: callbacks::animation::landing,
+        iasa: callbacks::input::entry, // ftCo_LandingAir_IASA: empty.
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::AttackAirHi as usize] = MotionRow {
+        action: ActionId(68),
+        id: S::AttackAirHi,
+        animation: 71,
+        anim: crate::fighter::attack::aerial::animation,
+        iasa: crate::fighter::attack::aerial::input,
+        physics: callbacks::physics::fall,
+        collision: crate::fighter::attack::aerial::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LandingAirHi as usize] = MotionRow {
+        action: ActionId(73),
+        id: S::LandingAirHi,
+        animation: 76,
+        anim: callbacks::animation::landing,
+        iasa: callbacks::input::entry, // ftCo_LandingAir_IASA: empty.
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::AttackAirLw as usize] = MotionRow {
+        action: ActionId(69),
+        id: S::AttackAirLw,
+        animation: 72,
+        anim: crate::fighter::attack::aerial::animation,
+        iasa: crate::fighter::attack::aerial::input,
+        physics: callbacks::physics::fall,
+        collision: crate::fighter::attack::aerial::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LandingAirLw as usize] = MotionRow {
+        action: ActionId(74),
+        id: S::LandingAirLw,
+        animation: 77,
+        anim: callbacks::animation::landing,
+        iasa: callbacks::input::entry, // ftCo_LandingAir_IASA: empty.
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows
 }

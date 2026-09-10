@@ -158,7 +158,10 @@ impl FighterCore {
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
-            MotionData::Pass {
+            MotionData::Aerial {
+                retained_drop_timer,
+            }
+            | MotionData::Pass {
                 retained_drop_timer,
             }
             | MotionData::JumpAerial {
@@ -176,6 +179,54 @@ impl FighterCore {
         }
     }
 }
+// S2: aerial landing lag and autocancel.
+impl Fighter {
+    /// ftCo_LandingAir_EnterWithLag (8008D5FC), ftCo_LandingAir.c:14-63.
+    pub(super) fn land_from_aerial(&mut self, assets: &FighterAssets) -> Result<()> {
+        use CommonMotionState as S;
+        if self.core.commands.variables[0] == 0 {
+            return self.enter_landing(assets);
+        }
+        let landing = &self.core.attributes.landing;
+        let (state, lag) = match self.core.motion_state.id {
+            S::AttackAirN => (S::LandingAirN, landing.landingairn_lag),
+            S::AttackAirF => (S::LandingAirF, landing.landingairf_lag),
+            S::AttackAirB => (S::LandingAirB, landing.landingairb_lag),
+            S::AttackAirHi => (S::LandingAirHi, landing.landingairhi_lag),
+            S::AttackAirLw => (S::LandingAirLw, landing.landingairlw_lag),
+            _ => return self.enter_landing(assets),
+        };
+        let lag = cancelled_lag(lag, self.core.input.buttons.shield, &assets.input);
+        // ftCo_LandingAir_EnterWithMsidLag (8008D708): install at rate 1,
+        // then change the rate. Do not run Landing_Enter's character hook.
+        self.land();
+        self.change_motion_state(state.into(), assets)?;
+        // retail 8008D764 fadds, 8008D768 fdivs: separate single operations.
+        let frames = assets.motions[&self.core.motion_state.animation]
+            .animation
+            .frames;
+        let rate = (frames + 0.1) / lag;
+        self.core
+            .animation
+            .set_rate(&mut self.core.skeleton, rate, false);
+        Ok(())
+    }
+}
+
+/// Retail 8008D690 reads x67F, 8008D6A4 fdivs then 8008D6A8 fctiwz.
+pub fn cancelled_lag(lag: f32, age: u8, common: &crate::input::InputCommonData) -> f32 {
+    if i32::from(age) < common.l_cancel_window {
+        let frames = gekko_math::msl::fctiwz(lag / common.l_cancel_divisor);
+        if frames == 0 {
+            1.0
+        } else {
+            frames as f32
+        }
+    } else {
+        lag
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

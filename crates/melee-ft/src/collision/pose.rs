@@ -1,10 +1,11 @@
-//! Flat-floor subset of the s_link 7 ground pose. Sloped leg solving and
-//! body tilt are explicit unsupported results, never silently skipped.
+//! s_link 7 ground pose: floor targets, two-joint leg IK and foot alignment.
+//! Non-flat body tilt remains an explicit unsupported result.
 use super::{ecb::world_position, ground::EnvironmentCollision};
 use crate::{desc::bones::GroundPoseBones, physics::FighterPhysics};
 use gekko_math::{fma::fmadds, msl::sqrtf};
 use hsd_anim::jobj::{JObjId, JObjTree};
 use hsd_types::Vec3;
+use melee_lb::ik::{normalize, TwoJointIk};
 use melee_mp::CollMap;
 use melee_types::GroundOrAir;
 
@@ -18,7 +19,6 @@ impl GroundPoseFlags {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnsupportedGroundPose {
-    LegCorrection,
     BodyTilt,
 }
 
@@ -31,8 +31,7 @@ pub struct FlatGroundPose<'a> {
 
 impl FlatGroundPose<'_> {
     /// `Fighter_8006C5F4` -> `ft_80089B08` (0x80089B08), ft_0899.c:73-236.
-    /// On flat FD the target needs no leg correction; the foot's cached matrix
-    /// is refreshed and its saved local rotation restored just as in retail.
+    /// Solved matrices survive raw local-rotation restoration, as in retail.
     /// `flags` is the decoded three-bit `x221C_u16_y` (+221C, bits 6..8).
     pub fn update(
         &self,
@@ -58,7 +57,7 @@ impl FlatGroundPose<'_> {
                 tree.bone(root, index as usize)
                     .expect("ground pose bone outside skeleton")
             });
-            let [_, knee, foot] = ids.map(|id| world_position(tree, id));
+            let [hip, knee, foot] = ids.map(|id| world_position(tree, id));
             let player_scale = self.player_scale;
             // ft_80089B08: 0x80089B80/84 fadds then fmuls; no contraction.
             let length = player_scale * (bones.lower_length + bones.foot_extension);
@@ -70,15 +69,30 @@ impl FlatGroundPose<'_> {
                 direction.z * length,
             );
             let target = Vec3::new(offset.x + knee.x, offset.y + knee.y, offset.z + knee.z);
-            let Some(probe) = map.floor_probe(environment.data.floor.index, &target) else {
-                return Err(UnsupportedGroundPose::LegCorrection);
+            let saved = ids.map(|id| tree.rotation(id));
+            let mut ik = TwoJointIk {
+                hip,
+                knee,
+                foot,
+                extended_foot: target,
+                target,
+                upper_length: bones.upper_length * player_scale,
+                lower_length: length,
             };
-            // fn_8008998C (0x8008998C), ft_0899.c:44-45: two fadds/fsubs.
-            let delta = (target.y + probe.delta) - tree.translation(root).y;
-            if delta.abs() >= 0.0001 {
-                return Err(UnsupportedGroundPose::LegCorrection);
+            let (correct, normal) = floor_target(
+                map,
+                environment.data.floor.index,
+                tree.translation(root),
+                &mut ik.target,
+            );
+            if correct {
+                ik.solve(tree, ids[0], ids[1]);
             }
-            align_flat_foot(tree, ids[2], probe.normal)?;
+            align_foot(tree, ids[2], normal);
+            // ft_0899.c:139-141/174-176: raw restores do NOT mark matrices dirty.
+            for (id, rotation) in ids.into_iter().zip(saved) {
+                tree.get_mut(id).rotate = rotation;
+            }
         }
         if flags.0 & GroundPoseFlags::BODY_TILT != 0 {
             // ft_80089B08 (0x80089B08), ft_0899.c:180-233. Long flat floors
@@ -100,25 +114,50 @@ impl FlatGroundPose<'_> {
     }
 }
 
-/// lbVector_Normalize (0x8000D2EC, lbvector.c:18-31).
-fn normalize(v: Vec3) -> Vec3 {
-    // retail 0x8000D2F8..D310: three fmuls, two fadds; z + (x + y).
-    let length = sqrtf(v.z * v.z + (v.x * v.x + v.y * v.y));
-    if length == 0.0 {
-        return v;
+/// fn_8008998C (8008998C): a missed floor probe uses the connected floor's
+/// endpoint height and leaves the normal zero, suppressing foot alignment.
+fn floor_target(map: &CollMap, floor: i32, root: Vec3, target: &mut Vec3) -> (bool, Vec3) {
+    let mut normal = Vec3::ZERO;
+    let mut delta = if let Some(probe) = map.floor_probe(floor, target) {
+        normal = probe.normal;
+        // retail 80089A28/2C: fadds then fsubs.
+        (target.y + probe.delta) - root.y
+    } else {
+        let left = map.floor_get_left(floor);
+        let endpoint = if target.x > left.x {
+            map.floor_get_right(floor)
+        } else {
+            left
+        };
+        endpoint.y - root.y
+    };
+    // Retail contact epsilon (@255), and maximum target slope (@256/257).
+    const CONTACT_EPSILON: f32 = 0.0001;
+    const MAX_SLOPE: f32 = 0.45;
+    if delta.abs() < CONTACT_EPSILON {
+        return (false, normal);
     }
-    let inverse = 1.0 / length;
-    Vec3::new(v.x * inverse, v.y * inverse, v.z * inverse)
+    if target.x != root.x {
+        let dx = target.x - root.x;
+        let slope = delta / dx;
+        // retail 80089AAC..CC: separate division and multiplication.
+        if slope > MAX_SLOPE {
+            delta = MAX_SLOPE * dx;
+        } else if slope < -MAX_SLOPE {
+            delta = -MAX_SLOPE * dx;
+        }
+    } else {
+        delta = 0.0;
+    }
+    target.y += delta;
+    (true, normal)
 }
 
 /// Euler-foot branch of lbBgFlash_80020E38 (0x80020E38, lb_020A.c:127-194).
-fn align_flat_foot(
-    tree: &mut JObjTree,
-    foot: JObjId,
-    normal: Vec3,
-) -> Result<(), UnsupportedGroundPose> {
-    if normal.x != 0.0 || normal.z != 0.0 {
-        return Err(UnsupportedGroundPose::LegCorrection);
+fn align_foot(tree: &mut JObjTree, foot: JObjId, normal: Vec3) {
+    // retail 80020E44..60: separate products and sums; zero normal is a no-op.
+    if (normal.x * normal.x + normal.y * normal.y) + normal.z * normal.z == 0.0 {
+        return;
     }
     let saved = tree.rotation(foot);
     let matrix = *tree.get_mtx(foot);
@@ -128,7 +167,10 @@ fn align_flat_foot(
     // retail 0x80020EF0/EF4: fmadds, after the y*y fmuls.
     let magnitude = sqrtf(fmadds(z, z, fmadds(x, x, y * y)));
     if magnitude != 0.0 {
-        let angle = melee_lb::trigf::atan2f(-normal.x * (z / magnitude), normal.y);
+        // Retail maximum foot tilt: twenty degrees, lb_020A.c:169-174.
+        const MAX_FOOT_ANGLE: f32 = 0.34906584;
+        let angle = melee_lb::trigf::atan2f(-normal.x * (z / magnitude), normal.y)
+            .clamp(-MAX_FOOT_ANGLE, MAX_FOOT_ANGLE);
         if tree.flags(foot) & hsd_anim::jobj::JOBJ_USE_QUATERNION == 0 {
             tree.set_rotation_z(foot, angle + tree.rotation_z(foot));
         } else {
@@ -143,7 +185,4 @@ fn align_flat_foot(
         }
         tree.setup_matrix(foot);
     }
-    // ft_0899.c:174-176 restores the raw local rotation WITHOUT marking dirty.
-    tree.get_mut(foot).rotate = saved;
-    Ok(())
 }

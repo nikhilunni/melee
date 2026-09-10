@@ -16,18 +16,19 @@ spec.loader.exec_module(perf)
 class PerformanceBudget(unittest.TestCase):
     def test_each_metric_rejects_only_increases_past_its_budget(self):
         old = dict(stripped_bytes=100, text_bytes=100, load_ns=100, ticks_600_ns=100,
-                   copies={"melee-sim": 8, "ft-fox": 2})
+                   duplicate_labels={"melee-sim": 8, "ft-fox": 2}, cross_crate_duplicate_labels=3)
         current = dict(old, stripped_bytes=105, text_bytes=105, load_ns=110,
-                       ticks_600_ns=110, copies={"melee-sim": 8, "ft-fox": 2})
-        self.assertEqual(perf.compare(current, old, 10, 5, 0), [])
+                       ticks_600_ns=110, duplicate_labels={"melee-sim": 8, "ft-fox": 2}, cross_crate_duplicate_labels=3)
+        self.assertEqual(perf.compare(current, old, 10, 5), [])
         for key in ("stripped_bytes", "text_bytes", "load_ns", "ticks_600_ns"):
             with self.subTest(key=key):
                 bad = dict(current)
                 bad[key] += 1
-                self.assertEqual(len(perf.compare(bad, old, 10, 5, 0)), 1)
-        current["copies"] = {"melee-sim": 9, "ft-fox": 1, "ft-new": 1}
-        self.assertEqual(len(perf.compare(current, old, 10, 5, 0)), 2)
-        self.assertEqual(perf.compare(current, old, 10, 5, 1), [])
+                self.assertEqual(len(perf.compare(bad, old, 10, 5)), 1)
+        current["duplicate_labels"] = {"melee-sim": 9, "ft-fox": 1, "ft-new": 1}
+        self.assertEqual(len(perf.compare(current, old, 10, 5)), 2)
+        current["cross_crate_duplicate_labels"] = 4
+        self.assertEqual(len(perf.compare(current, old, 10, 5)), 3)
 
     def test_platform_size_formats_and_invalid_evidence(self):
         self.assertEqual(perf.read_text_size("__TEXT __DATA __OBJC others dec hex\n3604480 1 0 0 0 0\n"), 3604480)
@@ -87,7 +88,7 @@ class PerformanceBudget(unittest.TestCase):
             self.assertEqual(report.read_text().count('"status": "PASS"'), 1)
             self.assertEqual(report.read_text().count('"status": "REGRESSION"'), 2)
             self.assertIn("COMPLETE — PASS", report.read_text())
-            self.assertIn("### melee-ft: 4 melee-ft copies", report.read_text())
+            self.assertIn("### melee-ft: 4 labels, 4 emitted definitions (informational); 0 duplicate labels", report.read_text())
 
 
 class ConcreteShellBudget(unittest.TestCase):
@@ -117,19 +118,43 @@ class ConcreteShellBudget(unittest.TestCase):
         _, failures = perf.concrete_shell_census({"melee-ft": rows})
         self.assertEqual(failures, [f"missing concrete pair helper: {missing}"])
 
-    def test_fixed_caps_reject_size_time_and_attribution_drift(self):
-        current = dict(stripped_bytes=perf.C15_STRIPPED_LIMIT, copies=dict(perf.C15_COPY_LIMITS), **perf.C15_P1_TIME_LIMITS)
+    def test_fixed_caps_reject_size_time_and_duplicate_growth(self):
+        current = dict(stripped_bytes=perf.C15_STRIPPED_LIMIT, **perf.c15_census(), **perf.C15_P1_TIME_LIMITS)
         self.assertEqual(perf.concrete_limits(current), [])
         bad = dict(current, stripped_bytes=current["stripped_bytes"] + 1)
         self.assertTrue(perf.concrete_limits(bad))
         bad = dict(current, ticks_600_ns=current["ticks_600_ns"] + 1)
         self.assertTrue(perf.concrete_limits(bad))
-        copies = dict(current["copies"])
-        copies["melee-ft"] += 1
-        copies["melee-sim"] -= 1  # Same aggregate does not excuse a per-crate regression.
-        self.assertTrue(perf.concrete_limits(dict(current, copies=copies)))
-        copies = dict(current["copies"], **{"ft-new": 1})
-        self.assertTrue(perf.concrete_limits(dict(current, copies=copies)))
+        counts = dict(current["duplicate_labels"])
+        counts["melee-ft"] += 1
+        self.assertTrue(perf.concrete_limits(dict(current, duplicate_labels=counts)))
+        bad = dict(current, cross_crate_duplicate_labels=current["cross_crate_duplicate_labels"] + 1)
+        self.assertTrue(perf.concrete_limits(bad))
+        # Ordinary additions do not spend the duplication budget.
+        self.assertEqual(perf.concrete_limits(dict(current, labels={"melee-ft": 99999}, definitions={"melee-ft": 99999})), [])
+
+    def test_new_concrete_definitions_pass_but_both_duplication_forms_fail(self):
+        def row(name, copies=1):
+            return dict(function="melee_ft::" + name, copies=copies, lines=10)
+        old, _ = perf.duplicate_census({"melee-ft": [row("old")]})
+        added, _ = perf.duplicate_census({"melee-ft": [row("old"), row("new")]})
+        self.assertEqual(perf.compare_duplicates(added, old), [])
+        self.assertEqual(added["labels"]["melee-ft"], 2)
+        repeated, _ = perf.duplicate_census({"melee-ft": [row("old", 3)]})
+        self.assertEqual(repeated["duplicate_labels"]["melee-ft"], 1)
+        self.assertEqual(len(perf.compare_duplicates(repeated, old)), 1)
+        across, labels = perf.duplicate_census({"melee-ft": [row("old")], "ft-new": [row("old")]})
+        self.assertEqual(across["cross_crate_duplicate_labels"], 1)
+        self.assertEqual(across["duplicate_labels"], {"melee-ft": 0, "ft-new": 0})
+        self.assertEqual(len(perf.compare_duplicates(across, old)), 1)
+        self.assertEqual(labels["melee_ft::old"], {"melee-ft": 1, "ft-new": 1})
+
+    def test_repeated_rows_are_aggregated_before_counting_labels(self):
+        row = dict(function="melee_ft::one", copies=1, lines=10)
+        census, _ = perf.duplicate_census({"melee-ft": [row, row, row]})
+        self.assertEqual(census["labels"], {"melee-ft": 1})
+        self.assertEqual(census["definitions"], {"melee-ft": 3})
+        self.assertEqual(census["duplicate_labels"], {"melee-ft": 1})
 
 
 if __name__ == "__main__":

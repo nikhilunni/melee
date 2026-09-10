@@ -165,6 +165,7 @@ impl FighterCore {
                     self.state_data,
                     super::MotionData::Jab(_)
                         | super::MotionData::RapidJab(_)
+                        | super::MotionData::Aerial { .. }
                         | super::MotionData::Tilt
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }

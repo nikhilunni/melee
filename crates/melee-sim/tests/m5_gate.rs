@@ -342,3 +342,148 @@ fn special_gate_prefix(name: &str, ticks: usize) {
         );
     }
 }
+
+// S2: every recorded aerial, L-cancel and autocancel scene.
+#[test]
+fn nair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("nair_fd_fox");
+}
+
+#[test]
+fn fair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fair_fd_fox");
+}
+
+#[test]
+fn bair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("bair_fd_fox");
+}
+
+#[test]
+fn uair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("uair_fd_fox");
+}
+
+#[test]
+fn dair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dair_fd_fox");
+}
+
+#[test]
+fn nairlc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("nairlc_fd_fox");
+}
+
+#[test]
+fn fairlc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fairlc_fd_fox");
+}
+
+#[test]
+fn bairlc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("bairlc_fd_fox");
+}
+
+#[test]
+fn uairlc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("uairlc_fd_fox");
+}
+
+#[test]
+fn dairlc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dairlc_fd_fox");
+}
+
+#[test]
+fn nair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("nair_fd_marth");
+}
+
+#[test]
+fn fair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fair_fd_marth");
+}
+
+#[test]
+fn bair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("bair_fd_marth");
+}
+
+#[test]
+fn uair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("uair_fd_marth");
+}
+
+#[test]
+fn dair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dair_fd_marth");
+}
+
+#[test]
+fn dairlc_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dairlc_fd_marth");
+}
+
+#[test]
+fn fairlc_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fairlc_fd_marth");
+}
+
+// The full S2 gates above remain mandatory. These additional prefix gates retain
+// exact evidence through the four former floor-endpoint pose boundaries.
+#[test]
+fn s2_marth_landings_before_floor_endpoint_pose_correction() {
+    for (name, ticks) in [
+        ("fair_fd_marth", 154),
+        ("dair_fd_marth", 166),
+        ("dairlc_fd_marth", 150),
+        ("fairlc_fd_marth", 142),
+    ] {
+        s2_prefix_gate(name, ticks);
+    }
+}
+
+fn s2_prefix_gate(name: &str, ticks: usize) {
+    use melee_diff::{first_divergence, read_trace};
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
+    let scenario = Scenario::load(&path).unwrap();
+    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger_path.clone()]),
+    ) {
+        return;
+    }
+    let expected = read_trace(std::io::BufReader::new(
+        fs::File::open(scenario.trace_path("tick.expected.jsonl")).unwrap(),
+    ))
+    .unwrap();
+    assert_eq!(expected.len(), 300);
+    let ledger = fs::read_to_string(ledger_path).unwrap();
+    assert_eq!(ledger.lines().count(), 300);
+    let mut simulation = Simulation::with_inputs(
+        InitialState::from_savestate_traces(&scenario).unwrap(),
+        trace::pad_script(&scenario).unwrap(),
+    );
+    for (tick, (expected, line)) in expected.iter().zip(ledger.lines()).take(ticks).enumerate() {
+        let actual = simulation.tick().unwrap();
+        trace::check_schema(&actual).unwrap();
+        assert!(
+            first_divergence([expected], [&actual]).is_none(),
+            "{name} tick {tick}"
+        );
+        let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        let sites: Vec<u32> = row["rng_draws"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
+            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
+            .collect();
+        assert_eq!(simulation.particle_rng_sites(), sites, "{name} tick {tick}");
+    }
+    eprintln!("{name}: {ticks} ticks, 49 keys, 0 divergences; former pose boundary prefix");
+}

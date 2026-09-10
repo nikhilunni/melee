@@ -65,7 +65,9 @@ impl Fighter {
             &[P::Shield, P::Taunt],
             "ftCo_Run.c:133-140",
         );
-        self.reject_running_jump(assets);
+        if self.try_running_jump(assets)? {
+            return Ok(());
+        }
         let MotionData::Run(run) = &self.core.state_data else {
             panic!("run data missing")
         };
@@ -123,7 +125,9 @@ impl Fighter {
     }
     /// ftCo_RunBrake_IASA (0x800CADB0).
     pub(super) fn run_brake_input(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.reject_running_jump(assets);
+        if self.try_running_jump(assets)? {
+            return Ok(());
+        }
         if self.core.commands.variables[0] != 0
             && self.try_turn_run(assets, self.core.animation.frame)?
         {

@@ -1,0 +1,61 @@
+{
+  "command": "cargo llvm-lines -p <crate> --release --lib",
+  "evidence_sha256": {
+    "llvm-ft-captain.txt": "80992894b1432b856e581a4d7e8e88db6f18e2beb133d9c5d0d2e8fa2a1bf11c",
+    "llvm-ft-falco.txt": "7050ac13df7633726406417608adde29e168f9f639104070de5b859a61583041",
+    "llvm-ft-fox-family.txt": "18c3d91929138aa838fe118663a009a637100415629b08dc95e7705f0b5c5262",
+    "llvm-ft-fox.txt": "3039e10acb90e4ee01dcd6c4cf707ae3ecdab6556b7a711e6b59a3d49ad59323",
+    "llvm-ft-mario.txt": "bdd5721c6731d31eeb4f610291c49bce5dc11bfc3db783913c47abb417e06f9a",
+    "llvm-ft-mars.txt": "18ec5ea04e259ef68536d556c9d3e214b2afa91630e727bbe12e4471d6067ccf",
+    "llvm-ft-peach.txt": "5297530bd89a1228775ef4baa8ebab936e08adb3ec24fb3e1cc53e60b9e01c8f",
+    "llvm-ft-purin.txt": "6214b26e846a0bae6f189257d59d04aa1b8ca0f41dabac5deeeff95d92e52a37",
+    "llvm-ft-yoshi.txt": "1b703550102a5abde32b4b95b8457676a27aa22fcf881717d03909f5a1cbc2d5",
+    "llvm-melee-ft.txt": "ba07635aa04b8d7b821d438fa0b6f7bc72087632171486351e0d4f6af0bfb8a0",
+    "llvm-melee-sim.txt": "96edd0cbb000ed6247ff1ec2036b156fcefc1010ae444b42823f42040e14efa9"
+  },
+  "method": "read-only git archive of committed C15; clean temporary Cargo target; same native compiler; no data needed",
+  "metrics": {
+    "cross_crate_duplicate_labels": 99,
+    "definitions": {
+      "ft-captain": 66,
+      "ft-falco": 67,
+      "ft-fox": 67,
+      "ft-fox-family": 0,
+      "ft-mario": 0,
+      "ft-mars": 66,
+      "ft-peach": 67,
+      "ft-purin": 66,
+      "ft-yoshi": 68,
+      "melee-ft": 845,
+      "melee-sim": 128
+    },
+    "duplicate_labels": {
+      "ft-captain": 1,
+      "ft-falco": 1,
+      "ft-fox": 1,
+      "ft-fox-family": 0,
+      "ft-mario": 0,
+      "ft-mars": 1,
+      "ft-peach": 1,
+      "ft-purin": 1,
+      "ft-yoshi": 1,
+      "melee-ft": 20,
+      "melee-sim": 7
+    },
+    "labels": {
+      "ft-captain": 43,
+      "ft-falco": 44,
+      "ft-fox": 44,
+      "ft-fox-family": 0,
+      "ft-mario": 0,
+      "ft-mars": 43,
+      "ft-peach": 44,
+      "ft-purin": 43,
+      "ft-yoshi": 45,
+      "melee-ft": 809,
+      "melee-sim": 101
+    }
+  },
+  "revision": "4bb9f072f7794c8663c4a02e5c1dbb30a8c9e96a",
+  "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)"
+}

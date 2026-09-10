@@ -189,6 +189,7 @@ impl FighterAssets {
             167, 168, 169, 209, 242,
         ]
         .into_iter()
+        .chain(68..78)
         .chain(idle_motions.iter().copied())
         .chain(descriptor.additional_motions.iter().copied())
         .collect::<BTreeSet<_>>()
@@ -354,6 +355,7 @@ impl FighterAssets {
                 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
             ]
             .into_iter()
+            .chain(68..78)
             .chain(idle_motions.into_iter().map(|id| id as usize))
             .chain(descriptor.additional_motions.iter().map(|&id| id as usize))
             .collect::<BTreeSet<_>>()

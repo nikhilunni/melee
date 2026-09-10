@@ -10,6 +10,12 @@ pub struct InputCommonData {
     pub thresholds: IdleInputAttributes,
     /// PlCo +20 (x20_radians), +98, +AC, +B0.
     pub tilt_angle: f32,
+    /// PlCo +DC/+E0: aerial direction and C-stick edge thresholds.
+    pub aerial_horizontal_threshold: f32,
+    pub aerial_vertical_threshold: f32,
+    /// PlCo +E4/+E8: L-cancel input age window and lag divisor.
+    pub l_cancel_window: i32,
+    pub l_cancel_divisor: f32,
     pub side_tilt_threshold: f32,
     pub up_tilt_threshold: f32,
     pub down_tilt_threshold: f32,
@@ -43,6 +49,10 @@ impl InputCommonData {
         Ok(Self {
             thresholds,
             tilt_angle: r.f32(0x20)?,
+            aerial_horizontal_threshold: r.f32(0xDC)?,
+            aerial_vertical_threshold: r.f32(0xE0)?,
+            l_cancel_window: r.s32(0xE4)?,
+            l_cancel_divisor: r.f32(0xE8)?,
             side_tilt_threshold: r.f32(0x98)?,
             up_tilt_threshold: r.f32(0xAC)?,
             down_tilt_threshold: r.f32(0xB0)?,

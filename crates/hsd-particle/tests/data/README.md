@@ -130,3 +130,11 @@ The fixture contains effect-boundary inputs, including the synchronous 0xBC0
 AppSRT attachment and its expiration. It contains no particle outputs. The
 full grounded Illusion fixture remains blocked at the shared pose dependency
 recorded in `docs/PORT_NOTES/S3_SPECIALS.md`.
+S2 aerial fixtures: `nair_fd_fox_spawns.json` and `uair_fd_fox_spawns.json`
+are production inputs exported by `melee-sim fixture-spawns` after the full
+300-tick gate, including connecting hit sparks and landing dust. Reproduce with:
+
+```sh
+cargo run -q --release -p melee-sim -- fixture-spawns harness/scenarios/nair_fd_fox.toml --out crates/hsd-particle/tests/data/nair_fd_fox_spawns.json
+cargo run -q --release -p melee-sim -- fixture-spawns harness/scenarios/uair_fd_fox.toml --out crates/hsd-particle/tests/data/uair_fd_fox_spawns.json
+```

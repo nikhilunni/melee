@@ -6,3 +6,4 @@ pub mod anim;
 pub mod trigf;
 
 pub mod dynamics;
+pub mod ik;

@@ -119,7 +119,9 @@ impl Fighter {
             self.reject_running_actions(assets, context, &[P::Shield], "ftCo_Dash.c:133-135");
         }
         self.reject_running_actions(assets, context, &[P::Taunt], "ftCo_Dash.c:139");
-        self.reject_running_jump(assets);
+        if self.try_running_jump(assets)? {
+            return Ok(());
+        }
         if self.core.commands.variables[0] != 0
             && self.core.input.current.stick.x * self.core.physics.facing >= common.run_threshold
         {

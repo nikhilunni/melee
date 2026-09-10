@@ -77,7 +77,7 @@ Missing local oracle files fail tests with the first missing path and its recove
 
 ```sh
 cargo gate                                                   # every unit/oracle test
-tools/perf-gate.sh                                            # separate release performance/size/instantiation regressions
+tools/perf-gate.sh                                            # separate release performance/size/duplicate-definition regressions
 cargo gate --release                                         # every unit/oracle test, optimized
 tools/check-release-math.sh                                  # fused semantics at every opt level
 cargo run -q -p melee-sim -- gate harness/scenarios/idle_fd_fox.toml   # M3: 600 ticks x 49 keys vs Dolphin
@@ -222,8 +222,11 @@ abstractions and clean organization.
   payload with `into_state()`. Character/family callbacks use checked
   `fighter.character.get::<C>()` / `get_mut::<C>()`, ending the scratch borrow
   before calling a state transition. Motion entry takes concrete `ActionId`
-  (`state.into()` at callers). Measure per-crate and aggregate emitted copies
-  with `cargo llvm-lines`; `tools/perf-gate.sh` enforces `docs/PERF.md` budgets.
+  (`state.into()` at callers). Measure duplicate labels within each compiling crate and labels defined in
+  multiple crates with `cargo llvm-lines`; `tools/perf-gate.sh` allows zero growth
+  against C15 and the latest passing census. Total labels and emitted definitions
+  are informational, so new concrete functions do not spend a duplication budget.
+  See `docs/PERF.md`.
 
 ## Build-speed rules
 
@@ -260,7 +263,7 @@ keep it that way. Design notes and code sketches: `docs/STEEL_THREAD.md`.
   (C14); use the audited `gekko-math` helpers and gate both profiles.
   Fused ops stay explicit (`fmadds`), never inferred. Changes to LTO,
   codegen units or CPU targeting must also pass the optimized oracles.
-- Performance, binary size and instantiation counts are regression gates
+- Performance, binary size and duplicate-definition counts are regression gates
   (`tools/perf-gate.sh`, `docs/PERF.md`), not bit-exact ones; they fail on
   regression against the recorded baseline.
 

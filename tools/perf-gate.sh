@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [[ $# != 0 ]]; then
-    echo 'usage: tools/perf-gate.sh (PERF_TIME_TOLERANCE=10 PERF_SIZE_TOLERANCE=5 PERF_COPIES_TOLERANCE=0)' >&2
+    echo 'usage: tools/perf-gate.sh (PERF_TIME_TOLERANCE=10 PERF_SIZE_TOLERANCE=5)' >&2
     exit 2
 fi
 export CARGO_TERM_COLOR=never
@@ -51,7 +51,7 @@ if command -v cargo-llvm-lines >/dev/null 2>&1; then
     cargo llvm-lines --version >"$run_dir/llvm-version.txt"
     # Definitions are charged to their compiling crate: concrete core/shell,
     # sim composition, and every character/family crate. perf_report.py enforces
-    # the C15 per-crate/aggregate ceilings and one definition per common label.
+    # zero growth in duplicate labels within/across crates; totals are informational.
     cargo metadata --no-deps --format-version=1 | python3 -c 'import json,sys; print("\n".join(sorted(p["name"] for p in json.load(sys.stdin)["packages"] if p["name"].startswith("ft-"))))' >"$run_dir/characters.txt"
     for package in melee-ft melee-sim $(cat "$run_dir/characters.txt"); do
         if ! cargo llvm-lines -p "$package" --release --lib >"$run_dir/llvm-$package.txt" 2>"$run_dir/llvm-$package-error.txt"; then

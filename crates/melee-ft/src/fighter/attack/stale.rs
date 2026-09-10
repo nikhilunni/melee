@@ -14,6 +14,11 @@ pub enum GroundMove {
     SideSmash,
     UpSmash,
     DownSmash,
+    NeutralAir,
+    ForwardAir,
+    BackAir,
+    UpAir,
+    DownAir,
 }
 const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     let mut rows = [None; super::super::COMMON_COUNT];
@@ -38,6 +43,11 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     }
     rows[S::AttackHi4 as usize] = Some(GroundMove::UpSmash);
     rows[S::AttackLw4 as usize] = Some(GroundMove::DownSmash);
+    rows[S::AttackAirN as usize] = Some(GroundMove::NeutralAir);
+    rows[S::AttackAirF as usize] = Some(GroundMove::ForwardAir);
+    rows[S::AttackAirB as usize] = Some(GroundMove::BackAir);
+    rows[S::AttackAirHi as usize] = Some(GroundMove::UpAir);
+    rows[S::AttackAirLw as usize] = Some(GroundMove::DownAir);
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();

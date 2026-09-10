@@ -210,6 +210,7 @@ impl FighterCore {
 
 /// Item-free predicates from ftCo_Fall_IASA_Inner (0x800CCAAC).
 /// Jump/JumpAerial callers gate their character float hooks by motion state.
+#[inline(always)]
 pub fn iasa(
     input: &crate::input::FighterInput,
     common: &crate::input::InputCommonData,
@@ -221,13 +222,14 @@ pub fn iasa(
         && (input.pressed.intersects(crate::input::Buttons::XY)
             || (input.current.stick.y >= common.thresholds.tap_jump_threshold
                 && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window));
-    iasa_with_jump(input, jump, check_float)
+    iasa_with_jump(input, common, jump, check_float)
 }
 
 /// The multijump path changes only the jump predicate; aerial action priority
 /// and the float hooks retain the same order as ftCo_Fall_IASA_Inner.
 pub(super) fn iasa_with_jump(
     input: &crate::input::FighterInput,
+    common: &crate::input::InputCommonData,
     jump: bool,
     mut check_float: impl FnMut(super::FloatInputPhase),
 ) -> crate::input::WaitTransition {
@@ -238,14 +240,9 @@ pub(super) fn iasa_with_jump(
     if input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         return T::Escape;
     }
-    if input.pressed.intersects(Buttons::A) {
+    if super::attack::aerial::requested(input, common) {
         return T::Attack;
     }
-    assert_eq!(
-        input.current.cstick,
-        crate::input::Stick::default(),
-        "C-stick aerial selection needs ftCo_800DF478"
-    );
     check_float(super::FloatInputPhase::BeforeAerialJump);
     if jump {
         return T::Jump;

@@ -14,21 +14,46 @@ MARKER = r"<!-- perf-gate-v1\n(.*?)\n-->"
 LLVM_ROW = re.compile(r"^\s*(\d+)\s+\([^)]*\)\s+(\d+)\s+\([^)]*\)\s+(.+)$")
 
 
-# C15 deliberately transfers common bodies and static adapters to their owners.
-# These ceilings replace the generic-shell attribution, never timing/size limits.
-C15_COPY_LIMITS = {
-    "ft-captain": 66,
-    "ft-falco": 67,
-    "ft-fox": 67,
-    "ft-fox-family": 0,
-    "ft-mario": 0,
-    "ft-mars": 66,
-    "ft-peach": 67,
-    "ft-purin": 66,
-    "ft-yoshi": 68,
-    "melee-ft": 845,
-    "melee-sim": 128
-}
+# Recounted from the committed C15 source, with the same compiler/commands.
+# Totals are informational; only duplicate-label counts have a zero tolerance.
+C15_CENSUS_PATH = Path(__file__).with_name("data") / "c15-duplicate-baseline.json"
+
+
+def c15_census():
+    return json.loads(C15_CENSUS_PATH.read_text())["metrics"]
+
+
+def duplicate_census(contributions):
+    labels = {}
+    for crate, rows in contributions.items():
+        for row in rows:
+            crates = labels.setdefault(row["function"], {})
+            crates[crate] = crates.get(crate, 0) + row["copies"]
+    metrics = {
+        "labels": {crate: sum(crate in owners for owners in labels.values())
+                   for crate in contributions},
+        "definitions": {crate: sum(owners.get(crate, 0) for owners in labels.values())
+                        for crate in contributions},
+        "duplicate_labels": {crate: sum(owners.get(crate, 0) > 1 for owners in labels.values())
+                             for crate in contributions},
+        "cross_crate_duplicate_labels": sum(len(owners) > 1 for owners in labels.values()),
+    }
+    return metrics, labels
+
+
+def compare_duplicates(current, previous):
+    failures = []
+    old = previous.get("duplicate_labels", {})
+    new = current.get("duplicate_labels", {})
+    for crate in sorted(old.keys() | new.keys()):
+        if new.get(crate, 0) > old.get(crate, 0):
+            failures.append(f"{crate} duplicate labels: {new[crate]} > {old.get(crate, 0)} + 0")
+    name = "cross_crate_duplicate_labels"
+    if current.get(name, 0) > previous.get(name, 0):
+        failures.append(f"cross-crate duplicate labels: {current[name]} > {previous.get(name, 0)} + 0")
+    return failures
+
+
 C15_STRIPPED_LIMIT = 3_747_632
 C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
 PAIR_HELPERS = {
@@ -79,14 +104,7 @@ def concrete_limits(metrics):
     for name, limit in C15_P1_TIME_LIMITS.items():
         if metrics.get(name, 0) > limit:
             failures.append(f"P1 time ceiling {name}: {metrics[name]:.3f} > {limit}")
-    for crate, copies in metrics.get("copies", {}).items():
-        limit = C15_COPY_LIMITS.get(crate, 0)
-        if copies > limit:
-            failures.append(f"C15 {crate} copies: {copies} > {limit}")
-    total = sum(metrics.get("copies", {}).values())
-    limit = sum(C15_COPY_LIMITS.values())
-    if total > limit:
-        failures.append(f"C15 total copies: {total} > {limit}")
+    failures += compare_duplicates(metrics, c15_census())
     return failures
 
 
@@ -126,7 +144,7 @@ def estimate(path):
     return {"ns": numbers[0], "lower_ns": numbers[1], "upper_ns": numbers[2]}
 
 
-def compare(current, previous, time_percent, size_percent, copies_allowed):
+def compare(current, previous, time_percent, size_percent):
     failures = []
     for name in ("stripped_bytes", "text_bytes", "load_ns", "ticks_600_ns"):
         if name not in previous or name not in current:
@@ -135,18 +153,15 @@ def compare(current, previous, time_percent, size_percent, copies_allowed):
         limit = previous[name] * (1 + percent / 100)
         if current[name] > limit:
             failures.append(f"{name}: {current[name]:.3f} > {limit:.3f} (previous {previous[name]:.3f}, +{percent:g}%)")
-    for crate in current.get("copies", {}).keys() | previous.get("copies", {}).keys():
-        old = previous.get("copies", {}).get(crate, 0)
-        new = current.get("copies", {}).get(crate, 0)
-        if new > old + copies_allowed:
-            failures.append(f"{crate} melee-ft copies: {new} > {old} + {copies_allowed}")
+    failures += compare_duplicates(current, previous)
     return failures
 
 
 def main(run, report):
     time_percent = tolerance("PERF_TIME_TOLERANCE", 10)
     size_percent = tolerance("PERF_SIZE_TOLERANCE", 5)
-    copies_allowed = tolerance("PERF_COPIES_TOLERANCE", 0, integer=True)
+    if "PERF_COPIES_TOLERANCE" in os.environ:
+        raise ValueError("PERF_COPIES_TOLERANCE is retired; duplicate-label tolerance is fixed at zero")
     missing = []
     estimates = {}
     for name in ("load", "ticks_600"):
@@ -182,38 +197,33 @@ def main(run, report):
     else:
         if not re.search(r"\bmelee_sim\b", (run / "bloat.txt").read_text()):
             missing.append("cargo-bloat output did not contain melee_sim")
-    metrics["copies"] = {crate: sum(row["copies"] for row in rows)
-                         for crate, rows in contributions.items()}
+    census, all_labels = duplicate_census(contributions)
+    metrics.update(census)
+    (run / "duplicate-definitions.json").write_text(json.dumps(all_labels, indent=2, sort_keys=True))
     existing = report.read_text() if report.exists() else "# Performance regression history\n"
     history = [json.loads(match) for match in re.findall(MARKER, existing, re.DOTALL)]
     # Failed/incomplete measurements never ratchet the regression baseline upward.
     previous = next((block for block in reversed(history) if block["status"] == "PASS"), None)
     baseline = previous["metrics"] if previous else HISTORICAL
-    if previous and previous.get("architecture") != "concrete-shell-v1":
-        # Explicit C15 accounting migration: core + static adapter definitions
-        # replace sim monomorphizations. Fixed aggregate/common-label caps below
-        # prevent accepting duplicates merely moved into another crate.
-        baseline = {**baseline, "copies": C15_COPY_LIMITS}
+    if not previous or previous.get("census") != "duplicate-labels-v1":
+        baseline = {**baseline, **c15_census()}
     common_labels, common_failures = concrete_shell_census(contributions)
     (run / "common-definitions.json").write_text(json.dumps(common_labels, indent=2, sort_keys=True))
-    regressions = compare(metrics, baseline, time_percent, size_percent, copies_allowed)
+    regressions = compare(metrics, baseline, time_percent, size_percent)
     regressions += concrete_limits(metrics) + common_failures
-    # There was no historical instantiation census to compare the first run to.
-    if previous is None:
-        regressions = [item for item in regressions if "melee-ft copies:" not in item]
     status = "INCOMPLETE" if missing else "REGRESSION" if regressions else "PASS"
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     block = {"date": now, "status": status, "metrics": metrics,
-             "architecture": "concrete-shell-v1",
+             "architecture": "concrete-shell-v1", "census": "duplicate-labels-v1",
              "rustc": (run / "rustc.txt").read_text().strip(),
              "platform": platform.platform(),
              "revision": (run / "revision.txt").read_text().strip()}
     heading = status if missing else f"COMPLETE — {status}"
     lines = [f"\n## {now} — {heading}\n", f"Evidence: `{run}`. Revision `{block['revision']}` (working tree included).",
              f"\n{block['rustc']}; {block['platform']}.",
-             f"\nTolerance: time +{time_percent:g}%, size +{size_percent:g}%, copies +{copies_allowed} per compiling crate.",
+             f"\nTolerance: time +{time_percent:g}%, size +{size_percent:g}%, duplicate labels +0 within each compiling crate and across crates.",
              f"Baseline: {previous['date'] if previous else '2026-09-09 main size measurements; timing/copies not yet baselined'}.",
-             f"C15 fixed ceilings: {C15_STRIPPED_LIMIT:,} stripped bytes; {sum(C15_COPY_LIMITS.values()):,} total copies; one definition per common label.",
+             f"C15 fixed ceilings: {C15_STRIPPED_LIMIT:,} stripped bytes; C15 duplicate-label baseline; one definition per common label.",
              "\n| Measurement | Value |", "|---|---:|",
              f"| Stripped binary | {metrics['stripped_bytes']:,} bytes |",
              f"| Text (`size`) | {metrics['text_bytes']:,} bytes |",
@@ -222,7 +232,8 @@ def main(run, report):
         lines.append(f"| {name} mean | {value['ns']/1e6:.3f} ms (95% CI {value['lower_ns']/1e6:.3f}..{value['upper_ns']/1e6:.3f} ms) |")
     if "ticks_600" in estimates:
         lines.append(f"| Headless throughput | {600e9/estimates['ticks_600']['ns']:,.0f} ticks/s |")
-    lines += [f"| Total melee-ft copies | {sum(metrics['copies'].values()):,} |",
+    lines += [f"| Total emitted definitions (informational) | {sum(metrics['definitions'].values()):,} |",
+              f"| Labels defined in multiple crates | {metrics['cross_crate_duplicate_labels']} |",
               f"| Common definition labels audited across crates | {len(common_labels)} |"]
     lines += [f"\n- {message}" for message in missing + regressions]
     for name in ("bloat-version", "llvm-version"):
@@ -232,12 +243,17 @@ def main(run, report):
         lines += ["\nPer-crate text contribution (cargo-bloat estimates):\n```text",
                   (run / "bloat.txt").read_text().strip(), "```"]
     for crate, rows in contributions.items():
-        lines += [f"\n### {crate}: {metrics['copies'][crate]} melee-ft copies",
+        lines += [f"\n### {crate}: {metrics['labels'][crate]} labels, {metrics['definitions'][crate]} emitted definitions (informational); {metrics['duplicate_labels'][crate]} duplicate labels",
                   "\n| IR lines | Copies | Function (top 20 by IR lines) |", "|---:|---:|---|"]
         lines += [f"| {r['lines']} | {r['copies']} | `{r['function'].replace('|', '&#124;')}` |" for r in rows[:20]]
     lines += ["\n<!-- perf-gate-v1", json.dumps(block, sort_keys=True), "-->\n"]
     report.write_text(existing + "\n".join(lines))
     timings = "; ".join(f"{name} {value['ns']/1e6:.3f} ms" for name, value in estimates.items())
+    print("Duplicate-definition census (tolerance +0; label/definition totals informational):")
+    for crate in sorted(contributions):
+        print(f"  {crate}: {metrics['duplicate_labels'][crate]} duplicate labels; "
+              f"{metrics['labels'][crate]} labels; {metrics['definitions'][crate]} definitions")
+    print(f"  across crates: {metrics['cross_crate_duplicate_labels']} duplicate labels")
     print(f"[{status}] perf-gate: {metrics['stripped_bytes']} stripped bytes, {metrics['text_bytes']} text bytes; {timings or 'timing unavailable'}")
     for message in missing + regressions:
         print(message, file=sys.stderr)

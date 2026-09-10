@@ -167,3 +167,13 @@ fn laser_fd_fox_allocation_budget() {
 fn airillusion_fd_fox_allocation_budget() {
     allocation_budget("airillusion_fd_fox", 0);
 }
+
+// S2: first-use aerial and landing effect allocations remain zero.
+#[test]
+fn nairlc_fd_fox_allocation_budget() {
+    allocation_budget("nairlc_fd_fox", 0);
+}
+#[test]
+fn dair_fd_marth_allocation_budget() {
+    allocation_budget("dair_fd_marth", 0);
+}

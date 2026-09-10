@@ -13,5 +13,6 @@ hsd-anim = { path = "../hsd-anim" }
 gekko-math = { path = "../gekko-math" }
 
 [dev-dependencies]
+serde_json.workspace = true
 melee-test-support = { path = "../melee-test-support" }
 melee-ft = { path = "../melee-ft" }

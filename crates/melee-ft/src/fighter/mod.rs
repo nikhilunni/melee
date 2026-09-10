@@ -68,6 +68,11 @@ pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
         CharacterState::new(self)
     }
 
+    /// ftCo_AttackAir.c: decideFighter. Link/Young Link and Game & Watch
+    /// supply their character entry here when their aerials are ported.
+    const ENTER_AERIAL: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+        attack::aerial::enter;
+
     /// Character-owned table (retail's per-kind MotionState table), indexed
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.
@@ -605,6 +610,9 @@ pub enum MotionData {
         repeat_pressed: bool,
     },
     Tilt,
+    Aerial {
+        retained_drop_timer: f32,
+    },
     Damage(damage::DamageState),
     Guard(shield::GuardState),
     Escape(escape::EscapeState),

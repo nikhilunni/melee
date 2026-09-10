@@ -604,6 +604,7 @@ dependencies = [
  "melee-ft",
  "melee-test-support",
  "melee-types",
+ "serde_json",
 ]
 
 [[package]]

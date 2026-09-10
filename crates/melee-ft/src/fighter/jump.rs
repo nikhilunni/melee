@@ -38,6 +38,24 @@ pub struct JumpState {
     pub multiplier: f32,
 }
 impl Fighter {
+    /// fn_800CAF78 (800CAF78), ftCo_Jump.c:62-88: running jump cancel.
+    pub(super) fn try_running_jump(&mut self, assets: &FighterAssets) -> Result<bool> {
+        let input = if self.core.input.current.stick.y >= assets.running.relaxed_jump_threshold
+            && i32::from(self.core.input.vertical.tilt) < assets.input.thresholds.tap_jump_window
+        {
+            JumpInput::Stick
+        } else if self.core.input.pressed.intersects(Buttons::XY) {
+            JumpInput::Buttons
+        } else {
+            return Ok(false);
+        };
+        self.core.state_data = MotionData::KneeBend(KneeBendState {
+            short_hop: false,
+            input,
+        });
+        self.change_motion_state(CommonMotionState::KneeBend.into(), assets)?;
+        Ok(true)
+    }
     /// ftCo_KneeBend_Enter (800CB4E0), ftCo_Jump_GetInput (800CAE80).
     pub(super) fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
         let input = if self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
@@ -166,6 +184,7 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_Jump_Phys_Inner (800CB438), ft_80084DB0 and CheckFallFast (8007D528).
+    #[inline(always)]
     pub(super) fn airborne_physics(&mut self, assets: &FighterAssets) {
         let animation_driven = matches!(self.core.state_data, MotionData::JumpAerial { .. })
             && matches!(

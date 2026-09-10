@@ -1,4 +1,5 @@
 //! Shared ground attack entry/callbacks, ftCo_Attack1.c / ftCo_AttackHi3.c.
+pub mod aerial;
 pub mod combo;
 pub mod stale;
 use super::FighterCore;

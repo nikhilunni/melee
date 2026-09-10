@@ -420,6 +420,32 @@ pub fn mtx_rot_rad(m: &mut Mtx, axis: u8, rad: f32) {
     mtx_rot_trig(m, axis, sin_a, cos_a);
 }
 
+/// `PSMTXRotAxisRad` (0x80342530): SDK paired-single arbitrary-axis rotation.
+pub fn mtx_rot_axis_rad(m: &mut Mtx, axis: &Vec3, rad: f32) {
+    let sine = sinf(rad);
+    let cosine = cosf(rad);
+    let complement = 1.0 - cosine;
+    let mut unit = Vec3::ZERO;
+    vec_normalize(axis, &mut unit);
+    let (x, y, z) = (unit.x, unit.y, unit.z);
+    // retail 0x803425A8..BC: separate ps_muls0/1 products.
+    let tx = x * complement;
+    let ty = y * complement;
+    let tz = z * complement;
+    let xy = tx * y;
+    let xz = tx * z;
+    let yz = ty * z;
+    let sx = x * sine;
+    let sy = y * sine;
+    m.0 = [
+        // retail 0x803425C0: fnmsubs; 0x803425D0: unfused ps_sum0.
+        [tx * x + cosine, fnmsubs(z, sine, xy), xz + sy, 0.0],
+        // retail 0x803425C4: fmadds; remaining sums are ps_sum0/1.
+        [fmadds(z, sine, xy), cosine + ty * y, -sx + yz, 0.0],
+        [xz + -sy, sx + yz, tz * z + cosine, 0.0],
+    ];
+}
+
 /// `PSMTXTrans` (retail `0x80342634`, `mtx.c`): identity rotation with the
 /// given translation.
 pub fn mtx_trans(m: &mut Mtx, x_t: f32, y_t: f32, z_t: f32) {

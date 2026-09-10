@@ -175,6 +175,7 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let transition = crate::fighter::fall::iasa_with_jump(
         &fighter.core.input,
+        &assets.input,
         fighter.aerial_jump_requested(assets),
         |phase| {
             let enabled = match &fighter.core.state_data {
@@ -198,6 +199,9 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     match transition {
         WaitTransition::None => {}
         WaitTransition::Special => fighter.enter_buffered_special(assets, true),
+        WaitTransition::Attack => {
+            (fighter.character.table().enter_aerial)(fighter, assets).expect("aerial attack")
+        }
         WaitTransition::Jump => fighter.enter_aerial_jump(assets).expect("aerial jump"),
         WaitTransition::Escape => fighter.enter_air_dodge(assets).expect("air dodge"),
         _ => unimplemented!("ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"),

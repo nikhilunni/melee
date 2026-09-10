@@ -1,0 +1,37 @@
+{
+  "source": {
+    "scenario": "fairlc_fd_marth",
+    "tick": 142,
+    "fighter": 0,
+    "leg": "right",
+    "capture": "simulation input to lbBgFlash_80021410 before the first endpoint correction; retail tick trace matches through tick 141",
+    "input_order": "hip xyz, knee xyz, foot xyz, extended foot xyz, target xyz, upper length, lower length, normalized knee world Z axis xyz"
+  },
+  "input_bits": [
+    1118256655,
+    1092689521,
+    1044977496,
+    1118439174,
+    1086456667,
+    3203287460,
+    1118614397,
+    1072891406,
+    1058835054,
+    1118637962,
+    1068193408,
+    1061264876,
+    1118637962,
+    1068192569,
+    1061264876,
+    1080997970,
+    1084458271,
+    3211929856,
+    3198393293,
+    3177427352
+  ],
+  "expected_angle_bits": [
+    1037464672,
+    3192148256
+  ],
+  "expected_source": "tests/ref/ik.c, native C with audited fused sites and Gekko estimate/MSL/retail acos shims; not a Dolphin bone oracle"
+}
