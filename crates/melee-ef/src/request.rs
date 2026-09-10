@@ -22,8 +22,10 @@ pub enum EffectRequest {
     DamageTrail {
         trajectory: f32,
     },
+    /// efSync_Spawn 0x42B: the explosion at the blast-zone exit, rotated by the exit angle.
     Death {
         position: Vec3,
+        angle: f32,
         scale: f32,
     },
     /// fn_800DA1D8: async kind 1, hold-bone position sampled at queue flush.

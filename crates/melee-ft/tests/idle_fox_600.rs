@@ -118,7 +118,7 @@ fn idle_fox_600() {
                     FighterProc::HitboxPositions => f.proc_hitbox_positions(),
                     FighterProc::Grab => f.proc_grab(),
                     FighterProc::HitDetection => f.proc_hit_detection(),
-                    FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets),
+                    FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets, &mut rng),
                     FighterProc::Dynamics => f.proc_dynamics(),
                     FighterProc::Camera => f.proc_camera(&fixture.assets, 1.0),
                     FighterProc::PlayerMirror => f.proc_player_mirror(),

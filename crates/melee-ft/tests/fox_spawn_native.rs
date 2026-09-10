@@ -220,7 +220,7 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     ));
     fighter.status.interaction = Interaction::Shield;
     fighter.proc_status();
-    fighter.proc_process_hit(&fixture.assets);
+    fighter.proc_process_hit(&fixture.assets, &mut HsdRng::new(0x12345678));
     fighter.status.interaction = Interaction::Idle;
     // Dispatch must consult the installed callback, not just motion_id=Wait.
     fighter.motion_row.anim = unimplemented_anim;

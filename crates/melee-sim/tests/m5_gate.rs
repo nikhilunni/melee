@@ -580,3 +580,20 @@ fn counter_fd_marth_300_ticks_and_ordered_particle_draws() {
 fn match_fd_marth_scripted_1600_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("match_fd_marth_scripted", 1600);
 }
+
+// S9: high-percent KOs. The star KO flies for PlCo +508 frames (the trace covers 90 of
+// them); the side exits are DeadRight with the clamped, rotated explosion.
+#[test]
+fn topko_usmash_fd_fox_230_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("topko_usmash_fd_fox", 230);
+}
+
+#[test]
+fn hi200_utilt_fd_marth_420_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("hi200_utilt_fd_marth", 420);
+}
+
+#[test]
+fn hi200_dolphinslash_fd_marth_420_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("hi200_dolphinslash_fd_marth", 420);
+}

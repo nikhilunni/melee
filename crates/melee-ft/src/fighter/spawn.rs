@@ -558,7 +558,13 @@ impl FighterCore {
             self.commands.instruction = None;
             return false;
         }
-        if state == CommonMotionState::DeadDown {
+        if matches!(
+            state,
+            CommonMotionState::DeadDown
+                | CommonMotionState::DeadLeft
+                | CommonMotionState::DeadRight
+                | CommonMotionState::DeadUp
+        ) {
             self.motion_state = row;
             self.animation.clear_motion(&mut self.skeleton);
             self.commands.instruction = None;

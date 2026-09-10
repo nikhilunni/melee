@@ -179,6 +179,7 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
             &state.assets.fighters[other],
             &state.assets.fighters[player],
             &mut state.map,
+            &mut state.rng,
         )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))

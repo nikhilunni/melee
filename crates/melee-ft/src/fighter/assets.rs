@@ -128,6 +128,9 @@ pub struct FighterAssets {
     pub grab_friction_multiplier: f32,
     pub throw_weight_scale: f32,
     pub smash_sounds: Vec<u32>,
+    /// ft_data->x4C_sfx->x1C / x20: the medium and heavy damage voice tables.
+    pub medium_voices: Vec<u32>,
+    pub heavy_voices: Vec<u32>,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
     pub dynamics_motion_starts: BTreeMap<i32, Vec<u32>>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
@@ -289,6 +292,8 @@ impl FighterAssets {
                     Vec::new()
                 }
             },
+            medium_voices: read_sfx_array(data, root, 0x1C)?,
+            heavy_voices: read_sfx_array(data, root, 0x20)?,
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,
@@ -444,6 +449,26 @@ impl FighterAssets {
                 platform_duration: common.reader().s32(common_data + 0x5D4)?,
                 invincibility_duration: common.reader().s32(common_data + 0x5D8)?,
                 death_effect_scale: common.reader().f32(common_data + 0x4F4)?,
+                top_knockback_threshold: common.reader().f32(common_data + 0x4F0)?,
+                star: super::life::StarKoParameters {
+                    hold: common.reader().s32(common_data + 0x504)?,
+                    flight: common.reader().s32(common_data + 0x508)?,
+                    vanish_delay: common.reader().s32(common_data + 0x50C)?,
+                    depth: common.reader().f32(common_data + 0x510)?,
+                    height_ratio: common.reader().f32(common_data + 0x514)?,
+                },
+                screen_ko_threshold: common.reader().s32(common_data + 0x520)?,
+                screen_ko_hold: common.reader().s32(common_data + 0x524)?,
+                death_sounds: {
+                    let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+                    super::life::DeathSounds {
+                        cries: [
+                            data.reader().u32(sound_table + 0x4)?,
+                            data.reader().u32(sound_table + 0x8)?,
+                        ],
+                        star: data.reader().u32(sound_table + 0xC)?,
+                    }
+                },
             },
             teeter: super::teeter::TeeterParameters {
                 walk_threshold: common.reader().f32(common_data + 0x474)?,
@@ -634,4 +659,18 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).
     indices.extend(68..78);
     indices
+}
+
+/// One `FtSFXArr` (`{ int num; s32* sfx_ids; }`) hanging off the fighter's `FtSFX`
+/// block (ft_data +4C) at `offset`; an absent pointer is an empty table.
+fn read_sfx_array(data: &Archive, root: u32, offset: u32) -> Result<Vec<u32>> {
+    let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+    let Some(list) = data.link(sound_table + offset)? else {
+        return Ok(Vec::new());
+    };
+    let count = data.reader().u32(list)?;
+    let ids = data.link(list + 4)?.ok_or("missing voice list")?;
+    (0..count)
+        .map(|i| data.reader().u32(ids + i * 4).map_err(Into::into))
+        .collect()
 }

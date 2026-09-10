@@ -4,8 +4,10 @@ use super::{
     assets::{FighterAssets, Result},
     Fighter, MotionData,
 };
+use gekko_math::{fma::fmsubs, HsdRng};
 use hsd_types::Vec3;
-use melee_types::CommonMotionState as S;
+use melee_ef::request::EffectRequest;
+use melee_types::{CommonMotionState as S, GroundOrAir};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Arena {
@@ -20,10 +22,31 @@ pub struct Arena {
 }
 #[derive(Clone, Debug)]
 pub enum LifeState {
-    Dead { remaining: i32 },
+    /// DeadDown / DeadLeft / DeadRight (and a star KO once it vanishes): the x40
+    /// countdown to the GM respawn request.
+    Dead {
+        remaining: i32,
+    },
+    /// DeadUpStar before the vanish: x40 countdown, x44 phase 0 (hold) / 1 (flight).
+    /// `camera_top` is Stage_GetCamBoundsTopOffset, sampled at entry for the flight aim.
+    StarKo {
+        remaining: i32,
+        flying: bool,
+        camera_top: f32,
+    },
+    /// DeadUpFall phase 0: the x524 hold before the camera-space approach.
+    ScreenKo {
+        remaining: i32,
+    },
     AwaitingRespawn,
-    Revival { remaining: i32, target: Vec3 },
-    PlatformWait { remaining: i32, target: Vec3 },
+    Revival {
+        remaining: i32,
+        target: Vec3,
+    },
+    PlatformWait {
+        remaining: i32,
+        target: Vec3,
+    },
 }
 /// Fighter accessory JObj, loaded from PlCo ftLoadCommonData[8].
 #[derive(Clone, Debug)]
@@ -32,11 +55,52 @@ pub struct RevivalPlatform {
     pub root: hsd_anim::jobj::JObjId,
 }
 pub struct LifeParameters {
+    /// +500: frames from a side/bottom death entry to the respawn request.
     pub death_delay: i32,
     pub revival_duration: i32,
     pub platform_duration: i32,
     pub invincibility_duration: i32,
+    /// +4F4: uniform scale of the blast-zone explosion (efSync 0x42B).
     pub death_effect_scale: f32,
+    /// +4F0: a top exit only counts with upward knockback above this (or grounded).
+    pub top_knockback_threshold: f32,
+    pub star: StarKoParameters,
+    /// +520: `HSD_Randi(100) + 1 <= threshold` picks the screen KO over the star KO.
+    pub screen_ko_threshold: i32,
+    /// +524: frames a screen KO holds at the exit position before the approach.
+    pub screen_ko_hold: i32,
+    pub death_sounds: DeathSounds,
+}
+
+/// PlCo +504..+514: the star KO (ftCo_DeadUpStar_Anim).
+#[derive(Clone, Copy, Debug)]
+pub struct StarKoParameters {
+    /// +504: frames held at the exit position.
+    pub hold: i32,
+    /// +508: frames of flight toward the background.
+    pub flight: i32,
+    /// +50C: frames from the vanish to the respawn request.
+    pub vanish_delay: i32,
+    /// +510: total z travel over the flight.
+    pub depth: f32,
+    /// +514: the flight aims at this fraction of the camera-bounds top.
+    pub height_ratio: f32,
+}
+
+/// ft_data->x4C_sfx +4 / +8 / +C: the fighter's death voice ids.
+#[derive(Clone, Copy, Debug)]
+pub struct DeathSounds {
+    /// ftCo_800D38B8 plays both on the voice channel at every death entry.
+    pub cries: [u32; 2],
+    /// ftCo_800D40B8: the star KO cry.
+    pub star: u32,
+}
+
+/// Which side blast zone a fighter left through.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Side {
+    Left,
+    Right,
 }
 impl Fighter {
     /// gm_8016719C -> Player_80032070 -> Fighter_UnkProcessDeath (80068354).
@@ -63,8 +127,14 @@ impl Fighter {
         self.initialize_spawn(assets, context, None, scale)?;
         self.enter_revival(assets, target)
     }
-    /// ftCo_800D3158 / ftCo_800D3BC8 (800D3158 / 800D3BC8), after Update.
-    pub fn check_blast_zone(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
+    /// ftCo_800D3158 (800D3158), after Update: blast-zone exits in retail order
+    /// (right, left, top, bottom).
+    pub fn check_blast_zone(
+        &mut self,
+        assets: &FighterAssets,
+        arena: &Arena,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
         if matches!(self.core.state_data, MotionData::Life(_))
             || self.core.status.disabled
             || self.core.status.ledge_grab_disabled
@@ -72,36 +142,209 @@ impl Fighter {
             return Ok(());
         }
         let p = self.core.physics.position;
-        if p.x < arena.left || p.x > arena.right || p.y > arena.top {
-            unimplemented!("ftCo_800D3158: side/up death");
+        if p.x > arena.right {
+            return self.enter_side_death(assets, arena, Side::Right);
         }
-        if p.y >= arena.bottom {
-            return Ok(());
+        if p.x < arena.left {
+            return self.enter_side_death(assets, arena, Side::Left);
         }
-        if self.core.combat.grab.is_some() {
-            unimplemented!("ftCo_800D331C: release linked fighter on death");
+        if p.y > arena.top {
+            // x2222_b3 is raised only by the DamageIce and ShieldBreakFly entries.
+            if self.core.motion_state.id == S::ShieldBreakFly {
+                unimplemented!("ftCo_ShieldBreakFly.c:30: x2222_b3 top-exit flag");
+            }
+            let counts = self.core.physics.ground_or_air == GroundOrAir::Ground
+                || self.core.physics.knockback_velocity.y > assets.life.top_knockback_threshold;
+            if counts {
+                // Player_GetMoreFlagsBit5 (plain DeadUp) and Camera_8003010C (the fixed
+                // camera) are both off in a Vs match; DamageIce victims stop in damage.rs.
+                let roll = rng.randi(100) + 1;
+                return if assets.life.screen_ko_threshold >= roll {
+                    self.enter_screen_ko(assets)
+                } else {
+                    self.enter_star_ko(assets, arena)
+                };
+            }
         }
-        // ftCommon_8007E2FC (8007E2FC): death clears every velocity owner.
-        self.core.physics.self_velocity = Vec3::ZERO;
-        self.core.physics.animation_velocity = Vec3::ZERO;
-        self.core.physics.knockback_velocity = Vec3::ZERO;
-        self.core.physics.shield_knockback_velocity = Vec3::ZERO;
-        self.core.physics.ground_velocity = 0.0;
-        self.core.physics.ground_knockback_velocity = 0.0;
-        self.core.physics.ground_shield_knockback_velocity = 0.0;
-        self.change_motion_state(S::DeadDown.into(), assets)?;
+        if p.y < arena.bottom {
+            return self.enter_bottom_death(assets, arena);
+        }
+        Ok(())
+    }
+    /// ftCo_800D3BC8 (800D3BC8): the bottom exit, DeadDown. The explosion is
+    /// clamped to the side blast zones and drawn upright.
+    fn enter_bottom_death(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
+        let mut effect = self.core.physics.position;
+        if effect.x > arena.right {
+            effect.x = arena.right;
+        }
+        if effect.x < arena.left {
+            effect.x = arena.left;
+        }
+        self.enter_death(assets, S::DeadDown, 0x61, effect, 0.0)
+    }
+    /// ftCo_800D3680 / ftCo_800D3950 (800D3680 / 800D3950): the side exits, DeadLeft /
+    /// DeadRight. The explosion is clamped to the top/bottom blast zones and rotated
+    /// a quarter turn toward the exit.
+    fn enter_side_death(
+        &mut self,
+        assets: &FighterAssets,
+        arena: &Arena,
+        side: Side,
+    ) -> Result<()> {
+        let mut effect = self.core.physics.position;
+        if effect.y > arena.top {
+            effect.y = arena.top;
+        }
+        if effect.y < arena.bottom {
+            effect.y = arena.bottom;
+        }
+        let (state, sound, angle) = match side {
+            Side::Left => (S::DeadLeft, 0x88, -std::f32::consts::FRAC_PI_2),
+            Side::Right => (S::DeadRight, 0x89, std::f32::consts::FRAC_PI_2),
+        };
+        self.enter_death(assets, state, sound, effect, angle)
+    }
+    /// Shared body of the DeadDown / DeadLeft / DeadRight entries: the fighter
+    /// vanishes, loses the stock immediately and counts down PlCo +500.
+    fn enter_death(
+        &mut self,
+        assets: &FighterAssets,
+        state: S,
+        exit_sound: u32,
+        effect_position: Vec3,
+        effect_angle: f32,
+    ) -> Result<()> {
+        self.release_for_death();
+        self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::Dead {
             remaining: assets.life.death_delay,
         });
-        self.core.player.stocks = self.core.player.stocks.saturating_sub(1);
+        // x2219_b1 / x221E_b1 / x221E_b2 / x221F_b1 are the dead flags MotionData::Life
+        // stands for; pl_8003DF44 stamps the killer's stale-move table (no compared key).
         self.core.effect_state.invisible = true;
-        self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::Death {
-                position: p,
-                scale: assets.life.death_effect_scale,
-            });
+        // Camera_RequestQuake(QuakeKind_Large) and the ftCo_800D35FC rumble have no
+        // simulated observer.
+        self.core.lose_stock();
+        self.core.play_death_sounds(assets, exit_sound);
+        self.core.effects.push(EffectRequest::Death {
+            position: effect_position,
+            angle: effect_angle,
+            scale: assets.life.death_effect_scale,
+        });
+        // ftCo_800D4E50: the coin-mode payout only.
         Ok(())
+    }
+    /// ftCo_800D40B8 (800D40B8): the star KO entry, DeadUpStar. The stock is only
+    /// lost when the star vanishes (ftCo_DeadUpStar_Anim phase 1).
+    fn enter_star_ko(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
+        self.release_for_death();
+        self.change_motion_state(S::DeadUpStar.into(), assets)?;
+        self.core.state_data = MotionData::Life(LifeState::StarKo {
+            remaining: assets.life.star.hold,
+            flying: false,
+            camera_top: arena.camera_top,
+        });
+        // ftCo_800D40B8_inline: dead flags and ft_80088C5C (stop the fighter's channels).
+        // ftCommon_8007EFC0(fp, true): the nametag countdown.
+        self.core.status.name_tag_timer = 1;
+        // ft_800881D8(x4C_sfx->xC, 127, 64) on the voice channel.
+        self.core.push_voice(assets.life.death_sounds.star);
+        // pl_8003DF44 as above; x68 = 0 marks the non-ice variant.
+        Ok(())
+    }
+    /// ftCo_DeadUpStar_Anim (800D42E4): hold for PlCo +504, then fly toward the
+    /// background for PlCo +508 frames aiming at `height_ratio` of the camera top.
+    pub(super) fn star_ko_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.step_animation(assets);
+        let star = &assets.life.star;
+        let position_y = self.core.physics.position.y;
+        let MotionData::Life(LifeState::StarKo {
+            remaining,
+            flying,
+            camera_top,
+        }) = &mut self.core.state_data
+        else {
+            panic!("star KO scratch");
+        };
+        // The ice variant (x68) also spins the XRotN bone here.
+        if *remaining != 0 {
+            *remaining -= 1;
+        }
+        if *remaining != 0 {
+            return Ok(());
+        }
+        if *flying {
+            // ftCommon_8007E2FC, efAsync_Spawn 0x42D (the twinkle), ftCo_800D4E50, the
+            // vanish, ft_PlaySFX 0x83, ftCo_800D34E0 and the PlCo +50C countdown.
+            unimplemented!(
+                "ftCo_DeadUpStar_Anim: the vanish (efAsync_Spawn 0x42D) needs an oracle \
+                 trace running past PlCo +508 frames of flight"
+            );
+        }
+        // retail 800D4438: fmsubs, then fdivs by the int-converted frame count.
+        let frames = star.flight as f32;
+        let velocity_y = fmsubs(star.height_ratio, *camera_top, position_y) / frames;
+        let velocity_z = star.depth / frames;
+        *remaining = star.flight;
+        *flying = true;
+        self.core.physics.self_velocity.y = velocity_y;
+        self.core.physics.self_velocity.z = velocity_z;
+        Ok(())
+    }
+    /// ftCo_800D4780 -> ftCo_800D4580 (800D4580): the screen KO entry, DeadUpFall.
+    fn enter_screen_ko(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.release_for_death();
+        self.change_motion_state(S::DeadUpFall.into(), assets)?;
+        self.core.state_data = MotionData::Life(LifeState::ScreenKo {
+            remaining: assets.life.screen_ko_hold,
+        });
+        // x2220_b7: from here the render callback (ftDrawCommon_80080E18_inline2) places
+        // the fighter through the camera's inverse view matrix; the lerp endpoints
+        // (PlCo +538 / +544) and the lbl_803B7500 rotation reset are camera-space state.
+        // Dead flags, ft_80088C5C, ftCommon_8007EFC0(fp, true):
+        self.core.status.name_tag_timer = 1;
+        // ftCo_800BFFD0(fp, 0x2B, 0): the screen-KO colour animation.
+        self.core
+            .commands
+            .color_animations
+            .push(melee_cmd::ColorAnimationRequest {
+                id: 0x2B,
+                duration: 0,
+            });
+        // pl_8003DF44 as above; x68 = 0 marks the non-ice variant.
+        Ok(())
+    }
+    /// ftCo_DeadUpFall_Anim (800D4854), phase 0: the PlCo +524 hold. The approach
+    /// that follows is camera-space.
+    pub(super) fn screen_ko_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.step_animation(assets);
+        let MotionData::Life(LifeState::ScreenKo { remaining }) = &mut self.core.state_data else {
+            panic!("screen KO scratch");
+        };
+        if *remaining != 0 {
+            *remaining -= 1;
+        }
+        if *remaining == 0 {
+            unimplemented!(
+                "ftDrawCommon_80080E18_inline2: the screen-KO approach (x2220_b7) positions \
+                 the fighter through the camera inverse view matrix; needs the camera port"
+            );
+        }
+        Ok(())
+    }
+    /// ftCo_800D331C (800D331C): detach everything the fighter owns before a death
+    /// entry. Fox and Marth have no death1/2/3_cb hooks; held items (item_gobj,
+    /// x197C, x1980), metal and the x2226_b4 hat are not part of the port yet.
+    fn release_for_death(&mut self) {
+        if self.core.combat.grab.is_some() {
+            unimplemented!("ftCo_800D331C: release linked fighter on death");
+        }
+        self.core.clear_velocities();
+        // ftCommon_8007DB24: x2219_b0 = 0, then efLib_DestroyAll.
+        self.core.effect_state.destroy_on_state_change = false;
+        self.core.effects.push(EffectRequest::DestroyOwned);
+        // x6C / x70 keep the fatal motion id for the stale-move stats.
     }
     /// ftCo_800D4FF4 (800D4FF4), after Fighter_UnkProcessDeath reset.
     pub fn enter_revival(&mut self, assets: &FighterAssets, target: Vec3) -> Result<()> {
@@ -269,7 +512,48 @@ impl FighterCore {
         self.thrown_hitbox.clone_from(&assets.thrown_hitbox);
         self.revival_platform_active = false;
     }
-    /// ftCo_DeadDown_Anim (800D3E00): GM respawn is performed at this callback boundary.
+    /// ftCommon_8007E2FC (8007E2FC): a death clears every velocity owner.
+    pub(super) fn clear_velocities(&mut self) {
+        self.physics.self_velocity = Vec3::ZERO;
+        self.physics.animation_velocity = Vec3::ZERO;
+        self.physics.knockback_velocity = Vec3::ZERO;
+        self.physics.shield_knockback_velocity = Vec3::ZERO;
+        self.physics.ground_velocity = 0.0;
+        self.physics.ground_knockback_velocity = 0.0;
+        self.physics.ground_shield_knockback_velocity = 0.0;
+    }
+    /// ftCo_800D34E0 (800D34E0): the stock-loss bookkeeping. Falls, KO/suicide
+    /// counts, the match frame count and Player_SetHPByIndex(0) feed no compared
+    /// key; the stock count drives the stock display.
+    fn lose_stock(&mut self) {
+        self.player.stocks = self.player.stocks.saturating_sub(1);
+    }
+    /// ft_80088C5C stops the fighter's channels, ftCo_800D38B8 plays x4C_sfx +4 and +8
+    /// on the voice channel, then ft_PlaySFX(exit, 127, 64).
+    fn play_death_sounds(&mut self, assets: &FighterAssets, exit_sound: u32) {
+        use super::commands::{FootstepSound, SoundChannel};
+        for id in assets.life.death_sounds.cries {
+            self.push_voice(id);
+        }
+        self.commands.footstep_sounds.push(FootstepSound {
+            channel: SoundChannel::Ordinary,
+            id: exit_sound,
+            volume: 127,
+            pan: 64,
+        });
+    }
+    /// ft_800881D8(fp, id, 127, 64): one request on the fighter's voice channel.
+    fn push_voice(&mut self, id: u32) {
+        use super::commands::{FootstepSound, SoundChannel};
+        self.commands.footstep_sounds.push(FootstepSound {
+            channel: SoundChannel::FighterVoice,
+            id,
+            volume: 127,
+            pan: 64,
+        });
+    }
+    /// ftCo_DeadDown_Anim (800D3E00) and the DeadLeft / DeadRight twins: GM respawn is
+    /// performed at this callback boundary.
     pub(super) fn death_animation(&mut self) {
         let MotionData::Life(LifeState::Dead { remaining }) = &mut self.state_data else {
             panic!("death scratch");
@@ -310,6 +594,11 @@ impl FighterCore {
         let inv = 1.0 / remaining as f32;
         self.physics.self_velocity.x = (target.x - self.physics.position.x) * inv;
         self.physics.self_velocity.y = (target.y - self.physics.position.y) * inv;
+        self.free_flight_physics(assets, wind);
+    }
+    /// Fighter_procUpdate's tail for a state without its own physics: knockback
+    /// decay, then the velocity and environment integration.
+    pub(super) fn free_flight_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.physics);
         crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);

@@ -204,3 +204,18 @@ fn counter_fd_marth_allocation_budget() {
 fn match_fd_marth_scripted_allocation_budget() {
     allocation_budget("match_fd_marth_scripted", 0);
 }
+
+#[test]
+fn topko_usmash_fd_fox_allocation_budget() {
+    allocation_budget("topko_usmash_fd_fox", 0);
+}
+
+#[test]
+fn hi200_utilt_fd_marth_allocation_budget() {
+    allocation_budget("hi200_utilt_fd_marth", 0);
+}
+
+#[test]
+fn hi200_dolphinslash_fd_marth_allocation_budget() {
+    allocation_budget("hi200_dolphinslash_fd_marth", 0);
+}

@@ -76,7 +76,7 @@ impl Fighter {
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
     /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
-    pub fn proc_process_hit(&mut self, assets: &FighterAssets) {
+    pub fn proc_process_hit(&mut self, assets: &FighterAssets, rng: &mut HsdRng) {
         if self.core.status.disabled {
             return;
         }
@@ -84,7 +84,7 @@ impl Fighter {
         if let Some(callback) = self.character.table().process_defense_hit {
             callback(self, assets);
         }
-        self.process_damage(assets).expect("hit response");
+        self.process_damage(assets, rng).expect("hit response");
         self.shield_proc(assets).expect("shield response");
         self.core.update_hurtbox_extents();
     }

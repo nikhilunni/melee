@@ -3,9 +3,23 @@ use crate::anim::WaitChoice;
 use crate::fighter::assets::Result;
 use crate::fighter::state::AnimationPhase;
 use crate::fighter::*;
-/// ftData_MotionStateList: ftCo_MS_DeadDown (0).
+/// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_DeadLeft (1), ftCo_MS_DeadRight (2).
 pub fn dead(fighter: &mut Fighter, _phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     fighter.core.animation_dead(_phase)
+}
+
+/// ftData_MotionStateList: ftCo_MS_DeadUpStar (4).
+pub fn dead_star(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.star_ko_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_DeadUpFall (6).
+pub fn dead_screen(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.screen_ko_animation(assets)?;
+    Ok(None)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).

@@ -148,9 +148,10 @@ pub fn release_back_throw(
     va: &FighterAssets,
     aa: &FighterAssets,
     map: &mut melee_mp::CollMap,
+    rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
-    victim.begin_damage_reaction(hit, va)?;
+    victim.begin_damage_reaction(hit, va, rng)?;
     Ok(())
 }
 

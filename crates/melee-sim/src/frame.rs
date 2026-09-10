@@ -850,7 +850,7 @@ fn dispatch_fighter(
         }
         FighterProc::Update => {
             f.proc_update(assets, map, wind);
-            f.check_blast_zone(assets, &scene_assets.arena)
+            f.check_blast_zone(assets, &scene_assets.arena, rng)
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
         FighterProc::Map => {
@@ -876,7 +876,7 @@ fn dispatch_fighter(
         }
         FighterProc::Grab => f.proc_grab(),
         FighterProc::HitDetection => f.proc_hit_detection(),
-        FighterProc::ProcessHit => f.proc_process_hit(assets),
+        FighterProc::ProcessHit => f.proc_process_hit(assets, rng),
         FighterProc::Dynamics => f.proc_dynamics_with_forces(map, radial_forces.fields()),
         FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),

@@ -534,9 +534,12 @@ impl Effects {
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
                 EffectRequest::Death {
                     position: origin,
+                    angle,
                     scale,
                 } => {
+                    // efasync.c:598: rotation Z, then the uniform scale.
                     position = origin;
+                    effect.tree.set_rotation_z(effect.root, angle);
                     effect
                         .tree
                         .set_scale(effect.root, &Vec3::new(scale, scale, scale));

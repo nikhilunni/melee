@@ -24,6 +24,53 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_DeadLeft = 1 / ftCo_MS_DeadRight = 2; ftData_MotionStateList[1..=2].
+    rows[S::DeadLeft as usize] = MotionRow {
+        action: ActionId(1),
+        id: S::DeadLeft,
+        animation: -1,
+        anim: callbacks::animation::dead,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::dead,
+        collision: callbacks::collision::thrown,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::DeadRight as usize] = MotionRow {
+        action: ActionId(2),
+        id: S::DeadRight,
+        animation: -1,
+        anim: callbacks::animation::dead,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::dead,
+        collision: callbacks::collision::thrown,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_DeadUpStar = 4; ftData_MotionStateList[4]: ftCo_SM_DamageFall (29).
+    rows[S::DeadUpStar as usize] = MotionRow {
+        action: ActionId(4),
+        id: S::DeadUpStar,
+        animation: 29,
+        anim: callbacks::animation::dead_star,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::dead_star,
+        collision: callbacks::collision::thrown,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_DeadUpFall = 6; ftData_MotionStateList[6]: ftCo_SM_DamageFall (29).
+    rows[S::DeadUpFall as usize] = MotionRow {
+        action: ActionId(6),
+        id: S::DeadUpFall,
+        animation: 29,
+        anim: callbacks::animation::dead_screen,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::dead,
+        collision: callbacks::collision::thrown,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_Rebirth = 12; ftData_MotionStateList[12].
     rows[S::Rebirth as usize] = MotionRow {
         action: ActionId(12),

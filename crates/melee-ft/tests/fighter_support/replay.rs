@@ -270,7 +270,7 @@ fn replay_config(
                         FighterProc::HitboxPositions => f.proc_hitbox_positions(),
                         FighterProc::Grab => f.proc_grab(),
                         FighterProc::HitDetection => f.proc_hit_detection(),
-                        FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets),
+                        FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets, &mut rng),
                         FighterProc::Dynamics => f.proc_dynamics_with_map(&mut fixture.map),
                         FighterProc::Camera => {
                             f.proc_camera_with_map(&fixture.assets, 1.0, &mut fixture.map)

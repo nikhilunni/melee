@@ -24,6 +24,11 @@ pub struct CombatState {
     pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
     pub pending: Option<ReceivedHit>,
+    /// Fighter.dmg.x1908 / x190C: the hit sound and voice set queued by the
+    /// launch calculation, played by the next hit proc that starts no hitlag
+    /// (Fighter_ProcessHit's else branch -> ftCo_80090718).
+    pub queued_hit_sfx: Option<u32>,
+    pub queued_voice: Option<DamageVoice>,
     pub dealt_damage: i32,
     /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
     pub minimum_hitlag: f32,
@@ -33,6 +38,16 @@ pub struct CombatState {
     pub stale: super::attack::stale::StaleHistory,
     pub combo: super::attack::combo::ComboState,
 }
+/// Which fighter voice table a queued damage voice draws from (ft_data->x4C_sfx +1C / +20).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DamageVoice {
+    Medium,
+    Heavy,
+}
+/// ftCo_Damage.c:495/502: the hit sounds paired with the heavy / medium voices.
+const HEAVY_HIT_SFX: u32 = 0x4F;
+const MEDIUM_HIT_SFX: u32 = 0x50;
+
 #[derive(Clone, Debug)]
 pub struct DamageState {
     pub hitstun: f32,
@@ -82,6 +97,13 @@ pub struct DamageParameters {
     pub base: f32,
     pub hitstun_scale: f32,
     pub reaction_thresholds: [f32; 3],
+    /// PlCo +208 / +20C: scaled knockback at which the medium / heavy hit
+    /// sound and voice are queued (ftCo_Damage.c block_70).
+    pub medium_voice_threshold: f32,
+    pub heavy_voice_threshold: f32,
+    /// PlCo +23C (int) / +240: percent floor and Randf chance for DamageFlyRoll.
+    pub fly_roll_percent: i32,
+    pub fly_roll_chance: f32,
     pub grounded_angle_threshold: f32,
     pub sakurai_air_angle: f32,
     pub sakurai_ground_angle: f32,
@@ -147,6 +169,10 @@ impl DamageParameters {
             growth_scale: r.f32(p + 0x11c)?,
             base: r.f32(p + 0x120)?,
             hitstun_scale: r.f32(p + 0x154)?,
+            medium_voice_threshold: r.f32(p + 0x208)?,
+            heavy_voice_threshold: r.f32(p + 0x20C)?,
+            fly_roll_percent: r.s32(p + 0x23C)?,
+            fly_roll_chance: r.f32(p + 0x240)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
             sakurai_air_angle: r.f32(p + 0x144)?,
@@ -403,7 +429,11 @@ impl Fighter {
         Ok(())
     }
 
-    pub(super) fn process_damage(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub(super) fn process_damage(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> Result<()> {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
         if let Some((damage, direction)) = self.core.combat.shield_pushback.take() {
@@ -432,8 +462,13 @@ impl Fighter {
                 // updates percent without a damage-state transition or hitlag.
                 self.core.physics.percent += hit.descriptor.damage;
             } else {
-                hit_damage = self.begin_damage_reaction(hit, assets)?;
+                hit_damage = self.begin_damage_reaction(hit, assets, rng)?;
             }
+        }
+        if hit_damage == 0 {
+            // Fighter_ProcessHit, fighter.c:2990: no hitlag started this frame, so
+            // ftCo_80090718 plays whatever the previous hit queued.
+            self.core.play_queued_damage_sounds(assets, rng);
         }
         if hit_damage != 0 {
             let mut hitlag = assets.damage.hitlag(hit_damage);
@@ -456,12 +491,13 @@ impl Fighter {
         &mut self,
         mut hit: ReceivedHit,
         assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
         if matches!(self.core.motion_state.id, S::Squat | S::SquatWait) {
             // ftCo_Damage_CalcKnockback, 8008D974: separate fmuls.
             hit.knockback *= assets.damage.crouch_knockback_scale;
         }
-        let (state, stun) = self.core.prepare_damage_reaction(&hit, assets);
+        let (state, stun) = self.core.prepare_damage_reaction(&hit, assets, rng);
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         let result = self.core.finish_damage_reaction(hit, stun, assets)?;
@@ -755,6 +791,38 @@ impl FighterCore {
         }
         self.physics.ground_knockback_velocity = 0.0;
     }
+    /// ftCo_80090718: play the queued hit sound (ft_PlaySFX 127/64) and one voice
+    /// drawn with HSD_Randi over the fighter's voice table (ft_800889F4).
+    pub(super) fn play_queued_damage_sounds(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        use super::commands::{FootstepSound, SoundChannel};
+        if let Some(id) = self.combat.queued_hit_sfx.take() {
+            self.commands.footstep_sounds.push(FootstepSound {
+                channel: SoundChannel::Ordinary,
+                id,
+                volume: 127,
+                pan: 64,
+            });
+        }
+        if let Some(set) = self.combat.queued_voice.take() {
+            let voices = match set {
+                DamageVoice::Heavy => &assets.heavy_voices,
+                DamageVoice::Medium => &assets.medium_voices,
+            };
+            if !voices.is_empty() {
+                let id = voices[rng.randi(voices.len() as i32) as usize];
+                self.commands.footstep_sounds.push(FootstepSound {
+                    channel: SoundChannel::FighterVoice,
+                    id,
+                    volume: 127,
+                    pan: 64,
+                });
+            }
+        }
+    }
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
         if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
@@ -894,7 +962,12 @@ fn detect_eligible_hit(
 
 impl FighterCore {
     /// ftCo_8008DCE0 (8008DCE0): common launch calculation before motion entry.
-    fn prepare_damage_reaction(&mut self, hit: &ReceivedHit, assets: &FighterAssets) -> (S, f32) {
+    fn prepare_damage_reaction(
+        &mut self,
+        hit: &ReceivedHit,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> (S, f32) {
         if self.physics.ground_or_air != GroundOrAir::Ground && self.motion_state.id != S::ThrownB {
             unimplemented!("ftCo_Damage.c:346: airborne hit");
         }
@@ -931,6 +1004,27 @@ impl FighterCore {
             state = S::DamageFlyTop;
         }
         let speed = hit.knockback * assets.damage.velocity_scale;
+        // ftCo_Damage.c block_33: a level-3 launch that leaves the ground (or
+        // was airborne) outside the top range rolls for DamageFlyRoll once the
+        // percent (with this hit applied) reaches PlCo +23C.
+        let launches_upward = speed * sinf(angle) > 0.0;
+        if level == 3
+            && state != S::DamageFlyTop
+            && (self.physics.ground_or_air == GroundOrAir::Air || launches_upward)
+            && self.physics.percent >= assets.damage.fly_roll_percent as f32
+            && rng.randf() < assets.damage.fly_roll_chance
+        {
+            state = S::DamageFlyRoll;
+        }
+        // ftCo_Damage.c block_70: queue the hit sound and voice set by scaled
+        // knockback (var_r27 is only cleared on the unported steep-floor path).
+        if stun >= assets.damage.heavy_voice_threshold {
+            self.combat.queued_hit_sfx = Some(HEAVY_HIT_SFX);
+            self.combat.queued_voice = Some(DamageVoice::Heavy);
+        } else if stun >= assets.damage.medium_voice_threshold {
+            self.combat.queued_hit_sfx = Some(MEDIUM_HIT_SFX);
+            self.combat.queued_voice = Some(DamageVoice::Medium);
+        }
         self.physics.facing = hit.facing;
         // ftCo_8008DCE0, 8008DFCC..E0F4: separate products.
         let horizontal = -(speed * cosf(angle)) * hit.facing;
