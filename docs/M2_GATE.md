@@ -1,12 +1,55 @@
 # Milestone 2 bone comparison
 
-This gate compares the cached retail Fox JObj world matrices and SRT against
-the neutral-costume skeleton evaluating unfiltered Wait1 in `hsd-anim`.
-It is ready to capture once a playable `harness/roms/idle_<stage>_fox.sav`
-exists. A matching oracle trace has **not** been established by the tooling
-tests: the real-disc tests check loading, frame advancement, and trace format.
+The M2 gate compares non-dirty retail Fox world-matrix words against complete
+simulated fighter poses on Yoshi's Story. Capture ordinals are aligned to
+scheduler ticks by exact animation-frame and position bits, using the same
+chronological aligner as the Final Destination post-render fighter oracle.
 
-## Contract and root assumption
+## Aligned VI gate (2026-09-09)
+
+The legacy two-frame, standalone Wait1 comparison was replaced because a
+re-created savestate does not reproduce the old capture's animation/matrix
+boundary. The old test reported 378 differing words; a diagnostic using the
+full fighter simulation matched all 480 non-dirty matrix words in those same
+two captured frames (VI 0/1 aligned to ticks 0/1). A dirty flag excludes only
+that bone's cached matrix; neither capture ordinal nor `cur_anim_frame` alone
+specifies the complete standalone animation evaluator state.
+
+The gate now imports `idle_ys_fox`, completes its pending scheduler work, and
+records 600 candidate poses. Matrix setup runs on cloned skeletons, including
+the fighter's actual animation cursors, part state and dynamics; it does not
+change live simulation state. `melee-test-support::rendered_pose::PoseTimeline`
+selects the earliest chronological exact frame/position match, including
+repeated VI observations of one tick. Matrix values never select a match.
+Every non-dirty matrix word of every aligned frame is compared bit-for-bit.
+
+Record **130 VI frames**, fighter index **0**. The gate requires **at least
+100 distinct aligned scheduler ticks with non-dirty matrix coverage**; repeated
+observations and all-dirty frames cannot satisfy that minimum. It also checks
+all 130 capture ordinals and the complete 73 × 22-word input layout. Unmatched
+frames are counted and reported. SRT words are input-format evidence here;
+this oracle compares the 12 world-matrix words per non-dirty bone.
+
+Claude records from the main checkout; do not run this in a lane:
+
+```sh
+MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" \
+MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" \
+MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 \
+"$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" \
+-v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 \
+-e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"
+```
+
+Wait for the capture's `.done` marker; an `.err` marker is a failed capture.
+`MELEE_BONES_ANY_ANIM=1` permits the idle animation transitions in the longer
+recording. Then run `cargo test -p melee-sim --test m2_gate -- --nocapture`.
+The shared missing-data policy and the short-capture/coverage failures print
+this same recording command. Missing files remain hard failures unless
+`MELEE_ALLOW_MISSING_DATA=1` explicitly opts out; a short or mismatching capture
+is never accepted through that switch.
+
+## Capture word layout
 
 Each JSONL line is a `melee_diff::Record`, with one scalar in `state`:
 
@@ -29,7 +72,12 @@ cannot round-trip through the canonical f64 `approx` field. Addresses, flags,
 and AObj times are diagnostics in the oracle `.meta.jsonl`, not comparison
 keys. No `decode.py` step is needed for bones.
 
-**The Rust gate assumes an identity world/root boundary:** it loads the
+## Historical standalone evaluator (not the current M2 gate)
+
+The following CLI instructions document the original isolated evaluator and
+remain useful for diagnosis; they do not certify the aligned VI gate above.
+
+**The standalone evaluator assumes an identity world/root boundary:** it loads the
 archive SRT, attaches Wait1, requests the selected frame once, then calls
 `anim_all` and `setup_matrix` for every bone in preorder. The root has no
 parent; no artificial identity-matrix concatenation is added. Its local
@@ -41,7 +89,7 @@ Retail also sets the root's translation from `fp->cur_pos`
 sets model scale ([fighter.c:213-229](../third_party/melee-decomp/src/melee/ft/fighter.c#L213)),
 and sets bone 0 Y rotation to `M_PI_2 * facing_dir`
 ([fighter.c:1173-1175](../third_party/melee-decomp/src/melee/ft/fighter.c#L1173)).
-Those fighter-layer overrides are **not applied** by this gate. Thus even a
+Those fighter-layer overrides are **not applied** by the historical standalone evaluator. Thus even a
 fighter standing at the origin facing right is not automatically an
 identity-root oracle pose. An ordinary match may immediately diverge at the
 root. Inspect the captured root SRT before interpreting that as an HSD bug.
@@ -50,7 +98,7 @@ root convention; extending the simulator with the audited fighter root
 overrides is a separate alternative. Do not normalize matrices after capture:
 inverse/concatenation introduces extra rounding and hides the original bits.
 
-## Capture in Dolphin
+## Historical single-frame capture in Dolphin
 
 Use the scripting build and configuration in [DOLPHIN.md](DOLPHIN.md) and
 [DOLPHIN_BUILD.md](DOLPHIN_BUILD.md). Run from the repository root, changing
@@ -94,10 +142,12 @@ scalar reads return cached `mtx`; they cannot invoke `HSD_JObjGetMtxPtr`, which
 first performs setup ([jobj.h:697-701](../third_party/melee-decomp/src/sysdolphin/baselib/jobj.h#L697)).
 Dirty matrices can be stale, especially with Null video or hidden bones.
 A capture containing dirty bones needs a capture point after game-side
-matrix setup before it can certify the gate. The snippet preserves those
+matrix setup before it can certify the historical all-bone standalone comparison. The aligned
+VI gate above instead compares non-dirty bones with explicit coverage requirements.
+The snippet preserves those
 values and flags instead of silently discarding joints or rebuilding them.
 
-## Evaluate and compare
+## Historical standalone evaluation and comparison
 
 Inspect the first metadata line and derive the starting time from the AObjs.
 This example refuses mixed times and dirty matrices rather than guessing an
@@ -126,7 +176,7 @@ cargo run -q -p melee-diff -- \
 `--assets /absolute/path/to/files` overrides the compiled repository-root
 default `harness/roms/files/`. The three required files are `PlFxNr.dat`,
 `PlFx.dat`, and `PlFxAJ.dat`; the CLI reports missing assets, while real-disc
-tests skip cleanly if any are absent. See [DISC.md](DISC.md) for extraction
+tests follow the explicit missing-data policy if any are absent. See [DISC.md](DISC.md) for extraction
 and the Wait1 sub-archive layout. The library entry point is
 `melee_sim::bones::write_fox_wait1_bones(assets, frame, frames, writer)`.
 
@@ -205,8 +255,8 @@ had not rebuilt. Without the root overrides the same run diverges at
 `p0.bone[0].mtx[0]`, exactly as predicted above. Every non-root joint's local
 SRT matched with no overrides at all, so the keyframe evaluator, quaternion
 and matrix code, and the fused-multiply-add audit are all confirmed against
-hardware-produced data. `crates/melee-sim/tests/m2_gate.rs` re-runs the
-comparison whenever the trace and disc are present.
+hardware-produced data for that historical capture. The current
+`crates/melee-sim/tests/m2_gate.rs` uses the aligned model described above.
 
 Open item: bone 67 carries scale 1/0.96 in retail; the fighter.c site that
 writes it has not been located (`TODO(meaning)` in `FighterPose`).

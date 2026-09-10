@@ -3,11 +3,7 @@
 use super::{harness, json_lines, replay};
 use std::collections::BTreeMap;
 
-type PoseKey = [u32; 4];
-struct TickPose {
-    tick: usize,
-    matrices: Vec<[u32; 12]>,
-}
+use melee_test_support::rendered_pose::PoseTimeline;
 
 pub fn compare_start() {
     let paths = [0, 1]
@@ -18,7 +14,7 @@ pub fn compare_start() {
     if !melee_test_support::require_files(paths.iter().chain(&meta_paths)) {
         return;
     }
-    let mut poses: [BTreeMap<PoseKey, Vec<TickPose>>; 2] = Default::default();
+    let mut poses: [PoseTimeline; 2] = Default::default();
     replay::replay_with_observer(
         "start",
         130,
@@ -41,14 +37,11 @@ pub fn compare_start() {
                         std::array::from_fn(|index| matrix[index / 4][index % 4].to_bits())
                     })
                     .collect();
-                poses[player]
-                    .entry(key)
-                    .or_default()
-                    .push(TickPose { tick, matrices });
+                poses[player].insert(tick, key, matrices);
             }
         },
     );
-    if poses.iter().all(BTreeMap::is_empty) {
+    if poses.iter().all(PoseTimeline::is_empty) {
         return; // Replay already reported missing disc/trace/savestate.
     }
     let mut first = None;
@@ -69,7 +62,6 @@ pub fn compare_start() {
         }
         assert_eq!(frames.len(), 130);
         let (mut aligned, mut matched, mut skipped, mut empty, mut words) = (0, 0, 0, 0, 0);
-        let mut last_tick = 0;
         for (frame, meta) in metadata.iter().enumerate() {
             assert_eq!(meta["frame"].as_u64().unwrap() as usize, frame);
             let expected = &frames[&frame];
@@ -80,15 +72,11 @@ pub fn compare_start() {
                 meta["cur_pos"][1].as_u64().unwrap() as u32,
                 meta["cur_pos"][2].as_u64().unwrap() as u32,
             ];
-            let Some(pose) = poses[player]
-                .get(&key)
-                .and_then(|candidates| candidates.iter().find(|pose| pose.tick >= last_tick))
-            else {
+            let Some(pose) = poses[player].align(&key) else {
                 skipped += 1;
                 eprintln!("VI p{player} frame {frame}: no completed tick for key {key:08X?}");
                 continue;
             };
-            last_tick = pose.tick;
             aligned += 1;
             let mut dirty = [false; 73];
             for bone in meta["dirty_bones"].as_array().unwrap() {

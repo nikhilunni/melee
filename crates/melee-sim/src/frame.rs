@@ -983,3 +983,5 @@ mod yoshi_bones;
 mod grab_pairs;
 #[cfg(test)]
 mod yoshi_state;
+
+pub mod rendered_pose;

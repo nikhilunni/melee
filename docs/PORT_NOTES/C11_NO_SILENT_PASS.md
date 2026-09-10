@@ -579,3 +579,238 @@ docs/PORT_NOTES/C11_NO_SILENT_PASS.md
 tools/merge-check.sh
 tools/tests/test_merge_check.py
 ```
+
+## Follow-up: aligned Yoshi's Story M2 oracle (2026-09-09)
+
+The legacy standalone Wait1 oracle reported 378 differing words on the new two-VI-frame capture. Before replacing it, an internal diagnostic imported the same Yoshi's Story scenario into the full simulation, completed scheduler ticks, cloned each fighter skeleton, rebuilt its world matrices, and aligned by exact animation-frame/position bits. The result was:
+
+```text
+VI 0: aligned tick 0, 156 clean matrix words, 0 differences
+VI 1: aligned tick 1, 324 clean matrix words, 0 differences
+```
+
+This demonstrates that the requested alignment is viable for the existing capture. The evidence does not support treating every non-dirty word in that capture as intrinsically stale: the completed full-fighter poses match them, whereas the isolated evaluator did not. The temporary diagnostic was removed after this investigation.
+
+Changes:
+
+- `crates/melee-test-support/src/rendered_pose.rs`: dependency-free chronological `PoseTimeline`, shared by both matrix oracles; exact frame/position keys, earliest non-backward candidate, repeated observations allowed, distinct clean-tick coverage accounting. Two regression tests cover repeated/looped keys, unmatched frames, signed zero and non-vacuous coverage.
+- `crates/melee-test-support/src/lib.rs`: shared exact `M2_CAPTURE_COMMAND`, printed for missing legacy M2 capture files and reused by insufficient-capture/coverage failures.
+- `crates/melee-sim/src/frame.rs` and new `src/frame/rendered_pose.rs`: on-demand public diagnostic for integration tests, returning frame/position bits and cloned/rebuilt matrices. No live state mutation or tick-path work; no gameplay dependency on test support.
+- `crates/melee-sim/tests/m2_gate.rs`: full simulation of `idle_ys_fox`, 600 candidate ticks, exactly 130 VI input frames, complete 73 x 22-word capture layout, and all 12 matrix words for every non-dirty bone of every aligned frame. Requires at least **100 distinct aligned ticks with clean matrix coverage**. Repeats and all-dirty frames cannot meet the minimum. Neither matrix values nor a guessed frame offset select alignment.
+- `crates/melee-ft/tests/fighter_support/rendered_pose.rs`: uses that same aligner; existing comparison, dirty-bone exclusion, coverage assertion and 130-frame capture checks remain intact.
+- `docs/M2_GATE.md`: dated replacement explanation, current capture command and coverage contract; marks the old standalone instructions as historical.
+- This report: appended evidence and final command results. No Git commands, Dolphin runs, TRACKER.md edits, fighter-source edits, or protected-data/decomp edits.
+
+Claude must record from the main checkout:
+
+```sh
+MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"
+```
+
+`MELEE_BONES_ANY_ANIM=1` allows idle-animation transitions during the longer capture. The output is `harness/traces/fox_ys.bones.expected.jsonl` with its `.meta.jsonl`; wait for `.done` and check for `.err`. The existing 2-frame capture is intentionally rejected, not repeated, padded, overwritten, or accepted with a lower coverage bound.
+
+Validation (logs `/tmp/m2-align-*.log`):
+
+```sh
+cargo test -p melee-test-support
+```
+Exit 0; wall time 1.89s.
+Sum of reported test results: 4 passed, 0 failed, 0 ignored.
+```text
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+   Doc-tests melee_test_support
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+```sh
+cargo test -p melee-ft --test start_fox_bones_130 -- --nocapture
+```
+Exit 0; wall time 7.77s.
+Sum of reported test results: 4 passed, 0 failed, 0 ignored.
+```text
+VI p0: 130/130 aligned, 130 matched, 0 skipped, 3 all-dirty frames, 102900 matrix words compared
+VI p1: 130/130 aligned, 130 matched, 0 skipped, 3 all-dirty frames, 99120 matrix words compared
+start: 130 records per fighter; 24 fields each; 6 fighter draws; bones=true
+test start_fox_bones_130 ... ok
+VI p0: 130/130 aligned, 130 matched, 0 skipped, 3 all-dirty frames, 102900 matrix words compared
+VI p1: 130/130 aligned, 130 matched, 0 skipped, 3 all-dirty frames, 99120 matrix words compared
+test start_fox_matrices_vi_130 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
+```
+
+```sh
+cargo test -p melee-sim --test m2_gate -- --nocapture
+```
+Exit 101; wall time 2.57s.
+Sum of reported test results: 0 passed, 1 failed, 0 ignored.
+```text
+assertion `left == right` failed: M2 requires 130 VI frames; Claude must record from main with: MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"
+  left: 2
+ right: 130
+
+failures:
+    fox_wait1_bones_match_the_real_game_bit_for_bit
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p melee-sim --test m2_gate`
+```
+
+```sh
+cargo gate
+```
+Exit 101; wall time 170.02s.
+Sum of reported test results: 620 passed, 1 failed, 2 ignored.
+```text
+assertion `left == right` failed: M2 requires 130 VI frames; Claude must record from main with: MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"
+  left: 2
+ right: 130
+
+failures:
+    fox_wait1_bones_match_the_real_game_bit_for_bit
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p melee-sim --test m2_gate`
+```
+
+```sh
+cargo test -p melee-sim --test m4_gate
+```
+Exit 0; wall time 184.38s.
+Sum of reported test results: 261 passed, 0 failed, 0 ignored.
+```text
+test wavedash_fd_yoshi_300 ... ok
+test wavedash_marth_particle_draw_order ... ok
+test wavedash_peach_particle_draw_order ... ok
+test wavedash_puff_particle_draw_order ... ok
+test wavedash_yoshi_particle_draw_order ... ok
+
+test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 183.98s
+```
+
+```sh
+cargo test -p melee-sim --test m5_gate
+```
+Exit 0; wall time 6.69s.
+Sum of reported test results: 8 passed, 0 failed, 0 ignored.
+```text
+test tech_fd_marth_300_ticks_and_ordered_particle_draws ... ok
+test jab_fd_marth_300_ticks_and_ordered_particle_draws ... ok
+test utilt_fd_marth_300_ticks_and_ordered_particle_draws ... ok
+test shieldhit_fd_marth_300_ticks_and_ordered_particle_draws ... ok
+test ko_fd_marth_480_ticks_and_ordered_particle_draws ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.51s
+```
+
+```sh
+cargo test -p melee-ft
+```
+Exit 0; wall time 30.36s.
+Sum of reported test results: 90 passed, 0 failed, 0 ignored.
+```text
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.98s
+
+   Doc-tests melee_ft
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+```sh
+cargo test -p hsd-particle
+```
+Exit 0; wall time 59.29s.
+Sum of reported test results: 75 passed, 0 failed, 0 ignored.
+```text
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests hsd_particle
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+```sh
+cargo fmt --all
+```
+Exit 0; wall time 1.37s.
+```text
+
+```
+
+```sh
+cargo fmt --all -- --check
+```
+Exit 0; wall time 1.23s.
+```text
+
+```
+
+```sh
+env MELEE_TEST_DATA_ROOT=/tmp/m2-empty-emze4lga cargo test -p melee-sim --test m2_gate -- --nocapture
+```
+Exit 101; wall time 0.17s.
+Sum of reported test results: 0 passed, 1 failed, 0 ignored.
+```text
+missing oracle data: /tmp/m2-empty-emze4lga/traces/fox_ys.bones.expected.jsonl; restore with `MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"`; only contributors without local data may opt out with MELEE_ALLOW_MISSING_DATA=1
+
+failures:
+    fox_wait1_bones_match_the_real_game_bit_for_bit
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p melee-sim --test m2_gate`
+```
+
+```sh
+env MELEE_TEST_DATA_ROOT=/tmp/m2-empty-emze4lga MELEE_ALLOW_MISSING_DATA=1 cargo test -p melee-sim --test m2_gate -- --nocapture
+```
+Exit 0; wall time 0.13s.
+Sum of reported test results: 1 passed, 0 failed, 0 ignored.
+```text
+missing oracle data: /tmp/m2-empty-emze4lga/traces/fox_ys.bones.expected.jsonl; restore with `MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"`; only contributors without local data may opt out with MELEE_ALLOW_MISSING_DATA=1
+     Running tests/m2_gate.rs (target/debug/deps/m2_gate-efe5c23cc846ef4a)
+
+running 1 test
+missing oracle data: /tmp/m2-empty-emze4lga/traces/fox_ys.bones.expected.jsonl; restore with `MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"`; only contributors without local data may opt out with MELEE_ALLOW_MISSING_DATA=1
+test fox_wait1_bones_match_the_real_game_bit_for_bit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+```sh
+env MELEE_ALLOW_MISSING_DATA=1 cargo test -p melee-sim --test m2_gate -- --nocapture
+```
+Exit 101; wall time 0.14s.
+Sum of reported test results: 0 passed, 1 failed, 0 ignored.
+```text
+assertion `left == right` failed: M2 requires 130 VI frames; Claude must record from main with: MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py"
+  left: 2
+ right: 130
+
+failures:
+    fox_wait1_bones_match_the_real_game_bit_for_bit
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p melee-sim --test m2_gate`
+```
+
+```sh
+cargo clippy --workspace --all-targets -- -D warnings
+```
+Exit 0.
+```text
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 42.26s
+```
+
+Final status: M4 (261), M5 (8), melee-ft, hsd-particle, shared-support tests, Clippy and formatting passed. M2 and cargo gate exit 101 because the available metadata still contains 2 frames instead of 130. The longer Yoshi's Story capture and its 100-tick coverage/matrix comparison remain unverified until Claude records it; no full-green acceptance is claimed. Re-run `cargo test -p melee-sim --test m2_gate -- --nocapture` and `cargo gate` after recording. The temporary empty data directory used above was created with Python `tempfile.TemporaryDirectory` and removed afterward.

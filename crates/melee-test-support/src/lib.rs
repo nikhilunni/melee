@@ -1,6 +1,11 @@
 //! Shared integration-test preflight; never a dependency of gameplay code.
 use std::{env, path::Path};
 
+pub mod rendered_pose;
+
+/// Record from the main checkout; this helper never launches Dolphin.
+pub const M2_CAPTURE_COMMAND: &str = r#"MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py""#;
+
 /// Check required files in caller order. Missing data fails the test unless
 /// `MELEE_ALLOW_MISSING_DATA=1`; only that opt-in returns `false` to the caller.
 ///
@@ -49,7 +54,7 @@ fn recovery_command(path: &Path) -> String {
     }
     let scenario = name.split('.').next().unwrap_or_default();
     if scenario == "fox_ys" {
-        return "the bone capture command in docs/M2_GATE.md with MELEE_BONES_SAVESTATE=harness/roms/idle_ys_fox.sav and MELEE_BONES_OUT=harness/traces/fox_ys.bones.expected.jsonl".into();
+        return format!("`{M2_CAPTURE_COMMAND}`");
     }
     if let Some(player) = name
         .split(".bones_vi_p")
