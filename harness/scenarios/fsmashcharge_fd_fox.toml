@@ -1,0 +1,26 @@
+# Forward smash charged for 35 frames, then released.
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "fsmashcharge_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 105, buttons = { StickX = 1.0, A = true } },
+  { frame = 107, buttons = { A = true } },
+  { frame = 140, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

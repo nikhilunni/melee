@@ -1,0 +1,29 @@
+# Marth fair started late so it is still active at landing, L-cancelled.
+# Derived from the matching no-L-cancel scene; the trigger is pressed inside the seven-frame window before landing (tick from that recording).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "fairlc_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 80, buttons = {  } },
+  { frame = 84, buttons = { X = true } },
+  { frame = 86, buttons = {  } },
+  { frame = 112, buttons = { StickX = 1.0, A = true } },
+  { frame = 114, buttons = {  } },
+  { frame = 128, buttons = { L = true } },
+  { frame = 130, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

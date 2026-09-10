@@ -1,0 +1,27 @@
+# Fox (P2) runs in and dash-attacks; Marth (P1) Counters as the hit arrives.
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "counter_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 5, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 55, buttons = { StickY = -1.0, B = true } },
+  { frame = 56, port = 1, buttons = { StickX = -1.0, A = true } },
+  { frame = 57, buttons = {  } },
+  { frame = 58, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 62, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

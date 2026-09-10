@@ -1,0 +1,27 @@
+# Marth forward tilt angled up (stick 0.4 vertical, below the tap-jump threshold).
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; Dolphin stick 0.3 is about 0.48 in game units (walk/tilt), 0.5 is about 0.8 (dash/smash).
+name = "ftiltup_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 86, buttons = {  } },
+  { frame = 112, buttons = { StickX = 0.35, StickY = 0.4 } },
+  { frame = 118, buttons = { StickX = 0.35, StickY = 0.4, A = true } },
+  { frame = 120, buttons = { StickX = 0.35, StickY = 0.4 } },
+  { frame = 124, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

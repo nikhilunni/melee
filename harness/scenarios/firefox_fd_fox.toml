@@ -1,0 +1,24 @@
+# Fox Fire Fox (up special): charge, launch straight up, fall and land.
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "firefox_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickY = 1.0, B = true } },
+  { frame = 32, buttons = { StickY = 1.0 } },
+  { frame = 95, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

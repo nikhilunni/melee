@@ -1,0 +1,29 @@
+# Fox uair L-cancelled (L pressed four frames before the landing tick 101).
+# Derived from the matching no-L-cancel scene; the trigger is pressed inside the seven-frame window before landing (tick from that recording).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "uairlc_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 70, buttons = { X = true } },
+  { frame = 72, buttons = {  } },
+  { frame = 80, buttons = { StickY = 1.0, A = true } },
+  { frame = 82, buttons = {  } },
+  { frame = 97, buttons = { L = true } },
+  { frame = 99, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -253,6 +253,13 @@ code sketches: `docs/STEEL_THREAD.md`.
 
 ### Combat table (each row: Dolphin scenes recorded by Claude, ported by Codex, gated)
 
+Recorded 2026-09-10 (all from `idle_fd_fox.sav` / `idle_fd_marth.sav`, P2 Fox idle at +60; tick trace with items, ledger, particles):
+- S3 specials (11): `illusion`, `firefox`, `reflector`, `reflectorjc`, `airillusion`, `airfirefox`, `airreflector` (`_fd_fox`); `shieldbreaker`, `dancingblade` (four hits: 349/351/352/357), `dolphinslash`, `counter` (`_fd_marth`; Counter catches Fox's scripted dash attack). Illusion, Shield Breaker and Dolphin Slash connect.
+- S1 ground attacks (19): `dashattack`, `ftilt`, `ftiltup`, `ftiltdown`, `dtilt`, `fsmashcharge`, `usmash`, `dsmash`, `jabcombo` for both, `utilt_fd_fox`. Fox's rapid-jab kick (Attack100), Marth's two-hit jab; Marth's angled tilts resolve to neutral (Fox covers AttackS3Hi/Lw). Most connect; Marth's usmash, fsmash and Dolphin Slash KO the target.
+- S2 aerials (17): `nair`..`dair` for both (Marth's nair/fair/bair/uair autocancel into Landing 42), `nairlc`..`dairlc` (`_fd_fox`), `dairlc_fd_marth`, `fairlc_fd_marth` (halved landing lag observed).
+- Scripting facts learned: Dolphin stick 0.3 is about 0.48 game units (walk/tilt), 0.5 about 0.8 (dash/smash), 0.55 vertical is a tap jump; A on the same frame the stick moves is a smash input, so tilts hold the stick six frames first; side-B during run-brake is ignored (press while running); Dancing Blade's fourth window opens ~27 frames into the third hit; Marth's run is slower than Fox's, so his approach runs to VI 86.
+
+
 | # | Area | Have | Missing | Est. tasks |
 |---|---|---|---|---|
 | S1 | Ground attacks | jab, up-tilt, forward smash | dash attack, remaining tilts with angles, up/down smash, smash charge, jab combos | 3-4 |
@@ -409,3 +416,4 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-09 (night, cont.): C11 merged; JIT probes, fox_ys bones and start_fd_fox VI bones re-captured; C4 chain running; C5-b running; M2 legacy oracle -> aligned model (follow-up).
 - 2026-09-09 (night, cont.): C4 merged (melee-ef). Awaiting C5-b follow-up and the M2 aligned-oracle follow-up; then a stock-take (user request), no new lanes.
 - 2026-09-09 (late night): C5-b and the M2 aligned oracle merged. Consolidation round complete except C8 (`melee-cmd`/`melee-coll`) and C3 (family crate, lands with the first Fox special). Main: strict workspace 965 passed / 0 failed, both profiles exact. Paused for a stock-take at the user's request; no lanes running.
+- 2026-09-10: C8 running; 47 combat scenes recorded for S1/S2/S3 (specials, ground attacks, aerials, L-cancels); scenario files committed, traces mirrored.

@@ -1,0 +1,25 @@
+# Fox Illusion in the air after a full hop.
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "airillusion_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 32, buttons = {  } },
+  { frame = 44, buttons = { StickX = 1.0, B = true } },
+  { frame = 46, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -1,0 +1,30 @@
+# Three-press jab sequence into the idle Fox.
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "jabcombo_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 105, buttons = { A = true } },
+  { frame = 107, buttons = {  } },
+  { frame = 113, buttons = { A = true } },
+  { frame = 115, buttons = {  } },
+  { frame = 121, buttons = { A = true } },
+  { frame = 123, buttons = {  } },
+  { frame = 140, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

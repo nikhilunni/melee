@@ -1,0 +1,27 @@
+# Forward tilt angled down (stick held before the press).
+# Recorded from idle_fd_fox.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "ftiltdown_fd_fox"
+savestate = "harness/roms/idle_fd_fox.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 66, buttons = {  } },
+  { frame = 100, buttons = { StickX = 0.6, StickY = -0.7 } },
+  { frame = 106, buttons = { StickX = 0.6, StickY = -0.7, A = true } },
+  { frame = 108, buttons = { StickX = 0.6, StickY = -0.7 } },
+  { frame = 112, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

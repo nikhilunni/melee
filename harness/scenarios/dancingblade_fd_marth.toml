@@ -1,0 +1,31 @@
+# Marth Dancing Blade: side, side, up, down (fourth press attempted at 90 and 98).
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; Dolphin stick 0.3 is about 0.48 in game units (walk/tilt), 0.5 is about 0.8 (dash/smash).
+name = "dancingblade_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0, B = true } },
+  { frame = 32, buttons = {  } },
+  { frame = 46, buttons = { StickX = 1.0, B = true } },
+  { frame = 48, buttons = {  } },
+  { frame = 62, buttons = { StickY = 1.0, B = true } },
+  { frame = 64, buttons = {  } },
+  { frame = 90, buttons = { StickY = -1.0, B = true } },
+  { frame = 92, buttons = {  } },
+  { frame = 98, buttons = { StickY = -1.0, B = true } },
+  { frame = 100, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

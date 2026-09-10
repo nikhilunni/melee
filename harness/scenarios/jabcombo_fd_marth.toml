@@ -1,0 +1,28 @@
+# Marth two-hit jab into the idle Fox.
+# Recorded from idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait).
+# Input frames are VI callbacks counted from the savestate load; the port replays the per-tick pad the tick tracer recorded.
+name = "jabcombo_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 86, buttons = {  } },
+  { frame = 118, buttons = { A = true } },
+  { frame = 120, buttons = {  } },
+  { frame = 128, buttons = { A = true } },
+  { frame = 130, buttons = {  } },
+  { frame = 150, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
