@@ -65,8 +65,7 @@ fn replay_config(
     let trace_path = harness().join(format!("traces/{scene}_fd_fox.tick.expected.jsonl"));
     let ledger_path = harness().join(format!("traces/{scene}_fd_fox.{ledger_suffix}.raw.jsonl"));
     let raw_path = harness().join(format!("traces/{scene}_fd_fox.tick.raw.jsonl"));
-    if !trace_path.exists() || !ledger_path.exists() || !raw_path.exists() {
-        eprintln!("skipping: local FD expected trace/raw trace/RNG ledger absent");
+    if !melee_test_support::require_files([&trace_path, &ledger_path, &raw_path]) {
         return;
     }
     let Some(mut fixture) = Fixture::load() else {
@@ -86,8 +85,11 @@ fn replay_config(
     ];
     let bones_path = harness().join(format!("traces/{scene}_fd_fox.bones.jsonl"));
     let save_path = harness().join(format!("roms/{scene}_fd_fox.sav"));
-    if !callbacks_only && (!save_path.exists() || (compare_bones && !bones_path.exists())) {
-        eprintln!("skipping: local savestate/bone oracle absent");
+    if !callbacks_only
+        && !melee_test_support::require_files(
+            std::iter::once(&save_path).chain(compare_bones.then_some(&bones_path)),
+        )
+    {
         return;
     }
     let first_raw = raw(&raw_trace[0], 0);
@@ -132,7 +134,10 @@ fn replay_config(
     let bones = compare_bones.then(|| json_lines(&bones_path));
     // Separate captures must agree on scheduler ticks and RNG boundaries.
     let bone_raw_path = harness().join(format!("traces/{scene}_fd_fox.bones.raw.jsonl"));
-    if compare_bones && bone_raw_path.exists() {
+    if compare_bones {
+        if !melee_test_support::require_files([&bone_raw_path]) {
+            return;
+        }
         let bone_raw = json_lines(&bone_raw_path);
         assert_eq!(bone_raw.len(), ticks);
         for (a, b) in bone_raw.iter().zip(&raw_trace) {

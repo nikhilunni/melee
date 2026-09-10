@@ -31,8 +31,7 @@ fn relocated_zero_signed_fields_float_bits_and_sword_padding() {
 #[test]
 fn disc_attributes_and_character_resets() {
     let files = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if !files.is_dir() {
-        eprintln!("skipping local Marth attributes: extracted disc absent");
+    if !melee_test_support::require_files(["PlMs.dat", "PlCo.dat"].map(|name| files.join(name))) {
         return;
     }
     let archive =

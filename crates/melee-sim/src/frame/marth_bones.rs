@@ -54,13 +54,12 @@ fn replay(name: &str, ticks: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
     let bones_path = scenario.trace_path("bones.jsonl");
-    if let Some(missing) = scenario
-        .required_files()
-        .into_iter()
-        .chain([bones_path.clone()])
-        .find(|p| !p.is_file())
-    {
-        eprintln!("skipping local Marth bones: {} absent", missing.display());
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([bones_path.clone()]),
+    ) {
         return;
     }
     let initial = InitialState::from_savestate_traces(&scenario).unwrap();

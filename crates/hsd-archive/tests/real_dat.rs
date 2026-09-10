@@ -1,8 +1,8 @@
 //! Parse real archives from the extracted disc.
 //!
 //! These tests read `harness/roms/files/` (produced by
-//! `harness/extract_fst.py`, gitignored) and skip with a note when it is
-//! absent so the gate stays green on machines without the disc. Every
+//! `harness/extract_fst.py`, gitignored) and require them unless
+//! `MELEE_ALLOW_MISSING_DATA=1` explicitly opts out. Every
 //! number asserted here was measured on the NTSC 1.02 disc and is
 //! recorded in `docs/DISC.md`; if one changes, the parser changed, not
 //! the disc.
@@ -21,18 +21,20 @@ use hsd_archive::{Archive, ArchiveHeader, Reader};
 /// not been extracted on this machine.
 fn disc_files() -> Option<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if dir.is_dir() {
-        Some(dir)
-    } else {
-        eprintln!(
-            "skipping: {} not found; run `cd harness && uv run python extract_fst.py roms/GALE01.iso`",
-            dir.display()
-        );
-        None
-    }
+    melee_test_support::require_files(
+        [
+            "PlFxNr.dat",
+            "PlFx.dat",
+            "PlCo.dat",
+            "GrNLa.dat",
+            "PlFxAJ.dat",
+        ]
+        .map(|name| dir.join(name)),
+    )
+    .then_some(dir)
 }
 
-/// Early-return from a test when the disc is absent.
+/// Early-return only when the missing-data policy explicitly permits it.
 macro_rules! require_disc {
     () => {
         match disc_files() {

@@ -109,10 +109,18 @@ fn idle_ground_fields_600() {
     let files = harness.join("roms/files");
     let trace_path = harness.join("traces/idle_fd_fox.tick.expected.jsonl");
     let ledger_path = harness.join("traces/idle_fd_fox.ledger600.raw.jsonl");
-    if !files.is_dir() || !trace_path.exists() || !ledger_path.exists() {
-        eprintln!(
-            "skipping grounded FD replay: extracted disc or tick trace/animation ledger absent"
-        );
+    if !melee_test_support::require_files(
+        [
+            "PlFx.dat",
+            "PlCo.dat",
+            "PlFxAJ.dat",
+            "PlFxNr.dat",
+            "GrNLa.dat",
+        ]
+        .map(|name| files.join(name))
+        .iter()
+        .chain([&trace_path, &ledger_path]),
+    ) {
         return;
     }
     let trace = json_lines(&trace_path);

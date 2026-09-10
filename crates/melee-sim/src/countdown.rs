@@ -54,8 +54,7 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let ledger = root.join("harness/traces/start_fd_fox.ledger600.raw.jsonl");
         let files = root.join("harness/roms/files");
-        if !ledger.exists() || !files.join("IfAll.usd").exists() {
-            eprintln!("SKIP: local countdown assets/ledger absent");
+        if !melee_test_support::require_files([&ledger, &files.join("IfAll.usd")]) {
             return;
         }
         let mut countdown = Countdown::load(&files).unwrap();

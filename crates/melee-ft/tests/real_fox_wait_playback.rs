@@ -51,14 +51,14 @@ fn word(bytes: &[u8], offset: usize) -> u32 {
 fn fox_wait_playback_600() {
     let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness");
     let files = harness.join("roms/files");
-    if !files.is_dir() {
-        eprintln!("skipping Fox playback: disc not extracted");
+    if !melee_test_support::require_files(
+        ["PlFx.dat", "PlFxAJ.dat", "PlFxNr.dat"].map(|name| files.join(name)),
+    ) {
         return;
     }
     let trace_path = harness.join("traces/idle_fd_fox.tick.expected.jsonl");
     let ledger_path = harness.join("traces/idle_fd_fox.ledger600.raw.jsonl");
-    if !trace_path.exists() || !ledger_path.exists() {
-        eprintln!("skipping Fox playback: local FD trace/ledger absent");
+    if !melee_test_support::require_files([&trace_path, &ledger_path]) {
         return;
     }
     let trace = json_lines(&trace_path);

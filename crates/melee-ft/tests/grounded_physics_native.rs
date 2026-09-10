@@ -22,7 +22,7 @@ fn ground_reference_sources_match_decomp() {
             .join("../../third_party/melee-decomp/src/melee/ft")
             .join(name);
         if !decomp.exists() {
-            eprintln!("submodule absent: skipping source provenance check");
+            eprintln!("[NON-DATA OMITTED] submodule absent: omitting source provenance check");
             return;
         }
         let source = fs::read_to_string(decomp).unwrap();

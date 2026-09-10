@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/melee-test-support", # Dev-only oracle preflight; no gameplay dependencies.
     # Layer 0: leaf crates. Tiny, stable, everything depends on them.
     "crates/gekko-math",
     "crates/hsd-types",

@@ -38,8 +38,7 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
     };
     use melee_types::CommonMotionState as S;
     let path = harness().join("traces/jump_fd_fox.tick.raw.jsonl");
-    if !path.exists() {
-        eprintln!("skipping: local jump boundary absent");
+    if !melee_test_support::require_files([&path]) {
         return;
     }
     let Some(fixture) = Fixture::load() else {
@@ -150,8 +149,7 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
     use melee_types::CommonMotionState as S;
     let path = harness().join("traces/ledge_fd_fox.tick.raw.jsonl");
     let pads = harness().join("traces/ledge_fd_fox.tick.expected.jsonl");
-    if !path.exists() || !pads.exists() {
-        eprintln!("skipping: local ledge approach absent");
+    if !melee_test_support::require_files([&path, &pads]) {
         return;
     }
     let Some(mut fixture) = Fixture::load() else {

@@ -11,7 +11,7 @@ fn dynamics_one_bone_50000() {
     fs::create_dir_all(&output).unwrap();
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     if Command::new(&cc).arg("--version").output().is_err() {
-        eprintln!("skipping: no C compiler");
+        eprintln!("[NON-DATA OMITTED] omitting: no C compiler");
         return;
     }
     let reference = root.join("tests/ref");

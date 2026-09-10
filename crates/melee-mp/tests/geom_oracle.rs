@@ -58,7 +58,7 @@ fn geometry_reference_extracts_match_submodule() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../third_party/melee-decomp/src/melee/mp/mplib.c");
     if !source.exists() {
-        eprintln!("melee-decomp absent; skipping source-extract check");
+        eprintln!("[NON-DATA OMITTED] melee-decomp absent; omitting source-extract check");
         return;
     }
     let source = std::fs::read_to_string(source).unwrap();
@@ -79,7 +79,9 @@ fn build_oracles() -> Option<(PathBuf, PathBuf)> {
         .output()
         .is_ok_and(|out| out.status.success())
     {
-        eprintln!("no working C compiler ({cc}); skipping native geometry oracle");
+        eprintln!(
+            "[NON-DATA OMITTED] no working C compiler ({cc}); omitting native geometry oracle"
+        );
         return None;
     }
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))

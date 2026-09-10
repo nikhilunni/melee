@@ -65,6 +65,9 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 
 ## The gates, in one command each
 
+Missing local oracle files fail tests with the first missing path and its recovery command; contributors without the disc may explicitly opt out with `MELEE_ALLOW_MISSING_DATA=1`.
+`tools/merge-check.sh` rejects that variable whenever it is set, so a green merge chain requires the data oracles to run.
+
 ```sh
 cargo gate                                                   # every unit/oracle test
 tools/perf-gate.sh                                            # separate release performance/size/instantiation regressions
@@ -320,8 +323,8 @@ rebases or commits.
 - Never commit game data: no ISO, DOL, `.dat`, savestates, or extracted
   files. `harness/roms/` and `harness/traces/` are gitignored for this.
   The disc lives at `harness/roms/GALE01.iso`; extracted files go under
-  `harness/roms/files/`. Rust tests that need them must skip cleanly when
-  they are absent so the gate stays green on any machine.
+  `harness/roms/files/`. Rust tests that need them follow the strict missing-data policy in
+  "The gates" above.
 - Never help obtain the game from ROM sites. The disc must be owned and
   dumped by the user (`docs/ISO.md`).
 - Dolphin's `frsqrte`/`fres` tables are GPLv2. Do not copy them into this

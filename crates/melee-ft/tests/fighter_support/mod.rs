@@ -71,8 +71,19 @@ pub struct Fixture {
 impl Fixture {
     pub fn load() -> Option<Self> {
         let files = harness().join("roms/files");
-        if !files.is_dir() {
-            eprintln!("skipping: extracted disc absent");
+        if !melee_test_support::require_files(
+            [
+                "PlFx.dat",
+                "PlCo.dat",
+                "PlFxAJ.dat",
+                "GrNLa.dat",
+                "PlFxNr.dat",
+                "PlFxOr.dat",
+                "PlFxLa.dat",
+                "PlFxGr.dat",
+            ]
+            .map(|name| files.join(name)),
+        ) {
             return None;
         }
         let read = |name| Archive::parse(&fs::read(files.join(name)).unwrap()).unwrap();

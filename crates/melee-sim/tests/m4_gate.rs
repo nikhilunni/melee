@@ -4,8 +4,7 @@ fn local_scenario_named(name: &str) -> Option<Scenario> {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
     let scenario = Scenario::load(&path).unwrap();
-    if let Some(missing) = scenario.required_files().iter().find(|p| !p.is_file()) {
-        eprintln!("skipping M4: {} absent", missing.display());
+    if !melee_test_support::require_files(scenario.required_files()) {
         return None;
     }
     Some(scenario)
@@ -55,8 +54,7 @@ fn particle_rng_sites_with_ledger(name: &str, expected_ticks: usize, ledger_suff
         return;
     };
     let path = scenario.trace_path(&format!("{ledger_suffix}.raw.jsonl"));
-    if !path.exists() {
-        eprintln!("skipping: local {name} RNG ledger absent");
+    if !melee_test_support::require_files([&path]) {
         return;
     }
     let ledger = std::fs::read_to_string(path).unwrap();

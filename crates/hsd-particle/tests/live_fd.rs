@@ -35,11 +35,8 @@ fn capture() -> Option<Capture> {
     ];
     let paths = names.map(|name| root.join(format!("traces/idle_fd_fox.{name}")));
     let archive_path = root.join("roms/files/GrNLa.dat");
-    for path in paths.iter().chain([&archive_path]) {
-        if !path.exists() {
-            eprintln!("skipping live FD: {} is absent", path.display());
-            return None;
-        }
+    if !melee_test_support::require_files(paths.iter().chain([&archive_path])) {
+        return None;
     }
     let archive = Archive::parse(&fs::read(archive_path).unwrap()).unwrap();
     let bank = ParticleBank::from_archive(&archive, "map_ptcl", "map_texg").unwrap();

@@ -7,8 +7,7 @@ use std::path::PathBuf;
 
 fn archive() -> Option<Archive> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNLa.dat");
-    if !path.exists() {
-        eprintln!("skipping: {} is absent", path.display());
+    if !melee_test_support::require_files([&path]) {
         return None;
     }
     Some(Archive::parse(&std::fs::read(path).unwrap()).unwrap())

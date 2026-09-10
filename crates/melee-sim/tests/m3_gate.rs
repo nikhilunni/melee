@@ -4,8 +4,7 @@ fn local_scenario_named(name: &str) -> Option<Scenario> {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
     let scenario = Scenario::load(&path).unwrap();
-    if let Some(missing) = scenario.required_files().iter().find(|p| !p.is_file()) {
-        eprintln!("skipping M3: {} absent", missing.display());
+    if !melee_test_support::require_files(scenario.required_files()) {
         return None;
     }
     Some(scenario)

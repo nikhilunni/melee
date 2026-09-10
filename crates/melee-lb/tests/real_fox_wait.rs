@@ -15,8 +15,9 @@ const FOX_JOINT_COUNT: usize = 73;
 #[test]
 fn real_fox_wait1_attaches_and_advances() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if !dir.is_dir() {
-        eprintln!("skipping: {} not found (disc not extracted)", dir.display());
+    if !melee_test_support::require_files(
+        ["PlFx.dat", "PlFxAJ.dat", "PlFxNr.dat"].map(|name| dir.join(name)),
+    ) {
         return;
     }
     let fighter = Archive::parse(&std::fs::read(dir.join("PlFx.dat")).unwrap()).unwrap();

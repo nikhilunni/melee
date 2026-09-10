@@ -867,16 +867,9 @@ mod start_tests {
         )
         .unwrap();
         let path = scenario.trace_path("particles.jsonl");
-        if let Some(missing) = scenario
-            .required_files()
-            .into_iter()
-            .chain([path.clone()])
-            .find(|p| !p.is_file())
-        {
-            eprintln!(
-                "skipping start matrices/particles: {} absent",
-                missing.display()
-            );
+        if !melee_test_support::require_files(
+            scenario.required_files().into_iter().chain([path.clone()]),
+        ) {
             return;
         }
         let expected = melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap();

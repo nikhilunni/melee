@@ -93,13 +93,11 @@ fn verify(name: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let cold = Scenario::load(&root.join(format!("harness/scenarios/{name}_cold.toml"))).unwrap();
     let saved = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
-    if cold
-        .required_files()
-        .iter()
-        .chain(saved.required_files().iter())
-        .any(|p| !p.exists())
-    {
-        eprintln!("skipping {name}: local assets/captures absent");
+    if !melee_test_support::require_files(
+        cold.required_files()
+            .iter()
+            .chain(saved.required_files().iter()),
+    ) {
         return;
     }
     let constructed = InitialState::from_parameters(&cold).unwrap();
@@ -169,8 +167,7 @@ fn cold_run_reads_only_dat_assets() {
     }
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let assets = root.join("harness/roms/files");
-    if !assets.is_dir() {
-        eprintln!("skipping: owned DAT assets absent");
+    if !melee_test_support::require_files([assets.join("PlCo.dat")]) {
         return;
     }
     let scratch = Scratch(std::env::temp_dir().join(format!(
@@ -194,13 +191,12 @@ fn cold_run_reads_only_dat_assets() {
     ] {
         let mut scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}_cold.toml"))).unwrap();
-        if scenario
-            .required_files()
-            .iter()
-            .filter(|p| p.starts_with(scenario.assets_path()))
-            .any(|p| !p.exists())
-        {
-            eprintln!("skipping {name}: required DAT assets absent");
+        if !melee_test_support::require_files(
+            scenario
+                .required_files()
+                .iter()
+                .filter(|p| p.starts_with(scenario.assets_path())),
+        ) {
             continue;
         }
         scenario.root = scratch.0.clone();

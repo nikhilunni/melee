@@ -140,13 +140,9 @@ fn replay_scratch_until(name: &str, ticks: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
     let path = scenario.trace_path("tick.raw.jsonl");
-    if let Some(missing) = scenario
-        .required_files()
-        .into_iter()
-        .chain([path.clone()])
-        .find(|p| !p.is_file())
-    {
-        eprintln!("skipping jab scratch: {} absent", missing.display());
+    if !melee_test_support::require_files(
+        scenario.required_files().into_iter().chain([path.clone()]),
+    ) {
         return;
     }
     let mut simulation = Simulation::with_inputs(

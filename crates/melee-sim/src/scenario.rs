@@ -207,7 +207,7 @@ impl Scenario {
         self.root
             .join(self.savestate.as_ref().expect("saved scenario"))
     }
-    /// Local assets/captures whose absence lets integration tests skip.
+    /// Local assets/captures required to run this scenario's oracle.
     pub fn required_files(&self) -> Vec<PathBuf> {
         let mut paths = ["PlCo.dat", self.stage_descriptor().file, "EfCoData.dat"]
             .map(|n| self.assets_path().join(n))

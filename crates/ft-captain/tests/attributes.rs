@@ -64,8 +64,7 @@ fn load_restore_and_death_reset_effect_flags_without_altering_attributes() {
 fn disc_attributes_parts_and_empty_dynamics() {
     let files = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
     let paths = [files.join(DESCRIPTOR.data_file), files.join("PlCo.dat")];
-    if let Some(missing) = paths.iter().find(|p| !p.is_file()) {
-        eprintln!("skipping local Falcon data: {} absent", missing.display());
+    if !melee_test_support::require_files(paths.iter()) {
         return;
     }
     let source = hsd_archive::Archive::parse(&std::fs::read(&paths[0]).unwrap()).unwrap();

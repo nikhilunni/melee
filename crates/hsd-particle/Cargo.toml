@@ -11,6 +11,7 @@ hsd-archive = { path = "../hsd-archive" }
 hsd-anim = { path = "../hsd-anim" }
 
 [dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }
 melee-lb = { path = "../melee-lb" }
 melee-diff = { path = "../melee-diff" }
 serde_json = "1"

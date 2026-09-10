@@ -36,8 +36,7 @@ fn disc_multijump_impulses_capabilities_and_death_model_reset() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../harness/roms/files")
         .join(DESCRIPTOR.data_file);
-    if !path.is_file() {
-        eprintln!("skipping local Jigglypuff attributes: extracted disc absent");
+    if !melee_test_support::require_files([&path]) {
         return;
     }
     let data = hsd_archive::Archive::parse(&std::fs::read(path).unwrap()).unwrap();

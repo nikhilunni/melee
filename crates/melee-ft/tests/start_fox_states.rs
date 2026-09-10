@@ -16,8 +16,7 @@ fn start_fox_state_callbacks_600() {
     let trace_path = harness().join("traces/start_fd_fox.tick.expected.jsonl");
     let ledger_path = harness().join("traces/start_fd_fox.ledger600.raw.jsonl");
     let raw_path = harness().join("traces/start_fd_fox.tick.raw.jsonl");
-    if !trace_path.exists() || !ledger_path.exists() || !raw_path.exists() {
-        eprintln!("skipping: local FD expected trace/raw trace/RNG ledger absent");
+    if !melee_test_support::require_files([&trace_path, &ledger_path, &raw_path]) {
         return;
     }
     let Some(mut fixture) = Fixture::load() else {

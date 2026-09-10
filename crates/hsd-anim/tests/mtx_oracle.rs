@@ -65,7 +65,7 @@ fn build_oracle(retail: bool) -> Option<PathBuf> {
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
         _ => {
-            eprintln!("no working C compiler (`{cc}`) on PATH; skipping native oracle comparison");
+            eprintln!("[NON-DATA OMITTED] no working C compiler (`{cc}`) on PATH; omitting native oracle comparison");
             return None;
         }
     }
@@ -81,7 +81,7 @@ fn build_oracle(retail: bool) -> Option<PathBuf> {
     // fabsf__Ff it links against.
     let msl_files = ["retail/trigf.c", "math_data.c", "math_1.c"].map(|f| msl_ref_dir().join(f));
     if !decomp_dir().join("src/sysdolphin/baselib/mtx.h").exists() {
-        eprintln!("melee-decomp submodule not present; skipping native oracle comparison");
+        eprintln!("[NON-DATA OMITTED] melee-decomp submodule not present; omitting native oracle comparison");
         return None;
     }
     for f in &msl_files {
@@ -1046,7 +1046,7 @@ fn fusion_changes_results_within_the_sweep() {
 fn ref_sources_match_submodule() {
     let baselib = decomp_dir().join("src/sysdolphin/baselib");
     if !baselib.join("mtx.c").exists() {
-        eprintln!("melee-decomp submodule not present; skipping copy check");
+        eprintln!("[NON-DATA OMITTED] melee-decomp submodule not present; omitting copy check");
         return;
     }
     for file in ["mtx.c", "quatlib.c"] {

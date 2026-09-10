@@ -2,9 +2,9 @@
 //!
 //! The oracle trace `harness/traces/fox_ys.bones.expected.jsonl` is captured
 //! from Dolphin at the `idle_ys_fox` savestate (docs/M2_GATE.md). Both it and
-//! the disc are machine-local, so this test skips with a note when either is
-//! missing. First passed 2026-09-08: 0 mismatches on every bone the game had
-//! recomputed that frame.
+//! the disc are machine-local and required unless explicitly opted out.
+//! First passed 2026-09-08: 0 mismatches on every bone the game had recomputed
+//! that frame.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -36,8 +36,14 @@ fn by_key(records: Vec<Record>) -> HashMap<(u64, String), Value> {
 #[test]
 fn fox_wait1_bones_match_the_real_game_bit_for_bit() {
     let oracle_path = repo().join("harness/traces/fox_ys.bones.expected.jsonl");
-    if !oracle_path.exists() || !default_assets().is_dir() {
-        eprintln!("skipping: oracle trace or disc missing (see docs/M2_GATE.md)");
+    if !melee_test_support::require_files(
+        [
+            oracle_path.clone(),
+            oracle_path.with_extension("jsonl.meta.jsonl"),
+        ]
+        .into_iter()
+        .chain(["PlFxNr.dat", "PlFx.dat", "PlFxAJ.dat"].map(|name| default_assets().join(name))),
+    ) {
         return;
     }
     let oracle = by_key(read_trace(&std::fs::read(&oracle_path).unwrap()[..]).unwrap());

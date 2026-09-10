@@ -37,6 +37,7 @@ hsd-particle = { path = "../hsd-particle" }
 toml = "1.1"
 
 [dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }
 criterion = { version = "0.8.2", default-features = false }
 
 [[bench]]

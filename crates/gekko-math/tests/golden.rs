@@ -147,27 +147,22 @@ fn committed_fixture_replays_bit_for_bit() {
 }
 
 #[test]
-fn full_captures_replay_bit_for_bit_if_present() {
+fn full_captures_replay_bit_for_bit() {
     let files = [
         ("frsqrte_probe.jsonl", Op::Frsqrte),
         ("fres64_probe.jsonl", Op::Fres64),
         ("fres_probe.jsonl", Op::Fres32),
     ];
-    let mut any = false;
     for (sub, jit) in [("", false), ("jit", true)] {
         let dir = traces_dir().join(sub);
         for (name, op) in files {
             let path = dir.join(name);
-            if !path.exists() {
-                continue;
+            if !melee_test_support::require_files([&path]) {
+                return;
             }
-            any = true;
             let pairs = load_pairs_jsonl(&path);
             assert!(pairs.len() > 10_000, "{} looks truncated", path.display());
             replay(&format!("{sub}/{name}"), op, &pairs, jit);
         }
-    }
-    if !any {
-        eprintln!("no harness/traces/*_probe.jsonl captures present; skipping full replay");
     }
 }

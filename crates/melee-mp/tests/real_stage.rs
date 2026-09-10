@@ -1,5 +1,5 @@
-//! Optional retail fixture; game data stays in the gitignored harness directory.
-use std::{fs, io::ErrorKind, path::Path};
+//! Local retail fixture; game data stays in the gitignored harness directory.
+use std::{fs, path::Path};
 
 use hsd_archive::Archive;
 use hsd_types::Vec3;
@@ -17,12 +17,11 @@ const BOUNDS: [u32; 4] = [0xc2bb_21a3, 0xc27d_8d84, 0x42bb_21a3, 0x4100_0000];
 
 fn final_destination() -> Option<MapCollData> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNLa.dat");
+    if !melee_test_support::require_files([&path]) {
+        return None;
+    }
     let bytes = match fs::read(&path) {
         Ok(bytes) => bytes,
-        Err(error) if error.kind() == ErrorKind::NotFound => {
-            eprintln!("skipping real stage test: {} is absent", path.display());
-            return None;
-        }
         Err(error) => panic!("cannot read {}: {error}", path.display()),
     };
     let archive = Archive::parse(&bytes).expect("parse GrNLa.dat");

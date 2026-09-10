@@ -93,8 +93,7 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
         files.join("PlCo.dat"),
         files.join(DESCRIPTOR.animation_file),
     ];
-    if let Some(missing) = paths.iter().find(|p| !p.is_file()) {
-        eprintln!("skipping local Peach data: {} absent", missing.display());
+    if !melee_test_support::require_files(paths.iter()) {
         return;
     }
     let source = hsd_archive::Archive::parse(&std::fs::read(&paths[0]).unwrap()).unwrap();

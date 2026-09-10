@@ -6,6 +6,36 @@ match, and record a trace. Verified on 2026-09-08 on macOS arm64 with the build
 described in `DOLPHIN_BUILD.md`. Facts marked **verified** were observed on the
 real game that day; the rest is how the tooling is meant to be used.
 
+## Local oracle data policy
+
+`cargo gate` and individual Rust oracle tests fail on missing local files and
+name the first path plus its recovery command. Extract owned disc files using
+`docs/DISC.md`; capture scenarios from the repository root with
+`uv run --project harness python harness/record.py harness/scenarios/<name>.toml`.
+Ledger600 files need `--ledger-suffix ledger600`; tick bone captures need
+`--bones N`, where N is the number of ticks required by that oracle.
+Gekko estimate probes use `harness/gekko_probe/run.sh` (see its README), and
+the legacy M2 and post-render VI bone captures use the command in `docs/M2_GATE.md`
+with the input/output paths and environment settings printed by the preflight.
+
+Contributors without local data can run
+`MELEE_ALLOW_MISSING_DATA=1 cargo gate -- --nocapture`. Only the exact value `1`
+permits an early return with the same diagnostic; libtest reports that opted-out
+test as passed, so this mode is not oracle evidence. `tools/merge-check.sh`
+rejects the variable whenever it is set, including empty or `0` values.
+
+For testing this policy, `MELEE_TEST_DATA_ROOT` replaces `harness/` in the
+shared test preflight only: it expects `roms/` and `traces/` beneath that root.
+It does not change scenario loading, production paths or later asset reads,
+and is intended solely to simulate missing files without touching real data.
+Merge-check rejects this test-only override as well. For example:
+
+```sh
+mkdir -p /tmp/melee-c11-empty
+MELEE_TEST_DATA_ROOT=/tmp/melee-c11-empty cargo test -p melee-sim --test m4_gate squat_fd_fox_300 -- --exact --nocapture
+MELEE_TEST_DATA_ROOT=/tmp/melee-c11-empty MELEE_ALLOW_MISSING_DATA=1 cargo test -p melee-sim --test m4_gate squat_fd_fox_300 -- --exact --nocapture
+```
+
 ## TL;DR
 
 ```sh

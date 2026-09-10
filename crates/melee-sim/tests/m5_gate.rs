@@ -49,13 +49,12 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
     let scenario = Scenario::load(&path).unwrap();
     let ledger_path = scenario.trace_path("ledger.raw.jsonl");
-    if let Some(missing) = scenario
-        .required_files()
-        .into_iter()
-        .chain([ledger_path.clone()])
-        .find(|p| !p.is_file())
-    {
-        eprintln!("skipping M5: {} absent", missing.display());
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger_path.clone()]),
+    ) {
         return None;
     }
     assert_eq!(scenario.frames as usize, ticks);
@@ -97,13 +96,12 @@ fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/grab_fd_marth.toml");
     let scenario = Scenario::load(&path).unwrap();
     let ledger_path = scenario.trace_path("ledger.raw.jsonl");
-    if let Some(missing) = scenario
-        .required_files()
-        .into_iter()
-        .chain([ledger_path.clone()])
-        .find(|p| !p.is_file())
-    {
-        eprintln!("skipping grab startup: {} absent", missing.display());
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger_path.clone()]),
+    ) {
         return;
     }
     let expected = read_trace(BufReader::new(

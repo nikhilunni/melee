@@ -7,8 +7,7 @@ use std::{fs, path::Path};
 fn scenario(name: &str) -> Option<Scenario> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
-    if let Some(missing) = scenario.required_files().into_iter().find(|p| !p.is_file()) {
-        eprintln!("skipping local Puff state: {} absent", missing.display());
+    if !melee_test_support::require_files(scenario.required_files()) {
         return None;
     }
     Some(scenario)

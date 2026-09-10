@@ -37,7 +37,7 @@ fn decomp_baselib_dir() -> PathBuf {
 fn ref_sources_match_submodule() {
     let decomp = decomp_baselib_dir();
     if !decomp.join("fobj.c").exists() {
-        eprintln!("melee-decomp submodule not present; skipping copy check");
+        eprintln!("[NON-DATA OMITTED] melee-decomp submodule not present; omitting copy check");
         return;
     }
     for f in REF_FILES {
@@ -55,7 +55,7 @@ fn build_oracle(retail: bool) -> Option<PathBuf> {
     match Command::new(&cc).arg("--version").output() {
         Ok(o) if o.status.success() => {}
         _ => {
-            eprintln!("no working C compiler (`{cc}`) on PATH; skipping native oracle comparison");
+            eprintln!("[NON-DATA OMITTED] no working C compiler (`{cc}`) on PATH; omitting native oracle comparison");
             return None;
         }
     }

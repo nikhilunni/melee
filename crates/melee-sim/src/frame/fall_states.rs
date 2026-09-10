@@ -52,13 +52,12 @@ fn falls_match_retail_scratch_and_command_clocks() {
         let scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
         let ledger_path = scenario.trace_path("ledger.raw.jsonl");
-        if let Some(missing) = scenario
-            .required_files()
-            .into_iter()
-            .chain([ledger_path.clone()])
-            .find(|p| !p.is_file())
-        {
-            eprintln!("skipping {name}: {} absent", missing.display());
+        if !melee_test_support::require_files(
+            scenario
+                .required_files()
+                .into_iter()
+                .chain([ledger_path.clone()]),
+        ) {
             continue;
         }
         let pads =

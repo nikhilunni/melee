@@ -5,12 +5,11 @@ use std::path::PathBuf;
 #[test]
 fn battlefield_archive_geometry_positions_and_environment() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNBa.dat");
+    if !melee_test_support::require_files([&path]) {
+        return;
+    }
     let bytes = match std::fs::read(&path) {
         Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("skipping Battlefield asset test: {} absent", path.display());
-            return;
-        }
         Err(error) => panic!("reading Battlefield archive: {error}"),
     };
     let archive = Archive::parse(&bytes).unwrap();

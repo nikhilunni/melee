@@ -115,14 +115,15 @@ fi
         elif kind == "directory-only":
             (traces / "fixture.expected.jsonl").mkdir()
 
-    def run(self, *, override=False, fail="", marker=""):
+    def run(self, *, override=False, fail="", marker="", data_env=None):
         env = dict(os.environ)
         for name in list(env):
-            if name.startswith("GIT_"):
+            if name.startswith("GIT_") or name in ("MELEE_ALLOW_MISSING_DATA", "MELEE_TEST_DATA_ROOT"):
                 del env[name]
         env.update(PATH=f"{self.root / 'bin'}:{os.environ['PATH']}",
                    CALLS=str(self.root / "calls"), FAIL=fail, MARKER=marker,
                    GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_OPTIONAL_LOCKS="0")
+        env.update(data_env or {})
         command = [str(self.root / "tools/merge-check.sh"), "lane/test"]
         if override:
             command.append("--allow-missing-data")
@@ -133,11 +134,11 @@ fi
 
 class MergeCheck(unittest.TestCase):
     def run_chain(self, *, main_entries=None, lane_entries=None, ancestor=True,
-                  oracle="present", override=False, fail="", marker=""):
+                  oracle="present", override=False, fail="", marker="", data_env=None):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Repository(Path(temporary), main_entries, lane_entries, ancestor)
             repo.oracle(oracle)
-            return repo.run(override=override, fail=fail, marker=marker)
+            return repo.run(override=override, fail=fail, marker=marker, data_env=data_env)
 
     def test_full_chain_order_with_real_git(self):
         result, calls = self.run_chain()
@@ -222,21 +223,30 @@ class MergeCheck(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(len(calls), 7)
 
-    def test_absent_oracle_fails_before_build_and_advertises_override(self):
+    def test_absent_oracle_fails_before_build_and_advertises_recording(self):
         for kind in ("missing", "empty", "broken", "loop", "wrong-suffix", "directory-only"):
             with self.subTest(kind=kind):
                 result, calls = self.run_chain(oracle=kind)
                 self.assertEqual(result.returncode, 1)
-                self.assertIn("[FAIL] data: harness/traces is empty; the gates would pass without running the oracle", result.stdout)
-                self.assertIn("--allow-missing-data", result.stdout)
+                self.assertIn("[FAIL] data: harness/traces is empty;", result.stdout)
+                self.assertIn("harness/record.py <scenario>", result.stdout)
                 self.assertEqual(calls, [])
 
-    def test_override_warns_and_runs_code_only_chain(self):
+    def test_legacy_override_cannot_bypass_missing_oracle(self):
         result, calls = self.run_chain(oracle="missing", override=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("[WARN] data: harness/traces is empty;", result.stdout)
-        self.assertIn("--allow-missing-data", result.stdout)
-        self.assertEqual(len(calls), 7)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("--allow-missing-data no longer permits", result.stdout)
+        self.assertEqual(calls, [])
+
+    def test_missing_data_environment_never_runs_the_chain(self):
+        for variable in ("MELEE_ALLOW_MISSING_DATA", "MELEE_TEST_DATA_ROOT"):
+            for value in ("1", "0", ""):
+                with self.subTest(variable=variable, value=value):
+                    result, calls = self.run_chain(data_env={variable: value})
+                    self.assertEqual(result.returncode, 1)
+                    self.assertEqual(result.stdout.strip(),
+                                     f"[FAIL] data: {variable} is set; unset it before running the merge chain")
+                    self.assertEqual(calls, [])
 
     def test_oracle_directory_symlink_is_followed(self):
         result, calls = self.run_chain(oracle="symlink")

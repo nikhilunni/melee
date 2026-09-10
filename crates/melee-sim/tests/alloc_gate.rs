@@ -65,12 +65,7 @@ fn start_fd_fox_allocation_budget() {
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/start_fd_fox.toml"),
     )
     .unwrap();
-    if let Some(missing) = scenario
-        .required_files()
-        .iter()
-        .find(|path| !path.is_file())
-    {
-        eprintln!("skipping allocation gate: {} absent", missing.display());
+    if !melee_test_support::require_files(scenario.required_files()) {
         return;
     }
     assert_eq!(scenario.frames, 600);

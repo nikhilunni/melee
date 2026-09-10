@@ -9,3 +9,6 @@ license.workspace = true
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

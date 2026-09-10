@@ -246,6 +246,7 @@ version = "0.0.1"
 dependencies = [
  "hsd-archive",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -256,6 +257,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -267,6 +269,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -286,6 +289,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -296,6 +300,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -306,6 +311,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -317,12 +323,16 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
 [[package]]
 name = "gekko-math"
 version = "0.0.1"
+dependencies = [
+ "melee-test-support",
+]
 
 [[package]]
 name = "half"
@@ -354,11 +364,15 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-test-support",
 ]
 
 [[package]]
 name = "hsd-archive"
 version = "0.0.1"
+dependencies = [
+ "melee-test-support",
+]
 
 [[package]]
 name = "hsd-gobj"
@@ -377,6 +391,7 @@ dependencies = [
  "hsd-types",
  "melee-diff",
  "melee-lb",
+ "melee-test-support",
  "serde_json",
 ]
 
@@ -457,6 +472,7 @@ dependencies = [
  "melee-gr",
  "melee-lb",
  "melee-mp",
+ "melee-test-support",
  "melee-types",
  "serde_json",
 ]
@@ -471,6 +487,7 @@ dependencies = [
  "hsd-types",
  "melee-lb",
  "melee-mp",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -502,6 +519,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -514,6 +532,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-lb",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -550,12 +569,17 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-mp",
+ "melee-test-support",
  "melee-types",
  "serde",
  "serde_json",
  "slp",
  "toml",
 ]
+
+[[package]]
+name = "melee-test-support"
+version = "0.0.1"
 
 [[package]]
 name = "melee-types"

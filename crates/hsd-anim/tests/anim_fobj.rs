@@ -594,7 +594,7 @@ fn key_track_emits_once_per_key() {
 }
 
 #[test]
-fn key_track_skipping_segments_emits_every_key() {
+fn key_track_crossing_segments_emits_every_key() {
     // A large rate crosses two key boundaries in one step; both keys are
     // emitted in that step (one in state 3, one in state 4).
     let (v0, v1, v2, v3) = (1.0f32, 2.0f32, 3.0f32, 4.0f32);

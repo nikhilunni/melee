@@ -57,8 +57,7 @@ fn falco_root_loads_the_shared_layout_and_reset_keeps_registrations() {
 fn real_falco_attributes_and_empty_dynamics() {
     let path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/PlFc.dat");
-    if !path.is_file() {
-        eprintln!("skipping real Falco data: {} absent", path.display());
+    if !melee_test_support::require_files([&path]) {
         return;
     }
     let archive = Archive::parse(&std::fs::read(path).unwrap()).unwrap();

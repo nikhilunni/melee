@@ -32,12 +32,11 @@ impl InverseTrig for RetailTrig {
 
 fn archive() -> Option<Archive> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNLa.dat");
+    if !melee_test_support::require_files([&path]) {
+        return None;
+    }
     match std::fs::read(&path) {
         Ok(bytes) => Some(Archive::parse(&bytes).expect("parse GrNLa.dat")),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("skipping real FD particles: {} is absent", path.display());
-            None
-        }
         Err(error) => panic!("read {}: {error}", path.display()),
     }
 }

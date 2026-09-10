@@ -27,7 +27,7 @@ fn airborne_excerpts_match_decomp() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let decomp = root.join("../../third_party/melee-decomp/src/melee/ft/ftcommon.c");
     if !decomp.exists() {
-        eprintln!("skipping excerpt check: submodule absent");
+        eprintln!("[NON-DATA OMITTED] omitting excerpt check: submodule absent");
         return;
     }
     let source = fs::read_to_string(decomp).unwrap();

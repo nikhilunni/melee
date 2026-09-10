@@ -13,8 +13,7 @@ fn human_idle_input_600() {
         "harness/traces/idle_fd_fox.tick.expected.jsonl",
         "harness/roms/files/PlCo.dat",
     ] {
-        if !root.join(file).exists() {
-            eprintln!("skipping human_idle_input_600: {file} absent");
+        if !melee_test_support::require_files([&root.join(file)]) {
             return;
         }
     }

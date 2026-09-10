@@ -13,3 +13,6 @@ melee-types = { path = "../melee-types" }
 melee-mp = { path = "../melee-mp" }
 melee-lb = { path = "../melee-lb" }
 gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

@@ -42,7 +42,7 @@ fn arithmetic_oracle_excerpts_match_decomp() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let decomp = root.join("../../third_party/melee-decomp/src");
     if !decomp.exists() {
-        eprintln!("skipping excerpt comparison: submodule absent");
+        eprintln!("[NON-DATA OMITTED] omitting excerpt comparison: submodule absent");
         return;
     }
     for (path, name, local) in [

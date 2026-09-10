@@ -7,16 +7,9 @@ const RECORDS_PER_FRAME: usize = 73 * (12 + 10);
 
 fn disc_present() -> bool {
     let assets = default_assets();
-    let present = ["PlFxNr.dat", "PlFx.dat", "PlFxAJ.dat"]
-        .iter()
-        .all(|name| assets.join(name).is_file());
-    if !present {
-        eprintln!(
-            "skipping real Fox bones: extract the disc to {}",
-            assets.display()
-        );
-    }
-    present
+    melee_test_support::require_files(
+        ["PlFxNr.dat", "PlFx.dat", "PlFxAJ.dat"].map(|name| assets.join(name)),
+    )
 }
 
 fn check_frame(records: &[Record], frame: u64) {

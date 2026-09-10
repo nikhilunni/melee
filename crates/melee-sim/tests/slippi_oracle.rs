@@ -39,8 +39,7 @@ fn slippi_style_fields_recover_all_1800_recorded_movement_pads() {
     for scene in ["walk_fd_fox", "shield_fd_fox", "jump_fd_fox"] {
         let path = traces().join(format!("{scene}.tick.expected.jsonl"));
         let ledger = traces().join(format!("{scene}.ledger.raw.jsonl"));
-        if !path.exists() || !ledger.exists() {
-            eprintln!("SKIP {scene}: local oracle absent");
+        if !melee_test_support::require_files([&path, &ledger]) {
             return;
         }
         let script = PadScript::from_expected_trace(&path, true).unwrap();
@@ -82,8 +81,7 @@ fn slippi_style_fields_recover_all_1800_recorded_movement_pads() {
 fn ledger_links_tick_end_to_next_scheduler_start_even_with_repeated_vi_frames() {
     let path = traces().join("start_fd_fox.ledger600.raw.jsonl");
     let expected = traces().join("start_fd_fox.tick.expected.jsonl");
-    if !path.exists() || !expected.exists() {
-        eprintln!("SKIP: local oracle absent");
+    if !melee_test_support::require_files([&path, &expected]) {
         return;
     }
     let rows = lines(&path);

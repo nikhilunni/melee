@@ -63,8 +63,7 @@ fn int(record: &Record, key: &str) -> i64 {
 /// This is adapter proof, NOT an additional real .slp fixture or corpus count.
 fn oracle_replay(scene: &str) -> Option<(Replay, Vec<Record>)> {
     let path = root().join(format!("harness/traces/{scene}.tick.expected.jsonl"));
-    if !path.exists() || !root().join("harness/roms/files/PlCo.dat").exists() {
-        eprintln!("SKIP {scene}: local DATs/oracle absent");
+    if !melee_test_support::require_files([&path, &root().join("harness/roms/files/PlCo.dat")]) {
         return None;
     }
     let expected =

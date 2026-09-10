@@ -13,7 +13,7 @@ fn oracle_excerpts_match_decomp() {
     let root = root();
     let controller = root.join("third_party/melee-decomp/src/sysdolphin/baselib/controller.c");
     if !controller.exists() {
-        eprintln!("skipping excerpt check: decomp absent");
+        eprintln!("[NON-DATA OMITTED] omitting excerpt check: decomp absent");
         return;
     }
     let controller = std::fs::read_to_string(controller).unwrap();
@@ -218,5 +218,7 @@ fn native_wait_predicate_order_and_short_circuit() {
             std::fs::read_to_string(root().join("crates/melee-ft/tests/ref/input/wait.c")).unwrap(),
             excerpt(&source, "void ftCo_Wait_IASA")
         );
+    } else {
+        eprintln!("[NON-DATA OMITTED] decomp absent; omitting Wait IASA source provenance check");
     }
 }

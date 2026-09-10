@@ -90,7 +90,6 @@ fn replay_fields(
     assert!(tick_count > 0 && tick_count <= recording_ticks);
     // `name` is the full scene name (e.g. "dash_fd_fox", "start_bf_fox").
     let battlefield = name.contains("_bf_");
-    let scene = name;
     // A match-start savestate sits before its first tick's procs.
     let story = name.contains("_ys_");
     let match_start = name.starts_with("start_");
@@ -120,11 +119,8 @@ fn replay_fields(
         "EfCoData.dat",
     ]
     .map(|s| root.join(format!("roms/files/{s}")));
-    for path in paths.iter().chain(archives.iter()) {
-        if !path.exists() {
-            eprintln!("skipping {scene}: {} absent", path.display());
-            return 0;
-        }
+    if !melee_test_support::require_files(paths.iter().chain(archives.iter())) {
+        return 0;
     }
     let stage = Archive::parse(&fs::read(&archives[0]).unwrap()).unwrap();
     let effect = Archive::parse(&fs::read(&archives[1]).unwrap()).unwrap();

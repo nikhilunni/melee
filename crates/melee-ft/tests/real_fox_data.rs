@@ -10,12 +10,10 @@ use std::path::{Path, PathBuf};
 
 fn disc_files() -> Option<PathBuf> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if path.is_dir() {
-        Some(path)
-    } else {
-        eprintln!("skipping real Fox data: {} absent", path.display());
-        None
-    }
+    melee_test_support::require_files(
+        ["PlFx.dat", "PlCo.dat", "PlFxNr.dat"].map(|name| path.join(name)),
+    )
+    .then_some(path)
 }
 
 fn read(dir: &Path, name: &str) -> Archive {

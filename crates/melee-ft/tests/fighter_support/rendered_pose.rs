@@ -15,8 +15,7 @@ pub fn compare_start() {
     let meta_paths = paths
         .each_ref()
         .map(|path| path.with_extension("jsonl.meta.jsonl"));
-    if paths.iter().chain(&meta_paths).any(|path| !path.exists()) {
-        eprintln!("skipping: local post-render bone oracle/metadata absent");
+    if !melee_test_support::require_files(paths.iter().chain(&meta_paths)) {
         return;
     }
     let mut poses: [BTreeMap<PoseKey, Vec<TickPose>>; 2] = Default::default();

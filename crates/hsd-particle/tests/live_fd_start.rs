@@ -29,8 +29,7 @@ fn effect_animation_keys_identify_external_generator_requests() {
     }
     let path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/EfCoData.dat");
-    if !path.exists() {
-        eprintln!("skipping: {} absent", path.display());
+    if !melee_test_support::require_files([&path]) {
         return;
     }
     let archive = Archive::parse(&fs::read(path).unwrap()).unwrap();

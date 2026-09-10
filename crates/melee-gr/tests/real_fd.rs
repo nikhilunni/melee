@@ -9,12 +9,11 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 fn archive() -> Option<Archive> {
     let file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNLa.dat");
+    if !melee_test_support::require_files([&file]) {
+        return None;
+    }
     match std::fs::read(file) {
         Ok(bytes) => Some(Archive::parse(&bytes).expect("real FD archive")),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("skipping real FD: harness/roms/files/GrNLa.dat is absent");
-            None
-        }
         Err(error) => panic!("read GrNLa.dat: {error}"),
     }
 }

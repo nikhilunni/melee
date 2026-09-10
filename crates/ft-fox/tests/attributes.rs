@@ -198,8 +198,7 @@ fn fox_attributes_reject_bad_links_enums_and_truncation() {
 #[test]
 fn real_fox_special_attributes() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if !dir.is_dir() {
-        eprintln!("skipping real Fox specials: {} absent", dir.display());
+    if !melee_test_support::require_files(["PlFx.dat"].map(|name| dir.join(name))) {
         return;
     }
     let a = hsd_archive::Archive::parse(&std::fs::read(dir.join("PlFx.dat")).unwrap()).unwrap();

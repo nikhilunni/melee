@@ -5,12 +5,11 @@ use std::path::PathBuf;
 #[test]
 fn story_platforms_and_randall_binding_come_from_the_archive() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrSt.dat");
+    if !melee_test_support::require_files([&path]) {
+        return;
+    }
     let bytes = match std::fs::read(&path) {
         Ok(bytes) => bytes,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("skipping: {} absent", path.display());
-            return;
-        }
         Err(e) => panic!("{}: {e}", path.display()),
     };
     let archive = Archive::parse(&bytes).unwrap();

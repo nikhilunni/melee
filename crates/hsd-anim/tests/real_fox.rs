@@ -1,5 +1,5 @@
 //! Load the real Fox skeleton (`PlFxNr.dat` from the extracted disc) through
-//! `hsd_anim::load`. Skips with a note when the disc is not extracted; the
+//! `hsd_anim::load`. Requires the disc unless explicitly opted out; the
 //! numbers asserted come from `docs/DISC.md`.
 
 use std::path::{Path, PathBuf};
@@ -14,12 +14,7 @@ const FOX_JOINT_COUNT: usize = 73;
 
 fn disc_files() -> Option<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
-    if dir.is_dir() {
-        Some(dir)
-    } else {
-        eprintln!("skipping: {} not found (disc not extracted)", dir.display());
-        None
-    }
+    melee_test_support::require_files(["PlFxNr.dat"].map(|name| dir.join(name))).then_some(dir)
 }
 
 #[test]

@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Validate the checked-out lane tree before Claude fast-forwards main.
 set -euo pipefail
+# A merge must exercise local oracles, regardless of the variable's value.
+for variable in MELEE_ALLOW_MISSING_DATA MELEE_TEST_DATA_ROOT; do
+    if [[ ${!variable+x} ]]; then
+        echo "[FAIL] data: $variable is set; unset it before running the merge chain"
+        exit 1
+    fi
+done
 cd "$(dirname "$0")/.."
 usage() {
     echo "usage: tools/merge-check.sh [--allow-missing-data] <lane-branch>" >&2
@@ -47,20 +54,17 @@ while IFS= read -r -d '' path; do
 done <"$logs/lane-paths"
 echo "[PASS] data: no tracked game data or protected lane changes"
 
-# Follow the lane's trace-directory symlink. Broken links and empty directories
-# both mean there is no oracle to run; only this check has an explicit override.
+# Follow the lane's trace-directory symlink. A legacy command-line override
+# cannot turn an empty oracle directory into a mergeable tree.
 oracle=$(find -L harness/traces -type f -name '*.expected.jsonl' -print -quit 2>/dev/null || true)
 if [[ -z "$oracle" ]]; then
-    message="data: harness/traces is empty; the gates would pass without running the oracle"
+    echo "[FAIL] data: harness/traces is empty; record the required scenarios with harness/record.py <scenario>"
     if [[ "$allow_missing_data" == true ]]; then
-        echo "[WARN] $message (--allow-missing-data)"
-    else
-        echo "[FAIL] $message (use --allow-missing-data for a code-only lane)"
-        exit 1
+        echo "[FAIL] data: --allow-missing-data no longer permits a code-only merge chain"
     fi
-else
-    echo "[PASS] data: oracle traces present"
+    exit 1
 fi
+echo "[PASS] data: oracle traces present"
 
 # Gate the tree actually being built, including the lane's uncommitted edits.
 if ! git merge-base --is-ancestor main "$branch" 2>"$logs/ancestry"; then

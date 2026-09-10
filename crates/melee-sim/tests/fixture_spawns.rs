@@ -69,8 +69,7 @@ fn ledge_cli_output_equals_checked_in_fixture() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scenario_path = root.join("harness/scenarios/ledge_fd_fox.toml");
     let scenario = melee_sim::scenario::Scenario::load(&scenario_path).unwrap();
-    if let Some(missing) = scenario.required_files().iter().find(|p| !p.is_file()) {
-        eprintln!("skipping fixture CLI: {} absent", missing.display());
+    if !melee_test_support::require_files(scenario.required_files()) {
         return;
     }
     let out = std::env::temp_dir().join(format!("c13-cli-fixture-{}.json", std::process::id()));

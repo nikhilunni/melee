@@ -74,8 +74,7 @@ fn disc_data_and_all_six_costume_materials() {
     let required = [DESCRIPTOR.data_file, "PlCo.dat", DESCRIPTOR.animation_file]
         .into_iter()
         .chain(DESCRIPTOR.costumes.iter().map(|c| c.file));
-    if let Some(missing) = required.map(|f| files.join(f)).find(|f| !f.is_file()) {
-        eprintln!("skipping local Yoshi data: {} absent", missing.display());
+    if !melee_test_support::require_files(required.map(|f| files.join(f))) {
         return;
     }
     let load =

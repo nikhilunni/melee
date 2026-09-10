@@ -8,13 +8,12 @@ fn replay(name: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
     let ledger = scenario.trace_path("ledger.raw.jsonl");
-    if let Some(missing) = scenario
-        .required_files()
-        .into_iter()
-        .chain([ledger.clone()])
-        .find(|p| !p.is_file())
-    {
-        eprintln!("skipping local Yoshi state: {} absent", missing.display());
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger.clone()]),
+    ) {
         return;
     }
     let pads =
