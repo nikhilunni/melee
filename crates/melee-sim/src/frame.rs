@@ -888,6 +888,8 @@ fn dispatch_fighter(
                 });
         }
     }
+    // S3: opcode 38 owns this draw before the following effect boundary.
+    f.resolve_random_sound_commands(rng);
     f.resolve_graphics_commands(assets, rng);
     effects.flush::<melee_ft::fighter::RetailTrig>(
         melee_ef::EffectTiming::Immediate,

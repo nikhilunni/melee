@@ -10,8 +10,8 @@ pub const INSTANCE_CAPACITY: usize = ASYNC_CAPACITY + SYNC_CAPACITY;
 // Either descriptor class can occupy all 64 slots in its own pool.
 const SLOTS_PER_MODEL: usize = 64;
 // Common descriptors reached by the supported efAsync/efSync dispatch rows.
-static MODEL_IDS: [u32; 19] = [
-    1, 0x16, 2, 3, 4, 5, 8, 9, 10, 0xB, 0xC, 0xD, 0xF, 0x12, 0x13, 0x18, 0x19, 0x1E, 0x1F,
+static MODEL_IDS: [u32; 20] = [
+    0x15, 1, 0x16, 2, 3, 4, 5, 8, 9, 10, 0xB, 0xC, 0xD, 0xF, 0x12, 0x13, 0x18, 0x19, 0x1E, 0x1F,
 ];
 const WARP_MODEL: u32 = 0x24;
 
@@ -83,6 +83,7 @@ impl Effects {
             instances: Default::default(),
             models: ModelPool::load(archive)?,
             fox_bank: None,
+            mars_bank: None,
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
         })
@@ -160,7 +161,9 @@ impl Effect {
         self.owner = None;
         self.lifetime = initial.lifetime;
         self.indefinite = initial.indefinite;
-        self.shield_bone = None;
+        self.attachment_bone = None;
+        self.scale_attachment = true;
+        self.callback_rotation = None;
         self.joint_base = 0;
         self.tree.events.clear();
         // The headless model has immutable topology, no DObjs/constraints and
@@ -191,5 +194,5 @@ impl Effect {
 /// Supported sync-load rows: shields/entry (efasync.c:407,429,453,751)
 /// and egg shells (efsync.c:84,228-292). All other modeled rows use async load.
 fn is_sync(descriptor: u32) -> bool {
-    matches!(descriptor, 0xB | 0xC | 0xD | 0x1E | 0x1F | 0x24 | 0xBBD)
+    matches!(descriptor, 0xB | 0xC | 0xD | 0x1E | 0x1F | 0x24 | 0xBB8..=0xBBD | 0x3E80..=0x3E81)
 }

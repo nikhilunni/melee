@@ -232,7 +232,7 @@ impl Fighter {
     }
 
     /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.
-    pub(super) fn change_motion_state_at(
+    pub fn change_motion_state_at(
         &mut self,
         state: ActionId,
         assets: &FighterAssets,

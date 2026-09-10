@@ -337,6 +337,7 @@ impl InitialState {
         );
         let mut effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
         effects.load_fox(&assets.fox_effects)?;
+        effects.load_mars(&assets.mars_effects)?;
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays,

@@ -467,7 +467,7 @@ fn read_script(
     while !commands.contains_key(&offset) {
         let word = archive.reader().u32(offset)?;
         let opcode = word >> 26;
-        let mut words = [0; 5];
+        let mut words = [0; 7];
         let count = melee_cmd::decode::word_count(opcode);
         for (index, word) in words[..count].iter_mut().enumerate() {
             *word = archive.reader().u32(offset + index as u32 * 4)?;
@@ -493,6 +493,8 @@ fn read_script(
                 read_script(archive, target as u32, commands)?;
                 offset = continuation as u32;
             }
+            Command::RandomSound(_) => offset += 28,
+            Command::WindEffect(_) => offset += 16,
             Command::SmashCharge(_) => offset += 8,
             Command::Graphics(_) | Command::SpawnHitbox { .. } => offset += 20,
             Command::LandingEffect(_)

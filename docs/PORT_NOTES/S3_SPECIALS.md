@@ -1,11 +1,18 @@
 # S3 specials: partial port and ownership boundary
 
-S3 is **not complete**. The implementation covers Fox/Falco's six Illusion /
-Phantasm rows and the ghost article. Aerial Illusion passes its full 300-tick
-fighter/item oracle and particle replay. Grounded Illusion matches ticks 0–124,
-including the target reaction, then reaches the existing common ground-pose
-`LegCorrection` stop at tick 125. Fire Fox, Reflector and Marth's specials remain
-unimplemented. No acceptance claim is made for those nine scenes.
+S3 is **not complete**. **Part 2 stopped at the user-required existing-test
+contradiction:** `hsd-particle/tests/opcodes.rs:401` still classifies opcode
+0xB8 as unsupported; Reflector requires the retail point-joint force instruction.
+The expected value was not changed. See the final validation block below.
+
+Part 2 adds full 300-tick gates for both Fire Fox
+scenes, all three Reflector scenes, and Dancing Blade. Dolphin Slash matches
+through tick 122 and Shield Breaker through tick 164, then both reach the
+S5-owned special-move combo lookup. Counter matches through tick 59, then
+needs a mutable incoming-hit hook at tick 60. Fire Fox's full particle replay
+and zero-allocation gate pass; Counter's available prefix also allocates zero.
+Part 1's aerial Illusion remains fully gated; grounded Illusion retains the
+tick-125 common LegCorrection boundary owned by another lane.
 
 ## Scene status
 
@@ -16,14 +23,14 @@ the recorded scenes; only the explicitly marked coverage is verified by this por
 |---|---|---|---|
 | illusion_fd_fox | 20 → 21 → 347 → 348 → 349 → 14 | 80 at 87 → 42 at 110 → 14 at 140 | Ticks 0–124 exact, including item keys and particle RNG sites; tick 125 common `LegCorrection` |
 | airillusion_fd_fox | 24 → 25 → 350 → 351 → 352 → 43 → 14 | idle | Full 300 ticks, 62 keys; ordered particle draws and full particle replay |
-| firefox_fd_fox | 353 → 356 → 358 → 35 → 43 → 14 | idle | Up-special entry unimplemented |
-| airfirefox_fd_fox | 24 → 25 → 354 → 356 → 358 → 35 → 43 → 14 | idle | Up-special entry unimplemented |
-| reflector_fd_fox | 360 → 361 → 363 → 14 | idle | Down-special entry unimplemented |
-| reflectorjc_fd_fox | 360 → 361 → 24 → 25 → 42 | idle | Down-special entry unimplemented |
-| airreflector_fd_fox | 24 → 25 → 365 → 366 → 363 → 14 | idle | Down-special entry unimplemented |
-| shieldbreaker_fd_marth | 20 → 21 → 23 → 14 → 341 → 342 → 343 → 14 | 80 → 42 | Marth special entry unimplemented |
-| dancingblade_fd_marth | 349 → 351 → 352 → 357 → 14 | miss | Marth special entry unimplemented |
-| dolphinslash_fd_marth | 20 → 21 → 23 → 14 → 367 → 35 → 43 | 88 → 38 → 0 | Marth special entry unimplemented |
+| firefox_fd_fox | 353 → 356 → 358 → 35 → 43 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release scene and particle gates pass; 299 measured ticks, zero simulate allocations |
+| airfirefox_fd_fox | 24 → 25 → 354 → 356 → 358 → 35 → 43 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release scene and ordered particle RNG gates pass |
+| reflector_fd_fox | 360 → 361 → 363 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 and descriptor unit pass |
+| reflectorjc_fd_fox | 360 → 361 → 24 → 25 → 42 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
+| airreflector_fd_fox | 24 → 25 → 365 → 366 → 363 → 14 | idle | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
+| shieldbreaker_fd_marth | 20 → 21 → 23 → 14 → 341 → 342 → 343 → 14 | 80 → 42 | Ticks 0–164 exact in debug/release; tick 165 same S5 special combo-table boundary |
+| dancingblade_fd_marth | 349 → 351 → 352 → 357 → 14 | miss | 300 ticks, 62 keys, 0 divergences; debug/release M5 pass |
+| dolphinslash_fd_marth | 20 → 21 → 23 → 14 → 367 → 35 → 43 | 88 → 38 → 0 | Ticks 0–122 exact in debug/release; tick 123 S5-owned damage.rs indexes common combo table with special-row None |
 | counter_fd_marth | 369 → 370 → 14 | Fox 89 → 191 → 192 | Marth special entry unimplemented; 191/192 are `DownBoundD`/`DownWaitD` in melee-types |
 
 The grounded prefix is an additional boundary test, not a replacement for a full
@@ -117,7 +124,7 @@ come from the retail capture. Three `ftCo_8009F834` fighter-side offset draws
 The replay compares all existing simulation fields and ordered particle RNG
 sites, retaining only the replay helper's pre-existing display-cache exclusions.
 
-## Validation
+## Part 1 validation (historical)
 
 Both full workspace gates passed: 1,021 passed, zero failed, three pre-existing
 ignores in each profile. M4 remains 261; M5 is 30. The four new tests are two
@@ -128,7 +135,7 @@ Fire Fox/Counter allocation cases and Fire Fox particle replay are not available
 because those moves are not ported. The new aerial Illusion allocation gate has a
 zero-allocation ceiling, with zero measured allocations across ticks 1–299.
 
-### Release scene commands
+### Part 1 release scene commands (historical)
 
 Each command used `cargo run -q --release -p melee-sim -- gate
 harness/scenarios/<scene>.toml`. Full failure output is reproduced below (the
@@ -322,3 +329,181 @@ not hidden or promoted into a higher budget.
 - `crates/melee-sim/tests/m5_gate.rs`
 - `docs/PERF.md`
 - `docs/PORT_NOTES/S3_SPECIALS.md`
+
+## Part 2 progress: Fire Fox
+
+Grounded Fire Fox passes the full release CLI gate. Its first resource boundary
+was opcode 38 (`ftAction_80071FC8`, one `HSD_Randi` at 80072014); the typed command
+retains all six sound choices, range, channel, volume and pan. No captured
+sound choice is used by production code.
+
+The first particle replay had 248 field mismatches starting at launch tick 73.
+The launch model callback sets Y/Z rotation after animation (`efLib_Update`);
+refreshing its particle-facing joint matrices after that callback eliminates
+all mismatches. The strict simulation-field replay now compares 628,334 fields
+and 10,574 ordered particle draws over 300 ticks with zero mismatches. Existing
+display-cache exclusions are unchanged.
+
+Fire Fox scratch: +2340 gravity delay (`i32`), +2344 relative launch angle
+(`f32`), +2348 remaining travel frames (`i32`), +234C elapsed physics ticks
+(`i32`), +2350 grounded collision ticks (`i32`), plus the typed pending
+accessory effect. Shared rows 353..358 compile for Fox and Falco.
+
+### Reflector progress
+
+Grounded Reflector and aerial Reflector pass the 300-tick release comparator.
+The grounded first-stop history was effect 0x3FA (common model 0x15),
+particle kind 372, then particle instruction 0xB8 at tick 37. The latter now
+implements the retail point-joint force/proximity branch with audited fused
+arithmetic; unbound joints consume the instruction without changing velocity.
+The descriptor and contact-direction reaction unit and particle force/proximity
+unit pass in debug and release. Reflector scratch is +2340 release lag (i32),
++2344 turn countdown (i32), +2348 released latch (bool), +234C gravity delay
+(i32), plus owned defense data and an accessory callback effect latch.
+
+### Dolphin Slash progress
+
+Both profiles pass ticks 0–122, including ordered particle draws. The release
+CLI stops at tick 123 in `damage.rs:705`: `GROUND_MOVES[attacker.motion_state.id
+as usize]` receives `CommonMotionState::None` for action 367. S5 needs the
+character special move ID at the combo-recording boundary (SpecialHi); this
+lane has left damage.rs unchanged. Recorded target state 88 starts at 123,
+38 at 170, DeadDown 0 at 208. Actor FallSpecial starts at 164, landing 43 at 185;
+those later transitions remain unverified. The first resource stop before this
+was command 25 mode 2, now ported as the typed `AirUseAllJumps` conversion
+(five locked ECB ticks). Dolphin scratch stores retail +6BC lstick_angle;
+command vars +2200/+2204/+2208 retain their script-owned meanings.
+
+### Shield Breaker progress
+
+Ticks 0–164 pass in both profiles, including ordered particle draws; first
+contact at tick 165 reaches the same `damage.rs:705` special move lookup as
+Dolphin Slash. The required move here is SpecialN. Startup enters at 119,
+charge at 130, release at 161. First resource boundary was sound behavior 3,
+now represented as the retained +2150 effect sound channel. The synchronous
+release uses Marth bank 16 and models 0x3E80/0x3E81, loaded once into the pool.
+Scratch +2340 is the integer charge counter, plus an accessory effect latch.
+
+### Dancing Blade progress
+
+Release CLI passes all 300 ticks. The initial frame-47 continuation mismatch
+was a missing explicit reset of command vars 0 and 1 at entry, now matched
+to retail entry and continuation callbacks. The recorded sequence selects
+351, 352, then 357 from the live stick threshold and AB press window.
+Scratch +2340 retains retail specials.x0; windows remain script command vars.
+
+### Counter progress
+
+Release CLI reaches tick 60, the recorded 369→370 trigger, then stops explicitly
+at `CharacterCallbacks::check_hurtbox_interaction`. The C8 boundary is called
+per candidate in S5-owned `damage.rs`, but currently takes only `&Character`.
+It needs mutable Fighter, attacker/hit-capsule context, and assets, plus a
+consumed-contact result, to test the Counter defense volume before ordinary
+shield/hurt contact and call `ftMs_SpecialLw_80139140`. No damage/down code was
+changed. Target 89 begins at 73, DownBoundD 191 at 96, DownWaitD 192 at 122;
+these remain unverified. Scratch +2340 is scaled damage (Roy consumes it;
+Marth uses script damage), with owned AbsorbDescriptor-layout Counter volume
+and the attribute +60 collision multiplier. Subaction 58 is decoded as its
+four-word signed wind payload; executing its dynamic-wind callback remains
+an explicit later boundary, beyond the first contact.
+
+## Part 2 implementation scope and remaining boundaries
+
+Fox/Falco share `rows::<C>()`, attributes and typed `SpecialHi`/`SpecialLw`
+accessors through `FoxFamily`. Falco compiles the same callbacks; only Fox has
+new scenario evidence. Reflector's descriptor is `melee_coll::defense` data;
+its unit tests preserve the descriptor scalars and verify ground/air reaction
+state, facing and impulse parameters. No reflected-projectile scene is claimed.
+Reflector turns, platform drops, aerial jump cancel and unsupported support
+transitions stop explicitly. Fire Fox's ground-directed travel, rebound and
+preserved support transitions remain explicit ungated branches.
+
+Marth owns its special table and four scratch types in `ft-mars`; there is no
+kind dispatch or generic fighter shell. Dolphin Slash and Shield Breaker's
+post-contact behavior, Counter's trigger/flash/knockdown and a full Counter
+allocation gate await the documented incoming-hit boundaries. Wind/visual
+impulses from lb_800119DC are not simulated; they are not RNG sites. The later
+subaction-58 dynamic-wind execution is an explicit stop. Marth aerial neutral,
+side and down-special entries are outside these recorded scenes and remain
+explicit stops. No full Marth particle replay is claimed.
+
+Ordered particle sites are compared on every gated tick. Canonical RNG seeds
+cover effect/sound draw counts; Fire Fox's random sound site is 80072014, its
+range command is seven words, and seeking consumes no draw. The Fire Fox
+particle replay separately excludes that identified nonparticle Randi and
+retains the existing particle display-cache exclusions.
+
+### Part 2 changed files
+
+- `ft-fox-family/src/{lib,special_s,special_hi,special_lw}.rs`, its manifest,
+  and `ft-{fox,falco}/src/init.rs`: shared rows and typed scratch.
+- `ft-mars/src/{lib,init,special_hi,special_n,special_s,special_lw}.rs` and
+  manifest: character-owned table, callbacks and explicit incoming-hit stop.
+- `melee-cmd/src/{lib,decode}.rs`, `melee-ft/src/fighter/{assets,commands,
+  effects,procs,jump,spawn}.rs`, `melee-ft/src/input/{human,iasa}.rs`: typed
+  command extensions, execution and exposed concrete transition/input helpers.
+- `melee-ef/src/{lib,pool,request,tables}.rs`,
+  `hsd-particle/src/{particle,system}.rs`: synchronous effects, orientation,
+  Marth bank, Reflector light and point-joint force instruction.
+- `melee-sim/src/{assets,frame,initial_state/mod,initial_state/cold}.rs`:
+  initialization-only effect loading and command resolution.
+- `melee-sim/tests/{m5_gate,alloc_gate}.rs`,
+  `hsd-particle/tests/{live_firefox_fd_fox,support/dust_replay}.rs`,
+  Fire Fox spawn fixture and its README: scene, allocation and particle proof.
+- `Cargo.lock`, `CLAUDE.md`, this report and `TRACKER.md`: dependencies and
+  progress. No protected game-data or decomp files were edited.
+
+## Part 2 final validation and required stop
+
+`cargo clippy --workspace --all-targets -- -D warnings` passed. `cargo fmt
+--all --check` passed. All nine added scene tests pass individually in debug
+and release: six cover 300 ticks, three cover the documented prefixes.
+Grounded Fire Fox's particle replay passes both profiles: 628,334 fields,
+10,574 ordered particle draws, zero mismatches. Its allocation gate reports
+299 measured ticks, zero simulate allocations. Counter's available allocation
+prefix reports 59 measured ticks, zero simulate allocations.
+
+The full `cargo gate` stopped at the existing particle opcode test (18 passed,
+1 failed in that integration suite). Exact failure:
+
+```text
+thread 'unported_opcodes_and_malformed_programs_fail_explicitly' panicked at crates/hsd-particle/tests/opcodes.rs:401:9:
+assertion `left == right` failed
+  left: Err(TruncatedProgram { pc: 1 })
+ right: Err(UnsupportedOpcode { opcode: 184, pc: 0 })
+test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+error: test failed, to rerun pass `-p hsd-particle --test opcodes`
+```
+
+`opcodes.rs:391–395` omits 0xB8 from the supported set, so its one-byte input
+expects UnsupportedOpcode. Retail `sysdolphin/baselib/particle.c:1635` defines
+that instruction, reached by grounded Reflector at tick 37. Now that it is
+implemented, the same input is missing operands and returns TruncatedProgram.
+This is a support-inventory expectation that conflicts with the requested new
+retail behavior. Per the user's explicit rule, work stopped and the existing
+test/expected values were left untouched. Updating the inventory and adding a
+truncated-0xB8 case require resolution of that stop instruction.
+
+The chained full release gate and release-math script did not run after the
+debug failure. The final M4 261 suite had not been reached; the earlier baseline
+M4 passed before these changes, which is not final-tree proof. No Part 2
+performance/copy census is claimed: the requested idle-host perf refresh was
+not run after the mandatory stop. The 1,440-copy table and perf lines above
+are explicitly Part 1 historical results. A fresh census remains necessary,
+particularly for the new concrete random-sound resolver and newly exposed
+input helpers. No budget was raised.
+
+Latest release CLI final lines for each fully passing Part 2 scene:
+
+```text
+firefox_fd_fox:       300 ticks, 62 keys, 0 divergences
+airfirefox_fd_fox:    300 ticks, 62 keys, 0 divergences
+reflector_fd_fox:     300 ticks, 62 keys, 0 divergences
+airreflector_fd_fox:  300 ticks, 62 keys, 0 divergences
+reflectorjc_fd_fox:   300 ticks, 62 keys, 0 divergences
+dancingblade_fd_marth: 300 ticks, 62 keys, 0 divergences
+```
+
+No commits or git write commands were run. The initial decomp type-change was
+pre-existing and left untouched. Protected scenario, trace and ROM files were
+only read.

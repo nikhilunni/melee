@@ -19,6 +19,7 @@ pub struct Assets {
     pub particle_bank: ParticleBank,
     pub effects: Archive,
     pub fox_effects: Archive,
+    pub mars_effects: Archive,
     pub common_particle_bank: ParticleBank,
     pub characters: [CharacterArchive; 2],
 }
@@ -98,6 +99,7 @@ impl Assets {
             particle_bank,
             effects,
             fox_effects: archive("EfFxData.dat")?,
+            mars_effects: archive("EfMsData.dat")?,
             common_particle_bank,
             characters: characters.try_into().ok().expect("two character archives"),
         })

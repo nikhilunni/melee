@@ -8,6 +8,8 @@ use melee_types::{FighterKind, ItemKind};
 pub struct Fox {
     pub attributes: FoxAttributes,
     pub special_neutral: ft_fox_family::SpecialNeutral,
+    pub special_lw: ft_fox_family::special_lw::SpecialLw,
+    pub special_hi: ft_fox_family::special_hi::SpecialHi,
     pub special_side: ft_fox_family::special_s::SpecialSide,
     /// ftParts_80074A4C(gobj, 0, 0), OnDeath: default model group state.
     pub model_group: i32,
@@ -19,6 +21,8 @@ impl Fox {
             attributes,
             special_neutral: Default::default(),
             special_side: Default::default(),
+            special_hi: Default::default(),
+            special_lw: Default::default(),
             model_group: 0,
             registered_items: Vec::new(),
         }
@@ -46,6 +50,8 @@ impl CharacterCallbacks for Fox {
     ) {
         ft_fox_family::special_n::accessory::<Self>(fighter, assets);
         ft_fox_family::special_s::accessory::<Self>(fighter, assets);
+        ft_fox_family::special_hi::accessory::<Self>(fighter, assets);
+        ft_fox_family::special_lw::accessory::<Self>(fighter, assets);
     }
     fn item_owner(
         fighter: &mut melee_ft::fighter::Fighter,
@@ -86,6 +92,8 @@ impl CharacterCallbacks for Fox {
     fn on_reset(&mut self) {
         self.special_neutral = Default::default();
         self.special_side = Default::default();
+        self.special_hi = Default::default();
+        self.special_lw = Default::default();
         self.model_group = 0;
     }
 }
@@ -105,7 +113,8 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         additional_motions: &[
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 165, 166, 170, 171, 172,
             173, 174, 175, 176, 177, 179, 180, 183, 184, 29, 62, 178, 191, 192, 201, 244, 248, 254,
-            255, 263, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306,
+            255, 263, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309,
+            310, 311, 313, 314, 315, 316, 317, 318, 319, 320,
         ],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
@@ -139,6 +148,12 @@ impl ft_fox_family::FoxFamily for Fox {
     };
     fn attributes(&self) -> &FoxAttributes {
         &self.attributes
+    }
+    fn special_lw(&mut self) -> &mut ft_fox_family::special_lw::SpecialLw {
+        &mut self.special_lw
+    }
+    fn special_hi(&mut self) -> &mut ft_fox_family::special_hi::SpecialHi {
+        &mut self.special_hi
     }
     fn special_side(&mut self) -> &mut ft_fox_family::special_s::SpecialSide {
         &mut self.special_side

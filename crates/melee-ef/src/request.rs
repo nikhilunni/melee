@@ -3,6 +3,11 @@ use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// S3: parameters consumed by an owned model's post-animation update callback.
+    OwnedRotation {
+        model: u32,
+        rotation: Vec3,
+    },
     // S3: synchronous efAlt generator with a live fighter joint.
     SyncAttached {
         id: u16,
@@ -183,7 +188,8 @@ impl EffectRequest {
     fn is_immediate(&self) -> bool {
         matches!(
             self,
-            Self::SyncAttached { .. }
+            Self::OwnedRotation { .. }
+                | Self::SyncAttached { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

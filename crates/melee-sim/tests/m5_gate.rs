@@ -529,3 +529,50 @@ fn getupstand_fd_fox_300_ticks_and_ordered_particle_draws() {
 fn getuproll_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("getuproll_fd_fox");
 }
+
+// S3 part 2: Fire Fox charge, launch, and special-fall recovery.
+#[test]
+fn firefox_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("firefox_fd_fox");
+}
+
+#[test]
+fn airfirefox_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airfirefox_fd_fox");
+}
+
+#[test]
+fn reflector_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("reflector_fd_fox");
+}
+
+#[test]
+fn airreflector_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflector_fd_fox");
+}
+
+#[test]
+fn reflectorjc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("reflectorjc_fd_fox");
+}
+
+// S3 boundary: damage.rs combo recording needs character special move IDs.
+#[test]
+fn dolphinslash_fd_marth_first_123_ticks_before_special_combo_recording() {
+    special_gate_prefix("dolphinslash_fd_marth", 123);
+}
+
+#[test]
+fn shieldbreaker_fd_marth_prefix_before_special_combo_recording() {
+    special_gate_prefix("shieldbreaker_fd_marth", 165);
+}
+
+#[test]
+fn dancingblade_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dancingblade_fd_marth");
+}
+
+#[test]
+fn counter_fd_marth_first_60_ticks_before_candidate_hook_boundary() {
+    special_gate_prefix("counter_fd_marth", 60);
+}

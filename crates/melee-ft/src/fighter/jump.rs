@@ -57,7 +57,7 @@ impl Fighter {
         Ok(true)
     }
     /// ftCo_KneeBend_Enter (800CB4E0), ftCo_Jump_GetInput (800CAE80).
-    pub(super) fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
         let input = if self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
             && i32::from(self.core.input.vertical.tilt) < assets.input.thresholds.tap_jump_window
         {

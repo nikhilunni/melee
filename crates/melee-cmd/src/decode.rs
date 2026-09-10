@@ -4,6 +4,8 @@ pub type Result<T> = std::result::Result<T, &'static str>;
 /// Number of words consumed, including the opcode; unsupported codes fail closed.
 pub fn word_count(opcode: u32) -> usize {
     match opcode {
+        38 => 7,
+        58 => 4,
         5 | 7 | 56 => 2,
         10 | 11 => 5,
         17 | 34 | 54 | 55 => 3,
@@ -18,6 +20,15 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
     }
     Ok(match opcode {
         0 => Command::End,
+        58 => Command::WindEffect(crate::WindEffect {
+            bone: word as u8,
+            x: (words[1] >> 16) as i16,
+            y: words[1] as i16,
+            magnitude: (words[2] >> 16) as i16,
+            decay: words[2] as i16,
+            timer: (words[3] >> 16) as i16,
+            angle: words[3] as i16,
+        }),
         1 => Command::Wait((word & 0x03ff_ffff) as f32),
         2 => Command::AtFrame((word & 0x03ff_ffff) as f32),
         3 => Command::BeginLoop(word & 0x03ff_ffff),
@@ -82,6 +93,15 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         30 => Command::RapidJab(word & 0x03ff_ffff != 0),
         36 => Command::ArticleVisibility(word & 1 != 0),
         37 => Command::FighterVisibility(word & 1 != 0),
+        38 => Command::RandomSound(crate::RandomSound {
+            ids: words[1..7]
+                .try_into()
+                .expect("validated random sound length"),
+            range: (word & 63) as u8,
+            behavior: ((word >> 6) & 15) as u8,
+            volume: ((word >> 18) & 255) as u8,
+            pan: ((word >> 10) & 255) as u8,
+        }),
         50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
         49 => Command::SwordTrail {
             duration: ((word << 7) as i32) >> 7,
@@ -97,8 +117,9 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             color_animation: (words[1] >> 24) as u8,
         }),
         25 => Command::SetAirborne(match word & 0x03ff_ffff {
-            0 => melee_types::GroundOrAir::Ground,
-            1 => melee_types::GroundOrAir::Air,
+            0 => crate::AirborneMode::Ground,
+            1 => crate::AirborneMode::Air,
+            2 => crate::AirborneMode::AirUseAllJumps,
             _ => return Err("unsupported airborne mode"),
         }),
         23 => Command::AllowInterrupt,

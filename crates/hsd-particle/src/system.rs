@@ -60,6 +60,8 @@ pub struct ParticleSystem {
     banks: [Option<ParticleBank>; 65],
     /// lbl_804D6368 (0x804D6368), the u16 family-ID allocator.
     pub family_counter: u16,
+    /// hsd_804D08E8: eight optional point-joint positions. Unbound slots are null.
+    pub point_joints: [Option<[f32; 3]>; 8],
     /// hsd_804D78F4 SList.data (+0x04), owned generator IDs in pending order.
     pub pending_generators: Vec<Option<usize>>,
     generator_cursor: Option<usize>,
@@ -77,6 +79,7 @@ impl Default for ParticleSystem {
             next_id: 0,
             banks: std::array::from_fn(|_| None),
             family_counter: 0x100,
+            point_joints: [None; 8],
             pending_generators: Vec::new(),
             generator_cursor: None,
             // Port bound: preallocate shared AppSRT owners; exhaustion is explicit.
@@ -302,9 +305,11 @@ impl ParticleSystem {
                     None
                 }
             });
+        let point_joints = self.point_joints;
         particle.update_with_generators::<T>(
             tornado,
             Some(T::atan2f),
+            &point_joints,
             rng,
             draws,
             &mut |parent, kind, blend, rng, draws| {

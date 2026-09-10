@@ -138,3 +138,8 @@ are production inputs exported by `melee-sim fixture-spawns` after the full
 cargo run -q --release -p melee-sim -- fixture-spawns harness/scenarios/nair_fd_fox.toml --out crates/hsd-particle/tests/data/nair_fd_fox_spawns.json
 cargo run -q --release -p melee-sim -- fixture-spawns harness/scenarios/uair_fd_fox.toml --out crates/hsd-particle/tests/data/uair_fd_fox_spawns.json
 ```
+
+`firefox_fd_fox_spawns.json` is the S3 production `fixture-spawns` export for
+`firefox_fd_fox` (300 ticks). It contains caller spawn/joint/flag inputs, never
+expected particle outputs. `live_firefox_fd_fox` compares the live particle
+trace and ordered particle RNG ledger in both profiles.

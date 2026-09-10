@@ -344,7 +344,7 @@ fn count_joystick_activity(input: &mut FighterInput, common: &InputCommonData) -
     }
     count
 }
-pub(super) fn jump_input(input: &FighterInput, common: &InputCommonData) -> bool {
+pub fn jump_input(input: &FighterInput, common: &InputCommonData) -> bool {
     (input.current.stick.y >= common.thresholds.tap_jump_threshold
         && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window)
         || input.pressed.intersects(Buttons::XY)

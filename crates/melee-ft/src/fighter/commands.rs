@@ -34,6 +34,8 @@ pub enum SoundChannel {
     Ordinary,
     Action,
     FighterVoice,
+    /// ft_80088510: Fighter +2150, AX channel 0x42 + player * 2.
+    Effect,
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
@@ -48,9 +50,10 @@ pub struct FootstepSound {
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
     pub smash_charge: Option<melee_cmd::SmashCharge>,
-    pub airborne_changes: FixedVec<melee_types::GroundOrAir, COMMAND_REQUEST_CAPACITY>,
+    pub airborne_changes: FixedVec<melee_cmd::AirborneMode, COMMAND_REQUEST_CAPACITY>,
     pub thrown_by: Option<u32>,
     pub smash_sound_requests: usize,
+    pub random_sounds: FixedVec<melee_cmd::RandomSound, COMMAND_REQUEST_CAPACITY>,
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
@@ -294,6 +297,16 @@ impl CommandState {
                         });
                     }
                 }
+                Command::WindEffect(_) => {
+                    if !seeking {
+                        unimplemented!("ftAction_80073118 -> ftCo_8009E714: dynamic wind effect");
+                    }
+                }
+                Command::RandomSound(sound) => {
+                    if !seeking {
+                        self.random_sounds.push(*sound);
+                    }
+                }
                 Command::FootstepSound {
                     behavior,
                     id,
@@ -305,6 +318,7 @@ impl CommandState {
                             0 => SoundChannel::Ordinary,
                             1 => SoundChannel::Action,
                             2 => SoundChannel::FighterVoice,
+                            3 => SoundChannel::Effect,
                             _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
                         };
                         self.footstep_sounds.push(FootstepSound {
@@ -460,5 +474,29 @@ impl ModelSelections {
         self.entries
             .get(usize::try_from(group + MODEL_GROUP_BIAS).ok()?)
             .and_then(Option::as_ref)
+    }
+}
+
+impl super::FighterCore {
+    /// ftAction_80071FC8 (80072014): select before graphics or effect procs draw.
+    pub fn resolve_random_sound_commands(&mut self, rng: &mut gekko_math::HsdRng) {
+        while !self.commands.random_sounds.is_empty() {
+            let sound = self.commands.random_sounds.remove(0);
+            assert!((1..=6).contains(&sound.range), "retail random sound range");
+            let index = rng.randi(i32::from(sound.range)) as usize;
+            let channel = match sound.behavior {
+                0 => SoundChannel::Ordinary,
+                1 => SoundChannel::Action,
+                2 => SoundChannel::FighterVoice,
+                3 => SoundChannel::Effect,
+                _ => unimplemented!("ftAction_80071FC8 sound behavior {}", sound.behavior),
+            };
+            self.commands.footstep_sounds.push(FootstepSound {
+                channel,
+                id: sound.ids[index],
+                volume: sound.volume,
+                pan: sound.pan,
+            });
+        }
     }
 }

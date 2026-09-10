@@ -100,7 +100,8 @@ impl super::FighterCore {
                 || id / 1000 == 30
                 || matches!(
                     id,
-                    0x3FB
+                    0x3FA
+                        | 0x3FB
                         | 0x3FD
                         | 0x3F8
                         | 0x406

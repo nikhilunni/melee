@@ -143,7 +143,7 @@ pub fn wait_iasa_observe(
     }
     WaitTransition::None
 }
-pub(crate) fn evaluate(
+pub fn evaluate(
     predicate: WaitPredicate,
     input: &FighterInput,
     common: &InputCommonData,

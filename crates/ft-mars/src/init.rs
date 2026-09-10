@@ -6,6 +6,10 @@ use melee_types::FighterKind;
 #[derive(Clone, Debug)]
 pub struct Marth {
     pub attributes: MarsAttributes,
+    pub special_n: crate::special_n::SpecialN,
+    pub special_side: crate::special_s::SpecialSide,
+    pub special_lw: crate::special_lw::SpecialLw,
+    pub special_hi: crate::special_hi::SpecialHi,
     /// Fighter +222C, ftmarsspecials.c:56-60: once-per-airtime vertical boost.
     pub side_special_boost_used: bool,
     /// ftMs_Init_OnDeath resets model groups 0 and 1.
@@ -15,6 +19,10 @@ impl Marth {
     pub fn new(attributes: MarsAttributes) -> Self {
         Self {
             attributes,
+            special_hi: Default::default(),
+            special_lw: Default::default(),
+            special_side: Default::default(),
+            special_n: Default::default(),
             side_special_boost_used: false,
             model_groups: [0; 2],
         }
@@ -24,6 +32,29 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
 
 impl CharacterCallbacks for Marth {
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
+    fn enter_special(
+        f: &mut melee_ft::fighter::Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        air: bool,
+        a: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        match slot {
+            melee_ft::fighter::SpecialSlot::Neutral => crate::special_n::enter(f, air, a),
+            melee_ft::fighter::SpecialSlot::Side => crate::special_s::enter(f, air, a),
+            melee_ft::fighter::SpecialSlot::Up => crate::special_hi::enter(f, air, a),
+            melee_ft::fighter::SpecialSlot::Down => crate::special_lw::enter(f, air, a),
+        }
+    }
+
+    fn accessory(f: &mut melee_ft::fighter::Fighter, a: &melee_ft::fighter::assets::FighterAssets) {
+        crate::special_n::accessory(f, a);
+    }
+    fn check_hurtbox_interaction(&self) {
+        if self.special_lw.volume.is_some() {
+            unimplemented!("Counter ftColl_8007B1B8: per-candidate hook needs mutable Fighter, incoming HitCapsule and assets to test the defense volume and call ftMs_SpecialLw_80139140");
+        }
+    }
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -53,6 +84,10 @@ impl CharacterCallbacks for Marth {
     }
     /// ftMs_Init_OnDeath (80136258): two model groups and Fighter +222C.
     fn on_reset(&mut self) {
+        self.special_hi = Default::default();
+        self.special_lw = Default::default();
+        self.special_side = Default::default();
+        self.special_n = Default::default();
         self.model_groups = [0; 2];
         self.side_special_boost_used = false;
     }
@@ -96,7 +131,8 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         additional_motions: &[
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 165, 166, 170, 171, 172,
             173, 174, 175, 176, 177, 179, 180, 183, 184, 29, 62, 178, 191, 192, 201, 244, 248, 254,
-            255, 263,
+            255, 263, 295, 296, 297, 298, 303, 304, 305, 306, 307, 308, 309, 310, 311, 321, 322,
+            323, 324,
         ],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {

@@ -53,6 +53,7 @@ pub struct Effects {
     instances: FixedVec<Effect, INSTANCE_CAPACITY>,
     models: ModelPool,
     fox_bank: Option<ParticleBank>,
+    mars_bank: Option<ParticleBank>,
     next_joint: usize,
     fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
 }
@@ -68,7 +69,9 @@ struct Effect {
     owner: Option<ModelOwner>,
     lifetime: u16,
     indefinite: bool,
-    shield_bone: Option<usize>,
+    attachment_bone: Option<usize>,
+    scale_attachment: bool,
+    callback_rotation: Option<Vec3>,
     joint_base: usize,
     paths: BTreeMap<usize, (JObjId, spline::Spline)>,
 }
@@ -97,8 +100,47 @@ impl Effects {
             &archive.data()[commands..textures],
             &archive.data()[textures..],
         )?);
-        self.models
-            .add(Effect::load_table(archive, "effFoxDataTable", 5, 0xBBD, 3)?);
+        for (index, id) in [
+            (0, 0xBB8),
+            (1, 0xBB9),
+            (2, 0xBBA),
+            (3, 0xBBB),
+            (4, 0xBBC),
+            (5, 0xBBD),
+        ] {
+            self.models.add(Effect::load_table(
+                archive,
+                "effFoxDataTable",
+                index,
+                id,
+                3,
+            )?);
+        }
+        Ok(())
+    }
+    /// efSync 4F2/4F3: Marth effect models and bank 16, initialization only.
+    pub fn load_mars(&mut self, archive: &Archive) -> Result<()> {
+        ensure!(self.mars_bank.is_none(), "Marth effects already loaded");
+        let table = archive
+            .public("effMarsDataTable")
+            .context("Marth effect table")?;
+        let commands = archive.link(table)?.context("Marth particle commands")? as usize;
+        let textures = archive
+            .link(table + 4)?
+            .context("Marth particle textures")? as usize;
+        self.mars_bank = Some(ParticleBank::from_bytes(
+            &archive.data()[commands..textures],
+            &archive.data()[textures..],
+        )?);
+        for (index, id) in [(0, 0x3E80), (1, 0x3E81)] {
+            self.models.add(Effect::load_table(
+                archive,
+                "effMarsDataTable",
+                index,
+                id,
+                16,
+            )?);
+        }
         Ok(())
     }
     pub fn fox_particle_bank(&self) -> Option<&ParticleBank> {
@@ -123,7 +165,7 @@ impl Effects {
             .set_rotation_y(effect.root, std::f32::consts::FRAC_PI_2);
         effect.tree.set_rotation_z(effect.root, angle);
         effect.animate_banks::<T>(
-            (common_bank, self.fox_bank.as_ref()),
+            (common_bank, self.fox_bank.as_ref(), self.mars_bank.as_ref()),
             particles,
             rng,
             &mut self.draws,
@@ -240,6 +282,62 @@ impl Effects {
                         particles.expire_joint(joint);
                     }
                 }
+                continue;
+            }
+            // S3: efAlt 48B/48C use efLib_Create_Attach, with no scale inheritance.
+            if let EffectRequest::OwnedRotation { model, rotation } = request {
+                for effect in self.instances.iter_mut().filter(|effect| {
+                    effect.owner == Some(ModelOwner::Fighter(player)) && effect.descriptor == model
+                }) {
+                    effect.callback_rotation = Some(rotation);
+                }
+                continue;
+            }
+            if let EffectRequest::SyncAttached {
+                id: id @ (0x488..=0x48C | 0x4F2..=0x4F3),
+                bone,
+            } = request
+            {
+                let model = match id {
+                    0x488..=0x48C => 0xBB8 + u32::from(id - 0x488),
+                    0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
+                    _ => unreachable!(),
+                };
+                let mut effect = self.acquire(model, particles);
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.attachment = Some(player);
+                effect.attachment_bone = Some(bone);
+                effect.scale_attachment = false;
+                if id <= 0x48A || id >= 0x4F2 {
+                    // efLib_Create_Attach_Scale: the fighter root supplies uniform scale.
+                    let root_matrix = fighter.effect_matrix(None);
+                    let mut scale = Vec3::ZERO;
+                    hsd_anim::mtx::hsd_mtx_get_scale(&root_matrix, &mut scale);
+                    scale.x = scale.y;
+                    scale.z = scale.y;
+                    effect.tree.set_scale(effect.root, &scale);
+                }
+                if id >= 0x4F2 {
+                    effect.tree.set_rotation_y(
+                        effect.root,
+                        std::f32::consts::FRAC_PI_2 * fighter.effect_facing(),
+                    );
+                }
+                let matrix = fighter.effect_matrix(Some(bone));
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+                effect.animate_banks::<T>(
+                    (bank, self.fox_bank.as_ref(), self.mars_bank.as_ref()),
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                )?;
+                self.instances.push(effect);
                 continue;
             }
             // S3: efAlt_Spawn 0x48D -> efLib_CreateGenerator_AppSRT_SetFacingDir.
@@ -400,7 +498,7 @@ impl Effects {
                 ..
             } = request
             {
-                effect.shield_bone = Some(bone);
+                effect.attachment_bone = Some(bone);
             }
             let bone = if let EffectRequest::CaptureFlash { bone }
             | EffectRequest::Graphics { bone, .. }
@@ -413,7 +511,8 @@ impl Effects {
             let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(bone));
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
-                EffectRequest::EggShell { .. }
+                EffectRequest::OwnedRotation { .. }
+                | EffectRequest::EggShell { .. }
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
@@ -462,7 +561,7 @@ impl Effects {
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    if !matches!(id, 0x3FB | 0x406 | 0x423 | 0x424) {
+                    if !matches!(id, 0x3FA | 0x3FB | 0x406 | 0x423 | 0x424) {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {
@@ -547,8 +646,8 @@ impl Effects {
                 }
             }
             if let Some(player) = effect.attachment {
-                let matrix = bone_matrix(player, effect.shield_bone);
-                if effect.shield_bone.is_some() {
+                let matrix = bone_matrix(player, effect.attachment_bone);
+                if effect.attachment_bone.is_some() && effect.scale_attachment {
                     // efLib_Update (8005BC50), eflib.c:406-425: world Y scale,
                     // broadcast to all three axes. HSD_MtxGetScale is audited.
                     let mut scale = Vec3::ZERO;
@@ -565,12 +664,25 @@ impl Effects {
                 );
             }
             effect.animate_banks::<T>(
-                (bank, self.fox_bank.as_ref()),
+                (bank, self.fox_bank.as_ref(), self.mars_bank.as_ref()),
                 particles,
                 rng,
                 &mut self.draws,
                 &mut self.events,
             )?;
+            // efLib_Update invokes the effect callback after JObj animation.
+            if let Some(rotation) = effect.callback_rotation {
+                effect.tree.set_rotation_y(effect.root, rotation.y);
+                effect.tree.set_rotation_z(effect.root, rotation.z);
+                // The particle proc sees matrices dirtied by this post-animation callback.
+                for index in 0..effect.joints.len() {
+                    let joint = effect.joints[index];
+                    let matrix = effect.matrix(joint);
+                    self.events
+                        .update_joint(effect.joint_base + joint.0, matrix);
+                    particles.update_joint(effect.joint_base + joint.0, matrix);
+                }
+            }
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -656,7 +768,9 @@ impl Effect {
             root,
             lifetime: lifetime + 1,
             indefinite: lifetime == 0,
-            shield_bone: None,
+            attachment_bone: None,
+            scale_attachment: true,
+            callback_rotation: None,
             attachment: None,
             owner: None,
             joint_base: 0,
@@ -691,11 +805,11 @@ impl Effect {
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
-        self.animate_banks::<T>((bank, None), particles, rng, draws, sink)
+        self.animate_banks::<T>((bank, None, None), particles, rng, draws, sink)
     }
     fn animate_banks<T: InverseTrig>(
         &mut self,
-        banks: (&ParticleBank, Option<&ParticleBank>),
+        banks: (&ParticleBank, Option<&ParticleBank>, Option<&ParticleBank>),
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
         draws: &mut DrawLog,
@@ -718,12 +832,13 @@ impl Effect {
                         let bank = match lo {
                             0 => banks.0,
                             3 => banks.1.context("Fox particle bank not loaded")?,
+                            16 => banks.2.context("Marth particle bank not loaded")?,
                             _ => anyhow::bail!("unsupported effect particle bank {lo}"),
                         };
                         ensure!(
                             (lo == 0 && (PARTICLE_KINDS.contains(&hi) || hi == 0x102))
-                                || (self.bank == 3
-                                    && lo == 3
+                                || (matches!(self.bank, 3 | 16)
+                                    && lo == i32::from(self.bank)
                                     && bank.descriptor(hi as u32).is_some()),
                             "unsupported ef particle {lo}/{hi}"
                         );

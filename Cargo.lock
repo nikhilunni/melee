@@ -285,6 +285,7 @@ dependencies = [
  "hsd-types",
  "it-foxillusion",
  "it-foxlaser",
+ "melee-coll",
  "melee-ef",
  "melee-ft",
  "melee-it",
@@ -305,8 +306,12 @@ dependencies = [
 name = "ft-mars"
 version = "0.0.1"
 dependencies = [
+ "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-cmd",
+ "melee-coll",
+ "melee-ef",
  "melee-ft",
  "melee-test-support",
  "melee-types",

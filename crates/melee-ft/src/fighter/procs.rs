@@ -201,8 +201,17 @@ impl FighterCore {
         );
         for state in std::mem::take(&mut self.commands.airborne_changes) {
             match state {
-                melee_types::GroundOrAir::Ground => self.land(),
-                melee_types::GroundOrAir::Air => self.leave_ground(),
+                melee_cmd::AirborneMode::Ground => self.land(),
+                melee_cmd::AirborneMode::Air => self.leave_ground(),
+                melee_cmd::AirborneMode::AirUseAllJumps => {
+                    // ftCommon_8007D60C: five ECB ticks and all jumps consumed.
+                    self.physics.ground_or_air = melee_types::GroundOrAir::Air;
+                    self.physics.ground_velocity = 0.0;
+                    self.physics.animation_velocity.y = 0.0;
+                    self.physics.jumps_used = self.attributes.jumping.max_jumps as u8;
+                    self.collision.lock_frames = 5;
+                    self.collision.data.x130_flags |= melee_types::mp::coll_data_x130::LOCKED;
+                }
             }
         }
         self.apply_dynamic_commands(assets);

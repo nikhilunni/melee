@@ -129,17 +129,25 @@ impl Particle {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
-        self.update_with_generators::<T>(None, Some(T::atan2f), rng, draws, &mut |_, _, _, _, _| {
-            Err(Error::UnsupportedFeature(
-                "generator opcode requires ParticleSystem",
-            ))
-        })
+        self.update_with_generators::<T>(
+            None,
+            Some(T::atan2f),
+            &[None; 8],
+            rng,
+            draws,
+            &mut |_, _, _, _, _| {
+                Err(Error::UnsupportedFeature(
+                    "generator opcode requires ParticleSystem",
+                ))
+            },
+        )
     }
 
     pub(crate) fn update_with_generators<T: InverseTrig>(
         &mut self,
         tornado: Option<TornadoPhysics>,
         atan2: Option<fn(f32, f32) -> f32>,
+        point_joints: &[Option<[f32; 3]>; 8],
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         spawn: &mut impl FnMut(
@@ -160,7 +168,7 @@ impl Particle {
         if self.wait != 0 {
             self.wait -= 1;
             if self.wait == 0 {
-                self.interpret::<T>(atan2, rng, draws, spawn)?;
+                self.interpret::<T>(atan2, point_joints, rng, draws, spawn)?;
             }
         }
         self.life = self.life.wrapping_sub(1);
@@ -256,6 +264,7 @@ impl Particle {
     fn interpret<T: InverseTrig>(
         &mut self,
         atan2: Option<fn(f32, f32) -> f32>,
+        point_joints: &[Option<[f32; 3]>; 8],
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         spawn: &mut impl FnMut(
@@ -301,6 +310,27 @@ impl Particle {
                 track.setup(opcode & 15, &mut cursor)?;
             } else {
                 match opcode {
+                    0xb8 => {
+                        let index =
+                            usize::from(cursor.byte()?) + usize::from(self.point_joint_offset);
+                        let force = cursor.float()?;
+                        let range = cursor.float()?;
+                        let target = *point_joints.get(index).ok_or(Error::UnsupportedFeature(
+                            "point-joint index exceeds retail slots",
+                        ))?;
+                        if force_toward_joint(
+                            self.position,
+                            &mut self.velocity,
+                            target,
+                            force,
+                            range,
+                        ) {
+                            self.life = 1;
+                            self.pc = cursor.pc;
+                            self.wait = 0;
+                            return Ok(());
+                        }
+                    }
                     0xa9 => {
                         let angle = cursor.float()?;
                         self.randomize_direction(
@@ -651,5 +681,66 @@ impl TornadoPhysics {
             self.position[1] + fmadds(cos_b, z * sin_a, fmadds(sin_b, -d * sin_a, e * cos_a));
         p.position[2] =
             self.position[2] + fmadds(cos_b, z * cos_a, fmsubs(sin_b, -d * cos_a, e * sin_a));
+    }
+}
+
+/// hsd_803991D8: B8 attracts toward a registered joint, killing inside its radius.
+fn force_toward_joint(
+    position: [f32; 3],
+    velocity: &mut [f32; 3],
+    target: Option<[f32; 3]>,
+    force: f32,
+    range: f32,
+) -> bool {
+    let Some(target) = target else {
+        return false;
+    };
+    if range < 0.0 {
+        return false;
+    }
+    let [dx, dy, dz] = [
+        target[0] - position[0],
+        target[1] - position[1],
+        target[2] - position[2],
+    ];
+    // Retail 80399290/294: dy*dy, then two ordered fmadds.
+    let distance = fmadds(dz, dz, fmadds(dx, dx, dy * dy));
+    if distance <= range * range {
+        return true;
+    }
+    if distance == 0.0 {
+        return false;
+    }
+    let scale = force / distance;
+    // Retail 803992CC/D8/E4: one fmadds per velocity component.
+    for (value, delta) in velocity.iter_mut().zip([dx, dy, dz]) {
+        *value = fmadds(scale, delta, *value);
+    }
+    false
+}
+#[cfg(test)]
+mod point_force_tests {
+    use super::force_toward_joint;
+    #[test]
+    fn proximity_kills_before_acceleration_and_absent_joint_does_nothing() {
+        let mut velocity = [1.0, 2.0, 3.0];
+        assert!(!force_toward_joint([0.0; 3], &mut velocity, None, 8.0, 1.0));
+        assert_eq!(velocity, [1.0, 2.0, 3.0]);
+        assert!(force_toward_joint(
+            [0.0; 3],
+            &mut velocity,
+            Some([2.0, 0.0, 0.0]),
+            8.0,
+            2.0
+        ));
+        assert_eq!(velocity, [1.0, 2.0, 3.0]);
+        assert!(!force_toward_joint(
+            [0.0; 3],
+            &mut velocity,
+            Some([2.0, 0.0, 0.0]),
+            8.0,
+            1.0
+        ));
+        assert_eq!(velocity, [5.0, 2.0, 3.0]);
     }
 }

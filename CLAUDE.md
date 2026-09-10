@@ -28,7 +28,7 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `crates/melee-it` | Fixed item storage, spawn descriptors, state/event logic rows and item script/physics phases. |
 | `crates/it-foxillusion` | Shared Fox Illusion/Falco Phantasm ghost item tables. |
 | `crates/it-foxlaser` | Shared Fox/Falco laser and blaster item tables. |
-| `crates/ft-fox-family` | Shared Fox/Falco SpecialN and Illusion states and typed move scratch. |
+| `crates/ft-fox-family` | Shared Fox/Falco special rows, typed move scratch, and Reflector defense data. |
 | `crates/melee-cmd` | Shared typed subaction decoding, fixed interpreter control state and timers; consumers apply commands. |
 | `crates/melee-coll` | Hit/hurt capsules, collider pair traversal, contact geometry, damage math, clank priority and reflect/absorb descriptors. |
 | `crates/melee-ef` | Effect request queues, fixed model pools, efLib update and particle dispatch; independent of fighters/scenes. |

@@ -187,3 +187,37 @@ fn nairlc_fd_fox_allocation_budget() {
 fn dair_fd_marth_allocation_budget() {
     allocation_budget("dair_fd_marth", 0);
 }
+// S3 part 2: charge flames and launch model use the prepared effect pools.
+#[test]
+fn firefox_fd_fox_allocation_budget() {
+    allocation_budget("firefox_fd_fox", 0);
+}
+
+// S3: Counter's incoming-hit callback contract is the tick-60 S5 boundary.
+#[test]
+fn counter_fd_marth_prefix_has_no_simulate_allocations() {
+    let scenario = Scenario::load(
+        &Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../harness/scenarios/counter_fd_marth.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let mut simulation = Simulation::with_inputs(
+        InitialState::from_savestate_traces(&scenario).unwrap(),
+        trace::pad_script(&scenario).unwrap(),
+    );
+    simulation.tick_without_snapshot().unwrap();
+    ALLOCATIONS.with(|count| count.set(0));
+    COUNTING.with(|enabled| enabled.set(true));
+    for _ in 1..60 {
+        simulation.tick_without_snapshot().unwrap();
+    }
+    COUNTING.with(|enabled| enabled.set(false));
+    let total = ALLOCATIONS.with(Cell::get);
+    assert_eq!(total, 0);
+    eprintln!(
+        "counter_fd_marth: 59 measured ticks, {total} simulate allocations (tick-60 hook boundary)"
+    );
+}

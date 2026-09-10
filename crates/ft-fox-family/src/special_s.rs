@@ -79,7 +79,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
     ]
 }
 
-const fn row(
+pub(crate) const fn row(
     action: S,
     animation: i32,
     anim: state::AnimFn,
@@ -238,7 +238,7 @@ fn delay<C: FoxFamily>(f: &mut Fighter) -> bool {
 }
 
 /// ftCommon_ApplyFrictionAir (8007CE94): acceleration applied by procUpdate.
-fn air_friction(f: &mut Fighter, friction: f32) {
+pub(crate) fn air_friction(f: &mut Fighter, friction: f32) {
     let velocity = f.physics.self_velocity.x;
     f.physics.animation_velocity.x = if friction.abs() >= velocity.abs() {
         -velocity
@@ -249,7 +249,7 @@ fn air_friction(f: &mut Fighter, friction: f32) {
     };
 }
 
-fn finish_ground(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub(crate) fn finish_ground(f: &mut Fighter, p: PhysicsPhase<'_>) {
     let core = &mut f.core;
     grounded::apply_ground_movement(
         &mut core.physics,
@@ -264,7 +264,7 @@ fn finish_ground(f: &mut Fighter, p: PhysicsPhase<'_>) {
         p.wind,
     );
 }
-fn finish_air(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub(crate) fn finish_air(f: &mut Fighter, p: PhysicsPhase<'_>) {
     integrate::integrate_velocity(&mut f.physics);
     integrate::integrate_environment(&mut f.physics, None, p.wind);
 }

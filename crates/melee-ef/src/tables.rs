@@ -16,7 +16,14 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 12] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 13] = [
+    // S3: Reflector's script light, efAsync_Dispatch 0x3FA.
+    ModelSpawn {
+        request: 0x3FA,
+        source: ModelSource::Graphics,
+        model: 0x15,
+        attached: false,
+    },
     ModelSpawn {
         request: 0x3FB,
         source: ModelSource::Graphics,
@@ -144,6 +151,6 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 7] = [
 // efasync.c:282-287, live-joint generator dispatch.
 pub(super) static ATTACHED_SPAWNS: [(u16, u32); 2] = [(0x402, 0x59), (0x403, 0x5E)];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 17] = [
-    2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 373, 445, 448, 449,
+pub(super) static PARTICLE_KINDS: [i32; 18] = [
+    2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 372, 373, 445, 448, 449,
 ];

@@ -13,7 +13,8 @@ pub struct ColorAnimationRequest {
 #[derive(Clone, Debug)]
 pub enum Command {
     SmashCharge(SmashCharge),
-    SetAirborne(melee_types::GroundOrAir),
+    SetAirborne(AirborneMode),
+    WindEffect(WindEffect),
     SmashSound,
     ThrowAccessory,
     GrabRelease,
@@ -75,6 +76,8 @@ pub enum Command {
         id: u16,
         duration: u16,
     },
+    /// ftAction_80071FC8: seven-word random sound selection.
+    RandomSound(RandomSound),
     FootstepSound {
         behavior: u8,
         id: u32,
@@ -127,4 +130,34 @@ impl SmashCharge {
                 1.0,
             )
     }
+}
+
+/// Opcode 38 payload; selection consumes one HSD_Randi at the command boundary.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RandomSound {
+    pub ids: [u32; 6],
+    pub range: u8,
+    pub behavior: u8,
+    pub volume: u8,
+    pub pan: u8,
+}
+
+/// ftAction_80071998 selects one of the three common conversion helpers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AirborneMode {
+    Ground,
+    Air,
+    AirUseAllJumps,
+}
+
+/// ftAction_80073118: signed fixed-point wind command payload.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WindEffect {
+    pub bone: u8,
+    pub x: i16,
+    pub y: i16,
+    pub magnitude: i16,
+    pub decay: i16,
+    pub timer: i16,
+    pub angle: i16,
 }
