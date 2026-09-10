@@ -1,7 +1,7 @@
 # S9: high-percent KOs: damage sounds, fly roll, side and top blast zones
 
 2026-09-10, combat lane, ported directly (Codex credits were exhausted at the
-time). **Five of the seven S9 scenes are exact; `topko2_usmash_fd_fox` stops
+time). **Six of the eight S9 scenes are exact; `topko2_usmash_fd_fox` stops
 explicitly at the camera-space screen-KO approach; the two `hi200_uthrow`
 scenes stop at ThrowHi (S7).** No scenario, trace, decomp or expected value was
 changed.
@@ -14,6 +14,7 @@ changed.
 | `hi200_utilt_fd_marth` | P2 285:87 -> 324:2 (DeadRight, x=249.8) -> 384:12 -> 444:13 | `life.rs` side/up death stop -> exact | 420 ticks, 62 keys, 0 divergences |
 | `hi200_dolphinslash_fd_marth` | P2 282:88 -> 323:2 -> 383:12 -> 443:13; P1 367 -> 35 -> 43 | same -> exact | 420 ticks, 62 keys, 0 divergences |
 | `topko_usmash_fd_fox` | P2 267:90 -> 293:4 (DeadUpStar at y=191.2), flying from 294 to the end | fly-roll draw -> death stop -> exact | 230 ticks, 62 keys, 0 divergences |
+| `topko_usmash_long_fd_fox` (340 frames, recorded 2026-09-10 morning) | as above; the star vanishes at 424 (velocity clear, twinkle, HUD explosion), the last stock pauses the match from 425 | vanish stop -> exact | 340 ticks, 62 keys, 0 divergences |
 | `topko2_usmash_fd_fox` | P2 271:90 -> 297:6 (DeadUpFall) -> 348:7 (HitCamera) | death stop -> explicit stop at tick 298 (`ftDrawCommon_80080E18_inline2`) | STOP: entry tick exact, approach needs the camera port |
 | `hi200_uthrow_fd_marth`, `hi200_uthrow2_fd_marth` | ThrowHi 221 / ThrownHi 241 -> DamageFlyTop 90 -> tumble -> DownBoundD | S7 ThrowHi (140 / 146 ticks matched) | BLOCKED on S7 |
 
@@ -87,10 +88,15 @@ self_vel.z = +510 (-350.0) / (f32) flight
 
 No retail physics callback: `Fighter_procUpdate`'s tail integrates the
 velocity (`free_flight_physics`, now shared with the revival platform).
-The trace covers 90 of the 130 flight frames; the vanish (velocity clear,
-`efAsync_Spawn 0x42D` twinkle, sfx 0x83, stock loss, PlCo `+50C` = 45 frames
-to the respawn request) is an explicit stop until a 400-frame recording of
-`topko_usmash_fd_fox` exists.
+The vanish (800D4484..800D4530, `vanish_star_ko`): `ftCommon_8007E2FC`,
+`efAsync_Spawn(gobj, &x60C, 2, 0x42D, NULL, &cur_pos)` = `efLib_CreateGenerator`
+0x121 at the fighter position (a `DUST_SPAWNS` row, spawned through the
+root-relative `Landing` request), the fighter turns invisible, sfx 0x83,
+then `ftCo_800D34E0` loses the stock (which fires the HUD percent explosion
+on the same tick, as the ledger's eight `ifStatus` draws at 424 show) and the
+PlCo `+50C` = 45-frame countdown starts. With the last stock gone the match
+pauses on the next tick, so the DamageFall animation freezes at frame 11
+exactly as recorded.
 
 ### Screen KO (`ftCo_800D4580`, `ftCo_DeadUpFall_Anim/_Phys`)
 
@@ -107,7 +113,6 @@ the phase-0 -> 1 transition with the retail function named.
 
 ## Stops left explicit
 
-- `ftCo_DeadUpStar_Anim` vanish (needs the longer recording).
 - `ftDrawCommon_80080E18_inline2` screen-KO approach (camera port).
 - `ftCo_ShieldBreakFly.c:30` top-exit flag (S6), DeadUp 3 (special modes),
   DamageIce variants, linked-fighter release on death (S7).

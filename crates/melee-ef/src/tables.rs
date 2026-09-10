@@ -125,11 +125,17 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 10] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 11] = [
     // S6: dizzy animation sparkle, efasync.c:117-119.
     DustSpawn {
         request: 0x3E9,
         particle: 0xC,
+        directional: false,
+    },
+    // S9: efasync.c 0x42D, the star-KO twinkle (efLib_CreateGenerator 0x121 at cur_pos).
+    DustSpawn {
+        request: 0x42D,
+        particle: 0x121,
         directional: false,
     },
     // S3: efasync.c:174-185, Dolphin Slash launch dust.

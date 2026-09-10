@@ -679,3 +679,9 @@ fn s6_shield_prefix(name: &str, frames: usize, prefix: usize) {
     }
     eprintln!("{name}: {prefix} ticks, 49 keys, 0 divergences; cross-lane boundary prefix only");
 }
+
+// S9 (long): the star KO through the vanish (twinkle 0x42D, stock loss) and the last-stock pause.
+#[test]
+fn topko_usmash_long_fd_fox_340_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("topko_usmash_long_fd_fox", 340);
+}

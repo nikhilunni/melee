@@ -91,7 +91,8 @@ pub enum EffectRequest {
         id: u16,
         scale: Vec3,
     },
-    /// ftAction_80072E4C / ftCo_8009F834: root-relative landing dust.
+    /// ftAction_80072E4C / ftCo_8009F834: root-relative landing dust; also the star-KO
+    /// twinkle (efAsync_Spawn 0x42D at cur_pos, ftCo_DeadUpStar_Anim).
     Landing {
         id: u16,
         offset: Vec3,

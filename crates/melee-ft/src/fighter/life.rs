@@ -262,7 +262,9 @@ impl Fighter {
             camera_top,
         }) = &mut self.core.state_data
         else {
-            panic!("star KO scratch");
+            // Phase 2, after the vanish: the PlCo +50C countdown to the respawn request.
+            self.core.death_animation();
+            return Ok(());
         };
         // The ice variant (x68) also spins the XRotN bone here.
         if *remaining != 0 {
@@ -272,12 +274,7 @@ impl Fighter {
             return Ok(());
         }
         if *flying {
-            // ftCommon_8007E2FC, efAsync_Spawn 0x42D (the twinkle), ftCo_800D4E50, the
-            // vanish, ft_PlaySFX 0x83, ftCo_800D34E0 and the PlCo +50C countdown.
-            unimplemented!(
-                "ftCo_DeadUpStar_Anim: the vanish (efAsync_Spawn 0x42D) needs an oracle \
-                 trace running past PlCo +508 frames of flight"
-            );
+            return self.vanish_star_ko(assets);
         }
         // retail 800D4438: fmsubs, then fdivs by the int-converted frame count.
         let frames = star.flight as f32;
@@ -287,6 +284,27 @@ impl Fighter {
         *flying = true;
         self.core.physics.self_velocity.y = velocity_y;
         self.core.physics.self_velocity.z = velocity_z;
+        Ok(())
+    }
+    /// ftCo_DeadUpStar_Anim phase 1 -> 2 (800D4484..800D4530): the star vanishes.
+    fn vanish_star_ko(&mut self, assets: &FighterAssets) -> Result<()> {
+        // ftCommon_8007E2FC; ftCommon_8007DB24 is the ice variant only.
+        self.core.clear_velocities();
+        // efAsync_Spawn(gobj, &x60C, 2, 0x42D, NULL, &cur_pos): efLib_CreateGenerator
+        // 0x121 at the fighter position (root-relative, zero offset).
+        self.core.effects.push(EffectRequest::Landing {
+            id: 0x42D,
+            offset: Vec3::ZERO,
+            floor_angle: 0.0,
+        });
+        // ftCo_800D4E50: the coin-mode payout only. x221F_b1, the vanish, ft_80088C5C:
+        self.core.effect_state.invisible = true;
+        self.core.play_death_sounds(assets, 0x83);
+        // ftCo_800D34E0: the stock is lost here, which also fires the HUD explosion.
+        self.core.lose_stock();
+        self.core.state_data = MotionData::Life(LifeState::Dead {
+            remaining: assets.life.star.vanish_delay,
+        });
         Ok(())
     }
     /// ftCo_800D4780 -> ftCo_800D4580 (800D4580): the screen KO entry, DeadUpFall.

@@ -462,7 +462,9 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::Landing {
-                id: 0x407, offset, ..
+                id: id @ (0x407 | 0x42D),
+                offset,
+                ..
             } = request
             {
                 let mut position = Vec3::ZERO;
@@ -472,7 +474,7 @@ impl Effects {
                     &mut position,
                 );
                 self.spawn_dust_generator::<T>(
-                    0x407,
+                    id,
                     position,
                     fighter.effect_facing(),
                     bank,
