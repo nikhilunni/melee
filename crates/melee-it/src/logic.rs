@@ -29,7 +29,7 @@ pub trait ItemLogic {
     const STATES: &'static [ItemStateRow];
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
-    fn picked_up(_item: &mut ItemCore) {}
+    fn picked_up(_item: &mut ItemCore, _context: &ItemAnimationContext<'_>) {}
     fn dropped(_item: &mut ItemCore) {}
     fn thrown(_item: &mut ItemCore) {}
     fn entered_air(_item: &mut ItemCore) {}
@@ -86,7 +86,7 @@ pub struct ItemLogicRow {
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
     pub destroyed: fn(&mut ItemCore),
-    pub picked_up: fn(&mut ItemCore),
+    pub picked_up: fn(&mut ItemCore, &ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore),
     pub thrown: fn(&mut ItemCore),
     pub entered_air: fn(&mut ItemCore),

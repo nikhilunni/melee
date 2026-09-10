@@ -112,6 +112,16 @@ pub struct CommandState {
     pub footstep_sounds: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
 }
 impl CommandState {
+    /// ftAction_8007349C (8007349C): UpdateCmd executes control flow only.
+    pub(super) fn advance_control(&mut self, animation: &FighterAnimation, assets: &FighterAssets) {
+        self.script
+            .begin_frame(animation.frame + animation.remainder, animation.speed);
+        while self
+            .script
+            .next(&assets.commands, animation.speed)
+            .is_some()
+        {}
+    }
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
     pub fn step(
         &mut self,

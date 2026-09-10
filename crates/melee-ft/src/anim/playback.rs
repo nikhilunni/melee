@@ -160,8 +160,9 @@ impl FighterAnimation {
         }
     }
 
-    /// Reset clocks and poses while retaining both trees and their track buffers.
-    /// Fighter_UnkProcessDeath (80068354) reuses the fighter's loaded model.
+    /// Reset clocks while retaining both trees and their track buffers.
+    /// Fighter_UnkProcessDeath (80068354) probes support using the retained
+    /// model pose. Resetting its SRT here changes the locked respawn ECB.
     pub fn reset_for_spawn(&mut self, tree: &mut JObjTree) {
         self.clear_motion(tree);
         self.frame = 0.0;
@@ -175,8 +176,8 @@ impl FighterAnimation {
             part.flags.0 &= PartFlags::PRESENT | PartFlags::TRANSLATION | PartFlags::COPY;
             part.motion_mask = 0;
             let rest = self.rest_pose.get(part.joint);
-            for target in [&mut *tree, &mut self.blend_tree] {
-                let joint = target.get_mut(part.joint);
+            {
+                let joint = self.blend_tree.get_mut(part.joint);
                 joint.flags = rest.flags;
                 joint.rotate = rest.rotate;
                 joint.scale = rest.scale;

@@ -153,6 +153,9 @@ impl FighterCore {
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
     pub(super) fn retained_drop_timer(&self) -> f32 {
         match &self.state_data {
+            // ftCo_800D5600: mv.common.x4 is the
+            // platform target vector; an aerial entry retains its first word.
+            MotionData::Life(super::life::LifeState::PlatformWait { target, .. }) => target.x,
             MotionData::Damage(_) => 0.0, // ftCo_Damage.mv.x4: low-knockback collision flag.
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::MultiJump(jump) => jump.retained_drop_timer,

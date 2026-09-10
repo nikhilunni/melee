@@ -13,6 +13,7 @@ mod saved_pose;
 pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
+mod stock;
 use hsd_types::Vec3;
 fn word(raw: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap())
@@ -313,25 +314,29 @@ impl InitialState {
             None
         };
         // ifStock_804A1378: import only the saved HUD boundary, never later trace rows.
-        let stock_displays = std::array::from_fn(|slot| {
-            if match_start {
-                // The HUD is built during the first match ticks (not in a match-start
-                // savestate); ifStock creation is not ported yet.
-                return None;
-            }
-            let player = saved.bytes(0x804A_1378 + 8 + slot as u32 * 0x50, 0x50);
-            let state = saved.bytes(0x804A_1378 + 0x204 + slot as u32 * 0x54, 12);
-            let root = vector(saved.bytes(word(player, 4) + 0x38, 12), 0);
-            let icon_positions = std::array::from_fn(|i| {
-                let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
-                Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
-            });
-            Some(melee_if::StockDisplay {
-                icon_positions,
-                animation_frames: state[5..10].try_into().unwrap(),
-                animate_losses: state[2] != 0,
+        let stock_displays = if match_start {
+            stock::create(
+                &scenario.assets_path(),
+                std::array::from_fn(|slot| {
+                    crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
+                }),
+            )?
+        } else {
+            std::array::from_fn(|slot| {
+                let player = saved.bytes(0x804A_1378 + 8 + slot as u32 * 0x50, 0x50);
+                let state = saved.bytes(0x804A_1378 + 0x204 + slot as u32 * 0x54, 12);
+                let root = vector(saved.bytes(word(player, 4) + 0x38, 12), 0);
+                let icon_positions = std::array::from_fn(|i| {
+                    let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
+                    Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
+                });
+                Some(melee_if::StockDisplay {
+                    icon_positions,
+                    animation_frames: state[5..10].try_into().unwrap(),
+                    animate_losses: state[2] != 0,
+                })
             })
-        });
+        };
         let spawn_counter = melee_ft::fighter::SpawnCounter(
             fighters
                 .iter()

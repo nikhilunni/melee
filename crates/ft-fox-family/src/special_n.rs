@@ -121,7 +121,7 @@ pub fn enter_special<C: FoxFamily>(
         f.physics.position,
         f.physics.facing,
     );
-    f.core.item_requests.push(ItemRequest::Spawn(spawn));
+    f.core.item_requests.push(ItemRequest::SpawnHeld(spawn));
 }
 
 fn control<C: FoxFamily>(f: &mut Fighter, control: ItemControl) {

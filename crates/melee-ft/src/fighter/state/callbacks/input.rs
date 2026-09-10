@@ -60,7 +60,10 @@ pub fn guard_on(fighter: &mut Fighter, phase: InputPhase<'_>) {
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
 pub fn turn_run(fighter: &mut Fighter, phase: InputPhase<'_>) {
-    fighter.core.input_turn_run(phase)
+    // ftCo_TurnRun_IASA (800C9ED8): bl fn_800CAF78 at 800C9EE4.
+    fighter
+        .try_running_jump(phase.assets)
+        .expect("TurnRun jump cancel");
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffClimbQuick (255), ftCo_MS_CliffEscapeQuick (259).
@@ -91,7 +94,15 @@ pub fn escape_n(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_KneeBend (24).
 pub fn knee_bend(fighter: &mut Fighter, phase: InputPhase<'_>) {
-    fighter.core.input_knee_bend(phase)
+    let context = WaitContext {
+        facing: fighter.core.physics.facing,
+        specials_available: fighter.core.capabilities.specials,
+        shield_health: fighter.core.status.shield_health,
+        ..WaitContext::default()
+    };
+    fighter
+        .knee_bend_input(phase.assets, &context)
+        .expect("KneeBend IASA");
 }
 
 /// ftData_MotionStateList: ftCo_MS_Squat (39), ftCo_MS_SquatWait (40), ftCo_MS_SquatRv (41).
@@ -276,11 +287,6 @@ pub fn landing(fighter: &mut Fighter, phase: InputPhase<'_>) {
 }
 
 impl FighterCore {
-    fn input_turn_run(&mut self, phase: InputPhase<'_>) {
-        let InputPhase { assets } = phase;
-        // ftCo_TurnRun_IASA (800C9ED8), ftCo_TurnRun.c:82-85.
-        self.reject_running_jump(assets);
-    }
     fn input_escape(&mut self, _phase: InputPhase<'_>) {
         // ftCo_8009563C (8009563C), ftCo_ItemThrow.c:261-263.
         if let MotionData::Escape(escape) = &mut self.state_data {
@@ -288,16 +294,6 @@ impl FighterCore {
                 escape.interrupt_frames -= 1;
             }
         }
-    }
-    fn input_knee_bend(&mut self, phase: InputPhase<'_>) {
-        let InputPhase { assets } = phase;
-        let context = WaitContext {
-            facing: self.physics.facing,
-            specials_available: self.capabilities.specials,
-            shield_health: self.status.shield_health,
-            ..WaitContext::default()
-        };
-        self.knee_bend_input(assets, &context);
     }
     fn input_fall_special(&mut self, _phase: InputPhase<'_>) {
         // ftCo_FallSpecial_IASA (80096AF4): item/parasol predicates are

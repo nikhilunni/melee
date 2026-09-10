@@ -181,6 +181,18 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// ftCommon_8007D60C (8007D60C): specials leaving support spend every
+    /// jump and lock the ECB for five frames. Unlike an ordinary fall, this
+    /// preserves position Z and shield knockback. The player statistic has no
+    /// simulation observer.
+    pub fn leave_ground_with_spent_jumps(&mut self) {
+        self.physics.ground_or_air = melee_types::GroundOrAir::Air;
+        self.physics.ground_velocity = 0.0;
+        self.physics.animation_velocity.y = 0.0;
+        self.physics.jumps_used = self.attributes.jumping.max_jumps as u8;
+        self.collision.lock_frames = 5;
+        self.collision.data.x130_flags |= melee_types::mp::coll_data_x130::LOCKED;
+    }
     /// ftCommon_8007D5D4 (0x8007D5D4), ftcommon.c:515-525.
     pub fn leave_ground(&mut self) {
         self.physics.ground_or_air = melee_types::GroundOrAir::Air;

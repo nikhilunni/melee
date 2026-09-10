@@ -113,10 +113,6 @@ pub(super) fn restore_scene(
                 "FD start flag disagrees with fighter boundary"
             );
             ensure!(
-                stage.ground.elapsed + frames as f32 <= 1800.0,
-                "FD transition exceeds stationary attachment interval"
-            );
-            ensure!(
                 particles.generators.len() == usize::from(!match_start),
                 "unexpected initial FD generator population"
             );

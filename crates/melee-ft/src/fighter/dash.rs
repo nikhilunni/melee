@@ -166,13 +166,4 @@ impl FighterCore {
             unimplemented!("{source}: {transition:?} transition body");
         }
     }
-    /// fn_800CAF78 (0x800CAF78), ftCo_Jump.c:62-88.
-    pub(super) fn reject_running_jump(&self, assets: &FighterAssets) {
-        if (self.input.current.stick.y >= assets.running.relaxed_jump_threshold
-            && i32::from(self.input.vertical.tilt) < assets.input.thresholds.tap_jump_window)
-            || self.input.pressed.intersects(crate::input::Buttons::XY)
-        {
-            unimplemented!("ftCo_Jump.c:76-84: running jump-cancel -> KneeBend");
-        }
-    }
 }

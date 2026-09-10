@@ -42,7 +42,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C, false>,
             shorten::<C>,
             travel_physics::<C, false>,
-            ground_startup_collision,
+            ground_travel_collision,
         ),
         row(
             S::SpecialSEnd,
@@ -359,6 +359,20 @@ fn end_physics<C: FoxFamily, const AIR: bool>(f: &mut Fighter, p: PhysicsPhase<'
 
 /// ftFx_SpecialSStart_Coll / SpecialS_Coll use the non-teetering support probe.
 fn ground_startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    ground_collision(f, p, S::SpecialAirSStart, false)
+}
+
+fn ground_travel_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    ground_collision(f, p, S::SpecialAirS, true)
+}
+
+/// ftFx_SpecialSStart_GroundToAir (800EA1D4), SpecialS_GroundToAir (800EA698).
+fn ground_collision(
+    f: &mut Fighter,
+    p: CollisionPhase<'_>,
+    air_state: S,
+    travel: bool,
+) -> Result<()> {
     use melee_ft::collision::ground::{map_ground_action, WaitGroundResult};
     let core = &mut f.core;
     match map_ground_action(
@@ -370,9 +384,18 @@ fn ground_startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()
         core.input.current.stick.x,
     ) {
         WaitGroundResult::Supported => Ok(()),
-        WaitGroundResult::EnterFall => unimplemented!(
-            "ftfoxspecials.c:223-232,390-401: ground-to-air preserved Illusion motion"
-        ),
+        WaitGroundResult::EnterFall => {
+            f.leave_ground_with_spent_jumps();
+            f.change_ground_air_motion(
+                air_state.into(),
+                p.assets.expect("Illusion collision assets"),
+                travel,
+            )?;
+            if travel {
+                f.commands.variables[2] = 0;
+            }
+            Ok(())
+        }
         WaitGroundResult::EnterTeeter => unreachable!("ft_80082708 does not teeter"),
     }
 }

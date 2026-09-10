@@ -193,23 +193,36 @@ impl Fighter {
             );
         self.core.airborne_physics(assets, animation_driven);
     }
-}
-impl FighterCore {
     /// ftCo_KneeBend_IASA (800CB5FC), Check_ShortHop (800CB59C).
-    pub(super) fn knee_bend_input(&mut self, assets: &FighterAssets, context: &WaitContext) {
-        let transition =
-            self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab, P::SmashUp]);
+    pub(super) fn knee_bend_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        let transition = self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab]);
         if transition != T::None {
             unimplemented!("ftCo_KneeBend.c:63-65: jump cancel {transition:?}");
         }
-        let MotionData::KneeBend(squat) = &mut self.state_data else {
+        // ftCo_AttackHi4_CheckInputNoD0 (8008C948): the jump squat ignores
+        // the ordinary up-smash stick timer. C-stick still requires an edge.
+        let input = &self.core.input;
+        let threshold = assets.input.up_smash_threshold;
+        if (input.pressed.intersects(Buttons::A) && input.current.stick.y >= threshold)
+            || (input.previous.cstick.y < threshold && input.current.cstick.y >= threshold)
+        {
+            return self.enter_simple_attack(CommonMotionState::AttackHi4, assets);
+        }
+        let MotionData::KneeBend(squat) = &mut self.core.state_data else {
             panic!("KneeBend data missing")
         };
         squat.short_hop |= match squat.input {
-            JumpInput::Buttons => !self.input.current.held.intersects(Buttons::XY),
-            JumpInput::Stick => self.input.current.stick.y < assets.jumping.release_threshold,
+            JumpInput::Buttons => !self.core.input.current.held.intersects(Buttons::XY),
+            JumpInput::Stick => self.core.input.current.stick.y < assets.jumping.release_threshold,
         };
+        Ok(())
     }
+}
+impl FighterCore {
     /// ftCo_Jump_Enter / JumpAerial_Enter_Basic: separate fmuls at 800CBC0C.
     pub(super) fn jump_direction(&self, assets: &FighterAssets, aerial: bool) -> CommonMotionState {
         // ftCo_Jump_Enter (800CB250), JumpAerial_Enter_Basic (800CBBC0):

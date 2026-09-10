@@ -214,6 +214,15 @@ macro_rules! blaster {
                 });
                 item.change_motion(0, assets);
             }
+            fn picked_up(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) {
+                // itFoxBlaster_Logic96_PickedUp: it_803F6E68 startup mapping.
+                const PICKUP_MOTIONS: [u16; 11] = [0, 9, 9, 3, 9, 9, 6, 7, 8, 9, 10];
+                let owner = ctx.owner.expect("held blaster owner");
+                item.change_motion(
+                    PICKUP_MOTIONS[usize::from(owner.blaster_action)],
+                    ctx.assets,
+                );
+            }
             fn control(item: &mut ItemCore, control: ItemControl) {
                 let ItemScratch::Held(held) = &mut item.scratch else {
                     unreachable!()
@@ -266,10 +275,9 @@ fn blaster_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> boo
     }
     owner.blaster_action == 9 || owner.remove_blaster
 }
-fn blaster_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
-    if let Some(owner) = ctx.owner {
-        item.position = owner.position;
-    }
+fn blaster_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
+    // itFoxblaster_UnkMotion8_Phys (802AEED4) updates attached model parts;
+    // Item.pos remains at the spawn position when the fighter moves.
     let ItemScratch::Held(held) = &mut item.scratch else {
         unreachable!()
     };

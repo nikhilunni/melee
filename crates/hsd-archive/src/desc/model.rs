@@ -2,6 +2,26 @@
 use super::{AnimJoint, DescError, JObjDesc, Result};
 use crate::{reader::add_offset, Archive};
 
+/// Read the first model's joint hierarchy from a public SceneDesc.
+pub fn read_scene_joint(archive: &Archive, symbol: &str) -> Result<JObjDesc> {
+    let scene = archive
+        .public(symbol)
+        .ok_or_else(|| DescError::MissingSymbol {
+            name: symbol.into(),
+        })?;
+    let mut offset = scene;
+    for field in [
+        "SceneDesc.models",
+        "DynamicModelDesc",
+        "DynamicModelDesc.joint",
+    ] {
+        offset = archive
+            .link(offset)?
+            .ok_or(DescError::NullPointer { field, at: offset })?;
+    }
+    JObjDesc::read(archive, offset)
+}
+
 /// Read one joint tree and its selected joint animation from a public
 /// DynamicModelDesc** table. Material/shape tracks do not control the
 /// countdown completion predicate lb_8000B09C, which tests joint AObjs only.

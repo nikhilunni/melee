@@ -416,6 +416,10 @@ impl Fighter {
             // ftCo_800C3B10 is tether characters only; ftCo_80099A58 -> EscapeAir.
             self.enter_air_dodge(assets)?;
             true
+        } else if super::attack::aerial::requested(&self.core.input, common) {
+            // ftCo_RebirthWait_IASA (800D575C): AttackAir before aerial jump.
+            (self.character.table().enter_aerial)(self, assets)?;
+            true
         } else if self.aerial_jump_requested(assets) {
             // ftCo_800CB870 -> ftCo_JumpAerial_CheckInput.
             self.enter_aerial_jump(assets)?;

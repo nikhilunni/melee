@@ -79,7 +79,12 @@ impl InitialState {
         effects.load_mars(&assets.mars_effects)?;
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
-            stock_displays: [None, None],
+            stock_displays: super::stock::create(
+                &scenario.assets_path(),
+                std::array::from_fn(|slot| {
+                    crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
+                }),
+            )?,
             spawn_counter: melee_ft::fighter::SpawnCounter(3),
             countdown: Some(crate::countdown::Countdown::load(&scenario.assets_path())?),
             assets,

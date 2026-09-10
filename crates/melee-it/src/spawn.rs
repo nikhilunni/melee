@@ -63,6 +63,7 @@ pub enum ItemControl {
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
     Spawn(SpawnItem),
+    SpawnHeld(SpawnItem),
     SpawnLaser {
         spawn: SpawnItem,
         angle: f32,

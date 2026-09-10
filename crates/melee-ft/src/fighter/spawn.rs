@@ -6,6 +6,15 @@ use hsd_anim::jobj::JObjId;
 use melee_mp::CollMap;
 use melee_types::{CommonMotionState, GroundOrAir};
 
+#[derive(Clone, Copy, Default)]
+struct MotionChange<'a> {
+    start: f32,
+    rate: f32,
+    source: Option<super::grab_throw::ThrowSource<'a>>,
+    ground_air: bool,
+    keep_hit_status: bool,
+}
+
 /// Spawn inputs read from Player, pl/player.c:228-240 and fighter.c:688-739.
 #[derive(Clone, Debug)]
 pub struct PlayerSlot {
@@ -250,7 +259,15 @@ impl Fighter {
         start: f32,
         rate: f32,
     ) -> Result<()> {
-        self.change_motion_state_with_options(state, assets, start, rate, None)
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate,
+                ..Default::default()
+            },
+        )
     }
 
     /// Borrow a throw animation/script while preserving ordinary row selection.
@@ -262,17 +279,47 @@ impl Fighter {
         rate: f32,
         source: Option<super::grab_throw::ThrowSource<'_>>,
     ) -> Result<()> {
-        self.change_motion_state_with_options(state, assets, start, rate, source)
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate,
+                source,
+                ..Default::default()
+            },
+        )
+    }
+
+    /// Fighter_ChangeMotionState with ftCommon_GroundAirColl_MF (fighter.c).
+    /// Preserve visibility and advance command control flow without executing
+    /// commands already applied by the outgoing ground/air motion.
+    pub fn change_ground_air_motion(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        keep_hit_status: bool,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start: self.animation.frame,
+                rate: 1.0,
+                ground_air: true,
+                keep_hit_status,
+                ..Default::default()
+            },
+        )
     }
 
     fn change_motion_state_with_options(
         &mut self,
         state: ActionId,
         assets: &FighterAssets,
-        start: f32,
-        rate: f32,
-        source: Option<super::grab_throw::ThrowSource<'_>>,
+        change: MotionChange<'_>,
     ) -> Result<()> {
+        let source = change.source;
         let row = self.row(state);
         let state = row.id;
         self.core.begin_motion_change(source);
@@ -294,7 +341,7 @@ impl Fighter {
         };
         let animate = self
             .core
-            .reset_motion(MotionState::new(row), assets, move_id);
+            .reset_motion(MotionState::new(row), assets, move_id, change);
         self.motion_row = row;
         if !animate {
             return Ok(());
@@ -311,7 +358,7 @@ impl Fighter {
             return Ok(());
         }
         self.core
-            .start_motion_animation(assets, row.animation, state, start, rate, source)
+            .start_motion_animation(assets, row.animation, state, change)
     }
 }
 
@@ -507,6 +554,7 @@ impl FighterCore {
         row: MotionState,
         assets: &FighterAssets,
         move_id: Option<super::attack::stale::GroundMove>,
+        change: MotionChange<'_>,
     ) -> bool {
         let state = row.id;
         self.apply_dynamic_commands(assets);
@@ -518,16 +566,20 @@ impl FighterCore {
         self.combat.combo.grace = assets.combo.grace_frames;
         self.status.on_ledge = false;
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
-        self.commands.articles_visible = true;
-        self.commands.fighter_hidden = false;
+        if !change.ground_air {
+            self.commands.articles_visible = true;
+            self.commands.fighter_hidden = false;
+        }
         self.commands.allow_interrupt = false;
         self.commands.hitboxes.fill(None);
         self.commands.first_hit_stale_penalty = None;
         self.combat.stale.enter(move_id);
         self.commands.stale_multiplier =
             move_id.map(|_| self.combat.stale.multiplier(&assets.stale_weights));
-        self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
-        self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
+        if !change.keep_hit_status {
+            self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
+            self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
+        }
         self.commands.capsule_overrides.clear();
         // fighter.c:1101-1102: ordinary entries clear fast fall.
         if !matches!(
@@ -623,18 +675,28 @@ impl FighterCore {
         assets: &FighterAssets,
         animation_id: i32,
         state: CommonMotionState,
-        start: f32,
-        rate: f32,
-        source: Option<super::grab_throw::ThrowSource<'_>>,
+        change: MotionChange<'_>,
     ) -> Result<()> {
+        let MotionChange {
+            start,
+            rate,
+            source,
+            ..
+        } = change;
         let had_root_motion = self.animation.flags.contains(
             crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
         );
+        // fighter.c:1274-1296: a ground/air switch loads the preceding frame first.
+        let animation_start = if change.ground_air && start != 0.0 {
+            start - rate
+        } else {
+            start
+        };
         if let Some(source) = source {
             self.animation.set_animation_remapped(
                 &mut self.skeleton,
                 source.motion,
-                start,
+                animation_start,
                 rate,
                 Some(source.remap),
             )?;
@@ -642,7 +704,7 @@ impl FighterCore {
             self.animation.set_animation(
                 &mut self.skeleton,
                 &assets.motions[&animation_id],
-                start,
+                animation_start,
                 rate,
             )?;
         }
@@ -654,6 +716,21 @@ impl FighterCore {
                 .map_or(assets, |source| source.assets)
                 .command_entries[&animation_id],
         );
+        if change.ground_air && start != 0.0 {
+            // fighter.c:1274-1296: evaluate the preceding pose, clear the
+            // extracted delta, then evaluate the resumed frame. This supplies
+            // the correct TransN velocity on the next physics pass.
+            self.animation.frame -= rate;
+            self.animation
+                .advance_main::<RetailTrig>(&mut self.skeleton);
+            if let Some(root) = &mut self.animation.root_motion {
+                for history in [&mut root.primary_history, &mut root.secondary_history] {
+                    history.previous = history.position;
+                    history.offset = Vec3::ZERO;
+                    history.previous_offset = Vec3::ZERO;
+                }
+            }
+        }
         // Fighter_ChangeMotionState (0x800693AC), fighter.c:1298,1342-1347:
         // main animation then commands. Part blends run only in the ordinary
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.
@@ -672,7 +749,11 @@ impl FighterCore {
                 root.primary_history.previous_offset = Vec3::ZERO;
             }
         }
-        if start != 0.0 {
+        if change.ground_air {
+            // fighter.c:1295, before ftAction_8007349C decrements by speed.
+            self.commands.timer = -start;
+            self.commands.advance_control(&self.animation, assets);
+        } else if start != 0.0 {
             self.commands.seek(
                 &mut self.animation,
                 &mut self.skeleton,

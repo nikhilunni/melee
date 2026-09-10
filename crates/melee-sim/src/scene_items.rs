@@ -5,7 +5,7 @@ use hsd_archive::Archive;
 use hsd_gobj::{GObjId, World};
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
-    ItemPool, ItemRequest,
+    ItemAnimationContext, ItemDispatch, ItemPool, ItemRequest,
 };
 use melee_types::{fixed::FixedVec, ItemKind};
 use std::path::Path;
@@ -106,15 +106,17 @@ pub fn request(
     world: &mut World,
     objects: &mut Objects,
     request: ItemRequest,
+    owner: Option<&melee_it::ItemOwner>,
 ) {
-    let (spawn, ray) = match request {
-        ItemRequest::Spawn(spawn) => (spawn, None),
+    let (spawn, ray, held_owner) = match request {
+        ItemRequest::Spawn(spawn) => (spawn, None, None),
+        ItemRequest::SpawnHeld(spawn) => (spawn, None, owner),
         ItemRequest::SpawnLaser {
             spawn,
             angle,
             speed,
             motion,
-        } => (spawn, Some((angle, speed, motion))),
+        } => (spawn, Some((angle, speed, motion)), None),
         ItemRequest::Control {
             owner,
             kind,
@@ -131,6 +133,16 @@ pub fn request(
             .initialize_collision(spawn, assets, map);
         if let Some((angle, speed, motion)) = ray {
             it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
+        }
+        if let Some(owner) = held_owner {
+            // Item_8026AB54 invokes the kind's pickup callback after attachment.
+            (SceneItems::logic(spawn.kind).picked_up)(
+                pool.get_mut(id).unwrap(),
+                &ItemAnimationContext {
+                    owner: Some(owner),
+                    assets,
+                },
+            );
         }
         let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
         for phase in melee_it::ITEM_PROCESS_LINKS {

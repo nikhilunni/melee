@@ -583,10 +583,12 @@ impl Runtime {
                 .proc_aux::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
         }
         let state = &mut self.state;
-        for fighter in &mut state.fighters {
+        for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
                 while !f.item_requests.is_empty() {
                     let request = f.item_requests.remove(0);
+                    let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
+                        .then(|| f.item_owner(&state.assets.fighters[slot]));
                     crate::scene_items::request(
                         &mut state.items,
                         &state.assets.items,
@@ -594,6 +596,7 @@ impl Runtime {
                         world,
                         &mut self.item_objects,
                         request,
+                        owner.as_ref(),
                     );
                 }
             });
