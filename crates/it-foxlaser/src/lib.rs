@@ -206,6 +206,12 @@ macro_rules! blaster {
         impl ItemLogic for $type {
             const KIND: ItemKind = ItemKind::$kind;
             const STATES: &'static [ItemStateRow] = &BLASTER_STATES;
+            // ftFox_SpecialN: it_8026BAE8 sets the blaster model scale.
+            const HELD_SCALE: f32 = 0.85;
+            const HELD_PART: Option<melee_types::FtPart> = Some(melee_types::FtPart::RThumbNb);
+            fn model_pose(item: &ItemCore, tree: &mut hsd_anim::jobj::JObjTree) {
+                crate::pose::blaster(item, tree);
+            }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
                 item.attached = true;
                 item.scratch = ItemScratch::Held(HeldState {
@@ -281,6 +287,8 @@ fn blaster_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
     let ItemScratch::Held(held) = &mut item.scratch else {
         unreachable!()
     };
+    held.opening_pose_frame = held.opening_frame as usize;
+    held.recoil_pose_frame = held.recoil_frame;
     if held.opening_frame > 0 && held.opening_frame < 4 {
         held.opening_frame += held.opening_direction;
         if held.opening_frame >= 5 {
@@ -312,3 +320,5 @@ fn empty_collision(_item: &mut ItemCore, _ctx: &ItemCollisionContext) -> bool {
 fn external_blaster(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
     unimplemented!("itFoxblaster_UnkMotion10_Anim external-owner scale")
 }
+
+mod pose;

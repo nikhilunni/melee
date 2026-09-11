@@ -1,7 +1,9 @@
 //! Optional renderer-independent visual resources and reusable pose capture.
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
+mod items;
 mod lighting;
+use melee_it::ItemDispatch;
 mod materials;
 mod sprites;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
@@ -81,6 +83,7 @@ struct Model {
 
 enum ModelSource {
     Fighter(usize),
+    Held(items::HeldModel),
     Stage(u8),
     Static(u8, JObjTree),
     Item(melee_types::ItemKind, JObjTree),
@@ -88,6 +91,7 @@ enum ModelSource {
 impl ModelSource {
     fn tree<'a>(&'a self, game: &'a Match) -> &'a JObjTree {
         match self {
+            Self::Held(held) => held.tree(),
             Self::Fighter(slot) => &game.engine.state().fighters[*slot].0.skeleton,
             Self::Stage(map) => game.engine.state().stage_animations[map].pose_tree(),
             Self::Static(_, tree) | Self::Item(_, tree) => tree,
@@ -178,6 +182,18 @@ impl Presentation {
             )?;
         }
         for (kind, archive, offset) in assets.items.visual_models() {
+            if crate::scene_items::SceneItems::logic(kind)
+                .held_part
+                .is_some()
+            {
+                let visual = &assets.items.get(kind).visual;
+                for owner in 0..2 {
+                    let held = items::HeldModel::new(archive, visual, owner, kind)?;
+                    let tree = held.tree().clone();
+                    result.add_model(archive, &visual.model, &tree, ModelSource::Held(held))?;
+                }
+                continue;
+            }
             let desc = JObjDesc::read(archive, offset).map_err(error)?;
             let (mut tree, root) =
                 hsd_anim::load::load_joint_tree(archive, &desc).map_err(error)?;
@@ -257,10 +273,37 @@ impl Presentation {
         {
             self.background_color = stage.ground.fog;
         }
-        self.capture_materials(game)?;
+
         self.sprites.capture(game)?;
         self.lighting.capture(game.tick());
-        for model in &mut self.models {
+        for index in 0..self.models.len() {
+            let (previous, remaining) = self.models.split_at_mut(index);
+            let model = &mut remaining[0];
+            if let ModelSource::Held(held) = &mut model.source {
+                let fighter = &game.engine.state().fighters[held.owner].0;
+                let item = game.engine.state().items.iter().find(|item| {
+                    item.kind == held.kind
+                        && item.owner == Some(fighter.player.id)
+                        && !item.destroyed
+                });
+                let hand = if item.is_some() {
+                    let part = crate::scene_items::SceneItems::logic(held.kind)
+                        .held_part
+                        .unwrap();
+                    let bone = self.assets.fighters[held.owner]
+                        .parts
+                        .joint(part)
+                        .ok_or_else(|| error("held article owner part missing"))?;
+                    let joint = fighter
+                        .skeleton
+                        .bone(fighter.animation.root, usize::from(bone))
+                        .ok_or_else(|| error("held article owner joint missing"))?;
+                    previous[held.owner].pose.matrix(joint)
+                } else {
+                    hsd_types::Mtx::default()
+                };
+                held.capture(item, hand)?;
+            }
             if let ModelSource::Item(kind, _) = &model.source {
                 let start = self.instance_ranges[model.instance_group].start;
                 let mut count = 0;
@@ -289,6 +332,7 @@ impl Presentation {
                 return Err(error("presentation skeleton shape changed"));
             }
         }
+        self.capture_materials(game)?;
         for (slot, fighter) in game.engine.state().fighters.iter().enumerate() {
             let f = &fighter.0;
             if f.shield.active && f.shield.hit.radius > 0.0 {
@@ -335,6 +379,7 @@ impl Presentation {
                     ModelSource::Stage(map) | ModelSource::Static(map, _),
                     crate::scene_stage::SceneStage::FinalDestination(stage),
                 ) => !stage.ground.live_maps[usize::from(*map)],
+                (ModelSource::Held(held), _) => !held.visible,
                 _ => false,
             };
             while let Some(id) = ancestor {

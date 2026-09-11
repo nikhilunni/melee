@@ -38,6 +38,7 @@ impl ItemCommonData {
 
 #[derive(Clone, Debug)]
 pub struct ItemAssets {
+    pub visual: hsd_archive::desc::item_visual::ItemVisual,
     pub scripts: Vec<Vec<Command>>,
     pub hit_flags: Vec<Vec<Option<ItemHitFlags>>>,
     pub special_attributes: Vec<f32>,
@@ -54,7 +55,7 @@ impl ItemAssets {
         fighter_data: u32,
         item_index: u32,
         states: usize,
-    ) -> Result<Self> {
+    ) -> hsd_archive::desc::Result<Self> {
         let r = archive.reader();
         let items = r.u32(fighter_data + 0x48)?;
         let article = r.u32(items + item_index * 4)?;
@@ -74,6 +75,12 @@ impl ItemAssets {
             .map(|i| r.f32(special + i * 4))
             .collect::<Result<_>>()?;
         Ok(Self {
+            visual: hsd_archive::desc::item_visual::ItemVisual::read(
+                archive,
+                model_desc,
+                state_array,
+                states,
+            )?,
             scripts,
             hit_flags,
             special_attributes,

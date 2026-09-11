@@ -64,8 +64,9 @@ impl Resources {
             // Rows 9 and 10 have animation -1, so the archive contains nine animations.
             kinds.push((blaster, ItemAssets::from_fighter(&a, root, 1, 9)?));
             kinds.push((ghost, ItemAssets::from_fighter(&a, root, ghost_index, 3)?));
-            // Held weapons need attachment/animation poses; afterimages need
-            // captured fighter poses. Only free projectile models are ready here.
+            // Article visuals share the fighter archive; afterimages additionally
+            // need captured historical fighter poses.
+            visual_archives.push((blaster, std::sync::Arc::clone(&a)));
             visual_archives.push((laser, a));
         }
         Ok(Self {

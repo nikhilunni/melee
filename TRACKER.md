@@ -28,6 +28,9 @@ task lines you touched and add one line to the session log.
 
 - [x] Perspective/framebuffer phase (2026-09-11): shared mesh/particle camera, perspective shield depth and specular view vectors, authored GX face culling, 4x MSAA with capability fallback/resizing, and stage-driven clear color. Six platform tests, eight allocation checks, clippy, 15 Metal fixtures and native smoke pass. Exact retail camera tracking/pixel equivalence remains outside the verified display behavior; continue held items, effects, shadows and mip/LOD rendering.
 
+- [x] Held article phase (2026-09-11): typed item visual descriptors, table-owned hand attachment and pose corrections, authored motion seeking, and blaster opening/recoil sampled in shared item state. Presentation retains no independent clock; hand alignment, sparse/frequent capture and reset checks pass, as do eight allocation tests and 84 release combat/ordered-particle oracles including both full matches. Metal firing preview inspected. Continue model/specialized effects, shadows and mip/LOD rendering.
+
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**

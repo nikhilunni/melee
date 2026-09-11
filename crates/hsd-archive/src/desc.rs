@@ -88,6 +88,7 @@ pub mod anim;
 pub mod color_animation;
 pub mod dobj;
 pub mod figatree;
+pub mod item_visual;
 pub mod jobj;
 pub mod light;
 pub mod material_animation;

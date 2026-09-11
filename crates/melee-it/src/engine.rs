@@ -29,6 +29,8 @@ pub struct RayState {
 }
 #[derive(Clone, Debug, Default)]
 pub struct HeldState {
+    pub opening_pose_frame: usize,
+    pub recoil_pose_frame: usize,
     pub visibility: i32,
     pub recoil_frame: usize,
     pub opening_frame: i32,
@@ -440,6 +442,7 @@ mod tests {
     item_kinds! { enum TestKinds { Inert:InertTestItem } }
     fn assets() -> ItemAssets {
         ItemAssets {
+            visual: Default::default(),
             scripts: Vec::new(),
             hit_flags: Vec::new(),
             special_attributes: Vec::new(),

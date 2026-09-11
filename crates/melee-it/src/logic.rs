@@ -27,6 +27,11 @@ pub struct ItemStateRow {
 pub trait ItemLogic {
     const KIND: ItemKind;
     const STATES: &'static [ItemStateRow];
+    const HELD_SCALE: f32 = 1.0;
+    const HELD_PART: Option<melee_types::FtPart> = None;
+    /// Read-only pose corrections, after authored animation and before capture.
+    fn model_pose(_item: &ItemCore, _tree: &mut hsd_anim::jobj::JObjTree) {}
+
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &ItemAnimationContext<'_>) {}
@@ -64,6 +69,9 @@ pub trait ItemLogic {
     }
     const LOGIC: ItemLogicRow = ItemLogicRow {
         states: Self::STATES,
+        held_part: Self::HELD_PART,
+        held_scale: Self::HELD_SCALE,
+        model_pose: Self::model_pose,
         spawned: Self::spawned,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -83,6 +91,9 @@ pub trait ItemLogic {
 }
 #[derive(Clone, Copy)]
 pub struct ItemLogicRow {
+    pub held_scale: f32,
+    pub held_part: Option<melee_types::FtPart>,
+    pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree),
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
     pub destroyed: fn(&mut ItemCore),
