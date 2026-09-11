@@ -87,6 +87,7 @@ use crate::reader::{add_offset, Reader};
 pub mod anim;
 pub mod color_animation;
 pub mod dobj;
+pub mod effect_visual;
 pub mod figatree;
 pub mod item_visual;
 pub mod jobj;

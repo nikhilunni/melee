@@ -199,6 +199,20 @@ fn material_update(mat: &mut Material, pe: Option<&mut PeDesc>, ty: u8, fv: f32)
 }
 
 impl MObj {
+    /// Restore values and clocks for the same prepared material definition.
+    pub fn restore_playback(&mut self, source: &Self) {
+        self.rendermode = source.rendermode;
+        self.mat = source.mat;
+        self.pe = source.pe;
+        if let (Some(target), Some(source)) = (&mut self.aobj, &source.aobj) {
+            target.restore_playback(source);
+        }
+        assert_eq!(self.textures.len(), source.textures.len());
+        for (target, source) in self.textures.iter_mut().zip(&source.textures) {
+            target.restore_playback(source);
+        }
+    }
+
     /// Stop playback while retaining prepared track capacity for replacement.
     pub fn clear_prepared_animation(&mut self) {
         for clock in self.aobj.iter_mut().chain(

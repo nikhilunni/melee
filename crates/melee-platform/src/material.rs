@@ -3,7 +3,6 @@
 //! display calculations, independent of the retail simulation math kernels.
 use melee_lib::presentation::{Material, PixelState};
 use std::{collections::BTreeMap, sync::Arc};
-use wgpu::util::DeviceExt;
 
 pub const MAX_LAYERS: usize = 8;
 #[repr(C)]
@@ -39,7 +38,7 @@ pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Uniform,
-            has_dynamic_offset: false,
+            has_dynamic_offset: true,
             min_binding_size: None,
         },
         count: None,
@@ -79,6 +78,7 @@ impl Images {
         queue: &wgpu::Queue,
         layout: &wgpu::BindGroupLayout,
         material: &Material,
+        slots: usize,
     ) -> Result<GpuMaterial, String> {
         if material.textures.len() > MAX_LAYERS {
             return Err("material exceeds eight GX texture maps".into());
@@ -161,14 +161,25 @@ impl Images {
             });
             keys.push((image_key, sampler_key));
         }
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Authored material"),
-            contents: bytemuck::bytes_of(&uniform),
+        let size = std::mem::size_of::<Uniform>() as u64;
+        let alignment = u64::from(device.limits().min_uniform_buffer_offset_alignment);
+        let stride = size.div_ceil(alignment) * alignment;
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Authored material instances"),
+            size: stride * slots as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
+        for slot in 0..slots {
+            queue.write_buffer(&buffer, stride * slot as u64, bytemuck::bytes_of(&uniform));
+        }
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: &buffer,
+                offset: 0,
+                size: std::num::NonZeroU64::new(size),
+            }),
         }];
         for (i, (image, sampler)) in keys.iter().enumerate() {
             entries.push(wgpu::BindGroupEntry {
@@ -188,7 +199,8 @@ impl Images {
         Ok(GpuMaterial {
             bind,
             buffer,
-            uniform,
+            uniforms: vec![uniform; slots],
+            stride: stride as u32,
         })
     }
 }
@@ -288,14 +300,25 @@ fn capture(material: &Material) -> Uniform {
 pub struct GpuMaterial {
     pub bind: wgpu::BindGroup,
     buffer: wgpu::Buffer,
-    uniform: Uniform,
+    uniforms: Vec<Uniform>,
+    stride: u32,
 }
 impl GpuMaterial {
     pub fn update(&mut self, queue: &wgpu::Queue, material: &Material) {
+        self.update_slot(queue, material, 0);
+    }
+    pub fn offset(&self, slot: usize) -> u32 {
+        self.stride * slot as u32
+    }
+    pub fn update_slot(&mut self, queue: &wgpu::Queue, material: &Material, slot: usize) {
         let uniform = capture(material);
-        if uniform != self.uniform {
-            queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(&uniform));
-            self.uniform = uniform;
+        if uniform != self.uniforms[slot] {
+            queue.write_buffer(
+                &self.buffer,
+                u64::from(self.offset(slot)),
+                bytemuck::bytes_of(&uniform),
+            );
+            self.uniforms[slot] = uniform;
         }
     }
 }

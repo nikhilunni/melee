@@ -177,8 +177,8 @@ impl Effect {
         self.callback_rotation = None;
         self.joint_base = 0;
         self.tree.events.clear();
-        // The headless model has immutable topology, no DObjs/constraints and
-        // fixed animation tracks. Restore only mutable pose and playback state.
+        // The prepared model has immutable topology and fixed animation tracks.
+        // Restore pose, material values and playback while retaining all storage.
         for &id in self.joints.iter() {
             let source = initial.tree.get(id);
             let target = self.tree.get_mut(id);
@@ -188,15 +188,14 @@ impl Effect {
             target.translate = source.translate;
             target.mtx = source.mtx;
             target.scl = source.scl;
-            if let (Some(target), Some(source)) = (&mut target.aobj, &source.aobj) {
+            for (target, source) in target.dobj.iter_mut().zip(&source.dobj) {
                 target.flags = source.flags;
-                target.curr_frame = source.curr_frame;
-                target.rewind_frame = source.rewind_frame;
-                target.end_frame = source.end_frame;
-                target.framerate = source.framerate;
-                for (target, source) in target.fobj.iter_mut().zip(&source.fobj) {
+                if let (Some(target), Some(source)) = (&mut target.mobj, &source.mobj) {
                     target.restore_playback(source);
                 }
+            }
+            if let (Some(target), Some(source)) = (&mut target.aobj, &source.aobj) {
+                target.restore_playback(source);
             }
         }
     }

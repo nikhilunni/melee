@@ -9,7 +9,9 @@ mod egg_shell;
 pub mod fixture_spawns;
 mod pool;
 mod resources;
+mod visual;
 pub use resources::Resources;
+pub use visual::{VisualModel, VISUAL_CAPACITY};
 pub mod request;
 mod spline;
 mod tables;
@@ -39,7 +41,7 @@ use tables::*;
 const FIRST_FIGHTER_JOINT: usize = 1 << 24;
 const FIGHTER_JOINT_STRIDE: usize = 256;
 // EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
-const EFFECT_DESCRIPTOR_SIZE: u32 = 20;
+
 // Port-only diagnostic budget, drained by the scheduler each tick. Retail has
 // no Rust draw log; fail explicitly rather than growing this observation buffer.
 const DRAW_CAPACITY: usize = 4096;
@@ -62,6 +64,7 @@ pub struct Effects {
 }
 #[derive(Clone)]
 struct Effect {
+    visual: Arc<desc::effect_visual::EffectVisual>,
     descriptor: u32,
     bank: u8,
     velocity: Option<Vec3>,
@@ -772,23 +775,24 @@ impl Effect {
         bank: u8,
     ) -> Result<Self> {
         let table = archive.public(table_name).context("effect table")?;
-        let offset = table + 8 + index * EFFECT_DESCRIPTOR_SIZE;
-        let lifetime = archive.reader().f32(offset)? as u16;
-
-        let descriptor =
-            desc::JObjDesc::read(archive, archive.link(offset + 4)?.context("effect model")?)?;
-        let animation = archive
-            .link(offset + 8)?
-            .map(|offset| desc::AnimJoint::read(archive, offset))
-            .transpose()?;
+        let visual = Arc::new(desc::effect_visual::EffectVisual::read(
+            archive, table, index,
+        )?);
+        let lifetime = visual.lifetime as u16;
+        let descriptor = &visual.model;
+        let animation = &visual.animation;
         let mut tree = JObjTree::new();
-        let root = tree.load_joint(&joint_spec(&descriptor)?);
+        let root = tree.load_joint(&joint_spec(archive, descriptor)?);
         let ids: Vec<_> = tree.depth_first(root).collect();
         let descs = descriptor.descendants();
         let mut paths = BTreeMap::new();
         let mut references = BTreeMap::new();
         if let Some(animation) = &animation {
             attach(&mut tree, root, animation, &mut references)?;
+        }
+        if let Some(material) = &visual.material {
+            let material = hsd_anim::load::material_animation(archive, material)?;
+            tree.add_anim_all(root, None, Some(&material));
         }
         for &id in &ids {
             let reference = references.get(&id.0).copied().unwrap_or(0);
@@ -819,6 +823,7 @@ impl Effect {
         tree.events.reserve_exact(event_capacity);
         tree.req_anim_all(root, 0.0);
         Ok(Self {
+            visual,
             descriptor: id,
             bank,
             velocity: None,
@@ -965,9 +970,8 @@ impl Effect {
 fn vector(v: desc::Vec3) -> Vec3 {
     Vec3::new(v.x, v.y, v.z)
 }
-/// Headless HSD_JObjLoadJoint: retain spline joints and reject constraints.
-/// DObjs/materials only render; SRT, flags and all joint FObjs are retained.
-fn joint_spec(d: &desc::JObjDesc) -> Result<JointSpec> {
+/// HSD_JObjLoadJoint: retain visual materials and the existing effect spline path.
+fn joint_spec(archive: &Archive, d: &desc::JObjDesc) -> Result<JointSpec> {
     ensure!(
         d.robjdesc.is_none() && d.instance_of.is_none(),
         "unsupported effect constraint/instance"
@@ -979,8 +983,11 @@ fn joint_spec(d: &desc::JObjDesc) -> Result<JointSpec> {
         scale: vector(d.scale),
         position: vector(d.position),
         mtx: d.mtx.map(Mtx),
-        children: d.children().map(joint_spec).collect::<Result<_>>()?,
-        ..JointSpec::new()
+        children: d
+            .children()
+            .map(|d| joint_spec(archive, d))
+            .collect::<Result<_>>()?,
+        dobj: hsd_anim::load::load_dobj_chain(archive, d.u.dobj())?,
     })
 }
 fn attach(

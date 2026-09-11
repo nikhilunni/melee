@@ -400,3 +400,44 @@ tree3!(
     shapeanimdobj,
     "HSD_ShapeAnimJoint.shapeanimdobj"
 );
+
+impl ShapeAnimJoint {
+    /// Empty parallel shape trees are common; only a linked AObj deforms vertices.
+    pub fn has_animation(&self, archive: &Archive) -> Result<bool> {
+        for node in self.siblings() {
+            let mut dobj = node.shapeanimdobj;
+            let mut seen = std::collections::BTreeSet::new();
+            while let Some(offset) = dobj {
+                if !seen.insert(offset) {
+                    return Err(super::DescError::Cycle {
+                        what: "HSD_ShapeAnimDObj",
+                        offset,
+                    });
+                }
+                archive.reader().slice(offset, 8)?;
+                let mut shape = archive.link(offset + 4)?;
+                let mut shapes = std::collections::BTreeSet::new();
+                while let Some(offset) = shape {
+                    if !shapes.insert(offset) {
+                        return Err(super::DescError::Cycle {
+                            what: "HSD_ShapeAnim",
+                            offset,
+                        });
+                    }
+                    archive.reader().slice(offset, 8)?;
+                    if archive.link(offset + 4)?.is_some() {
+                        return Ok(true);
+                    }
+                    shape = archive.link(offset)?;
+                }
+                dobj = archive.link(offset)?;
+            }
+            if let Some(child) = &node.child {
+                if child.has_animation(archive)? {
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
+    }
+}

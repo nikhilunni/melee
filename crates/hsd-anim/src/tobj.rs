@@ -20,6 +20,22 @@ pub struct TObj {
     palettes: Arc<[Option<u32>]>,
 }
 impl TObj {
+    pub fn image_variants(&self) -> &[Option<u32>] {
+        &self.images
+    }
+    pub fn palette_variants(&self) -> &[Option<u32>] {
+        &self.palettes
+    }
+
+    /// Restore values and clocks for the same prepared texture definition.
+    pub fn restore_playback(&mut self, source: &Self) {
+        self.descriptor.clone_from(&source.descriptor);
+        self.lod_bias = source.lod_bias;
+        if let (Some(target), Some(source)) = (&mut self.animation, &source.animation) {
+            target.restore_playback(source);
+        }
+    }
+
     pub(crate) fn set_tables(&mut self, images: Arc<[Option<u32>]>, palettes: Arc<[Option<u32>]>) {
         self.images = images;
         self.palettes = palettes;

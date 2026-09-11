@@ -1,8 +1,10 @@
 //! Optional renderer-independent visual resources and reusable pose capture.
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
+mod effects;
 mod items;
 mod lighting;
+pub use effects::EffectDraw;
 use melee_it::ItemDispatch;
 mod materials;
 mod sprites;
@@ -83,6 +85,7 @@ struct Model {
 
 enum ModelSource {
     Fighter(usize),
+    Effect(u32),
     Held(items::HeldModel),
     Stage(u8),
     Static(u8, JObjTree),
@@ -92,6 +95,15 @@ impl ModelSource {
     fn tree<'a>(&'a self, game: &'a Match) -> &'a JObjTree {
         match self {
             Self::Held(held) => held.tree(),
+            Self::Effect(descriptor) => {
+                game.assets
+                    .inner
+                    .effect_resources
+                    .visual_models()
+                    .find(|model| model.descriptor == *descriptor)
+                    .expect("prepared effect model")
+                    .tree
+            }
             Self::Fighter(slot) => &game.engine.state().fighters[*slot].0.skeleton,
             Self::Stage(map) => game.engine.state().stage_animations[map].pose_tree(),
             Self::Static(_, tree) | Self::Item(_, tree) => tree,
@@ -102,6 +114,7 @@ impl ModelSource {
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
 pub struct Presentation {
+    effects: effects::Effects,
     background_color: [u8; 3],
     lighting: lighting::Lighting,
     sprites: sprites::Sprites,
@@ -123,6 +136,7 @@ impl Presentation {
             return Err(error("faulted match"));
         }
         let mut result = Self {
+            effects: effects::Effects::default(),
             background_color: game.assets.inner.stage_desc.initial_fog,
             lighting: lighting::Lighting::new(game)?,
             sprites: sprites::Sprites::new(game)?,
@@ -205,7 +219,33 @@ impl Presentation {
             tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
             result.add_model(archive, &desc, &tree, ModelSource::Item(kind, tree.clone()))?;
         }
+        for model in assets.effect_resources.visual_models() {
+            if let Some(shape) = &model.definition.shape {
+                if shape
+                    .has_animation(effects::archive(&assets, model.bank))
+                    .map_err(error)?
+                {
+                    return Err(error("animated effect shape unsupported"));
+                }
+            }
+            if model
+                .definition
+                .model
+                .descendants()
+                .iter()
+                .all(|d| d.u.dobj().is_none())
+            {
+                continue;
+            }
+            result.add_model(
+                effects::archive(&assets, model.bank),
+                &model.definition.model,
+                model.tree,
+                ModelSource::Effect(model.descriptor),
+            )?;
+        }
         result.prepare_materials(game)?;
+        result.effects = effects::Effects::new(&result);
         result.capture(game)?;
         Ok(result)
     }
@@ -380,6 +420,7 @@ impl Presentation {
                     crate::scene_stage::SceneStage::FinalDestination(stage),
                 ) => !stage.ground.live_maps[usize::from(*map)],
                 (ModelSource::Held(held), _) => !held.visible,
+                (ModelSource::Effect(_), _) => true,
                 _ => false,
             };
             while let Some(id) = ancestor {
@@ -405,6 +446,7 @@ impl Presentation {
                 self.matrices[self.meshes[i].matrix_offset as usize + j] = columns(blended);
             }
         }
+        self.capture_effects(game)?;
         Ok(())
     }
     fn add_model(

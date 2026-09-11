@@ -108,6 +108,23 @@ impl Default for AObj {
 }
 
 impl AObj {
+    /// Restore a prepared clock with identical tracks without replacing storage.
+    pub fn restore_playback(&mut self, source: &Self) {
+        assert_eq!(
+            self.fobj.len(),
+            source.fobj.len(),
+            "prepared animation shape"
+        );
+        self.flags = source.flags;
+        self.curr_frame = source.curr_frame;
+        self.rewind_frame = source.rewind_frame;
+        self.end_frame = source.end_frame;
+        self.framerate = source.framerate;
+        for (target, source) in self.fobj.iter_mut().zip(&source.fobj) {
+            target.restore_playback(source);
+        }
+    }
+
     /// `HSD_AObjAlloc` (retail `0x8036453C`): zeroed, stopped, rate 1.
     pub fn alloc() -> AObj {
         AObj {

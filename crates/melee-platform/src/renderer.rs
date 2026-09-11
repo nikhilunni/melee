@@ -29,6 +29,7 @@ pub struct Renderer {
     pipelines: Vec<wgpu::RenderPipeline>,
     order: Vec<usize>,
     poses: wgpu::Buffer,
+    pose_stride: u32,
     instances: wgpu::Buffer,
     camera: wgpu::Buffer,
     scene: wgpu::BindGroup,
@@ -79,7 +80,7 @@ impl Renderer {
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
+                        has_dynamic_offset: true,
                         min_binding_size: None,
                     },
                     count: None,
@@ -178,10 +179,14 @@ impl Renderer {
             pipeline_ids.insert((pixel, mesh.culling), pipelines.len());
             pipelines.push(pipeline);
         }
-        let poses = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Joint matrix palettes"),
-            contents: bytemuck::cast_slice(scene.matrices()),
+        let pose_bytes = std::mem::size_of_val(scene.matrices()) as u64;
+        let alignment = u64::from(device.limits().min_storage_buffer_offset_alignment);
+        let pose_stride = pose_bytes.div_ceil(alignment) * alignment;
+        let poses = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Joint matrix palettes and active effects"),
+            size: pose_stride * (1 + scene.effect_capacity()) as u64,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
         let instances = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("World instances"),
@@ -205,7 +210,11 @@ impl Renderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: poses.as_entire_binding(),
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &poses,
+                        offset: 0,
+                        size: std::num::NonZeroU64::new(pose_bytes),
+                    }),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -238,6 +247,11 @@ impl Renderer {
                         &queue,
                         &material_layout,
                         &scene.materials()[mesh_index],
+                        if scene.is_effect_mesh(mesh_index) {
+                            scene.effect_capacity()
+                        } else {
+                            1
+                        },
                     )?,
                 ));
                 cache.insert(key, image);
@@ -281,6 +295,7 @@ impl Renderer {
             pipelines,
             order: (0..draws.len()).collect(),
             poses,
+            pose_stride: pose_stride as u32,
             lighting,
             instances,
             camera,
@@ -309,6 +324,9 @@ impl Renderer {
     }
     pub fn draw(&mut self, view: &wgpu::TextureView, scene: &Presentation) {
         for (mesh, material) in &mut self.images {
+            if scene.is_effect_mesh(*mesh) {
+                continue;
+            }
             material.update(&self.queue, &scene.materials()[*mesh]);
         }
         self.queue.write_buffer(
@@ -320,6 +338,17 @@ impl Renderer {
             .write_buffer(&self.poses, 0, bytemuck::cast_slice(scene.matrices()));
         self.queue
             .write_buffer(&self.instances, 0, bytemuck::cast_slice(scene.instances()));
+        for (slot, poses) in scene.effect_poses().enumerate() {
+            self.queue.write_buffer(
+                &self.poses,
+                u64::from(self.pose_stride) * (slot as u64 + 1),
+                bytemuck::cast_slice(poses),
+            );
+        }
+        for effect in scene.effect_draws() {
+            let material = &mut self.images[self.draws[effect.mesh].image].1;
+            material.update_slot(&self.queue, scene.effect_material(*effect), effect.slot);
+        }
         let camera = Camera::frame(scene.camera_targets(), self.size).uniform();
         // Draw opaque depth writers first, then translucent meshes back-to-front.
         // Index tie-breaking preserves authored order without a sorting allocation.
@@ -372,14 +401,14 @@ impl Renderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_bind_group(0, &self.scene, &[]);
+            pass.set_bind_group(0, &self.scene, &[0]);
             for &i in &self.order {
                 let draw = &self.draws[i];
                 if !scene.visibility()[i] {
                     continue;
                 }
                 pass.set_pipeline(&self.pipelines[draw.pipeline]);
-                pass.set_bind_group(1, &self.images[draw.image].1.bind, &[]);
+                pass.set_bind_group(1, &self.images[draw.image].1.bind, &[0]);
                 pass.set_vertex_buffer(0, draw.vertices.slice(..));
                 pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(
@@ -387,6 +416,20 @@ impl Renderer {
                     0,
                     scene.instance_range(scene.meshes()[i].instance_group),
                 );
+            }
+            for effect in scene.effect_draws() {
+                let draw = &self.draws[effect.mesh];
+                let material = &self.images[draw.image].1;
+                pass.set_pipeline(&self.pipelines[draw.pipeline]);
+                pass.set_bind_group(
+                    0,
+                    &self.scene,
+                    &[self.pose_stride * (effect.slot as u32 + 1)],
+                );
+                pass.set_bind_group(1, &material.bind, &[material.offset(effect.slot)]);
+                pass.set_vertex_buffer(0, draw.vertices.slice(..));
+                pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..draw.count, 0, 0..1);
             }
             self.sprites.draw(&mut pass);
         }

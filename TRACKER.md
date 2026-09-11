@@ -30,6 +30,9 @@ task lines you touched and add one line to the session log.
 
 - [x] Held article phase (2026-09-11): typed item visual descriptors, table-owned hand attachment and pose corrections, authored motion seeking, and blaster opening/recoil sampled in shared item state. Presentation retains no independent clock; hand alignment, sparse/frequent capture and reset checks pass, as do eight allocation tests and 84 release combat/ordered-particle oracles including both full matches. Metal firing preview inspected. Continue model/specialized effects, shadows and mip/LOD rendering.
 
+- [x] Model effects phase (2026-09-11): retain authored effect materials/texture clocks in shared simulation pools, expose borrowed visual models, restore pooled clocks without allocation, and draw independently animated instances through shared geometry and bounded GPU pose/material buffers. Sparse/frequent/reset effect checks, eight allocation tests, 84 exact combat/ordered-particle tests, workspace clippy and Metal firing preview pass. Current effect shape trees contain no deformation tracks; real shape animation is explicitly rejected. Specialized particles, historical afterimages, shadows and mip/LOD remain.
+
+
 
 ## Current focus
 

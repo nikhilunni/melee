@@ -177,7 +177,7 @@ fn vector(value: desc::Vec3) -> Vec3 {
 }
 
 /// `HSD_DObjLoadDesc` / `DObjLoad` (`dobj.c:178-230`): preserve chain order.
-fn load_dobj_chain(
+pub fn load_dobj_chain(
     archive: &Archive,
     head: Option<&desc::DObjDesc>,
 ) -> Result<Vec<DObj>, LoadError> {

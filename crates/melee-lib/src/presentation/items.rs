@@ -26,8 +26,10 @@ impl HeldModel {
             .ok_or_else(|| error("held article attachment bone missing"))?;
         let mut states = Vec::new();
         for state in &visual.states {
-            if state.shape.is_some() {
-                return Err(error("held article shape animation unsupported"));
+            if let Some(shape) = &state.shape {
+                if shape.has_animation(archive).map_err(error)? {
+                    return Err(error("held article shape animation unsupported"));
+                }
             }
             let mut tree = rest.clone();
             if let Some(anim) = &state.joint {
