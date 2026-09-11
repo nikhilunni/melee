@@ -83,16 +83,17 @@ Camera framing fits living fighters with margins and adapts to aspect ratio. It
 is application policy, not the retail camera: it currently has no smoothing,
 perspective or stage-specific limits. Camera queries do not advance any clock.
 
-Authored lighting, material/texture animation,
-mipmaps, destination-alpha behavior, and precise GX blend/color rounding remain
-unfinished. Reflection/highlight coordinates use an approximate normal mapping;
+Authored directional lighting and particle/shield rendering are now implemented
+(see the verified phases below). Material/texture animation, mipmaps,
+destination-alpha behavior, and precise GX blend/color rounding remain unfinished. Reflection/highlight coordinates use an approximate normal mapping;
 other generated coordinate modes still fall back to UVs. In particular, laser
 glow and several FD surfaces do not yet look like retail. Logic blend modes and
 materials exceeding eight textures fail explicitly.
 
 Held blasters need hand attachments and opening/recoil animation, so they remain
-hidden. Afterimages, shields, hit sparks, dust, flames, other particle/effect
-visuals, shadows, and audio remain future work. All existing simulation work and
+hidden. Particle sprites now cover dust, sparks and textured emissions; shields
+use procedural surfaces. Afterimage/model effects, specialized particle geometry,
+shadows, and audio remain future work. All existing simulation work and
 RNG still run. Laser geometry uploads once per kind; live instances use prepared
 capacity and ItemCore's position/rotation/scale. Article archives share existing
 immutable character data instead of rereading or duplicating it.
@@ -260,3 +261,17 @@ and reset checks, real Battlefield light assets, real Fox/Marth visual assets, f
 platform tests, 13 Metal numeric fixtures, workspace clippy, native bundle build
 and resize/focus/pause/keyboard smoke pass. Final Metal preview inspected at tick
 260. Full workspace simulation gates were not rerun for this display-only phase.
+
+## Next dependency boundary
+
+Material fades cannot be implemented only in the renderer: the current FD stage
+adapter (`melee-lib/src/scene_stage/last.rs`) rejects `StageAction::MaterialFade`,
+and its `AnimationStatus` leaves material completion at defaults. Stage model
+loading attaches joint tracks but not MatAnimJoint tracks. Complete support needs
+shared material/texture animation state, stage fade interpretation and completion
+feedback, continuation/clone coverage, then presentation reads of that state.
+This work has not been implemented or claimed verified by the rendering phases.
+The existing laser-on-shield gameplay fault is a separate combat dependency.
+
+Phase commits: `a4487fe` native/shared rendering, `e78cd33` texture combiners,
+`5f709a1` particles/shields, `d58f669` animated directional lighting/normals.

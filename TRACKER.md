@@ -24,6 +24,8 @@ task lines you touched and add one line to the session log.
 
 - [x] Authored lighting phase (2026-09-10): shared light-table parser, tick-indexed Final Destination directional light paths using the existing AObj and linear-spline evaluators, per-vertex ambient/diffuse/specular shading, and inverse-transpose normals. Capture-frequency/reset, both complete-match presentation checks, static Battlefield lights, 13 numeric Metal fixtures, workspace clippy and native build/smoke pass. Material/texture animation, held weapons, specialized/model effects, shadows and camera/framebuffer fidelity remain.
 
+- [ ] Next: shared material/texture animation and FD fades. The current stage adapter rejects `MaterialFade` and does not supply material completion to `AnimationStatus`; implement and verify that shared state before rendering it. Held weapon attachments, model effects, specialized particle geometry, shadows and framebuffer/camera fidelity also remain.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
@@ -417,6 +419,8 @@ Gate: zero divergence over thousands of Slippi replays.
 - [-] Game modes beyond Versus (`gm/`, 54k): Classic, Adventure, All-Star, Event, Target Test, Home Run Contest
 
 ## Session log
+
+- 2026-09-10 (native rendering phases): committed native/shared presentation (`a4487fe`), custom texture combiners (`e78cd33`), particles/shields (`5f709a1`) and animated directional lighting/normals (`d58f669`). Focused tests, both complete-match allocation/nonmutation captures, particle replays, 13 Metal fixtures, clippy and native smoke pass. Full workspace reruns omitted per user scope. Next material fades require shared stage animation state; laser shield response remains an existing gameplay gap.
 
 Newest first. One line per session: date, what landed, what is next.
 
