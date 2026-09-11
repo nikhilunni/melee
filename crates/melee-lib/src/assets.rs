@@ -16,6 +16,7 @@ pub struct Assets {
     pub arena: melee_ft::fighter::life::Arena,
     pub(crate) fighters: ManuallyDrop<[FighterAssets; 2]>,
     pub stage: Archive,
+    pub(crate) visual_effect_archives: [Archive; 3],
     pub stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
@@ -108,6 +109,7 @@ impl Assets {
         let characters = characters.try_into().ok().expect("two character archives");
         // Finish all fallible work before installing manually dropped ownership.
         Ok(Self {
+            visual_effect_archives: [effects, fox_effects, mars_effects],
             effect_resources,
             interface,
             items,

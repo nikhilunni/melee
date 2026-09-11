@@ -22,6 +22,7 @@ struct Draw {
     pipeline: usize,
 }
 pub struct Renderer {
+    sprites: crate::sprites::Sprites,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pipelines: Vec<wgpu::RenderPipeline>,
@@ -219,8 +220,10 @@ impl Renderer {
                 pipeline: pipeline_ids[&pixel_state(mesh)],
             });
         }
+        let sprites = crate::sprites::Sprites::new(&device, &queue, format, &camera, scene)?;
         let depth = depth(&device, size);
         Ok(Self {
+            sprites,
             device,
             queue,
             pipelines,
@@ -270,6 +273,7 @@ impl Renderer {
         });
         self.queue
             .write_buffer(&self.camera, 0, bytemuck::cast_slice(&camera));
+        self.sprites.prepare(&self.queue, scene);
         let mut encoder = self.device.create_command_encoder(&Default::default());
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -316,6 +320,7 @@ impl Renderer {
                     scene.instance_range(scene.meshes()[i].instance_group),
                 );
             }
+            self.sprites.draw(&mut pass);
         }
         self.queue.submit([encoder.finish()]);
     }

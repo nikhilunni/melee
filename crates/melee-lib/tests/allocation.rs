@@ -203,10 +203,15 @@ fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
         .filter(|g| *g != 0)
         .collect();
     let mut saw_article = false;
+    let mut saw_shield = false;
+    let mut saw_particle = false;
     for tick in 0..600 {
         let mut inputs = Inputs::default();
         if tick >= 220 && tick % 60 < 30 {
             inputs.0[0].buttons = Buttons::B;
+        }
+        if (180..210).contains(&tick) {
+            inputs.0[1].buttons = Buttons::L;
         }
         game.step(&inputs).unwrap();
         let before = if tick % 60 == 0 {
@@ -226,6 +231,27 @@ fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
             .enumerate()
             .any(|(i, m)| m.instance_group != 0 && view.visibility()[i]);
         saw_article |= article_visible;
+        saw_shield |= view
+            .sprites()
+            .iter()
+            .any(|s| matches!(s.shape, presentation::SpriteShape::Shield { .. }));
+        for shield in view
+            .sprites()
+            .iter()
+            .filter(|s| matches!(s.shape, presentation::SpriteShape::Shield { .. }))
+        {
+            assert!(shield.color[3] > 0);
+            assert!(shield.half_size.iter().all(|&radius| radius > 1.0));
+        }
+        saw_particle |= view
+            .sprites()
+            .iter()
+            .any(|s| matches!(s.shape, presentation::SpriteShape::Texture));
+        assert!(view.sprites().iter().all(|s| s
+            .position
+            .iter()
+            .chain(&s.half_size)
+            .all(|v| v.is_finite())));
         let instances: usize = groups.iter().map(|g| view.instance_range(*g).len()).sum();
         let projectiles = game
             .observe()
@@ -250,7 +276,48 @@ fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
         }
     }
     assert!(saw_article, "script must exercise live article instances");
+    assert!(
+        saw_shield && saw_particle,
+        "script must exercise shields and particles"
+    );
     game.reset(Seed(42)).unwrap();
     view.capture(&game).unwrap();
     assert!(groups.iter().all(|g| view.instance_range(*g).is_empty()));
+}
+
+#[test]
+fn presentation_captures_both_complete_matches_without_allocating() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for name in ["match_fd_foxmarth", "match2_fd_foxmarth"] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut headless = game.clone();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut view = presentation::Presentation::new(&game).unwrap();
+        for frame in 0..scenario.frames {
+            if !game.status().is_running() {
+                break;
+            }
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            game.step(&inputs).unwrap();
+            headless.step(&inputs).unwrap();
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = view.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap_or_else(|e| panic!("{name} frame {frame}: {e}"));
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} frame {frame}");
+        }
+        assert!(matches!(game.status(), MatchStatus::Finished(_)));
+        assert_eq!(
+            diagnostics::inspect(&game).unwrap(),
+            diagnostics::inspect(&headless).unwrap()
+        );
+    }
 }

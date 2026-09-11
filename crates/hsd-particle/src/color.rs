@@ -19,6 +19,18 @@ impl ColorTrack {
             remaining: 0,
         }
     }
+    /// getColorPrimEnv (psdisp.c): read the interpolated display color without
+    /// materializing it into the simulation's countdown endpoints.
+    pub fn display_color(&self) -> [u8; 4] {
+        if self.duration == 0 {
+            return self.current;
+        }
+        let scale = (i32::from(self.remaining) << 16) / i32::from(self.duration);
+        std::array::from_fn(|i| {
+            let delta = scale.wrapping_mul(i32::from(self.current[i]) - i32::from(self.target[i]));
+            ((i32::from(self.target[i]) << 16).wrapping_add(delta) >> 16) as u8
+        })
+    }
     pub(crate) fn tick(&mut self) {
         if self.duration != 0 {
             self.remaining = self.remaining.wrapping_sub(1);
@@ -29,14 +41,7 @@ impl ColorTrack {
         }
     }
     fn materialize(&mut self) {
-        if self.duration == 0 {
-            return;
-        }
-        let step = (i32::from(self.remaining) << 16) / i32::from(self.duration);
-        for (current, target) in self.current.iter_mut().zip(self.target) {
-            let delta = step.wrapping_mul(i32::from(*current) - i32::from(target));
-            *current = ((i32::from(target) << 16).wrapping_add(delta) >> 16) as u8;
-        }
+        self.current = self.display_color();
     }
     pub(crate) fn setup(&mut self, mask: u8, pc: &mut Cursor<'_>) -> Result<(), Error> {
         self.materialize();
@@ -104,5 +109,22 @@ impl ColorTrack {
         }
         self.restart();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+    #[test]
+    fn display_color_interpolates_without_changing_endpoints() {
+        let track = ColorTrack {
+            current: [255, 0, 128, 255],
+            target: [0, 255, 64, 0],
+            duration: 4,
+            remaining: 1,
+        };
+        let original = track.clone();
+        assert_eq!(track.display_color(), [63, 191, 80, 63]);
+        assert_eq!(track, original);
     }
 }

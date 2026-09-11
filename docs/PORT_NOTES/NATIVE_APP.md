@@ -190,3 +190,39 @@ rounding. Material animation, lighting and precise framebuffer behavior remain.
 
 Combiner phase validation: descriptor and real-asset tests, allocation/nonmutation
 regression, ten Metal numeric fixtures, workspace clippy and native build pass.
+
+## Particle and shield presentation (2026-09-10)
+
+`hsd-archive/src/visual/particle.rs` reads bank-relative particle image and palette
+tables using the same tiled GX pixel decoder as model textures. Immutable effect
+archives remain shared with assets. `melee-lib/src/presentation/sprites.rs` captures
+live particle position, size, rotation, image, interpolated colors and AppSRT into
+a prepared buffer without changing simulation state. Color interpolation reuses
+the existing integer countdown calculation in `hsd-particle/src/color.rs`.
+
+`melee-platform/src/sprites.rs` uploads an atlas once and batches instanced quads
+through shared wgpu pipelines, retaining alpha/additive blending and depth flags.
+Shields use the live bone transform, health-dependent size, tilt, and opacity;
+the application chooses player colors and a procedural hemisphere appearance.
+Swift contains none of this rendering behavior. Capture remains allocation-free.
+
+These are initial billboard effects, not complete retail particle rendering:
+trail/direction/point geometry, particle lighting/fog, custom forms, model effects,
+and exact framebuffer comparisons remain. Shield shading is procedural. Atlas
+capacity is explicitly bounded to 2048 square with an error on overflow.
+
+The offscreen example accepts `--shield` or `--laser`. Combining these exposes an
+existing simulation limitation: `item shield response` is unimplemented when a
+laser reaches a shield. The rendering regression exercises the two at separate
+times; this phase does not change combat behavior.
+
+Changed files: the archive visual decoder module and texture helper; particle
+color helper; library assets, presentation and allocation test; platform sprite
+renderer/shader, renderer integration, module declaration and offscreen example;
+this report and `TRACKER.md`.
+
+Validation: all release `hsd-particle` tests and recorded particle replays pass;
+11 archive visual unit tests, five platform tests, both presentation allocation
+tests (including both complete matches), workspace clippy, native bundle build,
+resize/focus/pause/keyboard smoke and Metal shield/laser previews pass.
+Full workspace simulation gates were not rerun, per the requested focused scope.

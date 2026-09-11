@@ -1,6 +1,7 @@
 //! Optional renderer-independent visual resources and reusable pose capture.
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
+mod sprites;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
 pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
 use hsd_archive::{
@@ -8,6 +9,7 @@ use hsd_archive::{
     visual::{MatrixBinding, Polygon, TextureDecoder},
     Archive,
 };
+pub use sprites::{Sprite, SpriteShape};
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Debug)]
@@ -76,6 +78,7 @@ impl ModelSource {
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
 pub struct Presentation {
+    sprites: sprites::Sprites,
     assets: Arc<crate::assets::Assets>,
     players: [PlayerConfig; 2],
     meshes: Vec<Mesh>,
@@ -93,6 +96,7 @@ impl Presentation {
             return Err(error("faulted match"));
         }
         let mut result = Self {
+            sprites: sprites::Sprites::new(game)?,
             assets: Arc::clone(&game.assets.inner),
             players: game.config.players.clone(),
             meshes: Vec::new(),
@@ -166,6 +170,15 @@ impl Presentation {
     pub fn camera_targets(&self) -> &[Option<[f32; 2]>; 2] {
         &self.camera_targets
     }
+    pub fn sprites(&self) -> &[Sprite] {
+        &self.sprites.live
+    }
+    pub fn sprite_capacity(&self) -> usize {
+        self.sprites.live.capacity()
+    }
+    pub fn sprite_textures(&self) -> &[Arc<Texture>] {
+        &self.sprites.textures
+    }
     pub fn meshes(&self) -> &[Mesh] {
         &self.meshes
     }
@@ -199,6 +212,7 @@ impl Presentation {
             *target = (fighter.player.stocks > 0)
                 .then_some([fighter.physics.position.x, fighter.physics.position.y]);
         }
+        self.sprites.capture(game)?;
         for model in &mut self.models {
             if let ModelSource::Item(kind, _) = &model.source {
                 let start = self.instance_ranges[model.instance_group].start;
@@ -226,6 +240,43 @@ impl Presentation {
             let tree = model.source.tree(game);
             if !model.pose.refresh(tree) {
                 return Err(error("presentation skeleton shape changed"));
+            }
+        }
+        for (slot, fighter) in game.engine.state().fighters.iter().enumerate() {
+            let f = &fighter.0;
+            if f.shield.active && f.shield.hit.radius > 0.0 {
+                let volume = &f.shield.hit;
+                let joint = f
+                    .skeleton
+                    .bone(f.animation.root, volume.bone)
+                    .ok_or_else(|| error("shield joint missing"))?;
+                let matrix = self.models[slot].pose.matrix(joint);
+                let mut position = volume.position;
+                if !volume.position_cached {
+                    hsd_anim::mtx::mtx_mult_vec(&matrix, &volume.offset, &mut position);
+                }
+                // The collision radius is local to the shield bone. Its pose
+                // carries health, light-shield and fighter scale. Project the
+                // transformed sphere onto the presentation's world XY plane.
+                let half_size = std::array::from_fn(|axis| {
+                    let row = matrix.0[axis];
+                    volume.radius
+                        * gekko_math::msl::sqrtf(
+                            row[0] * row[0] + row[1] * row[1] + row[2] * row[2],
+                        )
+                });
+                self.sprites.push(Sprite {
+                    position: [position.x, position.y, position.z],
+                    half_size,
+                    rotation: 0.0,
+                    color: [255, 255, 255, f.shield.alpha],
+                    environment: [0; 4],
+                    texture: 0,
+                    flags: 0,
+                    shape: SpriteShape::Shield {
+                        port: crate::Port::from_index(f.player.id),
+                    },
+                })?;
             }
         }
         for (i, part) in self.parts.iter().enumerate() {

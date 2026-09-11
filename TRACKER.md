@@ -19,6 +19,9 @@ task lines you touched and add one line to the session log.
 
 - [x] Custom texture-combiner phase (2026-09-10): decoded HSD texture expressions, shared GPU arithmetic/comparison stages, and ten numeric Metal fixtures. Descriptor, real-asset and presentation checks pass; clippy and native build pass.
 
+- [x] Particle/shield presentation phase (2026-09-10): shared GX pixel decoding for stage/common/Fox/Marth particle banks, immutable atlas resources, allocation-free sprite capture, and procedural shields scaled by the live shield bone. Capture reads particle color/AppSRT state without advancing simulation. Particle suite, focused rendering tests, both complete-match capture/allocation checks, workspace clippy, native build/smoke and Metal previews pass; specialized particle geometry, model effects and precise GX rendering remain.
+- [!] Interactive gameplay gap discovered during rendering verification: a laser hitting a shield faults at `melee-ft/src/fighter/damage.rs` with `item shield response` unimplemented. Shield and laser rendering are tested separately; combat behavior and oracle expectations are unchanged.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**

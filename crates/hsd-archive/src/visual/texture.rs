@@ -94,6 +94,37 @@ pub fn read_image(archive: &Archive, offset: u32, palette: Option<u32>) -> Resul
     let width = r.u16(offset + 4)?;
     let height = r.u16(offset + 6)?;
     let format = r.u32(offset + 8)?;
+    let palette = if matches!(format, 8..=10) {
+        let p = palette.ok_or_else(|| invalid(offset, "indexed image lacks palette"))?;
+        r.slice(p, 14)?;
+        let base = archive
+            .link(p)?
+            .ok_or_else(|| invalid(p, "missing palette data"))?;
+        let count = r.u16(p + 12)?;
+        Some((r.slice(base, u32::from(count) * 2)?, r.u32(p + 4)?))
+    } else {
+        None
+    };
+    decode_pixels(
+        archive
+            .data()
+            .get(data as usize..)
+            .ok_or_else(|| invalid(data, "image out of bounds"))?,
+        width,
+        height,
+        format,
+        palette,
+    )
+}
+/// One GX decoder serves archive ImageDesc and particle texture-bank images.
+pub(super) fn decode_pixels(
+    data: &[u8],
+    width: u16,
+    height: u16,
+    format: u32,
+    palette: Option<(&[u8], u32)>,
+) -> Result<Texture> {
+    let offset = 0;
     if width == 0 || height == 0 {
         return Err(invalid(offset, "empty image"));
     }
@@ -112,21 +143,11 @@ pub fn read_image(archive: &Archive, offset: u32, palette: Option<u32>) -> Resul
         .and_then(|n| n.checked_mul(bytes))
         .ok_or_else(|| invalid(offset, "image size overflow"))?;
     // Validate source length before allocating decoded pixels.
-    let source = Reader::new(r.slice(data, size)?);
-    let palette = if matches!(format, 8..=10) {
-        let p = palette.ok_or_else(|| invalid(offset, "indexed image lacks palette"))?;
-        r.slice(p, 14)?;
-        let base = archive
-            .link(p)?
-            .ok_or_else(|| invalid(p, "missing palette data"))?;
-        let count = r.u16(p + 12)?;
-        Some((
-            Reader::new(r.slice(base, u32::from(count) * 2)?),
-            r.u32(p + 4)?,
-        ))
-    } else {
-        None
-    };
+    let source = Reader::new(Reader::new(data).slice(0, size)?);
+    if matches!(format, 8..=10) && palette.is_none() {
+        return Err(invalid(0, "indexed image lacks palette"));
+    }
+    let palette = palette.map(|(bytes, format)| (Reader::new(bytes), format));
     let mut rgba = vec![0; usize::from(width) * usize::from(height) * 4];
     for by in 0..ny {
         for bx in 0..nx {

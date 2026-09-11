@@ -7,3 +7,5 @@ pub mod surface;
 
 mod camera;
 pub mod material;
+
+mod sprites;

@@ -7,7 +7,9 @@
 mod color;
 mod material;
 pub use material::PixelState;
+mod particle;
 mod polygon;
+pub use particle::{read_particle_textures, ParticleTexture};
 mod tev;
 mod texture;
 pub use polygon::{read_polygons, Influence, MatrixBinding, Polygon, Vertex};

@@ -11,6 +11,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..240 {
         session.advance(std::time::Duration::from_nanos(16_666_667))?;
     }
+    if args.iter().any(|a| a == "--shield") {
+        session.set_action(1, melee_platform::session::Action::Shield, true);
+        for _ in 0..20 {
+            session.advance(std::time::Duration::from_nanos(16_666_667))?;
+        }
+    }
     if args.iter().any(|a| a == "--laser") {
         session.set_action(0, melee_platform::session::Action::Special, true);
         let mut visible = 0;
