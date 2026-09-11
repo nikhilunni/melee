@@ -22,6 +22,8 @@ task lines you touched and add one line to the session log.
 - [x] Particle/shield presentation phase (2026-09-10): shared GX pixel decoding for stage/common/Fox/Marth particle banks, immutable atlas resources, allocation-free sprite capture, and procedural shields scaled by the live shield bone. Capture reads particle color/AppSRT state without advancing simulation. Particle suite, focused rendering tests, both complete-match capture/allocation checks, workspace clippy, native build/smoke and Metal previews pass; specialized particle geometry, model effects and precise GX rendering remain.
 - [!] Interactive gameplay gap discovered during rendering verification: a laser hitting a shield faults at `melee-ft/src/fighter/damage.rs` with `item shield response` unimplemented. Shield and laser rendering are tested separately; combat behavior and oracle expectations are unchanged.
 
+- [x] Authored lighting phase (2026-09-10): shared light-table parser, tick-indexed Final Destination directional light paths using the existing AObj and linear-spline evaluators, per-vertex ambient/diffuse/specular shading, and inverse-transpose normals. Capture-frequency/reset, both complete-match presentation checks, static Battlefield lights, 13 numeric Metal fixtures, workspace clippy and native build/smoke pass. Material/texture animation, held weapons, specialized/model effects, shadows and camera/framebuffer fidelity remain.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**

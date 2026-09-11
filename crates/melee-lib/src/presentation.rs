@@ -1,6 +1,7 @@
 //! Optional renderer-independent visual resources and reusable pose capture.
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
+mod lighting;
 mod sprites;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
 pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
@@ -9,6 +10,7 @@ use hsd_archive::{
     visual::{MatrixBinding, Polygon, TextureDecoder},
     Archive,
 };
+pub use lighting::DirectionalLight;
 pub use sprites::{Sprite, SpriteShape};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -38,6 +40,9 @@ pub struct Mesh {
 /// Immutable authored material. Texture operations retain the HSD flags;
 /// renderers may support them incrementally without reparsing disc bytes.
 pub struct Material {
+    pub ambient: [f32; 3],
+    pub specular: [f32; 3],
+    pub shininess: f32,
     pub textures: Vec<TextureLayer>,
     pub diffuse: [f32; 4],
     pub render_mode: u32,
@@ -78,6 +83,7 @@ impl ModelSource {
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
 pub struct Presentation {
+    lighting: lighting::Lighting,
     sprites: sprites::Sprites,
     assets: Arc<crate::assets::Assets>,
     players: [PlayerConfig; 2],
@@ -96,6 +102,7 @@ impl Presentation {
             return Err(error("faulted match"));
         }
         let mut result = Self {
+            lighting: lighting::Lighting::new(game)?,
             sprites: sprites::Sprites::new(game)?,
             assets: Arc::clone(&game.assets.inner),
             players: game.config.players.clone(),
@@ -173,6 +180,12 @@ impl Presentation {
     pub fn sprites(&self) -> &[Sprite] {
         &self.sprites.live
     }
+    pub fn ambient_light(&self) -> [f32; 3] {
+        self.lighting.ambient
+    }
+    pub fn directional_lights(&self) -> &[DirectionalLight] {
+        &self.lighting.lights
+    }
     pub fn sprite_capacity(&self) -> usize {
         self.sprites.live.capacity()
     }
@@ -213,6 +226,7 @@ impl Presentation {
                 .then_some([fighter.physics.position.x, fighter.physics.position.y]);
         }
         self.sprites.capture(game)?;
+        self.lighting.capture(game.tick());
         for model in &mut self.models {
             if let ModelSource::Item(kind, _) = &model.source {
                 let start = self.instance_ranges[model.instance_group].start;
@@ -358,6 +372,9 @@ impl Presentation {
         let mut display = 0;
         while let Some(dobj) = next {
             let mut material = Material {
+                ambient: [1.0; 3],
+                specular: [0.0; 3],
+                shininess: 0.0,
                 textures: Vec::new(),
                 diffuse: [1.0; 4],
                 render_mode: 0,
@@ -371,6 +388,11 @@ impl Presentation {
                     None => PixelState::from_render_mode(desc.rendermode),
                 };
                 if let Some(mat) = &desc.mat {
+                    material.ambient =
+                        [mat.ambient.r, mat.ambient.g, mat.ambient.b].map(|v| f32::from(v) / 255.0);
+                    material.specular = [mat.specular.r, mat.specular.g, mat.specular.b]
+                        .map(|v| f32::from(v) / 255.0);
+                    material.shininess = mat.shininess;
                     material.diffuse = [
                         f32::from(mat.diffuse.r) / 255.0,
                         f32::from(mat.diffuse.g) / 255.0,

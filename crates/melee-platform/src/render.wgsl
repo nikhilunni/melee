@@ -1,17 +1,40 @@
 // Display-only approximation of HSD's common texture expression stages.
-// Authored texture expressions are supported; lighting and material animation
-// remain separate from these display calculations.
+// Authored texture expressions and directional lighting are evaluated in display
+// floats. Material animation and exact GX rounding remain separate work.
 struct Camera { extent: vec4<f32> }
 @group(0) @binding(0) var<storage, read> poses: array<mat4x4<f32>>;
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
 struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32> }
-struct Material { diffuse: vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
+struct Material { diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
+struct DirectionalLight { direction:vec4<f32>, color:vec4<f32> }
+struct Lighting { ambient:vec4<f32>, lights:array<DirectionalLight,8> }
+@group(0) @binding(3) var<uniform> lighting:Lighting;
+fn safe_normalize(v:vec3<f32>)->vec3<f32> {
+    return v/max(length(v),0.000001);
+}
+fn normal_transform(transform:mat4x4<f32>, normal:vec3<f32>)->vec3<f32> {
+    let a=transform[0].xyz; let b=transform[1].xyz; let c=transform[2].xyz;
+    let cofactor=mat3x3(cross(b,c),cross(c,a),cross(a,b));
+    // Inverse transpose, with determinant magnitude removed by normalization.
+    // Retain its sign for reflected transforms; singular poses produce zero.
+    return safe_normalize(cofactor*normal*sign(dot(a,cross(b,c))));
+}
+fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32 {
+    if dot(normal,toward_light)<=0.0 { return 0.0; }
+    let half_vector=safe_normalize(toward_light+vec3(0.0,0.0,1.0));
+    let cosine=max(dot(normal,half_vector),0.0);
+    let squared=cosine*cosine;
+    let half_shininess=shininess*0.5;
+    // HSD_LObjSetup uses GX's rational specular attenuation, not a pow lobe.
+    return squared/max(half_shininess+(1.0-half_shininess)*squared,0.000001);
+}
 // TEXTURE_BINDINGS
 struct Out {
     @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) normal: vec3<f32>
+    @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) normal: vec3<f32>,
+    @location(3) diffuse_light:vec3<f32>, @location(4) specular_light:vec3<f32>
 }
 @vertex fn vertex(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>, @location(2) color: vec4<f32>, @location(3) matrix: u32, @location(4) normal: vec3<f32>, @builtin(instance_index) instance: u32) -> Out {
     let transform=instances[instance]*poses[matrix];
@@ -19,8 +42,18 @@ struct Out {
     var out: Out;
     out.position = vec4((p.x-camera.extent.z) / camera.extent.x, (p.y-camera.extent.w) / camera.extent.y, clamp((800.0-p.z)/1600.0, 0.0, 1.0), 1.0);
     out.uv = uv; out.color = color;
-    let transformed = (transform * vec4(normal,0.0)).xyz;
-    out.normal = transformed / max(length(transformed), 0.000001);
+    out.normal = normal_transform(transform,normal);
+    let surface_normal=out.normal;
+    var diffuse_light=material.ambient.rgb*lighting.ambient.rgb;
+    var specular_light=vec3(0.0);
+    for (var i=0u;i<u32(lighting.ambient.w);i++) {
+        let light=lighting.lights[i];
+        let direction=safe_normalize(light.direction.xyz);
+        diffuse_light+=light.color.rgb*max(dot(surface_normal,direction),0.0)*light.direction.w;
+        specular_light+=light.color.rgb*specular_weight(surface_normal,direction,material.specular.w)*light.color.w;
+    }
+    out.diffuse_light=clamp(diffuse_light,vec3(0.0),vec3(1.0));
+    out.specular_light=specular_light;
     return out;
 }
 fn coordinates(in: Out, layer: Layer) -> vec2<f32> {
@@ -83,6 +116,8 @@ fn alpha_compare(value:f32, reference:u32, operation:u32)->bool {
     if alpha==2u { color.a=in.color.a; }
     if alpha==3u { color.a*=in.color.a; }
     // TEXTURE_SAMPLES
+    if (material.config.x&4u)!=0u { color=vec4(color.rgb*clamp(in.diffuse_light,vec3(0.0),vec3(1.0)),color.a); }
+    if (material.config.x&8u)!=0u { color=vec4(clamp(color.rgb+material.specular.rgb*in.specular_light,vec3(0.0),vec3(1.0)),color.a); }
     let a=alpha_compare(color.a,material.alpha.y,material.alpha.x);
     let b=alpha_compare(color.a,material.alpha.w,material.alpha.z);
     var visible=a && b;

@@ -335,24 +335,18 @@ pub fn read_static_lights(
     archive: &Archive,
     model: &ModelDesc,
 ) -> ReadResult<Vec<hsd_archive::desc::light::LightDesc>> {
-    let Some(mut cursor) = model.light_list_offset else {
+    let Some(offset) = model.light_list_offset else {
         return Ok(Vec::new());
     };
-    let mut lights = Vec::new();
-    while let Some(list) = link(archive, cursor)? {
-        if lights.len() >= 8 {
-            return Err(error("stage light list exceeds hardware slots"));
-        }
-        if link(archive, list + 4)?.is_some() {
-            unimplemented!("ground.c:2723-2747: animated light descriptors");
-        }
-        lights.push(hsd_archive::desc::light::LightDesc::read(
-            archive,
-            required_link(archive, list)?,
-        )?);
-        cursor += 4;
-    }
-    Ok(lights)
+    hsd_archive::visual::read_lights(archive, offset)?
+        .into_iter()
+        .map(|light| {
+            if light.has_animation_set {
+                unimplemented!("ground.c:2723-2747: animated light descriptors");
+            }
+            Ok(light.descriptor)
+        })
+        .collect()
 }
 
 /// grAnime_801C7C1C (0x801C7C1C): animation arrays contain consecutive

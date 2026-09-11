@@ -24,6 +24,8 @@ struct Layer {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniform {
     diffuse: [f32; 4],
+    ambient: [f32; 4],
+    specular: [f32; 4],
     config: [u32; 4],
     alpha: [u32; 4],
     layers: [Layer; MAX_LAYERS],
@@ -31,7 +33,7 @@ struct Uniform {
 pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     let mut entries = vec![wgpu::BindGroupLayoutEntry {
         binding: 0,
-        visibility: wgpu::ShaderStages::FRAGMENT,
+        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
         ty: wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Uniform,
             has_dynamic_offset: false,
@@ -80,6 +82,18 @@ impl Images {
         }
         let mut uniform = Uniform {
             diffuse: material.diffuse,
+            ambient: [
+                material.ambient[0],
+                material.ambient[1],
+                material.ambient[2],
+                0.0,
+            ],
+            specular: [
+                material.specular[0],
+                material.specular[1],
+                material.specular[2],
+                material.shininess,
+            ],
             config: [
                 material.render_mode,
                 material.textures.len() as u32,

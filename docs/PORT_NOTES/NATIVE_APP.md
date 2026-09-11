@@ -226,3 +226,37 @@ Validation: all release `hsd-particle` tests and recorded particle replays pass;
 tests (including both complete matches), workspace clippy, native bundle build,
 resize/focus/pause/keyboard smoke and Metal shield/laser previews pass.
 Full workspace simulation gates were not rerun, per the requested focused scope.
+
+## Authored directional lighting (2026-09-10)
+
+Particle/shield work is committed as `5f709a1`. The next phase reads the selected
+Final Destination light table, including its position animations. The new archive
+reader is shared with the existing static stage-light reader. The animation
+descriptor adapter in `hsd-anim/src/load.rs` is reused, as are AObj/FObj and the
+audited linear-spline evaluator. No new simulation clock or RNG is introduced.
+
+`melee-lib/src/presentation/lighting.rs` samples prepared light tracks at the
+absolute match tick. A fresh presentation, sparse capture, repeated capture and
+reset therefore give the same light state. Sampling seeks encoded tracks each
+capture; this is bounded by asset track size rather than elapsed match duration.
+Light animation phase relative to retail rendering has not been measured with a
+Dolphin lighting oracle. The current graphical projection remains approximate.
+
+`melee-platform/src/lighting.rs` packs the small light set into a fixed GPU
+uniform. Materials retain authored ambient, diffuse, specular and shininess.
+Lighting runs per vertex, with GX-style rational specular attenuation; normals
+use inverse transpose including reflected-transform signs. This remains display
+floating-point shading, not exact GX quantization, complete toon/lightmap stage
+ordering, or a pixel oracle. Point/spot lights, light color/interest animations,
+constraints and nonlinear light paths fail explicitly in this initial FD view.
+
+Changed files: archive visual light reader/export; animation loader visibility;
+stage static light adapter; library presentation/material/light capture and
+allocation tests; platform light uniform, material shader/resources, renderer,
+module declaration and GPU probe; tracker and this report.
+
+Lighting validation: both complete-match capture/allocation checks, capture-frequency
+and reset checks, real Battlefield light assets, real Fox/Marth visual assets, five
+platform tests, 13 Metal numeric fixtures, workspace clippy, native bundle build
+and resize/focus/pause/keyboard smoke pass. Final Metal preview inspected at tick
+260. Full workspace simulation gates were not rerun for this display-only phase.

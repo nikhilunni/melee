@@ -330,7 +330,7 @@ fn animation_node(anim: &desc::AnimJoint) -> Result<AnimJoint, LoadError> {
 }
 
 /// `HSD_AObjLoadDesc` (`aobj.c:179-218`): pass flags and tracks to AObj's loader.
-fn animation_object(anim: &desc::AObjDesc) -> Result<AObjDesc, LoadError> {
+pub fn animation_object(anim: &desc::AObjDesc) -> Result<AObjDesc, LoadError> {
     if (anim.obj_id != 0 && !anim.obj_id_is_link) || (anim.obj_id == 0 && anim.obj_id_is_link) {
         return Err(unsupported(anim.offset, "AObj object reference"));
     }

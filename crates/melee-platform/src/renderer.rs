@@ -22,6 +22,7 @@ struct Draw {
     pipeline: usize,
 }
 pub struct Renderer {
+    lighting: wgpu::Buffer,
     sprites: crate::sprites::Sprites,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -83,6 +84,16 @@ impl Renderer {
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -161,6 +172,11 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let lighting = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Stage lighting"),
+            contents: bytemuck::bytes_of(&crate::lighting::Lighting::capture(scene)),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
         let scene_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Scene"),
             layout: &scene_layout,
@@ -176,6 +192,10 @@ impl Renderer {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: instances.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: lighting.as_entire_binding(),
                 },
             ],
         });
@@ -229,6 +249,7 @@ impl Renderer {
             pipelines,
             order: (0..draws.len()).collect(),
             poses,
+            lighting,
             instances,
             camera,
             scene: scene_group,
@@ -245,6 +266,11 @@ impl Renderer {
         }
     }
     pub fn draw(&mut self, view: &wgpu::TextureView, scene: &Presentation) {
+        self.queue.write_buffer(
+            &self.lighting,
+            0,
+            bytemuck::bytes_of(&crate::lighting::Lighting::capture(scene)),
+        );
         self.queue
             .write_buffer(&self.poses, 0, bytemuck::cast_slice(scene.matrices()));
         self.queue

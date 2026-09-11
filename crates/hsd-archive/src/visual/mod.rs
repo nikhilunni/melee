@@ -5,6 +5,8 @@
 //! base-level textures and material texture expressions. Shape animation remains
 //! separate.
 mod color;
+mod light;
+pub use light::{read_lights, Light};
 mod material;
 pub use material::PixelState;
 mod particle;

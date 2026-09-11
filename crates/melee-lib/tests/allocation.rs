@@ -321,3 +321,40 @@ fn presentation_captures_both_complete_matches_without_allocating() {
         );
     }
 }
+
+#[test]
+fn light_animation_depends_on_match_tick_not_capture_frequency() {
+    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    let config = MatchConfig::versus(
+        Stage::FinalDestination,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(42));
+    let assets = GameAssets::load(&files, &config).unwrap();
+    let mut game = Match::new(&assets, config).unwrap();
+    let mut frequent = presentation::Presentation::new(&game).unwrap();
+    let mut sparse = presentation::Presentation::new(&game).unwrap();
+    let initial = frequent.directional_lights().to_vec();
+    let mut saw_motion = false;
+    for tick in 0..600 {
+        game.step(&Inputs::default()).unwrap();
+        frequent.capture(&game).unwrap();
+        saw_motion |= initial != frequent.directional_lights();
+        if tick % 73 == 0 {
+            sparse.capture(&game).unwrap();
+            assert_eq!(frequent.directional_lights(), sparse.directional_lights());
+        }
+    }
+    assert!(saw_motion, "authored light paths must animate");
+    let fresh = presentation::Presentation::new(&game).unwrap();
+    assert_eq!(frequent.directional_lights(), fresh.directional_lights());
+    game.reset(Seed(42)).unwrap();
+    frequent.capture(&game).unwrap();
+    assert_eq!(initial, frequent.directional_lights());
+}
