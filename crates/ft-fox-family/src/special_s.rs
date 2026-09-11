@@ -462,8 +462,10 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> mele
     let mut owner = crate::special_n::item_owner::<C>(f, assets);
     let active =
         (S::SpecialSStart as u16..=S::SpecialAirSEnd as u16).contains(&f.motion_state.action.0);
+    let create_secondary = f.commands.variables[2] == 2;
     let scratch = f.character.get_mut::<C>().special_side();
     owner.illusion = active.then_some(melee_it::IllusionOwner {
+        create_secondary,
         positions: scratch.ghost_positions,
         rotations: scratch.ghost_rotations,
     });

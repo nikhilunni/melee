@@ -82,6 +82,7 @@ pub enum ItemRequest {
 /// Fighter-owned inputs sampled for the item callback; no fighter dependency.
 #[derive(Clone, Copy, Debug)]
 pub struct IllusionOwner {
+    pub create_secondary: bool,
     pub positions: [Vec3; 4],
     pub rotations: [f32; 4],
 }

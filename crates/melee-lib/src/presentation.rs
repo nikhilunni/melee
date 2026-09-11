@@ -86,7 +86,7 @@ struct Model {
 enum ModelSource {
     Fighter(usize),
     Effect(u32),
-    Held(items::HeldModel),
+    Article(items::ArticleModel),
     Stage(u8),
     Static(u8, JObjTree),
     Item(melee_types::ItemKind, JObjTree),
@@ -94,7 +94,7 @@ enum ModelSource {
 impl ModelSource {
     fn tree<'a>(&'a self, game: &'a Match) -> &'a JObjTree {
         match self {
-            Self::Held(held) => held.tree(),
+            Self::Article(held) => held.tree(),
             Self::Effect(descriptor) => {
                 game.assets
                     .inner
@@ -196,15 +196,19 @@ impl Presentation {
             )?;
         }
         for (kind, archive, offset) in assets.items.visual_models() {
-            if crate::scene_items::SceneItems::logic(kind)
-                .held_part
-                .is_some()
-            {
+            if crate::scene_items::SceneItems::logic(kind).model_copies > 0 {
                 let visual = &assets.items.get(kind).visual;
                 for owner in 0..2 {
-                    let held = items::HeldModel::new(archive, visual, owner, kind)?;
-                    let tree = held.tree().clone();
-                    result.add_model(archive, &visual.model, &tree, ModelSource::Held(held))?;
+                    for copy in 0..crate::scene_items::SceneItems::logic(kind).model_copies {
+                        let held = items::ArticleModel::new(archive, visual, owner, kind, copy)?;
+                        let tree = held.tree().clone();
+                        result.add_model(
+                            archive,
+                            &visual.model,
+                            &tree,
+                            ModelSource::Article(held),
+                        )?;
+                    }
                 }
                 continue;
             }
@@ -319,14 +323,18 @@ impl Presentation {
         for index in 0..self.models.len() {
             let (previous, remaining) = self.models.split_at_mut(index);
             let model = &mut remaining[0];
-            if let ModelSource::Held(held) = &mut model.source {
+            if let ModelSource::Article(held) = &mut model.source {
                 let fighter = &game.engine.state().fighters[held.owner].0;
                 let item = game.engine.state().items.iter().find(|item| {
                     item.kind == held.kind
                         && item.owner == Some(fighter.player.id)
                         && !item.destroyed
                 });
-                let hand = if item.is_some() {
+                let hand = if item.is_some()
+                    && crate::scene_items::SceneItems::logic(held.kind)
+                        .held_part
+                        .is_some()
+                {
                     let part = crate::scene_items::SceneItems::logic(held.kind)
                         .held_part
                         .unwrap();
@@ -419,7 +427,7 @@ impl Presentation {
                     ModelSource::Stage(map) | ModelSource::Static(map, _),
                     crate::scene_stage::SceneStage::FinalDestination(stage),
                 ) => !stage.ground.live_maps[usize::from(*map)],
-                (ModelSource::Held(held), _) => !held.visible,
+                (ModelSource::Article(held), _) => !held.visible,
                 (ModelSource::Effect(_), _) => true,
                 _ => false,
             };

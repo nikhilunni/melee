@@ -17,6 +17,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..ticks {
         session.advance(std::time::Duration::from_nanos(16_666_667))?;
     }
+    if args.iter().any(|a| a == "--illusion") {
+        session.set_action(0, melee_platform::session::Action::Right, true);
+        session.set_action(0, melee_platform::session::Action::Special, true);
+        for _ in 0..24 {
+            session.advance(std::time::Duration::from_nanos(16_666_667))?;
+        }
+    }
     if args.iter().any(|a| a == "--shield") {
         session.set_action(1, melee_platform::session::Action::Shield, true);
         for _ in 0..20 {

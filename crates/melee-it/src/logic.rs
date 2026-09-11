@@ -27,10 +27,14 @@ pub struct ItemStateRow {
 pub trait ItemLogic {
     const KIND: ItemKind;
     const STATES: &'static [ItemStateRow];
+    /// Zero uses rigid projectile instancing; positive counts prepare owned article poses.
+    const MODEL_COPIES: usize = 0;
     const HELD_SCALE: f32 = 1.0;
     const HELD_PART: Option<melee_types::FtPart> = None;
     /// Read-only pose corrections, after authored animation and before capture.
-    fn model_pose(_item: &ItemCore, _tree: &mut hsd_anim::jobj::JObjTree) {}
+    fn model_pose(_item: &ItemCore, _tree: &mut hsd_anim::jobj::JObjTree, _copy: usize) -> bool {
+        true
+    }
 
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
@@ -72,6 +76,7 @@ pub trait ItemLogic {
         held_part: Self::HELD_PART,
         held_scale: Self::HELD_SCALE,
         model_pose: Self::model_pose,
+        model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -91,9 +96,10 @@ pub trait ItemLogic {
 }
 #[derive(Clone, Copy)]
 pub struct ItemLogicRow {
+    pub model_copies: usize,
     pub held_scale: f32,
     pub held_part: Option<melee_types::FtPart>,
-    pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree),
+    pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree, usize) -> bool,
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
     pub destroyed: fn(&mut ItemCore),

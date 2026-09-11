@@ -34,6 +34,9 @@ task lines you touched and add one line to the session log.
 
 - [x] Authored mip/LOD phase (2026-09-11): shared typed texture LOD, padded GX mip-chain decoding, prepared GPU mip uploads and selected-image dimensions at every level; nearest/bilinear/trilinear minification, live LOD bias and anisotropic taps. Archive suite and explicit padded/truncated-chain tests pass, eight allocation checks pass, and 18 numeric Metal fixtures include mip selection/interpolation; firing preview inspected. Retail bias-clamp/edge-LOD details remain pixel-fidelity work. Continue particle geometry, afterimages and shadows.
 
+- [x] Illusion afterimages (2026-09-11): two authored article meshes follow the existing position/rotation history entries 1 and 3. Shared item state retains secondary creation and trailing pose across clones; primary hides in the end state. Held weapons and afterimages reuse one prepared article-animation path and preload every motion's texture variants. Eight allocation tests, 84 combat/ordered-particle oracles and secondary-lifetime/capture/clone tests pass; both blue afterimages inspected on Metal. Continue particle geometry and shadows.
+
+
 
 
 

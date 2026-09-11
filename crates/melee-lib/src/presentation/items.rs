@@ -1,9 +1,10 @@
-//! Held articles seek their authored pose at the simulation's current frame.
+//! Animated articles seek their authored pose at the simulation's current frame.
 use super::*;
-use melee_it::{ItemCore, ItemDispatch, ItemScratch};
+use melee_it::{ItemCore, ItemDispatch};
 use melee_types::ItemKind;
 
-pub(super) struct HeldModel {
+pub(super) struct ArticleModel {
+    pub copy: usize,
     pub owner: usize,
     pub kind: ItemKind,
     pub visible: bool,
@@ -12,20 +13,25 @@ pub(super) struct HeldModel {
     rest: JObjTree,
     states: Vec<JObjTree>,
 }
-impl HeldModel {
+impl ArticleModel {
     pub fn new(
         archive: &Archive,
         visual: &hsd_archive::desc::item_visual::ItemVisual,
         owner: usize,
         kind: ItemKind,
+        copy: usize,
     ) -> Result<Self, PresentationError> {
         let (rest, root) =
             hsd_anim::load::load_joint_tree(archive, &visual.model).map_err(error)?;
         let attachment = rest
             .bone(root, visual.attachment_bone)
-            .ok_or_else(|| error("held article attachment bone missing"))?;
+            .ok_or_else(|| error("article attachment bone missing"))?;
         let mut states = Vec::new();
-        for state in &visual.states {
+        for state in visual
+            .states
+            .iter()
+            .take(if copy == 0 { visual.states.len() } else { 0 })
+        {
             if let Some(shape) = &state.shape {
                 if shape.has_animation(archive).map_err(error)? {
                     return Err(error("held article shape animation unsupported"));
@@ -41,7 +47,11 @@ impl HeldModel {
             }
             states.push(tree);
         }
+        if copy != 0 {
+            states.push(rest.clone());
+        }
         Ok(Self {
+            copy,
             owner,
             kind,
             visible: false,
@@ -49,6 +59,21 @@ impl HeldModel {
             attachment,
             rest,
             states,
+        })
+    }
+    pub fn texture_states(
+        &self,
+        joint: JObjId,
+        display: usize,
+        texture: usize,
+    ) -> impl Iterator<Item = &hsd_anim::tobj::TObj> {
+        self.states.iter().filter_map(move |tree| {
+            tree.dobj(joint)?
+                .get(display)?
+                .mobj
+                .as_ref()?
+                .textures
+                .get(texture)
         })
     }
     pub fn tree(&self) -> &JObjTree {
@@ -59,8 +84,7 @@ impl HeldModel {
         item: Option<&ItemCore>,
         hand: hsd_types::Mtx,
     ) -> Result<(), PresentationError> {
-        self.visible = item
-            .is_some_and(|item| matches!(&item.scratch, ItemScratch::Held(s) if s.visibility == 1));
+        self.visible = false;
         let logic = crate::scene_items::SceneItems::logic(self.kind);
         let animation = item.map_or(0, |item| {
             logic.states[usize::from(item.motion)].animation_id
@@ -69,11 +93,15 @@ impl HeldModel {
             self.visible = false;
             return Ok(());
         }
-        self.selected = animation as usize;
+        self.selected = if self.copy == 0 {
+            animation as usize
+        } else {
+            0
+        };
         let tree = self
             .states
             .get_mut(self.selected)
-            .ok_or_else(|| error("held article animation missing"))?;
+            .ok_or_else(|| error("article animation missing"))?;
         for id in self.rest.ids() {
             let rest = self.rest.get(id);
             let node = tree.get_mut(id);
@@ -89,7 +117,10 @@ impl HeldModel {
         };
         tree.req_anim_all(JObjId(0), item.animation_frame);
         tree.anim_all::<melee_ft::fighter::RetailTrig>(JObjId(0));
-        (logic.model_pose)(item, tree);
+        self.visible = (logic.model_pose)(item, tree, self.copy);
+        if logic.held_part.is_none() {
+            return Ok(());
+        }
         // lb_8000C2F8 attaches position and orientation, not the owner's scale.
         // Keep article scale separate from the fighter's animated hand scale.
         let mut matrix = hand;
@@ -117,6 +148,7 @@ mod tests {
     use crate::{
         Buttons, Character, GameAssets, Inputs, MatchConfig, PlayerConfig, Port, Seed, Stage,
     };
+    use melee_it::ItemScratch;
 
     #[test]
     fn held_articles_follow_hands_and_ignore_capture_frequency() {
@@ -160,10 +192,14 @@ mod tests {
             }
             for index in 0..frequent.models.len() {
                 let (previous, current) = frequent.models.split_at_mut(index);
-                let ModelSource::Held(held) = &current[0].source else {
+                let ModelSource::Article(held) = &current[0].source else {
                     continue;
                 };
-                if !held.visible {
+                if !held.visible
+                    || crate::scene_items::SceneItems::logic(held.kind)
+                        .held_part
+                        .is_none()
+                {
                     continue;
                 }
                 saw_held = true;
@@ -200,5 +236,80 @@ mod tests {
                 assert_eq!(frequent.matrices()[offset], fresh.matrices()[offset]);
             }
         }
+    }
+    #[test]
+    fn illusion_afterimages_follow_both_history_entries_and_clone_cleanly() {
+        let files =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+        if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+            return;
+        }
+        let config = MatchConfig::versus(
+            Stage::FinalDestination,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox),
+                PlayerConfig::new(Port::P2, Character::Marth),
+            ],
+        )
+        .with_seed(Seed(42));
+        let assets = GameAssets::load(files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut view = Presentation::new(&game).unwrap();
+        let mut sparse = Presentation::new(&game).unwrap();
+        let mut saw_secondary = false;
+        let mut saw_trailing_only = false;
+        for tick in 0..400 {
+            let mut inputs = Inputs::default();
+            if (220..225).contains(&tick) {
+                inputs.0[0] = crate::ControllerState::from_origin_adjusted(
+                    Buttons::B,
+                    [80, 0],
+                    [0, 0],
+                    [0, 0],
+                );
+            }
+            game.step(&inputs).unwrap();
+            view.capture(&game).unwrap();
+            if tick % 7 == 0 {
+                sparse.capture(&game).unwrap();
+                assert_eq!(view.visibility(), sparse.visibility());
+                for (index, (a, b)) in view.matrices().iter().zip(sparse.matrices()).enumerate() {
+                    assert_eq!(a, b, "tick {tick}, matrix {index}");
+                }
+            }
+            for item in game.engine.state().items.iter() {
+                let ItemScratch::Afterimage(state) = &item.scratch else {
+                    continue;
+                };
+                if !state.secondary_visible {
+                    continue;
+                }
+                saw_secondary = true;
+                saw_trailing_only |= item.motion == 2;
+                let model = view.models.iter_mut().find(|m| matches!(&m.source,ModelSource::Article(a) if a.kind==item.kind && a.copy==1 && a.visible)).unwrap();
+                let pose = model.pose.matrix(JObjId(0));
+                assert_eq!(
+                    [pose.0[0][3], pose.0[1][3], pose.0[2][3]],
+                    [
+                        state.secondary_position.x,
+                        state.secondary_position.y,
+                        state.secondary_position.z
+                    ]
+                );
+                let cloned = game.clone();
+                let mut cloned_view = Presentation::new(&cloned).unwrap();
+                cloned_view.capture(&cloned).unwrap();
+                assert_eq!(view.visibility(), cloned_view.visibility());
+                for (mesh, visible) in view.meshes.iter().zip(view.visibility()) {
+                    if *visible {
+                        assert_eq!(
+                            view.matrices()[mesh.matrix_offset as usize],
+                            cloned_view.matrices()[mesh.matrix_offset as usize]
+                        );
+                    }
+                }
+            }
+        }
+        assert!(saw_secondary && saw_trailing_only);
     }
 }

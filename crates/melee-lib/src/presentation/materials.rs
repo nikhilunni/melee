@@ -63,6 +63,28 @@ impl Presentation {
                                 .unwrap();
                             Some(effects::archive(&self.assets, definition.bank))
                         }
+                        ModelSource::Article(article) => {
+                            for texture in article.texture_states(part.owner, part.display, index) {
+                                images.push(texture.descriptor.image);
+                                palettes.push(texture.descriptor.palette);
+                                images.extend(texture.image_variants().iter().flatten().copied());
+                                palettes.extend(
+                                    texture
+                                        .palette_variants()
+                                        .iter()
+                                        .filter(|p| p.is_some())
+                                        .copied(),
+                                );
+                            }
+                            Some(
+                                self.assets
+                                    .items
+                                    .visual_models()
+                                    .find(|(kind, _, _)| *kind == article.kind)
+                                    .unwrap()
+                                    .1,
+                            )
+                        }
                         _ => None,
                     };
                     let Some(archive) = archive else {

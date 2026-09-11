@@ -38,8 +38,15 @@ pub struct HeldState {
     pub shot_pending: bool,
     pub opening_sound_played: bool,
 }
+#[derive(Clone, Debug, Default)]
+pub struct AfterimageState {
+    pub secondary_visible: bool,
+    pub secondary_position: Vec3,
+    pub secondary_rotation: Vec3,
+}
 #[derive(Clone, Debug)]
 pub enum ItemScratch {
+    Afterimage(AfterimageState),
     Ray(RayState),
     Held(HeldState),
     None,

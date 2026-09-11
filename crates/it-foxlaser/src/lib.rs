@@ -207,10 +207,15 @@ macro_rules! blaster {
             const KIND: ItemKind = ItemKind::$kind;
             const STATES: &'static [ItemStateRow] = &BLASTER_STATES;
             // ftFox_SpecialN: it_8026BAE8 sets the blaster model scale.
+            const MODEL_COPIES: usize = 1;
             const HELD_SCALE: f32 = 0.85;
             const HELD_PART: Option<melee_types::FtPart> = Some(melee_types::FtPart::RThumbNb);
-            fn model_pose(item: &ItemCore, tree: &mut hsd_anim::jobj::JObjTree) {
-                crate::pose::blaster(item, tree);
+            fn model_pose(
+                item: &ItemCore,
+                tree: &mut hsd_anim::jobj::JObjTree,
+                _copy: usize,
+            ) -> bool {
+                crate::pose::blaster(item, tree)
             }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
                 item.attached = true;

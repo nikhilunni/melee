@@ -2,9 +2,9 @@
 //! advancing the item counters. These tables are shared by Fox and Falco.
 use hsd_anim::jobj::{JObjId, JObjTree};
 use melee_it::{ItemCore, ItemScratch};
-pub(super) fn blaster(item: &ItemCore, tree: &mut JObjTree) {
+pub(super) fn blaster(item: &ItemCore, tree: &mut JObjTree) -> bool {
     let ItemScratch::Held(state) = &item.scratch else {
-        return;
+        return false;
     };
     let mut joint = JObjId(0);
     for _ in 0..4 {
@@ -35,4 +35,5 @@ pub(super) fn blaster(item: &ItemCore, tree: &mut JObjTree) {
         0.0, -42.0, -20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
     ];
     tree.set_rotation_x(flap, ROTATION[state.recoil_pose_frame]);
+    state.visibility == 1
 }
