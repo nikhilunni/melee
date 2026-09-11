@@ -129,7 +129,7 @@ impl Scenario {
                     && fighter.slot < 4
                     && previous_port.is_none_or(|p| p < fighter.slot))
                     || (!self.is_cold() && usize::from(fighter.slot) == slot))
-                    && crate::scene_fighter::SceneFighter::NAMES.contains(&fighter.kind.as_str())
+                    && melee_lib::diagnostics::CHARACTERS.contains(&fighter.kind.as_str())
                     && matches!(fighter.controller.as_str(), "scripted" | "idle" | "human"),
                 "requires ascending distinct human ports with a registered character kind"
             );
@@ -265,7 +265,46 @@ impl Scenario {
 impl FighterScenario {
     /// Composition root selects a character crate; gameplay uses its callbacks.
     pub fn descriptor(&self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
-        crate::scene_fighter::SceneFighter::descriptor_for(&self.kind)
+        melee_lib::diagnostics::character_descriptor(&self.kind)
             .unwrap_or_else(|| unreachable!("validated scenario kind {}", self.kind))
+    }
+}
+
+impl melee_lib::diagnostics::ScenarioSource for Scenario {
+    fn setup(&self) -> anyhow::Result<melee_lib::diagnostics::Setup> {
+        self.validate()?;
+        Ok(melee_lib::diagnostics::Setup {
+            fighters: std::array::from_fn(|p| {
+                let f = &self.fighters[p];
+                melee_lib::diagnostics::PlayerSetup {
+                    slot: f.slot,
+                    descriptor: f.descriptor(),
+                    costume: f.costume,
+                    stocks: f.stocks,
+                    spawn_point: f.spawn_point,
+                }
+            }),
+            stage: self.stage_descriptor(),
+            seed: self.seed,
+            all_characters_unlocked: self.all_characters_unlocked,
+        })
+    }
+    fn is_cold(&self) -> bool {
+        self.is_cold()
+    }
+    fn frames(&self) -> u64 {
+        self.frames
+    }
+    fn assets_path(&self) -> PathBuf {
+        self.assets_path()
+    }
+    fn trace_path(&self, suffix: &str) -> PathBuf {
+        self.trace_path(suffix)
+    }
+    fn boundary_path(&self, suffix: &str) -> PathBuf {
+        self.boundary_path(suffix)
+    }
+    fn savestate_path(&self) -> PathBuf {
+        self.savestate_path()
     }
 }

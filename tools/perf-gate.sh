@@ -53,7 +53,7 @@ if command -v cargo-llvm-lines >/dev/null 2>&1; then
     # sim composition, and every character/family crate. perf_report.py enforces
     # zero growth in duplicate labels within/across crates; totals are informational.
     cargo metadata --no-deps --format-version=1 | python3 -c 'import json,sys; print("\n".join(sorted(p["name"] for p in json.load(sys.stdin)["packages"] if p["name"].startswith("ft-"))))' >"$run_dir/characters.txt"
-    for package in melee-ft melee-sim $(cat "$run_dir/characters.txt"); do
+    for package in melee-ft melee-lib melee-sim $(cat "$run_dir/characters.txt"); do
         if ! cargo llvm-lines -p "$package" --release --lib >"$run_dir/llvm-$package.txt" 2>"$run_dir/llvm-$package-error.txt"; then
             touch "$run_dir/llvm-$package.failed"
         fi

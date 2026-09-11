@@ -7,10 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// Concrete optional sink: no trait object, shared owner, or allocation on the
 /// normal path. All JSON construction is behind the `Some` branch.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct EventSink(Option<Recording>);
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Recording {
     frame: u64,
     events: Vec<(u64, Value)>,

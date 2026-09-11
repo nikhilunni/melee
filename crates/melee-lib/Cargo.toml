@@ -1,0 +1,49 @@
+[package]
+name = "melee-lib"
+description = "Deterministic Melee matches: create, step, inspect, and clone"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ft-fox-family = { path = "../ft-fox-family" }
+it-foxillusion = { path = "../it-foxillusion" }
+it-foxlaser = { path = "../it-foxlaser" }
+melee-coll = { path = "../melee-coll" }
+melee-cmd = { path = "../melee-cmd" }
+melee-ef = { path = "../melee-ef" }
+melee-if = { path = "../melee-if" }
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
+melee-ft = { path = "../melee-ft" }
+melee-cpu = { path = "../melee-cpu" }
+melee-it = { path = "../melee-it" }
+melee-gr = { path = "../melee-gr" }
+melee-mp = { path = "../melee-mp" }
+melee-lb = { path = "../melee-lb" }
+hsd-gobj = { path = "../hsd-gobj" }
+hsd-anim = { path = "../hsd-anim" }
+hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
+ft-fox = { path = "../ft-fox" }
+ft-mars = { path = "../ft-mars" }
+ft-falco = { path = "../ft-falco" }
+ft-captain = { path = "../ft-captain" }
+ft-peach = { path = "../ft-peach" }
+ft-yoshi = { path = "../ft-yoshi" }
+ft-purin = { path = "../ft-purin" }
+ft-mario = { path = "../ft-mario" }
+melee-diff = { path = "../melee-diff" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+hsd-particle = { path = "../hsd-particle" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }
+
+melee-sim = { path = "../melee-sim" }
+
+[[bench]]
+name = "lifecycle"
+harness = false

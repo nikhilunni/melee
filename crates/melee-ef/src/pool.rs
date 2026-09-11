@@ -1,5 +1,6 @@
 //! efLib_Create/efLib_RemoveLast model storage, prepared from assets at load.
 use super::*;
+use std::sync::Arc;
 
 /// efLib_Create (8005BE88), eflib.c:442-447 caps async models at 64.
 pub const ASYNC_CAPACITY: usize = 64;
@@ -16,40 +17,32 @@ static MODEL_IDS: [u32; 21] = [
 ];
 const WARP_MODEL: u32 = 0x24;
 
+#[derive(Clone)]
 pub(super) struct ModelPool {
     models: Vec<ModelSlots>,
 }
+#[derive(Clone)]
 struct ModelSlots {
-    initial: Effect,
+    initial: Arc<Effect>,
     free: FixedVec<Effect, SLOTS_PER_MODEL>,
 }
 impl ModelPool {
     fn load(archive: &Archive) -> Result<Self> {
-        let mut models = Vec::with_capacity(MODEL_IDS.len() + 1);
-        for id in MODEL_IDS.into_iter().chain([WARP_MODEL]) {
-            let initial = Effect::load(archive, id)?;
-            let mut free = FixedVec::default();
-            for _ in 0..SLOTS_PER_MODEL {
-                let mut effect = initial.clone();
-                effect
-                    .tree
-                    .events
-                    .reserve_exact(initial.tree.events.capacity());
-                free.push(effect);
-            }
-            models.push(ModelSlots { initial, free });
-        }
-        Ok(Self { models })
+        Ok(Self::from_definitions(&load_common(archive)?))
     }
-    pub(super) fn add(&mut self, initial: Effect) {
+    fn from_definitions(definitions: &[Arc<Effect>]) -> Self {
+        let mut pool = Self {
+            models: Vec::with_capacity(definitions.len()),
+        };
+        for definition in definitions {
+            pool.add(Arc::clone(definition));
+        }
+        pool
+    }
+    pub(super) fn add(&mut self, initial: Arc<Effect>) {
         let mut free = FixedVec::default();
         for _ in 0..SLOTS_PER_MODEL {
-            let mut effect = initial.clone();
-            effect
-                .tree
-                .events
-                .reserve_exact(initial.tree.events.capacity());
-            free.push(effect);
+            free.push((*initial).clone());
         }
         self.models.push(ModelSlots { initial, free });
     }
@@ -72,22 +65,39 @@ impl ModelPool {
         model.free.push(effect);
     }
 }
+pub(super) fn load_common(archive: &Archive) -> Result<Vec<Arc<Effect>>> {
+    MODEL_IDS
+        .into_iter()
+        .chain([WARP_MODEL])
+        .map(|id| Effect::load(archive, id).map(Arc::new))
+        .collect()
+}
 impl Effects {
     /// Decode the supported common models and prepare every reusable slot.
     /// Archives, trees and animation byte streams are never cloned in the tick.
     pub fn load(archive: &Archive) -> Result<Self> {
-        Ok(Self {
+        Ok(Self::from_models(ModelPool::load(archive)?))
+    }
+    /// Allocate independent animation slots from shared immutable definitions.
+    pub fn from_resources(resources: &Resources) -> Self {
+        let mut effects = Self::from_models(ModelPool::from_definitions(&resources.models));
+        effects.fox_bank = Some(resources.fox_bank.clone());
+        effects.mars_bank = Some(resources.mars_bank.clone());
+        effects
+    }
+    fn from_models(models: ModelPool) -> Self {
+        Self {
             events: Default::default(),
             camera_quakes: Default::default(),
             draws: DrawLog(Vec::with_capacity(DRAW_CAPACITY)),
             direct_draws: Default::default(),
             instances: Default::default(),
-            models: ModelPool::load(archive)?,
+            models,
             fox_bank: None,
             mars_bank: None,
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
-        })
+        }
     }
     pub(super) fn recycle_where(&mut self, remove: impl Fn(&Effect) -> bool) {
         let mut index = 0;
@@ -139,7 +149,7 @@ impl Effects {
                 .or_else(|| self.instances.iter().position(|e| !is_sync(e.descriptor)))
                 .unwrap();
             let effect = self.instances.remove(index);
-            for &joint in &effect.joints {
+            for &joint in effect.joints.iter() {
                 self.events.expire_joint(effect.joint_base + joint.0);
                 particles.expire_joint(effect.joint_base + joint.0);
             }
@@ -169,7 +179,7 @@ impl Effect {
         self.tree.events.clear();
         // The headless model has immutable topology, no DObjs/constraints and
         // fixed animation tracks. Restore only mutable pose and playback state.
-        for &id in &self.joints {
+        for &id in self.joints.iter() {
             let source = initial.tree.get(id);
             let target = self.tree.get_mut(id);
             target.flags = source.flags;

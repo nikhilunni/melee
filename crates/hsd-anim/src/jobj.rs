@@ -430,7 +430,7 @@ impl JointSpec {
 
 /// A skeleton: an arena of [`JObj`] nodes and the callback events its
 /// animation produced.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default)]
 pub struct JObjTree {
     /// Resolved external positions for REFTYPE_JOBJ subtype 1 constraints.
     position_constraints: std::collections::BTreeMap<JObjId, Option<Vec3>>,
@@ -1660,6 +1660,21 @@ pub fn jobj_sort_anim(aobj: &mut AObj) {
     if let Some(i) = aobj.fobj.iter().position(|f| f.obj_type == TYPE_JOBJ) {
         let f = aobj.fobj.remove(i);
         aobj.fobj.insert(0, f);
+    }
+}
+
+impl Clone for JObjTree {
+    fn clone(&self) -> Self {
+        Self {
+            position_constraints: self.position_constraints.clone(),
+            nodes: hsd_types::storage::clone_vec(&self.nodes),
+            spare_tracks: self
+                .spare_tracks
+                .iter()
+                .map(hsd_types::storage::clone_vec)
+                .collect(),
+            events: hsd_types::storage::clone_vec(&self.events),
+        }
     }
 }
 

@@ -13,6 +13,7 @@ struct Payload([MaybeUninit<u8>; PAYLOAD_BYTES]);
 
 /// One immutable table per character crate. Common motion rows never belong here.
 pub struct CharacterTable {
+    clone_payload: fn(&CharacterState) -> CharacterState,
     type_id: fn() -> TypeId,
     pub kind: fn(&CharacterState) -> FighterKind,
     pub descriptor: fn() -> &'static assets::CharacterDescriptor,
@@ -69,6 +70,7 @@ pub struct CharacterTable {
 impl CharacterTable {
     pub const fn new<C: CharacterCallbacks>() -> Self {
         Self {
+            clone_payload: |state| state.clone_typed::<C>(),
             type_id: TypeId::of::<C>,
             kind: |state| state.get::<C>().kind(),
             descriptor: C::descriptor,
@@ -140,6 +142,23 @@ pub struct CharacterState {
     table: &'static CharacterTable,
 }
 impl CharacterState {
+    #[inline(always)]
+    fn clone_typed<C: CharacterCallbacks>(&self) -> Self {
+        let value = self.get::<C>().clone();
+        let mut cloned = Self {
+            payload: Payload([MaybeUninit::uninit(); PAYLOAD_BYTES]),
+            type_id: self.type_id,
+            drop_payload: self.drop_payload,
+            table: self.table,
+        };
+        // SAFETY: get::<C> checks the source type; its construction already
+        // checked C's size/alignment. This is a typed write of a cloned owner
+        // into fresh storage, retaining the matching table and destructor.
+        unsafe {
+            cloned.payload.0.as_mut_ptr().cast::<C>().write(value);
+        }
+        cloned
+    }
     pub fn new<C: CharacterCallbacks>(value: C) -> Self {
         assert!(
             size_of::<C>() <= PAYLOAD_BYTES,
@@ -286,6 +305,12 @@ unsafe fn drop_payload<C: CharacterCallbacks>(payload: &mut Payload) {
     // SAFETY: called only by the owner whose constructor stored C here.
     unsafe {
         payload.0.as_mut_ptr().cast::<C>().drop_in_place();
+    }
+}
+
+impl Clone for CharacterState {
+    fn clone(&self) -> Self {
+        (self.table.clone_payload)(self)
     }
 }
 

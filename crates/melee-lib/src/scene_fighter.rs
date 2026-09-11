@@ -1,8 +1,8 @@
 //! Character erasure is confined to scene composition.
 //!
-//! **Adding a character:** add its crate to melee-sim's Cargo.toml and one
-//! line to `scene_characters!` below. Nothing else in the simulator names
-//! characters: loading, construction, dispatch and the scenario `kind`
+//! **Adding a character:** add its crate to melee-lib's Cargo.toml and one
+//! line to `scene_characters!` below, then extend the public Character enum.
+//! Composition uses this roster for loading, construction, dispatch and the scenario `kind`
 //! strings all come from this list and each crate's `CharacterCallbacks`.
 use crate::assets::CharacterArchive;
 use crate::initial_state::{CollMap, SavedPose};
@@ -11,13 +11,15 @@ use melee_ft::fighter::{
     assets::CharacterDescriptor, assets::FighterAssets, CharacterCallbacks, Fighter,
 };
 use melee_types::snapshot::{Snapshot, SnapshotSink};
+use std::mem::ManuallyDrop;
 
 /// The roster selects archives and typed payloads only during construction.
 /// Every scene slot then owns one concrete fighter. Its box is allocated once
 /// at setup; common gameplay dispatches through the installed static table.
 macro_rules! scene_characters {
     ($( $name:literal => $variant:ident ( $ty:path ) ),* $(,)?) => {
-        pub(crate) struct SceneFighter(pub(crate) Box<Fighter>);
+        #[derive(Clone)]
+        pub(crate) struct SceneFighter(pub(crate) ManuallyDrop<Box<Fighter>>);
         macro_rules! with_fighter {
             ($fighter:expr, |$f:ident| $body:expr) => {{
                 match $fighter { $crate::scene_fighter::SceneFighter($f) => $body }
@@ -28,6 +30,7 @@ macro_rules! scene_characters {
         #[allow(unused_imports)]
         pub(crate) use with_fighter;
         impl SceneFighter {
+            fn new(fighter: Fighter) -> Self { Self(ManuallyDrop::new(Box::new(fighter))) }
             pub(crate) fn from_parameters(
                 archive: &CharacterArchive,
                 resources: &FighterAssets,
@@ -37,9 +40,9 @@ macro_rules! scene_characters {
             ) -> anyhow::Result<Self> {
                 let character = Self::character_for_costume(archive, player.costume)?;
                 let (skeleton, root) = archive.model(player.costume);
-                Ok(Self(Box::new(Fighter::spawn_for_match(
+                Ok(Self::new(Fighter::spawn_for_match(
                     player, character, resources, skeleton, root, context, delay,
-                ).map_err(|e| anyhow::anyhow!("{e}"))?)))
+                ).map_err(|e| anyhow::anyhow!("{e}"))?))
             }
             // Keep the concrete Fighter result outside the roster expansion.
             // At opt-level 0 each expanded result otherwise occupies stack space.
@@ -76,7 +79,7 @@ macro_rules! scene_characters {
             ) -> Self {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                        return Self(Box::new(construct::<$ty>(archive, resources, map, raw, saved)));
+                        return Self::new(construct::<$ty>(archive, resources, map, raw, saved));
                     }
                 )*
                 unreachable!("validated character descriptor {:?}", archive.descriptor.kind)
@@ -139,5 +142,18 @@ impl std::ops::Deref for SceneFighter {
 impl std::ops::DerefMut for SceneFighter {
     fn deref_mut(&mut self) -> &mut Fighter {
         &mut self.0
+    }
+}
+
+// Keep destruction of the opaque match's fighter graph in its owning crate.
+// Otherwise downstream drop glue repeats this entire graph in each consumer.
+impl Drop for SceneFighter {
+    #[inline(never)]
+    fn drop(&mut self) {
+        // SAFETY: new/Clone initialize the sole owner; it is never taken out,
+        // and ManuallyDrop suppresses the automatic second drop of this field.
+        unsafe {
+            ManuallyDrop::drop(&mut self.0);
+        }
     }
 }

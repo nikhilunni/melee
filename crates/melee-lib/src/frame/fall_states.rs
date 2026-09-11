@@ -3,6 +3,7 @@
 use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::{fall::FallState, Fighter, MotionData};
+use melee_sim::inputs::PadScript;
 use melee_types::CommonMotionState as S;
 use serde_json::Value;
 use std::{fs, path::Path};
@@ -63,7 +64,7 @@ fn falls_match_retail_scratch_and_command_clocks() {
         let pads =
             PadScript::from_expected_trace(&scenario.trace_path("tick.expected.jsonl"), true)
                 .unwrap();
-        let mut simulation = Simulation::with_inputs(
+        let mut simulation = super::TestSimulation::with_inputs(
             InitialState::from_savestate_traces(&scenario).unwrap(),
             pads,
         );

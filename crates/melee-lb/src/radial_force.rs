@@ -11,7 +11,7 @@ pub struct RadialImpulse {
     pub decay: f32,
     pub phase_step: f32,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RadialForces {
     fields: [ForceField; 8],
     timers: [i32; 8],

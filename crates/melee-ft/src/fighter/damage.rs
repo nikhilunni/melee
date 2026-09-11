@@ -14,7 +14,7 @@ use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
 use melee_types::combat::HitboxDescriptor;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CombatState {
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,

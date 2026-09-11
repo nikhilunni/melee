@@ -21,6 +21,7 @@ pub(crate) enum Continuation {
     ParticleEmission,
 }
 
+#[derive(Clone)]
 pub(crate) struct SchedulerResume {
     pub s_link: u8,
     pub current: Option<(ProcKey, Continuation)>,

@@ -10,6 +10,7 @@ use hsd_particle::{
 use hsd_types::{Mtx, Vec3};
 use serde_json::Value;
 
+#[derive(Clone)]
 pub(crate) struct PendingEmission {
     particle: Particle,
 }

@@ -186,7 +186,7 @@ impl ItemCore {
         }
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ItemPool {
     // Reserve the complete pool on the heap at initialization. Inline storage
     // would copy hundreds of KiB through constructors on small test stacks.
@@ -416,6 +416,16 @@ fn add(a: Vec3, b: Vec3) -> Vec3 {
         x: a.x + b.x,
         y: a.y + b.y,
         z: a.z + b.z,
+    }
+}
+
+impl Clone for ItemPool {
+    fn clone(&self) -> Self {
+        Self {
+            items: hsd_types::storage::clone_vec(&self.items),
+            common: self.common.clone(),
+            next_id: self.next_id,
+        }
     }
 }
 

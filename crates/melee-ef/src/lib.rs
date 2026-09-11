@@ -8,6 +8,8 @@ mod dust;
 mod egg_shell;
 pub mod fixture_spawns;
 mod pool;
+mod resources;
+pub use resources::Resources;
 pub mod request;
 mod spline;
 mod tables;
@@ -30,7 +32,7 @@ use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 use pool::{ModelPool, INSTANCE_CAPACITY};
 use request::{EffectOwner, EffectRequest};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 use tables::*;
 
 // Stable fighter-bone identities occupy a range beyond effect model joints.
@@ -44,6 +46,7 @@ const DRAW_CAPACITY: usize = 4096;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub const FIRST_EFFECT_JOINT: usize = 1 << 16;
 
+#[derive(Clone)]
 pub struct Effects {
     pub events: crate::fixture_spawns::EventSink,
     camera_quakes: FixedVec<(u16, Vec3), { request::REQUEST_CAPACITY }>,
@@ -64,7 +67,7 @@ struct Effect {
     velocity: Option<Vec3>,
     tree: JObjTree,
     root: JObjId,
-    joints: Vec<JObjId>,
+    joints: Arc<[JObjId]>,
     attachment: Option<usize>,
     owner: Option<ModelOwner>,
     lifetime: u16,
@@ -73,7 +76,7 @@ struct Effect {
     scale_attachment: bool,
     callback_rotation: Option<Vec3>,
     joint_base: usize,
-    paths: BTreeMap<usize, (JObjId, spline::Spline)>,
+    paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ModelOwner {
@@ -97,55 +100,20 @@ impl Effects {
     }
     pub fn load_fox(&mut self, archive: &Archive) -> Result<()> {
         ensure!(self.fox_bank.is_none(), "Fox effects already loaded");
-        let table = archive
-            .public("effFoxDataTable")
-            .context("Fox effect table")?;
-        let commands = archive.link(table)?.context("Fox particle commands")? as usize;
-        let textures = archive.link(table + 4)?.context("Fox particle textures")? as usize;
-        self.fox_bank = Some(ParticleBank::from_bytes(
-            &archive.data()[commands..textures],
-            &archive.data()[textures..],
-        )?);
-        for (index, id) in [
-            (0, 0xBB8),
-            (1, 0xBB9),
-            (2, 0xBBA),
-            (3, 0xBBB),
-            (4, 0xBBC),
-            (5, 0xBBD),
-        ] {
-            self.models.add(Effect::load_table(
-                archive,
-                "effFoxDataTable",
-                index,
-                id,
-                3,
-            )?);
+        let (bank, models) = resources::character(archive, "effFoxDataTable", 3, 0xBB8, 6)?;
+        self.fox_bank = Some(bank);
+        for model in models {
+            self.models.add(model);
         }
         Ok(())
     }
     /// efSync 4F2/4F3: Marth effect models and bank 16, initialization only.
     pub fn load_mars(&mut self, archive: &Archive) -> Result<()> {
         ensure!(self.mars_bank.is_none(), "Marth effects already loaded");
-        let table = archive
-            .public("effMarsDataTable")
-            .context("Marth effect table")?;
-        let commands = archive.link(table)?.context("Marth particle commands")? as usize;
-        let textures = archive
-            .link(table + 4)?
-            .context("Marth particle textures")? as usize;
-        self.mars_bank = Some(ParticleBank::from_bytes(
-            &archive.data()[commands..textures],
-            &archive.data()[textures..],
-        )?);
-        for (index, id) in [(0, 0x3E80), (1, 0x3E81)] {
-            self.models.add(Effect::load_table(
-                archive,
-                "effMarsDataTable",
-                index,
-                id,
-                16,
-            )?);
+        let (bank, models) = resources::character(archive, "effMarsDataTable", 16, 0x3E80, 2)?;
+        self.mars_bank = Some(bank);
+        for model in models {
+            self.models.add(model);
         }
         Ok(())
     }
@@ -187,7 +155,7 @@ impl Effects {
             .iter()
             .filter(|e| e.owner == Some(ModelOwner::Blaster(owner)))
         {
-            for &joint in &effect.joints {
+            for &joint in effect.joints.iter() {
                 let id = effect.joint_base + joint.0;
                 self.events.expire_joint(id);
                 particles.expire_joint(id);
@@ -864,8 +832,8 @@ impl Effect {
             attachment: None,
             owner: None,
             joint_base: 0,
-            joints: ids,
-            paths,
+            joints: ids.into(),
+            paths: Arc::new(paths),
         })
     }
     fn matrix(&mut self, joint: JObjId) -> Mtx {

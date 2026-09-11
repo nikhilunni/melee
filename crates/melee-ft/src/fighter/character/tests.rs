@@ -6,6 +6,7 @@ use std::sync::{
 
 /// Deliberately contains an aligned scalar and a resource owner, both of which
 /// must survive moves of the inline store and exactly one eventual destruction.
+#[derive(Clone)]
 struct Probe {
     value: u128,
     drops: Arc<AtomicUsize>,
@@ -31,10 +32,14 @@ impl CharacterCallbacks for Probe {
     }
 }
 
+#[derive(Clone)]
 struct Other;
+#[derive(Clone)]
 struct Oversized([u8; PAYLOAD_BYTES + 1]);
 #[repr(align(32))]
+#[derive(Clone)]
 struct Overaligned;
+#[derive(Clone)]
 struct WrongTable;
 macro_rules! inert_character {
     ($ty:ty) => {
@@ -107,4 +112,23 @@ fn construction_rejects_unsupported_size_and_alignment() {
     assert_eq!(large.0.len(), PAYLOAD_BYTES + 1);
     assert!(std::panic::catch_unwind(|| large.into_state()).is_err());
     assert!(std::panic::catch_unwind(|| Overaligned.into_state()).is_err());
+}
+
+#[test]
+fn cloning_uses_typed_ownership_and_independent_payloads() {
+    let drops = Arc::new(AtomicUsize::new(0));
+    let original = Probe {
+        value: 17,
+        drops: Arc::clone(&drops),
+    }
+    .into_state();
+    let mut cloned = original.clone();
+    cloned.get_mut::<Probe>().value = 23;
+    assert_eq!(original.get::<Probe>().value, 17);
+    assert_eq!(cloned.get::<Probe>().value, 23);
+    assert_eq!(Arc::strong_count(&drops), 3);
+    drop(original);
+    assert_eq!(drops.load(Ordering::SeqCst), 1);
+    drop(cloned);
+    assert_eq!(drops.load(Ordering::SeqCst), 2);
 }

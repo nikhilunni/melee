@@ -65,9 +65,10 @@ pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
 /// character crate. The implementation owns its typed special attributes.
-pub trait CharacterCallbacks: Sized + Send + Sync + 'static {
+pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
 
+    #[inline(always)]
     fn table() -> &'static CharacterTable {
         &Self::TABLE
     }
@@ -507,6 +508,18 @@ pub struct Fighter {
     pub character: CharacterState,
     pub motion_row: MotionRow,
 }
+impl Clone for Fighter {
+    // Keep the complete ownership operation in melee-ft. An inlined derived
+    // clone duplicates all nested allocation/cleanup code in every consumer.
+    #[inline(never)]
+    fn clone(&self) -> Self {
+        Self {
+            core: self.core.clone(),
+            character: self.character.clone(),
+            motion_row: self.motion_row,
+        }
+    }
+}
 impl std::ops::Deref for Fighter {
     type Target = FighterCore;
     fn deref(&self) -> &Self::Target {
@@ -537,6 +550,7 @@ impl Fighter {
 
 /// Shared fighter state and calculations, compiled independently of character.
 /// Position and facing have one owner: `physics`.
+#[derive(Clone)]
 pub struct FighterCore {
     /// kind (+004), initialized by Fighter_UnkInitLoad_80068914.
     pub kind: FighterKind,

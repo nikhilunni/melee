@@ -614,6 +614,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "melee-lib"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "ft-captain",
+ "ft-falco",
+ "ft-fox",
+ "ft-fox-family",
+ "ft-mario",
+ "ft-mars",
+ "ft-peach",
+ "ft-purin",
+ "ft-yoshi",
+ "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
+ "hsd-gobj",
+ "hsd-particle",
+ "hsd-types",
+ "it-foxillusion",
+ "it-foxlaser",
+ "melee-cmd",
+ "melee-coll",
+ "melee-cpu",
+ "melee-diff",
+ "melee-ef",
+ "melee-ft",
+ "melee-gr",
+ "melee-if",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-sim",
+ "melee-test-support",
+ "melee-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "melee-mp"
 version = "0.0.1"
 dependencies = [
@@ -664,6 +704,7 @@ dependencies = [
  "melee-if",
  "melee-it",
  "melee-lb",
+ "melee-lib",
  "melee-mp",
  "melee-test-support",
  "melee-types",

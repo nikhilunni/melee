@@ -16,6 +16,7 @@ fn fighter_sides(fighters: &mut [SceneFighter; 2]) -> i32 {
         .iter_mut()
         .map(|fighter| {
             with_fighter!(fighter, |f| {
+                let f: &mut melee_ft::fighter::Fighter = f;
                 if f.status.disabled {
                     return 0;
                 }

@@ -76,7 +76,7 @@ fn human_match_fd_transition_attachments() {
         .filter(|(frame, _)| frames.contains(frame))
         .map(|(frame, line)| (frame, serde_json::from_str(&line.unwrap()).unwrap()))
         .collect();
-    let mut simulation = Simulation::with_inputs(
+    let mut simulation = super::TestSimulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         crate::trace::pad_script(&scenario).unwrap(),
     );

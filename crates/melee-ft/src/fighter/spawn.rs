@@ -41,7 +41,7 @@ pub struct PlayerSlot {
 }
 
 /// Fighter_NewSpawn_80068E40: wrapping counter never produces zero after wrap.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpawnCounter(pub u32);
 
 /// Scene-owned spawn services; the RNG and counter are shared by both players.

@@ -50,7 +50,19 @@ def compare_duplicates(current, previous, reviewed=None):
     old = previous.get("duplicate_labels", {})
     new = current.get("duplicate_labels", {})
     allowed_by_crate = reviewed.get("duplicate_labels", {})
+    # Composition moved from melee-sim to melee-lib. Charge both crates to the
+    # original combined budget; moving a definition must neither hide it nor
+    # grant a second budget. All subsystem and cross-crate limits stay intact.
+    composition = {"melee-lib", "melee-sim"} if "melee-lib" in new else set()
+    if composition:
+        allowed = max(sum(old.get(crate, 0) for crate in composition),
+                      sum(allowed_by_crate.get(crate, 0) for crate in composition))
+        actual = sum(new.get(crate, 0) for crate in composition)
+        if actual > allowed:
+            failures.append(f"match composition duplicate labels: {actual} > {allowed} + 0")
     for crate in sorted(old.keys() | new.keys()):
+        if crate in composition:
+            continue
         allowed = max(old.get(crate, 0), allowed_by_crate.get(crate, 0))
         if new.get(crate, 0) > allowed:
             failures.append(f"{crate} duplicate labels: {new[crate]} > {allowed} + 0")
@@ -186,15 +198,15 @@ def main(run, report):
     metrics.update({f"{name}_ns": estimate["ns"] for name, estimate in estimates.items()})
     contributions = {}
     if (run / "llvm-version.txt").exists():
-        for package in ["melee-ft", "melee-sim", *(run / "characters.txt").read_text().splitlines()]:
+        for package in ["melee-ft", "melee-lib", "melee-sim", *(run / "characters.txt").read_text().splitlines()]:
             try:
                 if (run / f"llvm-{package}.failed").exists():
                     raise ValueError("command failed")
                 contributions[package] = llvm_rows((run / f"llvm-{package}.txt").read_text())
             except (OSError, ValueError) as error:
                 missing.append(f"llvm-lines {package}: {error}")
-        if not contributions.get("melee-sim"):
-            missing.append("llvm-lines: no melee-ft functions found in the sim library")
+        if not contributions.get("melee-lib"):
+            missing.append("llvm-lines: no melee-ft functions found in the match library")
         if not contributions.get("melee-ft"):
             missing.append("llvm-lines: concrete melee-ft core census is empty")
     else:

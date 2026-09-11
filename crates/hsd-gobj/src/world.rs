@@ -1,4 +1,4 @@
-//! The GObj arena and scheduler.
+//! The object arena and scheduler.
 //!
 //! [`World`] owns every GObj and GObjProc and holds all the globals the C
 //! keeps in `.sbss` (`HSD_GObj_Entities`, `plinklow_gobjs`,
@@ -16,7 +16,7 @@ use core::fmt;
 use crate::consts::{GXLINK_NONE, OBJ_NONE, USER_DATA_NONE};
 use crate::slab::{Key, Slab};
 
-/// Handle to a GObj. Stale after [`World::destroy`]; every lookup checks the
+/// Handle to an object. Stale after [`World::destroy`]; every lookup checks the
 /// generation, so a stale id never aliases a later object.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct GObjId(Key);
@@ -48,6 +48,66 @@ impl fmt::Display for ProcId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "proc#{}.{}", self.0.index, self.0.generation)
     }
+}
+
+/// Original scheduler, including owned callbacks and attached objects.
+pub type World = Scheduler<Local>;
+pub type GObj = Object<Local>;
+pub type Proc = Process<Local>;
+/// A scheduler with external dispatch tokens only. No erased objects or closures.
+pub type TaggedWorld = Scheduler<Tagged>;
+
+mod sealed {
+    pub trait Sealed {}
+}
+#[doc(hidden)]
+pub trait Storage: sealed::Sealed + Sized {
+    type Callback;
+    type Render;
+    type Object;
+    type UserRemover;
+    type ObjectRemover;
+    fn invoke(world: &mut Scheduler<Self>, proc: ProcId, object: GObjId);
+    fn remove_obj(world: &mut Scheduler<Self>, object: GObjId);
+    fn remove_user_data(world: &mut Scheduler<Self>, object: GObjId);
+}
+#[doc(hidden)]
+pub struct Local;
+impl sealed::Sealed for Local {}
+impl Storage for Local {
+    type Callback = Box<ProcFn>;
+    type Render = Box<RenderFn>;
+    type Object = Box<dyn Any>;
+    type UserRemover = Box<UserDataRemoveFn>;
+    type ObjectRemover = ObjRemoveFn;
+    fn invoke(w: &mut World, p: ProcId, o: GObjId) {
+        w.invoke(p, o);
+    }
+    fn remove_obj(w: &mut World, o: GObjId) {
+        w.remove_obj(o);
+    }
+    fn remove_user_data(w: &mut World, o: GObjId) {
+        w.remove_user_data(o);
+    }
+}
+#[doc(hidden)]
+pub struct Tagged;
+impl sealed::Sealed for Tagged {}
+/// Uninhabited: a tagged scheduler cannot contain an owned callback or object.
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub enum Empty {}
+impl Storage for Tagged {
+    type Callback = Empty;
+    type Render = Empty;
+    type Object = Empty;
+    type UserRemover = Empty;
+    type ObjectRemover = Empty;
+    fn invoke(_: &mut TaggedWorld, _: ProcId, _: GObjId) {
+        unreachable!("tagged proc without dispatch token");
+    }
+    fn remove_obj(_: &mut TaggedWorld, _: GObjId) {}
+    fn remove_user_data(_: &mut TaggedWorld, _: GObjId) {}
 }
 
 /// Per-frame proc callback, `HSD_GObjEvent` (forward.h:108). It receives the
@@ -140,7 +200,7 @@ pub struct BuiltinObjKinds {
 
 /// `HSD_GObj` (gobj.h:28-47). Links are private; read them through the
 /// getters so list invariants stay inside this module.
-pub struct GObj {
+pub struct Object<S: Storage> {
     classifier: u16,
     p_link: u8,
     gx_link: u8,
@@ -154,14 +214,14 @@ pub struct GObj {
     prev_gx: Option<GObjId>,
     /// `proc`: head of this object's own proc chain (linked by `child`).
     proc_head: Option<ProcId>,
-    render_cb: Option<Box<RenderFn>>,
+    render_cb: Option<S::Render>,
     gxlink_prios: u64,
-    hsd_obj: Option<Box<dyn Any>>,
-    user_data: Option<Box<dyn Any>>,
-    user_data_remove: Option<Box<UserDataRemoveFn>>,
+    hsd_obj: Option<S::Object>,
+    user_data: Option<S::Object>,
+    user_data_remove: Option<S::UserRemover>,
 }
 
-impl GObj {
+impl<S: Storage> Object<S> {
     pub fn classifier(&self) -> u16 {
         self.classifier
     }
@@ -220,25 +280,11 @@ impl GObj {
     pub fn has_user_data(&self) -> bool {
         self.user_data.is_some()
     }
-    /// Typed view of `user_data` (`HSD_GObjGetUserData`, gobj.h:147-150).
-    pub fn user_data<T: Any>(&self) -> Option<&T> {
-        self.user_data.as_deref()?.downcast_ref()
-    }
-    pub fn user_data_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.user_data.as_deref_mut()?.downcast_mut()
-    }
-    /// Typed view of `hsd_obj` (`HSD_GObjGetHSDObj`, gobj.h:152-155).
-    pub fn hsd_obj<T: Any>(&self) -> Option<&T> {
-        self.hsd_obj.as_deref()?.downcast_ref()
-    }
-    pub fn hsd_obj_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.hsd_obj.as_deref_mut()?.downcast_mut()
-    }
 }
 
-impl fmt::Debug for GObj {
+impl<S: Storage> fmt::Debug for Object<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GObj")
+        f.debug_struct("Object<S>")
             .field("classifier", &self.classifier)
             .field("p_link", &self.p_link)
             .field("p_priority", &self.p_priority)
@@ -254,7 +300,7 @@ impl fmt::Debug for GObj {
 }
 
 /// `HSD_GObjProc` (gobjproc.h:8-19).
-pub struct Proc {
+pub struct Process<S: Storage> {
     /// Next proc of the same GObj (`child`).
     child: Option<ProcId>,
     /// Next/prev in the global list for this priority.
@@ -273,11 +319,11 @@ pub struct Proc {
     frame_tag: u8,
     gobj: GObjId,
     /// `None` for tagged procs or while an owned callback is executing.
-    callback: Option<Box<ProcFn>>,
+    callback: Option<S::Callback>,
     dispatch_tag: Option<usize>,
 }
 
-impl Proc {
+impl<S: Storage> Process<S> {
     /// Priority (`s_link`).
     pub fn priority(&self) -> u8 {
         self.s_link
@@ -310,9 +356,9 @@ impl Proc {
     }
 }
 
-impl fmt::Debug for Proc {
+impl<S: Storage> fmt::Debug for Process<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Proc")
+        f.debug_struct("Process<S>")
             .field("s_link", &self.s_link)
             .field("gobj", &self.gobj)
             .field("next", &self.next)
@@ -327,7 +373,7 @@ impl fmt::Debug for Proc {
 
 /// `HSD_GObj_804CE3E4` (gobj.h:88-103): requests made against the GObj whose
 /// proc is currently running, deferred until that proc returns.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Deferred {
     /// `b0`: set only while the deferred requests are being applied
     /// (gobj.c:117). While set, destroy/relink/remove happen immediately and
@@ -349,11 +395,11 @@ impl Deferred {
     }
 }
 
-/// The GObj arena plus scheduler state. See the module docs.
-pub struct World {
+/// The object arena plus scheduler state. See the module docs.
+pub struct Scheduler<S: Storage> {
     config: WorldConfig,
-    gobjs: Slab<GObj>,
-    procs: Slab<Proc>,
+    gobjs: Slab<Object<S>>,
+    procs: Slab<Process<S>>,
     /// `HSD_GObj_Entities[p_link]`: list heads.
     plink_head: Vec<Option<GObjId>>,
     /// `plinklow_gobjs[p_link]`: list tails.
@@ -366,10 +412,10 @@ pub struct World {
     proc_head: Vec<Option<ProcId>>,
     /// `HSD_GObj_804D7844[p_link + s_link * (p_link_max + 1)]`: for each
     /// (priority, p_link), the last proc in that priority's list that belongs
-    /// to a GObj of that p_link. Insertion anchor.
+    /// to an object of that p_link. Insertion anchor.
     proc_anchor: Vec<Option<ProcId>>,
     /// `HSD_GObj_804D7810`: `obj_kind` remover table.
-    obj_removers: Vec<ObjRemoveFn>,
+    obj_removers: Vec<S::ObjectRemover>,
     /// `HSD_GObj_804D783C`: frame tag, cycles 0,1,2.
     frame_tag: u8,
     /// `HSD_GObj_804D7834`: priority being run.
@@ -389,9 +435,9 @@ pub struct World {
     running: bool,
 }
 
-impl fmt::Debug for World {
+impl<S: Storage> fmt::Debug for Scheduler<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("World")
+        f.debug_struct("Scheduler<S>")
             .field("config", &self.config)
             .field("gobjs", &self.gobjs.len())
             .field("procs", &self.procs.len())
@@ -404,21 +450,21 @@ impl fmt::Debug for World {
 
 fn drop_obj(_: &mut World, _: Box<dyn Any>) {}
 
-impl Default for World {
+impl<S: Storage> Default for Scheduler<S> {
     fn default() -> Self {
-        World::new(WorldConfig::default())
+        Self::new(WorldConfig::default())
     }
 }
 
-impl World {
+impl<S: Storage> Scheduler<S> {
     /// `HSD_GObj_80391304` (gobjinit.c:20-93) without the func-table walk:
     /// allocate and clear every list. No object kinds are registered; call
     /// [`World::register_builtin_obj_kinds`] or [`World::register_obj_kind`].
-    pub fn new(config: WorldConfig) -> World {
+    pub fn new(config: WorldConfig) -> Scheduler<S> {
         let np = config.p_link_max as usize + 1;
         let ng = config.gx_link_max as usize + 2;
         let ns = config.gproc_pri_max as usize + 1;
-        World {
+        Scheduler {
             config,
             gobjs: Slab::default(),
             procs: Slab::default(),
@@ -440,17 +486,6 @@ impl World {
         }
     }
 
-    /// Melee's world as set up by `gm_801A4BD4` (gm/gm_1A45.c:223-229):
-    /// [`WorldConfig::MELEE`], the 1-entry SObjLib kind table at index 0
-    /// (sobjlib.c:24-28), then the four HSD kinds at 1..=4.
-    pub fn melee() -> (World, BuiltinObjKinds) {
-        let mut w = World::new(WorldConfig::MELEE);
-        let sobj = w.register_obj_kind(drop_obj);
-        debug_assert_eq!(sobj, 0);
-        let kinds = w.register_builtin_obj_kinds();
-        (w, kinds)
-    }
-
     pub fn config(&self) -> &WorldConfig {
         &self.config
     }
@@ -458,28 +493,6 @@ impl World {
     // ------------------------------------------------------------------
     // Object kind registry (gobj.c:248-269, gobjinit.c:66-85)
     // ------------------------------------------------------------------
-
-    /// `HSD_GObj_803912A8` for one entry: append a remover to the `obj_kind`
-    /// table and return its index. In C the table is a chain flattened at
-    /// init; the indices come out the same.
-    pub fn register_obj_kind(&mut self, remover: ObjRemoveFn) -> u8 {
-        let kind = u8::try_from(self.obj_removers.len()).expect("obj_kind table full");
-        assert!(kind != OBJ_NONE, "obj_kind table full");
-        self.obj_removers.push(remover);
-        kind
-    }
-
-    /// `HSD_GObj_80391260` (gobj.c:248-255): register camera, light, jobj,
-    /// fog in that order. The C removers drop a reference count; here the
-    /// boxed object is simply dropped.
-    pub fn register_builtin_obj_kinds(&mut self) -> BuiltinObjKinds {
-        BuiltinObjKinds {
-            camera: self.register_obj_kind(drop_obj),
-            light: self.register_obj_kind(drop_obj),
-            jobj: self.register_obj_kind(drop_obj),
-            fog: self.register_obj_kind(drop_obj),
-        }
-    }
 
     // ------------------------------------------------------------------
     // Lookup
@@ -489,20 +502,20 @@ impl World {
         self.gobjs.contains(id.0)
     }
 
-    pub fn get(&self, id: GObjId) -> Option<&GObj> {
+    pub fn get(&self, id: GObjId) -> Option<&Object<S>> {
         self.gobjs.get(id.0)
     }
 
-    pub fn get_mut(&mut self, id: GObjId) -> Option<&mut GObj> {
+    pub fn get_mut(&mut self, id: GObjId) -> Option<&mut Object<S>> {
         self.gobjs.get_mut(id.0)
     }
 
     /// Panics on a stale id; use [`World::get`] to probe.
-    pub fn gobj(&self, id: GObjId) -> &GObj {
+    pub fn gobj(&self, id: GObjId) -> &Object<S> {
         self.gobjs.get(id.0).unwrap_or_else(|| panic!("stale {id}"))
     }
 
-    pub fn gobj_mut(&mut self, id: GObjId) -> &mut GObj {
+    pub fn gobj_mut(&mut self, id: GObjId) -> &mut Object<S> {
         self.gobjs
             .get_mut(id.0)
             .unwrap_or_else(|| panic!("stale {id}"))
@@ -512,16 +525,16 @@ impl World {
         self.procs.contains(id.0)
     }
 
-    pub fn get_proc(&self, id: ProcId) -> Option<&Proc> {
+    pub fn get_proc(&self, id: ProcId) -> Option<&Process<S>> {
         self.procs.get(id.0)
     }
 
     /// Panics on a stale id; use [`World::get_proc`] to probe.
-    pub fn proc(&self, id: ProcId) -> &Proc {
+    pub fn proc(&self, id: ProcId) -> &Process<S> {
         self.procs.get(id.0).unwrap_or_else(|| panic!("stale {id}"))
     }
 
-    fn proc_mut(&mut self, id: ProcId) -> &mut Proc {
+    fn proc_mut(&mut self, id: ProcId) -> &mut Process<S> {
         self.procs
             .get_mut(id.0)
             .unwrap_or_else(|| panic!("stale {id}"))
@@ -747,7 +760,7 @@ impl World {
             "p_link {p_link} > p_link_max {}",
             self.config.p_link_max
         );
-        let id = GObjId(self.gobjs.insert(GObj {
+        let id = GObjId(self.gobjs.insert(Object {
             classifier,
             p_link,
             gx_link: GXLINK_NONE,
@@ -795,8 +808,8 @@ impl World {
             self.deferred.destroy = true;
             return;
         }
-        self.remove_user_data(id);
-        self.remove_obj(id);
+        S::remove_user_data(self, id);
+        S::remove_obj(self, id);
         self.remove_all_procs(id);
         if self.gobj(id).gx_link != GXLINK_NONE {
             self.remove_gx_link(id);
@@ -1020,18 +1033,6 @@ impl World {
         }
     }
 
-    /// `HSD_GObj_SetupProc` (gobjproc.c:148-165): create a proc with the
-    /// given priority and link it. Panics if `priority > gproc_pri_max`
-    /// (`HSD_ASSERT(216, ...)`). The new proc's tag is 3 (line 160), so it
-    /// runs the first time the loop reaches it — this frame if it lands after
-    /// the current position, otherwise next frame.
-    pub fn add_proc<F>(&mut self, gobj: GObjId, priority: u8, callback: F) -> ProcId
-    where
-        F: FnMut(&mut World, GObjId) + 'static,
-    {
-        self.add_proc_slot(gobj, priority, Some(Box::new(callback)), None)
-    }
-
     /// Register a typed external dispatcher token without capturing its owner.
     /// The owner is borrowed once by run_procs_with; list and mutation semantics
     /// are identical to ordinary HSD callbacks.
@@ -1043,7 +1044,7 @@ impl World {
         &mut self,
         gobj: GObjId,
         priority: u8,
-        callback: Option<Box<ProcFn>>,
+        callback: Option<S::Callback>,
         dispatch_tag: Option<usize>,
     ) -> ProcId {
         assert!(
@@ -1052,7 +1053,7 @@ impl World {
             self.config.gproc_pri_max
         );
         assert!(self.contains(gobj), "add_proc: stale {gobj}");
-        let pid = ProcId(self.procs.insert(Proc {
+        let pid = ProcId(self.procs.insert(Process {
             child: None,
             next: None,
             prev: None,
@@ -1166,7 +1167,7 @@ impl World {
 
     /// Run the same scheduler with a borrowed, statically dispatched owner for
     /// tagged registrations. Ordinary callbacks remain available to engine users.
-    pub fn run_procs_with(&mut self, mut dispatch: impl FnMut(&mut World, GObjId, usize)) {
+    pub fn run_procs_with(&mut self, mut dispatch: impl FnMut(&mut Scheduler<S>, GObjId, usize)) {
         assert!(!self.running, "run_procs is not re-entrant");
         self.running = true;
         let pause_mask = self.pause_mask;
@@ -1195,7 +1196,7 @@ impl World {
                         if let Some(tag) = self.proc(pid).dispatch_tag {
                             dispatch(self, gobj, tag);
                         } else {
-                            self.invoke(pid, gobj);
+                            S::invoke(self, pid, gobj);
                         }
                         // gobj.c:115. The running proc is never freed during
                         // its own callback (removal is deferred), so it is
@@ -1223,20 +1224,6 @@ impl World {
             }
         }
         self.running = false;
-    }
-
-    /// `proc->on_invoke(proc->gobj)` (gobj.c:114). The callback is moved out
-    /// of the slot for the duration so it can borrow the world mutably.
-    fn invoke(&mut self, pid: ProcId, gobj: GObjId) {
-        let Some(mut cb) = self.proc_mut(pid).callback.take() else {
-            return;
-        };
-        cb(self, gobj);
-        if let Some(p) = self.procs.get_mut(pid.0) {
-            if p.callback.is_none() {
-                p.callback = Some(cb);
-            }
-        }
     }
 
     // ------------------------------------------------------------------
@@ -1310,59 +1297,6 @@ impl World {
         self.gx_insert_after(id, after);
     }
 
-    /// `GObj_SetupGXLink` (gobjgxlink.c:36-53). Panics if
-    /// `gx_link > gx_link_max` (`HSD_ASSERT(167, ...)`). Does not unlink first;
-    /// the C assumes the object is not yet on a GX list.
-    pub fn setup_gx_link<F>(&mut self, id: GObjId, render_cb: F, gx_link: u8, priority: u8)
-    where
-        F: FnMut(&mut World, GObjId, u32) + 'static,
-    {
-        assert!(
-            gx_link <= self.config.gx_link_max,
-            "gx_link {gx_link} > gx_link_max {}",
-            self.config.gx_link_max
-        );
-        {
-            let g = self.gobj_mut(id);
-            g.render_cb = Some(Box::new(render_cb));
-            g.gx_link = gx_link;
-            g.render_priority = priority;
-        }
-        self.gx_place_after_equal(id);
-    }
-
-    /// `GObj_SetupGXLinkMax` (gobjgxlink.c:55-70): like
-    /// [`World::setup_gx_link`] on the extra list `gx_link_max + 1`.
-    pub fn setup_gx_link_max<F>(&mut self, id: GObjId, render_cb: F, priority: u8)
-    where
-        F: FnMut(&mut World, GObjId, u32) + 'static,
-    {
-        let link = self.gx_link_max_list();
-        {
-            let g = self.gobj_mut(id);
-            g.render_cb = Some(Box::new(render_cb));
-            g.gx_link = link;
-            g.render_priority = priority;
-        }
-        self.gx_place_after_equal(id);
-    }
-
-    /// `GObj_SetupGXLinkMaxSorted` (gobjgxlink.c:84-102): the `max` list, but
-    /// equal priorities go before existing ones.
-    pub fn setup_gx_link_max_sorted<F>(&mut self, id: GObjId, render_cb: F, priority: u8)
-    where
-        F: FnMut(&mut World, GObjId, u32) + 'static,
-    {
-        let link = self.gx_link_max_list();
-        {
-            let g = self.gobj_mut(id);
-            g.render_cb = Some(Box::new(render_cb));
-            g.gx_link = link;
-            g.render_priority = priority;
-        }
-        self.gx_place_before_equal(id);
-    }
-
     /// `HSD_GObjGXLink_8039084C` (gobjgxlink.c:104-127): unlink from the GX
     /// list and reset `gx_link`/`render_priority`. Panics if not linked
     /// (`HSD_ASSERT(415, ...)`). The render callback is kept, as in C.
@@ -1424,22 +1358,130 @@ impl World {
         self.gx_insert_after(id, other_prev);
     }
 
+    // ------------------------------------------------------------------
+    // HSD object slot (gobjobject.c)
+    // ------------------------------------------------------------------
+
+    // ------------------------------------------------------------------
+    // User data (gobjuserdata.c)
+    // ------------------------------------------------------------------
+}
+
+impl World {
+    /// Melee's world as set up by `gm_801A4BD4` (gm/gm_1A45.c:223-229):
+    /// [`WorldConfig::MELEE`], the 1-entry SObjLib kind table at index 0
+    /// (sobjlib.c:24-28), then the four HSD kinds at 1..=4.
+    pub fn melee() -> (World, BuiltinObjKinds) {
+        let mut w = World::new(WorldConfig::MELEE);
+        let sobj = w.register_obj_kind(drop_obj);
+        debug_assert_eq!(sobj, 0);
+        let kinds = w.register_builtin_obj_kinds();
+        (w, kinds)
+    }
+    /// `HSD_GObj_803912A8` for one entry: append a remover to the `obj_kind`
+    /// table and return its index. In C the table is a chain flattened at
+    /// init; the indices come out the same.
+    pub fn register_obj_kind(&mut self, remover: ObjRemoveFn) -> u8 {
+        let kind = u8::try_from(self.obj_removers.len()).expect("obj_kind table full");
+        assert!(kind != OBJ_NONE, "obj_kind table full");
+        self.obj_removers.push(remover);
+        kind
+    }
+    /// `HSD_GObj_80391260` (gobj.c:248-255): register camera, light, jobj,
+    /// fog in that order. The C removers drop a reference count; here the
+    /// boxed object is simply dropped.
+    pub fn register_builtin_obj_kinds(&mut self) -> BuiltinObjKinds {
+        BuiltinObjKinds {
+            camera: self.register_obj_kind(drop_obj),
+            light: self.register_obj_kind(drop_obj),
+            jobj: self.register_obj_kind(drop_obj),
+            fog: self.register_obj_kind(drop_obj),
+        }
+    }
+    /// `HSD_GObj_SetupProc` (gobjproc.c:148-165): create a proc with the
+    /// given priority and link it. Panics if `priority > gproc_pri_max`
+    /// (`HSD_ASSERT(216, ...)`). The new proc's tag is 3 (line 160), so it
+    /// runs the first time the loop reaches it — this frame if it lands after
+    /// the current position, otherwise next frame.
+    pub fn add_proc<F>(&mut self, gobj: GObjId, priority: u8, callback: F) -> ProcId
+    where
+        F: FnMut(&mut World, GObjId) + 'static,
+    {
+        self.add_proc_slot(gobj, priority, Some(Box::new(callback)), None)
+    }
+    /// `proc->on_invoke(proc->gobj)` (gobj.c:114). The callback is moved out
+    /// of the slot for the duration so it can borrow the world mutably.
+    fn invoke(&mut self, pid: ProcId, gobj: GObjId) {
+        let Some(mut cb) = self.proc_mut(pid).callback.take() else {
+            return;
+        };
+        cb(self, gobj);
+        if let Some(p) = self.procs.get_mut(pid.0) {
+            if p.callback.is_none() {
+                p.callback = Some(cb);
+            }
+        }
+    }
+    /// `GObj_SetupGXLink` (gobjgxlink.c:36-53). Panics if
+    /// `gx_link > gx_link_max` (`HSD_ASSERT(167, ...)`). Does not unlink first;
+    /// the C assumes the object is not yet on a GX list.
+    pub fn setup_gx_link<F>(&mut self, id: GObjId, render_cb: F, gx_link: u8, priority: u8)
+    where
+        F: FnMut(&mut World, GObjId, u32) + 'static,
+    {
+        assert!(
+            gx_link <= self.config.gx_link_max,
+            "gx_link {gx_link} > gx_link_max {}",
+            self.config.gx_link_max
+        );
+        {
+            let g = self.gobj_mut(id);
+            g.render_cb = Some(Box::new(render_cb));
+            g.gx_link = gx_link;
+            g.render_priority = priority;
+        }
+        self.gx_place_after_equal(id);
+    }
+    /// `GObj_SetupGXLinkMax` (gobjgxlink.c:55-70): like
+    /// [`World::setup_gx_link`] on the extra list `gx_link_max + 1`.
+    pub fn setup_gx_link_max<F>(&mut self, id: GObjId, render_cb: F, priority: u8)
+    where
+        F: FnMut(&mut World, GObjId, u32) + 'static,
+    {
+        let link = self.gx_link_max_list();
+        {
+            let g = self.gobj_mut(id);
+            g.render_cb = Some(Box::new(render_cb));
+            g.gx_link = link;
+            g.render_priority = priority;
+        }
+        self.gx_place_after_equal(id);
+    }
+    /// `GObj_SetupGXLinkMaxSorted` (gobjgxlink.c:84-102): the `max` list, but
+    /// equal priorities go before existing ones.
+    pub fn setup_gx_link_max_sorted<F>(&mut self, id: GObjId, render_cb: F, priority: u8)
+    where
+        F: FnMut(&mut World, GObjId, u32) + 'static,
+    {
+        let link = self.gx_link_max_list();
+        {
+            let g = self.gobj_mut(id);
+            g.render_cb = Some(Box::new(render_cb));
+            g.gx_link = link;
+            g.render_priority = priority;
+        }
+        self.gx_place_before_equal(id);
+    }
     /// Take the render callback out (for a render pass that needs `&mut
     /// World`). Put it back with [`World::restore_render_cb`].
     pub fn take_render_cb(&mut self, id: GObjId) -> Option<Box<RenderFn>> {
         self.gobj_mut(id).render_cb.take()
     }
-
     pub fn restore_render_cb(&mut self, id: GObjId, cb: Box<RenderFn>) {
         if let Some(g) = self.get_mut(id) {
             g.render_cb = Some(cb);
         }
     }
-
-    // ------------------------------------------------------------------
-    // HSD object slot (gobjobject.c)
-    // ------------------------------------------------------------------
-
     /// `HSD_GObjObject_80390A70` (gobjobject.c:19-24): attach an HSD object.
     /// Panics if one is already attached (`HSD_ASSERT(42, ...)`) or `kind` is
     /// not registered.
@@ -1456,7 +1498,6 @@ impl World {
         g.obj_kind = kind;
         g.hsd_obj = Some(obj);
     }
-
     /// `HSD_GObjObject_80390ADC` (gobjobject.c:26-37): detach and return the
     /// HSD object without running its remover.
     pub fn take_obj(&mut self, id: GObjId) -> Option<Box<dyn Any>> {
@@ -1468,7 +1509,6 @@ impl World {
             None
         }
     }
-
     /// `HSD_GObjObject_80390B0C` (gobjobject.c:39-46): run the kind's remover
     /// on the HSD object and clear the slot. No-op when nothing is attached.
     pub fn remove_obj(&mut self, id: GObjId) {
@@ -1484,11 +1524,6 @@ impl World {
             remover(self, obj);
         }
     }
-
-    // ------------------------------------------------------------------
-    // User data (gobjuserdata.c)
-    // ------------------------------------------------------------------
-
     /// `GObj_InitUserData` (gobjuserdata.c:6-13). Panics if user data is
     /// already attached (`HSD_ASSERT(40, ...)`). `kind` is Melee's tag (4 for
     /// fighters, ft/fighter.c:862); `remover` runs at destroy time with the
@@ -1507,7 +1542,6 @@ impl World {
         g.user_data = Some(Box::new(data));
         g.user_data_remove = Some(Box::new(remover));
     }
-
     /// `GObj_RemoveUserData` (gobjuserdata.c:15-25): run the remover and clear
     /// the slot. No-op when nothing is attached. Panics if data is attached
     /// without a remover (`HSD_ASSERT(99, ...)`).
@@ -1526,13 +1560,93 @@ impl World {
             remover(self, data);
         }
     }
-
     /// Typed view of a GObj's user data.
     pub fn user_data<T: Any>(&self, id: GObjId) -> Option<&T> {
         self.get(id)?.user_data::<T>()
     }
-
     pub fn user_data_mut<T: Any>(&mut self, id: GObjId) -> Option<&mut T> {
         self.get_mut(id)?.user_data_mut::<T>()
+    }
+}
+impl GObj {
+    /// Typed view of `user_data` (`HSD_GObjGetUserData`, gobj.h:147-150).
+    pub fn user_data<T: Any>(&self) -> Option<&T> {
+        self.user_data.as_deref()?.downcast_ref()
+    }
+    pub fn user_data_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.user_data.as_deref_mut()?.downcast_mut()
+    }
+    /// Typed view of `hsd_obj` (`HSD_GObjGetHSDObj`, gobj.h:152-155).
+    pub fn hsd_obj<T: Any>(&self) -> Option<&T> {
+        self.hsd_obj.as_deref()?.downcast_ref()
+    }
+    pub fn hsd_obj_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.hsd_obj.as_deref_mut()?.downcast_mut()
+    }
+}
+
+impl Clone for Object<Tagged> {
+    fn clone(&self) -> Self {
+        Self {
+            classifier: self.classifier,
+            p_link: self.p_link,
+            gx_link: self.gx_link,
+            p_priority: self.p_priority,
+            render_priority: self.render_priority,
+            obj_kind: self.obj_kind,
+            user_data_kind: self.user_data_kind,
+            next: self.next,
+            prev: self.prev,
+            next_gx: self.next_gx,
+            prev_gx: self.prev_gx,
+            proc_head: self.proc_head,
+            render_cb: self.render_cb,
+            gxlink_prios: self.gxlink_prios,
+            hsd_obj: self.hsd_obj,
+            user_data: self.user_data,
+            user_data_remove: self.user_data_remove,
+        }
+    }
+}
+
+impl Clone for Process<Tagged> {
+    fn clone(&self) -> Self {
+        Self {
+            child: self.child,
+            next: self.next,
+            prev: self.prev,
+            s_link: self.s_link,
+            paused: self.paused,
+            flag2: self.flag2,
+            frame_tag: self.frame_tag,
+            gobj: self.gobj,
+            callback: self.callback,
+            dispatch_tag: self.dispatch_tag,
+        }
+    }
+}
+
+impl Clone for Scheduler<Tagged> {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config,
+            gobjs: self.gobjs.clone(),
+            procs: self.procs.clone(),
+            plink_head: self.plink_head.clone(),
+            plink_tail: self.plink_tail.clone(),
+            gx_head: self.gx_head.clone(),
+            gx_tail: self.gx_tail.clone(),
+            proc_head: self.proc_head.clone(),
+            proc_anchor: self.proc_anchor.clone(),
+            obj_removers: self.obj_removers.clone(),
+            frame_tag: self.frame_tag,
+            run_pri: self.run_pri,
+            run_next: self.run_next,
+            cur_proc: self.cur_proc,
+            cur_gobj: self.cur_gobj,
+            deferred: self.deferred.clone(),
+            pause_mask: self.pause_mask,
+            running: self.running,
+        }
     }
 }

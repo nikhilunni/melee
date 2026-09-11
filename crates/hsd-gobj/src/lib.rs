@@ -131,5 +131,5 @@ mod world;
 pub use consts::{GXLINK_NONE, OBJ_NONE, USER_DATA_NONE};
 pub use world::{
     BuiltinObjKinds, GObj, GObjId, InsertWhere, ObjRemoveFn, Proc, ProcFn, ProcId, RenderFn,
-    UserDataRemoveFn, World, WorldConfig,
+    TaggedWorld, UserDataRemoveFn, World, WorldConfig,
 };

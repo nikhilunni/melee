@@ -29,13 +29,15 @@ fn vector(raw: &[u8], offset: usize) -> Vec3 {
     )
 }
 
+use crate::assets::Assets;
 use crate::scene_fighter::SceneFighter;
-use crate::{assets::Assets, scenario::Scenario};
 use anyhow::{ensure, Context, Result};
 use gekko_math::HsdRng;
 use hsd_particle::system::ParticleSystem;
 use hsd_types::Mtx;
 use melee_diff::{first_divergence, Record, RecordSink};
+#[cfg(test)]
+use melee_sim::scenario::Scenario;
 use melee_types::snapshot::{PrefixSink, Snapshot};
 use serde_json::Value as Json;
 use std::{
@@ -46,11 +48,12 @@ use std::{
 
 /// The sole trace-to-runtime boundary. No expected records or ledger draws are
 /// retained by Simulation. Imports vs archive-derived state are listed in M3.md.
+#[derive(Clone)]
 pub struct InitialState {
     pub(crate) items: Box<melee_it::ItemPool>,
     pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
     pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
-    pub(crate) assets: Assets,
+    pub(crate) assets: std::sync::Arc<Assets>,
     pub(crate) fighters: [SceneFighter; 2],
     pub(crate) map: melee_mp::CollMap,
     pub(crate) stage: crate::scene_stage::SceneStage,
@@ -76,17 +79,19 @@ fn first_json(path: &Path) -> Result<Json> {
     Ok(serde_json::from_str(&line)?)
 }
 impl InitialState {
-    pub fn from_savestate_traces(scenario: &Scenario) -> Result<Self> {
-        scenario.validate()?;
+    pub fn from_savestate_traces(
+        scenario: &impl crate::diagnostics::ScenarioSource,
+    ) -> Result<Self> {
+        let setup = scenario.setup()?;
         ensure!(
             !scenario.is_cold(),
             "saved construction requires a savestate"
         );
-        let assets = Assets::load(
+        let assets = std::sync::Arc::new(Assets::load(
             &scenario.assets_path(),
-            std::array::from_fn(|p| scenario.fighters[p].descriptor()),
-            scenario.stage_descriptor(),
-        )?;
+            std::array::from_fn(|p| setup.fighters[p].descriptor()),
+            setup.stage_descriptor(),
+        )?);
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // Only the first line is read. Later rows (including all rng_draws)
@@ -285,7 +290,7 @@ impl InitialState {
             &saved,
             &assets,
             match_start,
-            scenario.frames,
+            scenario.frames(),
             &mut particles,
             &metadata,
         )?;
@@ -316,7 +321,7 @@ impl InitialState {
         // ifStock_804A1378: import only the saved HUD boundary, never later trace rows.
         let stock_displays = if match_start {
             stock::create(
-                &scenario.assets_path(),
+                &assets.interface,
                 std::array::from_fn(|slot| {
                     crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
                 }),
@@ -345,9 +350,7 @@ impl InitialState {
                 .unwrap()
                 + 1,
         );
-        let mut effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
-        effects.load_fox(&assets.fox_effects)?;
-        effects.load_mars(&assets.mars_effects)?;
+        let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays,
@@ -356,7 +359,9 @@ impl InitialState {
             // Versus countdown (and its input release, ftLib_800868A4 at tick 85) starts
             // from frame 0 exactly as in a cold start.
             countdown: if match_start {
-                Some(crate::countdown::Countdown::load(&scenario.assets_path())?)
+                Some(crate::countdown::Countdown::from_archive(
+                    &assets.interface,
+                )?)
             } else {
                 None
             },

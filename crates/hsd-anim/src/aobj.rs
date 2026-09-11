@@ -71,7 +71,7 @@ impl AObjEndCallback {
 }
 
 /// `HSD_AObj` (`aobj.h`) minus `hsd_obj`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct AObj {
     /// `flags`: the `AOBJ_*` bits.
     pub flags: u32,
@@ -85,6 +85,20 @@ pub struct AObj {
     pub framerate: f32,
     /// `fobj`: the track list.
     pub fobj: Vec<FObj>,
+}
+
+impl Clone for AObj {
+    fn clone(&self) -> Self {
+        Self {
+            flags: self.flags,
+            curr_frame: self.curr_frame,
+            rewind_frame: self.rewind_frame,
+            end_frame: self.end_frame,
+            framerate: self.framerate,
+            // Tracks are reused across motion changes, including after cloning.
+            fobj: hsd_types::storage::clone_vec(&self.fobj),
+        }
+    }
 }
 
 impl Default for AObj {

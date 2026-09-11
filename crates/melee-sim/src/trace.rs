@@ -7,27 +7,13 @@ use crate::{
     schema::{Schema, SchemaCoverage},
 };
 use anyhow::{ensure, Result};
-use melee_diff::{first_divergence, read_trace, Record, RecordSink};
-use melee_types::snapshot::{PrefixSink, Snapshot, SnapshotSink};
+use melee_diff::{first_divergence, read_trace, Record};
 use std::{
     collections::BTreeSet,
     fs::File,
     io::{BufRead, BufReader, Write},
 };
 
-impl Snapshot for InitialState {
-    fn snapshot(&self, sink: &mut dyn SnapshotSink) {
-        sink.field("rng.seed", &self.rng.seed);
-        for (player, fighter) in self.fighters.iter().enumerate() {
-            fighter.snapshot(&mut PrefixSink::new(sink, &format!("p{player}")));
-        }
-    }
-}
-pub(crate) fn snapshot(state: &InitialState, frame: u64) -> Record {
-    let mut sink = RecordSink::new(frame, "frame_end");
-    state.snapshot(&mut sink);
-    sink.finish()
-}
 pub fn check_schema(record: &Record) -> Result<()> {
     let schema = Schema::fighter_hand();
     let coverage = SchemaCoverage::new(&schema, &[]);

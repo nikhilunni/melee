@@ -90,6 +90,10 @@ impl Default for ParticleSystem {
     }
 }
 impl ParticleSystem {
+    /// Immutable descriptor bank retained by the first spawn in that bank.
+    pub fn bank(&self, id: u8) -> Option<&ParticleBank> {
+        self.banks.get(usize::from(id)).and_then(Option::as_ref)
+    }
     /// HSD AppSRT shared lifetime, with storage prepared before simulation.
     /// A slot can be overwritten only after every generator/particle alias expires.
     fn share_application_transform(
@@ -598,6 +602,61 @@ impl ParticleSystem {
         } else {
             self.generators.remove(index);
             true
+        }
+    }
+}
+
+impl Clone for ParticleSystem {
+    fn clone(&self) -> Self {
+        use hsd_types::storage::clone_vec;
+        let application_pool: Vec<_> = self
+            .application_pool
+            .iter()
+            .map(|value| Arc::new((**value).clone()))
+            .collect();
+        type TransformOwner = Arc<crate::generator::ApplicationTransform>;
+        let mut imported: Vec<(TransformOwner, TransformOwner)> = Vec::new();
+        let mut rebind = |value: &mut Option<Arc<crate::generator::ApplicationTransform>>| {
+            if let Some(old) = value {
+                if let Some(index) = self
+                    .application_pool
+                    .iter()
+                    .position(|slot| Arc::ptr_eq(slot, old))
+                {
+                    *old = Arc::clone(&application_pool[index]);
+                } else {
+                    // Preserve aliases among imported owners as well as pool slots.
+                    if let Some((_, copied)) =
+                        imported.iter().find(|(source, _)| Arc::ptr_eq(source, old))
+                    {
+                        *old = Arc::clone(copied);
+                    } else {
+                        let copied = Arc::new((**old).clone());
+                        imported.push((Arc::clone(old), Arc::clone(&copied)));
+                        *old = copied;
+                    }
+                }
+            }
+        };
+        let mut generators = clone_vec(&self.generators);
+        for generator in &mut generators {
+            rebind(&mut generator.application_transform);
+        }
+        let mut particles = self.particles.each_ref().map(clone_vec);
+        for particle in particles.iter_mut().flatten() {
+            rebind(&mut particle.application_transform);
+        }
+        Self {
+            generators,
+            particles,
+            particle_capacity: self.particle_capacity,
+            next_id: self.next_id,
+            banks: self.banks.clone(),
+            family_counter: self.family_counter,
+            point_joints: self.point_joints,
+            pending_generators: clone_vec(&self.pending_generators),
+            generator_cursor: self.generator_cursor,
+            application_pool,
         }
     }
 }

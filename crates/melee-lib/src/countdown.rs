@@ -5,8 +5,10 @@ use hsd_anim::{
     load::{attach_anim_joint, load_joint_tree},
 };
 use melee_ft::fighter::RetailTrig;
+#[cfg(test)]
 use std::path::Path;
 
+#[derive(Clone)]
 pub(crate) struct Countdown {
     tree: JObjTree,
     root: JObjId,
@@ -15,16 +17,21 @@ pub(crate) struct Countdown {
 impl Countdown {
     /// gm_Scene_Vs_OnEnter -> ifStatus_802F6EA4(3), joint animation 0.
     /// ifall.c loads IfAll; this port's NTSC English scenes use IfAll.usd.
+    #[cfg(test)]
     pub(crate) fn load(files: &Path) -> Result<Self> {
         let archive = hsd_archive::Archive::parse(&std::fs::read(files.join("IfAll.usd"))?)?;
+        Self::from_archive(&archive)
+    }
+
+    pub(crate) fn from_archive(archive: &hsd_archive::Archive) -> Result<Self> {
         let (joint, animation) = hsd_archive::desc::model::read_dynamic_model_animation(
-            &archive,
+            archive,
             "ScInfCnt_scene_models",
             3,
             0,
         )?;
-        let (mut tree, root) = load_joint_tree(&archive, &joint)?;
-        attach_anim_joint(&mut tree, root, &animation, &archive)?;
+        let (mut tree, root) = load_joint_tree(archive, &joint)?;
+        attach_anim_joint(&mut tree, root, &animation, archive)?;
         tree.req_anim_all(root, 0.0);
         tree.anim_all::<RetailTrig>(root);
         Ok(Self { tree, root })

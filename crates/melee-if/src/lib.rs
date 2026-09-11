@@ -3,6 +3,7 @@ use gekko_math::{msl::fctiwz, rng::HsdRng};
 use hsd_types::Vec2;
 
 /// IfDamageState: the four digits draw even when hundreds/tens are hidden.
+#[derive(Clone)]
 pub struct PercentDisplay {
     pub death_velocity: Option<[Vec2; 4]>,
     pub percent: i32,
@@ -80,6 +81,7 @@ impl PercentDisplay {
 }
 
 /// ifStock_802F8298 (802F8298): five icon slots and their loss animation.
+#[derive(Clone)]
 pub struct StockDisplay {
     pub icon_positions: [hsd_types::Vec3; 5],
     pub animation_frames: [u8; 5],

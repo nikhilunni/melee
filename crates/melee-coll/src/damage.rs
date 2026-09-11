@@ -2,6 +2,7 @@
 use crate::hurtbox::HurtHeight;
 use gekko_math::{fma::fmadds, msl::fctiwz};
 use melee_types::combat::HitboxDescriptor;
+#[derive(Clone)]
 pub struct ReceivedHit {
     pub descriptor: HitboxDescriptor,
     pub height: HurtHeight,

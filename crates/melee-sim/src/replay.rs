@@ -88,7 +88,7 @@ pub fn unsupported_setup(replay: &Replay) -> Vec<String> {
     for port in replay.leader_ports() {
         let p = &start.players[port];
         let name = slp::ids::external_character_name(p.character).unwrap_or("unknown");
-        if !crate::scene_fighter::SceneFighter::NAMES.contains(&name) {
+        if !melee_lib::diagnostics::CHARACTERS.contains(&name) {
             reasons.push(format!("port {} character {name}", port + 1));
         }
         if p.player_type != slp::PlayerType::Human {

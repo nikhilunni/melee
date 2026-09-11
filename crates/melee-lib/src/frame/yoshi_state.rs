@@ -2,6 +2,7 @@
 use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
+use melee_sim::inputs::PadScript;
 use std::{fs, path::Path};
 
 fn replay(name: &str) {
@@ -18,7 +19,7 @@ fn replay(name: &str) {
     }
     let pads =
         PadScript::from_expected_trace(&scenario.trace_path("tick.expected.jsonl"), true).unwrap();
-    let mut simulation = Simulation::with_inputs(
+    let mut simulation = super::TestSimulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         pads,
     );

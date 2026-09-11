@@ -30,7 +30,7 @@ fn repeated_revival_retains_owners_without_allocating() {
 
 fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
     let archive = &assets.characters[slot];
-    let resources = &assets.fighters[slot];
+    let resources = &assets.fighters()[slot];
     let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc).unwrap();
     let player = PlayerSlot {
         id: slot as u8,

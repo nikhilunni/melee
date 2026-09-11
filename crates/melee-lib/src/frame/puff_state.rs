@@ -2,6 +2,7 @@
 use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
+use melee_sim::inputs::PadScript;
 use std::{fs, path::Path};
 
 fn scenario(name: &str) -> Option<Scenario> {
@@ -23,7 +24,7 @@ fn puff_multijump_turn_and_input_age_match_retail_scratch() {
         let pads =
             PadScript::from_expected_trace(&scenario.trace_path("tick.expected.jsonl"), true)
                 .unwrap();
-        let mut simulation = Simulation::with_inputs(
+        let mut simulation = super::TestSimulation::with_inputs(
             InitialState::from_savestate_traces(&scenario).unwrap(),
             pads,
         );

@@ -7,6 +7,10 @@ Keep this file honest. A task is `[x]` only when its tests pass in
 `cargo gate` and it is committed. When you finish a session, update the
 task lines you touched and add one line to the session log.
 
+## Library extraction (2026-09-10)
+
+- [x] `melee-lib`: implementation complete and verified; committed at user request. Public create/step/inspect/clone API, shared assets, exact cloning, and both headless examples delivered. Debug/release gates each 1,144 passed, 0 failed; clippy and allocation gates clean. Final perf timing/duplicate limits pass; only binary-size ceilings fail, explicitly deferred by the user. See `docs/PORT_NOTES/MELEE_LIB.md` for files, measurements, and limitations. macOS/wgpu consumer is the next milestone; no app work included.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
@@ -453,3 +457,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-10 (cont. 2): recorded 21 S5..S8 scenes (DI/SDI/CC/getups, shield variants incl. powershield and shield break, throws/pummel/mash, ledge options); mirrored. Launched P1 on the harness lane (revival without reconstruction: ko_fd_marth 690 allocs; ft-yoshi 228-copy anomaly + C15 concrete-shell design note; fresh perf baseline). S2/S3 prompts drafted; S3 waits for S4 (Illusion spawns item kind 56, the afterimage).
 - 2026-09-10 (cont.): C8 merged (`b33c49b`, both profiles 977/0, alloc ceilings 17/1/12/690/17). Consolidation round done. Launched S4 (melee-it, it-foxlaser, ft-fox-family + Fox SpecialN; core lane) and S1 (19 ground-attack scenes; perf lane). Next: S2/S3 prompts when a lane frees up; merge S4 first (S1 touches m5_gate/alloc_gate too).
 - 2026-09-10: C8 running; 47 combat scenes recorded for S1/S2/S3 (specials, ground attacks, aerials, L-cancels); scenario files committed, traces mirrored.
+
+- 2026-09-10 (melee-lib extraction): reusable public library and oracle adapters verified in debug/release (1,144/0 each), three allocation tests and both examples pass; lifecycle and many-match memory measured. Timing and duplicate gates pass; binary size deferred by explicit user instruction. No commit or game-data/decomp changes. Next: melee-platform session/presentation/C ABI and Swift macOS window using wgpu.

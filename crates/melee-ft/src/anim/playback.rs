@@ -106,7 +106,7 @@ pub struct FighterAnimation {
     /// `co_attrs.model_scaling` (Fighter+0x19C).
     pub model_scale: f32,
     pub root: JObjId,
-    rest_pose: JObjTree,
+    rest_pose: std::sync::Arc<JObjTree>,
 }
 
 impl FighterAnimation {
@@ -156,7 +156,7 @@ impl FighterAnimation {
             translation_joint: None,
             model_scale: 1.0,
             root,
-            rest_pose: tree.clone(),
+            rest_pose: std::sync::Arc::new(tree.clone()),
         }
     }
 

@@ -135,7 +135,7 @@ fn every_model_restarts_exactly_without_allocation() {
                     .tree
                     .set_translate(effect.root, &Vec3::new(11.0, 12.0, 13.0));
                 for _ in 0..100 {
-                    for &joint in &effect.joints {
+                    for &joint in effect.joints.iter() {
                         effect.tree.anim::<Trig>(joint, &mut Default::default());
                         effect.tree.events.clear();
                         effect.tree.setup_matrix(joint);

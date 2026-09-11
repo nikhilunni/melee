@@ -17,6 +17,7 @@ pub struct Key {
     pub generation: u32,
 }
 
+#[derive(Clone)]
 struct Slot<T> {
     generation: u32,
     value: Option<T>,
@@ -100,6 +101,20 @@ impl<T> Slab<T> {
     }
 }
 
+impl<T: Clone> Clone for Slab<T> {
+    fn clone(&self) -> Self {
+        let mut slots = Vec::with_capacity(self.slots.capacity());
+        slots.extend(self.slots.iter().cloned());
+        let mut free = Vec::with_capacity(self.free.capacity());
+        free.extend_from_slice(&self.free);
+        Self {
+            slots,
+            free,
+            live: self.live,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,3 +141,5 @@ mod tests {
         assert_eq!(s.len(), 2);
     }
 }
+
+// Preserve free-list and slot capacity so a cloned match retains its allocation budget.

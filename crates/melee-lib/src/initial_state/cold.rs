@@ -1,9 +1,7 @@
 //! Versus setup from scene parameters and the pre-music boundary seed.
 //! Captures are comparison inputs in cold_tests.rs only.
 use super::InitialState;
-use crate::{
-    assets::Assets, scenario::Scenario, scene_fighter::SceneFighter, scene_stage::SceneStage,
-};
+use crate::{assets::Assets, scene_fighter::SceneFighter, scene_stage::SceneStage, setup::Setup};
 use anyhow::{ensure, Result};
 use gekko_math::HsdRng;
 use hsd_anim::load::load_joint_tree;
@@ -28,17 +26,20 @@ const ENTRY_STAGGER_FRAMES: i32 = 5;
 impl InitialState {
     /// fn_8016E730 (gm_16AE.c): Ground creation, Player/Fighter creation,
     /// then the pre-music boundary. Only owned DAT resources are read.
-    pub fn from_parameters(scenario: &Scenario) -> Result<Self> {
-        scenario.validate()?;
+    pub fn from_parameters(source: &impl crate::diagnostics::ScenarioSource) -> Result<Self> {
         ensure!(
-            scenario.is_cold(),
+            source.is_cold(),
             "cold construction requires savestate omitted"
         );
-        let assets = Assets::load(
-            &scenario.assets_path(),
-            std::array::from_fn(|p| scenario.fighters[p].descriptor()),
-            scenario.stage_descriptor(),
-        )?;
+        let setup = source.setup()?;
+        let assets = std::sync::Arc::new(Assets::load(
+            &source.assets_path(),
+            std::array::from_fn(|p| setup.fighters[p].descriptor()),
+            setup.stage_descriptor(),
+        )?);
+        Self::from_assets(&setup, assets)
+    }
+    pub(crate) fn from_assets(scenario: &Setup, assets: std::sync::Arc<Assets>) -> Result<Self> {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // The supplied seed is after creation, before music. grLast's four
@@ -74,19 +75,19 @@ impl InitialState {
                 .all_characters_unlocked
                 .expect("validated cold music rule"),
         ));
-        let mut effects = Box::new(melee_ef::Effects::load(&assets.effects)?);
-        effects.load_fox(&assets.fox_effects)?;
-        effects.load_mars(&assets.mars_effects)?;
+        let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays: super::stock::create(
-                &scenario.assets_path(),
+                &assets.interface,
                 std::array::from_fn(|slot| {
                     crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
                 }),
             )?,
             spawn_counter: melee_ft::fighter::SpawnCounter(3),
-            countdown: Some(crate::countdown::Countdown::load(&scenario.assets_path())?),
+            countdown: Some(crate::countdown::Countdown::from_archive(
+                &assets.interface,
+            )?),
             assets,
             map,
             stage,
@@ -246,7 +247,7 @@ fn initialize_stage(
 
 /// fn_8016E2BC: populate Player slots and create fighters in port order.
 fn create_players(
-    scenario: &Scenario,
+    scenario: &Setup,
     assets: &Assets,
     map: &mut melee_mp::CollMap,
     rng: &mut HsdRng,

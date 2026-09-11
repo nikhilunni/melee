@@ -38,7 +38,7 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct StaleHistory {
     entries: [Option<AttackInstance>; 10],
     current: Option<GroundMove>,

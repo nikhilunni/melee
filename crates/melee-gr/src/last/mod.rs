@@ -62,9 +62,19 @@ pub enum MatchMode {
     Boss { remaining_health_ratio: f32 },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct FinalDestination {
     pub ground: Ground,
     pub mode: MatchMode,
     pub actions: Vec<StageAction>,
+}
+
+impl Clone for FinalDestination {
+    fn clone(&self) -> Self {
+        Self {
+            ground: self.ground.clone(),
+            mode: self.mode,
+            actions: hsd_types::storage::clone_vec(&self.actions),
+        }
+    }
 }

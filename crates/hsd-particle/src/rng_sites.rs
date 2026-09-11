@@ -40,11 +40,17 @@ pub const FD_EMISSION: [u32; 6] = [
 ];
 
 /// Ordered observations for testing and comparison with the Dolphin ledger.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct DrawLog(pub Vec<u32>);
 impl DrawLog {
     pub(crate) fn draw(&mut self, rng: &mut HsdRng, address: u32) -> f32 {
         self.0.push(address);
         rng.randf()
+    }
+}
+
+impl Clone for DrawLog {
+    fn clone(&self) -> Self {
+        Self(hsd_types::storage::clone_vec(&self.0))
     }
 }

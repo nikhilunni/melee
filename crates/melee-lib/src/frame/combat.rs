@@ -146,7 +146,7 @@ fn replay_scratch_until(name: &str, ticks: usize) {
     ) {
         return;
     }
-    let mut simulation = Simulation::with_inputs(
+    let mut simulation = super::TestSimulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         crate::trace::pad_script(&scenario).unwrap(),
     );
@@ -212,7 +212,7 @@ fn shield_exhaustion_and_dizzy_match_retail_milestones() {
     ) {
         return;
     }
-    let mut sim = Simulation::with_inputs(
+    let mut sim = super::TestSimulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         crate::trace::pad_script(&scenario).unwrap(),
     );

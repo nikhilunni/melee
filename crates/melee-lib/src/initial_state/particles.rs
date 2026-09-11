@@ -162,7 +162,20 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
             fields.scalar("aux.minimum_angle", minimum_angle);
             fields.scalar("aux.maximum_angle", maximum_angle);
         }
-        other => panic!("live FD adapter requires sphere/disc auxiliary state, got {other:?}"),
+        EmissionShape::Tornado { speed } => fields.scalar("aux.speed", speed),
+        EmissionShape::Rectangle { dimensions } => fields.array("aux.dimensions", dimensions),
+        EmissionShape::Line { end } => fields.array("aux.end", end),
+        EmissionShape::Cone {
+            mode,
+            minimum_angle,
+            maximum_angle,
+            height,
+        } => {
+            fields.scalar("aux.mode", mode);
+            fields.scalar("aux.minimum_angle", minimum_angle);
+            fields.scalar("aux.maximum_angle", maximum_angle);
+            fields.scalar("aux.height", height);
+        }
     }
 }
 fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, banks: &impl Banks) {

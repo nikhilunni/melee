@@ -35,6 +35,7 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `crates/melee-lb/mp/gr/it/ft/cpu` | Melee subsystems, one crate each, mirroring decomp directories. |
 | `crates/ft-<name>` | One crate per playable character. |
 | `crates/melee-sim` | Headless simulator binary. Emits canonical traces. |
+| `crates/melee-lib` | Reusable match composition and curated create/step/inspect/clone API. |
 | `crates/melee-diff` | Compares two traces, reports first bit-level divergence. |
 | `crates/slp` | Slippi replay parser. Produces scenarios and expected traces. |
 | `harness/` | Python oracle tooling: Dolphin script, symbol resolver, schema generator, decoder. Run with `cd harness && uv run ...`. |
@@ -237,8 +238,15 @@ abstractions and clean organization.
 - One crate per character under `crates/ft-<name>`. They depend on
   `melee-ft`, `melee-types` and (when retail shares the code) their
   `ft-<family>` crate, never on each other. Copy `ft-fox`.
-- No cross-layer `pub use` facades. Depend on the crate you use.
-- Only `melee-sim` and `melee-platform` may depend on everything.
+- Subsystems depend directly on the crate they use; no cross-layer facades.
+  `melee-lib` is the intentional exception: its curated public API is the
+  application boundary. Its explicitly unstable diagnostics extension serves
+  oracle tooling without exposing mutable match internals.
+- `melee-lib` composes subsystems. `melee-sim` may depend on them for oracle
+  tooling; application consumers such as `melee-platform` use `melee-lib`.
+- Match cloning uses typed character payload cloning and preserves all mutable
+  continuation state and prepared capacities. Immutable assets may be shared;
+  do not byte-copy ownership-bearing character payloads.
 - No proc-macro or heavy dependencies in layers 0 and 1. Dependencies build
   at opt-level 2 once; our crates at opt-level 0 incrementally.
 

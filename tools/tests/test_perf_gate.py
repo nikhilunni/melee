@@ -14,6 +14,15 @@ spec.loader.exec_module(perf)
 
 
 class PerformanceBudget(unittest.TestCase):
+    def test_library_extraction_transfers_but_does_not_duplicate_composition_budget(self):
+        old = {"duplicate_labels": {"melee-sim": 7}, "cross_crate_duplicate_labels": 3}
+        moved = {"duplicate_labels": {"melee-lib": 7, "melee-sim": 0},
+                 "cross_crate_duplicate_labels": 3}
+        self.assertEqual(perf.compare_duplicates(moved, old), [])
+        duplicated = dict(moved, duplicate_labels={"melee-lib": 7, "melee-sim": 1})
+        self.assertEqual(len(perf.compare_duplicates(duplicated, old)), 1)
+        self.assertEqual(len(perf.compare_duplicates(dict(moved, cross_crate_duplicate_labels=4), old)), 1)
+
     def test_each_metric_rejects_only_increases_past_its_budget(self):
         old = dict(stripped_bytes=100, text_bytes=100, load_ns=100, ticks_600_ns=100,
                    duplicate_labels={"melee-sim": 8, "ft-fox": 2}, cross_crate_duplicate_labels=3)
@@ -71,7 +80,8 @@ class PerformanceBudget(unittest.TestCase):
             (run / "bloat.txt").write_text("10B melee_sim")
             (run / "llvm-version.txt").write_text("synthetic test llvm-lines")
             (run / "characters.txt").write_text("ft-fox\n")
-            (run / "llvm-melee-sim.txt").write_text("100 7 (TOTAL)\n100 (100%, 100%) 7 (100%, 100%) melee_ft::function<C>\n")
+            (run / "llvm-melee-lib.txt").write_text("100 7 (TOTAL)\n100 (100%, 100%) 7 (100%, 100%) melee_ft::function<C>\n")
+            (run / "llvm-melee-sim.txt").write_text("1 1 (TOTAL)\n")
             (run / "llvm-melee-ft.txt").write_text("100 4 (TOTAL)\n" + "".join(
                 f"25 (25%, 100%) 1 (25%, 100%) {name}\n" for name in sorted(perf.PAIR_HELPERS)))
             (run / "llvm-ft-fox.txt").write_text("100 1 (TOTAL)\n100 (100%, 100%) 1 (100%, 100%) ft_fox::function\n")

@@ -2,7 +2,7 @@
 use anyhow::{Context, Result};
 use ft_fox_family::FoxFamily;
 use hsd_archive::Archive;
-use hsd_gobj::{GObjId, World};
+use hsd_gobj::{GObjId, TaggedWorld as World};
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
     ItemAnimationContext, ItemDispatch, ItemPool, ItemRequest,

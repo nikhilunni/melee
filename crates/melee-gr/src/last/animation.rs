@@ -19,6 +19,7 @@ pub struct BackgroundAnimation {
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
+#[derive(Clone)]
 pub struct ParticleRequest {
     pub bank: u8,
     pub kind: u32,
@@ -221,5 +222,22 @@ impl BackgroundAnimation {
         }
         self.tree.events = events;
         &self.requests
+    }
+}
+
+impl Clone for BackgroundAnimation {
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree.clone(),
+            root: self.root,
+            joints: hsd_types::storage::clone_vec(&self.joints),
+            requests: hsd_types::storage::clone_vec(&self.requests),
+            prepared: self
+                .prepared
+                .iter()
+                .map(hsd_types::storage::clone_vec)
+                .collect(),
+            subtree_ends: hsd_types::storage::clone_vec(&self.subtree_ends),
+        }
     }
 }

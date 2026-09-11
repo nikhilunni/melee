@@ -35,6 +35,7 @@ members = [
     "crates/ft-purin",
     "crates/ft-mario",
     # Layer 4: binaries and tooling.
+    "crates/melee-lib",
     "crates/melee-sim",
     "crates/melee-platform",
     "crates/melee-diff",

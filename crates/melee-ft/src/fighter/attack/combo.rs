@@ -23,7 +23,7 @@ impl ComboParameters {
         })
     }
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ComboState {
     pub victim: Option<u32>,
     attack: Option<GroundMove>,
