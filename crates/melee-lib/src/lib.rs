@@ -25,3 +25,6 @@ pub use observation::{
     Vec3,
 };
 pub use observation::{StageSurface, SurfaceId};
+
+/// Opt-in visual resources and read-only presentation capture. No GPU dependency.
+pub mod presentation;

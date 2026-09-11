@@ -63,8 +63,8 @@ impl MatchStatus {
 #[derive(Clone)]
 pub struct Match {
     pub(crate) engine: Simulation,
-    assets: GameAssets,
-    config: MatchConfig,
+    pub(crate) assets: GameAssets,
+    pub(crate) config: MatchConfig,
 }
 impl Match {
     pub(crate) fn from_import(engine: Simulation, setup: &crate::setup::Setup) -> Self {

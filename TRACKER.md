@@ -11,6 +11,12 @@ task lines you touched and add one line to the session log.
 
 - [x] `melee-lib`: implementation complete and verified; committed at user request. Public create/step/inspect/clone API, shared assets, exact cloning, and both headless examples delivered. Debug/release gates each 1,144 passed, 0 failed; clippy and allocation gates clean. Final perf timing/duplicate limits pass; only binary-size ceilings fail, explicitly deferred by the user. See `docs/PORT_NOTES/MELEE_LIB.md` for files, measurements, and limitations. macOS/wgpu consumer is the next milestone; no app work included.
 
+## Native graphical consumer (2026-09-10)
+
+- [x] First native visual prototype: shared archive mesh/texture decoder, allocation-free presentation capture, wgpu renderer, session/C ABI, and Swift/AppKit window. Focused skinning, presentation-allocation and session tests, clippy, native build and resize/focus/pause/keyboard smoke pass. Full release gate passed before final presentation/focus changes; debug workspace run stopped at user request in favor of focused app checks. Basic Fox/Marth/FD rendering only; visual effects, materials and camera fidelity remain follow-up work. See `docs/PORT_NOTES/NATIVE_APP.md`.
+
+- [~] Rendering fidelity pass (2026-09-10), implemented and verified, uncommitted: common multi-texture color/alpha operations, authored sampling/transforms and pixel state, background/world compositing, living-fighter camera framing, live stage poses, and instanced original laser meshes. Shared character archives avoid duplicate article data. Focused release checks (16 tests), clippy, native build/smoke and Metal preview pass. Custom TEV/material animation, precise transparency, held weapon poses and combat effects remain; see `docs/PORT_NOTES/NATIVE_APP.md`.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
@@ -406,6 +412,10 @@ Gate: zero divergence over thousands of Slippi replays.
 ## Session log
 
 Newest first. One line per session: date, what landed, what is next.
+
+- 2026-09-10 (rendering pass): implemented shared material/pixel state, camera, live stage presentation and laser instancing; expanded allocation/nonmutation checks through article spawn/reset, retained archives shared with fighters. Focused checks and native Metal smoke pass; no gameplay execution changes, data/decomp edits or commit. Next: custom TEV/material animation and held-weapon/effect poses.
+
+- 2026-09-10 (native prototype): committed melee-lib as `e995c04`, then built shared Rust presentation/wgpu/session/C ABI with a thin Swift shell. Focused tests, clippy and native smoke pass; offscreen Metal frame inspected. App-only changes use scoped verification per user instruction. New app work remains uncommitted; no game data or decomp changes. Next: user playtesting and visual fidelity.
 
 - 2026-09-09 (A3 rebase conflict resolution): preserved A3 grab/tech/KO and tornado/rectangle particles alongside main generic inverse trig, stages, character hooks and action IDs; scoped A3 motion resources to Fox/Marth. All 11 requested scenario gates exact (49 keys), M4 261/261, M5 8/8, particle/fighter/interface 166 tests pass; workspace all-target build and clippy clean, fmt applied. No git commands run. Next: user continues the rebase.
 

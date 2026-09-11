@@ -89,6 +89,9 @@
 //!   `efLib_Cb_DPtcl`), `jsound_callback`, `ptcltgt_callback`. Their
 //!   invocations are recorded in [`JObjTree::events`] for the caller.
 
+mod pose;
+pub use pose::MatrixPose;
+
 use crate::aobj::{AObj, AObjDesc, AObjEndCallback};
 use crate::dobj::DObj;
 use crate::mobj::MatAnim;

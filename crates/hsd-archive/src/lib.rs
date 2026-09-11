@@ -71,3 +71,5 @@ pub use header::ArchiveHeader;
 pub use reader::{add_offset, Reader};
 
 pub mod desc;
+
+pub mod visual;

@@ -27,6 +27,11 @@ pub struct ParticleRequest {
     pub matrix: Mtx,
 }
 impl BackgroundAnimation {
+    /// Read-only pose source for presentation scratch. Matrix evaluation must
+    /// happen in the caller's scratch so rendering cannot affect continuation.
+    pub fn pose_tree(&self) -> &JObjTree {
+        &self.tree
+    }
     /// grLast_8021B920 (grlast.c:789ff), LayeredStart: model 4, animation 0.
     /// Request frame zero without evaluating it until Ground's s_link 1 proc.
     pub fn load(archive: &Archive, desc: &crate::desc::StageDesc) -> crate::desc::ReadResult<Self> {

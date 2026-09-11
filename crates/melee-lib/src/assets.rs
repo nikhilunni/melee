@@ -37,8 +37,15 @@ impl Assets {
         let common = archive("PlCo.dat")?;
         let mut characters = Vec::new();
         let mut fighters = Vec::new();
+        let mut data_archives = std::collections::BTreeMap::new();
         for descriptor in descriptors {
-            let data = archive(descriptor.data_file)?;
+            let data = if let Some(data) = data_archives.get(descriptor.data_file) {
+                std::sync::Arc::clone(data)
+            } else {
+                let data = std::sync::Arc::new(archive(descriptor.data_file)?);
+                data_archives.insert(descriptor.data_file, std::sync::Arc::clone(&data));
+                data
+            };
             let resources = FighterAssets::load(
                 descriptor,
                 &data,
@@ -96,7 +103,7 @@ impl Assets {
         let mars_effects = archive("EfMsData.dat")?;
         let effect_resources = melee_ef::Resources::load(&effects, &fox_effects, &mars_effects)?;
         let interface = archive("IfAll.usd")?;
-        let items = crate::scene_items::Resources::load(files)?;
+        let items = crate::scene_items::Resources::load(files, &characters)?;
         let fighters = fighters.try_into().ok().expect("two character resources");
         let characters = characters.try_into().ok().expect("two character archives");
         // Finish all fallible work before installing manually dropped ownership.
@@ -117,7 +124,7 @@ impl Assets {
 }
 pub struct CharacterArchive {
     pub descriptor: &'static CharacterDescriptor,
-    pub data: Archive,
+    pub data: std::sync::Arc<Archive>,
     costumes: Vec<Archive>,
 }
 impl CharacterArchive {
@@ -177,5 +184,57 @@ impl Drop for Assets {
         unsafe {
             ManuallyDrop::drop(&mut self.fighters);
         }
+    }
+}
+
+#[cfg(test)]
+mod visual_tests {
+    use super::*;
+    #[test]
+    fn final_destination_visual_geometry_and_textures_decode() {
+        let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files/GrNLa.dat");
+        if !melee_test_support::require_files([&file]) {
+            return;
+        }
+        let archive = Archive::parse(&std::fs::read(file).unwrap()).unwrap();
+        let stage = melee_gr::desc::read_final_destination(&archive).unwrap();
+        fn count(
+            archive: &Archive,
+            decoder: &mut hsd_archive::visual::TextureDecoder<'_>,
+            joint: &hsd_archive::desc::JObjDesc,
+        ) -> (usize, usize) {
+            let mut triangles = 0;
+            let mut images = 0;
+            let mut display = joint.u.dobj();
+            while let Some(dobj) = display {
+                for mesh in hsd_archive::visual::read_polygons(archive, dobj.pobjdesc).unwrap() {
+                    triangles += mesh.indices.len() / 3;
+                }
+                if let Some(material) = &dobj.mobj {
+                    images += decoder.read_chain(material.texdesc).unwrap().len();
+                }
+                display = dobj.next.as_deref();
+            }
+            for subtree in [joint.child.as_deref(), joint.next.as_deref()]
+                .into_iter()
+                .flatten()
+            {
+                let (t, i) = count(archive, decoder, subtree);
+                triangles += t;
+                images += i;
+            }
+            (triangles, images)
+        }
+        let mut triangles = 0;
+        let mut images = 0;
+        let mut decoder = hsd_archive::visual::TextureDecoder::new(&archive);
+        for model in &stage.models {
+            let (t, i) = count(&archive, &mut decoder, &model.joint);
+            triangles += t;
+            images += i;
+        }
+        assert!(triangles > 1000);
+        assert!(images > 0);
+        eprintln!("Final Destination: {triangles} triangles, {images} texture layers");
     }
 }

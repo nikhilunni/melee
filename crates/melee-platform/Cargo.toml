@@ -1,8 +1,15 @@
 [package]
 name = "melee-platform"
-description = "Platform layer: input, timing, file access, later graphics and audio"
+description = "Shared native application session and wgpu presentation, with a C ABI"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+crate-type = ["rlib", "staticlib"]
+
 [dependencies]
+melee-lib = { path = "../melee-lib" }
+wgpu = "30"
+pollster = "0.4"
+bytemuck = { version = "1", features = ["derive"] }

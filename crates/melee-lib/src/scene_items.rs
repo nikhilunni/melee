@@ -24,9 +24,10 @@ melee_it::item_kinds! {
 pub struct Resources {
     pub common: ItemCommonData,
     kinds: Vec<(ItemKind, ItemAssets)>,
+    visual_archives: Vec<(ItemKind, std::sync::Arc<Archive>)>,
 }
 impl Resources {
-    pub fn load(files: &Path) -> Result<Self> {
+    pub fn load(files: &Path, characters: &[crate::assets::CharacterArchive]) -> Result<Self> {
         let archive =
             |file| -> Result<Archive> { Ok(Archive::parse(&std::fs::read(files.join(file))?)?) };
         let common = archive("ItCo.dat")?;
@@ -35,6 +36,7 @@ impl Resources {
             common.public("itPublicData").context("itPublicData")?,
         )?;
         let mut kinds = Vec::new();
+        let mut visual_archives = Vec::new();
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
                 "PlFx.dat",
@@ -53,14 +55,29 @@ impl Resources {
                 ft_falco::init::Falco::GHOST_ARTICLE_INDEX,
             ),
         ] {
-            let a = archive(file)?;
+            let a = match characters.iter().find(|c| c.descriptor.data_file == file) {
+                Some(character) => std::sync::Arc::clone(&character.data),
+                None => std::sync::Arc::new(archive(file)?),
+            };
             let root = a.public(symbol).context("family fighter data")?;
             kinds.push((laser, ItemAssets::from_fighter(&a, root, 0, 2)?));
             // Rows 9 and 10 have animation -1, so the archive contains nine animations.
             kinds.push((blaster, ItemAssets::from_fighter(&a, root, 1, 9)?));
             kinds.push((ghost, ItemAssets::from_fighter(&a, root, ghost_index, 3)?));
+            // Held weapons need attachment/animation poses; afterimages need
+            // captured fighter poses. Only free projectile models are ready here.
+            visual_archives.push((laser, a));
         }
-        Ok(Self { common, kinds })
+        Ok(Self {
+            common,
+            kinds,
+            visual_archives,
+        })
+    }
+    pub fn visual_models(&self) -> impl Iterator<Item = (ItemKind, &Archive, u32)> {
+        self.visual_archives
+            .iter()
+            .map(|(kind, archive)| (*kind, &**archive, self.get(*kind).model))
     }
     pub fn get(&self, kind: ItemKind) -> &ItemAssets {
         &self

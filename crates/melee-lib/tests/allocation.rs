@@ -178,3 +178,79 @@ fn dropping_matches_and_assets_releases_every_owned_allocation() {
         "owned match/resource allocation leaked"
     );
 }
+
+#[test]
+fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
+    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    let config = MatchConfig::versus(
+        Stage::FinalDestination,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(42));
+    let assets = GameAssets::load(files, &config).unwrap();
+    let mut game = Match::new(&assets, config).unwrap();
+    let mut view = presentation::Presentation::new(&game).unwrap();
+    let groups: std::collections::BTreeSet<_> = view
+        .meshes()
+        .iter()
+        .map(|m| m.instance_group)
+        .filter(|g| *g != 0)
+        .collect();
+    let mut saw_article = false;
+    for tick in 0..600 {
+        let mut inputs = Inputs::default();
+        if tick >= 220 && tick % 60 < 30 {
+            inputs.0[0].buttons = Buttons::B;
+        }
+        game.step(&inputs).unwrap();
+        let before = if tick % 60 == 0 {
+            Some(diagnostics::inspect(&game).unwrap())
+        } else {
+            None
+        };
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let result = view.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "presentation tick {tick}");
+        let article_visible = view
+            .meshes()
+            .iter()
+            .enumerate()
+            .any(|(i, m)| m.instance_group != 0 && view.visibility()[i]);
+        saw_article |= article_visible;
+        let instances: usize = groups.iter().map(|g| view.instance_range(*g).len()).sum();
+        let projectiles = game
+            .observe()
+            .unwrap()
+            .items()
+            .filter(|item| item.velocity().x != 0.0)
+            .count();
+        assert_eq!(
+            instances, projectiles,
+            "projectile population at tick {tick}"
+        );
+
+        assert!(view
+            .instances()
+            .iter()
+            .flatten()
+            .flatten()
+            .all(|v| v.is_finite()));
+
+        if let Some(before) = before {
+            assert_eq!(before, diagnostics::inspect(&game).unwrap());
+        }
+    }
+    assert!(saw_article, "script must exercise live article instances");
+    game.reset(Seed(42)).unwrap();
+    view.capture(&game).unwrap();
+    assert!(groups.iter().all(|g| view.instance_range(*g).is_empty()));
+}
