@@ -27,7 +27,15 @@ fn error(e: impl std::fmt::Display) -> PresentationError {
     PresentationError(e.to_string())
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FaceCulling {
+    None,
+    Front,
+    Back,
+    Both,
+}
 pub struct Mesh {
+    pub culling: FaceCulling,
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub material: Arc<Material>,
@@ -38,8 +46,8 @@ pub struct Mesh {
     /// Stage background geometry is composited before the world, without depth writes.
     pub background: bool,
 }
-/// Immutable authored material. Texture operations retain the HSD flags;
-/// renderers may support them incrementally without reparsing disc bytes.
+/// Renderer-independent material values. Meshes retain authored initial values;
+/// `Presentation::materials` supplies the current values without reparsing bytes.
 #[derive(Clone)]
 pub struct Material {
     /// Post-texture color overlay; alpha is its interpolation weight.
@@ -90,6 +98,7 @@ impl ModelSource {
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
 pub struct Presentation {
+    background_color: [u8; 3],
     lighting: lighting::Lighting,
     sprites: sprites::Sprites,
     assets: Arc<crate::assets::Assets>,
@@ -110,6 +119,7 @@ impl Presentation {
             return Err(error("faulted match"));
         }
         let mut result = Self {
+            background_color: game.assets.inner.stage_desc.initial_fog,
             lighting: lighting::Lighting::new(game)?,
             sprites: sprites::Sprites::new(game)?,
             assets: Arc::clone(&game.assets.inner),
@@ -184,6 +194,10 @@ impl Presentation {
         Ok(result)
     }
     /// World positions of fighters with remaining stocks, for caller-owned framing.
+    /// Current stage clear color in GX encoded RGB.
+    pub fn background_color(&self) -> [u8; 3] {
+        self.background_color
+    }
     pub fn camera_targets(&self) -> &[Option<[f32; 2]>; 2] {
         &self.camera_targets
     }
@@ -238,6 +252,10 @@ impl Presentation {
             let fighter = &fighter.0;
             *target = (fighter.player.stocks > 0)
                 .then_some([fighter.physics.position.x, fighter.physics.position.y]);
+        }
+        if let crate::scene_stage::SceneStage::FinalDestination(stage) = &game.engine.state().stage
+        {
+            self.background_color = stage.ground.fog;
         }
         self.capture_materials(game)?;
         self.sprites.capture(game)?;
@@ -323,7 +341,8 @@ impl Presentation {
                 hidden |= tree.get(id).flags & JOBJ_HIDDEN != 0;
                 ancestor = tree.parent(id);
             }
-            self.visible[i] = !self.instance_ranges[model.instance_group].is_empty()
+            self.visible[i] = self.meshes[i].culling != FaceCulling::Both
+                && !self.instance_ranges[model.instance_group].is_empty()
                 && !hidden
                 && tree
                     .dobj(part.owner)
@@ -426,7 +445,7 @@ impl Presentation {
                 vertices,
                 indices,
                 matrices,
-                ..
+                flags,
             } in hsd_archive::visual::read_polygons(archive, dobj.pobjdesc).map_err(error)?
             {
                 let resolve = |id| {
@@ -450,7 +469,14 @@ impl Presentation {
                 let matrix_offset = self.matrices.len() as u32;
                 self.matrices
                     .resize(self.matrices.len() + bindings.len(), [[0.0; 4]; 4]);
+                let culling = match flags >> 14 {
+                    1 => FaceCulling::Front,
+                    2 => FaceCulling::Back,
+                    3 => FaceCulling::Both,
+                    _ => FaceCulling::None,
+                };
                 self.meshes.push(Mesh {
+                    culling,
                     vertices,
                     indices,
                     material: Arc::clone(&material),

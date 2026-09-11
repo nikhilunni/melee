@@ -1,7 +1,7 @@
 // Display-only approximation of HSD's common texture expression stages.
 // Authored texture expressions and directional lighting are evaluated in display
-// floats. Material animation and exact GX rounding remain separate work.
-struct Camera { extent: vec4<f32> }
+// floats. Exact GX rounding remains separate from this display pipeline.
+// CAMERA
 @group(0) @binding(0) var<storage, read> poses: array<mat4x4<f32>>;
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
@@ -21,9 +21,9 @@ fn normal_transform(transform:mat4x4<f32>, normal:vec3<f32>)->vec3<f32> {
     // Retain its sign for reflected transforms; singular poses produce zero.
     return safe_normalize(cofactor*normal*sign(dot(a,cross(b,c))));
 }
-fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32 {
+fn specular_weight_for_view(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32, toward_eye:vec3<f32>)->f32 {
     if dot(normal,toward_light)<=0.0 { return 0.0; }
-    let half_vector=safe_normalize(toward_light+vec3(0.0,0.0,1.0));
+    let half_vector=safe_normalize(toward_light+toward_eye);
     let cosine=max(dot(normal,half_vector),0.0);
     let squared=cosine*cosine;
     let half_shininess=shininess*0.5;
@@ -50,6 +50,9 @@ fn sample_image(image:texture_2d_array<f32>, uv:vec2<f32>, layer:Layer)->vec4<f3
     return mix(mix(image_texel(image,base,layer),image_texel(image,base+vec2(1,0),layer),fraction.x),
                mix(image_texel(image,base+vec2(0,1),layer),image_texel(image,base+vec2(1,1),layer),fraction.x),fraction.y);
 }
+fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32 {
+    return specular_weight_for_view(normal,toward_light,shininess,vec3(0.0,0.0,1.0));
+}
 // TEXTURE_BINDINGS
 struct Out {
     @builtin(position) position: vec4<f32>,
@@ -60,7 +63,7 @@ struct Out {
     let transform=instances[instance]*poses[matrix];
     let p = transform * vec4(position, 1.0);
     var out: Out;
-    out.position = vec4((p.x-camera.extent.z) / camera.extent.x, (p.y-camera.extent.w) / camera.extent.y, clamp((800.0-p.z)/1600.0, 0.0, 1.0), 1.0);
+    out.position = project(p.xyz);
     out.uv = uv; out.color = color;
     out.normal = normal_transform(transform,normal);
     let surface_normal=out.normal;
@@ -70,7 +73,7 @@ struct Out {
         let light=lighting.lights[i];
         let direction=safe_normalize(light.direction.xyz);
         diffuse_light+=light.color.rgb*max(dot(surface_normal,direction),0.0)*light.direction.w;
-        specular_light+=light.color.rgb*specular_weight(surface_normal,direction,material.specular.w)*light.color.w;
+        specular_light+=light.color.rgb*specular_weight_for_view(surface_normal,direction,material.specular.w,safe_normalize(camera.eye.xyz-p.xyz))*light.color.w;
     }
     out.diffuse_light=clamp(diffuse_light,vec3(0.0),vec3(1.0));
     out.specular_light=specular_light;

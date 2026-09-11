@@ -25,6 +25,7 @@ impl Sprites {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
+        samples: u32,
         camera: &wgpu::Buffer,
         scene: &Presentation,
     ) -> Result<Self, String> {
@@ -82,7 +83,7 @@ impl Sprites {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -142,7 +143,11 @@ impl Sprites {
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Particles and shields"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("sprites.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("sprites.wgsl")
+                    .replace("// CAMERA", include_str!("camera.wgsl"))
+                    .into(),
+            ),
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
@@ -172,7 +177,10 @@ impl Sprites {
                         stencil: Default::default(),
                         bias: Default::default(),
                     }),
-                    multisample: Default::default(),
+                    multisample: wgpu::MultisampleState {
+                        count: samples,
+                        ..Default::default()
+                    },
                     fragment: Some(wgpu::FragmentState {
                         module: &shader,
                         entry_point: Some("fragment"),

@@ -334,3 +334,25 @@ Stage fade timing follow-up: grLast_8021B920 explicitly calls the interpreter
 once more after grMaterial_801C9604 already interpreted the request. The first
 fade color is now asserted as [3, 3, 3, 4]; the cycle and 27,000-tick allocation
 checks pass. Both full-match oracles also passed in debug (as well as release).
+
+## Perspective and framebuffer phase (2026-09-11)
+
+Meshes and particles now share one camera shader and uniform. Perspective uses
+Melee's default 30-degree vertical FOV, near/far planes, and initial viewing
+direction; fighter fitting remains application policy. Eye-relative projection
+avoids near-plane cancellation in tall windows. Shield hemisphere depth and
+specular view vectors use this same camera. Authored polygon face culling uses
+GX clockwise winding (also reflected in Dolphin's Vulkan front-face setting).
+
+The renderer uses 4x multisampling when the adapter supports it for both color
+and depth, and recreates attachments on resize. The stage's live background color
+is converted through an immutable sRGB transfer table for the clear operation.
+No clock, GPU state, or application policy was added to match simulation.
+
+Six platform tests, including actual perspective clip/depth checks, all eight
+library allocation tests (including 27,000 stage ticks), workspace clippy, 15
+Metal arithmetic fixtures and native build/resize/focus/pause/keyboard smoke pass.
+Opening stars, the shield and late vortex were inspected in Metal frames. Full
+workspace simulation tests were not rerun for this display-only phase. Exact
+retail camera tracking, GX pixel quantization, authored mip/LOD filtering and
+remaining item/effect/shadow rendering are still outstanding.

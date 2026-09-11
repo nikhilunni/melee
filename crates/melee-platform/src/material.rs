@@ -362,6 +362,7 @@ pub fn shader() -> String {
         samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=sample_image(image{i},coordinates(in,layer),layer); color=combine(color,custom_texture(tex,layer),layer); }}\n"));
     }
     include_str!("render.wgsl")
+        .replace("// CAMERA", include_str!("camera.wgsl"))
         .replace("// CUSTOM_COMBINERS", include_str!("tev.wgsl"))
         .replace("// TEXTURE_BINDINGS", &bindings)
         .replace("// TEXTURE_SAMPLES", &samples)

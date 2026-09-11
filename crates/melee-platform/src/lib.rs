@@ -10,3 +10,5 @@ mod camera;
 pub mod material;
 
 mod sprites;
+
+mod srgb;
