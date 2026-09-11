@@ -718,6 +718,7 @@ fn texture_tracks_follow_map_ids_and_clones_own_their_continuation() {
     use hsd_anim::tobj::{TObj, TexAnim};
     use hsd_archive::visual::TextureDescriptor;
     let descriptor = TextureDescriptor {
+        lod: Default::default(),
         id: 3,
         flags: 0,
         repeat: [1; 2],

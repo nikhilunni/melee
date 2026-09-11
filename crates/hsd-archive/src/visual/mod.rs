@@ -2,7 +2,7 @@
 //! no GPU handles, simulation state, or host-specific types are retained.
 //!
 //! Initial support decodes GX polygon display lists, skinning palettes, and
-//! base-level textures and material texture expressions. Shape animation remains
+//! authored mip chains and material texture expressions. Shape animation remains
 //! separate.
 mod color;
 mod light;
@@ -17,7 +17,8 @@ mod texture;
 pub use polygon::{read_polygons, Influence, MatrixBinding, Polygon, Vertex};
 pub use tev::{TevOperation, TextureCombiner};
 pub use texture::{
-    read_image, DecodedImages, Texture, TextureDecoder, TextureDescriptor, TextureLayer,
+    read_image, DecodedImages, MipLevel, Texture, TextureDecoder, TextureDescriptor, TextureLayer,
+    TextureLod,
 };
 
 #[derive(Debug)]

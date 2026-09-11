@@ -9,6 +9,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let (device, queue) = adapter.request_device(&Default::default()).await?;
     let source = melee_platform::material::shader()
         + r#"
+@group(0) @binding(8) var mip_fixture:texture_2d_array<f32>;
 @group(0) @binding(7) var<storage,read_write> checks:array<vec4<f32>>;
 @compute @workgroup_size(1) fn probe() {
     var layer:Layer;
@@ -40,6 +41,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     checks[12]=vec4(specular_weight(vec3(0.0,0.0,1.0),vec3(0.0,0.0,1.0),16.0),specular_weight(vec3(0.0,0.0,1.0),vec3(0.0,0.0,-1.0),16.0),0.0,1.0);
     checks[13]=vec4<f32>(f32(address_texel(-1,4,0u)),f32(address_texel(4,4,0u)),f32(address_texel(-1,4,1u)),f32(address_texel(4,4,1u)));
     checks[14]=vec4<f32>(f32(address_texel(-1,4,2u)),f32(address_texel(4,4,2u)),f32(address_texel(8,4,2u)),f32(address_texel(-5,4,2u)));
+    layer.image=vec4<u32>(0u,2u,2u,1u);
+    layer.addressing=vec4<u32>(0u,0u,0u,5u);
+    layer.lod=vec4(0.0,0.0,1.0,1.0);
+    checks[15]=sample_lod(mip_fixture,vec2(0.5),layer,0.25);
+    layer.addressing.w=2u;
+    checks[16]=sample_lod(mip_fixture,vec2(0.5),layer,0.75);
+    layer.addressing.w=1u;
+    checks[17]=sample_lod(mip_fixture,vec2(0.5),layer,1.0);
 }
 "#;
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -56,23 +65,68 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     let output = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("GPU results"),
-        size: 240,
+        size: 288,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
     let readback = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Readback"),
-        size: 240,
+        size: 288,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
+    });
+    let mip_fixture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("Mip sampling fixture"),
+        size: wgpu::Extent3d {
+            width: 2,
+            height: 2,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 2,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    for (level, size, bytes) in [
+        (0, 2, [255, 0, 0, 255].repeat(4)),
+        (1, 1, vec![0, 255, 0, 255]),
+    ] {
+        let mut destination = mip_fixture.as_image_copy();
+        destination.mip_level = level;
+        queue.write_texture(
+            destination,
+            &bytes,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(size * 4),
+                rows_per_image: Some(size),
+            },
+            wgpu::Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    let mip_view = mip_fixture.create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(wgpu::TextureViewDimension::D2Array),
+        ..Default::default()
     });
     let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &pipeline.get_bind_group_layout(0),
-        entries: &[wgpu::BindGroupEntry {
-            binding: 7,
-            resource: output.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 7,
+                resource: output.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 8,
+                resource: wgpu::BindingResource::TextureView(&mip_view),
+            },
+        ],
     });
     let mut encoder = device.create_command_encoder(&Default::default());
     {
@@ -81,7 +135,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         pass.set_bind_group(0, &group, &[]);
         pass.dispatch_workgroups(1, 1, 1);
     }
-    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 240);
+    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 288);
     queue.submit([encoder.finish()]);
     let (tx, rx) = std::sync::mpsc::channel();
     readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -107,6 +161,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         [1.0, 0.0, 0.0, 1.0],
         [0.0, 3.0, 3.0, 0.0],
         [0.0, 3.0, 0.0, 3.0],
+        [0.75, 0.25, 0.0, 1.0],
+        [0.0, 1.0, 0.0, 1.0],
+        [1.0, 0.0, 0.0, 1.0],
     ];
     for (i, (actual, expected)) in actual.iter().zip(expected).enumerate() {
         for channel in 0..4 {
@@ -119,7 +176,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!(
-        "15 material/lighting/addressing GPU fixtures passed on {:?}",
+        "18 material/lighting/addressing/mip GPU fixtures passed on {:?}",
         adapter.get_info().backend
     );
     Ok(())

@@ -32,6 +32,9 @@ task lines you touched and add one line to the session log.
 
 - [x] Model effects phase (2026-09-11): retain authored effect materials/texture clocks in shared simulation pools, expose borrowed visual models, restore pooled clocks without allocation, and draw independently animated instances through shared geometry and bounded GPU pose/material buffers. Sparse/frequent/reset effect checks, eight allocation tests, 84 exact combat/ordered-particle tests, workspace clippy and Metal firing preview pass. Current effect shape trees contain no deformation tracks; real shape animation is explicitly rejected. Specialized particles, historical afterimages, shadows and mip/LOD remain.
 
+- [x] Authored mip/LOD phase (2026-09-11): shared typed texture LOD, padded GX mip-chain decoding, prepared GPU mip uploads and selected-image dimensions at every level; nearest/bilinear/trilinear minification, live LOD bias and anisotropic taps. Archive suite and explicit padded/truncated-chain tests pass, eight allocation checks pass, and 18 numeric Metal fixtures include mip selection/interpolation; firing preview inspected. Retail bias-clamp/edge-LOD details remain pixel-fidelity work. Continue particle geometry, afterimages and shadows.
+
+
 
 
 ## Current focus

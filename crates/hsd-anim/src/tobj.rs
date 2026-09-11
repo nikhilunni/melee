@@ -42,9 +42,10 @@ impl TObj {
     }
     pub fn load(descriptor: TextureDescriptor) -> Self {
         Self {
+            lod_bias: descriptor.lod.bias,
             descriptor,
             animation: None,
-            lod_bias: 0.0,
+
             images: Arc::from([]),
             palettes: Arc::from([]),
         }

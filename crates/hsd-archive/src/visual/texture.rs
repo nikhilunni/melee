@@ -1,4 +1,4 @@
-//! GX tiled base-level texture decoding from HSD_ImageDesc / HSD_TlutDesc.
+//! GX tiled texture and mip-chain decoding from HSD_ImageDesc / HSD_TlutDesc.
 //! Original bytes remain immutable; decoded RGBA is suitable for any GPU API.
 use super::color::{rgb565, rgb5a3};
 use super::{invalid, unsupported, Result};
@@ -6,13 +6,41 @@ use crate::{add_offset, Archive, Reader};
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Debug)]
+pub struct MipLevel {
+    pub width: u16,
+    pub height: u16,
+    pub rgba: Vec<u8>,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextureLod {
+    pub min_filter: u32,
+    pub bias: f32,
+    pub bias_clamp: bool,
+    pub edge_lod: bool,
+    pub anisotropy: u32,
+}
+impl Default for TextureLod {
+    fn default() -> Self {
+        Self {
+            min_filter: 5,
+            bias: 0.0,
+            bias_clamp: false,
+            edge_lod: false,
+            anisotropy: 0,
+        }
+    }
+}
+#[derive(Clone, Debug)]
 pub struct Texture {
+    pub mipmaps: Vec<MipLevel>,
+    pub lod_range: [f32; 2],
     pub width: u16,
     pub height: u16,
     pub rgba: Vec<u8>,
 }
 #[derive(Clone, Debug)]
 pub struct TextureLayer {
+    pub lod: TextureLod,
     pub flags: u32,
     pub repeat: [u8; 2],
     pub blending: f32,
@@ -60,6 +88,7 @@ impl<'a> TextureDecoder<'a> {
             .into_iter()
             .map(|d| {
                 Ok(TextureLayer {
+                    lod: d.lod,
                     flags: d.flags,
                     repeat: d.repeat,
                     blending: d.blending,
@@ -80,6 +109,7 @@ impl<'a> TextureDecoder<'a> {
 /// share this reader while owning their mutable state separately.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextureDescriptor {
+    pub lod: TextureLod,
     pub id: u32,
 
     pub flags: u32,
@@ -110,7 +140,25 @@ impl TextureDescriptor {
             let image = archive
                 .link(offset + 76)?
                 .ok_or_else(|| invalid(offset, "missing texture image"))?;
+            let lod = if let Some(at) = archive.link(offset + 84)? {
+                r.slice(at, 16)?;
+                let min_filter = r.u32(at)?;
+                let bias = r.f32(at + 4)?;
+                if min_filter > 5 || !bias.is_finite() {
+                    return Err(invalid(at, "invalid texture LOD"));
+                }
+                TextureLod {
+                    min_filter,
+                    bias,
+                    bias_clamp: r.u8(at + 8)? != 0,
+                    edge_lod: r.u8(at + 9)? != 0,
+                    anisotropy: r.u32(at + 12)?,
+                }
+            } else {
+                TextureLod::default()
+            };
             result.push(Self {
+                lod,
                 id: r.u32(offset + 8)?,
                 flags: r.u32(offset + 64)?,
                 repeat: [r.u8(offset + 60)?, r.u8(offset + 61)?],
@@ -133,7 +181,7 @@ impl TextureDescriptor {
         Ok(result)
     }
 }
-/// Decode the base level; mip generation and filtering are renderer policy.
+/// Decode every authored mip level, respecting GX tile padding at each level.
 pub fn read_image(archive: &Archive, offset: u32, palette: Option<u32>) -> Result<Texture> {
     let r = Reader::new(archive.data());
     r.slice(offset, 24)?;
@@ -154,16 +202,59 @@ pub fn read_image(archive: &Archive, offset: u32, palette: Option<u32>) -> Resul
     } else {
         None
     };
-    decode_pixels(
-        archive
-            .data()
-            .get(data as usize..)
-            .ok_or_else(|| invalid(data, "image out of bounds"))?,
-        width,
-        height,
-        format,
-        palette,
-    )
+    let bytes = archive
+        .data()
+        .get(data as usize..)
+        .ok_or_else(|| invalid(data, "image out of bounds"))?;
+    let mut image = decode_pixels(bytes, width, height, format, palette)?;
+    if r.u32(offset + 12)? != 0 {
+        let min = r.f32(offset + 16)?;
+        let max = r.f32(offset + 20)?;
+        if !min.is_finite() || !max.is_finite() || min < 0.0 || max < min || max > 16.0 {
+            return Err(invalid(offset, "invalid image LOD range"));
+        }
+        image.lod_range = [min, max];
+        let levels = max as usize + usize::from(max > max as usize as f32);
+        let mut consumed = encoded_size(width, height, format)?;
+        let (mut width, mut height) = (width, height);
+        for _ in 0..levels {
+            if width == 1 && height == 1 {
+                return Err(invalid(offset, "mip chain exceeds image dimensions"));
+            }
+            width = (width / 2).max(1);
+            height = (height / 2).max(1);
+            let decoded = decode_pixels(
+                bytes
+                    .get(consumed..)
+                    .ok_or_else(|| invalid(data, "truncated mip chain"))?,
+                width,
+                height,
+                format,
+                palette,
+            )?;
+            consumed += encoded_size(width, height, format)?;
+            image.mipmaps.push(MipLevel {
+                width,
+                height,
+                rgba: decoded.rgba,
+            });
+        }
+    }
+    Ok(image)
+}
+fn tile_layout(format: u32) -> Result<(u32, u32, u32)> {
+    Ok(match format {
+        0 | 8 => (8u32, 8u32, 32u32),
+        1 | 2 | 9 => (8, 4, 32),
+        3 | 4 | 5 | 10 => (4, 4, 32),
+        6 => (4, 4, 64),
+        14 => (8, 8, 32),
+        _ => return Err(unsupported(0, "GX texture format", format)),
+    })
+}
+fn encoded_size(width: u16, height: u16, format: u32) -> Result<usize> {
+    let (w, h, bytes) = tile_layout(format)?;
+    Ok((u32::from(width).div_ceil(w) * u32::from(height).div_ceil(h) * bytes) as usize)
 }
 /// One GX decoder serves archive ImageDesc and particle texture-bank images.
 pub(super) fn decode_pixels(
@@ -177,14 +268,8 @@ pub(super) fn decode_pixels(
     if width == 0 || height == 0 {
         return Err(invalid(offset, "empty image"));
     }
-    let (bw, bh, bytes) = match format {
-        0 | 8 => (8u32, 8u32, 32u32),
-        1 | 2 | 9 => (8, 4, 32),
-        3 | 4 | 5 | 10 => (4, 4, 32),
-        6 => (4, 4, 64),
-        14 => (8, 8, 32),
-        _ => return Err(unsupported(offset, "GX texture format", format)),
-    };
+    let (bw, bh, bytes) = tile_layout(format)?;
+
     let nx = u32::from(width).div_ceil(bw);
     let ny = u32::from(height).div_ceil(bh);
     let size = nx
@@ -270,6 +355,8 @@ pub(super) fn decode_pixels(
         }
     }
     Ok(Texture {
+        mipmaps: Vec::new(),
+        lod_range: [0.0; 2],
         width,
         height,
         rgba,
@@ -307,6 +394,15 @@ fn cmpr(r: Reader<'_>, offset: u32, x: u32, y: u32) -> Result<[u8; 4]> {
 mod tests {
     use super::*;
     fn image(width: u16, height: u16, format: u32, data: &[u8]) -> Archive {
+        image_with_lod(width, height, format, data, None)
+    }
+    fn image_with_lod(
+        width: u16,
+        height: u16,
+        format: u32,
+        data: &[u8],
+        lod: Option<[f32; 2]>,
+    ) -> Archive {
         let size = 24 + data.len();
         let mut bytes = vec![0u8; 32 + size + 4];
         let total = bytes.len() as u32;
@@ -317,8 +413,44 @@ mod tests {
         bytes[36..38].copy_from_slice(&width.to_be_bytes());
         bytes[38..40].copy_from_slice(&height.to_be_bytes());
         bytes[40..44].copy_from_slice(&format.to_be_bytes());
+        if let Some([min, max]) = lod {
+            bytes[44..48].copy_from_slice(&1u32.to_be_bytes());
+            bytes[48..52].copy_from_slice(&min.to_be_bytes());
+            bytes[52..56].copy_from_slice(&max.to_be_bytes());
+        }
         bytes[56..56 + data.len()].copy_from_slice(data);
         Archive::parse(&bytes).unwrap()
+    }
+    #[test]
+    fn authored_mips_skip_padded_tiles_and_preserve_level_pixels() {
+        // I8: each level still consumes an 8x4 tile, even below that size.
+        let mut data = vec![17u8; 32];
+        data.extend([83u8; 32]);
+        data.extend([191u8; 32]);
+        data.extend([255u8; 32]);
+        let decoded =
+            read_image(&image_with_lod(8, 4, 1, &data, Some([0.0, 3.0])), 0, None).unwrap();
+        assert_eq!(
+            decoded
+                .mipmaps
+                .iter()
+                .map(|m| (m.width, m.height))
+                .collect::<Vec<_>>(),
+            [(4, 2), (2, 1), (1, 1)]
+        );
+        for (level, expected) in decoded.mipmaps.iter().zip([83, 191, 255]) {
+            assert!(level
+                .rgba
+                .chunks_exact(4)
+                .all(|pixel| pixel == [expected; 4]));
+        }
+        assert!(read_image(
+            &image_with_lod(8, 4, 1, &data[..64], Some([0.0, 3.0])),
+            0,
+            None
+        )
+        .is_err());
+        assert!(read_image(&image_with_lod(8, 4, 1, &data, Some([0.0, 4.0])), 0, None).is_err());
     }
     #[test]
     fn rgba8_reassembles_split_planes_and_crops_padded_tile() {

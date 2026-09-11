@@ -139,6 +139,8 @@ pub(super) fn capture_material(
     }
     for (layer, texture) in material.textures.iter_mut().zip(&live.textures) {
         let d = &texture.descriptor;
+        layer.lod = d.lod;
+        layer.lod.bias = texture.lod_bias;
         layer.scale = d.scale;
         layer.rotation = d.rotation;
         layer.translation = d.translation;

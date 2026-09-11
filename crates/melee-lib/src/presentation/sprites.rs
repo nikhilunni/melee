@@ -33,6 +33,8 @@ impl Sprites {
         let assets = &game.assets.inner;
         let mut result = Self {
             textures: vec![Arc::new(Texture {
+                mipmaps: Vec::new(),
+                lod_range: [0.0; 2],
                 width: 1,
                 height: 1,
                 rgba: vec![255; 4],

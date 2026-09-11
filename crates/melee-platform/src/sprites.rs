@@ -327,11 +327,15 @@ mod tests {
     #[test]
     fn atlas_extrudes_edges_and_reuses_shared_images() {
         let red = Arc::new(Texture {
+            mipmaps: Vec::new(),
+            lod_range: [0.0; 2],
             width: 1,
             height: 1,
             rgba: vec![255, 0, 0, 255],
         });
         let blue = Arc::new(Texture {
+            mipmaps: Vec::new(),
+            lod_range: [0.0; 2],
             width: 1,
             height: 1,
             rgba: vec![0, 0, 255, 255],

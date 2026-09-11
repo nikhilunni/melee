@@ -20,6 +20,7 @@ struct Layer {
     active: [u32; 4],
     image: [u32; 4],
     addressing: [u32; 4],
+    lod: [f32; 4],
 }
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -110,7 +111,11 @@ impl Images {
                         height: h,
                         depth_or_array_layers: bank.len().max(1) as u32,
                     },
-                    mip_level_count: 1,
+                    mip_level_count: bank
+                        .iter()
+                        .map(|t| t.mipmaps.len() as u32 + 1)
+                        .max()
+                        .unwrap_or(1),
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Rgba8Unorm,
@@ -138,6 +143,25 @@ impl Images {
                             depth_or_array_layers: 1,
                         },
                     );
+                    if let Some(image) = bank.get(index) {
+                        for (level, mip) in image.mipmaps.iter().enumerate() {
+                            destination.mip_level = level as u32 + 1;
+                            queue.write_texture(
+                                destination,
+                                &mip.rgba,
+                                wgpu::TexelCopyBufferLayout {
+                                    offset: 0,
+                                    bytes_per_row: Some(u32::from(mip.width) * 4),
+                                    rows_per_image: Some(u32::from(mip.height)),
+                                },
+                                wgpu::Extent3d {
+                                    width: u32::from(mip.width),
+                                    height: u32::from(mip.height),
+                                    depth_or_array_layers: 1,
+                                },
+                            );
+                        }
+                    }
                 }
                 texture.create_view(&wgpu::TextureViewDescriptor {
                     dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -289,9 +313,16 @@ fn capture(material: &Material) -> Uniform {
                     .unwrap_or(0) as u32,
                 u32::from(t.image.width),
                 u32::from(t.image.height),
-                0,
+                t.image.mipmaps.len() as u32,
             ];
-            uniform.layers[i].addressing = [t.wrap_s, t.wrap_t, u32::from(t.nearest), 0];
+            uniform.layers[i].addressing =
+                [t.wrap_s, t.wrap_t, u32::from(t.nearest), t.lod.min_filter];
+            uniform.layers[i].lod = [
+                t.lod.bias,
+                t.image.lod_range[0],
+                t.image.lod_range[1],
+                (1u32 << t.lod.anisotropy.min(2)) as f32,
+            ];
             lightmaps |= lightmap;
         }
     }
