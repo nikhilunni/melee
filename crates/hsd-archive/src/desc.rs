@@ -89,6 +89,7 @@ pub mod dobj;
 pub mod figatree;
 pub mod jobj;
 pub mod light;
+pub mod material_animation;
 pub mod model;
 pub mod spline;
 

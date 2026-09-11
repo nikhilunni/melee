@@ -1190,3 +1190,35 @@ fn errors_display_and_source() {
     let e = DescError::from(Error::OffsetOverflow { offset: 1, add: 2 });
     assert!(matches!(e, DescError::Archive(_)));
 }
+
+#[test]
+fn material_animation_tables_keep_null_entries_and_reject_cycles() {
+    use hsd_archive::desc::material_animation::MaterialAnimation;
+    let mut b = Builder::new();
+    let image = b.push_u32(0);
+    let images = b.push_ptr(Some(image));
+    b.push_ptr(None);
+    let texture = b.push_ptr(None);
+    b.push_u32(3);
+    b.push_ptr(None);
+    b.push_ptr(Some(images));
+    b.push_ptr(None);
+    b.push_u16(2);
+    b.push_u16(0);
+    let material = b.push_ptr(None);
+    b.push_ptr(None);
+    b.push_ptr(Some(texture));
+    b.push_ptr(None);
+    let parsed = MaterialAnimation::read_chain(&b.archive(), Some(material)).unwrap();
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].textures[0].id, 3);
+    assert_eq!(parsed[0].textures[0].images, [Some(image), None]);
+    b.patch_link(material, material);
+    assert!(matches!(
+        MaterialAnimation::read_chain(&b.archive(), Some(material)),
+        Err(DescError::Cycle {
+            what: "HSD_MatAnim",
+            ..
+        })
+    ));
+}

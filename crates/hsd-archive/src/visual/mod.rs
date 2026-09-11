@@ -16,7 +16,7 @@ mod tev;
 mod texture;
 pub use polygon::{read_polygons, Influence, MatrixBinding, Polygon, Vertex};
 pub use tev::{TevOperation, TextureCombiner};
-pub use texture::{read_image, Texture, TextureDecoder, TextureLayer};
+pub use texture::{read_image, Texture, TextureDecoder, TextureDescriptor, TextureLayer};
 
 #[derive(Debug)]
 pub enum VisualError {

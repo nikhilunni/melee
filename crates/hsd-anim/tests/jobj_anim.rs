@@ -625,6 +625,7 @@ fn material_animation_runs_through_the_dobj_list_and_counts() {
     let mj = MatAnimJoint {
         matanim: vec![MatAnim {
             aobjdesc: Some(mat_desc.clone()),
+            textures: Vec::new(),
         }],
         children: vec![],
     };
@@ -710,4 +711,53 @@ fn ptcl_and_spline_joints_have_no_dobj_list() {
     let list = tree.dobj(plain).unwrap();
     assert_eq!(list.len(), 2);
     assert!(list[0].mobj.is_some(), "HSD_JObjAddDObj prepends");
+}
+
+#[test]
+fn texture_tracks_follow_map_ids_and_clones_own_their_continuation() {
+    use hsd_anim::tobj::{TObj, TexAnim};
+    use hsd_archive::visual::TextureDescriptor;
+    let descriptor = TextureDescriptor {
+        id: 3,
+        flags: 0,
+        repeat: [1; 2],
+        blending: 1.0,
+        nearest: false,
+        combiner: None,
+        wrap_s: 0,
+        wrap_t: 0,
+        scale: [1.0; 3],
+        translation: [0.0; 3],
+        rotation: [0.0; 3],
+        image: 100,
+        palette: None,
+    };
+    let mut material = MObj::load(0, Material::default(), None);
+    material.textures.push(TObj::load(descriptor));
+    material.add_anim(Some(&MatAnim {
+        aobjdesc: None,
+        textures: vec![TexAnim {
+            id: 3,
+            animation: Some(aobj_desc(
+                4.0,
+                0,
+                vec![lin_desc(2, 0.0, 4, 1.0), con_desc(1, &[(0.0, 2), (1.0, 2)])],
+            )),
+            images: vec![Some(200), Some(300)].into(),
+            palettes: Vec::new().into(),
+        }],
+    }));
+    material.req_anim(0.0);
+    material.anim(&mut AObjEndCallback::default());
+    assert_eq!(material.textures[0].descriptor.image, 200);
+    let mut cloned = material.clone();
+    for (frame, translation) in [(1, 0.25), (2, 0.5), (3, 0.75), (4, 1.0)] {
+        material.anim(&mut AObjEndCallback::default());
+        cloned.anim(&mut AObjEndCallback::default());
+        assert_eq!(material, cloned, "frame {frame}");
+        assert_eq!(material.textures[0].descriptor.translation[0], translation);
+    }
+    assert_eq!(material.textures[0].descriptor.image, 300);
+    cloned.textures[0].descriptor.translation[0] = 9.0;
+    assert_eq!(material.textures[0].descriptor.translation[0], 1.0);
 }

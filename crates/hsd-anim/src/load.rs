@@ -110,7 +110,7 @@ pub fn load_joint_tree(
     let mut first = None;
     let mut previous = None;
     for descriptor in root.siblings() {
-        let spec = joint_spec(descriptor)?;
+        let spec = joint_spec(archive, descriptor)?;
         let id = tree.load_joint(&spec);
         if let Some(previous) = previous {
             tree.get_mut(previous).next = Some(id);
@@ -132,7 +132,7 @@ pub fn load_joint_tree(
 }
 
 /// `JObjLoad` (`jobj.c:629-665`): build the owned inputs to the runtime loader.
-fn joint_spec(joint: &desc::JObjDesc) -> Result<JointSpec, LoadError> {
+fn joint_spec(archive: &Archive, joint: &desc::JObjDesc) -> Result<JointSpec, LoadError> {
     check_class(joint.class_name.as_deref(), "hsd_jobj", joint.offset)?;
     check_joint_flags(
         joint.flags
@@ -147,8 +147,11 @@ fn joint_spec(joint: &desc::JObjDesc) -> Result<JointSpec, LoadError> {
         return Err(unsupported(joint.offset, "RObj constraints"));
     }
     let mut spec = joint_transforms(joint);
-    spec.children = joint.children().map(joint_spec).collect::<Result<_, _>>()?;
-    spec.dobj = load_dobj_chain(joint.u.dobj())?;
+    spec.children = joint
+        .children()
+        .map(|child| joint_spec(archive, child))
+        .collect::<Result<_, _>>()?;
+    spec.dobj = load_dobj_chain(archive, joint.u.dobj())?;
     Ok(spec)
 }
 
@@ -174,7 +177,10 @@ fn vector(value: desc::Vec3) -> Vec3 {
 }
 
 /// `HSD_DObjLoadDesc` / `DObjLoad` (`dobj.c:178-230`): preserve chain order.
-fn load_dobj_chain(head: Option<&desc::DObjDesc>) -> Result<Vec<DObj>, LoadError> {
+fn load_dobj_chain(
+    archive: &Archive,
+    head: Option<&desc::DObjDesc>,
+) -> Result<Vec<DObj>, LoadError> {
     let Some(head) = head else {
         return Ok(Vec::new());
     };
@@ -185,14 +191,18 @@ fn load_dobj_chain(head: Option<&desc::DObjDesc>) -> Result<Vec<DObj>, LoadError
                 "hsd_dobj",
                 descriptor.offset,
             )?;
-            let material = descriptor.mobj.as_deref().map(load_material).transpose()?;
+            let material = descriptor
+                .mobj
+                .as_deref()
+                .map(|material| load_material(archive, material))
+                .transpose()?;
             Ok(DObj::load(material))
         })
         .collect()
 }
 
 /// `HSD_MObjLoadDesc` / `MObjLoad` (`mobj.c:152-193`): material copy and TOON bit.
-fn load_material(descriptor: &desc::MObjDesc) -> Result<MObj, LoadError> {
+fn load_material(archive: &Archive, descriptor: &desc::MObjDesc) -> Result<MObj, LoadError> {
     check_class(
         descriptor.class_name.as_deref(),
         "hsd_mobj",
@@ -209,7 +219,7 @@ fn load_material(descriptor: &desc::MObjDesc) -> Result<MObj, LoadError> {
     let material = descriptor.mat.ok_or(LoadError::MissingMaterial {
         descriptor_offset: descriptor.offset,
     })?;
-    Ok(MObj::load(
+    let mut result = MObj::load(
         descriptor.rendermode,
         Material {
             ambient: color(material.ambient),
@@ -219,7 +229,14 @@ fn load_material(descriptor: &desc::MObjDesc) -> Result<MObj, LoadError> {
             shininess: material.shininess,
         },
         None,
-    ))
+    );
+    result.textures =
+        hsd_archive::visual::TextureDescriptor::read_chain(archive, descriptor.texdesc)
+            .map_err(|_| unsupported(descriptor.offset, "texture descriptor"))?
+            .into_iter()
+            .map(crate::tobj::TObj::load)
+            .collect();
+    Ok(result)
 }
 
 /// `MObjLoad` (`mobj.c:157`): copy GXColor channels verbatim.
@@ -382,4 +399,54 @@ fn unsupported(descriptor_offset: u32, feature: &'static str) -> LoadError {
         descriptor_offset,
         feature,
     }
+}
+
+/// Convert HSD_MatAnimJoint payloads once, retaining immutable texture tables.
+/// The returned tree can be attached alongside joint animation through the
+/// existing JObj/DObj traversal; callers prepare replacements outside the tick.
+pub fn material_animation(
+    archive: &Archive,
+    joint: &desc::MatAnimJoint,
+) -> Result<crate::jobj::MatAnimJoint, LoadError> {
+    use crate::{mobj::MatAnim, tobj::TexAnim};
+    let records = desc::material_animation::MaterialAnimation::read_chain(archive, joint.matanim)?;
+    let matanim = records
+        .into_iter()
+        .map(|record| {
+            if record.render_animation.is_some() {
+                return Err(unsupported(joint.offset, "render animation"));
+            }
+            let textures = record
+                .textures
+                .into_iter()
+                .map(|texture| {
+                    Ok(TexAnim {
+                        id: texture.id,
+                        animation: texture
+                            .animation
+                            .as_ref()
+                            .map(animation_object)
+                            .transpose()?,
+                        images: texture.images.into(),
+                        palettes: texture.palettes.into(),
+                    })
+                })
+                .collect::<Result<_, LoadError>>()?;
+            Ok(MatAnim {
+                aobjdesc: record
+                    .animation
+                    .as_ref()
+                    .map(animation_object)
+                    .transpose()?,
+                textures,
+            })
+        })
+        .collect::<Result<_, LoadError>>()?;
+    Ok(crate::jobj::MatAnimJoint {
+        matanim,
+        children: joint
+            .children()
+            .map(|child| material_animation(archive, child))
+            .collect::<Result<_, _>>()?,
+    })
 }

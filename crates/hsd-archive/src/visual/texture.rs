@@ -47,9 +47,49 @@ impl<'a> TextureDecoder<'a> {
         self.images.insert(key, Arc::clone(&image));
         Ok(image)
     }
-    /// Decode a TObj chain, retaining texture transforms for presentation.
-    pub fn read_chain(&mut self, mut next: Option<u32>) -> Result<Vec<TextureLayer>> {
-        let archive = self.archive;
+    /// Decode TObj pixels through the same descriptor reader used by animation.
+    pub fn read_chain(&mut self, next: Option<u32>) -> Result<Vec<TextureLayer>> {
+        TextureDescriptor::read_chain(self.archive, next)?
+            .into_iter()
+            .map(|d| {
+                Ok(TextureLayer {
+                    flags: d.flags,
+                    repeat: d.repeat,
+                    blending: d.blending,
+                    nearest: d.nearest,
+                    combiner: d.combiner,
+                    wrap_s: d.wrap_s,
+                    wrap_t: d.wrap_t,
+                    rotation: d.rotation,
+                    scale: d.scale,
+                    translation: d.translation,
+                    image: self.image(d.image, d.palette)?,
+                })
+            })
+            .collect()
+    }
+}
+/// Immutable TObj descriptor without decoded pixels. Simulation and renderer
+/// share this reader while owning their mutable state separately.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextureDescriptor {
+    pub id: u32,
+
+    pub flags: u32,
+    pub repeat: [u8; 2],
+    pub blending: f32,
+    pub nearest: bool,
+    pub combiner: Option<super::TextureCombiner>,
+    pub wrap_s: u32,
+    pub wrap_t: u32,
+    pub scale: [f32; 3],
+    pub translation: [f32; 3],
+    pub rotation: [f32; 3],
+    pub image: u32,
+    pub palette: Option<u32>,
+}
+impl TextureDescriptor {
+    pub fn read_chain(archive: &Archive, mut next: Option<u32>) -> Result<Vec<Self>> {
         let r = Reader::new(archive.data());
         let mut seen = std::collections::BTreeSet::new();
         let mut result = Vec::new();
@@ -63,7 +103,8 @@ impl<'a> TextureDecoder<'a> {
             let image = archive
                 .link(offset + 76)?
                 .ok_or_else(|| invalid(offset, "missing texture image"))?;
-            result.push(TextureLayer {
+            result.push(Self {
+                id: r.u32(offset + 8)?,
                 flags: r.u32(offset + 64)?,
                 repeat: [r.u8(offset + 60)?, r.u8(offset + 61)?],
                 blending: r.f32(offset + 68)?,
@@ -77,7 +118,8 @@ impl<'a> TextureDecoder<'a> {
                 rotation: vec3(offset + 16)?,
                 scale: vec3(offset + 28)?,
                 translation: vec3(offset + 40)?,
-                image: self.image(image, archive.link(offset + 80)?)?,
+                image,
+                palette: archive.link(offset + 80)?,
             });
             next = archive.link(offset + 4)?;
         }

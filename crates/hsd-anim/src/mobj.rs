@@ -7,18 +7,16 @@
 //! `ReqAnim`/`RemoveAnim`/`AddAnim` flag plumbing and the two colour
 //! setters. Nothing here touches GX.
 //!
-//! What is *not* ported: `tobj` (textures, `HSD_TObj*`), `tevdesc`/`texp`
-//! (TEV compilation, `HSD_MObjCompileTev`), `HSD_MObjSetup`/`HSD_MObjUnset`
-//! and every other render-time routine, the class system and allocator,
-//! and the shadow/toon texture globals. `MatAnim` carries only the
-//! `aobjdesc`; `texanim` and `renderanim` are dropped with the TObj.
+//! Texture state and animation live in `tobj`; neither module decodes pixels
+//! or retains GPU resources. Render-time TEV compilation, class allocation and
+//! shadow/toon globals belong to presentation. RenderAnim remains unsupported.
 
 use crate::aobj::{AObj, AObjDesc, AObjEndCallback};
 
 /// `MOBJ_ANIM` (`mobj.h`): the `flags` bit that selects the material AObj
 /// in the `*ByFlags` functions.
 pub const MOBJ_ANIM: u32 = 0x4;
-/// `TOBJ_ANIM`: selects texture animations (not ported).
+/// `TOBJ_ANIM`: selects texture animations.
 pub const TOBJ_ANIM: u32 = 0x10;
 /// `ALL_ANIM`: every animation kind.
 pub const ALL_ANIM: u32 = 0x7FF;
@@ -137,17 +135,17 @@ pub struct PeDesc {
     pub alpha_comp1: u8,
 }
 
-/// `HSD_MatAnim` (`mobj.h`) reduced to its `aobjdesc`. `texanim` and
-/// `renderanim` go with the TObj/TEV port.
+/// Prepared material and texture animation descriptors.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MatAnim {
     pub aobjdesc: Option<AObjDesc>,
+    pub textures: Vec<crate::tobj::TexAnim>,
 }
 
-/// `HSD_MObj` (`mobj.h`) minus `parent` (class header), `tobj`, `tevdesc`
-/// and `texp`.
+/// `HSD_MObj` (`mobj.h`) without class headers or GPU expression objects.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MObj {
+    pub textures: Vec<crate::tobj::TObj>,
     /// `rendermode`: the `RENDER_*` bits.
     pub rendermode: u32,
     /// `mat`: the material colours. Always present after `MObjLoad`.
@@ -161,7 +159,7 @@ pub struct MObj {
 /// `(u8) (255.0 * val->fv)` as MWCC compiles it: the product is a double,
 /// `fctiwz` truncates it to a saturated `s32` (NaN to the most negative
 /// integer), and the byte store keeps the low eight bits.
-fn scale_to_u8(fv: f32) -> u8 {
+pub(crate) fn scale_to_u8(fv: f32) -> u8 {
     let d: f64 = 255.0 * f64::from(fv);
     let i: i32 = if d.is_nan() { i32::MIN } else { d as i32 };
     i as u8
@@ -206,6 +204,7 @@ impl MObj {
     /// optional `pedesc`, and starts with no animation.
     pub fn load(rendermode: u32, mat: Material, pe: Option<PeDesc>) -> MObj {
         MObj {
+            textures: Vec::new(),
             rendermode: rendermode | RENDER_TOON,
             mat,
             pe,
@@ -223,19 +222,26 @@ impl MObj {
         self.rendermode &= !flags;
     }
 
-    /// `HSD_MObjRemoveAnimByFlags` (`mobj.c:40`). `TOBJ_ANIM` has nothing
-    /// to remove here.
+    /// `HSD_MObjRemoveAnimByFlags` (`mobj.c:40`).
     pub fn remove_anim_by_flags(&mut self, flags: u32) {
+        if flags & TOBJ_ANIM != 0 {
+            for texture in &mut self.textures {
+                texture.animation = None;
+            }
+        }
         if flags & MOBJ_ANIM != 0 {
             self.aobj = None;
         }
     }
 
     /// `HSD_MObjAddAnim` (`mobj.c:55`): a `Some` matanim replaces the
-    /// current AObj (texture animations skipped); `None` leaves it alone.
+    /// current material and matching texture AObjs; `None` leaves it alone.
     pub fn add_anim(&mut self, matanim: Option<&MatAnim>) {
         if let Some(matanim) = matanim {
             self.aobj = matanim.aobjdesc.as_ref().map(AObj::load_desc);
+            for texture in &mut self.textures {
+                texture.add_anim(&matanim.textures);
+            }
         }
     }
 
@@ -244,6 +250,11 @@ impl MObj {
         if flags & MOBJ_ANIM != 0 {
             if let Some(aobj) = self.aobj.as_mut() {
                 aobj.req_anim(startframe);
+            }
+        }
+        if flags & TOBJ_ANIM != 0 {
+            for texture in &mut self.textures {
+                texture.req_anim(startframe);
             }
         }
     }
@@ -260,7 +271,7 @@ impl MObj {
 
     /// `HSD_MObjAnim` (`mobj.c:143`): one `HSD_AObjInterpretAnim` step
     /// through `MObjUpdateFunc`. `cb` is the shared end-callback counter
-    /// pass. `HSD_TObjAnimAll` is skipped.
+    /// pass, followed by `HSD_TObjAnimAll`.
     pub fn anim(&mut self, cb: &mut AObjEndCallback) {
         let MObj { mat, pe, aobj, .. } = self;
         if let Some(aobj) = aobj {
@@ -269,6 +280,9 @@ impl MObj {
                 &mut |ty, fv| material_update(mat, pe.as_deref_mut(), ty, fv),
                 cb,
             );
+        }
+        for texture in &mut self.textures {
+            texture.anim(cb);
         }
     }
 

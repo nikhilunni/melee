@@ -275,3 +275,22 @@ The existing laser-on-shield gameplay fault is a separate combat dependency.
 
 Phase commits: `a4487fe` native/shared rendering, `e78cd33` texture combiners,
 `5f709a1` particles/shields, `d58f669` animated directional lighting/normals.
+
+## Material animation foundation (2026-09-10)
+
+Typed MatAnim/TexAnim readers now preserve texture-map IDs and nullable image/
+palette tables. TObj descriptors are read once through shared archive logic:
+headless animation retains metadata, while presentation separately decodes pixels.
+`hsd-anim/src/tobj.rs` runs UV, image, palette, blend, LOD-bias and TEV constant
+tracks through the existing AObj/FObj interpreter; MObj/DObj owns their timing.
+The archive-to-runtime adapter converts material-animation trees before attachment.
+TObjUpdateFunc's retail assembly at 0x8035E860 has no fused instructions; color
+conversion reuses MObj's double-precision multiply and byte-store helper.
+
+Validation: hsd-anim and hsd-archive release suites; texture track/clone regression
+in debug and release; nullable-table/cycle reader regression; all six library
+allocation tests; both 6083/10059-tick full-match oracles; workspace clippy pass.
+This foundation does not yet attach stage material tracks or upload live GPU
+material values; that integration is the next phase of the same rendering task.
+Changed files are the new archive material-animation reader, shared texture
+metadata decoder, animation TObj/MObj and loader glue, focused tests and docs.
