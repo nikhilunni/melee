@@ -27,6 +27,7 @@ pub struct TextureLayer {
 }
 /// Archive-local decoding cache. Repeated material references share immutable
 /// images; each archive has its own identity space and cache. No global state.
+pub type DecodedImages = BTreeMap<(u32, Option<u32>), Arc<Texture>>;
 pub struct TextureDecoder<'a> {
     archive: &'a Archive,
     images: BTreeMap<(u32, Option<u32>), Arc<Texture>>,
@@ -37,6 +38,12 @@ impl<'a> TextureDecoder<'a> {
             archive,
             images: BTreeMap::new(),
         }
+    }
+    pub fn into_images(self) -> DecodedImages {
+        self.images
+    }
+    pub fn with_images(archive: &'a Archive, images: DecodedImages) -> Self {
+        Self { archive, images }
     }
     pub fn image(&mut self, offset: u32, palette: Option<u32>) -> Result<Arc<Texture>> {
         let key = (offset, palette);

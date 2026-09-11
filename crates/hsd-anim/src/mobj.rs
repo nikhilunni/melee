@@ -199,6 +199,17 @@ fn material_update(mat: &mut Material, pe: Option<&mut PeDesc>, ty: u8, fv: f32)
 }
 
 impl MObj {
+    /// Stop playback while retaining prepared track capacity for replacement.
+    pub fn clear_prepared_animation(&mut self) {
+        for clock in self.aobj.iter_mut().chain(
+            self.textures
+                .iter_mut()
+                .filter_map(|t| t.animation.as_mut()),
+        ) {
+            clock.flags |= crate::aobj::AOBJ_NO_ANIM;
+            clock.fobj.clear();
+        }
+    }
     /// `MObjLoad` (`mobj.c:152`) without the TObj and TEV steps: copies the
     /// desc's `rendermode` and material, ORs in `RENDER_TOON`, copies the
     /// optional `pedesc`, and starts with no animation.

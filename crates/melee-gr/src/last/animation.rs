@@ -15,6 +15,7 @@ pub struct BackgroundAnimation {
     pub(super) joints: Vec<JObjId>,
     requests: Vec<ParticleRequest>,
     pub(super) prepared: Vec<Vec<Option<hsd_anim::aobj::AObj>>>,
+    pub(super) prepared_materials: Vec<Vec<Vec<hsd_anim::material_playback::PreparedMaterial>>>,
     pub(super) subtree_ends: Vec<usize>,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
@@ -60,14 +61,18 @@ impl BackgroundAnimation {
         tree.walk_tree(root, &mut |joint, _| joints.push(joint));
         // At most one callback per loaded FObj in one animation evaluation.
         let requests = Vec::with_capacity(tree.events.capacity());
-        Ok(Self {
+        let mut result = Self {
             tree,
             root,
             joints,
             requests,
             prepared: Vec::new(),
+            prepared_materials: Vec::new(),
             subtree_ends: Vec::new(),
-        })
+        };
+        result.prepare_material_switches(archive, model)?;
+        result.play_materials(0, 0, result.joints.len());
+        Ok(result)
     }
     pub(super) fn reserve_events(&mut self, tracks: usize) {
         self.tree.reserve_animation_tracks(tracks);
@@ -87,6 +92,7 @@ impl BackgroundAnimation {
             &model.animations[index],
             model.animation_loops[index],
         )?;
+        self.play_materials(index, 0, self.joints.len());
         // Replacement frame-zero particle requests read the outgoing pose's
         // matrix cache. Materialize those targets before evaluating new SRTs;
         // unattached joints may have remained dirty throughout the old animation.
@@ -103,7 +109,14 @@ impl BackgroundAnimation {
     }
     pub fn clear_animation(&mut self) {
         for &joint in &self.joints {
-            self.tree.remove_anim(joint);
+            self.tree.remove_anim_by_flags(joint, 1);
+            if let Some(objects) = self.tree.dobj_mut(joint) {
+                for object in objects {
+                    if let Some(material) = &mut object.mobj {
+                        material.clear_prepared_animation();
+                    }
+                }
+            }
         }
     }
     /// grAnime_801C83D0: completion flag of the first joint AObj.
@@ -243,6 +256,7 @@ impl Clone for BackgroundAnimation {
                 .map(hsd_types::storage::clone_vec)
                 .collect(),
             subtree_ends: hsd_types::storage::clone_vec(&self.subtree_ends),
+            prepared_materials: self.prepared_materials.clone(),
         }
     }
 }

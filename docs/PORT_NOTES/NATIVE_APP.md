@@ -294,3 +294,21 @@ This foundation does not yet attach stage material tracks or upload live GPU
 material values; that integration is the next phase of the same rendering task.
 Changed files are the new archive material-animation reader, shared texture
 metadata decoder, animation TObj/MObj and loader glue, focused tests and docs.
+
+## Live material playback (2026-09-10)
+
+Stage models now attach prepared material and texture clocks, including the
+previously static platform models. Animation switches retain FObj capacity;
+clones preserve it. Presentation reads current colors, alpha references, UV
+transforms, TEV constants and selected images without changing the match.
+Possible images and palettes are decoded at construction and uploaded to stable
+portable 2D texture arrays. The shader addresses each filtering tap within the
+selected image's dimensions, so differently sized frames retain wrapping without
+sampling array padding. Material uniform uploads are skipped when unchanged.
+
+Validation: seven library allocation/continuation/capture tests, including both
+complete matches, pass. Both full-match fighter/item/ordered-particle oracles
+passed after stage clock integration. Workspace clippy passes. The 15 Metal shader fixtures and a real
+1280x720 Metal frame pass. Authored mip levels/LOD, stage overlay fade scripts,
+held weapons, model effects, specialized particles, shadows and precise camera/
+framebuffer behavior remain separate work.

@@ -358,3 +358,76 @@ fn light_animation_depends_on_match_tick_not_capture_frequency() {
     frequent.capture(&game).unwrap();
     assert_eq!(initial, frequent.directional_lights());
 }
+
+#[test]
+fn material_animation_uses_match_state_and_prepared_images() {
+    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    let config = MatchConfig::versus(
+        Stage::FinalDestination,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(42));
+    let assets = GameAssets::load(files, &config).unwrap();
+    let mut game = Match::new(&assets, config).unwrap();
+    let mut frequent = presentation::Presentation::new(&game).unwrap();
+    let mut sparse = presentation::Presentation::new(&game).unwrap();
+    let initial: Vec<_> = frequent.materials().to_vec();
+    let equal = |a: &presentation::Material, b: &presentation::Material| {
+        a.diffuse == b.diffuse
+            && a.ambient == b.ambient
+            && a.specular == b.specular
+            && a.textures.iter().zip(&b.textures).all(|(a, b)| {
+                a.scale == b.scale
+                    && a.translation == b.translation
+                    && a.rotation == b.rotation
+                    && a.blending == b.blending
+                    && a.combiner == b.combiner
+                    && a.image.rgba == b.image.rgba
+            })
+    };
+    let mut animated = false;
+    for tick in 0..600 {
+        game.step(&Inputs::default()).unwrap();
+        frequent.capture(&game).unwrap();
+        animated |= frequent
+            .materials()
+            .iter()
+            .zip(&initial)
+            .any(|(a, b)| !equal(a, b));
+        for material in frequent.materials() {
+            for (texture, bank) in material.textures.iter().zip(&material.texture_banks) {
+                assert!(bank
+                    .iter()
+                    .any(|image| std::sync::Arc::ptr_eq(image, &texture.image)));
+            }
+        }
+        if tick % 73 == 0 {
+            sparse.capture(&game).unwrap();
+            assert!(frequent
+                .materials()
+                .iter()
+                .zip(sparse.materials())
+                .all(|(a, b)| equal(a, b)));
+        }
+    }
+    assert!(animated, "stage materials must change during live playback");
+    let fresh = presentation::Presentation::new(&game).unwrap();
+    assert!(frequent
+        .materials()
+        .iter()
+        .zip(fresh.materials())
+        .all(|(a, b)| equal(a, b)));
+    game.reset(Seed(42)).unwrap();
+    frequent.capture(&game).unwrap();
+    assert!(frequent
+        .materials()
+        .iter()
+        .zip(&initial)
+        .all(|(a, b)| equal(a, b)));
+}

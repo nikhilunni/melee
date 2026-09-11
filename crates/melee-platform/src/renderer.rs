@@ -32,7 +32,7 @@ pub struct Renderer {
     instances: wgpu::Buffer,
     camera: wgpu::Buffer,
     scene: wgpu::BindGroup,
-    images: Vec<wgpu::BindGroup>,
+    images: Vec<(usize, material::GpuMaterial)>,
     draws: Vec<Draw>,
     depth: wgpu::TextureView,
     size: [u32; 2],
@@ -203,13 +203,21 @@ impl Renderer {
         let mut image_cache = material::Images::default();
         let mut cache = BTreeMap::new();
         let mut draws = Vec::new();
-        for mesh in scene.meshes() {
+        for (mesh_index, mesh) in scene.meshes().iter().enumerate() {
             let key = Arc::as_ptr(&mesh.material) as usize;
             let image = if let Some(&image) = cache.get(&key) {
                 image
             } else {
                 let image = images.len();
-                images.push(image_cache.bind(&device, &queue, &material_layout, &mesh.material)?);
+                images.push((
+                    mesh_index,
+                    image_cache.bind(
+                        &device,
+                        &queue,
+                        &material_layout,
+                        &scene.materials()[mesh_index],
+                    )?,
+                ));
                 cache.insert(key, image);
                 image
             };
@@ -266,6 +274,9 @@ impl Renderer {
         }
     }
     pub fn draw(&mut self, view: &wgpu::TextureView, scene: &Presentation) {
+        for (mesh, material) in &mut self.images {
+            material.update(&self.queue, &scene.materials()[*mesh]);
+        }
         self.queue.write_buffer(
             &self.lighting,
             0,
@@ -337,7 +348,7 @@ impl Renderer {
                     continue;
                 }
                 pass.set_pipeline(&self.pipelines[draw.pipeline]);
-                pass.set_bind_group(1, &self.images[draw.image], &[]);
+                pass.set_bind_group(1, &self.images[draw.image].1.bind, &[]);
                 pass.set_vertex_buffer(0, draw.vertices.slice(..));
                 pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(

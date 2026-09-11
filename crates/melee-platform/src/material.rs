@@ -7,7 +7,7 @@ use wgpu::util::DeviceExt;
 
 pub const MAX_LAYERS: usize = 8;
 #[repr(C)]
-#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, PartialEq, Default, bytemuck::Pod, bytemuck::Zeroable)]
 struct Layer {
     scale: [f32; 4],
     translation: [f32; 4],
@@ -19,9 +19,11 @@ struct Layer {
     alpha_inputs: [u32; 4],
     constants: [[f32; 4]; 3],
     active: [u32; 4],
+    image: [u32; 4],
+    addressing: [u32; 4],
 }
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniform {
     diffuse: [f32; 4],
     ambient: [f32; 4],
@@ -47,7 +49,7 @@ pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Texture {
                 sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                view_dimension: wgpu::TextureViewDimension::D2,
+                view_dimension: wgpu::TextureViewDimension::D2Array,
                 multisampled: false,
             },
             count: None,
@@ -66,7 +68,7 @@ pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 }
 #[derive(Default)]
 pub struct Images {
-    views: BTreeMap<usize, wgpu::TextureView>,
+    views: BTreeMap<Vec<usize>, wgpu::TextureView>,
     samplers: BTreeMap<(u32, u32, bool), wgpu::Sampler>,
 }
 impl Images {
@@ -76,101 +78,36 @@ impl Images {
         queue: &wgpu::Queue,
         layout: &wgpu::BindGroupLayout,
         material: &Material,
-    ) -> Result<wgpu::BindGroup, String> {
+    ) -> Result<GpuMaterial, String> {
         if material.textures.len() > MAX_LAYERS {
             return Err("material exceeds eight GX texture maps".into());
         }
-        let mut uniform = Uniform {
-            diffuse: material.diffuse,
-            ambient: [
-                material.ambient[0],
-                material.ambient[1],
-                material.ambient[2],
-                0.0,
-            ],
-            specular: [
-                material.specular[0],
-                material.specular[1],
-                material.specular[2],
-                material.shininess,
-            ],
-            config: [
-                material.render_mode,
-                material.textures.len() as u32,
-                u32::from(material.pixel.alpha_operation),
-                0,
-            ],
-            alpha: [
-                u32::from(material.pixel.alpha_compare[0]),
-                u32::from(material.pixel.alpha_reference[0]),
-                u32::from(material.pixel.alpha_compare[1]),
-                u32::from(material.pixel.alpha_reference[1]),
-            ],
-            layers: [Layer::default(); MAX_LAYERS],
-        };
-        let mut keys = [(0, (0, 0, false)); MAX_LAYERS];
-        let mut lightmaps = 0;
-        for (i, key) in keys.iter_mut().enumerate() {
+        let uniform = capture(material);
+        let mut keys = Vec::with_capacity(MAX_LAYERS);
+        for i in 0..MAX_LAYERS {
             let layer = material.textures.get(i);
-            let image = layer.map(|l| &l.image);
-            key.0 = image.map_or(0, |t| Arc::as_ptr(t) as usize);
-            key.1 = layer.map_or((0, 0, false), |t| (t.wrap_s, t.wrap_t, t.nearest));
-            if let Some(t) = layer {
-                let lightmap = t.flags & 0x1f0;
-                uniform.layers[i] = Layer {
-                    scale: [
-                        t.scale[0],
-                        t.scale[1],
-                        f32::from(t.repeat[0]),
-                        f32::from(t.repeat[1]),
-                    ],
-                    translation: [
-                        t.translation[0],
-                        t.translation[1],
-                        t.blending,
-                        if t.wrap_t == 2 { 1.0 } else { 0.0 },
-                    ],
-                    rotation: [t.rotation[0], t.rotation[1], t.rotation[2], 0.0],
-                    operations: [
-                        (t.flags >> 16) & 15,
-                        (t.flags >> 20) & 15,
-                        t.flags & 15,
-                        u32::from(lightmaps & lightmap == 0),
-                    ],
-                    ..Layer::default()
-                };
-                if let Some(tev) = t.combiner {
-                    let layer = &mut uniform.layers[i];
-                    let operation = |op: melee_lib::presentation::TextureCombiner, color: bool| {
-                        let op = if color { op.color } else { op.alpha };
-                        [
-                            u32::from(op.function),
-                            u32::from(op.bias),
-                            u32::from(op.scale),
-                            u32::from(op.clamp),
-                        ]
-                    };
-                    layer.color_operation = operation(tev, true);
-                    layer.alpha_operation = operation(tev, false);
-                    layer.color_inputs = tev.color.inputs.map(u32::from);
-                    layer.alpha_inputs = tev.alpha.inputs.map(u32::from);
-                    layer.constants = tev
-                        .constants
-                        .map(|color| color.map(|v| f32::from(v) / 255.0));
-                    layer.active[0] = tev.active;
-                }
-                lightmaps |= lightmap;
+            let bank = material
+                .texture_banks
+                .get(i)
+                .map(AsRef::as_ref)
+                .unwrap_or_else(|| layer.map_or(&[], |t| std::slice::from_ref(&t.image)));
+            let image_key: Vec<_> = bank
+                .iter()
+                .map(|image| Arc::as_ptr(image) as usize)
+                .collect();
+            let sampler_key = layer.map_or((0, 0, false), |t| (t.wrap_s, t.wrap_t, t.nearest));
+            if bank.len() > device.limits().max_texture_array_layers as usize {
+                return Err("animated texture exceeds device array layer limit".into());
             }
-            self.views.entry(key.0).or_insert_with(|| {
-                let (w, h, bytes) = image.map_or((1, 1, &[255u8; 4][..]), |t| {
-                    (u32::from(t.width), u32::from(t.height), t.rgba.as_slice())
-                });
+            self.views.entry(image_key.clone()).or_insert_with(|| {
+                let w = bank.iter().map(|t| u32::from(t.width)).max().unwrap_or(1);
+                let h = bank.iter().map(|t| u32::from(t.height)).max().unwrap_or(1);
                 let texture = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("Disc texture"),
+                    label: Some("Prepared animated texture"),
                     size: wgpu::Extent3d {
                         width: w,
                         height: h,
-                        depth_or_array_layers: 1,
+                        depth_or_array_layers: bank.len().max(1) as u32,
                     },
                     mip_level_count: 1,
                     sample_count: 1,
@@ -179,20 +116,35 @@ impl Images {
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
                 });
-                queue.write_texture(
-                    texture.as_image_copy(),
-                    bytes,
-                    wgpu::TexelCopyBufferLayout {
-                        offset: 0,
-                        bytes_per_row: Some(w * 4),
-                        rows_per_image: Some(h),
-                    },
-                    texture.size(),
-                );
-                texture.create_view(&Default::default())
+                for index in 0..bank.len().max(1) {
+                    let (width, height, bytes) =
+                        bank.get(index).map_or((1, 1, &[255u8; 4][..]), |t| {
+                            (u32::from(t.width), u32::from(t.height), t.rgba.as_slice())
+                        });
+                    let mut destination = texture.as_image_copy();
+                    destination.origin.z = index as u32;
+                    queue.write_texture(
+                        destination,
+                        bytes,
+                        wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(width * 4),
+                            rows_per_image: Some(height),
+                        },
+                        wgpu::Extent3d {
+                            width,
+                            height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                }
+                texture.create_view(&wgpu::TextureViewDescriptor {
+                    dimension: Some(wgpu::TextureViewDimension::D2Array),
+                    ..Default::default()
+                })
             });
-            let (s, t, nearest) = key.1;
-            self.samplers.entry(key.1).or_insert_with(|| {
+            let (s, t, nearest) = sampler_key;
+            self.samplers.entry(sampler_key).or_insert_with(|| {
                 device.create_sampler(&wgpu::SamplerDescriptor {
                     label: Some("Authored texture addressing"),
                     address_mode_u: address(s),
@@ -206,11 +158,12 @@ impl Images {
                     ..Default::default()
                 })
             });
+            keys.push((image_key, sampler_key));
         }
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Authored material"),
             contents: bytemuck::bytes_of(&uniform),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
@@ -226,11 +179,122 @@ impl Images {
                 resource: wgpu::BindingResource::Sampler(&self.samplers[sampler]),
             });
         }
-        Ok(device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Material"),
             layout,
             entries: &entries,
-        }))
+        });
+        Ok(GpuMaterial {
+            bind,
+            buffer,
+            uniform,
+        })
+    }
+}
+fn capture(material: &Material) -> Uniform {
+    let mut uniform = Uniform {
+        diffuse: material.diffuse,
+        ambient: [
+            material.ambient[0],
+            material.ambient[1],
+            material.ambient[2],
+            0.0,
+        ],
+        specular: [
+            material.specular[0],
+            material.specular[1],
+            material.specular[2],
+            material.shininess,
+        ],
+        config: [
+            material.render_mode,
+            material.textures.len() as u32,
+            u32::from(material.pixel.alpha_operation),
+            0,
+        ],
+        alpha: [
+            u32::from(material.pixel.alpha_compare[0]),
+            u32::from(material.pixel.alpha_reference[0]),
+            u32::from(material.pixel.alpha_compare[1]),
+            u32::from(material.pixel.alpha_reference[1]),
+        ],
+        layers: [Layer::default(); MAX_LAYERS],
+    };
+    let mut lightmaps = 0;
+    for i in 0..MAX_LAYERS {
+        let layer = material.textures.get(i);
+        if let Some(t) = layer {
+            let lightmap = t.flags & 0x1f0;
+            uniform.layers[i] = Layer {
+                scale: [
+                    t.scale[0],
+                    t.scale[1],
+                    f32::from(t.repeat[0]),
+                    f32::from(t.repeat[1]),
+                ],
+                translation: [
+                    t.translation[0],
+                    t.translation[1],
+                    t.blending,
+                    if t.wrap_t == 2 { 1.0 } else { 0.0 },
+                ],
+                rotation: [t.rotation[0], t.rotation[1], t.rotation[2], 0.0],
+                operations: [
+                    (t.flags >> 16) & 15,
+                    (t.flags >> 20) & 15,
+                    t.flags & 15,
+                    u32::from(lightmaps & lightmap == 0),
+                ],
+                ..Layer::default()
+            };
+            if let Some(tev) = t.combiner {
+                let layer = &mut uniform.layers[i];
+                let operation = |op: melee_lib::presentation::TextureCombiner, color: bool| {
+                    let op = if color { op.color } else { op.alpha };
+                    [
+                        u32::from(op.function),
+                        u32::from(op.bias),
+                        u32::from(op.scale),
+                        u32::from(op.clamp),
+                    ]
+                };
+                layer.color_operation = operation(tev, true);
+                layer.alpha_operation = operation(tev, false);
+                layer.color_inputs = tev.color.inputs.map(u32::from);
+                layer.alpha_inputs = tev.alpha.inputs.map(u32::from);
+                layer.constants = tev
+                    .constants
+                    .map(|color| color.map(|v| f32::from(v) / 255.0));
+                layer.active[0] = tev.active;
+            }
+            uniform.layers[i].image = [
+                material
+                    .texture_banks
+                    .get(i)
+                    .and_then(|bank| bank.iter().position(|image| Arc::ptr_eq(image, &t.image)))
+                    .unwrap_or(0) as u32,
+                u32::from(t.image.width),
+                u32::from(t.image.height),
+                0,
+            ];
+            uniform.layers[i].addressing = [t.wrap_s, t.wrap_t, u32::from(t.nearest), 0];
+            lightmaps |= lightmap;
+        }
+    }
+    uniform
+}
+pub struct GpuMaterial {
+    pub bind: wgpu::BindGroup,
+    buffer: wgpu::Buffer,
+    uniform: Uniform,
+}
+impl GpuMaterial {
+    pub fn update(&mut self, queue: &wgpu::Queue, material: &Material) {
+        let uniform = capture(material);
+        if uniform != self.uniform {
+            queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(&uniform));
+            self.uniform = uniform;
+        }
     }
 }
 fn address(value: u32) -> wgpu::AddressMode {
@@ -292,8 +356,8 @@ pub fn shader() -> String {
     let mut bindings = String::new();
     let mut samples = String::new();
     for i in 0..MAX_LAYERS {
-        bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
-        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSample(image{i},sampler{i},coordinates(in,layer)); color=combine(color,custom_texture(tex,layer),layer); }}\n"));
+        bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d_array<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
+        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=sample_image(image{i},coordinates(in,layer),layer); color=combine(color,custom_texture(tex,layer),layer); }}\n"));
     }
     include_str!("render.wgsl")
         .replace("// CUSTOM_COMBINERS", include_str!("tev.wgsl"))

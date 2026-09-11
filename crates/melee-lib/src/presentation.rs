@@ -2,6 +2,7 @@
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
 mod lighting;
+mod materials;
 mod sprites;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
 pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
@@ -39,7 +40,10 @@ pub struct Mesh {
 }
 /// Immutable authored material. Texture operations retain the HSD flags;
 /// renderers may support them incrementally without reparsing disc bytes.
+#[derive(Clone)]
 pub struct Material {
+    /// Image variants uploaded once; each texture selects an entry from its bank.
+    pub texture_banks: Vec<Arc<[Arc<Texture>]>>,
     pub ambient: [f32; 3],
     pub specular: [f32; 3],
     pub shininess: f32,
@@ -62,6 +66,7 @@ struct Model {
     pose: MatrixPose,
     source: ModelSource,
     instance_group: usize,
+    images: hsd_archive::visual::DecodedImages,
 }
 
 enum ModelSource {
@@ -88,6 +93,7 @@ pub struct Presentation {
     assets: Arc<crate::assets::Assets>,
     players: [PlayerConfig; 2],
     meshes: Vec<Mesh>,
+    materials: Vec<Material>,
     parts: Vec<Part>,
     models: Vec<Model>,
     matrices: Vec<[[f32; 4]; 4]>,
@@ -107,6 +113,7 @@ impl Presentation {
             assets: Arc::clone(&game.assets.inner),
             players: game.config.players.clone(),
             meshes: Vec::new(),
+            materials: Vec::new(),
             parts: Vec::new(),
             models: Vec::new(),
             matrices: Vec::new(),
@@ -170,6 +177,7 @@ impl Presentation {
             tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
             result.add_model(archive, &desc, &tree, ModelSource::Item(kind, tree.clone()))?;
         }
+        result.prepare_materials(game)?;
         result.capture(game)?;
         Ok(result)
     }
@@ -194,6 +202,10 @@ impl Presentation {
     }
     pub fn meshes(&self) -> &[Mesh] {
         &self.meshes
+    }
+    /// Current material values, indexed in the same order as meshes.
+    pub fn materials(&self) -> &[Material] {
+        &self.materials
     }
     pub fn instances(&self) -> &[[[f32; 4]; 4]] {
         &self.instances
@@ -225,6 +237,7 @@ impl Presentation {
             *target = (fighter.player.stocks > 0)
                 .then_some([fighter.physics.position.x, fighter.physics.position.y]);
         }
+        self.capture_materials(game)?;
         self.sprites.capture(game)?;
         self.lighting.capture(game.tick());
         for model in &mut self.models {
@@ -353,9 +366,12 @@ impl Presentation {
             pose: MatrixPose::new(tree),
             source,
             instance_group,
+            images: BTreeMap::new(),
         });
         let mut decoder = TextureDecoder::new(archive);
-        self.add_joints(index, archive, desc, &ids, &mut decoder)
+        self.add_joints(index, archive, desc, &ids, &mut decoder)?;
+        self.models[index].images = decoder.into_images();
+        Ok(())
     }
     fn add_joints(
         &mut self,
@@ -372,6 +388,7 @@ impl Presentation {
         let mut display = 0;
         while let Some(dobj) = next {
             let mut material = Material {
+                texture_banks: Vec::new(),
                 ambient: [1.0; 3],
                 specular: [0.0; 3],
                 shininess: 0.0,

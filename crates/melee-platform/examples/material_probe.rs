@@ -38,6 +38,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     var reflected=scaled;reflected[0].x=-2.0;
     checks[11]=vec4(normal_transform(reflected,vec3(1.0,0.0,0.0)),1.0);
     checks[12]=vec4(specular_weight(vec3(0.0,0.0,1.0),vec3(0.0,0.0,1.0),16.0),specular_weight(vec3(0.0,0.0,1.0),vec3(0.0,0.0,-1.0),16.0),0.0,1.0);
+    checks[13]=vec4<f32>(f32(address_texel(-1,4,0u)),f32(address_texel(4,4,0u)),f32(address_texel(-1,4,1u)),f32(address_texel(4,4,1u)));
+    checks[14]=vec4<f32>(f32(address_texel(-1,4,2u)),f32(address_texel(4,4,2u)),f32(address_texel(8,4,2u)),f32(address_texel(-5,4,2u)));
 }
 "#;
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -54,13 +56,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     let output = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("GPU results"),
-        size: 208,
+        size: 240,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
     let readback = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Readback"),
-        size: 208,
+        size: 240,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -79,7 +81,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         pass.set_bind_group(0, &group, &[]);
         pass.dispatch_workgroups(1, 1, 1);
     }
-    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 208);
+    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 240);
     queue.submit([encoder.finish()]);
     let (tx, rx) = std::sync::mpsc::channel();
     readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -103,6 +105,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         [0.4472136, 0.8944272, 0.0, 1.0],
         [-1.0, 0.0, 0.0, 1.0],
         [1.0, 0.0, 0.0, 1.0],
+        [0.0, 3.0, 3.0, 0.0],
+        [0.0, 3.0, 0.0, 3.0],
     ];
     for (i, (actual, expected)) in actual.iter().zip(expected).enumerate() {
         for channel in 0..4 {
@@ -115,7 +119,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!(
-        "13 material/lighting GPU fixtures passed on {:?}",
+        "15 material/lighting/addressing GPU fixtures passed on {:?}",
         adapter.get_info().backend
     );
     Ok(())

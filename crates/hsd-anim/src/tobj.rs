@@ -20,6 +20,10 @@ pub struct TObj {
     palettes: Arc<[Option<u32>]>,
 }
 impl TObj {
+    pub(crate) fn set_tables(&mut self, images: Arc<[Option<u32>]>, palettes: Arc<[Option<u32>]>) {
+        self.images = images;
+        self.palettes = palettes;
+    }
     pub fn load(descriptor: TextureDescriptor) -> Self {
         Self {
             descriptor,

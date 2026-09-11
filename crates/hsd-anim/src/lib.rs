@@ -9,6 +9,7 @@ pub mod dobj;
 pub mod fobj;
 pub mod jobj;
 pub mod load;
+pub mod material_playback;
 pub mod mobj;
 pub mod mtx;
 pub mod quat;

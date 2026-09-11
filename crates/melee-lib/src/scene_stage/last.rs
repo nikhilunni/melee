@@ -13,14 +13,14 @@ use std::collections::BTreeMap;
 /// grLast_8021B920 case 1: base subtrees keep their own animation clocks.
 pub(crate) fn load_animations(assets: &Assets) -> Result<BTreeMap<u8, BackgroundAnimation>> {
     let mut result = BTreeMap::new();
-    for map in 3..9 {
+    for map in 0..assets.stage_desc.models.len() {
         let model = &assets.stage_desc.models[map];
         let mut animation = BackgroundAnimation::load_model(&assets.stage, model)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        if map >= 4 {
-            animation
-                .prepare_switches(&assets.stage, model)
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        animation
+            .prepare_switches(&assets.stage, model)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        if (4..9).contains(&map) {
             animation.clear_animation();
             const BASE_ANIMATIONS: [usize; 5] = [0, 4, 6, 8, 10];
             animation.play_prepared(2, BASE_ANIMATIONS[map - 4], true);

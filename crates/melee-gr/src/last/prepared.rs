@@ -59,9 +59,10 @@ impl BackgroundAnimation {
             bone + 1
         };
         for slot in bone..end {
+            self.play_materials(index, slot, slot + 1);
             let joint = self.joints[slot];
             let Some(source) = &self.prepared[index][slot] else {
-                self.tree.remove_anim(joint);
+                self.tree.remove_anim_by_flags(joint, 1);
                 continue;
             };
             let mut tracks = self.tree.take_animation_tracks(joint);
@@ -136,5 +137,82 @@ impl BackgroundAnimation {
                 .anim::<T>(joint, &mut hsd_anim::aobj::AObjEndCallback::default());
         }
         self.tree.events.clear();
+    }
+}
+
+impl BackgroundAnimation {
+    /// Prepared programs for one display object, across all stage phases.
+    pub fn material_programs(
+        &self,
+        joint: JObjId,
+        display: usize,
+    ) -> impl Iterator<Item = &hsd_anim::material_playback::PreparedMaterial> {
+        let slot = self.joints.iter().position(|&id| id == joint);
+        self.prepared_materials.iter().filter_map(move |programs| {
+            programs
+                .get(slot?)
+                .and_then(|materials| materials.get(display))
+        })
+    }
+    pub(super) fn prepare_material_switches(
+        &mut self,
+        archive: &Archive,
+        model: &crate::desc::ModelDesc,
+    ) -> crate::desc::ReadResult<()> {
+        for (index, &offset) in model.material_animation_offsets.iter().enumerate() {
+            let desc = hsd_archive::desc::MatAnimJoint::read(archive, offset)?;
+            let animation = hsd_anim::load::material_animation(archive, &desc)?;
+            let mut programs = Vec::with_capacity(self.joints.len());
+            collect_materials(&self.tree, self.root, Some(&animation), &mut programs);
+            assert_eq!(programs.len(), self.joints.len());
+            for (slot, materials) in programs.iter_mut().enumerate() {
+                if let Some(objects) = self.tree.dobj_mut(self.joints[slot]) {
+                    for (object, program) in objects.iter_mut().zip(materials) {
+                        if let Some(material) = &mut object.mobj {
+                            program.set_loop(model.animation_loops.get(index) == Some(&true));
+                            program.reserve(material);
+                        }
+                    }
+                }
+            }
+            self.prepared_materials.push(programs);
+        }
+        Ok(())
+    }
+    pub(super) fn play_materials(&mut self, index: usize, start: usize, end: usize) {
+        let Some(programs) = self.prepared_materials.get(index) else {
+            return;
+        };
+        for (slot, materials) in programs.iter().enumerate().take(end).skip(start) {
+            if let Some(objects) = self.tree.dobj_mut(self.joints[slot]) {
+                for (object, program) in objects.iter_mut().zip(materials) {
+                    if let Some(material) = &mut object.mobj {
+                        program.apply(material, 0.0);
+                    }
+                }
+            }
+        }
+    }
+}
+fn collect_materials(
+    tree: &hsd_anim::jobj::JObjTree,
+    joint: JObjId,
+    animation: Option<&hsd_anim::jobj::MatAnimJoint>,
+    output: &mut Vec<Vec<hsd_anim::material_playback::PreparedMaterial>>,
+) {
+    use hsd_anim::material_playback::PreparedMaterial;
+    output.push(animation.map_or_else(Vec::new, |a| {
+        a.matanim.iter().map(PreparedMaterial::new).collect()
+    }));
+    let mut child = tree.get(joint).child;
+    let mut animations = animation.map(|a| a.children.iter());
+    while let Some(id) = child {
+        collect_materials(
+            tree,
+            id,
+            animations.as_mut().and_then(Iterator::next),
+            output,
+        );
+        child = tree.get(id).next;
     }
 }

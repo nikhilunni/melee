@@ -5,7 +5,7 @@ struct Camera { extent: vec4<f32> }
 @group(0) @binding(0) var<storage, read> poses: array<mat4x4<f32>>;
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
-struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32> }
+struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32>, image:vec4<u32>, addressing:vec4<u32> }
 struct Material { diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
 struct DirectionalLight { direction:vec4<f32>, color:vec4<f32> }
@@ -29,6 +29,26 @@ fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32
     let half_shininess=shininess*0.5;
     // HSD_LObjSetup uses GX's rational specular attenuation, not a pow lobe.
     return squared/max(half_shininess+(1.0-half_shininess)*squared,0.000001);
+}
+// Address each tap within the selected image, even when array layers have
+// different sizes. Padding never leaks into repeat, mirror or linear filtering.
+fn address_texel(value:i32, size:i32, mode:u32)->i32 {
+    if mode==0u { return clamp(value,0,size-1); }
+    let period=select(size,size*2,mode==2u);
+    let wrapped=((value%period)+period)%period;
+    return select(wrapped,period-1-wrapped,wrapped>=size);
+}
+fn image_texel(image:texture_2d_array<f32>, p:vec2<i32>, layer:Layer)->vec4<f32> {
+    let at=vec2(address_texel(p.x,i32(layer.image.y),layer.addressing.x),
+                address_texel(p.y,i32(layer.image.z),layer.addressing.y));
+    return textureLoad(image,at,i32(layer.image.x),0);
+}
+fn sample_image(image:texture_2d_array<f32>, uv:vec2<f32>, layer:Layer)->vec4<f32> {
+    let position=uv*vec2<f32>(layer.image.yz);
+    if layer.addressing.z!=0u { return image_texel(image,vec2<i32>(floor(position)),layer); }
+    let pixel=position-vec2(0.5); let base=vec2<i32>(floor(pixel)); let fraction=fract(pixel);
+    return mix(mix(image_texel(image,base,layer),image_texel(image,base+vec2(1,0),layer),fraction.x),
+               mix(image_texel(image,base+vec2(0,1),layer),image_texel(image,base+vec2(1,1),layer),fraction.x),fraction.y);
 }
 // TEXTURE_BINDINGS
 struct Out {

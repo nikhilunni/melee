@@ -839,6 +839,11 @@ impl JObjTree {
             None
         }
     }
+    /// Mutable display objects for subsystem-owned material animation setup.
+    pub fn dobj_mut(&mut self, id: JObjId) -> Option<&mut [DObj]> {
+        let node = &mut self.nodes[id.0];
+        node.union_type_dobj().then_some(node.dobj.as_mut_slice())
+    }
 
     /// `HSD_JObjAddDObj` (`jobj.c:939`): prepend to the list; ignored for
     /// ptcl / spline joints.
