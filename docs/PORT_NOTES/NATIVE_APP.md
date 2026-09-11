@@ -68,48 +68,38 @@ pixels without a global cache. Each frame uploads the matrix palettes and draws
 visible geometry with GPU skinning. Presentation capture allocates nothing and
 is tested not to mutate simulation snapshots.
 
-## Current visual limits
+## Current rendering scope (2026-09-11)
 
-This is a playable visual prototype, not a pixel-exact renderer. It now draws
-original fighter and laser meshes, plus live stage joint animation and visibility.
-Common HSD color/alpha texture operations support up to eight layers, authored
-wrapping/filtering and texture SRT. Materials choose depth writes, comparisons,
-blend factors, color masks and alpha tests. Backgrounds composite before world
-geometry; translucent world meshes sort by palette origin with authored index
-as a deterministic tie-breaker. This is coarse mesh sorting, not correct ordering
-for every intersecting transparent triangle or instance.
+The Fox/Marth/Final Destination application now draws original skinned fighters,
+held weapons with opening/recoil animation, projectiles, both Illusion afterimages,
+live model effects, particle sprites/trails/points, shield volumes and planar
+fighter shadows. All 17 FD background phases run through shared stage state.
+Authored joint/material/texture animation, prepared image variants and mip chains,
+texture combiners, alpha/depth/blend state, directional lighting, perspective and
+4x MSAA are implemented in the shared Rust path. Swift remains the native window,
+input, scheduling and text HUD adapter. No renderer or animation clock is duplicated
+in the shell, and headless consumers do not initialize GPU resources.
 
-Camera framing fits living fighters with margins and adapts to aspect ratio. It
-is application policy, not the retail camera: it currently has no smoothing,
-perspective or stage-specific limits. Camera queries do not advance any clock.
+This completes the planned first-app rendering features, not retail pixel equivalence. Remaining fidelity limits are explicit:
 
-Authored directional lighting and particle/shield rendering are now implemented
-(see the verified phases below). Material/texture animation, mipmaps,
-destination-alpha behavior, and precise GX blend/color rounding remain unfinished. Reflection/highlight coordinates use an approximate normal mapping;
-other generated coordinate modes still fall back to UVs. In particular, laser
-glow and several FD surfaces do not yet look like retail. Logic blend modes and
-materials exceeding eight textures fail explicitly.
+- Camera fitting is application policy, without the retail tracking/screen-KO
+  camera behavior. Planar silhouette shadows are application presentation rather
+  than a port of the retail shadow-map filter.
+- Transparent meshes use coarse origin sorting; intersecting triangles and model
+  effect priorities are not covered by a GX framebuffer oracle.
+- Exact GX color/alpha rounding, destination-alpha behavior, bias-clamp/edge-LOD,
+  complete generated texture coordinates and toon/lightmap ordering remain
+  unverified or approximate. AppSRT camera handling is not a full retail port.
+- The current assets have no active shape-deformation tracks. Unsupported shape
+  animation, unsupported light types and logic blending fail explicitly.
+- A laser hitting a shield still reaches the separately tracked unimplemented
+  gameplay response. This is not hidden or fixed by presentation.
+- Audio and retail menu/HUD artwork are outside this rendering milestone.
 
-Held blasters need hand attachments and opening/recoil animation, so they remain
-hidden. Particle sprites now cover dust, sparks and textured emissions; shields
-use procedural surfaces. Afterimage/model effects, specialized particle geometry,
-shadows, and audio remain future work. All existing simulation work and
-RNG still run. Laser geometry uploads once per kind; live instances use prepared
-capacity and ItemCore's position/rotation/scale. Article archives share existing
-immutable character data instead of rereading or duplicating it.
-
-The generic decoder rejects unsupported shape-animation polygon modes and GX
-primitives explicitly. It supports triangle lists, strips, fans and quads;
-indexed/direct positions, normals, colors and UVs; rigid/shared/envelope matrix
-bindings; and base-level I4/I8/IA4/IA8/RGB565/RGB5A3/RGBA8/CI/CMPR textures.
-Texture decoding has synthetic layout/color tests; it is not yet covered by a
-retail framebuffer pixel oracle.
-
-The C ABI is the initial application adapter, not yet a versioned public SDK.
-Calls for a handle must be serialized; the CAMetalLayer outlives the handle.
-Swift owns the window/layer, and releases Rust rendering resources before the
-layer is destroyed. Only macOS has a native shell and has been built/tested;
-other platforms can use the shared Rust session/renderer with their own surface.
+The C ABI remains an initial application adapter, not a versioned public SDK.
+Calls for a handle must be serialized; its CAMetalLayer must outlive it. Only the
+macOS shell has been built and tested. Other native shells can reuse the same
+session and renderer with their own surface.
 
 ## Verification
 
@@ -262,19 +252,13 @@ platform tests, 13 Metal numeric fixtures, workspace clippy, native bundle build
 and resize/focus/pause/keyboard smoke pass. Final Metal preview inspected at tick
 260. Full workspace simulation gates were not rerun for this display-only phase.
 
-## Next dependency boundary
+## Resolved dependency boundary
 
-Material fades cannot be implemented only in the renderer: the current FD stage
-adapter (`melee-lib/src/scene_stage/last.rs`) rejects `StageAction::MaterialFade`,
-and its `AnimationStatus` leaves material completion at defaults. Stage model
-loading attaches joint tracks but not MatAnimJoint tracks. Complete support needs
-shared material/texture animation state, stage fade interpretation and completion
-feedback, continuation/clone coverage, then presentation reads of that state.
-This work has not been implemented or claimed verified by the rendering phases.
-The existing laser-on-shield gameplay fault is a separate combat dependency.
-
-Phase commits: `a4487fe` native/shared rendering, `e78cd33` texture combiners,
-`5f709a1` particles/shields, `d58f669` animated directional lighting/normals.
+The original stage fade/material-animation and model-effect dependencies were
+subsequently implemented in shared subsystem state, with exact match oracles and
+allocation checks. The phases below record that work chronologically; their
+"remaining" lists describe the state at that phase, not the current milestone.
+The laser-on-shield gameplay response remains a separate dependency.
 
 ## Material animation foundation (2026-09-10)
 
@@ -356,3 +340,24 @@ Opening stars, the shield and late vortex were inspected in Metal frames. Full
 workspace simulation tests were not rerun for this display-only phase. Exact
 retail camera tracking, GX pixel quantization, authored mip/LOD filtering and
 remaining item/effect/shadow rendering are still outstanding.
+
+## Final particle and shadow phases (2026-09-11)
+
+Particles use authored orientation, ribbon trails, point/line framebuffer sizing,
+alpha-test references and depth-write modes. Tornado trail reconstruction follows
+the audited retail fused operations. Color and alpha-reference interpolation share
+one fixed-point helper; presentation does not advance either track.
+
+Planar shadows reuse fighter and held-article vertex/index buffers and current
+skinning matrices. Read-only capture selects live floor segments beneath fighters,
+including disabled/offstage rejection. A shared depth/stencil attachment restricts
+shadow coverage to visible foreground stage pixels and blends each covered pixel
+once, even where caster triangles overlap. The shadow and material passes share
+one vertex layout; there is no shadow mesh copy or shadow animation clock.
+
+Particle suite and workspace clippy pass. All eight allocation checks pass,
+including both complete-match captures and the 27,000-tick stage cycle. Library
+API and platform tests pass; the floor regression covers running off the ledge.
+A Metal shadow-on/off comparison changes 230 pixels beneath the two fighters at
+tick 240, bounded by x338..924/y410..417. This is a visibility check, not a retail
+shadow oracle. Native and final GPU checks are recorded in TRACKER.md.

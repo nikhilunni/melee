@@ -42,6 +42,8 @@ task lines you touched and add one line to the session log.
 
 - [x] Specialized particle geometry (2026-09-11): velocity-oriented sprites, ribbon trails, framebuffer-sized points/lines, authored alpha comparisons and texture-edge depth writes. Tornado trails reconstruct the previous cylindrical point with audited retail FMA ordering. Shared fixed-point color/alpha interpolation avoids duplicate arithmetic; capture remains read-only. Particle suite, eight allocation checks, workspace clippy and Metal Illusion preview pass. Shadows remain.
 
+- [x] Planar shadows and final rendering integration (2026-09-11): fighter/held-article shadows reuse skinned geometry and live floor segments. Shared depth/stencil restricts coverage to stage pixels and prevents repeated darkening; no copied meshes or simulation clocks. Eleven library API tests, six platform tests, eight allocation tests, workspace clippy, native build/resize/focus/pause/keyboard smoke, 18 numeric Metal fixtures, shield/laser/Illusion and tick-5000 background renders pass. Shadow-on/off comparison confirms floor coverage; offstage floor regression passes. All planned first-app rendering features are implemented. Retail pixel equivalence, exact camera tracking, GX rounding/generated-coordinate/LOD quirks and retail soft-shadow filtering remain fidelity work; see `docs/PORT_NOTES/NATIVE_APP.md`. The separately tracked laser-shield gameplay fault remains.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
@@ -496,3 +498,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-10: C8 running; 47 combat scenes recorded for S1/S2/S3 (specials, ground attacks, aerials, L-cancels); scenario files committed, traces mirrored.
 
 - 2026-09-10 (melee-lib extraction): reusable public library and oracle adapters verified in debug/release (1,144/0 each), three allocation tests and both examples pass; lifecycle and many-match memory measured. Timing and duplicate gates pass; binary size deferred by explicit user instruction. No commit or game-data/decomp changes. Next: melee-platform session/presentation/C ABI and Swift macOS window using wgpu.
+
+- 2026-09-11 (rendering integration): completed and committed shared material/background animation, perspective/MSAA, held weapons, model effects, mip filtering, two Illusion afterimages, specialized particles and planar shadows. Final native and Metal checks pass; focused tests and allocation gates pass; workspace clippy clean. No game data or decomp modifications.

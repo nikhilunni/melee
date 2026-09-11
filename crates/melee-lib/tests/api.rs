@@ -386,3 +386,45 @@ fn terminal_step_returns_ok_then_rejects_further_steps() {
     let mut clone = game.clone();
     assert_eq!(clone.step(&Inputs::default()), Err(StepError::Finished));
 }
+
+#[test]
+fn shadow_floors_follow_live_fighters_without_mutating_the_match() {
+    let Some(assets) = assets() else {
+        return;
+    };
+    let mut game = Match::new(assets, config()).unwrap();
+    let mut view = presentation::Presentation::new(&game).unwrap();
+    for _ in 0..240 {
+        game.step(&Inputs::default()).unwrap();
+    }
+    view.capture(&game).unwrap();
+    let before = game.clone();
+    for floor in view.shadow_floors() {
+        assert!(floor[0] < floor[2]);
+        assert_eq!(floor[1], 0.0);
+        assert_eq!(floor[3], 0.0);
+    }
+    assert!(view.meshes().iter().any(|mesh| mesh.shadow_receiver));
+    for slot in 0..2 {
+        assert!(view
+            .meshes()
+            .iter()
+            .any(|mesh| mesh.shadow_owner == Some(slot)));
+    }
+    for _ in 0..10 {
+        view.capture(&game).unwrap();
+    }
+    assert_eq!(
+        diagnostics::inspect(&game).unwrap(),
+        diagnostics::inspect(&before).unwrap()
+    );
+    let mut inputs = Inputs::default();
+    inputs[Port::P1].stick.x = -1.0;
+    for _ in 0..90 {
+        game.step(&inputs).unwrap();
+    }
+    view.capture(&game).unwrap();
+    // Running beyond the ledge must not project a shadow onto an infinite plane.
+    assert!(view.shadow_floors()[0][0] > view.shadow_floors()[0][2]);
+    assert!(view.shadow_floors()[1][0] < view.shadow_floors()[1][2]);
+}

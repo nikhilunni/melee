@@ -169,7 +169,7 @@ impl Sprites {
                     },
                     primitive: Default::default(),
                     depth_stencil: Some(wgpu::DepthStencilState {
-                        format: wgpu::TextureFormat::Depth32Float,
+                        format: crate::renderer::DEPTH_FORMAT,
                         depth_write_enabled: Some(mode & 4 != 0),
                         depth_compare: Some(if mode & 2 != 0 {
                             wgpu::CompareFunction::Always

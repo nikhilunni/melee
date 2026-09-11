@@ -7,6 +7,7 @@ mod lighting;
 pub use effects::EffectDraw;
 use melee_it::ItemDispatch;
 mod materials;
+mod shadows;
 mod sprites;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
 pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
@@ -39,6 +40,10 @@ pub enum FaceCulling {
     Both,
 }
 pub struct Mesh {
+    /// Fighter slot whose geometry casts a planar floor shadow.
+    pub shadow_owner: Option<usize>,
+    /// Foreground stage geometry may receive floor shadows.
+    pub shadow_receiver: bool,
     pub culling: FaceCulling,
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -114,6 +119,7 @@ impl ModelSource {
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
 pub struct Presentation {
+    shadow_floors: [[f32; 4]; 2],
     effects: effects::Effects,
     background_color: [u8; 3],
     lighting: lighting::Lighting,
@@ -136,6 +142,7 @@ impl Presentation {
             return Err(error("faulted match"));
         }
         let mut result = Self {
+            shadow_floors: shadows::floors(game),
             effects: effects::Effects::default(),
             background_color: game.assets.inner.stage_desc.initial_fog,
             lighting: lighting::Lighting::new(game)?,
@@ -258,6 +265,11 @@ impl Presentation {
     pub fn background_color(&self) -> [u8; 3] {
         self.background_color
     }
+    /// Live floor segments [left x, left y, right x, right y], one per fighter.
+    /// A reversed x interval denotes no floor beneath that fighter.
+    pub fn shadow_floors(&self) -> &[[f32; 4]; 2] {
+        &self.shadow_floors
+    }
     pub fn camera_targets(&self) -> &[Option<[f32; 2]>; 2] {
         &self.camera_targets
     }
@@ -318,6 +330,7 @@ impl Presentation {
             self.background_color = stage.ground.fog;
         }
 
+        self.shadow_floors = shadows::floors(game);
         self.sprites.capture(game)?;
         self.lighting.capture(game.tick());
         for index in 0..self.models.len() {
@@ -575,6 +588,21 @@ impl Presentation {
                     _ => FaceCulling::None,
                 };
                 self.meshes.push(Mesh {
+                    shadow_owner: match &self.models[model].source {
+                        ModelSource::Fighter(slot) => Some(*slot),
+                        ModelSource::Article(article)
+                            if crate::scene_items::SceneItems::logic(article.kind)
+                                .held_part
+                                .is_some() =>
+                        {
+                            Some(article.owner)
+                        }
+                        _ => None,
+                    },
+                    shadow_receiver: matches!(
+                        self.models[model].source,
+                        ModelSource::Stage(0..=3) | ModelSource::Static(0..=3, _)
+                    ),
                     culling,
                     vertices,
                     indices,

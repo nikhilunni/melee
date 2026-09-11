@@ -4,6 +4,7 @@ use crate::{camera::Camera, material};
 use melee_lib::presentation::Presentation;
 use std::{collections::BTreeMap, sync::Arc};
 use wgpu::util::DeviceExt;
+pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24PlusStencil8;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -22,6 +23,8 @@ struct Draw {
     pipeline: usize,
 }
 pub struct Renderer {
+    shadows: wgpu::RenderPipeline,
+    floors: wgpu::Buffer,
     lighting: wgpu::Buffer,
     sprites: crate::sprites::Sprites,
     pub device: wgpu::Device,
@@ -48,14 +51,12 @@ impl Renderer {
         scene: &Presentation,
         size: [u32; 2],
     ) -> Result<Self, String> {
-        let samples = if [format, wgpu::TextureFormat::Depth32Float]
-            .into_iter()
-            .all(|format| {
-                adapter
-                    .get_texture_format_features(format)
-                    .flags
-                    .sample_count_supported(4)
-            }) {
+        let samples = if [format, DEPTH_FORMAT].into_iter().all(|format| {
+            adapter
+                .get_texture_format_features(format)
+                .flags
+                .sample_count_supported(4)
+        }) {
             4
         } else {
             1
@@ -115,6 +116,16 @@ impl Renderer {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -126,57 +137,62 @@ impl Renderer {
         let mut pipeline_ids = BTreeMap::new();
         for mesh in scene.meshes() {
             let pixel = pixel_state(mesh);
-            if pipeline_ids.contains_key(&(pixel, mesh.culling)) {
+            if pipeline_ids.contains_key(&(pixel, mesh.culling, mesh.shadow_receiver)) {
                 continue;
             }
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Melee textured geometry"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vertex"),
-                compilation_options: Default::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: 52,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![
-                        0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Uint32, 4 => Float32x3
-                    ],
-                })],
-            },
-            primitive: wgpu::PrimitiveState {
-                // GXSetCullMode swaps the hardware face encoding. Preserve the
-                // authored GX winding under the wgpu viewport convention.
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: match mesh.culling {
-                    melee_lib::presentation::FaceCulling::Front => Some(wgpu::Face::Front),
-                    melee_lib::presentation::FaceCulling::Back => Some(wgpu::Face::Back),
-                    _ => None,
+                label: Some("Melee textured geometry"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vertex"),
+                    compilation_options: Default::default(),
+                    buffers: &[Some(vertex_layout())],
                 },
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: Some(pixel.depth_write),
-                depth_compare: Some(material::compare(pixel.depth_compare)),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: wgpu::MultisampleState { count:samples, ..Default::default() },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fragment"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: material::blend(pixel)?,
-                    write_mask: (if pixel.color_write { wgpu::ColorWrites::COLOR } else { wgpu::ColorWrites::empty() }) | (if pixel.alpha_write { wgpu::ColorWrites::ALPHA } else { wgpu::ColorWrites::empty() }),
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
-            pipeline_ids.insert((pixel, mesh.culling), pipelines.len());
+                primitive: wgpu::PrimitiveState {
+                    // GXSetCullMode swaps the hardware face encoding. Preserve the
+                    // authored GX winding under the wgpu viewport convention.
+                    front_face: wgpu::FrontFace::Cw,
+                    cull_mode: match mesh.culling {
+                        melee_lib::presentation::FaceCulling::Front => Some(wgpu::Face::Front),
+                        melee_lib::presentation::FaceCulling::Back => Some(wgpu::Face::Back),
+                        _ => None,
+                    },
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(pixel.depth_write),
+                    depth_compare: Some(material::compare(pixel.depth_compare)),
+                    stencil: receiver_stencil(mesh.shadow_receiver),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: samples,
+                    ..Default::default()
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fragment"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: material::blend(pixel)?,
+                        write_mask: (if pixel.color_write {
+                            wgpu::ColorWrites::COLOR
+                        } else {
+                            wgpu::ColorWrites::empty()
+                        }) | (if pixel.alpha_write {
+                            wgpu::ColorWrites::ALPHA
+                        } else {
+                            wgpu::ColorWrites::empty()
+                        }),
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            });
+            pipeline_ids.insert((pixel, mesh.culling, mesh.shadow_receiver), pipelines.len());
             pipelines.push(pipeline);
         }
         let pose_bytes = std::mem::size_of_val(scene.matrices()) as u64;
@@ -204,6 +220,12 @@ impl Renderer {
             contents: bytemuck::bytes_of(&crate::lighting::Lighting::capture(scene)),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+        let floors = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Live shadow floors"),
+            contents: bytemuck::cast_slice(scene.shadow_floors()),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let shadows = shadow_pipeline(&device, &scene_layout, format, samples);
         let scene_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Scene"),
             layout: &scene_layout,
@@ -227,6 +249,10 @@ impl Renderer {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: lighting.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: floors.as_entire_binding(),
                 },
             ],
         });
@@ -281,14 +307,16 @@ impl Renderer {
                 }),
                 count: mesh.indices.len() as u32,
                 image,
-                pipeline: pipeline_ids[&(pixel_state(mesh), mesh.culling)],
+                pipeline: pipeline_ids[&(pixel_state(mesh), mesh.culling, mesh.shadow_receiver)],
             });
         }
         let sprites =
             crate::sprites::Sprites::new(&device, &queue, format, samples, &camera, scene)?;
-        let depth = attachment(&device, size, wgpu::TextureFormat::Depth32Float, samples);
+        let depth = attachment(&device, size, DEPTH_FORMAT, samples);
         let multisampled = (samples > 1).then(|| attachment(&device, size, format, samples));
         Ok(Self {
+            shadows,
+            floors,
             sprites,
             device,
             queue,
@@ -311,12 +339,7 @@ impl Renderer {
     }
     pub fn resize(&mut self, size: [u32; 2]) {
         if self.size != size && size[0] > 0 && size[1] > 0 {
-            self.depth = attachment(
-                &self.device,
-                size,
-                wgpu::TextureFormat::Depth32Float,
-                self.samples,
-            );
+            self.depth = attachment(&self.device, size, DEPTH_FORMAT, self.samples);
             self.multisampled = (self.samples > 1)
                 .then(|| attachment(&self.device, size, self.format, self.samples));
             self.size = size;
@@ -334,6 +357,8 @@ impl Renderer {
             0,
             bytemuck::bytes_of(&crate::lighting::Lighting::capture(scene)),
         );
+        self.queue
+            .write_buffer(&self.floors, 0, bytemuck::cast_slice(scene.shadow_floors()));
         self.queue
             .write_buffer(&self.poses, 0, bytemuck::cast_slice(scene.matrices()));
         self.queue
@@ -395,12 +420,16 @@ impl Renderer {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Discard,
                     }),
-                    stencil_ops: None,
+                    stencil_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
                 }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+            pass.set_stencil_reference(1);
             pass.set_bind_group(0, &self.scene, &[0]);
             for &i in &self.order {
                 let draw = &self.draws[i];
@@ -416,6 +445,21 @@ impl Renderer {
                     0,
                     scene.instance_range(scene.meshes()[i].instance_group),
                 );
+            }
+            // Stencil marks visible stage pixels; incrementing on the first hit
+            // prevents overlapping caster triangles from darkening them twice.
+            pass.set_pipeline(&self.shadows);
+            for (i, mesh) in scene.meshes().iter().enumerate() {
+                let Some(owner) = mesh.shadow_owner else {
+                    continue;
+                };
+                if !scene.visibility()[i] {
+                    continue;
+                }
+                let draw = &self.draws[i];
+                pass.set_vertex_buffer(0, draw.vertices.slice(..));
+                pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..draw.count, 0, owner as u32..owner as u32 + 1);
             }
             for effect in scene.effect_draws() {
                 let draw = &self.draws[effect.mesh];
@@ -467,4 +511,96 @@ fn pixel_state(mesh: &melee_lib::presentation::Mesh) -> melee_lib::presentation:
         pixel.depth_compare = 7;
     }
     pixel
+}
+
+fn receiver_stencil(receiver: bool) -> wgpu::StencilState {
+    if !receiver {
+        return wgpu::StencilState::default();
+    }
+    let face = wgpu::StencilFaceState {
+        compare: wgpu::CompareFunction::Always,
+        pass_op: wgpu::StencilOperation::Replace,
+        ..Default::default()
+    };
+    wgpu::StencilState {
+        front: face,
+        back: face,
+        read_mask: 0xff,
+        write_mask: 0xff,
+    }
+}
+fn shadow_pipeline(
+    device: &wgpu::Device,
+    scene: &wgpu::BindGroupLayout,
+    format: wgpu::TextureFormat,
+    samples: u32,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("Planar fighter shadows"),
+        source: wgpu::ShaderSource::Wgsl(
+            include_str!("shadows.wgsl")
+                .replace("// CAMERA", include_str!("camera.wgsl"))
+                .into(),
+        ),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Shadow layout"),
+        bind_group_layouts: &[Some(scene)],
+        immediate_size: 0,
+    });
+    let face = wgpu::StencilFaceState {
+        compare: wgpu::CompareFunction::Equal,
+        pass_op: wgpu::StencilOperation::IncrementClamp,
+        ..Default::default()
+    };
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Planar fighter shadows"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vertex"),
+            compilation_options: Default::default(),
+            buffers: &[Some(vertex_layout())],
+        },
+        primitive: Default::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::LessEqual),
+            stencil: wgpu::StencilState {
+                front: face,
+                back: face,
+                read_mask: 0xff,
+                write_mask: 0xff,
+            },
+            bias: Default::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: samples,
+            ..Default::default()
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: Some("fragment"),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::COLOR,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
+fn vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    const ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+        0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Uint32, 4 => Float32x3
+    ];
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as u64,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ATTRIBUTES,
+    }
 }
