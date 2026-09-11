@@ -13,6 +13,10 @@ pub enum SpriteShape {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Sprite {
+    pub previous_position: [f32; 3],
+    pub trail_alpha: f32,
+    pub alpha_compare: [u8; 2],
+    pub alpha_mode: u8,
     pub position: [f32; 3],
     pub half_size: [f32; 2],
     pub rotation: f32,
@@ -122,6 +126,20 @@ impl Sprites {
                 0
             };
             let mut position = hsd_types::Vec3::from(p.position);
+            let mut previous_position =
+                hsd_types::Vec3::from(if p.kind & ((1 << 20) | (1 << 21)) != 0 {
+                    let generator = p.generator_id.and_then(|id| {
+                        game.engine
+                            .state()
+                            .particles
+                            .generators
+                            .iter()
+                            .find(|g| g.id == id)
+                    });
+                    hsd_particle::display::previous_position(p, generator).map_err(error)?
+                } else {
+                    p.position
+                });
             let mut half_size = [p.size; 2];
             if let Some(transform) = &p.application_transform {
                 let mut scratch = (**transform).clone();
@@ -135,6 +153,12 @@ impl Sprites {
                     scratch.camera_facing = 0;
                 }
                 scratch.prepare_display(&identity, 0).map_err(error)?;
+                let previous = previous_position;
+                hsd_anim::mtx::mtx_mult_vec(
+                    &scratch.model_matrix,
+                    &previous,
+                    &mut previous_position,
+                );
                 let source = position;
                 hsd_anim::mtx::mtx_mult_vec(&scratch.model_matrix, &source, &mut position);
                 half_size = [
@@ -143,6 +167,14 @@ impl Sprites {
                 ];
             }
             self.push(Sprite {
+                previous_position: [
+                    previous_position.x,
+                    previous_position.y,
+                    previous_position.z,
+                ],
+                trail_alpha: p.trail,
+                alpha_compare: p.alpha_compare.display_values(),
+                alpha_mode: p.alpha_compare_mode,
                 position: [position.x, position.y, position.z],
                 half_size,
                 rotation: p.rotation,

@@ -22,14 +22,15 @@ impl ColorTrack {
     /// getColorPrimEnv (psdisp.c): read the interpolated display color without
     /// materializing it into the simulation's countdown endpoints.
     pub fn display_color(&self) -> [u8; 4] {
-        if self.duration == 0 {
-            return self.current;
-        }
-        let scale = (i32::from(self.remaining) << 16) / i32::from(self.duration);
-        std::array::from_fn(|i| {
-            let delta = scale.wrapping_mul(i32::from(self.current[i]) - i32::from(self.target[i]));
-            ((i32::from(self.target[i]) << 16).wrapping_add(delta) >> 16) as u8
-        })
+        let mut color = self.current;
+        display_bytes(
+            &self.current,
+            &self.target,
+            self.duration,
+            self.remaining,
+            &mut color,
+        );
+        color
     }
     pub(crate) fn tick(&mut self) {
         if self.duration != 0 {
@@ -109,6 +110,25 @@ impl ColorTrack {
         }
         self.restart();
         Ok(())
+    }
+}
+
+/// Shared psdisp fixed-point interpolation for colors and alpha-test references.
+pub(crate) fn display_bytes(
+    current: &[u8],
+    target: &[u8],
+    duration: u16,
+    remaining: u16,
+    output: &mut [u8],
+) {
+    if duration == 0 {
+        output.copy_from_slice(current);
+        return;
+    }
+    let scale = (i32::from(remaining) << 16) / i32::from(duration);
+    for ((out, &current), &target) in output.iter_mut().zip(current).zip(target) {
+        let delta = scale.wrapping_mul(i32::from(current) - i32::from(target));
+        *out = ((i32::from(target) << 16).wrapping_add(delta) >> 16) as u8;
     }
 }
 

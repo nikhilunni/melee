@@ -5,6 +5,7 @@ use std::{collections::BTreeMap, sync::Arc};
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Instance {
+    previous: [f32; 4],
     center: [f32; 4],
     extent: [f32; 4],
     uv: [f32; 4],
@@ -146,6 +147,7 @@ impl Sprites {
             source: wgpu::ShaderSource::Wgsl(
                 include_str!("sprites.wgsl")
                     .replace("// CAMERA", include_str!("camera.wgsl"))
+                    .replace("// PIXEL", include_str!("pixel.wgsl"))
                     .into(),
             ),
         });
@@ -154,7 +156,7 @@ impl Sprites {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipelines = (0..4)
+        let pipelines = (0..8)
             .map(|mode| {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("Sprite blending"),
@@ -168,7 +170,7 @@ impl Sprites {
                     primitive: Default::default(),
                     depth_stencil: Some(wgpu::DepthStencilState {
                         format: wgpu::TextureFormat::Depth32Float,
-                        depth_write_enabled: Some(false),
+                        depth_write_enabled: Some(mode & 4 != 0),
                         depth_compare: Some(if mode & 2 != 0 {
                             wgpu::CompareFunction::Always
                         } else {
@@ -221,13 +223,20 @@ impl Sprites {
         self.batches.clear();
         for sprite in scene.sprites() {
             let mode = usize::from(sprite.flags & (1 << 22) != 0)
-                | (usize::from(sprite.flags & (1 << 28) != 0) << 1);
+                | (usize::from(sprite.flags & (1 << 28) != 0) << 1)
+                | (usize::from(sprite.flags & (1 << 3) != 0) << 2);
             let index = self.instances.len() as u32;
             match self.batches.last_mut() {
                 Some((previous, range)) if *previous == mode => range.end += 1,
                 _ => self.batches.push((mode, index..index + 1)),
             }
             self.instances.push(Instance {
+                previous: [
+                    sprite.previous_position[0],
+                    sprite.previous_position[1],
+                    sprite.previous_position[2],
+                    sprite.trail_alpha,
+                ],
                 center: [
                     sprite.position[0],
                     sprite.position[1],
@@ -258,7 +267,12 @@ impl Sprites {
                     SpriteShape::Texture => sprite.color.map(|v| f32::from(v) / 255.0),
                 },
                 environment: sprite.environment.map(|v| f32::from(v) / 255.0),
-                flags: [sprite.flags, 0, 0, 0],
+                flags: [
+                    sprite.flags,
+                    u32::from(sprite.alpha_mode),
+                    u32::from(sprite.alpha_compare[0]),
+                    u32::from(sprite.alpha_compare[1]),
+                ],
             });
         }
         if !self.instances.is_empty() {

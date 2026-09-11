@@ -9,9 +9,11 @@ pub struct Uniform {
     pub up: [f32; 4],
     pub toward_eye: [f32; 4],
     pub eye: [f32; 4],
+    pub viewport: [f32; 4],
 }
 #[derive(Debug)]
 pub struct Camera {
+    size: [u32; 2],
     center: [f32; 2],
     half_extent: [f32; 2],
 }
@@ -39,6 +41,7 @@ impl Camera {
         let aspect = size[0].max(1) as f32 / size[1].max(1) as f32;
         let width = width.max(height * aspect);
         Self {
+            size,
             center,
             half_extent: [width, width / aspect],
         }
@@ -58,6 +61,12 @@ impl Camera {
         let depth = FAR / (FAR - NEAR);
         let [x, y] = self.center;
         Uniform {
+            viewport: [
+                self.size[0].max(1) as f32,
+                self.size[1].max(1) as f32,
+                0.0,
+                0.0,
+            ],
             projection: [
                 [sx, 0.0, 0.0, 0.0],
                 [0.0, sy * COS, -depth * SIN, -SIN],

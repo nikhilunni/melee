@@ -6,6 +6,7 @@ pub mod appsrt;
 pub mod bank;
 mod color;
 mod direction;
+pub mod display;
 pub mod generator;
 pub mod particle;
 mod program;

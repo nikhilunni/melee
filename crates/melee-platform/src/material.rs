@@ -417,6 +417,7 @@ pub fn shader() -> String {
     }
     include_str!("render.wgsl")
         .replace("// CAMERA", include_str!("camera.wgsl"))
+        .replace("// PIXEL", include_str!("pixel.wgsl"))
         .replace("// CUSTOM_COMBINERS", include_str!("tev.wgsl"))
         .replace("// TEXTURE_BINDINGS", &bindings)
         .replace("// TEXTURE_SAMPLES", &samples)

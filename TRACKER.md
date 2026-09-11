@@ -40,6 +40,8 @@ task lines you touched and add one line to the session log.
 
 
 
+- [x] Specialized particle geometry (2026-09-11): velocity-oriented sprites, ribbon trails, framebuffer-sized points/lines, authored alpha comparisons and texture-edge depth writes. Tornado trails reconstruct the previous cylindrical point with audited retail FMA ordering. Shared fixed-point color/alpha interpolation avoids duplicate arithmetic; capture remains read-only. Particle suite, eight allocation checks, workspace clippy and Metal Illusion preview pass. Shadows remain.
+
 ## Current focus
 
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**

@@ -627,6 +627,18 @@ pub struct BytePairTrack {
     pub remaining: u16,
 }
 impl BytePairTrack {
+    pub fn display_values(&self) -> [u8; 2] {
+        let mut values = self.current;
+        crate::color::display_bytes(
+            &self.current,
+            &self.target,
+            self.duration,
+            self.remaining,
+            &mut values,
+        );
+        values
+    }
+
     fn new(current: [u8; 2]) -> Self {
         Self {
             current,

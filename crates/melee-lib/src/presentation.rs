@@ -405,6 +405,10 @@ impl Presentation {
                         )
                 });
                 self.sprites.push(Sprite {
+                    previous_position: [position.x, position.y, position.z],
+                    trail_alpha: 1.0,
+                    alpha_compare: [0; 2],
+                    alpha_mode: 0x3f,
                     position: [position.x, position.y, position.z],
                     half_size,
                     rotation: 0.0,

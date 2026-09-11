@@ -147,15 +147,7 @@ fn combine(previous:vec4<f32>,tex:vec4<f32>,layer:Layer)->vec4<f32> {
     }
     return clamp(color,vec4(0.0),vec4(1.0));
 }
-fn alpha_compare(value:f32, reference:u32, operation:u32)->bool {
-    let a=u32(round(clamp(value,0.0,1.0)*255.0));
-    switch operation {
-        case 0u: { return false; } case 1u: { return a<reference; }
-        case 2u: { return a==reference; } case 3u: { return a<=reference; }
-        case 4u: { return a>reference; } case 5u: { return a!=reference; }
-        case 6u: { return a>=reference; } default: { return true; }
-    }
-}
+// PIXEL
 @fragment fn fragment(in: Out) -> @location(0) vec4<f32> {
     var color=material.diffuse;
     let diffuse=material.config.x & 3u;
