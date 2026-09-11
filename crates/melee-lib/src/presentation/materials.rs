@@ -70,6 +70,17 @@ impl Presentation {
     pub(super) fn capture_materials(&mut self, game: &Match) -> Result<(), PresentationError> {
         for (material, part) in self.materials.iter_mut().zip(&self.parts) {
             let model = &self.models[part.model];
+            material.overlay = match &model.source {
+                ModelSource::Stage(map) => {
+                    let overlay = &game.engine.state().stage_animations[map].overlay;
+                    if overlay.enabled {
+                        overlay.color.map(|v| f32::from(v) / 255.0)
+                    } else {
+                        [0.0; 4]
+                    }
+                }
+                _ => [0.0; 4],
+            };
             let Some(live) = model
                 .source
                 .tree(game)

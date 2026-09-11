@@ -8,7 +8,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("usage: render_frame <asset-directory> <output.rgba>")?;
     let output = args.get(2).ok_or("missing output path")?;
     let mut session = Session::new(files)?;
-    for _ in 0..240 {
+    let ticks = args
+        .windows(2)
+        .find(|pair| pair[0] == "--ticks")
+        .map(|pair| pair[1].parse::<usize>())
+        .transpose()?
+        .unwrap_or(240);
+    for _ in 0..ticks {
         session.advance(std::time::Duration::from_nanos(16_666_667))?;
     }
     if args.iter().any(|a| a == "--shield") {
@@ -38,6 +44,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err("laser preview did not produce a projectile".into());
         }
     }
+    eprintln!(
+        "Visible background meshes: {}",
+        session
+            .presentation()
+            .meshes()
+            .iter()
+            .zip(session.presentation().visibility())
+            .filter(|(mesh, visible)| mesh.background && **visible)
+            .count()
+    );
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter =
         pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))?;

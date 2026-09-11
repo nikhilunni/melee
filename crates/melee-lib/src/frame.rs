@@ -186,6 +186,7 @@ fn register(
 struct Runtime {
     radial_forces: melee_lb::radial_force::RadialForces,
     item_objects: crate::scene_items::Objects,
+    stage_objects: [Option<hsd_gobj::GObjId>; 10],
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
     pads: [PadSample; 4],
@@ -202,6 +203,7 @@ impl Clone for Runtime {
         Self {
             radial_forces: self.radial_forces.clone(),
             item_objects: self.item_objects.clone(),
+            stage_objects: self.stage_objects,
             state: self.state.clone(),
             pads: self.pads,
             frame: self.frame,
@@ -515,6 +517,13 @@ impl Runtime {
                             &mut state.effects.events,
                         );
                     }
+                    if let Some(animation) = state.stage_animations.get_mut(&map) {
+                        if let Some(script) = animation.overlay_script {
+                            animation
+                                .overlay
+                                .tick(&state.assets.stage_desc.material_scripts[script]);
+                        }
+                    }
                     state.map.finish_ground_animation();
                 }
                 0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
@@ -550,6 +559,8 @@ impl Runtime {
                             state,
                             map_id,
                             &mut self.particle_draws,
+                            world,
+                            &mut self.stage_objects,
                         )?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
@@ -771,9 +782,10 @@ impl Simulation {
                 .physics
                 .percent))
         });
-        let runtime = Box::new(Runtime {
+        let mut runtime = Box::new(Runtime {
             radial_forces: Default::default(),
             item_objects: Default::default(),
+            stage_objects: Default::default(),
             state,
             interface,
             match_finished: false,
@@ -790,9 +802,13 @@ impl Simulation {
             let object = *objects
                 .entry((row.p_link, row.object))
                 .or_insert_with(|| world.create(0, row.p_link, row.priority));
+            if let Callback::Stage { map: Some(map), .. } = row.callback {
+                runtime.stage_objects[usize::from(map)] = Some(object);
+            }
             world.add_tagged_proc(object, row.s_link, index);
         }
         crate::scene_items::prepare_scheduler(&mut world);
+        world.reserve_removals();
         Self {
             world,
             runtime,
@@ -856,6 +872,24 @@ impl Simulation {
                     priority: 0,
                     object: u8::MAX,
                     callback: Callback::Item { id, phase },
+                }
+            } else if index >= crate::scene_stage::last::TAG_BASE {
+                let tag = index - crate::scene_stage::last::TAG_BASE;
+                let map = (tag / 3) as u8;
+                let phase = tag % 3;
+                Registration {
+                    s_link: if phase == 0 { 1 } else { 4 },
+                    p_link: 5,
+                    priority: 0,
+                    object: map,
+                    callback: Callback::Stage {
+                        map: Some(map),
+                        address: match phase {
+                            0 => 0x801C1CD0,
+                            1 => 0x801C1D38,
+                            _ => melee_gr::last::procs::map_callback(map),
+                        },
+                    },
                 }
             } else {
                 rows[index]

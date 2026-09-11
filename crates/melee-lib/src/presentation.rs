@@ -42,6 +42,8 @@ pub struct Mesh {
 /// renderers may support them incrementally without reparsing disc bytes.
 #[derive(Clone)]
 pub struct Material {
+    /// Post-texture color overlay; alpha is its interpolation weight.
+    pub overlay: [f32; 4],
     /// Image variants uploaded once; each texture selects an entry from its bank.
     pub texture_banks: Vec<Arc<[Arc<Texture>]>>,
     pub ambient: [f32; 3],
@@ -388,6 +390,7 @@ impl Presentation {
         let mut display = 0;
         while let Some(dobj) = next {
             let mut material = Material {
+                overlay: [0.0; 4],
                 texture_banks: Vec::new(),
                 ambient: [1.0; 3],
                 specular: [0.0; 3],

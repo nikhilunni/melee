@@ -25,6 +25,7 @@ struct Layer {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniform {
+    overlay: [f32; 4],
     diffuse: [f32; 4],
     ambient: [f32; 4],
     specular: [f32; 4],
@@ -193,6 +194,7 @@ impl Images {
 }
 fn capture(material: &Material) -> Uniform {
     let mut uniform = Uniform {
+        overlay: material.overlay,
         diffuse: material.diffuse,
         ambient: [
             material.ambient[0],

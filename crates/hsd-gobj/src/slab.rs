@@ -41,6 +41,10 @@ impl<T> Default for Slab<T> {
 }
 
 impl<T> Slab<T> {
+    pub fn reserve_removals(&mut self) {
+        self.free
+            .reserve(self.slots.len().saturating_sub(self.free.len()));
+    }
     pub fn insert(&mut self, value: T) -> Key {
         self.live += 1;
         if let Some(index) = self.free.pop() {

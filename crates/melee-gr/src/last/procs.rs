@@ -24,6 +24,9 @@ const CALLBACKS: [(&str, u32); 10] = [
     ("grLast_8021B28C", 0x8021B28C),
     ("grLast_8021B2E0", 0x8021B2E0),
 ];
+pub fn map_callback(map: u8) -> u32 {
+    CALLBACKS[usize::from(map)].1
+}
 fn registration(
     s: u8,
     p: u8,

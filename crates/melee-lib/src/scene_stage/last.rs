@@ -4,7 +4,7 @@ use crate::{
     initial_state::{stage::joint_id, InitialState},
     scene_stage::SceneStage,
 };
-use anyhow::{bail, Result};
+use anyhow::Result;
 use hsd_particle::{generator::ApplicationTransform, rng_sites::DrawLog, system::SpawnRequest};
 use hsd_types::Vec3;
 use melee_gr::last::{animation::BackgroundAnimation, AnimationStatus, StageAction};
@@ -38,14 +38,23 @@ pub(crate) fn load_animations(assets: &Assets) -> Result<BTreeMap<u8, Background
     Ok(result)
 }
 
-pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -> Result<()> {
+pub(crate) const TAG_BASE: usize = 1 << 15;
+pub(crate) fn run_proc(
+    state: &mut InitialState,
+    map: u8,
+    draws: &mut DrawLog,
+    world: &mut hsd_gobj::TaggedWorld,
+    objects: &mut [Option<hsd_gobj::GObjId>; 10],
+) -> Result<()> {
     let status = AnimationStatus {
         layer_animation_stopped: std::array::from_fn(|index| {
             state.stage_animations[&(index as u8 + 4)].joint_ended(1)
         }),
         tilt_frame: state.stage_animations[&7].joint_frame(2),
         tilt_rewound: state.stage_animations[&7].joint_rewound(2),
-        ..Default::default()
+        material_fade_complete: std::array::from_fn(|index| {
+            state.stage_animations[&(index as u8 + 4)].overlay.complete
+        }),
     };
     let SceneStage::FinalDestination(stage) = &mut state.stage else {
         unreachable!()
@@ -67,6 +76,33 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -
     }
     for action in stage.actions.drain(..) {
         match action {
+            StageAction::MaterialFade { map, script } => {
+                let animation = state.stage_animations.get_mut(&map).unwrap();
+                animation.overlay_script = Some(script);
+                animation
+                    .overlay
+                    .start(&state.assets.stage_desc.material_scripts[script]);
+            }
+            StageAction::CreateMap(map) => {
+                state
+                    .stage_animations
+                    .get_mut(&map)
+                    .unwrap()
+                    .reset_for_creation();
+                let object = world.create(3, 5, 0);
+                for (index, link) in [1, 4, 4].into_iter().enumerate() {
+                    world.add_tagged_proc(object, link, TAG_BASE + usize::from(map) * 3 + index);
+                }
+                objects[usize::from(map)] = Some(object);
+            }
+            StageAction::DestroyMap(map) => {
+                if let Some(object) = objects[usize::from(map)].take() {
+                    world.destroy(object);
+                }
+                for joint in 0..state.stage_animations[&map].joint_count() {
+                    state.particles.expire_joint(joint_id(map, joint));
+                }
+            }
             StageAction::PlayAnimation {
                 map,
                 joint,
@@ -185,8 +221,60 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -
                 }
             }
             StageAction::Quake => state.effects.request_camera_quake(1, Vec3::ZERO),
-            action => bail!("FD action not yet supported: {action:?}"),
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn fd_background_completes_a_full_cycle_with_cloned_continuation() {
+        let files =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+        if !melee_test_support::require_files([files.join("GrNLa.dat")]) {
+            return;
+        }
+        let config = MatchConfig::versus(
+            Stage::FinalDestination,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox),
+                PlayerConfig::new(Port::P2, Character::Marth),
+            ],
+        )
+        .with_seed(Seed(42));
+        let assets = GameAssets::load(files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut branch = game.clone();
+        let mut view = presentation::Presentation::new(&game).unwrap();
+        let mut phases = std::collections::BTreeSet::new();
+        let mut last = 0;
+        for tick in 0..28_000 {
+            game.step(&Inputs::default())
+                .unwrap_or_else(|e| panic!("tick {tick}: {e}"));
+            branch.step(&Inputs::default()).unwrap();
+            view.capture(&game).unwrap();
+            let crate::scene_stage::SceneStage::FinalDestination(stage) =
+                &game.engine.state().stage
+            else {
+                unreachable!()
+            };
+            let phase = stage.ground.phase as u16;
+            phases.insert(phase);
+            if phase != last {
+                eprintln!("tick {tick}: phase {phase}");
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(&branch).unwrap()
+                );
+                branch.clone_from(&game);
+                last = phase;
+                if phase == 1 && phases.len() == 17 {
+                    return;
+                }
+            }
+        }
+        panic!("background did not complete its cycle: {phases:?}");
+    }
 }

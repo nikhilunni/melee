@@ -9,6 +9,9 @@ use hsd_archive::Archive;
 use hsd_types::Mtx;
 
 pub struct BackgroundAnimation {
+    pub overlay: melee_lb::color_overlay::ColorOverlay,
+    pub overlay_script: Option<usize>,
+    rest: std::sync::Arc<JObjTree>,
     pub(super) tree: JObjTree,
     pub(super) root: JObjId,
     // Animation replacement preserves the model hierarchy and these identities.
@@ -44,6 +47,7 @@ impl BackgroundAnimation {
         model: &crate::desc::ModelDesc,
     ) -> crate::desc::ReadResult<Self> {
         let (mut tree, root) = load_joint_tree(archive, &model.joint)?;
+        let rest = std::sync::Arc::new(tree.clone());
         if let Some(animation) = model.animations.first() {
             attach_anim_joint(&mut tree, root, animation, archive)?;
         }
@@ -62,6 +66,9 @@ impl BackgroundAnimation {
         // At most one callback per loaded FObj in one animation evaluation.
         let requests = Vec::with_capacity(tree.events.capacity());
         let mut result = Self {
+            rest,
+            overlay: Default::default(),
+            overlay_script: None,
             tree,
             root,
             joints,
@@ -257,6 +264,43 @@ impl Clone for BackgroundAnimation {
                 .collect(),
             subtree_ends: hsd_types::storage::clone_vec(&self.subtree_ends),
             prepared_materials: self.prepared_materials.clone(),
+            rest: std::sync::Arc::clone(&self.rest),
+            overlay: self.overlay,
+            overlay_script: self.overlay_script,
         }
+    }
+}
+
+impl BackgroundAnimation {
+    /// Recreate a stage model in its reserved storage. Hierarchy and authored
+    /// resources stay fixed; poses, visibility and material values restart.
+    pub fn reset_for_creation(&mut self) {
+        self.clear_animation();
+        self.overlay = Default::default();
+        self.overlay_script = None;
+        for &id in &self.joints {
+            let source = self.rest.get(id);
+            let joint = self.tree.get_mut(id);
+            joint.flags = source.flags;
+            joint.rotate = source.rotate;
+            joint.scale = source.scale;
+            joint.translate = source.translate;
+            joint.mtx = source.mtx;
+            joint.scl = source.scl;
+            for (object, original) in joint.dobj.iter_mut().zip(&source.dobj) {
+                object.flags = original.flags;
+                if let (Some(target), Some(source)) = (&mut object.mobj, &original.mobj) {
+                    target.mat = source.mat;
+                    target.pe = source.pe;
+                    target.rendermode = source.rendermode;
+                    for (texture, original) in target.textures.iter_mut().zip(&source.textures) {
+                        texture.descriptor.clone_from(&original.descriptor);
+                        texture.lod_bias = original.lod_bias;
+                    }
+                }
+            }
+        }
+        self.requests.clear();
+        self.tree.events.clear();
     }
 }

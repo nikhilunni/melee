@@ -42,6 +42,7 @@ pub struct ModelDesc {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct StageDesc {
+    pub material_scripts: Vec<Vec<hsd_archive::desc::color_animation::ColorCommand>>,
     pub kind: GrKind,
     pub parameters: GroundParam,
     pub models: Vec<ModelDesc>,
@@ -182,7 +183,16 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
     {
         *offset = required_link(archive, scripts + i as u32 * 4)?;
     }
+    let material_scripts = if kind == GrKind::Last {
+        material_script_offsets
+            .iter()
+            .map(|&offset| hsd_archive::desc::color_animation::read(archive, offset))
+            .collect::<Result<_, _>>()?
+    } else {
+        Vec::new()
+    };
     Ok(StageDesc {
+        material_scripts,
         kind,
         parameters,
         models,

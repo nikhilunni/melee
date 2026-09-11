@@ -85,6 +85,7 @@ use crate::error::Error;
 use crate::reader::{add_offset, Reader};
 
 pub mod anim;
+pub mod color_animation;
 pub mod dobj;
 pub mod figatree;
 pub mod jobj;
@@ -142,6 +143,10 @@ pub struct GxColor {
 pub enum DescError {
     /// A bounds or overflow failure from the underlying reader.
     Archive(Error),
+    InvalidColorAnimation {
+        offset: u32,
+        reason: &'static str,
+    },
     InvalidSpline {
         offset: u32,
         reason: &'static str,
@@ -212,6 +217,7 @@ impl fmt::Display for DescError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DescError::Archive(e) => write!(f, "{e}"),
+            DescError::InvalidColorAnimation { offset, reason } => write!(f, "invalid color animation at {offset:#x}: {reason}"),
             DescError::InvalidSpline { offset, reason } => write!(f, "invalid spline at {offset:#x}: {reason}"),
             DescError::MissingSymbol { name } => {
                 write!(f, "archive exports no public symbol {name:?}")

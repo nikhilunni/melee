@@ -460,6 +460,12 @@ impl<S: Storage> Scheduler<S> {
     /// `HSD_GObj_80391304` (gobjinit.c:20-93) without the func-table walk:
     /// allocate and clear every list. No object kinds are registered; call
     /// [`World::register_builtin_obj_kinds`] or [`World::register_obj_kind`].
+    /// Provision free lists for retiring every currently allocated slot.
+    /// Call after initial objects and maximum transient capacity are prepared.
+    pub fn reserve_removals(&mut self) {
+        self.gobjs.reserve_removals();
+        self.procs.reserve_removals();
+    }
     pub fn new(config: WorldConfig) -> Scheduler<S> {
         let np = config.p_link_max as usize + 1;
         let ng = config.gx_link_max as usize + 2;

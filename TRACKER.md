@@ -24,7 +24,7 @@ task lines you touched and add one line to the session log.
 
 - [x] Authored lighting phase (2026-09-10): shared light-table parser, tick-indexed Final Destination directional light paths using the existing AObj and linear-spline evaluators, per-vertex ambient/diffuse/specular shading, and inverse-transpose normals. Capture-frequency/reset, both complete-match presentation checks, static Battlefield lights, 13 numeric Metal fixtures, workspace clippy and native build/smoke pass. Material/texture animation, held weapons, specialized/model effects, shadows and camera/framebuffer fidelity remain.
 
-- [~] Shared material/texture animation and FD fades (2026-09-10): descriptor/interpreter foundation and live stage/GPU integration implemented. Stage switches and clones preserve track capacity; presentation reads live color/UV/TEV/image state, image variants upload once to portable texture arrays, unchanged uniforms skip uploads. Seven allocation/continuation tests including both complete matches and both exact full-match oracles pass; 15 Metal fixtures and real-asset preview plus workspace clippy pass. Stage overlay fades, held weapons, model/specialized effects, shadows and camera/framebuffer fidelity remain.
+- [x] Shared material/texture animation and FD fade state (2026-09-10): `24a5810` foundation, `0d5b938` live stage/GPU animation, then shared color-overlay playback and actual scheduler map transitions. All 17 phases complete; debug/release cycle checks, 27,000 allocation-free ticks/captures/cloned continuations, both exact full-match oracles, scheduler tests, clippy and native smoke pass. Pixel/camera fidelity remains unverified; held weapons, model/specialized effects, shadows and camera/framebuffer work continue.
 
 ## Current focus
 

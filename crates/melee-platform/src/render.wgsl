@@ -6,7 +6,7 @@ struct Camera { extent: vec4<f32> }
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
 struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32>, image:vec4<u32>, addressing:vec4<u32> }
-struct Material { diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
+struct Material { overlay:vec4<f32>, diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
 struct DirectionalLight { direction:vec4<f32>, color:vec4<f32> }
 struct Lighting { ambient:vec4<f32>, lights:array<DirectionalLight,8> }
@@ -138,6 +138,7 @@ fn alpha_compare(value:f32, reference:u32, operation:u32)->bool {
     // TEXTURE_SAMPLES
     if (material.config.x&4u)!=0u { color=vec4(color.rgb*clamp(in.diffuse_light,vec3(0.0),vec3(1.0)),color.a); }
     if (material.config.x&8u)!=0u { color=vec4(clamp(color.rgb+material.specular.rgb*in.specular_light,vec3(0.0),vec3(1.0)),color.a); }
+    color=vec4(mix(color.rgb,material.overlay.rgb,material.overlay.a),color.a);
     let a=alpha_compare(color.a,material.alpha.y,material.alpha.x);
     let b=alpha_compare(color.a,material.alpha.w,material.alpha.z);
     var visible=a && b;

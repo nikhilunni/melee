@@ -431,3 +431,52 @@ fn material_animation_uses_match_state_and_prepared_images() {
         .zip(&initial)
         .all(|(a, b)| equal(a, b)));
 }
+
+#[test]
+fn stage_cycles_preserve_allocation_free_step_clone_and_capture() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    if !melee_test_support::require_files([files.join("GrNLa.dat")]) {
+        return;
+    }
+    let config = MatchConfig::versus(
+        Stage::FinalDestination,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(42));
+    let assets = GameAssets::load(files, &config).unwrap();
+    let mut game = Match::new(&assets, config).unwrap();
+    let mut branch = game.clone();
+    let mut view = presentation::Presentation::new(&game).unwrap();
+    let mut saw_overlay = false;
+    for tick in 0..27_000 {
+        if tick % 1200 == 0 {
+            branch.clone_from(&game);
+        }
+        assert_eq!(
+            measure(&mut game, &Inputs::default()),
+            0,
+            "stage tick {tick}"
+        );
+        assert_eq!(
+            measure(&mut branch, &Inputs::default()),
+            0,
+            "stage clone tick {tick}"
+        );
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let result = view.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "stage capture tick {tick}");
+        saw_overlay |= view.materials().iter().any(|m| m.overlay[3] > 0.0);
+    }
+    assert!(saw_overlay);
+    assert_eq!(
+        diagnostics::inspect(&game).unwrap(),
+        diagnostics::inspect(&branch).unwrap()
+    );
+}
