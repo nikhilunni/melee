@@ -322,10 +322,15 @@ The overlay is applied after texture/lighting composition. No second stage timer
 lives in the application. Assembly audits of lb_800140F8 / lb_80014258 found no
 fused instructions; the half-unit bias and byte conversion are preserved.
 
-The 17-phase cycle returns to phase 1 at tick 13075 in the cold seed-42 run.
+The 17-phase cycle returns to phase 1 at tick 13073 in the cold seed-42 run.
 Debug/release cycle tests and a 27,000-tick allocation/capture/clone check pass.
 The latter exposed free-list growth on map destruction; scheduler initialization
 now reserves removal capacity for every prepared slot. Both exact full-match
 oracles, scheduler tests, workspace clippy, native build/smoke and late-phase
 Metal frame generation pass. Late backgrounds still need camera/framing fidelity;
 these checks do not establish pixel equivalence with Dolphin.
+
+Stage fade timing follow-up: grLast_8021B920 explicitly calls the interpreter
+once more after grMaterial_801C9604 already interpreted the request. The first
+fade color is now asserted as [3, 3, 3, 4]; the cycle and 27,000-tick allocation
+checks pass. Both full-match oracles also passed in debug (as well as release).

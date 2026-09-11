@@ -82,6 +82,8 @@ pub(crate) fn run_proc(
                 animation
                     .overlay
                     .start(&state.assets.stage_desc.material_scripts[script]);
+                // grLast_8021B920 explicitly invokes 801C9698 again after 801C9604.
+                animation.overlay.tick(&state.assets.stage_desc.material_scripts[script]);
             }
             StageAction::CreateMap(map) => {
                 state
@@ -264,6 +266,9 @@ mod tests {
             phases.insert(phase);
             if phase != last {
                 eprintln!("tick {tick}: phase {phase}");
+                if phase == 13 {
+                    assert_eq!(game.engine.state().stage_animations[&4].overlay.color, [3,3,3,4]);
+                }
                 assert_eq!(
                     diagnostics::inspect(&game).unwrap(),
                     diagnostics::inspect(&branch).unwrap()
