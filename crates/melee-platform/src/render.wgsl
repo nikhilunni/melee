@@ -21,6 +21,24 @@ fn normal_transform(transform:mat4x4<f32>, normal:vec3<f32>)->vec3<f32> {
     // Retain its sign for reflected transforms; singular poses produce zero.
     return safe_normalize(cofactor*normal*sign(dot(a,cross(b,c))));
 }
+// HSD_JObjMakePositionMtx (0x803740E8) / mkBillBoardMtx: preserve scale and the
+// projected up axis, while replacing the facing axis only for authored billboards.
+fn billboard_transform(transform:mat4x4<f32>, mode:u32, eye:vec3<f32>, toward_eye:vec3<f32>)->mat4x4<f32> {
+    if mode==0u {return transform;}
+    let original_up=transform[1].xyz;
+    var right=cross(original_up,toward_eye);
+    var up=cross(toward_eye,right);
+    var forward=toward_eye;
+    if mode==2u {
+        let position=transform[3].xyz-eye;
+        right=cross(position,original_up);
+        up=cross(right,position);
+        forward=-safe_normalize(position);
+    }
+    return mat4x4(vec4(safe_normalize(right)*length(transform[0].xyz),0.0),
+        vec4(safe_normalize(up)*length(original_up),0.0),
+        vec4(forward*length(transform[2].xyz),0.0),transform[3]);
+}
 fn specular_weight_for_view(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32, toward_eye:vec3<f32>)->f32 {
     if dot(normal,toward_light)<=0.0 { return 0.0; }
     let half_vector=safe_normalize(toward_light+toward_eye);
@@ -86,8 +104,8 @@ struct Out {
     @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) normal: vec3<f32>,
     @location(3) diffuse_light:vec3<f32>, @location(4) specular_light:vec3<f32>
 }
-@vertex fn vertex(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>, @location(2) color: vec4<f32>, @location(3) matrix: u32, @location(4) normal: vec3<f32>, @builtin(instance_index) instance: u32) -> Out {
-    let transform=instances[instance]*poses[matrix];
+@vertex fn vertex(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>, @location(2) color: vec4<f32>, @location(3) matrix: u32, @location(4) normal: vec3<f32>, @location(5) billboard: u32, @builtin(instance_index) instance: u32) -> Out {
+    let transform=billboard_transform(instances[instance]*poses[matrix],billboard,camera.eye.xyz,camera.toward_eye.xyz);
     let p = transform * vec4(position, 1.0);
     var out: Out;
     out.position = project(p.xyz);
@@ -108,7 +126,16 @@ struct Out {
 }
 fn coordinates(in: Out, layer: Layer) -> vec2<f32> {
     var uv = in.uv;
-    if layer.operations.z == 1u || layer.operations.z == 2u { uv = vec2(in.normal.x, -in.normal.y) * 0.5 + 0.5; }
+    if layer.operations.z == 1u {
+        // HSD reflection uses the view-space normal, including camera tilt.
+        uv=vec2(dot(in.normal,camera.right.xyz),-dot(in.normal,camera.up.xyz))*0.5+0.5;
+    }
+    if layer.operations.z == 2u {
+        if lighting.ambient.w==0.0 {return vec2(1.0);}
+        // TObjSetupMtx's HILIGHT matrix uses its first column only.
+        let half_vector=safe_normalize(safe_normalize(lighting.lights[0].direction.xyz)+camera.toward_eye.xyz);
+        uv=vec2(dot(in.normal,half_vector)*0.5+0.5,0.0);
+    }
     var scale=vec2<f32>(0.0);
     if abs(layer.scale.x) >= 0.00000011920929 { scale.x=layer.scale.z/layer.scale.x; }
     if abs(layer.scale.y) >= 0.00000011920929 { scale.y=layer.scale.w/layer.scale.y; }
@@ -123,21 +150,24 @@ fn coordinates(in: Out, layer: Layer) -> vec2<f32> {
 }
 // CUSTOM_COMBINERS
 fn combine(previous:vec4<f32>,tex:vec4<f32>,layer:Layer)->vec4<f32> {
+    return combine_values(previous,tex,layer.operations,layer.translation.z);
+}
+fn combine_values(previous:vec4<f32>,tex:vec4<f32>,operations:vec4<u32>,blending:f32)->vec4<f32> {
     var color=previous;
-    switch layer.operations.x {
+    switch operations.x {
         case 1u: { color=vec4(mix(previous.rgb,tex.rgb,tex.a),color.a); }
         case 2u: { color=vec4(mix(previous.rgb,tex.rgb,tex.rgb),color.a); }
-        case 3u: { color=vec4(mix(previous.rgb,tex.rgb,layer.translation.z),color.a); }
+        case 3u: { color=vec4(mix(previous.rgb,tex.rgb,blending),color.a); }
         case 4u: { color=vec4(previous.rgb*tex.rgb,color.a); }
         case 5u: { color=vec4(tex.rgb,color.a); }
         case 7u: { color=vec4(previous.rgb+tex.rgb,color.a); }
         case 8u: { color=vec4(previous.rgb-tex.rgb,color.a); }
         default: {}
     }
-    if layer.operations.w != 0u {
-        switch layer.operations.y {
+    if operations.w != 0u {
+        switch operations.y {
             case 1u: { color.a=mix(previous.a,tex.a,tex.a); }
-            case 2u: { color.a=mix(previous.a,tex.a,layer.translation.z); }
+            case 2u: { color.a=mix(previous.a,tex.a,blending); }
             case 3u: { color.a=previous.a*tex.a; }
             case 4u: { color.a=tex.a; }
             case 6u: { color.a=previous.a+tex.a; }
@@ -146,6 +176,37 @@ fn combine(previous:vec4<f32>,tex:vec4<f32>,layer:Layer)->vec4<f32> {
         }
     }
     return clamp(color,vec4(0.0),vec4(1.0));
+}
+// Keep the per-fragment composition state compact: image banks, texture
+// matrices and custom TEV constants belong to sampling, not these stages.
+struct Composition {
+    specular:vec3<f32>, mode:u32, count:u32,
+    operations:array<vec4<u32>,8>, parameters:array<vec2<f32>,8>
+}
+// MObjMakeTExp (0x80363284): diffuse/ambient textures -> raster lighting -> specular
+// textures and raster -> EXT textures. Alpha runs once per texture across
+// categories, but every texture within the first category contributes.
+fn texture_stage(color:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, category:u32, done:u32)->vec4<f32> {
+    var result=color;
+    for(var i=0u;i<mat.count;i++) {
+        let mask=u32(mat.parameters[i].y);
+        if (mask&category)==0u {continue;}
+        var operations=mat.operations[i];
+        operations.w=select(1u,0u,(mask&done)!=0u);
+        result=combine_values(result,texels[i],operations,mat.parameters[i].x);
+    }
+    return result;
+}
+fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, diffuse_light:vec3<f32>, specular_light:vec3<f32>)->vec4<f32> {
+    var color=texture_stage(base,mat,texels,0x50u,0u);
+    if (mat.mode&4u)!=0u {color=vec4(color.rgb*clamp(diffuse_light,vec3(0.0),vec3(1.0)),color.a);}
+    var done=0x50u;
+    if (mat.mode&8u)!=0u {
+        let spec=texture_stage(vec4(mat.specular,color.a),mat,texels,0x20u,done);
+        color=vec4(clamp(color.rgb+clamp(spec.rgb*specular_light,vec3(0.0),vec3(1.0)),vec3(0.0),vec3(1.0)),spec.a);
+        done|=0x20u;
+    }
+    return texture_stage(color,mat,texels,0x80u,done);
 }
 // PIXEL
 @fragment fn fragment(in: Out) -> @location(0) vec4<f32> {
@@ -157,9 +218,13 @@ fn combine(previous:vec4<f32>,tex:vec4<f32>,layer:Layer)->vec4<f32> {
     if alpha==0u { alpha=diffuse; }
     if alpha==2u { color.a=in.color.a; }
     if alpha==3u { color.a*=in.color.a; }
+    var texels:array<vec4<f32>,8>;
+    var composition:Composition;
+    composition.specular=material.specular.rgb;
+    composition.mode=material.config.x;
+    composition.count=material.config.y;
     // TEXTURE_SAMPLES
-    if (material.config.x&4u)!=0u { color=vec4(color.rgb*clamp(in.diffuse_light,vec3(0.0),vec3(1.0)),color.a); }
-    if (material.config.x&8u)!=0u { color=vec4(clamp(color.rgb+material.specular.rgb*in.specular_light,vec3(0.0),vec3(1.0)),color.a); }
+    color=compose_material(color, composition, texels, in.diffuse_light, in.specular_light);
     color=vec4(mix(color.rgb,material.overlay.rgb,material.overlay.a),color.a);
     let a=alpha_compare(color.a,material.alpha.y,material.alpha.x);
     let b=alpha_compare(color.a,material.alpha.w,material.alpha.z);

@@ -39,7 +39,15 @@ pub enum FaceCulling {
     Back,
     Both,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Billboard {
+    None,
+    ViewPlane,
+    ViewPoint,
+}
 pub struct Mesh {
+    /// Camera-facing geometry, evaluated by the consumer without changing bones.
+    pub billboard: Billboard,
     /// Fighter slot whose geometry casts a planar floor shadow.
     pub shadow_owner: Option<usize>,
     /// Foreground stage geometry may receive floor shadows.
@@ -588,6 +596,17 @@ impl Presentation {
                     _ => FaceCulling::None,
                 };
                 self.meshes.push(Mesh {
+                    billboard: if joint.flags & hsd_anim::jobj::JOBJ_BILLBOARD_FIELD
+                        == hsd_anim::jobj::JOBJ_BILLBOARD
+                    {
+                        if joint.flags & hsd_anim::jobj::JOBJ_PBILLBOARD != 0 {
+                            Billboard::ViewPoint
+                        } else {
+                            Billboard::ViewPlane
+                        }
+                    } else {
+                        Billboard::None
+                    },
                     shadow_owner: match &self.models[model].source {
                         ModelSource::Fighter(slot) => Some(*slot),
                         ModelSource::Article(article)

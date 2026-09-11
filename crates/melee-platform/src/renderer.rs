@@ -14,6 +14,7 @@ struct Vertex {
     color: [f32; 4],
     matrix: u32,
     normal: [f32; 3],
+    billboard: u32,
 }
 struct Draw {
     vertices: wgpu::Buffer,
@@ -88,7 +89,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -108,7 +109,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -292,6 +293,11 @@ impl Renderer {
                     color: std::array::from_fn(|i| f32::from(v.color[i]) / 255.0),
                     matrix: mesh.matrix_offset + u32::from(v.matrix),
                     normal: v.normal,
+                    billboard: match mesh.billboard {
+                        melee_lib::presentation::Billboard::None => 0,
+                        melee_lib::presentation::Billboard::ViewPlane => 1,
+                        melee_lib::presentation::Billboard::ViewPoint => 2,
+                    },
                 })
                 .collect();
             draws.push(Draw {
@@ -595,8 +601,8 @@ fn shadow_pipeline(
 }
 
 fn vertex_layout() -> wgpu::VertexBufferLayout<'static> {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
-        0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Uint32, 4 => Float32x3
+    const ATTRIBUTES: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
+        0 => Float32x3, 1 => Float32x2, 2 => Float32x4, 3 => Uint32, 4 => Float32x3, 5 => Uint32
     ];
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<Vertex>() as u64,

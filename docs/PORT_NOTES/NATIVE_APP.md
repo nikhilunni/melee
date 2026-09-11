@@ -361,3 +361,49 @@ API and platform tests pass; the floor regression covers running off the ledge.
 A Metal shadow-on/off comparison changes 230 pixels beneath the two fighters at
 tick 240, bounded by x338..924/y410..417. This is a visibility check, not a retail
 shadow oracle. Native and final GPU checks are recorded in TRACKER.md.
+
+## Screenshot lighting correction (2026-09-11)
+
+The screenshot comparison exposed two specific omissions. WObj spline positions
+were consumed in local coordinates instead of being transformed by the referenced
+JObj (`HSD_WObjGetPosition`, 0x8037D720; PSMTXMultVec call at 0x8037D7C4).
+At tick 327 both lights incorrectly became [-17.44388, 0, -4.9638906]. The existing
+joint loader and audited matrix kernel now preserve the first path's y=7.5 and
+the second path's y=-2 plus its half-turn rotation. No light intensity or global
+brightness was changed, and no simulation state is mutated.
+
+The central white region is a vertex-alpha glow mesh, not a specular highlight.
+Its JObj has BILLBOARD set (flags 0x80200). Presentation now exposes authored
+view-plane/view-point billboarding, and the shared vertex shader orients the mesh
+while retaining scale, projected up axis and translation (`HSD_JObjMakePositionMtx`,
+0x803740E8). Normal meshes retain their complete original transform. This restores
+the white glow at the same tick and camera used for the before capture.
+
+Material composition now follows `MObjMakeTExp` (0x80363284): diffuse/ambient maps,
+raster lighting, separate specular maps and illumination, then EXT maps. Textures
+within one category all contribute alpha; a texture reused in a later category
+does not apply alpha twice. Reflection coordinates use view-space normals, and
+highlight coordinates use the first directional light's half-vector. GPU display
+arithmetic remains distinct from a bit-exact GX framebuffer implementation.
+
+Changed files: `melee-lib/src/presentation.rs`, `presentation/lighting.rs`,
+`tests/allocation.rs`; `melee-platform/src/material.rs`, `render.wgsl`,
+`renderer.rs`, `examples/material_probe.rs`, `examples/render_frame.rs`; tracker
+and this report. The optional `--inspect-materials` preview argument reports
+actual visible material flags and light vectors for future comparisons.
+
+Validation: all eight release allocation tests, including both complete-match
+captures; light separation/capture-frequency/reset checks; 24 Metal numeric
+fixtures (six new category/alpha/billboard cases, existing expectations unchanged);
+workspace clippy. Same-frame Metal before/after previews confirm the brighter
+fighters and restored central glow. Camera framing was held fixed, and the user
+screenshots themselves are not an aligned retail pixel oracle.
+
+Final checks also pass in debug for the light-path regression and in release for
+all six platform tests. The rebuilt native smoke passes at tick 226, with resize,
+focus, pause/resume and Fox movement from -60 to -0.2800008 verified. An initial
+shader version passed the full material structure through composition stages and
+failed native timing (ticks 19 and 9). Compact composition state removes unused
+texture/TEV metadata from that path; all 24 numeric outputs remain unchanged.
+The smoke threshold was not modified. No full workspace simulation rerun was
+needed for these display-only changes; workspace clippy passes.

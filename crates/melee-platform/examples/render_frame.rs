@@ -61,6 +61,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .filter(|(mesh, visible)| mesh.background && **visible)
             .count()
     );
+    if args.iter().any(|a| a == "--inspect-materials") {
+        eprintln!(
+            "Ambient: {:?}; lights: {:?}",
+            session.presentation().ambient_light(),
+            session.presentation().directional_lights()
+        );
+        let mut seen = std::collections::BTreeSet::new();
+        for (i, mesh) in session.presentation().meshes().iter().enumerate() {
+            if !session.presentation().visibility()[i]
+                || !seen.insert(std::sync::Arc::as_ptr(&mesh.material) as usize)
+            {
+                continue;
+            }
+            let m = &session.presentation().materials()[i];
+            eprintln!("mesh {i} fighter {:?} mode {:x} ambient {:?} diffuse {:?} spec {:?} shine {} textures {:?}", mesh.shadow_owner, m.render_mode, m.ambient, m.diffuse, m.specular, m.shininess, m.textures.iter().map(|t| (t.flags, t.scale, t.translation)).collect::<Vec<_>>());
+        }
+    }
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter =
         pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))?;

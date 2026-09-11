@@ -341,11 +341,25 @@ fn light_animation_depends_on_match_tick_not_capture_frequency() {
     let mut frequent = presentation::Presentation::new(&game).unwrap();
     let mut sparse = presentation::Presentation::new(&game).unwrap();
     let initial = frequent.directional_lights().to_vec();
+    assert_eq!(initial.len(), 2);
+    assert!(
+        frequent.meshes().iter().any(
+            |mesh| mesh.shadow_receiver && mesh.billboard == presentation::Billboard::ViewPlane
+        ),
+        "FD's central glow must face the camera"
+    );
     let mut saw_motion = false;
     for tick in 0..600 {
         game.step(&Inputs::default()).unwrap();
         frequent.capture(&game).unwrap();
         saw_motion |= initial != frequent.directional_lights();
+        let lights = frequent.directional_lights();
+        // Authored spline JObjs place the lights at distinct heights and rotate
+        // the second path by half a turn. Omitting their matrices collapses both.
+        assert_eq!(lights[0].direction[1], 7.5);
+        assert_eq!(lights[1].direction[1], -2.0);
+        assert!((lights[0].direction[0] + lights[1].direction[0]).abs() < 0.00002);
+        assert!((lights[0].direction[2] + lights[1].direction[2]).abs() < 0.00002);
         if tick % 73 == 0 {
             sparse.capture(&game).unwrap();
             assert_eq!(frequent.directional_lights(), sparse.directional_lights());

@@ -49,6 +49,37 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     checks[16]=sample_lod(mip_fixture,vec2(0.5),layer,0.75);
     layer.addressing.w=1u;
     checks[17]=sample_lod(mip_fixture,vec2(0.5),layer,1.0);
+    var mat:Composition;
+    var texels:array<vec4<f32>,8>;
+    mat.mode=12u; mat.count=1u;
+    mat.specular=vec3(1.0);
+    mat.parameters[0].y=f32(0x80u);
+    mat.operations[0]=vec4<u32>(5u,0u,0u,1u);
+    texels[0]=vec4(0.2,0.4,0.6,1.0);
+    // EXT replacement occurs after diffuse and specular illumination.
+    checks[18]=compose_material(vec4(0.8,0.8,0.8,1.0),mat,texels,vec3(0.25),vec3(0.5));
+    mat.parameters[0].y=f32(0x30u);
+    mat.operations[0].x=4u;
+    texels[0]=vec4(0.5);
+    // One texture can modulate both diffuse and specular branches.
+    checks[19]=compose_material(vec4(0.8,0.8,0.8,1.0),mat,texels,vec3(0.25),vec3(0.5));
+    mat.mode=0u; mat.count=2u;
+    mat.parameters[0].y=f32(0x10u);
+    mat.operations[0]=vec4<u32>(0u,3u,0u,1u);
+    mat.operations[1]=mat.operations[0]; mat.parameters[1]=mat.parameters[0];
+    texels[1]=vec4(0.5);
+    // Both diffuse textures affect alpha; category dedup must not skip one.
+    checks[20]=compose_material(vec4(1.0),mat,texels,vec3(1.0),vec3(0.0));
+    mat.mode=4u; mat.count=1u;
+    mat.parameters[0].y=f32(0x90u);
+    mat.operations[0].x=4u;
+    // A texture used again in EXT must not apply alpha a second time.
+    checks[21]=compose_material(vec4(0.8,0.8,0.8,1.0),mat,texels,vec3(0.5),vec3(0.0));
+    let edge_on=mat4x4(vec4(0.0,0.0,-2.0,0.0),vec4(0.0,3.0,0.0,0.0),vec4(4.0,0.0,0.0,0.0),vec4(10.0,20.0,30.0,1.0));
+    // Billboard turns toward the view while preserving scale and translation.
+    checks[22]=billboard_transform(edge_on,1u,vec3(0.0),vec3(0.0,0.0,1.0))*vec4(1.0,1.0,0.0,1.0);
+    checks[23]=billboard_transform(edge_on,0u,vec3(0.0),vec3(0.0,0.0,1.0))*vec4(1.0,1.0,0.0,1.0);
+
 }
 "#;
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -65,13 +96,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     });
     let output = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("GPU results"),
-        size: 288,
+        size: 384,
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
     });
     let readback = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Readback"),
-        size: 288,
+        size: 384,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
@@ -135,7 +166,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         pass.set_bind_group(0, &group, &[]);
         pass.dispatch_workgroups(1, 1, 1);
     }
-    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 288);
+    encoder.copy_buffer_to_buffer(&output, 0, &readback, 0, 384);
     queue.submit([encoder.finish()]);
     let (tx, rx) = std::sync::mpsc::channel();
     readback.slice(..).map_async(wgpu::MapMode::Read, move |r| {
@@ -164,7 +195,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         [0.75, 0.25, 0.0, 1.0],
         [0.0, 1.0, 0.0, 1.0],
         [1.0, 0.0, 0.0, 1.0],
+        [0.2, 0.4, 0.6, 1.0],
+        [0.35, 0.35, 0.35, 1.0],
+        [1.0, 1.0, 1.0, 0.25],
+        [0.1, 0.1, 0.1, 0.5],
+        [12.0, 23.0, 30.0, 1.0],
+        [10.0, 23.0, 28.0, 1.0],
     ];
+    assert_eq!(actual.len(), expected.len());
     for (i, (actual, expected)) in actual.iter().zip(expected).enumerate() {
         for channel in 0..4 {
             assert!(
@@ -176,7 +214,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!(
-        "18 material/lighting/addressing/mip GPU fixtures passed on {:?}",
+        "24 material/lighting/addressing/mip/billboard GPU fixtures passed on {:?}",
         adapter.get_info().backend
     );
     Ok(())

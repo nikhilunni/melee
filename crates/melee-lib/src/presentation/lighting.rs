@@ -16,6 +16,7 @@ struct Source {
     base: [f32; 3],
     animation: Option<AObj>,
     path: Option<hsd_archive::desc::spline::LinearSpline>,
+    path_matrix: hsd_types::Mtx,
 }
 pub(super) struct Lighting {
     pub ambient: [f32; 3],
@@ -82,7 +83,11 @@ impl Lighting {
                                 source.path.as_ref().expect("validated path track"),
                                 value.clamp(0.0, 1.0),
                             );
-                            light.direction = [p.x, p.y, p.z];
+                            // HSD_WObjGetPosition (0x8037D720) resolves spline-local positions
+                            // through the referenced JObj matrix before lighting.
+                            let mut world = hsd_types::Vec3::ZERO;
+                            hsd_anim::mtx::mtx_mult_vec(&source.path_matrix, &p, &mut world);
+                            light.direction = [world.x, world.y, world.z];
                         } else {
                             light.direction[usize::from(track - 5)] = value;
                         }
@@ -106,6 +111,7 @@ fn position_source(
     let p = position.position;
     let base = [p.x, p.y, p.z];
     let mut path = None;
+    let mut path_matrix = hsd_types::Mtx::IDENTITY;
     let animation = animation
         .map(|a| {
             if a.tracks().any(|track| !(4..=7).contains(&track.type_)) {
@@ -113,6 +119,10 @@ fn position_source(
             }
             if a.tracks().any(|track| track.type_ == 4) {
                 let joint = hsd_archive::desc::JObjDesc::read(archive, a.obj_id).map_err(error)?;
+                let (mut tree, root) =
+                    hsd_anim::load::load_joint_tree(archive, &joint).map_err(error)?;
+                tree.setup_matrix(root);
+                path_matrix = tree.get(root).mtx;
                 let hsd_archive::desc::JObjUnion::Spline(Some(offset)) = joint.u else {
                     return Err(error("light path target is not a spline"));
                 };
@@ -129,5 +139,6 @@ fn position_source(
         base,
         animation,
         path,
+        path_matrix,
     })
 }

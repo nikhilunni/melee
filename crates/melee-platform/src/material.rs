@@ -258,11 +258,9 @@ fn capture(material: &Material) -> Uniform {
         ],
         layers: [Layer::default(); MAX_LAYERS],
     };
-    let mut lightmaps = 0;
     for i in 0..MAX_LAYERS {
         let layer = material.textures.get(i);
         if let Some(t) = layer {
-            let lightmap = t.flags & 0x1f0;
             uniform.layers[i] = Layer {
                 scale: [
                     t.scale[0],
@@ -277,12 +275,7 @@ fn capture(material: &Material) -> Uniform {
                     if t.wrap_t == 2 { 1.0 } else { 0.0 },
                 ],
                 rotation: [t.rotation[0], t.rotation[1], t.rotation[2], 0.0],
-                operations: [
-                    (t.flags >> 16) & 15,
-                    (t.flags >> 20) & 15,
-                    t.flags & 15,
-                    u32::from(lightmaps & lightmap == 0),
-                ],
+                operations: [(t.flags >> 16) & 15, (t.flags >> 20) & 15, t.flags & 15, 1],
                 ..Layer::default()
             };
             if let Some(tev) = t.combiner {
@@ -305,6 +298,7 @@ fn capture(material: &Material) -> Uniform {
                     .map(|color| color.map(|v| f32::from(v) / 255.0));
                 layer.active[0] = tev.active;
             }
+            uniform.layers[i].active[1] = t.flags & 0x1f0;
             uniform.layers[i].image = [
                 material
                     .texture_banks
@@ -323,7 +317,6 @@ fn capture(material: &Material) -> Uniform {
                 t.image.lod_range[1],
                 (1u32 << t.lod.anisotropy.min(2)) as f32,
             ];
-            lightmaps |= lightmap;
         }
     }
     uniform
@@ -413,7 +406,7 @@ pub fn shader() -> String {
     let mut samples = String::new();
     for i in 0..MAX_LAYERS {
         bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d_array<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
-        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=sample_image(image{i},coordinates(in,layer),layer); color=combine(color,custom_texture(tex,layer),layer); }}\n"));
+        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=sample_image(image{i},coordinates(in,layer),layer); texels[{i}]=custom_texture(tex,layer); composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
     }
     include_str!("render.wgsl")
         .replace("// CAMERA", include_str!("camera.wgsl"))
