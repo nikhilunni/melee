@@ -1,10 +1,11 @@
 // Display-only approximation of HSD's common texture expression stages.
-// Custom TEV registers, light objects and material animation are separate work.
+// Authored texture expressions are supported; lighting and material animation
+// remain separate from these display calculations.
 struct Camera { extent: vec4<f32> }
 @group(0) @binding(0) var<storage, read> poses: array<mat4x4<f32>>;
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
-struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32> }
+struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32> }
 struct Material { diffuse: vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
 // TEXTURE_BINDINGS
@@ -37,6 +38,7 @@ fn coordinates(in: Out, layer: Layer) -> vec2<f32> {
     // HSD texture Z rotation has the opposite sign to joint rotation.
     return vec2(c.z*p.x+s.z*p.y,-s.z*p.x+c.z*p.y)*scale;
 }
+// CUSTOM_COMBINERS
 fn combine(previous:vec4<f32>,tex:vec4<f32>,layer:Layer)->vec4<f32> {
     var color=previous;
     switch layer.operations.x {

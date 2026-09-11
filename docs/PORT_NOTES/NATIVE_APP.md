@@ -83,7 +83,7 @@ Camera framing fits living fighters with margins and adapts to aspect ratio. It
 is application policy, not the retail camera: it currently has no smoothing,
 perspective or stage-specific limits. Camera queries do not advance any clock.
 
-Custom TEV register expressions, authored lighting, material/texture animation,
+Authored lighting, material/texture animation,
 mipmaps, destination-alpha behavior, and precise GX blend/color rounding remain
 unfinished. Reflection/highlight coordinates use an approximate normal mapping;
 other generated coordinate modes still fall back to UVs. In particular, laser
@@ -173,3 +173,20 @@ bundle build passed. Native resize/focus/pause/keyboard smoke passed at tick 233
 the offscreen laser preview at tick 256 used the production Metal renderer.
 No full workspace simulation suite was rerun for this rendering pass, per the
 user's scoped-verification preference. No game data or decomp changes, no commit.
+
+## Custom texture combiners (2026-09-10)
+
+The initial native/rendering work is committed as `a4487fe`. This phase decodes
+HSD_TObjTevDesc in `hsd-archive/src/visual/tev.rs`, including independent color and
+alpha expressions, Konst/register inputs, bias, scale, clamp, and comparisons.
+`melee-platform/src/tev.wgsl` evaluates the expression before the existing texture
+mapping stage. Shader generation remains shared with the native renderer.
+`examples/material_probe.rs` checks ten numeric GPU fixtures explicitly on a
+GPU host; it adds no GPU requirement to ordinary workspace tests. Run it with
+`cargo run --release -p melee-platform --example material_probe`.
+
+This is display-float evaluation, not a claim of bit-exact GX fixed-point
+rounding. Material animation, lighting and precise framebuffer behavior remain.
+
+Combiner phase validation: descriptor and real-asset tests, allocation/nonmutation
+regression, ten Metal numeric fixtures, workspace clippy and native build pass.

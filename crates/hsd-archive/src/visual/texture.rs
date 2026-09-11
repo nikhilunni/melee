@@ -17,7 +17,7 @@ pub struct TextureLayer {
     pub repeat: [u8; 2],
     pub blending: f32,
     pub nearest: bool,
-    pub custom_tev: bool,
+    pub combiner: Option<super::TextureCombiner>,
     pub wrap_s: u32,
     pub wrap_t: u32,
     pub scale: [f32; 3],
@@ -68,7 +68,10 @@ impl<'a> TextureDecoder<'a> {
                 repeat: [r.u8(offset + 60)?, r.u8(offset + 61)?],
                 blending: r.f32(offset + 68)?,
                 nearest: r.u32(offset + 72)? == 0,
-                custom_tev: archive.link(offset + 88)?.is_some(),
+                combiner: archive
+                    .link(offset + 88)?
+                    .map(|at| super::TextureCombiner::read(archive, at))
+                    .transpose()?,
                 wrap_s: r.u32(offset + 52)?,
                 wrap_t: r.u32(offset + 56)?,
                 rotation: vec3(offset + 16)?,

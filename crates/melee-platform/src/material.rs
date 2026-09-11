@@ -13,6 +13,12 @@ struct Layer {
     translation: [f32; 4],
     rotation: [f32; 4],
     operations: [u32; 4],
+    color_operation: [u32; 4],
+    alpha_operation: [u32; 4],
+    color_inputs: [u32; 4],
+    alpha_inputs: [u32; 4],
+    constants: [[f32; 4]; 3],
+    active: [u32; 4],
 }
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -117,7 +123,28 @@ impl Images {
                         t.flags & 15,
                         u32::from(lightmaps & lightmap == 0),
                     ],
+                    ..Layer::default()
                 };
+                if let Some(tev) = t.combiner {
+                    let layer = &mut uniform.layers[i];
+                    let operation = |op: melee_lib::presentation::TextureCombiner, color: bool| {
+                        let op = if color { op.color } else { op.alpha };
+                        [
+                            u32::from(op.function),
+                            u32::from(op.bias),
+                            u32::from(op.scale),
+                            u32::from(op.clamp),
+                        ]
+                    };
+                    layer.color_operation = operation(tev, true);
+                    layer.alpha_operation = operation(tev, false);
+                    layer.color_inputs = tev.color.inputs.map(u32::from);
+                    layer.alpha_inputs = tev.alpha.inputs.map(u32::from);
+                    layer.constants = tev
+                        .constants
+                        .map(|color| color.map(|v| f32::from(v) / 255.0));
+                    layer.active[0] = tev.active;
+                }
                 lightmaps |= lightmap;
             }
             self.views.entry(key.0).or_insert_with(|| {
@@ -252,9 +279,10 @@ pub fn shader() -> String {
     let mut samples = String::new();
     for i in 0..MAX_LAYERS {
         bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
-        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSample(image{i},sampler{i},coordinates(in,layer)); color=combine(color,tex,layer); }}\n"));
+        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSample(image{i},sampler{i},coordinates(in,layer)); color=combine(color,custom_texture(tex,layer),layer); }}\n"));
     }
     include_str!("render.wgsl")
+        .replace("// CUSTOM_COMBINERS", include_str!("tev.wgsl"))
         .replace("// TEXTURE_BINDINGS", &bindings)
         .replace("// TEXTURE_SAMPLES", &samples)
 }

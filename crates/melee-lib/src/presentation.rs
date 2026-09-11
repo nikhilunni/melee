@@ -2,7 +2,7 @@
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
-pub use hsd_archive::visual::{PixelState, Texture, TextureLayer, Vertex};
+pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
 use hsd_archive::{
     desc::JObjDesc,
     visual::{MatrixBinding, Polygon, TextureDecoder},

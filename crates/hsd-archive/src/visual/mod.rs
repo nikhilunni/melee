@@ -2,13 +2,16 @@
 //! no GPU handles, simulation state, or host-specific types are retained.
 //!
 //! Initial support decodes GX polygon display lists, skinning palettes, and
-//! base-level textures. Material combiners and shape animation remain separate.
+//! base-level textures and material texture expressions. Shape animation remains
+//! separate.
 mod color;
 mod material;
 pub use material::PixelState;
 mod polygon;
+mod tev;
 mod texture;
 pub use polygon::{read_polygons, Influence, MatrixBinding, Polygon, Vertex};
+pub use tev::{TevOperation, TextureCombiner};
 pub use texture::{read_image, Texture, TextureDecoder, TextureLayer};
 
 #[derive(Debug)]

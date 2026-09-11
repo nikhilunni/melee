@@ -6,4 +6,4 @@ pub mod session;
 pub mod surface;
 
 mod camera;
-mod material;
+pub mod material;

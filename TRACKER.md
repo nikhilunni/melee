@@ -15,7 +15,9 @@ task lines you touched and add one line to the session log.
 
 - [x] First native visual prototype: shared archive mesh/texture decoder, allocation-free presentation capture, wgpu renderer, session/C ABI, and Swift/AppKit window. Focused skinning, presentation-allocation and session tests, clippy, native build and resize/focus/pause/keyboard smoke pass. Full release gate passed before final presentation/focus changes; debug workspace run stopped at user request in favor of focused app checks. Basic Fox/Marth/FD rendering only; visual effects, materials and camera fidelity remain follow-up work. See `docs/PORT_NOTES/NATIVE_APP.md`.
 
-- [~] Rendering fidelity pass (2026-09-10), implemented and verified, uncommitted: common multi-texture color/alpha operations, authored sampling/transforms and pixel state, background/world compositing, living-fighter camera framing, live stage poses, and instanced original laser meshes. Shared character archives avoid duplicate article data. Focused release checks (16 tests), clippy, native build/smoke and Metal preview pass. Custom TEV/material animation, precise transparency, held weapon poses and combat effects remain; see `docs/PORT_NOTES/NATIVE_APP.md`.
+- [x] Rendering fidelity pass (2026-09-10), committed as `a4487fe`: common multi-texture color/alpha operations, authored sampling/transforms and pixel state, background/world compositing, living-fighter camera framing, live stage poses, and instanced original laser meshes. Shared character archives avoid duplicate article data. Focused release checks (16 tests), clippy, native build/smoke and Metal preview pass. Custom TEV/material animation, precise transparency, held weapon poses and combat effects remain; see `docs/PORT_NOTES/NATIVE_APP.md`.
+
+- [x] Custom texture-combiner phase (2026-09-10): decoded HSD texture expressions, shared GPU arithmetic/comparison stages, and ten numeric Metal fixtures. Descriptor, real-asset and presentation checks pass; clippy and native build pass.
 
 ## Current focus
 
