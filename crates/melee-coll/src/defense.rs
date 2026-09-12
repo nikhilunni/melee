@@ -25,7 +25,7 @@ pub struct ClankPriority {
     pub stop_second: bool,
 }
 /// ftColl_8007699C (8007699C): truncate damage before strict threshold tests.
-/// This is priority only; existing fighter rebound application remains a gap.
+/// Response application is owned by melee-ft::fighter::clank.
 pub fn clank_priority(first: f32, second: f32, threshold: i32) -> ClankPriority {
     let first = gekko_math::msl::fctiwz(first);
     let second = gekko_math::msl::fctiwz(second);

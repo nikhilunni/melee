@@ -33,6 +33,7 @@ pub struct CombatState {
     pub queued_hit_sfx: Option<u32>,
     pub queued_voice: Option<DamageVoice>,
     pub dealt_damage: i32,
+    pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
     /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
@@ -268,19 +269,36 @@ impl DamageParameters {
 }
 /// ftColl_80078C70 (80078C70): receiver first, other fighters then hitbox IDs,
 /// then hurt-table order. The scene supplies that entity-list ordering.
-pub fn detect_hit(victim: &mut Fighter, attacker: &mut Fighter, assets: &FighterAssets) {
+pub fn detect_hit(
+    victim: &mut Fighter,
+    attacker: &mut Fighter,
+    assets: &FighterAssets,
+    incoming_after_receiver: bool,
+) {
     if victim.core.status.disabled
         || attacker.core.status.disabled
         || attacker.core.commands.thrown_by == Some(victim.core.spawn_number)
     {
         return;
     }
+    let mut clank_mask = super::clank::candidates(&victim.core, &attacker.core);
     let mut cursor = melee_coll::detection::PairCursor::default();
     while let Some(id) = cursor.next(
         &attacker.core.commands.hitboxes,
         victim.core.spawn_number,
         victim.core.physics.ground_or_air,
     ) {
+        if incoming_after_receiver
+            && super::clank::contact(
+                &mut victim.core,
+                &mut attacker.core,
+                id,
+                &mut clank_mask,
+                &assets.clank,
+            )
+        {
+            continue;
+        }
         if let Some(contact) = victim.character.table().defense_contact {
             if contact(victim, attacker, assets, id) {
                 continue;
@@ -498,6 +516,10 @@ impl Fighter {
     ) -> Result<()> {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
+        let clank = self.core.combat.clank;
+        self.core.combat.clank.damage = 0;
+        self.core.combat.clank.duration = 0.0;
+        // +1920 facing is retained; only +1918/+191C reset at the retail tail.
         let reflection = self.core.combat.reflection.take();
         let received_knockback = self.core.combat.pending_from_captor
             || self
@@ -544,6 +566,14 @@ impl Fighter {
                     take_damage(self);
                 }
                 hit_damage = self.begin_damage_reaction(hit, None, None, assets, rng)?;
+            }
+        }
+        // Fighter_ProcessHit: received damage and shield impact precede clank;
+        // clank precedes ordinary damage dealt. Every path consumes the scratch.
+        if !received_knockback && self.core.shield.impact.is_none() && clank.damage != 0 {
+            hit_damage = clank.damage;
+            if clank.duration != 0.0 && self.core.combat.grab.is_none() {
+                self.enter_rebound(assets, clank)?;
             }
         }
         if !received_knockback && self.core.shield.impact.is_none() && hit_damage == 0 {
@@ -628,6 +658,8 @@ impl Fighter {
             };
             damage.trail_timer = u32::from(speed >= assets.damage.trail_threshold);
         }
+        // ftCo_8008DCE0 block_83: AFTER initial animation and reaction setup.
+        (self.character.table().knockback_enter)(self, assets);
         Ok(result)
     }
     /// ftCo_Damage_Anim (8008F7F0) -> ftCo_8008F744 (8008F744).
@@ -658,10 +690,17 @@ impl Fighter {
         }
         if damage.hitstun > 0.0 {
             damage.hitstun -= 1.0;
-            if damage.hitstun <= 0.0 {
-                self.core.combat.combo.grace = assets.combo.grace_frames;
-            }
         }
+        // ftCo_8008F744: the ownership bit, not a positive timer crossing,
+        // controls this one-shot callback (including imported nonpositive timers).
+        if self.core.status.in_hitstun && damage.hitstun <= 0.0 {
+            self.core.status.in_hitstun = false;
+            self.core.combat.combo.grace = assets.combo.grace_frames;
+            (self.character.table().knockback_exit)(self, assets);
+        }
+        let MotionData::Damage(damage) = &self.core.state_data else {
+            panic!("damage scratch missing")
+        };
         if !self.core.animation.frames_remaining(&self.core.skeleton) && damage.hitstun <= 0.0 {
             // ftCo_Damage_Anim / DamageFly_Anim inlineC0: consume a stored
             // jump only at animation end. DamageFlyRoll has no buffer branch.
@@ -1074,19 +1113,6 @@ fn detect_eligible_hit(
         if victim.motion_state.id == S::DamageIce {
             unimplemented!("ftcoll.c:199: DamageIce victim");
         }
-        // ftColl_80078C70, ftcoll.c:1758-1780: both attacks must allow
-        // clanking and both fighters must be grounded. Already recorded victims
-        // are excluded by lbColl_8000ACFC before the clank traversal.
-        if desc.clank
-            && victim.physics.ground_or_air == GroundOrAir::Ground
-            && attacker.physics.ground_or_air == GroundOrAir::Ground
-        {
-            melee_coll::detection::require_uncontested_hit(
-                &victim.commands.hitboxes,
-                attacker.spawn_number,
-                attacker.physics.ground_or_air,
-            );
-        }
         if contact.overlap < assets.damage.phantom_threshold {
             unimplemented!("ftcoll.c:589-623: phantom hit");
         }
@@ -1384,6 +1410,7 @@ impl FighterCore {
             trail_timer: 0,
             influence: assets.damage.influence,
         });
+        self.status.in_hitstun = true;
         self.status.time_since_hit = 0;
         self.status.interaction = Interaction::Damage;
         self.input.horizontal.tilt = 254;

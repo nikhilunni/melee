@@ -7,6 +7,7 @@ pub mod air_dodge;
 pub mod assets;
 pub mod attack;
 pub mod caches;
+pub mod clank;
 pub mod commands;
 pub mod damage;
 pub mod dash;
@@ -139,8 +140,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
     }
 
+    /// ftCommon_8007F824 / 8007F86C, after damage entry and on hitstun expiry.
+    const KNOCKBACK_ENTER: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
+    const KNOCKBACK_EXIT: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
+
     /// Character article work before the common throw release/end processing.
-    fn throw_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+    const THROW_ANIMATION: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
 
     /// ftColl candidate boundary: special defense may consume an eligible hit.
     const DEFENSE_CONTACT: Option<DefenseContact> = None;
@@ -176,9 +181,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// starts from a savestate (the shared fields are restored by the scene).
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
     /// ftCo_800DEA28: explicitly bind each audited character entry.
-    fn enter_taunt(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> assets::Result<()> {
-        unimplemented!("ftCo_800DEA28: character taunt entry");
-    }
+    const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+        character::unsupported_taunt;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
     /// Costume-dependent OnLoad work (e.g. material animation end frames).
@@ -428,6 +432,8 @@ pub enum Interaction {
 pub struct Status {
     /// x221F_b3 (+221F mask 10).
     pub disabled: bool,
+    /// Fighter +221C mask2: damage owns hitstun completion until cleared.
+    pub in_hitstun: bool,
     /// x221D_b4: reset input during match startup.
     pub input_frozen: bool,
     /// x221D_b5: skip fighter-overlap nudge while dodging (ftcommon.c:850).
@@ -468,6 +474,7 @@ impl Status {
     pub fn reset(shield_health: f32) -> Self {
         Self {
             disabled: false,
+            in_hitstun: false,
             input_frozen: false,
             ignore_fighter_nudge: false,
             interaction: Interaction::Idle,
@@ -669,6 +676,7 @@ pub enum MotionData {
         retained_drop_timer: f32,
     },
     Damage(damage::DamageState),
+    Rebound(clank::State),
     Guard(shield::GuardState),
     Dizzy(shield_break::DizzyState),
     Escape(escape::EscapeState),

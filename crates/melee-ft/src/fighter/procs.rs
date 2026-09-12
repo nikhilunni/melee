@@ -97,8 +97,11 @@ impl Fighter {
         if let Some(callback) = self.character.table().process_defense_hit {
             callback(self, assets);
         }
+        // Fighter_ProcessHit updates health before any response can clear Guard.
+        let exhausted = self.core.update_shield_health(assets);
         self.process_damage(assets, rng).expect("hit response");
-        self.shield_proc(assets).expect("shield response");
+        self.shield_proc(assets, exhausted)
+            .expect("shield response");
         self.core.update_hurtbox_extents();
     }
     /// Rendered joints feed the next ftCo_8009CB40 ownership change through
@@ -228,6 +231,13 @@ impl FighterCore {
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }
                         | super::MotionData::Down { .. }
+                ) || matches!(
+                    (&self.state_data, self.motion_state.id),
+                    (
+                        super::MotionData::Rebound(_),
+                        melee_types::CommonMotionState::ReboundStop
+                            | melee_types::CommonMotionState::Rebound
+                    )
                 ) || (matches!(self.state_data, super::MotionData::Cliff(_))
                     && matches!(
                         self.motion_state.id,

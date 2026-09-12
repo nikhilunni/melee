@@ -17,6 +17,8 @@ struct MotionChange<'a> {
     update_commands: bool,
     preserve_name_tag: bool,
     skip_animation: bool,
+    /// Fighter_ChangeMotionState Ft_MF_SkipMatAnim (bit7).
+    preserve_material_animation: bool,
     /// fn_800DE798: restore the release owner after reset, before initial commands.
     throw_owner: Option<u32>,
     preserve: MotionPreservation,
@@ -310,6 +312,37 @@ impl Fighter {
         )
     }
 
+    /// ftCo_80098D90: 0x10D4, start0/rate1/default blend.
+    /// KeepColAnimHitStatus preserves body and global capsule status, not
+    /// per-capsule overrides. SkipModel/SkipMatAnim/SkipColAnim retain their
+    /// owners: retain model selections, texture animation and the modeled
+    /// primary color bank. Unk06 has no entry consumer.
+    /// This is not a ground/air counterpart: ordinary visibility and commands reset.
+    pub(super) fn change_shield_break_fall(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_shield_break_motion(CommonMotionState::ShieldBreakFall, assets)
+    }
+
+    /// ftCo_80098E3C / ftCo_80098F3C use the same preservation, flags 0x1094.
+    pub(super) fn change_shield_break_motion(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state.into(),
+            assets,
+            MotionChange {
+                rate: 1.0,
+                preserve_material_animation: true,
+                preserve: MotionPreservation {
+                    hit_status: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+    }
+
     /// ftCo_800D4FF4 (800D50D0..50E8): KeepGfx, SkipColAnim and anim_blend=-1.
     /// The -1 caller sentinel means immediate animation, not the asset blend.
     pub(super) fn change_revival_motion(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -462,6 +495,7 @@ impl Fighter {
                 start: self.animation.frame,
                 rate: 1.0,
                 ground_air: true,
+                preserve_material_animation: true,
                 preserve,
                 ..Default::default()
             },
@@ -506,7 +540,8 @@ impl Fighter {
         if !animate {
             return Ok(());
         }
-        if change.skip_animation
+        if row.animation < 0
+            || change.skip_animation
             || state == CommonMotionState::Guard
             || (!self.character.animated_shield()
                 && matches!(
@@ -515,7 +550,17 @@ impl Fighter {
                 ))
         {
             // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
+            let had_root_motion = self.core.animation.flags.contains(
+                crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
+            );
             self.core.clear_animation();
+            // Fighter_ChangeMotionState: the no-animation branch still reaches
+            // the outgoing root-motion clamp (fighter.c:1363-1368).
+            if row.animation < 0 && had_root_motion {
+                let max = self.core.attributes.running.dash_max_velocity;
+                self.core.physics.ground_velocity =
+                    self.core.physics.ground_velocity.clamp(-max, max);
+            }
             // Fighter_ChangeMotionState80069C0C: fsubs, also for SkipAnim.
             self.core.animation.frame = change.start - change.rate;
             return Ok(());
@@ -733,13 +778,23 @@ impl FighterCore {
         let state = row.id;
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
+        // fighter.c:983 / ftAnim_80070654: reset costume texture requests before
+        // the new animation and its frame-zero commands can install overrides.
+        if !change.preserve_material_animation {
+            self.commands.reset_texture_animation();
+        }
         self.shield.clear_collision();
         self.combat.reflector_enabled = false;
         self.effect_state.hitlag_callbacks = false;
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
-        self.combat.combo.grace = assets.combo.grace_frames;
+        // None of the current motion-entry masks includes Ft_MF_SkipHitStun.
+        // Clearing ownership does not call OnKnockbackExit on interruption.
+        if self.status.in_hitstun {
+            self.status.in_hitstun = false;
+            self.combat.combo.grace = assets.combo.grace_frames;
+        }
         self.status.on_ledge = false;
         // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
         if self.physics.ground_or_air == GroundOrAir::Ground {
@@ -818,17 +873,19 @@ impl FighterCore {
         }
         let animation_id = row.animation;
         self.motion_state = row;
-        for (i, set) in self.dynamics.iter_mut().enumerate() {
-            let first = assets.dynamics_motion_starts[&animation_id][i];
-            let dynamic = first != 0x100;
-            self.dynamics_first_bone[i] = first;
-            crate::dynamics::select(
-                set,
-                &mut self.skeleton,
-                &mut self.animation.parts,
-                dynamic,
-                if dynamic { first as usize } else { 0 },
-            );
+        if animation_id >= 0 {
+            for (i, set) in self.dynamics.iter_mut().enumerate() {
+                let first = assets.dynamics_motion_starts[&animation_id][i];
+                let dynamic = first != 0x100;
+                self.dynamics_first_bone[i] = first;
+                crate::dynamics::select(
+                    set,
+                    &mut self.skeleton,
+                    &mut self.animation.parts,
+                    dynamic,
+                    if dynamic { first as usize } else { 0 },
+                );
+            }
         }
         self.ground_pose = GroundPoseFlags::default();
         self.status.sword_trail = -1;

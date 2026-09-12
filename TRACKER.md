@@ -721,7 +721,18 @@ Newest first. One line per session: date, what landed, what is next.
   independent C matrix reference. Headless scripting frontend validated against
   300 state/particle/RNG and 150 bone records, unblocking captures despite GUI
   IOSurface startup failures. Report: `docs/PORT_NOTES/LASER_REFLECTION.md`.
-- [~] Next contact packet: low-health reflector overflow has a 600-tick witness,
-  whose follow-through needs ShieldBreakFall206; six clank/contact scenarios
-  now have full 300-tick captures, including mutual, both priority winners,
-  no-rebound and airborne controls. Implement and gate before expanding scope.
+- [x] (2026-09-12) Directed clank and reflector overflow: six300-tick contacts
+  and one600-tick shield-break recovery pass raw, SRT, particle and allocation
+  checks. Implemented ReboundStop/Rebound, shield-break fall/down/stand, exact
+  hit-phase effect dispatch and Fox knockback part/texture ownership. Both full
+  profiles:1,404 passed,0 failed,1 existing ignore. Final shared-callback cleanup
+  passes56 affected tests per profile and14 release throw checks after no-inline;
+  Clippy,225 harness tests,schema,formatting,native build pass. Perf census restored
+  cross-crate duplicates104→100; stripped3,978,032 (+488 versus f0dd3b8), load183.259ms,
+  ticks26.137ms. Existing size/time ceilings remain red and unchanged. Report:
+  `docs/PORT_NOTES/CONTACT_CLOSURE.md`; full measurements in `docs/PERF.md`.
+- [~] Next recovery packet: four450-tick full captures now cover Fox WallJump,
+  Fox/Marth StopCeil and a Marth wall-contact control. Four additional450-tick
+  CaptureJump recordings are ready. Natural timed-stock and Sudden Death fixtures
+  plus clock/scene diagnostics are captured; camera, timer/scene flow and Sudden
+  Death Bob-ombs remain implementation work. Keep breadth paused.

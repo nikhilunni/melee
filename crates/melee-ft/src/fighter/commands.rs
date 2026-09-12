@@ -43,6 +43,10 @@ pub enum SoundChannel {
     StatusEffect,
     /// ft_80088328: stop the two voice channels, then use Fighter +2148.
     OverrideVoice,
+    /// ft_80088770: clear the action handle (+2144).
+    StopAction,
+    /// ft_800887CC: clear the override voice handle (+2148).
+    StopOverrideVoice,
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
@@ -104,6 +108,8 @@ pub struct CommandState {
     /// Requests to costume TObjs (ftAnim_800704F0). Rendering consumes these;
     /// TObj/GX execution remains M8, like the existing HSD model loader.
     pub texture_frames: FixedVec<(usize, f32), TEXTURE_SLOT_COUNT>,
+    /// Fighter +221E mask1: ftAnim_800704F0 has installed a texture override.
+    pub texture_animation_active: bool,
     /// ftAction_80072E4C requests, resolved at the calling proc boundary.
     pub landing_effects: FixedVec<u16, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80073118: radial dynamics requests, no RNG.
@@ -382,12 +388,7 @@ impl CommandState {
                 ),
                 Command::Texture { indices, frame } => {
                     for &index in indices {
-                        let existing = self.texture_frames.iter_mut().find(|(i, _)| *i == index);
-                        if let Some(entry) = existing {
-                            entry.1 = *frame;
-                        } else {
-                            self.texture_frames.push((index, *frame));
-                        }
+                        self.set_texture_frame(index, *frame);
                     }
                 }
             }
@@ -525,6 +526,59 @@ impl super::FighterCore {
                 volume: sound.volume,
                 pan: sound.pan,
             });
+        }
+    }
+}
+
+impl super::FighterCore {
+    /// Character callbacks use the same part-source installation as command 30.
+    /// Copies into the visible skeleton remain owned by normal animation playback.
+    pub fn apply_part_animation(
+        &mut self,
+        assets: &FighterAssets,
+        group: usize,
+        variant: usize,
+        blend: f32,
+    ) {
+        apply_part(
+            &mut self.animation,
+            &mut self.skeleton,
+            assets,
+            group,
+            variant,
+            blend,
+        );
+    }
+
+    /// Fighter_OnKnockbackEnter/Exit(gobj, 1): authored texture slots 1 then 0.
+    pub fn set_knockback_texture_frames(&mut self, frame: f32) {
+        for index in [1, 0] {
+            self.commands.set_texture_frame(index, frame);
+        }
+    }
+}
+
+impl CommandState {
+    /// ftAnim_800704F0; the modeled texture request and its reset ownership.
+    pub fn set_texture_frame(&mut self, index: usize, frame: f32) {
+        let existing = self.texture_frames.iter_mut().find(|(i, _)| *i == index);
+        if let Some(entry) = existing {
+            entry.1 = frame;
+        } else {
+            self.texture_frames.push((index, frame));
+        }
+        self.texture_animation_active = true;
+    }
+
+    /// ftAnim_80070654: every costume texture animation is requested at frame0.
+    /// Untouched modeled slots already denote frame0; retain explicit slots so
+    /// consumers see the reset rather than retain the previously requested frame.
+    pub(super) fn reset_texture_animation(&mut self) {
+        if self.texture_animation_active {
+            for (_, frame) in self.texture_frames.iter_mut() {
+                *frame = 0.0;
+            }
+            self.texture_animation_active = false;
         }
     }
 }

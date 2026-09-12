@@ -82,6 +82,8 @@ pub(crate) fn import(
     f.cpu.reaction_timer = word(raw, 0x1B04) as i32;
     f.cpu.attack_delay = word(raw, 0x1ABC) as i32;
     f.status.input_frozen = raw[0x221D] & 8 != 0;
+    f.status.in_hitstun = raw[0x221C] & 2 != 0;
+    f.commands.texture_animation_active = raw[0x221E] & 1 != 0;
     f.status.shield_health = float(raw, 0x1998);
     f.status.name_tag_timer = u16::from_be_bytes([raw[0x209A], raw[0x209B]]);
     f.status.ledge_cooldown = word(raw, 0x2064) as i32;

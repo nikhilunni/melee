@@ -57,6 +57,10 @@ pub enum EffectRequest {
         bone: usize,
     },
     /// ftColl_8007A06C -> efSync_Spawn: world-space contact effect.
+    /// efSync_Spawn 1052: hitbox-pair clank midpoint.
+    Clank {
+        position: Vec3,
+    },
     ShieldSpark {
         position: Vec3,
     },
@@ -258,6 +262,7 @@ impl EffectRequest {
                 | Self::HitSpark { .. }
                 | Self::NormalSparkExtra { .. }
                 | Self::ShieldSpark { .. }
+                | Self::Clank { .. }
                 | Self::DestroyOwned
         )
     }

@@ -444,3 +444,38 @@ fn laser_reflection_stale_allocation_budget() {
 fn laser_reflection_delayed_allocation_budget() {
     allocation_budget("laser_reflect_delayed_timed_fd_marth", 0);
 }
+
+#[test]
+fn contact_closure_mutual() {
+    allocation_budget("clank_jab_s74_f122_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_priority_fox() {
+    allocation_budget("clank_priority_fox_spaced_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_priority_marth() {
+    allocation_budget("clank_priority_marth_spaced_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_no_rebound() {
+    allocation_budget("clank_smash_norebound_spaced_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_airborne_fox() {
+    allocation_budget("clank_airborne_fox_spaced_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_airborne_marth() {
+    allocation_budget("clank_airborne_marth_spaced_fd_foxmarth", 0);
+}
+
+#[test]
+fn contact_closure_overflow() {
+    allocation_budget("laser_reflect_overflow_air_timed_fd_marth", 0);
+}

@@ -36,6 +36,8 @@ pub struct CharacterDescriptor {
     pub costumes: &'static [CostumeDescriptor],
     /// Character table animations using ported shared callbacks.
     pub additional_motions: &'static [u32],
+    /// Part sources installed by character callbacks rather than subaction commands.
+    pub additional_part_animations: &'static [(usize, usize)],
 }
 /// Retail common-state capability metadata. The descriptor supplies defaults
 /// even for kinds whose character-owned callbacks have not yet been ported.
@@ -122,6 +124,7 @@ pub struct FighterAssets {
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub damage: super::damage::DamageParameters,
+    pub clank: super::clank::Parameters,
     pub attacks: super::attack::AttackParameters,
     pub combo: super::attack::combo::ComboParameters,
     pub overlap: melee_coll::overlap::OverlapParameters,
@@ -199,7 +202,7 @@ impl FighterAssets {
             &[
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
                 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
-                46, 58, 167, 168, 169, 209, 242, 243,
+                45, 46, 58, 167, 168, 169, 209, 242, 243,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -267,6 +270,7 @@ impl FighterAssets {
                     None
                 }
             })
+            .chain(descriptor.additional_part_animations.iter().copied())
             .collect::<BTreeSet<_>>();
         let part_table = data.link(root + 0x1C)?.ok_or("missing part animations")?;
         let mut part_animations = BTreeMap::new();
@@ -340,6 +344,7 @@ impl FighterAssets {
                 }
             },
             damage: super::damage::DamageParameters::read(common, common_data)?,
+            clank: super::clank::Parameters::read(common, common_data)?,
             attacks: super::attack::AttackParameters::read(common, common_data)?,
             // ftCo_AttackS4 doEnter probes submotion indices, not action IDs.
             forward_smash_variants: [60, 61, 63, 64].map(|id| table.entries[id].aj_size != 0),
@@ -382,8 +387,8 @@ impl FighterAssets {
                     &[
                         2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27,
                         28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
-                        217, 220, 224, 225, 226, 227, 228, 238, 46, 58, 167, 168, 169, 209, 242,
-                        243,
+                        217, 220, 224, 225, 226, 227, 228, 238, 45, 46, 58, 167, 168, 169, 209,
+                        242, 243,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,

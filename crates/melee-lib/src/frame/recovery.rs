@@ -332,7 +332,7 @@ fn replay_particle_fields(names: &[&str]) {
         );
         let expected =
             melee_diff::read_trace(std::io::BufReader::new(fs::File::open(path).unwrap())).unwrap();
-        assert_eq!(expected.len(), 300);
+        assert_eq!(expected.len(), scenario.frames as usize);
         for mut record in expected {
             simulation.tick().unwrap();
             let state = &simulation.runtime.state;
@@ -378,4 +378,52 @@ fn laser_reflection_stale_bones() {
 #[test]
 fn laser_reflection_delayed_bones() {
     replay_bones("laser_reflect_delayed_timed_fd_marth", 300);
+}
+
+#[test]
+fn contact_closure_mutual() {
+    replay_bones("clank_jab_s74_f122_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_priority_fox() {
+    replay_bones("clank_priority_fox_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_priority_marth() {
+    replay_bones("clank_priority_marth_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_no_rebound() {
+    replay_bones("clank_smash_norebound_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_airborne_fox() {
+    replay_bones("clank_airborne_fox_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_airborne_marth() {
+    replay_bones("clank_airborne_marth_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_overflow() {
+    replay_bones("laser_reflect_overflow_air_timed_fd_marth", 600);
+}
+
+#[test]
+fn contact_closure_particle_simulation_fields() {
+    replay_particle_fields(&[
+        "clank_jab_s74_f122_fd_foxmarth",
+        "clank_priority_fox_spaced_fd_foxmarth",
+        "clank_priority_marth_spaced_fd_foxmarth",
+        "clank_smash_norebound_spaced_fd_foxmarth",
+        "clank_airborne_fox_spaced_fd_foxmarth",
+        "clank_airborne_marth_spaced_fd_foxmarth",
+        "laser_reflect_overflow_air_timed_fd_marth",
+    ]);
 }

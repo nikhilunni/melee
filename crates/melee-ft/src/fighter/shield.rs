@@ -437,8 +437,7 @@ impl Fighter {
         Ok(())
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), fighter.c:2816-2843.
-    pub(super) fn shield_proc(&mut self, assets: &FighterAssets) -> Result<()> {
-        let exhausted = self.core.update_shield_health(assets);
+    pub(super) fn shield_proc(&mut self, assets: &FighterAssets, exhausted: bool) -> Result<()> {
         if let Some(impact) = self.core.shield.impact.take() {
             if exhausted {
                 self.enter_shield_break(assets)?;
@@ -661,7 +660,7 @@ impl FighterCore {
 
 impl FighterCore {
     /// Fighter_ProcessHit (fighter.c:2816-2843), before the shield-response entry.
-    fn update_shield_health(&mut self, assets: &FighterAssets) -> bool {
+    pub(super) fn update_shield_health(&mut self, assets: &FighterAssets) -> bool {
         if self.shield.enabled {
             let p = &assets.shield;
             // Fighter_ProcessHit, retail 8006D2AC / 8006D2CC: fmadds.

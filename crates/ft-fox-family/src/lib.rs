@@ -124,3 +124,25 @@ pub const fn special_moves() -> [Option<melee_types::combat::StaleMove>; 29] {
     }
     moves
 }
+
+/// ftFx_Init_OnKnockbackEnter/Exit and ftFc_Init_OnKnockbackEnter/Exit.
+/// These hand poses are callback-owned; they need not occur in a loaded script.
+pub const KNOCKBACK_PART_ANIMATIONS: &[(usize, usize)] = &[(3, 2), (4, 2), (3, 3), (4, 3)];
+
+pub fn knockback_enter(
+    fighter: &mut melee_ft::fighter::Fighter,
+    assets: &melee_ft::fighter::assets::FighterAssets,
+) {
+    fighter.set_knockback_texture_frames(3.0);
+    fighter.apply_part_animation(assets, 3, 3, 0.0);
+    fighter.apply_part_animation(assets, 4, 3, 0.0);
+}
+
+pub fn knockback_exit(
+    fighter: &mut melee_ft::fighter::Fighter,
+    assets: &melee_ft::fighter::assets::FighterAssets,
+) {
+    fighter.set_knockback_texture_frames(0.0);
+    fighter.apply_part_animation(assets, 3, 2, 0.0);
+    fighter.apply_part_animation(assets, 4, 2, 0.0);
+}

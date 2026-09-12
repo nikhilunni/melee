@@ -32,19 +32,23 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Fox>();
 
 impl CharacterCallbacks for Fox {
-    fn enter_taunt(
-        fighter: &mut melee_ft::fighter::Fighter,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-    ) -> melee_ft::fighter::assets::Result<()> {
-        fighter.enter_common_taunt(assets)
-    }
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::knockback_enter;
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::knockback_exit;
+    const ENTER_TAUNT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     fn throw_variant(&self) {}
-    fn throw_animation(
-        fighter: &mut melee_ft::fighter::Fighter,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-    ) {
-        ft_fox_family::special_n::throw_animation::<Self>(fighter, assets);
-    }
+    const THROW_ANIMATION: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::special_n::throw_animation::<Self>;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -131,6 +135,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         part_count: 54,
         part_animation_count: 5,
         // A3 combat scripts: smash, tumble, prone recovery, tech and linked throws.
+        additional_part_animations: ft_fox_family::KNOCKBACK_PART_ANIMATIONS,
         additional_motions: &[
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 165, 166, 170, 171, 172,
             173, 174, 175, 176, 177, 179, 180, 183, 184, 29, 62, 178, 191, 192, 201, 244, 248, 254,

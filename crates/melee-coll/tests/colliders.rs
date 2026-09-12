@@ -139,7 +139,10 @@ fn recorded_defense_contact_is_excluded_from_clank_candidates() {
     let mut boxes: [Option<HitCapsule>; 4] = Default::default();
     hitbox::spawn(&mut boxes, 0, &descriptor(1));
     detection::record_victim(&mut boxes, 1, 42);
-    detection::require_uncontested_hit(&boxes, 42, GroundOrAir::Ground);
+    assert_eq!(
+        PairCursor::default().next(&boxes, 42, GroundOrAir::Ground),
+        None
+    );
     assert!(boxes[0].as_ref().unwrap().descriptor.clank);
     assert_eq!(
         PairCursor::default().next(&boxes, 7, GroundOrAir::Ground),

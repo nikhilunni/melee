@@ -457,8 +457,9 @@ impl Effects {
                     continue;
                 }
             }
-            if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
-                request
+            if let EffectRequest::LedgeGrab { position }
+            | EffectRequest::ShieldSpark { position }
+            | EffectRequest::Clank { position } = request
             {
                 self.spawn_dust_generator::<T>(
                     0x41C,
@@ -600,7 +601,8 @@ impl Effects {
                 | EffectRequest::DizzyStars { .. }
                 | EffectRequest::ShieldBreak { .. }
                 | EffectRequest::PowershieldSpark { .. }
-                | EffectRequest::ShieldSpark { .. } => unreachable!(),
+                | EffectRequest::ShieldSpark { .. }
+                | EffectRequest::Clank { .. } => unreachable!(),
                 EffectRequest::FireFoxRebound {
                     position: origin,
                     angle,

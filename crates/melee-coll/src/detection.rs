@@ -124,13 +124,3 @@ pub fn record_victim(hits: &mut [Option<HitCapsule>], group: u8, victim: u32) {
         hit.victims.push(victim);
     }
 }
-/// Preserve the current port boundary; resolving a clank also needs fighter
-/// rebound states and spark effects (ftcoll.c:1758-1801), not yet ported.
-pub fn require_uncontested_hit(hits: &[Option<HitCapsule>], victim: u32, ground: GroundOrAir) {
-    let mut cursor = PairCursor::default();
-    while let Some(id) = cursor.next(hits, victim, ground) {
-        if hits[id].as_ref().unwrap().descriptor.clank {
-            unimplemented!("ftcoll.c:1758-1801: attack clanking");
-        }
-    }
-}

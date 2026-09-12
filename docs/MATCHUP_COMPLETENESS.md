@@ -8,7 +8,7 @@ legal inputs in this matchup. Keep breadth paused while closing that gap.
 
 Two human-controlled players, Fox and Marth, Final Destination, four stocks,
 eight minutes, ordinary versus rules, random item spawning off. Character
-articles (lasers and blasters) remain in scope. Include both port assignments,
+articles (lasers and blasters) and Sudden Death Bob-ombs remain in scope. Include both port assignments,
 both facings, full analog controller inputs, and varied seeds. The current
 keyboard adapter is only a subset of this input space. Inventory timeout and
 tie resolution explicitly; do not silently redefine a complete match as only
@@ -59,14 +59,14 @@ This is a partial source audit, not an exhaustive reachability classification.
 
 | Area | Evidence | Next packet |
 | --- | --- | --- |
-| Laser contacts | Ordinary shield, lightshield, airborne hit and grazing deflection implemented in the first packet; projectile reflection and item phantom contact remain unsupported | Powershield, shield depletion and phantom contact |
+| Laser contacts | Ordinary shield, lightshield, airborne hit, grazing deflection, fresh/delayed/return/stale reflection and powershield are implemented; four reflection recordings pass both full profiles | Item phantom contact and remaining shield depletion combinations; [reflection notes](PORT_NOTES/LASER_REFLECTION.md) |
 | Marth Counter | Aerial entry, hit/miss, landing and offstage completion implemented and gated; counterpart transitions source-audited | Deliberate support loss during both phases; projectile contacts |
 | Fox Reflector | Turn, button/tap aerial jump cancel and preserved turn landing implemented; seven directed gates pass | Remaining phase preservation and edge departures; `PORT_NOTES/REFLECTOR_INPUT.md` |
 | Fox recovery | Five counterpart/rebound witnesses pass both full workspace gates. Two additional charge/travel contact recordings pass state, RNG, particle, bone, allocation and both full workspace gates ([contact notes](PORT_NOTES/FIRE_CONTACT.md)). See [recovery notes](PORT_NOTES/RECOVERY_COLLISIONS.md). | Remaining travel landing, charge/ending departure and wall/ledge combinations |
-| Shared contacts | `melee-ft/src/fighter/damage.rs`: phantom, invincible and simultaneous contact branches panic | Retail reachability and contact-order fixtures for this matchup |
-| Shield exits | Standing/dash/run grabs, C-stick jumps and delayed powershield implemented; both full workspace gates and raw/bone/allocation checks pass; projectile reflection remains | Laser reflection and depletion |
+| Shared contacts | Mutual clank, both priority winners, no-rebound and airborne controls pass directed raw/SRT/particle/allocation checks and both full profiles | Phantom, invincible and simultaneous contact reachability; [contact notes](PORT_NOTES/CONTACT_CLOSURE.md) |
+| Shield exits | Standing/dash/run grabs, C-stick jumps, delayed powershield and reflection implemented; reflector overflow now passes the full 600-tick fall/down/stand recovery trajectory with both full profiles passing | Remaining depletion combinations |
 | Ledge variants | C-stick options and hang timeout pass ten directed fighter/RNG/particle, raw, SRT and allocation gates; slow rows are source-ported | Recorded slow-option witnesses, occupied ledges, further priorities and wall/ceiling interactions |
-| Match endings | Tracker retains a screen-KO follow-up | Audit all KO variants, respawn, final stock, timeout and ties |
+| Match endings | Revival lifecycle gated; ScreenKO needs the retail camera owner. Natural one-minute stock fixture reaches Sudden Death | ScreenKO, clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
 | Airborne grab victim | Transient CapturePulledHi and immediate ground counterparts pass both port-order recordings and full SRT/raw checks | Prolonged high hold, airborne release and article-hit combinations |
@@ -79,14 +79,15 @@ This is a partial source audit, not an exhaustive reachability classification.
 The added `fighter/` references are under `crates/melee-ft/src`; line numbers
 are audit-time pointers and will move as packets land. Outstanding reachability
 investigations: captured fighters leaving support, airborne grab release,
-shield-break flight expiring before landing, linked fighter death, FD underside
+linked fighter death, additional shield-break orientations, FD underside
 contacts, and Fox-article hits during capture. Final-stock animation timeout is
 not yet a confirmed gap: the scene freezes gameplay after elimination. Likewise,
 special-fall remaining-jump rejection may be unreachable because entry spends
 the remaining jumps. Do not classify these solely from panic text.
 
 Exclude CPU paths, other-character hooks, ice/cape/armored-jump responses,
-random-item kinds and other stage controllers. Platform-drop predicates require
+ordinary random-item spawners and other stage controllers. Sudden Death Bob-ombs
+are an exception: its scene spawns them even with random items disabled. Platform-drop predicates require
 pass-through platforms absent on FD. Compare generic item-command rejection
 against authored Fox article commands before deciding it is out of scope.
 

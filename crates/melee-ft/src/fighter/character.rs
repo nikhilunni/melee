@@ -28,6 +28,8 @@ pub struct CharacterTable {
     pub forward_smash_variant: fn(&CharacterState),
     pub catch_variant: fn(&mut CharacterState),
     pub throw_variant: fn(&CharacterState),
+    pub knockback_enter: fn(&mut Fighter, &assets::FighterAssets),
+    pub knockback_exit: fn(&mut Fighter, &assets::FighterAssets),
     pub throw_animation: fn(&mut Fighter, &assets::FighterAssets),
     pub enter_taunt: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
     pub defense_contact: Option<DefenseContact>,
@@ -89,8 +91,10 @@ impl CharacterTable {
             forward_smash_variant: |state| state.get::<C>().forward_smash_variant(),
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
             throw_variant: |state| state.get::<C>().throw_variant(),
-            throw_animation: C::throw_animation,
-            enter_taunt: C::enter_taunt,
+            knockback_enter: C::KNOCKBACK_ENTER,
+            knockback_exit: C::KNOCKBACK_EXIT,
+            throw_animation: C::THROW_ANIMATION,
+            enter_taunt: C::ENTER_TAUNT,
             defense_contact: C::DEFENSE_CONTACT,
             reflector_contact: C::REFLECTOR_CONTACT,
             reflect_hit: C::REFLECT_HIT,
@@ -324,3 +328,16 @@ impl Clone for CharacterState {
 
 #[cfg(test)]
 mod tests;
+
+// Concrete defaults belong to the shared library, not each character's generic
+// table construction. Prevent automatic cross-crate inlining from cloning the
+// no-op body into every table owner.
+#[inline(never)]
+pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+
+pub(super) fn unsupported_taunt(
+    _fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+) -> assets::Result<()> {
+    unimplemented!("ftCo_800DEA28: character taunt entry");
+}

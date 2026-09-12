@@ -32,13 +32,19 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Falco>();
 
 impl CharacterCallbacks for Falco {
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::knockback_enter;
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::knockback_exit;
     fn throw_variant(&self) {}
-    fn throw_animation(
-        fighter: &mut melee_ft::fighter::Fighter,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-    ) {
-        ft_fox_family::special_n::throw_animation::<Self>(fighter, assets);
-    }
+    const THROW_ANIMATION: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = ft_fox_family::special_n::throw_animation::<Self>;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -125,6 +131,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         animation_count: 327,
         part_count: 54,
         part_animation_count: 5,
+        additional_part_animations: ft_fox_family::KNOCKBACK_PART_ANIMATIONS,
         additional_motions: &[
             295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311,
             312, 313, 314, 315, 316, 317, 318, 319, 320,

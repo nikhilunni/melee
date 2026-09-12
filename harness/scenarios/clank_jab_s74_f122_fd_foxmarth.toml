@@ -1,0 +1,21 @@
+name = "clank_jab_s74_f122_fd_foxmarth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 74, port = 0, buttons = {  } },
+  { frame = 120, port = 0, buttons = { A = true } },
+  { frame = 122, port = 1, buttons = { A = true } },
+  { frame = 124, port = 0, buttons = {  } },
+  { frame = 124, port = 1, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

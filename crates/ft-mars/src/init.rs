@@ -32,12 +32,18 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
 
 impl CharacterCallbacks for Marth {
-    fn enter_taunt(
-        fighter: &mut melee_ft::fighter::Fighter,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-    ) -> melee_ft::fighter::assets::Result<()> {
-        fighter.enter_common_taunt(assets)
-    }
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
+    const ENTER_TAUNT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &crate::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
@@ -135,6 +141,7 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         part_count: 54,
         part_animation_count: 3,
         // A3 combat scripts: smash, tumble, prone recovery, tech and linked throws.
+        additional_part_animations: &[],
         additional_motions: &[
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 165, 166, 170, 171, 172,
             173, 174, 175, 176, 177, 179, 180, 183, 184, 29, 62, 178, 191, 192, 201, 244, 248, 254,

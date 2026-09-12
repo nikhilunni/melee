@@ -74,6 +74,7 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     animation_count: 318,
     part_count: 54,
     part_animation_count: 3,
+    additional_part_animations: &[],
     additional_motions: &[],
     costumes: &[
         CostumeDescriptor {

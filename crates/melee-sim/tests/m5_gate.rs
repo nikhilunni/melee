@@ -1243,3 +1243,38 @@ fn laser_reflection_stale_300_ticks_items_and_ordered_particles() {
 fn laser_reflection_delayed_300_ticks_items_and_ordered_particles() {
     combat_gate("laser_reflect_delayed_timed_fd_marth");
 }
+
+#[test]
+fn contact_closure_mutual() {
+    combat_gate("clank_jab_s74_f122_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_priority_fox() {
+    combat_gate("clank_priority_fox_spaced_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_priority_marth() {
+    combat_gate("clank_priority_marth_spaced_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_no_rebound() {
+    combat_gate("clank_smash_norebound_spaced_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_airborne_fox() {
+    combat_gate("clank_airborne_fox_spaced_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_airborne_marth() {
+    combat_gate("clank_airborne_marth_spaced_fd_foxmarth");
+}
+
+#[test]
+fn contact_closure_overflow() {
+    combat_gate_ticks("laser_reflect_overflow_air_timed_fd_marth", 600);
+}

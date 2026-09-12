@@ -399,7 +399,12 @@ impl Runtime {
                             (&mut right[0], &mut left[other])
                         };
                         with_fighter!(victim, |v| with_fighter!(attacker, |a| {
-                            melee_ft::fighter::damage::detect_hit(v, a, &assets.fighters[player])
+                            melee_ft::fighter::damage::detect_hit(
+                                v,
+                                a,
+                                &assets.fighters[player],
+                                player < other,
+                            )
                         }));
                     }
                     for item in state.items.iter_mut() {

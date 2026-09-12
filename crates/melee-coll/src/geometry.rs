@@ -171,6 +171,93 @@ pub fn capsule_contact(
     }
 }
 
+/// lbColl_80006094 (80006094): swept hitbox pair, returning both closest points.
+/// Caller lbColl_80007AFC supplies receiver first, incoming attacker second.
+#[allow(clippy::manual_range_contains)]
+pub fn hitbox_pair_contact(hit: Capsule, hurt: Capsule) -> Option<(Vec3, Vec3)> {
+    // Unlike hurt capsules, this path has no broadphase inflation.
+    let radius = hit.radius + hurt.radius;
+    for (a, b, c, d) in [
+        (hit.start.x, hit.end.x, hurt.start.x, hurt.end.x),
+        (hit.start.y, hit.end.y, hurt.start.y, hurt.end.y),
+        (hit.start.z, hit.end.z, hurt.start.z, hurt.end.z),
+    ] {
+        let (lo, hi) = if a > b { (b, a) } else { (a, b) };
+        if (hi + radius < c && hi + radius < d) || (lo - radius > c && lo - radius > d) {
+            return None;
+        }
+    }
+    let hd = difference(hit.end, hit.start);
+    let axis = difference(hurt.end, hurt.start);
+    let offset = difference(hit.start, hurt.start);
+    // 80006374/6380: both segment lengths use the ordinary fused dot order.
+    let hit_length = dot(hd, hd);
+    let hurt_length = dot(axis, axis);
+    let segment_dot = dot(hd, axis);
+    let hit_dot = dot(hd, offset);
+    let hurt_dot = dot(axis, offset);
+    // The product on the right rounds before the fused subtract.
+    let denominator = fmsubs(hit_length, hurt_length, segment_dot * segment_dot);
+    let (mut ht, mut ut);
+    if near_zero(hurt_length) {
+        if near_zero(hit_length) {
+            ht = 0.0;
+            ut = 0.0;
+        } else {
+            ut = 0.0;
+            ht = parameter(-hit_dot / hit_length);
+        }
+    } else if near_zero(denominator) {
+        let midpoint = Vec3::new(
+            fmadd(0.5, axis.x.into(), hurt.start.x.into()) as f32,
+            fmadd(0.5, axis.y.into(), hurt.start.y.into()) as f32,
+            fmadd(0.5, axis.z.into(), hurt.start.z.into()) as f32,
+        );
+        let start_distance = difference(hit.start, midpoint);
+        let end_distance = difference(hit.end, midpoint);
+        ht = if dot(start_distance, start_distance) < dot(end_distance, end_distance) {
+            0.0
+        } else {
+            1.0
+        };
+        let selected = if ht == 0.0 { hit.start } else { hit.end };
+        ut = parameter(negate_rounded(dot(axis, difference(hurt.start, selected))) / hurt_length);
+    } else {
+        ht = fmsubs(segment_dot, hurt_dot, hurt_length * hit_dot) / denominator;
+        ut = fmsubs(hit_length, hurt_dot, segment_dot * hit_dot) / denominator;
+        if ht > 1.0 || ht < 0.0 || ut > 1.0 || ut < 0.0 {
+            let he = if ht < 0.0 { 0.0 } else { 1.0 };
+            let ue = if ut < 0.0 { 0.0 } else { 1.0 };
+            let (hdist, up) = endpoint_projection(
+                hurt.start,
+                hurt.end,
+                if he == 0.0 { hit.start } else { hit.end },
+            );
+            let (udist, hp) = endpoint_projection(
+                hit.start,
+                hit.end,
+                if ue == 0.0 { hurt.start } else { hurt.end },
+            );
+            if hdist < udist {
+                ht = he;
+                ut = up;
+            } else {
+                ht = hp;
+                ut = ue;
+            }
+        }
+    }
+    let hc = point(hit.start, hd, ht);
+    let uc = point(hurt.start, axis, ut);
+    let separation = difference(hc, uc);
+    // 80006748 radius square; 80006788/6790/6794 dot; touching is a hit.
+    if radius * radius >= dot(separation, separation) {
+        Some((hc, uc))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

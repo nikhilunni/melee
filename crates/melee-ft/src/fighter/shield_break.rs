@@ -8,8 +8,8 @@ use crate::{anim::WaitChoice, input::Buttons};
 use hsd_types::Vec3;
 use melee_types::{combat::HurtStatus, CommonMotionState as S, FtPart};
 
-/// ftCo_Submotion: ShieldBreakFly, DownU, StandU, FuraFura.
-pub(super) const MOTIONS: &[u32] = &[286, 288, 290, 205];
+/// ftCo_Submotion: ShieldBreakFly/Fall, DownU/D, StandU/D and FuraFura.
+pub(super) const MOTIONS: &[u32] = &[286, 287, 288, 289, 290, 291, 205];
 
 /// ftCommon_InitGrab / GrabMash scratch, without capture ownership.
 #[derive(Clone, Copy, Debug, Default)]
@@ -52,10 +52,12 @@ impl Fighter {
         let hip = self.core.animation.parts
             [usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"))]
         .joint;
-        if self.core.skeleton.get_mtx(hip).0[1][1] <= 0.0 {
-            unimplemented!("ftCo_80098E3C: unrecorded ShieldBreakDownD");
-        }
-        self.change_shield_break_recovery(S::ShieldBreakDownU, assets)?;
+        let state = if self.core.skeleton.get_mtx(hip).0[1][1] > 0.0 {
+            S::ShieldBreakDownU
+        } else {
+            S::ShieldBreakDownD
+        };
+        self.change_shield_break_recovery(state, assets)?;
         let normal = self.core.collision.data.floor.normal;
         // ftCo_800978D4: async kind 4, then ftCo_800976A4's landing dust.
         self.core
@@ -84,10 +86,7 @@ impl Fighter {
     }
     /// Ft_MF_KeepColAnimHitStatus: Down/Stand retain break intangibility.
     fn change_shield_break_recovery(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
-        let hurt = self.core.commands.hurt_status;
-        self.change_motion_state(state.into(), assets)?;
-        self.core.commands.hurt_status = hurt;
-        Ok(())
+        self.change_shield_break_motion(state, assets)
     }
     /// ftCo_80099010 (80099010): health and timer reset on dizzy entry.
     fn enter_dizzy(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -133,7 +132,7 @@ impl FighterCore {
             });
     }
 }
-/// ftCo_ShieldBreakFly_Anim (80098C14): the recording lands before expiry.
+/// ftCo_ShieldBreakFly_Anim (80098C14).
 pub(super) fn fly_animation(
     fighter: &mut Fighter,
     phase: AnimationPhase<'_>,
@@ -145,8 +144,25 @@ pub(super) fn fly_animation(
         .animation
         .frames_remaining(&fighter.core.skeleton)
     {
-        unimplemented!("ftCo_80098D90: unrecorded ShieldBreakFall (206)");
+        fighter.change_shield_break_fall(phase.assets)?;
+        // ftCommon_ClampAirDrift (8007D468), after motion entry.
+        let maximum = fighter.core.attributes.air.air_drift_max;
+        fighter.core.physics.self_velocity.x = fighter
+            .core
+            .physics
+            .self_velocity
+            .x
+            .clamp(-maximum, maximum);
+        fighter.core.shield_rumble(8);
     }
+    Ok(None)
+}
+/// ftCo_ShieldBreakFall_Anim (80098DEC) is empty; ordinary animation still advances.
+pub(super) fn fall_animation(
+    fighter: &mut Fighter,
+    phase: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
     Ok(None)
 }
 /// ftCo_ShieldBreakDown_Anim (80098EBC).
@@ -160,7 +176,12 @@ pub(super) fn down_animation(
         .animation
         .frames_remaining(&fighter.core.skeleton)
     {
-        fighter.change_shield_break_recovery(S::ShieldBreakStandU, phase.assets)?;
+        let state = if fighter.core.motion_state.id == S::ShieldBreakDownU {
+            S::ShieldBreakStandU
+        } else {
+            S::ShieldBreakStandD
+        };
+        fighter.change_shield_break_recovery(state, phase.assets)?;
     }
     Ok(None)
 }

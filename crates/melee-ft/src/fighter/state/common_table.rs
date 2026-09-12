@@ -1072,6 +1072,30 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftData_MotionStateList[237], ftCo_ReboundStop.
+    rows[S::ReboundStop as usize] = MotionRow {
+        action: ActionId(237),
+        id: S::ReboundStop,
+        animation: -1,
+        anim: super::super::clank::stop_animation,
+        iasa: callbacks::input::catch,
+        physics: super::super::clank::stop_physics,
+        collision: super::super::clank::stop_collision,
+        camera: super::super::clank::stop_camera,
+        implemented: true,
+    };
+    // ftData_MotionStateList[238], ftCo_Rebound.
+    rows[S::Rebound as usize] = MotionRow {
+        action: ActionId(238),
+        id: S::Rebound,
+        animation: 45,
+        anim: super::super::clank::animation,
+        iasa: callbacks::input::catch,
+        physics: super::super::clank::physics,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_ThrownB = 240; ftData_MotionStateList[240].
     rows[S::ThrownB as usize] = MotionRow {
         action: ActionId(240),
@@ -1492,6 +1516,17 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    rows[S::ShieldBreakFall as usize] = MotionRow {
+        action: ActionId(206),
+        id: S::ShieldBreakFall,
+        animation: 287,
+        anim: crate::fighter::shield_break::fall_animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::shield_break::fly_physics,
+        collision: crate::fighter::shield_break::fly_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::ShieldBreakDownU as usize] = MotionRow {
         action: ActionId(207),
         id: S::ShieldBreakDownU,
@@ -1513,6 +1548,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         collision: callbacks::collision::ground_action,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
+    };
+    rows[S::ShieldBreakDownD as usize] = MotionRow {
+        action: ActionId(208),
+        id: S::ShieldBreakDownD,
+        animation: 289,
+        ..rows[S::ShieldBreakDownU as usize]
+    };
+    rows[S::ShieldBreakStandD as usize] = MotionRow {
+        action: ActionId(210),
+        id: S::ShieldBreakStandD,
+        animation: 291,
+        ..rows[S::ShieldBreakStandU as usize]
     };
     rows[S::Furafura as usize] = MotionRow {
         action: ActionId(211),

@@ -48,6 +48,40 @@ fn compare(f: &Fighter, bytes: &[u8]) {
         word(bytes, 0x195c),
         "hitlag countdown"
     );
+    if f.combat.clank.facing != 0.0 {
+        assert_eq!(
+            f.combat.clank.facing.to_bits(),
+            word(bytes, 0x1920),
+            "retained clank facing"
+        );
+        assert_eq!(
+            f.combat.clank.damage as u32,
+            word(bytes, 0x1918),
+            "consumed clank damage"
+        );
+        assert_eq!(
+            f.combat.clank.duration.to_bits(),
+            word(bytes, 0x191c),
+            "consumed clank duration"
+        );
+    }
+    if let MotionData::Rebound(rebound) = &f.state_data {
+        assert_eq!(
+            rebound.recoil.to_bits(),
+            word(bytes, 0x2340),
+            "rebound recoil"
+        );
+        assert_eq!(
+            rebound.animation_rate.to_bits(),
+            word(bytes, 0x2344),
+            "rebound rate"
+        );
+        assert_eq!(
+            f.physics.secondary_ground_acceleration.to_bits(),
+            word(bytes, 0xe8),
+            "clank ground impulse"
+        );
+    }
     if let MotionData::Guard(guard) = &f.state_data {
         for (value, offset) in [
             (guard.dash_item_throw_frames, 0x2360),
@@ -195,6 +229,52 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 }
                 if name.starts_with("cstick_throw_") {
                     compare_throw_state(f, &bytes, slot);
+                }
+                if name.starts_with("clank_") || name == "laser_reflect_overflow_air_timed_fd_marth"
+                {
+                    assert_eq!(
+                        f.status.in_hitstun,
+                        bytes[0x221C] & 2 != 0,
+                        "hitstun owner tick {tick} slot {slot}"
+                    );
+                    assert_eq!(
+                        f.commands.texture_animation_active,
+                        bytes[0x221E] & 1 != 0,
+                        "material owner tick {tick} slot {slot}"
+                    );
+                    if slot == 1 {
+                        for group in [3, 4] {
+                            let part = &f.animation.part_animations[group];
+                            let offset = 0x8B0 + group * 0x14;
+                            assert_eq!(
+                                part.current,
+                                bytes[offset + 17] as i8,
+                                "part {group} selection tick {tick}"
+                            );
+                            assert_eq!(
+                                part.previous,
+                                bytes[offset + 16] as i8,
+                                "part {group} prior selection tick {tick}"
+                            );
+                            if part.current != -1 {
+                                assert_eq!(
+                                    part.duration.to_bits(),
+                                    word(&bytes, offset + 4),
+                                    "part duration tick {tick}"
+                                );
+                                assert_eq!(
+                                    part.progress.to_bits(),
+                                    word(&bytes, offset + 8),
+                                    "part progress tick {tick}"
+                                );
+                                assert_eq!(
+                                    part.rate.to_bits(),
+                                    word(&bytes, offset + 12),
+                                    "part rate tick {tick}"
+                                );
+                            }
+                        }
+                    }
                 }
                 {
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -721,4 +801,39 @@ fn laser_reflection_stale_combat_scratch() {
 #[test]
 fn laser_reflection_delayed_combat_scratch() {
     replay_scratch("laser_reflect_delayed_timed_fd_marth");
+}
+
+#[test]
+fn contact_closure_mutual() {
+    replay_scratch_until("clank_jab_s74_f122_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_priority_fox() {
+    replay_scratch_until("clank_priority_fox_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_priority_marth() {
+    replay_scratch_until("clank_priority_marth_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_no_rebound() {
+    replay_scratch_until("clank_smash_norebound_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_airborne_fox() {
+    replay_scratch_until("clank_airborne_fox_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_airborne_marth() {
+    replay_scratch_until("clank_airborne_marth_spaced_fd_foxmarth", 300);
+}
+
+#[test]
+fn contact_closure_overflow() {
+    replay_scratch_until("laser_reflect_overflow_air_timed_fd_marth", 600);
 }

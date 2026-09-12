@@ -115,7 +115,10 @@ impl Fighter {
         assets: &FighterAssets,
     ) -> Result<()> {
         if pending.overflow != 0 {
-            return self.enter_shield_break(assets);
+            self.enter_shield_break(assets)?;
+            // efAsync_Spawn (800679B0): link14 dispatches the burst now.
+            self.core.flush_effects_on_motion_change();
+            return Ok(());
         }
         match pending.response {
             Response::Powershield => {
