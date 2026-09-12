@@ -291,3 +291,10 @@ fn match_fd_foxmarth_allocation_budget() {
 fn match2_fd_foxmarth_allocation_budget() {
     allocation_budget("match2_fd_foxmarth", 0);
 }
+
+#[test]
+fn aerial_counter_allocation_budget() {
+    allocation_budget("aircounter_fd_marth", 0);
+    allocation_budget("aircounter_hit_fd_marth", 0);
+    allocation_budget("aircounter_fall_fd_marth", 0);
+}

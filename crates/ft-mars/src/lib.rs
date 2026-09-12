@@ -99,26 +99,28 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; 32] {
         i += 1;
     }
     i = 28;
-    while i < 30 {
+    while i < 32 {
         rows[i] = melee_ft::fighter::MotionRow {
             action: ActionId(341 + i as u16),
             id: melee_types::CommonMotionState::None,
             animation: 295 + i as i32,
-            anim: if i == 28 {
+            anim: if i % 2 == 0 {
                 special_lw::anim
             } else {
                 special_lw::hit_anim
             },
             iasa: no_input,
-            physics: if i == 28 {
+            physics: if i >= 30 {
+                special_lw::air_physics
+            } else if i == 28 {
                 special_lw::physics
             } else {
                 callbacks::physics::guard_on
             },
-            collision: if i == 28 {
-                special_s::collision
+            collision: if i >= 30 {
+                special_lw::air_collision
             } else {
-                special_n::collision
+                special_lw::collision
             },
             camera: callbacks::camera::follow_fighter,
             implemented: true,

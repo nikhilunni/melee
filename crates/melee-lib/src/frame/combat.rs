@@ -165,9 +165,38 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .map(|s| u8::from_str_radix(std::str::from_utf8(s).unwrap(), 16).unwrap())
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
-            crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| compare(
-                f, &bytes
-            ));
+            crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                compare(f, &bytes);
+                if slot == 0 && name.starts_with("aircounter_") {
+                    assert_eq!(
+                        f.physics.jumps_used, bytes[0x1968],
+                        "Counter jump count at {tick}"
+                    );
+                    assert_eq!(
+                        f.collision.lock_frames as u32,
+                        word(&bytes, 0x88C),
+                        "Counter ECB lock at {tick}"
+                    );
+                    if (369..=372).contains(&f.motion_state.action.0) {
+                        let counter = &f.character.get::<ft_mars::init::Marth>().special_lw;
+                        assert_eq!(
+                            counter.damage as u32,
+                            word(&bytes, 0x2340),
+                            "Counter damage at {tick}"
+                        );
+                        assert_eq!(
+                            f.commands.variables[1],
+                            word(&bytes, 0x2204),
+                            "Counter window at {tick}"
+                        );
+                        assert_eq!(
+                            counter.volume.is_some(),
+                            bytes[0x221B] & 0x80 != 0,
+                            "Counter volume at {tick}"
+                        );
+                    }
+                }
+            });
         }
     }
 }
@@ -262,4 +291,12 @@ fn shield_exhaustion_and_dizzy_match_retail_milestones() {
             }
         }
     }
+}
+
+#[test]
+fn aerial_counter_hit_and_landing_match_retail_scratch() {
+    replay_scratch("aircounter_fd_marth");
+    replay_scratch("aircounter_landing_fd_marth");
+    replay_scratch("aircounter_hit_fd_marth");
+    replay_scratch("aircounter_fall_fd_marth");
 }

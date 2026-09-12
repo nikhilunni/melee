@@ -1,0 +1,23 @@
+# Aerial Counter: aircounter_landing_fd_marth; P1 Marth, P2 Fox from the grounded idle boundary.
+name = "aircounter_landing_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, port = 0, buttons = { X = true } },
+  { frame = 31, port = 0, buttons = {  } },
+  { frame = 61, port = 0, buttons = { StickY = -1.0, B = true } },
+  { frame = 63, port = 0, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

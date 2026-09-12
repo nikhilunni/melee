@@ -772,3 +772,21 @@ fn hi200_uthrow_fd_marth_420_ticks_and_ordered_particle_draws() {
 fn hi200_uthrow2_fd_marth_420_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("hi200_uthrow2_fd_marth", 420);
 }
+
+#[test]
+fn aircounter_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("aircounter_fd_marth");
+}
+#[test]
+fn aircounter_landing_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("aircounter_landing_fd_marth");
+}
+#[test]
+fn aircounter_hit_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("aircounter_hit_fd_marth");
+}
+
+#[test]
+fn aircounter_fall_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("aircounter_fall_fd_marth");
+}

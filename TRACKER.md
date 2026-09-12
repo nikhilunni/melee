@@ -48,6 +48,18 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [~] Counter transitions (2026-09-11): aerial entry/physics/end, ground-air
+  preservation and aerial hit response. Acceptance: `aircounter_fd_marth`,
+  `aircounter_landing_fd_marth`, `aircounter_hit_fd_marth` 300-tick Dolphin/ordered
+  RNG gates, existing grounded Counter/full matches, zero allocations, debug and
+  release workspace gates plus clippy. User authorized continuing gameplay gaps
+  while binary-size debt remains open, and commits at verified packet boundaries.
+  Replay/laser-shield packet committed as `4e08fb7`.
+  Four directed scenarios now pass, including offstage completion and KO/respawn;
+  raw window/volume/jump/ECB checks and zero-allocation tests pass. Full release
+  gate and clippy pass. See `docs/PORT_NOTES/AERIAL_COUNTER.md`; deliberate
+  support-loss and projectile-contact coverage remain on the matchup inventory.
+
 - [~] Approved next milestone (2026-09-11): Fox–Marth/FD interaction completeness
   before breadth. Source review confirms ordinary input/contact variants still
   panic despite exact recorded full matches. Start with UI-to-headless replay
@@ -455,7 +467,9 @@ Gate: zero divergence over thousands of Slippi replays.
 
 ## Session log
 
-- 2026-09-11 (matchup packet 1): added bounded exact-input native recordings, automatic first-fault export, Cmd-S export and a renderer-free `melee-replay` consumer; audited reachable Fox/Marth gaps. Ported ordinary laser/shield damage and deflection from retail ASM, with four new 300-tick Dolphin scenarios (including actual upward deflection), shield scratch comparisons and zero-allocation checks. Debug workspace gate 1,192/0 plus final focused checks; final release 1,194/0, three pre-existing ignores; clippy, 220 harness tests, six math opt levels, native smoke and headless replay pass. Serial perf remains REGRESSION (3,926,592 bytes, 184.015 ms load, 26.036 ms/600 ticks); unchanged HEAD measured 3,910,040 bytes/178.86 ms/26.11 ms. Buffered hashing reduced initial 195.61 ms load. No thresholds/expected values changed, no commit, no decomp changes; four new trace sets mirrored. Next: remaining perf ceilings, then projectile reflection and special transitions. Full matchup coverage is still open.
+- 2026-09-11 (matchup packet 2): aerial Counter, aerial hit response, preserved landing and counterpart support-loss transitions implemented. Four 300-tick Dolphin scenarios and raw window/volume/damage/jump/ECB scratch checks pass; all three simulate-only allocation scenarios remain zero. Release workspace 1,200/0, clippy clean; original UI fault reproducer now succeeds. Data mirrored. Natural-boundary commits now authorized; packet 1 committed `4e08fb7`. Continue diagonal smash/input precedence next while keeping performance debt visible; user explicitly prioritized ongoing gameplay coverage.
+
+- 2026-09-11 (matchup packet 1): added bounded exact-input native recordings, automatic first-fault export, Cmd-S export and a renderer-free `melee-replay` consumer; audited reachable Fox/Marth gaps. Ported ordinary laser/shield damage and deflection from retail ASM, with four new 300-tick Dolphin scenarios (including actual upward deflection), shield scratch comparisons and zero-allocation checks. Debug workspace gate 1,192/0 plus final focused checks; final release 1,194/0, three pre-existing ignores; clippy, 220 harness tests, six math opt levels, native smoke and headless replay pass. Serial perf remains REGRESSION (3,926,592 bytes, 184.015 ms load, 26.036 ms/600 ticks); unchanged HEAD measured 3,910,040 bytes/178.86 ms/26.11 ms. Buffered hashing reduced initial 195.61 ms load. No thresholds/expected values changed, no decomp changes; four new trace sets mirrored. Committed later as `4e08fb7`. Full matchup coverage is still open.
 
 - 2026-09-11 (matchup coverage planning): inspected UI stepping/fault handling and selected combat/special stubs; documented a scoped interaction-coverage milestone in `docs/MATCHUP_COMPLETENESS.md`. No gameplay changes or commit. Baseline verification results are reported in the session response; next implementation packet is deterministic UI replay capture and reachable-gap inventory.
 
