@@ -12,6 +12,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         rows[index].id = S::ALL[index + 1]; // ALL begins with the -1 None sentinel.
         index += 1;
     }
+    // ftData_MotionStateList[250]: ftCo_SM_StopCeil (214).
+    rows[S::StopCeil as usize] = MotionRow {
+        action: ActionId(250),
+        id: S::StopCeil,
+        animation: 214,
+        anim: crate::fighter::stop_ceil::animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::stop_ceil::physics,
+        collision: crate::fighter::stop_ceil::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::AppealSR as usize] = MotionRow {
         action: ActionId(S::AppealSR as u16),
         id: S::AppealSR,
@@ -1664,6 +1676,17 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::CaptureDamageHi,
         animation: 253,
         ..rows[S::CaptureDamageLw as usize]
+    };
+    rows[S::PassiveWallJump as usize] = MotionRow {
+        action: ActionId(203),
+        id: S::PassiveWallJump,
+        animation: 203,
+        anim: crate::fighter::wall_jump::animation,
+        iasa: crate::fighter::wall_jump::input,
+        physics: crate::fighter::wall_jump::physics,
+        collision: crate::fighter::wall_jump::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
     };
     rows
 }

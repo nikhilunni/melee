@@ -147,6 +147,8 @@ pub struct FighterAssets {
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],
+    pub wall_jump: super::wall_jump::Parameters,
+    pub wall_jump_sound: u32,
     pub jumping: super::jump::JumpParameters,
     pub falling: super::fall::FallParameters,
     pub air_dodge: super::air_dodge::AirDodgeParameters,
@@ -315,6 +317,11 @@ impl FighterAssets {
                     Vec::new()
                 }
             },
+            wall_jump_sound: {
+                let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+                data.reader().u32(sound_table + 0x24)?
+            },
+            wall_jump: super::wall_jump::Parameters::read(common, common_data)?,
             medium_voices: read_sfx_array(data, root, 0x1C)?,
             heavy_voices: read_sfx_array(data, root, 0x20)?,
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,

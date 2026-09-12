@@ -104,12 +104,15 @@ fn fall_collision(
         } else {
             fighter.enter_landing(assets)?;
         }
+    } else if !special_landing && fighter.try_wall_jump(assets, map)? {
+        // ft_800831CC/82F28/835B0: walljump precedes ledge.
+        // FallSpecial uses 80083090 and deliberately omits this predicate.
     } else if fighter.try_grab_ledge(assets, map)? {
         // ft_800835B0: grabbing precedes the ceiling check.
     } else if stop_at_ceiling
         && fighter.core.collision.data.env_flags as u32 & melee_types::mp::collide::CEILING_HUG != 0
     {
-        unimplemented!("ft_081B.c:792-803 / ftCo_StopCeil.c:16-22: jump ceiling impact");
+        fighter.enter_stop_ceil(assets, map)?;
     }
     Ok(())
 }

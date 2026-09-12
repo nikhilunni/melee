@@ -3,6 +3,10 @@ use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EffectRequest {
+    /// efAsync kind 2 / 0x41D: owned model 0xF at a fixed world origin.
+    WallJump {
+        position: Vec3,
+    },
     /// S3: parameters consumed by an owned model's post-animation update callback.
     OwnedRotation {
         model: u32,

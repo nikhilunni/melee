@@ -528,13 +528,16 @@ impl FighterCore {
         self.physics = crate::physics::FighterPhysics::standing(position, player.facing);
         self.physics.percent = player.damage;
         self.input = crate::input::FighterInput::default();
-        self.collision = super::EnvironmentCollision::new(crate::collision::ecb::initialize(
+        let mut collision = std::mem::take(&mut self.collision.data);
+        crate::collision::ecb::reinitialize(
             map,
+            &mut collision,
             position,
             &self.bones.ecb,
             player.scale,
             self.attributes.size.weight,
-        ));
+        );
+        self.collision = super::EnvironmentCollision::new(collision);
         self.state_data = MotionData::None;
         // Fighter_UnkInitReset retains the costume geometry computed once by
         // Fighter_UnkUpdateVecFromBones_8006876C, including across stock losses.
@@ -548,8 +551,15 @@ impl FighterCore {
         // Fighter_UnkInitReset leaves 2227.b1 intact. Only a subsequent
         // grounded motion entry clears the ledge-timeout provenance.
         let ledge_timed_out = self.status.ledge_timed_out;
+        // UnkInitReset clears1969, sets210C to254, and retains wall side2110.
+        let wall_jump = super::wall_jump::WallJump {
+            used: 0,
+            contact_age: 254,
+            ..self.status.wall_jump
+        };
         self.status = super::Status::reset(assets.shield_health);
         self.status.ledge_timed_out = ledge_timed_out;
+        self.status.wall_jump = wall_jump;
         // Fighter_UnkInitReset (80067C98) does not write cmd_vars (+2200..220C).
         // Later motion commands own initialization; retain them across stocks.
         let command_variables = self.commands.variables;

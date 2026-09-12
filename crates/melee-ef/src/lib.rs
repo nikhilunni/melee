@@ -523,7 +523,7 @@ impl Effects {
             let (id, attachment) = match request {
                 EffectRequest::FireFoxRebound { .. } => (4, None),
                 EffectRequest::Death { .. } => (0x19, None),
-                EffectRequest::CaptureFlash { .. } => (0xF, None),
+                EffectRequest::CaptureFlash { .. } | EffectRequest::WallJump { .. } => (0xF, None),
                 EffectRequest::HitSpark {
                     element: melee_types::HitElement::Normal,
                     ..
@@ -646,6 +646,9 @@ impl Effects {
                     }
                 }
                 // EF_SCALE_INHERIT is applied by efLib_Update, after creation.
+                EffectRequest::WallJump { position: origin } => {
+                    position = origin;
+                }
                 EffectRequest::CaptureFlash { .. } | EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {
                     id,

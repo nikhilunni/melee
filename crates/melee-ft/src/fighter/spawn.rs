@@ -926,12 +926,8 @@ impl FighterCore {
         let had_root_motion = self.animation.flags.contains(
             crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
         );
-        // fighter.c:1274-1296: a ground/air switch loads the preceding frame first.
-        let animation_start = if (change.ground_air || change.update_commands) && start != 0.0 {
-            start - rate
-        } else {
-            start
-        };
+        // fighter.c:1266-1298: every nonzero motion entry loads the preceding pose first.
+        let animation_start = if start != 0.0 { start - rate } else { start };
         if let Some(source) = source {
             self.animation.set_animation_remapped(
                 &mut self.skeleton,
@@ -960,18 +956,29 @@ impl FighterCore {
                 .map_or(assets, |source| source.assets)
                 .command_entries[&animation_id],
         );
-        if (change.ground_air || change.update_commands) && start != 0.0 {
-            // fighter.c:1274-1296: evaluate the preceding pose, clear the
-            // extracted delta, then evaluate the resumed frame. This supplies
-            // the correct TransN velocity on the next physics pass.
-            self.animation.frame -= rate;
+        if start != 0.0 {
+            // 80069D84/90: sample start-rate even on an ordinary walk tier entry.
+            // This also advances the blend, independent of the eventual frame clock.
             self.animation
                 .advance_main::<RetailTrig>(&mut self.skeleton);
+            let flags = self.animation.flags;
             if let Some(root) = &mut self.animation.root_motion {
-                for history in [&mut root.primary_history, &mut root.secondary_history] {
-                    history.previous = history.position;
-                    history.offset = Vec3::ZERO;
-                    history.previous_offset = Vec3::ZERO;
+                for (flag, history) in [
+                    (
+                        crate::anim::MotionFlags::ROOT_MOTION,
+                        &mut root.primary_history,
+                    ),
+                    (
+                        crate::anim::MotionFlags::SECOND_ROOT,
+                        &mut root.secondary_history,
+                    ),
+                ] {
+                    // 80069D94..80069E10: only authored extraction owners reset.
+                    if flags.contains(flag) {
+                        history.previous = history.position;
+                        history.offset = Vec3::ZERO;
+                        history.previous_offset = Vec3::ZERO;
+                    }
                 }
             }
         }

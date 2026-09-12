@@ -38,10 +38,12 @@ mod snapshot;
 mod spawn;
 pub mod squat;
 pub mod state;
+pub mod stop_ceil;
 pub mod teeter;
 pub mod turn;
 pub mod turn_run;
 pub mod walk;
+pub mod wall_jump;
 
 use crate::{
     anim::FighterAnimation,
@@ -430,6 +432,7 @@ pub enum Interaction {
 /// Reset sentinels used by the ordinary Wait proc path.
 #[derive(Clone, Debug)]
 pub struct Status {
+    pub wall_jump: wall_jump::WallJump,
     /// x221F_b3 (+221F mask 10).
     pub disabled: bool,
     /// Fighter +221C mask2: damage owns hitstun completion until cleared.
@@ -473,6 +476,7 @@ pub struct Status {
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
         Self {
+            wall_jump: wall_jump::WallJump::default(),
             disabled: false,
             in_hitstun: false,
             input_frozen: false,
@@ -681,6 +685,7 @@ pub enum MotionData {
     Dizzy(shield_break::DizzyState),
     Escape(escape::EscapeState),
     EscapeAir(air_dodge::AirDodgeState),
+    WallJump(wall_jump::State),
     Cliff(ledge::CliffState),
     CliffJump(ledge::CliffJumpState),
     Squat(squat::SquatState),

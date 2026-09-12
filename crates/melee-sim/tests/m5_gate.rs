@@ -1278,3 +1278,23 @@ fn contact_closure_airborne_marth() {
 fn contact_closure_overflow() {
     combat_gate_ticks("laser_reflect_overflow_air_timed_fd_marth", 600);
 }
+
+#[test]
+fn walljump_stopceil_fox_walljump() {
+    combat_gate_ticks("walljump_right_underside_fd_fox_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_fox_ceiling() {
+    combat_gate_ticks("stopceil_latejump266_fd_fox_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_marth_ceiling() {
+    combat_gate_ticks("stopceil_left_latejump270_fd_marth_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_marth_wall_control() {
+    combat_gate_ticks("walljump_left_underside_fd_marth_control", 450);
+}

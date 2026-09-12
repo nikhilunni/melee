@@ -145,6 +145,7 @@ impl FighterCore {
         self.physics.ground_or_air = GroundOrAir::Ground;
         self.physics.ground_velocity = self.physics.self_velocity.x;
         self.physics.jumps_used = 0;
+        self.status.wall_jump.used = 0; // ftCommon_8007D6A4, Fighter +1969.
         self.collision.lock_frames = 0;
         self.collision.data.x130_flags &= !coll_data_x130::LOCKED;
     }

@@ -216,6 +216,9 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                if WALL_STOP_SCENARIOS.contains(&name) {
+                    compare_wall_stop(f, &bytes, tick);
+                }
                 if name.starts_with("ledge_cstick_") || name.starts_with("ledge_timeout_") {
                     compare_ledge_input(f, &bytes, tick);
                 }
@@ -836,4 +839,204 @@ fn contact_closure_airborne_marth() {
 #[test]
 fn contact_closure_overflow() {
     replay_scratch_until("laser_reflect_overflow_air_timed_fd_marth", 600);
+}
+
+const WALL_STOP_SCENARIOS: [&str; 4] = [
+    "walljump_right_underside_fd_fox_candidate",
+    "stopceil_latejump266_fd_fox_candidate",
+    "stopceil_left_latejump270_fd_marth_candidate",
+    "walljump_left_underside_fd_marth_control",
+];
+
+#[test]
+fn walljump_stopceil_matches_retail_owned_scratch() {
+    for name in WALL_STOP_SCENARIOS {
+        replay_scratch_until(name, 450);
+    }
+}
+
+fn compare_wall_stop(f: &Fighter, bytes: &[u8], tick: usize) {
+    use melee_types::CommonMotionState as S;
+    assert_eq!(
+        u32::from(f.motion_state.action.0),
+        word(bytes, 0x10),
+        "action tick {tick}"
+    );
+    for (actual, offset) in [(f.animation.frame, 0x894), (f.animation.speed, 0x89c)] {
+        assert_eq!(
+            actual.to_bits(),
+            word(bytes, offset),
+            "clock {offset:x} tick {tick}"
+        );
+    }
+    // Persistent fields are restored from the initial boundary for BOTH kinds.
+    // Ineligible Marth must leave 210C/2110 unchanged, not execute Fox's predicate.
+    assert_eq!(
+        f.status.wall_jump.used, bytes[0x1969],
+        "walljump count tick {tick}"
+    );
+    assert_eq!(
+        f.status.wall_jump.contact_age, bytes[0x210c],
+        "wall contact age tick {tick}"
+    );
+    assert_eq!(
+        f.status.wall_jump.side.to_bits(),
+        word(bytes, 0x2110),
+        "wall side tick {tick}"
+    );
+    vector(f.physics.position, bytes, 0xb0);
+    vector(f.physics.previous_position, bytes, 0xbc);
+    vector(f.physics.position_delta, bytes, 0xc8);
+    vector(f.physics.self_velocity, bytes, 0x80);
+    assert_eq!(
+        f.collision.lock_frames as u32,
+        word(bytes, 0x88c),
+        "ECB lock tick {tick}"
+    );
+    let cd = &f.collision.data;
+    for (value, offset) in [
+        (cd.cur_pos, 0x6f4),
+        (cd.prev_pos, 0x700),
+        (cd.last_pos, 0x70c),
+    ] {
+        vector(value, bytes, offset);
+    }
+    for (value, offset) in [
+        (cd.x130_flags, 0x820),
+        (cd.env_flags as u32, 0x824),
+        (cd.prev_env_flags as u32, 0x828),
+        (cd.floor_skip as u32, 0x72c),
+    ] {
+        assert_eq!(
+            value,
+            word(bytes, offset),
+            "collision flags {offset:x} tick {tick}"
+        );
+    }
+    let pack = |v: &melee_types::mp::EcbFlags| {
+        (u8::from(v.b0) << 7)
+            | (v.b1234 << 3)
+            | (u8::from(v.b5) << 2)
+            | (u8::from(v.b6) << 1)
+            | u8::from(v.b7)
+    };
+    assert_eq!(pack(&cd.x34_flags), bytes[0x724], "ECB flags34 tick {tick}");
+    assert_eq!(pack(&cd.x35_flags), bytes[0x725], "ECB flags35 tick {tick}");
+    for (ecb, offset) in [
+        (&cd.x64_ecb, 0x754),
+        (&cd.desired_ecb, 0x774),
+        (&cd.ecb, 0x794),
+        (&cd.prev_ecb, 0x7b4),
+        (&cd.xe4_ecb, 0x7d4),
+    ] {
+        for (index, point) in [ecb.top, ecb.bottom, ecb.right, ecb.left]
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(
+                point.x.to_bits(),
+                word(bytes, offset + index * 8),
+                "ECB x {offset:x}/{index} tick {tick}"
+            );
+            assert_eq!(
+                point.y.to_bits(),
+                word(bytes, offset + index * 8 + 4),
+                "ECB y {offset:x}/{index} tick {tick}"
+            );
+        }
+    }
+    for (surface, offset) in [
+        (&cd.floor, 0x83c),
+        (&cd.left_facing_wall, 0x850),
+        (&cd.right_facing_wall, 0x864),
+        (&cd.ceiling, 0x878),
+    ] {
+        assert_eq!(
+            surface.index as u32,
+            word(bytes, offset),
+            "surface {offset:x} tick {tick}"
+        );
+        // A missing surface has no active normal/material owner. Its stale bytes
+        // are not an assertion of the next contact's initialized surface data.
+        if surface.index >= 0 {
+            assert_eq!(
+                surface.flags,
+                word(bytes, offset + 4),
+                "surface flags {offset:x} tick {tick}"
+            );
+            vector(surface.normal, bytes, offset + 8);
+        }
+    }
+    let owned = matches!(f.motion_state.id, S::PassiveWallJump | S::StopCeil);
+    if let MotionData::WallJump(state) = &f.state_data {
+        for (actual, offset) in [
+            (state.freeze_frames as u32, 0x2340),
+            (state.retained_zero as u32, 0x2344),
+            (u32::from(state.jump_buffered), 0x2348),
+            (state.vertical_exponent as u32, 0x234c),
+        ] {
+            assert_eq!(
+                actual,
+                word(bytes, offset),
+                "walljump scratch {offset:x} tick {tick}"
+            );
+        }
+    }
+    if owned {
+        if f.motion_state.id == S::PassiveWallJump {
+            // ftCo_800C1E64 initializes cmd0 only; StopCeil owns no cmd vars.
+            assert_eq!(
+                f.commands.variables[0],
+                word(bytes, 0x2200),
+                "walljump cmd0 tick {tick}"
+            );
+        }
+        for (value, mask) in [
+            (f.commands.throw_accessory, 0x80),
+            (f.commands.throw_reverse, 0x40),
+            (f.commands.grab_release, 0x10),
+        ] {
+            assert_eq!(
+                value,
+                bytes[0x2210] & mask != 0,
+                "throw flags {mask:x} tick {tick}"
+            );
+        }
+        assert_eq!(
+            f.commands.texture_animation_active,
+            bytes[0x221e] & 1 != 0,
+            "material owner tick {tick}"
+        );
+        assert_eq!(
+            f.status.ledge_cooldown as u32,
+            word(bytes, 0x2064),
+            "ledge cooldown tick {tick}"
+        );
+        let root = f
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("wall/ceiling TransN owner");
+        for (value, offset) in [
+            (root.primary_history.position, 0x68c),
+            (root.primary_history.previous, 0x698),
+            (root.primary_history.offset, 0x6a4),
+            (root.primary_history.previous_offset, 0x6b0),
+        ] {
+            vector(value, bytes, offset);
+        }
+        if f.animation
+            .flags
+            .contains(melee_ft::anim::playback::MotionFlags::SECOND_ROOT)
+        {
+            for (value, offset) in [
+                (root.secondary_history.position, 0x6c0),
+                (root.secondary_history.previous, 0x6cc),
+                (root.secondary_history.offset, 0x6d8),
+                (root.secondary_history.previous_offset, 0x6e4),
+            ] {
+                vector(value, bytes, offset);
+            }
+        }
+    }
 }

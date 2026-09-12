@@ -427,3 +427,33 @@ fn contact_closure_particle_simulation_fields() {
         "laser_reflect_overflow_air_timed_fd_marth",
     ]);
 }
+
+#[test]
+fn walljump_stopceil_fox_walljump() {
+    replay_bones("walljump_right_underside_fd_fox_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_fox_ceiling() {
+    replay_bones("stopceil_latejump266_fd_fox_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_marth_ceiling() {
+    replay_bones("stopceil_left_latejump270_fd_marth_candidate", 450);
+}
+
+#[test]
+fn walljump_stopceil_marth_wall_control() {
+    replay_bones("walljump_left_underside_fd_marth_control", 450);
+}
+
+#[test]
+fn walljump_stopceil_particle_fields() {
+    replay_particle_fields(&[
+        "walljump_right_underside_fd_fox_candidate",
+        "stopceil_latejump266_fd_fox_candidate",
+        "stopceil_left_latejump270_fd_marth_candidate",
+        "walljump_left_underside_fd_marth_control",
+    ]);
+}

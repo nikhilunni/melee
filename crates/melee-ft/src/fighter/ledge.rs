@@ -395,7 +395,13 @@ impl Fighter {
                 self.enter_landing(assets)?;
             }
         } else if cd.env_flags as u32 & collide::CEILING_HUG != 0 {
-            unimplemented!("ftcliffcommon.c:153-156 / ftCo_StopCeil.c:16-22: ledge ceiling impact");
+            // CliffCatch/Wait impose cooldown after a ceiling exit; ledge
+            // options use CliffClimb_Coll, which does not perform that write.
+            let hanging = matches!(self.core.motion_state.id, S::CliffCatch | S::CliffWait);
+            self.enter_stop_ceil(assets, map)?;
+            if hanging {
+                self.core.status.ledge_cooldown = assets.ledge.cooldown;
+            }
         }
         self.core
             .skeleton

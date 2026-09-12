@@ -206,6 +206,9 @@ impl Fixture {
         f.cpu.behavior = word(raw, 0x1AA0) as i32;
         f.cpu.reaction_timer = word(raw, 0x1B04) as i32;
         f.status.input_frozen = raw[0x221D] & 8 != 0;
+        f.status.wall_jump.used = raw[0x1969];
+        f.status.wall_jump.contact_age = raw[0x210C];
+        f.status.wall_jump.side = float(raw, 0x2110);
         f.status.in_hitstun = raw[0x221C] & 2 != 0;
         f.commands.texture_animation_active = raw[0x221E] & 1 != 0;
         f.status.shield_health = float(raw, 0x1998);

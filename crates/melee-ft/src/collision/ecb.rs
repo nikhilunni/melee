@@ -13,24 +13,31 @@ pub fn initialize(
     player_scale: f32,
     weight: f32,
 ) -> CollData {
-    let mut collision = CollData {
-        cur_pos: position,
-        ..Default::default()
-    };
-    map.coll_data_init(&mut collision);
+    let mut collision = CollData::default();
+    reinitialize(map, &mut collision, position, bones, player_scale, weight);
+    collision
+}
+
+/// Reuse the existing CollData storage, as ft_80081B38 does on stock reset.
+/// mpColl_80041EE4 resets named fields and retains other flag bits.
+pub fn reinitialize(
+    map: &CollMap,
+    collision: &mut CollData,
+    position: Vec3,
+    bones: &EcbBones,
+    player_scale: f32,
+    weight: f32,
+) {
+    collision.cur_pos = position;
+    map.coll_data_init(collision);
     collision.x34_flags.b1234 = 1;
     let joints = bones
         .joints
         .map(|i| Some(u32::try_from(i).expect("negative ECB bone index")));
     // retail ft_80081B38: fmuls only; asm.py --fused has no sites.
-    set_ecb_source_jobj(
-        &mut collision,
-        Some(0),
-        joints,
-        bones.center_y * player_scale,
-    );
+    set_ecb_source_jobj(collision, Some(0), joints, bones.center_y * player_scale);
     set_ledge_snap(
-        &mut collision,
+        collision,
         bones.ledge_snap_x * player_scale,
         bones.ledge_snap_y * player_scale,
         bones.ledge_snap_height * player_scale,
@@ -39,7 +46,6 @@ pub fn initialize(
     let minimum_size = 10.0 * player_scale;
     collision.ecb_source.x128 = minimum_size;
     collision.ecb_source.x12c = minimum_size;
-    collision
 }
 
 /// `lb_8000B1CC` (0x8000B1CC, lb_00B0.c:105-130), NULL local offset.

@@ -731,8 +731,17 @@ Newest first. One line per session: date, what landed, what is next.
   cross-crate duplicates104→100; stripped3,978,032 (+488 versus f0dd3b8), load183.259ms,
   ticks26.137ms. Existing size/time ceilings remain red and unchanged. Report:
   `docs/PORT_NOTES/CONTACT_CLOSURE.md`; full measurements in `docs/PERF.md`.
-- [~] Next recovery packet: four450-tick full captures now cover Fox WallJump,
-  Fox/Marth StopCeil and a Marth wall-contact control. Four additional450-tick
-  CaptureJump recordings are ready. Natural timed-stock and Sudden Death fixtures
-  plus clock/scene diagnostics are captured; camera, timer/scene flow and Sudden
-  Death Bob-ombs remain implementation work. Keep breadth paused.
+- [x] (2026-09-12) Wall/ceiling recovery: four450-tick recordings cover Fox
+  WallJump, Fox/Marth StopCeil and a Marth wall-contact control. Corrected common
+  nonzero motion-entry blending, revival collision reset and tornado import.
+  Both full profiles:1,418 passed,0 failed,1 existing ignore. Final callback
+  sharing passes14 affected checks per profile; Clippy,225 harness tests,
+  formatting and native build pass. Census20 local/100 cross-crate duplicates;
+  stripped3,995,440 bytes. Existing size/tick-time ceilings remain red. Report:
+  `docs/PORT_NOTES/WALL_CEILING.md`.
+- [~] Next capture/contact packet: six450-tick recordings cover grounded
+  CaptureJump, prolonged airborne hold, air Cut and air Jump release. A600-tick
+  revival-laser recording witnesses contact without damage or hitlag. Natural
+  timed-stock and Sudden Death fixtures plus clock/scene diagnostics are captured;
+  camera, timer/scene flow and Sudden Death Bob-ombs remain implementation work.
+  Keep breadth paused.

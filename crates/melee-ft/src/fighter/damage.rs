@@ -807,7 +807,7 @@ impl Fighter {
             if !self.try_tech(assets)? {
                 self.enter_down_bound(assets)?;
             }
-        } else {
+        } else if !self.try_wall_jump(assets, map)? {
             self.try_grab_ledge(assets, map)?;
         }
         Ok(())

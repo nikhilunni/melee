@@ -1,0 +1,27 @@
+name = "walljump_left_underside_fd_marth_control"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 450
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = -1.0, X = true } },
+  { frame = 36, port = 0, buttons = { StickX = -1.0 } },
+  { frame = 72, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 200, port = 0, buttons = {  } },
+  { frame = 230, port = 0, buttons = { CStickY = -1.0 } },
+  { frame = 231, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 246, port = 0, buttons = { StickX = 1.0, X = true } },
+  { frame = 248, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 250, port = 0, buttons = { StickX = -1.0 } },
+  { frame = 253, port = 0, buttons = {  } },
+  { frame = 290, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 335, port = 0, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

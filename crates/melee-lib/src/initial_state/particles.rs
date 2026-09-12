@@ -162,7 +162,7 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
             fields.scalar("aux.minimum_angle", minimum_angle);
             fields.scalar("aux.maximum_angle", maximum_angle);
         }
-        EmissionShape::Tornado { speed } => fields.scalar("aux.speed", speed),
+        EmissionShape::Tornado { speed } => fields.scalar("aux.tornado_velocity", speed),
         EmissionShape::Rectangle { dimensions } => {
             // hsd_8039F05C: rectangle dimensions and its axis cache are named
             // separately in the oracle. The current emitter retains the
