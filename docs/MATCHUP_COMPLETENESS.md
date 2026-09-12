@@ -4,6 +4,28 @@ Approved next milestone, 2026-09-11. The recorded steel thread established
 exactness for particular matches. It did not establish completeness for all
 legal inputs in this matchup. Keep breadth paused while closing that gap.
 
+## Paused handoff — 2026-09-12
+
+Implementation is paused after `415a230` at the user's request. Recent committed
+packets are wall/ceiling recovery (`987fe7f`), CaptureJump/airborne release
+(`fb53f39`) and revival-laser contact (`415a230`). Both full workspace profiles
+pass 1,443 tests, with zero failures and one existing ignore; Clippy, formatting,
+225 harness tests and the native build pass. Existing size/time performance
+limits remain red; the latest packet does not increase binary size.
+
+The fixed version 1 corpus has 48 cases: 20 match finishes, 17 full 6,000-tick
+runs and 11 faults, compared with 46 faults initially. Remaining reproduced
+fault families are DamageFlyRoll, captured-pull damage, fighter/item phantom
+contacts, ScreenKO camera and Reflector ground departure. Passing generated
+runs establish robustness, not retail exactness or complete interaction coverage.
+
+DamageFlyRoll is the next prepared packet: three Fox retail recordings cover
+flight, floor collision and hitstun expiry. Its source draft is unapplied and
+its regression tests are not registered. Marth-specific roll coverage remains
+open. Timer/Sudden Death fixtures and diagnostics are captured, but their
+implementation is still pending. The table below retains other unresolved
+branches beyond those currently reproduced by the corpus.
+
 ## Scope
 
 Two human-controlled players, Fox and Marth, Final Destination, four stocks,
@@ -69,6 +91,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Ledge variants | C-stick options and hang timeout pass ten directed fighter/RNG/particle, raw, SRT and allocation gates; slow rows are source-ported | Recorded slow-option witnesses, occupied ledges, further priorities and wall/ceiling interactions |
 | Match endings | Revival lifecycle gated; ScreenKO needs the retail camera owner. Natural one-minute stock fixture reaches Sudden Death | ScreenKO, clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
+| DamageFlyRoll | Three Fox retail recordings prepared; state callbacks and tests are not landed | Flight rotation, collision and hitstun expiry; Marth witness |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
 | Airborne grab victim | Sustained high hold, air Cut, air Jump and both captor/input variants of CaptureJump pass six full recordings and both workspace profiles | Forced separation, airborne captor release and article-hit combinations; [capture notes](PORT_NOTES/CAPTURE_RELEASE.md) |
 | Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |

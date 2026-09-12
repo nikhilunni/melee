@@ -48,6 +48,25 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+**Paused by user request after `415a230` (2026-09-12).** The revival-laser fix
+is committed; no further implementation or breadth work is underway. Latest
+full debug/release gates: **1,443 passed, zero failed, one existing ignore**.
+All-target Clippy, formatting, 225 harness tests and native macOS build pass.
+Size is unchanged at 3,995,872 stripped bytes; existing size/time limits remain
+red. See `docs/PORT_NOTES/REVIVAL_LASER.md` and `docs/PERF.md`.
+
+Latest completed packets: wall/ceiling recovery (`987fe7f`), CaptureJump and
+airborne release (`fb53f39`), revival-laser contact (`415a230`). The fixed
+48-case corpus now produces 20 match finishes, 17 full 6,000-tick runs and
+11 faults (initially 46 faults); this is robustness evidence only.
+
+On resumption, start with DamageFlyRoll: three retail recordings cover flight,
+floor collision and hitstun expiry; the source draft is not applied. Remaining
+work includes captured-pull damage, Reflector edge departures and Counter
+interactions, phantom/simultaneous contacts, ScreenKO camera, timer/tie/Sudden
+Death behavior, and final interaction coverage/corpus acceptance. The detailed
+scope and unresolved combinations live in `docs/MATCHUP_COMPLETENESS.md`.
+
 - [x] Fire Fox contact (2026-09-12): recorded charge and travel hits on Marth.
   Acceptance: fire_contact_* fighter/RNG/ordered-particle and full SRT gates,
   zero allocations, both workspace profiles and clippy. Source efAsync_Dispatch
@@ -65,13 +84,14 @@ task lines you touched and add one line to the session log.
   transient high capture with ground return. Acceptance: named
   `capture_revival_*` fighter/ordered-particle, full local bone and allocation
   gates, raw revival/capture scratch, both workspace profiles and clippy.
-  Airborne release and prolonged high capture require separate witnesses.
+  Subsequent prolonged hold and airborne release witnesses are committed in
+  `fb53f39`; see `docs/PORT_NOTES/CAPTURE_RELEASE.md`.
 
-- [~] Resumed matchup completion (2026-09-11): user requested finishing the
-  remaining Fox/Marth/FD gaps and pausing before breadth. Work proceeds through
+- [~] Matchup completion (started 2026-09-11; paused 2026-09-12): user requested
+  finishing the remaining Fox/Marth/FD gaps before breadth. Original work order:
   C-stick throws and Fox throw articles, recovery counterparts/rebounds, common
   defense/grab/ledge inputs, lifecycle/timer outcomes, then a reproducible
-  combination corpus and final coverage audit. Keep committing verified packets.
+  combination corpus and final coverage audit. Resume only when requested.
   First acceptance: fourteen `cstick_throw_*_fd_{fox,marth}` 300-tick retail
   fighter/particle gates, zero-allocation checks, both workspace gates and clippy.
 

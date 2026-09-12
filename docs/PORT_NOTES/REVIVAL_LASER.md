@@ -31,7 +31,7 @@ DamageFlyRoll, captured damage, ScreenKO's camera dependency and Reflector
 ground departure. This is robustness evidence, not a retail exactness oracle.
 Reports and replay inputs remain in /tmp/melee-corpus-v1-after-recovery-capture.
 
-Work pauses at this commit at the user's request. DamageFlyRoll recordings and
+Work pauses after commit `415a230` at the user's request. DamageFlyRoll recordings and
 source drafts are prepared but its implementation remains unapplied. No breadth
 work has started.
 
