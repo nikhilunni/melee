@@ -94,6 +94,31 @@ impl Fighter {
         self.shield_proc(assets).expect("shield response");
         self.core.update_hurtbox_extents();
     }
+    /// Rendered joints feed the next ftCo_8009CB40 ownership change through
+    /// their cached matrices. Publish only the animation-owned dynamic chain;
+    /// the solver itself owns the positions of locked joints.
+    pub fn prepare_dynamic_animation_caches(&mut self) {
+        if self.core.status.disabled
+            || self.core.effect_state.invisible
+            || self.core.commands.fighter_hidden
+        {
+            return;
+        }
+        for set in &self.core.dynamics {
+            for bone in &set.bones {
+                let part = self
+                    .core
+                    .animation
+                    .parts
+                    .iter()
+                    .find(|part| part.joint == bone.joint)
+                    .expect("dynamic joint has an animation part");
+                if !part.flags.contains(crate::anim::attach::PartFlags::LOCKED) {
+                    self.core.skeleton.setup_matrix(bone.joint);
+                }
+            }
+        }
+    }
     /// Fighter_8006D9AC (0x8006D9AC), s_link 16 -> ftCo_8009DD94.
     /// Wait x594_b3 selects ftCo_8009CB40(..., false, NULL), setting bone_id
     /// to 0x100 (ftdynamics.c:55); lb_8001044C returns at lb_00F9.c:447.

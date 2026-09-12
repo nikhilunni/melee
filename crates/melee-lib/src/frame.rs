@@ -851,6 +851,9 @@ impl Simulation {
                 runtime.rng_writers.push((None, seed));
             }
             if runtime.frame != 0 {
+                for fighter in &mut runtime.state.fighters {
+                    fighter.0.prepare_dynamic_animation_caches();
+                }
                 // particleSort (psdisp.c:0x8039FC70), between observations.
                 runtime.state.particles.sort_for_display(7);
             }
@@ -1392,6 +1395,8 @@ mod fall_states;
 mod combat;
 #[cfg(test)]
 mod falco_bones;
+#[cfg(test)]
+mod recovery;
 
 #[cfg(test)]
 mod falcon_bones;

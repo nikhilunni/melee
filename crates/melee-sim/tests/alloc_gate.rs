@@ -356,3 +356,12 @@ fn cstick_throw_allocation_budget() {
     allocation_budget("cstick_throw_up_fd_fox", 0);
     allocation_budget("cstick_throw_up_fd_marth", 0);
 }
+
+#[test]
+fn recovery_collision_allocation_budget() {
+    allocation_budget("firefox_end_air_landing_fd_fox", 0);
+    allocation_budget("illusion_start_landing_fd_fox", 0);
+    allocation_budget("firefox_charge_landing_fd_fox", 0);
+    allocation_budget("firefox_ground_launch_fd_fox", 0);
+    allocation_budget("firefox_floor_rebound_fd_fox", 0);
+}

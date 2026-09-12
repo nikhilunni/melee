@@ -503,6 +503,7 @@ impl Effects {
                 }
             }
             let (id, attachment) = match request {
+                EffectRequest::FireFoxRebound { .. } => (4, None),
                 EffectRequest::Death { .. } => (0x19, None),
                 EffectRequest::CaptureFlash { .. } => (0xF, None),
                 EffectRequest::HitSpark {
@@ -578,6 +579,14 @@ impl Effects {
                 | EffectRequest::ShieldBreak { .. }
                 | EffectRequest::PowershieldSpark { .. }
                 | EffectRequest::ShieldSpark { .. } => unreachable!(),
+                EffectRequest::FireFoxRebound {
+                    position: origin,
+                    angle,
+                } => {
+                    // efAsync_Dispatch 0x406: model4, world position, rotation Z.
+                    position = origin;
+                    effect.tree.set_rotation_z(effect.root, angle);
+                }
                 EffectRequest::Death {
                     position: origin,
                     angle,

@@ -58,7 +58,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             start::<C, true>,
             no_input,
             startup_physics::<C, true>,
-            startup_collision,
+            air_startup_collision,
         ),
         row(
             S::SpecialAirS,
@@ -66,7 +66,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C, true>,
             shorten::<C>,
             travel_physics::<C, true>,
-            startup_collision,
+            air_travel_collision,
         ),
         row(
             S::SpecialAirSEnd,
@@ -403,7 +403,22 @@ fn ground_collision(
     }
 }
 
-fn startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+/// ftFx_SpecialAirSStart_AirToGround (800EA234): flags 0x0C4C5880.
+fn air_startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    air_counterpart_collision(f, p, S::SpecialSStart, false)
+}
+
+/// ftFx_SpecialAirS_AirToGround (800EA700): flags 0x0C4C5884.
+fn air_travel_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    air_counterpart_collision(f, p, S::SpecialS, true)
+}
+
+fn air_counterpart_collision(
+    f: &mut Fighter,
+    p: CollisionPhase<'_>,
+    ground_state: S,
+    travel: bool,
+) -> Result<()> {
     let core = &mut f.core;
     melee_ft::collision::air::begin_map(
         &core.physics,
@@ -411,7 +426,7 @@ fn startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         &mut core.skeleton,
         core.animation.root,
     );
-    if melee_ft::collision::air::collide_fall(
+    if melee_ft::collision::air::collide_pass(
         &mut core.physics,
         &mut core.collision,
         p.map,
@@ -419,7 +434,19 @@ fn startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         core.animation.root,
         core.status.ledge_cooldown == 0,
     ) {
-        unimplemented!("ftFx_SpecialAirSStart_AirToGround / SpecialAirS_AirToGround: preserved motion transition");
+        f.land();
+        f.change_ground_air_motion(
+            ground_state.into(),
+            p.assets.expect("Illusion counterpart assets"),
+            melee_ft::fighter::MotionPreservation {
+                hit_status: travel,
+                ..Default::default()
+            },
+        )?;
+        if travel {
+            // 800EA748..74C: suppress the outgoing ghost spawn command.
+            f.commands.variables[2] = 0;
+        }
     } else {
         f.try_grab_ledge(p.assets.expect("Illusion ledge assets"), p.map)?;
     }

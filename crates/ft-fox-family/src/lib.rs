@@ -82,11 +82,9 @@ pub const fn rows<C: FoxFamily>() -> [melee_ft::fighter::MotionRow; FamilyState:
     let side = special_s::rows::<C>();
     let hi = special_hi::rows::<C>();
     let lw = special_lw::rows::<C>();
-    let mut bound = melee_ft::fighter::state::unimplemented_row();
-    bound.action = melee_ft::fighter::ActionId(FamilyState::SpecialHiBound as u16);
     [
         neutral[0], neutral[1], neutral[2], neutral[3], neutral[4], neutral[5], side[0], side[1],
-        side[2], side[3], side[4], side[5], hi[0], hi[1], hi[2], hi[3], hi[4], hi[5], bound, lw[0],
+        side[2], side[3], side[4], side[5], hi[0], hi[1], hi[2], hi[3], hi[4], hi[5], hi[6], lw[0],
         lw[1], lw[2], lw[3], lw[4], lw[5], lw[6], lw[7], lw[8], lw[9],
     ]
 }

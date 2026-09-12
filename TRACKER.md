@@ -56,6 +56,15 @@ task lines you touched and add one line to the session log.
   First acceptance: fourteen `cstick_throw_*_fd_{fox,marth}` 300-tick retail
   fighter/particle gates, zero-allocation checks, both workspace gates and clippy.
 
+- [~] Recovery collision transitions (2026-09-11): exact acceptance starts
+  with `illusion_start_landing_fd_fox`, `firefox_charge_landing_fd_fox`,
+  `firefox_ground_launch_fd_fox`, `firefox_floor_rebound_fd_fox`, and
+  `firefox_end_air_landing_fd_fox` (300 ticks,
+  ordered particles/RNG and 150 captured bone ticks), plus zero allocations,
+  both workspace gates and all-target clippy. Ending-phase and travel-edge
+  witnesses are still being refined; do not count an intended transition
+  unless the retail trace actually reaches it.
+
 - [x] C-stick throws and Fox throw articles (2026-09-11): fourteen exact
   directional/priority/pulse scenarios compare fighters, items, particles and RNG.
   Fixed reversal operand decoding, blaster/laser callbacks, captured item damage,
@@ -604,3 +613,13 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-11 (jump-squat up-special): six reproduced Fox/Marth panics replaced by grounded Up-slot dispatch, preserving up-special priority over grab/up-smash and diagonal Side input. Full debug/release each 1,230/0 with 3 existing ignores; clippy, formatting and 220 harness tests pass. Native smoke/exported replay passed at 232 ticks. Stripped simulator remains 3,926,784 bytes. Next priorities remain C-stick throws, recovery collision transitions and projectile reflection; the broader matchup milestone is not complete.
 
 - 2026-09-11 (C-stick throws): fourteen new exact scenarios plus raw item/throw/hitlag checks pass; fixed Fox throw articles and re-enabled both old throw regressions. Debug/release each 1,249/0 with one existing ignore, clippy and 220 harness tests pass. Native smoke/headless replay:232 ticks; stripped simulator:+56 bytes. Recovery, common-input and revival oracle preparation continues; broader matchup completion remains in progress.
+
+- 2026-09-11 (recovery verification): five 300-tick counterpart/rebound trajectories
+  and both-fighter 150-tick local-SRT replays pass. Fixed animation-owned dynamic
+  joint cache publication and retained command words across revival reset; all
+  oracle expectations remain unchanged. Full debug/release each 1,257 passed,
+  zero failed, one existing ignore; clippy, formatting, 220 harness tests and
+  schema checks pass. Native smoke and exported replay pass at 234 ticks.
+  Stripped simulator 3,943,568 bytes (+16,728); full performance census not rerun.
+  Remaining recovery edges and common/defense/capture/ledge/timer gaps continue
+  within Fox/Marth/FD; no breadth work started. Captures are ignored and backed up.

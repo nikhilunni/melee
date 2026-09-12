@@ -174,6 +174,11 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                if slot == 1
+                    && (name.starts_with("firefox_") || name == "illusion_start_landing_fd_fox")
+                {
+                    compare_recovery_state(f, &bytes, tick);
+                }
                 if name.starts_with("cstick_throw_") {
                     compare_throw_state(f, &bytes, slot);
                 }
@@ -458,6 +463,58 @@ fn cstick_throw_flags_articles_and_linked_hitlag_match_retail() {
             "up",
         ] {
             replay_scratch(&format!("cstick_throw_{direction}_fd_{character}"));
+        }
+    }
+}
+
+#[test]
+fn recovery_collisions_match_retail_combat_scratch() {
+    for name in [
+        "illusion_start_landing_fd_fox",
+        "firefox_charge_landing_fd_fox",
+        "firefox_ground_launch_fd_fox",
+        "firefox_floor_rebound_fd_fox",
+        "firefox_end_air_landing_fd_fox",
+    ] {
+        replay_scratch(name);
+    }
+}
+
+/// Move-union words are compared only after their retail initialization.
+fn compare_recovery_state(f: &Fighter, bytes: &[u8], tick: usize) {
+    assert_eq!(f.physics.jumps_used, bytes[0x1968], "jumps at {tick}");
+    for (index, value) in f.commands.variables.iter().enumerate() {
+        assert_eq!(
+            *value,
+            word(bytes, 0x2200 + index * 4),
+            "command {index} at {tick}"
+        );
+    }
+    let fox = f.character.get::<ft_fox::init::Fox>();
+    let action = f.motion_state.action.0;
+    if (347..=352).contains(&action) {
+        assert_eq!(
+            fox.special_side.gravity_delay as u32,
+            word(bytes, 0x2340),
+            "Illusion gravity at {tick}"
+        );
+    }
+    if (353..=359).contains(&action) {
+        let hi = &fox.special_hi;
+        assert_eq!(
+            hi.gravity_delay as u32,
+            word(bytes, 0x2340),
+            "Fire Fox gravity at {tick}"
+        );
+        if action >= 355 {
+            for (actual, offset) in [
+                (hi.angle.to_bits(), 0x2344),
+                (hi.travel_frames as u32, 0x2348),
+                (hi.travel_ticks as u32, 0x234c),
+                (hi.collision_ticks as u32, 0x2350),
+            ] {
+                assert_eq!(actual, word(bytes, offset), "Fire Fox {offset:x} at {tick}");
+            }
         }
     }
 }

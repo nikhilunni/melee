@@ -1,0 +1,91 @@
+//! Recovery SRT and typed move scratch supplement fighter/item/RNG gates.
+use super::*;
+use crate::scenario::Scenario;
+use melee_ft::fighter::Fighter;
+use serde_json::Value;
+use std::{fs, path::Path};
+
+const SCENARIOS: [&str; 5] = [
+    "illusion_start_landing_fd_fox",
+    "firefox_charge_landing_fd_fox",
+    "firefox_ground_launch_fd_fox",
+    "firefox_floor_rebound_fd_fox",
+    "firefox_end_air_landing_fd_fox",
+];
+
+fn compare(fighter: &Fighter, expected: &Value, player: usize, tick: usize) -> usize {
+    let mut compared = 0;
+    for (bone, part) in fighter.animation.parts.iter().enumerate() {
+        let joint = fighter.skeleton.get(part.joint);
+        let rotation = [
+            joint.rotate.x,
+            joint.rotate.y,
+            joint.rotate.z,
+            joint.rotate.w,
+        ];
+        let scale = [joint.scale.x, joint.scale.y, joint.scale.z];
+        let translate = [joint.translate.x, joint.translate.y, joint.translate.z];
+        for (field, values) in [
+            ("rotate", &rotation[..]),
+            ("scale", &scale[..]),
+            ("translate", &translate[..]),
+        ] {
+            for (index, value) in values.iter().enumerate() {
+                // Same contract as start_fox_bones_130: unused Euler W is stack
+                // data. Every quaternion component is compared when enabled.
+                if field == "rotate"
+                    && index == 3
+                    && joint.flags & hsd_anim::jobj::JOBJ_USE_QUATERNION == 0
+                {
+                    continue;
+                }
+                let key = format!("p{player}.bone[{bone}].{field}[{index}]");
+                let bits = expected["state"][&key]["v"]["bits"].as_u64().unwrap() as u32;
+                assert_eq!(
+                    value.to_bits(),
+                    bits,
+                    "tick {tick} {key}: actual {:08X}, expected {bits:08X}",
+                    value.to_bits()
+                );
+                compared += 1;
+            }
+        }
+    }
+    compared
+}
+
+#[test]
+fn recovery_collisions_match_all_local_bone_transforms() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for name in SCENARIOS {
+        let scenario =
+            Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
+        let path = scenario.trace_path("bones.jsonl");
+        if !melee_test_support::require_files(
+            scenario.required_files().into_iter().chain([path.clone()]),
+        ) {
+            return;
+        }
+        let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+        let mut simulation = super::TestSimulation::with_inputs(
+            initial,
+            crate::trace::pad_script(&scenario).unwrap(),
+        );
+        let bones = fs::read_to_string(path).unwrap();
+        assert_eq!(bones.lines().count(), 150);
+        for (tick, line) in bones.lines().enumerate() {
+            let row: Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"].as_u64(), Some(tick as u64));
+            simulation.tick().unwrap();
+            for (player, fighter) in simulation.runtime.state.fighters.iter().enumerate() {
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    compare(&fighter.0, &row, player, tick)
+                }));
+                assert!(
+                    result.is_ok(),
+                    "{name}: bone divergence at {tick}, player {player}"
+                );
+            }
+        }
+    }
+}

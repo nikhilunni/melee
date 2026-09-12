@@ -522,7 +522,11 @@ impl FighterCore {
         self.effect_state = super::effects::FighterEffects::default();
         self.effects = melee_ef::request::EffectQueue::default();
         self.status = super::Status::reset(assets.shield_health);
+        // Fighter_UnkInitReset (80067C98) does not write cmd_vars (+2200..220C).
+        // Later motion commands own initialization; retain them across stocks.
+        let command_variables = self.commands.variables;
         self.commands = super::commands::CommandState::default();
+        self.commands.variables = command_variables;
         self.ground_pose = crate::collision::pose::GroundPoseFlags::default();
         self.dynamics_use_floor_plane = false;
         self.player_position = position;

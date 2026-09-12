@@ -14,7 +14,7 @@ pub struct ShieldDeflection {
 /// lbVector_AngleXY (8000D790): unfused squared lengths, four Newton steps,
 /// then the fused XY dot (8000D8BC). Ordered clamps retain NaN behavior.
 #[allow(clippy::manual_clamp)]
-fn angle_xy(a: Vec3, b: Vec3) -> f32 {
+pub fn angle_xy(a: Vec3, b: Vec3) -> f32 {
     let length = sqrtf_accurate(a.x * a.x + a.y * a.y) * sqrtf_accurate(b.x * b.x + b.y * b.y);
     if length == 0.0 {
         return 0.0;

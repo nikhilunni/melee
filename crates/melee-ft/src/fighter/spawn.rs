@@ -12,6 +12,7 @@ struct MotionChange<'a> {
     rate: f32,
     source: Option<super::grab_throw::ThrowSource<'a>>,
     ground_air: bool,
+    update_commands: bool,
     /// fn_800DE798: restore the release owner after reset, before initial commands.
     throw_owner: Option<u32>,
     preserve: MotionPreservation,
@@ -293,6 +294,26 @@ impl Fighter {
             MotionChange {
                 rate: 1.0,
                 throw_owner,
+                ..Default::default()
+            },
+        )
+    }
+
+    /// Fighter_ChangeMotionState with SkipColAnim | UpdateCmd (0x5000).
+    /// Control-flow seek without replaying effects/hitboxes; ordinary visibility resets.
+    pub fn change_motion_with_updated_commands(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        start: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate: 1.0,
+                update_commands: true,
                 ..Default::default()
             },
         )
@@ -732,7 +753,7 @@ impl FighterCore {
             crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
         );
         // fighter.c:1274-1296: a ground/air switch loads the preceding frame first.
-        let animation_start = if change.ground_air && start != 0.0 {
+        let animation_start = if (change.ground_air || change.update_commands) && start != 0.0 {
             start - rate
         } else {
             start
@@ -761,7 +782,7 @@ impl FighterCore {
                 .map_or(assets, |source| source.assets)
                 .command_entries[&animation_id],
         );
-        if change.ground_air && start != 0.0 {
+        if (change.ground_air || change.update_commands) && start != 0.0 {
             // fighter.c:1274-1296: evaluate the preceding pose, clear the
             // extracted delta, then evaluate the resumed frame. This supplies
             // the correct TransN velocity on the next physics pass.
@@ -794,7 +815,7 @@ impl FighterCore {
                 root.primary_history.previous_offset = Vec3::ZERO;
             }
         }
-        if change.ground_air {
+        if change.ground_air || change.update_commands {
             // fighter.c:1295, before ftAction_8007349C decrements by speed.
             self.commands.timer = -start;
             self.commands.advance_control(&self.animation, assets);

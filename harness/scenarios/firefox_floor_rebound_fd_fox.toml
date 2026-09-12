@@ -1,0 +1,20 @@
+name = "firefox_floor_rebound_fd_fox"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = { X = true } },
+  { frame = 40, port = 1, buttons = {  } },
+  { frame = 44, port = 1, buttons = { StickY = 1.0, B = true } },
+  { frame = 46, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 110, port = 1, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "idle"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

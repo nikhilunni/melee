@@ -33,6 +33,11 @@ pub enum EffectRequest {
         bone: usize,
         scale: f32,
     },
+    /// efSync_Spawn(1030): fixed world origin and floor-relative Z rotation.
+    FireFoxRebound {
+        position: Vec3,
+        angle: f32,
+    },
     DamageTrail {
         trajectory: f32,
     },
@@ -247,6 +252,7 @@ impl EffectRequest {
             Self::OwnedRotation { .. }
                 | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
+                | Self::FireFoxRebound { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

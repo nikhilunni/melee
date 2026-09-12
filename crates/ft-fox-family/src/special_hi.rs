@@ -35,7 +35,7 @@ pub struct SpecialHi {
     pub pending_effect: Option<u16>,
 }
 
-pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
+pub const fn rows<C: FoxFamily>() -> [MotionRow; 7] {
     [
         row(
             S::SpecialHiHold,
@@ -43,7 +43,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             hold::<C>,
             no_input,
             callbacks::physics::guard_on,
-            hold_ground_collision,
+            hold_ground_collision::<C>,
         ),
         row(
             S::SpecialHiHoldAir,
@@ -51,7 +51,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             hold::<C>,
             no_input,
             hold_air_physics::<C>,
-            hold_air_collision,
+            hold_air_collision::<C>,
         ),
         row(
             S::SpecialHi,
@@ -59,7 +59,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C>,
             no_input,
             travel_ground_physics::<C>,
-            travel_ground_collision,
+            travel_ground_collision::<C>,
         ),
         row(
             S::SpecialAirHi,
@@ -67,7 +67,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C>,
             no_input,
             travel_air_physics::<C>,
-            travel_air_collision,
+            travel_air_collision::<C>,
         ),
         row(
             S::SpecialHiLanding,
@@ -75,7 +75,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             end::<C>,
             no_input,
             end_ground_physics::<C>,
-            end_ground_collision,
+            end_ground_collision::<C>,
         ),
         row(
             S::SpecialHiFall,
@@ -84,6 +84,14 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             no_input,
             callbacks::physics::fall,
             end_air_collision,
+        ),
+        row(
+            S::SpecialHiBound,
+            312,
+            bound::<C>,
+            no_input,
+            bound_physics,
+            bound_collision,
         ),
     ]
 }
@@ -123,21 +131,18 @@ fn hold<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
     if !f.animation.frames_remaining(&f.skeleton) {
         if f.physics.ground_or_air == GroundOrAir::Ground {
             let stick = f.input.current.stick;
-            let minimum = f
-                .character
-                .get::<C>()
-                .attributes()
-                .fire_fox
-                .direction_stick_min;
-            if stick.x.abs() + stick.y.abs() >= minimum && stick.y <= 0.0 {
-                unimplemented!("ftFx_SpecialAirHi_AirToGround: floor-directed launch");
+            let a = &f.character.get::<C>().attributes().fire_fox;
+            let direction = hsd_types::Vec3::new(stick.x, stick.y, 0.0);
+            let normal = f.collision.data.floor.normal;
+            let grounded = stick.x.abs() + stick.y.abs() >= a.direction_stick_min
+                && melee_lb::shield::angle_xy(normal, direction) >= std::f32::consts::FRAC_PI_2;
+            if grounded {
+                if f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0 {
+                    unimplemented!("ftCo_8009A134: Fire Fox platform-skip launch");
+                }
+                return launch_ground::<C>(f, p.assets).map(|()| None);
             }
-            // ftCommon_8007D60C: unlike ordinary Fall, five locked ECB ticks.
-            f.physics.ground_or_air = GroundOrAir::Air;
-            f.physics.ground_velocity = 0.0;
-            f.physics.animation_velocity.y = 0.0;
-            f.collision.lock_frames = 5;
-            f.collision.data.x130_flags |= melee_types::mp::coll_data_x130::LOCKED;
+            f.leave_ground_with_spent_jumps();
         }
         launch::<C>(f, p.assets)?;
     }
@@ -283,25 +288,59 @@ pub(crate) fn grounded_support(f: &mut Fighter, p: CollisionPhase<'_>) -> bool {
         WaitGroundResult::Supported
     )
 }
-fn hold_ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+/// ftFx_SpecialHiHold_GroundToAir (800E7554): 0x0C4C5082 and spent jumps.
+fn hold_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    let assets = p.assets.expect("Fire Fox ground collision assets");
     if !grounded_support(f, p) {
-        unimplemented!("ftFx_SpecialHiHold_GroundToAir: preserved charge transition");
+        f.leave_ground_with_spent_jumps();
+        f.change_ground_air_motion(
+            S::SpecialHiHoldAir.into(),
+            assets,
+            melee_ft::fighter::MotionPreservation {
+                effects: true,
+                ..Default::default()
+            },
+        )?;
+        f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48B);
     }
     Ok(())
 }
-fn travel_ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+/// ftFx_SpecialHi_Coll / GroundToAir (800E77C8 / 800E7A74).
+fn travel_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    let assets = p.assets.expect("Fire Fox ground collision assets");
+    f.character.get_mut::<C>().special_hi().collision_ticks += 1;
     if !grounded_support(f, p) {
-        unimplemented!("ftFx_SpecialHi_GroundToAir: preserved launch transition");
+        f.leave_ground_with_spent_jumps();
+        f.change_ground_air_motion(
+            S::SpecialAirHi.into(),
+            assets,
+            melee_ft::fighter::MotionPreservation {
+                hitboxes: true,
+                effects: true,
+                ..Default::default()
+            },
+        )?;
+        f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48C);
+    } else if f.collision.data.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0 {
+        let n = f.collision.data.floor.normal;
+        let angle = melee_lb::trigf::atan2f(-n.x * f.physics.facing, n.y);
+        set_angle::<C>(f, assets, angle);
     }
     Ok(())
 }
-fn end_ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+
+/// ftFx_SpecialHiLanding_Coll (800E7F40): normal special-fall entry.
+fn end_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    let assets = p.assets.expect("Fire Fox ground collision assets");
     if !grounded_support(f, p) {
-        unimplemented!("ftFx_SpecialHiLanding_Coll: lost-support special-fall entry");
+        let a = &f.character.get::<C>().attributes().fire_fox;
+        let (mobility, lag) = (a.freefall_mobility, a.landing_lag);
+        f.enter_special_fall(assets, true, false, true, mobility, lag)?;
     }
     Ok(())
 }
-fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<bool> {
+/// ftFx_SpecialHiHoldAir_AirToGround (800E75C0): 0x0C4C5082, then clamp.
+fn hold_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     let c = &mut f.core;
     melee_ft::collision::air::begin_map(
         &c.physics,
@@ -309,34 +348,132 @@ fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<bool> {
         &mut c.skeleton,
         c.animation.root,
     );
-    let landed = melee_ft::collision::air::collide_fall(
+    // ft_CheckGroundAndLedge with the fighter-facing direction.
+    if melee_ft::collision::air::collide_pass(
         &mut c.physics,
         &mut c.collision,
         p.map,
         &mut c.skeleton,
         c.animation.root,
         c.status.ledge_cooldown == 0,
+    ) {
+        f.land();
+        f.change_ground_air_motion(
+            S::SpecialHiHold.into(),
+            p.assets.expect("Fire Fox charge landing assets"),
+            melee_ft::fighter::MotionPreservation {
+                effects: true,
+                ..Default::default()
+            },
+        )?;
+        f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48B);
+        let maximum = f.attributes.air.air_drift_max;
+        f.physics.self_velocity.x = f.physics.self_velocity.x.clamp(-maximum, maximum);
+    } else {
+        f.try_grab_ledge(p.assets.expect("Fire Fox charge ledge assets"), p.map)?;
+    }
+    Ok(())
+}
+/// ftFx_SpecialAirHi_Coll (800E78C8): floor incidence then cliff/wall checks.
+fn travel_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    use melee_types::mp::collide;
+    let c = &mut f.core;
+    melee_ft::collision::air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
     );
-    if !landed {
-        f.try_grab_ledge(p.assets.expect("Fire Fox collision assets"), p.map)?;
-    }
-    Ok(landed)
-}
-fn hold_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    if air_collision(f, p)? {
-        unimplemented!("ftFx_SpecialHiHoldAir_AirToGround: preserved charge transition");
+    let cd = &mut c.collision.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = c.physics.position;
+    melee_mp::set_facing_dir(cd, 0); // CLIFFCATCH_BOTH
+    let pose = melee_ft::collision::ecb::EcbPose::read(&mut c.skeleton, c.animation.root, cd);
+    let landed = if c.status.ledge_cooldown == 0 {
+        p.map.air_collide_ledge(cd, Some(&|i| pose.position(i)))
+    } else {
+        p.map.air_collide_pass(cd, Some(&|i| pose.position(i)))
+    };
+    c.physics.position = cd.cur_pos;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+    let a = &f.character.get::<C>().attributes().fire_fox;
+    // 800E7958/5C: fadds then fmuls, not FMA.
+    let threshold = 0.017453292 * (90.0 + a.bound_angle);
+    let bounce_var = a.bounce_var;
+    let bound_ready = f.character.get_mut::<C>().special_hi().collision_ticks >= bounce_var;
+    let flags = f.collision.data.env_flags as u32;
+    if landed {
+        if !bound_ready && f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0
+        {
+            unimplemented!("ftCo_8009A134: Fire Fox travel platform skip");
+        }
+        let shallow_contact =
+            melee_lb::shield::angle_xy(f.collision.data.floor.normal, f.physics.self_velocity)
+                < threshold;
+        if flags & collide::FLOOR_MASK == 0 || !shallow_contact {
+            return enter_bound::<C>(f, p.assets.expect("Fire Fox rebound"));
+        }
+        let direction = f.physics.self_velocity;
+        f.physics.facing = if direction.x >= 0.0 { 1.0 } else { -1.0 };
+        let angle = melee_lb::trigf::atan2f(direction.y, direction.x * f.physics.facing);
+        set_angle::<C>(f, p.assets.expect("Fire Fox floor rotation"), angle);
+    } else {
+        f.try_grab_ledge(p.assets.expect("Fire Fox ledge"), p.map)?;
+        if f.motion_state.action.0 != S::SpecialAirHi as u16 {
+            return Ok(());
+        }
+        let normal = if flags & collide::CEILING_MASK != 0 {
+            Some(f.collision.data.ceiling.normal)
+        } else if flags & collide::LEFT_WALL_MASK != 0 {
+            Some(f.collision.data.left_facing_wall.normal)
+        } else if flags & collide::RIGHT_WALL_MASK != 0 {
+            Some(f.collision.data.right_facing_wall.normal)
+        } else {
+            None
+        };
+        if normal
+            .is_some_and(|n| melee_lb::shield::angle_xy(n, f.physics.self_velocity) < threshold)
+        {
+            let direction = f.physics.self_velocity;
+            f.physics.facing = if direction.x >= 0.0 { 1.0 } else { -1.0 };
+            let angle = melee_lb::trigf::atan2f(direction.y, direction.x * f.physics.facing);
+            set_angle::<C>(f, p.assets.expect("Fire Fox wall rotation"), angle);
+        }
     }
     Ok(())
 }
-fn travel_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    if air_collision(f, p)? {
-        unimplemented!("ftFx_SpecialAirHi_Coll: rebound or floor-directed launch");
-    }
-    Ok(())
-}
+
+/// ftFx_SpecialHiFall_Coll / Enter (800E7FA0 / 800E7FF0).
 fn end_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    if air_collision(f, p)? {
-        unimplemented!("ftFx_SpecialHiFall_Enter: frame-13 landing recovery");
+    let c = &mut f.core;
+    melee_ft::collision::air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    let cd = &mut c.collision.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = c.physics.position;
+    melee_mp::set_facing_dir(cd, 0); // CLIFFCATCH_BOTH.
+    let pose = melee_ft::collision::ecb::EcbPose::read(&mut c.skeleton, c.animation.root, cd);
+    let landed = if c.status.ledge_cooldown == 0 {
+        p.map.air_collide_ledge(cd, Some(&|i| pose.position(i)))
+    } else {
+        p.map.air_collide_pass(cd, Some(&|i| pose.position(i)))
+    };
+    c.physics.position = cd.cur_pos;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+    let assets = p.assets.expect("Fire Fox ending landing");
+    if landed {
+        f.land();
+        // 800E8018..28: action357, flags0x5000, start13/rate1; no KeepGfx.
+        f.change_motion_with_updated_commands(S::SpecialHiLanding.into(), assets, 13.0)?;
+        f.step_animation(assets);
+    } else {
+        f.try_grab_ledge(assets, p.map)?;
     }
     Ok(())
 }
@@ -355,8 +492,11 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
         };
         let bone =
             usize::from(assets.parts.part_to_joint[part as usize].expect("Fire Fox effect bone"));
-        f.effects.push(EffectRequest::SyncAttached { id, bone });
-        f.effect_state.destroy_on_state_change = true;
+        // ftFx_SpecialHi_CreateChargeGFX / CreateLaunchGFX retain owned graphics.
+        if !f.effect_state.destroy_on_state_change {
+            f.effects.push(EffectRequest::SyncAttached { id, bone });
+            f.effect_state.destroy_on_state_change = true;
+        }
     }
     if f.motion_state.action.0 == S::SpecialAirHi as u16
         || f.motion_state.action.0 == S::SpecialHi as u16
@@ -374,4 +514,109 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
             rotation: hsd_types::Vec3::new(0.0, y, z),
         });
     }
+}
+
+fn set_angle<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets, angle: f32) {
+    f.character.get_mut::<C>().special_hi().angle = angle;
+    let bone = assets.parts.part_to_joint[FtPart::XRotN as usize].expect("XRotN");
+    let joint = f.animation.parts[usize::from(bone)].joint;
+    f.skeleton
+        .set_rotation_x(joint, std::f32::consts::TAU - angle);
+}
+/// ftFx_SpecialAirHi_AirToGround (800E7AF4): floor-directed ground launch.
+fn launch_ground<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.physics.facing = if f.input.current.stick.x >= 0.0 {
+        1.0
+    } else {
+        -1.0
+    };
+    f.change_motion_state(S::SpecialHi.into(), assets)?;
+    let a = &f.character.get::<C>().attributes().fire_fox;
+    let (duration, speed) = (fctiwz(a.duration), a.speed);
+    let s = f.character.get_mut::<C>().special_hi();
+    s.travel_frames = duration;
+    s.travel_ticks = 0;
+    s.collision_ticks = 0;
+    s.pending_effect = Some(0x48C);
+    f.physics.ground_velocity = speed * f.physics.facing;
+    let n = f.collision.data.floor.normal;
+    let angle = melee_lb::trigf::atan2f(-n.x * f.physics.facing, n.y);
+    set_angle::<C>(f, assets, angle);
+    Ok(())
+}
+/// ftFx_SpecialHiBound_Enter (800E82E4): motion entry, animation, X damping.
+fn enter_bound<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.change_motion_state(S::SpecialHiBound.into(), assets)?;
+    f.step_animation(assets);
+    f.physics.self_velocity.x *= f.character.get::<C>().attributes().fire_fox.bound_vel_x;
+    f.commands.variables[0] = 0;
+    let n = f.collision.data.floor.normal;
+    let angle = if f.collision.data.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0 {
+        -melee_lb::trigf::atan2f(n.x, n.y)
+    } else {
+        0.0
+    };
+    let position = f.physics.position;
+    f.effects
+        .push(EffectRequest::FireFoxRebound { position, angle });
+    f.effect_state.destroy_on_state_change = true;
+    Ok(())
+}
+fn bound<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    f.step_animation(p.assets);
+    let air = f.physics.ground_or_air == GroundOrAir::Air;
+    if (air && f.commands.variables[0] != 0) || !f.animation.frames_remaining(&f.skeleton) {
+        if air {
+            let a = &f.character.get::<C>().attributes().fire_fox;
+            let (mobility, lag) = (a.freefall_mobility, a.landing_lag);
+            f.enter_special_fall(p.assets, true, false, true, mobility, lag)?;
+            f.physics.jumps_used = f.attributes.jumping.max_jumps as u8;
+        } else {
+            f.change_motion_state(CommonMotionState::Wait.into(), p.assets)?;
+        }
+    }
+    Ok(None)
+}
+/// 800E8200 -> 800851C0: rebound uses TransN Y, not gravity.
+fn bound_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    if f.physics.ground_or_air == GroundOrAir::Air {
+        f.physics.self_velocity.y = f
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("Fire Fox rebound TransN")
+            .primary_history
+            .offset
+            .y;
+        air_friction(f, f.attributes.air.aerial_friction);
+        finish_air(f, p);
+    } else {
+        callbacks::physics::guard_on(f, p);
+    }
+}
+fn bound_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    if f.physics.ground_or_air == GroundOrAir::Air {
+        let c = &mut f.core;
+        melee_ft::collision::air::begin_map(
+            &c.physics,
+            &mut c.collision,
+            &mut c.skeleton,
+            c.animation.root,
+        );
+        if melee_ft::collision::air::collide_pass(
+            &mut c.physics,
+            &mut c.collision,
+            p.map,
+            &mut c.skeleton,
+            c.animation.root,
+            c.status.ledge_cooldown == 0,
+        ) {
+            f.land();
+        } else {
+            f.try_grab_ledge(p.assets.expect("Fire Fox rebound ledge"), p.map)?;
+        }
+    } else {
+        callbacks::collision::escape(f, p)?;
+    }
+    Ok(())
 }

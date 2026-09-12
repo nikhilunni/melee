@@ -427,6 +427,7 @@ dependencies = [
  "melee-ft",
  "melee-it",
  "melee-lb",
+ "melee-mp",
  "melee-types",
 ]
 

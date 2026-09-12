@@ -1,0 +1,20 @@
+name = "firefox_charge_landing_fd_fox"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = { X = true } },
+  { frame = 32, port = 1, buttons = {  } },
+  { frame = 53, port = 1, buttons = { StickY = 1.0, B = true } },
+  { frame = 55, port = 1, buttons = { StickY = 1.0 } },
+  { frame = 115, port = 1, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "idle"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
