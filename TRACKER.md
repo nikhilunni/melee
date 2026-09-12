@@ -288,7 +288,7 @@ the port meets the real game, so expect surprises and record them here.
 - [ ] FMA audit of the 25 marked sites against retail asm (blocked on disc)
 - [ ] Int-conversion audit of the 1 marked site (blocked on disc)
 - [x] Paired-single matrix routines: transcribed from asm in `hsd-anim::mtx`; fusion audited against retail (`crates/hsd-anim/tests/ref/FUSION_AUDIT.md`)
-- [ ] `fmuls` on a double-width estimate result (Gekko truncates frC to 25 bits): needed once frsqrte is exact, for `PSVECMag`/`PSVECNormalize`
+- [x] (2026-09-12) `fmuls` double-width estimate multiplier rounding: PSVECMag/Normalize use 25 significant bits; 264 standalone interpreter cases and independent C matrix oracle pass. ARM64 JIT agrees on estimate cases; artificial subnormal differences documented in `harness/gekko_probe/fmuls/README.md`.
 
 ## Milestone 2: HSD engine (`hsd-archive`, `hsd-gobj`, `hsd-anim`)
 
@@ -710,3 +710,18 @@ Newest first. One line per session: date, what landed, what is next.
   220 harness tests, schema and native build pass. Stripped size 3,960,712
   (+8 bytes). Full perf census not rerun. Null-backend pilot matches an existing
   300-tick powershield trace; full capture equivalence next, then reflection.
+
+- [x] (2026-09-12) Fresh/delayed/return/stale laser reflection: four 300-tick
+  state/item/RNG/ordered-particle, raw contact/history, SRT and zero-allocation
+  regressions pass. Both full profiles: 1,371 passed, 0 failed, 1 existing ignore;
+  final 18 focused checks per profile after Clippy cleanup. All-target Clippy,
+  225 harness tests, schema, formatting and native rebuild pass. Stripped
+  simulator: 3,977,544 bytes (+16,832). Corrected child AppSRT ownership and the
+  documented estimate-FMULS omission using 264 standalone guest cases and an
+  independent C matrix reference. Headless scripting frontend validated against
+  300 state/particle/RNG and 150 bone records, unblocking captures despite GUI
+  IOSurface startup failures. Report: `docs/PORT_NOTES/LASER_REFLECTION.md`.
+- [~] Next contact packet: low-health reflector overflow has a 600-tick witness,
+  whose follow-through needs ShieldBreakFall206; six clank/contact scenarios
+  now have full 300-tick captures, including mutual, both priority winners,
+  no-rebound and airborne controls. Implement and gate before expanding scope.

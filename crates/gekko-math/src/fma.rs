@@ -36,6 +36,29 @@ fn negate_rounded_double(result: f64) -> f64 {
     result.copysign(f64::from_bits(!result.to_bits()))
 }
 
+/// Gekko `fmuls` with double-width register operands. The multiplier is rounded
+/// to 25 significant bits (halfway away from zero) before multiplication;
+/// the product is then rounded to single. Single-width operands are unchanged.
+/// This matters when PSVECMag/Normalize multiply the double `frsqrte` estimate.
+#[inline]
+pub fn fmuls(a: f64, c: f64) -> f32 {
+    let magnitude = c.to_bits() & !(1_u64 << 63);
+    let exponent = magnitude >> 52;
+    let discard = if exponent == 0 {
+        (64 - magnitude.leading_zeros()).saturating_sub(25)
+    } else {
+        28
+    };
+    let rounded = if exponent == 0x7ff || discard == 0 {
+        c
+    } else {
+        let quantum = 1_u64 << discard;
+        let rounded_magnitude = ((magnitude + quantum / 2) / quantum) * quantum;
+        f64::from_bits((c.to_bits() & (1_u64 << 63)) | rounded_magnitude)
+    };
+    (a * rounded) as f32
+}
+
 /// `fmadds frD, frA, frC, frB` : `frA * frC + frB`, single precision.
 #[inline(always)]
 pub fn fmadds(a: f32, c: f32, b: f32) -> f32 {

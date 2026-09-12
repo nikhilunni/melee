@@ -290,6 +290,20 @@ fn fire_contact_bones_firefox_travel_hit_fd_marth() {
 
 #[test]
 fn fire_contact_particle_simulation_fields_match_retail() {
+    replay_particle_fields(&["firefox_charge_hit_fd_marth", "firefox_travel_hit_fd_marth"]);
+}
+
+#[test]
+fn laser_reflection_particle_simulation_fields_match_retail() {
+    replay_particle_fields(&[
+        "laser_reflect_fresh_fd_marth",
+        "laser_reflect_return_boundary_fd_marth",
+        "laser_reflect_stale_fd_marth",
+        "laser_reflect_delayed_timed_fd_marth",
+    ]);
+}
+
+fn replay_particle_fields(names: &[&str]) {
     use crate::initial_state::particles;
     struct Banks<'a>(&'a InitialState);
     impl particles::Banks for Banks<'_> {
@@ -302,7 +316,7 @@ fn fire_contact_particle_simulation_fields_match_retail() {
         }
     }
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    for name in ["firefox_charge_hit_fd_marth", "firefox_travel_hit_fd_marth"] {
+    for name in names {
         let scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
         let path = scenario.trace_path("particles.jsonl");
@@ -344,4 +358,24 @@ fn fire_contact_particle_simulation_fields_match_retail() {
             }
         }
     }
+}
+
+#[test]
+fn laser_reflection_fresh_bones() {
+    replay_bones("laser_reflect_fresh_fd_marth", 150);
+}
+
+#[test]
+fn laser_reflection_return_bones() {
+    replay_bones("laser_reflect_return_boundary_fd_marth", 300);
+}
+
+#[test]
+fn laser_reflection_stale_bones() {
+    replay_bones("laser_reflect_stale_fd_marth", 300);
+}
+
+#[test]
+fn laser_reflection_delayed_bones() {
+    replay_bones("laser_reflect_delayed_timed_fd_marth", 300);
 }

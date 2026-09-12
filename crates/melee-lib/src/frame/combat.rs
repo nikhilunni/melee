@@ -702,3 +702,23 @@ fn fire_contact_matches_retail_damage_and_recovery_scratch() {
     replay_scratch("firefox_charge_hit_fd_marth");
     replay_scratch("firefox_travel_hit_fd_marth");
 }
+
+#[test]
+fn laser_reflection_fresh_combat_scratch() {
+    replay_scratch("laser_reflect_fresh_fd_marth");
+}
+
+#[test]
+fn laser_reflection_return_combat_scratch() {
+    replay_scratch("laser_reflect_return_boundary_fd_marth");
+}
+
+#[test]
+fn laser_reflection_stale_combat_scratch() {
+    replay_scratch("laser_reflect_stale_fd_marth");
+}
+
+#[test]
+fn laser_reflection_delayed_combat_scratch() {
+    replay_scratch("laser_reflect_delayed_timed_fd_marth");
+}

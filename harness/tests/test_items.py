@@ -296,11 +296,14 @@ def test_record_runner_decode_validate_path_without_dolphin(tmp_path, monkeypatc
     def run_tick_runner(command, **kwargs):
         assert command[1].endswith("dolphin/run_scenario.py")
         assert "--tick-trace" in command and kwargs["check"]
+        assert command[command.index("--video") + 1] == "Null"
+        assert command[command.index("--timeout") + 1] == "7.0"
         run_scenario.main(command[2:])
 
     monkeypatch.setattr(run_scenario.subprocess, "Popen", FakeDolphin)
     monkeypatch.setattr(recorder.subprocess, "run", run_tick_runner)
-    recorder.main([str(scenario), "--no-ledger", "--no-particles"])
+    recorder.main([str(scenario), "--no-ledger", "--no-particles",
+                   "--video", "Null", "--timeout", "7"])
     output = capsys.readouterr().out
     assert "PASS: 0 violations" in output and "== laser: done" in output
     decoded = harness / "traces/laser.tick.expected.jsonl"

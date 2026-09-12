@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 15] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 16] = [
     // S6: color-overlay landing dust, same efAsync row as the landing opcode.
     ModelSpawn {
         request: 0x404,
@@ -111,6 +111,13 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 15] = [
         model: 0xD,
         attached: true,
     },
+    // efAsync_Dispatch 8006528C: successful powershield model.
+    ModelSpawn {
+        request: 0x41A,
+        source: ModelSource::Shield,
+        model: 0xE,
+        attached: true,
+    },
 ];
 pub(super) static WARP_SPAWN: ModelSpawn = ModelSpawn {
     request: 0x43E,
@@ -202,7 +209,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 5] = [
     (0x414, 0xE1),
 ];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 22] = [
-    2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 445, 448,
-    449,
+pub(super) static PARTICLE_KINDS: [i32; 23] = [
+    2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 445,
+    448, 449,
 ];

@@ -348,20 +348,46 @@ impl ParticleSystem {
                 if let Some(id) = self.spawn::<T>(&bank, request, rng, draws)? {
                     let child = self.generator_mut(id).unwrap();
                     child.family_id = parent.family_id;
-                    // particle.c:1098-1108/1162-1174: a child without its own
-                    // AppSRT shares the parent's transform and keeps local position.
-                    child.appsrt_id = parent.appsrt_id;
-                    child.application_transform = parent.application_transform.clone();
-                    child.position = parent.position;
+                    // psAttachGeneratorAppSRT (803A4308) cannot replace an
+                    // AppSRT already allocated by the child's descriptor.
+                    if child.application_transform.is_none() {
+                        child.appsrt_id = parent.appsrt_id;
+                        child.application_transform = parent.application_transform.clone();
+                    }
+                    // particle.c:1101-1125 / 1165-1189. Distinct AppSRTs copy
+                    // only world translation; shared/absent AppSRTs use local pos.
+                    let transform_update = if child.appsrt_id == parent.appsrt_id {
+                        child.position = parent.position;
+                        None
+                    } else {
+                        let mut transform = child
+                            .application_transform
+                            .as_deref()
+                            .expect("child owns AppSRT")
+                            .clone();
+                        transform.translation = parent
+                            .application_transform
+                            .as_ref()
+                            .map_or(parent.position.into(), |srt| srt.translation);
+                        Some((child.appsrt_id.expect("child AppSRT identity"), transform))
+                    };
                     child.flags |= 0x100;
                     if let Some((flags, attachment_id, matrix)) = attachment {
                         child.flags |= flags & 0x1e00;
+                        // 80399F74..9F88: an independently transformed child
+                        // does not overwrite local pos with joint translation.
+                        if child.descriptor.kind & 0x20000 != 0 {
+                            child.flags &= !0x200;
+                        }
                         child.attachment_id = attachment_id;
                         child.joint_matrix = matrix;
                     }
                     if let Some(blend) = blend {
                         child.descriptor.kind =
                             (child.descriptor.kind & 0xf1ff_ffff) | (u32::from(blend & 7) << 25);
+                    }
+                    if let Some((id, transform)) = transform_update {
+                        self.set_application_transform(id, transform);
                     }
                 }
                 Ok(())

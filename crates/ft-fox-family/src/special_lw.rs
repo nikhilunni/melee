@@ -43,7 +43,7 @@ pub fn descriptor(a: &ReflectionAttributes) -> ReflectDescriptor {
         radius: a.size,
         damage_multiplier: a.damage_multiplier,
         speed_multiplier: a.speed_multiplier,
-        preserve_owner: a.skip_ownership_change != 0,
+        exclude_master_ball_ownership: a.skip_ownership_change != 0,
     }
 }
 
@@ -199,6 +199,8 @@ fn released<C: FoxFamily>(f: &mut Fighter, count_down: bool) -> bool {
     s.released && s.release_lag <= 0
 }
 fn create_bubble<C: FoxFamily>(f: &mut Fighter) {
+    f.combat.reflector_enabled = true;
+    f.shield.reflect.volume.position_cached = false;
     let bubble = descriptor(&f.character.get::<C>().attributes().reflector.reflection);
     f.character.get_mut::<C>().special_lw().reflector = Some(bubble);
 }
@@ -319,6 +321,7 @@ fn enter_turn<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<(
     f.effect_state.destroy_on_state_change = owned;
     let duration = f.character.get::<C>().attributes().reflector.turn_frames;
     f.character.get_mut::<C>().special_lw().turn_frames = gekko_math::msl::fctiwz(duration);
+    f.combat.reflector_enabled = true;
     f.commands.variables[0] = 0;
     advance_turn::<C>(f);
     f.character.get_mut::<C>().special_lw().pending_effect = Some(0x488);
@@ -426,6 +429,7 @@ fn turn_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
                 ..Default::default()
             },
         )?;
+        f.combat.reflector_enabled = true;
         let maximum = f.attributes.air.air_drift_max;
         f.physics.self_velocity.x = f.physics.self_velocity.x.clamp(-maximum, maximum);
     }
@@ -487,8 +491,28 @@ pub fn on_reflect<C: FoxFamily>(
 ) -> Result<ReflectReaction> {
     let reaction = reflection_reaction(f.physics.ground_or_air == GroundOrAir::Air, direction);
     f.physics.facing = reaction.facing;
+    let hip = assets
+        .parts
+        .joint(melee_types::FtPart::HipN)
+        .expect("Reflector HipN") as usize;
+    let core = &mut f.core;
+    let center = melee_ft::fighter::caches::bone_position(
+        &mut core.skeleton,
+        core.animation.root,
+        hip,
+        hsd_types::Vec3::ZERO,
+    );
+    core.commands
+        .radial_impulses
+        .push(melee_lb::radial_force::RadialImpulse {
+            center,
+            frames: reaction.impulse_ticks,
+            strength: reaction.impulse_scale,
+            decay: reaction.impulse_decay,
+            phase_step: reaction.impulse_angle,
+        });
     f.change_motion_state(reaction.action.into(), assets)?;
-    create_bubble::<C>(f);
+    f.combat.reflector_enabled = true;
     f.character.get_mut::<C>().special_lw().pending_effect = Some(0x48A);
     Ok(reaction)
 }
@@ -500,6 +524,9 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _: &FighterAssets) {
         .pending_effect
         .take()
     {
+        // All three retail accessory callbacks install PauseAll/ResumeAll,
+        // including KeepGfx turns that do not create another model.
+        f.effect_state.hitlag_callbacks = true;
         // ftFx_SpecialLw_Create*GFX: KeepGfx turns retain the live effect.
         if !f.effect_state.destroy_on_state_change {
             // Retail uses literal HipN slot 4, not ftParts_GetBoneIndex.
@@ -507,6 +534,28 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _: &FighterAssets) {
             f.effect_state.destroy_on_state_change = true;
         }
     }
+}
+
+/// The live callback latch, not stale move scratch, owns item contact eligibility.
+pub fn reflector_contact<C: FoxFamily>(
+    f: &mut Fighter,
+    hit: &melee_coll::hitbox::HitCapsule,
+    scale: f32,
+) -> Option<ReflectDescriptor> {
+    if !f.combat.reflector_enabled {
+        return None;
+    }
+    let descriptor = f.character.get_mut::<C>().special_lw().reflector?;
+    f.core
+        .reflector_contact(hit, scale, &descriptor)
+        .then_some(descriptor)
+}
+pub fn reflect_hit<C: FoxFamily>(
+    f: &mut Fighter,
+    direction: f32,
+    assets: &FighterAssets,
+) -> Result<()> {
+    on_reflect::<C>(f, direction, assets).map(|_| ())
 }
 
 #[cfg(test)]
@@ -530,7 +579,7 @@ mod tests {
         assert_eq!(defense.radius.to_bits(), 8.0f32.to_bits());
         assert_eq!(defense.damage_multiplier.to_bits(), 1.5f32.to_bits());
         assert_eq!(defense.speed_multiplier.to_bits(), 1.0f32.to_bits());
-        assert!(!defense.preserve_owner);
+        assert!(!defense.exclude_master_ball_ownership);
         for (air, direction, state) in [
             (false, -1.0, S::SpecialLwHit),
             (true, 1.0, S::SpecialAirLwHit),

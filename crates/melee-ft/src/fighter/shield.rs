@@ -174,10 +174,6 @@ impl ShieldState {
         self.on_hit = None;
         self.on_reflect = None;
     }
-    /// ftCo_80093790 (0x80093790), ftCo_Guard.c:875-882.
-    pub fn reflect_hit(&mut self) {
-        unimplemented!("ftCo_Guard.c:875-882: powershield reflection response");
-    }
 }
 impl Fighter {
     /// ftCo_80092E50 -> ftCo_80092F2C (80092F2C): shield stun and defender pushback.

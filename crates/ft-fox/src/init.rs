@@ -68,6 +68,10 @@ impl CharacterCallbacks for Fox {
         ft_fox_family::special_hi::accessory::<Self>(fighter, assets);
         ft_fox_family::special_lw::accessory::<Self>(fighter, assets);
     }
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
+        Some(ft_fox_family::special_lw::reflector_contact::<Self>);
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(ft_fox_family::special_lw::reflect_hit::<Self>);
     const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
         Some(ft_fox_family::special_n::remove_blaster::<Self>);
     fn item_owner(

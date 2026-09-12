@@ -132,6 +132,12 @@ pub fn prepare_scheduler(world: &mut World) {
     }
 }
 
+/// Fighter-owned context captured when its item request is dispatched.
+pub struct RequestOwner<'a> {
+    pub held_item: Option<&'a melee_it::ItemOwner>,
+    pub stale_multiplier: f32,
+}
+
 pub fn request(
     pool: &mut ItemPool,
     resources: &Resources,
@@ -139,11 +145,11 @@ pub fn request(
     world: &mut World,
     objects: &mut Objects,
     request: ItemRequest,
-    owner: Option<&melee_it::ItemOwner>,
+    owner: RequestOwner<'_>,
 ) {
     let (spawn, ray, held_owner) = match request {
         ItemRequest::Spawn(spawn) => (spawn, None, None),
-        ItemRequest::SpawnHeld(spawn) => (spawn, None, owner),
+        ItemRequest::SpawnHeld(spawn) => (spawn, None, owner.held_item),
         ItemRequest::SpawnLaser {
             spawn,
             angle,
@@ -160,7 +166,7 @@ pub fn request(
         }
     };
     let assets = resources.get(spawn.kind);
-    if let Some(id) = pool.spawn::<SceneItems>(spawn, assets) {
+    if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
         pool.get_mut(id)
             .unwrap()
             .initialize_collision(spawn, assets, map);

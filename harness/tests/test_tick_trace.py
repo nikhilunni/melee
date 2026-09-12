@@ -220,3 +220,63 @@ def test_scripted_steps_hold_per_port_and_each_tick_records_the_game_pads(tmp_pa
     assert result["inputs"]["p1"]["nml_stickX"] == {"t": "f32", "v": {"bits": 0x3F800000, "approx": 1.0}}
     assert result["inputs"]["p0"]["button"] == {"t": "u", "v": 0}
     assert set(result["inputs"]) == {"p0", "p1", "p2", "p3"}
+
+
+@pytest.mark.parametrize("returncode", [0, 3])
+def test_runner_reports_exit_without_waiting_for_timeout(tmp_path, monkeypatch, returncode):
+    class Exited:
+        def poll(self):
+            return self.returncode
+
+    proc = Exited()
+    proc.returncode = returncode
+    monkeypatch.setattr(run_scenario.time, "sleep", lambda _: pytest.fail("waited after exit"))
+    with pytest.raises(SystemExit, match=f"Dolphin exited with {returncode}"):
+        run_scenario.wait_for(tmp_path / "done", tmp_path / "err", 60, proc)
+
+
+def test_runner_accepts_completed_capture_after_process_exit(tmp_path):
+    class Exited:
+        returncode = 0
+
+        def poll(self):
+            return self.returncode
+
+    done = tmp_path / "done"
+    done.write_text("{}")
+    run_scenario.wait_for(done, tmp_path / "err", 60, Exited())
+
+
+def test_auxiliary_recorder_reports_process_exit(tmp_path, monkeypatch):
+    import record
+
+    class Exited:
+        returncode = 3
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def poll(self):
+            return self.returncode
+
+        def terminate(self):
+            pass
+
+        def wait(self, timeout):
+            return self.returncode
+
+    monkeypatch.setattr(record.subprocess, "Popen", Exited)
+    monkeypatch.setattr(record.time, "sleep", lambda _: pytest.fail("waited after exit"))
+    with pytest.raises(RuntimeError, match="Dolphin exited with 3"):
+        record.run_dolphin_until(tmp_path / "script.py", {}, tmp_path / "done",
+                                 tmp_path / "err", tmp_path / "log", 60, "Null")
+
+
+def test_headless_platform_reaches_tick_and_auxiliary_captures(tmp_path, monkeypatch):
+    import record
+
+    monkeypatch.setenv("DOLPHIN_PLATFORM", "headless")
+    for command in [run_scenario.dolphin_command(tmp_path / "game.iso", 0, "Null", 2, True),
+                    record.dolphin_flags(video="Null")]:
+        assert command[command.index("--platform") + 1] == "headless"
+        assert command[command.index("-v") + 1] == "Null"

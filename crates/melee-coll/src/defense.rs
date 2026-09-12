@@ -10,7 +10,7 @@ pub struct ReflectDescriptor {
     pub radius: f32,
     pub damage_multiplier: f32,
     pub speed_multiplier: f32,
-    pub preserve_owner: bool,
+    pub exclude_master_ball_ownership: bool,
 }
 /// AbsorbDesc; state callbacks and healing belong to the owner.
 #[derive(Clone, Copy, Debug)]

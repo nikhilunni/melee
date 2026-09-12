@@ -46,6 +46,19 @@
  * stays in charge of the single-precision names. */
 float fmaf(float, float, float);
 
+/* Quantize the register multiplier mathematically, independently of the
+ * Rust bit representation. Gekko fmuls retains 25 significant bits before
+ * multiplication, including when frsqrte supplied a double-width estimate. */
+static float fmuls_registers(double a, double c) {
+    int exponent;
+    if (c == 0.0 || !__builtin_isfinite(c)) return (float) (a * c);
+    double fraction = __builtin_frexp(__builtin_fabs(c), &exponent);
+    double rounded = __builtin_floor(fraction * 33554432.0 + 0.5);
+    double multiplier = __builtin_copysign(
+        __builtin_ldexp(rounded, exponent - 25), c);
+    return (float) (a * multiplier);
+}
+
 /* MSL trigf.c fills its range-reduction tables from a static constructor;
  * on the host it has to be called explicitly before any sinf/cosf. */
 void __sinit_trigf_c(void);
@@ -191,8 +204,8 @@ f32 PSVECMag(Vec* v)
     float yy = v->y * v->y;
     float sqsum = fmadds(v->z, v->z, xx) + yy;
     double est = frsqrte((double) sqsum);
-    float f2 = (float) (est * est);
-    float f0 = (float) (est * 0.5);
+    float f2 = fmuls_registers(est, est);
+    float f0 = fmuls_registers(est, 0.5);
     f2 = fnmsubs(f2, sqsum, 3.0f);
     f0 = f2 * f0;
     f0 = (f0 >= 0.0f) ? f0 : sqsum; /* fsel */
@@ -205,8 +218,8 @@ void PSVECNormalize(Vec* src, Vec* dst)
     float yy = src->y * src->y;
     float sqsum = fmadds(src->z, src->z, xx) + yy;
     double rsqrt = frsqrte((double) sqsum);
-    float nwork0 = (float) (rsqrt * rsqrt);
-    float nwork1 = (float) (rsqrt * 0.5);
+    float nwork0 = fmuls_registers(rsqrt, rsqrt);
+    float nwork1 = fmuls_registers(rsqrt, 0.5);
     float r;
     Vec out;
     nwork0 = fnmsubs(nwork0, sqsum, 3.0f);

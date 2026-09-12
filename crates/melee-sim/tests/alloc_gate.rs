@@ -424,3 +424,23 @@ fn fire_contact_allocation_budget() {
     allocation_budget("firefox_charge_hit_fd_marth", 0);
     allocation_budget("firefox_travel_hit_fd_marth", 0);
 }
+
+#[test]
+fn laser_reflection_fresh_allocation_budget() {
+    allocation_budget("laser_reflect_fresh_fd_marth", 0);
+}
+
+#[test]
+fn laser_reflection_return_allocation_budget() {
+    allocation_budget("laser_reflect_return_boundary_fd_marth", 0);
+}
+
+#[test]
+fn laser_reflection_stale_allocation_budget() {
+    allocation_budget("laser_reflect_stale_fd_marth", 0);
+}
+
+#[test]
+fn laser_reflection_delayed_allocation_budget() {
+    allocation_budget("laser_reflect_delayed_timed_fd_marth", 0);
+}

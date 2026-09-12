@@ -25,31 +25,37 @@ import pads_to_inputs
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-DOLPHIN = Path.home() / "Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin"
+DOLPHIN = Path(os.environ.get(
+    "DOLPHIN_BIN",
+    Path.home() / "Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin"))
 ISO = HERE / "roms/GALE01.iso"
 IDLE_SITES = {"hsd_8039EE24+0xDC", "hsd_8039DAD4+0x10A0", "hsd_8039DAD4+0x10F8",
               "hsd_8039930C+0x1D7C", "hsd_8039930C+0x1DE8", "hsd_8039930C+0x1E54",
               "hsd_8039930C+0x1EC0", "ftCo_8008A7A8+0x114"}
 
 
-def dolphin_flags(ports: int = 2) -> list[str]:
-    flags = ["-v", "OGL", "-C", "Dolphin.Core.EmulationSpeed=0"]
+def dolphin_flags(ports: int = 2, video: str = "OGL") -> list[str]:
+    flags = ["-v", video, "-C", "Dolphin.Core.EmulationSpeed=0"]
+    if platform := os.environ.get("DOLPHIN_PLATFORM"):
+        flags += ["--platform", platform]
     for i in range(4):
         flags += ["-C", f"Dolphin.Core.SIDevice{i}={6 if i < ports else 0}"]
     return flags
 
 
-def run_dolphin_until(script: Path, env: dict, done: Path, err: Path, log: Path, timeout: float) -> None:
+def run_dolphin_until(script: Path, env: dict, done: Path, err: Path, log: Path, timeout: float, video: str = "OGL") -> None:
     """Launch Dolphin with `script`, wait for `done` or `err`, then kill it."""
     for p in (done, err):
         p.unlink(missing_ok=True)
     with log.open("wb") as out:
-        proc = subprocess.Popen([str(DOLPHIN), "-e", str(ISO), "--script", str(script), *dolphin_flags()],
+        proc = subprocess.Popen([str(DOLPHIN), "-e", str(ISO), "--script", str(script), *dolphin_flags(video=video)],
                                 env={**os.environ, **env}, stdout=out, stderr=subprocess.STDOUT,
                                 start_new_session=True)
         t0 = time.monotonic()
         try:
             while not done.exists() and not err.exists():
+                if proc.poll() is not None:
+                    raise RuntimeError(f"{script.name}: Dolphin exited with {proc.returncode}; see {log}")
                 if time.monotonic() - t0 > timeout:
                     raise TimeoutError(f"{script.name}: no completion marker after {timeout}s")
                 time.sleep(0.5)
@@ -85,6 +91,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-ledger", action="store_true")
     ap.add_argument("--no-particles", action="store_true")
     ap.add_argument("--ledger-suffix", default="ledger", help="ledger file suffix (the 600-tick idle/start scenes use ledger600)")
+    ap.add_argument("--video", default="OGL", help="Dolphin video backend for every capture pass")
     ap.add_argument("--timeout", type=float, default=600.0)
     ap.add_argument("--reuse-tick", action="store_true",
                     help="human scenes: keep the existing tick trace (and pad log) and run the rest")
@@ -104,9 +111,10 @@ def main(argv: list[str] | None = None) -> None:
     human_ports = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
                    if f.get("controller") == "human"]
     tick_cmd = [sys.executable, str(HERE / "dolphin/run_scenario.py"), str(scenario_path),
-                "--tick-trace", "--video", "OGL", "--ports", "2"]
+                "--tick-trace", "--video", a.video, "--ports", "2",
+                "--timeout", str(a.timeout)]
     if human_ports:
-        tick_cmd += ["--speed", "1", "--timeout", str(a.timeout), "--background-input"]
+        tick_cmd += ["--speed", "1", "--background-input"]
         keypad = Path(os.environ.setdefault("MELEE_KEYPAD", str(HERE / "roms" / ".remote" / "keypad.json")))
         if not keypad.exists():
             sys.exit(f"start the terminal gamepad first (another terminal): cd {HERE} && uv run python keypad.py")
@@ -141,7 +149,8 @@ def main(argv: list[str] | None = None) -> None:
         pads_to_inputs.write_replay_toml(scenario, steps, frames, f"{name}_replaycheck", replay_path)
         print(f"== {name}: {len(steps)} human pad steps -> {replay_path.name}; replaying the tick trace to verify")
         subprocess.run([sys.executable, str(HERE / "dolphin/run_scenario.py"), str(replay_path),
-                        "--tick-trace", "--video", "OGL", "--ports", "2"], check=True, stdout=subprocess.DEVNULL)
+                        "--tick-trace", "--video", a.video, "--ports", "2",
+                        "--timeout", str(a.timeout)], check=True, stdout=subprocess.DEVNULL)
         check = traces / f"{name}_replaycheck.tick.expected.jsonl"
         for index, (human, replay) in enumerate(zip(expected.open(), check.open())):
             h, r = json.loads(human), json.loads(replay)
@@ -156,7 +165,7 @@ def main(argv: list[str] | None = None) -> None:
         run_dolphin_until(HERE / "dolphin/rng_ledger.py",
                           {"MELEE_SCENARIO": str(replay_path), "MELEE_RAW_OUT": str(out)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
-                          traces / f"{name}.ledger.dolphin.out", a.timeout)
+                          traces / f"{name}.ledger.dolphin.out", a.timeout, a.video)
         report = subprocess.run([sys.executable, str(HERE / "rng_ledger_report.py"), str(out), "--ticks", "1"],
                                 capture_output=True, text=True).stdout
         extra = []
@@ -176,7 +185,7 @@ def main(argv: list[str] | None = None) -> None:
                            "MELEE_PARTICLES_SAVESTATE": str(savestate),
                            "MELEE_PARTICLES_OUT": str(out), "MELEE_PARTICLES_TICKS": str(particle_ticks)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
-                          traces / f"{name}.particles.dolphin.out", a.timeout)
+                          traces / f"{name}.particles.dolphin.out", a.timeout, a.video)
 
     if a.bones:
         out = traces / f"{name}.bones.jsonl"
@@ -188,7 +197,7 @@ def main(argv: list[str] | None = None) -> None:
                           # the snippet writes <name>.bones.raw.jsonl(.done/.err) beside the dump
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
                           Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
-                          traces / f"{name}.bones.dolphin.out", a.timeout)
+                          traces / f"{name}.bones.dolphin.out", a.timeout, a.video)
     print(f"== {name}: done")
 
 

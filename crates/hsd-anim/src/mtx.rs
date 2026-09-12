@@ -22,10 +22,9 @@
 //! with `1.0`, and that `1.0` takes part in the arithmetic where noted.
 //! `fres`/`frsqrte` go through [`gekko_math::estimate`], which is bit-exact
 //! with the captured hardware behaviour. Where the asm feeds the double-width
-//! `frsqrte` result into `fmuls`, this port rounds the `f64` product to `f32`;
-//! the hardware additionally truncates the second operand (frC) to 25
-//! mantissa bits before multiplying, which is not yet modelled. Those lines
-//! are tagged `FMULS FRC TRUNCATION PENDING` (open item in `TRACKER.md`).
+//! `frsqrte` result into `fmuls`, the multiplier is first rounded to 25
+//! significant bits through `gekko_math::fma::fmuls`. Standalone guest
+//! instruction captures cover the estimate products and rounding boundaries.
 //!
 //! HSD arithmetic is audited against the retail DOL. Fused operations cite
 //! their instruction addresses below; scalar sums of squares remain unfused.
@@ -128,9 +127,9 @@ pub fn vec_mag(v: &Vec3) -> f32 {
     // frsqrte f0, f1
     let est = frsqrte(f64::from(sqsum));
     // fmuls f2, f0, f0 ; fmuls f0, f0, f4 (f4 = 0.5)
-    let f2 = (est * est) as f32; // FMULS FRC TRUNCATION PENDING
-    let f0 = (est * 0.5) as f32; // FMULS FRC TRUNCATION PENDING
-                                 // fnmsubs f2, f2, f1, f3 (f3 = 3.0)
+    let f2 = gekko_math::fma::fmuls(est, est);
+    let f0 = gekko_math::fma::fmuls(est, 0.5);
+    // fnmsubs f2, f2, f1, f3 (f3 = 3.0)
     let f2 = fnmsubs(f2, sqsum, 3.0);
     // fmuls f0, f2, f0
     let f0 = f2 * f0;
@@ -154,9 +153,9 @@ pub fn vec_normalize(src: &Vec3, dst: &mut Vec3) {
     // frsqrte rsqrt, sqsum
     let rsqrt = frsqrte(f64::from(sqsum));
     // fmuls nwork0, rsqrt, rsqrt ; fmuls nwork1, rsqrt, c_half
-    let nwork0 = (rsqrt * rsqrt) as f32; // FMULS FRC TRUNCATION PENDING
-    let nwork1 = (rsqrt * 0.5) as f32; // FMULS FRC TRUNCATION PENDING
-                                       // fnmsubs nwork0, nwork0, sqsum, c_three
+    let nwork0 = gekko_math::fma::fmuls(rsqrt, rsqrt);
+    let nwork1 = gekko_math::fma::fmuls(rsqrt, 0.5);
+    // fnmsubs nwork0, nwork0, sqsum, c_three
     let nwork0 = fnmsubs(nwork0, sqsum, 3.0);
     // fmuls rsqrt, nwork0, nwork1
     let rsqrt = nwork0 * nwork1;

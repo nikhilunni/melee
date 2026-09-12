@@ -8,6 +8,7 @@ pub struct ItemCommonData {
     pub hold_limits: [Option<usize>; 13],
     pub lifetime: f32,
     pub shield_bounce_degrees: f32,
+    pub maximum_reflected_damage: u32,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -34,6 +35,7 @@ impl ItemCommonData {
             hold_limits,
             lifetime: r.u32(base + 0x30)? as f32,
             shield_bounce_degrees: r.f32(base + 0xE0)?,
+            maximum_reflected_damage: r.u32(base + 0xD8)?,
         })
     }
 }
@@ -193,6 +195,8 @@ fn decode_hitbox(w: [u32; 6]) -> HitboxDescriptor {
 pub struct ItemHitFlags {
     pub rehit_rate: u8,
     pub reflectable: bool,
+    pub defense_interaction: bool,
+    pub damage_without_hitlag: bool,
     pub absorbable: bool,
     pub shieldable: bool,
     pub shield_bounce: bool,
@@ -206,6 +210,8 @@ impl ItemHitFlags {
         Self {
             rehit_rate: (extra >> 24) as u8,
             reflectable: extra & (1 << 20) != 0,
+            defense_interaction: extra & (1 << 15) != 0,
+            damage_without_hitlag: extra & (1 << 22) != 0,
             absorbable: extra & (1 << 17) != 0,
             shieldable: extra & (1 << 18) != 0,
             shield_bounce: extra & (1 << 16) != 0,

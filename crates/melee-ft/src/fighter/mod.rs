@@ -28,6 +28,7 @@ pub mod multi_jump;
 pub mod overlap;
 mod pass;
 mod procs;
+pub mod reflection;
 pub mod run;
 pub mod shield;
 mod shield_break;
@@ -143,6 +144,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
 
     /// ftColl candidate boundary: special defense may consume an eligible hit.
     const DEFENSE_CONTACT: Option<DefenseContact> = None;
+    const REFLECTOR_CONTACT: Option<reflection::CharacterContact> = None;
+    const REFLECT_HIT: Option<reflection::CharacterResponse> = None;
     /// Fighter_ProcessHit: deferred special defense reaction, before hitlag.
     const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
 

@@ -58,6 +58,11 @@ pub struct ItemCore {
     pub kind: ItemKind,
     pub owner: Option<u8>,
     pub stale_source: Option<melee_types::combat::AttackInstance>,
+    /// Current owner factor used only when authoring/re-authoring a hitbox.
+    pub stale_multiplier: f32,
+    pub pending_reflection: Option<PendingReflection>,
+    pub reflection_direction: f32,
+    pub reflection_history: [melee_types::fixed::FixedVec<RehitVictim, 12>; 4],
     pub hold_kind: u8,
     pub position: Vec3,
     pub previous_position: Vec3,
@@ -75,6 +80,7 @@ pub struct ItemCore {
     pub frozen: bool,
     pub destroyed: bool,
     pub pending_damage_dealt: i32,
+    pub pending_damage_without_hitlag: i32,
     /// ftColl_80077688's xC50; shield contact has priority at item link 14.
     pub pending_shield_damage: i32,
     pub pending_shield_deflection: Option<melee_lb::shield::ShieldDeflection>,
@@ -172,7 +178,22 @@ impl ItemCore {
         while let Some(command) = self.script.next(script, 1.0) {
             match command {
                 Command::SpawnHitbox { id, descriptor } => {
+                    if self.hitboxes[*id]
+                        .as_ref()
+                        .is_none_or(|h| h.descriptor.group != descriptor.group)
+                    {
+                        self.reflection_history[*id] = self
+                            .hitboxes
+                            .iter()
+                            .position(|h| {
+                                h.as_ref()
+                                    .is_some_and(|h| h.descriptor.group == descriptor.group)
+                            })
+                            .map(|i| self.reflection_history[i].clone())
+                            .unwrap_or_default();
+                    }
                     melee_coll::hitbox::spawn(&mut self.hitboxes, *id, descriptor);
+                    self.hitboxes[*id].as_mut().unwrap().descriptor.damage *= self.stale_multiplier;
                     let index = self
                         .script
                         .instruction
@@ -183,15 +204,22 @@ impl ItemCore {
                 }
                 Command::SetHitboxDamage { id, damage } => {
                     if let Some(hit) = &mut self.hitboxes[*id] {
-                        hit.descriptor.damage = *damage;
+                        hit.knockback_damage = gekko_math::msl::fctiwz(*damage) as u32;
+                        hit.descriptor.damage = hit.knockback_damage as f32 * self.stale_multiplier;
                     }
                 }
                 Command::ClearHitbox(id) => {
                     self.hitboxes[*id] = None;
+                    self.reflection_history[*id].clear();
                     // it_80272560 updates every surviving capsule immediately.
                     self.update_hitboxes();
                 }
-                Command::ClearHitboxes => self.hitboxes.fill(None),
+                Command::ClearHitboxes => {
+                    self.hitboxes.fill(None);
+                    for history in &mut self.reflection_history {
+                        history.clear();
+                    }
+                }
                 Command::SetVariable { index, value } => self.command_variables[*index] = *value,
                 _ => unimplemented!("item command {command:?}"),
             }
@@ -229,6 +257,14 @@ impl ItemPool {
     }
     /// Item_80268B18 -> Item_8026862C. Equal p-link priority appends in spawn order.
     pub fn spawn<D: ItemDispatch>(&mut self, spawn: SpawnItem, assets: &ItemAssets) -> Option<u32> {
+        self.spawn_with_stale::<D>(spawn, assets, 1.0)
+    }
+    pub fn spawn_with_stale<D: ItemDispatch>(
+        &mut self,
+        spawn: SpawnItem,
+        assets: &ItemAssets,
+        stale_multiplier: f32,
+    ) -> Option<u32> {
         if let Some(limit) = self.common.hold_limits[usize::from(spawn.hold_kind)] {
             if self
                 .items
@@ -252,6 +288,10 @@ impl ItemPool {
             kind: spawn.kind,
             owner: spawn.owner,
             stale_source: spawn.stale_source,
+            stale_multiplier,
+            pending_reflection: None,
+            reflection_direction: 0.0,
+            reflection_history: Default::default(),
             hold_kind: spawn.hold_kind,
             position: if spawn.initial_collision {
                 spawn.previous_position
@@ -281,6 +321,7 @@ impl ItemPool {
             frozen: false,
             destroyed: false,
             pending_damage_dealt: 0,
+            pending_damage_without_hitlag: 0,
             pending_shield_damage: 0,
             pending_shield_deflection: None,
             sound_requests: Default::default(),
@@ -304,6 +345,10 @@ impl ItemPool {
     /// Item_8026A294 -> OnGiveDamageThink, after all fighter/item detection.
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
     pub fn process_events<D: ItemDispatch>(&mut self, id: u32) {
+        self.process_events_with_stale::<D>(id, 1.0);
+    }
+    pub fn process_events_with_stale<D: ItemDispatch>(&mut self, id: u32, reflected_stale: f32) {
+        let cap = self.common.maximum_reflected_damage;
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
         let bounce_limit =
             (std::f32::consts::PI / 180.0) * (90.0 + self.common.shield_bounce_degrees);
@@ -323,12 +368,17 @@ impl ItemPool {
                 item.destroyed |=
                     (D::logic(item.kind).hit_shield)(item, &ItemEventContext::default());
             }
-        } else if item.pending_damage_dealt != 0 {
+        } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             item.destroyed |=
                 (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::default());
+        } else if let Some(reflection) = item.pending_reflection {
+            item.reflect::<D>(reflection, reflected_stale, cap);
         }
         // Item_80269CC4 resets per-frame contact accumulators.
+        item.pending_reflection = None;
+        item.reflection_direction = 0.0;
         item.pending_damage_dealt = 0;
+        item.pending_damage_without_hitlag = 0;
         item.pending_shield_damage = 0;
         item.pending_shield_deflection = None;
     }
@@ -492,6 +542,7 @@ mod tests {
             hold_limits,
             lifetime: 1.0,
             shield_bounce_degrees: 0.0,
+            maximum_reflected_damage: 999,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -511,6 +562,7 @@ mod tests {
             hold_limits: [None; 13],
             lifetime: 1.0,
             shield_bounce_degrees: 0.0,
+            maximum_reflected_damage: 999,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

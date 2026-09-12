@@ -91,6 +91,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     }
     assert_eq!(scenario.frames as usize, ticks);
     let compare_items = name.starts_with("cstick_throw_")
+        || name.starts_with("laser_reflect_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -1221,4 +1222,24 @@ fn fire_contact_firefox_charge_hit_fd_marth_300_ticks_and_ordered_particles() {
 #[test]
 fn fire_contact_firefox_travel_hit_fd_marth_300_ticks_and_ordered_particles() {
     combat_gate("firefox_travel_hit_fd_marth");
+}
+
+#[test]
+fn laser_reflection_fresh_300_ticks_items_and_ordered_particles() {
+    combat_gate("laser_reflect_fresh_fd_marth");
+}
+
+#[test]
+fn laser_reflection_return_300_ticks_items_and_ordered_particles() {
+    combat_gate("laser_reflect_return_boundary_fd_marth");
+}
+
+#[test]
+fn laser_reflection_stale_300_ticks_items_and_ordered_particles() {
+    combat_gate("laser_reflect_stale_fd_marth");
+}
+
+#[test]
+fn laser_reflection_delayed_300_ticks_items_and_ordered_particles() {
+    combat_gate("laser_reflect_delayed_timed_fd_marth");
 }

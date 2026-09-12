@@ -524,6 +524,9 @@ impl FighterCore {
         true
     }
     fn invalidate_collision_positions(&mut self) {
+        if self.combat.reflector_enabled {
+            self.shield.reflect.volume.position_cached = false;
+        }
         if self.shield.active {
             self.physics.shield_position_cached = false;
             self.shield.hit.position_cached = false;

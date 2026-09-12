@@ -225,6 +225,29 @@ impl Runtime {
         };
         let kind = item.kind;
         let owner_slot = item.owner;
+        let attack = item.stale_source;
+        let reflected_owner = item.pending_reflection.and_then(|p| {
+            if p.preserve_owner {
+                item.owner
+            } else {
+                Some(p.owner)
+            }
+        });
+        let stale_for = |slot| {
+            state
+                .fighters
+                .iter()
+                .position(|f| Some(f.player.id) == slot)
+                .map_or(1.0, |i| {
+                    state.fighters[i].combat.stale.multiplier_for(
+                        attack.map(|a| a.move_id),
+                        &state.assets.fighters[i].stale_weights,
+                    )
+                })
+        };
+        let current_stale = stale_for(owner_slot);
+        let reflected_stale = stale_for(reflected_owner);
+        item.stale_multiplier = current_stale;
         let owner = owner_slot.and_then(|slot| {
             let index = state.fighters.iter().position(|fighter| {
                 crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == slot)
@@ -283,8 +306,14 @@ impl Runtime {
                     }
                 }
             }
-            11 => state.items.get_mut(id).unwrap().update_hitboxes(),
-            14 => state.items.process_events::<SceneItems>(id),
+            11 => {
+                let item = state.items.get_mut(id).unwrap();
+                item.update_hitboxes();
+                item.decay_reflection_history();
+            }
+            14 => state
+                .items
+                .process_events_with_stale::<SceneItems>(id, reflected_stale),
             12 | 13 | 16 => {}
             _ => unreachable!(),
         }
@@ -378,15 +407,8 @@ impl Runtime {
                             .fighters
                             .iter()
                             .position(|f| Some(f.player.id) == item.owner);
-                        let multiplier = owner.map_or(1.0, |index| {
-                            state.fighters[index].combat.stale.multiplier_for(
-                                item.stale_source.map(|a| a.move_id),
-                                &assets.fighters[index].stale_weights,
-                            )
-                        });
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
-                            f.core
-                                .detect_item_hit(item, &assets.fighters[player], multiplier)
+                            f.detect_item_hit(item, &assets.fighters[player])
                         });
                         if let Some(damage) = hit {
                             if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
@@ -677,7 +699,13 @@ impl Runtime {
                         world,
                         &mut self.item_objects,
                         request,
-                        owner.as_ref(),
+                        crate::scene_items::RequestOwner {
+                            held_item: owner.as_ref(),
+                            stale_multiplier: f
+                                .combat
+                                .stale
+                                .multiplier(&state.assets.fighters[slot].stale_weights),
+                        },
                     );
                 }
             });
@@ -1424,6 +1452,8 @@ mod combat;
 mod falco_bones;
 #[cfg(test)]
 mod recovery;
+#[cfg(test)]
+mod reflection;
 
 #[cfg(test)]
 mod falcon_bones;

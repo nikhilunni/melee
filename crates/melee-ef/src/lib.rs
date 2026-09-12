@@ -559,6 +559,11 @@ impl Effects {
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
+            if matches!(request, EffectRequest::Shield { id: 0x41A, .. }) {
+                // efLib_Create_Attach leaves state_flags ACTIVE (no ASYNC bit).
+                // Hitlag eligibility is separate from the synchronous pool.
+                effect.hitlag_pause = HitlagPause::Active;
+            }
             effect.owner = if matches!(request, EffectRequest::HitSpark { .. }) {
                 None
             } else {
@@ -973,6 +978,11 @@ impl Effect {
                         }
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
+                        if matches!(hi, 0x2D | 0x2E | 0x31) {
+                            // eflib_create_generator_add_appsrt, eflib.c:64-83:
+                            // the attached generator always owns an AppSRT.
+                            request.application_transform = Some(Default::default());
+                        }
                         if matches!(hi, 2 | 6 | 306 | 307) {
                             // efLib_SpawnParticleEffect (8005D174): inherit root scale.
                             request.application_transform =

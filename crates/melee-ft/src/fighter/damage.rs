@@ -33,6 +33,8 @@ pub struct CombatState {
     pub queued_hit_sfx: Option<u32>,
     pub queued_voice: Option<DamageVoice>,
     pub dealt_damage: i32,
+    pub reflection: Option<super::reflection::Pending>,
+    pub reflector_enabled: bool,
     /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
     pub minimum_hitlag: f32,
     pub shield_pushback: Option<(f32, f32)>,
@@ -496,6 +498,14 @@ impl Fighter {
     ) -> Result<()> {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
+        let reflection = self.core.combat.reflection.take();
+        let received_knockback = self.core.combat.pending_from_captor
+            || self
+                .core
+                .combat
+                .pending
+                .as_ref()
+                .is_some_and(|hit| hit.knockback != 0.0);
         let mut hitlag_multiplier = 1.0;
         if let Some((damage, direction)) = self.core.combat.shield_pushback.take() {
             if damage != 0.0 {
@@ -534,6 +544,11 @@ impl Fighter {
                     take_damage(self);
                 }
                 hit_damage = self.begin_damage_reaction(hit, None, None, assets, rng)?;
+            }
+        }
+        if !received_knockback && self.core.shield.impact.is_none() && hit_damage == 0 {
+            if let Some(reflection) = reflection {
+                self.process_reflection(reflection, assets)?;
             }
         }
         if hit_damage == 0 {
@@ -875,113 +890,6 @@ impl FighterCore {
                 velocity.y = speed * sinf(angle);
             }
         }
-    }
-
-    /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
-    pub fn detect_item_hit(
-        &mut self,
-        item: &mut melee_it::ItemCore,
-        assets: &FighterAssets,
-        stale_multiplier: f32,
-    ) -> Option<f32> {
-        if item.owner == Some(self.player.id)
-            || item.destroyed
-            || self.status.disabled
-            || self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
-            || self.status.ledge_intangibility != 0
-        {
-            return None;
-        }
-        let mut cursor = melee_coll::detection::PairCursor::default();
-        while let Some(id) = cursor.next(
-            &item.hitboxes,
-            self.spawn_number,
-            self.physics.ground_or_air,
-        ) {
-            let hit = item.hitboxes[id].as_ref().unwrap();
-            if self.shield.reflecting
-                && item.hit_flags[id].reflectable
-                && self.shield_reflect_contact(hit, item.scale).is_some()
-            {
-                unimplemented!("ftColl_80077464: projectile powershield reflection response");
-            }
-            if self.shield.active && item.hit_flags[id].shieldable {
-                if let Some(contact) = self.shield_contact(hit, item.scale) {
-                    self.record_item_shield_hit(item, id, contact);
-                    continue;
-                }
-            }
-            if !item.hit_flags[id].hits_hurtboxes {
-                continue;
-            }
-            let Some((contact, height)) =
-                melee_coll::detection::first_contact(self, hit, item.scale)
-            else {
-                continue;
-            };
-            if contact.overlap < assets.damage.phantom_threshold {
-                unimplemented!("item phantom hit");
-            }
-            let mut descriptor = hit.descriptor.clone();
-            let knockback_damage = fctiwz(descriptor.damage) as u32;
-            // ft_80089258 / ft_80089118: item damage uses the owner's current
-            // stale table and the move captured at spawn; knockback keeps base damage.
-            descriptor.damage *= stale_multiplier;
-            // ftColl_80077C60, 80077DE4: item hits scale damage while captured.
-            if matches!(
-                self.combat.grab,
-                Some(super::grab::GrabLink::Captured { .. })
-            ) {
-                descriptor.damage *= assets.damage.captured_item_damage_scale;
-            }
-            let knockback = assets.damage.knockback_with_damage(
-                &descriptor,
-                self.physics.percent,
-                self.attributes.size.weight,
-                knockback_damage,
-            );
-            self.combat.pending = Some(ReceivedHit {
-                descriptor: descriptor.clone(),
-                height,
-                knockback,
-                facing: if self.physics.position.x > item.position.x {
-                    -1.0
-                } else {
-                    1.0
-                },
-                facing_override: None,
-            });
-            melee_coll::detection::record_victim(
-                &mut item.hitboxes,
-                descriptor.group,
-                self.spawn_number,
-            );
-            // ftColl_8007A06C -> efSync_Spawn, shared with fighter hits.
-            self.effects
-                .push(melee_ef::request::EffectRequest::HitSpark {
-                    position: contact.position,
-                    element: descriptor.element,
-                    damage: fctiwz(descriptor.damage) as f32,
-                    large: knockback >= assets.damage.large_spark_threshold,
-                });
-            if descriptor.element == melee_types::HitElement::Normal
-                && descriptor.sound_severity >= 1
-            {
-                let variant = self.attributes.combat.hit_spark_variant;
-                if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize)
-                {
-                    self.effects
-                        .push(melee_ef::request::EffectRequest::NormalSparkExtra {
-                            position: contact.position,
-                            facing: self.physics.facing,
-                            variant,
-                            random_bound,
-                        });
-                }
-            }
-            return Some(descriptor.damage);
-        }
-        None
     }
 
     /// ftColl_80077688 (80077688): projectile shield damage and strongest impact.
@@ -1529,4 +1437,149 @@ pub(super) fn apply_directional_influence(
     let angle = fmadds(radians, influence, angle);
     velocity.x = speed * cosf(angle);
     velocity.y = speed * sinf(angle);
+}
+
+impl Fighter {
+    /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
+    pub fn detect_item_hit(
+        &mut self,
+        item: &mut melee_it::ItemCore,
+        assets: &FighterAssets,
+    ) -> Option<f32> {
+        if item.owner == Some(self.player.id)
+            || item.destroyed
+            || self.status.disabled
+            || self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
+            || self.status.ledge_intangibility != 0
+        {
+            return None;
+        }
+        let mut cursor = melee_coll::detection::PairCursor::default();
+        while let Some(id) = cursor.next(
+            &item.hitboxes,
+            self.spawn_number,
+            self.physics.ground_or_air,
+        ) {
+            let hit = item.hitboxes[id].as_ref().unwrap().clone();
+            if item.hit_flags[id].reflectable
+                && item.hit_flags[id].defense_interaction
+                && hit.descriptor.element != melee_types::HitElement::Inert
+            {
+                if self.shield.reflecting
+                    && self.core.shield_reflect_contact(&hit, item.scale).is_some()
+                {
+                    let volume = self.shield.reflect.clone();
+                    let response = match self.shield.on_reflect {
+                        Some(super::shield::ReflectHitCallback::Powershield) => {
+                            super::reflection::Response::Powershield
+                        }
+                        _ => super::reflection::Response::None,
+                    };
+                    self.core.record_reflection(
+                        item,
+                        id,
+                        super::reflection::Settings {
+                            maximum: fctiwz(volume.maximum_damage),
+                            damage_multiplier: volume.damage_multiplier,
+                            speed_multiplier: volume.speed_multiplier,
+                            exclude_master_ball_ownership: volume.reflect_behavior,
+                        },
+                        response,
+                    );
+                    continue;
+                }
+                if let Some(contact) = self.character.table().reflector_contact {
+                    if let Some(descriptor) = contact(self, &hit, item.scale) {
+                        self.core.record_reflection(
+                            item,
+                            id,
+                            super::reflection::Settings {
+                                maximum: descriptor.maximum_damage,
+                                damage_multiplier: descriptor.damage_multiplier,
+                                speed_multiplier: descriptor.speed_multiplier,
+                                exclude_master_ball_ownership: descriptor
+                                    .exclude_master_ball_ownership,
+                            },
+                            super::reflection::Response::Character,
+                        );
+                        continue;
+                    }
+                }
+            }
+            if self.shield.active && item.hit_flags[id].shieldable {
+                if let Some(contact) = self.core.shield_contact(&hit, item.scale) {
+                    self.record_item_shield_hit(item, id, contact);
+                    continue;
+                }
+            }
+            if !item.hit_flags[id].hits_hurtboxes {
+                continue;
+            }
+            let Some((contact, height)) =
+                melee_coll::detection::first_contact(&mut self.core, &hit, item.scale)
+            else {
+                continue;
+            };
+            if contact.overlap < assets.damage.phantom_threshold {
+                unimplemented!("item phantom hit");
+            }
+            let mut descriptor = hit.descriptor.clone();
+            let knockback_damage = hit.knockback_damage;
+            // ftColl_80077C60, 80077DE4: item hits scale damage while captured.
+            if matches!(
+                self.combat.grab,
+                Some(super::grab::GrabLink::Captured { .. })
+            ) {
+                descriptor.damage *= assets.damage.captured_item_damage_scale;
+            }
+            let knockback = assets.damage.knockback_with_damage(
+                &descriptor,
+                self.physics.percent,
+                self.attributes.size.weight,
+                knockback_damage,
+            );
+            self.combat.pending = Some(ReceivedHit {
+                descriptor: descriptor.clone(),
+                height,
+                knockback,
+                facing: if self.physics.position.x > item.position.x {
+                    -1.0
+                } else {
+                    1.0
+                },
+                facing_override: None,
+            });
+            melee_coll::detection::record_victim(
+                &mut item.hitboxes,
+                descriptor.group,
+                self.spawn_number,
+            );
+            // ftColl_8007A06C -> efSync_Spawn, shared with fighter hits.
+            self.effects
+                .push(melee_ef::request::EffectRequest::HitSpark {
+                    position: contact.position,
+                    element: descriptor.element,
+                    damage: fctiwz(descriptor.damage) as f32,
+                    large: knockback >= assets.damage.large_spark_threshold,
+                });
+            if descriptor.element == melee_types::HitElement::Normal
+                && descriptor.sound_severity >= 1
+            {
+                let variant = self.attributes.combat.hit_spark_variant;
+                if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize)
+                {
+                    let facing = self.physics.facing;
+                    self.effects
+                        .push(melee_ef::request::EffectRequest::NormalSparkExtra {
+                            position: contact.position,
+                            facing,
+                            variant,
+                            random_bound,
+                        });
+                }
+            }
+            return Some(descriptor.damage);
+        }
+        None
+    }
 }

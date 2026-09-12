@@ -50,6 +50,8 @@ def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
            "-C", f"Dolphin.Core.EmulationSpeed={speed}"]
     if video:
         cmd += ["-v", video]
+    if platform := os.environ.get("DOLPHIN_PLATFORM"):
+        cmd += ["--platform", platform]
     if background_input:
         # A human port: the keyboard reaches the emulated pad even when the render
         # window is not focused.
@@ -59,13 +61,15 @@ def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
     return cmd
 
 
-def wait_for(path: Path, err: Path, timeout: float) -> None:
+def wait_for(path: Path, err: Path, timeout: float, proc: subprocess.Popen | None = None) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if path.exists():
             return
         if err.exists():
             sys.exit(f"Dolphin tracer failed:\n{err.read_text()}")
+        if proc is not None and proc.poll() is not None:
+            sys.exit(f"Dolphin exited with {proc.returncode} before writing {path}")
         time.sleep(0.2)
     sys.exit(f"timed out after {timeout}s waiting for {path}")
 
@@ -151,7 +155,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("Dolphin did not start through LaunchServices")
         print(f"dolphin pid {pid} (LaunchServices); waiting for {done}")
         try:
-            wait_for(done, err, a.timeout)
+            wait_for(done, err, a.timeout, proc)
         finally:
             if not a.keep:
                 stop_pid(pid)
@@ -160,7 +164,7 @@ def main(argv: list[str] | None = None) -> None:
                                 stderr=subprocess.STDOUT, start_new_session=True)
         print(f"dolphin pid {proc.pid}; waiting for {done}")
         try:
-            wait_for(done, err, a.timeout)
+            wait_for(done, err, a.timeout, proc)
         finally:
             if not a.keep:
                 stop(proc)

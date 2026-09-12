@@ -541,3 +541,32 @@ N-tick bone dump for a scenario in sequence (one Dolphin at a time), then
 prints P1's motion transitions and any RNG sites beyond the idle set. The
 particle and bone snippets replay the scenario's scripted inputs
 (`MELEE_PARTICLES_SCENARIO` / `MELEE_BONES_SCENARIO`).
+
+### Headless capture when macOS graphics clients are exhausted
+
+`record.py --video Null` forwards the backend to every tick, RNG, particle and
+bone pass. OGL remains the default. On 2026-09-12 the Null backend reproduced
+all 300 canonical tick and particle states and all 150 bone frames of the
+existing `laser_reflect_fresh_fd_marth` OGL recording exactly. This bypassed
+the host IOSurface client limit without changing the simulation oracle.
+It does not validate native rendering or replace graphics smoke tests.
+
+The GUI may still fail during Cocoa/IOSurface startup even with Null. On
+2026-09-12 an isolated no-GUI build was verified against the existing fresh
+powershield recording: all 300 canonical states, ordered RNG ledgers and
+particle states, plus 150 bone states, matched exactly. Its standalone fmuls
+probe also matched all 264 GUI-interpreter records.
+
+Use `DOLPHIN_BIN` to select that executable and `DOLPHIN_PLATFORM=headless`
+with `--video Null`; both settings reach the tick and auxiliary recording
+passes. The local scripting fork's original no-GUI frontend accepts `--script`
+but never creates a scripting backend. The isolated build adds backend creation
+after BootCore and destruction after Core::Shutdown; it reuses the existing
+libraries and leaves the Dolphin checkout unchanged. This session's build and
+review live under `/tmp/melee-dolphin-nogui-script/`, not in this repository.
+The headless route validates deterministic capture, not native application
+rendering. Always run recordings serially.
+
+Recorder timeouts now apply to scripted and replay tick captures as well as
+auxiliary passes. A process that exits before its completion marker is reported
+immediately, including a zero exit code without a completed capture.
