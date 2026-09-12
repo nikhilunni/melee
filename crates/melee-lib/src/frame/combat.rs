@@ -216,6 +216,30 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                if AIR_RELEASE_SCENARIOS.contains(&name) {
+                    compare_wall_stop(f, &bytes, tick);
+                    compare_capture_revival(f, &bytes, tick);
+                    match &f.state_data {
+                        MotionData::Capture(capture) => assert_eq!(
+                            capture.jump_requested,
+                            bytes[0x234c] != 0,
+                            "capture jump latch tick {tick}"
+                        ),
+                        MotionData::CaptureJump(jump) => {
+                            assert_eq!(
+                                jump.frames.to_bits(),
+                                word(&bytes, 0x2340),
+                                "capture jump elapsed tick {tick}"
+                            );
+                            assert_eq!(
+                                jump.retained_drop_timer.to_bits(),
+                                word(&bytes, 0x2344),
+                                "capture jump retained scratch tick {tick}"
+                            );
+                        }
+                        _ => {}
+                    }
+                }
                 if WALL_STOP_SCENARIOS.contains(&name) {
                     compare_wall_stop(f, &bytes, tick);
                 }
@@ -1038,5 +1062,21 @@ fn compare_wall_stop(f: &Fighter, bytes: &[u8], tick: usize) {
                 vector(value, bytes, offset);
             }
         }
+    }
+}
+
+const AIR_RELEASE_SCENARIOS: [&str; 6] = [
+    "capture_jump_up_release_fd_foxmarth_candidate",
+    "capture_jump_up_release_fd_marthfox_candidate",
+    "capture_jump_xy_latch_fd_foxmarth_candidate",
+    "capture_jump_xy_latch_fd_marthfox_candidate",
+    "capture_edge_fox_outward_stop43_jump109_grab107_candidate",
+    "capture_edge_fox_air_up_release_candidate",
+];
+
+#[test]
+fn air_capture_release_matches_owned_scratch() {
+    for name in AIR_RELEASE_SCENARIOS {
+        replay_scratch_until(name, 450);
     }
 }

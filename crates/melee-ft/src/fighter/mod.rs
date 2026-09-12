@@ -667,6 +667,7 @@ pub enum MotionData {
     },
     Catch,
     Capture(grab_escape::CaptureState),
+    CaptureJump(grab_escape::CaptureJumpState),
     #[default]
     None,
     Entry(entry::EntryState),

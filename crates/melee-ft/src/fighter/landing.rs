@@ -160,6 +160,7 @@ impl FighterCore {
             MotionData::Damage(_) => 0.0, // ftCo_Damage.mv.x4: low-knockback collision flag.
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
+            MotionData::CaptureJump(jump) => jump.retained_drop_timer,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
             MotionData::Aerial {

@@ -1298,3 +1298,36 @@ fn walljump_stopceil_marth_ceiling() {
 fn walljump_stopceil_marth_wall_control() {
     combat_gate_ticks("walljump_left_underside_fd_marth_control", 450);
 }
+
+#[test]
+fn air_capture_release_fox_up() {
+    combat_gate_ticks("capture_jump_up_release_fd_foxmarth_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_marth_up() {
+    combat_gate_ticks("capture_jump_up_release_fd_marthfox_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_fox_xy() {
+    combat_gate_ticks("capture_jump_xy_latch_fd_foxmarth_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_marth_xy() {
+    combat_gate_ticks("capture_jump_xy_latch_fd_marthfox_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_air_cut() {
+    combat_gate_ticks(
+        "capture_edge_fox_outward_stop43_jump109_grab107_candidate",
+        450,
+    );
+}
+
+#[test]
+fn air_capture_release_air_jump() {
+    combat_gate_ticks("capture_edge_fox_air_up_release_candidate", 450);
+}

@@ -499,3 +499,36 @@ fn walljump_stopceil_marth_ceiling() {
 fn walljump_stopceil_marth_wall_control() {
     allocation_budget("walljump_left_underside_fd_marth_control", 0);
 }
+
+#[test]
+fn air_capture_release_fox_up() {
+    allocation_budget("capture_jump_up_release_fd_foxmarth_candidate", 0);
+}
+
+#[test]
+fn air_capture_release_marth_up() {
+    allocation_budget("capture_jump_up_release_fd_marthfox_candidate", 0);
+}
+
+#[test]
+fn air_capture_release_fox_xy() {
+    allocation_budget("capture_jump_xy_latch_fd_foxmarth_candidate", 0);
+}
+
+#[test]
+fn air_capture_release_marth_xy() {
+    allocation_budget("capture_jump_xy_latch_fd_marthfox_candidate", 0);
+}
+
+#[test]
+fn air_capture_release_air_cut() {
+    allocation_budget(
+        "capture_edge_fox_outward_stop43_jump109_grab107_candidate",
+        0,
+    );
+}
+
+#[test]
+fn air_capture_release_air_jump() {
+    allocation_budget("capture_edge_fox_air_up_release_candidate", 0);
+}

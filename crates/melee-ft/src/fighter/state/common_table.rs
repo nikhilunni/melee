@@ -959,7 +959,8 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::catch,
         iasa: callbacks::input::catch,
         physics: callbacks::physics::catch,
-        collision: callbacks::collision::catch,
+        // ftCo_Catch_Coll uses the stop-at-edge helper ft_800827A0.
+        collision: callbacks::collision::escape,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1630,6 +1631,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
     };
     rows[S::CatchWait as usize].iasa = crate::fighter::grab_escape::pummel_input;
     rows[S::CaptureWaitLw as usize].anim = crate::fighter::grab_escape::capture_animation;
+    rows[S::CaptureWaitLw as usize].iasa = crate::fighter::grab_escape::capture_input;
     rows[S::CatchAttack as usize] = MotionRow {
         action: ActionId(217),
         id: S::CatchAttack,
@@ -1642,6 +1644,8 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::CatchCut,
         animation: 246,
         anim: crate::fighter::grab_escape::cut_animation,
+        physics: crate::fighter::grab_escape::catch_cut_physics,
+        collision: crate::fighter::grab_escape::catch_cut_collision,
         ..rows[S::CatchPull as usize]
     };
     rows[S::CaptureCut as usize] = MotionRow {
@@ -1650,6 +1654,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 257,
         anim: crate::fighter::grab_escape::cut_animation,
         physics: crate::fighter::grab_escape::cut_physics,
+        collision: crate::fighter::grab_escape::cut_collision,
         ..rows[S::CatchCut as usize]
     };
     rows[S::CaptureDamageLw as usize] = MotionRow {
@@ -1657,7 +1662,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::CaptureDamageLw,
         animation: 256,
         anim: crate::fighter::grab_escape::capture_damage_animation,
+        iasa: callbacks::input::catch,
         ..rows[S::CaptureWaitLw as usize]
+    };
+    rows[S::CaptureJump as usize] = MotionRow {
+        action: ActionId(S::CaptureJump as u16),
+        id: S::CaptureJump,
+        animation: 258,
+        anim: crate::fighter::grab_escape::jump_animation,
+        iasa: crate::fighter::grab_escape::jump_input,
+        physics: crate::fighter::grab_escape::jump_physics,
+        collision: callbacks::collision::air_catch_hit,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
     };
     rows[S::CapturePulledHi as usize] = MotionRow {
         action: ActionId(S::CapturePulledHi as u16),

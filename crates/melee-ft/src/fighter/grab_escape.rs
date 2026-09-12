@@ -26,6 +26,10 @@ pub struct Parameters {
     pub escape_speed: f32,
     pub escape_friction: f32,
     pub lift_threshold: f32,
+    pub air_escape_speed: f32,
+    pub air_escape_vertical_speed: f32,
+    pub jump_buffer_window: f32,
+    pub jump_interrupt_delay: f32,
     pub horizontal_release_distance: f32,
     pub vertical_release_distance: f32,
 }
@@ -44,6 +48,10 @@ impl Parameters {
             escape_friction: r.f32(base + 0x36C)?,
             escape_speed: r.f32(base + 0x370)?,
             lift_threshold: r.f32(base + 0x3C4)?,
+            air_escape_speed: r.f32(base + 0x374)?,
+            air_escape_vertical_speed: r.f32(base + 0x378)?,
+            jump_buffer_window: r.f32(base + 0x3AC)?,
+            jump_interrupt_delay: r.f32(base + 0x3B8)?,
             horizontal_release_distance: r.f32(base + 0x34C)?,
             vertical_release_distance: r.f32(base + 0x350)?,
             decrement: r.f32(base + 0x3A4)?,
@@ -60,6 +68,9 @@ pub struct CaptureState {
     pub elapsed: f32,
     /// Paired scene Map ran before the single-fighter row consumes it.
     pub map_prepared: bool,
+    /// mv.capturewait.xC: latched XY during the initial capture interval.
+    pub jump_requested: bool,
+
     fast_remaining: f32,
     stick_directions: [i8; 2],
 }
@@ -77,6 +88,7 @@ impl CaptureState {
             timer: gekko_math::fma::fmadds(percent, p.percent_scale, base + rank_term),
             elapsed: 0.0,
             map_prepared: false,
+            jump_requested: false,
             fast_remaining: 0.0,
             stick_directions: [0; 2],
         }
@@ -125,6 +137,10 @@ pub fn capture_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
     capture.elapsed = (f64::from(capture.elapsed) + 1.0) as f32;
     capture.timer -= p.decrement;
     let mashed = capture.mash(&input, p);
+    // Retail paired release returns before playback-rate maintenance.
+    if capture.timer <= 0.0 {
+        return Ok(None);
+    }
     let mut rate = None;
     if capture.fast_remaining != 0.0 {
         capture.fast_remaining -= 1.0;
@@ -223,23 +239,68 @@ pub fn pummel_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 }
 
 /// ftCo_800DA698 / ftCo_CaptureCut_Enter (800DA698 / 800DC750).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReleaseCause {
+    TimerExpired,
+    CaptorSeparation,
+}
+
 pub fn release(
     victim: &mut Fighter,
     attacker: &mut Fighter,
     va: &FighterAssets,
     aa: &FighterAssets,
+    cause: ReleaseCause,
 ) -> Result<()> {
-    if victim.physics.ground_or_air != GroundOrAir::Ground
-        || attacker.physics.ground_or_air != GroundOrAir::Ground
-    {
-        unimplemented!("ftCo_CatchCut / CaptureCut: airborne escape");
+    assert!(
+        victim.combat.thrown_pose.is_none(),
+        "capture cut needs thrown constraint release"
+    );
+    let (jump, retained_drop_timer) = {
+        let MotionData::Capture(capture) = &victim.state_data else {
+            unreachable!()
+        };
+        (
+            cause == ReleaseCause::TimerExpired
+                && (capture.jump_requested
+                    || victim.input.current.stick.y >= va.common.input.tap_jump_threshold),
+            capture.fast_remaining,
+        )
+    };
+    if attacker.physics.ground_or_air == GroundOrAir::Air {
+        attacker.physics.self_velocity.x =
+            -attacker.physics.facing * aa.grab_escape.air_escape_speed;
+        attacker.physics.self_velocity.y = aa.grab_escape.air_escape_vertical_speed;
+    } else {
+        attacker.physics.ground_velocity = -attacker.physics.facing * aa.grab_escape.escape_speed;
     }
-    attacker.core.physics.ground_velocity = -attacker.physics.facing * aa.grab_escape.escape_speed;
     attacker.change_motion_state(S::CatchCut.into(), aa)?;
-    victim.core.combat.grab = None;
-    attacker.core.combat.grab = None;
-    victim.core.physics.ground_velocity = -victim.physics.facing * va.grab_escape.escape_speed;
-    victim.change_motion_state(S::CaptureCut.into(), va)?;
+    if jump {
+        victim.leave_ground();
+        victim.physics.self_velocity.x = -victim.physics.facing * va.grab_escape.air_escape_speed;
+        victim.physics.self_velocity.y = va.grab_escape.air_escape_vertical_speed;
+    }
+    // ftCo_800DC920's ordinary unconstraint-free path removes both links.
+    victim.combat.grab = None;
+    attacker.combat.grab = None;
+    if !jump {
+        let velocity = -victim.physics.facing * va.grab_escape.escape_speed;
+        if victim.physics.ground_or_air == GroundOrAir::Ground {
+            victim.physics.ground_velocity = velocity;
+        } else {
+            victim.physics.self_velocity.x = velocity;
+        }
+    }
+    victim.change_motion_state(
+        (if jump { S::CaptureJump } else { S::CaptureCut }).into(),
+        va,
+    )?;
+    if jump {
+        victim.state_data = MotionData::CaptureJump(CaptureJumpState {
+            frames: 0.0,
+            retained_drop_timer,
+        });
+    }
     Ok(())
 }
 
@@ -263,8 +324,9 @@ pub fn cut_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Optio
 /// ftCo_CaptureCut_Phys: captured fighter's independent common friction multiplier.
 pub fn cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
     use crate::physics::{friction::friction_acceleration, grounded};
-    if f.physics.ground_or_air != GroundOrAir::Ground {
-        unimplemented!("ftCo_CaptureCut_Phys: airborne escape");
+    if f.physics.ground_or_air == GroundOrAir::Air {
+        super::state::callbacks::physics::fall(f, phase);
+        return;
     }
     f.core.physics.ground_acceleration = friction_acceleration(
         f.physics.ground_velocity,
@@ -283,6 +345,188 @@ pub fn cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
         phase.map,
         phase.wind,
     );
+}
+
+/// fn_800DC014: XY can request jump release only before PlCo+3AC elapsed.
+pub fn capture_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
+    let pressed = f.input.pressed.intersects(Buttons::XY);
+    let MotionData::Capture(capture) = &mut f.state_data else {
+        unreachable!()
+    };
+    if capture.elapsed < phase.assets.grab_escape.jump_buffer_window && pressed {
+        capture.jump_requested = true;
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CaptureJumpState {
+    pub frames: f32,
+    /// CaptureJump writes only scratch x0; Landing inherits CaptureWait x4.
+    pub retained_drop_timer: f32,
+}
+
+/// ftCo_CaptureJump_Anim: f32 counter, then ordinary Fall on completion.
+pub fn jump_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    f.step_animation(phase.assets);
+    let MotionData::CaptureJump(jump) = &mut f.state_data else {
+        unreachable!()
+    };
+    jump.frames += 1.0;
+    if !f.animation.frames_remaining(&f.skeleton) {
+        f.change_motion_state(S::Fall.into(), phase.assets)?;
+    }
+    Ok(None)
+}
+
+pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
+    let MotionData::CaptureJump(jump) = &f.state_data else {
+        unreachable!()
+    };
+    let ready = jump.frames >= phase.assets.grab_escape.jump_interrupt_delay;
+    if !ready {
+        return;
+    }
+    let assets = phase.assets;
+    if f.input.pressed.intersects(Buttons::B) {
+        f.enter_buffered_special(assets, true);
+        return;
+    }
+    if f.input.current.held.intersects(Buttons::SHIELD) && f.input.pressed.intersects(Buttons::A) {
+        assert_eq!(
+            f.status.item_pickup_search,
+            super::life::ItemPickupSearch::Empty,
+            "capture jump item pickup search"
+        );
+    }
+    f.character.air_dodge_tether();
+    if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
+        f.enter_air_dodge(assets).expect("capture jump air dodge");
+    } else if super::attack::aerial::requested(&f.input, &assets.input) {
+        (f.character.table().enter_aerial)(f, assets).expect("capture jump aerial");
+    } else if f.aerial_jump_requested(assets) {
+        f.enter_aerial_jump(assets)
+            .expect("capture jump aerial jump");
+    }
+    // ftCo_800D705C cannot succeed after the pressed-A aerial predicate failed.
+}
+
+/// ftCo_CaptureJump_Phys: gravity and drift, with no fast-fall check.
+pub fn jump_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
+    f.physics.self_velocity.y = crate::physics::airborne::gravity(
+        f.physics.self_velocity.y,
+        f.attributes.air.gravity,
+        f.attributes.air.terminal_velocity,
+    );
+    f.physics.animation_velocity.x = crate::physics::airborne::drift(
+        f.physics.self_velocity.x,
+        f.input.current.stick.x,
+        &f.attributes.air,
+    );
+    crate::physics::integrate::integrate_velocity(&mut f.physics);
+    crate::physics::integrate::integrate_environment(&mut f.physics, None, phase.wind);
+}
+
+pub fn catch_cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
+    if f.physics.ground_or_air == GroundOrAir::Air {
+        super::state::callbacks::physics::fall(f, phase);
+    } else {
+        let c = &mut f.core;
+        c.physics.ground_acceleration = crate::physics::friction::friction_acceleration(
+            c.physics.ground_velocity,
+            phase.assets.grab_friction_multiplier * c.attributes.ground.ground_friction,
+        );
+        crate::physics::grounded::apply_ground_movement(
+            &mut c.physics,
+            c.collision.data.floor.normal,
+            phase.map.floor_speed_scale(&c.collision.data),
+        );
+        crate::physics::grounded::finish_ground_update(
+            &mut c.physics,
+            &c.collision.data,
+            &crate::physics::grounded::GroundedParameters::from_attributes(
+                &c.attributes,
+                &phase.assets.common,
+            ),
+            phase.map,
+            phase.wind,
+        );
+    }
+}
+
+/// ftCo_CatchCut_Coll: stop at ground edge, ordinary airborne landing.
+pub fn catch_cut_collision(f: &mut Fighter, phase: super::state::CollisionPhase<'_>) -> Result<()> {
+    if f.physics.ground_or_air == GroundOrAir::Ground {
+        return super::state::callbacks::collision::escape(f, phase);
+    }
+    cut_air_collision(f, phase, false)
+}
+
+/// ftCo_CaptureCut_Coll: leave support or land without replacing the motion.
+pub fn cut_collision(f: &mut Fighter, phase: super::state::CollisionPhase<'_>) -> Result<()> {
+    if f.physics.ground_or_air == GroundOrAir::Ground {
+        let c = &mut f.core;
+        let support = crate::collision::ground::map_escape(
+            &mut c.physics,
+            &mut c.collision,
+            phase.map,
+            &mut c.skeleton,
+            c.animation.root,
+            c.input.current.stick.x,
+        );
+        if support == crate::collision::ground::WaitGroundResult::EnterFall {
+            f.leave_ground();
+        }
+        return Ok(());
+    }
+    cut_air_collision(f, phase, true)
+}
+
+fn cut_air_collision(
+    f: &mut Fighter,
+    phase: super::state::CollisionPhase<'_>,
+    captured: bool,
+) -> Result<()> {
+    let c = &mut f.core;
+    crate::collision::air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    let cd = &mut c.collision.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = c.physics.position;
+    let pose = crate::collision::ecb::EcbPose::read(&mut c.skeleton, c.animation.root, cd);
+    let position = |i| pose.position(i);
+    let landed = if c.status.ledge_cooldown == 0 && !c.status.ledge_grab_disabled {
+        melee_mp::set_facing_dir(cd, if c.physics.facing < 0.0 { -1 } else { 1 });
+        if captured {
+            phase.map.air_collide_ledge_ecb5(cd, Some(&position))
+        } else {
+            phase.map.air_collide_ledge(cd, Some(&position))
+        }
+    } else if captured {
+        phase.map.air_collide_ecb5(cd, Some(&position))
+    } else {
+        phase.map.air_collide_pass(cd, Some(&position))
+    };
+    c.physics.position = cd.cur_pos;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+    let assets = phase.assets.expect("capture cut map assets");
+    if landed {
+        if captured {
+            f.land();
+        } else if f.physics.self_velocity.y > assets.soft_landing_speed {
+            f.land();
+            f.change_motion_state(S::Wait.into(), assets)?;
+        } else {
+            f.enter_landing(assets)?;
+        }
+    } else if !f.try_wall_jump(assets, phase.map)? {
+        f.try_grab_ledge(assets, phase.map)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -306,6 +550,10 @@ mod tests {
             escape_speed: 1.0,
             escape_friction: 1.0,
             lift_threshold: 1.0,
+            air_escape_speed: 1.0,
+            air_escape_vertical_speed: 1.0,
+            jump_buffer_window: 1.0,
+            jump_interrupt_delay: 1.0,
             horizontal_release_distance: 1.0,
             vertical_release_distance: 1.0,
         }

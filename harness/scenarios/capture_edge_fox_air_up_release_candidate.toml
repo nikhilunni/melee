@@ -1,0 +1,26 @@
+name = "capture_edge_fox_air_up_release_candidate"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 450
+seed = 1
+stage = "FinalDestination"
+inputs = [
+ { frame = 30, port = 0, buttons = { StickX = 1.0 } },
+ { frame = 30, port = 1, buttons = { StickX = 1.0 } },
+ { frame = 43, port = 1, buttons = {  } },
+ { frame = 107, port = 1, buttons = { Z = true } },
+ { frame = 109, port = 0, buttons = { StickX = 1.0, X = true } },
+ { frame = 109, port = 1, buttons = {  } },
+ { frame = 112, port = 0, buttons = {  } },
+ { frame = 180, port = 0, buttons = { StickY = 1.0 } },
+ { frame = 230, port = 0, buttons = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

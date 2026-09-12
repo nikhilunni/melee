@@ -457,3 +457,48 @@ fn walljump_stopceil_particle_fields() {
         "walljump_left_underside_fd_marth_control",
     ]);
 }
+
+#[test]
+fn air_capture_release_fox_up() {
+    replay_bones("capture_jump_up_release_fd_foxmarth_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_marth_up() {
+    replay_bones("capture_jump_up_release_fd_marthfox_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_fox_xy() {
+    replay_bones("capture_jump_xy_latch_fd_foxmarth_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_marth_xy() {
+    replay_bones("capture_jump_xy_latch_fd_marthfox_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_air_cut() {
+    replay_bones(
+        "capture_edge_fox_outward_stop43_jump109_grab107_candidate",
+        450,
+    );
+}
+
+#[test]
+fn air_capture_release_air_jump() {
+    replay_bones("capture_edge_fox_air_up_release_candidate", 450);
+}
+
+#[test]
+fn air_capture_release_particle_fields() {
+    replay_particle_fields(&[
+        "capture_jump_up_release_fd_foxmarth_candidate",
+        "capture_jump_up_release_fd_marthfox_candidate",
+        "capture_jump_xy_latch_fd_foxmarth_candidate",
+        "capture_jump_xy_latch_fd_marthfox_candidate",
+        "capture_edge_fox_outward_stop43_jump109_grab107_candidate",
+        "capture_edge_fox_air_up_release_candidate",
+    ]);
+}

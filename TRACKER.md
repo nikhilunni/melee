@@ -739,9 +739,14 @@ Newest first. One line per session: date, what landed, what is next.
   formatting and native build pass. Census20 local/100 cross-crate duplicates;
   stripped3,995,440 bytes. Existing size/tick-time ceilings remain red. Report:
   `docs/PORT_NOTES/WALL_CEILING.md`.
-- [~] Next capture/contact packet: six450-tick recordings cover grounded
-  CaptureJump, prolonged airborne hold, air Cut and air Jump release. A600-tick
-  revival-laser recording witnesses contact without damage or hitlag. Natural
-  timed-stock and Sudden Death fixtures plus clock/scene diagnostics are captured;
-  camera, timer/scene flow and Sudden Death Bob-ombs remain implementation work.
-  Keep breadth paused.
+- [x] (2026-09-12) CaptureJump and airborne release: six450-tick recordings
+  cover both captors, held-Up/XY jump release, prolonged airborne hold, air Cut
+  and air Jump. Fixed capture x4 inheritance through landing and stop-at-edge
+  grab startup.20 directed checks pass; both full profiles1,438/0/1; Clippy,
+  225 harness tests,formatting,native build pass. Stripped3,995,872 (+432),
+  census20 local/100 cross-crate; existing size/time ceilings remain red. Report:
+  `docs/PORT_NOTES/CAPTURE_RELEASE.md`.
+- [~] Next contact packet: a600-tick revival-laser recording witnesses contact
+  without damage or hitlag. Natural timed-stock and Sudden Death fixtures plus
+  clock/scene diagnostics are captured; camera, timer/scene flow and Sudden Death
+  Bob-ombs remain implementation work. Keep breadth paused.

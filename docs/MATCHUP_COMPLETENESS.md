@@ -70,7 +70,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Match endings | Revival lifecycle gated; ScreenKO needs the retail camera owner. Natural one-minute stock fixture reaches Sudden Death | ScreenKO, clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
-| Airborne grab victim | Transient CapturePulledHi and immediate ground counterparts pass both port-order recordings and full SRT/raw checks | Prolonged high hold, airborne release and article-hit combinations |
+| Airborne grab victim | Sustained high hold, air Cut, air Jump and both captor/input variants of CaptureJump pass six full recordings and both workspace profiles | Forced separation, airborne captor release and article-hit combinations; [capture notes](PORT_NOTES/CAPTURE_RELEASE.md) |
 | Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |
 | Dash defense | Dash and Run defense implemented with distinct item-throw/grab windows | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
 | Revival platform | Timeout and digital/analog shield+A pass five recorded schedules; no-blend entry and retained dynamic state corrected | Further input thresholds and lifecycle combinations; [notes](PORT_NOTES/REVIVAL_CAPTURE_LEDGE.md) |

@@ -241,6 +241,7 @@ pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
             a,
             &state.assets.fighters[player],
             &state.assets.fighters[other],
+            melee_ft::fighter::grab_escape::ReleaseCause::TimerExpired,
         )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
@@ -300,6 +301,7 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
                 a,
                 &state.assets.fighters[other],
                 &state.assets.fighters[player],
+                melee_ft::fighter::grab_escape::ReleaseCause::CaptorSeparation,
             )
         } else {
             Ok(())
