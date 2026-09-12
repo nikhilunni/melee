@@ -353,6 +353,7 @@ impl FighterCore {
 /// PlCo direction thresholds and dash-attack friction (ftCo_AttackS3/AttackDash).
 pub struct AttackParameters {
     pub tilt_angles: [f32; 4],
+    pub smash_angles: [f32; 4],
     pub dash_friction_multiplier: f32,
     pub charge_sound_frame: f32,
 }
@@ -365,6 +366,12 @@ impl AttackParameters {
                 r.f32(offset + 0xA0)?,
                 r.f32(offset + 0xA4)?,
                 r.f32(offset + 0xA8)?,
+            ],
+            smash_angles: [
+                r.f32(offset + 0xB8)?,
+                r.f32(offset + 0xBC)?,
+                r.f32(offset + 0xC0)?,
+                r.f32(offset + 0xC4)?,
             ],
             dash_friction_multiplier: r.f32(offset + 0x50)?,
             charge_sound_frame: r.f32(offset + 0x7C8)?,

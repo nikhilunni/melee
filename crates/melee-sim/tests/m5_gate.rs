@@ -790,3 +790,23 @@ fn aircounter_hit_fd_marth_300_ticks_and_ordered_particle_draws() {
 fn aircounter_fall_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("aircounter_fall_fd_marth");
 }
+
+#[test]
+fn fsmash_diagonal_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmash_diagonal_fd_fox");
+}
+
+#[test]
+fn fsmash_dash_diagonal_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmash_dash_diagonal_fd_fox");
+}
+
+#[test]
+fn fsmash_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmash_diagonal_fd_marth");
+}
+
+#[test]
+fn fsmash_dash_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("fsmash_dash_diagonal_fd_marth");
+}

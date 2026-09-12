@@ -4,7 +4,7 @@ use super::{
     assets::{FighterAssets, Result},
     Fighter, MotionData,
 };
-use crate::input::Buttons;
+use crate::input::{pad::Stick, Buttons};
 use melee_types::CommonMotionState as S;
 
 use melee_cmd::ChargePhase;
@@ -18,27 +18,69 @@ impl Fighter {
         let cstick = gekko_math::msl::fabsf(input.previous.cstick.x) < threshold
             && gekko_math::msl::fabsf(input.current.cstick.x) >= threshold;
         if forward || cstick {
-            self.enter_forward_smash(assets)?;
+            let stick = if forward {
+                input.current.stick
+            } else {
+                input.current.cstick
+            };
+            let facing = if forward {
+                self.physics.facing
+            } else if stick.x >= 0.0 {
+                1.0
+            } else {
+                -1.0
+            };
+            self.enter_directed_forward_smash(assets, stick, facing)?;
             return Ok(true);
         }
         Ok(false)
     }
-    /// doEnter (8008C3E0), ftCo_AttackS4.c; no fused sites in this unit.
+    /// ftCo_AttackS4_CheckInput (8008BFC4): qualifying main-stick+A wins
+    /// over C-stick, even when both are held in opposing directions.
     pub(super) fn enter_forward_smash(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.character.forward_smash_variant();
-        if self.core.input.current.stick.y != 0.0 || self.core.input.current.cstick.y != 0.0 {
-            unimplemented!("ftCo_AttackS4.c doEnter: angled smash");
-        }
-        let x = if self.core.input.current.cstick.x != 0.0 {
-            self.core.input.current.cstick.x
+        let input = &self.input;
+        let t = &assets.input.thresholds;
+        let main = input.pressed.intersects(Buttons::A)
+            && input.current.stick.x.abs() >= t.dash_smash_stick_threshold
+            && i32::from(input.horizontal.tilt) < t.dash_smash_window;
+        let stick = if main {
+            input.current.stick
         } else {
-            self.core.input.current.stick.x
+            input.current.cstick
         };
-        self.core.physics.facing = if x >= 0.0 { 1.0 } else { -1.0 };
+        let facing = if stick.x >= 0.0 { 1.0 } else { -1.0 };
+        self.enter_directed_forward_smash(assets, stick, facing)
+    }
+
+    /// doEnter (8008C3E0), ftCo_AttackS4.c: ordered strict angle thresholds
+    /// probe authored submotions; absent variants fall back to straight smash.
+    fn enter_directed_forward_smash(
+        &mut self,
+        assets: &FighterAssets,
+        stick: Stick,
+        facing: f32,
+    ) -> Result<()> {
+        self.character.forward_smash_variant();
+        // ftCo_GetLStickAngle/GetCStickAngle (8007D964/8007D99C).
+        let angle = melee_lb::trigf::atan2f(stick.y, stick.x.abs());
+        let [high, high_mid, low_mid, low] = assets.attacks.smash_angles;
+        let variants = assets.forward_smash_variants;
+        let state = if angle > high && variants[0] {
+            S::AttackS4Hi
+        } else if angle > high_mid && variants[1] {
+            S::AttackS4HiS
+        } else if angle < low && variants[3] {
+            S::AttackS4Lw
+        } else if angle < low_mid && variants[2] {
+            S::AttackS4LwS
+        } else {
+            S::AttackS4S
+        };
+        self.core.physics.facing = facing;
         self.core.commands.variables[0] = 0;
         self.core.commands.grab_release = false;
         self.core.commands.throw_reverse = false;
-        self.change_motion_state(S::AttackS4S.into(), assets)?;
+        self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::Smash;
         self.core.status.interaction = super::Interaction::Attack;

@@ -67,7 +67,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Shield exits | `melee-ft/src/fighter/shield.rs`: grab out of shield, delayed powershield and projectile reflection panic | Standing/dash grab exits, shield timing and laser reflection |
 | Ledge variants | `melee-ft/src/fighter/ledge.rs`: slow options, C-stick options and hang timeout panic | Percent-dependent options, full controller inputs and prolonged hanging |
 | Match endings | Tracker retains a screen-KO follow-up | Audit all KO variants, respawn, final stock, timeout and ties |
-| Diagonal smash | `fighter/smash.rs:29`: nonzero vertical stick during forward-smash entry panics | `fsmash_diagonal_fd_fox`, `fsmash_diagonal_fd_marth` |
+| Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | `fighter/damage.rs:722`: airborne Attack transition rejected | `hitstun_exit_nair_fd_fox`, `hitstun_exit_fair_fd_marth` |
 | Airborne grab victim | `fighter/grab.rs:194`: CapturePulledHi panics | `grab_airborne_fd_foxmarth`, `grab_airborne_fd_marthfox` |
 | Jump-squat up-B | `fighter/jump.rs:209`: SpecialHi dispatch rejected | `jumpcancel_upb_fd_fox`, `jumpcancel_upb_fd_marth` |

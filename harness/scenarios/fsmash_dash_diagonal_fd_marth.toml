@@ -1,0 +1,22 @@
+# Fox/Marth diagonal forward-smash selection, both sticks and input priority.
+name = "fsmash_dash_diagonal_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 5, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 8, port = 0, buttons = { StickX = 1.0, StickY = 0.4, A = true, CStickX = -1.0, CStickY = -0.4 } },
+  { frame = 10, port = 0, buttons = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

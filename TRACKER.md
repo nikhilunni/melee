@@ -48,7 +48,7 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
-- [~] Counter transitions (2026-09-11): aerial entry/physics/end, ground-air
+- [x] Aerial Counter packet (2026-09-11, `5c3d72b`): aerial entry/physics/end, ground-air
   preservation and aerial hit response. Acceptance: `aircounter_fd_marth`,
   `aircounter_landing_fd_marth`, `aircounter_hit_fd_marth` 300-tick Dolphin/ordered
   RNG gates, existing grounded Counter/full matches, zero allocations, debug and
@@ -59,6 +59,17 @@ task lines you touched and add one line to the session log.
   raw window/volume/jump/ECB checks and zero-allocation tests pass. Full release
   gate and clippy pass. See `docs/PORT_NOTES/AERIAL_COUNTER.md`; deliberate
   support-loss and projectile-contact coverage remain on the matchup inventory.
+
+- [x] Diagonal forward smash (2026-09-11): authored angle availability and
+  main-stick+A versus C-stick selection, including dash entry. Acceptance:
+  `fsmash_diagonal_fd_fox`, `fsmash_diagonal_fd_marth`,
+  `fsmash_dash_diagonal_fd_fox`, `fsmash_dash_diagonal_fd_marth` 300-tick
+  Dolphin/ordered particle gates; existing smash/full-match tests, allocation
+  checks, workspace gates and clippy. Keep other characters' unavailable state
+  bodies explicit rather than silently forcing every character to straight smash.
+  Verified: full debug/release workspace gates each 1,205 passed, 0 failed,
+  3 existing ignores; all-target clippy and 220 harness tests pass. Four directed
+  scenarios and zero-allocation checks pass. See `docs/PORT_NOTES/DIAGONAL_SMASH.md`.
 
 - [~] Approved next milestone (2026-09-11): Fox–Marth/FD interaction completeness
   before breadth. Source review confirms ordinary input/contact variants still
@@ -466,6 +477,8 @@ Gate: zero divergence over thousands of Slippi replays.
 - [-] Game modes beyond Versus (`gm/`, 54k): Classic, Adventure, All-Star, Event, Target Test, Home Run Contest
 
 ## Session log
+
+- 2026-09-11 (diagonal smash): authored-angle fallback and main-stick/C-stick priority, including dash entry, now exact in four directed Fox/Marth scenarios. Full debug/release gates each 1,205/0 with 3 existing ignores, all-target clippy and 220 harness tests pass. Committing at the user-requested boundary; next: post-hitstun attacks, tumble input priority and air-dodge knockback decay.
 
 - 2026-09-11 (matchup packet 2): aerial Counter, aerial hit response, preserved landing and counterpart support-loss transitions implemented. Four 300-tick Dolphin scenarios and raw window/volume/damage/jump/ECB scratch checks pass; all three simulate-only allocation scenarios remain zero. Release workspace 1,200/0, clippy clean; original UI fault reproducer now succeeds. Data mirrored. Natural-boundary commits now authorized; packet 1 committed `4e08fb7`. Continue diagonal smash/input precedence next while keeping performance debt visible; user explicitly prioritized ongoing gameplay coverage.
 

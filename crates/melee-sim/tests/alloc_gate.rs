@@ -298,3 +298,11 @@ fn aerial_counter_allocation_budget() {
     allocation_budget("aircounter_hit_fd_marth", 0);
     allocation_budget("aircounter_fall_fd_marth", 0);
 }
+
+#[test]
+fn diagonal_smash_allocation_budget() {
+    allocation_budget("fsmash_diagonal_fd_fox", 0);
+    allocation_budget("fsmash_diagonal_fd_marth", 0);
+    allocation_budget("fsmash_dash_diagonal_fd_fox", 0);
+    allocation_budget("fsmash_dash_diagonal_fd_marth", 0);
+}

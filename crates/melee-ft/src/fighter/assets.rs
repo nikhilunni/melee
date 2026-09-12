@@ -132,6 +132,8 @@ pub struct FighterAssets {
     pub throw_weight_scale: f32,
     pub grab_escape: super::grab_escape::Parameters,
     pub smash_sounds: Vec<u32>,
+    /// Authored AJ availability for high, high-mid, low-mid and low forward smash.
+    pub forward_smash_variants: [bool; 4],
     /// ft_data->x4C_sfx->x1C / x20: the medium and heavy damage voice tables.
     pub medium_voices: Vec<u32>,
     pub heavy_voices: Vec<u32>,
@@ -337,6 +339,8 @@ impl FighterAssets {
             },
             damage: super::damage::DamageParameters::read(common, common_data)?,
             attacks: super::attack::AttackParameters::read(common, common_data)?,
+            // ftCo_AttackS4 doEnter probes submotion indices, not action IDs.
+            forward_smash_variants: [60, 61, 63, 64].map(|id| table.entries[id].aj_size != 0),
             combo: super::attack::combo::ComboParameters::read(common, common_data)?,
             grab_friction_multiplier: common.reader().f32(common_data + 0x64)?,
             // Fighter_LoadCommonData: pData[3] -> Fighter_804D6548 stale weights.
