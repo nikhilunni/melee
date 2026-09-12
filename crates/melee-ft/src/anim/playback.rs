@@ -177,21 +177,9 @@ impl FighterAnimation {
             root.secondary_history = Default::default();
             root.compensate_joint = None;
         }
-        for part in &mut self.parts {
-            part.flags.0 &= PartFlags::PRESENT | PartFlags::TRANSLATION | PartFlags::COPY;
-            part.motion_mask = 0;
-            let rest = self.rest_pose.get(part.joint);
-            {
-                let joint = self.blend_tree.get_mut(part.joint);
-                joint.flags = rest.flags;
-                joint.rotate = rest.rotate;
-                joint.scale = rest.scale;
-                joint.translate = rest.translate;
-                joint.mtx = rest.mtx;
-                joint.scl = rest.scl;
-                joint.path_reference = rest.path_reference;
-            }
-        }
+        // Fighter_UnkInitReset does not reconstruct the parts or secondary
+        // skeleton. Keep dynamic locks, cached matrices and retained SRT: the
+        // next motion's ftCo_8009CB40 selects only actual ownership changes.
         tree.events.clear();
         self.blend_tree.events.clear();
     }
@@ -214,6 +202,7 @@ impl FighterAnimation {
             start,
             rate,
             motion.remap.as_ref().map(MotionRemap::view),
+            None,
         )
     }
 
@@ -224,11 +213,13 @@ impl FighterAnimation {
         start: f32,
         rate: f32,
         remap: Option<MotionRemapView<'_>>,
+        blend_override: Option<f32>,
     ) -> Result<(), AttachError> {
+        let blend_frames = blend_override.unwrap_or(motion.blend_frames);
         // Selection depends only on links/part metadata. Validate before taking
         // the running tree, then reset and attach in the original order.
         select_motion(
-            if motion.blend_frames == 0.0 {
+            if blend_frames == 0.0 {
                 tree
             } else {
                 &self.blend_tree
@@ -238,13 +229,13 @@ impl FighterAnimation {
             motion.flags.bone_mask(),
             remap,
         )?;
-        let mut target = if motion.blend_frames == 0.0 {
+        let mut target = if blend_frames == 0.0 {
             std::mem::take(tree)
         } else {
             std::mem::take(&mut self.blend_tree)
         };
         target.remove_anim_all_by_flags(self.root, 1);
-        self.reset_pose(&mut target, motion.blend_frames != 0.0);
+        self.reset_pose(&mut target, blend_frames != 0.0);
         attach_motion_remapped(
             &mut target,
             &self.parts,
@@ -252,7 +243,7 @@ impl FighterAnimation {
             motion.flags.bone_mask(),
             remap,
         )?;
-        if motion.blend_frames == 0.0 {
+        if blend_frames == 0.0 {
             self.blend_tree.remove_anim_all_by_flags(self.root, 1);
             *tree = target;
         } else {
@@ -270,11 +261,11 @@ impl FighterAnimation {
                 motion.flags.contains(MotionFlags::LOOP),
             );
         };
-        if motion.blend_frames != 0.0 {
+        if blend_frames != 0.0 {
             configure(&mut self.blend_tree);
         }
         configure(tree);
-        self.blend_duration = motion.blend_frames;
+        self.blend_duration = blend_frames;
         self.blend_progress = 0.0;
         Ok(())
     }

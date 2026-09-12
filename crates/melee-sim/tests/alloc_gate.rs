@@ -393,3 +393,28 @@ fn common_input_allocation_budget() {
     allocation_budget("shield_delayed_power_fd_fox", 0);
     allocation_budget("shield_delayed_power_fd_marth", 0);
 }
+
+#[test]
+fn capture_revival_allocation_budget() {
+    allocation_budget("rebirth_timeout_fd_fox", 0);
+    allocation_budget("rebirth_timeout_fd_marth", 0);
+    allocation_budget("rebirth_shield_a_fd_fox", 0);
+    allocation_budget("rebirth_analog_shield_a_fd_fox", 0);
+    allocation_budget("rebirth_held_shield_a_fd_fox", 0);
+    allocation_budget("grab_airborne_fd_foxmarth", 0);
+    allocation_budget("grab_airborne_fd_marthfox", 0);
+}
+
+#[test]
+fn ledge_input_allocation_budget() {
+    allocation_budget("ledge_cstick_attack_fd_fox", 0);
+    allocation_budget("ledge_cstick_attack_fd_marth", 0);
+    allocation_budget("ledge_cstick_escape_fd_fox", 0);
+    allocation_budget("ledge_cstick_escape_fd_marth", 0);
+    allocation_budget("ledge_cstick_drop_fd_fox", 0);
+    allocation_budget("ledge_cstick_drop_fd_marth", 0);
+    allocation_budget("ledge_cstick_priority_fd_fox", 0);
+    allocation_budget("ledge_cstick_priority_fd_marth", 0);
+    allocation_budget("ledge_timeout_fd_fox", 0);
+    allocation_budget("ledge_timeout_fd_marth", 0);
+}

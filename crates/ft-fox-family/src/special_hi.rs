@@ -470,7 +470,12 @@ fn end_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     if landed {
         f.land();
         // 800E8018..28: action357, flags0x5000, start13/rate1; no KeepGfx.
-        f.change_motion_with_updated_commands(S::SpecialHiLanding.into(), assets, 13.0)?;
+        f.change_motion_with_updated_commands(
+            S::SpecialHiLanding.into(),
+            assets,
+            13.0,
+            melee_ft::fighter::MotionColorPolicy::Preserve,
+        )?;
         f.step_animation(assets);
     } else {
         f.try_grab_ledge(assets, p.map)?;

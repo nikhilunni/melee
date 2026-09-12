@@ -20,6 +20,20 @@ melee_it::item_kinds! {
     }
 }
 
+/// Item_IsGrabbable requires its enable bit and a non-null pickup callback.
+/// Return Unknown as soon as a kind/state can satisfy those prerequisites.
+pub fn pickup_search(items: &ItemPool) -> melee_ft::fighter::life::ItemPickupSearch {
+    use melee_ft::fighter::life::ItemPickupSearch;
+    if items
+        .iter()
+        .any(|item| (SceneItems::logic(item.kind).pickup_possible)(item))
+    {
+        ItemPickupSearch::Unknown
+    } else {
+        ItemPickupSearch::Empty
+    }
+}
+
 pub struct Resources {
     pub common: ItemCommonData,
     kinds: Vec<(ItemKind, ItemAssets)>,

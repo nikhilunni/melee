@@ -65,14 +65,14 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Fox recovery | Five counterpart/rebound witnesses, all-bone checks and both full workspace gates pass. See [recovery notes](PORT_NOTES/RECOVERY_COLLISIONS.md). | Remaining travel landing, charge/ending departure and wall/ledge combinations |
 | Shared contacts | `melee-ft/src/fighter/damage.rs`: phantom, invincible and simultaneous contact branches panic | Retail reachability and contact-order fixtures for this matchup |
 | Shield exits | Standing/dash/run grabs, C-stick jumps and delayed powershield implemented; both full workspace gates and raw/bone/allocation checks pass; projectile reflection remains | Laser reflection and depletion |
-| Ledge variants | `melee-ft/src/fighter/ledge.rs`: slow options, C-stick options and hang timeout panic | Percent-dependent options, full controller inputs and prolonged hanging |
+| Ledge variants | C-stick options and hang timeout pass ten directed fighter/RNG/particle, raw, SRT and allocation gates; slow rows are source-ported | Recorded slow-option witnesses, occupied ledges, further priorities and wall/ceiling interactions |
 | Match endings | Tracker retains a screen-KO follow-up | Audit all KO variants, respawn, final stock, timeout and ties |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
-| Airborne grab victim | `fighter/grab.rs:194`: CapturePulledHi panics | `grab_airborne_fd_foxmarth`, `grab_airborne_fd_marthfox` |
+| Airborne grab victim | Transient CapturePulledHi and immediate ground counterparts pass both port-order recordings and full SRT/raw checks | Prolonged high hold, airborne release and article-hit combinations |
 | Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |
 | Dash defense | Dash and Run defense implemented with distinct item-throw/grab windows | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
-| Revival platform | `fighter/life.rs`: timeout and an overbroad shield+A predicate panic | `rebirth_timeout_fd_fox`, `rebirth_timeout_fd_marth`, `rebirth_shield_a_fd_fox` |
+| Revival platform | Timeout and digital/analog shield+A pass five recorded schedules; no-blend entry and retained dynamic state corrected | Further input thresholds and lifecycle combinations; [notes](PORT_NOTES/REVIVAL_CAPTURE_LEDGE.md) |
 | C-stick throws | Direction selection, Fox blaster/laser callbacks, captured damage and collateral hitbox lifetime implemented | Fourteen exact item/fighter/particle scenarios plus raw scratch; both workspace profiles and allocation gates pass; `PORT_NOTES/CSTICK_THROWS.md` |
 | Taunt | Idle, Dash and Run entry implemented; both characters use their authored motion239 | `taunt_fd_fox`, `taunt_fd_marth` |
 

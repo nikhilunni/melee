@@ -10,9 +10,12 @@ use melee_types::{CommonMotionState, GroundOrAir};
 struct MotionChange<'a> {
     start: f32,
     rate: f32,
+    /// Fighter_ChangeMotionState's explicit interpolation override; None uses asset data.
+    blend_frames: Option<f32>,
     source: Option<super::grab_throw::ThrowSource<'a>>,
     ground_air: bool,
     update_commands: bool,
+    preserve_name_tag: bool,
     skip_animation: bool,
     /// fn_800DE798: restore the release owner after reset, before initial commands.
     throw_owner: Option<u32>,
@@ -167,19 +170,20 @@ impl Fighter {
         entry_delay: Option<i32>,
         initial_scale: Vec3,
     ) -> Result<()> {
-        let SpawnContext { map, rng, counter } = context;
+        // Fighter_Create (80069018): initialize chains once, before the shared
+        // Fighter_UnkProcessDeath services. Revival retains the live locks/springs.
+        for set in &mut self.core.dynamics {
+            crate::dynamics::select(
+                set,
+                &mut self.core.skeleton,
+                &mut self.core.animation.parts,
+                true,
+                0,
+            );
+        }
+        self.core.dynamics_first_bone.fill(0);
         let root = self.core.animation.root;
-        let supported = self
-            .core
-            .initialize_spawn_geometry(map, counter, initial_scale);
-        self.character.on_reset();
-        // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
-        self.core.thrown_hitbox.state = 1;
-        self.core
-            .thrown_hitbox
-            .update(&mut self.core.skeleton, root);
-        self.core.cpu =
-            CpuState::initialize(self.core.player.cpu_mode, self.core.player.cpu_level, rng);
+        let supported = self.reset_spawn_services(context, initial_scale);
         if let Some(delay) = entry_delay {
             // Fighter_ChangeMotionState sets TopN's facing rotation even
             // for SM_None. The ordinary animation-entry path does this itself.
@@ -204,6 +208,30 @@ impl Fighter {
         self.core.input.clear_current_and_buffers();
         self.core.status.input_frozen = true;
         Ok(())
+    }
+
+    /// Fighter_UnkProcessDeath (80068354): retain animation parts and spring
+    /// state. Fighter_Create alone chooses an initial motion after this call;
+    /// ftCo_800D4FF4 enters Rebirth directly.
+    pub(super) fn reset_spawn_services(
+        &mut self,
+        context: SpawnContext<'_>,
+        initial_scale: Vec3,
+    ) -> bool {
+        let SpawnContext { map, rng, counter } = context;
+        let root = self.core.animation.root;
+        let supported = self
+            .core
+            .initialize_spawn_geometry(map, counter, initial_scale);
+        self.character.on_reset();
+        // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
+        self.core.thrown_hitbox.state = 1;
+        self.core
+            .thrown_hitbox
+            .update(&mut self.core.skeleton, root);
+        self.core.cpu =
+            CpuState::initialize(self.core.player.cpu_mode, self.core.player.cpu_level, rng);
+        supported
     }
 
     /// Allocate the typed owners without consuming RNG or entering a state.
@@ -282,6 +310,25 @@ impl Fighter {
         )
     }
 
+    /// ftCo_800D4FF4 (800D50D0..50E8): KeepGfx, SkipColAnim and anim_blend=-1.
+    /// The -1 caller sentinel means immediate animation, not the asset blend.
+    pub(super) fn change_revival_motion(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_motion_state_with_options(
+            CommonMotionState::Rebirth.into(),
+            assets,
+            MotionChange {
+                start: 0.0,
+                rate: 1.0,
+                blend_frames: Some(0.0),
+                preserve: MotionPreservation {
+                    effects: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+    }
+
     /// ftCo_800DE7C0 installs fn_800DE798 as a one-shot motion-entry callback.
     pub(super) fn change_damage_motion(
         &mut self,
@@ -300,13 +347,16 @@ impl Fighter {
         )
     }
 
-    /// Fighter_ChangeMotionState with SkipColAnim | UpdateCmd (0x5000).
+    /// Fighter_ChangeMotionState with UpdateCmd (0x4000), optionally SkipColAnim.
     /// Control-flow seek without replaying effects/hitboxes; ordinary visibility resets.
+    /// Secondary-bank playback is not modeled; neither policy clears the modeled
+    /// primary bank (revival, electric damage and powershield flash).
     pub fn change_motion_with_updated_commands(
         &mut self,
         state: ActionId,
         assets: &FighterAssets,
         start: f32,
+        _color: MotionColorPolicy,
     ) -> Result<()> {
         self.change_motion_state_with_options(
             state,
@@ -363,6 +413,39 @@ impl Fighter {
         )
     }
 
+    /// ftCo_80090780 (80090780): DamageFall entry with0x18001. KeepGfx and
+    /// SkipNametagVis are independent of ground/air command preservation.
+    /// KeepColAnimPartHitStatus leaves timed ledge status untouched; it does
+    /// not preserve ordinary scripted hurt status/capsule overrides.
+    pub(super) fn enter_damage_fall(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.physics.ground_or_air == GroundOrAir::Ground {
+            self.leave_ground();
+        }
+        self.change_motion_state_with_options(
+            CommonMotionState::DamageFall.into(),
+            assets,
+            MotionChange {
+                rate: 1.0,
+                preserve_name_tag: true,
+                preserve: MotionPreservation {
+                    effects: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )?;
+        // ftCommon_ClampAirDrift (8007D468): clamp only X, no fused sites.
+        let maximum = self.attributes.air.air_drift_max;
+        self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-maximum, maximum);
+        self.commands
+            .rumble_requests
+            .push(super::commands::RumbleRequest {
+                all_players: false,
+                id: 8,
+                duration: 0,
+            });
+        Ok(())
+    }
     /// Fighter_ChangeMotionState with ftCommon_GroundAirColl_MF (fighter.c).
     /// Preserve visibility and advance command control flow without executing
     /// commands already applied by the outgoing ground/air motion.
@@ -442,8 +525,15 @@ impl Fighter {
     }
 }
 
+/// SkipColAnim controls secondary bank x488, never primary bank x408.
+#[derive(Clone, Copy, Debug)]
+pub enum MotionColorPolicy {
+    ResetSecondary,
+    Preserve,
+}
+
 impl FighterCore {
-    /// Reset dynamics, support probe and model placement before the death hook.
+    /// Reset support probe and model placement before the death hook.
     fn initialize_spawn_geometry(
         &mut self,
         map: &mut CollMap,
@@ -451,12 +541,6 @@ impl FighterCore {
         initial_scale: Vec3,
     ) -> bool {
         let root = self.animation.root;
-        // ftCo_8009CF84 enables each chain before reset. prepare only allocates
-        // owners: savestate import must attach animations before restoring locks.
-        for set in &mut self.dynamics {
-            crate::dynamics::select(set, &mut self.skeleton, &mut self.animation.parts, true, 0);
-        }
-        self.dynamics_first_bone.fill(0);
         // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
         self.skeleton.set_scale(root, &initial_scale);
         self.spawn_number = counter.allocate();
@@ -655,6 +739,10 @@ impl FighterCore {
         self.status.ignore_fighter_nudge = false;
         self.combat.combo.grace = assets.combo.grace_frames;
         self.status.on_ledge = false;
+        // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
+        if self.physics.ground_or_air == GroundOrAir::Ground {
+            self.status.ledge_timed_out = false;
+        }
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         if !change.ground_air {
             self.commands.articles_visible = true;
@@ -689,7 +777,7 @@ impl FighterCore {
                 | CommonMotionState::CliffWait
         ) || (state == CommonMotionState::SquatWait
             && self.motion_state.id == CommonMotionState::Squat);
-        if !preserve_name_tag {
+        if !preserve_name_tag && !change.preserve_name_tag {
             self.status.name_tag_timer = 0;
         }
         if self.effect_state.destroy_on_state_change && !change.preserve.effects {
@@ -792,13 +880,17 @@ impl FighterCore {
                 animation_start,
                 rate,
                 Some(source.remap),
+                change.blend_frames,
             )?;
         } else {
-            self.animation.set_animation(
+            let motion = &assets.motions[&animation_id];
+            self.animation.set_animation_remapped(
                 &mut self.skeleton,
-                &assets.motions[&animation_id],
+                motion,
                 animation_start,
                 rate,
+                motion.remap.as_ref().map(|remap| remap.view()),
+                change.blend_frames,
             )?;
         }
         self.animation.set_rate(&mut self.skeleton, rate, false);

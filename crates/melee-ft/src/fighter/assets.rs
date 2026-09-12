@@ -714,7 +714,9 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).
     indices.extend(68..78);
     // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
-    indices.extend([222, 245, 246, 247, 249, 250, 256, 257, 262, 264, 265]);
+    indices.extend([
+        222, 245, 246, 247, 249, 250, 251, 252, 253, 256, 257, 262, 264, 265,
+    ]);
     indices
 }
 

@@ -22,6 +22,10 @@ macro_rules! laser {
         impl ItemLogic for $type {
             const KIND: ItemKind = ItemKind::$kind;
             const STATES: &'static [ItemStateRow] = &LASER_STATES;
+            // it_3F2F.c: Fox/Falco laser picked_up callback is NULL.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
                 item.scratch = ItemScratch::Ray(RayState {
                     previous_position: item.position,
@@ -208,6 +212,11 @@ macro_rules! blaster {
         impl ItemLogic for $type {
             const KIND: ItemKind = ItemKind::$kind;
             const STATES: &'static [ItemStateRow] = &BLASTER_STATES;
+            // Held setup it_80279CDC clears grabbable via it_8026B3A8.
+            // Detached or external states require a complete pickup audit.
+            fn pickup_possible(item: &ItemCore) -> bool {
+                !item.attached
+            }
             // ftFox_SpecialN: it_8026BAE8 sets the blaster model scale.
             const MODEL_COPIES: usize = 1;
             const HELD_SCALE: f32 = 0.85;

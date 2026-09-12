@@ -671,6 +671,95 @@ impl Fighter {
         }
         Ok(())
     }
+    /// ftCo_DamageFall_IASA (80090828): no mv.damage access. Also used by
+    /// DamageFly after hitstun and ordinary airborne damage with dodge enabled.
+    fn post_hitstun_air_input(&mut self, assets: &FighterAssets, tumbling: bool) -> Result<()> {
+        use crate::input::WaitTransition as T;
+        // A damage state is neither Jump nor JumpAerial, so the
+        // float check (Peach) is always enabled here, as in procs.rs.
+        let vertical_velocity = self.core.physics.self_velocity.y;
+        let transition = super::fall::iasa(
+            &self.core.input,
+            &assets.input,
+            self.core.physics.jumps_used,
+            self.core.attributes.jumping.max_jumps,
+            // DamageFly delegates to DamageFall (80090828), whose
+            // input chain omits ordinary Fall's air-dodge check.
+            !tumbling,
+            |phase| {
+                self.character.check_float_input(
+                    &self.core.input,
+                    assets,
+                    vertical_velocity,
+                    phase,
+                );
+            },
+        );
+        match transition {
+            T::None => {
+                if tumbling
+                    && gekko_math::msl::fabsf(self.core.input.current.stick.x)
+                        >= assets.damage.tumble_exit_threshold
+                    && i32::from(self.core.input.horizontal.tilt) < assets.damage.tumble_exit_window
+                {
+                    self.change_motion_state(S::Fall.into(), assets)?;
+                }
+                Ok(())
+            }
+            T::Attack => (self.character.table().enter_aerial)(self, assets),
+            T::Jump => self.enter_aerial_jump(assets),
+            T::Escape => self.enter_air_dodge(assets),
+            T::Special => {
+                self.enter_buffered_special(assets, true);
+                Ok(())
+            }
+            transition => unimplemented!("ftCo_Damage_IASA: airborne {transition:?}"),
+        }
+    }
+    /// ftCo_DamageFall_IASA: Cliff timeout retains Cliff scratch; ordinary
+    /// tumble entry retains Damage scratch. Neither is read by this callback.
+    pub(super) fn damage_fall_input(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.post_hitstun_air_input(assets, true)
+    }
+    /// ftCo_DamageFall_Coll (80090960) -> ft_8008370C: ordinary ledge
+    /// snap height, then ftCo_80090984 tech/down-bound landing.
+    /// TODO: shared ftWallJump_8008169C before the ledge predicate.
+    pub(super) fn damage_fall_collision(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        crate::collision::air::begin_map(
+            &self.core.physics,
+            &mut self.core.collision,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+        );
+        let landed = crate::collision::air::collide_pass(
+            &mut self.core.physics,
+            &mut self.core.collision,
+            map,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+            self.core.status.ledge_cooldown == 0,
+        );
+        if landed {
+            if !self.try_tech(assets)? {
+                self.enter_down_bound(assets)?;
+            }
+        } else {
+            self.try_grab_ledge(assets, map)?;
+        }
+        Ok(())
+    }
+    /// ftCo_DamageFall_Phys -> ft_80084DB0: fastfall, gravity, drift;
+    /// Fighter_procUpdate subsequently decays knockback and integrates.
+    pub(super) fn damage_fall_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+        self.airborne_physics(assets);
+        self.decay_air_knockback(assets);
+        crate::physics::integrate::integrate_velocity(&mut self.core.physics);
+        crate::physics::integrate::integrate_environment(&mut self.core.physics, None, wind);
+    }
     pub(super) fn damage_input(
         &mut self,
         assets: &FighterAssets,
@@ -691,48 +780,7 @@ impl Fighter {
                 self.core.input.pressed |= crate::input::Buttons::XY;
             }
             if self.core.physics.ground_or_air == GroundOrAir::Air {
-                use crate::input::WaitTransition as T;
-                // A damage state is neither Jump nor JumpAerial, so the
-                // float check (Peach) is always enabled here, as in procs.rs.
-                let vertical_velocity = self.core.physics.self_velocity.y;
-                let transition = super::fall::iasa(
-                    &self.core.input,
-                    &assets.input,
-                    self.core.physics.jumps_used,
-                    self.core.attributes.jumping.max_jumps,
-                    // DamageFly delegates to DamageFall (80090828), whose
-                    // input chain omits ordinary Fall's air-dodge check.
-                    !tumbling,
-                    |phase| {
-                        self.character.check_float_input(
-                            &self.core.input,
-                            assets,
-                            vertical_velocity,
-                            phase,
-                        );
-                    },
-                );
-                return match transition {
-                    T::None => {
-                        if tumbling
-                            && gekko_math::msl::fabsf(self.core.input.current.stick.x)
-                                >= assets.damage.tumble_exit_threshold
-                            && i32::from(self.core.input.horizontal.tilt)
-                                < assets.damage.tumble_exit_window
-                        {
-                            self.change_motion_state(S::Fall.into(), assets)?;
-                        }
-                        Ok(())
-                    }
-                    T::Attack => (self.character.table().enter_aerial)(self, assets),
-                    T::Jump => self.enter_aerial_jump(assets),
-                    T::Escape => self.enter_air_dodge(assets),
-                    T::Special => {
-                        self.enter_buffered_special(assets, true);
-                        Ok(())
-                    }
-                    transition => unimplemented!("ftCo_Damage_IASA: airborne {transition:?}"),
-                };
+                return self.post_hitstun_air_input(assets, tumbling);
             }
             let transition = crate::input::wait_iasa(&self.core.input, &assets.input, context);
             self.apply_ground_transition(assets, transition)?;

@@ -30,6 +30,8 @@ pub struct LedgeParameters {
     pub slow_damage: i32,
     pub wait_frames: [f32; 2],
     pub option_threshold: f32,
+    pub cstick_attack_threshold: f32,
+    pub cstick_escape_threshold: f32,
     pub option_angle: f32,
     pub cooldown: i32,
     pub intangible_frames: i32,
@@ -43,6 +45,8 @@ impl LedgeParameters {
             slow_damage: r.s32(base + 0x488)?,
             wait_frames: [r.f32(base + 0x48C)?, r.f32(base + 0x490)?],
             option_threshold: r.f32(base + 0x494)?,
+            cstick_attack_threshold: r.f32(base + 0x7F8)?,
+            cstick_escape_threshold: r.f32(base + 0x7FC)?,
             option_angle: r.f32(base + 0x20)?,
             cooldown: r.s32(base + 0x498)?,
             intangible_frames: r.s32(base + 0x49C)?,
@@ -190,13 +194,20 @@ impl Fighter {
     }
     /// ftCo_CliffWait_IASA (8009A8FC): attack, escape, jump, stick option, timeout.
     pub(super) fn ledge_input(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.core.input.current.cstick != crate::input::Stick::default() {
-            unimplemented!("ftCo_CliffWait.c:53-56 / ft_0DF1.c:130-159: C-stick ledge options");
-        }
-        if self.core.input.pressed.intersects(Buttons::A | Buttons::B) {
+        // ftCo_800DF6F8 / 800DF72C: crossings, not held directions.
+        // Retail ASM uses comparisons and separate facing products; no FMA.
+        let current_cstick = self.core.input.current.cstick;
+        let previous_cstick = self.core.input.previous.cstick;
+        let cstick_attack = previous_cstick.y < assets.ledge.cstick_attack_threshold
+            && current_cstick.y >= assets.ledge.cstick_attack_threshold;
+        if self.core.input.pressed.intersects(Buttons::A | Buttons::B) || cstick_attack {
             return self.enter_cliff_option(assets, S::CliffAttackQuick);
         }
-        if self.core.input.pressed.intersects(Buttons::SHIELD) {
+        // gm_8016B0FC is false in the supported versus-match rules.
+        let cstick_escape = self.core.physics.facing * previous_cstick.x
+            < assets.ledge.cstick_escape_threshold
+            && self.core.physics.facing * current_cstick.x >= assets.ledge.cstick_escape_threshold;
+        if self.core.input.pressed.intersects(Buttons::SHIELD) || cstick_escape {
             return self.enter_cliff_option(assets, S::CliffEscapeQuick);
         }
         let jump = self.core.input.pressed.intersects(Buttons::XY)
@@ -218,7 +229,12 @@ impl Fighter {
         let MotionData::Cliff(cliff) = &mut self.core.state_data else {
             panic!("cliff scratch missing")
         };
-        let stick = self.core.input.current.stick;
+        // ftCo_8009AA0C: left stick wins; a C-stick direction may drop,
+        // but the climb branch requires the left-stick selector.
+        let left = self.core.input.current.stick;
+        let left_active = fabsf(left.x) >= assets.ledge.option_threshold
+            || fabsf(left.y) >= assets.ledge.option_threshold;
+        let stick = if left_active { left } else { current_cstick };
         if fabsf(stick.x) >= assets.ledge.option_threshold
             || fabsf(stick.y) >= assets.ledge.option_threshold
         {
@@ -228,11 +244,14 @@ impl Fighter {
                     && stick.x * self.core.physics.facing >= 0.0);
             if cliff.neutral_seen {
                 if climb {
-                    return self.enter_cliff_option(assets, S::CliffClimbQuick);
+                    if left_active {
+                        return self.enter_cliff_option(assets, S::CliffClimbQuick);
+                    }
+                } else {
+                    self.core.status.ledge_cooldown = assets.ledge.cooldown;
+                    self.change_motion_state(S::Fall.into(), assets)?;
+                    return Ok(());
                 }
-                self.core.status.ledge_cooldown = assets.ledge.cooldown;
-                self.change_motion_state(S::Fall.into(), assets)?;
-                return Ok(());
             }
         } else {
             cliff.neutral_seen = true;
@@ -242,16 +261,24 @@ impl Fighter {
         };
         if cliff.wait_frames <= 0.0 {
             self.core.status.ledge_cooldown = assets.ledge.cooldown;
-            unimplemented!("ftCo_CliffWait.c:74-79: ledge timeout -> DamageFall");
+            self.core.status.ledge_timed_out = true;
+            self.enter_damage_fall(assets)?;
         }
         Ok(())
     }
     /// ftCo_8009AB9C / ftCo_8009B040 (8009AB9C / 8009B040),
     /// ftCo_CliffClimb.c:73-85 / ftCo_CliffEscape.c:14-28.
     fn enter_cliff_option(&mut self, assets: &FighterAssets, state: S) -> Result<()> {
-        if self.core.physics.percent >= assets.ledge.slow_damage as f32 {
-            unimplemented!("ftCo_CliffClimb.c:76-78 / ftCo_CliffEscape.c:17-19: Slow ledge option");
-        }
+        let state = if self.core.physics.percent >= assets.ledge.slow_damage as f32 {
+            match state {
+                S::CliffClimbQuick => S::CliffClimbSlow,
+                S::CliffAttackQuick => S::CliffAttackSlow,
+                S::CliffEscapeQuick => S::CliffEscapeSlow,
+                _ => unreachable!("normal ledge option entry"),
+            }
+        } else {
+            state
+        };
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.grab_exclusions = GrabExclusions::LEDGE_OPTION;

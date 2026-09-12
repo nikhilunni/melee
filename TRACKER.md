@@ -48,6 +48,20 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [x] Directed ledge input and timeout (2026-09-12): ten recorded C-stick
+  attack/escape/drop/priority and 1,200-tick timeout scenarios. Acceptance:
+  `ledge_input_*` fighter/RNG/ordered-particle, all captured SRT, raw ledge
+  scratch and zero allocations, both workspace gates and clippy. Slow rows
+  are source-ported but await successful high-percent captures; wall/ceiling
+  and further threshold/priority combinations remain open.
+
+- [x] Directed revival and airborne capture (2026-09-12): seven recorded
+  600/900-tick scenarios cover platform timeout, digital/analog shield+A, and
+  transient high capture with ground return. Acceptance: named
+  `capture_revival_*` fighter/ordered-particle, full local bone and allocation
+  gates, raw revival/capture scratch, both workspace profiles and clippy.
+  Airborne release and prolonged high capture require separate witnesses.
+
 - [~] Resumed matchup completion (2026-09-11): user requested finishing the
   remaining Fox/Marth/FD gaps and pausing before breadth. Work proceeds through
   C-stick throws and Fox throw articles, recovery counterparts/rebounds, common
@@ -642,3 +656,44 @@ Newest first. One line per session: date, what landed, what is next.
   passes; graphics smoke and further Dolphin launches abort at the host IOSurface
   client limit. Stripped size +280 bytes. Continuing already-recorded revival,
   capture and ledge cases; no breadth work started.
+
+- 2026-09-12 (required test-policy stop): common-input packet committed as
+  e5db5fd. Uncommitted revival/capture and ledge implementations pass seven
+  and ten fighter/particle/RNG scenarios respectively; capture raw and both
+  airborne-grab 600-tick SRT checks pass. Revival SRT still needs its audited
+  no-blend entry override; ledge root publication also remains to fix. The new
+  raw ledge test incorrectly asserts the inactive wait word during CliffCatch:
+  retail retains prior scratch 0x00000001 at Fox tick70, while the typed inactive
+  placeholder is zero. CliffWait initializes the timer before use. No assertion
+  or expected data changed. AGENTS.md requires stopping when a bit-exact test is
+  believed wrong; awaiting authorization to correct that assertion's ownership
+  boundary. No failing implementation committed. New graphics captures remain
+  blocked by the host IOSurface limit; the Safari restart question is pending.
+
+- 2026-09-12 (resume and repair): user explicitly replaced the test-policy stop
+  with immediate source-backed diagnosis and repair. AGENTS.md and CLAUDE.md
+  now require fixing implementation or test defects and rerunning gates without
+  requesting confirmation. Corrected the raw ledge assertion to respect the
+  CliffWait initialization boundary; captured expectations are unchanged. Added
+  Fighter_procMap's final root publication and revival's explicit no-blend
+  animation entry. Focused revival checks now pass 7/8; Marth revival retains
+  a bone45 rotation delta under investigation. Ledge checks are running.
+
+- 2026-09-12 (delta repaired): no-blend Rebirth entry, final map-root publication,
+  retained dynamic locks/secondary pose and removal of creation-only respawn
+  setup fix all new SRT deltas. Retained ledge-timeout provenance fixes the raw
+  reset delta. Full debug gate: 1,345 passed, zero failed, one existing ignore;
+  220 harness tests, schema and format checks pass. Release gate running.
+  No captured expected values changed.
+
+- 2026-09-12 (revival/capture/ledge verification): debug and release each
+  1,345 passed, zero failed, one existing ignore; all-target clippy clean. All
+  directed SRT/raw/allocation checks pass. Remaining uncaptured ledge/capture
+  combinations stay open in MATCHUP_COMPLETENESS.md. Native build and size
+  measurement running; graphics smoke remains host-limited. Next recorded
+  packet: Fire Fox charge/travel contact, then projectile reflection.
+
+- 2026-09-12 (verified packet boundary): native macOS build passes. Stripped
+  simulator is 3,960,704 bytes (+16,856 from e5db5fd). Full performance census
+  not rerun; graphics smoke cannot start while the host IOSurface limit persists.
+  Committing the directed revival/capture/ledge packet and instruction repair.

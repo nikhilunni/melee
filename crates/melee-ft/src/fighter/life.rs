@@ -9,6 +9,14 @@ use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
+/// Scene evidence for ftpickupitem_800942A0. Unknown never means empty.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ItemPickupSearch {
+    #[default]
+    Unknown,
+    Empty,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Arena {
     pub left: f32,
@@ -124,7 +132,7 @@ impl Fighter {
         self.core.reset_life(assets, context.map);
         self.install_motion_row(super::state::COMMON[S::Wait as usize]);
         let scale = self.core.skeleton.scale(self.core.animation.root);
-        self.initialize_spawn(assets, context, None, scale)?;
+        self.reset_spawn_services(context, scale);
         self.enter_revival(assets, target)
     }
     /// ftCo_800D3158 (800D3158), after Update: blast-zone exits in retail order
@@ -364,7 +372,7 @@ impl Fighter {
     /// ftCo_800D4FF4 (800D4FF4), after Fighter_UnkProcessDeath reset.
     pub fn enter_revival(&mut self, assets: &FighterAssets, target: Vec3) -> Result<()> {
         self.leave_ground();
-        self.change_motion_state(S::Rebirth.into(), assets)?;
+        self.change_revival_motion(assets)?;
         self.core.state_data = MotionData::Life(LifeState::Revival {
             remaining: assets.life.revival_duration,
             target,
@@ -401,17 +409,24 @@ impl Fighter {
         let pressed = self.core.input.pressed;
         let held = self.core.input.current.held;
         let stick = self.core.input.current.stick;
-        // Retail also requires x683 >= PlCo +1C (the A-timer window); that constant is
-        // not loaded yet, so this superset stops explicitly whenever LR+A is pressed.
-        let lr_plus_a = held.intersects(Buttons::SHIELD) && pressed.intersects(Buttons::A);
+        // ftCo_800D7100 may find an item before dodge/aerial priority. The
+        // scene proves an empty search from actual item eligibility; this is
+        // not an assumption based on random-item match settings.
+        if !pressed.intersects(Buttons::B)
+            && held.intersects(Buttons::SHIELD)
+            && pressed.intersects(Buttons::A)
+        {
+            assert_eq!(
+                self.status.item_pickup_search,
+                ItemPickupSearch::Empty,
+                "ftCo_800D7100: item pickup search requires an eligible-item implementation"
+            );
+        }
         // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
         let priority = if pressed.intersects(Buttons::B) {
             // ftCo_SpecialAir_CheckInput
             self.enter_buffered_special(assets, true);
             true
-        } else if lr_plus_a {
-            // ftCo_800D7100 / ftCo_800D705C: item pickup and the x209C catch timer.
-            unimplemented!("ftCo_RebirthWait_IASA: LR+A item pickup / catch timer");
         } else if pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
             // ftCo_800C3B10 is tether characters only; ftCo_80099A58 -> EscapeAir.
             self.enter_air_dodge(assets)?;
@@ -478,9 +493,18 @@ impl Fighter {
             MotionData::Life(LifeState::PlatformWait { remaining, .. }) => {
                 *remaining -= 1;
                 if *remaining == 0 {
-                    unimplemented!(
-                        "ftCo_RebirthWait_Anim: platform timeout -> Fall with invincibility"
-                    );
+                    // 800D5738 precedes Fall entry at800D5740. Unlike input
+                    // exit, timeout does not call pl_80040374.
+                    self.core.status.revival_invincibility = self
+                        .core
+                        .status
+                        .revival_invincibility
+                        .max(assets.life.invincibility_duration);
+                    self.core
+                        .commands
+                        .color_animations
+                        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+                    self.change_motion_state(S::Fall.into(), assets)?;
                 }
             }
             _ => panic!("revival scratch"),
@@ -521,7 +545,11 @@ impl FighterCore {
         self.shield = super::shield::ShieldState::default();
         self.effect_state = super::effects::FighterEffects::default();
         self.effects = melee_ef::request::EffectQueue::default();
+        // Fighter_UnkInitReset leaves 2227.b1 intact. Only a subsequent
+        // grounded motion entry clears the ledge-timeout provenance.
+        let ledge_timed_out = self.status.ledge_timed_out;
         self.status = super::Status::reset(assets.shield_health);
+        self.status.ledge_timed_out = ledge_timed_out;
         // Fighter_UnkInitReset (80067C98) does not write cmd_vars (+2200..220C).
         // Later motion commands own initialization; retain them across stocks.
         let command_variables = self.commands.variables;

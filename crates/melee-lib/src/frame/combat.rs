@@ -182,6 +182,12 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                if name.starts_with("ledge_cstick_") || name.starts_with("ledge_timeout_") {
+                    compare_ledge_input(f, &bytes, tick);
+                }
+                if name.starts_with("rebirth_") || name.starts_with("grab_airborne_") {
+                    compare_capture_revival(f, &bytes, tick);
+                }
                 if slot == 1
                     && (name.starts_with("firefox_") || name == "illusion_start_landing_fd_fox")
                 {
@@ -553,4 +559,140 @@ fn common_input_matches_retail_combat_scratch() {
     replay_scratch("shield_cstick_jump_fd_marth");
     replay_scratch("shield_delayed_power_fd_fox");
     replay_scratch("shield_delayed_power_fd_marth");
+}
+
+fn compare_capture_revival(f: &Fighter, bytes: &[u8], tick: usize) {
+    use melee_ft::fighter::{grab::GrabLink, life::LifeState};
+    assert_eq!(
+        f.status.revival_invincibility as u32,
+        word(bytes, 0x1994),
+        "revival protection at {tick}"
+    );
+    assert_eq!(
+        f.collision.lock_frames as u32,
+        word(bytes, 0x88c),
+        "ECB lock at {tick}"
+    );
+    vector(f.physics.self_velocity, bytes, 0x80);
+    vector(f.physics.knockback_velocity, bytes, 0x8c);
+    match &f.state_data {
+        MotionData::Life(
+            LifeState::Revival { remaining, .. } | LifeState::PlatformWait { remaining, .. },
+        ) => {
+            assert_eq!(
+                *remaining as u32,
+                word(bytes, 0x2340),
+                "revival countdown at {tick}"
+            );
+        }
+        MotionData::Capture(capture) => {
+            assert_eq!(
+                capture.timer.to_bits(),
+                word(bytes, 0x1a4c),
+                "grab timer at {tick}"
+            );
+            assert_eq!(
+                capture.elapsed.to_bits(),
+                word(bytes, 0x2340),
+                "capture elapsed at {tick}"
+            );
+            assert!(
+                !capture.map_prepared,
+                "paired capture Map consumed at {tick}"
+            );
+        }
+        _ => {}
+    }
+    if let Some(GrabLink::Holding {
+        vertical_offset, ..
+    }) = f.combat.grab
+    {
+        assert_eq!(
+            vertical_offset.to_bits(),
+            word(bytes, 0x2170),
+            "captor vertical offset at {tick}"
+        );
+    }
+}
+
+#[test]
+fn capture_revival_matches_retail_scratch() {
+    for (name, frames) in [
+        ("rebirth_timeout_fd_fox", 900),
+        ("rebirth_timeout_fd_marth", 900),
+        ("rebirth_shield_a_fd_fox", 600),
+        ("rebirth_analog_shield_a_fd_fox", 600),
+        ("rebirth_held_shield_a_fd_fox", 600),
+        ("grab_airborne_fd_foxmarth", 600),
+        ("grab_airborne_fd_marthfox", 600),
+    ] {
+        replay_scratch_until(name, frames);
+    }
+}
+
+fn compare_ledge_input(f: &Fighter, bytes: &[u8], tick: usize) {
+    assert_eq!(
+        f.status.ledge_cooldown as u32,
+        word(bytes, 0x2064),
+        "ledge cooldown at {tick}"
+    );
+    assert_eq!(
+        f.status.ledge_intangibility as u32,
+        word(bytes, 0x1990),
+        "ledge intangibility at {tick}"
+    );
+    assert_eq!(
+        f.status.ledge_timed_out,
+        bytes[0x2227] & 0x40 != 0,
+        "ledge timeout provenance at {tick}"
+    );
+    assert_eq!(
+        f.status.on_ledge,
+        bytes[0x221d] & 1 != 0,
+        "on ledge at {tick}"
+    );
+    assert_eq!(
+        f.status.grab_exclusions.0,
+        u16::from_be_bytes([bytes[0x1a6a], bytes[0x1a6b]]),
+        "grab exclusion at {tick}"
+    );
+    if let MotionData::Cliff(cliff) = &f.state_data {
+        assert_eq!(
+            cliff.ledge_id as u32,
+            word(bytes, 0x2340),
+            "ledge ID at {tick}"
+        );
+        // CliffCatch owns only the ledge ID. ftCo_8009A804 initializes the
+        // wait timer and neutral latch when CliffWait begins; before then these
+        // retail union words still belong to the preceding motion.
+        if f.motion_state.id != melee_types::CommonMotionState::CliffCatch {
+            assert_eq!(
+                cliff.wait_frames.to_bits(),
+                word(bytes, 0x2344),
+                "ledge wait at {tick}"
+            );
+            assert_eq!(
+                cliff.neutral_seen,
+                word(bytes, 0x2348) != 0,
+                "ledge neutral latch at {tick}"
+            );
+        }
+    }
+    if f.motion_state.id == melee_types::CommonMotionState::CliffWait {
+        assert_eq!(
+            bytes[0x2221] & 0x40,
+            0,
+            "uninterrupted ledge has no temporary part-status owner at {tick}"
+        );
+    }
+}
+
+#[test]
+fn ledge_input_matches_retail_scratch() {
+    for kind in ["fox", "marth"] {
+        for option in ["attack", "escape", "drop", "priority"] {
+            replay_scratch_until(&format!("ledge_cstick_{option}_fd_{kind}"), 420);
+        }
+        replay_scratch_until(&format!("ledge_timeout_fd_{kind}"), 1200);
+    }
 }

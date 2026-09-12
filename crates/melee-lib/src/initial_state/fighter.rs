@@ -91,6 +91,7 @@ pub(crate) fn import(
     f.status.grab_exclusions =
         melee_ft::fighter::ledge::GrabExclusions(u16::from_be_bytes([raw[0x1A6A], raw[0x1A6B]]));
     f.status.ledge_grab_disabled = raw[0x2228] & 0x20 != 0;
+    f.status.ledge_timed_out = raw[0x2227] & 0x40 != 0;
     f.thrown_hitbox.state = word(raw, 0x1064);
     f.thrown_hitbox.offset = vector(raw, 0x1074);
     f.thrown_hitbox.position = vector(raw, 0x10B0);

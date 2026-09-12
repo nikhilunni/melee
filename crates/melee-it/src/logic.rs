@@ -36,6 +36,11 @@ pub trait ItemLogic {
         true
     }
 
+    /// Conservative predicate: false proves Item_IsGrabbable cannot succeed.
+    /// Unreviewed kinds remain possible; they require the full pickup search.
+    fn pickup_possible(_item: &ItemCore) -> bool {
+        true
+    }
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &ItemAnimationContext<'_>) {}
@@ -78,6 +83,7 @@ pub trait ItemLogic {
         model_pose: Self::model_pose,
         model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
+        pickup_possible: Self::pickup_possible,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
         dropped: Self::dropped,
@@ -102,6 +108,7 @@ pub struct ItemLogicRow {
     pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree, usize) -> bool,
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
+    pub pickup_possible: fn(&ItemCore) -> bool,
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore),

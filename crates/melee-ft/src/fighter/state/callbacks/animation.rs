@@ -78,6 +78,10 @@ pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_CatchWait (216),
 /// ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227).
+/// ftCo_DamageFall_Anim is empty after common animation/charge maintenance.
+pub fn damage_fall(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    fighter.core.animation_capture(phase)
+}
 pub fn capture(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     fighter.core.animation_capture(phase)
 }

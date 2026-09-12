@@ -1,0 +1,19 @@
+name = "ledge_timeout_fd_fox"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 1200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = { StickX = 1.0, X = true } },
+  { frame = 36, port = 1, buttons = { StickX = 1.0 } },
+  { frame = 72, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 200, port = 1, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

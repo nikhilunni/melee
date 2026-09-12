@@ -51,7 +51,7 @@ use crate::{
 use hsd_anim::jobj::JObjTree;
 use hsd_types::{Vec2, Vec3};
 use melee_types::{FighterKind, PlayerKind};
-pub use spawn::{MotionPreservation, PlayerSlot, SpawnContext, SpawnCounter};
+pub use spawn::{MotionColorPolicy, MotionPreservation, PlayerSlot, SpawnContext, SpawnCounter};
 pub use state::{
     common_table, interleaved_order, ActionId, FighterProc, MotionRow, MotionState, SpecialSlot,
     COMMON_COUNT,
@@ -438,6 +438,8 @@ pub struct Status {
     pub shield_health: f32,
     /// x2064_ledgeCooldown (+2064).
     pub ledge_cooldown: i32,
+    /// Fighter2227.b1: ledge-hang timeout provenance, cleared on grounded entry.
+    pub ledge_timed_out: bool,
     /// x2222_b3: count a top exit without upward knockback.
     pub unconditional_top_exit: bool,
     /// x2228_b2: suppress grabs while another state owns ledge detection.
@@ -450,6 +452,7 @@ pub struct Status {
     pub ledge_intangibility: i32,
     /// Fighter +1994: revival protection allows contact sparks but no damage.
     pub revival_invincibility: i32,
+    pub item_pickup_search: life::ItemPickupSearch,
 
     /// x2100 (+2100), -1 disables sword afterimages.
     pub sword_trail: i32,
@@ -469,12 +472,14 @@ impl Status {
             time_since_smash: -1.0,
             shield_health,
             ledge_cooldown: 0,
+            ledge_timed_out: false,
             unconditional_top_exit: false,
             ledge_grab_disabled: false,
             on_ledge: false,
             grab_exclusions: ledge::GrabExclusions::NONE,
             ledge_intangibility: 0,
             revival_invincibility: 0,
+            item_pickup_search: life::ItemPickupSearch::Unknown,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,

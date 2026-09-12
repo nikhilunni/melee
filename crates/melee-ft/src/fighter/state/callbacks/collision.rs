@@ -124,10 +124,14 @@ pub fn thrown(_fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 }
 
 /// ftData_MotionStateList: ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227).
-pub fn capture(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
-    let CollisionPhase { assets, map } = phase;
-    let assets = assets.expect("airborne map needs proc_map_with_assets");
-    fighter.capture_collision(assets, map)?;
+pub fn capture(fighter: &mut Fighter, _phase: CollisionPhase<'_>) -> Result<()> {
+    let MotionData::Capture(capture) = &mut fighter.state_data else {
+        unreachable!()
+    };
+    assert!(
+        std::mem::take(&mut capture.map_prepared),
+        "capture Map needs the paired scene owner"
+    );
     Ok(())
 }
 
@@ -142,6 +146,10 @@ pub fn catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
+/// ftCo_DamageFall_Coll (80090960), independent of the retained union owner.
+pub fn damage_fall(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    fighter.damage_fall_collision(phase.assets.expect("DamageFall map assets"), phase.map)
+}
 pub fn damage(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");

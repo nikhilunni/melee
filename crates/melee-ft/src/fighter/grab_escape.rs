@@ -25,6 +25,9 @@ pub struct Parameters {
     pub fast_rate: f32,
     pub escape_speed: f32,
     pub escape_friction: f32,
+    pub lift_threshold: f32,
+    pub horizontal_release_distance: f32,
+    pub vertical_release_distance: f32,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -40,6 +43,9 @@ impl Parameters {
             percent_scale: r.f32(base + 0x368)?,
             escape_friction: r.f32(base + 0x36C)?,
             escape_speed: r.f32(base + 0x370)?,
+            lift_threshold: r.f32(base + 0x3C4)?,
+            horizontal_release_distance: r.f32(base + 0x34C)?,
+            vertical_release_distance: r.f32(base + 0x350)?,
             decrement: r.f32(base + 0x3A4)?,
             mash_decrement: r.f32(base + 0x3A8)?,
             fast_frames: r.f32(base + 0x3B0)?,
@@ -52,6 +58,8 @@ impl Parameters {
 pub struct CaptureState {
     pub timer: f32,
     pub elapsed: f32,
+    /// Paired scene Map ran before the single-fighter row consumes it.
+    pub map_prepared: bool,
     fast_remaining: f32,
     stick_directions: [i8; 2],
 }
@@ -68,6 +76,7 @@ impl CaptureState {
         Self {
             timer: gekko_math::fma::fmadds(percent, p.percent_scale, base + rank_term),
             elapsed: 0.0,
+            map_prepared: false,
             fast_remaining: 0.0,
             stick_directions: [0; 2],
         }
@@ -144,7 +153,12 @@ pub(super) fn capture_damage(
         f.motion_state.id,
         S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw
     );
-    if !thrown && !matches!(f.motion_state.id, S::CaptureWaitLw | S::CaptureDamageLw) {
+    if !thrown
+        && !matches!(
+            f.motion_state.id,
+            S::CaptureWaitLw | S::CaptureDamageLw | S::CaptureWaitHi | S::CaptureDamageHi
+        )
+    {
         unimplemented!("ftCo_8008EC90: captured damage outside low capture or throw");
     }
     f.core.physics.percent += hit.descriptor.damage;
@@ -155,7 +169,12 @@ pub(super) fn capture_damage(
     if thrown {
         return Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1));
     }
-    f.change_motion_state(S::CaptureDamageLw.into(), assets)?;
+    let state = if matches!(f.motion_state.id, S::CaptureWaitHi | S::CaptureDamageHi) {
+        S::CaptureDamageHi
+    } else {
+        S::CaptureDamageLw
+    };
+    f.change_motion_state(state.into(), assets)?;
     let MotionData::Capture(capture) = &mut f.core.state_data else {
         panic!("capture scratch missing")
     };
@@ -286,6 +305,9 @@ mod tests {
             fast_rate: 2.0,
             escape_speed: 1.0,
             escape_friction: 1.0,
+            lift_threshold: 1.0,
+            horizontal_release_distance: 1.0,
+            vertical_release_distance: 1.0,
         }
     }
 

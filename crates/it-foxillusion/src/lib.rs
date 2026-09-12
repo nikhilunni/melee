@@ -40,6 +40,10 @@ macro_rules! ghost {
                 model_pose(item, tree, copy)
             }
             const STATES: &'static [ItemStateRow] = &STATES;
+            // it_3F2F.c: both ghost kinds have a NULL picked_up callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
                 // it_8029CFF0: owner air state chooses the hitbox script.
                 item.scratch = ItemScratch::Afterimage(AfterimageState {

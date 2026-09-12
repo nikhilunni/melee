@@ -192,3 +192,88 @@ fn common_input_bones_run_shield_grab_fd_fox() {
 fn common_input_bones_run_shield_grab_fd_marth() {
     replay_bones("run_shield_grab_fd_marth", 150);
 }
+
+#[test]
+fn capture_revival_bones_rebirth_timeout_fd_fox() {
+    replay_bones("rebirth_timeout_fd_fox", 900);
+}
+
+#[test]
+fn capture_revival_bones_rebirth_timeout_fd_marth() {
+    replay_bones("rebirth_timeout_fd_marth", 900);
+}
+
+#[test]
+fn capture_revival_bones_rebirth_shield_a_fd_fox() {
+    replay_bones("rebirth_shield_a_fd_fox", 600);
+}
+
+#[test]
+fn capture_revival_bones_rebirth_analog_shield_a_fd_fox() {
+    replay_bones("rebirth_analog_shield_a_fd_fox", 600);
+}
+
+#[test]
+fn capture_revival_bones_rebirth_held_shield_a_fd_fox() {
+    replay_bones("rebirth_held_shield_a_fd_fox", 600);
+}
+
+#[test]
+fn capture_revival_bones_grab_airborne_fd_foxmarth() {
+    replay_bones("grab_airborne_fd_foxmarth", 600);
+}
+
+#[test]
+fn capture_revival_bones_grab_airborne_fd_marthfox() {
+    replay_bones("grab_airborne_fd_marthfox", 600);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_attack_fd_fox() {
+    replay_bones("ledge_cstick_attack_fd_fox", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_attack_fd_marth() {
+    replay_bones("ledge_cstick_attack_fd_marth", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_escape_fd_fox() {
+    replay_bones("ledge_cstick_escape_fd_fox", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_escape_fd_marth() {
+    replay_bones("ledge_cstick_escape_fd_marth", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_drop_fd_fox() {
+    replay_bones("ledge_cstick_drop_fd_fox", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_drop_fd_marth() {
+    replay_bones("ledge_cstick_drop_fd_marth", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_priority_fd_fox() {
+    replay_bones("ledge_cstick_priority_fd_fox", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_cstick_priority_fd_marth() {
+    replay_bones("ledge_cstick_priority_fd_marth", 300);
+}
+
+#[test]
+fn ledge_input_bones_ledge_timeout_fd_fox() {
+    replay_bones("ledge_timeout_fd_fox", 1200);
+}
+
+#[test]
+fn ledge_input_bones_ledge_timeout_fd_marth() {
+    replay_bones("ledge_timeout_fd_marth", 1200);
+}

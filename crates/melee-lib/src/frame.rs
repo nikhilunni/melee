@@ -348,8 +348,13 @@ impl Runtime {
                     grab_pairs::select(state, player)?;
                 }
                 if proc == FighterProc::Update {
-                    grab_pairs::align(state, player);
+                    grab_pairs::align(state, player)?;
                 }
+                if proc == FighterProc::Map {
+                    grab_pairs::map_capture(state, player)?;
+                }
+                let pickup_search = (proc == FighterProc::Input)
+                    .then(|| crate::scene_items::pickup_search(&state.items));
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
                     use crate::scene_fighter::with_fighter;
@@ -422,6 +427,9 @@ impl Runtime {
                             SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
                             _ => Vec3::ZERO,
                         };
+                        if let Some(search) = pickup_search {
+                            f.status.item_pickup_search = search;
+                        }
                         dispatch_fighter(
                             f,
                             proc,
@@ -464,6 +472,7 @@ impl Runtime {
                     grab_pairs::throw_input(state, player)?;
                 }
                 if proc == FighterProc::Accessories {
+                    grab_pairs::accessory(state, player)?;
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         f.update_revival_platform();
                         if f.combat.thrown_pose.is_some() {

@@ -304,8 +304,10 @@ most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**
    `.codex-runs/<name>.md`.
 3. Review the diff yourself: `cargo gate`, clippy, read the code for style.
    Codex must never commit; you commit after verification.
-4. Bit-exact tests are the guardrail. If Codex touched expected values or
-   loosened a test, reject the change.
+4. Bit-exact tests are the guardrail. Reject changes that weaken valid coverage
+   or replace retail expectations with simulator output. Diagnose failures and
+   immediately correct implementation or test defects using independent retail
+   evidence; document ownership or initialization mistakes and rerun the gates.
 5. **One Codex task at a time.** Two concurrent runs each doing cargo builds
    got the OS to kill them for memory (2026-09-08; the user's IDE holds ~14 GB).
    Codex sessions survive. To continue one, from the repo root:

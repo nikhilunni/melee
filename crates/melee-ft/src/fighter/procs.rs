@@ -58,6 +58,9 @@ impl Fighter {
         self.core.status.require_supported();
         (self.motion_row.collision)(self, state::CollisionPhase { assets: None, map })
             .expect("grounded map callback");
+        self.core
+            .skeleton
+            .set_translate(self.core.animation.root, &self.core.physics.position);
     }
     /// State-changing map dispatch, including Landing's immediate command/RNG work.
     /// The original proc_map remains the grounded API used by melee-sim M3.
@@ -78,6 +81,10 @@ impl Fighter {
                 map,
             },
         )?;
+        // Fighter_procMap publishes the final position after the collision callback.
+        self.core
+            .skeleton
+            .set_translate(self.core.animation.root, &self.core.physics.position);
         self.core.resolve_landing_effects(rng)
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
@@ -228,8 +235,14 @@ impl FighterCore {
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }
                         | super::MotionData::Down { .. }
-                ) || (usize::from(self.motion_state.action.0) >= super::COMMON_COUNT
-                    && self.combat.stale.current_move().is_some()),
+                ) || (matches!(self.state_data, super::MotionData::Cliff(_))
+                    && matches!(
+                        self.motion_state.id,
+                        melee_types::CommonMotionState::CliffAttackQuick
+                            | melee_types::CommonMotionState::CliffAttackSlow
+                    ))
+                    || (usize::from(self.motion_state.action.0) >= super::COMMON_COUNT
+                        && self.combat.stale.current_move().is_some()),
                 "attack requires attack state"
             ),
             _ => {}

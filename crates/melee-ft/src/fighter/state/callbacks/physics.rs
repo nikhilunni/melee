@@ -47,6 +47,10 @@ pub fn catch_dash(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
+/// ftCo_DamageFall_Phys (80090940), independent of mv.damage hitstun.
+pub fn damage_fall(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    fighter.damage_fall_physics(phase.assets, phase.wind);
+}
 pub fn damage(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     fighter.damage_physics(assets, map, wind)

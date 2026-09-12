@@ -59,6 +59,12 @@ pub fn tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
+/// ftCo_DamageFall_IASA (80090828), independent of the retained union owner.
+pub fn damage_fall(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    fighter
+        .damage_fall_input(phase.assets)
+        .expect("DamageFall IASA");
+}
 pub fn damage(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {

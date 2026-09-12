@@ -1,0 +1,21 @@
+name = "ledge_cstick_escape_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = -1.0, X = true } },
+  { frame = 36, port = 0, buttons = { StickX = -1.0 } },
+  { frame = 72, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 200, port = 0, buttons = {  } },
+  { frame = 230, port = 0, buttons = { CStickX = 1.0 } },
+  { frame = 260, port = 0, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

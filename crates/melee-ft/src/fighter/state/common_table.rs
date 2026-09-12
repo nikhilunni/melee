@@ -333,10 +333,10 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         action: ActionId(38),
         id: S::DamageFall,
         animation: 29,
-        anim: callbacks::animation::capture,
-        iasa: callbacks::input::damage,
-        physics: callbacks::physics::damage,
-        collision: callbacks::collision::damage,
+        anim: callbacks::animation::damage_fall,
+        iasa: callbacks::input::damage_fall,
+        physics: callbacks::physics::damage_fall,
+        collision: callbacks::collision::damage_fall,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1144,6 +1144,25 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::cliff,
         implemented: true,
     };
+    // Retail CliffClimb/Attack/Escape callbacks are shared across damage variants.
+    rows[S::CliffClimbSlow as usize] = MotionRow {
+        action: ActionId(254),
+        id: S::CliffClimbSlow,
+        animation: 219,
+        ..rows[S::CliffClimbQuick as usize]
+    };
+    rows[S::CliffAttackSlow as usize] = MotionRow {
+        action: ActionId(256),
+        id: S::CliffAttackSlow,
+        animation: 221,
+        ..rows[S::CliffClimbQuick as usize]
+    };
+    rows[S::CliffEscapeSlow as usize] = MotionRow {
+        action: ActionId(258),
+        id: S::CliffEscapeSlow,
+        animation: 223,
+        ..rows[S::CliffEscapeQuick as usize]
+    };
     // ftCo_MS_CliffJumpSlow1 = 260; ftData_MotionStateList[260].
     rows[S::CliffJumpSlow1 as usize] = MotionRow {
         action: ActionId(260),
@@ -1580,6 +1599,24 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 256,
         anim: crate::fighter::grab_escape::capture_damage_animation,
         ..rows[S::CaptureWaitLw as usize]
+    };
+    rows[S::CapturePulledHi as usize] = MotionRow {
+        action: ActionId(S::CapturePulledHi as u16),
+        id: S::CapturePulledHi,
+        animation: 251,
+        ..rows[S::CapturePulledLw as usize]
+    };
+    rows[S::CaptureWaitHi as usize] = MotionRow {
+        action: ActionId(S::CaptureWaitHi as u16),
+        id: S::CaptureWaitHi,
+        animation: 252,
+        ..rows[S::CaptureWaitLw as usize]
+    };
+    rows[S::CaptureDamageHi as usize] = MotionRow {
+        action: ActionId(S::CaptureDamageHi as u16),
+        id: S::CaptureDamageHi,
+        animation: 253,
+        ..rows[S::CaptureDamageLw as usize]
     };
     rows
 }

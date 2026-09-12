@@ -59,17 +59,17 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn align(state: &mut InitialState, player: usize) {
+pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
     // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during hitlag.
     if with_fighter!(&state.fighters[player], |f| f.status.disabled
         || f.combat.hitlag_remaining > 0.0
         || f.combat.thrown_pose.is_some())
     {
-        return;
+        return Ok(());
     }
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
     let Some(GrabLink::Captured { captor }) = link else {
-        return;
+        return Ok(());
     };
     let other = state
         .fighters
@@ -79,8 +79,9 @@ pub(super) fn align(state: &mut InitialState, player: usize) {
     let (victim, attacker) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(
         victim,
-        |v| grab::align_capture(v, a, &state.assets.fighters[player])
-    ));
+        |v| grab::align_capture(v, a, &state.assets.fighters[player], &mut state.map)
+    ))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
 
 pub(super) fn sync_wait(state: &mut InitialState, player: usize) -> Result<()> {
@@ -104,7 +105,11 @@ pub(super) fn sync_wait(state: &mut InitialState, player: usize) -> Result<()> {
         .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
         .expect("live captured fighter");
     with_fighter!(&mut state.fighters[other], |f| {
-        if f.motion_state.id == melee_types::CommonMotionState::CapturePulledLw {
+        if matches!(
+            f.motion_state.id,
+            melee_types::CommonMotionState::CapturePulledLw
+                | melee_types::CommonMotionState::CapturePulledHi
+        ) {
             grab::capture_wait(f, &state.assets.fighters[other])
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
@@ -201,7 +206,11 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
 /// CaptureWait's timer is owned by the victim; release both before overlap.
 pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
     let captor = with_fighter!(&state.fighters[player], |f| {
-        if f.motion_state.id == melee_types::CommonMotionState::CaptureWaitLw {
+        if matches!(
+            f.motion_state.id,
+            melee_types::CommonMotionState::CaptureWaitLw
+                | melee_types::CommonMotionState::CaptureWaitHi
+        ) {
             let melee_ft::fighter::MotionData::Capture(capture) = &f.state_data else {
                 panic!("capture scratch missing")
             };
@@ -233,6 +242,68 @@ pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
             &state.assets.fighters[player],
             &state.assets.fighters[other],
         )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// Map owns both fighters because counterpart entries recompute captor.x2170.
+pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()> {
+    let link = with_fighter!(&state.fighters[player], |f| {
+        if f.status.disabled || f.combat.thrown_pose.is_some() {
+            None
+        } else {
+            f.combat.grab
+        }
+    });
+    let Some(GrabLink::Captured { captor }) = link else {
+        return Ok(());
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .expect("live captor");
+    let (victim, attacker) = pair(&mut state.fighters, player, other);
+    with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+        grab::map_capture(v, a, &state.assets.fighters[player], &mut state.map, true)
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// fn_800DA190 / DA4A0 / DA678: holding-state accessory alignment.
+pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
+    let victim = with_fighter!(&state.fighters[player], |f| {
+        if f.status.disabled
+            || f.combat.hitlag_remaining > 0.0
+            || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch)
+        {
+            None
+        } else if let Some(GrabLink::Holding { victim, .. }) = f.combat.grab {
+            Some(victim)
+        } else {
+            None
+        }
+    });
+    let Some(victim) = victim else {
+        return Ok(());
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
+        .expect("live capture accessory victim");
+    let (attacker, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+        if grab::capture_accessory(v, a, &state.assets.fighters[other]) {
+            melee_ft::fighter::grab_escape::release(
+                v,
+                a,
+                &state.assets.fighters[other],
+                &state.assets.fighters[player],
+            )
+        } else {
+            Ok(())
+        }
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
