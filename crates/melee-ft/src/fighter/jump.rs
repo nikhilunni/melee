@@ -113,6 +113,16 @@ impl Fighter {
         });
         Ok(())
     }
+    /// ftCo_800CB870 (800CB870), item-free aerial jump check and entry.
+    /// Specials use the same button/tap predicate and character jump hook.
+    pub fn try_aerial_jump(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if !self.aerial_jump_requested(assets) {
+            return Ok(false);
+        }
+        self.enter_aerial_jump(assets)?;
+        Ok(true)
+    }
+
     /// ftCo_JumpAerial.c:103-119 character dispatch, then
     /// ftCo_JumpAerial_Enter_Basic (800CBBC0) -> ftCo_800CBAC4 for the
     /// default arm. Characters with their own double jump override

@@ -6,6 +6,16 @@ use melee_coll::hitbox::CapsulePhase;
 use melee_ft::fighter::{Fighter, MotionData};
 use std::{fs, path::Path};
 
+const REFLECTOR_INPUT_SCENARIOS: [&str; 7] = [
+    "reflectorturn_fd_fox",
+    "reflectorturn_release_fd_fox",
+    "airreflectorturn_fd_fox",
+    "airreflectorturn_priority_fd_fox",
+    "airreflectorturn_landing_fd_fox",
+    "airreflectorjc_fd_fox",
+    "airreflectortapjc_fd_fox",
+];
+
 fn word(bytes: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }
@@ -167,6 +177,44 @@ fn replay_scratch_until(name: &str, ticks: usize) {
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
                 compare(f, &bytes);
+                if slot == 1 && REFLECTOR_INPUT_SCENARIOS.contains(&name) {
+                    assert_eq!(f.physics.jumps_used, bytes[0x1968], "jump count at {tick}");
+                    if (360..=369).contains(&f.motion_state.action.0) {
+                        let reflector = &f.character.get::<ft_fox::init::Fox>().special_lw;
+                        assert_eq!(
+                            reflector.release_lag as u32,
+                            word(&bytes, 0x2340),
+                            "release lag at {tick}"
+                        );
+                        assert_eq!(
+                            reflector.released,
+                            word(&bytes, 0x2348) != 0,
+                            "release latch at {tick}"
+                        );
+                        assert_eq!(
+                            reflector.gravity_delay as u32,
+                            word(&bytes, 0x234C),
+                            "gravity delay at {tick}"
+                        );
+                        assert_eq!(
+                            reflector.reflector.is_some(),
+                            bytes[0x2218] & 0x10 != 0,
+                            "reflection active at {tick}"
+                        );
+                        if matches!(f.motion_state.action.0, 364 | 369) {
+                            assert_eq!(
+                                reflector.turn_frames as u32,
+                                word(&bytes, 0x2344),
+                                "turn countdown at {tick}"
+                            );
+                            assert_eq!(
+                                f.commands.variables[0],
+                                word(&bytes, 0x2200),
+                                "turn latch at {tick}"
+                            );
+                        }
+                    }
+                }
                 if slot == 0 && name.starts_with("aircounter_") {
                     assert_eq!(
                         f.physics.jumps_used, bytes[0x1968],
@@ -299,4 +347,48 @@ fn aerial_counter_hit_and_landing_match_retail_scratch() {
     replay_scratch("aircounter_landing_fd_marth");
     replay_scratch("aircounter_hit_fd_marth");
     replay_scratch("aircounter_fall_fd_marth");
+}
+
+#[test]
+fn reflector_input_matches_retail_scratch() {
+    for name in REFLECTOR_INPUT_SCENARIOS {
+        replay_scratch(name);
+    }
+}
+
+#[test]
+fn reflector_turn_root_rotation_matches_retail_bits() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for (name, ticks) in [
+        ("reflectorturn_fd_fox", 80),
+        ("airreflectorturn_fd_fox", 80),
+        ("airreflectorturn_landing_fd_fox", 110),
+    ] {
+        let scenario =
+            Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
+        let path = scenario.trace_path("bones.jsonl");
+        if !melee_test_support::require_files(
+            scenario.required_files().into_iter().chain([path.clone()]),
+        ) {
+            return;
+        }
+        let mut simulation = super::TestSimulation::with_inputs(
+            InitialState::from_savestate_traces(&scenario).unwrap(),
+            crate::trace::pad_script(&scenario).unwrap(),
+        );
+        let bones = fs::read_to_string(path).unwrap();
+        assert_eq!(bones.lines().count(), ticks);
+        for (tick, line) in bones.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"].as_u64(), Some(tick as u64));
+            simulation.tick().unwrap();
+            let expected = row["state"]["p1.bone[0].rotate[1]"]["v"]["bits"]
+                .as_u64()
+                .unwrap() as u32;
+            crate::scene_fighter::with_fighter!(&simulation.runtime.state.fighters[1], |fighter| {
+                let rotation = fighter.skeleton.rotation_y(fighter.animation.root);
+                assert_eq!(rotation.to_bits(), expected, "{name} root Y at {tick}");
+            });
+        }
+    }
 }

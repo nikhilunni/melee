@@ -845,3 +845,38 @@ fn hitstun_shield_priority_fd_marth_300_ticks_and_ordered_particle_draws() {
 fn hitstun_unbuffered_attack_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("hitstun_unbuffered_attack_fd_marth");
 }
+
+#[test]
+fn reflectorturn_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("reflectorturn_fd_fox");
+}
+
+#[test]
+fn reflectorturn_release_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("reflectorturn_release_fd_fox");
+}
+
+#[test]
+fn airreflectorturn_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflectorturn_fd_fox");
+}
+
+#[test]
+fn airreflectorturn_priority_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflectorturn_priority_fd_fox");
+}
+
+#[test]
+fn airreflectorjc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflectorjc_fd_fox");
+}
+
+#[test]
+fn airreflectortapjc_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflectortapjc_fd_fox");
+}
+
+#[test]
+fn airreflectorturn_landing_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("airreflectorturn_landing_fd_fox");
+}

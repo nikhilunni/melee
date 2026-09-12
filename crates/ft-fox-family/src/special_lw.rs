@@ -10,8 +10,8 @@ use melee_ft::{
     desc::fox_attributes::ReflectionAttributes,
     fighter::{
         assets::{FighterAssets, Result},
-        state::{self, callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
-        Fighter, MotionRow,
+        state::{callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
+        Fighter, MotionPreservation, MotionRow,
     },
     input::{Buttons, WaitContext, WaitPredicate, WaitTransition},
     physics::airborne,
@@ -73,10 +73,6 @@ pub fn reflection_reaction(airborne: bool, direction: f32) -> ReflectReaction {
 }
 
 pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
-    let mut turn = state::unimplemented_row();
-    turn.action = melee_ft::fighter::ActionId(S::SpecialLwTurn as u16);
-    let mut air_turn = state::unimplemented_row();
-    air_turn.action = melee_ft::fighter::ActionId(S::SpecialAirLwTurn as u16);
     [
         row(
             S::SpecialLwStart,
@@ -110,7 +106,14 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             callbacks::physics::guard_on,
             ground_collision,
         ),
-        turn,
+        row(
+            S::SpecialLwTurn,
+            314,
+            turn::<C>,
+            no_input,
+            callbacks::physics::guard_on,
+            ground_collision,
+        ),
         row(
             S::SpecialAirLwStart,
             317,
@@ -143,7 +146,14 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             air_physics::<C>,
             air_collision::<C>,
         ),
-        air_turn,
+        row(
+            S::SpecialAirLwTurn,
+            318,
+            turn::<C>,
+            no_input,
+            air_physics::<C>,
+            turn_air_collision,
+        ),
     ]
 }
 fn no_input(_: &mut Fighter, _: InputPhase<'_>) {}
@@ -273,6 +283,64 @@ fn end<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<Wa
     }
     Ok(None)
 }
+/// ftFx_SpecialLw_Turn (800E8F20), also inlined in both Turn Anim callbacks.
+fn advance_turn<C: FoxFamily>(f: &mut Fighter) {
+    let duration = f.character.get::<C>().attributes().reflector.turn_frames;
+    let remaining = {
+        let scratch = f.character.get_mut::<C>().special_lw();
+        scratch.turn_frames -= 1;
+        scratch.turn_frames
+    };
+    if f.commands.variables[0] == 0 && remaining as f32 <= duration {
+        f.commands.variables[0] = 1;
+        f.physics.facing = -f.physics.facing;
+    }
+    let root = f.animation.root;
+    // ftPartGetRotZ (80075F48) actually reads rotation Y in both branches.
+    let previous = f.skeleton.rotation_y(root);
+    // retail 800E8FB8 fdivs, 800E8FBC fnmsubs; @415 is float PI/180.
+    let rotation = gekko_math::fma::fnmsubs(0.017453292, 180.0 / duration, previous);
+    f.skeleton.set_rotation_y(root, rotation);
+}
+
+/// ftFx_SpecialLwTurn_Check (800E942C): KeepGfx and the existing reflector.
+fn enter_turn<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    let owned = f.effect_state.destroy_on_state_change;
+    f.effect_state.destroy_on_state_change = false;
+    f.change_motion_state(
+        (if f.physics.ground_or_air == GroundOrAir::Air {
+            S::SpecialAirLwTurn
+        } else {
+            S::SpecialLwTurn
+        })
+        .into(),
+        assets,
+    )?;
+    f.effect_state.destroy_on_state_change = owned;
+    let duration = f.character.get::<C>().attributes().reflector.turn_frames;
+    f.character.get_mut::<C>().special_lw().turn_frames = gekko_math::msl::fctiwz(duration);
+    f.commands.variables[0] = 0;
+    advance_turn::<C>(f);
+    f.character.get_mut::<C>().special_lw().pending_effect = Some(0x488);
+    Ok(())
+}
+
+/// ftFx_SpecialLwTurn_Anim / SpecialAirLwTurn_Anim (800E8FDC / 800E90EC).
+fn turn<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    f.step_animation(p.assets);
+    let release = released::<C>(f, true);
+    advance_turn::<C>(f);
+    if f.character.get_mut::<C>().special_lw().turn_frames <= 0 {
+        // ftFx_SpecialLwHit_Check (800E9564): Loop retains its existing effect.
+        if release {
+            enter_end::<C>(f, p.assets)?;
+        } else {
+            enter_loop::<C>(f, p.assets)?;
+        }
+    }
+    Ok(None)
+}
+
 fn start_input(f: &mut Fighter, p: InputPhase<'_>) {
     if f.input.current.stick.y <= -p.assets.movement.platform_drop_threshold
         && i32::from(f.input.vertical.tilt) < p.assets.movement.platform_drop_window
@@ -289,7 +357,8 @@ fn loop_input<C: FoxFamily>(f: &mut Fighter, p: InputPhase<'_>) {
     if melee_ft::input::iasa::evaluate(WaitPredicate::Turn, &f.input, &p.assets.input, &context)
         == WaitTransition::Turn
     {
-        unimplemented!("ftFx_SpecialLwTurn_Check: reflector turn");
+        enter_turn::<C>(f, p.assets).expect("Reflector turn");
+        return;
     }
     if f.physics.ground_or_air == GroundOrAir::Ground {
         if melee_ft::input::human::jump_input(&f.input, &p.assets.input) {
@@ -298,10 +367,11 @@ fn loop_input<C: FoxFamily>(f: &mut Fighter, p: InputPhase<'_>) {
         } else {
             start_input(f, p);
         }
-    } else if f.input.pressed.intersects(Buttons::XY)
-        && i32::from(f.physics.jumps_used) < f.attributes.jumping.max_jumps
+    } else if f
+        .try_aerial_jump(p.assets)
+        .expect("Reflector aerial jump cancel")
     {
-        unimplemented!("ftFx_SpecialAirLwLoop_IASA: aerial jump cancel");
+        f.character.get_mut::<C>().special_lw().reflector = None;
     }
 }
 fn air_physics<C: FoxFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
@@ -327,6 +397,41 @@ fn ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     }
     Ok(())
 }
+/// ftFx_SpecialAirLwTurn_Coll / GroundToAir (800E92E8 / 800E93A4):
+/// land with the current turn frame, effect and reflector descriptor intact.
+fn turn_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    use melee_ft::collision::air;
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    if air::collide_air_dodge(
+        &mut c.physics,
+        &mut c.collision,
+        p.map,
+        &mut c.skeleton,
+        c.animation.root,
+    ) {
+        f.land();
+        // retail 800E93DC: 0x0C4C5082, common counterpart flags + KeepGfx.
+        // Unlike Counter, this does not preserve hitboxes or hit status.
+        f.change_ground_air_motion(
+            S::SpecialLwTurn.into(),
+            p.assets.expect("Reflector turn landing assets"),
+            MotionPreservation {
+                effects: true,
+                ..Default::default()
+            },
+        )?;
+        let maximum = f.attributes.air.air_drift_max;
+        f.physics.self_velocity.x = f.physics.self_velocity.x.clamp(-maximum, maximum);
+    }
+    Ok(())
+}
+
 fn air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     let c = &mut f.core;
     melee_ft::collision::air::begin_map(
@@ -395,9 +500,12 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _: &FighterAssets) {
         .pending_effect
         .take()
     {
-        // Retail uses literal joint slot HipN (4), not ftParts_GetBoneIndex here.
-        f.effects.push(EffectRequest::SyncAttached { id, bone: 4 });
-        f.effect_state.destroy_on_state_change = true;
+        // ftFx_SpecialLw_Create*GFX: KeepGfx turns retain the live effect.
+        if !f.effect_state.destroy_on_state_change {
+            // Retail uses literal HipN slot 4, not ftParts_GetBoneIndex.
+            f.effects.push(EffectRequest::SyncAttached { id, bone: 4 });
+            f.effect_state.destroy_on_state_change = true;
+        }
     }
 }
 

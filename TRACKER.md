@@ -48,6 +48,15 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [x] Reflector input (2026-09-11): turn rows, release and turn/jump priority,
+  button/tap aerial jump cancel and preserved turn landing. Acceptance: seven
+  `reflector*turn*`/`airreflector*jc`
+  300-tick fighter/ordered-particle gates, raw scratch and root-Y bone checks,
+  zero allocations, full debug/release gates and clippy. Retail source/ASM and
+  captures verified. Both full profiles: 1,223 passed, 0 failed, 3 existing
+  ignores; clippy, 220 harness tests and native smoke/replay (232 ticks) pass.
+  See `docs/PORT_NOTES/REFLECTOR_INPUT.md`.
+
 - [x] Post-hitstun aerial input (2026-09-11): missing Attack entry, ordinary
   damage versus tumble air-dodge priority, and air-dodge knockback decay.
   Acceptance: seven `hitstun_*` 300-tick fighter/ordered-particle gates,
@@ -563,3 +572,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-11 (rendering integration): completed and committed shared material/background animation, perspective/MSAA, held weapons, model effects, mip filtering, two Illusion afterimages, specialized particles and planar shadows. Final native and Metal checks pass; focused tests and allocation gates pass; workspace clippy clean. No game data or decomp modifications.
 
 - 2026-09-11 (screenshot comparison): fixed transformed light paths, the camera-facing central glow and material lighting order. Verified same-frame Metal previews, debug/release capture checks, zero allocations, numeric shaders, workspace clippy and native smoke; committed without game-data or decomp changes.
+
+- 2026-09-11 (Reflector input): seven new exact scenarios cover turn, release, priority, aerial button/tap jump cancel and turn landing; raw scratch and root-Y rotation checks pass. Both workspace profiles 1,223/0, clippy and 220 harness tests green; native smoke/exported replay passed at 232 ticks. Stripped simulator changed 3,926,672 -> 3,926,784 bytes (+112); no new full performance claim. Next: captured jump-squat up-special gap.

@@ -317,3 +317,14 @@ fn post_hitstun_allocation_budget() {
     allocation_budget("hitstun_shield_priority_fd_marth", 0);
     allocation_budget("hitstun_unbuffered_attack_fd_marth", 0);
 }
+
+#[test]
+fn reflector_input_allocation_budget() {
+    allocation_budget("airreflectorturn_landing_fd_fox", 0);
+    allocation_budget("reflectorturn_fd_fox", 0);
+    allocation_budget("reflectorturn_release_fd_fox", 0);
+    allocation_budget("airreflectorturn_fd_fox", 0);
+    allocation_budget("airreflectorturn_priority_fd_fox", 0);
+    allocation_budget("airreflectorjc_fd_fox", 0);
+    allocation_budget("airreflectortapjc_fd_fox", 0);
+}

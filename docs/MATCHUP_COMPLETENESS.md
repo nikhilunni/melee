@@ -61,7 +61,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | --- | --- | --- |
 | Laser contacts | Ordinary shield, lightshield, airborne hit and grazing deflection implemented in the first packet; projectile reflection and item phantom contact remain unsupported | Powershield, shield depletion and phantom contact |
 | Marth Counter | Aerial entry, hit/miss, landing and offstage completion implemented and gated; counterpart transitions source-audited | Deliberate support loss during both phases; projectile contacts |
-| Fox Reflector | `ft-fox-family/src/special_lw.rs`: turn, aerial jump cancel and ground-to-air panics | Facing changes, held/released input, jump cancellation and edge departure |
+| Fox Reflector | Turn, button/tap aerial jump cancel and preserved turn landing implemented; seven directed gates pass | Remaining phase preservation and edge departures; `PORT_NOTES/REFLECTOR_INPUT.md` |
 | Fox recovery | `ft-fox-family/src/special_hi.rs`, `special_s.rs`: preserved air/ground and recovery transitions panic | Charge/launch landing, floor-directed launch, rebound and lost support |
 | Shared contacts | `melee-ft/src/fighter/damage.rs`: phantom, invincible and simultaneous contact branches panic | Retail reachability and contact-order fixtures for this matchup |
 | Shield exits | `melee-ft/src/fighter/shield.rs`: grab out of shield, delayed powershield and projectile reflection panic | Standing/dash grab exits, shield timing and laser reflection |

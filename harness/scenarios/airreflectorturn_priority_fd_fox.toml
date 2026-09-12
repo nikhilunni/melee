@@ -1,0 +1,26 @@
+# Fox Reflector turn or aerial jump cancel; P1 Marth idle, P2 Fox scripted.
+name = "airreflectorturn_priority_fd_fox"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, port = 1, buttons = { X = true } },
+  { frame = 32, port = 1, buttons = {  } },
+  { frame = 44, port = 1, buttons = { StickY = -1.0, B = true } },
+  { frame = 47, port = 1, buttons = { B = true } },
+  { frame = 54, port = 1, buttons = { StickX = 1.0, X = true, B = true } },
+  { frame = 56, port = 1, buttons = { B = true } },
+  { frame = 80, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
