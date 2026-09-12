@@ -415,12 +415,14 @@ impl Runtime {
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
                             f.detect_item_hit(item, &assets.fighters[player])
                         });
-                        if let Some(damage) = hit {
-                            if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
-                                state.fighters[owner].combat.stale.record_attack(attack);
+                        if let Some(contact) = hit {
+                            if contact.logged_damage {
+                                if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
+                                    state.fighters[owner].combat.stale.record_attack(attack);
+                                }
                             }
                             // ftColl_80077C60 records contact; Item_8026A294 runs the callback at link 14.
-                            item.record_damage_dealt(damage);
+                            item.record_damage_dealt(contact.damage);
                         }
                     }
                 }

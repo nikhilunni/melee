@@ -1466,13 +1466,20 @@ pub(super) fn apply_directional_influence(
     velocity.y = speed * sinf(angle);
 }
 
+/// Item contact response is independent of whether the victim logged damage.
+#[derive(Clone, Copy, Debug)]
+pub struct ItemHurtContact {
+    pub damage: f32,
+    pub logged_damage: bool,
+}
+
 impl Fighter {
     /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
     pub fn detect_item_hit(
         &mut self,
         item: &mut melee_it::ItemCore,
         assets: &FighterAssets,
-    ) -> Option<f32> {
+    ) -> Option<ItemHurtContact> {
         if item.owner == Some(self.player.id)
             || item.destroyed
             || self.status.disabled
@@ -1559,6 +1566,21 @@ impl Fighter {
             ) {
                 descriptor.damage *= assets.damage.captured_item_damage_scale;
             }
+            if self.status.revival_invincibility != 0 {
+                melee_coll::detection::record_victim(
+                    &mut item.hitboxes,
+                    descriptor.group,
+                    self.spawn_number,
+                );
+                self.effects
+                    .push(melee_ef::request::EffectRequest::ShieldSpark {
+                        position: contact.position,
+                    });
+                return Some(ItemHurtContact {
+                    damage: descriptor.damage,
+                    logged_damage: false,
+                });
+            }
             let knockback = assets.damage.knockback_with_damage(
                 &descriptor,
                 self.physics.percent,
@@ -1605,7 +1627,10 @@ impl Fighter {
                         });
                 }
             }
-            return Some(descriptor.damage);
+            return Some(ItemHurtContact {
+                damage: descriptor.damage,
+                logged_damage: true,
+            });
         }
         None
     }

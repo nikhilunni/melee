@@ -532,3 +532,8 @@ fn air_capture_release_air_cut() {
 fn air_capture_release_air_jump() {
     allocation_budget("capture_edge_fox_air_up_release_candidate", 0);
 }
+
+#[test]
+fn revival_laser_invincibility() {
+    allocation_budget("revival_laser_fd_marth_candidate", 0);
+}

@@ -59,7 +59,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 
 | Area | Evidence | Next packet |
 | --- | --- | --- |
-| Laser contacts | Ordinary shield, lightshield, airborne hit, grazing deflection, fresh/delayed/return/stale reflection and powershield are implemented; four reflection recordings pass both full profiles | Item phantom contact and remaining shield depletion combinations; [reflection notes](PORT_NOTES/LASER_REFLECTION.md) |
+| Laser contacts | Ordinary shield, lightshield, airborne hit, grazing deflection, fresh/delayed/return/stale reflection and powershield are implemented; four reflection recordings and a 600-tick revival-invincibility contact pass both full profiles; [revival notes](PORT_NOTES/REVIVAL_LASER.md) | Item phantom contact and remaining shield depletion combinations; [reflection notes](PORT_NOTES/LASER_REFLECTION.md) |
 | Marth Counter | Aerial entry, hit/miss, landing and offstage completion implemented and gated; counterpart transitions source-audited | Deliberate support loss during both phases; projectile contacts |
 | Fox Reflector | Turn, button/tap aerial jump cancel and preserved turn landing implemented; seven directed gates pass | Remaining phase preservation and edge departures; `PORT_NOTES/REFLECTOR_INPUT.md` |
 | Fox recovery | Five counterpart/rebound witnesses pass both full workspace gates. Two additional charge/travel contact recordings pass state, RNG, particle, bone, allocation and both full workspace gates ([contact notes](PORT_NOTES/FIRE_CONTACT.md)). See [recovery notes](PORT_NOTES/RECOVERY_COLLISIONS.md). | Remaining travel landing, charge/ending departure and wall/ledge combinations |

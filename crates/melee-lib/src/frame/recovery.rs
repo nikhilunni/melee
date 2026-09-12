@@ -502,3 +502,13 @@ fn air_capture_release_particle_fields() {
         "capture_edge_fox_air_up_release_candidate",
     ]);
 }
+
+#[test]
+fn revival_laser_invincibility() {
+    replay_bones("revival_laser_fd_marth_candidate", 600);
+}
+
+#[test]
+fn revival_laser_invincibility_particles() {
+    replay_particle_fields(&["revival_laser_fd_marth_candidate"]);
+}

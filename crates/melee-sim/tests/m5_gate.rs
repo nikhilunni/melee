@@ -1331,3 +1331,8 @@ fn air_capture_release_air_cut() {
 fn air_capture_release_air_jump() {
     combat_gate_ticks("capture_edge_fox_air_up_release_candidate", 450);
 }
+
+#[test]
+fn revival_laser_invincibility() {
+    combat_gate_ticks("revival_laser_fd_marth_candidate", 600);
+}

@@ -746,7 +746,17 @@ Newest first. One line per session: date, what landed, what is next.
   225 harness tests,formatting,native build pass. Stripped3,995,872 (+432),
   census20 local/100 cross-crate; existing size/time ceilings remain red. Report:
   `docs/PORT_NOTES/CAPTURE_RELEASE.md`.
-- [~] Next contact packet: a600-tick revival-laser recording witnesses contact
-  without damage or hitlag. Natural timed-stock and Sudden Death fixtures plus
-  clock/scene diagnostics are captured; camera, timer/scene flow and Sudden Death
-  Bob-ombs remain implementation work. Keep breadth paused.
+- [x] (2026-09-12) Revival-laser contact: a 600-tick retail recording verifies
+  contact response without damage, hitlag or attacker staling during revival
+  invincibility. Five directed checks and both full profiles pass: 1,443 tests,
+  zero failures, one existing ignore. All-target Clippy, formatting, 225 harness
+  tests and native macOS build pass. Stripped size remains 3,995,872 bytes;
+  census remains 20 local/100 cross-crate; load 185.969 ms, ticks 26.359 ms.
+  Existing size/time ceilings remain red and unchanged. Report:
+  `docs/PORT_NOTES/REVIVAL_LASER.md`.
+- [ ] Paused at the user's requested revival-laser commit boundary. Next:
+  DamageFlyRoll (three recordings captured; source draft unapplied), remaining
+  contact/Reflector gaps, camera, timer/scene flow and Sudden Death Bob-ombs.
+  The fixed 48-case robustness corpus now has 20 match finishes, 17 full
+  6,000-tick runs and 11 faults; it is not an exactness oracle. Natural timed
+  fixtures and clock/scene diagnostics are captured. No breadth work started.

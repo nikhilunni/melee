@@ -246,8 +246,25 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 if name.starts_with("ledge_cstick_") || name.starts_with("ledge_timeout_") {
                     compare_ledge_input(f, &bytes, tick);
                 }
-                if name.starts_with("rebirth_") || name.starts_with("grab_airborne_") {
+                if name.starts_with("rebirth_")
+                    || name.starts_with("grab_airborne_")
+                    || name == "revival_laser_fd_marth_candidate"
+                {
                     compare_capture_revival(f, &bytes, tick);
+                }
+                if name == "revival_laser_fd_marth_candidate" && slot == 1 {
+                    // ftColl_80077C60 does not call plStale for an invincible receiver.
+                    assert_eq!(
+                        f.combat
+                            .stale
+                            .multiplier_for(
+                                Some(melee_types::combat::StaleMove::SpecialNeutral),
+                                &runtime.state.assets.fighters[slot].stale_weights,
+                            )
+                            .to_bits(),
+                        1.0_f32.to_bits(),
+                        "invincible laser must not stale tick {tick}"
+                    );
                 }
                 if slot == 1
                     && (name.starts_with("firefox_") || name == "illusion_start_landing_fd_fox")
@@ -1079,4 +1096,9 @@ fn air_capture_release_matches_owned_scratch() {
     for name in AIR_RELEASE_SCENARIOS {
         replay_scratch_until(name, 450);
     }
+}
+
+#[test]
+fn revival_laser_invincibility() {
+    replay_scratch_until("revival_laser_fd_marth_candidate", 600);
 }
