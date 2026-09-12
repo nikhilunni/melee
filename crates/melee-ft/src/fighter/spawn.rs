@@ -13,6 +13,7 @@ struct MotionChange<'a> {
     source: Option<super::grab_throw::ThrowSource<'a>>,
     ground_air: bool,
     update_commands: bool,
+    skip_animation: bool,
     /// fn_800DE798: restore the release owner after reset, before initial commands.
     throw_owner: Option<u32>,
     preserve: MotionPreservation,
@@ -319,6 +320,28 @@ impl Fighter {
         )
     }
 
+    /// ftCo_8009388C: SkipAnim | KeepGfx resumes the incoming animation clock.
+    pub(super) fn change_motion_without_animation(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start: self.animation.frame,
+                rate: 1.0,
+                skip_animation: true,
+                preserve: MotionPreservation {
+                    effects: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+    }
+
     /// Borrow a throw animation/script while preserving ordinary row selection.
     pub(super) fn change_motion_state_with_source(
         &mut self,
@@ -400,7 +423,8 @@ impl Fighter {
         if !animate {
             return Ok(());
         }
-        if state == CommonMotionState::Guard
+        if change.skip_animation
+            || state == CommonMotionState::Guard
             || (!self.character.animated_shield()
                 && matches!(
                     state,
@@ -409,6 +433,8 @@ impl Fighter {
         {
             // Ft_MF_SkipAnim, fighter.c:1349-1361: clear AObjs and script.
             self.core.clear_animation();
+            // Fighter_ChangeMotionState80069C0C: fsubs, also for SkipAnim.
+            self.core.animation.frame = change.start - change.rate;
             return Ok(());
         }
         self.core
@@ -749,6 +775,7 @@ impl FighterCore {
             source,
             ..
         } = change;
+        let exit_joint = self.animation.flags.blend_exit_joint();
         let had_root_motion = self.animation.flags.contains(
             crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
         );
@@ -802,6 +829,21 @@ impl FighterCore {
         // ftAnim_8006EBA4 tick (ftanim.c:380-385), not again on motion entry.
         self.animation
             .advance_main::<RetailTrig>(&mut self.skeleton);
+        // Fighter_ChangeMotionState80069EE0..80069FAC: a departing motion
+        // may request one joint to bypass the incoming animation blend.
+        let blend_frames = source.map_or(assets.motions[&animation_id].blend_frames, |source| {
+            source.motion.blend_frames
+        });
+        if exit_joint != 0 && blend_frames != 0.0 {
+            let joint = self.animation.parts[usize::from(exit_joint)].joint;
+            let pose = self.animation.blend_tree.get(joint);
+            let translation = pose.translate;
+            let rotation = pose.rotate;
+            self.skeleton.set_translate(joint, &translation);
+            self.skeleton.set_rotation(joint, &rotation);
+            self.skeleton
+                .clear_flags(joint, hsd_anim::jobj::JOBJ_USE_QUATERNION);
+        }
         // fighter.c:1309-1317: discard frame-zero extracted velocity.
         if start == 0.0
             && self

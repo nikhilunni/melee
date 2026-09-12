@@ -23,6 +23,7 @@ pub struct JumpParameters {
 pub enum JumpInput {
     Stick,
     Buttons,
+    CStick,
 }
 /// Fighter.mv.co.kneebend, +2340/+2344.
 #[derive(Clone, Debug)]
@@ -67,6 +68,15 @@ impl Fighter {
         } else {
             unimplemented!("ftCo_Jump.c:69-98: relaxed/C-stick jump entry")
         };
+        self.enter_knee_bend_with_input(assets, input)
+    }
+    /// ftCo_KneeBend_Enter (800CB4E0) takes an explicit input source from
+    /// ftCo_800CB024 so C-stick release controls its short-hop decision.
+    pub(super) fn enter_knee_bend_with_input(
+        &mut self,
+        assets: &FighterAssets,
+        input: JumpInput,
+    ) -> Result<()> {
         self.core.state_data = MotionData::KneeBend(KneeBendState {
             short_hop: false,
             input,
@@ -236,6 +246,9 @@ impl Fighter {
         squat.short_hop |= match squat.input {
             JumpInput::Buttons => !self.core.input.current.held.intersects(Buttons::XY),
             JumpInput::Stick => self.core.input.current.stick.y < assets.jumping.release_threshold,
+            JumpInput::CStick => {
+                self.core.input.current.cstick.y < assets.jumping.release_threshold
+            }
         };
         Ok(())
     }

@@ -1007,3 +1007,123 @@ fn firefox_floor_rebound_fd_fox_300_ticks_and_ordered_particle_draws() {
 fn firefox_end_air_landing_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("firefox_end_air_landing_fd_fox");
 }
+
+#[test]
+fn common_input_taunt_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("taunt_fd_fox");
+}
+
+#[test]
+fn common_input_taunt_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("taunt_fd_marth");
+}
+
+#[test]
+fn common_input_dash_escape_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("dash_escape_fd_fox");
+}
+
+#[test]
+fn common_input_dash_escape_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("dash_escape_fd_marth");
+}
+
+#[test]
+fn common_input_dash_shield_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("dash_shield_fd_fox");
+}
+
+#[test]
+fn common_input_dash_shield_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("dash_shield_fd_marth");
+}
+
+#[test]
+fn common_input_dash_taunt_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("dash_taunt_fd_fox");
+}
+
+#[test]
+fn common_input_dash_taunt_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("dash_taunt_fd_marth");
+}
+
+#[test]
+fn common_input_dash_late_shield_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("dash_late_shield_fd_fox");
+}
+
+#[test]
+fn common_input_dash_late_shield_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("dash_late_shield_fd_marth");
+}
+
+#[test]
+fn common_input_shield_grab_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("shield_grab_fd_fox");
+}
+
+#[test]
+fn common_input_shield_grab_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("shield_grab_fd_marth");
+}
+
+#[test]
+fn common_input_dash_late_shield_grab_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("dash_late_shield_grab_fd_fox");
+}
+
+#[test]
+fn common_input_dash_late_shield_grab_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("dash_late_shield_grab_fd_marth");
+}
+
+#[test]
+fn common_input_shield_cstick_jump_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("shield_cstick_jump_fd_fox");
+}
+
+#[test]
+fn common_input_shield_cstick_jump_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("shield_cstick_jump_fd_marth");
+}
+
+#[test]
+fn common_input_shield_delayed_power_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("shield_delayed_power_fd_fox");
+}
+
+#[test]
+fn common_input_shield_delayed_power_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("shield_delayed_power_fd_marth");
+}
+
+#[test]
+fn common_input_run_shield_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("run_shield_fd_fox");
+}
+
+#[test]
+fn common_input_run_shield_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("run_shield_fd_marth");
+}
+
+#[test]
+fn common_input_run_taunt_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("run_taunt_fd_fox");
+}
+
+#[test]
+fn common_input_run_taunt_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("run_taunt_fd_marth");
+}
+
+#[test]
+fn common_input_run_shield_grab_fd_fox_300_ticks_and_ordered_particles() {
+    combat_gate("run_shield_grab_fd_fox");
+}
+
+#[test]
+fn common_input_run_shield_grab_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("run_shield_grab_fd_marth");
+}

@@ -1,0 +1,21 @@
+# Directed retail taunt witness.
+name = "taunt_fd_fox"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, port = 1, buttons = { Up = true } },
+  { frame = 32, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

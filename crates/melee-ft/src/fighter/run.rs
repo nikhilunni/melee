@@ -61,12 +61,17 @@ impl Fighter {
         if self.core.input.pressed.intersects(crate::input::Buttons::A) {
             return self.enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
         }
-        self.reject_running_actions(
-            assets,
-            context,
-            &[P::Shield, P::Taunt],
-            "ftCo_Run.c:133-140",
-        );
+        use crate::input::WaitTransition as T;
+        let transition = self.first_ground_transition(assets, context, &[P::Shield, P::Taunt]);
+        if transition == T::Shield {
+            self.enter_shield(assets)?;
+            self.guard().dash_item_throw_frames = assets.running.shield_item_throw_frames;
+            self.guard().grab_delay = gekko_math::msl::fctiwz(assets.running.shield_grab_delay);
+            return Ok(());
+        }
+        if transition == T::Taunt {
+            return self.apply_ground_transition(assets, transition);
+        }
         if self.try_running_jump(assets)? {
             return Ok(());
         }

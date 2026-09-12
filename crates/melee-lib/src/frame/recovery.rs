@@ -56,36 +56,139 @@ fn compare(fighter: &Fighter, expected: &Value, player: usize, tick: usize) -> u
 
 #[test]
 fn recovery_collisions_match_all_local_bone_transforms() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     for name in SCENARIOS {
-        let scenario =
-            Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
-        let path = scenario.trace_path("bones.jsonl");
-        if !melee_test_support::require_files(
-            scenario.required_files().into_iter().chain([path.clone()]),
-        ) {
-            return;
-        }
-        let initial = InitialState::from_savestate_traces(&scenario).unwrap();
-        let mut simulation = super::TestSimulation::with_inputs(
-            initial,
-            crate::trace::pad_script(&scenario).unwrap(),
-        );
-        let bones = fs::read_to_string(path).unwrap();
-        assert_eq!(bones.lines().count(), 150);
-        for (tick, line) in bones.lines().enumerate() {
-            let row: Value = serde_json::from_str(line).unwrap();
-            assert_eq!(row["frame"].as_u64(), Some(tick as u64));
-            simulation.tick().unwrap();
-            for (player, fighter) in simulation.runtime.state.fighters.iter().enumerate() {
-                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    compare(&fighter.0, &row, player, tick)
-                }));
-                assert!(
-                    result.is_ok(),
-                    "{name}: bone divergence at {tick}, player {player}"
-                );
-            }
+        replay_bones(name, 150);
+    }
+}
+
+fn replay_bones(name: &str, frames: usize) {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let scenario = Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
+    let path = scenario.trace_path("bones.jsonl");
+    if !melee_test_support::require_files(
+        scenario.required_files().into_iter().chain([path.clone()]),
+    ) {
+        return;
+    }
+    let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+    let mut simulation =
+        super::TestSimulation::with_inputs(initial, crate::trace::pad_script(&scenario).unwrap());
+    let bones = fs::read_to_string(path).unwrap();
+    assert_eq!(bones.lines().count(), frames);
+    for (tick, line) in bones.lines().enumerate() {
+        let row: Value = serde_json::from_str(line).unwrap();
+        assert_eq!(row["frame"].as_u64(), Some(tick as u64));
+        simulation.tick().unwrap();
+        for (player, fighter) in simulation.runtime.state.fighters.iter().enumerate() {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                compare(&fighter.0, &row, player, tick)
+            }));
+            assert!(
+                result.is_ok(),
+                "{name}: bone divergence at {tick}, player {player}"
+            );
         }
     }
+}
+#[test]
+fn common_input_bones_taunt_fd_fox() {
+    replay_bones("taunt_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_taunt_fd_marth() {
+    replay_bones("taunt_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_dash_escape_fd_fox() {
+    replay_bones("dash_escape_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_dash_escape_fd_marth() {
+    replay_bones("dash_escape_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_dash_shield_fd_fox() {
+    replay_bones("dash_shield_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_dash_shield_fd_marth() {
+    replay_bones("dash_shield_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_dash_taunt_fd_fox() {
+    replay_bones("dash_taunt_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_dash_taunt_fd_marth() {
+    replay_bones("dash_taunt_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_dash_late_shield_fd_fox() {
+    replay_bones("dash_late_shield_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_dash_late_shield_fd_marth() {
+    replay_bones("dash_late_shield_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_shield_grab_fd_fox() {
+    replay_bones("shield_grab_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_shield_grab_fd_marth() {
+    replay_bones("shield_grab_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_dash_late_shield_grab_fd_fox() {
+    replay_bones("dash_late_shield_grab_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_dash_late_shield_grab_fd_marth() {
+    replay_bones("dash_late_shield_grab_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_shield_cstick_jump_fd_fox() {
+    replay_bones("shield_cstick_jump_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_shield_cstick_jump_fd_marth() {
+    replay_bones("shield_cstick_jump_fd_marth", 150);
+}
+#[test]
+fn common_input_bones_shield_delayed_power_fd_fox() {
+    replay_bones("shield_delayed_power_fd_fox", 150);
+}
+#[test]
+fn common_input_bones_shield_delayed_power_fd_marth() {
+    replay_bones("shield_delayed_power_fd_marth", 150);
+}
+
+#[test]
+fn common_input_bones_run_shield_fd_fox() {
+    replay_bones("run_shield_fd_fox", 150);
+}
+
+#[test]
+fn common_input_bones_run_shield_fd_marth() {
+    replay_bones("run_shield_fd_marth", 150);
+}
+
+#[test]
+fn common_input_bones_run_taunt_fd_fox() {
+    replay_bones("run_taunt_fd_fox", 150);
+}
+
+#[test]
+fn common_input_bones_run_taunt_fd_marth() {
+    replay_bones("run_taunt_fd_marth", 150);
+}
+
+#[test]
+fn common_input_bones_run_shield_grab_fd_fox() {
+    replay_bones("run_shield_grab_fd_fox", 150);
+}
+
+#[test]
+fn common_input_bones_run_shield_grab_fd_marth() {
+    replay_bones("run_shield_grab_fd_marth", 150);
 }

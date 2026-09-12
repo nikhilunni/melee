@@ -56,6 +56,18 @@ task lines you touched and add one line to the session log.
   First acceptance: fourteen `cstick_throw_*_fd_{fox,marth}` 300-tick retail
   fighter/particle gates, zero-allocation checks, both workspace gates and clippy.
 
+- [x] Common-input completion (2026-09-12): twenty-four Fox/Marth taunt,
+  dash/run defense and shield-input scenarios pass fighter/particle/RNG, raw
+  countdown and both-fighter 150-tick bone gates. Fixed neutral shield pose and
+  outgoing blend-joint ownership. Debug/release each 1,307 passed, zero failed,
+  one existing ignore; clippy, formatting, zero allocations, 220 harness tests
+  and schema checks pass. Native build passes; current native smoke and new
+  Dolphin captures are blocked by macOS IOSurface exhaustion (1,020 clients,
+  922 attributed to Safari), not a simulation divergence. Stripped simulator
+  3,943,848 bytes (+280); full performance census not rerun. Version 1 public-API
+  exploration saves 48 reproducible episodes; initial 46 faults are triaged
+  within this matchup. See `docs/PORT_NOTES/COMMON_INPUTS.md`.
+
 - [~] Recovery collision transitions (2026-09-11): exact acceptance starts
   with `illusion_start_landing_fd_fox`, `firefox_charge_landing_fd_fox`,
   `firefox_ground_launch_fd_fox`, `firefox_floor_rebound_fd_fox`, and
@@ -623,3 +635,10 @@ Newest first. One line per session: date, what landed, what is next.
   Stripped simulator 3,943,568 bytes (+16,728); full performance census not rerun.
   Remaining recovery edges and common/defense/capture/ledge/timer gaps continue
   within Fox/Marth/FD; no breadth work started. Captures are ignored and backed up.
+
+- 2026-09-12 (common inputs): 24 new exact scenarios, raw guard windows and
+  local bone transforms; both workspace profiles 1,307/0 with one existing
+  ignore, clippy, formatting, allocation and harness checks pass. Native build
+  passes; graphics smoke and further Dolphin launches abort at the host IOSurface
+  client limit. Stripped size +280 bytes. Continuing already-recorded revival,
+  capture and ledge cases; no breadth work started.

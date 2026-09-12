@@ -37,6 +37,18 @@ fn walk_state(
 }
 
 impl Fighter {
+    /// ftCo_800DEAE8 (800DEAE8): clear IASA, select authored left variant,
+    /// ordinary motion entry; unlike attack entry, no ftAnim_8006EBA4 call.
+    pub fn enter_common_taunt(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.commands.allow_interrupt = false;
+        let state = if self.physics.facing == -1.0 && assets.left_taunt_available {
+            CommonMotionState::AppealSL
+        } else {
+            CommonMotionState::AppealSR
+        };
+        self.change_motion_state(state.into(), assets)
+    }
+
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
         // Metal/status interactions are rejected by Status::require_supported;
@@ -141,6 +153,7 @@ impl Fighter {
             T::Attack => self.enter_ground_attack(assets),
             T::Grab => self.enter_catch(assets),
             T::Shield => self.enter_shield(assets),
+            T::Taunt => (self.character.table().enter_taunt)(self, assets),
             T::Escape => self.enter_escape(assets, CommonMotionState::EscapeN),
             T::Jump => self.enter_knee_bend(assets),
             T::Dash => self.enter_dash(assets, true),
@@ -153,9 +166,6 @@ impl Fighter {
                         < assets.input.thresholds.dash_smash_window;
                 self.enter_turn(assets, smash)
             }
-            _ => unimplemented!(
-                "ftCo_Wait.c:46-63 / grounded state IASA: {transition:?} transition body"
-            ),
         }
     }
 }

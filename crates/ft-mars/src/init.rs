@@ -32,6 +32,12 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
 
 impl CharacterCallbacks for Marth {
+    fn enter_taunt(
+        fighter: &mut melee_ft::fighter::Fighter,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> {
+        fighter.enter_common_taunt(assets)
+    }
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &crate::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
@@ -132,8 +138,9 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         additional_motions: &[
             47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 65, 66, 67, 165, 166, 170, 171, 172,
             173, 174, 175, 176, 177, 179, 180, 183, 184, 29, 62, 178, 191, 192, 201, 244, 248, 254,
-            255, 263, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309,
-            310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326,
+            255, 263, 239, 240, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307,
+            308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324,
+            325, 326,
         ],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {

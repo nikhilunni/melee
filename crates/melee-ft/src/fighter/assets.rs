@@ -134,6 +134,8 @@ pub struct FighterAssets {
     pub smash_sounds: Vec<u32>,
     /// Authored AJ availability for high, high-mid, low-mid and low forward smash.
     pub forward_smash_variants: [bool; 4],
+    /// ftData_80085FD4(..., AppealSL)->x8 (AJ size).
+    pub left_taunt_available: bool,
     /// ft_data->x4C_sfx->x1C / x20: the medium and heavy damage voice tables.
     pub medium_voices: Vec<u32>,
     pub heavy_voices: Vec<u32>,
@@ -341,6 +343,7 @@ impl FighterAssets {
             attacks: super::attack::AttackParameters::read(common, common_data)?,
             // ftCo_AttackS4 doEnter probes submotion indices, not action IDs.
             forward_smash_variants: [60, 61, 63, 64].map(|id| table.entries[id].aj_size != 0),
+            left_taunt_available: table.entries[240].aj_size != 0,
             combo: super::attack::combo::ComboParameters::read(common, common_data)?,
             grab_friction_multiplier: common.reader().f32(common_data + 0x64)?,
             // Fighter_LoadCommonData: pData[3] -> Fighter_804D6548 stale weights.
@@ -450,6 +453,8 @@ impl FighterAssets {
                 early_escape_frames: common.reader().f32(common_data + 0x48)?,
                 redash_frames: common.reader().f32(common_data + 0x4c)?,
                 interrupt_friction: common.reader().f32(common_data + 0x54)?,
+                shield_grab_delay: common.reader().f32(common_data + 0x68)?,
+                shield_item_throw_frames: common.reader().s32(common_data + 0x410)?,
                 run_threshold: common.reader().f32(common_data + 0x58)?,
                 acceleration_taper: common.reader().f32(common_data + 0x5c)?,
                 friction_multiplier: common.reader().f32(common_data + 0x60)?,

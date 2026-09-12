@@ -1,0 +1,18 @@
+name = "shield_cstick_jump_fd_fox"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = { L = true } },
+  { frame = 35, port = 1, buttons = { L = true, CStickY = 1.0 } },
+  { frame = 40, port = 1, buttons = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -12,6 +12,23 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         rows[index].id = S::ALL[index + 1]; // ALL begins with the -1 None sentinel.
         index += 1;
     }
+    rows[S::AppealSR as usize] = MotionRow {
+        action: ActionId(S::AppealSR as u16),
+        id: S::AppealSR,
+        animation: 239,
+        anim: callbacks::animation::appeal,
+        iasa: callbacks::input::appeal,
+        physics: callbacks::physics::jab,
+        collision: callbacks::collision::escape,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::AppealSL as usize] = MotionRow {
+        action: ActionId(S::AppealSL as u16),
+        id: S::AppealSL,
+        animation: 240,
+        ..rows[S::AppealSR as usize]
+    };
     // ftCo_MS_DeadDown = 0; ftData_MotionStateList[0].
     rows[S::DeadDown as usize] = MotionRow {
         action: ActionId(0),

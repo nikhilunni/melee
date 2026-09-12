@@ -102,7 +102,7 @@ pub struct GuardState {
     pub reflect_frames: f32,
     pub powershield_frames: f32,
     pub interrupt_frames: i32,
-    pub jump_delay: i32,
+    pub dash_item_throw_frames: i32,
     pub grab_delay: i32,
     pub previous_lightshield: f32,
 }
@@ -309,6 +309,35 @@ impl Fighter {
             self.update_guard_pose(assets, blend)
         }
     }
+    /// ftCo_8009388C (8009388C): retain owned graphics and guard scratch,
+    /// replace the collision volumes, and restart only reflection windows.
+    fn enter_delayed_powershield(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_motion_without_animation(S::GuardReflect.into(), assets)?;
+        self.input.shoulder.tilt = 0xFE;
+        self.shield.enabled = false;
+        self.shield.active = false;
+        self.shield.fresh_powershield = true;
+        self.shield.reflect_window = true;
+        self.shield.powershield_window = true;
+        let guard = self.guard();
+        guard.interrupt_frames = 0;
+        guard.reflect_frames = assets.shield.reflect_frames;
+        guard.powershield_frames = assets.shield.powershield_frames;
+        self.shield.reflecting = true;
+        self.shield.reflect = ReflectVolume {
+            volume: ShieldVolume {
+                bone: usize::from(self.bones.model.shield),
+                radius: assets.shield.reflect_radius,
+                ..Default::default()
+            },
+            maximum_damage: self.status.shield_health,
+            damage_multiplier: assets.shield.reflect_damage,
+            speed_multiplier: assets.shield.reflect_speed,
+            reflect_behavior: true,
+        };
+        self.shield.on_reflect = Some(ReflectHitCallback::Powershield);
+        Ok(())
+    }
     /// Guard IASAs, ftCo_Guard.c:468-478, 539-547, 602-617, 1052-1062.
     pub(super) fn shield_input(
         &mut self,
@@ -343,7 +372,7 @@ impl Fighter {
                     .intersects(Buttons::DIGITAL_SHOULDERS)
                 && i32::from(self.core.input.shoulder.tilt) < assets.input.powershield_window
             {
-                unimplemented!("ftCo_Guard.c:885-915: delayed powershield activation");
+                return self.enter_delayed_powershield(assets);
             }
         } else if self.guard().interrupt_frames != 0 {
             let transition = self.first_ground_transition(
@@ -368,7 +397,11 @@ impl Fighter {
                 return self.apply_ground_transition(assets, transition);
             }
         }
-        // ftCo_8009515C: item-throw predicate is false without a held item.
+        // ftCo_8009515C (800951B8): the shared union countdown advances
+        // even without a held item; it chooses a dash item throw, not a jump.
+        if self.guard().dash_item_throw_frames != 0 {
+            self.guard().dash_item_throw_frames -= 1;
+        }
         if self.spot_dodge_input(assets) {
             return self.enter_escape(assets, S::EscapeN);
         }
@@ -378,14 +411,14 @@ impl Fighter {
             }
             if matches!(state, S::GuardOn | S::GuardReflect) && self.guard().grab_delay != 0 {
                 if self.core.input.pressed.intersects(Buttons::A) {
-                    unimplemented!("ftCo_Catch.c:87-90: dash grab out of shield");
+                    return self.enter_catch_motion(S::CatchDash, assets);
                 }
                 self.guard().grab_delay -= 1;
             }
             if self.core.input.pressed.intersects(Buttons::A)
                 && self.core.input.current.held.intersects(Buttons::SHIELD)
             {
-                unimplemented!("ftCo_Catch.c:30-34: grab out of shield");
+                return self.enter_catch(assets);
             }
         }
         let jump = self.first_ground_transition(assets, context, &[P::Jump]);
@@ -393,7 +426,7 @@ impl Fighter {
             return self.apply_ground_transition(assets, jump);
         }
         if self.core.input.current.cstick.y >= assets.common.input.tap_jump_threshold {
-            unimplemented!("ftCo_Jump.c:94-98: C-stick shield jump");
+            return self.enter_knee_bend_with_input(assets, super::jump::JumpInput::CStick);
         }
         if state == S::GuardOff {
             return Ok(());

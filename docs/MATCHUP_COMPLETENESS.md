@@ -64,17 +64,17 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Fox Reflector | Turn, button/tap aerial jump cancel and preserved turn landing implemented; seven directed gates pass | Remaining phase preservation and edge departures; `PORT_NOTES/REFLECTOR_INPUT.md` |
 | Fox recovery | Five counterpart/rebound witnesses, all-bone checks and both full workspace gates pass. See [recovery notes](PORT_NOTES/RECOVERY_COLLISIONS.md). | Remaining travel landing, charge/ending departure and wall/ledge combinations |
 | Shared contacts | `melee-ft/src/fighter/damage.rs`: phantom, invincible and simultaneous contact branches panic | Retail reachability and contact-order fixtures for this matchup |
-| Shield exits | `melee-ft/src/fighter/shield.rs`: grab out of shield, delayed powershield and projectile reflection panic | Standing/dash grab exits, shield timing and laser reflection |
+| Shield exits | Standing/dash/run grabs, C-stick jumps and delayed powershield implemented; both full workspace gates and raw/bone/allocation checks pass; projectile reflection remains | Laser reflection and depletion |
 | Ledge variants | `melee-ft/src/fighter/ledge.rs`: slow options, C-stick options and hang timeout panic | Percent-dependent options, full controller inputs and prolonged hanging |
 | Match endings | Tracker retains a screen-KO follow-up | Audit all KO variants, respawn, final stock, timeout and ties |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
 | Airborne grab victim | `fighter/grab.rs:194`: CapturePulledHi panics | `grab_airborne_fd_foxmarth`, `grab_airborne_fd_marthfox` |
 | Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |
-| Dash defense | `fighter/dash.rs`: early Escape and later Shield rejected | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
+| Dash defense | Dash and Run defense implemented with distinct item-throw/grab windows | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
 | Revival platform | `fighter/life.rs`: timeout and an overbroad shield+A predicate panic | `rebirth_timeout_fd_fox`, `rebirth_timeout_fd_marth`, `rebirth_shield_a_fd_fox` |
 | C-stick throws | Direction selection, Fox blaster/laser callbacks, captured damage and collateral hitbox lifetime implemented | Fourteen exact item/fighter/particle scenarios plus raw scratch; both workspace profiles and allocation gates pass; `PORT_NOTES/CSTICK_THROWS.md` |
-| Taunt | `fighter/walk.rs`, `input/iasa.rs`, `fighter/dash.rs`: selected input lacks transition body | `taunt_fd_fox`, `taunt_fd_marth` |
+| Taunt | Idle, Dash and Run entry implemented; both characters use their authored motion239 | `taunt_fd_fox`, `taunt_fd_marth` |
 
 The added `fighter/` references are under `crates/melee-ft/src`; line numbers
 are audit-time pointers and will move as packets land. Outstanding reachability

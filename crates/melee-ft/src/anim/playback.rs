@@ -29,6 +29,11 @@ impl MotionFlags {
     pub fn bone_mask(self) -> u32 {
         (self.0 >> 9) & 0x1fff
     }
+    /// Fighter.x596_bits.x7: outgoing joint copied on the next blended entry.
+    /// Retail80069C50 extracts the three bits above the source skeleton.
+    pub fn blend_exit_joint(self) -> u8 {
+        ((self.0 >> 6) & 7) as u8
+    }
     /// Fighter.x597_bits, the skeleton that authored this FigaTree.
     pub fn source_skeleton(self) -> u8 {
         (self.0 & 0x3f) as u8
@@ -735,12 +740,41 @@ impl FighterAnimation {
             self.blend_tree.anim_all::<T>(self.root);
         }
         let mut pose_index = 0;
-        for part in self.parts.iter().skip(1) {
+        for (index, part) in self.parts.iter().enumerate().skip(1) {
             if part.motion_mask != 0 {
                 continue;
             }
             let source = neutral.get(pose_index).expect("shield pose mapping");
             pose_index += 1;
+            if magnitude == 0.0 && weight >= 1.0 {
+                // ftAnim_8006FA58: a full neutral pose also restores S/T
+                // on dynamics-owned joints; their rotation remains owned.
+                let locked = part.flags.contains(PartFlags::LOCKED);
+                let translation = Some(index) == self.translation_joint;
+                if locked || !part.flags.contains(PartFlags::PART_ANIMATION) {
+                    let joint = tree.get_mut(part.joint);
+                    joint.translate = source.translate;
+                    if !translation {
+                        joint.scale = source.scale;
+                    }
+                    if !locked {
+                        // lb_8000B4FC / B5DC preserve the unused rotation W.
+                        joint.rotate.x = source.rotate.x;
+                        joint.rotate.y = source.rotate.y;
+                        joint.rotate.z = source.rotate.z;
+                        tree.clear_flags(part.joint, JOBJ_USE_QUATERNION);
+                    }
+                    if tree.flags(part.joint) & JOBJ_MTX_INDEP_SRT == 0 {
+                        tree.set_mtx_dirty(part.joint);
+                    }
+                }
+                if translation {
+                    // ftCommon_8007F6A4, also called for part-animation ownership.
+                    let reciprocal = 1.0 / self.model_scale;
+                    tree.set_scale(part.joint, &Vec3::new(reciprocal, reciprocal, reciprocal));
+                }
+                continue;
+            }
             if !part.flags.eligible() {
                 continue;
             }

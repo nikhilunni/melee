@@ -18,6 +18,10 @@ pub struct RunningParameters {
     pub redash_frames: f32,
     /// +54: velocity reduction after an early interrupt.
     pub interrupt_friction: f32,
+    /// +68: dash-grab window after late dash shield entry.
+    pub shield_grab_delay: f32,
+    /// +410: run-to-shield dash item throw countdown.
+    pub shield_item_throw_frames: i32,
     /// +58/+5C/+60: run stick threshold, acceleration taper, brake friction.
     pub run_threshold: f32,
     pub acceleration_taper: f32,
@@ -100,8 +104,21 @@ impl Fighter {
                 self.apply_dash_interrupt_friction(assets);
                 return Ok(());
             }
-            if frame <= common.early_escape_frames {
-                self.reject_running_actions(assets, context, &[P::Escape], "ftCo_Dash.c:100-101");
+            // ftCo_80099264: held shoulders, independent of stick and shield health.
+            if frame <= common.early_escape_frames
+                && self
+                    .input
+                    .current
+                    .held
+                    .intersects(crate::input::Buttons::SHIELD)
+            {
+                self.enter_escape(assets, CommonMotionState::EscapeF)?;
+                let MotionData::Escape(escape) = &mut self.state_data else {
+                    unreachable!()
+                };
+                escape.interrupt_frames = 0;
+                self.apply_dash_interrupt_friction(assets);
+                return Ok(());
             }
         } else if frame <= common.redash_frames {
             if self.try_dash_catch(assets, context)? {
@@ -116,7 +133,13 @@ impl Fighter {
             {
                 return Ok(());
             }
-            self.reject_running_actions(assets, context, &[P::Shield], "ftCo_Dash.c:121-123");
+            if self.first_ground_transition(assets, context, &[P::Shield]) == T::Shield {
+                let delay = gekko_math::msl::fctiwz(common.redash_frames - frame);
+                self.enter_shield(assets)?;
+                self.guard().dash_item_throw_frames = delay;
+                self.apply_dash_interrupt_friction(assets);
+                return Ok(());
+            }
         } else {
             if self.try_dash_catch(assets, context)? {
                 return Ok(());
@@ -124,9 +147,19 @@ impl Fighter {
             if self.try_redash(assets)? {
                 return Ok(());
             }
-            self.reject_running_actions(assets, context, &[P::Shield], "ftCo_Dash.c:133-135");
+            if self.first_ground_transition(assets, context, &[P::Shield]) == T::Shield {
+                let delay = gekko_math::msl::fctiwz(common.shield_grab_delay);
+                self.enter_shield(assets)?;
+                self.guard().grab_delay = delay;
+                self.apply_dash_interrupt_friction(assets);
+                return Ok(());
+            }
         }
-        self.reject_running_actions(assets, context, &[P::Taunt], "ftCo_Dash.c:139");
+        if self.first_ground_transition(assets, context, &[P::Taunt]) == T::Taunt {
+            self.apply_ground_transition(assets, T::Taunt)?;
+            self.apply_dash_interrupt_friction(assets);
+            return Ok(());
+        }
         if self.try_running_jump(assets)? {
             return Ok(());
         }
@@ -163,17 +196,5 @@ impl FighterCore {
         let reduction = -(self.physics.ground_velocity * assets.running.interrupt_friction);
         self.physics.ground_velocity =
             gekko_math::fma::fmadds(reduction, terrain, self.physics.ground_velocity);
-    }
-    pub(super) fn reject_running_actions(
-        &self,
-        assets: &FighterAssets,
-        context: &WaitContext,
-        predicates: &[P],
-        source: &str,
-    ) {
-        let transition = self.first_ground_transition(assets, context, predicates);
-        if transition != T::None {
-            unimplemented!("{source}: {transition:?} transition body");
-        }
     }
 }

@@ -172,6 +172,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Restore character-owned fields from a retail Fighter dump when a scene
     /// starts from a savestate (the shared fields are restored by the scene).
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
+    /// ftCo_800DEA28: explicitly bind each audited character entry.
+    fn enter_taunt(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> assets::Result<()> {
+        unimplemented!("ftCo_800DEA28: character taunt entry");
+    }
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
     /// Costume-dependent OnLoad work (e.g. material animation end frames).

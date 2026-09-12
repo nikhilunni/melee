@@ -6,6 +6,43 @@ use crate::input::{wait_iasa, WaitContext, WaitTransition};
 /// (13), ftCo_MS_DownBoundD (191), ftCo_MS_DownWaitD (192), ftCo_MS_PassiveStandB (201),
 /// ftCo_MS_Catch (212), ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216), ftCo_MS_ThrowB (220),
 /// ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227), ftCo_MS_ThrownB (240).
+/// ftCo_AppealS_IASA: only the retail attack/defense prefix after script unlock.
+pub fn appeal(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    use crate::input::WaitPredicate as P;
+    if !fighter.commands.allow_interrupt {
+        return;
+    }
+    let context = WaitContext {
+        facing: fighter.physics.facing,
+        specials_available: fighter.capabilities.specials,
+        shield_health: fighter.status.shield_health,
+        ..WaitContext::default()
+    };
+    let transition = fighter.first_ground_transition(
+        phase.assets,
+        &context,
+        &[
+            P::SpecialSide,
+            P::SpecialUp,
+            P::SpecialNeutral,
+            P::SpecialDown,
+            P::Grab,
+            P::SmashSide,
+            P::SmashUp,
+            P::SmashDown,
+            P::TiltSide,
+            P::TiltUp,
+            P::TiltDown,
+            P::Jab,
+            P::Escape,
+            P::Shield,
+        ],
+    );
+    fighter
+        .apply_ground_transition(phase.assets, transition)
+        .expect("taunt IASA");
+}
+
 pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).

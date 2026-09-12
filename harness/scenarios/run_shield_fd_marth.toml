@@ -1,0 +1,18 @@
+name = "run_shield_fd_marth"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 53, port = 0, buttons = { L = true } },
+  { frame = 75, port = 0, buttons = { } },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

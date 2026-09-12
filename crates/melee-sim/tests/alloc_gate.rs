@@ -365,3 +365,31 @@ fn recovery_collision_allocation_budget() {
     allocation_budget("firefox_ground_launch_fd_fox", 0);
     allocation_budget("firefox_floor_rebound_fd_fox", 0);
 }
+
+#[test]
+fn common_input_allocation_budget() {
+    allocation_budget("run_shield_fd_fox", 0);
+    allocation_budget("run_shield_fd_marth", 0);
+    allocation_budget("run_taunt_fd_fox", 0);
+    allocation_budget("run_taunt_fd_marth", 0);
+    allocation_budget("run_shield_grab_fd_fox", 0);
+    allocation_budget("run_shield_grab_fd_marth", 0);
+    allocation_budget("taunt_fd_fox", 0);
+    allocation_budget("taunt_fd_marth", 0);
+    allocation_budget("dash_escape_fd_fox", 0);
+    allocation_budget("dash_escape_fd_marth", 0);
+    allocation_budget("dash_shield_fd_fox", 0);
+    allocation_budget("dash_shield_fd_marth", 0);
+    allocation_budget("dash_taunt_fd_fox", 0);
+    allocation_budget("dash_taunt_fd_marth", 0);
+    allocation_budget("dash_late_shield_fd_fox", 0);
+    allocation_budget("dash_late_shield_fd_marth", 0);
+    allocation_budget("shield_grab_fd_fox", 0);
+    allocation_budget("shield_grab_fd_marth", 0);
+    allocation_budget("dash_late_shield_grab_fd_fox", 0);
+    allocation_budget("dash_late_shield_grab_fd_marth", 0);
+    allocation_budget("shield_cstick_jump_fd_fox", 0);
+    allocation_budget("shield_cstick_jump_fd_marth", 0);
+    allocation_budget("shield_delayed_power_fd_fox", 0);
+    allocation_budget("shield_delayed_power_fd_marth", 0);
+}

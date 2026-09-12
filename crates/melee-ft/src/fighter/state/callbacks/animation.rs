@@ -119,6 +119,13 @@ pub fn damage(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
 
 /// ftData_MotionStateList: ftCo_MS_Attack11 (44), ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S
 /// (60).
+/// ftCo_AppealS_Anim: normal animation step, then Wait at exhaustion.
+pub fn appeal(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    fighter.jab_animation(phase.assets)?;
+    Ok(None)
+}
+
 pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);

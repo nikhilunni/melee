@@ -28,7 +28,7 @@ impl Fighter {
         Ok(true)
     }
 
-    fn enter_catch_motion(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+    pub(super) fn enter_catch_motion(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         self.character.catch_variant();
         self.core.physics.animation_velocity = Vec3::ZERO;
         self.change_motion_state(state.into(), assets)?;

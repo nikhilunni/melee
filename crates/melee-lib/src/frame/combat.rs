@@ -48,6 +48,14 @@ fn compare(f: &Fighter, bytes: &[u8]) {
         word(bytes, 0x195c),
         "hitlag countdown"
     );
+    if let MotionData::Guard(guard) = &f.state_data {
+        for (value, offset) in [
+            (guard.dash_item_throw_frames, 0x2360),
+            (guard.grab_delay, 0x2364),
+        ] {
+            assert_eq!(value as u32, word(bytes, offset), "guard delay {offset:x}");
+        }
+    }
     if let MotionData::Damage(damage) = &f.state_data {
         assert_eq!(
             damage.hitstun.to_bits(),
@@ -517,4 +525,32 @@ fn compare_recovery_state(f: &Fighter, bytes: &[u8], tick: usize) {
             }
         }
     }
+}
+
+#[test]
+fn common_input_matches_retail_combat_scratch() {
+    replay_scratch("run_shield_fd_fox");
+    replay_scratch("run_shield_fd_marth");
+    replay_scratch("run_taunt_fd_fox");
+    replay_scratch("run_taunt_fd_marth");
+    replay_scratch("run_shield_grab_fd_fox");
+    replay_scratch("run_shield_grab_fd_marth");
+    replay_scratch("taunt_fd_fox");
+    replay_scratch("taunt_fd_marth");
+    replay_scratch("dash_escape_fd_fox");
+    replay_scratch("dash_escape_fd_marth");
+    replay_scratch("dash_shield_fd_fox");
+    replay_scratch("dash_shield_fd_marth");
+    replay_scratch("dash_taunt_fd_fox");
+    replay_scratch("dash_taunt_fd_marth");
+    replay_scratch("dash_late_shield_fd_fox");
+    replay_scratch("dash_late_shield_fd_marth");
+    replay_scratch("shield_grab_fd_fox");
+    replay_scratch("shield_grab_fd_marth");
+    replay_scratch("dash_late_shield_grab_fd_fox");
+    replay_scratch("dash_late_shield_grab_fd_marth");
+    replay_scratch("shield_cstick_jump_fd_fox");
+    replay_scratch("shield_cstick_jump_fd_marth");
+    replay_scratch("shield_delayed_power_fd_fox");
+    replay_scratch("shield_delayed_power_fd_marth");
 }

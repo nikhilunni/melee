@@ -628,7 +628,7 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
                 "release tick {tick}"
             );
             assert_eq!(guard.interrupt_frames as u32, word(bytes, 0x235C));
-            assert_eq!(guard.jump_delay as u32, word(bytes, 0x2360));
+            assert_eq!(guard.dash_item_throw_frames as u32, word(bytes, 0x2360));
             assert_eq!(guard.grab_delay as u32, word(bytes, 0x2364));
             for (actual, offset, mask) in [
                 (fighter.shield.enabled, 0x221A, 1),
@@ -731,6 +731,7 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
             let input = match squat.input {
                 melee_ft::fighter::jump::JumpInput::Stick => 1,
                 melee_ft::fighter::jump::JumpInput::Buttons => 3,
+                melee_ft::fighter::jump::JumpInput::CStick => 2,
             };
             assert_eq!(input, word(bytes, 0x2344), "jump input tick {tick}");
         }
