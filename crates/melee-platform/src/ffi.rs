@@ -42,11 +42,36 @@ fn perform(handle: &mut Handle, action: impl FnOnce(&mut Handle) -> Result<(), S
             handle.error = e;
             false
         }
-        Err(_) => {
-            handle.error = "native application operation panicked".into();
+        Err(payload) => {
+            let message = payload
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| payload.downcast_ref::<&str>().copied())
+                .unwrap_or("native application panicked with a non-string payload");
+            handle.error = handle.session.stop_after_host_fault(message.to_owned());
             false
         }
     }
+}
+/// Save a cold-start input recording, atomically replacing the chosen path.
+/// # Safety
+/// Handle must be live and exclusively borrowed. Path must be a terminated UTF-8 string.
+#[no_mangle]
+pub unsafe extern "C" fn melee_session_save_replay(
+    handle: *mut Handle,
+    path: *const c_char,
+) -> bool {
+    unsafe { handle.as_mut() }.is_some_and(|h| {
+        perform(h, |h| {
+            if path.is_null() {
+                return Err("missing replay path".into());
+            }
+            let path = unsafe { CStr::from_ptr(path) }
+                .to_str()
+                .map_err(|e| e.to_string())?;
+            h.session.save_replay(std::path::Path::new(path))
+        })
+    })
 }
 /// # Safety
 /// `directory` must be a terminated UTF-8 C string. `out` must be writable for

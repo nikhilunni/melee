@@ -75,6 +75,9 @@ pub struct ItemCore {
     pub frozen: bool,
     pub destroyed: bool,
     pub pending_damage_dealt: i32,
+    /// ftColl_80077688's xC50; shield contact has priority at item link 14.
+    pub pending_shield_damage: i32,
+    pub pending_shield_deflection: Option<melee_lb::shield::ShieldDeflection>,
     pub sound_requests: melee_types::fixed::FixedVec<u32, 8>,
     pub animation_frame: f32,
     pub script: ScriptState,
@@ -278,6 +281,8 @@ impl ItemPool {
             frozen: false,
             destroyed: false,
             pending_damage_dealt: 0,
+            pending_shield_damage: 0,
+            pending_shield_deflection: None,
             sound_requests: Default::default(),
             animation_frame: 0.0,
             script: ScriptState::default(),
@@ -299,15 +304,33 @@ impl ItemPool {
     /// Item_8026A294 -> OnGiveDamageThink, after all fighter/item detection.
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
     pub fn process_events<D: ItemDispatch>(&mut self, id: u32) {
+        // retail 80269E18/20: add then multiply, no FMA or double promotion.
+        let bounce_limit =
+            (std::f32::consts::PI / 180.0) * (90.0 + self.common.shield_bounce_degrees);
         let Some(item) = self.get_mut(id) else {
             return;
         };
-        if item.pending_damage_dealt != 0 {
+        if item.pending_shield_damage != 0 {
+            if let Some(deflection) = item.pending_shield_deflection.filter(|d| {
+                item.ground_or_air == melee_types::GroundOrAir::Air && d.angle < bounce_limit
+            }) {
+                let context = ItemEventContext {
+                    shield_normal: deflection.normal,
+                    ..Default::default()
+                };
+                item.destroyed |= (D::logic(item.kind).shield_bounced)(item, &context);
+            } else {
+                item.destroyed |=
+                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::default());
+            }
+        } else if item.pending_damage_dealt != 0 {
             item.destroyed |=
                 (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::default());
         }
         // Item_80269CC4 resets per-frame contact accumulators.
         item.pending_damage_dealt = 0;
+        item.pending_shield_damage = 0;
+        item.pending_shield_deflection = None;
     }
     pub fn retire(&mut self, id: u32) {
         if let Some(item) = self.get_mut(id) {
@@ -468,6 +491,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits,
             lifetime: 1.0,
+            shield_bounce_degrees: 0.0,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -486,6 +510,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits: [None; 13],
             lifetime: 1.0,
+            shield_bounce_degrees: 0.0,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

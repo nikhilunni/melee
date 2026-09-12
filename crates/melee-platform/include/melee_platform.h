@@ -19,6 +19,7 @@ void melee_session_focus(MeleeSession *session, bool focused);
 void melee_session_toggle_pause(MeleeSession *session);
 void melee_session_pause(MeleeSession *session, bool paused);
 bool melee_session_reset(MeleeSession *session);
+bool melee_session_save_replay(MeleeSession *session, const char *path);
 bool melee_session_frame(MeleeSession *session, uint32_t width, uint32_t height);
 bool melee_session_status(const MeleeSession *session, MeleeStatus *status);
 void melee_session_error(const MeleeSession *session, char *error, size_t capacity);

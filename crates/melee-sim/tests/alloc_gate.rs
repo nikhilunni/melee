@@ -162,6 +162,12 @@ fn laser_fd_fox_allocation_budget() {
     allocation_budget("laser_fd_fox", 32);
 }
 
+#[test]
+fn laser_shield_fd_marth_allocation_budget() {
+    allocation_budget("laser_shield_fd_marth", 0);
+    allocation_budget("laser_shield_deflect_fd_marth", 0);
+}
+
 // S3: item and trail creation remain inside the prepared pools.
 #[test]
 fn airillusion_fd_fox_allocation_budget() {

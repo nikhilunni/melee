@@ -819,12 +819,21 @@ impl FighterCore {
             self.spawn_number,
             self.physics.ground_or_air,
         ) {
+            let hit = item.hitboxes[id].as_ref().unwrap();
+            if self.shield.reflecting
+                && item.hit_flags[id].reflectable
+                && self.shield_reflect_contact(hit, item.scale).is_some()
+            {
+                unimplemented!("ftColl_80077464: projectile powershield reflection response");
+            }
+            if self.shield.active && item.hit_flags[id].shieldable {
+                if let Some(contact) = self.shield_contact(hit, item.scale) {
+                    self.record_item_shield_hit(item, id, contact);
+                    continue;
+                }
+            }
             if !item.hit_flags[id].hits_hurtboxes {
                 continue;
-            }
-            let hit = item.hitboxes[id].as_ref().unwrap();
-            if self.shield.active {
-                unimplemented!("item shield response");
             }
             let Some((contact, height)) =
                 melee_coll::detection::first_contact(self, hit, item.scale)
@@ -887,6 +896,73 @@ impl FighterCore {
             return Some(descriptor.damage);
         }
         None
+    }
+
+    /// ftColl_80077688 (80077688): projectile shield damage and strongest impact.
+    /// The mature-shield path has no fused arithmetic (retail asm audited).
+    /// Unlike fighter shield contacts, this does not recoil or hitlag the owner.
+    fn record_item_shield_hit(
+        &mut self,
+        item: &mut melee_it::ItemCore,
+        id: usize,
+        contact: Contact,
+    ) {
+        let desc = &item.hitboxes[id]
+            .as_ref()
+            .expect("eligible item hit")
+            .descriptor;
+        // retail 800776DC..80077714: zero stays zero; nonzero values which
+        // truncate to zero become one. Negative integers retain their sign.
+        let integer = fctiwz(desc.damage);
+        let damage = if desc.damage == 0.0 {
+            0
+        } else if integer == 0 {
+            1
+        } else {
+            integer
+        };
+        if damage > item.pending_damage_dealt {
+            item.pending_shield_damage = damage;
+            item.pending_shield_deflection = if item.hit_flags[id].shield_bounce {
+                let volume = &self.shield.hit;
+                let joint = self.animation.parts[volume.bone].joint;
+                let matrix = *self.skeleton.get_mtx(joint);
+                Some(melee_lb::shield::deflection(
+                    volume.position,
+                    &matrix,
+                    item.hitboxes[id].as_ref().unwrap().previous_position,
+                    item.hitboxes[id].as_ref().unwrap().position,
+                    volume.radius,
+                    desc.radius * if desc.ignore_scale { 1.0 } else { item.scale },
+                ))
+            } else {
+                None
+            };
+        }
+        self.shield.damage_taken += (damage + i32::from(desc.shield_damage)).max(0);
+        if damage
+            > self
+                .shield
+                .impact
+                .as_ref()
+                .map_or(0, |impact| impact.damage)
+        {
+            self.shield.impact = Some(super::shield::ShieldImpact {
+                damage,
+                facing: if self.physics.position.x > item.position.x {
+                    -1.0
+                } else {
+                    1.0
+                },
+                element: desc.element,
+            });
+        }
+        let group = desc.group;
+        melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        self.effects
+            .push(melee_ef::request::EffectRequest::ShieldSpark {
+                position: contact.position,
+            });
     }
 
     /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.

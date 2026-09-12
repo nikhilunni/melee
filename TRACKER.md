@@ -48,6 +48,21 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [~] Approved next milestone (2026-09-11): Fox–Marth/FD interaction completeness
+  before breadth. Source review confirms ordinary input/contact variants still
+  panic despite exact recorded full matches. Start with UI-to-headless replay
+  capture and a reachable-gap inventory, then laser/shield, special transitions,
+  contact edge cases and match endings. Scope, evidence and exit criteria:
+  `docs/MATCHUP_COMPLETENESS.md`. Replay capture, reachable-gap audit and ordinary
+  laser/shield response implemented; correctness/native checks pass. Serial
+  performance gate remains red: existing binary-size debt plus a 0.42% size
+  increase and 2.88% load cost versus unchanged HEAD; fixed load/tick ceilings
+  narrowly exceeded. Details: `docs/PORT_NOTES/MATCHUP_REPLAY_AND_SHIELD.md`.
+  First packet acceptance: bit-preserving replay
+  round trip, direct/replayed continuation equality, retained failing input and
+  diagnostic, zero-allocation recording, pause/reset/capacity behavior, native
+  export integration, `cargo gate` and workspace all-target clippy.
+
 **Steel thread (from 2026-09-09 evening): one complete match, bit-exact.**
 Fox vs Marth on Final Destination, four stocks, human inputs on both
 ports, from match start through the GAME banner, compared tick for tick
@@ -439,6 +454,10 @@ Gate: zero divergence over thousands of Slippi replays.
 - [-] Game modes beyond Versus (`gm/`, 54k): Classic, Adventure, All-Star, Event, Target Test, Home Run Contest
 
 ## Session log
+
+- 2026-09-11 (matchup packet 1): added bounded exact-input native recordings, automatic first-fault export, Cmd-S export and a renderer-free `melee-replay` consumer; audited reachable Fox/Marth gaps. Ported ordinary laser/shield damage and deflection from retail ASM, with four new 300-tick Dolphin scenarios (including actual upward deflection), shield scratch comparisons and zero-allocation checks. Debug workspace gate 1,192/0 plus final focused checks; final release 1,194/0, three pre-existing ignores; clippy, 220 harness tests, six math opt levels, native smoke and headless replay pass. Serial perf remains REGRESSION (3,926,592 bytes, 184.015 ms load, 26.036 ms/600 ticks); unchanged HEAD measured 3,910,040 bytes/178.86 ms/26.11 ms. Buffered hashing reduced initial 195.61 ms load. No thresholds/expected values changed, no commit, no decomp changes; four new trace sets mirrored. Next: remaining perf ceilings, then projectile reflection and special transitions. Full matchup coverage is still open.
+
+- 2026-09-11 (matchup coverage planning): inspected UI stepping/fault handling and selected combat/special stubs; documented a scoped interaction-coverage milestone in `docs/MATCHUP_COMPLETENESS.md`. No gameplay changes or commit. Baseline verification results are reported in the session response; next implementation packet is deterministic UI replay capture and reachable-gap inventory.
 
 - 2026-09-10 (native rendering phases): committed native/shared presentation (`a4487fe`), custom texture combiners (`e78cd33`), particles/shields (`5f709a1`) and animated directional lighting/normals (`d58f669`). Focused tests, both complete-match allocation/nonmutation captures, particle replays, 13 Metal fixtures, clippy and native smoke pass. Full workspace reruns omitted per user scope. Next material fades require shared stage animation state; laser shield response remains an existing gameplay gap.
 

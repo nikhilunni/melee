@@ -10,6 +10,8 @@ use melee_ft::fighter::assets::{CharacterDescriptor, FighterAssets};
 use std::{fs, mem::ManuallyDrop, path::Path};
 
 pub struct Assets {
+    /// FNV-1a over named source bytes in load order; diagnostic identity, not security.
+    pub(crate) fingerprint: u64,
     pub(crate) interface: Archive,
     pub(crate) effect_resources: melee_ef::Resources,
     pub(crate) items: crate::scene_items::Resources,
@@ -33,7 +35,17 @@ impl Assets {
         descriptors: [&'static CharacterDescriptor; 2],
         stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     ) -> Result<Self> {
-        let read = |name| fs::read(files.join(name)).with_context(|| format!("loading {name}"));
+        use std::hash::Hasher;
+        let fingerprint = std::cell::RefCell::new(std::hash::DefaultHasher::new());
+        let read = |name: &str| -> Result<Vec<u8>> {
+            let bytes = fs::read(files.join(name)).with_context(|| format!("loading {name}"))?;
+            let mut hash = fingerprint.borrow_mut();
+            hash.write(name.as_bytes());
+            hash.write(&[0]);
+            hash.write(&(bytes.len() as u64).to_le_bytes());
+            hash.write(&bytes);
+            Ok(bytes)
+        };
         let archive = |name| -> Result<Archive> { Ok(Archive::parse(&read(name)?)?) };
         let common = archive("PlCo.dat")?;
         let mut characters = Vec::new();
@@ -104,11 +116,12 @@ impl Assets {
         let mars_effects = archive("EfMsData.dat")?;
         let effect_resources = melee_ef::Resources::load(&effects, &fox_effects, &mars_effects)?;
         let interface = archive("IfAll.usd")?;
-        let items = crate::scene_items::Resources::load(files, &characters)?;
+        let items = crate::scene_items::Resources::load(&read, &characters)?;
         let fighters = fighters.try_into().ok().expect("two character resources");
         let characters = characters.try_into().ok().expect("two character archives");
         // Finish all fallible work before installing manually dropped ownership.
         Ok(Self {
+            fingerprint: fingerprint.into_inner().finish(),
             visual_effect_archives: [effects, fox_effects, mars_effects],
             effect_resources,
             interface,

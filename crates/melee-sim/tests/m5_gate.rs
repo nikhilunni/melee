@@ -17,6 +17,23 @@ fn laser_fd_fox_300_ticks_items_and_ordered_particle_draws() {
 }
 
 #[test]
+fn laser_shield_fd_marth_300_ticks_items_and_ordered_particle_draws() {
+    combat_gate("laser_shield_fd_marth");
+}
+#[test]
+fn laser_lightshield_fd_marth_300_ticks_items_and_ordered_particle_draws() {
+    combat_gate("laser_lightshield_fd_marth");
+}
+#[test]
+fn laser_shield_air_fd_marth_300_ticks_items_and_ordered_particle_draws() {
+    combat_gate("laser_shield_air_fd_marth");
+}
+#[test]
+fn laser_shield_deflect_fd_marth_300_ticks_items_and_ordered_particle_draws() {
+    combat_gate("laser_shield_deflect_fd_marth");
+}
+
+#[test]
 fn jab_fd_marth_300_ticks_and_ordered_particle_draws() {
     if let Some(draws) = combat_gate("jab_fd_marth") {
         assert!(
@@ -75,7 +92,13 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     assert_eq!(scenario.frames as usize, ticks);
     let compare_items = matches!(
         name,
-        "laser_fd_fox" | "match_fd_foxmarth" | "match2_fd_foxmarth"
+        "laser_fd_fox"
+            | "laser_shield_fd_marth"
+            | "laser_lightshield_fd_marth"
+            | "laser_shield_air_fd_marth"
+            | "laser_shield_deflect_fd_marth"
+            | "match_fd_foxmarth"
+            | "match2_fd_foxmarth"
     );
     if compare_items {
         trace::gate_items(&scenario).unwrap();

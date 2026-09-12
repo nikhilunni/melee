@@ -13,3 +13,4 @@ pub mod radial_force;
 pub mod orientation;
 
 pub mod color_overlay;
+pub mod shield;

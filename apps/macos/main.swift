@@ -81,6 +81,10 @@ final class GameView: NSView {
         var status = MeleeStatus()
         return melee_session_status(session, &status) ? status.tick : 0
     }
+    func smokeSaveReplay() -> String? {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("melee-native-smoke-\(ProcessInfo.processInfo.processIdentifier).json").path
+        return path.withCString({ melee_session_save_replay(session, $0) }) ? path : nil
+    }
     private func updateHUD() {
         var status = MeleeStatus()
         guard melee_session_status(session, &status) else { return }
@@ -96,6 +100,22 @@ final class GameView: NSView {
     @objc func restart(_ sender: Any?) {
         if !melee_session_reset(session) { return }
         synchronizeDisplayLink(); updateHUD()
+    }
+    @objc func saveReplay(_ sender: Any?) {
+        // Freeze the input boundary while the native save panel is open.
+        var status = MeleeStatus()
+        let wasPaused = melee_session_status(session, &status) && status.paused != 0
+        melee_session_pause(session, true)
+        synchronizeDisplayLink()
+        defer { melee_session_pause(session, wasPaused); synchronizeDisplayLink(); updateHUD() }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "melee-replay-\(Int(Date().timeIntervalSince1970)).json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if !url.path.withCString({ melee_session_save_replay(session, $0) }) {
+            var error = [CChar](repeating: 0, count: 2048)
+            melee_session_error(session, &error, error.count)
+            NSAlert(error: failure(String(cString: error))).runModal()
+        }
     }
     private func action(for key: UInt16) -> (UInt32, UInt32)? {
         // macOS physical virtual-key codes stay here. Logical mapping is shared.
@@ -142,6 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let application = NSMenu(); item.submenu = application
             application.addItem(withTitle: "Pause / Resume", action: #selector(GameView.togglePause(_:)), keyEquivalent: "p").target = view
             application.addItem(withTitle: "Restart Match", action: #selector(GameView.restart(_:)), keyEquivalent: "r").target = view
+            application.addItem(withTitle: "Save Replay…", action: #selector(GameView.saveReplay(_:)), keyEquivalent: "s").target = view
             application.addItem(.separator())
             application.addItem(withTitle: "Quit Melee", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
             NSApp.mainMenu = menu
@@ -163,7 +184,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     guard tick > 120 && before.isFinite && after.isFinite && before != after else {
                         print("native smoke FAILED: tick \(tick), x \(before) -> \(after)"); exit(1)
                     }
-                    print("native smoke passed: resize, focus, pause/resume, keyboard; tick \(tick), x \(before) -> \(after)")
+                    guard let replay = view.smokeSaveReplay() else {
+                        print("native smoke FAILED: replay export"); exit(1)
+                    }
+                    print("native smoke passed: resize, focus, pause/resume, keyboard, replay export; tick \(tick), x \(before) -> \(after); replay \(replay)")
                     NSApp.terminate(nil)
                 }
             }

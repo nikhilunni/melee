@@ -1,0 +1,25 @@
+# Fox short-hops and fires near the top of Marth's mature shield.
+# Retail deflects the surviving laser upward at tick 66; gate its continuation.
+# Verify item/shield overlap before applying shield response: a distant laser
+# must not count as a hit merely because a shield is active.
+name = "laser_shield_deflect_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 15, buttons = { L = true } },
+  { frame = 30, port = 1, buttons = { X = true } },
+  { frame = 31, port = 1, buttons = {} },
+  { frame = 41, port = 1, buttons = { B = true } },
+  { frame = 43, port = 1, buttons = {} },
+  { frame = 130, buttons = {} },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,5 +1,6 @@
 //! Shared session policy: fixed simulation ticks and logical input latching.
 use melee_lib::{presentation::Presentation, *};
+use melee_replay::Recording;
 use std::{path::Path, time::Duration};
 
 /// Native adapters map physical keys/buttons to these stable logical actions.
@@ -102,6 +103,8 @@ pub struct Session {
     clock: TickClock,
     paused: bool,
     focused: bool,
+    recording: Recording,
+    failure: Option<String>,
 }
 impl Session {
     pub fn new(directory: impl AsRef<Path>) -> Result<Self, String> {
@@ -114,6 +117,7 @@ impl Session {
         )
         .with_seed(Seed(42));
         let assets = GameAssets::load(directory, &config).map_err(|e| e.to_string())?;
+        let recording = Recording::new(&config, &assets);
         let game = Match::new(&assets, config).map_err(|e| e.to_string())?;
         let presentation = Presentation::new(&game).map_err(|e| e.to_string())?;
         Ok(Self {
@@ -123,6 +127,8 @@ impl Session {
             clock: TickClock::default(),
             paused: false,
             focused: true,
+            recording,
+            failure: None,
         })
     }
     pub fn game(&self) -> &Match {
@@ -153,10 +159,51 @@ impl Session {
         self.paused || !self.focused
     }
     pub fn needs_frame(&self) -> bool {
-        !self.is_paused() && self.game.status().is_running()
+        self.failure.is_none() && !self.is_paused() && self.game.status().is_running()
+    }
+    pub fn recording(&self) -> &Recording {
+        &self.recording
+    }
+    pub fn save_replay(&self, path: &Path) -> Result<(), String> {
+        self.recording.save(path)
+    }
+
+    /// Called only after an error; disk I/O and formatting never run on a healthy tick.
+    fn stop_with_replay(&mut self, error: String) -> String {
+        if let Some(previous) = &self.failure {
+            return previous.clone();
+        }
+        let directory = std::env::temp_dir().join("melee-replays");
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = directory.join(format!("fault-{}-{stamp}.json", std::process::id()));
+        let saved = std::fs::create_dir_all(&directory)
+            .map_err(|e| e.to_string())
+            .and_then(|()| self.recording.save_new(&path));
+        let message = match saved {
+            Ok(()) => format!("{error}\nReplay saved: {}", path.display()),
+            Err(save_error) => {
+                format!("{error}\nReplay save failed: {save_error}. Use Save Replay to retry.")
+            }
+        };
+        self.failure = Some(message.clone());
+        message
+    }
+
+    pub(crate) fn stop_after_host_fault(&mut self, message: String) -> String {
+        // Host/presentation faults happen outside Match::step: all recorded
+        // inputs succeeded. Do not mislabel the last successful tick as a fault.
+        self.stop_with_replay(format!(
+            "application fault after {} successful ticks: {message}",
+            self.game.tick().0
+        ))
     }
     pub fn reset(&mut self) -> Result<(), String> {
         self.game.reset(Seed(42)).map_err(|e| e.to_string())?;
+        self.recording.reset();
+        self.failure = None;
         self.paused = false;
         self.clock = TickClock::default();
         self.keyboard = Keyboard::default();
@@ -165,6 +212,9 @@ impl Session {
             .map_err(|e| e.to_string())
     }
     pub fn advance(&mut self, elapsed: Duration) -> Result<(), String> {
+        if let Some(error) = &self.failure {
+            return Err(error.clone());
+        }
         if !self.needs_frame() {
             return Ok(());
         }
@@ -173,14 +223,23 @@ impl Session {
             if !self.game.status().is_running() {
                 break;
             }
-            self.game
-                .step(&self.keyboard.sample())
-                .map_err(|e| e.to_string())?;
+            if self.recording.is_full() {
+                return Err(self.stop_with_replay(
+                    "30-minute replay capacity reached; save and restart the match".into(),
+                ));
+            }
+            let inputs = self.keyboard.sample();
+            self.recording.push(inputs).map_err(str::to_owned)?;
+            if let Err(error) = self.game.step(&inputs) {
+                let message = format!("attempted tick {}: {error}", self.recording.samples().len());
+                self.recording.fail(error.to_string());
+                return Err(self.stop_with_replay(message));
+            }
         }
         if ticks > 0 {
-            self.presentation
-                .capture(&self.game)
-                .map_err(|e| e.to_string())?;
+            if let Err(error) = self.presentation.capture(&self.game) {
+                return Err(self.stop_after_host_fault(error.to_string()));
+            }
         }
         Ok(())
     }

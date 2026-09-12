@@ -433,8 +433,27 @@ impl FighterCore {
         hit: &melee_coll::hitbox::HitCapsule,
         attacker_scale: f32,
     ) -> Option<melee_coll::geometry::Contact> {
+        self.shield_volume_contact(hit, attacker_scale, false)
+    }
+    pub(super) fn shield_reflect_contact(
+        &mut self,
+        hit: &melee_coll::hitbox::HitCapsule,
+        attacker_scale: f32,
+    ) -> Option<melee_coll::geometry::Contact> {
+        self.shield_volume_contact(hit, attacker_scale, true)
+    }
+    fn shield_volume_contact(
+        &mut self,
+        hit: &melee_coll::hitbox::HitCapsule,
+        attacker_scale: f32,
+        reflecting: bool,
+    ) -> Option<melee_coll::geometry::Contact> {
         use melee_coll::geometry::{capsule_contact, Capsule};
-        let volume = &mut self.shield.hit;
+        let volume = if reflecting {
+            &mut self.shield.reflect.volume
+        } else {
+            &mut self.shield.hit
+        };
         if !volume.position_cached {
             volume.position = super::caches::bone_position(
                 &mut self.skeleton,

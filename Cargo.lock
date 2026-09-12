@@ -989,8 +989,20 @@ version = "0.0.1"
 dependencies = [
  "bytemuck",
  "melee-lib",
+ "melee-replay",
+ "melee-test-support",
  "pollster",
  "wgpu",
+]
+
+[[package]]
+name = "melee-replay"
+version = "0.0.1"
+dependencies = [
+ "melee-lib",
+ "melee-test-support",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

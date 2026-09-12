@@ -10,6 +10,10 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 melee-lib = { path = "../melee-lib" }
+melee-replay = { path = "../melee-replay" }
 wgpu = "30"
 pollster = "0.4"
 bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

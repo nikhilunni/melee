@@ -180,6 +180,14 @@ fn shieldstun_ftilt_matches_retail_scratch() {
 }
 
 #[test]
+fn laser_shield_matches_retail_health_stun_and_hitlag() {
+    replay_scratch("laser_shield_fd_marth");
+    replay_scratch("laser_lightshield_fd_marth");
+    replay_scratch("laser_shield_air_fd_marth");
+    replay_scratch("laser_shield_deflect_fd_marth");
+}
+
+#[test]
 fn shieldtilt_ftilt_matches_retail_scratch() {
     replay_scratch("shieldtilt_ftilt_fd_marth");
 }

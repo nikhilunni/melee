@@ -16,6 +16,12 @@ pub fn character_descriptor(
     crate::scene_fighter::SceneFighter::descriptor_for(name)
 }
 pub const CHARACTERS: &[&str] = crate::scene_fighter::SceneFighter::NAMES;
+/// Content fingerprint of the source bytes actually loaded, including articles.
+/// Stable for the same Rust toolchain, loader and assets, independent of directory.
+/// Non-cryptographic: detects accidental data drift, not malicious substitution.
+pub fn asset_fingerprint(assets: &crate::GameAssets) -> u64 {
+    assets.inner.fingerprint
+}
 /// Import a captured oracle boundary. Unlike Match::new, the first step may
 /// complete a partial tick. Tick numbering intentionally matches the fixture.
 pub fn import_match(source: &impl ScenarioSource) -> anyhow::Result<crate::Match> {

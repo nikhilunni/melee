@@ -8,7 +8,6 @@ use melee_it::{
     ItemAnimationContext, ItemDispatch, ItemPool, ItemRequest,
 };
 use melee_types::{fixed::FixedVec, ItemKind};
-use std::path::Path;
 
 melee_it::item_kinds! {
     pub enum SceneItems {
@@ -27,9 +26,11 @@ pub struct Resources {
     visual_archives: Vec<(ItemKind, std::sync::Arc<Archive>)>,
 }
 impl Resources {
-    pub fn load(files: &Path, characters: &[crate::assets::CharacterArchive]) -> Result<Self> {
-        let archive =
-            |file| -> Result<Archive> { Ok(Archive::parse(&std::fs::read(files.join(file))?)?) };
+    pub fn load(
+        read: &impl Fn(&str) -> Result<Vec<u8>>,
+        characters: &[crate::assets::CharacterArchive],
+    ) -> Result<Self> {
+        let archive = |file| -> Result<Archive> { Ok(Archive::parse(&read(file)?)?) };
         let common = archive("ItCo.dat")?;
         let common = ItemCommonData::read(
             &common,

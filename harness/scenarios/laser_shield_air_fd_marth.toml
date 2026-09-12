@@ -1,0 +1,24 @@
+# Marth holds a mature shield while Fox fires one laser from across FD.
+# Verify item/shield overlap before applying shield response: a distant laser
+# must not count as a hit merely because a shield is active.
+name = "laser_shield_air_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 15, buttons = { L = true } },
+  { frame = 30, port = 1, buttons = { X = true } },
+  { frame = 31, port = 1, buttons = {} },
+  { frame = 45, port = 1, buttons = { B = true } },
+  { frame = 47, port = 1, buttons = {} },
+  { frame = 130, buttons = {} },
+]
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

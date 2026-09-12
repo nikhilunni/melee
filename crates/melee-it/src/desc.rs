@@ -7,6 +7,7 @@ use melee_types::combat::HitboxDescriptor;
 pub struct ItemCommonData {
     pub hold_limits: [Option<usize>; 13],
     pub lifetime: f32,
+    pub shield_bounce_degrees: f32,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -32,6 +33,7 @@ impl ItemCommonData {
         Ok(Self {
             hold_limits,
             lifetime: r.u32(base + 0x30)? as f32,
+            shield_bounce_degrees: r.f32(base + 0xE0)?,
         })
     }
 }
@@ -193,6 +195,7 @@ pub struct ItemHitFlags {
     pub reflectable: bool,
     pub absorbable: bool,
     pub shieldable: bool,
+    pub shield_bounce: bool,
     pub hits_hurtboxes: bool,
     pub grabbable_hurtboxes_only: bool,
     pub sound_kind: u8,
@@ -205,6 +208,7 @@ impl ItemHitFlags {
             reflectable: extra & (1 << 20) != 0,
             absorbable: extra & (1 << 17) != 0,
             shieldable: extra & (1 << 18) != 0,
+            shield_bounce: extra & (1 << 16) != 0,
             hits_hurtboxes: extra & (1 << 14) != 0,
             grabbable_hurtboxes_only: extra & (1 << 13) != 0,
             sound_kind: ((last >> 2) & 15) as u8,
