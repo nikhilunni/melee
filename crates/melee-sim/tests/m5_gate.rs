@@ -1212,3 +1212,13 @@ fn ledge_input_ledge_timeout_fd_fox_1200_ticks_and_ordered_particles() {
 fn ledge_input_ledge_timeout_fd_marth_1200_ticks_and_ordered_particles() {
     combat_gate_ticks("ledge_timeout_fd_marth", 1200);
 }
+
+#[test]
+fn fire_contact_firefox_charge_hit_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("firefox_charge_hit_fd_marth");
+}
+
+#[test]
+fn fire_contact_firefox_travel_hit_fd_marth_300_ticks_and_ordered_particles() {
+    combat_gate("firefox_travel_hit_fd_marth");
+}

@@ -418,3 +418,9 @@ fn ledge_input_allocation_budget() {
     allocation_budget("ledge_timeout_fd_fox", 0);
     allocation_budget("ledge_timeout_fd_marth", 0);
 }
+
+#[test]
+fn fire_contact_allocation_budget() {
+    allocation_budget("firefox_charge_hit_fd_marth", 0);
+    allocation_budget("firefox_travel_hit_fd_marth", 0);
+}

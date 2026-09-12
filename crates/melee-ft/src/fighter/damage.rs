@@ -580,8 +580,14 @@ impl Fighter {
         let (state, stun) = self
             .core
             .prepare_damage_reaction(&hit, forced_motion, assets, rng);
-        if hit.descriptor.element == melee_types::HitElement::Electric {
-            // ftCo_8008DA4C -> ftCo_800BFFD0: the damage level selects color 15..18.
+        // ftCo_8008DA4C (8008DA9C / 8008DAB0): Fire selects11..14,
+        // Electric15..18, before Fighter_ChangeMotionState evaluates frame zero.
+        let overlay_base = match hit.descriptor.element {
+            melee_types::HitElement::Fire if hit.descriptor.damage != 0.0 => Some(11),
+            melee_types::HitElement::Electric => Some(15),
+            _ => None,
+        };
+        if let Some(base) = overlay_base {
             let level = if forced_motion.is_some() {
                 3
             } else {
@@ -592,7 +598,7 @@ impl Fighter {
                     .position(|&t| stun < t)
                     .unwrap_or(3)
             };
-            self.combat.damage_overlay = Some((15 + level as u8, Default::default()));
+            self.combat.damage_overlay = Some((base + level as u8, Default::default()));
         }
         self.change_damage_motion(state.into(), assets, throw_owner)?;
         self.step_animation(assets);

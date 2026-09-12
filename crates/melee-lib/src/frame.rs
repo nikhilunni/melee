@@ -861,7 +861,7 @@ impl Simulation {
             }
             if runtime.frame != 0 {
                 for fighter in &mut runtime.state.fighters {
-                    fighter.0.prepare_dynamic_animation_caches();
+                    fighter.0.prepare_dynamic_display_caches();
                 }
                 // particleSort (psdisp.c:0x8039FC70), between observations.
                 runtime.state.particles.sort_for_display(7);
@@ -978,6 +978,8 @@ fn dispatch_fighter(
     wind: Vec3,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
+    let was_in_hitlag = f.combat.hitlag_remaining > 0.0;
+    let had_effect_callbacks = f.effect_state.hitlag_callbacks;
     match proc {
         FighterProc::Status => f.proc_status(),
         FighterProc::Animation => {
@@ -1023,6 +1025,22 @@ fn dispatch_fighter(
         FighterProc::Dynamics => f.proc_dynamics_with_forces(map, radial_forces.fields()),
         FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
+    }
+    // Fighter_8006D044/8006D10C invoke the installed callbacks on transitions,
+    // not every frozen frame. New models created later are not retroactively paused.
+    if proc == FighterProc::Status
+        && was_in_hitlag
+        && f.combat.hitlag_remaining == 0.0
+        && had_effect_callbacks
+    {
+        effects.set_owner_hitlag(player, false);
+    }
+    if proc == FighterProc::ProcessHit
+        && !was_in_hitlag
+        && f.combat.hitlag_remaining > 0.0
+        && f.effect_state.hitlag_callbacks
+    {
+        effects.set_owner_hitlag(player, true);
     }
     // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
     // operands; queue lifetime is owned by the scene's ground controller.

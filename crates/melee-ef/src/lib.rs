@@ -78,8 +78,17 @@ struct Effect {
     attachment_bone: Option<usize>,
     scale_attachment: bool,
     callback_rotation: Option<Vec3>,
+    hitlag_pause: HitlagPause,
     joint_base: usize,
     paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
+}
+/// efLib state_flags: bit0x80 bypasses the pause states in efLib_Update.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HitlagPause {
+    Ignore,
+    Active,
+    Entering,
+    Paused,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ModelOwner {
@@ -284,6 +293,8 @@ impl Effects {
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
                 effect.owner = Some(ModelOwner::Fighter(player));
+                // efAlt's attached character models retain state_flags=0.
+                effect.hitlag_pause = HitlagPause::Active;
                 effect.attachment = Some(player);
                 effect.attachment_bone = Some(bone);
                 effect.scale_attachment = false;
@@ -424,21 +435,27 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::HitSpark {
-                position,
-                element: melee_types::HitElement::Electric,
-                ..
+                position, element, ..
             } = request
             {
-                // ftColl hit_effect_ids[Electric] -> efAsync_Dispatch 0x3E9.
-                self.spawn_dust_generator::<T>(
-                    0x3E9,
-                    position,
-                    fighter.effect_facing(),
-                    bank,
-                    particles,
-                    rng,
-                )?;
-                continue;
+                // ftColl hit_effect_ids -> efAsync_Dispatch. These branches
+                // create positional generators, with no model or direct RNG.
+                let generator = match element {
+                    melee_types::HitElement::Electric => Some(0x3E9),
+                    melee_types::HitElement::Fire => Some(0x3EA),
+                    _ => None,
+                };
+                if let Some(generator) = generator {
+                    self.spawn_dust_generator::<T>(
+                        generator,
+                        position,
+                        fighter.effect_facing(),
+                        bank,
+                        particles,
+                        rng,
+                    )?;
+                    continue;
+                }
             }
             if let EffectRequest::LedgeGrab { position } | EffectRequest::ShieldSpark { position } =
                 request
@@ -675,6 +692,20 @@ impl Effects {
     ) -> Result<()> {
         self.tick_with_pause::<T>(false, bone_matrix, bank, particles, rng)
     }
+    /// efLib_PauseAll / ResumeAll: affect existing owned models only.
+    pub fn set_owner_hitlag(&mut self, player: usize, paused: bool) {
+        for effect in self.instances.iter_mut() {
+            if effect.owner == Some(ModelOwner::Fighter(player))
+                && effect.hitlag_pause != HitlagPause::Ignore
+            {
+                effect.hitlag_pause = if paused {
+                    HitlagPause::Entering
+                } else {
+                    HitlagPause::Active
+                };
+            }
+        }
+    }
     /// gm_803DA888[4] pauses p_link 11; KO models on p_link 12 keep updating.
     pub fn tick_with_pause<T: InverseTrig>(
         &mut self,
@@ -708,6 +739,12 @@ impl Effects {
         for effect in self.instances.iter_mut() {
             if pause_async && effect.descriptor != 0x19 {
                 continue;
+            }
+            // efLib_Update: the entering-pause call still advances once.
+            match effect.hitlag_pause {
+                HitlagPause::Paused => continue,
+                HitlagPause::Entering => effect.hitlag_pause = HitlagPause::Paused,
+                _ => {}
             }
             if !effect.indefinite && effect.lifetime != 0 {
                 effect.lifetime -= 1;
@@ -843,6 +880,7 @@ impl Effect {
             attachment_bone: None,
             scale_attachment: true,
             callback_rotation: None,
+            hitlag_pause: HitlagPause::Ignore,
             attachment: None,
             owner: None,
             joint_base: 0,

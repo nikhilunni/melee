@@ -38,6 +38,8 @@ impl super::FighterCore {
 #[derive(Clone, Debug, Default)]
 pub struct FighterEffects {
     pub destroy_on_state_change: bool,
+    /// Installed pre/post-hitlag efLib pause callbacks, cleared on motion entry.
+    pub hitlag_callbacks: bool,
     pub rotating_bone_index: u8,
     pub invisible: bool,
 }
@@ -102,7 +104,7 @@ impl super::FighterCore {
                 });
                 continue;
             }
-            if matches!(id, 0x402 | 0x403 | 0x412) {
+            if matches!(id, 0x402 | 0x403 | 0x412 | 0x413 | 0x414) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
                 self.effects.push(EffectRequest::Attached { id, bone });
                 continue;

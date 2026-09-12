@@ -126,11 +126,17 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 11] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 12] = [
     // S6: dizzy animation sparkle, efasync.c:117-119.
     DustSpawn {
         request: 0x3E9,
         particle: 0xC,
+        directional: false,
+    },
+    // efAsync_Dispatch 80063AEC..B08: Fire hit spark, generator 0x14.
+    DustSpawn {
+        request: 0x3EA,
+        particle: 0x14,
         directional: false,
     },
     // S9: efasync.c 0x42D, the star-KO twinkle (efLib_CreateGenerator 0x121 at cur_pos).
@@ -187,7 +193,14 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 11] = [
     },
 ];
 // efasync.c:282-287, live-joint generator dispatch.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 3] = [(0x402, 0x59), (0x403, 0x5E), (0x412, 0x13)];
+// efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 5] = [
+    (0x402, 0x59),
+    (0x403, 0x5E),
+    (0x412, 0x13),
+    (0x413, 0x37),
+    (0x414, 0xE1),
+];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 pub(super) static PARTICLE_KINDS: [i32; 22] = [
     2, 6, 8, 9, 10, 45, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 445, 448,

@@ -102,9 +102,10 @@ impl Fighter {
         self.core.update_hurtbox_extents();
     }
     /// Rendered joints feed the next ftCo_8009CB40 ownership change through
-    /// their cached matrices. Publish only the animation-owned dynamic chain;
-    /// the solver itself owns the positions of locked joints.
-    pub fn prepare_dynamic_animation_caches(&mut self) {
+    /// their cached matrices. Publish the dynamic chain even while locked:
+    /// a same-tick Wait -> Walk can release and reclaim ownership before the
+    /// next display. The solver updates SRT/springs, not these JObj caches.
+    pub fn prepare_dynamic_display_caches(&mut self) {
         if self.core.status.disabled
             || self.core.effect_state.invisible
             || self.core.commands.fighter_hidden
@@ -113,24 +114,16 @@ impl Fighter {
         }
         for set in &self.core.dynamics {
             for bone in &set.bones {
-                let part = self
-                    .core
-                    .animation
-                    .parts
-                    .iter()
-                    .find(|part| part.joint == bone.joint)
-                    .expect("dynamic joint has an animation part");
-                if !part.flags.contains(crate::anim::attach::PartFlags::LOCKED) {
-                    self.core.skeleton.setup_matrix(bone.joint);
-                }
+                self.core.skeleton.setup_matrix(bone.joint);
             }
         }
     }
     /// Fighter_8006D9AC (0x8006D9AC), s_link 16 -> ftCo_8009DD94.
+    /// Retail skips this entire proc while the hitlag latch is set.
     /// Wait x594_b3 selects ftCo_8009CB40(..., false, NULL), setting bone_id
     /// to 0x100 (ftdynamics.c:55); lb_8001044C returns at lb_00F9.c:447.
     pub fn proc_dynamics(&mut self) {
-        if self.core.status.disabled {
+        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
             return;
         }
         self.core.status.require_supported();
@@ -139,7 +132,7 @@ impl Fighter {
     }
     /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
     pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
-        if self.core.status.disabled {
+        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
             return;
         }
         self.core.status.require_supported();
@@ -151,7 +144,7 @@ impl Fighter {
         map: &mut CollMap,
         forces: &[melee_lb::dynamics::ForceField],
     ) {
-        if self.core.status.disabled {
+        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
             return;
         }
         self.core.status.require_supported();

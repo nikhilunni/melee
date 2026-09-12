@@ -48,6 +48,11 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [x] Fire Fox contact (2026-09-12): recorded charge and travel hits on Marth.
+  Acceptance: fire_contact_* fighter/RNG/ordered-particle and full SRT gates,
+  zero allocations, both workspace profiles and clippy. Source efAsync_Dispatch
+  80063AEC maps fire hit spark0x3EA to positional generator0x14.
+
 - [x] Directed ledge input and timeout (2026-09-12): ten recorded C-stick
   attack/escape/drop/priority and 1,200-tick timeout scenarios. Acceptance:
   `ledge_input_*` fighter/RNG/ordered-particle, all captured SRT, raw ledge
@@ -697,3 +702,11 @@ Newest first. One line per session: date, what landed, what is next.
   simulator is 3,960,704 bytes (+16,856 from e5db5fd). Full performance census
   not rerun; graphics smoke cannot start while the host IOSurface limit persists.
   Committing the directed revival/capture/ledge packet and instruction repair.
+
+- 2026-09-12 (Fire contact): charge and travel hits now match 300-tick fighter,
+  RNG/ordered-particle, full SRT and particle simulation fields. Fixed authored
+  fire overlays, hitlag dynamics/effect pause and locked-chain display caches.
+  Debug/release each 1,352/0 with one existing ignore; clippy, formatting,
+  220 harness tests, schema and native build pass. Stripped size 3,960,712
+  (+8 bytes). Full perf census not rerun. Null-backend pilot matches an existing
+  300-tick powershield trace; full capture equivalence next, then reflection.

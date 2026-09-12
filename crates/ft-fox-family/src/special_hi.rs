@@ -490,6 +490,8 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
         .pending_effect
         .take();
     if let Some(id) = pending {
+        // Fighter_SetEffectHitlagCallbacks, charge/launch accessory callback.
+        f.effect_state.hitlag_callbacks = true;
         let part = if id == 0x48B {
             FtPart::TransN
         } else {
@@ -565,6 +567,7 @@ fn enter_bound<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<
     f.effects
         .push(EffectRequest::FireFoxRebound { position, angle });
     f.effect_state.destroy_on_state_change = true;
+    f.effect_state.hitlag_callbacks = true;
     Ok(())
 }
 fn bound<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {

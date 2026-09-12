@@ -277,3 +277,71 @@ fn ledge_input_bones_ledge_timeout_fd_fox() {
 fn ledge_input_bones_ledge_timeout_fd_marth() {
     replay_bones("ledge_timeout_fd_marth", 1200);
 }
+
+#[test]
+fn fire_contact_bones_firefox_charge_hit_fd_marth() {
+    replay_bones("firefox_charge_hit_fd_marth", 300);
+}
+
+#[test]
+fn fire_contact_bones_firefox_travel_hit_fd_marth() {
+    replay_bones("firefox_travel_hit_fd_marth", 300);
+}
+
+#[test]
+fn fire_contact_particle_simulation_fields_match_retail() {
+    use crate::initial_state::particles;
+    struct Banks<'a>(&'a InitialState);
+    impl particles::Banks for Banks<'_> {
+        fn bank(&self, id: u8) -> &hsd_particle::bank::ParticleBank {
+            match id {
+                0 => &self.0.assets.common_particle_bank,
+                30 => &self.0.assets.particle_bank,
+                _ => self.0.particles.bank(id).expect("loaded effect bank"),
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for name in ["firefox_charge_hit_fd_marth", "firefox_travel_hit_fd_marth"] {
+        let scenario =
+            Scenario::load(&root.join(format!("harness/scenarios/{name}.toml"))).unwrap();
+        let path = scenario.trace_path("particles.jsonl");
+        if !melee_test_support::require_files(
+            scenario.required_files().into_iter().chain([path.clone()]),
+        ) {
+            return;
+        }
+        let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+        let mut simulation = super::TestSimulation::with_inputs(
+            initial,
+            crate::trace::pad_script(&scenario).unwrap(),
+        );
+        let expected =
+            melee_diff::read_trace(std::io::BufReader::new(fs::File::open(path).unwrap())).unwrap();
+        assert_eq!(expected.len(), 300);
+        for mut record in expected {
+            simulation.tick().unwrap();
+            let state = &simulation.runtime.state;
+            let mut actual = particles::snapshot(
+                &state.particles,
+                state.rng.seed,
+                record.frame,
+                &Banks(state),
+            );
+            // psDispSubAppSRT owns camera-dependent caches and the display
+            // frame tag. Compare authored SRT and lifetimes here; psdisp's
+            // separate reference oracles cover those renderer caches.
+            let simulation_field = |key: &String, _: &mut melee_diff::Value| {
+                !key.starts_with("particles.appsrt[")
+                    || [".translation[", ".rotation[", ".scale[", ".use_count"]
+                        .iter()
+                        .any(|field| key.contains(field))
+            };
+            actual.state.retain(simulation_field);
+            record.state.retain(simulation_field);
+            if let Some(diff) = melee_diff::first_divergence([&record], [&actual]) {
+                panic!("{name}: {diff}");
+            }
+        }
+    }
+}

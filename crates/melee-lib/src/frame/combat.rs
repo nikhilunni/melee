@@ -696,3 +696,9 @@ fn ledge_input_matches_retail_scratch() {
         replay_scratch_until(&format!("ledge_timeout_fd_{kind}"), 1200);
     }
 }
+
+#[test]
+fn fire_contact_matches_retail_damage_and_recovery_scratch() {
+    replay_scratch("firefox_charge_hit_fd_marth");
+    replay_scratch("firefox_travel_hit_fd_marth");
+}

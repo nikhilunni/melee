@@ -734,6 +734,7 @@ impl FighterCore {
         self.apply_dynamic_commands(assets);
         self.flush_effects_on_motion_change();
         self.shield.clear_collision();
+        self.effect_state.hitlag_callbacks = false;
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;

@@ -241,10 +241,10 @@ impl FighterAssets {
             .link(color_table + 118 * 8)?
             .ok_or("powershield color script")?;
         charge_overlays.insert(118, super::smash::read_overlay(common, powershield)?);
-        for id in 15..=18 {
+        for id in 11..=18 {
             let entry = common
                 .link(color_table + u32::from(id) * 8)?
-                .ok_or("electric damage color script")?;
+                .ok_or("elemental damage color script")?;
             charge_overlays.insert(id, super::smash::read_overlay(common, entry)?);
         }
         for command in &commands {

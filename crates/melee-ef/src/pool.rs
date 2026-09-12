@@ -175,6 +175,7 @@ impl Effect {
         self.attachment_bone = None;
         self.scale_attachment = true;
         self.callback_rotation = None;
+        self.hitlag_pause = initial.hitlag_pause;
         self.joint_base = 0;
         self.tree.events.clear();
         // The prepared model has immutable topology and fixed animation tracks.

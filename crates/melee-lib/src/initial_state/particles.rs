@@ -163,7 +163,39 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
             fields.scalar("aux.maximum_angle", maximum_angle);
         }
         EmissionShape::Tornado { speed } => fields.scalar("aux.speed", speed),
-        EmissionShape::Rectangle { dimensions } => fields.array("aux.dimensions", dimensions),
+        EmissionShape::Rectangle { dimensions } => {
+            // hsd_8039F05C: rectangle dimensions and its axis cache are named
+            // separately in the oracle. The current emitter retains the
+            // authored diagonal axes; rotated imported axes need a real owner.
+            for (name, value) in ["aux.x", "aux.y", "aux.z"]
+                .into_iter()
+                .zip(dimensions.iter_mut())
+            {
+                fields.scalar(name, value);
+            }
+            for row in 0..3 {
+                for column in 0..3 {
+                    let expected = if row == column { dimensions[row] } else { 0.0 };
+                    let mut value = expected;
+                    let name = format!("aux.{}{}", ["x", "y", "z"][row], ["x", "y", "z"][column]);
+                    fields.scalar(&name, &mut value);
+                    assert_eq!(
+                        value.to_bits(),
+                        expected.to_bits(),
+                        "rotated rectangle import"
+                    );
+                }
+            }
+            let expected = dimensions
+                .iter()
+                .enumerate()
+                .fold(0_u16, |flags, (i, value)| {
+                    flags | if *value < 0.0 { 1 << i } else { 0 }
+                });
+            let mut flags = expected;
+            fields.scalar("aux.flags", &mut flags);
+            assert_eq!(flags, expected, "rectangle surface flags");
+        }
         EmissionShape::Line { end } => fields.array("aux.end", end),
         EmissionShape::Cone {
             mode,
