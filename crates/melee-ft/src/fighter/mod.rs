@@ -138,6 +138,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
     }
 
+    /// Character article work before the common throw release/end processing.
+    fn throw_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+
     /// ftColl candidate boundary: special defense may consume an eligible hit.
     const DEFENSE_CONTACT: Option<DefenseContact> = None;
     /// Fighter_ProcessHit: deferred special defense reaction, before hitlag.

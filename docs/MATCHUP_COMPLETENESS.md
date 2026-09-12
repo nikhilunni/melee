@@ -73,7 +73,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |
 | Dash defense | `fighter/dash.rs`: early Escape and later Shield rejected | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
 | Revival platform | `fighter/life.rs`: timeout and an overbroad shield+A predicate panic | `rebirth_timeout_fd_fox`, `rebirth_timeout_fd_marth`, `rebirth_shield_a_fd_fox` |
-| C-stick throws | `fighter/grab_throw.rs:96`: C-stick throw selection panics | `cstick_throws_fd_foxmarth`, `cstick_throws_fd_marthfox` |
+| C-stick throws | Direction selection, Fox blaster/laser callbacks, captured damage and collateral hitbox lifetime implemented | Fourteen exact item/fighter/particle scenarios plus raw scratch; both workspace profiles and allocation gates pass; `PORT_NOTES/CSTICK_THROWS.md` |
 | Taunt | `fighter/walk.rs`, `input/iasa.rs`, `fighter/dash.rs`: selected input lacks transition body | `taunt_fd_fox`, `taunt_fd_marth` |
 
 The added `fighter/` references are under `crates/melee-ft/src`; line numbers

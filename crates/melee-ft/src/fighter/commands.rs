@@ -65,6 +65,8 @@ pub struct CommandState {
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
     pub throw_reverse: bool,
+    /// Fighter throw_flags_b0, consumed by character throw article callbacks.
+    pub throw_accessory: bool,
     pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
     /// HitCapsule.unk_count is captured before the stale multiplier.
     pub throw_damage_counts: [u32; 2],
@@ -171,7 +173,7 @@ impl CommandState {
                 | Command::Call { .. }
                 | Command::Return => unreachable!("interpreter consumes control flow"),
                 Command::ThrowAccessory => {
-                    unimplemented!("ftAction_80071974: character throw accessory")
+                    self.throw_accessory = true;
                 }
                 Command::SmashSound => {
                     if !seeking {

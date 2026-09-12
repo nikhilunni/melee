@@ -48,6 +48,25 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [~] Resumed matchup completion (2026-09-11): user requested finishing the
+  remaining Fox/Marth/FD gaps and pausing before breadth. Work proceeds through
+  C-stick throws and Fox throw articles, recovery counterparts/rebounds, common
+  defense/grab/ledge inputs, lifecycle/timer outcomes, then a reproducible
+  combination corpus and final coverage audit. Keep committing verified packets.
+  First acceptance: fourteen `cstick_throw_*_fd_{fox,marth}` 300-tick retail
+  fighter/particle gates, zero-allocation checks, both workspace gates and clippy.
+
+- [x] C-stick throws and Fox throw articles (2026-09-11): fourteen exact
+  directional/priority/pulse scenarios compare fighters, items, particles and RNG.
+  Fixed reversal operand decoding, blaster/laser callbacks, captured item damage,
+  and linked forward-throw hitlag. Restored owner-before-script ordering and
+  slow-knockback collateral hitbox clearing; both old ignored throw tests now pass
+  with unchanged expected bytes. Debug/release each 1,249 passed, 0 failed,
+  1 existing ignore; clippy, formatting, 220 harness tests and schema checks pass.
+  Simulation allocation gates and native smoke/exported replay pass (232 ticks).
+  Stripped simulator 3,926,840 bytes (+56); no new full performance claim.
+  See `docs/PORT_NOTES/CSTICK_THROWS.md`. Next: captured recovery transitions.
+
 - [x] Jump-squat up-special (2026-09-11): explicit Up-slot dispatch before
   grab/up-smash. Six captured Fox/Marth cases cover ordinary, competing A/Z
   and diagonal input. Fighter/particle and zero-allocation gates pass; both
@@ -405,7 +424,7 @@ Gate: two-fighter scenarios with hits, shields, grabs, KOs.
 - [x] (2026-09-09) **First hit (Codex lane A1):** `jab_fd_marth` gate 300x49: Marth Attack11 into idle Fox with fighter overlap push before it; typed hitboxes from the subaction commands, hurtboxes, hit detection in retail pair order, hitlag, damage, knockback, hitstun, Fox DamageN2 -> Wait; slash effects; new `melee-if` crate for the HUD percent-shake RNG (`ifstatus.c`, s_link 17). Particle replay 467,132 fields. Report `melee-ft/src/fighter/M5_HIT.md`. Next (A2, scenes scripted, recording pending): attacker swap `jab_fd_fox`, `fsmash_fd_marth` launch/tumble, `shieldhit_fd_marth`, `grab_fd_marth`.
 - [x] (2026-09-09) Combat batch 2 (Codex lane A2): `jab_fd_fox` (Fox as attacker), `utilt_fd_marth` (AttackHi3 launch, DamageHi, landing, slide into the ledge grab), `shieldhit_fd_marth` (GuardDamage, shield damage/stun, pushback) 300x49 each with particle replays; grab startup (ticks 0-126) with the pair states left for A3. Report `M5_COMBAT2.md`.
 - [x] (2026-09-09) Codex lane A3: grab/throw (pair selection, CatchPull/CatchWait/ThrowB, Fox constrained to the throw bone, DownBoundD/DownWaitD), tech roll (PassiveStandB), KO/death/respawn/stocks (`ko_fd_marth` on the stock-2 boundary: smash charge frame, integer-damage knockback term, blast zone, DeadDown, 60-tick death delay, revival platform, RebirthWait; death effect tornado/rectangle emitters and child generators; death HUD digit draws and the stock-icon generator in `melee-if`). Gates `grab_fd_marth` 300x49 (502,342 particle fields), `tech_fd_marth` 300x49 (496,564), `ko_fd_marth` 480x49 (872,466). Comparator fix: throw sound severity/kind at HitCapsule +0x38/+0x3C. Report `M5_COMBAT3.md`.
-- [!] Open: two expanded raw-scratch tests in `melee-sim/src/frame/combat.rs` are `#[ignore]`d: after a throw the port keeps a hitbox in the Sweeping phase where retail's raw bytes read 0. Not visible in the 49 gated keys; decide whether retail disables throw hitboxes on release or the comparator's phase mapping is wrong.
+- [x] Throw raw-scratch blocker resolved in the C-stick throw packet: restore owner before initial damage-animation commands and disable collateral hitboxes below retail knockback threshold. Both old tests are re-enabled in `melee-lib/src/frame/combat.rs` and pass in debug/release. Expected bytes unchanged.
 - [ ] Hitbox/hurtbox system breadth (`ftcoll.c`, `lbcollision.c`, `ftcolanim.c`): item and projectile collision, multi-hitbox priority
 - [ ] Damage, knockback, hitlag, hitstun, DI, SDI, ASDI
 - [ ] Shield damage and stun, powershield, shield break
@@ -583,3 +602,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-11 (Reflector input): seven new exact scenarios cover turn, release, priority, aerial button/tap jump cancel and turn landing; raw scratch and root-Y rotation checks pass. Both workspace profiles 1,223/0, clippy and 220 harness tests green; native smoke/exported replay passed at 232 ticks. Stripped simulator changed 3,926,672 -> 3,926,784 bytes (+112); no new full performance claim. Next: captured jump-squat up-special gap.
 
 - 2026-09-11 (jump-squat up-special): six reproduced Fox/Marth panics replaced by grounded Up-slot dispatch, preserving up-special priority over grab/up-smash and diagonal Side input. Full debug/release each 1,230/0 with 3 existing ignores; clippy, formatting and 220 harness tests pass. Native smoke/exported replay passed at 232 ticks. Stripped simulator remains 3,926,784 bytes. Next priorities remain C-stick throws, recovery collision transitions and projectile reflection; the broader matchup milestone is not complete.
+
+- 2026-09-11 (C-stick throws): fourteen new exact scenarios plus raw item/throw/hitlag checks pass; fixed Fox throw articles and re-enabled both old throw regressions. Debug/release each 1,249/0 with one existing ignore, clippy and 220 harness tests pass. Native smoke/headless replay:232 ticks; stripped simulator:+56 bytes. Recovery, common-input and revival oracle preparation continues; broader matchup completion remains in progress.

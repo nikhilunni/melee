@@ -140,12 +140,21 @@ pub(super) fn capture_damage(
     hit: &melee_coll::damage::ReceivedHit,
     assets: &FighterAssets,
 ) -> Result<i32> {
-    if !matches!(f.motion_state.id, S::CaptureWaitLw | S::CaptureDamageLw) {
-        unimplemented!("ftCo_8008EC90: captured damage outside low capture");
+    let thrown = matches!(
+        f.motion_state.id,
+        S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw
+    );
+    if !thrown && !matches!(f.motion_state.id, S::CaptureWaitLw | S::CaptureDamageLw) {
+        unimplemented!("ftCo_8008EC90: captured damage outside low capture or throw");
     }
     f.core.physics.percent += hit.descriptor.damage;
     f.core.input.pressed = Buttons::default();
     f.core.input.released = Buttons::default();
+    // ftCo_8008EC90 inlineB2, 8008ECD4..ED84: thrown states keep their
+    // borrowed animation, pose and link while sharing the captor hitlag.
+    if thrown {
+        return Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1));
+    }
     f.change_motion_state(S::CaptureDamageLw.into(), assets)?;
     let MotionData::Capture(capture) = &mut f.core.state_data else {
         panic!("capture scratch missing")

@@ -12,6 +12,8 @@ struct MotionChange<'a> {
     rate: f32,
     source: Option<super::grab_throw::ThrowSource<'a>>,
     ground_air: bool,
+    /// fn_800DE798: restore the release owner after reset, before initial commands.
+    throw_owner: Option<u32>,
     preserve: MotionPreservation,
 }
 
@@ -278,6 +280,24 @@ impl Fighter {
         )
     }
 
+    /// ftCo_800DE7C0 installs fn_800DE798 as a one-shot motion-entry callback.
+    pub(super) fn change_damage_motion(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        throw_owner: Option<u32>,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                rate: 1.0,
+                throw_owner,
+                ..Default::default()
+            },
+        )
+    }
+
     /// Borrow a throw animation/script while preserving ordinary row selection.
     pub(super) fn change_motion_state_with_source(
         &mut self,
@@ -351,6 +371,11 @@ impl Fighter {
             .core
             .reset_motion(MotionState::new(row), assets, move_id, change);
         self.motion_row = row;
+        // Fighter_ChangeMotionState 80069BC4..BE0 invokes x21EC here, before
+        // frame-zero ftAction_80073354 at8006A0BC. Ordinary entry stays cleared.
+        if let Some(owner) = change.throw_owner {
+            self.commands.thrown_by = Some(owner);
+        }
         if !animate {
             return Ok(());
         }

@@ -28,7 +28,9 @@ macro_rules! laser {
                     ..Default::default()
                 });
                 item.life_timer = assets.special_attributes[0];
-                item.change_motion(0, assets);
+                // Retail has no laser spawn callback. it_8029C504 selects the
+                // motion once in initialize_laser; running motion 0 here would
+                // execute its hitbox commands before the selected throw script.
             }
             fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext) -> bool {
                 true

@@ -73,7 +73,8 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
                 descriptor: throw_hitbox(words)?,
             }
         }
-        20 => match (word >> 23) & 7 {
+        // ftAction_800718A4, 800718B0: clrlwi clears the six opcode bits.
+        20 => match word & 0x03ff_ffff {
             0 => Command::GrabRelease,
             1 => Command::ThrowReverse,
             _ => return Err("unknown throw flag"),

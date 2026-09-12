@@ -131,12 +131,10 @@ fn catch_startup_and_throw_hitbox_commands_match_retail_scratch() {
     replay_scratch_until("grab_fd_marth", 127);
 }
 #[test]
-#[ignore = "raw-scratch comparison beyond the 49 gated keys: after the throw the port keeps a hitbox in the Sweeping phase where retail reads 0 (combat.rs `hitbox phase`, first seen merging A3 onto main). The 300-tick 49-key gates and particle replays for grab/tech pass; investigate whether retail disables throw hitboxes on release or whether the comparator's phase mapping is wrong (TRACKER M5)."]
 fn capture_back_throw_and_missed_tech_match_retail_scratch() {
     replay_scratch("grab_fd_marth");
 }
 #[test]
-#[ignore = "raw-scratch comparison beyond the 49 gated keys: after the throw the port keeps a hitbox in the Sweeping phase where retail reads 0 (combat.rs `hitbox phase`, first seen merging A3 onto main). The 300-tick 49-key gates and particle replays for grab/tech pass; investigate whether retail disables throw hitboxes on release or whether the comparator's phase mapping is wrong (TRACKER M5)."]
 fn back_throw_and_tech_match_retail_scratch() {
     replay_scratch("tech_fd_marth");
 }
@@ -176,7 +174,19 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
-                compare(f, &bytes);
+                if name.starts_with("cstick_throw_") {
+                    compare_throw_state(f, &bytes, slot);
+                }
+                {
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        compare(f, &bytes)
+                    }));
+                    assert!(
+                        result.is_ok(),
+                        "{name} tick {tick} slot {slot} action {}",
+                        f.motion_state.action.0
+                    );
+                }
                 if slot == 1 && REFLECTOR_INPUT_SCENARIOS.contains(&name) {
                     assert_eq!(f.physics.jumps_used, bytes[0x1968], "jump count at {tick}");
                     if (360..=369).contains(&f.motion_state.action.0) {
@@ -389,6 +399,65 @@ fn reflector_turn_root_rotation_matches_retail_bits() {
                 let rotation = fighter.skeleton.rotation_y(fighter.animation.root);
                 assert_eq!(rotation.to_bits(), expected, "{name} root Y at {tick}");
             });
+        }
+    }
+}
+
+// These fields distinguish article callbacks and linked hitlag from ordinary
+// throw motion/percent output. The M5 gates separately compare live item state.
+fn compare_throw_state(f: &Fighter, bytes: &[u8], slot: usize) {
+    assert_eq!(
+        f.commands.throw_accessory,
+        bytes[0x2210] & 0x80 != 0,
+        "throw accessory latch"
+    );
+    assert_eq!(
+        f.commands.grab_release,
+        bytes[0x2210] & 0x10 != 0,
+        "throw release latch"
+    );
+    assert_eq!(
+        f.commands.throw_reverse,
+        bytes[0x2210] & 0x08 != 0,
+        "throw reversal latch"
+    );
+    assert_eq!(
+        f.combat.hitlag_remaining.to_bits(),
+        word(bytes, 0x195c),
+        "linked hitlag"
+    );
+    for (index, value) in f.commands.variables.iter().enumerate() {
+        assert_eq!(
+            *value,
+            word(bytes, 0x2200 + index * 4),
+            "command variable {index}"
+        );
+    }
+    if slot == 1 && (219..=222).contains(&f.motion_state.action.0) {
+        assert_eq!(
+            f.character
+                .get::<ft_fox::init::Fox>()
+                .special_neutral
+                .blaster_present,
+            word(bytes, 0x222c) != 0,
+            "throw blaster lifetime"
+        );
+    }
+}
+
+#[test]
+fn cstick_throw_flags_articles_and_linked_hitlag_match_retail() {
+    for character in ["fox", "marth"] {
+        for direction in [
+            "back",
+            "down",
+            "down_pulse",
+            "forward",
+            "horizontal_priority",
+            "main_priority",
+            "up",
+        ] {
+            replay_scratch(&format!("cstick_throw_{direction}_fd_{character}"));
         }
     }
 }

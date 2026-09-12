@@ -1,0 +1,25 @@
+# Retail C-stick throw selection: up; fox captures the other fighter.
+name = "cstick_throw_up_fd_fox"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 88, port = 0, buttons = {  } },
+  { frame = 120, port = 1, buttons = { Z = true } },
+  { frame = 122, port = 1, buttons = {  } },
+  { frame = 140, port = 1, buttons = { CStickY = 1.0 } },
+  { frame = 145, port = 1, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

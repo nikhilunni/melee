@@ -80,6 +80,8 @@ pub struct DamageParameters {
     pub crouch_knockback_scale: f32,
     pub crouch_hitlag_scale: f32,
     pub electric_hitlag_scale: f32,
+    pub captured_item_damage_scale: f32,
+    pub thrown_hitbox_minimum_speed: f32,
     pub floor_bounce_angle: f32,
     pub floor_bounce_scale: f32,
     pub down_stand_threshold: f32,
@@ -150,6 +152,8 @@ impl DamageParameters {
             crouch_knockback_scale: r.f32(p + 0x124)?,
             crouch_hitlag_scale: r.f32(p + 0x1A0)?,
             electric_hitlag_scale: r.f32(p + 0x1A4)?,
+            captured_item_damage_scale: r.f32(p + 0x128)?,
+            thrown_hitbox_minimum_speed: r.f32(p + 0x1c8)?,
             floor_bounce_angle: r.f32(p + 0x1E8)?,
             floor_bounce_scale: r.f32(p + 0x1EC)?,
             down_stand_threshold: r.f32(p + 0x244)?,
@@ -376,6 +380,7 @@ impl Fighter {
                 map,
                 wind,
             );
+            self.clear_slow_thrown_hitboxes(assets);
             return;
         }
         let MotionData::Damage(damage) = &self.core.state_data else {
@@ -390,6 +395,7 @@ impl Fighter {
         } else {
             self.airborne_physics(assets);
         }
+        self.clear_slow_thrown_hitboxes(assets);
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.core.physics);
         crate::physics::integrate::integrate_environment(&mut self.core.physics, None, wind);
@@ -527,7 +533,7 @@ impl Fighter {
                 if let Some(take_damage) = self.character.table().take_damage {
                     take_damage(self);
                 }
-                hit_damage = self.begin_damage_reaction(hit, None, assets, rng)?;
+                hit_damage = self.begin_damage_reaction(hit, None, None, assets, rng)?;
             }
         }
         if hit_damage == 0 {
@@ -563,6 +569,7 @@ impl Fighter {
         &mut self,
         mut hit: ReceivedHit,
         forced_motion: Option<S>,
+        throw_owner: Option<u32>,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
@@ -587,7 +594,7 @@ impl Fighter {
             };
             self.combat.damage_overlay = Some((15 + level as u8, Default::default()));
         }
-        self.change_motion_state(state.into(), assets)?;
+        self.change_damage_motion(state.into(), assets, throw_owner)?;
         self.step_animation(assets);
         let result = self.core.finish_damage_reaction(hit, stun, assets)?;
         if let MotionData::Damage(damage) = &mut self.core.state_data {
@@ -737,6 +744,19 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// ftCo_DamageFly_Phys (80090030..C8): disable collateral throw hits
+    /// once knockback speed drops below PlCo+1C8, before shared decay.
+    fn clear_slow_thrown_hitboxes(&mut self, assets: &FighterAssets) {
+        if is_tumble(self.motion_state.id) && self.commands.thrown_by.is_some() {
+            let v = self.physics.knockback_velocity;
+            // 80090044..5C: separate fmuls/fadds; sqrt has three Newton steps.
+            if sqrtf(v.z * v.z + (v.x * v.x + v.y * v.y))
+                < assets.damage.thrown_hitbox_minimum_speed
+            {
+                self.commands.hitboxes.fill(None);
+            }
+        }
+    }
     /// ftColl_80076CBC (80076CBC): ordinary shields and Counter both record
     /// attacker recoil from the defender's retained lightshield amount.
     pub fn record_shield_recoil(&mut self, damage: i32, lightshield: f32, direction: f32) {
@@ -853,6 +873,13 @@ impl FighterCore {
             // ft_80089258 / ft_80089118: item damage uses the owner's current
             // stale table and the move captured at spawn; knockback keeps base damage.
             descriptor.damage *= stale_multiplier;
+            // ftColl_80077C60, 80077DE4: item hits scale damage while captured.
+            if matches!(
+                self.combat.grab,
+                Some(super::grab::GrabLink::Captured { .. })
+            ) {
+                descriptor.damage *= assets.damage.captured_item_damage_scale;
+            }
             let knockback = assets.damage.knockback_with_damage(
                 &descriptor,
                 self.physics.percent,

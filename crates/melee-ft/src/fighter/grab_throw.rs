@@ -75,30 +75,38 @@ pub static DOWN: Throw = Throw {
     weight_mask: 8,
 };
 
-/// ftCo_800DD1E4 (800DD1E4): horizontal crossing has priority over vertical.
+/// ftCo_800DD1E4 (800DD1E4): main horizontal, C-stick horizontal, up, down.
 pub fn requested(f: &FighterCore, assets: &FighterAssets) -> Option<&'static Throw> {
     if f.motion_state.id != S::CatchWait {
         return None;
     }
     let stick = f.input.current.stick;
     let last = f.input.previous.stick;
+    let cstick = f.input.current.cstick;
+    let previous_cstick = f.input.previous.cstick;
     let threshold = assets.input.side_tilt_threshold;
-    if (last.x < threshold && stick.x >= threshold)
-        || (last.x > -threshold && stick.x <= -threshold)
-    {
-        return Some(if stick.x * f.physics.facing > 0.0 {
-            &FORWARD
-        } else {
-            &BACK
-        });
+    // ftCo_800DF7F4 (800DF7F4): both sticks use horizontal crossings;
+    // the main stick wins before considering any C-stick direction.
+    for (current, previous) in [(stick, last), (cstick, previous_cstick)] {
+        if (previous.x < threshold && current.x >= threshold)
+            || (previous.x > -threshold && current.x <= -threshold)
+        {
+            return Some(if current.x * f.physics.facing > 0.0 {
+                &FORWARD
+            } else {
+                &BACK
+            });
+        }
     }
-    if f.input.current.cstick != crate::input::Stick::default() {
-        unimplemented!("ftCo_800DD1E4: C-stick throw selection");
-    }
-    if last.y < assets.input.up_tilt_threshold && stick.y >= assets.input.up_tilt_threshold {
+    let up = assets.input.up_tilt_threshold;
+    // ftCo_800DF844 (800DF844): upward C-stick crossing.
+    if (last.y < up && stick.y >= up) || (previous_cstick.y < up && cstick.y >= up) {
         return Some(&UP);
     }
-    if last.y > assets.input.down_tilt_threshold && stick.y <= assets.input.down_tilt_threshold {
+    let down = assets.input.down_tilt_threshold;
+    // ftCo_800DF878, 800DF888/800DF898: both C-stick samples must be <=.
+    // Retail has no downward edge test here.
+    if (last.y > down && stick.y <= down) || (previous_cstick.y <= down && cstick.y <= down) {
         return Some(&DOWN);
     }
     None
@@ -237,10 +245,9 @@ pub fn release_throw(
     // ftCo_800DE7C0's integer argument is a motion override (90), not an angle.
     let forced_motion = (attacker.motion_state.id == S::ThrowLw).then_some(S::DamageFlyTop);
     let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
-    victim.begin_damage_reaction(hit, forced_motion, va, rng)?;
-    // ftCo_800DE7C0 installs fn_800DE798, which restores the throw exception
-    // after Damage motion entry (ftColl_8007B8CC).
-    victim.commands.thrown_by = Some(attacker.spawn_number);
+    // fn_800DE798 restores the owner inside motion entry, before initial
+    // damage-animation commands can create throw-owner-only hitboxes.
+    victim.begin_damage_reaction(hit, forced_motion, Some(attacker.spawn_number), va, rng)?;
     // ftCo_800DE7C0: throw DI follows damage entry, without hitlag/ASDI.
     let stick = victim.input.current.stick;
     super::damage::apply_directional_influence(
@@ -377,6 +384,7 @@ fn prepare_throw(
     attacker.commands.variables[0] = 0;
     attacker.commands.grab_release = false;
     attacker.commands.throw_reverse = false;
+    attacker.commands.throw_accessory = false;
     rate
 }
 /// ftCo_800DD398 / ftCo_800DE3FC: pose remapping before victim motion entry.

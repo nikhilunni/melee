@@ -32,6 +32,13 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Falco>();
 
 impl CharacterCallbacks for Falco {
+    fn throw_variant(&self) {}
+    fn throw_animation(
+        fighter: &mut melee_ft::fighter::Fighter,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        ft_fox_family::special_n::throw_animation::<Self>(fighter, assets);
+    }
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

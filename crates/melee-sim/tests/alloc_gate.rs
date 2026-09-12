@@ -338,3 +338,21 @@ fn jumpcancel_upb_allocation_budget() {
     allocation_budget("jumpcancel_upb_diagonal_fd_fox", 0);
     allocation_budget("jumpcancel_upb_diagonal_fd_marth", 0);
 }
+
+#[test]
+fn cstick_throw_allocation_budget() {
+    allocation_budget("cstick_throw_back_fd_fox", 0);
+    allocation_budget("cstick_throw_back_fd_marth", 0);
+    allocation_budget("cstick_throw_down_fd_fox", 0);
+    allocation_budget("cstick_throw_down_fd_marth", 0);
+    allocation_budget("cstick_throw_down_pulse_fd_fox", 0);
+    allocation_budget("cstick_throw_down_pulse_fd_marth", 0);
+    allocation_budget("cstick_throw_forward_fd_fox", 0);
+    allocation_budget("cstick_throw_forward_fd_marth", 0);
+    allocation_budget("cstick_throw_horizontal_priority_fd_fox", 0);
+    allocation_budget("cstick_throw_horizontal_priority_fd_marth", 0);
+    allocation_budget("cstick_throw_main_priority_fd_fox", 0);
+    allocation_budget("cstick_throw_main_priority_fd_marth", 0);
+    allocation_budget("cstick_throw_up_fd_fox", 0);
+    allocation_budget("cstick_throw_up_fd_marth", 0);
+}

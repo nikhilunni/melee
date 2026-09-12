@@ -66,6 +66,11 @@ pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
+    (fighter.character.table().throw_animation)(fighter, assets);
+    // ftCo_800DD724, 800DD744..77C: consume reversal before release.
+    if std::mem::take(&mut fighter.commands.throw_reverse) {
+        fighter.physics.facing = -fighter.physics.facing;
+    }
     // The linked release runs immediately after this callback in scene order.
     fighter.jab_animation(assets)?;
     Ok(None)

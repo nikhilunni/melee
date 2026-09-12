@@ -332,6 +332,10 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
         hold_position: f.physics.position,
         blaster_action: if (341..347).contains(&action) {
             action - 341
+        } else if (CommonMotionState::ThrowB as u16..=CommonMotionState::ThrowLw as u16)
+            .contains(&action)
+        {
+            action - CommonMotionState::CatchDash as u16
         } else {
             9
         },
@@ -346,4 +350,99 @@ pub fn item_muzzle(f: &mut FighterCore, assets: &FighterAssets) -> (Vec3, f32) {
     // it_802ADF10 (802ADFE4/802ADFE8): separate fsubs before atan2f.
     let angle = melee_lb::trigf::atan2f(muzzle.y - hold.y, muzzle.x - hold.x);
     (muzzle, angle)
+}
+
+/// ftFx_Throw_Anim (800E6CDC): common throw callbacks own animation stepping.
+pub fn throw_animation<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
+    let action = f.motion_state.id;
+    if !matches!(
+        action,
+        CommonMotionState::ThrowB | CommonMotionState::ThrowHi | CommonMotionState::ThrowLw
+    ) {
+        return;
+    }
+    if !f.animation.frames_remaining(&f.skeleton) {
+        f.character.get_mut::<C>().special_neutral().blaster_present = false;
+        return;
+    }
+    match f.commands.variables[1] {
+        1 => {
+            if !f.character.get_mut::<C>().special_neutral().blaster_present {
+                let spawn = SpawnItem::held(
+                    C::BLASTER,
+                    f.player.id,
+                    f.physics.position,
+                    f.physics.facing,
+                );
+                f.character.get_mut::<C>().special_neutral().blaster_present = true;
+                f.item_requests.push(ItemRequest::SpawnHeld(spawn));
+                // Retail returns immediately after successful or failed creation.
+                return;
+            }
+            control::<C>(f, ItemControl::Visibility(1));
+            match f.commands.variables[3] {
+                1 => {
+                    f.commands.variables[3] = 0;
+                    control::<C>(f, ItemControl::Open);
+                }
+                2 => {
+                    f.commands.variables[3] = 0;
+                    control::<C>(f, ItemControl::Close);
+                }
+                _ => {}
+            }
+            if std::mem::take(&mut f.commands.throw_accessory) {
+                let mut muzzle = hold_position(&mut f.core, assets, true);
+                let mut hold = hold_position(&mut f.core, assets, false);
+                muzzle.z = 0.0;
+                hold.z = 0.0;
+                // 800E6EFC/800E6F00: two fsubs before atan2f, no fusion.
+                let angle = melee_lb::trigf::atan2f(muzzle.y - hold.y, muzzle.x - hold.x);
+                let speed = f.character.get::<C>().attributes().blaster.velocity;
+                let mut spawn = SpawnItem::ray(C::LASER, f.player.id, muzzle, f.physics.facing);
+                // Item_InitRaySpawnPosition uses the fighter ECB midpoint.
+                let midpoint = 0.5 * (f.collision.data.ecb.top.y + f.collision.data.ecb.bottom.y);
+                spawn.position = Vec3::new(
+                    f.physics.position.x + 0.0,
+                    f.physics.position.y + midpoint,
+                    f.physics.position.z + 0.0,
+                );
+                f.item_requests.push(ItemRequest::SpawnLaser {
+                    spawn,
+                    angle,
+                    speed,
+                    motion: 1,
+                });
+                control::<C>(f, ItemControl::Fire);
+                let sound = if action == CommonMotionState::ThrowB {
+                    C::SOUNDS.fire[usize::from(f.physics.facing == 1.0)]
+                } else {
+                    C::SOUNDS.throw_fire
+                };
+                f.commands.footstep_sounds.push(FootstepSound {
+                    channel: SoundChannel::Ordinary,
+                    id: sound,
+                    volume: 127,
+                    pan: 64,
+                });
+            }
+        }
+        2 => {
+            let state = f.character.get_mut::<C>().special_neutral();
+            if state.blaster_present {
+                state.blaster_present = false;
+                f.commands.footstep_sounds.push(FootstepSound {
+                    channel: SoundChannel::Ordinary,
+                    id: C::SOUNDS.holster,
+                    volume: 127,
+                    pan: 64,
+                });
+            }
+        }
+        0 => {
+            f.character.get_mut::<C>().special_neutral().blaster_present = false;
+            // ftpickupitem_80094818(gobj, 0) is inert in the item-free throw.
+        }
+        _ => {}
+    }
 }

@@ -90,16 +90,17 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         return None;
     }
     assert_eq!(scenario.frames as usize, ticks);
-    let compare_items = matches!(
-        name,
-        "laser_fd_fox"
-            | "laser_shield_fd_marth"
-            | "laser_lightshield_fd_marth"
-            | "laser_shield_air_fd_marth"
-            | "laser_shield_deflect_fd_marth"
-            | "match_fd_foxmarth"
-            | "match2_fd_foxmarth"
-    );
+    let compare_items = name.starts_with("cstick_throw_")
+        || matches!(
+            name,
+            "laser_fd_fox"
+                | "laser_shield_fd_marth"
+                | "laser_lightshield_fd_marth"
+                | "laser_shield_air_fd_marth"
+                | "laser_shield_deflect_fd_marth"
+                | "match_fd_foxmarth"
+                | "match2_fd_foxmarth"
+        );
     if compare_items {
         trace::gate_items(&scenario).unwrap();
     } else {
@@ -909,4 +910,74 @@ fn jumpcancel_upb_diagonal_fd_fox_300_ticks_and_ordered_particle_draws() {
 #[test]
 fn jumpcancel_upb_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("jumpcancel_upb_diagonal_fd_marth");
+}
+
+#[test]
+fn cstick_throw_back_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_back_fd_fox");
+}
+
+#[test]
+fn cstick_throw_back_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_back_fd_marth");
+}
+
+#[test]
+fn cstick_throw_down_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_down_fd_fox");
+}
+
+#[test]
+fn cstick_throw_down_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_down_fd_marth");
+}
+
+#[test]
+fn cstick_throw_down_pulse_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_down_pulse_fd_fox");
+}
+
+#[test]
+fn cstick_throw_down_pulse_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_down_pulse_fd_marth");
+}
+
+#[test]
+fn cstick_throw_forward_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_forward_fd_fox");
+}
+
+#[test]
+fn cstick_throw_forward_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_forward_fd_marth");
+}
+
+#[test]
+fn cstick_throw_horizontal_priority_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_horizontal_priority_fd_fox");
+}
+
+#[test]
+fn cstick_throw_horizontal_priority_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_horizontal_priority_fd_marth");
+}
+
+#[test]
+fn cstick_throw_main_priority_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_main_priority_fd_fox");
+}
+
+#[test]
+fn cstick_throw_main_priority_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_main_priority_fd_marth");
+}
+
+#[test]
+fn cstick_throw_up_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_up_fd_fox");
+}
+
+#[test]
+fn cstick_throw_up_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("cstick_throw_up_fd_marth");
 }
