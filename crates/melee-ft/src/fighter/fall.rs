@@ -243,6 +243,7 @@ impl FighterCore {
 }
 
 /// Item-free predicates from ftCo_Fall_IASA_Inner (0x800CCAAC).
+/// DamageFall (80090828) omits air dodge; ordinary aerial states permit it.
 /// Jump/JumpAerial callers gate their character float hooks by motion state.
 #[inline(always)]
 pub fn iasa(
@@ -250,13 +251,14 @@ pub fn iasa(
     common: &crate::input::InputCommonData,
     jumps_used: u8,
     max_jumps: i32,
+    allow_air_dodge: bool,
     check_float: impl FnMut(super::FloatInputPhase),
 ) -> crate::input::WaitTransition {
     let jump = i32::from(jumps_used) < max_jumps
         && (input.pressed.intersects(crate::input::Buttons::XY)
             || (input.current.stick.y >= common.thresholds.tap_jump_threshold
                 && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window));
-    iasa_with_jump(input, common, jump, check_float)
+    iasa_with_jump(input, common, jump, allow_air_dodge, check_float)
 }
 
 /// The multijump path changes only the jump predicate; aerial action priority
@@ -265,13 +267,14 @@ pub(super) fn iasa_with_jump(
     input: &crate::input::FighterInput,
     common: &crate::input::InputCommonData,
     jump: bool,
+    allow_air_dodge: bool,
     mut check_float: impl FnMut(super::FloatInputPhase),
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
     if input.pressed.intersects(Buttons::B) {
         return T::Special;
     }
-    if input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
+    if allow_air_dodge && input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         return T::Escape;
     }
     if super::attack::aerial::requested(input, common) {

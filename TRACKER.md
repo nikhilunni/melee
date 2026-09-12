@@ -20,7 +20,7 @@ task lines you touched and add one line to the session log.
 - [x] Custom texture-combiner phase (2026-09-10): decoded HSD texture expressions, shared GPU arithmetic/comparison stages, and ten numeric Metal fixtures. Descriptor, real-asset and presentation checks pass; clippy and native build pass.
 
 - [x] Particle/shield presentation phase (2026-09-10): shared GX pixel decoding for stage/common/Fox/Marth particle banks, immutable atlas resources, allocation-free sprite capture, and procedural shields scaled by the live shield bone. Capture reads particle color/AppSRT state without advancing simulation. Particle suite, focused rendering tests, both complete-match capture/allocation checks, workspace clippy, native build/smoke and Metal previews pass; specialized particle geometry, model effects and precise GX rendering remain.
-- [!] Interactive gameplay gap discovered during rendering verification: a laser hitting a shield faults at `melee-ft/src/fighter/damage.rs` with `item shield response` unimplemented. Shield and laser rendering are tested separately; combat behavior and oracle expectations are unchanged.
+- [x] Laser/shield gameplay gap discovered during rendering verification: resolved in `4e08fb7` with mature/light/airborne/grazing shield-contact oracles. See `docs/PORT_NOTES/MATCHUP_REPLAY_AND_SHIELD.md`.
 
 - [x] Authored lighting phase (2026-09-10): shared light-table parser, tick-indexed Final Destination directional light paths using the existing AObj and linear-spline evaluators, per-vertex ambient/diffuse/specular shading, and inverse-transpose normals. Capture-frequency/reset, both complete-match presentation checks, static Battlefield lights, 13 numeric Metal fixtures, workspace clippy and native build/smoke pass. Material/texture animation, held weapons, specialized/model effects, shadows and camera/framebuffer fidelity remain.
 
@@ -47,6 +47,17 @@ task lines you touched and add one line to the session log.
 - [x] Screenshot lighting correction (2026-09-11): traced dark fighters to missing spline-JObj light transforms, and the absent central white glow to an ignored billboard flag. Corrected shared presentation transforms, GPU billboard orientation, view-space reflection/highlight coordinates and HSD diffuse/specular/EXT composition order. Eight release allocation checks, debug light regression, six platform tests, 24 numeric Metal fixtures, workspace clippy and rebuilt native smoke pass (tick 226, keyboard movement verified). GPU composition uses compact state after the first full-material version failed native timing; numeric outputs are unchanged.
 
 ## Current focus
+
+- [x] Post-hitstun aerial input (2026-09-11): missing Attack entry, ordinary
+  damage versus tumble air-dodge priority, and air-dodge knockback decay.
+  Acceptance: seven `hitstun_*` 300-tick fighter/ordered-particle gates,
+  `post_hitstun_allocation_budget`, full debug/release workspace gates,
+  all-target clippy and harness pytest. All seven pre-fix replays fail as
+  documented in `docs/PORT_NOTES/POST_HITSTUN_INPUT.md`. Full debug/release
+  gates each pass 1,213 tests with 0 failures and 3 existing ignores; clippy,
+  220 harness tests and the native build pass. Native smoke exported 233 ticks
+  and headless replay passed. Binary-size audit committed as `e00b442`; the
+  existing size debt remains open.
 
 - [x] Aerial Counter packet (2026-09-11, `5c3d72b`): aerial entry/physics/end, ground-air
   preservation and aerial hit response. Acceptance: `aircounter_fd_marth`,
@@ -477,6 +488,8 @@ Gate: zero divergence over thousands of Slippi replays.
 - [-] Game modes beyond Versus (`gm/`, 54k): Classic, Adventure, All-Star, Event, Target Test, Home Run Contest
 
 ## Session log
+
+- 2026-09-11 (post-hitstun input): five attack panics and two priority/movement divergences resolved. Seven new 300-tick oracles and all zero-allocation checks pass; full debug/release each 1,213/0 with 3 existing ignores, clippy and 220 harness tests pass. Rebuilt native smoke and 233-tick exported replay pass. Size audit recorded separately (`e00b442`); next: Reflector turn and aerial jump cancel, with six captures and root-Y bone evidence prepared.
 
 - 2026-09-11 (diagonal smash): authored-angle fallback and main-stick/C-stick priority, including dash entry, now exact in four directed Fox/Marth scenarios. Full debug/release gates each 1,205/0 with 3 existing ignores, all-target clippy and 220 harness tests pass. Committing at the user-requested boundary; next: post-hitstun attacks, tumble input priority and air-dodge knockback decay.
 

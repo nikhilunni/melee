@@ -1,0 +1,29 @@
+# Marth exits ordinary aerial damage after a Fox dash attack; test fresh input and action priority.
+name = "hitstun_exit_fair_fd_marth"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 5, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 45, port = 0, buttons = { X = true } },
+  { frame = 46, port = 0, buttons = {  } },
+  { frame = 55, port = 0, buttons = {  } },
+  { frame = 56, port = 1, buttons = { StickX = -1.0, A = true } },
+  { frame = 57, port = 0, buttons = {  } },
+  { frame = 58, port = 1, buttons = { StickX = -1.0 } },
+  { frame = 62, port = 1, buttons = {  } },
+  { frame = 86, port = 0, buttons = { CStickX = 1.0 } },
+  { frame = 88, port = 0, buttons = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

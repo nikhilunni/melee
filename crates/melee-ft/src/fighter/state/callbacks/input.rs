@@ -188,6 +188,7 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         &fighter.core.input,
         &assets.input,
         fighter.aerial_jump_requested(assets),
+        true,
         |phase| {
             let enabled = match &fighter.core.state_data {
                 MotionData::Jump(jump) => jump.physics_started,

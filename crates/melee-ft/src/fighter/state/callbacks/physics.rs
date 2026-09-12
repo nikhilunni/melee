@@ -141,6 +141,9 @@ pub fn escape_air(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     } = phase;
     fighter.air_dodge_physics(assets);
+    // Fighter_procUpdate (8006B82C): residual hit knockback decays after
+    // EscapeAir's self-velocity callback, before position integration.
+    fighter.decay_air_knockback(assets);
     crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
     crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
 }

@@ -68,7 +68,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Ledge variants | `melee-ft/src/fighter/ledge.rs`: slow options, C-stick options and hang timeout panic | Percent-dependent options, full controller inputs and prolonged hanging |
 | Match endings | Tracker retains a screen-KO follow-up | Audit all KO variants, respawn, final stock, timeout and ties |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
-| Hitstun exit | `fighter/damage.rs:722`: airborne Attack transition rejected | `hitstun_exit_nair_fd_fox`, `hitstun_exit_fair_fd_marth` |
+| Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
 | Airborne grab victim | `fighter/grab.rs:194`: CapturePulledHi panics | `grab_airborne_fd_foxmarth`, `grab_airborne_fd_marthfox` |
 | Jump-squat up-B | `fighter/jump.rs:209`: SpecialHi dispatch rejected | `jumpcancel_upb_fd_fox`, `jumpcancel_upb_fd_marth` |
 | Dash defense | `fighter/dash.rs`: early Escape and later Shield rejected | `dash_escape_fd_fox`, `dash_shield_fd_marth` |

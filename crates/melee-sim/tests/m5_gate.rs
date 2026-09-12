@@ -810,3 +810,38 @@ fn fsmash_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
 fn fsmash_dash_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("fsmash_dash_diagonal_fd_marth");
 }
+
+#[test]
+fn hitstun_exit_fair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_exit_fair_fd_fox");
+}
+
+#[test]
+fn hitstun_exit_fair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_exit_fair_fd_marth");
+}
+
+#[test]
+fn hitstun_exit_nair_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_exit_nair_fd_fox");
+}
+
+#[test]
+fn hitstun_exit_nair_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_exit_nair_fd_marth");
+}
+
+#[test]
+fn hitstun_shield_priority_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_shield_priority_fd_fox");
+}
+
+#[test]
+fn hitstun_shield_priority_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_shield_priority_fd_marth");
+}
+
+#[test]
+fn hitstun_unbuffered_attack_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("hitstun_unbuffered_attack_fd_marth");
+}

@@ -673,9 +673,11 @@ impl Fighter {
             panic!("damage scratch missing")
         };
         if damage.hitstun <= 0.0 {
+            let tumbling =
+                self.core.motion_state.id == S::DamageFall || is_tumble(self.core.motion_state.id);
             // ftCo_Damage_IASA (8008FA44): synthesize XY for a jump pressed
             // within PlCo's final hitstun window. The stored value does not age.
-            if !is_tumble(self.core.motion_state.id)
+            if !tumbling
                 && damage.jump_buffer != 0.0
                 && damage.jump_buffer <= assets.damage.jump_buffer_window
             {
@@ -691,6 +693,9 @@ impl Fighter {
                     &assets.input,
                     self.core.physics.jumps_used,
                     self.core.attributes.jumping.max_jumps,
+                    // DamageFly delegates to DamageFall (80090828), whose
+                    // input chain omits ordinary Fall's air-dodge check.
+                    !tumbling,
                     |phase| {
                         self.character.check_float_input(
                             &self.core.input,
@@ -702,8 +707,7 @@ impl Fighter {
                 );
                 return match transition {
                     T::None => {
-                        if (self.core.motion_state.id == S::DamageFall
-                            || is_tumble(self.core.motion_state.id))
+                        if tumbling
                             && gekko_math::msl::fabsf(self.core.input.current.stick.x)
                                 >= assets.damage.tumble_exit_threshold
                             && i32::from(self.core.input.horizontal.tilt)
@@ -713,6 +717,7 @@ impl Fighter {
                         }
                         Ok(())
                     }
+                    T::Attack => (self.character.table().enter_aerial)(self, assets),
                     T::Jump => self.enter_aerial_jump(assets),
                     T::Escape => self.enter_air_dodge(assets),
                     T::Special => {
