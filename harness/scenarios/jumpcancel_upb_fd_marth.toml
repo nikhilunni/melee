@@ -1,0 +1,22 @@
+# Jump squat up-special; simultaneous grab/up-smash input exercises priority when present.
+name = "jumpcancel_upb_fd_marth"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, port = 0, buttons = { X = true } },
+  { frame = 31, port = 0, buttons = { StickY = 1.0, B = true } },
+  { frame = 34, port = 0, buttons = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

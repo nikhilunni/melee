@@ -48,6 +48,13 @@ task lines you touched and add one line to the session log.
 
 ## Current focus
 
+- [x] Jump-squat up-special (2026-09-11): explicit Up-slot dispatch before
+  grab/up-smash. Six captured Fox/Marth cases cover ordinary, competing A/Z
+  and diagonal input. Fighter/particle and zero-allocation gates pass; both
+  workspace profiles: 1,230 passed, 0 failed, 3 existing ignores. Clippy,
+  220 harness tests and rebuilt native smoke/replay (232 ticks) pass. See
+  `docs/PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md`.
+
 - [x] Reflector input (2026-09-11): turn rows, release and turn/jump priority,
   button/tap aerial jump cancel and preserved turn landing. Acceptance: seven
   `reflector*turn*`/`airreflector*jc`
@@ -574,3 +581,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-11 (screenshot comparison): fixed transformed light paths, the camera-facing central glow and material lighting order. Verified same-frame Metal previews, debug/release capture checks, zero allocations, numeric shaders, workspace clippy and native smoke; committed without game-data or decomp changes.
 
 - 2026-09-11 (Reflector input): seven new exact scenarios cover turn, release, priority, aerial button/tap jump cancel and turn landing; raw scratch and root-Y rotation checks pass. Both workspace profiles 1,223/0, clippy and 220 harness tests green; native smoke/exported replay passed at 232 ticks. Stripped simulator changed 3,926,672 -> 3,926,784 bytes (+112); no new full performance claim. Next: captured jump-squat up-special gap.
+
+- 2026-09-11 (jump-squat up-special): six reproduced Fox/Marth panics replaced by grounded Up-slot dispatch, preserving up-special priority over grab/up-smash and diagonal Side input. Full debug/release each 1,230/0 with 3 existing ignores; clippy, formatting and 220 harness tests pass. Native smoke/exported replay passed at 232 ticks. Stripped simulator remains 3,926,784 bytes. Next priorities remain C-stick throws, recovery collision transitions and projectile reflection; the broader matchup milestone is not complete.

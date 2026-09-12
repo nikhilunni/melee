@@ -880,3 +880,33 @@ fn airreflectortapjc_fd_fox_300_ticks_and_ordered_particle_draws() {
 fn airreflectorturn_landing_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("airreflectorturn_landing_fd_fox");
 }
+
+#[test]
+fn jumpcancel_upb_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_fd_fox");
+}
+
+#[test]
+fn jumpcancel_upb_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_fd_marth");
+}
+
+#[test]
+fn jumpcancel_upb_priority_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_priority_fd_fox");
+}
+
+#[test]
+fn jumpcancel_upb_priority_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_priority_fd_marth");
+}
+
+#[test]
+fn jumpcancel_upb_diagonal_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_diagonal_fd_fox");
+}
+
+#[test]
+fn jumpcancel_upb_diagonal_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("jumpcancel_upb_diagonal_fd_marth");
+}

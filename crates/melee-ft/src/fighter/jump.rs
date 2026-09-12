@@ -210,13 +210,16 @@ impl Fighter {
         context: &WaitContext,
     ) -> Result<()> {
         let transition = self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab]);
+        // ftCo_Attack100_CheckInput (800D695C) directly selects SpecialHi.
+        // Ordinary special selection would prefer Side on diagonal input.
+        if transition == T::Special {
+            (self.character.table().enter_special)(self, super::SpecialSlot::Up, false, assets);
+            return Ok(());
+        }
         // ftCo_KneeBend_IASA -> ftCo_Catch_CheckInput (800D8990): the
         // standing Catch entry wins over up-smash and short-hop bookkeeping.
         if transition == T::Grab {
             return self.enter_catch(assets);
-        }
-        if transition != T::None {
-            unimplemented!("ftCo_KneeBend.c:63-65: jump cancel {transition:?}");
         }
         // ftCo_AttackHi4_CheckInputNoD0 (8008C948): the jump squat ignores
         // the ordinary up-smash stick timer. C-stick still requires an edge.

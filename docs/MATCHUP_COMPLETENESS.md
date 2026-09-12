@@ -70,7 +70,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |
 | Airborne grab victim | `fighter/grab.rs:194`: CapturePulledHi panics | `grab_airborne_fd_foxmarth`, `grab_airborne_fd_marthfox` |
-| Jump-squat up-B | `fighter/jump.rs:209`: SpecialHi dispatch rejected | `jumpcancel_upb_fd_fox`, `jumpcancel_upb_fd_marth` |
+| Jump-squat up-B | Explicit grounded Up-slot dispatch implemented; six directed Fox/Marth gates cover A/Z and diagonal priority | Full regression/commit status in TRACKER.md; `PORT_NOTES/JUMP_SQUAT_UP_SPECIAL.md` |
 | Dash defense | `fighter/dash.rs`: early Escape and later Shield rejected | `dash_escape_fd_fox`, `dash_shield_fd_marth` |
 | Revival platform | `fighter/life.rs`: timeout and an overbroad shield+A predicate panic | `rebirth_timeout_fd_fox`, `rebirth_timeout_fd_marth`, `rebirth_shield_a_fd_fox` |
 | C-stick throws | `fighter/grab_throw.rs:96`: C-stick throw selection panics | `cstick_throws_fd_foxmarth`, `cstick_throws_fd_marthfox` |

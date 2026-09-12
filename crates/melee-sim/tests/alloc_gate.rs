@@ -328,3 +328,13 @@ fn reflector_input_allocation_budget() {
     allocation_budget("airreflectorjc_fd_fox", 0);
     allocation_budget("airreflectortapjc_fd_fox", 0);
 }
+
+#[test]
+fn jumpcancel_upb_allocation_budget() {
+    allocation_budget("jumpcancel_upb_fd_fox", 0);
+    allocation_budget("jumpcancel_upb_fd_marth", 0);
+    allocation_budget("jumpcancel_upb_priority_fd_fox", 0);
+    allocation_budget("jumpcancel_upb_priority_fd_marth", 0);
+    allocation_budget("jumpcancel_upb_diagonal_fd_fox", 0);
+    allocation_budget("jumpcancel_upb_diagonal_fd_marth", 0);
+}
