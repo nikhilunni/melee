@@ -205,16 +205,16 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
 
 /// CaptureWait's timer is owned by the victim; release both before overlap.
 pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
-    let captor = with_fighter!(&state.fighters[player], |f| {
+    let captor = with_fighter!(&mut state.fighters[player], |f| {
         if matches!(
             f.motion_state.id,
             melee_types::CommonMotionState::CaptureWaitLw
                 | melee_types::CommonMotionState::CaptureWaitHi
         ) {
-            let melee_ft::fighter::MotionData::Capture(capture) = &f.state_data else {
+            let melee_ft::fighter::MotionData::Capture(capture) = &mut f.core.state_data else {
                 panic!("capture scratch missing")
             };
-            if capture.timer <= 0.0 {
+            if std::mem::take(&mut capture.release_requested) {
                 let Some(GrabLink::Captured { captor }) = f.combat.grab else {
                     panic!("capture without captor")
                 };

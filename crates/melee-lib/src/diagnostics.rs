@@ -2,7 +2,7 @@
 //! Scenario/replay parsing and trace output belong to the consuming tool.
 pub use crate::assets::Assets;
 pub use crate::frame::rendered_pose::RenderedPose;
-pub use crate::frame::Simulation;
+pub use crate::frame::{LocalSrt, Simulation};
 pub use crate::initial_state::InitialState;
 pub use crate::scene_stage::{
     descriptor as stage_descriptor, StageDescriptor, BATTLEFIELD, DREAM_LAND, FINAL_DESTINATION,

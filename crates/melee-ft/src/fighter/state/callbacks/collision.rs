@@ -250,14 +250,35 @@ pub fn running(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 }
 
 /// ftData_MotionStateList: ftCo_MS_GuardSetOff (181).
+/// ftCo_GuardSetOff_Coll (80093640): with SDI allowed, ft_80084104 stops at
+/// the edge; otherwise the shared Guard collision.
 pub fn guard_set_off(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    if fighter.core.shield.allow_sdi {
+        return finish_ground(fighter, phase.assets, phase.map, map_escape, false);
+    }
+    guard(fighter, phase)
+}
+
+/// ft_800845B4 (800845B4), every Guard state's collision: sliding off the
+/// edge behind the fighter enters MissFoot, any other departure Fall.
+pub fn guard(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
-    let collide = if fighter.core.shield.allow_sdi {
-        map_escape
-    } else {
-        map_ground_action
-    };
-    finish_ground(fighter, assets, map, collide, false)?;
+    let result = map_ground_action(
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
+        map,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.input.current.stick.x,
+    );
+    if result == WaitGroundResult::EnterFall {
+        let assets = assets.expect("ground departure needs proc_map_with_assets");
+        if fighter.core.slipped_off_back_edge() {
+            return fighter.enter_missed_footing(assets);
+        }
+        fighter.leave_ground();
+        fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
+    }
     Ok(())
 }
 

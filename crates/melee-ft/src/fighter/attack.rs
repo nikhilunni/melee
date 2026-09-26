@@ -68,14 +68,50 @@ impl Fighter {
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
-        self.core.state_data = if state == S::AttackLw3 {
-            MotionData::DownTilt {
+        self.core.state_data = match state {
+            S::AttackLw3 => MotionData::DownTilt {
                 repeat_pressed: false,
-            }
-        } else {
-            MotionData::Tilt
+            },
+            // doEnter (8008B4D4): the dash-grab window starts closed.
+            S::AttackDash => MotionData::DashAttack { grab_window: 0 },
+            _ => MotionData::Tilt,
         };
         Ok(())
+    }
+    /// ftCo_AttackDash_CheckInput from Dash, Run and RunDirect, then
+    /// ftCo_AttackDash_SetMv0 (8008B570): open the dash-grab window (PlCo +68).
+    pub(super) fn enter_dash_attack(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.enter_simple_attack(S::AttackDash, assets)?;
+        self.core.state_data = MotionData::DashAttack {
+            grab_window: gekko_math::msl::fctiwz(assets.running.shield_grab_delay),
+        };
+        Ok(())
+    }
+    /// ftCo_AttackDash_IASA (8008B5C4) -> ftCo_800D8AE0 (800D8AE0): holding
+    /// shield while the window is open cancels into CatchDash; otherwise the
+    /// window closes by one frame and the ordinary interrupt applies.
+    pub(super) fn dash_attack_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        // ftCo_800952DC throws a held item first; no supported fighter holds one here.
+        let shield = self
+            .core
+            .input
+            .current
+            .held
+            .intersects(crate::input::Buttons::SHIELD);
+        let MotionData::DashAttack { grab_window } = &mut self.core.state_data else {
+            panic!("dash attack scratch")
+        };
+        if shield && *grab_window != 0 {
+            return self.enter_catch_motion(S::CatchDash, assets);
+        }
+        if *grab_window != 0 {
+            *grab_window -= 1;
+        }
+        self.tilt_input(assets, context)
     }
     /// ftCo_AttackLw3_Anim (8008BCFC): repeat latch, then SquatWait on completion.
     pub(super) fn down_tilt_animation(&mut self, assets: &FighterAssets) -> Result<()> {

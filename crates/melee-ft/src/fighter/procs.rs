@@ -66,16 +66,16 @@ impl Fighter {
             .skeleton
             .set_translate(self.core.animation.root, &self.core.physics.position);
     }
-    /// State-changing map dispatch, including Landing's immediate command/RNG work.
+    /// State-changing map dispatch. Landing's dust draws with the proc's
+    /// graphics (`resolve_graphics_commands`), in script order.
     /// The original proc_map remains the grounded API used by melee-sim M3.
     pub fn proc_map_with_assets(
         &mut self,
         assets: &FighterAssets,
         map: &mut CollMap,
-        rng: &mut HsdRng,
-    ) -> Result<usize> {
+    ) -> Result<()> {
         if self.core.status.disabled {
-            return Ok(0);
+            return Ok(());
         }
         self.core.status.require_supported();
         (self.motion_row.collision)(
@@ -89,7 +89,7 @@ impl Fighter {
         self.core
             .skeleton
             .set_translate(self.core.animation.root, &self.core.physics.position);
-        self.core.resolve_landing_effects(rng)
+        Ok(())
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
     /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
@@ -232,6 +232,7 @@ impl FighterCore {
                         | super::MotionData::RapidJab(_)
                         | super::MotionData::Aerial { .. }
                         | super::MotionData::Tilt
+                        | super::MotionData::DashAttack { .. }
                         | super::MotionData::Smash
                         | super::MotionData::DownTilt { .. }
                         | super::MotionData::Down { .. }
@@ -560,9 +561,18 @@ impl FighterCore {
             hurt.cached = false;
         }
     }
-    fn resolve_landing_effects(&mut self, rng: &mut HsdRng) -> Result<usize> {
+    /// ftAction_80072E4C -> ftCo_8009F834 for the landing effects queued
+    /// before graphics command `before` (all of them with `usize::MAX`).
+    pub(super) fn resolve_landing_effects(&mut self, rng: &mut HsdRng, before: usize) -> usize {
         let mut draws = 0;
-        for id in std::mem::take(&mut self.commands.landing_effects) {
+        loop {
+            let Some(&(id, position)) = self.commands.landing_effects.iter().next() else {
+                break;
+            };
+            if position > before {
+                break;
+            }
+            self.commands.landing_effects.remove(0);
             // ftCo_8009F834 block_70. Even a zero range consumes three draws.
             let mut offset = Vec3::ZERO;
             for component in [&mut offset.x, &mut offset.y, &mut offset.z] {
@@ -579,7 +589,7 @@ impl FighterCore {
                     floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),
                 });
         }
-        Ok(draws)
+        draws
     }
     fn update_hurtbox_extents(&mut self) {
         self.cpu.hurtbox_extents = caches::hurtbox_extents(

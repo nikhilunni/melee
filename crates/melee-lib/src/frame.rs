@@ -197,6 +197,10 @@ struct Runtime {
     particle_draws: DrawLog,
     interface: [melee_if::PercentDisplay; 2],
     match_finished: bool,
+    /// Scenario input: retail rendered (and so ran particleSort) between the
+    /// previous tick and this one. Live play renders every tick; a recording
+    /// that ran behind executes several ticks per VI frame and renders once.
+    display_pass: bool,
 }
 impl Clone for Runtime {
     fn clone(&self) -> Self {
@@ -212,6 +216,7 @@ impl Clone for Runtime {
             particle_draws: self.particle_draws.clone(),
             interface: self.interface.clone(),
             match_finished: self.match_finished,
+            display_pass: self.display_pass,
         }
     }
 }
@@ -258,7 +263,7 @@ impl Runtime {
             ))
         });
         match phase {
-            0 => {}
+            0 => state.items.advance_hitlag(id),
             1 => {
                 state
                     .items
@@ -279,8 +284,10 @@ impl Runtime {
             }
             9 => {
                 let item = state.items.get_mut(id).unwrap();
+                // Item_80269A9C: hitlag skips the accessory callback.
+                let in_hitlag = item.in_hitlag;
                 if let melee_it::ItemScratch::Held(held) = &mut item.scratch {
-                    if held.shot_pending {
+                    if held.shot_pending && !in_hitlag {
                         held.shot_pending = false;
                         let slot = owner_slot.expect("blaster owner");
                         let index = state
@@ -767,6 +774,16 @@ impl Runtime {
 }
 /// Owns all mutable simulation state. Once constructed, tick has no trace,
 /// ledger, seed, or frame-specific argument: the input script is fixed up front.
+/// One joint's local transform, as the retail bone dump records it.
+#[derive(Clone, Copy, Debug)]
+pub struct LocalSrt {
+    pub rotate: [f32; 4],
+    pub scale: [f32; 3],
+    pub translate: [f32; 3],
+    /// JOBJ_USE_QUATERNION; otherwise `rotate[3]` is unused stack data.
+    pub quaternion: bool,
+}
+
 #[derive(Clone)]
 pub struct Simulation {
     world: World,
@@ -795,11 +812,65 @@ impl Simulation {
     pub fn set_inputs(&mut self, pads: [PadSample; 4]) {
         self.runtime.pads = pads;
     }
+    /// Whether a display pass (particleSort) precedes the next tick.
+    pub fn set_display_pass(&mut self, rendered: bool) {
+        self.runtime.display_pass = rendered;
+    }
     pub fn frame(&self) -> u64 {
         self.runtime.frame
     }
     pub fn item_snapshot(&self, frame: u64) -> Record {
         crate::diagnostics::item_snapshot(&self.runtime.state.items, frame)
+    }
+    /// The particle system in the retail particle-dump format, for
+    /// `melee-sim particles-diff`.
+    pub fn particle_snapshot(&self, frame: u64) -> Record {
+        struct LiveBanks<'a>(&'a InitialState);
+        impl crate::initial_state::particles::Banks for LiveBanks<'_> {
+            fn bank(&self, id: u8) -> &hsd_particle::bank::ParticleBank {
+                match id {
+                    0 => &self.0.assets.common_particle_bank,
+                    30 => &self.0.assets.particle_bank,
+                    _ => self.0.particles.bank(id).expect("loaded particle bank"),
+                }
+            }
+        }
+        let state = &self.runtime.state;
+        crate::initial_state::particles::snapshot(
+            &state.particles,
+            state.rng.seed,
+            frame,
+            &LiveBanks(state),
+        )
+    }
+    /// Every fighter's local joint SRT in part order, for bone-dump oracles.
+    pub fn local_poses(&self) -> Vec<Vec<LocalSrt>> {
+        self.runtime
+            .state
+            .fighters
+            .iter()
+            .map(|fighter| {
+                crate::scene_fighter::with_fighter!(fighter, |f| f
+                    .animation
+                    .parts
+                    .iter()
+                    .map(|part| {
+                        let joint = f.skeleton.get(part.joint);
+                        LocalSrt {
+                            rotate: [
+                                joint.rotate.x,
+                                joint.rotate.y,
+                                joint.rotate.z,
+                                joint.rotate.w,
+                            ],
+                            scale: [joint.scale.x, joint.scale.y, joint.scale.z],
+                            translate: [joint.translate.x, joint.translate.y, joint.translate.z],
+                            quaternion: joint.flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0,
+                        }
+                    })
+                    .collect())
+            })
+            .collect()
     }
     /// A simulation with neutral pads on every port.
     pub fn new(state: InitialState) -> Self {
@@ -844,6 +915,7 @@ impl Simulation {
             state,
             interface,
             match_finished: false,
+            display_pass: true,
             pads,
             frame: 0,
             error: None,
@@ -909,8 +981,11 @@ impl Simulation {
                 for fighter in &mut runtime.state.fighters {
                     fighter.0.prepare_dynamic_display_caches();
                 }
-                // particleSort (psdisp.c:0x8039FC70), between observations.
-                runtime.state.particles.sort_for_display(7);
+                // particleSort (psdisp.c:0x8039FC70), when a display pass
+                // separated this tick from the previous one.
+                if runtime.display_pass {
+                    runtime.state.particles.sort_for_display(7);
+                }
             }
         }
         let runtime = self.runtime.as_mut();
@@ -1066,7 +1141,7 @@ fn dispatch_fighter(
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
         FighterProc::Map => {
-            f.proc_map_with_assets(assets, map, rng)
+            f.proc_map_with_assets(assets, map)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::Pose => f.proc_pose(map),
@@ -1180,6 +1255,19 @@ fn dispatch_fighter(
         }
         f.effects = pending;
     } else {
+        if !f.commands.graphics.is_empty() {
+            // Fighter_ChangeMotionState flushed efAsync (fighter.c:951) when
+            // this proc changed motion, before the new script's graphics
+            // drew their random offsets: dispatch what that entry sealed.
+            effects.flush::<melee_ft::fighter::RetailTrig>(
+                melee_ef::EffectTiming::Sealed,
+                player,
+                &mut f.core,
+                &scene_assets.common_particle_bank,
+                particles,
+                rng,
+            )?;
+        }
         f.resolve_graphics_commands(assets, rng);
     }
     effects.flush::<melee_ft::fighter::RetailTrig>(

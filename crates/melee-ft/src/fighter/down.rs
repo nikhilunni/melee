@@ -8,7 +8,7 @@ use hsd_types::Vec3;
 use melee_types::{CommonMotionState as S, FtPart};
 
 /// Shared getup animations from ftData_MotionStateList, prepared at asset load.
-pub(super) const MOTIONS: &[u32] = &[186, 187, 188, 189, 194, 195, 196, 197, 199, 200];
+pub(super) const MOTIONS: &[u32] = &[185, 186, 187, 188, 189, 193, 194, 195, 196, 197, 199, 200];
 
 impl Fighter {
     /// ftCo_80098400 / ftCo_800984D4: buffered AB at bounce completion,
@@ -218,6 +218,129 @@ impl Fighter {
         }
         Ok(())
     }
+}
+
+impl FighterCore {
+    /// ftCo_8009F0F0 (8009F0F0): a prone fighter whose damage this frame
+    /// (dmg.x1838) stays below PlCo +428 takes the hit in DownDamage instead
+    /// of launching. Retail picks DownDamageU only from DownWaitU, so a
+    /// face-up bounce takes DownDamageD.
+    pub(super) fn down_damage_state(&self, frame_damage: f32, assets: &FighterAssets) -> Option<S> {
+        let state = self.motion_state.id;
+        if !matches!(
+            state,
+            S::DownBoundU
+                | S::DownWaitU
+                | S::DownDamageU
+                | S::DownBoundD
+                | S::DownWaitD
+                | S::DownDamageD
+        ) {
+            return None;
+        }
+        // x2224_b2 (the input-replay mode) also selects this; never set in versus.
+        if frame_damage >= assets.damage.down_damage_limit as f32 {
+            return None;
+        }
+        Some(if state == S::DownWaitU {
+            S::DownDamageU
+        } else {
+            S::DownDamageD
+        })
+    }
+}
+
+impl Fighter {
+    /// ftCo_DownDamage_Anim (8009F1F4): count the reaction's hitstun down,
+    /// then fall when airborne, or lie back down (DownWait keeps the same
+    /// scratch word as its timer) or stand once it has run out.
+    pub(super) fn down_damage_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        let MotionData::Damage(damage) = &mut self.core.state_data else {
+            panic!("down damage scratch");
+        };
+        damage.hitstun -= 1.0;
+        let remaining = damage.hitstun;
+        if self.core.animation.frames_remaining(&self.core.skeleton) {
+            return Ok(());
+        }
+        let up = self.core.motion_state.id == S::DownDamageU;
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+            return self.change_motion_state(S::Fall.into(), assets);
+        }
+        if remaining <= 0.0 {
+            let state = if up { S::DownStandU } else { S::DownStandD };
+            return self.change_motion_state(state.into(), assets);
+        }
+        // ftCo_80097F38: SkipModel | SkipMatAnim | SkipNametagVis |
+        // KeepColAnimPartHitStatus, then ftAnim_8006EBA4.
+        let state = if up { S::DownWaitU } else { S::DownWaitD };
+        self.change_motion_state(state.into(), assets)?;
+        self.core.state_data = MotionData::Down {
+            wait_remaining: remaining,
+        };
+        self.step_animation(assets);
+        self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
+        Ok(())
+    }
+
+    /// ftCo_DownDamage_Coll (8009F284): grounded, losing the floor leaves the
+    /// ground with one jump spent (ftCo_8008FC94); airborne, a landing only
+    /// lands (ftCommon_8007D7FC) and the reaction keeps playing.
+    pub(super) fn down_damage_collision(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        use melee_types::mp::collide::{LEFT_WALL_HUG, RIGHT_WALL_HUG};
+        let walls = |fighter: &Self| {
+            fighter.core.collision.data.env_flags as u32 & (LEFT_WALL_HUG | RIGHT_WALL_HUG) != 0
+        };
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            let result = crate::collision::ground::map_ground_action(
+                &mut self.core.physics,
+                &mut self.core.collision,
+                map,
+                &mut self.core.skeleton,
+                self.core.animation.root,
+                self.core.input.current.stick.x,
+            );
+            if result == crate::collision::ground::WaitGroundResult::EnterFall {
+                self.leave_ground();
+            } else if walls(self) {
+                unimplemented!("ftCo_800C7CA0: DownReflect wall bounce");
+            }
+            return Ok(());
+        }
+        let Some(landed) = self.land_from_damage_air(assets, map)? else {
+            return Ok(());
+        };
+        if landed {
+            self.land();
+        } else if walls(self) {
+            unimplemented!("ftCo_800C1D38 / ftCo_800C17CC: wall tech or bounce during DownDamage");
+        }
+        Ok(())
+    }
+}
+
+/// ftCo_DownDamage_Anim (8009F1F4).
+pub(super) fn down_damage_animation(
+    fighter: &mut Fighter,
+    phase: super::state::AnimationPhase<'_>,
+) -> Result<Option<crate::anim::WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    fighter.advance_smash_charge(phase.assets);
+    fighter.down_damage_animation(phase.assets)?;
+    Ok(None)
+}
+
+/// ftCo_DownDamage_Coll (8009F284).
+pub(super) fn down_damage_collision(
+    fighter: &mut Fighter,
+    phase: super::state::CollisionPhase<'_>,
+) -> Result<()> {
+    let assets = phase.assets.expect("down damage collision needs assets");
+    fighter.down_damage_collision(assets, phase.map)
 }
 
 /// ftCo_DownWait_IASA (8009802C), installed only on prone wait rows.

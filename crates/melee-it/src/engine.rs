@@ -84,6 +84,15 @@ pub struct ItemCore {
     /// ftColl_80077688's xC50; shield contact has priority at item link 14.
     pub pending_shield_damage: i32,
     pub pending_shield_deflection: Option<melee_lb::shield::ShieldDeflection>,
+    /// ItemAttr x1_5 (xDC8 xC): contacts put this kind into hitlag.
+    pub hitlag_enabled: bool,
+    /// xCA8: this frame's contact damage that sets hitlag. Event callbacks
+    /// may clear it (itFoxIllusion_Logic14_DmgDealt).
+    pub hitlag_damage: i32,
+    /// xCBC: hitlag frames left.
+    pub hitlag_frames: f32,
+    /// xDC8 x9: animation, physics, movement and accessory are paused.
+    pub in_hitlag: bool,
     pub sound_requests: melee_types::fixed::FixedVec<u32, 8>,
     pub animation_frame: f32,
     pub script: ScriptState,
@@ -93,6 +102,20 @@ pub struct ItemCore {
     pub hit_flags: [desc::ItemHitFlags; 4],
 }
 impl ItemCore {
+    /// checkHitLag / EnterHitlagThink (Item_8026A294): hitlag frames from
+    /// it_8026B424 (retail 8026B450: fmadds, then fctiwz), never lowered.
+    fn enter_hitlag(&mut self, common: &desc::ItemCommonData, damage: i32) {
+        let frames = gekko_math::msl::fctiwz(gekko_math::fma::fmadds(
+            damage as f32,
+            common.hitlag_scale,
+            common.hitlag_base,
+        )) as f32;
+        if self.hitlag_frames < frames {
+            self.hitlag_frames = frames;
+        }
+        // No supported kind has an entered_hitlag callback.
+        self.in_hitlag = true;
+    }
     /// ftColl_80077C60 keeps the largest dealt damage until item link 14.
     pub fn record_damage_dealt(&mut self, damage: f32) {
         if damage > self.pending_damage_dealt as f32 {
@@ -324,6 +347,10 @@ impl ItemPool {
             pending_damage_without_hitlag: 0,
             pending_shield_damage: 0,
             pending_shield_deflection: None,
+            hitlag_enabled: assets.hitlag,
+            hitlag_damage: 0,
+            hitlag_frames: 0.0,
+            in_hitlag: false,
             sound_requests: Default::default(),
             animation_frame: 0.0,
             script: ScriptState::default(),
@@ -352,6 +379,7 @@ impl ItemPool {
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
         let bounce_limit =
             (std::f32::consts::PI / 180.0) * (90.0 + self.common.shield_bounce_degrees);
+        let common = self.common.clone();
         let Some(item) = self.get_mut(id) else {
             return;
         };
@@ -365,14 +393,27 @@ impl ItemPool {
                 };
                 item.destroyed |= (D::logic(item.kind).shield_bounced)(item, &context);
             } else {
+                if item.hitlag_enabled {
+                    item.hitlag_damage = item.pending_shield_damage;
+                }
                 item.destroyed |=
                     (D::logic(item.kind).hit_shield)(item, &ItemEventContext::default());
             }
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
+            if item.hitlag_enabled {
+                item.hitlag_damage = item.pending_damage_dealt;
+            }
             item.destroyed |=
                 (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::default());
         } else if let Some(reflection) = item.pending_reflection {
             item.reflect::<D>(reflection, reflected_stale, cap);
+        }
+        // Item_8026A294: a surviving item enters hitlag from xCA8. (The xCC0
+        // path is a counter-style shield's own hitlag; no supported fighter
+        // sets Fighter.shield_unk1 while an item can reach it.)
+        if !item.destroyed && item.hitlag_damage != 0 {
+            let damage = item.hitlag_damage;
+            item.enter_hitlag(&common, damage);
         }
         // Item_80269CC4 resets per-frame contact accumulators.
         item.pending_reflection = None;
@@ -381,6 +422,21 @@ impl ItemPool {
         item.pending_damage_without_hitlag = 0;
         item.pending_shield_damage = 0;
         item.pending_shield_deflection = None;
+        item.hitlag_damage = 0;
+    }
+    /// Item_802693E4 (802693E4), item link 0: count hitlag down and resume.
+    pub fn advance_hitlag(&mut self, id: u32) {
+        let Some(item) = self.get_mut(id) else {
+            return;
+        };
+        if item.hitlag_frames > 0.0 {
+            item.hitlag_frames -= 1.0;
+            if item.hitlag_frames <= 0.0 {
+                item.hitlag_frames = 0.0;
+                // Item_8026A1E8: no supported kind has an exited_hitlag callback.
+                item.in_hitlag = false;
+            }
+        }
     }
     pub fn retire(&mut self, id: u32) {
         if let Some(item) = self.get_mut(id) {
@@ -408,7 +464,8 @@ impl ItemPool {
         let Some(item) = self.get_mut(id) else {
             return;
         };
-        if item.frozen {
+        // Item_80269528: hitlag pauses the animation and its callback.
+        if item.frozen || item.in_hitlag {
             return;
         }
         item.animation_frame += 1.0;
@@ -425,7 +482,7 @@ impl ItemPool {
         let Some(item) = self.get_mut(id) else {
             return;
         };
-        if !item.frozen {
+        if !item.frozen && !item.in_hitlag {
             (D::logic(item.kind).states[item.motion as usize].physics)(
                 item,
                 &ItemPhysicsContext { owner },
@@ -475,7 +532,7 @@ impl ItemPool {
 /// Item_802697D4: audited retail uses four PSVECAdd calls; never reassociate
 /// velocity+nudge, position+delta, environmental movement, platform movement.
 fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
-    if !item.attached && !item.frozen {
+    if !item.attached && !item.frozen && !item.in_hitlag {
         let delta = add(item.velocity, item.nudge);
         item.position = add(item.position, delta);
     }
@@ -531,6 +588,7 @@ mod tests {
             rotate_to_facing: false,
             collision_box: Default::default(),
             collision_damage_multiplier: 1.0,
+            hitlag: false,
         }
     }
     #[test]
@@ -543,6 +601,8 @@ mod tests {
             lifetime: 1.0,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
+            hitlag_scale: 0.0,
+            hitlag_base: 0.0,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -563,6 +623,8 @@ mod tests {
             lifetime: 1.0,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
+            hitlag_scale: 0.0,
+            hitlag_base: 0.0,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

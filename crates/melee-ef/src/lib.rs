@@ -100,6 +100,9 @@ enum ModelOwner {
 pub enum EffectTiming {
     /// Motion-entry destruction precedes graphics from the newly installed script.
     BeforeGraphics,
+    /// Requests a motion change sealed (efAsync_QueueFlush in
+    /// Fighter_ChangeMotionState), ahead of that proc's later graphics.
+    Sealed,
     Immediate,
     Deferred,
 }

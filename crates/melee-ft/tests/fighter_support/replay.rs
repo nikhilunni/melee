@@ -248,23 +248,10 @@ fn replay_config(
                         FighterProc::Update => {
                             f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO)
                         }
-                        FighterProc::Map => {
-                            let count = f
-                                .proc_map_with_assets(&fixture.assets, &mut fixture.map, &mut rng)
-                                .unwrap();
-                            used += count;
-                            total_draws += count;
-                            if count != 0 {
-                                assert!(
-                                    used <= sites.len(),
-                                    "extra fighter draw tick {tick} p{player}"
-                                );
-                                assert_eq!(
-                                    rng.seed,
-                                    sites[used - 1].1["seed"].as_u64().unwrap() as u32
-                                );
-                            }
-                        }
+                        // Landing dust draws with the graphics resolved below.
+                        FighterProc::Map => f
+                            .proc_map_with_assets(&fixture.assets, &mut fixture.map)
+                            .unwrap(),
                         FighterProc::Pose => f.proc_pose(&fixture.map),
                         FighterProc::Accessories => f.proc_accessories(),
                         FighterProc::HitboxPositions => f.proc_hitbox_positions(),

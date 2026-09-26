@@ -357,11 +357,15 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_800D331C (800D331C): detach everything the fighter owns before a death
-    /// entry. Fox and Marth have no death1/2/3_cb hooks; held items (item_gobj,
-    /// x197C, x1980), metal and the x2226_b4 hat are not part of the port yet.
+    /// entry, starting with the character's death callbacks (Fox and Falco put
+    /// the Blaster away). Held items (item_gobj, x197C, x1980), metal and the
+    /// x2226_b4 hat are not part of the port yet.
     fn release_for_death(&mut self) {
         if self.core.combat.grab.is_some() {
             unimplemented!("ftCo_800D331C: release linked fighter on death");
+        }
+        if let Some(death) = self.character.table().death {
+            death(self);
         }
         self.core.clear_velocities();
         // ftCommon_8007DB24: x2219_b0 = 0, then efLib_DestroyAll.

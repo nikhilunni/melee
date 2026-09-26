@@ -110,8 +110,9 @@ pub struct CommandState {
     pub texture_frames: FixedVec<(usize, f32), TEXTURE_SLOT_COUNT>,
     /// Fighter +221E mask1: ftAnim_800704F0 has installed a texture override.
     pub texture_animation_active: bool,
-    /// ftAction_80072E4C requests, resolved at the calling proc boundary.
-    pub landing_effects: FixedVec<u16, COMMAND_REQUEST_CAPACITY>,
+    /// ftAction_80072E4C requests with the number of graphics commands queued
+    /// before each one: both reach ftCo_8009F834 in script order.
+    pub landing_effects: FixedVec<(u16, usize), COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80073118: radial dynamics requests, no RNG.
     pub wind_effects: FixedVec<melee_cmd::WindEffect, DYNAMICS_REQUEST_CAPACITY>,
     pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, DYNAMICS_REQUEST_CAPACITY>,
@@ -366,7 +367,7 @@ impl CommandState {
                 }
                 Command::LandingEffect(id) => {
                     if !seeking {
-                        self.landing_effects.push(*id);
+                        self.landing_effects.push((*id, self.graphics.len()));
                     }
                 }
                 Command::GroundPose(flags) => {

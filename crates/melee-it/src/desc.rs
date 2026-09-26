@@ -9,6 +9,9 @@ pub struct ItemCommonData {
     pub lifetime: f32,
     pub shield_bounce_degrees: f32,
     pub maximum_reflected_damage: u32,
+    /// +B8/+BC: item hitlag frames from contact damage (it_8026B424).
+    pub hitlag_scale: f32,
+    pub hitlag_base: f32,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -36,6 +39,8 @@ impl ItemCommonData {
             lifetime: r.u32(base + 0x30)? as f32,
             shield_bounce_degrees: r.f32(base + 0xE0)?,
             maximum_reflected_damage: r.u32(base + 0xD8)?,
+            hitlag_scale: r.f32(base + 0xB8)?,
+            hitlag_base: r.f32(base + 0xBC)?,
         })
     }
 }
@@ -51,6 +56,8 @@ pub struct ItemAssets {
     pub rotate_to_facing: bool,
     pub collision_box: melee_types::mp::ItEcb,
     pub collision_damage_multiplier: f32,
+    /// ItemAttr x1_5 (Item.xDC8 xC): contacts put this kind into hitlag.
+    pub hitlag: bool,
 }
 impl ItemAssets {
     /// ftData.x48_items -> Article, loaded once before any item exists.
@@ -98,6 +105,7 @@ impl ItemAssets {
                 left: r.f32(common + 0x4C)?,
             },
             collision_damage_multiplier: r.f32(common + 0x1C)?,
+            hitlag: r.u8(common + 1)? & 0x08 != 0,
         })
     }
 }

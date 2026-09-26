@@ -316,8 +316,19 @@ pub fn remove_blaster<C: FoxFamily>(f: &mut Fighter) {
     f.character.get_mut::<C>().special_neutral().accessory_shot = false;
 }
 
+/// accessory4_cb from the firing loop. Retail installs it at loop entry and
+/// every other motion change clears it, so leaving the loop any other way
+/// (a hit, a grab, a landing) disarms it before another move's command
+/// variable 2 could fire a shot.
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
-    if f.character.get_mut::<C>().special_neutral().accessory_shot {
+    let action = f.motion_state.action.0;
+    let firing =
+        action == FamilyState::SpecialNLoop as u16 || action == FamilyState::SpecialAirNLoop as u16;
+    let scratch = f.character.get_mut::<C>().special_neutral();
+    if !firing {
+        scratch.accessory_shot = false;
+    }
+    if scratch.accessory_shot {
         fire::<C>(f, assets);
     }
 }

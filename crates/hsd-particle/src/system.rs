@@ -421,7 +421,13 @@ impl ParticleSystem {
         if let Some(index) = self.generators.iter().position(|g| g.id == id) {
             self.expire(index);
         }
+        self.park_cursor_at_tail();
         self.release_external_transforms();
+    }
+    /// hsd_8039D4DC / hsd_8039D688 leave the insertion cursor (hsd_804D78F8)
+    /// on the last generator they walked past: the list's tail.
+    fn park_cursor_at_tail(&mut self) {
+        self.generator_cursor = self.generators.last().map(|generator| generator.id);
     }
     /// hsd_8039D688 (0x8039D688): effect destruction visits each owned joint.
     /// Existing children retain a zero-rate generator, except attached AppSRT
@@ -440,6 +446,7 @@ impl ParticleSystem {
             }
             index += 1;
         }
+        self.park_cursor_at_tail();
         self.release_external_transforms();
     }
 

@@ -70,6 +70,10 @@ pub struct CaptureState {
     pub map_prepared: bool,
     /// mv.capturewait.xC: latched XY during the initial capture interval.
     pub jump_requested: bool,
+    /// CaptureWait's Anim found the timer expired this tick; the scene then
+    /// releases both fighters (ftCo_800DA698). Only that callback checks the
+    /// timer: entering CaptureWait from CaptureDamage never releases at once.
+    pub release_requested: bool,
 
     fast_remaining: f32,
     stick_directions: [i8; 2],
@@ -89,6 +93,7 @@ impl CaptureState {
             elapsed: 0.0,
             map_prepared: false,
             jump_requested: false,
+            release_requested: false,
             fast_remaining: 0.0,
             stick_directions: [0; 2],
         }
@@ -139,6 +144,7 @@ pub fn capture_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
     let mashed = capture.mash(&input, p);
     // Retail paired release returns before playback-rate maintenance.
     if capture.timer <= 0.0 {
+        capture.release_requested = true;
         return Ok(None);
     }
     let mut rate = None;

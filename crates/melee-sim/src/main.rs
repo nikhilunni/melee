@@ -44,6 +44,32 @@ enum Command {
         #[arg(long)]
         ticks: Option<u64>,
     },
+    /// Replay a scenario against its retail bone dump and report the first
+    /// differing bone per fighter and tick.
+    BonesDiff {
+        scenario: PathBuf,
+        #[arg(long, default_value_t = 12)]
+        limit: usize,
+        /// List every differing word of this one tick.
+        #[arg(long)]
+        tick: Option<u64>,
+    },
+    /// Compare the port's particle system with the retail particle dump per tick.
+    ParticlesDiff {
+        scenario: PathBuf,
+        #[arg(long, default_value_t = 0)]
+        from: u64,
+        #[arg(long)]
+        to: u64,
+    },
+    /// Compare the port's particle RNG call sites with the retail ledger per tick.
+    ParticleSites {
+        scenario: PathBuf,
+        #[arg(long, default_value_t = 0)]
+        from: u64,
+        #[arg(long)]
+        to: u64,
+    },
     /// Emit Fox Wait1 bone matrices and SRT with an identity world transform.
     Bones {
         #[arg(long, value_parser = ["fox"])]
@@ -125,6 +151,38 @@ fn main() -> anyhow::Result<()> {
         Command::Run { scenario, out } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
             melee_sim::trace::write_run(&scenario, io::BufWriter::new(std::fs::File::create(out)?))
+        }
+        Command::BonesDiff {
+            scenario,
+            limit,
+            tick,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let report = melee_sim::bones::bones_diff(&scenario, limit, tick)?;
+            for line in &report {
+                println!("{line}");
+            }
+            anyhow::ensure!(report.is_empty(), "bone mismatches");
+            println!("bones match");
+            Ok(())
+        }
+        Command::ParticlesDiff { scenario, from, to } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let report = melee_sim::trace::particle_state_diff(&scenario, from, to)?;
+            for line in &report {
+                println!("{line}");
+            }
+            println!("{} differing ticks", report.len());
+            Ok(())
+        }
+        Command::ParticleSites { scenario, from, to } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let report = melee_sim::trace::particle_site_diff(&scenario, from, to)?;
+            for line in &report {
+                println!("{line}");
+            }
+            println!("{} differing ticks", report.len());
+            Ok(())
         }
         Command::Gate { scenario } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;

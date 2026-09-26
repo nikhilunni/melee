@@ -22,6 +22,9 @@ pub const PORTS: usize = 4;
 #[derive(Debug, Clone, Default)]
 pub struct PadScript {
     ticks: Vec<[PadSample; PORTS]>,
+    /// psFrameNum at each tick's end, when the tracer recorded it: one step
+    /// per particle display pass.
+    display_clock: Vec<Option<u64>>,
 }
 
 impl PadScript {
@@ -59,6 +62,7 @@ impl PadScript {
     pub fn neutral(ticks: usize) -> Self {
         Self {
             ticks: vec![[PadSample::default(); PORTS]; ticks],
+            display_clock: vec![None; ticks],
         }
     }
 
@@ -71,6 +75,7 @@ impl PadScript {
             File::open(path).with_context(|| format!("opening {}", path.display()))?,
         );
         let mut ticks = Vec::new();
+        let mut display_clock = Vec::new();
         for (index, line) in reader.lines().enumerate() {
             let line = line?;
             if line.trim().is_empty() {
@@ -88,8 +93,12 @@ impl PadScript {
                 None => [PadSample::default(); PORTS],
             };
             ticks.push(pads);
+            display_clock.push(display_clock_of(&record));
         }
-        Ok(Self { ticks })
+        Ok(Self {
+            ticks,
+            display_clock,
+        })
     }
 
     pub fn len(&self) -> usize {
@@ -109,6 +118,38 @@ impl PadScript {
             .map_or_else(PadSample::default, |pads| pads[port])
     }
 
+    /// Take display passes from another capture of the same inputs (the RNG
+    /// ledger or particle dump run): each Dolphin run has its own VI timing,
+    /// and particle order follows the run being compared.
+    pub fn with_display_from(mut self, path: &Path) -> Result<Self> {
+        let reader = BufReader::new(
+            File::open(path).with_context(|| format!("opening {}", path.display()))?,
+        );
+        self.display_clock.clear();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            let record: Json = serde_json::from_str(&line)?;
+            self.display_clock.push(display_clock_of(&record));
+        }
+        Ok(self)
+    }
+
+    /// Whether retail rendered (and so re-sorted particle lists) between the
+    /// previous tick's end and this tick's: the recorded display clock moved.
+    /// Traces without one (and live play) render every tick.
+    pub fn display_pass(&self, tick: u64) -> bool {
+        let Some(t) = usize::try_from(tick).ok().filter(|&t| t > 0) else {
+            return true;
+        };
+        match (self.display_clock.get(t - 1), self.display_clock.get(t)) {
+            (Some(Some(previous)), Some(Some(current))) => current != previous,
+            _ => true,
+        }
+    }
+
     /// True if any tick has a non-neutral pad on any port.
     pub fn has_input(&self) -> bool {
         self.ticks
@@ -116,6 +157,13 @@ impl PadScript {
             .flatten()
             .any(|pad| *pad != PadSample::default())
     }
+}
+
+/// psFrameNum (psdisp.c:1857), recorded by the tick tracer since
+/// 2026-09-26. Older traces render every tick: their VI counts are not a
+/// reliable proxy for display passes.
+fn display_clock_of(record: &Json) -> Option<u64> {
+    record.get("ps_frame").and_then(Json::as_u64)
 }
 
 /// Reconstruct the pad subset consumed by the human input proc. With old

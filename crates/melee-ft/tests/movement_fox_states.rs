@@ -186,7 +186,7 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
                 }
             }
             fighter
-                .proc_map_with_assets(&fixture.assets, &mut fixture.map, &mut rng)
+                .proc_map_with_assets(&fixture.assets, &mut fixture.map)
                 .unwrap();
             fighter.resolve_graphics_commands(&fixture.assets, &mut rng);
         }

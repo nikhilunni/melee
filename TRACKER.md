@@ -834,3 +834,22 @@ Newest first. One line per session: date, what landed, what is next.
   only on the screen-KO camera. Testing cadence: focused checks per change,
   full gate at work boundaries (CLAUDE.md). Next: bridge all 48 cases to
   retail, then the gameplay camera (`cm/camera.c`) for screen KOs.
+- 2026-09-26: All 48 corpus v2 cases bridged to retail (batch: bridge,
+  record, verify, gate). 26 now pass fighter keys, items and ordered particle
+  draws (`corpus_v2_matches_through_game`, was 9). Shared fixes: Guard states
+  slide into MissFoot (ft_800845B4); grab release only from CaptureWait's own
+  callback; DownDamage for light hits on prone fighters (ftCo_8009F0F0);
+  boost grab window in the dash attack; sealed effects dispatch before a new
+  script's graphics; item hitlag (xCBC/it_8026B424, link-0 countdown) with the
+  Illusion's DmgDealt override; ftCommon_8007DB58 on capture and a character
+  death hook (Blaster removal); the Blaster accessory disarms outside its loop.
+  New diagnostics: `melee-sim bones-diff`, `particle-sites`, `particles-diff`,
+  `record.py --bones-from` and `--camera` (camera oracle snippet). Remaining
+  groups in `docs/PORT_NOTES/CORPUS_BRIDGE_FIXES.md`: gameplay camera
+  (magnifier damage and screen KO, 7 cases), Fox tail dynamics in
+  GuardSetOff (4), particle list ordering (4), small offsets/RNG (7).
+  Particle order then matched after three fixes: replays re-sort particle
+  lists only on retail display passes (the tracer now records psFrameNum),
+  generator deletions park the insertion cursor at the tail, and landing dust
+  resolves with script graphics in script order. 30 corpus matches gated.
+  Next: the camera port (`melee-cm`), then Fox tail dynamics in GuardSetOff.

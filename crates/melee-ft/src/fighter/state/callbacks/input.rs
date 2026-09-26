@@ -46,6 +46,20 @@ pub fn appeal(fighter: &mut Fighter, phase: InputPhase<'_>) {
 pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).
+/// ftData_MotionStateList: ftCo_MS_AttackDash (50).
+pub fn dash_attack(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    let InputPhase { assets } = phase;
+    let context = WaitContext {
+        facing: fighter.core.physics.facing,
+        specials_available: fighter.core.capabilities.specials,
+        shield_health: fighter.core.status.shield_health,
+        ..WaitContext::default()
+    };
+    fighter
+        .dash_attack_input(assets, &context)
+        .expect("dash attack IASA");
+}
+
 pub fn tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {

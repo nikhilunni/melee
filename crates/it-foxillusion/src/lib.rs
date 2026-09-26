@@ -44,6 +44,12 @@ macro_rules! ghost {
             fn pickup_possible(_item: &ItemCore) -> bool {
                 false
             }
+            /// itFoxIllusion_Logic14_DmgDealt (8029CF8C): hitting a fighter
+            /// never puts the ghost into hitlag (xCA8 = 0).
+            fn damage_dealt(item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+                item.hitlag_damage = 0;
+                false
+            }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
                 // it_8029CFF0: owner air state chooses the hitbox script.
                 item.scratch = ItemScratch::Afterimage(AfterimageState {

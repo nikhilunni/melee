@@ -646,7 +646,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::AttackDash,
         animation: 52,
         anim: callbacks::animation::jab,
-        iasa: callbacks::input::tilt,
+        iasa: callbacks::input::dash_attack,
         physics: callbacks::physics::dash_attack,
         collision: callbacks::collision::escape,
         camera: callbacks::camera::follow_fighter,
@@ -853,7 +853,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::guard_on,
         iasa: callbacks::input::guard_on,
         physics: callbacks::physics::guard_on,
-        collision: callbacks::collision::ground_action,
+        collision: callbacks::collision::guard,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -865,7 +865,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::guard_on,
         iasa: callbacks::input::guard_on,
         physics: callbacks::physics::guard_on,
-        collision: callbacks::collision::ground_action,
+        collision: callbacks::collision::guard,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -877,7 +877,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::guard_on,
         iasa: callbacks::input::guard_on,
         physics: callbacks::physics::guard_on,
-        collision: callbacks::collision::ground_action,
+        collision: callbacks::collision::guard,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -901,7 +901,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::guard_on,
         iasa: callbacks::input::guard_on,
         physics: callbacks::physics::guard_on,
-        collision: callbacks::collision::ground_action,
+        collision: callbacks::collision::guard,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1411,6 +1411,30 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
     // S5: prone recovery rows and state-specific wait/bounce callbacks.
     rows[S::DownWaitU as usize].iasa = crate::fighter::down::wait_input;
     rows[S::DownWaitD as usize].iasa = crate::fighter::down::wait_input;
+    // ftCo_MS_DownDamageU = 185; ftData_MotionStateList[185].
+    rows[S::DownDamageU as usize] = MotionRow {
+        action: ActionId(185),
+        id: S::DownDamageU,
+        animation: 185,
+        anim: crate::fighter::down::down_damage_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::damage,
+        collision: crate::fighter::down::down_damage_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_DownDamageD = 193; ftData_MotionStateList[193].
+    rows[S::DownDamageD as usize] = MotionRow {
+        action: ActionId(193),
+        id: S::DownDamageD,
+        animation: 193,
+        anim: crate::fighter::down::down_damage_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::damage,
+        collision: crate::fighter::down::down_damage_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftData_MotionStateList[186]: ftCo_MS_DownStandU.
     rows[S::DownStandU as usize] = MotionRow {
         action: ActionId(186),

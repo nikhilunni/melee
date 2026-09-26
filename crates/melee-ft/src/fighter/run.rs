@@ -59,7 +59,7 @@ impl Fighter {
             return Ok(());
         }
         if self.core.input.pressed.intersects(crate::input::Buttons::A) {
-            return self.enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
+            return self.enter_dash_attack(assets);
         }
         use crate::input::WaitTransition as T;
         let transition = self.first_ground_transition(assets, context, &[P::Shield, P::Taunt]);

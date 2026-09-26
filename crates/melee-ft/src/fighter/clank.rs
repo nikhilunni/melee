@@ -209,29 +209,8 @@ pub(super) fn contact(
 
 impl Fighter {
     pub(super) fn enter_rebound(&mut self, assets: &FighterAssets, pending: Pending) -> Result<()> {
-        // ftCommon_8007DB58 stops the two action/voice handles and invokes
-        // the live damage/death accessory cleanup. It does not clear velocity.
-        self.core
-            .commands
-            .footstep_sounds
-            .push(super::commands::FootstepSound {
-                channel: super::commands::SoundChannel::StopAction,
-                id: 0x83D61,
-                volume: 0,
-                pan: 64,
-            });
-        self.core
-            .commands
-            .footstep_sounds
-            .push(super::commands::FootstepSound {
-                channel: super::commands::SoundChannel::StopOverrideVoice,
-                id: 0x83D61,
-                volume: 0,
-                pan: 64,
-            });
-        if let Some(callback) = self.character.table().take_damage {
-            callback(self);
-        }
+        // It does not clear velocity.
+        self.interrupt_actions();
         self.change_motion_state(S::ReboundStop.into(), assets)?;
         let animation_rate =
             (self.core.attributes.combat.clank_animation_length + 0.1) / pending.duration;

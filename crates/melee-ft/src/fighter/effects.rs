@@ -53,7 +53,10 @@ impl super::FighterCore {
     ) -> usize {
         let mut draws = 0;
         let mut graphics = std::mem::take(&mut self.commands.graphics);
+        let mut index = 0;
         while !graphics.is_empty() {
+            draws += self.resolve_landing_effects(rng, index);
+            index += 1;
             let command = graphics.remove(0);
             if self.effect_state.invisible {
                 continue;
@@ -165,6 +168,7 @@ impl super::FighterCore {
                 floor_angle,
             });
         }
+        draws += self.resolve_landing_effects(rng, usize::MAX);
         self.effects.finish_graphics();
         self.commands.graphics = graphics;
         draws

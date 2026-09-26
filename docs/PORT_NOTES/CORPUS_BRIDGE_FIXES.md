@@ -55,6 +55,17 @@ their effect.
 | Reflector walking off the edge | ftFx_SpecialLw*_GroundToAir: one jump spent, same frame, bubble/reflect state reinstalled | `ground_collision` for all five ground rows |
 | Reflector air drift too slow to decay | ftCommon_8007CF58 uses PlCo +1FC above the air drift maximum | Shared `air_drift_friction_acceleration` (Reflector, Fire Fox rebound) |
 | Double jump out of the Reflector | Reflector Start never writes turnFrames (+2344), the mv word JumpAerial/Landing inherit | `CharacterCallbacks::retained_scratch_word`; the inherited word is carried |
+| Shield pushback off the edge enters Fall | Every Guard state collides through ft_800845B4: sliding off the back edge enters MissFoot | `collision::guard` for all five Guard rows |
+| Grab released a tick early after a pummel | Only CaptureWait's own Anim tests the expired timer; entering it from CaptureDamage does not release | `CaptureState::release_requested`, consumed by the scene |
+| Light hits launch a prone fighter | ftCo_8009F0F0: damage below PlCo +428 keeps a Down* fighter down in DownDamage (U only from DownWaitU) | DownDamageU/D rows, `down_damage_state` |
+| No boost grab | The dash attack's IASA (ftCo_800D8AE0) cancels into CatchDash while shield is held within PlCo +68 frames | `MotionData::DashAttack { grab_window }` |
+| Dust generators drew in the wrong order | Fighter_ChangeMotionState flushes efAsync before the new script's graphics draw their offsets | `EffectTiming::Sealed` flush before resolving graphics |
+| Illusion ghost never paused | Items have hitlag (xCBC, `it_8026B424` fmadds), set from shield hits; the Illusion's DmgDealt clears it for body hits | `ItemCore::hitlag_*`, link-0 countdown, paused animation/physics/accessory |
+| Blaster survives a grab or a death | ftCommon_8007DB58 (capture) and death2_cb (ftCo_800D331C) put it away | `Fighter::interrupt_actions`, `CharacterCallbacks::DEATH` |
+| Particle lists sorted on every tick | particleSort runs once per display pass; a recording that ran behind executes several ticks per VI frame and renders once | Tracer records psFrameNum (`ps_frame`); replays sort only when it moved |
+| New generators inserted mid-list after an effect destruction | hsd_8039D4DC / hsd_8039D688 leave the insertion cursor at the list's tail | `park_cursor_at_tail` |
+| Landing dust dispatched before script graphics | Both are script commands queued on the fighter's efAsync stack and flushed newest first | Landing effects resolve with graphics, at their script position |
+| Phantom laser from an Illusion | The Blaster's accessory4 callback is cleared by any motion change | Accessory fires only in the firing loop |
 | No shield SDI/ASDI | ftCo_80092F2C installs ftCo_80093240 / ftCo_800932DC (PlCo +4C0 scale, fmadds) | Guard hitlag callbacks |
 
 ## Validation
@@ -63,6 +74,21 @@ Debug and release workspace gates, workspace clippy, formatting and the harness
 suite pass (numbers in TRACKER.md). The seven generated matches pass fighter,
 item and ordered-particle comparisons; two stay allocation-free through GAME.
 Retail expectations were never edited.
+
+## Corpus status (2026-09-26, end of session)
+
+All 48 corpus v2 cases are bridged to retail. 30 (including three committed
+prefixes restored above) pass fighter keys, items and ordered particle draws
+in `m5_gate::corpus_v2_matches_through_game`. The rest stop at:
+
+- the gameplay camera (7 cases): off-screen magnifier damage
+  (fighter.c:1595, PlCo +7AC/+7B0/+7B4) and the screen-KO approach both read
+  the camera's projection, computed at render time;
+- Fox's tail dynamics during GuardSetOff (4 cases): the whole tail chain
+  departs from retail at once, which moves the tail hurtbox into or out of a
+  shield poke; the spring state is not in the bone dump;
+- y offset of +0.6 (2 cases), an x offset (1), facing (1) and three RNG
+  divergences, not yet diagnosed.
 
 ## Remaining in this area
 

@@ -81,6 +81,9 @@ impl CharacterCallbacks for Fox {
         Some(ft_fox_family::special_lw::reflect_hit::<Self>);
     const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
         Some(ft_fox_family::special_n::remove_blaster::<Self>);
+    /// ftFx_Init_800E5588 is also the Blaster's death2_cb.
+    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(ft_fox_family::special_n::remove_blaster::<Self>);
     fn item_owner(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,

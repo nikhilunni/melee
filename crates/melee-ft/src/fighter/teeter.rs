@@ -118,6 +118,19 @@ impl Fighter {
     }
 }
 
+impl super::FighterCore {
+    /// ft_800845B4 / ft_800848DC: the floor ran out behind the fighter
+    /// (Collide_RightLedgeSlip facing left, Collide_LeftLedgeSlip facing right).
+    pub(super) fn slipped_off_back_edge(&self) -> bool {
+        let slip = if self.physics.facing < 0.0 {
+            melee_types::mp::collide::RIGHT_LEDGE_SLIP
+        } else {
+            melee_types::mp::collide::LEFT_LEDGE_SLIP
+        };
+        self.collision.data.env_flags as u32 & slip != 0
+    }
+}
+
 impl Fighter {
     /// ftCo_8009F39C: backward floor departure during damage.
     pub(super) fn enter_missed_footing(&mut self, assets: &FighterAssets) -> Result<()> {

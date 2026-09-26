@@ -125,8 +125,7 @@ impl Fighter {
                 return Ok(());
             }
             if self.core.input.pressed.intersects(crate::input::Buttons::A) {
-                return self
-                    .enter_simple_attack(melee_types::CommonMotionState::AttackDash, assets);
+                return self.enter_dash_attack(assets);
             }
             if self.core.input.current.stick.x * self.core.physics.facing < 0.0
                 && self.try_redash(assets)?

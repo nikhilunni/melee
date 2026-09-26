@@ -143,6 +143,9 @@ pub struct DamageParameters {
     pub smash_charge_knockback_scale: f32,
     /// PlCo +104: knockback never drops below this after armor.
     pub minimum_knockback: f32,
+    /// PlCo +428 (int): a prone fighter hit for less damage stays down
+    /// (ftCo_8009F0F0).
+    pub down_damage_limit: i32,
     pub crouch_hitlag_scale: f32,
     pub electric_hitlag_scale: f32,
     pub captured_item_damage_scale: f32,
@@ -219,6 +222,7 @@ impl DamageParameters {
             frozen_knockback_scale: r.f32(p + 0x718)?,
             smash_charge_knockback_scale: r.f32(p + 0x7C4)?,
             minimum_knockback: r.f32(p + 0x104)?,
+            down_damage_limit: r.s32(p + 0x428)?,
             crouch_hitlag_scale: r.f32(p + 0x1A0)?,
             electric_hitlag_scale: r.f32(p + 0x1A4)?,
             captured_item_damage_scale: r.f32(p + 0x128)?,
@@ -554,12 +558,7 @@ impl Fighter {
             );
             if result == crate::collision::ground::WaitGroundResult::EnterFall {
                 // ft_800848DC: slipping off the back edge enters MissFoot.
-                let slip = if self.physics.facing < 0.0 {
-                    melee_types::mp::collide::RIGHT_LEDGE_SLIP
-                } else {
-                    melee_types::mp::collide::LEFT_LEDGE_SLIP
-                };
-                if self.collision.data.env_flags as u32 & slip != 0 {
+                if self.core.slipped_off_back_edge() {
                     self.enter_missed_footing(assets)?;
                 } else {
                     self.leave_ground();
@@ -567,41 +566,9 @@ impl Fighter {
             }
             return Ok(());
         }
-        crate::collision::air::begin_map(
-            &self.core.physics,
-            &mut self.core.collision,
-            &mut self.core.skeleton,
-            self.core.animation.root,
-        );
-        if self.core.combat.hitlag_remaining > 0.0 {
-            // ft_80081DD4: mpColl_800477E0 clamps SDI against the floor
-            // without a landing transition while hitlag is active.
-            let cd = &mut self.core.collision.data;
-            cd.last_pos = cd.cur_pos;
-            cd.cur_pos = self.core.physics.position;
-            let pose = crate::collision::ecb::EcbPose::read(
-                &mut self.core.skeleton,
-                self.core.animation.root,
-                cd,
-            );
-            map.air_collide_stay(cd, Some(&|bone| pose.position(bone)));
-            self.core.physics.position = cd.cur_pos;
-            self.core
-                .skeleton
-                .set_translate(self.core.animation.root, &self.core.physics.position);
+        let Some(landed) = self.land_from_damage_air(assets, map)? else {
             return Ok(());
-        }
-        let ledge_height = self.core.collision.data.ledge_snap_height;
-        self.core.collision.data.ledge_snap_height *= assets.damage.ledge_height_scale;
-        let landed = crate::collision::air::collide_pass(
-            &mut self.core.physics,
-            &mut self.core.collision,
-            map,
-            &mut self.core.skeleton,
-            self.core.animation.root,
-            self.core.status.ledge_cooldown == 0,
-        );
-        self.core.collision.data.ledge_snap_height = ledge_height;
+        };
         if landed {
             if is_tumble(self.core.motion_state.id) || self.core.motion_state.id == S::DamageFall {
                 if self.try_tech(assets)? {
@@ -624,6 +591,53 @@ impl Fighter {
             self.try_grab_ledge(assets, map)?;
         }
         Ok(())
+    }
+
+    /// ft_80081DD4 (80081DD4): the airborne damage collision. During hitlag
+    /// mpColl_800477E0 only clamps SDI against the floor; otherwise the ledge
+    /// snap height is scaled for the pass and the result says whether the
+    /// fighter touched down (`None`: the hitlag clamp ran, nothing else may).
+    pub(super) fn land_from_damage_air(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<Option<bool>> {
+        crate::collision::air::begin_map(
+            &self.core.physics,
+            &mut self.core.collision,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+        );
+        if self.core.combat.hitlag_remaining > 0.0 {
+            // ft_80081DD4: mpColl_800477E0 clamps SDI against the floor
+            // without a landing transition while hitlag is active.
+            let cd = &mut self.core.collision.data;
+            cd.last_pos = cd.cur_pos;
+            cd.cur_pos = self.core.physics.position;
+            let pose = crate::collision::ecb::EcbPose::read(
+                &mut self.core.skeleton,
+                self.core.animation.root,
+                cd,
+            );
+            map.air_collide_stay(cd, Some(&|bone| pose.position(bone)));
+            self.core.physics.position = cd.cur_pos;
+            self.core
+                .skeleton
+                .set_translate(self.core.animation.root, &self.core.physics.position);
+            return Ok(None);
+        }
+        let ledge_height = self.core.collision.data.ledge_snap_height;
+        self.core.collision.data.ledge_snap_height *= assets.damage.ledge_height_scale;
+        let landed = crate::collision::air::collide_pass(
+            &mut self.core.physics,
+            &mut self.core.collision,
+            map,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+            self.core.status.ledge_cooldown == 0,
+        );
+        self.core.collision.data.ledge_snap_height = ledge_height;
+        Ok(Some(landed))
     }
 
     pub(super) fn process_damage(
@@ -681,10 +695,13 @@ impl Fighter {
                 // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
             } else if hit.knockback != 0.0 {
-                if let Some(take_damage) = self.character.table().take_damage {
-                    take_damage(self);
+                self.interrupt_actions();
+                // ftCo_8009F0F0 -> ftCo_8009F184: a light hit on a prone fighter.
+                let down = self.core.down_damage_state(hit.percent_damage, assets);
+                self.begin_damage_reaction(hit, down, None, assets, rng)?;
+                if down.is_some() {
+                    self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
                 }
-                self.begin_damage_reaction(hit, None, None, assets, rng)?;
                 // fighter.c:2888: hitlag uses dmg.x183C_applied, the largest
                 // damage logged this frame.
                 hit_damage = self.core.combat.frame_max_damage;
@@ -761,6 +778,29 @@ impl Fighter {
         self.core.combat.phantom_max_damage = 0;
         self.core.combat.phantom_knockback = 0.0;
         Ok(())
+    }
+    /// ftCommon_8007DB58 (8007DB58), before a damage, rebound or capture
+    /// entry: stop the action and override-voice sound handles, then run the
+    /// character's take-damage hook (Fox and Falco put the Blaster away).
+    /// No supported character has a death1 hook.
+    pub(super) fn interrupt_actions(&mut self) {
+        for channel in [
+            super::commands::SoundChannel::StopAction,
+            super::commands::SoundChannel::StopOverrideVoice,
+        ] {
+            self.core
+                .commands
+                .footstep_sounds
+                .push(super::commands::FootstepSound {
+                    channel,
+                    id: 0x83D61,
+                    volume: 0,
+                    pan: 64,
+                });
+        }
+        if let Some(take_damage) = self.character.table().take_damage {
+            take_damage(self);
+        }
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
     pub(super) fn begin_damage_reaction(

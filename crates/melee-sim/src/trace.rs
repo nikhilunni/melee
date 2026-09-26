@@ -12,6 +12,7 @@ use std::{
     collections::BTreeSet,
     fs::File,
     io::{BufRead, BufReader, Write},
+    path::Path,
 };
 
 pub fn check_schema(record: &Record) -> Result<()> {
@@ -62,7 +63,19 @@ pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
     );
     Ok(script)
 }
-fn simulation(scenario: &Scenario) -> Result<Simulation> {
+/// A scripted simulation whose display passes follow another capture run.
+pub fn simulation_displayed_as(scenario: &Scenario, capture: &Path) -> Result<Simulation> {
+    let pads = pad_script(scenario)?.with_display_from(capture)?;
+    Ok(Simulation::with_inputs(
+        if scenario.is_cold() {
+            InitialState::from_parameters(scenario)?
+        } else {
+            InitialState::from_savestate_traces(scenario)?
+        },
+        pads,
+    ))
+}
+pub(crate) fn simulation(scenario: &Scenario) -> Result<Simulation> {
     let pads = pad_script(scenario)?;
     Ok(Simulation::with_inputs(
         if scenario.is_cold() {
@@ -200,4 +213,78 @@ fn gate_with_recording(
     } else {
         std::collections::BTreeMap::new()
     })
+}
+
+/// Particle RNG call sites per tick, port versus the retail ledger
+/// (`<name>.ledger.raw.jsonl`), for ticks `from..=to`: one line per tick
+/// where they differ.
+pub fn particle_site_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
+    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+    let ledger = std::fs::read_to_string(&ledger_path)?;
+    let mut simulation = simulation_displayed_as(scenario, &ledger_path)?;
+    let mut report = Vec::new();
+    for (tick, line) in ledger.lines().enumerate().take(to as usize + 1) {
+        let row: serde_json::Value = serde_json::from_str(line)?;
+        let expected: Vec<u32> = row["rng_draws"]
+            .as_array()
+            .map(|draws| {
+                draws
+                    .iter()
+                    .filter_map(|draw| draw["lr"].as_u64())
+                    .map(|lr| lr as u32 - 4)
+                    .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
+                    .collect()
+            })
+            .unwrap_or_default();
+        simulation.tick_without_snapshot()?;
+        let actual = simulation.particle_rng_sites();
+        if tick as u64 >= from && actual != expected {
+            let hex = |sites: &[u32]| {
+                sites
+                    .iter()
+                    .map(|s| format!("{s:08X}"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            report.push(format!(
+                "tick {tick}: port [{}] retail [{}]",
+                hex(&actual),
+                hex(&expected)
+            ));
+        }
+    }
+    Ok(report)
+}
+
+/// The first differing particle-system field per tick against the retail
+/// particle dump (`<name>.particles.jsonl`), for ticks `from..=to`, apart
+/// from the AppSRT display caches.
+pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
+    let path = scenario.trace_path("particles.jsonl");
+    let expected = read_trace(std::io::BufReader::new(std::fs::File::open(&path)?))?;
+    // The dump's per-tick VI frames live in its metadata sidecar.
+    let meta = scenario.trace_path("particles.jsonl.meta.jsonl");
+    let mut simulation = simulation_displayed_as(scenario, &meta)?;
+    let mut report = Vec::new();
+    for record in expected.iter().take_while(|r| r.frame <= to) {
+        simulation.tick_without_snapshot()?;
+        if record.frame < from {
+            continue;
+        }
+        let actual = simulation.particle_snapshot(record.frame);
+        // AppSRT display caches need the camera and render schedule.
+        let mismatch = record
+            .state
+            .iter()
+            .filter(|(key, _)| !key.starts_with("particles.appsrt["))
+            .find(|(key, value)| actual.state.get(*key) != Some(value));
+        if let Some((key, value)) = mismatch {
+            report.push(format!(
+                "tick {}: {key}: retail {value:?}, port {:?}",
+                record.frame,
+                actual.state.get(key)
+            ));
+        }
+    }
+    Ok(report)
 }

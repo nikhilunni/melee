@@ -1357,27 +1357,60 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 9] = [
+const CORPUS_MATCHES: [(&str, usize); 30] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
-    ("corpus_v2_s0_e2a_p1", 3029),
+    ("corpus_v2_s0_e2a_p1", 3307),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
     // grounded mid-animation root-motion velocity.
-    ("corpus_v2_s0_e12345678_p0", 3450),
-    // TurnRun edge stop; Shield Breaker leaving the ground with one jump.
-    ("corpus_v2_s1_e12345678_p1", 3155),
-    // Airborne knockback decay during Fire Fox's charge.
-    ("corpus_v2_s0_e49_p1", 3304),
+    ("corpus_v2_s0_e12345678_p0", 2788),
+    // TurnRun edge stop; Shield Breaker leaving the ground with one jump;
+    // Illusion ghost hitlag against a shield.
+    ("corpus_v2_s1_e12345678_p1", 4434),
+    // Airborne knockback decay during Fire Fox's charge; a grab puts the
+    // Blaster away (ftCommon_8007DB58).
+    ("corpus_v2_s0_e49_p1", 5603),
     // Staled charged Shield Breaker; down tilt holding on the squat check.
-    ("corpus_v2_s0_e539_p2", 5034),
+    ("corpus_v2_s0_e539_p2", 5964),
     // Invincibility flash ownership; staled ledge attack.
     ("corpus_v2_s0_e80000000_p1", 3758),
     // Shield SDI/ASDI during shield hitlag.
     ("corpus_v2_s0_e1_p0", 3385),
     // Reflector walking off the stage edge (ground-to-air, one jump), its
     // over-drift air friction, and a double jump inheriting turnFrames.
-    ("corpus_v2_s1_edeadbeef_p0", 665),
+    ("corpus_v2_s1_edeadbeef_p0", 3563),
     // Knockback while charging a smash attack (PlCo +7C4).
     ("corpus_v2_s0_e12345678_p2", 1342),
+    // Grab release only from CaptureWait's own callback; generator insertion
+    // after an effect destruction.
+    ("corpus_v2_s0_e80000000_p2", 2173),
+    // A light hit on a prone fighter (DownDamage); particle lists re-sorted
+    // only on retail's display passes (psFrameNum).
+    ("corpus_v2_s0_effffffff_p2", 5351),
+    // The Blaster is put away on death (death2_cb).
+    ("corpus_v2_s1_e2a_p1", 3038),
+    // Landing dust and script graphics queued in script order.
+    ("corpus_v2_s0_e49_p0", 3791),
+    // Boost grab out of a dash attack; effects sealed by a motion change
+    // dispatch before the new script's graphics draw.
+    ("corpus_v2_s1_e1_p0", 3371),
+    // The Blaster's firing accessory is disarmed by leaving the loop.
+    ("corpus_v2_s1_e1_p2", 6000),
+    // Further generated matches that reach GAME or the explorer's tick cap.
+    ("corpus_v2_s0_e1_p2", 4245),
+    ("corpus_v2_s0_e12345678_p1", 3129),
+    ("corpus_v2_s0_e2a_p0", 2407),
+    ("corpus_v2_s0_e539_p0", 4112),
+    ("corpus_v2_s0_e539_p1", 4208),
+    ("corpus_v2_s0_edeadbeef_p0", 1692),
+    ("corpus_v2_s1_e1_p1", 4619),
+    ("corpus_v2_s1_e49_p0", 4239),
+    ("corpus_v2_s1_e539_p0", 4182),
+    ("corpus_v2_s1_e539_p1", 1753),
+    ("corpus_v2_s1_e539_p2", 6000),
+    ("corpus_v2_s1_edeadbeef_p1", 3585),
+    ("corpus_v2_s1_edeadbeef_p2", 2343),
+    ("corpus_v2_s1_effffffff_p0", 2420),
+    ("corpus_v2_s1_effffffff_p2", 4248),
 ];
 
 #[test]

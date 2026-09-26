@@ -80,9 +80,10 @@ fn start_fox_state_callbacks_600() {
                     FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
                     FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO),
                     FighterProc::Map => {
-                        let count = f
-                            .proc_map_with_assets(&fixture.assets, &mut fixture.map, &mut rng)
+                        f.proc_map_with_assets(&fixture.assets, &mut fixture.map)
                             .unwrap();
+                        // Landing dust draws with the proc's graphics.
+                        let count = f.resolve_graphics_commands(&fixture.assets, &mut rng);
                         used += count;
                         total_draws += count;
                         if count != 0 {

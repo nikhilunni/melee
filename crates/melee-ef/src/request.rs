@@ -223,6 +223,16 @@ impl EffectQueue {
                     drained.push(entry);
                 }
             }
+            crate::EffectTiming::Sealed => {
+                let mut index = 0;
+                while index < self.entries.len() {
+                    if self.entries.iter().nth(index).unwrap().matrix.is_some() {
+                        drained.push(self.entries.remove(index));
+                    } else {
+                        index += 1;
+                    }
+                }
+            }
             crate::EffectTiming::Immediate => {
                 let mut index = 0;
                 while index < self.entries.len() {

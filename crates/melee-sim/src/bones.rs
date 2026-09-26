@@ -183,6 +183,89 @@ pub fn write_fox_wait1_bones(
     Ok(())
 }
 
+/// Replay `scenario` against its retail bone dump (`<name>.bones.jsonl`, any
+/// tick window from `record.py --bones N --bones-from T`) and report the first
+/// differing local SRT word of each fighter per tick, up to `limit` lines.
+/// With `only_tick`, report every differing word of that tick instead.
+/// Returns the report; empty when every compared word matches.
+pub fn bones_diff(
+    scenario: &crate::scenario::Scenario,
+    limit: usize,
+    only_tick: Option<u64>,
+) -> Result<Vec<String>> {
+    let path = scenario.trace_path("bones.jsonl");
+    let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)
+        .with_context(|| format!("reading {}", path.display()))?
+        .lines()
+        .map(serde_json::from_str)
+        .collect::<std::result::Result<_, _>>()?;
+    let first = rows.first().context("empty bone dump")?["frame"]
+        .as_u64()
+        .context("frame")?;
+    let mut simulation = crate::trace::simulation(scenario)?;
+    let mut report = Vec::new();
+    for (offset, row) in rows.iter().enumerate() {
+        let tick = first + offset as u64;
+        anyhow::ensure!(
+            row["frame"].as_u64() == Some(tick),
+            "bone dump gap at {tick}"
+        );
+        while simulation.frame() <= tick {
+            simulation.tick_without_snapshot()?;
+        }
+        if only_tick.is_some_and(|only| only != tick) {
+            continue;
+        }
+        for (player, bones) in simulation.local_poses().iter().enumerate() {
+            let all = only_tick.is_some();
+            for mismatch in bone_mismatches(bones, row, player, all) {
+                report.push(format!("tick {tick}: {mismatch}"));
+            }
+        }
+        if report.len() >= limit {
+            break;
+        }
+    }
+    Ok(report)
+}
+
+/// The differing words of one fighter: the first only, or all of them.
+fn bone_mismatches(
+    bones: &[melee_lib::diagnostics::LocalSrt],
+    expected: &serde_json::Value,
+    player: usize,
+    all: bool,
+) -> Vec<String> {
+    let mut found = Vec::new();
+    for (bone, srt) in bones.iter().enumerate() {
+        let fields: [(&str, &[f32]); 3] = [
+            ("rotate", &srt.rotate[..if srt.quaternion { 4 } else { 3 }]),
+            ("scale", &srt.scale),
+            ("translate", &srt.translate),
+        ];
+        for (field, values) in fields {
+            for (index, value) in values.iter().enumerate() {
+                let key = format!("p{player}.bone[{bone}].{field}[{index}]");
+                let Some(bits) = expected["state"][&key]["v"]["bits"].as_u64() else {
+                    continue;
+                };
+                let bits = bits as u32;
+                if value.to_bits() != bits {
+                    found.push(format!(
+                        "{key}: actual {value} ({:08X}), expected {} ({bits:08X})",
+                        value.to_bits(),
+                        f32::from_bits(bits)
+                    ));
+                    if !all {
+                        return found;
+                    }
+                }
+            }
+        }
+    }
+    found
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

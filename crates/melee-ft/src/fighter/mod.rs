@@ -112,6 +112,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
+    /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
+    const DEATH: Option<fn(&mut Fighter)> = None;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }
@@ -687,6 +689,11 @@ pub enum MotionData {
         repeat_pressed: bool,
     },
     Tilt,
+    /// mv.co.attackdash.x0 (+2340): frames left in which holding shield
+    /// cancels the dash attack into a dash grab.
+    DashAttack {
+        grab_window: i32,
+    },
     Aerial {
         retained_drop_timer: f32,
     },
