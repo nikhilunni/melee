@@ -68,6 +68,15 @@ class CameraTracer(TickTracer):
         super().__init__(*args, **kwargs)
         self.camera_out = camera_out
 
+    def install(self) -> None:
+        super().install()
+        # The state the first tick starts from: the camera carries smoothing
+        # history, so a savestate import needs it (written beside the dump).
+        initial = Path(self.camera_out.name + ".initial.json")
+        initial.write_text(json.dumps({"sampling": "savestate_loaded_before_first_tick",
+                                       "tick": self.initial_tick,
+                                       "state": camera_state(self.mem)}) + "\n")
+
     def record(self, phase: str, mem=None) -> dict:
         mem = self.mem if mem is None else mem
         diagnostic = super().record(phase, mem)
