@@ -52,7 +52,8 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `harness/roms/files/` | Extracted disc filesystem, once `extract_fst.py` exists. |
 | `harness/roms/*.sav` | Dolphin savestates for scenarios. |
 | `harness/traces/` | Captured oracle traces and probe data. |
-| `~/Projects/dolphin-scripting/build/Binaries/Dolphin.app` | Dolphin scripting fork, arm64. |
+| `~/Projects/dolphin-scripting/build/Binaries/DolphinHeadless.app` | Headless scripting Dolphin: the default for every recording. Built by `tools/build-headless-dolphin.sh`. |
+| `~/Projects/dolphin-scripting/build/Binaries/Dolphin.app` | Windowed Dolphin scripting fork, arm64: live human play and menu driving only. |
 
 ## Commands
 
@@ -66,9 +67,9 @@ cd harness && uv run python gen_schema.py --check
 cd harness && uv run python symbols.py <symbol...>      # retail addresses
 cargo run -p melee-diff -- expected.jsonl actual.jsonl
 cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
-# Dolphin oracle (see docs/DOLPHIN_BUILD.md for the config flags)
-~/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin \
-  -e harness/roms/GALE01.iso --script $PWD/harness/dolphin/trace_scenario.py
+# Dolphin oracle: headless, silent, Null video by default (docs/DOLPHIN_RUN.md)
+tools/build-headless-dolphin.sh                                   # once, and after any fork rebuild
+cd harness && uv run python record.py scenarios/<name>.toml [--bones N]
 ```
 
 ## The gates, in one command each
@@ -106,6 +107,14 @@ At the end:
    line in the session log saying what landed and what is next.
 3. Commit. One logical change per commit. Include retail addresses in the
    message when porting functions. Never commit a known divergence.
+
+Recording: always record through `harness/record.py` (or `dolphin/run_scenario.py`),
+which launch the headless Dolphin with no window, no audio and Null video. It
+produces byte-identical traces to the windowed app and avoids the macOS
+IOSurface limit. Never launch the windowed app for scripted scenes; it is only
+for live human play (`record.py` picks it automatically) and menu driving
+(`dolphin/drive.py`). `DOLPHIN_GUI=1` forces windowed; `DOLPHIN_AUDIO=1` unmutes.
+Run recordings one at a time.
 
 Parallel work: independent tasks (different crates, different decomp
 directories) can be given to subagents at once. Each subagent touches only

@@ -31,10 +31,8 @@ HERE = Path(__file__).resolve().parent
 HARNESS = HERE.parent
 sys.path.insert(0, str(HARNESS))
 import decode  # noqa: E402
+import dolphin_config  # noqa: E402
 
-DOLPHIN = Path(os.environ.get(
-    "DOLPHIN_BIN",
-    Path.home() / "Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin"))
 ISO = HARNESS / "roms" / "GALE01.iso"
 
 
@@ -46,12 +44,10 @@ def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
     """Same SI setup as drive.py launch: the savestate was recorded with `ports`
     emulated controllers plugged in and Dolphin should see the same devices."""
     script = "tick_trace.py" if tick_trace else "trace_scenario.py"
-    cmd = [str(DOLPHIN), "-e", str(iso), "--script", str(HERE / script),
-           "-C", f"Dolphin.Core.EmulationSpeed={speed}"]
-    if video:
-        cmd += ["-v", video]
-    if platform := os.environ.get("DOLPHIN_PLATFORM"):
-        cmd += ["--platform", platform]
+    # A live human port needs the windowed app (keyboard focus, speed 1).
+    dolphin = dolphin_config.binary(gui=background_input)
+    cmd = [str(dolphin), "-e", str(iso), "--script", str(HERE / script),
+           "-C", f"Dolphin.Core.EmulationSpeed={speed}", *dolphin_config.launch_flags(dolphin, video)]
     if background_input:
         # A human port: the keyboard reaches the emulated pad even when the render
         # window is not focused.
@@ -84,7 +80,7 @@ def stop(proc: subprocess.Popen) -> None:
 
 
 def dolphin_pids() -> list[int]:
-    out = subprocess.run(["pgrep", "-f", str(DOLPHIN)], capture_output=True, text=True).stdout
+    out = subprocess.run(["pgrep", "-f", str(dolphin_config.binary(gui=True))], capture_output=True, text=True).stdout
     return [int(x) for x in out.split()]
 
 

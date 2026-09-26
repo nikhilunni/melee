@@ -266,6 +266,7 @@ the port meets the real game, so expect surprises and record them here.
 | 2026-09-09 | Scripted scenarios: the TOML `inputs` schedule drives Dolphin at VI frames; the port replays `HSD_PadGameStatus` as recorded at each tick boundary (`inputs.pN` beside the expected record, `melee-sim/src/inputs.rs`) | VI-to-tick alignment is not modelled; pads are inputs, never compared state. Several scenarios from one savestate share its particle capture (`Scenario::boundary_path`). |
 | 2026-09-09 | **Steel thread before breadth:** Fox vs Marth on Final Destination, a full match bit-exact, with a consolidation round first | User (2026-09-09): the gold standard is clean, zero-cost abstractions; going wide should be additional trait implementations and tables, not more shared code. |
 | 2026-09-09 | Motion states are fn-pointer tables (common table + per-character table from `CharacterCallbacks::special_rows()`), specials enter through a trait hook; kinds that share retail code get a family crate (`ft-fox-family` with a `FoxFamily` trait) that both characters depend on; `Fighter<C>` becomes a non-generic core plus a thin generic shell; no heap allocation in the tick path; perf/size/instantiation budgets are regression gates | Mirrors retail's own dispatch (`ftData_MotionStateList`, `ftFx_Init_MotionStateTable`, `ftData_SpecialN` per-kind tables), so the port's code is the C with the `switch (kind)` deleted. Keeps monomorphization (the one real cost) small. Baseline 2026-09-09: stripped `melee-sim` 3.9 MB, 600-tick gate 0.25 s CPU incl. load. |
+| 2026-09-26 | Record with the headless Dolphin (`DolphinHeadless.app`, Null video, host audio muted) by default; windowed only for live human play and menu driving | Byte-identical to windowed recordings on two scenes; no IOSurface exhaustion, no window or sound. `tools/build-headless-dolphin.sh`, `docs/DOLPHIN_RUN.md`. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure
@@ -780,3 +781,10 @@ Newest first. One line per session: date, what landed, what is next.
   The fixed 48-case robustness corpus now has 20 match finishes, 17 full
   6,000-tick runs and 11 faults; it is not an exactness oracle. Natural timed
   fixtures and clock/scene diagnostics are captured. No breadth work started.
+- 2026-09-26: Headless recording is the standard. Rebuilt the lost no-GUI
+  scripting build (patch `docs/patches/0003-nogui-scripting-backend.patch`,
+  `tools/build-headless-dolphin.sh`); the earlier build's silent savestate
+  failure was a missing `Sys` directory outside an app bundle. Harness launch
+  selection lives in `harness/dolphin_config.py`; host audio muted by default.
+  Two scenes re-recorded byte-identical; 227 harness tests pass. Next: resume
+  DamageFlyRoll when the matchup work restarts.

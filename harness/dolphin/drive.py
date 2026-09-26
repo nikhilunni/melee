@@ -31,10 +31,9 @@ sys.path.insert(0, str(HERE))
 import remote_proto as proto  # noqa: E402
 
 HARNESS = HERE.parent
+sys.path.insert(0, str(HARNESS))
+import dolphin_config  # noqa: E402
 DEFAULT_DIR = HARNESS / "roms" / ".remote"
-DOLPHIN = Path(os.environ.get(
-    "DOLPHIN_BIN",
-    Path.home() / "Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin"))
 ISO = HARNESS / "roms" / "GALE01.iso"
 LOCAL_VERBS = ("launch", "status", "wait-idle", "kill")   # plus shot / wait-watch, which take args
 
@@ -49,11 +48,12 @@ def launch_command(script: Path, iso: Path = ISO, speed: float | None = None,
     """Dolphin command line. `ports` emulated GC controllers are plugged in
     (the game sees them as connected pads with no input until the script
     overrides them); the rest are empty."""
-    cmd = [str(DOLPHIN), "-e", str(iso), "--script", str(script)]
+    # Menu driving takes screenshots (`shot`), so it keeps the windowed app.
+    dolphin = dolphin_config.binary(gui=True)
+    cmd = [str(dolphin), "-e", str(iso), "--script", str(script),
+           *dolphin_config.launch_flags(dolphin, video)]
     if speed is not None:
         cmd += ["-C", f"Dolphin.Core.EmulationSpeed={speed}"]   # 0 = unlimited
-    if video:
-        cmd += ["-v", video]
     for i in range(4):
         dev = SI_GC_CONTROLLER if i < ports else SI_NONE
         cmd += ["-C", f"Dolphin.Core.SIDevice{i}={dev}"]

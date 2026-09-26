@@ -376,11 +376,14 @@ def test_drive_watched_u32():
     assert drive.watched_u32({}, 0x804D6718) is None
 
 
-def test_launch_command_plugs_requested_ports():
+def test_launch_command_plugs_requested_ports(monkeypatch):
+    import dolphin_config
     import drive
 
+    monkeypatch.delenv("DOLPHIN_BIN", raising=False)
     cmd = drive.launch_command(Path("/s.py"), iso=Path("/g.iso"), speed=0, video="OGL", ports=2)
-    assert cmd[:6] == [str(drive.DOLPHIN), "-e", "/g.iso", "--script", "/s.py", "-C"]
+    # Menu driving takes screenshots, so it always launches the windowed app.
+    assert cmd[:5] == [str(dolphin_config.GUI_BIN), "-e", "/g.iso", "--script", "/s.py"]
     assert "Dolphin.Core.EmulationSpeed=0" in cmd and "OGL" in cmd
     assert "Dolphin.Core.SIDevice0=6" in cmd and "Dolphin.Core.SIDevice1=6" in cmd
     assert "Dolphin.Core.SIDevice2=0" in cmd and "Dolphin.Core.SIDevice3=0" in cmd

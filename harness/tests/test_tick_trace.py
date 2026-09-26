@@ -265,6 +265,7 @@ def test_auxiliary_recorder_reports_process_exit(tmp_path, monkeypatch):
         def wait(self, timeout):
             return self.returncode
 
+    monkeypatch.setenv("DOLPHIN_BIN", str(tmp_path / "dolphin-emu-nogui"))
     monkeypatch.setattr(record.subprocess, "Popen", Exited)
     monkeypatch.setattr(record.time, "sleep", lambda _: pytest.fail("waited after exit"))
     with pytest.raises(RuntimeError, match="Dolphin exited with 3"):
@@ -272,11 +273,42 @@ def test_auxiliary_recorder_reports_process_exit(tmp_path, monkeypatch):
                                  tmp_path / "err", tmp_path / "log", 60, "Null")
 
 
-def test_headless_platform_reaches_tick_and_auxiliary_captures(tmp_path, monkeypatch):
+def test_scripted_captures_default_to_silent_headless_dolphin(tmp_path, monkeypatch):
+    import dolphin_config
     import record
 
-    monkeypatch.setenv("DOLPHIN_PLATFORM", "headless")
-    for command in [run_scenario.dolphin_command(tmp_path / "game.iso", 0, "Null", 2, True),
-                    record.dolphin_flags(video="Null")]:
+    monkeypatch.delenv("DOLPHIN_BIN", raising=False)
+    monkeypatch.delenv("DOLPHIN_GUI", raising=False)
+    monkeypatch.delenv("DOLPHIN_PLATFORM", raising=False)
+    monkeypatch.delenv("DOLPHIN_AUDIO", raising=False)
+    monkeypatch.setattr(dolphin_config, "HEADLESS_BIN", tmp_path / "dolphin-emu-nogui")
+    dolphin_config.HEADLESS_BIN.touch()
+    tick = run_scenario.dolphin_command(tmp_path / "game.iso", 0, None, 2, True)
+    aux = record.dolphin_flags(dolphin_config.binary())
+    assert tick[0] == str(dolphin_config.HEADLESS_BIN)
+    for command in (tick, aux):
         assert command[command.index("--platform") + 1] == "headless"
         assert command[command.index("-v") + 1] == "Null"
+        assert "Dolphin.DSP.Backend=No Audio Output" in command
+
+
+def test_human_capture_uses_windowed_dolphin(tmp_path, monkeypatch):
+    import dolphin_config
+
+    monkeypatch.delenv("DOLPHIN_BIN", raising=False)
+    command = run_scenario.dolphin_command(tmp_path / "game.iso", 1, None, 2, True,
+                                           background_input=True)
+    assert command[0] == str(dolphin_config.GUI_BIN)
+    assert "--platform" not in command
+    assert command[command.index("-v") + 1] == "OGL"
+
+
+def test_explicit_dolphin_bin_and_audio_override(tmp_path, monkeypatch):
+    import dolphin_config
+
+    monkeypatch.setenv("DOLPHIN_BIN", str(tmp_path / "Dolphin"))
+    monkeypatch.setenv("DOLPHIN_AUDIO", "1")
+    command = run_scenario.dolphin_command(tmp_path / "game.iso", 0, "Null", 2, True)
+    assert command[0] == str(tmp_path / "Dolphin")
+    assert not any("DSP.Backend" in arg for arg in command)
+    assert dolphin_config.binary(gui=True) == tmp_path / "Dolphin"

@@ -542,30 +542,47 @@ prints P1's motion transitions and any RNG sites beyond the idle set. The
 particle and bone snippets replay the scenario's scripted inputs
 (`MELEE_PARTICLES_SCENARIO` / `MELEE_BONES_SCENARIO`).
 
-### Headless capture when macOS graphics clients are exhausted
+### Headless recording (the default since 2026-09-26)
 
-`record.py --video Null` forwards the backend to every tick, RNG, particle and
-bone pass. OGL remains the default. On 2026-09-12 the Null backend reproduced
-all 300 canonical tick and particle states and all 150 bone frames of the
-existing `laser_reflect_fresh_fd_marth` OGL recording exactly. This bypassed
-the host IOSurface client limit without changing the simulation oracle.
-It does not validate native rendering or replace graphics smoke tests.
+Every scripted capture (`record.py`, `dolphin/run_scenario.py`) launches the
+headless build: no window, no host audio, Null video. Build or refresh it with
 
-The GUI may still fail during Cocoa/IOSurface startup even with Null. On
-2026-09-12 an isolated no-GUI build was verified against the existing fresh
-powershield recording: all 300 canonical states, ordered RNG ledgers and
-particle states, plus 150 bone states, matched exactly. Its standalone fmuls
-probe also matched all 264 GUI-interpreter records.
+    tools/build-headless-dolphin.sh
 
-Use `DOLPHIN_BIN` to select that executable and `DOLPHIN_PLATFORM=headless`
-with `--video Null`; both settings reach the tick and auxiliary recording
-passes. The local scripting fork's original no-GUI frontend accepts `--script`
-but never creates a scripting backend. The isolated build adds backend creation
-after BootCore and destruction after Core::Shutdown; it reuses the existing
-libraries and leaves the Dolphin checkout unchanged. This session's build and
-review live under `/tmp/melee-dolphin-nogui-script/`, not in this repository.
-The headless route validates deterministic capture, not native application
-rendering. Always run recordings serially.
+which applies `docs/patches/0003-nogui-scripting-backend.patch` to the
+scripting fork, builds `dolphin-nogui` and wraps it in
+`~/Projects/dolphin-scripting/build/Binaries/DolphinHeadless.app`. Two fixes
+make it usable:
+
+- The fork's no-GUI frontend parsed `--script` but never started a scripting
+  backend. The patch creates it after `BootCore` (as DolphinQt does) and
+  destroys it after `Core::Shutdown`.
+- On macOS Dolphin locates `Sys` through the app bundle. A bare executable
+  finds none, so it loses `Sys/GameSettings/GALE01.ini` and the DSP
+  resampling coefficients; every savestate load then fails silently inside
+  the AX ucode (the tracer reports "savestate seed does not match sidecar").
+  The bundle links `Contents/Resources/Sys` to the windowed app's copy, so both
+  frontends run with identical data.
+
+**Verified 2026-09-26:** with default settings, `laser_reflect_fresh_fd_marth`
+(tick, ledger, particles, 150 bone ticks) and `powershield_ftilt_fd_marth`
+(tick, ledger, particles), recorded under temporary names, were byte-identical
+to their windowed OGL recordings. A full four-pass capture takes about 13 s.
+
+Selection (`harness/dolphin_config.py`):
+
+| Situation | Dolphin |
+|---|---|
+| Scripted scenes, replays of human pad logs, ledgers, particles, bones | headless (default) |
+| Live human play (`record.py` on a scene with `controller = "human"`) | windowed, automatically |
+| Menu driving and savestate creation (`dolphin/drive.py`, screenshots) | windowed |
+| `DOLPHIN_GUI=1` | windowed everywhere |
+| `DOLPHIN_BIN=<path>` | that executable |
+| `DOLPHIN_AUDIO=1` | keep host audio (muted by default; it cannot affect game state) |
+
+Headless capture validates the deterministic simulation oracle only. It does
+not validate native rendering or replace graphics smoke tests. Always run
+recordings serially.
 
 Recorder timeouts now apply to scripted and replay tick captures as well as
 auxiliary passes. A process that exits before its completion marker is reported

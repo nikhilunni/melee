@@ -241,8 +241,10 @@ Verified facts about the runtime (from `scripts/smoke_test.py`):
 - `-C Dolphin.Interface.UsePanicHandlers=False` turns modal PanicAlert dialogs
   into log lines, which matters for an unattended harness (a Python init
   failure would otherwise block in a dialog).
-- The Qt window opens (there is no headless path for scripting). The app
-  handles SIGTERM gracefully (`kill <pid>`).
+- The Qt window opens. The stock no-GUI frontend cannot script; the patched
+  headless build (`tools/build-headless-dolphin.sh`, `docs/DOLPHIN_RUN.md`)
+  can and is now the default for recordings. Both handle SIGTERM gracefully
+  (`kill <pid>`).
 
 `--help` confirms the flags: `--script=<file>`, `--no-python-subinterpreters`,
 `-u`, `-e`, `-s <savestate>`, `-C`, `-d/--debugger`, `-b/--batch`, `-v`.

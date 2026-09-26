@@ -1,0 +1,44 @@
+diff --git i/Source/Core/DolphinNoGUI/MainNoGUI.cpp w/Source/Core/DolphinNoGUI/MainNoGUI.cpp
+index 539bbe7..0342499 100644
+--- i/Source/Core/DolphinNoGUI/MainNoGUI.cpp
++++ w/Source/Core/DolphinNoGUI/MainNoGUI.cpp
+@@ -34,6 +34,8 @@
+ 
+ #include "InputCommon/GCAdapter.h"
+ 
++#include "Scripting/ScriptingEngine.h"
++
+ #include "VideoCommon/VideoBackendBase.h"
+ 
+ static std::unique_ptr<Platform> s_platform;
+@@ -274,6 +276,12 @@ int main(int argc, char* argv[])
+     return 0;
+   }
+ 
++  std::optional<std::string> script_filepath;
++  if (options.is_set("script"))
++    script_filepath = static_cast<const char*>(options.get("script"));
++  if (options.get("no_python_subinterpreters"))
++    Scripting::ScriptingBackend::DisablePythonSubinterpreters();
++
+   std::string user_directory;
+   if (options.is_set("user"))
+     user_directory = static_cast<const char*>(options.get("user"));
+@@ -332,10 +340,17 @@ int main(int argc, char* argv[])
+   Discord::UpdateDiscordPresence();
+ #endif
+ 
++  // Like DolphinQt, start the --script backend after the core boots. It must
++  // outlive Core::Shutdown so script callbacks never see a destroyed core.
++  std::optional<Scripting::ScriptingBackend> scripting_backend;
++  if (script_filepath)
++    scripting_backend.emplace(*script_filepath);
++
+   s_platform->MainLoop();
+   Core::Stop(Core::System::GetInstance());
+ 
+   Core::Shutdown(Core::System::GetInstance());
++  scripting_backend.reset();
+   s_platform.reset();
+ 
+   return 0;
