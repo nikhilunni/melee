@@ -102,6 +102,12 @@ At the start:
 3. Pick a task marked `[ ]` whose dependencies are `[x]`. Mark it `[~]`
    with the date.
 
+While working, test each change with the focused checks it touches: the
+scenario gate that exposed it, the touched crate's tests and
+`cargo test --release -p melee-sim --test m5_gate corpus`. The full gate is
+slow; run it at work boundaries (a batch of commits, a milestone step, a
+change to shared plumbing), not after every change (user, 2026-09-26).
+
 At the end:
 1. `cargo gate` and clippy clean. Harness tests pass if you touched harness.
 2. Update `TRACKER.md`: task status, any new blockers or decisions, and a
