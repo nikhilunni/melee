@@ -213,6 +213,14 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
     }
 
+    /// The second motion scratch word (mv+4) while `action`, one of this
+    /// character's special rows, is current. Common states that leave that
+    /// word untouched (JumpAerial, Landing) carry it on. `None` for rows
+    /// whose word is not modelled.
+    fn retained_scratch_word(&self, _action: ActionId) -> Option<f32> {
+        None
+    }
+
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83.
     /// Character crates reset their airborne special resources here.
     fn on_landing(&mut self, _allow_interrupt: bool) {

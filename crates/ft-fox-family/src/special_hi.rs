@@ -1,6 +1,6 @@
 //! Fire Fox / Fire Bird, ftfoxspecialhi.c (800E71AC..800E83E0).
 use crate::{
-    special_s::{air_friction, finish_air, finish_ground, row},
+    special_s::{air_drift_friction, air_friction, finish_air, finish_ground, row},
     FamilyState as S, FoxFamily,
 };
 use gekko_math::{
@@ -596,7 +596,7 @@ fn bound_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
             .primary_history
             .offset
             .y;
-        air_friction(f, f.attributes.air.aerial_friction);
+        air_drift_friction(f, p.assets);
         finish_air(f, p);
     } else {
         callbacks::physics::guard_on(f, p);

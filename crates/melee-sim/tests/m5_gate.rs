@@ -1357,7 +1357,7 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 7] = [
+const CORPUS_MATCHES: [(&str, usize); 9] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
     ("corpus_v2_s0_e2a_p1", 3029),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
@@ -1373,6 +1373,11 @@ const CORPUS_MATCHES: [(&str, usize); 7] = [
     ("corpus_v2_s0_e80000000_p1", 3758),
     // Shield SDI/ASDI during shield hitlag.
     ("corpus_v2_s0_e1_p0", 3385),
+    // Reflector walking off the stage edge (ground-to-air, one jump), its
+    // over-drift air friction, and a double jump inheriting turnFrames.
+    ("corpus_v2_s1_edeadbeef_p0", 665),
+    // Knockback while charging a smash attack (PlCo +7C4).
+    ("corpus_v2_s0_e12345678_p2", 1342),
 ];
 
 #[test]

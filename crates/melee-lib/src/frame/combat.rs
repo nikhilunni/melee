@@ -406,12 +406,15 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                             bytes[0x2218] & 0x10 != 0,
                             "reflection active at {tick}"
                         );
-                        if matches!(f.motion_state.action.0, 364 | 369) {
+                        // +2344 holds the inherited word until Turn writes it.
+                        if let Some(turn_frames) = reflector.turn_frames {
                             assert_eq!(
-                                reflector.turn_frames as u32,
+                                turn_frames as u32,
                                 word(&bytes, 0x2344),
-                                "turn countdown at {tick}"
+                                "turn countdown or inherited word at {tick}"
                             );
+                        }
+                        if matches!(f.motion_state.action.0, 364 | 369) {
                             assert_eq!(
                                 f.commands.variables[0],
                                 word(&bytes, 0x2200),

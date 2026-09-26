@@ -149,11 +149,10 @@ impl FighterCore {
         self.collision.lock_frames = 0;
         self.collision.data.x130_flags &= !coll_data_x130::LOCKED;
     }
-    /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
-    /// Direct SquatWait entry inherits it as the inactive platform-drop timer
-    /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
-    pub(super) fn retained_drop_timer(&self) -> f32 {
-        match &self.state_data {
+    /// The second motion scratch word (mv+4) as common states leave it, or
+    /// `None` when the state's scratch there is not modelled.
+    fn common_scratch_word(&self) -> Option<f32> {
+        Some(match &self.state_data {
             // ftCo_800D5600: mv.common.x4 is the
             // platform target vector; an aerial entry retains its first word.
             MotionData::Life(super::life::LifeState::PlatformWait { target, .. }) => target.x,
@@ -178,10 +177,30 @@ impl FighterCore {
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
             MotionData::FallSpecial(fall) => fall.animation.blend,
-            _ => unimplemented!(
-                "ftCo_Landing.c:41-50: scratch inheritance from unsupported landing source"
-            ),
-        }
+            _ => return None,
+        })
+    }
+}
+impl Fighter {
+    /// The current second motion scratch word (mv+4): a character special's
+    /// typed scratch reports it through its table, common states directly.
+    /// `None` when the port does not model the state's word.
+    pub fn inherited_scratch_word(&self) -> Option<f32> {
+        self.character
+            .retained_scratch_word(self.core.motion_state.action)
+            .or_else(|| self.core.common_scratch_word())
+    }
+
+    /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
+    /// Direct SquatWait entry inherits it as the inactive platform-drop timer
+    /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
+    pub(super) fn retained_drop_timer(&self) -> f32 {
+        self.inherited_scratch_word().unwrap_or_else(|| {
+            unimplemented!(
+                "ftCo_Landing.c:41-50: scratch inheritance from unsupported source {:?}",
+                self.core.motion_state.action
+            )
+        })
     }
 }
 // S2: aerial landing lag and autocancel.

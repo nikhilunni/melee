@@ -821,3 +821,16 @@ Newest first. One line per session: date, what landed, what is next.
   release gates 1,465 passed, 0 failed; clippy, fmt, 243 harness tests pass.
   Notes: `docs/PORT_NOTES/CORPUS_BRIDGE_FIXES.md`. Next: remaining corpus
   faults (captured damage, Reflector ground-to-air), then bridge all 48 cases.
+- 2026-09-26: Two more corpus faults matched in retail. The "captured
+  damage" fault came from an earlier divergence: ftCo_Damage_CalcKnockback's
+  full modifier chain (smash charge PlCo +7C4, DamageIce +718, Y scale,
+  armor, +104 floor) replaces the crouch-only multiply. The Reflector gets
+  ground-to-air for all five rows, shared ftCommon_8007CF58 (over-drift air
+  friction PlCo +1FC, also Fire Fox rebound), and a
+  `CharacterCallbacks::retained_scratch_word` hook: Reflector Start never
+  writes turnFrames (+2344), so it carries the previous state's mv word into
+  JumpAerial/Landing. `corpus_v2_s1_edeadbeef_p0` (665) and
+  `corpus_v2_s0_e12345678_p2` (1342) match; the port-side corpus now faults
+  only on the screen-KO camera. Testing cadence: focused checks per change,
+  full gate at work boundaries (CLAUDE.md). Next: bridge all 48 cases to
+  retail, then the gameplay camera (`cm/camera.c`) for screen KOs.

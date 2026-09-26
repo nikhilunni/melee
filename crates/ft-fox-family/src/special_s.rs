@@ -238,15 +238,21 @@ fn delay<C: FoxFamily>(f: &mut Fighter) -> bool {
 }
 
 /// ftCommon_ApplyFrictionAir (8007CE94): acceleration applied by procUpdate.
-pub(crate) fn air_friction(f: &mut Fighter, friction: f32) {
-    let velocity = f.physics.self_velocity.x;
-    f.physics.animation_velocity.x = if friction.abs() >= velocity.abs() {
-        -velocity
-    } else if velocity > 0.0 {
-        -friction
-    } else {
-        friction
-    };
+/// ftCommon_ApplyFrictionAir (8007CE94) with a move's own friction.
+pub(crate) fn air_friction(f: &mut Fighter, amount: f32) {
+    f.physics.animation_velocity.x =
+        friction::air_friction_acceleration(f.physics.self_velocity.x, amount);
+}
+
+/// ftCommon_8007CF58: aerial friction, or PlCo +1FC above the drift maximum.
+pub(crate) fn air_drift_friction(f: &mut Fighter, assets: &FighterAssets) {
+    let air = &f.attributes.air;
+    f.physics.animation_velocity.x = friction::air_drift_friction_acceleration(
+        f.physics.self_velocity.x,
+        air.aerial_friction,
+        air.air_drift_max,
+        assets.common.over_drift_air_friction,
+    );
 }
 
 pub(crate) fn finish_ground(f: &mut Fighter, p: PhysicsPhase<'_>) {

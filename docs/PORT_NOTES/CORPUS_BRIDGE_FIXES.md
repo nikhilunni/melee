@@ -51,6 +51,10 @@ their effect.
 | Marth spends both jumps walking off | ftCommon_GroundToAirStateChange spends one (ftCommon_8007D5D4) | Shield Breaker and Dancing Blade use `leave_ground` |
 | Knockback frozen in aerial Fire Fox | Fighter_procUpdate decays airborne knockback after every physics callback | `FighterCore::finish_air_update` for airborne tails |
 | Down tilt interrupted into Squat | ftCo_AttackLw3_IASA calls the pure check (800D5F58): down held keeps the tilt | `WaitPredicate::SquatHeld` / `WaitTransition::Hold` |
+| Hit while charging a smash launched too weakly | ftCo_Damage_CalcKnockback multiplies by PlCo +7C4 while charging (also +718 frozen, Y scale, armor, +104 floor) | `FighterCore::modified_knockback`, the whole chain |
+| Reflector walking off the edge | ftFx_SpecialLw*_GroundToAir: one jump spent, same frame, bubble/reflect state reinstalled | `ground_collision` for all five ground rows |
+| Reflector air drift too slow to decay | ftCommon_8007CF58 uses PlCo +1FC above the air drift maximum | Shared `air_drift_friction_acceleration` (Reflector, Fire Fox rebound) |
+| Double jump out of the Reflector | Reflector Start never writes turnFrames (+2344), the mv word JumpAerial/Landing inherit | `CharacterCallbacks::retained_scratch_word`; the inherited word is carried |
 | No shield SDI/ASDI | ftCo_80092F2C installs ftCo_80093240 / ftCo_800932DC (PlCo +4C0 scale, fmadds) | Guard hitlag callbacks |
 
 ## Validation

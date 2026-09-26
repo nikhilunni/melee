@@ -54,6 +54,8 @@ pub struct CommonFighterData {
     pub ground_knockback_friction_multiplier: f32,
     /// +3EC; Fighter_procUpdate attacker shield knockback friction.
     pub shield_ground_friction_multiplier: f32,
+    /// +1FC (x1FC); air friction above the air drift maximum, ftcommon.c:283-308.
+    pub over_drift_air_friction: f32,
     /// ft/types.h:169, +1CC (x1CC); ft_081B.c:142-147.
     pub ledge_snap_height_multiplier: f32,
     /// ft/types.h:552, +804 (x804); grounded pose clamp, ft_0899.c:225.
@@ -93,6 +95,7 @@ impl CommonFighterData {
                 .reader()
                 .f32(add_offset(offset, 0x200)?)?,
             shield_ground_friction_multiplier: archive.reader().f32(add_offset(offset, 0x3EC)?)?,
+            over_drift_air_friction: archive.reader().f32(add_offset(offset, 0x1FC)?)?,
             ledge_snap_height_multiplier: r.f32(0x1CC)?,
             ground_pose_max_angle_degrees: archive.reader().f32(add_offset(offset, 0x804)?)?,
         })

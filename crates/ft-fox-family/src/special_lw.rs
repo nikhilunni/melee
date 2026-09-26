@@ -1,6 +1,6 @@
 //! Reflector, ftfoxspeciallw.c (800E83E0..800E9DF8).
 use crate::{
-    special_s::{air_friction, finish_air, row},
+    special_s::{air_drift_friction, finish_air, row},
     FamilyState as S, FoxFamily,
 };
 use melee_coll::defense::ReflectDescriptor;
@@ -11,7 +11,7 @@ use melee_ft::{
     fighter::{
         assets::{FighterAssets, Result},
         state::{callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
-        Fighter, MotionPreservation, MotionRow,
+        ActionId, Fighter, MotionPreservation, MotionRow,
     },
     input::{Buttons, WaitContext, WaitPredicate, WaitTransition},
     physics::airborne,
@@ -22,8 +22,10 @@ use melee_types::{CommonMotionState, GroundOrAir};
 pub struct SpecialLw {
     /// Fighter +2340: minimum hold countdown.
     pub release_lag: i32,
-    /// Fighter +2344: turn countdown.
-    pub turn_frames: i32,
+    /// Fighter +2344: turn countdown. Only Turn entry writes it, so until
+    /// then it holds the word the preceding state left at mv+4 (`None` when
+    /// the port does not model that state's word).
+    pub turn_frames: Option<i32>,
     /// Fighter +2348: B has been released; this latch never re-arms in the loop.
     pub released: bool,
     /// Fighter +234C: gravity countdown.
@@ -32,6 +34,18 @@ pub struct SpecialLw {
     pub reflector: Option<ReflectDescriptor>,
     /// accessory4_cb, cleared after the synchronous effect is requested.
     pub pending_effect: Option<u16>,
+}
+
+/// mv+4 while a Reflector row is current: ftFoxSpecialLw.turnFrames.
+pub fn retained_scratch_word(scratch: &SpecialLw, action: ActionId) -> Option<f32> {
+    let reflector = S::SpecialLwStart as u16..=S::SpecialAirLwTurn as u16;
+    if !reflector.contains(&action.0) {
+        return None;
+    }
+    let word = scratch.turn_frames.unwrap_or_else(|| {
+        unimplemented!("ftFx_SpecialLw: turnFrames inherited from an unmodelled scratch word")
+    });
+    Some(f32::from_bits(word as u32))
 }
 
 /// ftColl_CreateReflectHit (8007B240), literal descriptor transfer.
@@ -80,7 +94,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             start::<C>,
             start_input,
             callbacks::physics::guard_on,
-            ground_collision,
+            ground_collision::<C>,
         ),
         row(
             S::SpecialLwLoop,
@@ -88,7 +102,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             hold::<C>,
             loop_input::<C>,
             callbacks::physics::guard_on,
-            ground_collision,
+            ground_collision::<C>,
         ),
         row(
             S::SpecialLwHit,
@@ -96,7 +110,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             hit::<C>,
             no_input,
             callbacks::physics::guard_on,
-            ground_collision,
+            ground_collision::<C>,
         ),
         row(
             S::SpecialLwEnd,
@@ -104,7 +118,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             end::<C>,
             no_input,
             callbacks::physics::guard_on,
-            ground_collision,
+            ground_collision::<C>,
         ),
         row(
             S::SpecialLwTurn,
@@ -112,7 +126,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             turn::<C>,
             no_input,
             callbacks::physics::guard_on,
-            ground_collision,
+            ground_collision::<C>,
         ),
         row(
             S::SpecialAirLwStart,
@@ -165,6 +179,7 @@ pub fn enter<C: FoxFamily>(f: &mut Fighter, air: bool, assets: &FighterAssets) {
         a.gravity_delay,
         a.momentum_preserve_x,
     );
+    let inherited_word = f.inherited_scratch_word().map(|w| w.to_bits() as i32);
     if air {
         // ftFx_SpecialAirLw_Enter: fdivs, no multiply-add.
         f.physics.self_velocity.y = 0.0;
@@ -184,6 +199,7 @@ pub fn enter<C: FoxFamily>(f: &mut Fighter, air: bool, assets: &FighterAssets) {
     *f.character.get_mut::<C>().special_lw() = SpecialLw {
         release_lag: lag,
         gravity_delay: delay,
+        turn_frames: inherited_word,
         pending_effect: Some(0x489),
         ..Default::default()
     };
@@ -289,9 +305,10 @@ fn end<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<Wa
 fn advance_turn<C: FoxFamily>(f: &mut Fighter) {
     let duration = f.character.get::<C>().attributes().reflector.turn_frames;
     let remaining = {
-        let scratch = f.character.get_mut::<C>().special_lw();
-        scratch.turn_frames -= 1;
-        scratch.turn_frames
+        let turn_frames = f.character.get_mut::<C>().special_lw().turn_frames.as_mut();
+        let turn_frames = turn_frames.expect("set by Turn entry");
+        *turn_frames -= 1;
+        *turn_frames
     };
     if f.commands.variables[0] == 0 && remaining as f32 <= duration {
         f.commands.variables[0] = 1;
@@ -320,7 +337,7 @@ fn enter_turn<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<(
     )?;
     f.effect_state.destroy_on_state_change = owned;
     let duration = f.character.get::<C>().attributes().reflector.turn_frames;
-    f.character.get_mut::<C>().special_lw().turn_frames = gekko_math::msl::fctiwz(duration);
+    f.character.get_mut::<C>().special_lw().turn_frames = Some(gekko_math::msl::fctiwz(duration));
     f.combat.reflector_enabled = true;
     f.commands.variables[0] = 0;
     advance_turn::<C>(f);
@@ -333,7 +350,13 @@ fn turn<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
     f.step_animation(p.assets);
     let release = released::<C>(f, true);
     advance_turn::<C>(f);
-    if f.character.get_mut::<C>().special_lw().turn_frames <= 0 {
+    if f.character
+        .get_mut::<C>()
+        .special_lw()
+        .turn_frames
+        .expect("set by Turn entry")
+        <= 0
+    {
         // ftFx_SpecialLwHit_Check (800E9564): Loop retains its existing effect.
         if release {
             enter_end::<C>(f, p.assets)?;
@@ -391,12 +414,47 @@ fn air_physics<C: FoxFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
             f.attributes.air.terminal_velocity,
         );
     }
-    air_friction(f, f.attributes.air.aerial_friction);
+    air_drift_friction(f, p.assets);
     finish_air(f, p);
 }
-fn ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    if !crate::special_hi::grounded_support(f, p) {
-        unimplemented!("ftFx_SpecialLw ground-to-air preserved transition");
+/// ftFx_SpecialLw{Start,Loop,Turn,Hit,End}_GroundToAir: walking off the
+/// edge keeps the move airborne at the same frame, spending one jump
+/// (ftCommon_GroundToAirStateChange -> ftCommon_8007D5D4).
+fn ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    let assets = p.assets;
+    if crate::special_hi::grounded_support(f, p) {
+        return Ok(());
+    }
+    let assets = assets.expect("Reflector ground-to-air assets");
+    let state = match f.motion_state.action.0 {
+        x if x == S::SpecialLwStart as u16 => S::SpecialAirLwStart,
+        x if x == S::SpecialLwLoop as u16 => S::SpecialAirLwLoop,
+        x if x == S::SpecialLwTurn as u16 => S::SpecialAirLwTurn,
+        x if x == S::SpecialLwHit as u16 => S::SpecialAirLwHit,
+        x if x == S::SpecialLwEnd as u16 => S::SpecialAirLwEnd,
+        _ => unreachable!("installed Reflector ground row"),
+    };
+    f.leave_ground();
+    if state == S::SpecialAirLwEnd {
+        // ftFx_MF_SpecialLwEnd_Coll: Ft_MF_SkipColAnim | Ft_MF_UpdateCmd.
+        return f.change_motion_state_updating_commands(state.into(), assets);
+    }
+    // ftFx_MF_SpecialLw_Coll: ftCommon_GroundAirColl_MF | Ft_MF_KeepGfx.
+    f.change_ground_air_motion(
+        state.into(),
+        assets,
+        MotionPreservation {
+            effects: true,
+            ..Default::default()
+        },
+    )?;
+    match state {
+        // ftFx_SpecialLw_CreateReflectHit.
+        S::SpecialAirLwLoop => create_bubble::<C>(f),
+        // ftFox_SpecialLw_SetReflectVars / ftFx_SpecialLwHit_SetCall:
+        // reflecting with the Reflector hit callback.
+        S::SpecialAirLwTurn | S::SpecialAirLwHit => f.combat.reflector_enabled = true,
+        _ => {}
     }
     Ok(())
 }

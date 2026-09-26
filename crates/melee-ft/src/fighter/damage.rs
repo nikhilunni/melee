@@ -135,7 +135,14 @@ pub struct DamageParameters {
     pub knockback_replace_window: i32,
     pub air_cancel_window: i32,
     pub air_cancel_scale: f32,
+    /// PlCo +124: ftCo_Damage_CalcKnockback's Squat / SquatWait multiplier.
     pub crouch_knockback_scale: f32,
+    /// PlCo +718: the frozen (DamageIce) multiplier.
+    pub frozen_knockback_scale: f32,
+    /// PlCo +7C4: the multiplier while charging a smash attack.
+    pub smash_charge_knockback_scale: f32,
+    /// PlCo +104: knockback never drops below this after armor.
+    pub minimum_knockback: f32,
     pub crouch_hitlag_scale: f32,
     pub electric_hitlag_scale: f32,
     pub captured_item_damage_scale: f32,
@@ -209,6 +216,9 @@ impl DamageParameters {
             air_cancel_window: r.s32(p + 0x18C)?,
             air_cancel_scale: r.f32(p + 0x190)?,
             crouch_knockback_scale: r.f32(p + 0x124)?,
+            frozen_knockback_scale: r.f32(p + 0x718)?,
+            smash_charge_knockback_scale: r.f32(p + 0x7C4)?,
+            minimum_knockback: r.f32(p + 0x104)?,
             crouch_hitlag_scale: r.f32(p + 0x1A0)?,
             electric_hitlag_scale: r.f32(p + 0x1A4)?,
             captured_item_damage_scale: r.f32(p + 0x128)?,
@@ -761,10 +771,7 @@ impl Fighter {
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
-        if matches!(self.core.motion_state.id, S::Squat | S::SquatWait) {
-            // ftCo_Damage_CalcKnockback, 8008D974: separate fmuls.
-            hit.knockback *= assets.damage.crouch_knockback_scale;
-        }
+        hit.knockback = self.core.modified_knockback(hit.knockback, assets);
         let (state, stun) = self
             .core
             .prepare_damage_reaction(&hit, forced_motion, assets, rng);
@@ -1918,5 +1925,42 @@ impl Fighter {
                 volume: 127,
                 pan: 64,
             });
+    }
+}
+
+impl FighterCore {
+    /// ftCo_Damage_CalcKnockback (8008D930): the victim's state scales the
+    /// computed knockback (separate fmuls), then armor subtracts from it and
+    /// PlCo +104 floors it.
+    fn modified_knockback(&self, mut knockback: f32, assets: &FighterAssets) -> f32 {
+        if knockback == 0.0 {
+            return knockback;
+        }
+        let parameters = &assets.damage;
+        if matches!(self.motion_state.id, S::Squat | S::SquatWait) {
+            knockback *= parameters.crouch_knockback_scale;
+        }
+        if self.motion_state.id == S::DamageIce {
+            knockback *= parameters.frozen_knockback_scale;
+        }
+        // smash_attrs.state == SmashState_Charging.
+        if self
+            .commands
+            .smash_charge
+            .is_some_and(|c| matches!(c.phase, melee_cmd::ChargePhase::Charging))
+        {
+            knockback *= parameters.smash_charge_knockback_scale;
+        }
+        // x34_scale.y copies Player_GetModelScale (fighter.c:255).
+        if self.player.scale != 1.0 {
+            unimplemented!("ftCo_CalcYScaledKnockback: model-scaled victim");
+        }
+        // Retail subtracts max(armor0, armor1), plus PlCo +6F0 when metal:
+        // zero here, as detection rejects armored victims and no supported
+        // mode makes a fighter metal.
+        if knockback < parameters.minimum_knockback {
+            knockback = parameters.minimum_knockback;
+        }
+        knockback
     }
 }

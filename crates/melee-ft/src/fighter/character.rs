@@ -48,6 +48,7 @@ pub struct CharacterTable {
     pub dynamics_first_force_bone: fn(&CharacterState, usize, usize) -> usize,
     pub air_dodge_tether: fn(&CharacterState),
     pub on_landing: fn(&mut CharacterState, bool),
+    pub retained_scratch_word: fn(&CharacterState, ActionId) -> Option<f32>,
     pub guard_variant: fn(&CharacterState, &mut commands::CommandState),
     pub escape_variant: fn(&mut Fighter, &assets::FighterAssets, bool) -> assets::Result<()>,
     pub check_float_input: fn(
@@ -117,6 +118,7 @@ impl CharacterTable {
             },
             air_dodge_tether: |state| state.get::<C>().air_dodge_tether(),
             on_landing: |state, allow_interrupt| state.get_mut::<C>().on_landing(allow_interrupt),
+            retained_scratch_word: |state, action| state.get::<C>().retained_scratch_word(action),
             guard_variant: |state, commands| state.get::<C>().guard_variant(commands),
             escape_variant: C::escape_variant,
             check_float_input: |state, input, assets, vertical_velocity, phase| {
@@ -272,6 +274,9 @@ impl CharacterState {
     }
     pub fn on_landing(&mut self, allow_interrupt: bool) {
         (self.table.on_landing)(self, allow_interrupt)
+    }
+    pub fn retained_scratch_word(&self, action: ActionId) -> Option<f32> {
+        (self.table.retained_scratch_word)(self, action)
     }
     pub fn guard_variant(&self, commands: &mut commands::CommandState) {
         (self.table.guard_variant)(self, commands)

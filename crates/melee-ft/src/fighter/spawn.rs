@@ -525,6 +525,27 @@ impl Fighter {
         )
     }
 
+    /// Fighter_ChangeMotionState at the current frame with Ft_MF_SkipColAnim |
+    /// Ft_MF_UpdateCmd only (ftFx_MF_SpecialLwEnd_Coll): commands advance
+    /// without re-running, but visibility, material animation and owned
+    /// effects reset as on an ordinary entry.
+    pub fn change_motion_state_updating_commands(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start: self.animation.frame,
+                rate: 1.0,
+                update_commands: true,
+                ..Default::default()
+            },
+        )
+    }
+
     fn change_motion_state_with_options(
         &mut self,
         state: ActionId,

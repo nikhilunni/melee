@@ -63,6 +63,9 @@ impl CharacterCallbacks for Fox {
     ) {
         ft_fox_family::enter_special::<Self>(fighter, slot, airborne, assets);
     }
+    fn retained_scratch_word(&self, action: melee_ft::fighter::ActionId) -> Option<f32> {
+        ft_fox_family::special_lw::retained_scratch_word(&self.special_lw, action)
+    }
     fn accessory(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
