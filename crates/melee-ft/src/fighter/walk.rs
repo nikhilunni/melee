@@ -145,7 +145,7 @@ impl Fighter {
         transition: T,
     ) -> Result<()> {
         match transition {
-            T::None => Ok(()),
+            T::None | T::Hold => Ok(()),
             T::Special => {
                 self.enter_buffered_special(assets, false);
                 Ok(())

@@ -119,7 +119,8 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     ) {
         let state = f.motion_state.action.0;
         assert!((349..=357).contains(&state), "non-Dancing Blade transition");
-        f.leave_ground_with_spent_jumps();
+        // ftCommon_GroundToAirStateChange -> ftCommon_8007D5D4: one jump spent.
+        f.leave_ground();
         f.change_ground_air_motion(
             ActionId(state + 9),
             p.assets.expect("Dancing Blade collision assets"),

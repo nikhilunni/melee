@@ -164,7 +164,9 @@ pub struct FighterAssets {
     pub life: super::life::LifeParameters,
     pub teeter: super::teeter::TeeterParameters,
     pub revival_platform: super::life::RevivalPlatform,
-    pub charge_overlays: BTreeMap<u8, Vec<super::smash::OverlayCommand>>,
+    /// PlCo's color-animation table (Fighter_804D653C): each id's priority,
+    /// slot and decoded program.
+    pub color_overlays: super::color_overlay::ColorOverlayTable,
     pub camera_extents: [hsd_types::Vec3; 2],
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
@@ -240,29 +242,7 @@ impl FighterAssets {
             })
             .collect::<Vec<_>>();
         let color_table = common.link(common_root + 6 * 4)?.ok_or("color table")?;
-        let mut charge_overlays = BTreeMap::new();
-        // S6: powershield color script also contains a gameplay-RNG graphics command.
-        let powershield = common
-            .link(color_table + 118 * 8)?
-            .ok_or("powershield color script")?;
-        charge_overlays.insert(118, super::smash::read_overlay(common, powershield)?);
-        for id in 11..=18 {
-            let entry = common
-                .link(color_table + u32::from(id) * 8)?
-                .ok_or("elemental damage color script")?;
-            charge_overlays.insert(id, super::smash::read_overlay(common, entry)?);
-        }
-        for command in &commands {
-            if let Command::SmashCharge(charge) = command {
-                let entry = common
-                    .link(color_table + u32::from(charge.color_animation) * 8)?
-                    .ok_or("charge color script")?;
-                charge_overlays.insert(
-                    charge.color_animation,
-                    super::smash::read_overlay(common, entry)?,
-                );
-            }
-        }
+        let color_overlays = super::color_overlay::ColorOverlayTable::read(common, color_table)?;
         let groups = commands
             .iter()
             .filter_map(|c| {
@@ -545,7 +525,7 @@ impl FighterAssets {
                     data.reader().u32(sound_table + 0x18)?
                 },
             },
-            charge_overlays,
+            color_overlays,
             camera_extents: {
                 let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
                 [read_vec(data, p)?, read_vec(data, p + 12)?]

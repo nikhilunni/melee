@@ -10,6 +10,7 @@ use gekko_math::{
 };
 use hsd_archive::Archive;
 use hsd_types::Vec3;
+use melee_coll::damage_log::{DamageLog, HitSource, LoggedHit};
 use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
 use melee_types::combat::HitboxDescriptor;
 use melee_types::{CommonMotionState as S, GroundOrAir};
@@ -19,12 +20,38 @@ pub struct CombatState {
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
     pub charge_overlay: super::smash::ChargeOverlay,
-    pub damage_overlay: Option<(u8, super::smash::ChargeOverlay)>,
+    /// Fighter.x408: the primary color animation (damage tints, burning,
+    /// powershield flash); see `color_overlay`.
+    pub color_overlay: super::color_overlay::ColorOverlaySlot,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
+    /// ftcoll.c dmg_log0: ordinary hits logged against this fighter during
+    /// its hit detection (ftColl_80078C70), resolved by ftColl_8007AB48.
+    pub hit_log: DamageLog,
+    /// ftcoll.c dmg_log1: phantom contacts, resolved by ftColl_8007AB80.
+    pub phantom_log: DamageLog,
+    /// dmg.x1838_percentTemp: damage of every hit logged this frame. Each
+    /// logged hit's knockback and the percent applied use the total.
+    pub frame_damage: f32,
+    /// dmg.x183C_applied: largest integer damage logged this frame.
+    pub frame_max_damage: i32,
+    /// dmg.x1840: largest halved damage among this frame's phantom contacts.
+    pub phantom_max_damage: i32,
+    /// dmg.x187c / x18a0: this frame's strongest phantom knockback; nonzero
+    /// selects ProcessHit's phantom branch. Cleared by every resolution.
+    pub phantom_knockback: f32,
+    /// dmg.x1870..x1898: the last resolved phantom contact, applied when its
+    /// hitlag lockout expires without an ordinary hit (ftColl_8007BE3C).
+    pub phantom: Option<PhantomHit>,
+    /// dmg.x189C: phantom hitlag frames still to run; blocks new phantoms.
+    pub phantom_lockout: f32,
+    /// The hit ftColl_8007AB48 selected from `hit_log`, with its knockback.
     pub pending: Option<ReceivedHit>,
+    /// A phantom's source fighter to credit (stale moves, combo) after this
+    /// fighter's ProcessHit applied the phantom's damage (ftColl_8007BE3C).
+    pub pending_credit: Option<u32>,
     /// ftColl_8007A06C: the selected hit came from this captured fighter's captor.
     pub pending_from_captor: bool,
     /// Fighter.dmg.x1908 / x190C: the hit sound and voice set queued by the
@@ -36,6 +63,9 @@ pub struct CombatState {
     pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
+    /// hitlag_cb / post_hitlag_cb, cleared by every motion change
+    /// (fighter.c:1381-1383). They carry SDI during and ASDI after hitlag.
+    pub hitlag_callbacks: HitlagCallbacks,
     /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
     pub minimum_hitlag: f32,
     pub shield_pushback: Option<(f32, f32)>,
@@ -43,6 +73,29 @@ pub struct CombatState {
     pub has_recorded_hit: bool,
     pub stale: super::attack::stale::StaleHistory,
     pub combo: super::attack::combo::ComboState,
+}
+/// ftColl_8007A06C's DmgResult for the phantom log (Fighter.dmg.x1870..x1898).
+#[derive(Clone, Debug)]
+pub struct PhantomHit {
+    /// x1880: the contact position.
+    pub position: Vec3,
+    /// x188c / x1890: element and sound severity of the phantom hitbox.
+    pub element: melee_types::HitElement,
+    pub sound_severity: u8,
+    /// x1894: the fighter whose move receives the stale-move update.
+    pub source: HitSource,
+    /// x1898: the halved damage applied at expiry.
+    pub damage: f32,
+}
+/// The installed hitlag_cb / post_hitlag_cb pair.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HitlagCallbacks {
+    #[default]
+    None,
+    /// ftCo_Damage_OnEveryHitlag / OnExitHitlag (ftCo_Damage.c:464-467).
+    Damage,
+    /// ftCo_80093240 / ftCo_800932DC, installed by ftCo_80092F2C (GuardSetOff).
+    Guard,
 }
 /// Which fighter voice table a queued damage voice draws from (ft_data->x4C_sfx +1C / +20).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -64,7 +117,7 @@ pub struct DamageState {
 }
 /// PlCo values retained by the damage state's status callback, which runs
 /// before input sampling and has no archive resource argument.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct InfluenceParameters {
     pub minimum_stick: f32,
     pub tap_window: i32,
@@ -72,6 +125,8 @@ pub struct InfluenceParameters {
     pub asdi_distance: f32,
     pub maximum_angle_degrees: f32,
     pub shield_velocity_scale: f32,
+    /// PlCo +4C0: scales shield SDI and ASDI (ftCo_80093240 / ftCo_800932DC).
+    pub shield_influence_scale: f32,
 }
 use melee_coll::damage::ReceivedHit;
 pub struct DamageParameters {
@@ -147,6 +202,7 @@ impl DamageParameters {
                 asdi_distance: r.f32(p + 0x4BC)?,
                 maximum_angle_degrees: r.f32(p + 0x1A8)?,
                 shield_velocity_scale: r.f32(p + 0x1AC)?,
+                shield_influence_scale: r.f32(p + 0x4C0)?,
             },
             jump_buffer_window: r.f32(p + 0x1D0)?,
             knockback_replace_window: r.s32(p + 0xFC)?,
@@ -219,6 +275,17 @@ impl DamageParameters {
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
         self.knockback_with_damage(hit, percent, weight, fctiwz(hit.damage) as u32)
     }
+    pub(super) fn knockback_for_frame(
+        &self,
+        hit: &HitboxDescriptor,
+        percent: f32,
+        frame_damage: f32,
+        weight: f32,
+        damage: u32,
+    ) -> f32 {
+        self.knockback_parameters()
+            .knockback_for_frame(hit, percent, frame_damage, weight, damage)
+    }
     pub(super) fn knockback_with_damage(
         &self,
         hit: &HitboxDescriptor,
@@ -226,6 +293,10 @@ impl DamageParameters {
         weight: f32,
         damage: u32,
     ) -> f32 {
+        self.knockback_parameters()
+            .knockback_with_damage(hit, percent, weight, damage)
+    }
+    fn knockback_parameters(&self) -> melee_coll::damage::KnockbackParameters {
         melee_coll::damage::KnockbackParameters {
             weight_scale: self.weight_scale,
             weight_decay: self.weight_decay,
@@ -236,7 +307,6 @@ impl DamageParameters {
             base: self.base,
             maximum: self.maximum,
         }
-        .knockback_with_damage(hit, percent, weight, damage)
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
     fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
@@ -345,7 +415,6 @@ fn record_shield_hit(
         // ftCo_80094138: permit attacks during GuardOff and clear minimum hold.
         victim.guard().interrupt_frames = assets.shield.powershield_interrupt_frames;
         victim.guard().minimum_hold = 0.0;
-        victim.shield.flash = Some(super::smash::ChargeOverlay::default());
         victim
             .commands
             .color_animations
@@ -566,6 +635,12 @@ impl Fighter {
                 .pending
                 .as_ref()
                 .is_some_and(|hit| hit.knockback != 0.0);
+        // Fighter_ProcessHit, fighter.c:2844-2858: the phantom lockout counts
+        // down first; an ordinary hit with knockback cancels it.
+        self.core.expire_phantom_lockout(received_knockback, assets);
+        if received_knockback {
+            self.core.combat.phantom_lockout = 0.0;
+        }
         let mut hitlag_multiplier = 1.0;
         if let Some((damage, direction)) = self.core.combat.shield_pushback.take() {
             if damage != 0.0 {
@@ -595,26 +670,47 @@ impl Fighter {
             if std::mem::take(&mut self.core.combat.pending_from_captor) {
                 // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
-            } else if hit.knockback == 0.0 {
-                // Fighter_ProcessHit (fighter.c:2958) / Fighter_UnkTakeDamage_8006CC30: zero-knockback damage
-                // updates percent without a damage-state transition or hitlag.
-                self.core.physics.percent += hit.descriptor.damage;
-            } else {
+            } else if hit.knockback != 0.0 {
                 if let Some(take_damage) = self.character.table().take_damage {
                     take_damage(self);
                 }
-                hit_damage = self.begin_damage_reaction(hit, None, None, assets, rng)?;
+                self.begin_damage_reaction(hit, None, None, assets, rng)?;
+                // fighter.c:2888: hitlag uses dmg.x183C_applied, the largest
+                // damage logged this frame.
+                hit_damage = self.core.combat.frame_max_damage;
             }
+        }
+        // fighter.c:2907: without knockback, a resolved phantom contact
+        // (dmg.x18a0) takes the hitlag branch with its halved damage (x1840).
+        let phantom_hitlag = !received_knockback && self.core.combat.phantom_knockback != 0.0;
+        if phantom_hitlag {
+            if self.core.shield.impact.is_some() {
+                unimplemented!("fighter.c:2907-2918: phantom contact and shield impact together");
+            }
+            hit_damage = self.core.combat.phantom_max_damage;
+        }
+        // fighter.c:2956-2963: damage without knockback (zero-knockback hits,
+        // an expired phantom) still reaches percent.
+        if !received_knockback && self.core.combat.frame_damage != 0.0 {
+            self.core.physics.percent += self.core.combat.frame_damage;
         }
         // Fighter_ProcessHit: received damage and shield impact precede clank;
         // clank precedes ordinary damage dealt. Every path consumes the scratch.
-        if !received_knockback && self.core.shield.impact.is_none() && clank.damage != 0 {
+        if !received_knockback
+            && !phantom_hitlag
+            && self.core.shield.impact.is_none()
+            && clank.damage != 0
+        {
             hit_damage = clank.damage;
             if clank.duration != 0.0 && self.core.combat.grab.is_none() {
                 self.enter_rebound(assets, clank)?;
             }
         }
-        if !received_knockback && self.core.shield.impact.is_none() && hit_damage == 0 {
+        if !received_knockback
+            && !phantom_hitlag
+            && self.core.shield.impact.is_none()
+            && hit_damage == 0
+        {
             if let Some(reflection) = reflection {
                 self.process_reflection(reflection, assets)?;
             }
@@ -642,9 +738,18 @@ impl Fighter {
                 .min(assets.damage.maximum_hitlag);
             if self.core.combat.hitlag_remaining > 0.0 {
                 self.core.status.interaction = Interaction::Hitlag;
+                if phantom_hitlag {
+                    // fighter.c:2982: bool4 -> x189C = the phantom's hitlag.
+                    self.core.combat.phantom_lockout = self.core.combat.hitlag_remaining;
+                }
             }
         }
         self.core.combat.minimum_hitlag = 0.0;
+        // fighter.c:3016-3022: this frame's damage bookkeeping resets.
+        self.core.combat.frame_damage = 0.0;
+        self.core.combat.frame_max_damage = 0;
+        self.core.combat.phantom_max_damage = 0;
+        self.core.combat.phantom_knockback = 0.0;
         Ok(())
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
@@ -663,14 +768,10 @@ impl Fighter {
         let (state, stun) = self
             .core
             .prepare_damage_reaction(&hit, forced_motion, assets, rng);
-        // ftCo_8008DA4C (8008DA9C / 8008DAB0): Fire selects11..14,
-        // Electric15..18, before Fighter_ChangeMotionState evaluates frame zero.
-        let overlay_base = match hit.descriptor.element {
-            melee_types::HitElement::Fire if hit.descriptor.damage != 0.0 => Some(11),
-            melee_types::HitElement::Electric => Some(15),
-            _ => None,
-        };
-        if let Some(base) = overlay_base {
+        // ftCo_8008DA4C: with damage this frame (x1838_percentTemp), the
+        // element's color animation for the reaction level, else the plain
+        // damage flash (4), before Fighter_ChangeMotionState evaluates frame zero.
+        if hit.percent_damage != 0.0 {
             let level = if forced_motion.is_some() {
                 3
             } else {
@@ -679,9 +780,19 @@ impl Fighter {
                     .reaction_thresholds
                     .iter()
                     .position(|&t| stun < t)
-                    .unwrap_or(3)
+                    .unwrap_or(3) as u8
             };
-            self.combat.damage_overlay = Some((base + level as u8, Default::default()));
+            let id = match hit.descriptor.element {
+                melee_types::HitElement::Fire => 11 + level,
+                melee_types::HitElement::Electric => 15 + level,
+                melee_types::HitElement::Ice => 31 + level,
+                melee_types::HitElement::Dark => 35 + level,
+                _ => DAMAGE_FLASH,
+            };
+            self.core
+                .commands
+                .color_animations
+                .push(melee_cmd::ColorAnimationRequest { id, duration: 0 });
         }
         self.change_damage_motion(state.into(), assets, throw_owner)?;
         self.step_animation(assets);
@@ -929,7 +1040,7 @@ impl FighterCore {
     /// ftCo_Damage_OnEveryHitlag (8008E4F0), ftCo_Damage.c:569-589.
     pub(super) fn damage_hitlag_input(&mut self) {
         let MotionData::Damage(damage) = &self.state_data else {
-            return;
+            panic!("damage hitlag callback without damage scratch");
         };
         let parameters = damage.influence;
         let stick = self.input.current.stick;
@@ -948,7 +1059,7 @@ impl FighterCore {
     /// ftCo_Damage_OnExitHitlag (8008E714), ftCo_Damage.c:625-665.
     fn exit_damage_hitlag(&mut self) {
         let MotionData::Damage(damage) = &self.state_data else {
-            return;
+            panic!("damage hitlag callback without damage scratch");
         };
         let parameters = damage.influence;
         let input = &self.input.current;
@@ -1058,6 +1169,16 @@ impl FighterCore {
     }
 
     /// Fighter_procUpdate (8006B82C): decay follows the state's air physics.
+    /// Fighter_procUpdate's airborne tail (8006B82C): residual knockback
+    /// decays after every state's physics callback, then velocity and the
+    /// environment integrate. Airborne callbacks finish through this.
+    pub fn finish_air_update(&mut self, assets: &FighterAssets, wind: Vec3) {
+        if self.physics.ground_or_air == GroundOrAir::Air {
+            self.decay_air_knockback(assets);
+        }
+        crate::physics::integrate::integrate_velocity(&mut self.physics);
+        crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+    }
     pub fn decay_air_knockback(&mut self, assets: &FighterAssets) {
         let v = &mut self.physics.knockback_velocity;
         if v.x == 0.0 && v.y == 0.0 {
@@ -1110,11 +1231,14 @@ impl FighterCore {
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
         if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
-            if matches!(self.state_data, MotionData::Damage(_)) {
+            if self.combat.hitlag_callbacks == HitlagCallbacks::Damage {
                 self.exit_damage_hitlag();
                 self.status.interaction = Interaction::Damage;
             } else if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
+                if self.combat.hitlag_callbacks == HitlagCallbacks::Guard {
+                    self.exit_guard_hitlag();
+                }
                 self.status.interaction = Interaction::Shield;
             } else if self.combat.grab.is_some() {
                 // Pummel freezes both members of the pair without damage-state scratch.
@@ -1164,7 +1288,8 @@ fn detect_eligible_hit(
             unimplemented!("ftcoll.c:199: DamageIce victim");
         }
         if contact.overlap < assets.damage.phantom_threshold {
-            unimplemented!("ftcoll.c:589-623: phantom hit");
+            log_phantom_contact(victim, attacker, id, contact, height);
+            return;
         }
         if victim.status.revival_invincibility != 0 {
             // ftColl_80078C70 inlineB3: record the contact and attacker hitlag,
@@ -1187,88 +1312,137 @@ fn detect_eligible_hit(
         if victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal {
             unimplemented!("ftcoll.c:658-662: invincible contact");
         }
-        if victim.combat.pending.is_some() {
-            unimplemented!("ftcoll.c:2534: simultaneous damage log selection");
-        }
         let descriptor = desc.clone();
-        let knockback = assets.damage.knockback_with_damage(
-            &descriptor,
-            victim.physics.percent,
-            victim.attributes.size.weight,
-            hit.knockback_damage,
-        );
         if let Some(super::grab::GrabLink::Captured { captor }) = victim.combat.grab {
             if captor != attacker.spawn_number {
                 unimplemented!("ftCo_8008EC90: third-party hit on a captured fighter");
             }
-            victim.combat.pending_from_captor = true;
         }
-        victim.combat.pending = Some(ReceivedHit {
-            descriptor: descriptor.clone(),
-            height,
-            facing: if victim.physics.position.x > attacker.physics.position.x {
-                -1.0
-            } else {
-                1.0
+        // ftColl_80076ED8's ordinary branch: log the hit for ftColl_8007AB48,
+        // whose knockback and effects wait until every contact is logged.
+        victim.combat.log_hit(LoggedHit {
+            source: HitSource::Fighter(hit_owner(attacker)),
+            hit: ReceivedHit {
+                descriptor: descriptor.clone(),
+                height,
+                facing: if victim.physics.position.x > attacker.physics.position.x {
+                    -1.0
+                } else {
+                    1.0
+                },
+                knockback: 0.0,
+                facing_override: None,
+                percent_damage: descriptor.damage,
             },
-            knockback,
-            facing_override: None,
+            position: contact.position,
+            knockback_damage: hit.knockback_damage,
+            damage: descriptor.damage,
+            effect_damage: descriptor.damage,
         });
         attacker.combat.has_recorded_hit = true;
-        attacker.combat.combo.record(
-            victim.spawn_number,
-            attacker.combat.stale.current_move(),
-            &assets.combo,
-        );
-        attacker.combat.stale.record();
-        attacker.commands.stale_multiplier =
-            Some(attacker.combat.stale.multiplier(&assets.stale_weights));
-        // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: the first
-        // queue entry is visible to later hitbox commands of this same move.
-        attacker.commands.first_hit_stale_penalty = Some(assets.first_stale_penalty);
-        attacker.combat.dealt_damage = fctiwz(descriptor.damage).max(1);
+        attacker.credit_hit(victim.spawn_number, assets);
+        // ftColl_80076ED8: x1914 keeps the largest damage dealt this frame.
+        attacker.combat.dealt_damage = attacker
+            .combat
+            .dealt_damage
+            .max(super::hit_log::damage_count(descriptor.damage));
         melee_coll::detection::record_victim(
             &mut attacker.commands.hitboxes,
             descriptor.group,
             victim.spawn_number,
         );
-        // ftColl_8007A06C -> efSync_Spawn; slash uses effect 1004.
-        victim
-            .effects
-            .push(melee_ef::request::EffectRequest::HitSpark {
-                position: contact.position,
-                element: descriptor.element,
-                // ftColl_8007A06C: the effect receives entry->x20 converted to u32.
-                damage: fctiwz(descriptor.damage) as f32,
-                large: knockback >= assets.damage.large_spark_threshold,
-            });
-        if descriptor.element == melee_types::HitElement::Normal && descriptor.sound_severity >= 1 {
-            let variant = victim.attributes.combat.hit_spark_variant;
-            if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize) {
-                victim
-                    .effects
-                    .push(melee_ef::request::EffectRequest::NormalSparkExtra {
-                        position: contact.position,
-                        facing: victim.physics.facing,
-                        variant,
-                        random_bound,
-                    });
-            }
-        }
     }
 }
 
-impl FighterCore {
-    /// ftCo_800C0408: color programs advance during hitlag as well as ordinary animation.
-    pub(super) fn advance_damage_overlay(&mut self, assets: &FighterAssets) {
-        if let Some((id, overlay)) = &mut self.combat.damage_overlay {
-            overlay.step(
-                &assets.charge_overlays[id],
-                &mut self.commands.graphics,
-                &mut self.commands.footstep_sounds,
-            );
-        }
+/// ftColl_80076ED8 logs a thrown fighter's hitbox under its thrower.
+fn hit_owner(attacker: &FighterCore) -> u32 {
+    attacker.commands.thrown_by.unwrap_or(attacker.spawn_number)
+}
+
+/// Halve a hit's damage for a phantom contact: ftColl_80076ED8 keeps a
+/// nonzero damage at least 1 (`!(int)(0.5f * dmg) && dmg`).
+fn phantom_damage(damage: f32) -> f32 {
+    let half = 0.5 * damage;
+    if fctiwz(half) == 0 && damage != 0.0 {
+        1.0
+    } else {
+        half
     }
+}
+
+/// ftColl_80076ED8's phantom branch (hit0->coll_distance < PlCo +7A8): no
+/// ordinary hit this frame, no phantom lockout and a hitbox that has not
+/// phantomed this victim yet. The contact is marked on the attacking group,
+/// logged for ftColl_8007AB80 unless the victim is invincible, and plays the
+/// victim's phantom sound (ftColl_80078488, ft_PlaySFX 85).
+fn log_phantom_contact(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    id: usize,
+    contact: Contact,
+    height: HurtHeight,
+) {
+    let hit = attacker.commands.hitboxes[id]
+        .as_ref()
+        .expect("eligible hitbox");
+    if !victim.combat.hit_log.is_empty()
+        || victim.combat.phantom_lockout != 0.0
+        || hit.phantom_victims.contains(victim.spawn_number)
+    {
+        return;
+    }
+    let descriptor = hit.descriptor.clone();
+    let damage = phantom_damage(descriptor.damage);
+    // len = unk_count >> 1, at least 1 when nonzero.
+    let count = match hit.knockback_damage >> 1 {
+        0 if hit.knockback_damage != 0 => 1,
+        half => half,
+    };
+    melee_coll::detection::record_phantom_victim(
+        &mut attacker.commands.hitboxes,
+        descriptor.group,
+        victim.spawn_number,
+    );
+    if victim.commands.hurt_status == melee_types::combat::HurtStatus::Normal
+        && victim.status.revival_invincibility == 0
+    {
+        victim.combat.phantom_max_damage = victim.combat.phantom_max_damage.max(fctiwz(damage));
+        victim.combat.phantom_log.push(LoggedHit {
+            source: HitSource::Fighter(hit_owner(attacker)),
+            hit: ReceivedHit {
+                descriptor,
+                height,
+                facing: if victim.physics.position.x > attacker.physics.position.x {
+                    -1.0
+                } else {
+                    1.0
+                },
+                knockback: 0.0,
+                facing_override: None,
+                percent_damage: damage,
+            },
+            position: contact.position,
+            knockback_damage: count,
+            damage,
+            effect_damage: damage,
+        });
+    }
+    victim
+        .commands
+        .footstep_sounds
+        .push(super::commands::FootstepSound {
+            channel: super::commands::SoundChannel::Ordinary,
+            id: PHANTOM_HIT_SFX,
+            volume: 127,
+            pan: 64,
+        });
+}
+/// ftCo_8008DA4C: the color animation of an ordinary damaging hit.
+const DAMAGE_FLASH: u8 = 4;
+/// ftColl_80078488: ft_PlaySFX(fp, 85, 0x7F, 0x40) on a phantom contact.
+const PHANTOM_HIT_SFX: u32 = 85;
+
+impl FighterCore {
     /// ftCo_8008DCE0 (8008DCE0): common launch calculation before motion entry.
     fn prepare_damage_reaction(
         &mut self,
@@ -1309,7 +1483,8 @@ impl FighterCore {
         } else {
             REACTIONS[level][height]
         };
-        self.physics.percent += hit.descriptor.damage;
+        // Fighter_ProcessHit: Fighter_UnkTakeDamage_8006CC30(fp, x1838_percentTemp).
+        self.physics.percent += hit.percent_damage;
         let angle = assets.damage.launch_angle(
             hit.descriptor.angle,
             hit.knockback,
@@ -1462,6 +1637,7 @@ impl FighterCore {
         });
         self.status.in_hitstun = true;
         self.status.time_since_hit = 0;
+        self.combat.hitlag_callbacks = HitlagCallbacks::Damage;
         self.status.interaction = Interaction::Damage;
         self.input.horizontal.tilt = 254;
         self.input.vertical.tilt = 254;
@@ -1605,10 +1781,14 @@ impl Fighter {
                 continue;
             };
             if contact.overlap < assets.damage.phantom_threshold {
-                unimplemented!("item phantom hit");
+                self.log_item_phantom_contact(item, &hit, contact, height, assets);
+                return None;
             }
             let mut descriptor = hit.descriptor.clone();
-            let knockback_damage = hit.knockback_damage;
+            // ftColl_80077C60: an item entry's damage count is its hitbox damage
+            // (it_8026B1D4, already staled) truncated, not the command count.
+            let raw_damage = hit.descriptor.damage;
+            let knockback_damage = fctiwz(raw_damage) as u32;
             // ftColl_80077C60, 80077DE4: item hits scale damage while captured.
             if matches!(
                 self.combat.grab,
@@ -1631,57 +1811,112 @@ impl Fighter {
                     logged_damage: false,
                 });
             }
-            let knockback = assets.damage.knockback_with_damage(
-                &descriptor,
-                self.physics.percent,
-                self.attributes.size.weight,
-                knockback_damage,
-            );
-            self.combat.pending = Some(ReceivedHit {
-                descriptor: descriptor.clone(),
-                height,
-                knockback,
-                facing: if self.physics.position.x > item.position.x {
-                    -1.0
-                } else {
-                    1.0
+            // ftColl_80077C60's ordinary branch: log for ftColl_8007AB48.
+            let facing = if self.physics.position.x > item.position.x {
+                -1.0
+            } else {
+                1.0
+            };
+            self.combat.log_hit(LoggedHit {
+                source: HitSource::Item,
+                hit: ReceivedHit {
+                    descriptor: descriptor.clone(),
+                    height,
+                    knockback: 0.0,
+                    facing,
+                    facing_override: None,
+                    percent_damage: descriptor.damage,
                 },
-                facing_override: None,
+                position: contact.position,
+                knockback_damage,
+                damage: descriptor.damage,
+                effect_damage: raw_damage,
             });
             melee_coll::detection::record_victim(
                 &mut item.hitboxes,
                 descriptor.group,
                 self.spawn_number,
             );
-            // ftColl_8007A06C -> efSync_Spawn, shared with fighter hits.
-            self.effects
-                .push(melee_ef::request::EffectRequest::HitSpark {
-                    position: contact.position,
-                    element: descriptor.element,
-                    damage: fctiwz(descriptor.damage) as f32,
-                    large: knockback >= assets.damage.large_spark_threshold,
-                });
-            if descriptor.element == melee_types::HitElement::Normal
-                && descriptor.sound_severity >= 1
-            {
-                let variant = self.attributes.combat.hit_spark_variant;
-                if let Some(&random_bound) = assets.damage.extra_spark_bounds.get(variant as usize)
-                {
-                    let facing = self.physics.facing;
-                    self.effects
-                        .push(melee_ef::request::EffectRequest::NormalSparkExtra {
-                            position: contact.position,
-                            facing,
-                            variant,
-                            random_bound,
-                        });
-                }
-            }
             return Some(ItemHurtContact {
                 damage: descriptor.damage,
                 logged_damage: true,
             });
         }
         None
+    }
+
+    /// ftColl_80077C60's phantom branch for an item hitbox: the damage is
+    /// truncated before halving (at least 1), the knockback count is the
+    /// item's integer damage halved (at least 1), and it_8026FC00 marks the
+    /// victim on the item's group. Invincible victims log nothing.
+    fn log_item_phantom_contact(
+        &mut self,
+        item: &mut melee_it::ItemCore,
+        hit: &HitCapsule,
+        contact: Contact,
+        height: HurtHeight,
+        assets: &FighterAssets,
+    ) {
+        if !self.combat.hit_log.is_empty()
+            || self.combat.phantom_lockout != 0.0
+            || hit.phantom_victims.contains(self.spawn_number)
+        {
+            return;
+        }
+        let mut descriptor = hit.descriptor.clone();
+        let raw = fctiwz(descriptor.damage);
+        if matches!(
+            self.combat.grab,
+            Some(super::grab::GrabLink::Captured { .. })
+        ) {
+            descriptor.damage *= assets.damage.captured_item_damage_scale;
+        }
+        let scaled = fctiwz(descriptor.damage);
+        let damage = match 0.5 * scaled as f32 {
+            half if fctiwz(half) == 0 && scaled != 0 => 1.0,
+            half => half,
+        };
+        let count = match raw / 2 {
+            0 if raw != 0 => 1,
+            half => half as u32,
+        };
+        melee_coll::detection::record_phantom_victim(
+            &mut item.hitboxes,
+            descriptor.group,
+            self.spawn_number,
+        );
+        if self.commands.hurt_status == melee_types::combat::HurtStatus::Normal
+            && self.status.revival_invincibility == 0
+        {
+            let facing = if self.physics.position.x > item.position.x {
+                -1.0
+            } else {
+                1.0
+            };
+            self.combat.phantom_max_damage = self.combat.phantom_max_damage.max(fctiwz(damage));
+            self.combat.phantom_log.push(LoggedHit {
+                source: HitSource::Item,
+                hit: ReceivedHit {
+                    descriptor,
+                    height,
+                    knockback: 0.0,
+                    facing,
+                    facing_override: None,
+                    percent_damage: damage,
+                },
+                position: contact.position,
+                knockback_damage: count,
+                damage,
+                effect_damage: damage,
+            });
+        }
+        self.commands
+            .footstep_sounds
+            .push(super::commands::FootstepSound {
+                channel: super::commands::SoundChannel::Ordinary,
+                id: PHANTOM_HIT_SFX,
+                volume: 127,
+                pan: 64,
+            });
     }
 }

@@ -36,8 +36,8 @@ impl Fighter {
             animation_paused: false,
         });
         // Ft_MF_SkipAnimVel (fighter.c:1318-1324): retain ground momentum
-        // when RunBrake supplies a nonzero phase. Motion entry already does so.
-        self.change_motion_state_at(S::TurnRun.into(), assets, start)
+        // when RunBrake supplies a nonzero phase.
+        self.change_motion_state_keeping_velocity(S::TurnRun.into(), assets, start)
     }
     /// ftCo_TurnRun_Anim (800C9E10), ftCo_TurnRun.c:58-80.
     pub(super) fn turn_run_animation(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -90,7 +90,12 @@ impl Fighter {
         );
         if result == crate::collision::ground::WaitGroundResult::EnterFall {
             self.change_motion_state(S::Fall.into(), assets)?;
-        } else if self.core.collision.data.env_flags as u32 & melee_types::mp::collide::EDGE != 0 {
+        } else if self.core.collision.data.env_flags as u32
+            & (melee_types::mp::collide::LEFT_EDGE | melee_types::mp::collide::RIGHT_EDGE)
+            != 0
+        {
+            // ftCo_TurnRun_Coll: Collide_LeftEdge | Collide_RightEdge ->
+            // ftCommon_8007E2FC stops the fighter at the edge.
             self.clear_movement();
         }
         Ok(())

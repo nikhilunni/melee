@@ -122,6 +122,23 @@ pub struct CommandState {
     pub footstep_sounds: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
 }
 impl CommandState {
+    /// ft_80089228 (80089228): stale a hitbox's damage for the current move.
+    /// The motion's multiplier applies only when it differs from 1 (retail
+    /// 8008927C fmuls); without a staled move, a hit this instance already
+    /// landed subtracts the first table weight (ft_80089118).
+    pub fn stale_damage(&self, damage: f32) -> f32 {
+        if let Some(multiplier) = self.stale_multiplier {
+            if multiplier != 1.0 {
+                return damage * multiplier;
+            }
+            damage
+        } else if let Some(penalty) = self.first_hit_stale_penalty {
+            damage * (1.0 - penalty)
+        } else {
+            damage
+        }
+    }
+
     /// ftAction_8007349C (8007349C): UpdateCmd executes control flow only.
     pub(super) fn advance_control(&mut self, animation: &FighterAnimation, assets: &FighterAssets) {
         self.script
@@ -198,14 +215,7 @@ impl CommandState {
                         let mut descriptor = descriptor.clone();
                         self.throw_damage_counts[*id] =
                             gekko_math::msl::fctiwz(descriptor.damage) as u32;
-                        if let Some(multiplier) = self.stale_multiplier {
-                            // retail 8008927C: fmuls only if staled.
-                            if multiplier != 1.0 {
-                                descriptor.damage *= multiplier;
-                            }
-                        } else if let Some(penalty) = self.first_hit_stale_penalty {
-                            descriptor.damage *= 1.0 - penalty;
-                        }
+                        descriptor.damage = self.stale_damage(descriptor.damage);
                         self.throw_hitboxes[*id] = Some(descriptor);
                     }
                 }
@@ -223,16 +233,7 @@ impl CommandState {
                             descriptor.damage = charge.scale_damage(descriptor.damage);
                         }
                         let knockback_damage = gekko_math::msl::fctiwz(descriptor.damage) as u32;
-                        if let Some(multiplier) = self.stale_multiplier {
-                            // retail 8008927C: fmuls only if staled.
-                            if multiplier != 1.0 {
-                                descriptor.damage *= multiplier;
-                            }
-                        } else if let Some(penalty) = self.first_hit_stale_penalty {
-                            // ft_80089118 subtracts the first table weight; the
-                            // separate multiplication is retail 8008927C (fmuls).
-                            descriptor.damage *= 1.0 - penalty;
-                        }
+                        descriptor.damage = self.stale_damage(descriptor.damage);
                         melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                         self.hitboxes[*id]
                             .as_mut()

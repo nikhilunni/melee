@@ -361,6 +361,7 @@ fn prepare_throw_release(
         } else {
             None
         },
+        percent_damage: descriptor.damage,
         descriptor,
         height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,

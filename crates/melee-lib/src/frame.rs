@@ -387,6 +387,10 @@ impl Runtime {
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
                     use crate::scene_fighter::with_fighter;
+                    // Fighter_8006CB94 -> ftColl_800765E0: fresh damage logs.
+                    with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .begin_hit_detection());
                     for other in 0..state.fighters.len() {
                         if player == other {
                             continue;
@@ -425,6 +429,10 @@ impl Runtime {
                             item.record_damage_dealt(contact.damage);
                         }
                     }
+                    // ftColl_8007AB48 / ftColl_8007AB80: resolve both logs.
+                    with_fighter!(&mut state.fighters[player], |f| {
+                        f.core.resolve_hit_logs(&assets.fighters[player])
+                    });
                 }
                 crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                     let f: &mut melee_ft::fighter::Fighter = f;
@@ -499,6 +507,9 @@ impl Runtime {
                 }
                 if proc == FighterProc::Input {
                     grab_pairs::throw_input(state, player)?;
+                }
+                if proc == FighterProc::ProcessHit {
+                    credit_phantom_source(state, player);
                 }
                 if proc == FighterProc::Accessories {
                     grab_pairs::accessory(state, player)?;
@@ -994,6 +1005,27 @@ impl Simulation {
                 (name, seed)
             })
             .collect()
+    }
+}
+
+/// ftColl_8007BE3C: an expired phantom credits its source fighter's current
+/// move (plStale_UpdateStaleMovesFromFighter, ftColl_80076444) while the
+/// victim's ProcessHit runs; the victim only records whom to credit.
+fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player: usize) {
+    use crate::scene_fighter::with_fighter;
+    let Some(source) = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .pending_credit
+        .take())
+    else {
+        return;
+    };
+    let victim = with_fighter!(&state.fighters[player], |f| f.spawn_number);
+    for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+        let assets = &state.assets.fighters[slot];
+        with_fighter!(fighter, |f| if f.spawn_number == source {
+            f.core.credit_hit(victim, assets);
+        });
     }
 }
 

@@ -7,10 +7,11 @@ use super::{
 use crate::input::{Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use gekko_math::{
     fma::fmadds,
-    msl::{fctiwz, sqrtf},
+    msl::{fabsf, fctiwz, sqrtf},
 };
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
+use melee_types::GroundOrAir;
 
 /// PlCo shield parameters; archive offsets are confined to the reader.
 #[derive(Clone, Debug)]
@@ -144,8 +145,9 @@ pub struct ShieldImpact {
 /// Persistent Fighter shield fields and typed collision callbacks.
 #[derive(Clone, Debug, Default)]
 pub struct ShieldState {
-    /// lb_80014258: powershield flash script; advances through hitlag.
-    pub flash: Option<super::smash::ChargeOverlay>,
+    /// PlCo SDI/ASDI values for the guard hitlag callbacks, captured when a
+    /// hit lands on the shield (the callbacks run without archive access).
+    pub influence: super::damage::InfluenceParameters,
     pub enabled: bool,
     pub active: bool,
     pub reflecting: bool,
@@ -180,7 +182,11 @@ impl Fighter {
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
         self.character.guard_variant(&mut self.core.commands);
         self.change_motion_state(S::GuardSetOff.into(), assets)?;
-        self.core.advance_shield_flash(assets);
+        // ftCo_80092F2C: shield SDI/ASDI callbacks; x670 = -2 (254).
+        self.core.combat.hitlag_callbacks = super::damage::HitlagCallbacks::Guard;
+        self.core.input.horizontal.tilt = 254;
+        self.core.shield.influence = assets.damage.influence;
+        self.core.advance_color_overlay(assets);
         self.core.apply_shield_impact(impact, assets)
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
@@ -730,14 +736,48 @@ impl FighterCore {
 }
 
 impl FighterCore {
-    /// ftCo_800C0408 -> lb_80014258: color 118 includes an effect command.
-    pub(super) fn advance_shield_flash(&mut self, assets: &FighterAssets) {
-        if let Some(flash) = &mut self.shield.flash {
-            flash.step(
-                &assets.charge_overlays[&118],
-                &mut self.commands.graphics,
-                &mut self.commands.footstep_sounds,
-            );
+    /// ftCo_80093240 (80093240), shield hitlag: a fresh horizontal tilt
+    /// slides the grounded shield along the floor.
+    pub(super) fn guard_hitlag_input(&mut self) {
+        let MotionData::Guard(_) = &self.state_data else {
+            panic!("guard hitlag callback without guard scratch")
+        };
+        let parameters = self.guard_influence();
+        let stick_x = self.input.current.stick.x;
+        if self.shield.allow_sdi
+            && self.physics.ground_or_air == GroundOrAir::Ground
+            && fabsf(stick_x) >= parameters.minimum_stick
+            && i32::from(self.input.horizontal.tilt) < parameters.tap_window
+        {
+            // 800932A8 / 800932B4: two fmuls.
+            let scale = parameters.shield_influence_scale * (stick_x * parameters.sdi_distance);
+            self.slide_along_floor(scale);
+            self.input.horizontal.tilt = 254;
         }
+    }
+
+    /// ftCo_800932DC (800932DC), shield hitlag exit: the held horizontal
+    /// stick slides the grounded shield once more.
+    pub(super) fn exit_guard_hitlag(&mut self) {
+        let parameters = self.guard_influence();
+        let stick_x = self.input.current.stick.x;
+        if self.physics.ground_or_air == GroundOrAir::Ground
+            && fabsf(stick_x) >= parameters.minimum_stick
+        {
+            let scale = parameters.shield_influence_scale * (stick_x * parameters.asdi_distance);
+            self.slide_along_floor(scale);
+        }
+    }
+
+    /// cur_pos += (normal.y, -normal.x) * scale; retail 800932B8 / 800932CC: fmadds.
+    fn slide_along_floor(&mut self, scale: f32) {
+        let normal = self.collision.data.floor.normal;
+        let position = &mut self.physics.position;
+        position.x = gekko_math::fma::fmadds(normal.y, scale, position.x);
+        position.y = gekko_math::fma::fmadds(-normal.x, scale, position.y);
+    }
+
+    fn guard_influence(&self) -> super::damage::InfluenceParameters {
+        self.shield.influence
     }
 }

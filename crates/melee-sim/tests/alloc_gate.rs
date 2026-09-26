@@ -552,3 +552,11 @@ fn damage_fly_roll_dtilt_t132_allocation_budget() {
 fn damage_fly_roll_crouch_allocation_budget() {
     allocation_budget("damage_fly_roll_crouch_fd_fox_candidate", 0);
 }
+
+/// Two generated full matches (phantoms, damage logs, overlays) stay
+/// allocation-free from start to GAME.
+#[test]
+fn corpus_v2_matches_allocate_nothing() {
+    allocation_budget("corpus_v2_s0_e2a_p1", 0);
+    allocation_budget("corpus_v2_s0_e539_p2", 0);
+}

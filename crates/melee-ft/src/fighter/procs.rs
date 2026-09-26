@@ -23,8 +23,8 @@ impl Fighter {
             None
         };
         if !self.core.status.disabled {
-            self.core.advance_shield_flash(assets);
-            self.core.advance_damage_overlay(assets);
+            // ftCo_800C0408: color programs run during hitlag as well.
+            self.core.advance_color_overlay(assets);
         }
         Ok(choice)
     }
@@ -46,7 +46,11 @@ impl Fighter {
         }
         self.core.apply_combo_push(&assets.combo);
         if self.core.combat.hitlag_remaining > 0.0 {
-            self.core.damage_hitlag_input();
+            match self.core.combat.hitlag_callbacks {
+                super::damage::HitlagCallbacks::Damage => self.core.damage_hitlag_input(),
+                super::damage::HitlagCallbacks::Guard => self.core.guard_hitlag_input(),
+                super::damage::HitlagCallbacks::None => {}
+            }
         }
         self.core.invalidate_collision_positions();
     }
@@ -484,11 +488,19 @@ impl FighterCore {
         if self.combat.hitlag_remaining > 0.0 {
             return false;
         }
+        // Fighter_8006A360, fighter.c:1464-1484: a protection timer running
+        // out clears the flash (color animation 9) if it still owns the slot.
         if self.status.ledge_intangibility != 0 {
             self.status.ledge_intangibility -= 1;
+            if self.status.ledge_intangibility == 0 {
+                self.combat.color_overlay.flash_expired = true;
+            }
         }
         if self.status.revival_invincibility != 0 {
             self.status.revival_invincibility -= 1;
+            if self.status.revival_invincibility == 0 {
+                self.combat.color_overlay.flash_expired = true;
+            }
         }
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
             self.status.name_tag_timer -= 1;

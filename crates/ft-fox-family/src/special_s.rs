@@ -8,7 +8,7 @@ use melee_ft::{
         state::{self, callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
         Fighter, MotionRow,
     },
-    physics::{airborne, friction, grounded, integrate},
+    physics::{airborne, friction, grounded},
 };
 use melee_types::{CommonMotionState, GroundOrAir};
 
@@ -265,8 +265,7 @@ pub(crate) fn finish_ground(f: &mut Fighter, p: PhysicsPhase<'_>) {
     );
 }
 pub(crate) fn finish_air(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    integrate::integrate_velocity(&mut f.physics);
-    integrate::integrate_environment(&mut f.physics, None, p.wind);
+    f.core.finish_air_update(p.assets, p.wind);
 }
 
 fn startup_physics<C: FoxFamily, const AIR: bool>(f: &mut Fighter, p: PhysicsPhase<'_>) {

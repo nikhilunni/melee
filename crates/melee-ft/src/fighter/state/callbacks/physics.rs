@@ -111,8 +111,7 @@ pub fn cliff_climb(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
             wind,
         );
     } else {
-        crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-        crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+        fighter.core.finish_air_update(assets, wind);
     }
 }
 
@@ -121,8 +120,7 @@ pub fn cliff_climb(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 pub fn cliff_catch(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     fighter.ledge_physics(assets, map).expect("ledge physics");
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick2 (263).
@@ -133,8 +131,7 @@ pub fn cliff_jump2(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     } = phase;
     fighter.ledge_jump_physics(assets);
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
@@ -147,9 +144,7 @@ pub fn escape_air(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.air_dodge_physics(assets);
     // Fighter_procUpdate (8006B82C): residual hit knockback decays after
     // EscapeAir's self-velocity callback, before position integration.
-    fighter.decay_air_knockback(assets);
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_Pass (244).
@@ -166,9 +161,7 @@ pub fn multi_jump(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     } = phase;
     fighter.multi_jump_physics(assets);
-    fighter.decay_air_knockback(assets);
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
@@ -179,8 +172,7 @@ pub fn fall_special(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     } = phase;
     fighter.special_fall_physics(assets);
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_JumpF (25), ftCo_MS_JumpB (26), ftCo_MS_JumpAerialF (27),
@@ -197,9 +189,7 @@ pub fn fall(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         "air shield knockback decay needs damage physics"
     );
     fighter.airborne_physics(assets);
-    fighter.decay_air_knockback(assets);
-    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, None, wind);
+    fighter.core.finish_air_update(assets, wind);
 }
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
@@ -211,12 +201,11 @@ pub fn entry(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 impl FighterCore {
     fn physics_capture(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
-            assets: _,
+            assets,
             map: _,
             wind,
         } = phase;
-        crate::physics::integrate::integrate_velocity(&mut self.physics);
-        crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+        self.finish_air_update(assets, wind);
     }
     fn physics_revival(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
@@ -335,7 +324,7 @@ impl FighterCore {
     }
     fn physics_pass(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
-            assets: _,
+            assets,
             map: _,
             wind,
         } = phase;
@@ -344,8 +333,7 @@ impl FighterCore {
             &self.attributes.air,
             self.input.current.stick.x,
         );
-        crate::physics::integrate::integrate_velocity(&mut self.physics);
-        crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+        self.finish_air_update(assets, wind);
     }
     fn physics_entry(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
@@ -354,8 +342,7 @@ impl FighterCore {
             wind,
         } = phase;
         self.entry_physics(assets.entry);
-        crate::physics::integrate::integrate_velocity(&mut self.physics);
-        crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+        self.finish_air_update(assets, wind);
     }
 }
 

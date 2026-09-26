@@ -2,13 +2,16 @@
 use crate::hurtbox::HurtHeight;
 use gekko_math::{fma::fmadds, msl::fctiwz};
 use melee_types::combat::HitboxDescriptor;
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ReceivedHit {
     pub descriptor: HitboxDescriptor,
     pub height: HurtHeight,
     pub facing: f32,
     pub knockback: f32,
     pub facing_override: Option<f32>,
+    /// Added to the victim's percent when the reaction starts: the frame's
+    /// logged damage (dmg.x1838_percentTemp) for hits, the throw's damage.
+    pub percent_damage: f32,
 }
 pub struct KnockbackParameters {
     pub weight_scale: f32,
@@ -33,12 +36,24 @@ impl KnockbackParameters {
         weight: f32,
         damage: u32,
     ) -> f32 {
+        self.knockback_for_frame(hit, percent, hit.damage, weight, damage)
+    }
+    /// ftColl_80079AB0 in a damage log: the percent term is the victim's
+    /// damage count plus every hit logged this frame (dmg.x1838_percentTemp).
+    pub fn knockback_for_frame(
+        &self,
+        hit: &HitboxDescriptor,
+        percent: f32,
+        frame_damage: f32,
+        weight: f32,
+        damage: u32,
+    ) -> f32 {
         let w = weight * self.weight_scale;
         let factor = self.weight_decay - (w * self.weight_decay) / (1.0 + w);
         let (p, d) = if hit.weight_knockback != 0 {
             (self.fixed_percent, f32::from(hit.weight_knockback))
         } else {
-            (fctiwz(percent) as f32 + hit.damage, damage as f32)
+            (fctiwz(percent) as f32 + frame_damage, damage as f32)
         };
         // retail 80079C34 (normal) / 80079B48 (fixed weight): fmadds.
         let inner = fmadds(self.percent_scale, p, self.damage_scale * (d * p));

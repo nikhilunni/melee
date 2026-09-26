@@ -177,7 +177,7 @@ pub(super) fn capture_damage(
     {
         unimplemented!("ftCo_8008EC90: captured damage outside low capture or throw");
     }
-    f.core.physics.percent += hit.descriptor.damage;
+    f.core.physics.percent += hit.percent_damage;
     f.core.input.pressed = Buttons::default();
     f.core.input.released = Buttons::default();
     // ftCo_8008EC90 inlineB2, 8008ECD4..ED84: thrown states keep their
@@ -422,8 +422,7 @@ pub fn jump_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
         f.input.current.stick.x,
         &f.attributes.air,
     );
-    crate::physics::integrate::integrate_velocity(&mut f.physics);
-    crate::physics::integrate::integrate_environment(&mut f.physics, None, phase.wind);
+    f.core.finish_air_update(phase.assets, phase.wind);
 }
 
 pub fn catch_cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {

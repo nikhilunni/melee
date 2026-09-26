@@ -115,6 +115,17 @@ pub fn first_contact<C: Collider>(
     None
 }
 /// ftColl_80076808: every active member of a group inherits a contact.
+/// ftColl_80076ED8 inlineB0 -> lbColl_80008820(.., 0, victim): a phantom
+/// contact marks the victim on every active hitbox of the same group.
+pub fn record_phantom_victim(hits: &mut [Option<HitCapsule>], group: u8, victim: u32) {
+    for hit in hits
+        .iter_mut()
+        .flatten()
+        .filter(|hit| hit.descriptor.group == group)
+    {
+        hit.phantom_victims.record(victim);
+    }
+}
 pub fn record_victim(hits: &mut [Option<HitCapsule>], group: u8, victim: u32) {
     for hit in hits
         .iter_mut()

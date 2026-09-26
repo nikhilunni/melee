@@ -130,7 +130,9 @@ impl Fighter {
                     P::Jab,
                     P::Jump,
                     P::Dash,
-                    P::Squat,
+                    // ftCo_AttackLw3_IASA calls the pure check: down held
+                    // keeps the tilt and skips Turn/Walk.
+                    P::SquatHeld,
                     P::Turn,
                     P::Walk,
                 ],

@@ -22,6 +22,9 @@ struct MotionChange<'a> {
     /// fn_800DE798: restore the release owner after reset, before initial commands.
     throw_owner: Option<u32>,
     preserve: MotionPreservation,
+    /// Ft_MF_SkipAnimVel (bit5): keep velocity when a grounded root-motion
+    /// animation starts mid-way (fighter.c:1317-1336).
+    skip_animation_velocity: bool,
 }
 
 /// Retail motion-entry flags retained across a ground/air counterpart change.
@@ -290,6 +293,26 @@ impl Fighter {
         start: f32,
     ) -> Result<()> {
         self.change_motion_state_with_rate(state, assets, start, 1.0)
+    }
+
+    /// Fighter_ChangeMotionState with Ft_MF_SkipAnimVel: a mid-animation
+    /// grounded start keeps the fighter's velocity (ftCo_TurnRun_Enter).
+    pub(super) fn change_motion_state_keeping_velocity(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        start: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate: 1.0,
+                skip_animation_velocity: true,
+                ..Default::default()
+            },
+        )
     }
 
     /// Fighter_ChangeMotionState (800693AC), fighter.c:1268-1296:
@@ -786,6 +809,8 @@ impl FighterCore {
         self.shield.clear_collision();
         self.combat.reflector_enabled = false;
         self.effect_state.hitlag_callbacks = false;
+        // fighter.c:1381-1383: hitlag_cb / post_hitlag_cb reset with the row.
+        self.combat.hitlag_callbacks = super::damage::HitlagCallbacks::None;
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
@@ -1002,17 +1027,36 @@ impl FighterCore {
             self.skeleton
                 .clear_flags(joint, hsd_anim::jobj::JOBJ_USE_QUATERNION);
         }
-        // fighter.c:1309-1317: discard frame-zero extracted velocity.
-        if start == 0.0
-            && self
-                .animation
-                .flags
-                .contains(crate::anim::MotionFlags::ROOT_MOTION)
-        {
-            if let Some(root) = &mut self.animation.root_motion {
-                root.primary_history.previous = root.primary_history.position;
-                root.primary_history.offset = Vec3::ZERO;
-                root.primary_history.previous_offset = Vec3::ZERO;
+        // fighter.c:1309-1336: a frame-zero entry discards the extracted
+        // offset; a grounded mid-animation entry turns the offset of this
+        // second sample into velocity unless Ft_MF_SkipAnimVel.
+        let flags = self.animation.flags;
+        let grounded = self.physics.ground_or_air == GroundOrAir::Ground;
+        let facing = self.physics.facing;
+        if let Some(root) = &mut self.animation.root_motion {
+            for (flag, history) in [
+                (
+                    crate::anim::MotionFlags::ROOT_MOTION,
+                    &mut root.primary_history,
+                ),
+                (
+                    crate::anim::MotionFlags::SECOND_ROOT,
+                    &mut root.secondary_history,
+                ),
+            ] {
+                if !flags.contains(flag) {
+                    continue;
+                }
+                if start == 0.0 {
+                    history.previous = history.position;
+                    history.offset = Vec3::ZERO;
+                    history.previous_offset = Vec3::ZERO;
+                } else if !change.skip_animation_velocity && grounded {
+                    // fighter.c:1320 / 1336: fmuls, stored to self_vel.x and gr_vel.
+                    let velocity = history.offset.z * facing;
+                    self.physics.self_velocity.x = velocity;
+                    self.physics.ground_velocity = velocity;
+                }
             }
         }
         if change.ground_air || change.update_commands {
@@ -1027,7 +1071,7 @@ impl FighterCore {
                 assets,
             );
         } else {
-            self.advance_damage_overlay(assets);
+            self.advance_color_overlay(assets);
             self.commands.step(
                 &mut self.animation,
                 &mut self.skeleton,

@@ -7,7 +7,7 @@ use melee_ft::{
         state::{callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
         Fighter,
     },
-    physics::{airborne, integrate},
+    physics::airborne,
 };
 use melee_types::GroundOrAir;
 
@@ -132,8 +132,7 @@ pub fn physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
             &f.attributes.air,
         );
     }
-    integrate::integrate_velocity(&mut f.physics);
-    integrate::integrate_environment(&mut f.physics, None, p.wind);
+    f.core.finish_air_update(p.assets, p.wind);
 }
 pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     if f.physics.ground_or_air == GroundOrAir::Ground {

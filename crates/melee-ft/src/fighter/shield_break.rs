@@ -243,7 +243,7 @@ pub(super) fn dizzy_animation(
 }
 /// ftCo_ShieldBreakFly_Phys -> ft_80084EEC: gravity and air friction, no input.
 pub(super) fn fly_physics(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
-    use crate::physics::{airborne, integrate};
+    use crate::physics::airborne;
     let core = &mut fighter.core;
     let air = &core.attributes.air;
     core.physics.self_velocity.y = airborne::gravity(
@@ -253,8 +253,7 @@ pub(super) fn fly_physics(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     );
     core.physics.animation_velocity.x =
         airborne::drift_acceleration(core.physics.self_velocity.x, 0.0, 0.0, air);
-    integrate::integrate_velocity(&mut core.physics);
-    integrate::integrate_environment(&mut core.physics, None, phase.wind);
+    core.finish_air_update(phase.assets, phase.wind);
 }
 /// ftCo_ShieldBreakFly_Coll -> ft_80082C74: ordinary air collision, no ledge grab.
 pub(super) fn fly_collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {

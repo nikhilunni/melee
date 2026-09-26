@@ -18,6 +18,8 @@ pub enum WaitTransition {
     Jump,
     Dash,
     Squat,
+    /// A check matched but its state stays put and later checks are skipped.
+    Hold,
     Turn,
     Walk,
 }
@@ -45,6 +47,9 @@ pub enum WaitPredicate {
     Jump,
     Dash,
     Squat,
+    /// ftCo_Squat_CheckInput (800D5F58): the same stick test as `Squat`
+    /// without entering Squat; ftCo_AttackLw3_IASA holds the down tilt.
+    SquatHeld,
     Turn,
     Walk,
 }
@@ -257,6 +262,7 @@ pub fn evaluate(
             },
         ),
         P::Squat => (stick.y < -thresholds.squat_stick_threshold, T::Squat), // 800D5FB0
+        P::SquatHeld => (stick.y < -thresholds.squat_stick_threshold, T::Hold), // 800D5F58
         P::Turn => (
             stick.x * context.facing <= thresholds.turn_stick_threshold,
             T::Turn,

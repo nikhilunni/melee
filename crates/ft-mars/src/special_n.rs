@@ -99,11 +99,13 @@ pub fn end(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>>
         let m = f.character.get::<Marth>();
         let a = &m.attributes.shield_breaker;
         let damage = (a.base_damage + m.special_n.charge_ticks / 30 * a.damage_per_level) as f32;
+        // ftColl_8007ABD0: integer knockback damage precedes staling
+        // (ft_80089228 on the charged damage).
+        let staled = f.commands.stale_damage(damage);
         for hit in f.commands.hitboxes.iter_mut().flatten() {
             if hit.phase == melee_coll::hitbox::CapsulePhase::Enabled {
-                // ftColl_8007ABD0: integer knockback damage precedes staling.
                 hit.knockback_damage = gekko_math::msl::fctiwz(damage) as u32;
-                hit.descriptor.damage = damage;
+                hit.descriptor.damage = staled;
             }
         }
     }
@@ -158,7 +160,8 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
             (341..=344).contains(&state),
             "non-Shield Breaker transition"
         );
-        f.leave_ground_with_spent_jumps();
+        // ftCommon_GroundToAirStateChange -> ftCommon_8007D5D4: one jump spent.
+        f.leave_ground();
         f.change_ground_air_motion(
             ActionId(state + 4),
             p.assets.expect("Shield Breaker collision assets"),

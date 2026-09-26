@@ -154,11 +154,17 @@ impl Fighter {
                 cliff.neutral_seen = false;
                 cliff.wait_frames = assets.ledge.wait_frames
                     [usize::from(self.core.physics.percent >= assets.ledge.slow_damage as f32)];
+                // ftColl_8007B760: x1990 = max(x1990, frames), then the
+                // intangibility flash (color animation 9).
                 self.core.status.ledge_intangibility = self
                     .core
                     .status
                     .ledge_intangibility
                     .max(assets.ledge.intangible_frames);
+                self.core
+                    .commands
+                    .color_animations
+                    .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
             }
             S::CliffJumpQuick1 | S::CliffJumpSlow1 => {
                 let MotionData::Cliff(cliff) = &self.core.state_data else {

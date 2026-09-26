@@ -92,6 +92,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     assert_eq!(scenario.frames as usize, ticks);
     let compare_items = name.starts_with("cstick_throw_")
         || name.starts_with("laser_reflect_")
+        || name.starts_with("corpus_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -1350,4 +1351,33 @@ fn damage_fly_roll_dtilt_t132() {
 #[test]
 fn damage_fly_roll_crouch() {
     combat_gate_ticks("damage_fly_roll_crouch_fd_fox_candidate", 450);
+}
+
+/// Generated robustness-corpus matches (melee-replay `explore`, version 2),
+/// replayed in retail from their four-stock boundary through the corpus
+/// bridge (`harness/replay_to_scenario.py`) and compared from match start to
+/// GAME. Each first exposed the retail behaviour named beside it.
+const CORPUS_MATCHES: [(&str, usize); 7] = [
+    // Phantom contacts beside a real hit; SDI callbacks after a special.
+    ("corpus_v2_s0_e2a_p1", 3029),
+    // Item hit damage counts, overlay replacement, charge sparkle suppression,
+    // grounded mid-animation root-motion velocity.
+    ("corpus_v2_s0_e12345678_p0", 3450),
+    // TurnRun edge stop; Shield Breaker leaving the ground with one jump.
+    ("corpus_v2_s1_e12345678_p1", 3155),
+    // Airborne knockback decay during Fire Fox's charge.
+    ("corpus_v2_s0_e49_p1", 3304),
+    // Staled charged Shield Breaker; down tilt holding on the squat check.
+    ("corpus_v2_s0_e539_p2", 5034),
+    // Invincibility flash ownership; staled ledge attack.
+    ("corpus_v2_s0_e80000000_p1", 3758),
+    // Shield SDI/ASDI during shield hitlag.
+    ("corpus_v2_s0_e1_p0", 3385),
+];
+
+#[test]
+fn corpus_v2_matches_through_game() {
+    for (name, ticks) in CORPUS_MATCHES {
+        combat_gate_ticks(name, ticks);
+    }
 }

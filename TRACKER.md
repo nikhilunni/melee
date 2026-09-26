@@ -808,3 +808,16 @@ Newest first. One line per session: date, what landed, what is next.
   tick; 48 cases: 9 faults (5 fighter phantom, 2 item phantom, 1 captured
   damage, 1 Reflector ground-to-air). Bridged phantom case: pads exact for 894
   ticks, port matches retail through the fault. Next: phantom hits.
+- 2026-09-26: Generated matches as retail oracles. Seven corpus v2 cases
+  bridged to Dolphin at full length now match retail start to GAME (25,115
+  ticks, items and ordered particle sites; `m5_gate::corpus_v2_matches_through_game`,
+  two zero-allocation). Fixes, all shared: per-victim damage logs and phantom
+  hits (melee-coll `damage_log`, `hit_log.rs`), hitlag callback ownership
+  (SDI after specials), charged-hitbox staling, unified color overlays
+  (priorities, invincibility flash, charge sparkle suppression), grounded
+  mid-animation root-motion velocity, ledge/getup/landing stale ids, TurnRun
+  edge flags, one-jump ground departures for Marth specials, airborne
+  knockback decay tail, down-tilt squat hold, shield SDI/ASDI. Debug and
+  release gates 1,465 passed, 0 failed; clippy, fmt, 243 harness tests pass.
+  Notes: `docs/PORT_NOTES/CORPUS_BRIDGE_FIXES.md`. Next: remaining corpus
+  faults (captured damage, Reflector ground-to-air), then bridge all 48 cases.

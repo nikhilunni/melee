@@ -78,6 +78,12 @@ pub enum StaleMove {
     SpecialSide,
     SpecialUp,
     SpecialDown,
+    /// FtMoveId_DownAttackU / DownAttackD: get-up attacks.
+    GetupAttackFaceUp,
+    GetupAttackFaceDown,
+    /// FtMoveId_CliffAttackSlow / CliffAttackQuick: ledge attacks.
+    LedgeAttackSlow,
+    LedgeAttackQuick,
     Pummel,
     ThrowForward,
     ThrowBack,

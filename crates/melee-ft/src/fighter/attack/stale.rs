@@ -30,6 +30,16 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::AttackAirB as usize] = Some(GroundMove::BackAir);
     rows[S::AttackAirHi as usize] = Some(GroundMove::UpAir);
     rows[S::AttackAirLw as usize] = Some(GroundMove::DownAir);
+    // ftData_MotionStateList[70..74]: landing lag keeps the aerial's move id.
+    rows[S::LandingAirN as usize] = Some(GroundMove::NeutralAir);
+    rows[S::LandingAirF as usize] = Some(GroundMove::ForwardAir);
+    rows[S::LandingAirB as usize] = Some(GroundMove::BackAir);
+    rows[S::LandingAirHi as usize] = Some(GroundMove::UpAir);
+    rows[S::LandingAirLw as usize] = Some(GroundMove::DownAir);
+    rows[S::DownAttackU as usize] = Some(GroundMove::GetupAttackFaceUp);
+    rows[S::DownAttackD as usize] = Some(GroundMove::GetupAttackFaceDown);
+    rows[S::CliffAttackSlow as usize] = Some(GroundMove::LedgeAttackSlow);
+    rows[S::CliffAttackQuick as usize] = Some(GroundMove::LedgeAttackQuick);
     rows[S::CatchAttack as usize] = Some(GroundMove::Pummel);
     rows[S::ThrowF as usize] = Some(GroundMove::ThrowForward);
     rows[S::ThrowB as usize] = Some(GroundMove::ThrowBack);
@@ -38,7 +48,7 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct StaleHistory {
     entries: [Option<AttackInstance>; 10],
     current: Option<GroundMove>,

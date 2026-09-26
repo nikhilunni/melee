@@ -98,12 +98,9 @@ impl FighterCore {
             if charge.frames == 1.0 {
                 self.combat.charge_overlay = ChargeOverlay::default();
             }
+            // The charge color program itself runs in ftCo_800C0408's
+            // secondary slot, after the primary (`advance_color_overlay`).
             let overlay = &mut self.combat.charge_overlay;
-            overlay.step(
-                &assets.charge_overlays[&charge.color_animation],
-                &mut self.commands.graphics,
-                &mut self.commands.footstep_sounds,
-            );
             if !overlay.sound_played && charge.frames >= assets.attacks.charge_sound_frame {
                 self.commands
                     .footstep_sounds
@@ -134,14 +131,8 @@ impl FighterCore {
                     charge.phase = ChargePhase::Charging;
                     charge.saved_rate = self.animation.speed;
                     self.animation.set_rate(&mut self.skeleton, 0.0, false);
-                    if charge.color_animation != 0x7B {
-                        self.commands
-                            .color_animations
-                            .push(melee_cmd::ColorAnimationRequest {
-                                id: charge.color_animation,
-                                duration: 0,
-                            });
-                    }
+                    // ftCo_800DF0D0 installs the charge color (unless 0x7B) in
+                    // the secondary slot; `charge_overlay` runs that program.
                 } else {
                     self.commands.smash_charge = None;
                 }
@@ -159,7 +150,10 @@ impl FighterCore {
 /// lb_80014258 / ft_800BFF34: decoded charge-overlay program.
 #[derive(Clone, Debug)]
 pub enum OverlayCommand {
-    Color { rgba: u32, frames: u32 },
+    Color {
+        rgba: u32,
+        frames: u32,
+    },
     Graphics(melee_types::combat::GraphicsCommand),
     Sound(super::commands::FootstepSound),
     Wait(u32),
@@ -167,6 +161,8 @@ pub enum OverlayCommand {
     Loop(u32),
     LoopEnd,
     ClearColor,
+    /// Opcodes 13-17: lighting only, renderer state.
+    Light,
     End,
 }
 #[derive(Clone, Debug, Default)]
@@ -179,8 +175,11 @@ pub struct ChargeOverlay {
     sound_played: bool,
 }
 impl ChargeOverlay {
+    /// lb_80014258's command loop; returns whether the program reached its end.
+    /// Without `emit` (ft_800BFF70), effect and sound commands are skipped.
     pub(super) fn step(
         &mut self,
+        emit: bool,
         script: &[OverlayCommand],
         graphics: &mut melee_types::fixed::FixedVec<
             melee_types::combat::GraphicsCommand,
@@ -190,13 +189,14 @@ impl ChargeOverlay {
             super::commands::FootstepSound,
             { super::commands::COMMAND_REQUEST_CAPACITY },
         >,
-    ) {
+    ) -> bool {
         self.timer = self.timer.saturating_sub(1);
         while self.timer == 0 {
             match &script[self.instruction] {
                 OverlayCommand::Color { rgba, frames } => self.color = Some((*rgba, *frames)),
-                OverlayCommand::Graphics(command) => graphics.push(command.clone()),
-                OverlayCommand::Sound(sound) => sounds.push(sound.clone()),
+                OverlayCommand::Graphics(command) if emit => graphics.push(command.clone()),
+                OverlayCommand::Sound(sound) if emit => sounds.push(sound.clone()),
+                OverlayCommand::Graphics(_) | OverlayCommand::Sound(_) => {}
                 OverlayCommand::Wait(frames) => self.timer = *frames,
                 OverlayCommand::Goto(target) => {
                     self.instruction = *target;
@@ -213,10 +213,12 @@ impl ChargeOverlay {
                     self.loops.pop();
                 }
                 OverlayCommand::ClearColor => self.color = None,
-                OverlayCommand::End => break,
+                OverlayCommand::Light => {}
+                OverlayCommand::End => return true,
             }
             self.instruction += 1;
         }
+        false
     }
 }
 /// Archive-only adapter for the color overlay vocabulary (lb_013B.c).
@@ -258,6 +260,14 @@ fn read_overlay_inner(
             3 => OverlayCommand::Loop(word & 0x03ff_ffff),
             4 => OverlayCommand::LoopEnd,
             12 | 20 => OverlayCommand::ClearColor,
+            // lb_80013C18 / lb_80013D68 / lb_80013E3C: light setup reads a
+            // second word; lighting has no gameplay effect.
+            13..=15 => {
+                offset += 4;
+                OverlayCommand::Light
+            }
+            // lb_80013F78 / lb_80013FF0: light rotation and light off.
+            16 | 17 => OverlayCommand::Light,
             7 => {
                 let target = archive.link(offset + 4)?.ok_or("overlay goto")?;
                 commands.push(OverlayCommand::Goto(
