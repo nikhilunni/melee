@@ -400,7 +400,7 @@ impl Fighter {
                 map,
                 wind,
             );
-            self.clear_slow_thrown_hitboxes(assets);
+            self.finish_damage_physics_callback(assets);
             return;
         }
         let MotionData::Damage(damage) = &self.core.state_data else {
@@ -415,11 +415,49 @@ impl Fighter {
         } else {
             self.airborne_physics(assets);
         }
-        self.clear_slow_thrown_hitboxes(assets);
+        self.finish_damage_physics_callback(assets);
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.core.physics);
         crate::physics::integrate::integrate_environment(&mut self.core.physics, None, wind);
     }
+    /// ftCo_DamageFlyRoll_Phys (8009035C), ftCo_Damage.c: the two
+    /// doFlyRoll calls straddle ftColl_8007AFF8, before procPhysics KB decay.
+    fn finish_damage_physics_callback(&mut self, assets: &FighterAssets) {
+        self.update_damage_roll_rotation(assets);
+        self.clear_slow_thrown_hitboxes(assets);
+        self.update_damage_roll_rotation(assets);
+    }
+
+    /// Inlined doFlyRoll at 0x800903C4 and 0x8009045C, ftCo_Damage.c.
+    fn update_damage_roll_rotation(&mut self, assets: &FighterAssets) {
+        if self.motion_state.id != S::DamageFlyRoll {
+            return;
+        }
+        let velocity = self.physics.self_velocity;
+        let knockback = self.physics.knockback_velocity;
+        // 800903D8/DC and 80090470/74: separate fadds, atan2f(X, Y).
+        // 800903F0 / 80090488: fmuls by Fighter+2C (facing), no fusion.
+        // Entry repeats this at 8008E308/30C (fadds), 8008E320 (fmuls).
+        let angle = self.physics.facing
+            * melee_lb::trigf::atan2f(velocity.x + knockback.x, velocity.y + knockback.y);
+        let bone = usize::from(
+            assets
+                .parts
+                .joint(melee_types::FtPart::XRotN)
+                .expect("XRotN"),
+        );
+        let joint = self.animation.parts[bone].joint;
+        // ftPartSetRotX (8007592C): quaternion main joints redirect to
+        // FighterBone.x4_jobj2, whose rotation must be Euler.
+        let core = &mut self.core;
+        let tree = if core.skeleton.get(joint).flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0 {
+            &mut core.animation.blend_tree
+        } else {
+            &mut core.skeleton
+        };
+        tree.set_rotation_x(joint, angle);
+    }
+
     /// ftCo_Damage_Coll (8008FB64), ft_80081DD4 (80081DD4).
     pub(super) fn damage_collision(
         &mut self,
@@ -648,6 +686,9 @@ impl Fighter {
         self.change_damage_motion(state.into(), assets, throw_owner)?;
         self.step_animation(assets);
         let result = self.core.finish_damage_reaction(hit, stun, assets)?;
+        // ftCo_8008DCE0 inlineA1 (8008E2F4..8008E334): initialize XRotN
+        // after frame-zero playback, before hitlag can suppress physics.
+        self.update_damage_roll_rotation(assets);
         if let MotionData::Damage(damage) = &mut self.core.state_data {
             let velocity = self.core.physics.knockback_velocity;
             // ftCo_Damage_SetMv8FromKbThreshold: separate products and sums.
@@ -697,6 +738,15 @@ impl Fighter {
             self.core.status.in_hitstun = false;
             self.core.combat.combo.grace = assets.combo.grace_frames;
             (self.character.table().knockback_exit)(self, assets);
+        }
+        // ftCo_DamageFlyRoll_Anim (800901D0), 800902F4..80090304:
+        // enter DamageFall immediately after hitstun, independent of animation.
+        if self.core.motion_state.id == S::DamageFlyRoll {
+            return if self.core.status.in_hitstun {
+                Ok(())
+            } else {
+                self.enter_damage_fall(assets)
+            };
         }
         let MotionData::Damage(damage) = &self.core.state_data else {
             panic!("damage scratch missing")

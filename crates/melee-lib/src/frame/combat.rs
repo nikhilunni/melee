@@ -4,7 +4,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_coll::hitbox::CapsulePhase;
 use melee_ft::fighter::{Fighter, MotionData};
-use std::{fs, path::Path};
+use std::{fs, io::BufRead, path::Path};
 
 const REFLECTOR_INPUT_SCENARIOS: [&str; 7] = [
     "reflectorturn_fd_fox",
@@ -200,10 +200,27 @@ fn replay_scratch_until(name: &str, ticks: usize) {
         InitialState::from_savestate_traces(&scenario).unwrap(),
         crate::trace::pad_script(&scenario).unwrap(),
     );
+    // Fighter raw dumps stop at the fighter allocation; XRotN is a pointed-to
+    // JObj. The companion retail bone recording carries its rotation instead.
+    let mut roll_bones = if name.starts_with("damage_fly_roll_") {
+        let bones = scenario.trace_path("bones.jsonl");
+        if !melee_test_support::require_files([bones.clone()]) {
+            return;
+        }
+        Some(std::io::BufReader::new(fs::File::open(bones).unwrap()).lines())
+    } else {
+        None
+    };
     let raw = fs::read_to_string(path).unwrap();
     assert_eq!(raw.lines().count(), scenario.frames as usize);
     for (tick, line) in raw.lines().take(ticks).enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        let bones: Option<serde_json::Value> = roll_bones.as_mut().map(|lines| {
+            serde_json::from_str(&lines.next().expect("retail bone tick").unwrap()).unwrap()
+        });
+        if let Some(bones) = &bones {
+            assert_eq!(bones["frame"].as_u64(), Some(tick as u64));
+        }
         simulation.tick().unwrap();
         let runtime = &simulation.runtime;
         for slot in 0..2 {
@@ -216,6 +233,41 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 .collect();
             assert_eq!(bytes[12], slot as u8, "slot order tick {tick}");
             crate::scene_fighter::with_fighter!(&runtime.state.fighters[slot], |f| {
+                if name.starts_with("damage_fly_roll_") {
+                    assert_eq!(
+                        f.status.in_hitstun,
+                        bytes[0x221C] & 2 != 0,
+                        "hitstun owner tick {tick} slot {slot}"
+                    );
+                    if let MotionData::Damage(damage) = &f.state_data {
+                        assert_eq!(
+                            damage.trail_timer,
+                            word(&bytes, 0x2348),
+                            "damage trail timer tick {tick} slot {slot}"
+                        );
+                        assert_eq!(
+                            damage.jump_buffer.to_bits(),
+                            word(&bytes, 0x2354),
+                            "damage jump buffer tick {tick} slot {slot}"
+                        );
+                    }
+                    if let Some(bones) = &bones {
+                        let bone = usize::from(
+                            runtime.state.assets.fighters[slot]
+                                .parts
+                                .joint(melee_types::FtPart::XRotN)
+                                .expect("XRotN"),
+                        );
+                        let joint = f.animation.parts[bone].joint;
+                        let key = format!("p{slot}.bone[{bone}].rotate[0]");
+                        let expected = bones["state"][&key]["v"]["bits"].as_u64().unwrap() as u32;
+                        assert_eq!(
+                            f.skeleton.rotation_x(joint).to_bits(),
+                            expected,
+                            "XRotN rotation tick {tick} slot {slot}"
+                        );
+                    }
+                }
                 if AIR_RELEASE_SCENARIOS.contains(&name) {
                     compare_wall_stop(f, &bytes, tick);
                     compare_capture_revival(f, &bytes, tick);
@@ -399,6 +451,9 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                 }
             });
         }
+    }
+    if let Some(mut bones) = roll_bones {
+        assert!(bones.next().is_none(), "all retail bone ticks replayed");
     }
 }
 
@@ -1101,4 +1156,19 @@ fn air_capture_release_matches_owned_scratch() {
 #[test]
 fn revival_laser_invincibility() {
     replay_scratch_until("revival_laser_fd_marth_candidate", 600);
+}
+
+#[test]
+fn damage_fly_roll_t125_scratch() {
+    replay_scratch_until("damage_fly_roll_t125_fd_fox_candidate", 450);
+}
+
+#[test]
+fn damage_fly_roll_dtilt_t132_scratch() {
+    replay_scratch_until("damage_fly_roll_dtilt_t132_fd_fox_candidate", 450);
+}
+
+#[test]
+fn damage_fly_roll_crouch_scratch() {
+    replay_scratch_until("damage_fly_roll_crouch_fd_fox_candidate", 450);
 }

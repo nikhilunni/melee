@@ -1,0 +1,25 @@
+# Fox crouches while Marth forward-smashes at tick 125; the roll (91 at 135) hits the floor: DownBoundU (183 at 139), then Fall (29 at 143).
+# Recorded from idle_fd_marth4_fox200.sav (P1 Marth, P2 Fox at 200%).
+name = "damage_fly_roll_crouch_fd_fox_candidate"
+savestate = "harness/roms/idle_fd_marth4_fox200.sav"
+frames = 450
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = { StickX = 1.0 } },
+  { frame = 88, port = 0, buttons = {  } },
+  { frame = 100, port = 1, buttons = { StickY = -1.0 } },
+  { frame = 145, port = 1, buttons = {  } },
+  { frame = 125, port = 0, buttons = { StickX = 1.0, A = true } },
+  { frame = 128, port = 0, buttons = {  } }
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

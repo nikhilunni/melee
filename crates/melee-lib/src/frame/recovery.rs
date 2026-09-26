@@ -512,3 +512,33 @@ fn revival_laser_invincibility() {
 fn revival_laser_invincibility_particles() {
     replay_particle_fields(&["revival_laser_fd_marth_candidate"]);
 }
+
+#[test]
+fn damage_fly_roll_t125_bones() {
+    replay_bones("damage_fly_roll_t125_fd_fox_candidate", 450);
+}
+
+#[test]
+fn damage_fly_roll_t125_particles() {
+    replay_particle_fields(&["damage_fly_roll_t125_fd_fox_candidate"]);
+}
+
+#[test]
+fn damage_fly_roll_dtilt_t132_bones() {
+    replay_bones("damage_fly_roll_dtilt_t132_fd_fox_candidate", 450);
+}
+
+#[test]
+fn damage_fly_roll_dtilt_t132_particles() {
+    replay_particle_fields(&["damage_fly_roll_dtilt_t132_fd_fox_candidate"]);
+}
+
+#[test]
+fn damage_fly_roll_crouch_bones() {
+    replay_bones("damage_fly_roll_crouch_fd_fox_candidate", 450);
+}
+
+#[test]
+fn damage_fly_roll_crouch_particles() {
+    replay_particle_fields(&["damage_fly_roll_crouch_fd_fox_candidate"]);
+}

@@ -788,3 +788,10 @@ Newest first. One line per session: date, what landed, what is next.
   selection lives in `harness/dolphin_config.py`; host audio muted by default.
   Two scenes re-recorded byte-identical; 227 harness tests pass. Next: resume
   DamageFlyRoll when the matchup work restarts.
+- 2026-09-26: DamageFlyRoll (91) for every fighter: common row (animation
+  181), roll rotation on entry and twice per physics tick (retail 0x800903C4 /
+  0x8009045C straddle ftColl_8007AFF8), DamageFall at hitstun expiry. Three
+  retail witnesses (t125 blast-zone KO, dtilt_t132 hitstun expiry, crouch floor
+  bounce) pass fighter/RNG/particle, 450 bone ticks incl. XRotN, raw scratch
+  and zero allocations; debug/release 1,458 passed. DamageFly wall/ceiling
+  tech chain remains unported. Notes: `docs/PORT_NOTES/DAMAGE_FLY_ROLL.md`.

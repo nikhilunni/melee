@@ -537,3 +537,18 @@ fn air_capture_release_air_jump() {
 fn revival_laser_invincibility() {
     allocation_budget("revival_laser_fd_marth_candidate", 0);
 }
+
+#[test]
+fn damage_fly_roll_t125_allocation_budget() {
+    allocation_budget("damage_fly_roll_t125_fd_fox_candidate", 0);
+}
+
+#[test]
+fn damage_fly_roll_dtilt_t132_allocation_budget() {
+    allocation_budget("damage_fly_roll_dtilt_t132_fd_fox_candidate", 0);
+}
+
+#[test]
+fn damage_fly_roll_crouch_allocation_budget() {
+    allocation_budget("damage_fly_roll_crouch_fd_fox_candidate", 0);
+}

@@ -808,6 +808,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftData_MotionStateList[91] at 0x803C3360: animation 181 (retail DOL).
+    // Roll shares DamageFly IASA/Coll; animation/physics retain its differences.
+    rows[S::DamageFlyRoll as usize] = MotionRow {
+        action: ActionId(91),
+        id: S::DamageFlyRoll,
+        animation: 181,
+        anim: callbacks::animation::damage,
+        iasa: callbacks::input::damage,
+        physics: callbacks::physics::damage,
+        collision: callbacks::collision::damage,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftData_MotionStateList[183], retail ftmotionstates.c.
     rows[S::DownBoundU as usize] = MotionRow {
         action: ActionId(183),
