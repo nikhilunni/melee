@@ -226,10 +226,11 @@ class TickTracer(Tracer):
                 # first tick (gm_1A45.c); a savestate taken at match start
                 # observes that reset. Accept it once and count from there.
                 self.counter_reset_at_start = True
-            elif self.frame and value == 0 and before == self.last_tick and self.human_ports:
-                # A human match ends when a player runs out of stocks: the GAME scene
-                # resets the counter ~113 frames after the last KO. Stop there and
-                # report the tick count actually recorded.
+            elif self.frame and value == 0 and before == self.last_tick \
+                    and (self.human_ports or self.tick_clock):
+                # A human or bridged match ends when a player runs out of stocks: the
+                # GAME scene resets the counter ~113 frames after the last KO. Stop
+                # there and report the tick count actually recorded.
                 self.ended_early = True
                 self.scenario["frames"] = self.frame
                 self.pending_finish = True

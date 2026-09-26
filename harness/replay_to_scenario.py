@@ -152,8 +152,24 @@ inputs = [
     return path
 
 
+def fit_to_trace(name: str) -> None:
+    """A retail match that reached GAME before the recording's end stopped early
+    (tick_trace.py `ended_early`); shorten the scenario to the recorded ticks."""
+    done = json.loads((HERE / "traces" / f"{name}.tick.raw.jsonl.done").read_text())
+    if not done.get("ended_early"):
+        return
+    path = HERE / "scenarios" / f"{name}.toml"
+    text = path.read_text()
+    frames = tomllib.loads(text)["frames"]
+    if frames != done["ticks"]:
+        path.write_text(text.replace(f"\nframes = {frames}\n", f"\nframes = {done['ticks']}\n", 1))
+        print(f"{name}: retail reached GAME after {done['ticks']} ticks (recording {frames}); "
+              "scenario shortened")
+
+
 def verify(recording: dict, name: str) -> int:
     """Compare recorded game pads with the recording; return the first mismatching tick or -1."""
+    fit_to_trace(name)
     trace = HERE / "traces" / f"{name}.tick.expected.jsonl"
     for k, (line, sample) in enumerate(zip(trace.open(), recording["samples"])):
         pads = json.loads(line)["inputs"]
