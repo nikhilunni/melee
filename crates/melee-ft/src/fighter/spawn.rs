@@ -448,6 +448,25 @@ impl Fighter {
         )
     }
 
+    /// Fighter_ChangeMotionState with Ft_MF_SkipAnim from frame zero: the
+    /// motion has no animation of its own (cur_anim_frame stays -1), as in
+    /// the GuardOn and GuardReflect entries (ftCo_800924C0 / ftCo_80093A50).
+    pub(super) fn change_motion_skipping_animation(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                rate: 1.0,
+                skip_animation: true,
+                ..Default::default()
+            },
+        )
+    }
+
     /// Borrow a throw animation/script while preserving ordinary row selection.
     pub(super) fn change_motion_state_with_source(
         &mut self,

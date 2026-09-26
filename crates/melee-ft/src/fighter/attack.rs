@@ -222,6 +222,29 @@ impl Fighter {
         }
         Ok(())
     }
+    /// ftCo_AttackS4_IASA (8008C55C): Link's smash42 combo (ftCo_800CECE8)
+    /// even before the interrupt, then Wait's checks without the spot dodge.
+    pub(super) fn forward_smash_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        if self.core.commands.variables[0] != 0
+            && self.core.input.pressed.intersects(crate::input::Buttons::A)
+        {
+            unimplemented!("ftCo_800CECE8: Link's second forward smash");
+        }
+        if self.core.commands.allow_interrupt {
+            let transition = crate::input::iasa_with_predicates(
+                crate::input::FORWARD_SMASH_PREDICATES,
+                &self.core.input,
+                &assets.input,
+                context,
+            );
+            self.apply_ground_transition(assets, transition)?;
+        }
+        Ok(())
+    }
     /// ftCo_Attack11_IASA (8008ACD8), checkAttack12 (8008AF0C).
     pub(super) fn jab_input(
         &mut self,

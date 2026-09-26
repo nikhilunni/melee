@@ -202,7 +202,8 @@ impl Fighter {
         if let Some(result) = (self.character.table().enter_shield)(self, assets, reflect) {
             return result;
         }
-        self.change_motion_state(
+        // ftCo_800924C0 / ftCo_80093A50: Ft_MF_SkipAnim, then ftAnim_8006EBA4.
+        self.change_motion_skipping_animation(
             (if reflect { S::GuardReflect } else { S::GuardOn }).into(),
             assets,
         )?;

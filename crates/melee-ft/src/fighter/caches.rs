@@ -104,11 +104,16 @@ impl melee_coll::detection::Collider for super::FighterCore {
     fn hurt_count(&self) -> usize {
         self.hurtboxes.len()
     }
+    /// ftColl_8007B128 (8007B128) sets the state of the *first* capsule on the
+    /// commanded bone and returns, so a second capsule on that bone (Fox's
+    /// head) keeps the fighter-wide state.
     fn hurt_status(&self, index: usize) -> melee_types::combat::HurtStatus {
+        let bone = self.hurtboxes[index].bone;
+        let first_on_bone = self.hurtboxes.iter().position(|h| h.bone == bone) == Some(index);
         self.commands
             .capsule_overrides
             .iter()
-            .find(|entry| entry.0 == self.hurtboxes[index].bone)
+            .find(|entry| first_on_bone && entry.0 == bone)
             .map_or(self.commands.capsule_status, |entry| entry.1)
     }
     fn grabbable(&self, index: usize) -> bool {

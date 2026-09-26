@@ -78,6 +78,31 @@ pub const WAIT_PREDICATES: [WaitPredicate; 21] = [
     WaitPredicate::Walk,
 ];
 
+/// ftCo_AttackS4_IASA (8008C55C): Wait's checks without the spot dodge
+/// (ftCo_80099794) or the Fox taunt; the forward smash can be shielded out
+/// of, not spot-dodged out of.
+pub const FORWARD_SMASH_PREDICATES: &[WaitPredicate] = &[
+    WaitPredicate::SpecialSide,
+    WaitPredicate::SpecialUp,
+    WaitPredicate::SpecialNeutral,
+    WaitPredicate::SpecialDown,
+    WaitPredicate::Grab,
+    WaitPredicate::SmashSide,
+    WaitPredicate::SmashUp,
+    WaitPredicate::SmashDown,
+    WaitPredicate::TiltSide,
+    WaitPredicate::TiltUp,
+    WaitPredicate::TiltDown,
+    WaitPredicate::Jab,
+    WaitPredicate::Shield,
+    WaitPredicate::Taunt,
+    WaitPredicate::Jump,
+    WaitPredicate::Dash,
+    WaitPredicate::Squat,
+    WaitPredicate::Turn,
+    WaitPredicate::Walk,
+];
+
 /// ftCo_Ottotto_IASA / ftCo_OttottoWait_IASA: Wait's checks without the spot
 /// dodge (ftCo_80099794) and Fox taunt (ftFx_AppealS) entries; Walk is tested
 /// by the caller with the teeter threshold (ftCo_Walk_CheckInput_Ottotto).

@@ -67,6 +67,10 @@ their effect.
 | Landing dust dispatched before script graphics | Both are script commands queued on the fighter's efAsync stack and flushed newest first | Landing effects resolve with graphics, at their script position |
 | No fast fall in the air Blaster or a platform drop | ft_80084DB0 (their physics) checks CheckFallFast and never skips a first frame | `physics_pass`: fast-fall check, gravity, drift |
 | Burn flames spawned twice after a shield hit | Only Fighter_ChangeMotionState steps color programs at GuardSetOff entry | Extra step removed from `take_shield_hit` |
+| Spot dodge straight out of a forward smash | ftCo_AttackS4_IASA (8008C55C) has no ftCo_80099794 check; shield comes first | `FORWARD_SMASH_PREDICATES` |
+| Fox's second head capsule intangible in up-smash | ftColl_8007B128 sets only the first capsule on the bone | `hurt_status` first-on-bone rule |
+| Tail springs seeded from a stale pose | Dynamics reclaim a chain from joint matrices that only rendering refreshes | Display caches refreshed only on display passes |
+| Fire Fox fall skipped its first physics frame | Only ftCo_Jump_Phys skips a frame; stale Jump scratch must not | Skip limited to JumpF/JumpB |
 | Phantom laser from an Illusion | The Blaster's accessory4 callback is cleared by any motion change | Accessory fires only in the firing loop |
 | No shield SDI/ASDI | ftCo_80092F2C installs ftCo_80093240 / ftCo_800932DC (PlCo +4C0 scale, fmadds) | Guard hitlag callbacks |
 
@@ -79,18 +83,17 @@ Retail expectations were never edited.
 
 ## Corpus status (2026-09-26, end of session)
 
-All 48 corpus v2 cases are bridged to retail. 34 (including three committed
+All 48 corpus v2 cases are bridged to retail. 37 (including three committed
 prefixes restored above) pass fighter keys, items and ordered particle draws
 in `m5_gate::corpus_v2_matches_through_game`. The rest stop at:
 
-- the gameplay camera (7 cases): off-screen magnifier damage
+- the gameplay camera (8 cases): off-screen magnifier damage
   (fighter.c:1595, PlCo +7AC/+7B0/+7B4) and the screen-KO approach both read
   the camera's projection, computed at render time;
-- Fox's tail dynamics during GuardSetOff (4 cases): the whole tail chain
-  departs from retail at once, which moves the tail hurtbox into or out of a
-  shield poke; the spring state is not in the bone dump;
-- a damage entry one animation frame ahead after a smash charge (2), an x
-  offset (1), facing (1) and an RNG divergence (1), not yet diagnosed.
+- Fox's tail during GuardSetOff in one case (s0_e2a_p2), probably the same
+  display-pass seeding with a recording that predates `ps_frame` checks;
+- s1_e12345678_p0 (x at 2044), s0_e49_p2 (facing at 5177) and
+  s1_effffffff_p1 (RNG at 3971), not yet diagnosed.
 
 ## Remaining in this area
 

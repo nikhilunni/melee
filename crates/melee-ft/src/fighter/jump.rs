@@ -314,8 +314,15 @@ impl FighterCore {
                 .y;
             return;
         }
+        // ftCo_Jump_Phys skips its first frame; other states sharing this
+        // physics (Fall, aerials, Fire Fox's fall) may carry stale Jump
+        // scratch and never skip.
+        let jumping = matches!(
+            self.motion_state.id,
+            CommonMotionState::JumpF | CommonMotionState::JumpB
+        );
         if let MotionData::Jump(jump) = &mut self.state_data {
-            if !jump.physics_started {
+            if jumping && !jump.physics_started {
                 jump.physics_started = true;
                 return;
             }

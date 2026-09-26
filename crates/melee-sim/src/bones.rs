@@ -202,7 +202,9 @@ pub fn bones_diff(
     let first = rows.first().context("empty bone dump")?["frame"]
         .as_u64()
         .context("frame")?;
-    let mut simulation = crate::trace::simulation(scenario)?;
+    // The bone dump's own run records its display clock beside it.
+    let raw = scenario.trace_path("bones.raw.jsonl");
+    let mut simulation = crate::trace::simulation_displayed_as(scenario, &raw)?;
     let mut report = Vec::new();
     for (offset, row) in rows.iter().enumerate() {
         let tick = first + offset as u64;

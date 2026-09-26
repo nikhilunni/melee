@@ -15,7 +15,7 @@ pub use human::{
 };
 pub use iasa::{
     iasa_with_predicates, wait_iasa, wait_iasa_observe, WaitContext, WaitPredicate, WaitTransition,
-    OTTOTTO_PREDICATES, WAIT_PREDICATES,
+    FORWARD_SMASH_PREDICATES, OTTOTTO_PREDICATES, WAIT_PREDICATES,
 };
 pub use pad::{Buttons, PadSample, Stick};
 pub use state::{AnalogTimers, ButtonTimers, FighterInput, InputFrame};

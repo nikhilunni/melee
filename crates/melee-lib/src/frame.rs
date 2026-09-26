@@ -977,15 +977,15 @@ impl Simulation {
                 let seed = runtime.state.rng.seed;
                 runtime.rng_writers.push((None, seed));
             }
-            if runtime.frame != 0 {
+            // Rendering refreshes the joints' cached matrices (read when
+            // dynamics reclaim a chain) and runs particleSort
+            // (psdisp.c:0x8039FC70); both happen only when a display pass
+            // separated this tick from the previous one.
+            if runtime.frame != 0 && runtime.display_pass {
                 for fighter in &mut runtime.state.fighters {
                     fighter.0.prepare_dynamic_display_caches();
                 }
-                // particleSort (psdisp.c:0x8039FC70), when a display pass
-                // separated this tick from the previous one.
-                if runtime.display_pass {
-                    runtime.state.particles.sort_for_display(7);
-                }
+                runtime.state.particles.sort_for_display(7);
             }
         }
         let runtime = self.runtime.as_mut();

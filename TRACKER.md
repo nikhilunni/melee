@@ -854,4 +854,7 @@ Newest first. One line per session: date, what landed, what is next.
   resolves with script graphics in script order. 30 corpus matches gated.
   Then ft_80084DB0's fast-fall check for the air Blaster and platform drops,
   and no extra color step after a shield hit: 34 corpus matches gated.
-  Next: the camera port (`melee-cm`), then Fox tail dynamics in GuardSetOff.
+  Then: forward-smash IASA without spot dodge, first-capsule per-bone hurt
+  states, joint caches refreshed only on display passes, Jump's first-frame
+  skip limited to Jump rows. 37 corpus matches gated; 8 of the remaining 11
+  need the gameplay camera. Next: the camera port (`melee-cm`).

@@ -1357,7 +1357,7 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 34] = [
+const CORPUS_MATCHES: [(&str, usize); 37] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
     ("corpus_v2_s0_e2a_p1", 3307),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
@@ -1401,6 +1401,12 @@ const CORPUS_MATCHES: [(&str, usize); 34] = [
     ("corpus_v2_s1_e12345678_p2", 4750),
     // No extra color step after a shield hit: Fighter_ChangeMotionState owns it.
     ("corpus_v2_s0_effffffff_p1", 3343),
+    // Shield out of a forward smash, never a spot dodge (ftCo_AttackS4_IASA);
+    // a per-bone hurt state reaches only the bone's first capsule;
+    // joint caches refresh only on display passes.
+    ("corpus_v2_s1_e49_p2", 6000),
+    ("corpus_v2_s0_edeadbeef_p2", 4559),
+    ("corpus_v2_s1_e49_p1", 6000),
     // Further generated matches that reach GAME or the explorer's tick cap.
     ("corpus_v2_s0_edeadbeef_p1", 4861),
     ("corpus_v2_s0_e1_p2", 4245),

@@ -60,6 +60,20 @@ pub fn dash_attack(fighter: &mut Fighter, phase: InputPhase<'_>) {
         .expect("dash attack IASA");
 }
 
+/// ftData_MotionStateList: ftCo_MS_AttackS4 (60..64).
+pub fn forward_smash(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    let InputPhase { assets } = phase;
+    let context = WaitContext {
+        facing: fighter.core.physics.facing,
+        specials_available: fighter.core.capabilities.specials,
+        shield_health: fighter.core.status.shield_health,
+        ..WaitContext::default()
+    };
+    fighter
+        .forward_smash_input(assets, &context)
+        .expect("forward smash IASA");
+}
+
 pub fn tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = WaitContext {
