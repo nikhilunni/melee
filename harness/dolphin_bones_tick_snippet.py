@@ -28,13 +28,16 @@ from trace_common import ENTITIES_ADDR, event, run  # noqa: E402
 
 
 class BonesTracer(TickTracer):
-    def __init__(self, *args, bones_out, **kwargs):
+    def __init__(self, *args, bones_out, first_tick=0, **kwargs):
         super().__init__(*args, **kwargs)
         self.bones_out = bones_out
+        self.first_tick = first_tick
 
     def record(self, phase: str, mem=None) -> dict:
         mem = self.mem if mem is None else mem
         diagnostic = super().record(phase, mem)
+        if self.frame < self.first_tick:
+            return diagnostic
         state = {}
         for index, gobj in enumerate(walk.fighter_gobjs(mem, ENTITIES_ADDR)):
             root = jobjdump.fighter_root_jobj(mem, gobj)
@@ -86,7 +89,8 @@ def main() -> None:
     os.environ["MELEE_SCENARIO"] = str(scenario)
     os.environ["MELEE_RAW_OUT"] = str(out.with_suffix(".raw.jsonl"))
     bones_out = out.open("w")
-    run(lambda *a, **k: BonesTracer(*a, bones_out=bones_out, **k))
+    first_tick = int(os.environ.get("MELEE_BONES_FROM", "0"))
+    run(lambda *a, **k: BonesTracer(*a, bones_out=bones_out, first_tick=first_tick, **k))
 
 
 if event is not None and __name__ == "__main__":

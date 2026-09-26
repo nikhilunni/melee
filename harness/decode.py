@@ -146,7 +146,7 @@ def main(inp: Path, out: Path) -> None:
             for i, f in enumerate(d.get("fighters", [])):
                 state.update(decode_struct(fighter, bytes.fromhex(f["bytes"]), f"p{i}"))
             record = {"frame": d["frame"], "phase": d["phase"], "state": state}
-            for key in ("tick", "vi_frame", "watch_address", "watch_value"):
+            for key in ("tick", "vi_frame", "ps_frame", "watch_address", "watch_value"):
                 if key in d:
                     record[key] = d[key]
             if "pad_game" in d:

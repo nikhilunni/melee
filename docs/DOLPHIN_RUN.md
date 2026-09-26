@@ -616,6 +616,28 @@ Dolphin when its match starts from a registered boundary:
   retail trace matches through tick 893, where it reaches the same
   unimplemented phantom hit as the generated run.
 
+Bulk bridging: every recording in an explorer output directory can be bridged,
+recorded, pad-verified and gated in one pass (one Dolphin at a time); the
+2026-09-26 session drove this from a scratch script looping over
+`replay_to_scenario.py`, `record.py`, `--verify` and `melee-sim gate`.
+
+### Diagnostics for a diverging scenario (2026-09-26)
+
+- `melee-sim bones-diff <scenario> [--limit N] [--tick T]`: replays against
+  `<name>.bones.jsonl` and prints the first differing local SRT word per
+  fighter and tick (or every differing word of tick T). Record a window cheaply
+  with `record.py <scenario> --no-ledger --no-particles --bones N --bones-from T`
+  (the dump still runs from tick 0 but writes only ticks >= T).
+- `melee-sim particle-sites <scenario> --from A --to B`: ordered particle RNG
+  call sites per tick, port versus the retail ledger (the order the M5 gate
+  checks).
+- `melee-sim particles-diff <scenario> --from A --to B`: first differing
+  particle-system field per tick against `<name>.particles.jsonl`, apart from
+  AppSRT display caches.
+- `record.py --camera N` (`dolphin_camera_tick_snippet.py`): per-tick raw
+  `game_camera`, main CObj with eye/interest positions, CmSubject list and
+  ifMagnify state, the oracle for the camera port.
+
 Recorder timeouts now apply to scripted and replay tick captures as well as
 auxiliary passes. A process that exits before its completion marker is reported
 immediately, including a zero exit code without a completed capture.

@@ -1,12 +1,13 @@
 """Record every capture a scenario needs, in one command.
 
-    cd harness && uv run python record.py scenarios/walk_fd_fox.toml [--bones N] [--no-ledger] [--no-particles]
+    cd harness && uv run python record.py scenarios/walk_fd_fox.toml [--bones N] [--camera N] [--no-ledger] [--no-particles]
 
 Runs, one Dolphin at a time:
   1. the tick trace (run_scenario.py --tick-trace): <name>.tick.{raw,expected}.jsonl
   2. the RNG ledger (dolphin/rng_ledger.py):         <name>.<ledger-suffix>.raw.jsonl
   3. the particle dump (dolphin_particle_snippet.py): <name>.particles.jsonl (+initial/meta)
   4. optionally the tick-aligned bone dump (dolphin_bones_tick_snippet.py, --bones N ticks)
+  5. optionally the gameplay camera dump (dolphin_camera_tick_snippet.py, --camera N ticks)
 and prints P1's motion transitions and the RNG sites beyond the idle set.
 All outputs are machine-local under harness/traces (gitignored).
 """
@@ -85,6 +86,10 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scenario", type=Path)
     ap.add_argument("--bones", type=int, default=0, metavar="N", help="also dump N ticks of bones")
+    ap.add_argument("--bones-from", type=int, default=0, metavar="T",
+                    help="write bone records only from tick T (the dump still runs from tick 0)")
+    ap.add_argument("--camera", type=int, default=0, metavar="N",
+                    help="also dump N ticks of gameplay camera state (dolphin_camera_tick_snippet.py)")
     ap.add_argument("--no-ledger", action="store_true")
     ap.add_argument("--no-particles", action="store_true")
     ap.add_argument("--ledger-suffix", default="ledger", help="ledger file suffix (the 600-tick idle/start scenes use ledger600)")
@@ -191,11 +196,22 @@ def main(argv: list[str] | None = None) -> None:
         run_dolphin_until(HERE / "dolphin_bones_tick_snippet.py",
                           {"MELEE_BONES_ANY_ANIM": "1", "MELEE_BONES_SAVESTATE": str(savestate),
                            "MELEE_BONES_SCENARIO": str(replay_path),
-                           "MELEE_BONES_OUT": str(out), "MELEE_BONES_TICKS": str(a.bones)},
+                           "MELEE_BONES_OUT": str(out), "MELEE_BONES_TICKS": str(a.bones),
+                           "MELEE_BONES_FROM": str(a.bones_from)},
                           # the snippet writes <name>.bones.raw.jsonl(.done/.err) beside the dump
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
                           Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
                           traces / f"{name}.bones.dolphin.out", a.timeout, a.video)
+    if a.camera:
+        out = traces / f"{name}.camera.jsonl"
+        print(f"== {name}: camera dump ({a.camera} ticks)")
+        run_dolphin_until(HERE / "dolphin_camera_tick_snippet.py",
+                          {"MELEE_CAMERA_SAVESTATE": str(savestate),
+                           "MELEE_CAMERA_SCENARIO": str(replay_path),
+                           "MELEE_CAMERA_OUT": str(out), "MELEE_CAMERA_TICKS": str(a.camera)},
+                          Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
+                          Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
+                          traces / f"{name}.camera.dolphin.out", a.timeout, a.video)
     print(f"== {name}: done")
 
 

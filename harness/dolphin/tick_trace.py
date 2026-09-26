@@ -46,6 +46,9 @@ BOUNDARY_CODE = {0x801A4FA0: 0x481EBD5D, 0x801A4FB4: 0x38030001,
                  STORE_PC: 0x90190000}
 # controller.h PadLibData: qnum +0, qread +1, qwrite +2, qcount +3, queue +8.
 PAD_LIB_ADDR = symbols.addr("HSD_PadLibData")
+# psdisp.c:1857-1861: psFrameNum advances once per particle display pass
+# (wrapping 0xFF -> 1). A change between ticks means the lists were re-sorted.
+PS_FRAME_ADDR = symbols.addr("psFrameNum")
 PAD_STATUS_BYTES = 12  # SDK PADStatus: button u16, 4 x s8 sticks, 4 x u8 analog, s8 err
 PAD_ENTRY_BYTES = 4 * PAD_STATUS_BYTES
 RAW_KEYS = ("button", "stickX", "stickY", "substickX", "substickY", "triggerL", "triggerR")
@@ -242,6 +245,7 @@ class TickTracer(Tracer):
             if not record["fighters"]:
                 raise ValueError(f"no fighters at tick ordinal {self.frame}")
             record.update(tick=value, vi_frame=self.vi_frame,
+                          ps_frame=self.mem.read_u8(PS_FRAME_ADDR),
                           watch_address=WATCH_ADDR, watch_value=before,
                           pad_game=self.read_game_pads())
             self.out.write(json.dumps(record) + "\n")
