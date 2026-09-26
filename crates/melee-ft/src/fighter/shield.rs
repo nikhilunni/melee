@@ -186,7 +186,8 @@ impl Fighter {
         self.core.combat.hitlag_callbacks = super::damage::HitlagCallbacks::Guard;
         self.core.input.horizontal.tilt = 254;
         self.core.shield.influence = assets.damage.influence;
-        self.core.advance_color_overlay(assets);
+        // Fighter_ChangeMotionState already stepped the color programs
+        // (fighter.c:1346), including a powershield flash requested at contact.
         self.core.apply_shield_impact(impact, assets)
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,

@@ -65,6 +65,8 @@ their effect.
 | Particle lists sorted on every tick | particleSort runs once per display pass; a recording that ran behind executes several ticks per VI frame and renders once | Tracer records psFrameNum (`ps_frame`); replays sort only when it moved |
 | New generators inserted mid-list after an effect destruction | hsd_8039D4DC / hsd_8039D688 leave the insertion cursor at the list's tail | `park_cursor_at_tail` |
 | Landing dust dispatched before script graphics | Both are script commands queued on the fighter's efAsync stack and flushed newest first | Landing effects resolve with graphics, at their script position |
+| No fast fall in the air Blaster or a platform drop | ft_80084DB0 (their physics) checks CheckFallFast and never skips a first frame | `physics_pass`: fast-fall check, gravity, drift |
+| Burn flames spawned twice after a shield hit | Only Fighter_ChangeMotionState steps color programs at GuardSetOff entry | Extra step removed from `take_shield_hit` |
 | Phantom laser from an Illusion | The Blaster's accessory4 callback is cleared by any motion change | Accessory fires only in the firing loop |
 | No shield SDI/ASDI | ftCo_80092F2C installs ftCo_80093240 / ftCo_800932DC (PlCo +4C0 scale, fmadds) | Guard hitlag callbacks |
 
@@ -77,7 +79,7 @@ Retail expectations were never edited.
 
 ## Corpus status (2026-09-26, end of session)
 
-All 48 corpus v2 cases are bridged to retail. 30 (including three committed
+All 48 corpus v2 cases are bridged to retail. 34 (including three committed
 prefixes restored above) pass fighter keys, items and ordered particle draws
 in `m5_gate::corpus_v2_matches_through_game`. The rest stop at:
 
@@ -87,8 +89,8 @@ in `m5_gate::corpus_v2_matches_through_game`. The rest stop at:
 - Fox's tail dynamics during GuardSetOff (4 cases): the whole tail chain
   departs from retail at once, which moves the tail hurtbox into or out of a
   shield poke; the spring state is not in the bone dump;
-- y offset of +0.6 (2 cases), an x offset (1), facing (1) and three RNG
-  divergences, not yet diagnosed.
+- a damage entry one animation frame ahead after a smash charge (2), an x
+  offset (1), facing (1) and an RNG divergence (1), not yet diagnosed.
 
 ## Remaining in this area
 

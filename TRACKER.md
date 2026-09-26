@@ -852,4 +852,6 @@ Newest first. One line per session: date, what landed, what is next.
   lists only on retail display passes (the tracer now records psFrameNum),
   generator deletions park the insertion cursor at the tail, and landing dust
   resolves with script graphics in script order. 30 corpus matches gated.
+  Then ft_80084DB0's fast-fall check for the air Blaster and platform drops,
+  and no extra color step after a shield hit: 34 corpus matches gated.
   Next: the camera port (`melee-cm`), then Fox tail dynamics in GuardSetOff.

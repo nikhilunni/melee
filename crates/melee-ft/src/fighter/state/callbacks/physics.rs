@@ -322,16 +322,19 @@ impl FighterCore {
             wind,
         );
     }
+    /// ft_80084DB0 (80084DB0): fast-fall check, gravity or fast fall, drift.
     fn physics_pass(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
             assets,
             map: _,
             wind,
         } = phase;
-        crate::physics::airborne::fall_physics(
-            &mut self.physics,
-            &self.attributes.air,
+        // Unlike Jump's first physics frame, nothing is skipped here.
+        self.apply_fall_gravity(assets);
+        self.physics.animation_velocity.x = crate::physics::airborne::drift(
+            self.physics.self_velocity.x,
             self.input.current.stick.x,
+            &self.attributes.air,
         );
         self.finish_air_update(assets, wind);
     }
