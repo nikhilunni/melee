@@ -8,6 +8,16 @@ to the game's pad queue exactly, so each tick record also carries `pad_game`,
 the HSD_PadGameStatus array the tick actually consumed (renewed by
 lb_80019900 right before HSD_GObj_80390CFC runs the tick); the port replays
 that, not the VI schedule. No Dolphin dependency in tests.
+
+Tick input clock (`input_clock = "tick"`): step `frame`s count tick records
+instead of VI callbacks, and each step carries the raw PADStatus values in
+`raw`. HSD_PadRenewMasterStatus dequeues one raw sample per tick from the
+queue HSD_PadRenewRawStatus fills at every VI poll, and keeps the previous
+status when the queue is empty, so which poll a tick sees depends on queue
+depth. Before the first tick and at every tick end (the game is stopped in the
+memcheck callback) the tracer therefore rewrites the queue to hold exactly one
+entry: the pad the next tick must consume. Records then carry exactly the
+scheduled pads, which replay_to_scenario.py --verify checks.
 """
 from __future__ import annotations
 
@@ -34,6 +44,22 @@ MAX_VI_WITHOUT_TICK = 120
 # Retail instructions around gm_1A45.c:340-342, checked after savestate load.
 BOUNDARY_CODE = {0x801A4FA0: 0x481EBD5D, 0x801A4FB4: 0x38030001,
                  STORE_PC: 0x90190000}
+# controller.h PadLibData: qnum +0, qread +1, qwrite +2, qcount +3, queue +8.
+PAD_LIB_ADDR = symbols.addr("HSD_PadLibData")
+PAD_STATUS_BYTES = 12  # SDK PADStatus: button u16, 4 x s8 sticks, 4 x u8 analog, s8 err
+PAD_ENTRY_BYTES = 4 * PAD_STATUS_BYTES
+RAW_KEYS = ("button", "stickX", "stickY", "substickX", "substickY", "triggerL", "triggerR")
+PAD_BUTTON_A, PAD_BUTTON_B = 0x100, 0x200
+
+
+def raw_pad_bytes(raw: dict) -> bytes:
+    """PADStatus bytes 0..9 for a step's `raw` table (err is left untouched).
+    Dolphin reports analog A/B as 0xFF while the digital button is held."""
+    button = int(raw.get("button", 0))
+    signed = [int(raw.get(k, 0)) & 0xFF for k in ("stickX", "stickY", "substickX", "substickY")]
+    return (struct.pack(">H", button) + bytes(signed)
+            + bytes([int(raw.get("triggerL", 0)), int(raw.get("triggerR", 0)),
+                     0xFF if button & PAD_BUTTON_A else 0, 0xFF if button & PAD_BUTTON_B else 0]))
 
 
 class TickTracer(Tracer):
@@ -71,6 +97,17 @@ class TickTracer(Tracer):
             unknown = set(step.get("buttons", {})) - set(remote_proto.GC_KEYS)
             if unknown or type(step.get("frame")) is not int or step["frame"] < 0:
                 raise ValueError(f"bad input step {step!r}: unknown keys {sorted(unknown)}")
+        self.tick_clock = self.scenario.get("input_clock", "vi") == "tick"
+        if self.tick_clock:
+            if self.human_ports:
+                raise ValueError("the tick input clock drives scripted ports only")
+            for step in self.inputs:
+                if set(step.get("raw", {})) - set(RAW_KEYS):
+                    raise ValueError(f"bad raw pad in step {step!r}")
+            self.tick_steps = sorted(self.inputs, key=lambda step: step["frame"])
+            self.tick_step_index = 0
+            self.tick_held: dict[int, dict] = {0: {}, 1: {}}
+            self.injected_ticks = 0
         self.vi_frame = -1
         self.last_tick_vi = 0
         self.last_tick: int | None = None
@@ -104,6 +141,31 @@ class TickTracer(Tracer):
         self.events.on_memorybreakpoint(self.on_memory)
         self.mem.add_memcheck(WATCH_ADDR)  # binding takes just one positional address
         self.installed = True
+        if self.tick_clock:
+            self.inject_tick_pads(0)
+
+    def advance_tick_steps(self, ordinal: int) -> None:
+        """Held per-port step state for tick record `ordinal` (monotonic)."""
+        steps = self.tick_steps
+        while self.tick_step_index < len(steps) and steps[self.tick_step_index]["frame"] <= ordinal:
+            step = steps[self.tick_step_index]
+            self.tick_held[int(step.get("port", 0))] = step
+            self.tick_step_index += 1
+
+    def inject_tick_pads(self, ordinal: int) -> None:
+        """Make tick record `ordinal` consume exactly its scheduled raw pads."""
+        self.advance_tick_steps(ordinal)
+        qnum = self.mem.read_u8(PAD_LIB_ADDR)
+        qwrite = self.mem.read_u8(PAD_LIB_ADDR + 2)
+        queue = self.mem.read_u32(PAD_LIB_ADDR + 8)
+        slot = (qwrite + qnum - 1) % qnum  # the latest poll; ports 2-3 and err stay as polled
+        for port, step in sorted(self.tick_held.items()):
+            base = queue + slot * PAD_ENTRY_BYTES + port * PAD_STATUS_BYTES
+            for offset, byte in enumerate(raw_pad_bytes(step.get("raw", {}))):
+                self.mem.write_u8(base + offset, byte)
+        self.mem.write_u8(PAD_LIB_ADDR + 1, slot)  # qread
+        self.mem.write_u8(PAD_LIB_ADDR + 3, 1)     # qcount
+        self.injected_ticks += 1
 
     def on_frame(self) -> None:
         # Removal here avoids invalidating TMemCheck::Action's `this` while it
@@ -121,7 +183,14 @@ class TickTracer(Tracer):
             if not self.installed:
                 self.t_start = time.monotonic()
                 self.install()
-            self.apply_inputs(self.vi_frame, base=remote_proto.neutral_inputs())
+            if self.tick_clock:
+                # Keep Dolphin's own polls equal to the injected pad; the queue
+                # rewrite at each tick end is what the game actually consumes.
+                for port, step in sorted(self.tick_held.items()):
+                    self.ctl.set_gc_buttons(port, {**remote_proto.neutral_inputs(),
+                                                   **step.get("buttons", {})})
+            else:
+                self.apply_inputs(self.vi_frame, base=remote_proto.neutral_inputs())
             if self.keypad is not None:
                 try:
                     self.keypad_pad = json.loads(self.keypad.read_text())["pad"]
@@ -181,6 +250,8 @@ class TickTracer(Tracer):
             self.frame += 1
             if self.frame == self.scenario["frames"]:
                 self.pending_finish = True
+            elif self.tick_clock:
+                self.inject_tick_pads(self.frame)
             elif value == SATURATED:
                 raise ValueError("game tick counter saturated before requested count")
         except Exception:
@@ -219,7 +290,9 @@ class TickTracer(Tracer):
                 "watch_address": WATCH_ADDR, "store_pc": STORE_PC,
                 "initial_tick": self.initial_tick, "last_tick": self.last_tick,
                 "duplicate_callbacks": self.duplicates, "reentrant_callbacks": self.reentrant,
-                "counter_reset_at_start": self.counter_reset_at_start}
+                "counter_reset_at_start": self.counter_reset_at_start,
+                "input_clock": "tick" if self.tick_clock else "vi",
+                **({"injected_ticks": self.injected_ticks} if self.tick_clock else {})}
 
 
 # Only when Dolphin runs this file directly; importing it (rng_ledger.py) must not start a tracer.

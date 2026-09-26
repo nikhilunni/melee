@@ -1,0 +1,26 @@
+# Retail match-start boundaries that the port's cold construction reproduces
+# exactly (`melee-sim gate harness/scenarios/<cold>.toml`: 600 ticks, 0
+# divergences). A port recording made with the same stage, players, stocks
+# and seed can be replayed in Dolphin from `savestate` by replay_to_scenario.py.
+#
+# To add one: create the savestate with dolphin/drive.py (save-when-fighters at
+# match start, docs/DOLPHIN_RUN.md), record `<name>.toml` with record.py, add a
+# `<name>_cold.toml` scenario with the sidecar seed, gate it, then list it here.
+
+[[boundary]]
+name = "start_fd_fox4"
+cold = "start_fd_fox4_cold"
+savestate = "harness/roms/start_fd_fox4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2477457595
+
+[[boundary]]
+name = "start_fd_marth4"
+cold = "start_fd_marth4_cold"
+savestate = "harness/roms/start_fd_marth4.sav"
+stage = "FinalDestination"
+players = ["Marth", "Fox"]
+stocks = 4
+seed = 629775590

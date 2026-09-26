@@ -84,6 +84,8 @@ def main() -> None:
             scripted = tomllib.loads(Path(os.environ["MELEE_PARTICLES_SCENARIO"]).read_text())
             scenario["inputs"] = scripted.get("inputs", [])
             scenario["fighters"] = scripted.get("fighters", [])
+            if "input_clock" in scripted:  # tick-clock steps carry raw pads (tick_trace.py)
+                scenario["input_clock"] = scripted["input_clock"]
         tracer = ParticleTracer(
             scenario, metadata, saved, read_sidecar(saved), done,
             memory, controller, savestate, event, particle_out=out, initial_path=initial,

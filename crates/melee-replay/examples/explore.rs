@@ -1,5 +1,10 @@
 //! Deterministic robustness corpus. Exactness requires separate retail replay.
 //! cargo run -p melee-replay --release --example explore -- <assets> <output>
+//!
+//! Version 2 starts every case from a retail match-start boundary
+//! (`harness/boundaries.toml`), so `harness/replay_to_scenario.py` can replay
+//! any case in Dolphin. The game seed is therefore fixed per port layout; the
+//! eight seeds below vary only the explorer's own input choices.
 use melee_lib::{
     Buttons, Character, ControllerState, FighterObservation, GameAssets, Inputs, Match,
     MatchConfig, PlayerConfig, Port, Seed, Stage, Stick,
@@ -8,7 +13,7 @@ use melee_replay::Recording;
 use serde::Serialize;
 use std::{collections::BTreeSet, path::PathBuf};
 
-const CORPUS_VERSION: u32 = 1;
+const CORPUS_VERSION: u32 = 2;
 const SEEDS: [u32; 8] = [
     1,
     42,
@@ -20,6 +25,8 @@ const SEEDS: [u32; 8] = [
     u32::MAX,
 ];
 const TICKS: u64 = 6000;
+/// Boundary seeds of `start_fd_fox4` (Fox P1) and `start_fd_marth4` (Marth P1).
+const BOUNDARY_SEEDS: [u32; 2] = [2_477_457_595, 629_775_590];
 
 // Caller-owned randomness must never consume the simulated game's RNG.
 struct Choices(u32);
@@ -230,13 +237,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let assets = GameAssets::load(&directory, &base)?;
         for seed in SEEDS {
             for profile in 0u32..3 {
-                let config = base.clone().with_seed(Seed(seed));
+                let config = base
+                    .clone()
+                    .with_seed(Seed(BOUNDARY_SEEDS[usize::from(swapped)]));
                 let mut game = Match::new(&assets, config.clone())?;
                 let mut recording = Recording::new(&config, &assets);
                 let mut held = [Held::default(); 2];
                 let mut choices = Choices(seed ^ (profile + 1).wrapping_mul(0x9e3779b9));
                 let name = format!(
-                    "v{CORPUS_VERSION}-swap{}-seed{seed:08x}-profile{profile}",
+                    "v{CORPUS_VERSION}-swap{}-explore{seed:08x}-profile{profile}",
                     u8::from(swapped)
                 );
                 let mut row = ResultRow {
@@ -268,6 +277,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             previous[i] = Some(action);
+                            // The boundary savestate already renewed tick 0's pads
+                            // (neutral), so retail cannot replay any other first sample.
+                            if game.tick().0 == 0 {
+                                inputs.0[i] = ControllerState::default();
+                                continue;
+                            }
                             if held[i].remaining == 0 {
                                 held[i] =
                                     choose(fighters[i], fighters[1 - i], &mut choices, profile);

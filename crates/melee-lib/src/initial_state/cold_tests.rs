@@ -149,6 +149,16 @@ fn start_fd_marth_cold_600() {
 fn start_fd_falco_cold_600() {
     verify("start_fd_falco");
 }
+/// Four-stock Fox/Marth boundaries behind `harness/boundaries.toml`: corpus
+/// recordings built on them replay in Dolphin (`replay_to_scenario.py`).
+#[test]
+fn start_fd_fox4_cold_600() {
+    verify("start_fd_fox4");
+}
+#[test]
+fn start_fd_marth4_cold_600() {
+    verify("start_fd_marth4");
+}
 #[test]
 fn start_bf_fox_cold_600() {
     verify("start_bf_fox");

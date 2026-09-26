@@ -70,6 +70,7 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 # Dolphin oracle: headless, silent, Null video by default (docs/DOLPHIN_RUN.md)
 tools/build-headless-dolphin.sh                                   # once, and after any fork rebuild
 cd harness && uv run python record.py scenarios/<name>.toml [--bones N]
+cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>   # port recording -> retail scenario
 ```
 
 ## The gates, in one command each
@@ -116,7 +117,7 @@ for live human play (`record.py` picks it automatically) and menu driving
 (`dolphin/drive.py`). `DOLPHIN_GUI=1` forces windowed; `DOLPHIN_AUDIO=1` unmutes.
 Run recordings one at a time.
 
-Parallel work: independent tasks (different crates, different decomp
+Parallel work (currently suspended; see "Delegating work"): independent tasks (different crates, different decomp
 directories) can be given to subagents at once. Each subagent touches only
 its assigned paths and does not commit; the coordinating session verifies
 and commits each result. Shared files (`Cargo.toml` members, `TRACKER.md`)
@@ -298,6 +299,10 @@ keep it that way. Design notes and code sketches: `docs/STEEL_THREAD.md`.
    phase, and field. Fix before moving on.
 
 ## Delegating work
+
+**Current rule (user, 2026-09-26): do the work yourself in the main session,
+single-threaded. No Codex tasks, no subagents, no parallel lanes.** The
+workflow below is kept as history; do not use it unless the user asks again.
 
 Fable subagents are expensive; the user asked (2026-09-08) to keep them to at
 most one or two, only for judgment-heavy work. Bulk porting goes to **Codex**

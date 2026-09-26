@@ -65,15 +65,24 @@ def main() -> None:
     # Reuse trace_common.run by synthesising the scenario it expects.
     scenario = HERE / "traces" / (out.stem + ".bones_scenario.toml")
     inputs = "inputs = []\n"
+    clock = ""
+
+    def table(values: dict) -> str:
+        return "{ " + ", ".join(f"{k} = {str(v).lower() if isinstance(v, bool) else v}"
+                                for k, v in values.items()) + " }"
     if "MELEE_BONES_SCENARIO" in os.environ:
         # Replay a scripted scenario's inputs (tick_trace.py contract) so the
-        # bone dump covers the same motion as its tick trace.
+        # bone dump covers the same motion as its tick trace, including the
+        # tick input clock and its raw pads.
         scripted = tomllib.loads(Path(os.environ["MELEE_BONES_SCENARIO"]).read_text())
-        steps = [f'  {{ frame = {int(st["frame"])}, port = {int(st.get("port", 0))}, buttons = {{ '
-                 + ", ".join(f'{k} = {str(v).lower() if isinstance(v, bool) else v}' for k, v in st.get("buttons", {}).items())
-                 + " } }" for st in scripted.get("inputs", [])]
+        steps = [f'  {{ frame = {int(st["frame"])}, port = {int(st.get("port", 0))}, '
+                 f'buttons = {table(st.get("buttons", {}))}'
+                 + (f', raw = {table(st["raw"])}' if "raw" in st else "") + " }"
+                 for st in scripted.get("inputs", [])]
         inputs = "inputs = [\n" + ",\n".join(steps) + "\n]\n"
-    scenario.write_text(f'name = "{out.stem}"\nsavestate = "{saved}"\nframes = {ticks}\n{inputs}')
+        if "input_clock" in scripted:
+            clock = f'input_clock = "{scripted["input_clock"]}"\n'
+    scenario.write_text(f'name = "{out.stem}"\n{clock}savestate = "{saved}"\nframes = {ticks}\n{inputs}')
     os.environ["MELEE_SCENARIO"] = str(scenario)
     os.environ["MELEE_RAW_OUT"] = str(out.with_suffix(".raw.jsonl"))
     bones_out = out.open("w")

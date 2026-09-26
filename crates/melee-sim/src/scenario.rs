@@ -27,6 +27,10 @@ pub struct Scenario {
     /// list only says whether the scenario is scripted.
     #[serde(default)]
     pub inputs: Vec<InputStep>,
+    /// Harness clock of `inputs` frames: `vi` (default) or `tick`, where the
+    /// tracer injects each step's `raw` pad into the tick it names.
+    #[serde(default)]
+    pub input_clock: Option<String>,
     /// Per-tick Slippi inputs, independent of comparison traces.
     #[serde(default)]
     pub replay_inputs: Vec<slp::cold::ControllerFrame>,
@@ -64,6 +68,9 @@ pub struct InputStep {
     pub port: u8,
     #[serde(default)]
     pub buttons: toml::Table,
+    /// Raw PADStatus values for the harness's tick input clock.
+    #[serde(default)]
+    pub raw: toml::Table,
 }
 impl Scenario {
     pub fn load(path: &Path) -> Result<Self> {

@@ -584,6 +584,38 @@ Headless capture validates the deterministic simulation oracle only. It does
 not validate native rendering or replace graphics smoke tests. Always run
 recordings serially.
 
+### Corpus bridge: any port recording as a retail oracle (2026-09-26)
+
+A `melee-replay` recording (corpus explorer, native app export) replays in
+Dolphin when its match starts from a registered boundary:
+
+    uv run python replay_to_scenario.py <recording.json> --name <scenario>
+    uv run python record.py scenarios/<scenario>.toml [--bones N]
+    uv run python replay_to_scenario.py <recording.json> --name <scenario> --verify
+
+- `harness/boundaries.toml` lists match-start savestates whose cold
+  construction the port reproduces exactly (`start_fd_fox4`, `start_fd_marth4`,
+  both 600 ticks and 107 initial-scene fields, `cold_tests.rs`). The recording
+  must use the boundary's stage, players, stocks and seed. Add a boundary per
+  new stage/character layout (or extra seeds) the same way.
+- Scenarios use `input_clock = "tick"`: step frames count tick records and
+  carry raw PADStatus values. `HSD_PadRenewMasterStatus` dequeues one raw poll
+  per tick and repeats the last status when the queue is empty, so VI-frame
+  scheduling occasionally lands a step one tick late. The tick tracer instead
+  rewrites the raw queue at every tick end (game stopped in the memcheck
+  callback) to hold exactly the next tick's pad. Every capture pass inherits
+  it from `TickTracer`.
+- Analog values must be retail-reachable: sticks k/80 with radius <= 80,
+  triggers k/140. Dolphin's float for each value comes from
+  `dolphin/pad_calibration.json`, measured by `calibrate_pads.py`.
+- The first tick's pads were renewed before the savestate was taken and are
+  neutral; the explorer holds neutral on tick 0 and the bridge rejects
+  anything else.
+- `--verify` compares every recorded tick's pads with the recording. Verified
+  on `corpus_v2_s0_e1_p0` (894 ticks): pads exact, and the port replaying the
+  retail trace matches through tick 893, where it reaches the same
+  unimplemented phantom hit as the generated run.
+
 Recorder timeouts now apply to scripted and replay tick captures as well as
 auxiliary passes. A process that exits before its completion marker is reported
 immediately, including a zero exit code without a completed capture.

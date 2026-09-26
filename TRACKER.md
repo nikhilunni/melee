@@ -267,6 +267,8 @@ the port meets the real game, so expect surprises and record them here.
 | 2026-09-09 | **Steel thread before breadth:** Fox vs Marth on Final Destination, a full match bit-exact, with a consolidation round first | User (2026-09-09): the gold standard is clean, zero-cost abstractions; going wide should be additional trait implementations and tables, not more shared code. |
 | 2026-09-09 | Motion states are fn-pointer tables (common table + per-character table from `CharacterCallbacks::special_rows()`), specials enter through a trait hook; kinds that share retail code get a family crate (`ft-fox-family` with a `FoxFamily` trait) that both characters depend on; `Fighter<C>` becomes a non-generic core plus a thin generic shell; no heap allocation in the tick path; perf/size/instantiation budgets are regression gates | Mirrors retail's own dispatch (`ftData_MotionStateList`, `ftFx_Init_MotionStateTable`, `ftData_SpecialN` per-kind tables), so the port's code is the C with the `switch (kind)` deleted. Keeps monomorphization (the one real cost) small. Baseline 2026-09-09: stripped `melee-sim` 3.9 MB, 600-tick gate 0.25 s CPU incl. load. |
 | 2026-09-26 | Record with the headless Dolphin (`DolphinHeadless.app`, Null video, host audio muted) by default; windowed only for live human play and menu driving | Byte-identical to windowed recordings on two scenes; no IOSurface exhaustion, no window or sound. `tools/build-headless-dolphin.sh`, `docs/DOLPHIN_RUN.md`. |
+| 2026-09-26 | Work single-threaded in the main session: no Codex, subagents or lanes | User request mid-milestone. |
+| 2026-09-26 | Robustness corpus v2 starts from registered retail boundaries so every case (and fault) is replayable in Dolphin | Turns generated failures into exact oracles; extends to other layouts by adding boundaries. |
 | pending | Retail asm workflow once disc arrives | `dtk` disassembly vs `objdiff`; how agents look up a function's asm. |
 
 ## Milestone 0: Infrastructure
@@ -795,3 +797,14 @@ Newest first. One line per session: date, what landed, what is next.
   bounce) pass fighter/RNG/particle, 450 bone ticks incl. XRotN, raw scratch
   and zero allocations; debug/release 1,458 passed. DamageFly wall/ceiling
   tech chain remains unported. Notes: `docs/PORT_NOTES/DAMAGE_FLY_ROLL.md`.
+- 2026-09-26: Corpus-to-retail bridge. Four-stock Fox/Marth FD boundaries
+  (`start_fd_fox4` recorded headless, `start_fd_marth4`) match cold
+  construction exactly; `harness/boundaries.toml` registers them.
+  `replay_to_scenario.py` turns a melee-replay recording into a tick-clock
+  scenario: TickTracer rewrites HSD's raw pad queue at every tick end so each
+  tick consumes exactly the recorded pad (VI scheduling drifted a tick);
+  `calibrate_pads.py` measures Dolphin floats for every stick/trigger value.
+  Corpus v2 (explore.rs) starts from those boundaries with a neutral first
+  tick; 48 cases: 9 faults (5 fighter phantom, 2 item phantom, 1 captured
+  damage, 1 Reflector ground-to-air). Bridged phantom case: pads exact for 894
+  ticks, port matches retail through the fault. Next: phantom hits.
