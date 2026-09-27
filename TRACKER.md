@@ -1164,3 +1164,15 @@ Newest first. One line per session: date, what landed, what is next.
   list (Furafura exit, weak hit reactions, DownDamageU, shield-break
   orientations, Fox Bob-omb throws, slow ledge options), TurnRun's word and
   DownDamage wall contact.
+- 2026-09-27: Interaction witnesses from the matrix's MISSING list. Exact
+  on first recording: Fox's slow ledge options at 300% (four), Furafura
+  expiry and hit, DownDamageU, a laser detonating a thrown Bob-omb, a
+  thrown Bob-omb on Fox's shield, Marth's Counter against a blast. Silent
+  divergences found and fixed: a reflected Bob-omb (it_80273030: velocity
+  reversed, facing flipped, lifetime from xD48) and thrown items' contact
+  damage and hit direction (it_8026B1D4's speed bonus; ftColl_8007A06C's
+  velocity rule). The normal-mode explorer (1,800 cases, skip 2000) found
+  only FlyReflectCeil, now ported with the ceiling tech (PassiveCeil) and
+  bridged exact over 5740 ticks. Full release gate 1477/0 before the item
+  fixes; m5 217/217 after. Disk: freed 20 GB of debug incremental cache;
+  ~10 GB free, ~1.2 GB per Sudden Death witness with its backup.
