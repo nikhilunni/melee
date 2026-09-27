@@ -124,9 +124,13 @@ impl Fighter {
             landing_lag,
         });
         if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
-            unimplemented!("ftCo_FallSpecial.c:52-53: grounded special-fall entry");
+            // ftCo_FallSpecial.c:52-53: entered on the ground, the fighter
+            // leaves it with its jumps spent (ftCommon_8007D60C).
+            self.core.leave_ground_with_spent_jumps();
+        } else {
+            // ftCommon_UseAllJumps (ftCo_80096900's path).
+            self.core.physics.jumps_used = self.core.attributes.jumping.max_jumps as u8;
         }
-        self.core.physics.jumps_used = self.core.attributes.jumping.max_jumps as u8;
         Ok(())
     }
 
