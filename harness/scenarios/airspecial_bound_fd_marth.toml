@@ -1,0 +1,33 @@
+# Air specials on the stick bound: both fighters jump (X) and press B with
+# the raw stick at (48, -44), exactly (0.6, -0.55). ftCo_SpecialAir_CheckInput
+# (8009665C) reads the stick with inclusive bounds, so both take the down
+# special (Fox's Reflector, Marth's Counter), not the side special.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "airspecial_bound_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 10, port = 1, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 12, port = 0, buttons = {  }, raw = {  } },
+  { frame = 12, port = 1, buttons = {  }, raw = {  } },
+  { frame = 24, port = 0, buttons = { StickX = 0.6, StickY = -0.55 }, raw = { stickX = 48, stickY = -44 } },
+  { frame = 24, port = 1, buttons = { StickX = -0.6, StickY = -0.55 }, raw = { stickX = -48, stickY = -44 } },
+  { frame = 26, port = 0, buttons = { B = true, StickX = 0.6, StickY = -0.55 }, raw = { button = 512, stickX = 48, stickY = -44 } },
+  { frame = 26, port = 1, buttons = { B = true, StickX = -0.6, StickY = -0.55 }, raw = { button = 512, stickX = -48, stickY = -44 } },
+  { frame = 28, port = 0, buttons = {  }, raw = {  } },
+  { frame = 28, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

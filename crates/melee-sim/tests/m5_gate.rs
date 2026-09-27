@@ -405,6 +405,13 @@ fn uair_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("uair_fd_fox");
 }
 
+/// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
+/// (0.6, -0.55) takes the down special in the air.
+#[test]
+fn airspecial_bound_fd_marth_200_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("airspecial_bound_fd_marth", 200);
+}
+
 #[test]
 fn dair_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("dair_fd_fox");

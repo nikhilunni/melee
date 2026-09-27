@@ -5,7 +5,13 @@ use crate::input::{WaitContext, WaitPredicate, WaitTransition};
 impl Fighter {
     /// ftCo_SpecialS_CheckInput / ftCo_Attack100_CheckInput / ftCo_800D6824 /
     /// ftCo_800D68C0 consult ftData_SpecialS/Hi/N/Lw[kind], respectively.
+    /// In the air, ftCo_SpecialAir_CheckInput reads the stick itself.
     pub(crate) fn enter_buffered_special(&mut self, assets: &FighterAssets, airborne: bool) {
+        if airborne {
+            let slot = air_special_slot(self.core.input.current.stick, &assets.input);
+            self.enter_special(slot, true, assets);
+            return;
+        }
         let context = WaitContext {
             facing: self.core.physics.facing,
             specials_available: self.core.capabilities.specials,
@@ -18,17 +24,11 @@ impl Fighter {
             (WaitPredicate::SpecialNeutral, SpecialSlot::Neutral),
             (WaitPredicate::SpecialDown, SpecialSlot::Down),
         ];
-        const AIR: [(WaitPredicate, SpecialSlot); 4] = [
-            (WaitPredicate::SpecialUp, SpecialSlot::Up),
-            (WaitPredicate::SpecialDown, SpecialSlot::Down),
-            (WaitPredicate::SpecialSide, SpecialSlot::Side),
-            (WaitPredicate::SpecialNeutral, SpecialSlot::Neutral),
-        ];
-        for (predicate, slot) in if airborne { AIR } else { GROUND } {
+        for (predicate, slot) in GROUND {
             if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, &context)
                 == WaitTransition::Special(slot)
             {
-                self.enter_special(slot, airborne, assets);
+                self.enter_special(slot, false, assets);
                 return;
             }
         }
@@ -75,5 +75,25 @@ impl Fighter {
             self.core.physics.ground_velocity = gekko_math::fma::fmadds(reduction, terrain, speed);
         }
         (self.character.table().enter_special)(self, slot, airborne, assets);
+    }
+}
+
+/// ftCo_SpecialAir_CheckInput (8009665C): the current stick, inclusive bounds
+/// (retail 800966F4 `cror eq,lt,eq`): up at PlCo +21C, down at its negation,
+/// sideways at |x| >= PlCo +218, else neutral. Unlike the ground checks it
+/// reads no tilt timers, so a stick exactly on a bound still counts.
+fn air_special_slot(
+    stick: crate::input::pad::Stick,
+    input: &crate::input::common::InputCommonData,
+) -> SpecialSlot {
+    let vertical = input.special_vertical_threshold;
+    if stick.y >= vertical {
+        SpecialSlot::Up
+    } else if stick.y <= -vertical {
+        SpecialSlot::Down
+    } else if gekko_math::msl::fabsf(stick.x) >= input.special_side_threshold {
+        SpecialSlot::Side
+    } else {
+        SpecialSlot::Neutral
     }
 }
