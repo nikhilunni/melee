@@ -34,9 +34,11 @@ impl Fighter {
         let bone = usize::from(self.core.bones.model.shield);
         let joint = self.core.animation.parts[bone].joint;
         let scale = self.core.skeleton.get(joint).scale.y;
+        // ftCo_SpawnEf (efAsync kind 0, 1051) follows ftAnim_8006EBA4, so the
+        // request sits behind the ShieldBreakFly script's queued graphics.
         self.core
             .effects
-            .push(melee_ef::request::EffectRequest::ShieldBreak { bone, scale });
+            .push_after_graphics(melee_ef::request::EffectRequest::ShieldBreak { bone, scale });
         self.core.shield_sound(130);
         self.core.shield_rumble(24);
         self.core.commands.hurt_status = HurtStatus::Intangible;
