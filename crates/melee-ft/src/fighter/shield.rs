@@ -404,8 +404,15 @@ impl Fighter {
                 return self.apply_ground_transition(assets, transition);
             }
         }
-        // ftCo_8009515C (800951B8): the shared union countdown advances
-        // even without a held item; it chooses a dash item throw, not a jump.
+        // ftCo_8009515C (8009515C): A with a held item throws it, as a dash
+        // throw inside the countdown, otherwise aimed by ftCo_80095A30.
+        if self.core.held_item.is_some() && self.core.input.pressed.intersects(Buttons::A) {
+            if self.guard().dash_item_throw_frames != 0 {
+                unimplemented!("ftCo_8009515C: LightThrowDash out of a dash's shield");
+            }
+            return self.enter_ground_item_throw(assets);
+        }
+        // Otherwise the shared union countdown advances.
         if self.guard().dash_item_throw_frames != 0 {
             self.guard().dash_item_throw_frames -= 1;
         }

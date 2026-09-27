@@ -474,6 +474,15 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         };
         i += 1;
     }
+    // ftCo_MS_LightThrowDash = 98: its own friction and collision.
+    rows[S::LightThrowDash as usize] = MotionRow {
+        action: ActionId(98),
+        id: S::LightThrowDash,
+        animation: 83,
+        physics: callbacks::physics::dash_throw,
+        collision: callbacks::collision::dash_item_throw,
+        ..rows[S::LightThrowF as usize]
+    };
     // The air throws (ftCo_LightThrowAir_Phys / _Coll).
     const AIR_THROWS: [(S, i32); 8] = [
         (S::LightThrowAirF, 85),

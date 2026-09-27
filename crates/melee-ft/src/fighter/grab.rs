@@ -19,6 +19,9 @@ impl Fighter {
         assets: &FighterAssets,
         context: &crate::input::WaitContext,
     ) -> Result<bool> {
+        if self.try_dash_item_throw(assets)? {
+            return Ok(true);
+        }
         if self.first_ground_transition(assets, context, &[crate::input::WaitPredicate::Grab])
             != crate::input::WaitTransition::Grab
         {
@@ -75,24 +78,42 @@ impl FighterCore {
         map: &melee_mp::CollMap,
         wind: Vec3,
     ) {
-        if !self
+        // ftCo_Catch_Phys's friction: a separate multiplier product.
+        let friction = assets.grab_friction_multiplier * self.attributes.ground.ground_friction;
+        self.root_motion_or_friction(friction, assets, map, wind);
+    }
+
+    /// ft_80085030 (80085030): the animation's TransN drives the ground
+    /// speed when it has root motion, otherwise `friction` slows it.
+    pub(super) fn root_motion_or_friction(
+        &mut self,
+        friction: f32,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Vec3,
+    ) {
+        if self
             .animation
             .flags
             .contains(crate::anim::MotionFlags::ROOT_MOTION)
         {
-            return self.catch_physics(assets, map, wind);
+            let offset = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("root motion TransN")
+                .primary_history
+                .offset
+                .z;
+            // retail ft_80085030, 8008505C: fmsubs.
+            self.physics.ground_acceleration =
+                gekko_math::fma::fmsubs(offset, self.physics.facing, self.physics.ground_velocity);
+        } else {
+            self.physics.ground_acceleration = crate::physics::friction::friction_acceleration(
+                self.physics.ground_velocity,
+                friction,
+            );
         }
-        let offset = self
-            .animation
-            .root_motion
-            .as_ref()
-            .expect("CatchDash TransN")
-            .primary_history
-            .offset
-            .z;
-        // retail ft_80085030, 8008505C: fmsubs.
-        self.physics.ground_acceleration =
-            gekko_math::fma::fmsubs(offset, self.physics.facing, self.physics.ground_velocity);
         use crate::physics::grounded::{self, GroundedParameters};
         grounded::apply_ground_movement(
             &mut self.physics,

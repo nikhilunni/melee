@@ -1047,3 +1047,8 @@ Newest first. One line per session: date, what landed, what is next.
   witness reaches them): ceiling bounce/tech, a hit knocking a held item
   loose, shield/dash with an item, the other Sudden Death gaps in
   docs/COVERAGE_AUDIT.md.
+- 2026-09-27: Shield and dash with a held item: ftCo_8009515C throws from
+  shield, ftCo_800D8A38 / ftCo_Dash_IASA give LightThrowDash (PlCo
+  +404..40C friction through the shared ft_80085030 helper) or an early
+  forward smash throw; every Wait entry now plays the item idle
+  (ft_8008A348, previously only after LightGet). Four witnesses gated.

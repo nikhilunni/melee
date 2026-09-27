@@ -38,7 +38,11 @@ ftCo_80095328's air throws, which switch to the ground throw on landing
 (ftCo_80095744, Item_8026ABD8, it_3F14_Logic6_Dropped) and locks the aerial
 catch until a grounded motion entry (`sudden_death_airdrop_bomb_fd_marth`).
 A launch while holding draws Fighter_8006CDA4's drop chance; an actual
-knock-loose still fails closed.
+knock-loose still fails closed. Shielding keeps the item and A in shield throws it (ftCo_8009515C,
+`sudden_death_shield{hold,throw}_bomb_fd_marth`); dashing keeps it and A
+mid-dash is a dash throw (LightThrowDash, ftCo_800D8A38) or, in the first
+frames, a forward smash throw (`sudden_death_dash{hold,throw}_bomb_fd_marth`).
+Every Wait entry plays the item idle while holding (ft_8008A348).
 
 While a fighter holds an item only LightGet, Wait, walking, jumping, falling
 and the light throws are audited
@@ -47,7 +51,7 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: dash, run and turn throws, drops (shield, a hit that knocks the item loose), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, drops (a hit that knocks the item loose), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
 | `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |

@@ -226,6 +226,9 @@ pub struct FighterAssets {
     /// PlCo +3FC: an air throw within this many frames of the stick's move
     /// is a smash throw (ftCo_80095328).
     pub air_smash_throw_window: i32,
+    /// PlCo +404/+408/+40C: a dash throw's friction multiplier, the frames
+    /// it applies scaled, and that scale (ftCo_LightThrowDash_Phys).
+    pub dash_throw_friction: [f32; 3],
     /// CommonBehavior's item hand slots and held-item idle choice.
     pub item_hand: Option<ItemHandSlots>,
     pub idle_variants_while_holding: bool,
@@ -271,7 +274,7 @@ impl FighterAssets {
                 45, 46, 58, 167, 168, 169, 209, 242, 243,
                 // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet and
                 // the ground light throws (F/B/Hi/Lw, then their smash forms).
-                6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103,
+                6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103, 83,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -462,6 +465,7 @@ impl FighterAssets {
                         // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet
                         // and the ground light throws (F/B/Hi/Lw, smash forms).
                         6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103,
+                        83,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,
@@ -639,6 +643,11 @@ impl FighterAssets {
             smash_throw_rate: common.reader().f32(common_data + 0x400)?,
             fly_reflect: super::fly_reflect::BounceParameters::read(common, common_data)?,
             air_smash_throw_window: common.reader().s32(common_data + 0x3FC)?,
+            dash_throw_friction: [
+                common.reader().f32(common_data + 0x404)?,
+                common.reader().f32(common_data + 0x408)?,
+                common.reader().f32(common_data + 0x40C)?,
+            ],
             item_hand: descriptor.common_behavior.item_hand,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
             pickup: {

@@ -454,3 +454,22 @@ pub fn ottotto(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = assets.expect("teeter collision needs proc_map_with_assets");
     fighter.teeter_collision(assets, map)
 }
+
+/// ftCo_LightThrowDashDrop_Coll (80096208) -> ft_80084104: leaving the
+/// ground mid-throw enters Fall, which is not ported while holding.
+pub fn dash_item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    use crate::collision::ground::{map_escape, WaitGroundResult};
+    let core = &mut fighter.core;
+    if map_escape(
+        &mut core.physics,
+        &mut core.collision,
+        phase.map,
+        &mut core.skeleton,
+        core.animation.root,
+        core.input.current.stick.x,
+    ) == WaitGroundResult::EnterFall
+    {
+        unimplemented!("ft_80084104: a dash throw leaving the ground");
+    }
+    Ok(())
+}

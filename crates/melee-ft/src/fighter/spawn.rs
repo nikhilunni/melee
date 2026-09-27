@@ -293,8 +293,14 @@ impl Fighter {
     /// Fighter_ChangeMotionState (0x800693AC), fighter.c:933-1391,
     /// reached through ft_8008A2BC/ft_8008A348 (Wait) or ftCo_Fall_Enter
     /// (cold airborne spawn).
+    /// Fighter_ChangeMotionState (0x800693AC) at frame zero. Entering Wait
+    /// is ft_8008A348's: with an item in hand the kind's item idle follows.
     pub fn change_motion_state(&mut self, state: ActionId, assets: &FighterAssets) -> Result<()> {
-        self.change_motion_state_at(state, assets, 0.0)
+        self.change_motion_state_at(state, assets, 0.0)?;
+        if state == CommonMotionState::Wait.into() {
+            self.core.play_wait_holding_idle(assets)?;
+        }
+        Ok(())
     }
 
     /// Fighter_ChangeMotionState (0x800693AC): retain a caller-supplied walk phase.

@@ -1493,6 +1493,12 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_hitholding_bomb_fd_marth", 1433),
         // Fox's early run changes the rain; his dash attack launches Marth.
         ("sudden_death_foxdash_fd_marth", 1545),
+        // Shielding and dashing with the Bob-omb in hand; A in shield and
+        // A mid-dash throw it (ftCo_8009515C, LightThrowDash).
+        ("sudden_death_shieldhold_bomb_fd_marth", 1433),
+        ("sudden_death_shieldthrow_bomb_fd_marth", 1545),
+        ("sudden_death_dashhold_bomb_fd_marth", 1437),
+        ("sudden_death_dashthrow_bomb_fd_marth", 1545),
     ] {
         combat_gate_ticks(name, ticks);
     }

@@ -213,6 +213,16 @@ impl Fighter {
         self.core.release_held_item(held.item, assets);
     }
 
+    /// ftCo_800D8A38 / ftCo_800D8AE0's item half (ftCo_80095254): A with a
+    /// held item (ftCo_80094E54) while dashing or running is a dash throw.
+    pub(super) fn try_dash_item_throw(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if !self.core.item_throw_pressed() {
+            return Ok(false);
+        }
+        self.enter_item_throw(S::LightThrowDash, assets)?;
+        Ok(true)
+    }
+
     /// ftCo_800957F4 (800957F4): enter a throw state; the accessory runs
     /// once at once to record the hand.
     pub(super) fn enter_item_throw(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
@@ -435,6 +445,34 @@ impl Fighter {
 }
 
 impl super::FighterCore {
+    /// ftCo_80094E54 (80094E54): an item in hand and A, with a shoulder
+    /// held or the item throwable.
+    pub(super) fn item_throw_pressed(&self) -> bool {
+        use crate::input::Buttons;
+        self.held_item.is_some_and(|held| {
+            self.input.pressed.intersects(Buttons::A)
+                && (self.input.current.held.intersects(Buttons::SHIELD) || held.use_kind == 0)
+        })
+    }
+
+    /// ftCo_LightThrowDash_Phys (80096144): PlCo +404 of the ground friction,
+    /// scaled by +40C through frame +408; separate fmuls.
+    pub(super) fn dash_throw_physics(
+        &mut self,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Vec3,
+    ) {
+        let [multiplier, frames, scale] = assets.dash_throw_friction;
+        let friction = multiplier * self.attributes.ground.ground_friction;
+        let friction = if self.animation.frame <= frames {
+            friction * scale
+        } else {
+            friction
+        };
+        self.root_motion_or_friction(friction, assets, map, wind);
+    }
+
     /// The world translation of the held part (ftData x8 +0x10).
     pub fn held_part_position(&mut self) -> Vec3 {
         let part = self.bones.model.animation_translation;

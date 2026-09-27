@@ -379,3 +379,10 @@ pub fn ottotto(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     );
 }
+
+/// ftData_MotionStateList: ftCo_MS_LightThrowDash (98).
+pub fn dash_throw(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    fighter
+        .core
+        .dash_throw_physics(phase.assets, phase.map, phase.wind)
+}

@@ -121,13 +121,24 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 27] = [
+const HELD_ITEM_STATES: [S; 36] = [
     S::LightGet,
     S::Wait,
     // ftCo_Walk: a light item changes nothing but the IASA's item throw.
     S::WalkSlow,
     S::WalkMiddle,
     S::WalkFast,
+    // Guard (ftCo_Guard): the shield keeps the item; A throws it.
+    S::GuardOn,
+    S::Guard,
+    S::GuardOff,
+    S::GuardSetOff,
+    S::GuardReflect,
+    // Dashing and running keep a light item; A there is a dash throw.
+    S::Dash,
+    S::Run,
+    S::RunBrake,
+    S::LightThrowDash,
     // ftCo_80095A30's ground throws: the item leaves at the release flag.
     S::LightThrowF,
     S::LightThrowB,
@@ -163,6 +174,16 @@ const WAIT_HOLDING_ITEM_ANIMATION: i32 = 6;
 const PICKUP_SEARCH_LIMIT: f32 = 30000.0;
 
 impl FighterCore {
+    /// ft_8008A348 after its Wait entry: with an item held in any hand pose
+    /// but 2, the kind's item idle (ftCo_8008A698 -> ftCo_8008A6D8).
+    pub(super) fn play_wait_holding_idle(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.held_item.is_some_and(|held| held.hand_hold_kind != 2)
+            && assets.motions.contains_key(&WAIT_HOLDING_ITEM_ANIMATION)
+        {
+            self.play_idle_animation(assets, WAIT_HOLDING_ITEM_ANIMATION)?;
+        }
+        Ok(())
+    }
     /// The ground IASA context: facing, specials, shield and the held item.
     pub fn wait_context(&self) -> crate::input::WaitContext {
         crate::input::WaitContext {
@@ -363,17 +384,7 @@ impl Fighter {
     /// (ftCo_8008A698 -> ftCo_8008A6D8) when it has one. DownSpot
     /// (x2224_b2) and the hammer (ftCo_800C5240) cannot follow LightGet.
     fn enter_wait_holding(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.change_motion_state(S::Wait.into(), assets)?;
-        if self
-            .core
-            .held_item
-            .is_some_and(|held| held.hand_hold_kind != 2)
-            && assets.motions.contains_key(&WAIT_HOLDING_ITEM_ANIMATION)
-        {
-            self.core
-                .play_idle_animation(assets, WAIT_HOLDING_ITEM_ANIMATION)?;
-        }
-        Ok(())
+        self.change_motion_state(S::Wait.into(), assets)
     }
 
     /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.

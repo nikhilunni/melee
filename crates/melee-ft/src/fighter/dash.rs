@@ -98,6 +98,10 @@ impl Fighter {
             return Ok(());
         }
         if dash.early_interrupts && frame <= common.early_interrupt_frames {
+            // ftCo_Dash_IASA: an item thrown this early is a smash throw.
+            if self.core.item_throw_pressed() {
+                return self.enter_item_throw(CommonMotionState::LightThrowF4, assets);
+            }
             if self.try_dash_catch(assets, context)? {
                 return Ok(());
             }
