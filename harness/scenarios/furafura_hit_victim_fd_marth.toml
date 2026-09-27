@@ -1,0 +1,26 @@
+# Marth holds shield until it depletes (225), breaks, lands (DownU, StandU)
+# is dizzy (Furafura, 341); Fox runs in and dash-attacks him while dizzy.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "furafura_hit_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 0, triggerL = 0 } },
+  { frame = 400, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 440, port = 1, buttons = {  }, raw = { stickX = -80, button = 256 } },
+  { frame = 442, port = 1, buttons = {  }, raw = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

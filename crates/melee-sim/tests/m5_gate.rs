@@ -847,6 +847,18 @@ fn shieldbreak_hold_fd_marth_700_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("shieldbreak_hold_fd_marth", 700);
 }
 
+/// Marth dizzy after a decay break until Furafura wears off (831).
+#[test]
+fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("furafura_expire_victim_fd_marth", 900);
+}
+
+/// Fox dash-attacks a dizzy Marth (Furafura -> damage).
+#[test]
+fn furafura_hit_victim_fd_marth_600_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("furafura_hit_victim_fd_marth", 600);
+}
+
 #[test]
 fn s6_shield_scenes_before_cross_lane_boundaries() {
     for (name, frames, prefix) in [
