@@ -518,6 +518,28 @@ gm_80167320 (final stock).
 
 ## MISSING reachable transitions, ranked by how likely they are in play
 
+**Status, 2026-09-27 (evening).** Witnessed since the draft: Fox's four slow
+ledge options at 300% (`sudden_death_ledge{climb,roll,attack,jump}_fd_fox`),
+Furafura's exits, DownDamageU (`downdamage_up_fd_marth`), the Reflector's
+loop walking off (`reflector_loop_walkoff_fd_fox`), Marth crouch-cancelling
+(`crouchcancel_victim_fd_marth`), Marth's techs (`tech_{inplace,rollb,rollf}_victim_fd_marth`)
+and getups (`getup_{stand,rollf,rollb,attack}_fd_marth`), Dancing Blade's up
+branch, an aerial Dancing Blade and Shield Breaker charge landing
+(`marth_special_branches_fd_marth`), the Bob-omb interactions (laser,
+Reflector, shield, Counter, forward smash, Illusion, Fox's aerial catch and
+throw), mature-shield exits, jump-cancelled grab and up smash, dash grab,
+boost grab and crouch interrupts (`shield_exits_fd_marth`,
+`tech_interrupts_fd_marth`, `squat_interrupts_fd_marth`), and a same-tick
+final-stock KO pair. Resolved as unreachable on FD: script Invincible
+hurtboxes (Fox and Marth author only Intangible; the reachable case, the
+thrower's 8 frames at throw start, is now ported), DeadUpFallHitCameraFlat,
+DownSpot, a grab pair losing its floor, revival-platform floor contact, and
+a grounded Counter losing support (it stops at the ledge). Still open:
+DamageHi1 and Fox's Lw1/Air1 (level-1 reactions; the table is shared),
+shield-break orientations, Fox's angled forward tilts (AttackS3HiS/LwS),
+DamageFall exits, captured-high throws, the Reflector's End/Turn/Hit ground
+rows leaving the ground, and a decisive timeout.
+
 These are the rows above with no gated retail witness, whose reachability
 in the Fox–Marth FD scope is shown or plausible. The ranking weighs how
 often a real match reaches the branch against how cheaply a directed
