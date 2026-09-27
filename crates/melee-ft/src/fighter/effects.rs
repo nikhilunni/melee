@@ -51,9 +51,10 @@ impl super::FighterCore {
     /// A one-shot accessory4 call: the character's pending action runs only
     /// while its accessory is still installed, and uninstalls it
     /// (accessory4_cb = NULL). A pending action whose accessory a motion
-    /// change removed is dropped.
-    pub fn run_accessory4<T>(&mut self, pending: Option<T>) -> Option<T> {
-        pending.filter(|_| std::mem::take(&mut self.accessory4_armed))
+    /// change removed is dropped; with nothing pending the accessory stays.
+    /// Not generic, so character crates share one definition.
+    pub fn run_accessory4(&mut self, pending: bool) -> bool {
+        pending && std::mem::take(&mut self.accessory4_armed)
     }
     /// ftCo_8009F834 (0x8009F834). Called at the command-owning proc boundary,
     /// before another fighter or stage can draw from the shared RNG.

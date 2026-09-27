@@ -515,7 +515,7 @@ fn end_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result
 /// dash that changes state before s_link 9 never creates the trail.
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
     let pending = std::mem::take(&mut f.character.get_mut::<C>().special_side().trail_pending);
-    if f.run_accessory4(pending.then_some(())).is_some() {
+    if f.run_accessory4(pending) {
         // efAlt 0x48D -> Fox generator 0xBC0, attached to TopN.
         f.effects
             .push(melee_ef::request::EffectRequest::SyncAttached { id: 0x48D, bone: 0 });

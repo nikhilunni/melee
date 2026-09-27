@@ -586,7 +586,7 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _: &FighterAssets) {
         .special_lw()
         .pending_effect
         .take();
-    if let Some(id) = f.run_accessory4(pending) {
+    if let Some(id) = pending.filter(|_| f.run_accessory4(true)) {
         // All three retail accessory callbacks install PauseAll/ResumeAll,
         // including KeepGfx turns that do not create another model.
         f.effect_state.hitlag_callbacks = true;

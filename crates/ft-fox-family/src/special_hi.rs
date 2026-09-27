@@ -494,7 +494,7 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
         .special_hi()
         .pending_effect
         .take();
-    if let Some(id) = f.run_accessory4(pending) {
+    if let Some(id) = pending.filter(|_| f.run_accessory4(true)) {
         // Fighter_SetEffectHitlagCallbacks, charge/launch accessory callback.
         f.effect_state.hitlag_callbacks = true;
         let part = if id == 0x48B {

@@ -226,7 +226,7 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
 }
 pub fn accessory(f: &mut Fighter, _: &FighterAssets) {
     let pending = std::mem::take(&mut f.character.get_mut::<Marth>().special_n.pending_effect);
-    if f.run_accessory4(pending.then_some(())).is_some() {
+    if f.run_accessory4(pending) {
         let id = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
             0x4F3
         } else {
