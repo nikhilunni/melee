@@ -404,18 +404,21 @@ impl Fighter {
                 return self.apply_ground_transition(assets, transition);
             }
         }
-        // ftCo_8009515C (8009515C): A with a held item throws it, as a dash
-        // throw inside the countdown, otherwise aimed by ftCo_80095A30.
-        if self.core.held_item.is_some() && self.core.input.pressed.intersects(Buttons::A) {
-            if self.guard().dash_item_throw_frames != 0 {
-                // ftCo_800957F4(gobj, ftCo_MS_LightThrowDash).
-                return self.enter_item_throw(S::LightThrowDash, assets);
+        // ftCo_8009515C (8009515C), which ftCo_GuardOff_IASA does not call:
+        // A with a held item throws it, as a dash throw inside the
+        // countdown, otherwise aimed by ftCo_80095A30.
+        if state != S::GuardOff {
+            if self.core.held_item.is_some() && self.core.input.pressed.intersects(Buttons::A) {
+                if self.guard().dash_item_throw_frames != 0 {
+                    // ftCo_800957F4(gobj, ftCo_MS_LightThrowDash).
+                    return self.enter_item_throw(S::LightThrowDash, assets);
+                }
+                return self.enter_ground_item_throw(assets);
             }
-            return self.enter_ground_item_throw(assets);
-        }
-        // Otherwise the shared union countdown advances.
-        if self.guard().dash_item_throw_frames != 0 {
-            self.guard().dash_item_throw_frames -= 1;
+            // Otherwise the shared union countdown advances.
+            if self.guard().dash_item_throw_frames != 0 {
+                self.guard().dash_item_throw_frames -= 1;
+            }
         }
         if self.spot_dodge_input(assets) {
             return self.enter_escape(assets, S::EscapeN);
