@@ -1146,3 +1146,6 @@ Newest first. One line per session: date, what landed, what is next.
   hold an item and runs ftCo_800D705C's catch window (ported, opening
   unwitnessed). Five new corpus_sd cases gated; next: more explorer seeds
   and bridging.
+- 2026-09-27: Sudden Death explorer, 1,000 new seeds (skip 5000, 3,000
+  cases): no faults. Bridged 20 (all three profiles) to Dolphin: 20/20
+  exact, traces discarded.
