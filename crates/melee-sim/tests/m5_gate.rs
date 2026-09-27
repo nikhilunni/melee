@@ -495,6 +495,12 @@ fn firefox_ledgecorner_fd_fox_200_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("firefox_ledgecorner_fd_fox", 200);
 }
 
+/// A grounded Reflector's loop sliding off the edge (LwLoop -> AirLwLoop).
+#[test]
+fn reflector_loop_walkoff_fd_fox_200_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("reflector_loop_walkoff_fd_fox", 200);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

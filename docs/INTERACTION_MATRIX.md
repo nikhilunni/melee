@@ -239,7 +239,7 @@ Retail: `ftFx_SpecialN_Enter`, `ftFx_SpecialS_Enter`, `ftFx_SpecialHi_Enter`,
 | AirLwLoop -> LwEnd / LwLoop (landing) | ftFx_SpecialAirLwLoop_AirToGround | `airreflector_fd_fox` +2 / corpus:3 |
 | AirLwEnd -> LwEnd (landing) | ftFx_SpecialAirLwEnd_AirToGround | corpus:6 |
 | LwStart -> AirLwStart (started at the edge) | ftFx_SpecialLwStart_GroundToAir | `reflector_runedge_jump_fd_fox` (out of Run, jump-cancelled) / corpus:1 |
-| LwLoop / LwEnd / LwTurn / LwHit leaving the ground | ftFx_SpecialLw{Loop,End,Turn,Hit}_GroundToAir | (by name) `corpus_v2_s1_edeadbeef_p0` reports a walk-off, but the trace shows no Lw* -> AirLw* pair: **MISSING** as a transition, recheck |
+| LwLoop / LwEnd / LwTurn / LwHit leaving the ground | ftFx_SpecialLw{Loop,End,Turn,Hit}_GroundToAir | LwLoop: `reflector_loop_walkoff_fd_fox`; End/Turn/Hit **MISSING** |
 | AirLwHit (aerial reflect) and AirLwHit -> LwHit landing | ftFx_SpecialAirLwHit_* | **MISSING** |
 | Reflector turnFrames inherited from an unmodelled scratch word | special_lw.rs `unimplemented!` | Investigate (audit) |
 | Reflector platform drop (CheckPass) | ftFx_SpecialLwStart_CheckPass | n/a (FD) |

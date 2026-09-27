@@ -1,0 +1,27 @@
+# Fox dashes left (10), turns and runs right (26) and shines at speed near the
+# edge (90), holding B: the grounded Reflector slides off the edge in its
+# loop (SpecialLwLoop -> SpecialAirLwLoop, 100).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "reflector_loop_walkoff_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 26, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 90, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 92, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 120, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
