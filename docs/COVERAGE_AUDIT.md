@@ -43,17 +43,21 @@ knock-loose still fails closed. Shielding keeps the item and A in shield throws 
 mid-dash is a dash throw (LightThrowDash, ftCo_800D8A38) or, in the first
 frames, a forward smash throw (`sudden_death_dash{hold,throw}_bomb_fd_marth`).
 Every Wait entry plays the item idle while holding (ft_8008A348).
+Turning, crouching, rolls, running, landing, the aerial jump, taunts and
+the Fox/Falco/Marth specials keep it. LR + A in the air catches a light item
+in reach without a motion change (ftCo_800D7100 -> fn_800D6F58,
+`sudden_death_aircatch{dash,shield}_bomb_fd_marth`).
 
-While a fighter holds an item only LightGet, Wait, walking, jumping, falling
-and the light throws are audited
+While a fighter holds an item only the states listed above and the light
+throws are audited
 (`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
 The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, drops (a hit that knocks the item loose), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, drops (a hit that knocks the item loose), C-stick ground throws, LandingFallSpecial, damage and death while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
-| `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
+| ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hurtboxes (it_802706D0) | Detection ported; a landing contact fails closed | A thrown or dropped Bob-omb, or a kindred-striking hitbox, reaching another |
 | Unlit Bob-omb pickup, walking and turning | Fail closed | Only after a soft landing, which the rain's speed prevents |

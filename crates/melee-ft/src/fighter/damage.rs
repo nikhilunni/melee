@@ -1067,8 +1067,10 @@ impl Fighter {
         // float check (Peach) is always enabled here, as in procs.rs.
         let vertical_velocity = self.core.physics.self_velocity.y;
         // ftCo_DamageFall_IASA: ftCo_800D7100 after the special check.
-        if !self.core.input.pressed.intersects(crate::input::Buttons::B) {
-            self.core.check_aerial_item_catch(assets);
+        if !self.core.input.pressed.intersects(crate::input::Buttons::B)
+            && self.try_aerial_item_catch(assets)
+        {
+            return Ok(());
         }
         let transition = super::fall::iasa(
             &self.core.input,

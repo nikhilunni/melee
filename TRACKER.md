@@ -1062,3 +1062,8 @@ Newest first. One line per session: date, what landed, what is next.
   others still fail closed). A Fox jab on a Marth holding a lit Bob-omb
   rolls the drop chance bit-exact. Four witnesses gated. Next: the aerial
   catch (fn_800D6F58), a knock-loose drop, ceiling bounce/tech.
+- 2026-09-27: Aerial item catch: ftCo_800D7100 (LR held, A pressed, empty
+  hand, x2224_b1 clear, x683 >= PlCo +1C) -> fn_800D6F58 closes the hand
+  through the LightGet helper, spawns the 0x422 sparkle and sets the catch
+  lock; every aerial IASA returns on a catch. Landing keeps a held item.
+  Two witnesses gated (dash jump; jump out of shield, then landing).

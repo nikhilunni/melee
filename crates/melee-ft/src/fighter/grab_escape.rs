@@ -398,7 +398,9 @@ pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
         return;
     }
     // ftCo_CaptureJump_IASA: ftCo_800D7100 after the special check.
-    f.core.check_aerial_item_catch(assets);
+    if f.try_aerial_item_catch(assets) {
+        return;
+    }
     f.character.air_dodge_tether();
     if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         f.enter_air_dodge(assets).expect("capture jump air dodge");

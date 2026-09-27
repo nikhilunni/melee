@@ -121,7 +121,7 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 47] = [
+const HELD_ITEM_STATES: [S; 48] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -169,6 +169,8 @@ const HELD_ITEM_STATES: [S; 47] = [
     S::Fall,
     S::FallF,
     S::FallB,
+    // ftCo_Landing: no item branch; its IASA sees the item like Wait's.
+    S::Landing,
     S::LightThrowAirF,
     S::LightThrowAirB,
     S::LightThrowAirHi,
@@ -182,6 +184,9 @@ const HELD_ITEM_STATES: [S; 47] = [
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348
 /// names it by the equal enum value ftCo_MS_DeadUpFall (6).
 const WAIT_HOLDING_ITEM_ANIMATION: i32 = 6;
+
+/// efAsync_Spawn 0x422, the sparkle of an aerial item catch.
+const ITEM_PICKUP_SPARKLE: u16 = 0x422;
 
 /// ftpickupitem_800942A0's starting best squared distance: an item farther
 /// from the box centre is never chosen.
@@ -269,23 +274,6 @@ impl FighterCore {
             }
         }
         result
-    }
-
-    /// ftCo_800D7100 (800D7100): LR + A in the air catches a light item in
-    /// reach. The catch itself (fn_800D6F58) is not ported, so reaching one
-    /// fails closed; the remaining gates (x2224_b1, x683) only narrow it.
-    pub fn check_aerial_item_catch(&self, assets: &FighterAssets) {
-        use crate::input::Buttons;
-        if self.held_item.is_none()
-            && !self.item_catch_locked
-            && self.input.current.held.intersects(Buttons::SHIELD)
-            && self.input.pressed.intersects(Buttons::A)
-            && self
-                .find_pickup(&assets.pickup, PickupWeights::LIGHT)
-                .is_some()
-        {
-            unimplemented!("fn_800D6F58: catching an item in the air");
-        }
     }
 
     /// fp->item_gobj is released: Item_8026A848 -> ftCommon_8007E6DC.
@@ -405,6 +393,45 @@ impl Fighter {
     /// (x2224_b2) and the hammer (ftCo_800C5240) cannot follow LightGet.
     fn enter_wait_holding(&mut self, assets: &FighterAssets) -> Result<()> {
         self.change_motion_state(S::Wait.into(), assets)
+    }
+
+    /// ftCo_800D7100 (800D7100): LR held and A pressed in the air, with an
+    /// empty hand, no catch yet this airtime (x2224_b1) and the previous A
+    /// press at least PlCo +1C frames old, catches the nearest light item in
+    /// reach (fn_800D6F58). True when it caught one; the IASA then returns.
+    pub(super) fn try_aerial_item_catch(&mut self, assets: &FighterAssets) -> bool {
+        use crate::input::Buttons;
+        let core = &self.core;
+        if core.held_item.is_some()
+            || !core.input.current.held.intersects(Buttons::SHIELD)
+            || !core.input.pressed.intersects(Buttons::A)
+            || core.item_catch_locked
+            || i32::from(core.input.buttons.previous_attack) < assets.damage.tech_lockout
+        {
+            return false;
+        }
+        let Some(item) = core.find_pickup(&assets.pickup, PickupWeights::LIGHT) else {
+            return false;
+        };
+        self.catch_item(item, assets);
+        true
+    }
+
+    /// fn_800D6F58 (800D6F58): the hand closes on `item` with no motion
+    /// change (ftpickupitem_800948A8's light path), then ftpickupitem_8009447C
+    /// (nothing for a thrown kind), the pickup sparkle (efAsync_Spawn 0x422
+    /// at the light item part) and x2224_b1.
+    fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
+        self.take_item(item, assets);
+        let part = usize::from(self.core.bones.model.animation_translation);
+        let joint = self.core.animation.parts[part].joint.0;
+        self.core
+            .effects
+            .push(melee_ef::request::EffectRequest::Attached {
+                id: ITEM_PICKUP_SPARKLE,
+                bone: joint,
+            });
+        self.core.item_catch_locked = true;
     }
 
     /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.

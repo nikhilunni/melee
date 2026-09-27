@@ -1511,6 +1511,10 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_specialhold_bomb_fd_marth", 1433),
         ("sudden_death_taunthold_bomb_fd_marth", 1433),
         ("sudden_death_dashintofox_bomb_fd_marth", 1434),
+        // LR + A in the air catches it (ftCo_800D7100): from a dash jump,
+        // and from a jump out of shield that then lands holding it.
+        ("sudden_death_aircatchdash_bomb_fd_marth", 1439),
+        ("sudden_death_aircatchshield_bomb_fd_marth", 1513),
     ] {
         combat_gate_ticks(name, ticks);
     }

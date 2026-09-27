@@ -215,7 +215,9 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         if fighter.try_air_item_throw(assets).expect("air item throw") {
             return;
         }
-        fighter.core.check_aerial_item_catch(assets);
+        if fighter.try_aerial_item_catch(assets) {
+            return;
+        }
     }
     let transition = crate::fighter::fall::iasa_with_jump(
         &fighter.core.input,
