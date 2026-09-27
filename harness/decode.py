@@ -14,6 +14,7 @@ Float values carry their bit pattern so comparison is exact.
 from __future__ import annotations
 
 import json
+import math
 import struct
 import sys
 from pathlib import Path
@@ -27,15 +28,21 @@ _FMT = {"u8": ">B", "s8": ">b", "u16": ">H", "s16": ">h", "u32": ">I", "s32": ">
         "f32": ">f", "f64": ">d", "ptr": ">I"}
 
 
+def _approx(x: float) -> float:
+    """The diagnostic approx is 0 for NaN and infinities, which JSON cannot
+    carry; the bits stay exact (as jobjdump.py). Stale item memory holds them."""
+    return x if math.isfinite(x) else 0.0
+
+
 def _val(kind: str, raw: bytes):
     if kind == "f32":
         (x,) = struct.unpack(">f", raw)
         (bits,) = struct.unpack(">I", raw)
-        return {"t": "f32", "v": {"bits": bits, "approx": x}}
+        return {"t": "f32", "v": {"bits": bits, "approx": _approx(x)}}
     if kind == "f64":
         (x,) = struct.unpack(">d", raw)
         (bits,) = struct.unpack(">Q", raw)
-        return {"t": "f64", "v": {"bits": bits, "approx": x}}
+        return {"t": "f64", "v": {"bits": bits, "approx": _approx(x)}}
     (x,) = struct.unpack(_FMT[kind], raw)
     return {"t": "u" if kind.startswith(("u", "ptr")) else "i", "v": x}
 
@@ -156,7 +163,7 @@ def main(inp: Path, out: Path) -> None:
                     {**item, "state": decode_item(bytes.fromhex(item["bytes"]))}
                     for item in d["items"]
                 ]
-            fo.write(json.dumps(record) + "\n")
+            fo.write(json.dumps(record, allow_nan=False) + "\n")
 
 
 if __name__ == "__main__":

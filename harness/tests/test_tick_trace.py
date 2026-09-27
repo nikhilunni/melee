@@ -312,3 +312,15 @@ def test_explicit_dolphin_bin_and_audio_override(tmp_path, monkeypatch):
     assert command[0] == str(tmp_path / "Dolphin")
     assert not any("DSP.Backend" in arg for arg in command)
     assert dolphin_config.binary(gui=True) == tmp_path / "Dolphin"
+
+
+def test_non_finite_floats_keep_bits_and_encode_as_json():
+    import json
+    import struct
+
+    from decode import _val
+
+    for bits in (0x7F817F7F, 0x7F800000, 0xFF800000):
+        value = _val("f32", struct.pack(">I", bits))
+        assert value == {"t": "f32", "v": {"bits": bits, "approx": 0.0}}
+        json.dumps(value, allow_nan=False)
