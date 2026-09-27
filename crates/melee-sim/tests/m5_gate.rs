@@ -1585,6 +1585,8 @@ fn timeout_and_sudden_death_match_retail() {
         // Fox's Illusion into a thrown Bob-omb: its speed adds contact
         // damage (it_8026B1D4) and the hit points against its velocity.
         ("sudden_death_illusionbomb_fd_marth", 1545),
+        // Fox forward-smashes a thrown Bob-omb as it arrives.
+        ("sudden_death_smashbomb_fd_fox", 1545),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),
