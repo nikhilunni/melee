@@ -1096,3 +1096,7 @@ Newest first. One line per session: date, what landed, what is next.
   reset in the shared item state change). Explorer v6 (200 seeds, 1,200
   port matches): one fault, Fox's Reflector turn frames from an unmodelled
   scratch word; next.
+- 2026-09-27: Explorer v6 fault fixed: mv+4 is Guard's tilt magnitude
+  (mv.co.guard.x4) in Guard and in a roll out of Guard (the roll writes only
+  x0), so a Reflector entered after roll -> Wait inherits it. Witness
+  corpus_v3_s0_e551dd0aa_p0 (2064 ticks, bridged from the explorer run).

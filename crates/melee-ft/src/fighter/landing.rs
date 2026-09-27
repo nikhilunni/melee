@@ -176,6 +176,14 @@ impl FighterCore {
                 ..
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
+            // mv.co.guard.x4: the shield's smoothed tilt magnitude.
+            MotionData::Guard(guard) => guard.tilt_magnitude,
+            // A roll writes only mv.co.escape.x0; out of Guard the union
+            // still holds the shield's tilt at x4.
+            MotionData::Escape(super::escape::EscapeState {
+                retained_guard: Some(guard),
+                ..
+            }) => guard.tilt_magnitude,
             MotionData::FallSpecial(fall) => fall.animation.blend,
             _ => return None,
         })
