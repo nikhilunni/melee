@@ -95,10 +95,24 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 29,
         anim: callbacks::animation::dead_screen,
         iasa: callbacks::input::catch,
-        physics: callbacks::physics::dead,
+        physics: callbacks::physics::dead_screen,
         collision: callbacks::collision::thrown,
         camera: callbacks::camera::above_blast_zone,
         implemented: true,
+    };
+    // ftCo_MS_DeadUpFallHitCamera = 7 and ftCo_MS_DeadUpFallHitCameraFlat = 8:
+    // ftCo_SM_DeadUpFallHitCamera (0) and ftCo_SM_DeadUpFallHitCameraFlat (1).
+    rows[S::DeadUpFallHitCamera as usize] = MotionRow {
+        action: ActionId(7),
+        id: S::DeadUpFallHitCamera,
+        animation: 0,
+        ..rows[S::DeadUpFall as usize]
+    };
+    rows[S::DeadUpFallHitCameraFlat as usize] = MotionRow {
+        action: ActionId(8),
+        id: S::DeadUpFallHitCameraFlat,
+        animation: 1,
+        ..rows[S::DeadUpFall as usize]
     };
     // ftCo_MS_Rebirth = 12; ftData_MotionStateList[12].
     rows[S::Rebirth as usize] = MotionRow {

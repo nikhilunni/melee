@@ -8,8 +8,8 @@ pub fn capture(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_capture(phase)
 }
 
-/// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_DeadLeft (1), ftCo_MS_DeadRight (2),
-/// ftCo_MS_DeadUpFall (6): no retail callback, and nothing left to integrate.
+/// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_DeadLeft (1), ftCo_MS_DeadRight (2):
+/// no retail callback, and nothing left to integrate.
 pub fn dead(_fighter: &mut Fighter, _phase: PhysicsPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpStar (4): no retail callback; Fighter_procUpdate's
@@ -21,6 +21,17 @@ pub fn dead_star(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         wind,
     } = phase;
     fighter.core.free_flight_physics(assets, wind)
+}
+
+/// ftData_MotionStateList: ftCo_MS_DeadUpFall (6), ftCo_MS_DeadUpFallHitCamera (7),
+/// ftCo_MS_DeadUpFallHitCameraFlat (8): ftCo_DeadUpFall_Phys, then procUpdate's tail.
+pub fn dead_screen(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    let PhysicsPhase {
+        assets,
+        map: _,
+        wind,
+    } = phase;
+    fighter.screen_ko_physics(assets, wind)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).

@@ -1371,8 +1371,9 @@ const CORPUS_MATCHES: [(&str, usize); 48] = [
     ("corpus_v2_s0_e49_p1", 5603),
     // Staled charged Shield Breaker; down tilt holding on the squat check.
     ("corpus_v2_s0_e539_p2", 5964),
-    // Invincibility flash ownership; staled ledge attack.
-    ("corpus_v2_s0_e80000000_p1", 3758),
+    // Invincibility flash ownership; staled ledge attack; a screen KO
+    // (DeadUpFall, the camera hit and the fall down the screen).
+    ("corpus_v2_s0_e80000000_p1_screenko", 5208),
     // Shield SDI/ASDI during shield hitlag.
     ("corpus_v2_s0_e1_p0", 3385),
     // Reflector walking off the stage edge (ground-to-air, one jump), its

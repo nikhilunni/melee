@@ -505,8 +505,31 @@ impl FighterAssets {
                     depth: common.reader().f32(common_data + 0x510)?,
                     height_ratio: common.reader().f32(common_data + 0x514)?,
                 },
-                screen_ko_threshold: common.reader().s32(common_data + 0x520)?,
-                screen_ko_hold: common.reader().s32(common_data + 0x524)?,
+                screen_ko: {
+                    let r = common.reader();
+                    let at = |o: u32| common_data + o;
+                    let vec3 = |o: u32| -> Result<hsd_types::Vec3> {
+                        Ok(hsd_types::Vec3::new(
+                            r.f32(at(o))?,
+                            r.f32(at(o + 4))?,
+                            r.f32(at(o + 8))?,
+                        ))
+                    };
+                    super::life::ScreenKoParameters {
+                        threshold: r.s32(at(0x520))?,
+                        hold: r.s32(at(0x524))?,
+                        approach_frames: r.s32(at(0x528))?,
+                        impact_hold: r.s32(at(0x52C))?,
+                        fall_frames: r.s32(at(0x530))?,
+                        vanish_delay: r.s32(at(0x534))?,
+                        start: vec3(0x538)?,
+                        end: vec3(0x544)?,
+                        fall_speed_y: r.f32(at(0x550))?,
+                        gravity: r.f32(at(0x554))?,
+                        terminal_velocity: r.f32(at(0x558))?,
+                        fall_speed_z: r.f32(at(0x55C))?,
+                    }
+                },
                 death_sounds: {
                     let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
                     super::life::DeathSounds {
@@ -702,6 +725,7 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
         super::down::MOTIONS,
         super::shield_break::MOTIONS,
         super::teeter::MOTIONS,
+        super::life::MOTIONS,
     ] {
         indices.extend(list.iter().copied());
     }

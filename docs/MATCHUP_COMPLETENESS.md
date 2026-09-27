@@ -11,8 +11,9 @@ Dolphin exactly (`harness/replay_to_scenario.py`). DamageFlyRoll landed; phantom
 hits and simultaneous hit logs are implemented; seven generated full matches
 match retail start to GAME after twelve shared fixes
 (`PORT_NOTES/CORPUS_BRIDGE_FIXES.md`). Open: captured damage outside
-low-capture/throw states, Reflector ground-to-air, ScreenKO camera,
-timer/Sudden Death, and bridging the rest of the corpus.
+low-capture/throw states, Reflector ground-to-air, timer/Sudden Death
+(Bob-omb rain), and bridging the rest of the corpus. The screen KO landed
+2026-09-26.
 
 ## Paused handoff — 2026-09-12
 
@@ -99,7 +100,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Shared contacts | Mutual clank, both priority winners, no-rebound and airborne controls pass directed raw/SRT/particle/allocation checks and both full profiles | Phantom, invincible and simultaneous contact reachability; [contact notes](PORT_NOTES/CONTACT_CLOSURE.md) |
 | Shield exits | Standing/dash/run grabs, C-stick jumps, delayed powershield and reflection implemented; reflector overflow now passes the full 600-tick fall/down/stand recovery trajectory with both full profiles passing | Remaining depletion combinations |
 | Ledge variants | C-stick options and hang timeout pass ten directed fighter/RNG/particle, raw, SRT and allocation gates; slow rows are source-ported | Recorded slow-option witnesses, occupied ledges, further priorities and wall/ceiling interactions |
-| Match endings | Revival lifecycle gated; ScreenKO needs the retail camera owner. Natural one-minute stock fixture reaches Sudden Death | ScreenKO, clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
+| Match endings | Revival lifecycle and the screen KO gated. Natural one-minute stock fixture reaches Sudden Death; `sudden_death_bombs_fd_marth` matches until the first Bob-omb (tick 1204) | Clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | DamageFlyRoll | Landed (`PORT_NOTES/DAMAGE_FLY_ROLL.md`): three Fox witnesses pass | Marth witness; DamageFly wall/ceiling tech chain |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |

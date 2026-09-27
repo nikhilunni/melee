@@ -42,10 +42,8 @@ pub enum LifeState {
         flying: bool,
         camera_top: f32,
     },
-    /// DeadUpFall phase 0: the x524 hold before the camera-space approach.
-    ScreenKo {
-        remaining: i32,
-    },
+    /// DeadUpFall and its camera hit: a flight in the camera's space.
+    ScreenKo(ScreenKo),
     AwaitingRespawn,
     Revival {
         remaining: i32,
@@ -55,6 +53,17 @@ pub enum LifeState {
         remaining: i32,
         target: Vec3,
     },
+}
+impl LifeState {
+    /// Between ftCo_800D34E0's stock loss and the respawn request: the HUD
+    /// percent explodes (ifStatus_PercentOnDeathAnimationThink) in this window.
+    pub fn stock_lost(&self) -> bool {
+        match self {
+            LifeState::Dead { .. } => true,
+            LifeState::ScreenKo(ko) => ko.phase == ScreenKoPhase::Vanished,
+            _ => false,
+        }
+    }
 }
 /// Fighter accessory JObj, loaded from PlCo ftLoadCommonData[8].
 #[derive(Clone, Debug)]
@@ -73,10 +82,7 @@ pub struct LifeParameters {
     /// +4F0: a top exit only counts with upward knockback above this (or grounded).
     pub top_knockback_threshold: f32,
     pub star: StarKoParameters,
-    /// +520: `HSD_Randi(100) + 1 <= threshold` picks the screen KO over the star KO.
-    pub screen_ko_threshold: i32,
-    /// +524: frames a screen KO holds at the exit position before the approach.
-    pub screen_ko_hold: i32,
+    pub screen_ko: ScreenKoParameters,
     pub death_sounds: DeathSounds,
 }
 
@@ -94,6 +100,69 @@ pub struct StarKoParameters {
     /// +514: the flight aims at this fraction of the camera-bounds top.
     pub height_ratio: f32,
 }
+
+/// PlCo +520..+55C: the screen KO (ftCo_DeadUpFall_*).
+#[derive(Clone, Copy, Debug)]
+pub struct ScreenKoParameters {
+    /// +520: `HSD_Randi(100) + 1 <= threshold` picks the screen KO over the star KO.
+    pub threshold: i32,
+    /// +524: frames held at the start position before the approach.
+    pub hold: i32,
+    /// +528: frames of the approach toward the screen.
+    pub approach_frames: i32,
+    /// +52C: frames stuck to the screen.
+    pub impact_hold: i32,
+    /// +530: frames of the fall down the screen.
+    pub fall_frames: i32,
+    /// +534: frames from the vanish to the respawn request.
+    pub vanish_delay: i32,
+    /// +538 / +544: the approach's camera-space endpoints.
+    pub start: Vec3,
+    pub end: Vec3,
+    /// +550 / +55C: the fall's initial vertical and depth speed.
+    pub fall_speed_y: f32,
+    pub fall_speed_z: f32,
+    /// +554 / +558: the fall's gravity and terminal speed.
+    pub gravity: f32,
+    pub terminal_velocity: f32,
+}
+
+/// mv.co.unk_deadup, fighter +2340..+2368 (non-ice variant, x68 = 0).
+#[derive(Clone, Debug)]
+pub struct ScreenKo {
+    /// +2340: frames left in this phase.
+    pub remaining: i32,
+    /// +2344.
+    pub phase: ScreenKoPhase,
+    /// +2348 / +234C: the approach's per-frame step and progress.
+    pub step: f32,
+    pub progress: f32,
+    /// +2350: the fighter's camera-space position; each display pass places
+    /// the fighter through the second camera's inverse view matrix.
+    pub position: Vec3,
+    /// +235C: this frame's camera-space fall displacement.
+    pub displacement: Vec3,
+}
+
+/// ftCo_SM_DeadUpFallHitCamera (0) and ftCo_SM_DeadUpFallHitCameraFlat (1).
+pub const MOTIONS: &[u32] = &[0, 1];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenKoPhase {
+    Hold = 0,
+    Approach = 1,
+    Impact = 2,
+    Fall = 3,
+    Vanished = 4,
+}
+
+/// lbl_803B7500: the root faces into the screen ({0, pi, 0}).
+const FACING_THE_SCREEN: hsd_anim::quat::Quaternion = hsd_anim::quat::Quaternion {
+    x: 0.0,
+    y: std::f32::consts::PI,
+    z: 0.0,
+    w: 0.0,
+};
 
 /// ft_data->x4C_sfx +4 / +8 / +C: the fighter's death voice ids.
 #[derive(Clone, Copy, Debug)]
@@ -164,7 +233,7 @@ impl Fighter {
                 // Player_GetMoreFlagsBit5 (plain DeadUp) and Camera_8003010C (the fixed
                 // camera) are both off in a Vs match; DamageIce victims stop in damage.rs.
                 let roll = rng.randi(100) + 1;
-                return if assets.life.screen_ko_threshold >= roll {
+                return if assets.life.screen_ko.threshold >= roll {
                     self.enter_screen_ko(assets)
                 } else {
                     self.enter_star_ko(assets, arena)
@@ -319,13 +388,19 @@ impl Fighter {
     /// ftCo_800D4780 -> ftCo_800D4580 (800D4580): the screen KO entry, DeadUpFall.
     fn enter_screen_ko(&mut self, assets: &FighterAssets) -> Result<()> {
         self.release_for_death();
+        let parameters = &assets.life.screen_ko;
         self.change_motion_state(S::DeadUpFall.into(), assets)?;
-        self.core.state_data = MotionData::Life(LifeState::ScreenKo {
-            remaining: assets.life.screen_ko_hold,
-        });
-        // x2220_b7: from here the render callback (ftDrawCommon_80080E18_inline2) places
-        // the fighter through the camera's inverse view matrix; the lerp endpoints
-        // (PlCo +538 / +544) and the lbl_803B7500 rotation reset are camera-space state.
+        self.core.state_data = MotionData::Life(LifeState::ScreenKo(ScreenKo {
+            remaining: parameters.hold,
+            phase: ScreenKoPhase::Hold,
+            step: 0.0,
+            progress: 0.0,
+            position: parameters.start,
+            displacement: Vec3::ZERO,
+        }));
+        // x2220_b7 (the ScreenKo state): the render callback now places the
+        // fighter from its camera-space position.
+        self.face_the_screen();
         // Dead flags, ft_80088C5C, ftCommon_8007EFC0(fp, true):
         self.core.status.name_tag_timer = 1;
         // ftCo_800BFFD0(fp, 0x2B, 0): the screen-KO colour animation.
@@ -339,23 +414,180 @@ impl Fighter {
         // pl_8003DF44 as above; x68 = 0 marks the non-ice variant.
         Ok(())
     }
-    /// ftCo_DeadUpFall_Anim (800D4854), phase 0: the PlCo +524 hold. The approach
-    /// that follows is camera-space.
-    pub(super) fn screen_ko_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+    /// ftCo_800D4580 / ftCo_800D481C: HSD_JObjSetRotation(lbl_803B7500) when
+    /// x34_scale.z is 1 (every supported fighter).
+    fn face_the_screen(&mut self) {
+        let root = self.core.animation.root;
+        self.core.skeleton.set_rotation(root, &FACING_THE_SCREEN);
+    }
+    /// ftCo_DeadUpFall_Anim (800D4A08): hold, approach the screen, stick to it,
+    /// fall down it, vanish.
+    pub(super) fn screen_ko_animation(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> Result<()> {
         self.step_animation(assets);
-        let MotionData::Life(LifeState::ScreenKo { remaining }) = &mut self.core.state_data else {
+        let parameters = assets.life.screen_ko;
+        let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
             panic!("screen KO scratch");
         };
-        if *remaining != 0 {
-            *remaining -= 1;
+        if ko.phase == ScreenKoPhase::Approach {
+            ko.progress += ko.step;
         }
-        if *remaining == 0 {
-            unimplemented!(
-                "ftDrawCommon_80080E18_inline2: the screen-KO approach (x2220_b7) positions \
-                 the fighter through the camera inverse view matrix; needs the camera port"
-            );
+        if ko.remaining != 0 {
+            ko.remaining -= 1;
+        }
+        if ko.remaining != 0 {
+            return Ok(());
+        }
+        match ko.phase {
+            ScreenKoPhase::Hold => {
+                ko.step = 1.0 / parameters.approach_frames as f32;
+                ko.progress = ko.step;
+                ko.remaining = parameters.approach_frames;
+                ko.phase = ScreenKoPhase::Approach;
+            }
+            ScreenKoPhase::Approach => {
+                self.hit_the_screen(assets, rng)?;
+                let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
+                    unreachable!()
+                };
+                ko.remaining = parameters.impact_hold;
+                ko.phase = ScreenKoPhase::Impact;
+            }
+            ScreenKoPhase::Impact => {
+                self.core.physics.self_velocity.y = parameters.fall_speed_y;
+                self.core.physics.self_velocity.z = parameters.fall_speed_z;
+                ko.remaining = parameters.fall_frames;
+                ko.phase = ScreenKoPhase::Fall;
+            }
+            ScreenKoPhase::Fall => {
+                self.core.clear_velocities();
+                // x221F_b1 and fp->invisible: the fighter vanishes.
+                self.core.effect_state.invisible = true;
+                self.core.lose_stock();
+                // ftCo_800D34E0 above; ft_80088C5C, ft_PlaySFX(0x61), ft_8008805C(0x61).
+                self.core.play_death_sounds(assets, 0x61);
+                // ftCommon_8007EBAC(fp, 0xD, 0) is controller rumble.
+                self.core.quake_request = Some(melee_cm::QuakeKind::Large);
+                let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
+                    unreachable!()
+                };
+                ko.remaining = parameters.vanish_delay;
+                ko.phase = ScreenKoPhase::Vanished;
+            }
+            ScreenKoPhase::Vanished => {
+                // ftCo_800BFD9C: Sleep, then the GM respawn.
+                if self.core.player.stocks == 0 {
+                    unimplemented!("gm_80167320: final stock / elimination");
+                }
+                self.core.state_data = MotionData::Life(LifeState::AwaitingRespawn);
+            }
         }
         Ok(())
+    }
+    /// ftCo_800D481C (800D481C): DeadUpFallHitCamera, the fighter hits the
+    /// screen: rumble, a large quake and a heavy cry (ft_800889F4, one
+    /// HSD_Randi).
+    fn hit_the_screen(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> Result<()> {
+        let ko = match &self.core.state_data {
+            MotionData::Life(LifeState::ScreenKo(ko)) => ko.clone(),
+            _ => panic!("screen KO scratch"),
+        };
+        // x34_scale.z != 1 would select DeadUpFallHitCameraFlat.
+        self.change_motion_state(S::DeadUpFallHitCamera.into(), assets)?;
+        self.core.state_data = MotionData::Life(LifeState::ScreenKo(ko));
+        self.face_the_screen();
+        // ftCommon_8007EBAC: rumble on this fighter (5) and every other awake
+        // fighter (6); no gameplay state.
+        self.core.quake_request = Some(melee_cm::QuakeKind::Large);
+        let voices = &assets.heavy_voices;
+        if !voices.is_empty() {
+            let id = voices[rng.randi(voices.len() as i32) as usize];
+            self.core.push_voice(id);
+        }
+        // ftCo_800D4E50 is the coin-mode payout only; accessory4 becomes
+        // fn_800D4DD4 (screen_ko_accessory).
+        Ok(())
+    }
+    /// ftCo_DeadUpFall_Phys (800D4CE8): the approach interpolates the
+    /// camera-space position; the fall accumulates its velocity there.
+    /// Fighter_procUpdate's tail then integrates the world position as usual.
+    /// The hitlag-slowdown gate (x2222_b6, ftAnim_80070FD0) is not reachable
+    /// in a Vs match.
+    pub(crate) fn screen_ko_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+        let parameters = assets.life.screen_ko;
+        let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
+            panic!("screen KO scratch");
+        };
+        match ko.phase {
+            ScreenKoPhase::Approach => {
+                // lbVector_Lerp: separate subtract, multiply and add.
+                let (a, b, t) = (parameters.start, parameters.end, ko.progress);
+                ko.position = Vec3::new(
+                    (b.x - a.x) * t + a.x,
+                    (b.y - a.y) * t + a.y,
+                    (b.z - a.z) * t + a.z,
+                );
+            }
+            ScreenKoPhase::Fall => {
+                let velocity = &mut self.core.physics.self_velocity;
+                velocity.y = crate::physics::airborne::gravity(
+                    velocity.y,
+                    parameters.gravity,
+                    parameters.terminal_velocity,
+                );
+                let v = *velocity;
+                ko.displacement = Vec3::new(
+                    ko.displacement.x + v.x,
+                    ko.displacement.y + v.y,
+                    ko.displacement.z + v.z,
+                );
+                ko.position = Vec3::new(
+                    ko.position.x + ko.displacement.x,
+                    ko.position.y + ko.displacement.y,
+                    ko.position.z + ko.displacement.z,
+                );
+                ko.displacement = Vec3::ZERO;
+            }
+            _ => {}
+        }
+        self.core.free_flight_physics(assets, wind);
+    }
+    /// fn_800D4DD4 (800D4DD4): the accessory4 that ftCo_800D481C installs once
+    /// the fighter hits the screen. A fall below the camera bounds stops
+    /// moving. Returns whether it owns accessory4 this tick.
+    pub fn screen_ko_accessory(&mut self, camera_bottom: f32) -> bool {
+        let MotionData::Life(LifeState::ScreenKo(ko)) = &self.core.state_data else {
+            return false;
+        };
+        if self.core.motion_state.id == S::DeadUpFall {
+            // Fighter_ChangeMotionState cleared accessory4 on entry.
+            return true;
+        }
+        if ko.phase == ScreenKoPhase::Fall && self.core.physics.position.y < camera_bottom {
+            self.core.clear_velocities();
+        }
+        true
+    }
+    /// ftDrawCommon_80080E18_inline2: place the fighter from its camera-space
+    /// position through the inverse viewing matrix of the second camera.
+    /// Returns whether the fighter is in the screen KO.
+    pub fn place_screen_ko(&mut self, inverse_view: &hsd_types::Mtx) -> bool {
+        let MotionData::Life(LifeState::ScreenKo(ko)) = &self.core.state_data else {
+            return false;
+        };
+        let mut position = Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(inverse_view, &ko.position, &mut position);
+        self.core.physics.position = position;
+        let root = self.core.animation.root;
+        self.core.skeleton.set_translate(root, &position);
+        true
     }
     /// ftCo_800D331C (800D331C): detach everything the fighter owns before a death
     /// entry, starting with the character's death callbacks (Fox and Falco put

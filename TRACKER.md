@@ -889,3 +889,12 @@ Newest first. One line per session: date, what landed, what is next.
   (the committed s0_e80000000_p1 stops before its screen KO). Next: the
   screen-KO approach (DeadUpFall camera-space flight), then timer/tie/sudden
   death and the coverage audit.
+- 2026-09-26: Screen KO ported (ftCo_DeadUpFall_Anim 800D4A08, _Phys 800D4CE8,
+  ftCo_800D481C, fn_800D4DD4, ftDrawCommon_80080E18_inline2): camera-space
+  approach/impact/fall, placed each display pass through the inverse view of
+  cm_804D6464 (transform_copy). ftCommon_8007EBAC is rumble, not a colour
+  program. The HUD percent explodes on the screen KO's vanish too
+  (`LifeState::stock_lost`). s0_e80000000_p1 now gates through its screen KO
+  (5208 ticks). Next: Sudden Death (recorded: Bob-omb rain from
+  Ground_801C0C2C after frame 1200 -> it_8026BE84/itbombhei.c), then the
+  one-minute timeout/tie flow and the coverage audit.

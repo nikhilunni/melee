@@ -109,7 +109,9 @@ is skipped before every test.
 the camera in isolation; all ticks match except the quake shake it cannot
 see and revival resets. The rest stop at:
 
-- the screen-KO approach (DeadUpFall's camera-space flight) is not ported;
+- the screen KO now passes (s0_e80000000_p1 through tick 5208): DeadUpFall's
+  camera-space position is placed each display pass through the inverse view
+  of the transform_copy CObj; the vanish also explodes the HUD percent;
 - s0_e2a_p2 passes: Shield Breaker's gusts (lb_800119DC from the hips every
   30 charge ticks and at the release's frame 9) were missing, so Marth's cape
   and Fox's tail drifted and the tail's hurtbox took a hit retail misses;

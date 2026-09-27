@@ -17,8 +17,8 @@ pub fn dead_star(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opt
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpFall (6).
 pub fn dead_screen(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
-    fighter.screen_ko_animation(assets)?;
+    let AnimationPhase { assets, rng } = phase;
+    fighter.screen_ko_animation(assets, rng)?;
     Ok(None)
 }
 

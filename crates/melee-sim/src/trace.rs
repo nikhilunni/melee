@@ -284,6 +284,16 @@ pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Ve
                 record.frame,
                 actual.state.get(key)
             ));
+            if std::env::var_os("MELEE_PARTICLE_ALL").is_some() {
+                for (key, value) in record.state.iter() {
+                    if actual.state.get(key) != Some(value) {
+                        report.push(format!(
+                            "    {key}: retail {value:?}, port {:?}",
+                            actual.state.get(key)
+                        ));
+                    }
+                }
+            }
             if std::env::var_os("MELEE_PARTICLE_LISTS").is_some() {
                 let list = |state: &std::collections::BTreeMap<String, melee_diff::Value>| {
                     (0..64)

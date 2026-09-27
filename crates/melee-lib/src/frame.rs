@@ -704,10 +704,8 @@ impl Runtime {
                 let percent = with_fighter!(&state.fighters[player], |f| f.physics.percent);
                 let dead =
                     crate::scene_fighter::with_fighter!(&state.fighters[player], |f| matches!(
-                        f.state_data,
-                        melee_ft::fighter::MotionData::Life(
-                            melee_ft::fighter::life::LifeState::Dead { .. }
-                        )
+                        &f.state_data,
+                        melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
                     ));
                 self.interface[player].set_dead(dead, &mut state.rng);
                 self.interface[player].tick(percent, &mut state.rng);
@@ -1175,8 +1173,28 @@ fn render_cameras(state: &mut InitialState) {
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
     let camera = state.camera.render_camera(&state.assets.stage_camera);
+    // Camera_800310B8: cm_804D6464's viewing matrix, inverted for the screen KO.
+    let copy_view = state
+        .camera
+        .render_copy_camera(&state.assets.stage_camera)
+        .view_matrix();
+    let mut inverse_copy_view = copy_view;
+    hsd_anim::mtx::mtx_inverse(&copy_view, &mut inverse_copy_view);
     for fighter in &mut state.fighters {
         let f = &mut fighter.0;
+        if matches!(
+            f.state_data,
+            melee_ft::fighter::MotionData::Life(melee_ft::fighter::life::LifeState::ScreenKo(_))
+        ) {
+            // ftDrawCommon_80080E18: x2220_b7 places the fighter from camera
+            // space and ftLib_80086A8C then reports it on screen. A sleeping
+            // fighter (x221F_b3) is not drawn at all.
+            if !f.status.disabled {
+                f.place_screen_ko(&inverse_copy_view);
+                f.offscreen.outside_camera = false;
+            }
+            continue;
+        }
         let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position)
             .is_some_and(|point| point.on_screen);
         f.offscreen.outside_camera = !on_screen;
@@ -1235,7 +1253,10 @@ fn dispatch_fighter(
                 rng,
             )?;
             // Fighter_8006C80C: accessory4 runs after efAsync_QueueFlush.
-            if !f.status.disabled && f.combat.hitlag_remaining == 0.0 {
+            if !f.status.disabled
+                && f.combat.hitlag_remaining == 0.0
+                && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
+            {
                 f.character_accessory(assets);
             }
             f.proc_hitbox_positions();

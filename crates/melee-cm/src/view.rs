@@ -1,6 +1,6 @@
 //! The rendered camera: Camera_8002A4AC's CObj setup and the screen tests
 //! that read it (Camera_80030BBC, Camera_80030CD8).
-use crate::camera::{GameCamera, Mode};
+use crate::camera::{GameCamera, Mode, Transform};
 use crate::params::DESCRIPTION;
 use crate::stage::StageCamera;
 use gekko_math::msl::fctiwz;
@@ -24,7 +24,20 @@ impl GameCamera {
     /// Camera_8002AF68: the main CObj as this tick's render sees it.
     pub fn render_camera(&self, stage: &StageCamera) -> PerspectiveCamera {
         let Mode::Standard = self.mode;
-        let t = &self.transform;
+        self.render_transform(&self.transform, stage)
+    }
+
+    /// Camera_8002A4AC's second Camera_8002AF68 call: cm_804D6464, the CObj
+    /// that follows `transform_copy`. Camera_800310B8 hands it to the screen
+    /// KO, which places the fighter through its inverse viewing matrix.
+    pub fn render_copy_camera(&self, stage: &StageCamera) -> PerspectiveCamera {
+        let Mode::Standard = self.mode;
+        self.render_transform(&self.transform_copy, stage)
+    }
+
+    /// Camera_8002AF68 (0x8002AF68): one transform, translated and with the eye
+    /// kept above the stage's minimum height.
+    fn render_transform(&self, t: &Transform, stage: &StageCamera) -> PerspectiveCamera {
         let mut interest = t.interest;
         interest.x += self.translation.x;
         interest.y += self.translation.y;
