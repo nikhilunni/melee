@@ -10,6 +10,10 @@ match exists in retail: load that savestate and feed Dolphin the same pads.
 The scenario it writes is an ordinary scripted scenario, so record.py captures
 it and the usual gates compare the port against it.
 
+`Match::new` completes the oracle's tick 0 (the pre-music boundary, whose pads
+the savestate already renewed), so the recording's sample k is oracle tick k+1:
+the scenario is one tick longer than the recording.
+
 Every analog value must be one retail can produce: sticks are post-clamp
 multiples of 1/80 with radius <= 80, triggers multiples of 1/140. The Dolphin
 float for each value comes from `dolphin/pad_calibration.json`
@@ -117,12 +121,9 @@ def write_scenario(recording: dict, name: str, ticks: int | None) -> Path:
     boundary = boundary_for(recording["config"])
     table = json.loads(CALIBRATION.read_text())
     samples = recording["samples"][:ticks] if ticks else recording["samples"]
-    # The boundary savestate has already renewed the first tick's pads, so its
-    # sample is fixed at neutral (explore.rs holds it); anything else is unreplayable.
-    if any(any(v for v in port) for port in samples[0][:2]):
-        raise Unreachable("the first recorded tick must be neutral: the boundary already consumed it")
     steps, previous = [], {}
-    for k, sample in enumerate(samples):
+    # Sample k drives oracle tick k+1; tick 0 is the boundary's own.
+    for k, sample in enumerate(samples, start=1):
         for port in range(2):
             pad, raw = dolphin_pad(sample[port], table)
             if previous.get(port) != raw:
@@ -141,7 +142,7 @@ def write_scenario(recording: dict, name: str, ticks: int | None) -> Path:
 {note}name = "{name}"
 input_clock = "tick"
 savestate = "{boundary["savestate"]}"
-frames = {len(samples)}
+frames = {len(samples) + 1}
 seed = 1
 stage = "{boundary["stage"]}"
 inputs = [
@@ -171,7 +172,9 @@ def verify(recording: dict, name: str) -> int:
     """Compare recorded game pads with the recording; return the first mismatching tick or -1."""
     fit_to_trace(name)
     trace = HERE / "traces" / f"{name}.tick.expected.jsonl"
-    for k, (line, sample) in enumerate(zip(trace.open(), recording["samples"])):
+    lines = trace.open()
+    next(lines)  # tick 0 is the boundary's; sample k drove tick k+1
+    for k, (line, sample) in enumerate(zip(lines, recording["samples"]), start=1):
         pads = json.loads(line)["inputs"]
         for port in range(2):
             p = pads[f"p{port}"]

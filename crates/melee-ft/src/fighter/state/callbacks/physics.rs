@@ -194,11 +194,9 @@ pub fn fall(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         map: _,
         wind,
     } = phase;
-    assert_eq!(
-        fighter.core.physics.shield_knockback_velocity,
-        Vec3::ZERO,
-        "air shield knockback decay needs damage physics"
-    );
+    // Shield recoil decays in finish_air_update, as Fighter_procUpdate does
+    // for every airborne state; the invisible-ceiling store can leave a
+    // residual y recoil in the air.
     fighter.airborne_physics(assets);
     fighter.core.finish_air_update(assets, wind);
 }

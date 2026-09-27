@@ -1,8 +1,9 @@
 //! Deterministic robustness corpus. Exactness requires separate retail replay.
-//! cargo run -p melee-replay --release --example explore -- <assets> <output> [count]
+//! cargo run -p melee-replay --release --example explore -- <assets> <output> [count [skip]]
 //!
 //! With `count`, version 3 explores that many further input seeds (a
-//! xorshift sequence from `EXTRA_SEED_START`) instead of version 2's eight.
+//! xorshift sequence from `EXTRA_SEED_START`) instead of version 2's eight;
+//! `skip` continues the sequence past seeds an earlier batch explored.
 //!
 //! Version 2 starts every case from a retail match-start boundary
 //! (`harness/boundaries.toml`), so `harness/replay_to_scenario.py` can replay
@@ -220,9 +221,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(count) => {
             let mut next = Choices(EXTRA_SEED_START);
             let count: usize = count.parse()?;
+            let skip: usize = arguments.next().map_or(Ok(0), |skip| skip.parse())?;
             (
                 CORPUS_VERSION + 1,
-                (0..count).map(|_| next.next()).collect(),
+                (0..skip + count).map(|_| next.next()).skip(skip).collect(),
             )
         }
     };
@@ -292,12 +294,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             previous[i] = Some(action);
-                            // The boundary savestate already renewed tick 0's pads
-                            // (neutral), so retail cannot replay any other first sample.
-                            if game.tick().0 == 0 {
-                                inputs.0[i] = ControllerState::default();
-                                continue;
-                            }
                             if held[i].remaining == 0 {
                                 held[i] =
                                     choose(fighters[i], fighters[1 - i], &mut choices, profile);

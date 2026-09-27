@@ -61,6 +61,7 @@ impl CharacterCallbacks for Falco {
     }
     fn retained_scratch_word(&self, action: melee_ft::fighter::ActionId) -> Option<f32> {
         ft_fox_family::special_lw::retained_scratch_word(&self.special_lw, action)
+            .or_else(|| ft_fox_family::special_s::retained_scratch_word(&self.special_side, action))
     }
     fn accessory(
         fighter: &mut melee_ft::fighter::Fighter,

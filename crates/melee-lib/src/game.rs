@@ -180,7 +180,10 @@ impl Match {
             _ => {}
         }
         inputs.validate()?;
-        self.engine.set_inputs(inputs.0);
+        // HSD_PadRenewMasterStatus derives the stick direction bits on every
+        // read; a caller's samples carry only the physical state.
+        self.engine
+            .set_inputs(inputs.0.map(|pad| pad.with_stick_directions()));
         let result = catch_unwind(AssertUnwindSafe(|| self.engine.tick_without_snapshot()));
         let error = match result {
             Ok(Ok(())) => return Ok(()),

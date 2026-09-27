@@ -1495,7 +1495,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 9] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 11] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1506,6 +1506,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 9] = [
     ("corpus_v3_s1_e6cc80d32_p2", 4559),
     ("corpus_v3_s1_e720659b1_p0", 3317),
     ("corpus_v3_s1_ee62c6106_p0", 2854),
+    // The second batch (seeds 41..80), bridged one tick later to match
+    // Match::new's completed boundary tick: Fox landing out of an air
+    // Illusion inherits ghostEffectPos[0].x as mv+4; an airborne residual
+    // shield recoil (the invisible-ceiling store) decays in Fall.
+    ("corpus_v3_s1_e2af099ca_p1", 4519),
+    ("corpus_v3_s1_e4068796b_p0", 2877),
 ];
 
 #[test]

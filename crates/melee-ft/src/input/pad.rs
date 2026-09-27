@@ -94,7 +94,86 @@ pub fn normalize_stick(x: i8, y: i8) -> Stick {
     }
 }
 
+/// The virtual buttons HSD synthesizes from the main and C-sticks
+/// (HSD_PadADConvert, controller.c:279-291): up, down, left, right.
+pub const STICK_DIRECTIONS: u32 = 0x00ff_0000;
+const MAIN_STICK_DIRECTIONS: [u32; 4] = [0x1_0000, 0x2_0000, 0x4_0000, 0x8_0000];
+const C_STICK_DIRECTIONS: [u32; 4] = [0x10_0000, 0x20_0000, 0x40_0000, 0x80_0000];
+/// default_libinfo_data: adc_th 30 and adc_angle 0, which Melee keeps.
+const ADC_THRESHOLD: f32 = 30.0;
+const ADC_ANGLE: f32 = 0.0;
+
+/// HSD_PadADConvertCheck1 (803771D4): one stick's direction bits from its
+/// clamped signed bytes. The length is sqrtf(fmadds(y, y, x * x)) (retail
+/// 80377264); the sector bounds are double constants widened by half of
+/// adc_angle, compared in double.
+fn stick_direction(x: i8, y: i8, [up, down, left, right]: [u32; 4]) -> u32 {
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+    let (fx, fy) = (f32::from(x), f32::from(y));
+    let length = sqrtf(gekko_math::fma::fmadds(fy, fy, fx * fx));
+    let angle = if x == 0 {
+        (if y >= 0 { FRAC_PI_2 } else { -FRAC_PI_2 }) as f32
+    } else {
+        melee_lb::trigf::atan2f(fy, fx)
+    };
+    // retail 80377354: fmuls.
+    let half = f64::from(0.5 * ADC_ANGLE);
+    if length < ADC_THRESHOLD {
+        return 0;
+    }
+    let angle = f64::from(angle);
+    let three_quarters = 3.0 * FRAC_PI_4;
+    let mut bits = 0;
+    if angle < -three_quarters + half {
+        bits |= left;
+    }
+    if angle >= -three_quarters - half && angle <= -FRAC_PI_4 + half {
+        bits |= down;
+    }
+    if angle > -FRAC_PI_4 - half && angle < FRAC_PI_4 + half {
+        bits |= right;
+    }
+    if angle >= FRAC_PI_4 - half && angle <= three_quarters + half {
+        bits |= up;
+    }
+    if angle > three_quarters - half {
+        bits |= left;
+    }
+    bits
+}
+
+/// HSD_PadADConvert: both sticks' direction bits from clamped signed bytes.
+pub fn stick_directions(stick: [i8; 2], cstick: [i8; 2]) -> Buttons {
+    Buttons(
+        stick_direction(stick[0], stick[1], MAIN_STICK_DIRECTIONS)
+            | stick_direction(cstick[0], cstick[1], C_STICK_DIRECTIONS),
+    )
+}
+
+/// The clamped signed byte behind a normalized axis (HSD_PadScale divides
+/// by 80, so the product rounds back to it).
+fn stick_byte(axis: f32) -> i8 {
+    let scaled = axis * STICK_MAX;
+    if scaled >= 0.0 {
+        fctiwz(scaled + 0.5) as i8
+    } else {
+        -(fctiwz(-scaled + 0.5) as i8)
+    }
+}
+
 impl PadSample {
+    /// The sample as HSD's game status carries it: the virtual stick
+    /// direction bits follow the sticks (HSD_PadRenewMasterStatus runs
+    /// HSD_PadADConvert on every read), whatever the caller supplied.
+    pub fn with_stick_directions(mut self) -> Self {
+        let directions = stick_directions(
+            [stick_byte(self.stick.x), stick_byte(self.stick.y)],
+            [stick_byte(self.cstick.x), stick_byte(self.cstick.y)],
+        );
+        self.buttons = Buttons((self.buttons.0 & !STICK_DIRECTIONS) | directions.0);
+        self
+    }
+
     /// Convenience adapter for SDK PADRead samples. HSD's button synthesis
     /// is supplied by the caller; Fighter only interprets the low button bits.
     pub fn from_origin_adjusted(

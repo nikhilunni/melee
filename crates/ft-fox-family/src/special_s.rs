@@ -24,6 +24,30 @@ pub struct SpecialSide {
     pub ghost_present: bool,
     /// accessory4_cb = ftFx_SpecialS_CreateGFX, cleared after one call.
     pub trail_pending: bool,
+    /// mv+4 before the first ghost sample: ftFx_SpecialS_Enter leaves
+    /// ghostEffectPos alone, so the startup keeps the previous state's word.
+    pub inherited_word: Option<f32>,
+    /// The ghost samples have been written (the dash began).
+    pub ghosts_recorded: bool,
+}
+
+/// Illusion's actions, SpecialSStart (347) through SpecialAirSEnd (352).
+const ILLUSION: std::ops::RangeInclusive<u16> = S::SpecialSStart as u16..=S::SpecialAirSEnd as u16;
+
+/// The second motion scratch word (mv+4, ghostEffectPos[0].x) in Illusion.
+pub fn retained_scratch_word(
+    scratch: &SpecialSide,
+    action: melee_ft::fighter::ActionId,
+) -> Option<f32> {
+    if !ILLUSION.contains(&action.0) {
+        return None;
+    }
+    if scratch.ghosts_recorded {
+        return Some(scratch.ghost_positions[0].x);
+    }
+    Some(scratch.inherited_word.unwrap_or_else(|| {
+        unimplemented!("ftFx_SpecialS: mv+4 inherited from an unmodelled scratch word")
+    }))
 }
 
 pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
@@ -113,8 +137,10 @@ pub fn enter<C: FoxFamily>(f: &mut Fighter, air: bool, assets: &FighterAssets) {
         f.physics.ground_velocity /= divisor;
     }
     f.commands.variables[2] = 0;
+    let inherited_word = f.inherited_scratch_word();
     *f.character.get_mut::<C>().special_side() = SpecialSide {
         gravity_delay: delay,
+        inherited_word,
         ..Default::default()
     };
     f.change_motion_state(
@@ -150,6 +176,7 @@ fn start<C: FoxFamily, const AIR: bool>(
         let scratch = f.character.get_mut::<C>().special_side();
         scratch.ghost_positions.fill(position);
         scratch.ghost_rotations.fill(rotation);
+        scratch.ghosts_recorded = true;
         scratch.trail_pending = true;
     }
     Ok(None)

@@ -78,17 +78,25 @@ def test_scenario_uses_tick_clock_and_only_emits_changes(monkeypatch, tmp_path):
     hold_a = [sample(0x100), sample(), sample(), sample()]
     path = bridge.write_scenario(recording([NEUTRAL, hold_a, hold_a, NEUTRAL]), "bridged", None)
     scenario = tomllib.loads(path.read_text())
-    assert scenario["input_clock"] == "tick" and scenario["frames"] == 4
+    assert scenario["input_clock"] == "tick" and scenario["frames"] == 5
     assert scenario["savestate"] == "harness/roms/start_fd_fox4.sav"
     port0 = [(s["frame"], s["raw"]) for s in scenario["inputs"] if s["port"] == 0]
-    assert port0 == [(0, {}), (1, {"button": 0x100}), (3, {})]
+    assert port0 == [(1, {}), (2, {"button": 0x100}), (4, {})]
     assert [f["kind"] for f in scenario["fighters"]] == ["Fox", "Marth"]
 
 
-def test_first_tick_must_be_neutral(monkeypatch, tmp_path):
+def test_first_sample_drives_the_tick_after_the_boundary(monkeypatch, tmp_path):
+    # Match::new completes the oracle's tick 0, so no sample is lost to it.
     monkeypatch.setattr(bridge, "HERE", tmp_path)
-    with pytest.raises(bridge.Unreachable, match="first recorded tick"):
-        bridge.write_scenario(recording([[sample(0x100), sample(), sample(), sample()]]), "x", None)
+    (tmp_path / "scenarios").mkdir()
+    calibration = tmp_path / "pad_calibration.json"
+    calibration.write_text(json.dumps(TABLE))
+    monkeypatch.setattr(bridge, "CALIBRATION", calibration)
+    press = [sample(0x100), sample(), sample(), sample()]
+    scenario = tomllib.loads(bridge.write_scenario(recording([press]), "x", None).read_text())
+    assert scenario["frames"] == 2
+    assert [(s["frame"], s["raw"]) for s in scenario["inputs"] if s["port"] == 0] \
+        == [(1, {"button": 0x100})]
 
 
 class QueueMemory:

@@ -958,3 +958,12 @@ Newest first. One line per session: date, what landed, what is next.
   (Item_8026AD20: leave_hand/thrown/end_hold, xC44 as the thrown hitboxes'
   damage scale through DROP_UPDATE). Bob-omb thrown lit state 10.
   `sudden_death_throw_bomb_fd_marth` gated (1545 ticks, bones).
+- 2026-09-26: Corpus bridge alignment: `Match::new` completes the oracle's
+  boundary tick 0, so a recording's sample k is oracle tick k+1; the bridge
+  mapped it to tick k, so bridged runs were never the explorer's own run
+  (faults "reproduced" only by accident). `replay_to_scenario.py` now shifts
+  by one; the explorer no longer holds its first sample neutral. The Match
+  API also derives HSD's virtual stick-direction bits (HSD_PadADConvertCheck1,
+  803771D4; oracle test `pad_directions` over >10k retail pads). Corpus v3
+  seeds 41..80: 240 matches, 2 faults, both fixed and gated (Illusion mv+4,
+  a stale Fall assertion). Dancing Blade also carries mv+4 through.

@@ -64,6 +64,9 @@ impl CharacterCallbacks for Marth {
     fn accessory(f: &mut melee_ft::fighter::Fighter, a: &melee_ft::fighter::assets::FighterAssets) {
         crate::special_n::accessory(f, a);
     }
+    fn retained_scratch_word(&self, action: melee_ft::fighter::ActionId) -> Option<f32> {
+        crate::special_s::retained_scratch_word(&self.special_side, action)
+    }
     const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
         Some(crate::special_lw::contact);
     const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
