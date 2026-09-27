@@ -1036,3 +1036,7 @@ Newest first. One line per session: date, what landed, what is next.
   geometry (ftColl_80077688); MissFoot ends through ftCo_80090780 (keeping
   fast fall). Both gated. Four sampled batches: 160 recordings, 8 new
   faults found and fixed after the first; remaining v5 sixths: NR%6==0, 5.
+- 2026-09-27: Corpus v5 fifth batch: 40 bridged, 39 exact; the fault
+  (airborne DownDamage drifting after its count ran out) fixed: damage air
+  physics test the hitstun flag x221C_b6 as retail. Next: the last sixth
+  (NR%6==0), then the full gate.

@@ -542,10 +542,9 @@ impl Fighter {
             self.finish_damage_physics_callback(assets);
             return;
         }
-        let MotionData::Damage(damage) = &self.core.state_data else {
-            panic!("damage scratch missing")
-        };
-        if damage.hitstun > 0.0 {
+        // ftCo_Damage_Phys (8008FB18) tests x221C_b6, which DownDamage's
+        // animation never clears, not the remaining hitstun.
+        if self.core.status.in_hitstun {
             crate::physics::airborne::fall_physics(
                 &mut self.core.physics,
                 &self.core.attributes.air,
