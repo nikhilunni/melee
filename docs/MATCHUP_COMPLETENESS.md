@@ -9,7 +9,7 @@ legal inputs in this matchup. Keep breadth paused while closing that gap.
 | Exit criterion | Evidence | Open |
 | --- | --- | --- |
 | Every audited in-scope gap implemented and tested; reachability resolved | `COVERAGE_AUDIT.md`: every explicit boundary is ported, fails closed as out of scope, or is shown unreachable with evidence. Ported from the retail branch order but unwitnessed: the shield-impact combinations and an airborne DownDamage wall contact | The Sudden Death item rows it lists (held-item states the explorer has not reached) |
-| A reviewed interaction matrix | `INTERACTION_MATRIX.md` (regenerate with `harness/interaction_matrix.py`); its MISSING list shrank from 20 to the rows its status block names | The other shield-break orientation (needs a different landing height; not reachable on FD per research); Marth as the level-1 or dizzy victim |
+| A reviewed interaction matrix | `INTERACTION_MATRIX.md` (regenerate with `harness/interaction_matrix.py`); its MISSING list shrank from 20 to the rows its status block names | The other shield-break orientation only (needs a different landing height; not reachable on FD per research) |
 | Focused Dolphin traces compare state, RNG and item/particle fields | `m5_gate` (235 tests), the corpus and Sudden Death lists in it, bones and particle gates; every witness recorded this milestone is exact | none |
 | Debug/release gates, clippy, zero allocation, capture non-mutation | Full release gate 1501/0 (2026-09-27, after the perf merge); clippy clean; the alloc and capture gates are part of `cargo gate` | Perf gate: time and duplicate definitions pass; stripped size is over its 2026-09-10 ceiling from feature growth, pending a baseline decision |
 | Fixed, versioned corpus and full matches, both port layouts | Below | none |
@@ -24,6 +24,8 @@ legal inputs in this matchup. Keep breadth paused while closing that gap.
 | Normal, skip 5000 and 6000, 300 seeds each | 3,600 | clean |
 | Sudden Death, skips 0..5000 | 7,300 | faults fixed and gated as `corpus_sd_*` |
 | Sudden Death, skip 7000 and 8000, 1,000 seeds each | 6,000 | FallAerial and Ottotto while holding (fixed) |
+| Normal, skip 7000, 300 seeds | 1,800 | a catch cut on its CatchWait entry tick left CaptureFlash sealed (fixed, `corpus_v3_s1_e19a3b12e_p2`) |
+| Sudden Death, skip 9000, 1,000 seeds | 3,000 | jump-squat up smash with a Bob-omb; then a rain bomb's creation intangibility (both fixed, `corpus_sd_s1_e00088bc5_p0`) |
 
 Exactness sample: 34 clean explorer cases (20 Sudden Death, 14 full matches) bridged to Dolphin were all exact; the full matches `corpus_v3_s0_e035918d1_p1` and `corpus_v3_s1_e42b75250_p1` (one per port layout) are gated with the fault witnesses. Human full matches: `match_fd_foxmarth` (6,083 ticks) and `match2_fd_foxmarth` (10,059 ticks).
 

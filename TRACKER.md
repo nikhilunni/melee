@@ -1202,3 +1202,10 @@ Newest first. One line per session: date, what landed, what is next.
   0x80098B20) newest-first; the port now queues the burst behind the
   script graphics. `shieldbreak_hold_fd_marth` exact over 700 ticks; all
   582 scenarios gated with no other change (worktree agent, reviewed).
+- 2026-09-27 (later): Marth dizzy-expiry/dizzy-hit and level-1 Hi/Lw
+  victim witnesses (Hi1 needs his head capsule alone: jab 1 on a crouch;
+  Lw1 his legs: jab 1 on a taunt). Explorer n6/sd11 faults fixed: effects
+  sealed by a captor-separation release now flush at the release; a
+  jump-squat up smash throws a held item; new hold-kind 0/6 items start
+  intangible for ItCo +2C frames (item.c foobar). Next: n7/sd12 batches,
+  full gates.

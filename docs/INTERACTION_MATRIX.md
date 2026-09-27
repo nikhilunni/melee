@@ -544,9 +544,12 @@ Hit rows leaving the ground (`reflector_{turn,end}_walkoff_fd_fox`,
 `sudden_death_reflecthit_walkoff_fd_marth`), a decisive timeout
 (`timeout_decisive_fd_marth`) and a shield broken by decay inside the Guard
 proc (`shieldbreak_hold_fd_marth`; the burst queues behind ShieldBreakFly's
-script graphics). Still open: the other shield-break orientation (research:
-needs a different landing height, not reachable on FD) and Marth as the
-level-1 or dizzy victim.
+script graphics). Marth as the victim is witnessed too: dizzy
+until it wears off and hit while dizzy (`furafura_{expire,hit}_victim_fd_marth`),
+and DamageHi1/Lw1 from Fox's jab 1 on his head capsule while crouched and his
+legs while taunting (`damage_level1_victim_fd_marth`). Still open: only the
+other shield-break orientation (research: it needs a different landing
+height; not reachable on FD).
 
 These are the rows above with no gated retail witness, whose reachability
 in the Fox–Marth FD scope is shown or plausible. The ranking weighs how
