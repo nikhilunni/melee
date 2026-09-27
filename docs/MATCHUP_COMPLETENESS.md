@@ -15,6 +15,14 @@ low-capture/throw states, Reflector ground-to-air, timer/Sudden Death
 bridging the rest of the corpus. The screen KO, the timeout and Sudden
 Death (with the live transition and its Bob-omb rain) landed 2026-09-26.
 
+## Coverage audit — 2026-09-26
+
+`COVERAGE_AUDIT.md` classifies every explicit boundary and the silent gaps.
+The remaining reachable work is Sudden Death's item interactions (pickup,
+hits on Bob-ombs, chained explosions, holding and throwing), grab-pair hits,
+and a few contact combinations; everything else is out of scope or under
+investigation there.
+
 ## Paused handoff — 2026-09-12
 
 Implementation is paused after `415a230` at the user's request. Recent committed
