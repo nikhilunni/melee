@@ -1,0 +1,43 @@
+# Marth: Dancing Blade's up branch on the ground (S1 -> S2Hi -> S3Hi ->
+# S4Hi, 10..64); an aerial Dancing Blade landing mid-combo (AirS3Hi ->
+# S3, 184); an aerial Shield Breaker charge landing into the ground
+# charge (AirNLoop -> NLoop, 302) and its release.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "marth_special_branches_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 380
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 12, port = 0, buttons = {  }, raw = {  } },
+  { frame = 26, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 28, port = 0, buttons = {  }, raw = {  } },
+  { frame = 44, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 46, port = 0, buttons = {  }, raw = {  } },
+  { frame = 64, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 66, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 142, port = 0, buttons = {  }, raw = {  } },
+  { frame = 146, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 148, port = 0, buttons = {  }, raw = {  } },
+  { frame = 162, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 164, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 182, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 266, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 312, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

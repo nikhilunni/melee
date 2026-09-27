@@ -1,0 +1,29 @@
+# Fox runs off the right edge (10..20), charges Fire Fox below it (50) and
+# aims up-left at the ledge (70): the travel ends at the ledge corner and
+# he snaps up onto the stage (SpecialHiFall -> SpecialHiLanding).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "firefox_ledgecorner_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 20, port = 1, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 22, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 50, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 52, port = 1, buttons = {  }, raw = {  } },
+  { frame = 70, port = 1, buttons = {  }, raw = { stickX = -120, stickY = 38 } },
+  { frame = 110, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

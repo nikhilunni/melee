@@ -482,6 +482,19 @@ fn crouchcancel_victim_fd_marth_200_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("crouchcancel_victim_fd_marth", 200);
 }
 
+/// Dancing Blade's up branch, an aerial Dancing Blade landing mid-combo and
+/// an aerial Shield Breaker charge landing.
+#[test]
+fn marth_special_branches_fd_marth_380_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("marth_special_branches_fd_marth", 380);
+}
+
+/// Fire Fox aimed at the ledge corner snaps up onto the stage.
+#[test]
+fn firefox_ledgecorner_fd_fox_200_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("firefox_ledgecorner_fd_fox", 200);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]
