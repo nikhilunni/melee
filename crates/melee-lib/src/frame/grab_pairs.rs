@@ -272,7 +272,8 @@ pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()>
 }
 
 /// fn_800DA190 / DA4A0 / DA678: holding-state accessory alignment.
-pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
+/// Returns the victim's index when the captor's separation released the pair.
+pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
     let victim = with_fighter!(&state.fighters[player], |f| {
         if f.status.disabled
             || f.combat.hitlag_remaining > 0.0
@@ -286,7 +287,7 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
         }
     });
     let Some(victim) = victim else {
-        return Ok(());
+        return Ok(None);
     };
     let other = state
         .fighters
@@ -303,8 +304,9 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
                 &state.assets.fighters[player],
                 melee_ft::fighter::grab_escape::ReleaseCause::CaptorSeparation,
             )
+            .map(|()| Some(other))
         } else {
-            Ok(())
+            Ok(None)
         }
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))

@@ -851,7 +851,23 @@ impl Runtime {
                     credit_phantom_source(state, player);
                 }
                 if proc == FighterProc::Accessories {
-                    grab_pairs::accessory(state, player)?;
+                    if let Some(victim) = grab_pairs::accessory(state, player)? {
+                        // ftCo_800DC920 changes the captor, then the victim;
+                        // each Fighter_ChangeMotionState flushes efAsync then.
+                        for member in [player, victim] {
+                            crate::scene_fighter::with_fighter!(
+                                &mut state.fighters[member],
+                                |f| state.effects.flush::<RetailTrig>(
+                                    melee_ef::EffectTiming::Immediate,
+                                    member,
+                                    &mut f.core,
+                                    &state.assets.common_particle_bank,
+                                    &mut state.particles,
+                                    &mut state.rng,
+                                )
+                            )?;
+                        }
+                    }
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         f.update_revival_platform();
                         // Fighter_CallAcessoryCallbacks_8006C624: hitlag

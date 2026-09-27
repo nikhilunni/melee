@@ -1797,7 +1797,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 46] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 47] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1889,6 +1889,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 46] = [
     ("corpus_sd_s1_e09bbd0e1_p0", 1418),
     // Teetering at the edge while holding a Bob-omb.
     ("corpus_sd_s1_e1f29a5c7_p2", 1360),
+    // A catch cut by the captor's separation on its CatchWait entry tick:
+    // the release's motion changes flush the entry's CaptureFlash.
+    ("corpus_v3_s1_e19a3b12e_p2", 1902),
 ];
 
 #[test]
