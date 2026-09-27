@@ -1542,6 +1542,10 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_cstickb4_bomb_fd_marth", 1420),
         ("sudden_death_cstickhi4_bomb_fd_marth", 1544),
         ("sudden_death_csticklw4_bomb_fd_marth", 1394),
+        // An air dodge and its landing holding it; grabbed holding it, the
+        // blast launching both with the captured member first.
+        ("sudden_death_airdodgehold_bomb_fd_marth", 1433),
+        ("sudden_death_grabbedhold_bomb_fd_marth", 1430),
     ] {
         combat_gate_ticks(name, ticks);
     }

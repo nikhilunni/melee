@@ -1112,3 +1112,7 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-27: C-stick smashes with a held item throw it: ftCo_AttackS4's
   checkItemThrow (LightThrowF4/B4 by the stick's sign) and AttackHi4/Lw4's
   item branch (LightThrowHi4/Lw4). Three witnesses.
+- 2026-09-27: EscapeAir, LandingFallSpecial and the capture states keep a
+  held item (no item branch in retail); ftCo_8008EC90's branch for a
+  launched captured member processed first (release, both follow x1828 =
+  1). Two witnesses (air dodge; grabbed holding a Bob-omb).

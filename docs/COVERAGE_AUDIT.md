@@ -60,7 +60,7 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, tilts with an item, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, tilts with an item, Thrown and down states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge, which its short lit walk rarely reaches |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |
@@ -76,7 +76,7 @@ death while holding, each from a recorded witness.
 
 | Site | Boundary | Note |
 | --- | --- | --- |
-| `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched and when only the captor is (ftCo_800DCFD4, `sudden_death_grabbomb{,captor}_fd_marth`); a light hit on the victim with the captor launched (ftCo_800DE854), the captured member processed first, and armoured members fail closed | Fox grabbing Marth under a Bob-omb |
+| `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched, whichever member comes first (`sudden_death_grabbomb_fd_marth`, `sudden_death_grabbedhold_bomb_fd_marth`), and when only the captor is (ftCo_800DCFD4, `sudden_death_grabbombcaptor_fd_marth`); a light third-party hit on the victim (ftCo_800DE854), only the victim launched (ftCo_800DE2F0) and armoured members fail closed | Fox grabbing Marth under a Bob-omb |
 | `melee-ft/fighter/damage.rs` ftColl_80076ED8 | A third fighter's hit on a captured fighter | Needs three fighters: out of scope in a 1v1 |
 | `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Same interaction family |
 | `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together | Corpus fault family; needs a witness |

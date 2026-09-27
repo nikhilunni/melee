@@ -65,10 +65,25 @@ pub fn resolve_linked_hit(
         }
         // !x221B_b5: this fighter is held. The captor's own light hit keeps
         // the grab (grab_escape::capture_damage).
-        Some(GrabLink::Captured { .. }) if !fighter.combat.pending_from_captor => {
-            unimplemented!("ftCo_8008EC90: a third-party hit on the captured member first");
+        Some(GrabLink::Captured { .. }) => {
+            // inlineB1: from the captor (x221C_b0) or dealt under PlCo +3C0.
+            if fighter.combat.pending_from_captor || fighter.combat.frame_damage < LIGHT_HIT_DAMAGE
+            {
+                if !fighter.combat.pending_from_captor {
+                    unimplemented!("ftCo_8008EC90: a light third-party hit on the captured member");
+                }
+                return Ok(());
+            }
+            if !partner_launched {
+                unimplemented!("ftCo_800DE2F0: the captured member launched, its captor not hit");
+            }
+            // ftCo_800DCE34(captor, gobj), then this fighter's launch; the
+            // captor follows x1828 = 1.
+            release_pair(partner, fighter);
+            fighter.combat.pair_order = Some(PairHitOrder::Launch);
+            partner.combat.pair_order = Some(PairHitOrder::Launch);
         }
-        Some(GrabLink::Captured { .. }) | None => {}
+        None => {}
     }
     Ok(())
 }

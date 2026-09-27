@@ -121,7 +121,7 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 79] = [
+const HELD_ITEM_STATES: [S; 89] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -191,6 +191,17 @@ const HELD_ITEM_STATES: [S; 79] = [
     S::DamageFlyTop,
     S::DamageFlyRoll,
     S::DamageFall,
+    // ftCo_EscapeAir: no item branch; an air dodge keeps it.
+    S::EscapeAir,
+    // ftCo_Capture*: no item branch; a captured fighter keeps it.
+    S::CapturePulledHi,
+    S::CaptureWaitHi,
+    S::CaptureDamageHi,
+    S::CapturePulledLw,
+    S::CaptureWaitLw,
+    S::CaptureDamageLw,
+    S::CaptureCut,
+    S::CaptureJump,
     // ftCliffCommon_80081370 and the ftCo_Cliff* states: no item branch;
     // a fighter hangs, climbs, attacks, rolls and jumps holding it.
     S::CliffCatch,
@@ -205,8 +216,10 @@ const HELD_ITEM_STATES: [S; 79] = [
     S::CliffJumpSlow2,
     S::CliffJumpQuick1,
     S::CliffJumpQuick2,
-    // ftCo_Landing: no item branch; its IASA sees the item like Wait's.
+    // ftCo_Landing (shared by LandingFallSpecial): no item branch; its
+    // IASA sees the item like Wait's.
     S::Landing,
+    S::LandingFallSpecial,
     S::LightThrowAirF,
     S::LightThrowAirB,
     S::LightThrowAirHi,

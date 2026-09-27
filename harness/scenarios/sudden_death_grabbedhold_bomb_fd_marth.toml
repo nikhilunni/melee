@@ -1,0 +1,29 @@
+# Sudden Death: Marth picks up the first Bob-omb (1226); Fox dashes in and
+# grabs him holding it (1272). Its blast in Marth's hand launches both:
+# ftCo_8008EC90 for the captured member processed first.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_grabbedhold_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1430
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1228, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 1272, port = 1, buttons = { Z = true, StickX = -1.0 }, raw = { button = 16, stickX = -127 } },
+  { frame = 1274, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
