@@ -21,9 +21,35 @@ pub struct PositionBinding {
     pub joint_index: i16,
     pub stage_position: i16,
 }
+/// grGroundParam's camera fields as Ground_801C0800 (0x801C0800) converts
+/// them: the integers become floats (`xoris`/`lfd`/`fsubs`), the rest are read
+/// as stored.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CameraParam {
+    /// +0x08 (s16): cam_vertical_tilt, which match setup installs as the
+    /// camera's field of view (gm_16AE: Camera_80030730(Ground_801C20D0())).
+    pub fov: f32,
+    /// +0x0C (s32): cam_zoom_rate, the nearest eye distance.
+    pub min_depth: f32,
+    /// +0x10 (s32): cam_max_depth.
+    pub max_depth: f32,
+    /// +0x14 (s32): cam_pan_degrees.
+    pub pan_degrees: f32,
+    /// +0x18: cam_info.x24, pitch per unit of vertical offset.
+    pub pitch_scale: f32,
+    /// +0x1C: cam_info.x20, yaw per unit of horizontal offset.
+    pub yaw_scale: f32,
+    /// +0x20: cam_track_ratio.
+    pub track_ratio: f32,
+    /// +0x24: cam_fixed_zoom.
+    pub fixed_zoom: f32,
+    /// +0x28: cam_track_smooth.
+    pub track_smooth: f32,
+}
 #[derive(Clone, Debug, PartialEq)]
 pub struct GroundParam {
     pub map_scale: f32,
+    pub camera: CameraParam,
     pub fixed_camera: bool,
     pub environment_colors: [[u8; 4]; 9],
     pub stage_param_count: usize,
@@ -50,6 +76,27 @@ pub struct StageDesc {
     pub section_counts: [usize; 6],
     pub initial_fog: [u8; 3],
     pub material_script_offsets: [u32; 4],
+    /// `quake_model_set` (grDatFiles_801C6038): the screen-shake model whose
+    /// root translation drives Camera_SetQuakeOffset.
+    pub quake_model: Option<QuakeModel>,
+}
+/// A DynamicModelDesc of one joint tree and its per-kind animations
+/// (Loop, Small, Medium, Large).
+#[derive(Clone, Debug, PartialEq)]
+pub struct QuakeModel {
+    pub joint: JObjDesc,
+    pub animations: Vec<AnimJoint>,
+}
+fn read_quake_model(archive: &Archive) -> ReadResult<Option<QuakeModel>> {
+    let Some(offset) = archive.public("quake_model_set") else {
+        return Ok(None);
+    };
+    let joint = JObjDesc::read(archive, required_link(archive, offset)?)?;
+    let animations = pointer_list(archive, offset + 4)?
+        .iter()
+        .map(|&p| AnimJoint::read(archive, p))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Some(QuakeModel { joint, animations }))
 }
 
 fn error(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -200,6 +247,7 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
         section_counts,
         initial_fog,
         material_script_offsets,
+        quake_model: read_quake_model(archive)?,
     })
 }
 
@@ -289,6 +337,17 @@ fn read_parameters(archive: &Archive) -> ReadResult<GroundParam> {
     }
     Ok(GroundParam {
         map_scale: r.f32(p)?,
+        camera: CameraParam {
+            fov: f32::from(r.s16(p + 0x8)?),
+            min_depth: r.s32(p + 0xC)? as f32,
+            max_depth: r.s32(p + 0x10)? as f32,
+            pan_degrees: r.s32(p + 0x14)? as f32,
+            pitch_scale: r.f32(p + 0x18)?,
+            yaw_scale: r.f32(p + 0x1C)?,
+            track_ratio: r.f32(p + 0x20)?,
+            fixed_zoom: r.f32(p + 0x24)?,
+            track_smooth: r.f32(p + 0x28)?,
+        },
         fixed_camera: r.s32(p + 0x4C)? != 0,
         environment_colors: colors,
         stage_param_count: count(&r, p + 0xB4)?,

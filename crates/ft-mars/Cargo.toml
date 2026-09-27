@@ -16,6 +16,7 @@ gekko-math = { path = "../gekko-math" }
 
 melee-cmd = { path = "../melee-cmd" }
 melee-coll = { path = "../melee-coll" }
+melee-it = { path = "../melee-it" }
 melee-ef = { path = "../melee-ef" }
 
 [dev-dependencies]

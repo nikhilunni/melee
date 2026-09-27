@@ -5,6 +5,7 @@
 //! `aobj` and `fobj` are another, `jobj` comes after both.
 
 pub mod aobj;
+pub mod cobj;
 pub mod dobj;
 pub mod fobj;
 pub mod jobj;

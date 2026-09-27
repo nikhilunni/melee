@@ -196,21 +196,31 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
     Ok(())
 }
 
-/// ftColl_8007B1B8 / lbColl_80007BCC, before ordinary hurt-capsule tests.
-pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: usize) -> bool {
-    use melee_coll::geometry::{capsule_contact, Capsule};
-    let Some(volume) = f.character.get::<Marth>().special_lw.volume.as_ref() else {
-        return false;
-    };
+/// The Counter's shield volume where its bone holds it this frame
+/// (ftColl_8007B1B8's shield_hit, placed by lbColl_80007BCC).
+fn counter_volume(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseVolume> {
+    let volume = f.character.get::<Marth>().special_lw.volume.as_ref()?;
     let (bone, offset, radius) = (volume.bone, volume.offset, volume.radius);
     let c = &mut f.core;
     let position =
         melee_ft::fighter::caches::bone_position(&mut c.skeleton, c.animation.root, bone, offset);
     let matrix = *c.skeleton.get_mtx(c.animation.parts[bone].joint);
-    let hit = attacker.commands.hitboxes[id]
-        .as_ref()
-        .expect("eligible hit");
-    let Some(contact) = capsule_contact(
+    Some(melee_ft::fighter::damage::DefenseVolume {
+        position,
+        matrix,
+        radius,
+    })
+}
+
+/// lbColl_80007BCC: a swept hit capsule against the Counter volume.
+fn counter_contact(
+    f: &Fighter,
+    volume: &melee_ft::fighter::damage::DefenseVolume,
+    hit: &melee_coll::hitbox::HitCapsule,
+    attacker_scale: f32,
+) -> Option<melee_coll::geometry::Contact> {
+    use melee_coll::geometry::{capsule_contact, Capsule};
+    capsule_contact(
         Capsule {
             start: hit.previous_position,
             end: hit.position,
@@ -218,17 +228,56 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
                 * if hit.descriptor.ignore_scale {
                     1.0
                 } else {
-                    attacker.player.scale
+                    attacker_scale
                 },
         },
         Capsule {
-            start: position,
-            end: position,
-            radius,
+            start: volume.position,
+            end: volume.position,
+            radius: volume.radius,
         },
-        &matrix,
-        20.0 * c.player.scale,
-    ) else {
+        &volume.matrix,
+        20.0 * f.core.player.scale,
+    )
+}
+
+/// ftColl_8007925C's shield step against the Counter, then ftColl_80077688:
+/// an item's hit is caught like a fighter's, keeping the strongest contact.
+pub fn item_contact(f: &mut Fighter, item: &mut melee_it::ItemCore, id: usize) -> bool {
+    let Some(volume) = counter_volume(f) else {
+        return false;
+    };
+    let hit = item.hitboxes[id].clone().expect("eligible item hit");
+    let Some(contact) = counter_contact(f, &volume, &hit, item.scale) else {
+        return false;
+    };
+    let own_hitlag = f.character.get::<Marth>().special_lw.collision_multiplier;
+    let damage = f.record_item_volume_hit(item, id, contact, &volume, own_hitlag);
+    let facing = if f.physics.position.x > item.position.x {
+        -1.0
+    } else {
+        1.0
+    };
+    let scratch = &mut f.character.get_mut::<Marth>().special_lw;
+    if scratch.pending.is_none_or(|(old, _)| damage > old) {
+        scratch.pending = Some((damage, facing));
+    }
+    // ftColl_80077688: x1964 takes shield_unk1 for a defense-interacting hit.
+    if item.hit_flags[id].defense_interaction {
+        f.combat.minimum_hitlag = own_hitlag;
+    }
+    true
+}
+
+/// ftColl_8007B1B8 / lbColl_80007BCC, before ordinary hurt-capsule tests.
+pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: usize) -> bool {
+    let Some(volume) = counter_volume(f) else {
+        return false;
+    };
+    let hit = attacker.commands.hitboxes[id]
+        .as_ref()
+        .expect("eligible hit");
+    let Some(contact) = counter_contact(f, &volume, hit, attacker.player.scale) else {
         return false;
     };
     let damage = gekko_math::msl::fctiwz(hit.descriptor.damage).max(1);

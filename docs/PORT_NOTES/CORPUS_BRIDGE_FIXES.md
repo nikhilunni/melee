@@ -81,17 +81,37 @@ suite pass (numbers in TRACKER.md). The seven generated matches pass fighter,
 item and ordered-particle comparisons; two stay allocation-free through GAME.
 Retail expectations were never edited.
 
-## Corpus status (2026-09-26, end of session)
+## Corpus status (2026-09-26, after the camera port)
 
-All 48 corpus v2 cases are bridged to retail. 37 (including three committed
-prefixes restored above) pass fighter keys, items and ordered particle draws
-in `m5_gate::corpus_v2_matches_through_game`. The rest stop at:
+All 48 corpus v2 cases are bridged to retail. 44 pass fighter keys, items and
+ordered particle draws in `m5_gate::corpus_v2_matches_through_game`.
 
-- the gameplay camera (8 cases): off-screen magnifier damage
-  (fighter.c:1595, PlCo +7AC/+7B0/+7B4) and the screen-KO approach both read
-  the camera's projection, computed at render time;
-- Fox's tail during GuardSetOff in one case (s0_e2a_p2), probably the same
-  display-pass seeding with a recording that predates `ps_frame` checks;
+The gameplay camera (`melee-cm`) unblocked five: an off-screen fighter's
+magnifier damage (fighter.c:1595) needs the standard camera's per-tick
+tracking (Camera_8002B3D4), the rendered CObj and a world-to-screen test of
+the camera bone (Camera_80030BBC), all bit-exact. Three details mattered:
+
+- rendering happens only on display passes, so the tick traces were
+  re-recorded with `ps_frame`; the display clock is deterministic run to run;
+- the magnifier camera renders before the main camera (render priority 0 vs
+  2), so it reads the previous pass's off-screen flag;
+- the percent HUD skips a shake while its digits explode (a same-tick death)
+  and forgets both the shake and the percent on revival (ifStatus_802F6508).
+
+Fox's Illusion damages through its ghost item, so two more needed the item
+paths of ftColl_8007925C: an item hitbox clanks with a fighter hitbox
+(ftColl_80077970; the item keeps the clank damage for its hitlag, xC48) and
+Marth's Counter catches item hits as a shield volume (ftColl_80077688; the
+item takes the Counter's own hitlag, xCC0). An item hitbox without x42_b5
+is skipped before every test.
+
+`melee-sim camera-diff <scenario>` replays a `record.py --camera` dump through
+the camera in isolation; all ticks match except the quake shake it cannot
+see and revival resets. The rest stop at:
+
+- the screen-KO approach (DeadUpFall's camera-space flight) is not ported;
+- s0_e2a_p2 (@2894): retail's GuardOn shield blocks Marth's Dancing Blade and
+  the port's is hit; earlier notes tie it to Fox's tail bone from 2788;
 - s1_e12345678_p0 (x at 2044), s0_e49_p2 (facing at 5177) and
   s1_effffffff_p1 (RNG at 3971), not yet diagnosed.
 

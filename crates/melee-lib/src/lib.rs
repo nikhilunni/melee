@@ -4,6 +4,7 @@ mod countdown;
 pub mod diagnostics;
 mod frame;
 mod initial_state;
+mod quake;
 mod scene_fighter;
 mod scene_items;
 mod scene_stage;

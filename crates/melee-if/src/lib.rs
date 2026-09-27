@@ -2,6 +2,9 @@
 use gekko_math::{msl::fctiwz, rng::HsdRng};
 use hsd_types::Vec2;
 
+/// IfDamageState.damage_percent before the first sample after a reset.
+const UNKNOWN_PERCENT: i32 = -1;
+
 /// IfDamageState: the four digits draw even when hundreds/tens are hidden.
 #[derive(Clone)]
 pub struct PercentDisplay {
@@ -24,7 +27,13 @@ impl PercentDisplay {
     /// ifStatus_PercentOnDeathAnimationThink (802F491C): initialize four departing digits.
     pub fn set_dead(&mut self, dead: bool, rng: &mut HsdRng) {
         if !dead {
-            self.death_velocity = None;
+            if self.death_velocity.take().is_some() {
+                // ifStatus_802F6508 on revival: forget the percent (-1) and
+                // any shake the death interrupted.
+                self.percent = UNKNOWN_PERCENT;
+                self.shake_remaining = 0;
+                self.offsets = [Vec2::ZERO; 4];
+            }
             return;
         }
         if let Some(velocities) = &mut self.death_velocity {
@@ -48,13 +57,21 @@ impl PercentDisplay {
         }
     }
     /// ifStatus_802F5B48 then ifStatus_802F4EDC, both s_link 17, p_link 15.
+    /// While the digits explode (`set_dead`), ifStatus_802F4EDC returns
+    /// before starting or advancing a shake, so an increase that tick is lost.
     pub fn tick(&mut self, percent: f32, rng: &mut HsdRng) {
         let percent = fctiwz(percent).clamp(0, 999);
-        if percent > self.percent {
+        let increased = self.percent != UNKNOWN_PERCENT && percent > self.percent;
+        if increased {
             self.damage_from_last_attack = (percent - self.percent) as u8;
-            self.shake_remaining = 10;
         }
         self.percent = percent;
+        if self.death_velocity.is_some() {
+            return;
+        }
+        if increased {
+            self.shake_remaining = 10;
+        }
         self.shake(rng);
     }
     /// ifStatus_802F4B84 (802F4B84); no fused instructions in retail audit.

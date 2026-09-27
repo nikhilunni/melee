@@ -132,7 +132,7 @@ impl Fighter {
         self.core.reset_life(assets, context.map);
         self.install_motion_row(super::state::COMMON[S::Wait as usize]);
         let scale = self.core.skeleton.scale(self.core.animation.root);
-        self.reset_spawn_services(context, scale);
+        self.reset_spawn_services(assets, context, scale);
         self.enter_revival(assets, target)
     }
     /// ftCo_800D3158 (800D3158), after Update: blast-zone exits in retail order
@@ -228,8 +228,9 @@ impl Fighter {
         // x2219_b1 / x221E_b1 / x221E_b2 / x221F_b1 are the dead flags MotionData::Life
         // stands for; pl_8003DF44 stamps the killer's stale-move table (no compared key).
         self.core.effect_state.invisible = true;
-        // Camera_RequestQuake(QuakeKind_Large) and the ftCo_800D35FC rumble have no
-        // simulated observer.
+        // Camera_RequestQuake(QuakeKind_Large, &cur_pos); the scene forwards it
+        // to the camera. The ftCo_800D35FC rumble has no simulated observer.
+        self.core.quake_request = Some(melee_cm::QuakeKind::Large);
         self.core.lose_stock();
         self.core.play_death_sounds(assets, exit_sound);
         self.core.effects.push(EffectRequest::Death {
@@ -575,7 +576,7 @@ impl FighterCore {
         self.player_facing = player.facing;
         self.joystick_count = 0;
         self.previous_collision_bounds = Vec3::ZERO;
-        self.camera = super::CameraSubject::default();
+        self.offscreen.magnified_ticks = 0;
         self.hurtboxes.clone_from_slice(&assets.hurtboxes);
         self.dynamic_colliders
             .clone_from_slice(&assets.dynamic_colliders);

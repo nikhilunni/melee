@@ -1357,7 +1357,7 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 37] = [
+const CORPUS_MATCHES: [(&str, usize); 44] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
     ("corpus_v2_s0_e2a_p1", 3307),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
@@ -1424,6 +1424,20 @@ const CORPUS_MATCHES: [(&str, usize); 37] = [
     ("corpus_v2_s1_edeadbeef_p2", 2343),
     ("corpus_v2_s1_effffffff_p0", 2420),
     ("corpus_v2_s1_effffffff_p2", 4248),
+    // The gameplay camera: an off-screen fighter's magnifier damage every
+    // PlCo +7AC ticks, rendered only on display passes (magnifier before the
+    // main camera); the HUD shake lost to a same-tick death and cleared by
+    // the revival.
+    ("corpus_v2_s1_e80000000_p1", 2989),
+    ("corpus_v2_s0_e80000000_p0", 3852),
+    ("corpus_v2_s1_e80000000_p0", 5803),
+    ("corpus_v2_s1_e80000000_p2", 3000),
+    ("corpus_v2_s1_e2a_p0", 2871),
+    // Fox's Illusion ghost against fighter defenses: Marth's down smash
+    // clanks with the item hitbox (ftColl_80077970) and his Counter catches
+    // it as a shield volume (ftColl_80077688, the Counter's own item hitlag).
+    ("corpus_v2_s0_e1_p1", 4271),
+    ("corpus_v2_s0_effffffff_p0", 6000),
 ];
 
 #[test]

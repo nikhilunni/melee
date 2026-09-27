@@ -313,3 +313,132 @@ pub fn stop_collision(
     Ok(())
 }
 pub fn stop_camera(_fighter: &mut Fighter, _phase: super::state::CameraPhase<'_>) {}
+
+/// ftColl_8007925C's per-item clank mask (ftColl_804D6560): this fighter's
+/// hitboxes that may clank with `item`, in hit-ID order. Returns the mask and
+/// whether any entry is set. (x221B_b5, x43_b2 and a cleared x42_b5 belong
+/// to states and commands the port does not reach.)
+pub(super) fn item_candidates(
+    fighter: &FighterCore,
+    item: &melee_it::ItemCore,
+) -> ([bool; 4], bool) {
+    let victim = item.hitbox_victim();
+    let grounded = item.ground_or_air == GroundOrAir::Ground;
+    let mut mask = [false; 4];
+    for (slot, hit) in mask.iter_mut().zip(&fighter.commands.hitboxes) {
+        let Some(hit) = hit else {
+            continue;
+        };
+        let desc = &hit.descriptor;
+        *slot = desc.element != HitElement::Catch
+            && (if grounded {
+                desc.hit_ground
+            } else {
+                desc.hit_air
+            })
+            && !hit.victims.contains(&victim);
+    }
+    let any = mask.contains(&true);
+    (mask, any)
+}
+
+/// ftColl_8007925C's clank step for item hitbox `id`, then ftColl_80077970
+/// (0x80077970): the first overlapping candidate clanks and ends this item
+/// hitbox's tests. Returns true when it clanked.
+pub(super) fn item_contact(
+    fighter: &mut FighterCore,
+    item: &mut melee_it::ItemCore,
+    id: usize,
+    mask: &mut [bool; 4],
+    params: &Parameters,
+) -> bool {
+    let a = item.hitboxes[id].as_ref().expect("item clank hit").clone();
+    for m in 0..mask.len() {
+        if !mask[m] {
+            continue;
+        }
+        let b = fighter.commands.hitboxes[m]
+            .as_ref()
+            .expect("fighter clank hit")
+            .clone();
+        let inert = HitElement::Inert;
+        if a.descriptor.element == inert || b.descriptor.element == inert {
+            if a.descriptor.element == b.descriptor.element {
+                continue;
+            }
+            // Setting the item's touched flag (xDCE b6) needs an item with a
+            // touch callback.
+            unimplemented!("ftColl_8007925C: an inert hitbox touching an item");
+        }
+        if !a.descriptor.clank || !b.descriptor.clank {
+            continue;
+        }
+        // lbColl_80007AFC(item hit, fighter hit): the fighter capsule first.
+        let Some((fighter_point, item_point)) =
+            hitbox_pair_contact(geometry(&b, fighter.player.scale), geometry(&a, item.scale))
+        else {
+            continue;
+        };
+        let midpoint = Vec3::new(
+            (item_point.x + fighter_point.x) * 0.5,
+            (item_point.y + fighter_point.y) * 0.5,
+            (item_point.z + fighter_point.z) * 0.5,
+        );
+        let priority = melee_coll::defense::clank_priority(
+            a.descriptor.damage,
+            b.descriptor.damage,
+            params.priority_gap,
+        );
+        if priority.stop_second {
+            // inlineItemA0: the fighter's hit group remembers the item.
+            record_group(
+                fighter,
+                b.descriptor.group,
+                item.hitbox_victim(),
+                Some(&mut *mask),
+            );
+            let facing = if fighter.physics.position.x < item.position.x {
+                1.0
+            } else {
+                -1.0
+            };
+            accumulate(fighter, &b, facing, params);
+            fighter
+                .effects
+                .push(melee_ef::request::EffectRequest::Clank { position: midpoint });
+        }
+        if priority.stop_first {
+            // inlineItemA1: it_8026FAC4 records the fighter, then xC48 keeps
+            // the strongest clank. (xCF4 and the knockback direction xCB8
+            // have no reader among the supported items.)
+            melee_coll::detection::record_victim(
+                &mut item.hitboxes,
+                a.descriptor.group,
+                fighter.spawn_number,
+            );
+            let damage = truncated_damage(a.descriptor.damage);
+            if damage > item.pending_clank_damage {
+                item.pending_clank_damage = damage;
+            }
+            fighter
+                .effects
+                .push(melee_ef::request::EffectRequest::Clank { position: midpoint });
+        }
+        return true;
+    }
+    false
+}
+
+/// ftcoll.c's integer damage: zero stays zero, a fraction becomes one.
+fn truncated_damage(damage: f32) -> i32 {
+    if damage == 0.0 {
+        0
+    } else {
+        let n = fctiwz(damage);
+        if n == 0 {
+            1
+        } else {
+            n
+        }
+    }
+}

@@ -77,6 +77,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
             &assets.arena,
             SpawnContext {
                 map: &mut map,
+                stage_camera: &assets.stage_camera,
                 rng: &mut rng,
                 counter: &mut counter,
             },

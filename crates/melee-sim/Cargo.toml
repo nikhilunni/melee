@@ -19,6 +19,7 @@ melee-types = { path = "../melee-types" }
 hsd-types = { path = "../hsd-types" }
 melee-ft = { path = "../melee-ft" }
 melee-cpu = { path = "../melee-cpu" }
+melee-cm = { path = "../melee-cm" }
 melee-it = { path = "../melee-it" }
 melee-gr = { path = "../melee-gr" }
 melee-mp = { path = "../melee-mp" }

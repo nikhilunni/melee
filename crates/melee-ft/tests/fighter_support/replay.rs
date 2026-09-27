@@ -259,9 +259,11 @@ fn replay_config(
                         FighterProc::HitDetection => f.proc_hit_detection(),
                         FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets, &mut rng),
                         FighterProc::Dynamics => f.proc_dynamics_with_map(&mut fixture.map),
-                        FighterProc::Camera => {
-                            f.proc_camera_with_map(&fixture.assets, 1.0, &mut fixture.map)
-                        }
+                        FighterProc::Camera => f.proc_camera_with_map(
+                            &fixture.assets,
+                            &melee_cm::StageCamera::GROUND_DEFAULTS,
+                            &mut fixture.map,
+                        ),
                         FighterProc::PlayerMirror => f.proc_player_mirror(),
                     }));
                 let count = f.resolve_graphics_commands(&fixture.assets, &mut rng);

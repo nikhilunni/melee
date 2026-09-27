@@ -16,7 +16,7 @@ impl Fighter {
         assets: &FighterAssets,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
-        let choice = if self.core.begin_animation_phase() {
+        let choice = if self.core.begin_animation_phase(assets) {
             self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
             (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })?
         } else {
@@ -181,10 +181,10 @@ impl Fighter {
     pub fn proc_camera_with_map(
         &mut self,
         assets: &FighterAssets,
-        fixed_zoom: f32,
+        stage: &melee_cm::StageCamera,
         map: &mut CollMap,
     ) {
-        self.proc_camera(assets, fixed_zoom);
+        self.proc_camera(assets, stage);
         if !self.core.status.disabled && self.core.camera.on_ledge {
             let MotionData::Cliff(cliff) = &self.core.state_data else {
                 panic!("cliff camera scratch missing")
@@ -193,19 +193,13 @@ impl Fighter {
         }
     }
     /// Fighter camera procedure at 0x8006D9EC (0x8006D9EC), s_link 18.
-    pub fn proc_camera(&mut self, assets: &FighterAssets, fixed_zoom: f32) {
+    pub fn proc_camera(&mut self, assets: &FighterAssets, stage: &melee_cm::StageCamera) {
         if self.core.status.disabled {
             return;
         }
         self.core.status.require_supported();
         self.core.status.camera_shift = Vec2::ZERO;
-        (self.motion_row.camera)(
-            self,
-            state::CameraPhase {
-                assets,
-                zoom: fixed_zoom,
-            },
-        );
+        (self.motion_row.camera)(self, state::CameraPhase { assets, stage });
     }
 }
 impl FighterCore {
@@ -480,17 +474,15 @@ impl FighterCore {
 
 impl FighterCore {
     // Scheduler bookkeeping keeps the original order around typed row dispatch.
-    fn begin_animation_phase(&mut self) -> bool {
+    fn begin_animation_phase(&mut self, assets: &FighterAssets) -> bool {
         if self.status.disabled {
             return false;
         }
         self.status.require_supported();
         self.physics.begin_tick();
-        if self.combat.hitlag_remaining > 0.0 {
-            return false;
-        }
         // Fighter_8006A360, fighter.c:1464-1484: a protection timer running
         // out clears the flash (color animation 9) if it still owns the slot.
+        // These and the magnifier run during hitlag too.
         if self.status.ledge_intangibility != 0 {
             self.status.ledge_intangibility -= 1;
             if self.status.ledge_intangibility == 0 {
@@ -502,6 +494,11 @@ impl FighterCore {
             if self.status.revival_invincibility == 0 {
                 self.combat.color_overlay.flash_expired = true;
             }
+        }
+        self.apply_magnifier_damage(&assets.magnifier);
+        // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.
+        if self.combat.hitlag_remaining > 0.0 {
+            return false;
         }
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
             self.status.name_tag_timer -= 1;

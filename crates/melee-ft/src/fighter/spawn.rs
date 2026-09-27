@@ -59,6 +59,7 @@ pub struct SpawnCounter(pub u32);
 /// Scene-owned spawn services; the RNG and counter are shared by both players.
 pub struct SpawnContext<'a> {
     pub map: &'a mut CollMap,
+    pub stage_camera: &'a melee_cm::StageCamera,
     pub rng: &'a mut HsdRng,
     pub counter: &'a mut SpawnCounter,
 }
@@ -188,7 +189,7 @@ impl Fighter {
         }
         self.core.dynamics_first_bone.fill(0);
         let root = self.core.animation.root;
-        let supported = self.reset_spawn_services(context, initial_scale);
+        let supported = self.reset_spawn_services(assets, context, initial_scale);
         if let Some(delay) = entry_delay {
             // Fighter_ChangeMotionState sets TopN's facing rotation even
             // for SM_None. The ordinary animation-entry path does this itself.
@@ -220,14 +221,21 @@ impl Fighter {
     /// ftCo_800D4FF4 enters Rebirth directly.
     pub(super) fn reset_spawn_services(
         &mut self,
+        assets: &FighterAssets,
         context: SpawnContext<'_>,
         initial_scale: Vec3,
     ) -> bool {
-        let SpawnContext { map, rng, counter } = context;
+        let SpawnContext {
+            map,
+            stage_camera,
+            rng,
+            counter,
+        } = context;
         let root = self.core.animation.root;
         let supported = self
             .core
             .initialize_spawn_geometry(map, counter, initial_scale);
+        self.core.reset_camera_subject(assets, stage_camera);
         self.character.on_reset();
         // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
         self.core.thrown_hitbox.state = 1;
@@ -809,7 +817,9 @@ impl FighterCore {
             player_facing: player.facing,
             joystick_count: 0,
             previous_collision_bounds: Vec3::ZERO,
-            camera: CameraSubject::default(),
+            camera: melee_cm::Subject::default(),
+            offscreen: Offscreen::default(),
+            quake_request: None,
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),

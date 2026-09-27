@@ -50,7 +50,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::dead,
         collision: callbacks::collision::thrown,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::hold,
         implemented: true,
     };
     // ftCo_MS_DeadLeft = 1 / ftCo_MS_DeadRight = 2; ftData_MotionStateList[1..=2].
@@ -62,7 +62,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::dead,
         collision: callbacks::collision::thrown,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::hold,
         implemented: true,
     };
     rows[S::DeadRight as usize] = MotionRow {
@@ -73,7 +73,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::dead,
         collision: callbacks::collision::thrown,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::hold,
         implemented: true,
     };
     // ftCo_MS_DeadUpStar = 4; ftData_MotionStateList[4]: ftCo_SM_DamageFall (29).
@@ -85,7 +85,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::dead_star,
         collision: callbacks::collision::thrown,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::above_blast_zone,
         implemented: true,
     };
     // ftCo_MS_DeadUpFall = 6; ftData_MotionStateList[6]: ftCo_SM_DamageFall (29).
@@ -97,7 +97,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::dead,
         collision: callbacks::collision::thrown,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::above_blast_zone,
         implemented: true,
     };
     // ftCo_MS_Rebirth = 12; ftData_MotionStateList[12].
@@ -109,7 +109,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::revival,
         collision: callbacks::collision::revival,
-        camera: callbacks::camera::follow_fighter,
+        camera: callbacks::camera::revival,
         implemented: true,
     };
     // ftCo_MS_RebirthWait = 13; ftData_MotionStateList[13].

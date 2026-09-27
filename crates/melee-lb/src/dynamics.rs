@@ -12,7 +12,7 @@ use hsd_anim::{
 };
 use hsd_types::{Mtx, Vec3};
 
-pub mod arithmetic;
+pub use crate::vector as arithmetic;
 use arithmetic::{angle, cross, difference, euler_matrix, normalize, rotate};
 
 /// ftData's 0x3C-byte `lb_00F9_UnkDesc1Inner`, applied by lb_80011710.

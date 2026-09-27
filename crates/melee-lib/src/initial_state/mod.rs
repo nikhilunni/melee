@@ -1,4 +1,6 @@
 //! Restore the owned, local savestate boundary. See ../M3.md.
+mod camera;
+pub use camera::{decode_camera, decode_subject, magnified};
 mod cold;
 #[cfg(test)]
 mod cold_tests;
@@ -69,6 +71,9 @@ pub struct InitialState {
     pub(crate) selected_music: Option<i32>,
     pub(crate) countdown: Option<crate::countdown::Countdown>,
     pub(crate) resume: scheduler_resume::SchedulerResume,
+    /// game_camera and the screen-shake models it drives.
+    pub(crate) camera: melee_cm::GameCamera,
+    pub(crate) quakes: crate::quake::Quakes,
 }
 fn first_json(path: &Path) -> Result<Json> {
     let line =
@@ -200,6 +205,34 @@ impl InitialState {
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];
             });
         }
+        // The camera and its subjects: the list runs newest first, and each
+        // fighter linked its subject at creation (fighter.c:893). A fighter the
+        // setup resume creates keeps the subject its spawn reset.
+        let (camera, subjects) = camera::restore(&saved)?;
+        ensure!(
+            subjects.len() <= fighters.len(),
+            "unsupported camera subjects: {} for {} fighters",
+            subjects.len(),
+            fighters.len()
+        );
+        for (fighter, subject) in fighters.iter_mut().zip(subjects.into_iter().rev()) {
+            crate::scene_fighter::with_fighter!(fighter, |f| f.camera = subject);
+        }
+        for (slot, fighter) in fighters.iter_mut().enumerate() {
+            let raw = &bytes[slot];
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                // x221F bit 0 (MSB-first) and dmg.x1910.
+                f.offscreen.outside_camera = raw[0x221F] & 0x80 != 0;
+                f.offscreen.magnified_ticks = word(raw, 0x1910) as i32;
+                f.offscreen.magnified = camera::restore_magnified(&saved, slot);
+            });
+        }
+        let quakes =
+            crate::quake::Quakes::load(&assets.stage, assets.stage_desc.quake_model.as_ref())?;
+        ensure!(
+            camera.quake.frames_left.iter().all(|&f| f == 0),
+            "a quake playing at the savestate boundary is not imported"
+        );
         let mut sink = RecordSink::new(0, "frame_end");
         for (p, fighter) in fighters.iter().enumerate() {
             fighter.snapshot(&mut PrefixSink::new(&mut sink, &format!("p{p}")));
@@ -377,6 +410,8 @@ impl InitialState {
             resume,
             stage_animations,
             effects,
+            camera,
+            quakes,
         })
     }
 }

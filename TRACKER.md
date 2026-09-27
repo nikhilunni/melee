@@ -858,3 +858,20 @@ Newest first. One line per session: date, what landed, what is next.
   states, joint caches refreshed only on display passes, Jump's first-frame
   skip limited to Jump rows. 37 corpus matches gated; 8 of the remaining 11
   need the gameplay camera. Next: the camera port (`melee-cm`).
+- 2026-09-26: Gameplay camera port, new crate `melee-cm` (cm/camera.c): CmSubject
+  framing and extent smoothing, standard mode (Camera_8002B3D4 and callees,
+  every fmadds cited), quakes with the stage's `quake_model_set` animations,
+  the rendered CObj (Camera_8002AF68) and world-to-screen (C_MTXLookAt,
+  MTXPerspective, GXProject, lbVector_WorldToScreen in `hsd_anim::cobj` and
+  `melee_lb::vector`). The stage camera comes from grGroundParam and markers;
+  its +8 "tilt" is the field of view (Camera_80030730). The savestate import
+  reads game_camera, the subject list and ifMagnify from saved MEM1. Fighters
+  own their subject with retail's dead/rebirth camera callbacks
+  (ftCamera_80076064/80076320, Rebirth_Cam) and the magnifier damage; protection
+  timers now tick during hitlag as in Fighter_8006A360. `melee-sim camera-diff`
+  checks a camera dump in isolation (bit-exact outside quakes and revivals).
+  Item hitboxes now clank with fighter hitboxes (ftColl_80077970) and hit
+  Marth's Counter as a shield volume (ftColl_80077688, xCC0 item hitlag),
+  which Fox's Illusion ghost needs. 44 corpus matches gated (was 37). Next:
+  the screen-KO approach, the GuardOn shield case (s0_e2a_p2), then the
+  remaining singles.

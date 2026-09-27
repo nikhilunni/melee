@@ -451,6 +451,7 @@ dependencies = [
  "melee-coll",
  "melee-ef",
  "melee-ft",
+ "melee-it",
  "melee-lb",
  "melee-test-support",
  "melee-types",
@@ -803,6 +804,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
+name = "melee-cm"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-anim",
+ "hsd-types",
+ "melee-lb",
+]
+
+[[package]]
 name = "melee-cmd"
 version = "0.0.1"
 dependencies = [
@@ -866,6 +877,7 @@ dependencies = [
  "hsd-archive",
  "hsd-gobj",
  "hsd-types",
+ "melee-cm",
  "melee-cmd",
  "melee-coll",
  "melee-diff",
@@ -953,6 +965,7 @@ dependencies = [
  "hsd-types",
  "it-foxillusion",
  "it-foxlaser",
+ "melee-cm",
  "melee-cmd",
  "melee-coll",
  "melee-cpu",
@@ -1030,6 +1043,7 @@ dependencies = [
  "hsd-types",
  "it-foxillusion",
  "it-foxlaser",
+ "melee-cm",
  "melee-cmd",
  "melee-coll",
  "melee-cpu",

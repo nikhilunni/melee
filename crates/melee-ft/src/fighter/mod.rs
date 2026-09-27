@@ -28,6 +28,7 @@ pub mod landing;
 pub mod ledge;
 pub mod life;
 pub mod multi_jump;
+pub mod offscreen;
 pub mod overlap;
 mod pass;
 mod procs;
@@ -67,6 +68,9 @@ pub use state::{
 pub type DefenseContact = fn(&mut Fighter, &mut Fighter, &assets::FighterAssets, usize) -> bool;
 /// Deferred character defense reaction at Fighter_ProcessHit.
 pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
+/// A character shield volume against item hitbox `id` (ftColl_8007925C's
+/// shield step, ftColl_80077688). Returns true when it caught the hit.
+pub type ItemDefenseContact = fn(&mut Fighter, &mut melee_it::ItemCore, usize) -> bool;
 
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
@@ -159,6 +163,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const REFLECT_HIT: Option<reflection::CharacterResponse> = None;
     /// Fighter_ProcessHit: deferred special defense reaction, before hitlag.
     const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
+    const ITEM_DEFENSE_CONTACT: Option<ItemDefenseContact> = None;
 
     /// Explicit boundary for a character-owned hurt-capsule layout.
     fn check_hurtbox_interaction(&self) {}
@@ -635,7 +640,11 @@ pub struct FighterCore {
     /// dmg.x1930.x0: swept collision bounds sampled at s_link 0.
     pub previous_collision_bounds: Vec3,
     /// x890_cameraBox: target subject updated at s_link 18.
-    pub camera: CameraSubject,
+    pub camera: melee_cm::Subject,
+    /// The render-time off-screen state and its magnifier damage.
+    pub offscreen: Offscreen,
+    /// Camera_RequestQuake from this tick's procs, for the scene to forward.
+    pub quake_request: Option<melee_cm::QuakeKind>,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
@@ -658,15 +667,35 @@ impl hsd_anim::mtx::InverseTrig for RetailTrig {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct CameraSubject {
-    /// CameraBox.on_ledge, set by ftCo_Cliff_Cam (80081644).
-    pub on_ledge: bool,
-    pub position: Vec3,
-    pub bone_position: Vec3,
-    pub horizontal: Vec2,
-    pub vertical: Vec3,
-    pub facing: f32,
+/// Whether the fighter's camera bone left the screen, and the magnifier
+/// damage it causes (fighter.c:1595-1610).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Offscreen {
+    /// x221F_b0: set by the main camera's render (ftLib_80086A8C) when the
+    /// camera bone projects outside the scissor.
+    pub outside_camera: bool,
+    /// ifMagnify player `is_offscreen`: the magnifier bubble drew this
+    /// fighter on the last display pass.
+    pub magnified: bool,
+    /// dmg.x1910: consecutive magnified ticks toward the next point of damage.
+    pub magnified_ticks: i32,
+    /// Camera_80031144() == 1.0, published by the camera each tick: only an
+    /// unzoomed camera counts magnified ticks.
+    pub camera_unzoomed: bool,
+    /// Player_GetMoreFlagsBit3: match rules allow off-screen damage.
+    pub damage_enabled: bool,
+}
+
+impl Default for Offscreen {
+    fn default() -> Self {
+        Self {
+            outside_camera: false,
+            magnified: false,
+            magnified_ticks: 0,
+            camera_unzoomed: true,
+            damage_enabled: true,
+        }
+    }
 }
 
 /// State-local data; the retail union starts at Fighter +2340.

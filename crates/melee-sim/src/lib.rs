@@ -5,6 +5,7 @@
 //! through the CLI.
 
 pub mod bones;
+pub mod camera;
 pub mod schema;
 
 pub mod assets;

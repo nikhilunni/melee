@@ -58,6 +58,9 @@ pub struct ItemAssets {
     pub collision_damage_multiplier: f32,
     /// ItemAttr x1_5 (Item.xDC8 xC): contacts put this kind into hitlag.
     pub hitlag: bool,
+    /// ItemAttr x1_67_cam_kind (Item.xDCD): 0 none, 1 an Active camera
+    /// subject, 2 an Auto one (item.c foobar3).
+    pub camera_kind: u8,
 }
 impl ItemAssets {
     /// ftData.x48_items -> Article, loaded once before any item exists.
@@ -106,6 +109,7 @@ impl ItemAssets {
             },
             collision_damage_multiplier: r.f32(common + 0x1C)?,
             hitlag: r.u8(common + 1)? & 0x08 != 0,
+            camera_kind: (r.u8(common + 1)? >> 1) & 3,
         })
     }
 }

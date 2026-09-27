@@ -16,6 +16,7 @@ pub struct Assets {
     pub(crate) effect_resources: melee_ef::Resources,
     pub(crate) items: crate::scene_items::Resources,
     pub arena: melee_ft::fighter::life::Arena,
+    pub stage_camera: melee_cm::StageCamera,
     pub(crate) fighters: ManuallyDrop<[FighterAssets; 2]>,
     pub stage: Archive,
     pub(crate) visual_effect_archives: [Archive; 3],
@@ -112,6 +113,7 @@ impl Assets {
             ],
             player_revival_markers: stage_desc.kind == melee_types::GrKind::Last,
         };
+        let stage_camera = stage_camera(&stage_desc, marker(0x94)?, camera, [low, high])?;
         let fox_effects = archive("EfFxData.dat")?;
         let mars_effects = archive("EfMsData.dat")?;
         let effect_resources = melee_ef::Resources::load(&effects, &fox_effects, &mars_effects)?;
@@ -127,6 +129,7 @@ impl Assets {
             interface,
             items,
             arena,
+            stage_camera,
             fighters: ManuallyDrop::new(fighters),
             stage,
             stage_descriptor,
@@ -154,6 +157,80 @@ impl CharacterArchive {
 }
 
 /// Ground_801C2D24: resolve an archive stage-position binding under map scale.
+/// Ground_801C0800, Ground_801C39C0 and Ground_801C3BB4: the stage's camera
+/// description from grGroundParam and the camera (0x94..0x96) and blast
+/// zone (0x97, 0x98) markers, all relative to the camera centre.
+fn stage_camera(
+    stage: &melee_gr::desc::StageDesc,
+    centre: hsd_types::Vec3,
+    camera: [hsd_types::Vec3; 2],
+    blast: [hsd_types::Vec3; 2],
+) -> Result<melee_cm::StageCamera> {
+    use melee_types::GrKind;
+    anyhow::ensure!(
+        !matches!(
+            stage.kind,
+            GrKind::Castle
+                | GrKind::Corneria
+                | GrKind::Zebes
+                | GrKind::Garden
+                | GrKind::KinokoRoute
+                | GrKind::Homerun
+        ),
+        "Camera_8002AF68: the stage's lowest eye height is not ported"
+    );
+    let [a, b] = camera;
+    let (left, right) = if a.x < b.x {
+        (a.x - centre.x, b.x - centre.x)
+    } else {
+        (b.x - centre.x, a.x - centre.x)
+    };
+    let (bottom, top) = if a.y < b.y {
+        (a.y - centre.y, b.y - centre.y)
+    } else {
+        (b.y - centre.y, a.y - centre.y)
+    };
+    let [a, b] = blast;
+    let (blast_left, blast_right) = if a.x < b.x {
+        (a.x - centre.x, b.x - centre.x)
+    } else {
+        (b.x - centre.x, a.x - centre.x)
+    };
+    let (blast_bottom, blast_top) = if a.y < b.y {
+        (a.y - centre.y, b.y - centre.y)
+    } else {
+        (b.y - centre.y, a.y - centre.y)
+    };
+    let p = &stage.parameters.camera;
+    Ok(melee_cm::StageCamera {
+        bounds: melee_cm::Rect {
+            left,
+            right,
+            top,
+            bottom,
+        },
+        offset_x: centre.x,
+        offset_y: centre.y,
+        fov: p.fov,
+        pan_degrees: p.pan_degrees,
+        yaw_scale: p.yaw_scale,
+        pitch_scale: p.pitch_scale,
+        track_ratio: p.track_ratio,
+        fixed_zoom: p.fixed_zoom,
+        track_smooth: p.track_smooth,
+        min_depth: p.min_depth,
+        max_depth: p.max_depth,
+        blast_zone: melee_cm::Rect {
+            left: blast_left,
+            right: blast_right,
+            top: blast_top,
+            bottom: blast_bottom,
+        },
+        // Ground_801BFFB0's stage_info.x724.
+        floor: -10000.0,
+        min_eye_height: -f32::MAX,
+    })
+}
 pub(crate) fn stage_position(
     archive: &Archive,
     stage: &melee_gr::desc::StageDesc,

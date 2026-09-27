@@ -84,6 +84,12 @@ pub struct ItemCore {
     /// ftColl_80077688's xC50; shield contact has priority at item link 14.
     pub pending_shield_damage: i32,
     pub pending_shield_deflection: Option<melee_lb::shield::ShieldDeflection>,
+    /// xCC0: a counter-style shield's own hitlag for this item (the
+    /// defender's shield_unk1), which overrides the damage formula.
+    pub pending_shield_hitlag: f32,
+    /// xC48: the strongest clank against a fighter hitbox this frame
+    /// (ftColl_80077970).
+    pub pending_clank_damage: i32,
     /// ItemAttr x1_5 (xDC8 xC): contacts put this kind into hitlag.
     pub hitlag_enabled: bool,
     /// xCA8: this frame's contact damage that sets hitlag. Event callbacks
@@ -101,6 +107,9 @@ pub struct ItemCore {
     pub scratch: ItemScratch,
     pub hit_flags: [desc::ItemHitFlags; 4],
 }
+/// The tag that keeps item victim ids apart from fighter spawn numbers.
+const ITEM_VICTIM: u32 = 1 << 31;
+
 impl ItemCore {
     /// checkHitLag / EnterHitlagThink (Item_8026A294): hitlag frames from
     /// it_8026B424 (retail 8026B450: fmadds, then fctiwz), never lowered.
@@ -110,11 +119,21 @@ impl ItemCore {
             common.hitlag_scale,
             common.hitlag_base,
         )) as f32;
+        self.enter_hitlag_frames(frames);
+    }
+    /// checkHitLag (Item_8026A294): raise the hitlag to `frames`.
+    fn enter_hitlag_frames(&mut self, frames: f32) {
         if self.hitlag_frames < frames {
             self.hitlag_frames = frames;
         }
         // No supported kind has an entered_hitlag callback.
         self.in_hitlag = true;
+    }
+    /// How fighter hitboxes list this item among their victims. Retail
+    /// stores gobj pointers; fighters are keyed by spawn number, items by
+    /// their id with the top bit set.
+    pub fn hitbox_victim(&self) -> u32 {
+        ITEM_VICTIM | self.id
     }
     /// ftColl_80077C60 keeps the largest dealt damage until item link 14.
     pub fn record_damage_dealt(&mut self, damage: f32) {
@@ -288,6 +307,10 @@ impl ItemPool {
         assets: &ItemAssets,
         stale_multiplier: f32,
     ) -> Option<u32> {
+        assert_eq!(
+            assets.camera_kind, 0,
+            "item.c foobar3: items that the camera frames are not ported"
+        );
         if let Some(limit) = self.common.hold_limits[usize::from(spawn.hold_kind)] {
             if self
                 .items
@@ -347,6 +370,8 @@ impl ItemPool {
             pending_damage_without_hitlag: 0,
             pending_shield_damage: 0,
             pending_shield_deflection: None,
+            pending_shield_hitlag: 0.0,
+            pending_clank_damage: 0,
             hitlag_enabled: assets.hitlag,
             hitlag_damage: 0,
             hitlag_frames: 0.0,
@@ -399,6 +424,12 @@ impl ItemPool {
                 item.destroyed |=
                     (D::logic(item.kind).hit_shield)(item, &ItemEventContext::default());
             }
+        } else if item.pending_clank_damage != 0 {
+            // OnClankThink: the clank damage becomes the hitlag damage.
+            if item.hitlag_enabled {
+                item.hitlag_damage = item.pending_clank_damage;
+            }
+            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::default());
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_damage_dealt;
@@ -411,9 +442,15 @@ impl ItemPool {
         // Item_8026A294: a surviving item enters hitlag from xCA8. (The xCC0
         // path is a counter-style shield's own hitlag; no supported fighter
         // sets Fighter.shield_unk1 while an item can reach it.)
-        if !item.destroyed && item.hitlag_damage != 0 {
-            let damage = item.hitlag_damage;
-            item.enter_hitlag(&common, damage);
+        if !item.destroyed {
+            // xDC8 xD is set for every item, so a counter's own hitlag wins.
+            if item.pending_shield_hitlag > 0.0 {
+                let frames = item.pending_shield_hitlag;
+                item.enter_hitlag_frames(frames);
+            } else if item.hitlag_damage != 0 {
+                let damage = item.hitlag_damage;
+                item.enter_hitlag(&common, damage);
+            }
         }
         // Item_80269CC4 resets per-frame contact accumulators.
         item.pending_reflection = None;
@@ -422,6 +459,8 @@ impl ItemPool {
         item.pending_damage_without_hitlag = 0;
         item.pending_shield_damage = 0;
         item.pending_shield_deflection = None;
+        item.pending_shield_hitlag = 0.0;
+        item.pending_clank_damage = 0;
         item.hitlag_damage = 0;
     }
     /// Item_802693E4 (802693E4), item link 0: count hitlag down and resume.
@@ -589,6 +628,7 @@ mod tests {
             collision_box: Default::default(),
             collision_damage_multiplier: 1.0,
             hitlag: false,
+            camera_kind: 0,
         }
     }
     #[test]

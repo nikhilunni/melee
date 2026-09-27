@@ -392,6 +392,15 @@ pub fn detect_hit(
         detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id);
     }
 }
+/// A character's shield volume as its bone places it this frame.
+#[derive(Clone, Copy, Debug)]
+pub struct DefenseVolume {
+    pub position: Vec3,
+    /// The volume bone's world matrix.
+    pub matrix: hsd_types::Mtx,
+    pub radius: f32,
+}
+
 /// ftColl_80076CBC (80076CBC): health damage, strongest impact and group victims.
 fn record_shield_hit(
     victim: &mut FighterCore,
@@ -1206,6 +1215,53 @@ impl FighterCore {
             });
     }
 
+    /// ftColl_80077688's item half for a character shield volume such as
+    /// Marth's Counter: the item records the contact, its shield bounce
+    /// against the volume and the volume's own hitlag (`shield_unk1`, xCC0).
+    /// Returns the contact's integer damage for the character's reaction.
+    pub fn record_item_volume_hit(
+        &mut self,
+        item: &mut melee_it::ItemCore,
+        id: usize,
+        contact: Contact,
+        volume: &DefenseVolume,
+        own_hitlag: f32,
+    ) -> i32 {
+        let hit = item.hitboxes[id].as_ref().expect("eligible item hit");
+        let desc = &hit.descriptor;
+        let integer = fctiwz(desc.damage);
+        let damage = if desc.damage == 0.0 {
+            0
+        } else if integer == 0 {
+            1
+        } else {
+            integer
+        };
+        if damage > item.pending_damage_dealt {
+            item.pending_shield_damage = damage;
+            item.pending_shield_deflection = item.hit_flags[id].shield_bounce.then(|| {
+                melee_lb::shield::deflection(
+                    volume.position,
+                    &volume.matrix,
+                    hit.previous_position,
+                    hit.position,
+                    volume.radius,
+                    desc.radius * if desc.ignore_scale { 1.0 } else { item.scale },
+                )
+            });
+            if own_hitlag != 0.0 {
+                item.pending_shield_hitlag = own_hitlag;
+            }
+        }
+        let group = desc.group;
+        melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        self.effects
+            .push(melee_ef::request::EffectRequest::ShieldSpark {
+                position: contact.position,
+            });
+        damage
+    }
+
     /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.
     pub(super) fn contact_with_hurtboxes(
         &mut self,
@@ -1761,6 +1817,7 @@ impl Fighter {
         {
             return None;
         }
+        let (mut clank_mask, clank_candidates) = super::clank::item_candidates(&self.core, item);
         let mut cursor = melee_coll::detection::PairCursor::default();
         while let Some(id) = cursor.next(
             &item.hitboxes,
@@ -1768,6 +1825,10 @@ impl Fighter {
             self.physics.ground_or_air,
         ) {
             let hit = item.hitboxes[id].as_ref().unwrap().clone();
+            // ftColl_8007925C: x42_b5 gates every test of this item hitbox.
+            if !item.hit_flags[id].hits_hurtboxes {
+                continue;
+            }
             if item.hit_flags[id].reflectable
                 && item.hit_flags[id].defense_interaction
                 && hit.descriptor.element != melee_types::HitElement::Inert
@@ -1813,14 +1874,33 @@ impl Fighter {
                     }
                 }
             }
+            // catch_path: clank with this fighter's own hitboxes first.
+            if clank_candidates
+                && super::clank::item_contact(
+                    &mut self.core,
+                    item,
+                    id,
+                    &mut clank_mask,
+                    &assets.clank,
+                )
+            {
+                continue;
+            }
             if self.shield.active && item.hit_flags[id].shieldable {
                 if let Some(contact) = self.core.shield_contact(&hit, item.scale) {
                     self.record_item_shield_hit(item, id, contact);
                     continue;
                 }
             }
-            if !item.hit_flags[id].hits_hurtboxes {
-                continue;
+            // A character's own shield volume (Marth's Counter) in the same slot.
+            if item.hit_flags[id].shieldable
+                && hit.descriptor.element != melee_types::HitElement::Inert
+            {
+                if let Some(contact) = self.character.table().item_defense_contact {
+                    if contact(self, item, id) {
+                        continue;
+                    }
+                }
             }
             let Some((contact, height)) =
                 melee_coll::detection::first_contact(&mut self.core, &hit, item.scale)

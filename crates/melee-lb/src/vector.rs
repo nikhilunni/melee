@@ -1,6 +1,7 @@
-//! lbvector helpers reached by the dynamics solver. All fusion sites audited
-//! with `asm.py lbVector_Normalize lbVector_Angle lbVector_RotateAboutUnitAxis
-//! lbVector_CreateEulerMatrix --fused` against the retail DOL.
+//! lbvector.c helpers. All fusion sites audited with `asm.py
+//! lbVector_Normalize lbVector_Angle lbVector_RotateAboutUnitAxis
+//! lbVector_CreateEulerMatrix lbVector_Rotate lbVector_WorldToScreen --fused`
+//! against the retail DOL.
 use gekko_math::{
     fma::{fmadds, fmsubs},
     msl::sqrtf,
@@ -58,6 +59,59 @@ fn sincos(a: f32) -> (f32, f32) {
     (
         polynomial(a),
         polynomial((f64::from(a) + std::f64::consts::FRAC_PI_2) as f32),
+    )
+}
+
+/// The coordinate axis of [`rotate_about`]; retail passes 1, 2 and 4.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+/// lbVector_Rotate (0x8000DB00): rotate `v` by `angle` about a coordinate
+/// axis, with the quintic sine/cosine.
+pub fn rotate_about(v: Vec3, axis: Axis, angle: f32) -> Vec3 {
+    let (s, c) = sincos(angle);
+    match axis {
+        // retail 0x8000DC14/DC18.
+        Axis::X => Vec3::new(v.x, fmsubs(v.y, c, v.z * s), fmadds(v.y, s, v.z * c)),
+        // retail 0x8000DC34/DC38.
+        Axis::Y => Vec3::new(fmadds(v.x, c, v.z * s), v.y, fmsubs(v.z, c, v.x * s)),
+        // retail 0x8000DC54/DC58.
+        Axis::Z => Vec3::new(fmsubs(v.x, c, v.y * s), fmadds(v.x, s, v.y * c), v.z),
+    }
+}
+
+/// lbVector_WorldToScreen (0x8000E210) with `d != 0`: a fresh look-at
+/// matrix, a point behind the near side pushed to 0.01 in front of the eye,
+/// then GXProject. Returns the window position (x, y, depth).
+pub fn world_to_screen(camera: &hsd_anim::cobj::PerspectiveCamera, position: Vec3) -> Vec3 {
+    let view = hsd_anim::cobj::look_at(camera.eye, camera.up_vector(), camera.interest);
+    let row = view.0[2];
+    // retail 0x8000E498..0x8000E4B8: y product first, two fmadds, then + m23.
+    let depth = row[3]
+        + fmadds(
+            row[2],
+            position.z,
+            fmadds(row[0], position.x, row[1] * position.y),
+        );
+    let mut point = position;
+    if depth > -0.01 {
+        let push = -depth - 0.01;
+        // retail 0x8000E4D4..0x8000E4EC.
+        point = Vec3::new(
+            fmadds(row[0], push, point.x),
+            fmadds(row[1], push, point.y),
+            fmadds(row[2], push, point.z),
+        );
+    }
+    hsd_anim::cobj::gx_project(
+        point,
+        &view,
+        camera.projection(),
+        &camera.viewport_parameters(),
     )
 }
 

@@ -54,6 +54,13 @@ enum Command {
         #[arg(long)]
         tick: Option<u64>,
     },
+    /// Replay each tick of a retail camera dump (`record.py --camera`) through
+    /// the ported camera in isolation and report differing fields.
+    CameraDiff {
+        scenario: PathBuf,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
     /// Compare the port's particle system with the retail particle dump per tick.
     ParticlesDiff {
         scenario: PathBuf,
@@ -164,6 +171,15 @@ fn main() -> anyhow::Result<()> {
             }
             anyhow::ensure!(report.is_empty(), "bone mismatches");
             println!("bones match");
+            Ok(())
+        }
+        Command::CameraDiff { scenario, limit } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let (samples, report) = melee_sim::camera::camera_diff(&scenario, limit)?;
+            for line in &report {
+                println!("{line}");
+            }
+            println!("{samples} samples, {} mismatches listed", report.len());
             Ok(())
         }
         Command::ParticlesDiff { scenario, from, to } => {

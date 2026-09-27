@@ -120,7 +120,9 @@ fn idle_fox_600() {
                     FighterProc::HitDetection => f.proc_hit_detection(),
                     FighterProc::ProcessHit => f.proc_process_hit(&fixture.assets, &mut rng),
                     FighterProc::Dynamics => f.proc_dynamics(),
-                    FighterProc::Camera => f.proc_camera(&fixture.assets, 1.0),
+                    FighterProc::Camera => {
+                        f.proc_camera(&fixture.assets, &melee_cm::StageCamera::GROUND_DEFAULTS)
+                    }
                     FighterProc::PlayerMirror => f.proc_player_mirror(),
                 }
             }

@@ -28,6 +28,7 @@ fn fox_spawn_native() {
             root,
             SpawnContext {
                 map: &mut fixture.map,
+                stage_camera: &melee_cm::StageCamera::GROUND_DEFAULTS,
                 rng: &mut rng,
                 counter: &mut counter,
             },

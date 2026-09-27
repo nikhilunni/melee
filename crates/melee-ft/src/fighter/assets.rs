@@ -168,6 +168,7 @@ pub struct FighterAssets {
     /// slot and decoded program.
     pub color_overlays: super::color_overlay::ColorOverlayTable,
     pub camera_extents: [hsd_types::Vec3; 2],
+    pub magnifier: super::offscreen::MagnifierDamage,
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
 }
@@ -306,6 +307,7 @@ impl FighterAssets {
             heavy_voices: read_sfx_array(data, root, 0x20)?,
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
             grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
+            magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,
             bones: read_fighter_bones(data, root, descriptor.part_animation_count)?,

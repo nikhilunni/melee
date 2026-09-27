@@ -84,6 +84,7 @@ pub trait ScenarioSource {
     fn savestate_path(&self) -> PathBuf;
 }
 
+pub use crate::initial_state::{decode_camera, decode_subject, magnified};
 mod snapshot;
 pub use snapshot::snapshot;
 mod items;

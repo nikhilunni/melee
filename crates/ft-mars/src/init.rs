@@ -68,6 +68,8 @@ impl CharacterCallbacks for Marth {
         Some(crate::special_lw::contact);
     const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
         Some(crate::special_lw::process_hit);
+    const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =
+        Some(crate::special_lw::item_contact);
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

@@ -33,7 +33,9 @@ pub struct CollisionPhase<'a> {
 /// Fighter camera procedure (8006D9EC), s_link 18.
 pub struct CameraPhase<'a> {
     pub assets: &'a FighterAssets,
-    pub zoom: f32,
+    /// The stage's camera description (Stage_GetCamFixedZoom and the bounds
+    /// the dead-fighter callbacks aim at).
+    pub stage: &'a melee_cm::StageCamera,
 }
 
 pub type AnimFn = fn(&mut Fighter, AnimationPhase<'_>) -> Result<Option<WaitChoice>>;

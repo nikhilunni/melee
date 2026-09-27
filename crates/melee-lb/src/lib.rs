@@ -7,6 +7,7 @@ pub mod trigf;
 
 pub mod dynamics;
 pub mod ik;
+pub mod vector;
 
 pub mod radial_force;
 

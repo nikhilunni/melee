@@ -75,6 +75,7 @@ pub(super) fn fighter(
         i32::from(raw[0x4C]),
         SpawnContext {
             map,
+            stage_camera: &assets.stage_camera,
             rng,
             counter: &mut counter,
         },

@@ -63,7 +63,17 @@ impl InitialState {
                 map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
             }
         }
-        let fighters = create_players(scenario, &assets, &mut map, &mut rng)?;
+        let mut fighters = create_players(scenario, &assets, &mut map, &mut rng)?;
+        // gm_16AE: Camera_80030730 (the stage's field of view, see
+        // StageCamera::fov), then Camera_8002F3AC snaps to the players.
+        let mut camera = melee_cm::GameCamera::new();
+        {
+            let [a, b] = &mut fighters;
+            let mut subjects = [&mut b.0.camera, &mut a.0.camera];
+            camera.snap_standard(&mut subjects, &assets.stage_camera);
+        }
+        let quakes =
+            crate::quake::Quakes::load(&assets.stage, assets.stage_desc.quake_model.as_ref())?;
         ensure!(
             rng.seed == boundary_seed,
             "setup draw count differs from the boundary seed contract"
@@ -101,6 +111,8 @@ impl InitialState {
             // A cold match has no emission interrupted by a save boundary.
             pending_emission: None,
             effects,
+            camera,
+            quakes,
         })
     }
 }
@@ -294,6 +306,7 @@ fn create_players(
             ENTRY_STAGGER_FRAMES * (p as i32 + 1),
             SpawnContext {
                 map: &mut *map,
+                stage_camera: &assets.stage_camera,
                 rng: &mut *rng,
                 counter: &mut counter,
             },

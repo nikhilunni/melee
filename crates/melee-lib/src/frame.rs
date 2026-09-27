@@ -20,14 +20,29 @@ use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Callback {
-    Item { id: u32, phase: u8 },
+    Item {
+        id: u32,
+        phase: u8,
+    },
     Countdown,
-    Stage { map: Option<u8>, address: u32 },
-    Fighter { player: usize, proc: FighterProc },
-    Interface { player: usize },
+    Stage {
+        map: Option<u8>,
+        address: u32,
+    },
+    Fighter {
+        player: usize,
+        proc: FighterProc,
+    },
+    Interface {
+        player: usize,
+    },
     Effects,
     ParticlesMain,
     ParticlesAux,
+    /// fn_8002F360: the camera gobj's mode proc (Camera_8002B3D4).
+    Camera,
+    /// grLib_801C9C40 for every playing quake model.
+    Quakes,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Registration {
@@ -77,6 +92,8 @@ impl Registration {
             // These identities are only used when resuming their own s_link.
             Callback::ParticlesAux => 0x8005_C9D0,
             Callback::Effects => 0x8005_BC50,
+            Callback::Camera => 0x8002_F360,
+            Callback::Quakes => 0x801C_9C40,
             // Cold-only composite callback has no single retail proc identity.
             Callback::Countdown => 0,
         };
@@ -143,6 +160,22 @@ fn registrations(stage: &SceneStage) -> Vec<Registration> {
             priority: 1,
             object: 0,
             callback: Callback::ParticlesAux,
+        },
+        // Camera_Create: GObj_Create(0x10, 0x12, 0), proc at s_link 0x12.
+        Registration {
+            s_link: 18,
+            p_link: 18,
+            priority: 0,
+            object: 0,
+            callback: Callback::Camera,
+        },
+        // grLib_801C9CEC's quake gobjs (p_link 18, priority = kind), s_link 1.
+        Registration {
+            s_link: 1,
+            p_link: 18,
+            priority: 2,
+            object: 1,
+            callback: Callback::Quakes,
         },
     ]);
     rows
@@ -367,6 +400,19 @@ impl Runtime {
                     }
                 }
             }
+            Callback::Camera => {
+                let [a, b] = &mut state.fighters;
+                // cm_804D6468 runs newest first: player 2's subject, then player 1's.
+                let mut subjects = [&mut b.0.camera, &mut a.0.camera];
+                state
+                    .camera
+                    .update_standard(&mut subjects, &state.assets.stage_camera);
+                let unzoomed = state.camera.zoom() == 1.0;
+                for fighter in &mut state.fighters {
+                    fighter.0.offscreen.camera_unzoomed = unzoomed;
+                }
+            }
+            Callback::Quakes => state.quakes.animate(&mut state.camera),
             Callback::Fighter { player, proc } => {
                 if proc == FighterProc::Animation {
                     use crate::scene_fighter::with_fighter;
@@ -490,6 +536,9 @@ impl Runtime {
                         )
                     }
                 })?;
+                if let Some(kind) = state.fighters[player].0.quake_request.take() {
+                    state.quakes.request(&mut state.camera, kind);
+                }
                 if proc == FighterProc::Animation {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         if matches!(
@@ -503,6 +552,7 @@ impl Runtime {
                                 &state.assets.arena,
                                 melee_ft::fighter::SpawnContext {
                                     map: &mut state.map,
+                                    stage_camera: &state.assets.stage_camera,
                                     rng: &mut state.rng,
                                     counter: &mut state.spawn_counter,
                                 },
@@ -822,6 +872,10 @@ impl Simulation {
     pub fn item_snapshot(&self, frame: u64) -> Record {
         crate::diagnostics::item_snapshot(&self.runtime.state.items, frame)
     }
+    /// The stage's camera description (stage_info.cam_info).
+    pub fn stage_camera(&self) -> melee_cm::StageCamera {
+        self.runtime.state.assets.stage_camera
+    }
     /// The particle system in the retail particle-dump format, for
     /// `melee-sim particles-diff`.
     pub fn particle_snapshot(&self, frame: u64) -> Record {
@@ -986,6 +1040,7 @@ impl Simulation {
                     fighter.0.prepare_dynamic_display_caches();
                 }
                 runtime.state.particles.sort_for_display(7);
+                render_cameras(&mut runtime.state);
             }
         }
         let runtime = self.runtime.as_mut();
@@ -1104,6 +1159,30 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
     }
 }
 
+/// The display pass's camera renders that feed gameplay, in HSD_GObj_80390FC0
+/// order (render priority): the magnifier camera (0) before the main camera
+/// (2), so the magnifier sees the previous pass's off-screen flags.
+fn render_cameras(state: &mut InitialState) {
+    // ifMagnify_802FBBDC: the HUD is visible in a running Versus match.
+    for fighter in &mut state.fighters {
+        let f = &mut fighter.0;
+        // ftLib_80086ED0: invisible, x221E_b2 (the dead, star, screen and
+        // revival states, all MotionData::Life) and x2220_b7 hide the fighter.
+        let drawn = !f.effect_state.invisible
+            && !matches!(f.state_data, melee_ft::fighter::MotionData::Life(_));
+        f.offscreen.magnified = f.offscreen.outside_camera && drawn;
+    }
+    // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
+    // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
+    let camera = state.camera.render_camera(&state.assets.stage_camera);
+    for fighter in &mut state.fighters {
+        let f = &mut fighter.0;
+        let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position)
+            .is_some_and(|point| point.on_screen);
+        f.offscreen.outside_camera = !on_screen;
+    }
+}
+
 #[allow(clippy::too_many_arguments)] // Borrow each subsystem independently while dispatching a concrete fighter.
 fn dispatch_fighter(
     f: &mut melee_ft::fighter::Fighter,
@@ -1165,7 +1244,7 @@ fn dispatch_fighter(
         FighterProc::HitDetection => f.proc_hit_detection(),
         FighterProc::ProcessHit => f.proc_process_hit(assets, rng),
         FighterProc::Dynamics => f.proc_dynamics_with_forces(map, radial_forces.fields()),
-        FighterProc::Camera => f.proc_camera_with_map(assets, 1.0, map),
+        FighterProc::Camera => f.proc_camera_with_map(assets, &scene_assets.stage_camera, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
     }
     // Fighter_8006D044/8006D10C invoke the installed callbacks on transitions,
@@ -1416,6 +1495,14 @@ mod tests {
             };
             for player in 0..2 {
                 expected.push((phase, 8, player as u8, Callback::Fighter { player, proc }));
+            }
+            // p_link 18 follows the fighters: the quake models at s_link 1
+            // (grLib_801C9CEC) and the camera at s_link 18 (Camera_Create).
+            if phase == 1 {
+                expected.push((1, 18, 1, Callback::Quakes));
+            }
+            if phase == 18 {
+                expected.push((18, 18, 0, Callback::Camera));
             }
         }
         assert_eq!(*calls.borrow(), expected);
