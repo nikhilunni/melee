@@ -1499,6 +1499,12 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_shieldthrow_bomb_fd_marth", 1545),
         ("sudden_death_dashhold_bomb_fd_marth", 1437),
         ("sudden_death_dashthrow_bomb_fd_marth", 1545),
+        // Turning, crouching, rolling, landing and running with it.
+        ("sudden_death_turnhold_bomb_fd_marth", 1545),
+        ("sudden_death_crouchhold_bomb_fd_marth", 1433),
+        ("sudden_death_rollhold_bomb_fd_marth", 1545),
+        ("sudden_death_landhold_bomb_fd_marth", 1545),
+        ("sudden_death_runhold_bomb_fd_marth", 1429),
     ] {
         combat_gate_ticks(name, ticks);
     }

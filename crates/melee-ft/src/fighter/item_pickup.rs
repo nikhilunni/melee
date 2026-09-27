@@ -121,7 +121,7 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 36] = [
+const HELD_ITEM_STATES: [S; 43] = [
     S::LightGet,
     S::Wait,
     // ftCo_Walk: a light item changes nothing but the IASA's item throw.
@@ -139,6 +139,14 @@ const HELD_ITEM_STATES: [S; 36] = [
     S::Run,
     S::RunBrake,
     S::LightThrowDash,
+    // Turning, crouching and rolls keep it too.
+    S::Turn,
+    S::Squat,
+    S::SquatWait,
+    S::SquatRv,
+    S::EscapeF,
+    S::EscapeB,
+    S::EscapeN,
     // ftCo_80095A30's ground throws: the item leaves at the release flag.
     S::LightThrowF,
     S::LightThrowB,

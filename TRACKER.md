@@ -1052,3 +1052,7 @@ Newest first. One line per session: date, what landed, what is next.
   +404..40C friction through the shared ft_80085030 helper) or an early
   forward smash throw; every Wait entry now plays the item idle
   (ft_8008A348, previously only after LightGet). Four witnesses gated.
+- 2026-09-27: Held item through Turn, Squat/SquatWait/SquatRv, rolls
+  (ftCo_8009563C's smash throw window), landing and Run/RunBrake; the IASA
+  callbacks share FighterCore::wait_context, so every Catch_CheckInput
+  site sees the held item. Five witnesses gated.

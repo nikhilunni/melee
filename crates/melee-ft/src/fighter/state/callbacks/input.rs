@@ -12,12 +12,7 @@ pub fn appeal(fighter: &mut Fighter, phase: InputPhase<'_>) {
     if !fighter.commands.allow_interrupt {
         return;
     }
-    let context = WaitContext {
-        facing: fighter.physics.facing,
-        specials_available: fighter.capabilities.specials,
-        shield_health: fighter.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     let transition = fighter.first_ground_transition(
         phase.assets,
         &context,
@@ -49,12 +44,7 @@ pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 /// ftData_MotionStateList: ftCo_MS_AttackDash (50).
 pub fn dash_attack(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .dash_attack_input(assets, &context)
         .expect("dash attack IASA");
@@ -63,12 +53,7 @@ pub fn dash_attack(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_AttackS4 (60..64).
 pub fn forward_smash(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .forward_smash_input(assets, &context)
         .expect("forward smash IASA");
@@ -76,12 +61,7 @@ pub fn forward_smash(fighter: &mut Fighter, phase: InputPhase<'_>) {
 
 pub fn tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter.tilt_input(assets, &context).expect("tilt IASA");
 }
 
@@ -95,24 +75,14 @@ pub fn damage_fall(fighter: &mut Fighter, phase: InputPhase<'_>) {
 }
 pub fn damage(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter.damage_input(assets, &context).expect("damage IASA");
 }
 
 /// ftData_MotionStateList: ftCo_MS_Attack11 (44).
 pub fn jab(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter.jab_input(assets, &context).expect("jab IASA");
 }
 
@@ -120,12 +90,7 @@ pub fn jab(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftCo_MS_GuardSetOff (181), ftCo_MS_GuardReflect (182).
 pub fn guard_on(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter.shield_input(assets, &context).expect("shield IASA");
 }
 
@@ -156,8 +121,23 @@ pub fn escape_air(fighter: &mut Fighter, _phase: InputPhase<'_>) {
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234).
-pub fn escape(fighter: &mut Fighter, _phase: InputPhase<'_>) {
-    fighter.core.input_escape(_phase)
+pub fn escape(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    // ftCo_8009563C (8009563C): A with a held item inside the roll's window
+    // is a smash throw, forward from EscapeF, back otherwise.
+    let window_open =
+        matches!(&fighter.core.state_data, MotionData::Escape(e) if e.interrupt_frames != 0);
+    if window_open && fighter.core.item_throw_pressed() {
+        let state = if fighter.core.motion_state.id == melee_types::CommonMotionState::EscapeF {
+            melee_types::CommonMotionState::LightThrowF4
+        } else {
+            melee_types::CommonMotionState::LightThrowB4
+        };
+        fighter
+            .enter_item_throw(state, phase.assets)
+            .expect("roll item throw");
+        return;
+    }
+    fighter.core.input_escape(phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeN (235).
@@ -165,12 +145,7 @@ pub fn escape_n(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_KneeBend (24).
 pub fn knee_bend(fighter: &mut Fighter, phase: InputPhase<'_>) {
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .knee_bend_input(phase.assets, &context)
         .expect("KneeBend IASA");
@@ -179,12 +154,7 @@ pub fn knee_bend(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_Squat (39), ftCo_MS_SquatWait (40), ftCo_MS_SquatRv (41).
 pub fn squat(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .squat_input(assets, &context)
         .expect("squat transition");
@@ -193,12 +163,7 @@ pub fn squat(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_Turn (18).
 pub fn turn(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .turn_input(assets, &context)
         .expect("turn transition");
@@ -207,12 +172,7 @@ pub fn turn(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_Dash (20).
 pub fn dash(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .dash_input(assets, &context)
         .expect("dash transition");
@@ -221,12 +181,7 @@ pub fn dash(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_Run (21).
 pub fn run(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter.run_input(assets, &context).expect("run transition");
 }
 
@@ -328,12 +283,7 @@ pub fn wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftData_MotionStateList: ftCo_MS_Landing (42), ftCo_MS_LandingFallSpecial (43).
 pub fn landing(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     let MotionData::Landing {
         allow_interrupt, ..
     } = fighter.core.state_data
