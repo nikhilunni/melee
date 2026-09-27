@@ -66,7 +66,7 @@ fn default_spawn_point() -> i8 {
 /// One step of the Dolphin-side schedule: `buttons` holds on `port` from VI
 /// frame `frame` until that port's next step. Keys are the GC pad names the
 /// harness accepts (`remote_proto.GC_KEYS`); an empty table is neutral.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InputStep {
     pub frame: u64,

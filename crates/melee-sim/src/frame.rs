@@ -1,6 +1,7 @@
 //! Scripted adapter over the same one-tick engine used by melee-lib::Match.
 use crate::{initial_state::InitialState, inputs::PadScript};
 pub use melee_lib::diagnostics::RenderedPose;
+#[derive(Clone)]
 pub struct Simulation {
     engine: melee_lib::diagnostics::Simulation,
     pads: PadScript,
@@ -14,6 +15,10 @@ impl Simulation {
             engine: melee_lib::diagnostics::Simulation::new(state),
             pads,
         }
+    }
+    /// Replace the pad script; ticks already run keep the pads they used.
+    pub fn set_pads(&mut self, pads: PadScript) {
+        self.pads = pads;
     }
     pub fn tick_without_snapshot(&mut self) -> anyhow::Result<()> {
         self.engine

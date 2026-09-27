@@ -14,6 +14,7 @@ pub mod initial_state;
 pub mod inputs;
 pub mod replay;
 pub mod scenario;
+pub mod search;
 pub mod trace;
 pub mod trace_items;
 

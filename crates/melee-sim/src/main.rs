@@ -45,6 +45,24 @@ enum Command {
     },
     /// Run and compare every key against the scenario's canonical tick trace.
     Gate { scenario: PathBuf },
+    /// Search tick-clock input edits (a TOML spec, see search.rs) for ones
+    /// that reach a goal in the port, branching by cloning the match.
+    Search {
+        scenario: PathBuf,
+        /// A recorded scenario from the same savestate.
+        #[arg(long)]
+        state_from: PathBuf,
+        #[arg(long)]
+        spec: PathBuf,
+        /// Write the earliest success as a scenario file.
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// The written scenario's name (default: the base scenario's).
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long, default_value_t = 8)]
+        jobs: usize,
+    },
     /// Gate a scenario and record external particle spawn/joint/flag inputs.
     FixtureSpawns {
         scenario: PathBuf,
@@ -221,6 +239,48 @@ fn main() -> anyhow::Result<()> {
                 println!("{line}");
             }
             println!("{} differing ticks", report.len());
+            Ok(())
+        }
+        Command::Search {
+            scenario: path,
+            state_from,
+            spec,
+            out,
+            name,
+            jobs,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&path)?;
+            let reference = melee_sim::scenario::Scenario::load(&state_from)?;
+            let spec: melee_sim::search::Spec = toml::from_str(&std::fs::read_to_string(&spec)?)?;
+            let t0 = std::time::Instant::now();
+            let (found, tried) = melee_sim::search::search(&scenario, &reference, &spec, jobs)?;
+            println!(
+                "{tried} candidates simulated in {:.1}s; {} reached the goal",
+                t0.elapsed().as_secs_f64(),
+                found.len()
+            );
+            for f in &found {
+                let edits: Vec<String> = f
+                    .edits
+                    .iter()
+                    .map(|e| {
+                        let hold = e.hold.map_or(String::new(), |h| format!(" for {h}"));
+                        format!("port {} @{} {}{hold}", e.port, e.tick, melee_sim::search::inline_raw(&e.raw))
+                    })
+                    .collect();
+                println!("reached {:?}: {}", f.reached, edits.join("; "));
+            }
+            if let (Some(out), Some(best)) = (out, found.first()) {
+                let text = melee_sim::search::write_scenario(
+                    &std::fs::read_to_string(&path)?,
+                    best,
+                    &spec,
+                    name.as_deref(),
+                )?;
+                std::fs::write(&out, text)?;
+                println!("wrote {}", out.display());
+            }
+            anyhow::ensure!(!found.is_empty(), "no candidate reached the goal");
             Ok(())
         }
         Command::Gate { scenario } => {

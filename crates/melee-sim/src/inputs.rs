@@ -160,6 +160,13 @@ impl PadScript {
         Ok(self)
     }
 
+    /// Share another script's display clock (read once with
+    /// [`Self::with_display_from`]) instead of re-reading its trace.
+    pub fn with_display_of(mut self, other: &Self) -> Self {
+        self.display_clock.clone_from(&other.display_clock);
+        self
+    }
+
     /// Whether retail rendered (and so re-sorted particle lists) between the
     /// previous tick's end and this tick's: the recorded display clock moved.
     /// Traces without one (and live play) render every tick.
