@@ -1,0 +1,27 @@
+# Mirror of walljump_right_underside_fd_fox_candidate: Fox runs off the left edge (Fall 72), drifts back
+# (74), double-jumps up-right under the left slope (92) and flicks left (96): PassiveWallJump (203) at 96
+# from (-90.97,-18.91), Fall at 141. Boundary: idle_fd_marth.sav; tick clock.
+name = "walljump_left_underside_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 182
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 5, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 74, port = 1, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 92, port = 1, buttons = {  }, raw = { stickX = 80, button = 1024 } },
+  { frame = 94, port = 1, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 96, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 99, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

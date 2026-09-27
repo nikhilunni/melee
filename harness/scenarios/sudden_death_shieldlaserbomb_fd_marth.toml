@@ -1,0 +1,27 @@
+# Sudden Death: Marth turns left (1206) and shields (1215) beside the first Bob-omb (falling at x=-75); Fox
+# fires his blaster (1206). The bomb's blast and the laser both reach Marth's shield on tick 1232 (GuardSetOff
+# 181): two impacts in one frame, the blast's pushback wins (x -60 -> -44.04 by 1256). B at 1207 lands at 1233.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_shieldlaserbomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1275
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = {  }, raw = { stickX = -45 } },
+  { frame = 1206, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1207, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1215, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

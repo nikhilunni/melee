@@ -1,0 +1,69 @@
+# Fox lasers Marth to 39.3% (20 shots), both run off the left edge (Fall: Marth 304, Fox 312), Marth drifts back
+# and Fox back-airs him from outside (C-stick 324): Marth DamageFlyN (88, 327) into the side wall under the
+# ledge, L at 334 -> PassiveWall (202) at 337, Fall at 368. L at 330 instead bounces (FlyReflectWall).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "passivewall_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 11, port = 1, buttons = {  }, raw = {  } },
+  { frame = 20, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 21, port = 1, buttons = {  }, raw = {  } },
+  { frame = 30, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 31, port = 1, buttons = {  }, raw = {  } },
+  { frame = 40, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 41, port = 1, buttons = {  }, raw = {  } },
+  { frame = 50, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 51, port = 1, buttons = {  }, raw = {  } },
+  { frame = 60, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 61, port = 1, buttons = {  }, raw = {  } },
+  { frame = 70, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 71, port = 1, buttons = {  }, raw = {  } },
+  { frame = 80, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 81, port = 1, buttons = {  }, raw = {  } },
+  { frame = 90, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 91, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 101, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 111, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 131, port = 1, buttons = {  }, raw = {  } },
+  { frame = 140, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 141, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 151, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 161, port = 1, buttons = {  }, raw = {  } },
+  { frame = 170, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 171, port = 1, buttons = {  }, raw = {  } },
+  { frame = 180, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 181, port = 1, buttons = {  }, raw = {  } },
+  { frame = 190, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 191, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 201, port = 1, buttons = {  }, raw = {  } },
+  { frame = 245, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 288, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 308, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 324, port = 1, buttons = {  }, raw = { stickX = -80, substickX = 80 } },
+  { frame = 325, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 334, port = 0, buttons = {  }, raw = { stickX = 80, button = 64, triggerL = 255 } },
+  { frame = 335, port = 0, buttons = {  }, raw = { stickX = 80 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,26 @@
+# Fox runs off the left edge (Fall 72), charges Fire Fox below it (77) and aims straight right (79) into the
+# vertical wall under the ledge: SpecialAirHi (356) from 119 at (-96.5,-8) is pinned at x=-89.6 (~124..148),
+# HiFall 149, CliffCatch 150 (travel-into-wall, then the ledge). Boundary: idle_fd_marth.sav; tick clock.
+name = "firefox_wall_ledge_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 195
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 5, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 76, port = 1, buttons = {  }, raw = {  } },
+  { frame = 77, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 79, port = 1, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 160, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

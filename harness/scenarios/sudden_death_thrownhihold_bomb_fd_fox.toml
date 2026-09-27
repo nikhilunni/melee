@@ -1,0 +1,34 @@
+# Sudden Death: Fox runs left early (1170..1189), so the first Bob-omb drops at x = -25;
+# he picks it up with A (LightGet, 1234) and walks left (1241); Marth dash-grabs
+# him holding it (1264) and throws him (ThrowHi, 1277) with the Bob-omb in hand.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_thrownhihold_bomb_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1330
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1170, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1190, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1234, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 1236, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1241, port = 1, buttons = {  }, raw = { stickX = -50 } },
+  { frame = 1250, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 1253, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1264, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 1266, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1277, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 1280, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

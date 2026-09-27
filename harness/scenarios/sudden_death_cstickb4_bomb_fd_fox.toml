@@ -1,0 +1,31 @@
+# Sudden Death: Fox runs left early (1170..1189), so the first Bob-omb drops at x = -25;
+# he picks it up with A (LightGet, 1234), rolls forward holding it (1244;
+# he ends facing right) and flicks the C-stick left behind him: LightThrowB4 (1276).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_cstickb4_bomb_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1325
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1170, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1190, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1234, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 1236, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1241, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 1244, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255, stickX = -110 } },
+  { frame = 1248, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1276, port = 1, buttons = {  }, raw = { substickX = -127 } },
+  { frame = 1279, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

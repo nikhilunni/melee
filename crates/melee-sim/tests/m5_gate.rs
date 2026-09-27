@@ -933,6 +933,71 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("sudden_death_ledgeroll_fd_marth", 1410);
 }
 
+/// Sudden Death item holding and the remaining matrix rows, recorded from
+/// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
+/// movement, specials, hits and grabs; Marth's air throws; catches; wall
+/// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
+const MATRIX_WITNESSES: [(&str, usize); 51] = [
+    ("sudden_death_airdrop_bomb_fd_fox", 1330),
+    ("sudden_death_airreflect_bomb_fd_fox", 1330),
+    ("sudden_death_airthrow_bomb_fd_fox", 1330),
+    ("sudden_death_airthrowb_bomb_fd_fox", 1330),
+    ("sudden_death_airthrowb_bomb_fd_marth", 1330),
+    ("sudden_death_airthrowb4_bomb_fd_fox", 1330),
+    ("sudden_death_airthrowf4_bomb_fd_fox", 1325),
+    ("sudden_death_airthrowf4_bomb_fd_marth", 1330),
+    ("sudden_death_airthrowhi_bomb_fd_fox", 1330),
+    ("sudden_death_airthrowhi_bomb_fd_marth", 1330),
+    ("sudden_death_airthrowhi4_bomb_fd_fox", 1330),
+    ("sudden_death_airthrowhi4_bomb_fd_marth", 1330),
+    ("sudden_death_airthrowlw_bomb_fd_fox", 1325),
+    ("sudden_death_airthrowlw_bomb_fd_marth", 1330),
+    ("sudden_death_airthrowlw4_bomb_fd_fox", 1320),
+    ("sudden_death_airthrowlw4_bomb_fd_marth", 1330),
+    ("sudden_death_catchthrown_bomb_fd_fox", 1335),
+    ("sudden_death_cstickb4_bomb_fd_fox", 1325),
+    ("sudden_death_cstickhi4_bomb_fd_fox", 1330),
+    ("sudden_death_csticklw4_bomb_fd_fox", 1325),
+    ("sudden_death_dashthrow_bomb_fd_fox", 1300),
+    ("sudden_death_fallspecialcatch_bomb_fd_marth", 1335),
+    ("sudden_death_grabbedhold_bomb_fd_fox", 1335),
+    ("sudden_death_hitholding_bomb_fd_fox", 1310),
+    ("sudden_death_knockloose_bomb_fd_fox", 1320),
+    ("sudden_death_landhold_bomb_fd_fox", 1335),
+    ("sudden_death_ottottohold_bomb_fd_fox", 1335),
+    ("sudden_death_reflectorhold_bomb_fd_fox", 1335),
+    ("sudden_death_rollthrow_bomb_fd_fox", 1310),
+    ("sudden_death_squatthrow_bomb_fd_fox", 1300),
+    ("sudden_death_taunthold_bomb_fd_fox", 1335),
+    ("sudden_death_throwb_bomb_fd_fox", 1330),
+    ("sudden_death_throwf4_bomb_fd_fox", 1330),
+    ("sudden_death_throwhi_bomb_fd_fox", 1330),
+    ("sudden_death_throwhi4_bomb_fd_fox", 1310),
+    ("sudden_death_throwlw_bomb_fd_fox", 1330),
+    ("sudden_death_thrownbhold_bomb_fd_fox", 1330),
+    ("sudden_death_thrownfhold_bomb_fd_fox", 1330),
+    ("sudden_death_thrownhihold_bomb_fd_fox", 1330),
+    ("sudden_death_thrownlwhold_bomb_fd_fox", 1330),
+    ("sudden_death_turnrunhold_bomb_fd_fox", 1335),
+    ("sudden_death_zthrow_bomb_fd_fox", 1315),
+    ("sudden_death_shieldlaserbomb_fd_marth", 1275),
+    ("di_sdi_upin_fsmash_victim_fd_marth", 430),
+    ("firefox_shallow_floor_fd_fox", 137),
+    ("firefox_wall_ledge_fd_fox", 195),
+    ("firefox_wall_notch_fd_fox", 220),
+    ("laser_loop_pushoff_fd_fox", 155),
+    ("passivewall_victim_fd_marth", 400),
+    ("walljump_left_underside_fd_fox", 182),
+    ("walljump_left_vertical_fd_fox", 175),
+];
+
+#[test]
+fn matrix_witnesses_match_retail() {
+    for (name, ticks) in MATRIX_WITNESSES {
+        combat_gate_ticks(name, ticks);
+    }
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {

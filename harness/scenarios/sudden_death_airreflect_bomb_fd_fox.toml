@@ -1,0 +1,34 @@
+# Sudden Death: as sudden_death_reflectbomb_fd_marth, Marth back-throws the Bob-omb
+# (1244) and Fox dashes in (1250), but Fox short hops (1266) and shines in the air (1270):
+# SpecialAirLwHit reflects it (1279) and he lands into SpecialLwHit (1295).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_airreflect_bomb_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1330
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = {  }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1244, port = 0, buttons = {  }, raw = { button = 256, stickX = 50 } },
+  { frame = 1246, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1250, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1256, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1266, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1267, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1270, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 1272, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

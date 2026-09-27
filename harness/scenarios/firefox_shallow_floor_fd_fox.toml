@@ -1,0 +1,26 @@
+# Fox short-hops (10), charges Fire Fox in the air (16) and aims shallowly down-left (-80,-25) while the charge
+# sinks to y=0: SpecialAirHi (356) from 58 grazes the floor (floor snaps at 60,63,67,...,87) and takes the
+# shallow-contact rotation branch every time (no HiBound, no landing); HiFall 88, HiLanding 91, Wait 97. Boundary: idle_fd_marth.sav; tick clock.
+name = "firefox_shallow_floor_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 137
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 11, port = 1, buttons = {  }, raw = {  } },
+  { frame = 16, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 18, port = 1, buttons = {  }, raw = { stickX = -80, stickY = -25 } },
+  { frame = 96, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

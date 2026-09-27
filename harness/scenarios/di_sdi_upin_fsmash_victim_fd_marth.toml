@@ -1,0 +1,71 @@
+# Fox lasers Marth to 39.3% (20 shots, 10..200), dashes in and forward-smashes (311): Marth is hit
+# at 322 (DamageFlyN 88), mashes SDI in hitlag (up 324: y+6; up-in 326: +4.2,+4.2) and holds up-in DI
+# (kb -2.181,2.106 -> -1.416,2.623 at 330), then drifts to CliffCatch (388). Boundary: idle_fd_marth.sav; tick clock.
+name = "di_sdi_upin_fsmash_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 430
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 11, port = 1, buttons = {  }, raw = {  } },
+  { frame = 20, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 21, port = 1, buttons = {  }, raw = {  } },
+  { frame = 30, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 31, port = 1, buttons = {  }, raw = {  } },
+  { frame = 40, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 41, port = 1, buttons = {  }, raw = {  } },
+  { frame = 50, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 51, port = 1, buttons = {  }, raw = {  } },
+  { frame = 60, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 61, port = 1, buttons = {  }, raw = {  } },
+  { frame = 70, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 71, port = 1, buttons = {  }, raw = {  } },
+  { frame = 80, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 81, port = 1, buttons = {  }, raw = {  } },
+  { frame = 90, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 91, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 101, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 111, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 131, port = 1, buttons = {  }, raw = {  } },
+  { frame = 140, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 141, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 151, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 161, port = 1, buttons = {  }, raw = {  } },
+  { frame = 170, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 171, port = 1, buttons = {  }, raw = {  } },
+  { frame = 180, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 181, port = 1, buttons = {  }, raw = {  } },
+  { frame = 190, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 191, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 201, port = 1, buttons = {  }, raw = {  } },
+  { frame = 245, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 282, port = 1, buttons = {  }, raw = {  } },
+  { frame = 311, port = 1, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 313, port = 1, buttons = {  }, raw = {  } },
+  { frame = 322, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 323, port = 0, buttons = {  }, raw = {  } },
+  { frame = 324, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 325, port = 0, buttons = {  }, raw = {  } },
+  { frame = 326, port = 0, buttons = {  }, raw = { stickX = 127, stickY = 127 } },
+  { frame = 360, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
