@@ -981,7 +981,12 @@ Newest first. One line per session: date, what landed, what is next.
   (6) `WaitTransition::Special(slot)` carries the matched slot: SquatWait
   checks up-B before side-B. (7) DamageFly ends through ftCo_80090780, which
   keeps fast fall (flags 0x18001: KeepFastFall, not KeepGfx). DamageFly
-  wall/ceiling tech and FlyReflect remain fail-closed checks. Open: two
-  off-screen magnifier timing faults (s0_e0d368f02 tick 1514, s0_e8be4d273
-  tick 4946) need a camera dump; three cases to re-bridge after the disk
-  filled (s1_edb4b01fd, s1_ee6ff560c, s1_ef5188d7f).
+  wall/ceiling tech and FlyReflect remain fail-closed checks.
+- 2026-09-27: The last two v5 faults. (8) ftCo_8008DCE0 block_75 shakes the
+  camera for an airborne tumble launch (Small/Medium/Large by scaled
+  knockback against PlCo +170/+174); the missing shake moved the magnifier's
+  off-screen pass and its 1% by two ticks (found with the camera dump's
+  ifMagnify flags). (9) A throw release (ftCo_800DDDE4) only adds its damage
+  to x1838 (ftColl_80076640), so the release's fly-roll check reads the old
+  percent. The re-bridged s1_ee6ff560c and s1_ef5188d7f pass; s1_edb4b01fd
+  is the first witness of a wall tech (PassiveWall at 713), next.

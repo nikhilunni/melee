@@ -186,6 +186,10 @@ pub struct DamageParameters {
     /// sound and voice are queued (ftCo_Damage.c block_70).
     pub medium_voice_threshold: f32,
     pub heavy_voice_threshold: f32,
+    /// PlCo +170 / +174: scaled knockback at which an airborne tumble launch
+    /// shakes the camera with a medium / large quake (ftCo_Damage.c block_75).
+    pub medium_quake_threshold: f32,
+    pub large_quake_threshold: f32,
     /// PlCo +23C (int) / +240: percent floor and Randf chance for DamageFlyRoll.
     pub fly_roll_percent: i32,
     pub fly_roll_chance: f32,
@@ -273,6 +277,8 @@ impl DamageParameters {
             hitstun_scale: r.f32(p + 0x154)?,
             medium_voice_threshold: r.f32(p + 0x208)?,
             heavy_voice_threshold: r.f32(p + 0x20C)?,
+            medium_quake_threshold: r.f32(p + 0x170)?,
+            large_quake_threshold: r.f32(p + 0x174)?,
             fly_roll_percent: r.s32(p + 0x23C)?,
             fly_roll_chance: r.f32(p + 0x240)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
@@ -879,9 +885,13 @@ impl Fighter {
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
         hit.knockback = self.core.modified_knockback(hit.knockback, assets);
-        let (state, stun) = self
-            .core
-            .prepare_damage_reaction(&hit, forced_motion, assets, rng);
+        let (state, stun) = self.core.prepare_damage_reaction(
+            &hit,
+            forced_motion,
+            throw_owner.is_some(),
+            assets,
+            rng,
+        );
         // ftCo_8008DA4C: with damage this frame (x1838_percentTemp), the
         // element's color animation for the reaction level, else the plain
         // damage flash (4), before Fighter_ChangeMotionState evaluates frame zero.
@@ -1642,10 +1652,14 @@ const PHANTOM_HIT_SFX: u32 = 85;
 
 impl FighterCore {
     /// ftCo_8008DCE0 (8008DCE0): common launch calculation before motion entry.
+    /// A throw release (ftCo_800DDDE4) only adds its damage to
+    /// x1838_percentTemp (ftColl_80076640); the victim's ProcessHit applies it
+    /// later, so this launch's fly-roll check still reads the old percent.
     fn prepare_damage_reaction(
         &mut self,
         hit: &ReceivedHit,
         forced_motion: Option<S>,
+        percent_pending: bool,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> (S, f32) {
@@ -1682,7 +1696,9 @@ impl FighterCore {
             REACTIONS[level][height]
         };
         // Fighter_ProcessHit: Fighter_UnkTakeDamage_8006CC30(fp, x1838_percentTemp).
-        self.physics.percent += hit.percent_damage;
+        if !percent_pending {
+            self.physics.percent += hit.percent_damage;
+        }
         let angle = assets.damage.launch_angle(
             hit.descriptor.angle,
             hit.knockback,
@@ -1736,6 +1752,9 @@ impl FighterCore {
         {
             state = S::DamageFlyRoll;
         }
+        if percent_pending {
+            self.physics.percent += hit.percent_damage;
+        }
         // Retail block_36 overrides the motion only after the fly-roll draw.
         if let Some(forced_motion) = forced_motion {
             state = forced_motion;
@@ -1748,6 +1767,17 @@ impl FighterCore {
         } else if !bounced && stun >= assets.damage.medium_voice_threshold {
             self.combat.queued_hit_sfx = Some(MEDIUM_HIT_SFX);
             self.combat.queued_voice = Some(DamageVoice::Medium);
+        }
+        // ftCo_Damage.c block_75..82: an airborne tumble launch shakes the
+        // camera (Camera_RequestQuake at the fighter), sized by scaled knockback.
+        if level == 3 && self.physics.ground_or_air == GroundOrAir::Air {
+            self.quake_request = Some(if stun >= assets.damage.large_quake_threshold {
+                melee_cm::QuakeKind::Large
+            } else if stun >= assets.damage.medium_quake_threshold {
+                melee_cm::QuakeKind::Medium
+            } else {
+                melee_cm::QuakeKind::Small
+            });
         }
         self.physics.self_velocity = Vec3::ZERO;
         self.physics.ground_velocity = 0.0;

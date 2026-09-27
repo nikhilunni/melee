@@ -1495,7 +1495,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 17] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 19] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1527,6 +1527,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 17] = [
     ("corpus_v3_s1_e8be4d273_p0", 1407),
     // DamageFlyTop ends through ftCo_80090780, keeping fast fall (2753).
     ("corpus_v3_s1_e46703f61_p0", 5948),
+    // An airborne tumble launch shakes the camera, which delays the
+    // magnifier's off-screen pass and its damage (1516).
+    ("corpus_v3_s0_e0d368f02_p0", 3534),
+    // A throw's damage waits in x1838 until ProcessHit, so crossing the
+    // fly-roll percent at release draws no roll (4946).
+    ("corpus_v3_s0_e8be4d273_p0", 6001),
 ];
 
 #[test]
