@@ -536,6 +536,12 @@ fn damagefall_upb_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("damagefall_upb_fd_fox", 300);
 }
 
+/// A grounded Reflector turn sliding off the edge (LwTurn -> AirLwTurn).
+#[test]
+fn reflector_turn_walkoff_fd_fox_200_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("reflector_turn_walkoff_fd_fox", 200);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]
