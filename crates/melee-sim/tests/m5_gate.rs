@@ -525,6 +525,17 @@ fn ftilt_angled_fd_fox_140_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("ftilt_angled_fd_fox", 140);
 }
 
+/// DamageFall exits after hitstun: an aerial jump and Fire Fox.
+#[test]
+fn damagefall_jump_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damagefall_jump_fd_fox", 300);
+}
+
+#[test]
+fn damagefall_upb_fd_fox_300_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damagefall_upb_fd_fox", 300);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

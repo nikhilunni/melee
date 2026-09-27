@@ -1,0 +1,27 @@
+# Fox dashes past Marth (10..60) and is up-smashed off the left edge (90);
+# once his hitstun ends (DamageFall, 145) he acts at 150: Fire Fox.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "damagefall_upb_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 60, port = 1, buttons = {  }, raw = {  } },
+  { frame = 90, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 92, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 152, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
