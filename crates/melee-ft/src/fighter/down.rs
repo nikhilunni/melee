@@ -328,7 +328,11 @@ impl Fighter {
         if landed {
             self.land();
         } else if walls(self) {
-            unimplemented!("ftCo_800C1D38 / ftCo_800C17CC: wall tech or bounce during DownDamage");
+            // ftCo_DownDamage_Coll: a wall tech (ftCo_800C1D38), else
+            // ftCo_800C17CC's wall bounce, then its ceiling bounce.
+            if !self.try_wall_tech(assets, map)? && !self.try_wall_bounce(assets, map)? {
+                self.try_ceiling_bounce(assets, map)?;
+            }
         }
         Ok(())
     }
