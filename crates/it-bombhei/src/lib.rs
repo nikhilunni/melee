@@ -280,8 +280,11 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
         position: item.position,
     });
     item.hitlag_enabled = false;
-    // it_80275444: the blast hits its owner too.
+    // it_802756D0: the blast takes no hits.
+    item.hurt_intangible = true;
+    // it_80275444: the blast hits its owner, and items sharing its owner.
     item.hits_owner = true;
+    item.strikes_kindred_items = true;
     // lb_800119DC(&pos, 0x78, 1.0, 0.02, pi/3).
     item.events.push(ItemEvent::Gust {
         center: item.position,

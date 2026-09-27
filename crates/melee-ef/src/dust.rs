@@ -15,6 +15,35 @@ impl Effects {
         self.spawn_dust_generator::<T>(id, position, 1.0, bank, particles, rng)
     }
 
+    /// efSync_Spawn(0x3E8, item, &pos, &damage) -> efAsync_Dispatch: the
+    /// plain hit spark an item shows when a hit lands on it (it_80270E30).
+    /// One of two spark models at random, scaled by the damage.
+    pub fn spawn_item_hit_spark<T: InverseTrig>(
+        &mut self,
+        position: Vec3,
+        damage: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        self.direct_draws.push(0x8006_3990);
+        let id = if rng.randi(8) == 0 { 9 } else { 10 };
+        let mut effect = self.acquire(id, particles);
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        effect.attachment = None;
+        effect.owner = None;
+        // efAsync_Dispatch, retail 80063A10: fmadds.
+        let scale = gekko_math::fma::fmadds(0.04, damage, 0.3).clamp(0.3, 1.5);
+        effect
+            .tree
+            .set_scale(effect.root, &Vec3::new(scale, scale, scale));
+        effect.tree.set_translate(effect.root, &position);
+        effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+        self.instances.push(effect);
+        Ok(())
+    }
+
     pub(super) fn spawn_dust_generator<T: InverseTrig>(
         &mut self,
         id: u16,

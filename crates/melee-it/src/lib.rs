@@ -3,6 +3,7 @@ pub mod desc;
 mod engine;
 mod reflection;
 pub use reflection::*;
+pub mod hurt;
 mod logic;
 mod map;
 pub use map::AirContact;

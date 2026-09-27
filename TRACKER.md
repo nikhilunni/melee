@@ -940,3 +940,13 @@ Newest first. One line per session: date, what landed, what is next.
   Perf gate: melee-ft duplicate labels and tick time are within limits;
   still red on binary size (red since 2026-09-11) and 104 > 100 cross-crate
   duplicate labels (color_overlay drops in melee-lib, from earlier commits).
+- 2026-09-26: Hits on items: article hurt capsules (it_8027163C) placed on
+  the item root; item link 13 runs it_802703E8 per fighter in list order
+  (record victim, dmg.x1914, damage log) and it_80270E30 (hit spark 0x3E8,
+  knockback with its audited fmadds, direction); link 14's OnTakeDamageThink
+  (percent, xCA8 hitlag, damage_received) detonates a Bob-omb. Item hitboxes
+  created after link 11 are placed at once (it_802790C0). Item-on-item hits
+  (it_802706D0) are detected with retail's skip rules and fail closed. The
+  rain aims at Player_LoadPlayerCoords (the s_link 22 mirror), which a star
+  KO freezes. `sudden_death_smash_bomb_fd_marth` gated (1496 ticks, bones).
+  Next: throwing/dropping items, then damage/death while holding.

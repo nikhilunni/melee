@@ -18,6 +18,8 @@ pub struct ItemCommonData {
     /// while falling (Item_ApplyFallingPhysics).
     pub spawn_spin_degrees: f32,
     pub fall_spin_degrees: f32,
+    /// x9C..xB0 (it_80270E30).
+    pub knockback: crate::hurt::ItemKnockback,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -50,6 +52,14 @@ impl ItemCommonData {
             explosion_lifetime: r.f32(base + 0xF8)?,
             spawn_spin_degrees: r.f32(base + 0x6C)?,
             fall_spin_degrees: r.f32(base + 0x68)?,
+            knockback: crate::hurt::ItemKnockback {
+                cap: r.f32(base + 0x9C)?,
+                percent: r.f32(base + 0xA0)?,
+                damage_percent: r.f32(base + 0xA4)?,
+                weight_set_percent: r.f32(base + 0xA8)?,
+                scale: r.f32(base + 0xAC)?,
+                base: r.f32(base + 0xB0)?,
+            },
         })
     }
 }
@@ -85,6 +95,8 @@ pub struct ItemAssets {
     pub fall_spin_degrees: f32,
     /// Per article state: the frame its joint animation stops, if it does.
     pub animation_ends: Vec<Option<f32>>,
+    /// Article x8 (ItHurtBoneList, it_8027163C): at most two hurt capsules.
+    pub hurtboxes: Vec<ItemHurtbox>,
     /// it_804D6D28->xE8 (it_80275BC8): the ECB scale for a released item's
     /// first sweep. Zero for fighter articles, which are never released.
     pub release_box_scale: f32,
@@ -174,7 +186,32 @@ impl ItemAssets {
             state_array,
             article_state_count as usize,
         )?;
+        let hurtbones = r.u32(article + 8)?;
+        let hurtboxes = if hurtbones == 0 {
+            Vec::new()
+        } else {
+            let descs = r.u32(hurtbones + 4)?;
+            let vec = |at: u32| -> hsd_archive::desc::Result<hsd_types::Vec3> {
+                Ok(hsd_types::Vec3::new(
+                    r.f32(at)?,
+                    r.f32(at + 4)?,
+                    r.f32(at + 8)?,
+                ))
+            };
+            (0..r.u32(hurtbones)?)
+                .map(|i| {
+                    let at = descs + i * 0x20;
+                    Ok(ItemHurtbox {
+                        bone: r.u32(at)?,
+                        offsets: [vec(at + 4)?, vec(at + 0x10)?],
+                        radius: r.f32(at + 0x1C)?,
+                    })
+                })
+                .collect::<hsd_archive::desc::Result<_>>()?
+        };
+        assert!(hurtboxes.len() <= 2, "it_8027163C: item hit num over!");
         Ok(Self {
+            hurtboxes,
             animation_ends: visual.states.iter().map(animation_end).collect(),
             visual,
             scripts,
@@ -207,6 +244,15 @@ impl ItemAssets {
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
         })
     }
+}
+
+/// ItHurtBoneDesc (it/types.h:177): a capsule on bone `bone` (0 is the
+/// model root) between two offsets.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ItemHurtbox {
+    pub bone: u32,
+    pub offsets: [hsd_types::Vec3; 2],
+    pub radius: f32,
 }
 
 /// The frame at which an article state's joint animation stops (lb_8000B09C
@@ -406,6 +452,8 @@ pub struct ItemHitFlags {
     pub shield_bounce: bool,
     pub hits_hurtboxes: bool,
     pub grabbable_hurtboxes_only: bool,
+    /// x42_b7: the hitbox can land on other items (it_802706D0).
+    pub hits_items: bool,
     pub sound_kind: u8,
     pub auxiliary: u16,
 }
@@ -421,6 +469,7 @@ impl ItemHitFlags {
             shield_bounce: extra & (1 << 16) != 0,
             hits_hurtboxes: extra & (1 << 14) != 0,
             grabbable_hurtboxes_only: extra & (1 << 13) != 0,
+            hits_items: extra & (1 << 12) != 0,
             sound_kind: ((last >> 2) & 15) as u8,
             auxiliary: (extra >> 8) as u16,
         }

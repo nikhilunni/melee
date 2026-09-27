@@ -49,6 +49,9 @@ pub struct AfterimageState {
 pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, &pos): a world-space effect.
     Effect { id: u16, position: Vec3 },
+    /// efSync_Spawn(0x3E8, gobj, &pos, &damage): the spark of a hit landing
+    /// on the item (it_80270E30).
+    HitSpark { position: Vec3, damage: f32 },
     /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
     /// a random spread (it_80278800) when the scene resolves it.
     ScriptEffect(melee_types::combat::GraphicsCommand),
@@ -197,6 +200,26 @@ pub struct ItemCore {
     pub holder_part: u8,
     /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
     pub hits_owner: bool,
+    /// HSD_GObj_804D7838->s_link > 11: the running proc comes after item
+    /// link 11's capsule refresh (it_802790C0).
+    pub past_hitbox_refresh: bool,
+    /// xD0C == 2 (it_802756D0 / it_802756E0): hurtboxes take no hits.
+    pub hurt_intangible: bool,
+    /// xDCE b0 (it_802754D4): the owner's hits land too, once dropped or thrown.
+    pub hurt_by_owner: bool,
+    /// xDCD b7 (it_80275444 / it_80275474): hitboxes reach items whose owner
+    /// matches (both unowned counts), as a blast does.
+    pub strikes_kindred_items: bool,
+    /// Damage taken: xC9C (its percent, capped at 999), and this frame's
+    /// total xCA0 and largest hit xCA4.
+    pub damage_percent: i32,
+    pub pending_damage_taken: i32,
+    pub largest_damage_taken: i32,
+    /// it_80270E30's result for this frame: xCC8, xCAC, xCCC and xCB0.
+    pub pending_knockback: f32,
+    pub knockback_angle: u16,
+    pub hit_direction: f32,
+    pub hit_by: Option<u8>,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
     pub events: melee_types::fixed::FixedVec<ItemEvent, 8>,
@@ -254,6 +277,8 @@ impl ItemCore {
         self.owner = Some(owner);
         self.held = true;
         self.holder_part = part;
+        // it_802756D0: a held item takes no hits.
+        self.hurt_intangible = true;
         // it_8026B3A8.
         self.grabbable = false;
         if (self.kind as u32) < ItemKind::LGunRay as u32 {
@@ -341,6 +366,19 @@ impl ItemCore {
     }
     /// it_8027137C / it_8027129C: refresh world capsules at item s-link 11.
     pub fn update_hitboxes(&mut self) {
+        for id in 0..self.hitboxes.len() {
+            self.update_hitbox(id);
+        }
+    }
+    /// it_8027129C (8027129C): one capsule's position from its bone.
+    fn update_hitbox(&mut self, id: usize) {
+        let Some(hit) = &mut self.hitboxes[id] else {
+            return;
+        };
+        assert_eq!(
+            hit.descriptor.bone, 0,
+            "item non-root hitbox bone is not ported"
+        );
         let mut matrix = hsd_types::Mtx::default();
         hsd_anim::mtx::hsd_mtx_srt(
             &mut matrix,
@@ -349,15 +387,9 @@ impl ItemCore {
             &self.position,
             None,
         );
-        for hit in self.hitboxes.iter_mut().flatten() {
-            assert_eq!(
-                hit.descriptor.bone, 0,
-                "item non-root hitbox bone is not ported"
-            );
-            let mut position = Vec3::ZERO;
-            hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
-            hit.update_position(position);
-        }
+        let mut position = Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
+        hit.update_position(position);
     }
     /// Item_802799E4: shared command timing, item-owned application.
     fn advance_script(&mut self, assets: &ItemAssets) {
@@ -395,6 +427,11 @@ impl ItemCore {
                         - 1;
                     self.hit_flags[*id] =
                         assets.hit_flags[self.motion as usize][index].expect("item hit flags");
+                    // it_802790C0: created after link 11's refresh, the
+                    // capsule is placed at once.
+                    if self.past_hitbox_refresh {
+                        self.update_hitbox(*id);
+                    }
                 }
                 Command::SetHitboxDamage { id, damage } => {
                     if let Some(hit) = &mut self.hitboxes[*id] {
@@ -557,6 +594,17 @@ impl ItemPool {
             held: false,
             holder_part: 0,
             hits_owner: false,
+            past_hitbox_refresh: false,
+            hurt_intangible: false,
+            hurt_by_owner: false,
+            strikes_kindred_items: false,
+            damage_percent: 0,
+            pending_damage_taken: 0,
+            largest_damage_taken: 0,
+            pending_knockback: 0.0,
+            knockback_angle: 0,
+            hit_direction: 0.0,
+            hit_by: None,
             queued_events: Default::default(),
             events: Default::default(),
         };
@@ -591,7 +639,15 @@ impl ItemPool {
         let Some(item) = self.get_mut(id) else {
             return;
         };
-        if item.pending_shield_damage != 0 {
+        item.past_hitbox_refresh = true;
+        if item.pending_knockback != 0.0 || item.pending_damage_taken != 0 {
+            // OnTakeDamageThink: the percent grows (capped at 999) and the
+            // frame's damage becomes the hitlag damage (xCA8), unconditionally.
+            item.damage_percent = (item.damage_percent + item.pending_damage_taken).min(999);
+            item.hitlag_damage = item.pending_damage_taken;
+            item.destroyed |=
+                (D::logic(item.kind).damage_received)(item, &ItemEventContext::new(assets));
+        } else if item.pending_shield_damage != 0 {
             if let Some(deflection) = item.pending_shield_deflection.filter(|d| {
                 item.ground_or_air == melee_types::GroundOrAir::Air && d.angle < bounce_limit
             }) {
@@ -635,7 +691,12 @@ impl ItemPool {
                 item.enter_hitlag(&common, damage);
             }
         }
+        item.past_hitbox_refresh = false;
         // Item_80269CC4 resets per-frame contact accumulators.
+        item.pending_damage_taken = 0;
+        item.largest_damage_taken = 0;
+        item.pending_knockback = 0.0;
+        item.hit_direction = 0.0;
         item.pending_reflection = None;
         item.reflection_direction = 0.0;
         item.pending_damage_dealt = 0;
@@ -855,6 +916,7 @@ mod tests {
             spin_rate: 0.0,
             fall_spin_degrees: 0.0,
             animation_ends: Vec::new(),
+            hurtboxes: Vec::new(),
             release_box_scale: 0.0,
             heavy: false,
             use_kind: 0,
@@ -879,6 +941,7 @@ mod tests {
             explosion_lifetime: 0.0,
             spawn_spin_degrees: 0.0,
             fall_spin_degrees: 0.0,
+            knockback: Default::default(),
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -904,6 +967,7 @@ mod tests {
             explosion_lifetime: 0.0,
             spawn_spin_degrees: 0.0,
             fall_spin_degrees: 0.0,
+            knockback: Default::default(),
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

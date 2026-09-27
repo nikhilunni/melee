@@ -183,8 +183,9 @@ impl ItemCore {
     ) {
         assert!(!assets.heavy, "it_80273B50: heavy item hand offset");
         // it_80273B50. it_80275070 drops the hand constraint; it_8026B6C8's
-        // enemy kinds stay unpickable.
+        // enemy kinds stay unpickable; it_802756E0 lets hits land again.
         self.grabbable = true;
+        self.hurt_intangible = false;
         // it_80274990 reads the spin axis before lb_8000B804 resets the pose.
         let rotation = self.ecb_angle();
         self.rotation = crate::engine::rest_rotation(assets);

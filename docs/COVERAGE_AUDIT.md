@@ -22,7 +22,10 @@ Sudden Death makes common items reachable. Ported and gated
 (ftpickupitem_800942A0) before jab, jab follow-ups, rapid jab, side and down
 tilt; LightGet; the held Bob-omb, the hand pose and item idle (Wait1_1); the
 lit fuse in hand and the blast releasing it from the hand (it_8027429C), which
-hits its holder (xDCD b5).
+hits its holder (xDCD b5). Fighter hitboxes land on item hurt capsules
+(it_802703E8), with the item's hit spark, knockback and hitlag
+(it_80270E30, OnTakeDamageThink), so a smash detonates a falling Bob-omb
+(`sudden_death_smash_bomb_fd_marth`).
 
 While a fighter holds an item only LightGet and Wait are audited
 (`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
@@ -33,12 +36,11 @@ The remaining reachable gaps:
 | Held-item states: throws (A, smash inputs), drops (Z, shield, `fighter.c:2678` random drop on a hit), walking, jumping, damage and death while holding | Fail closed at the motion change | Any input or hit while holding a Bob-omb |
 | `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |
-| Fighter hitboxes versus item hurtboxes (Bob-omb `DmgReceived` detonates) | Not modelled; items have no hurtboxes | Attacking a Bob-omb |
-| Item hitboxes versus item hurtboxes (one explosion detonating another) | Not modelled | Two Bob-ombs within an explosion |
+| Item hitboxes versus item hurtboxes (it_802706D0) | Detection ported; a landing contact fails closed | A thrown or dropped Bob-omb, or a kindred-striking hitbox, reaching another |
 | Unlit Bob-omb pickup, walking and turning | Fail closed | Only after a soft landing, which the rain's speed prevents |
 
-Next packet: item hurtboxes and both item hurt tests, then throwing and
-dropping (ItemThrow*, Bob-omb states 9 and 10), each from a recorded witness.
+Next packet: throwing and dropping (ItemThrow*, Bob-omb states 9 and 10)
+and damage or death while holding, each from a recorded witness.
 
 ## Explicit boundaries
 

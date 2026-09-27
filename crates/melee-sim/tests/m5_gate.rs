@@ -1460,7 +1460,9 @@ const CORPUS_MATCHES: [(&str, usize); 48] = [
 /// twenty seconds Bob-ombs rain (Ground_801C0C2C), spin as they fall, explode
 /// on landing, and one KOs Marth at 300%. Marth jabs beside one, and picks
 /// another up with A (ftpickupitem_80094790, LightGet) and holds it in his
-/// item idle until it blows up in his hand (it_8027429C) and KOs him.
+/// item idle until it blows up in his hand (it_8027429C) and KOs him. His
+/// forward smash detonates a falling one (it_802703E8, it_80270E30), and the
+/// rain then drops a bomb where his star KO froze his player coordinates.
 #[test]
 fn timeout_and_sudden_death_match_retail() {
     for (name, ticks) in [
@@ -1470,6 +1472,7 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_idle_fd_marth", 1576),
         ("sudden_death_jab_bomb_fd_marth", 1369),
         ("sudden_death_pickup_bomb_fd_marth", 1433),
+        ("sudden_death_smash_bomb_fd_marth", 1496),
     ] {
         combat_gate_ticks(name, ticks);
     }

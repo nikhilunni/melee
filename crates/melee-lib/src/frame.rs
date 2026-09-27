@@ -274,6 +274,15 @@ impl Runtime {
             }
             while !item.events.is_empty() {
                 match item.events.remove(0) {
+                    melee_it::ItemEvent::HitSpark { position, damage } => {
+                        state.effects.spawn_item_hit_spark::<RetailTrig>(
+                            position,
+                            damage,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Effect { id, position } => {
                         state.effects.spawn_positional::<RetailTrig>(
                             id,
@@ -486,11 +495,46 @@ impl Runtime {
                 reflected_stale,
                 state.assets.items.get(kind),
             ),
-            12 | 13 | 16 => {}
+            13 => self.detect_item_hurts(id),
+            12 | 16 => {}
             _ => unreachable!(),
         }
         Ok(())
     }
+    /// Item_80269C5C (item link 13): it_802703E8 lands fighter hitboxes on
+    /// the item's hurt capsules, fighters in list order; it_802706D0 (other
+    /// items' hitboxes) is unported and fails closed; it_80270E30 resolves.
+    fn detect_item_hurts(&mut self, id: u32) {
+        let state = &mut self.state;
+        let Some(item) = state.items.get_mut(id) else {
+            return;
+        };
+        let assets = state.assets.items.get(item.kind);
+        let capsules = item.hurt_capsules(assets);
+        if capsules.is_empty() {
+            return;
+        }
+        let mut log = melee_it::hurt::ItemHitLog::default();
+        for fighter in state.fighters.iter_mut() {
+            let hits =
+                crate::scene_fighter::with_fighter!(fighter, |f| f.strike_item(item, &capsules));
+            for hit in hits {
+                log.push(hit);
+            }
+        }
+        let victim = state
+            .items
+            .iter()
+            .find(|item| item.id == id)
+            .expect("struck item");
+        item_hits_by_items(state.items.iter(), victim, &capsules);
+        if !log.is_empty() {
+            let constants = state.items.common().knockback;
+            let item = state.items.get_mut(id).expect("struck item");
+            item.resolve_hits(&log, &constants, state.assets.items.get(item.kind));
+        }
+    }
+
     fn dispatch(&mut self, row: Registration, world: &mut World) -> Result<()> {
         // fn_8016CFE0 -> gm_801A4634(4); gm_803DA888[4] freezes gameplay procs.
         const ELIMINATION_PAUSE_MASK: u64 = 0x800FFA;
@@ -814,9 +858,11 @@ impl Runtime {
                     state.map.finish_ground_animation();
                 }
                 0x801C0C2C => {
+                    // Player_LoadPlayerCoords: the slot's mirror, written at
+                    // s_link 22 (Fighter_8006DA4C) and frozen while disabled.
                     let players = std::array::from_fn(|slot| {
                         state.fighters.get(slot).map(|fighter| {
-                            crate::scene_fighter::with_fighter!(fighter, |f| f.physics.position)
+                            crate::scene_fighter::with_fighter!(fighter, |f| f.player_position)
                         })
                     });
                     if let Some(position) = state
@@ -2049,6 +2095,62 @@ mod api_fault_tests {
             game.clone_from(&healthy);
             game.step(&Inputs::default()).unwrap();
             assert_eq!(game.tick(), Tick(tick.0 + 1));
+        }
+    }
+}
+
+/// it_802706D0 (802706D0): other items' hitboxes against this item's hurt
+/// capsules. Unported beyond detection: a landing contact fails closed.
+fn item_hits_by_items<'a>(
+    items: impl Iterator<Item = &'a melee_it::ItemCore>,
+    victim: &melee_it::ItemCore,
+    capsules: &melee_it::hurt::HurtCapsules,
+) {
+    if victim.hurt_intangible {
+        return;
+    }
+    let tag = victim.hitbox_victim();
+    for other in items.filter(|other| other.id != victim.id && !other.destroyed) {
+        // Items sharing an owner (or both unowned) pass each other unless
+        // the hitter reaches kindred items (xDCD b7) or the victim was
+        // dropped or thrown (xDCE b2). Teams are off.
+        let kindred = victim.owner == other.owner;
+        if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
+            continue;
+        }
+        for (id, hit) in other.hitboxes.iter().enumerate() {
+            let Some(hit) = hit else {
+                continue;
+            };
+            let desc = &hit.descriptor;
+            let grounded = victim.ground_or_air == melee_types::GroundOrAir::Ground;
+            if !other.hit_flags[id].hits_items
+                || !((desc.hit_air && !grounded) || (desc.hit_ground && grounded))
+                || hit.victims.contains(&tag)
+            {
+                continue;
+            }
+            let touches = capsules.iter().any(|capsule| {
+                melee_coll::geometry::capsule_contact(
+                    melee_coll::geometry::Capsule {
+                        start: hit.previous_position,
+                        end: hit.position,
+                        radius: desc.radius * other.scale,
+                    },
+                    melee_coll::geometry::Capsule {
+                        start: capsule.start,
+                        end: capsule.end,
+                        radius: capsule.radius,
+                    },
+                    &capsule.matrix,
+                    3.0 * victim.scale,
+                )
+                .is_some()
+            });
+            assert!(
+                !touches,
+                "it_802706D0: an item's hitbox landing on another item"
+            );
         }
     }
 }
