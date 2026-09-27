@@ -361,9 +361,10 @@ image, every savestate and every recorded trace. Add files by explicit
 path, run `git show --stat` on the lane commit and refuse to merge if it
 lists `harness/roms`, `harness/traces`, `third_party/melee-decomp` or any
 path you did not expect; `git ls-files harness/roms harness/traces` must
-print nothing on `main` before any fast-forward. Keep a copy of
-`harness/roms` and `harness/traces` outside the repo (`~/melee-data/`) and
-refresh it after every recording session.
+print nothing on `main` before any fast-forward. Only `harness/roms` is
+mirrored outside the repo (`~/melee-data/roms`: the user's disc image and the
+savestates); refresh that copy when a savestate is added. Traces are not
+mirrored: every one can be re-recorded from its scenario.
 Before fast-forwarding `main`, run `tools/merge-check.sh <lane-branch>`
 in the lane worktree. It refuses tracked or touched game-data and decomp
 paths and an empty traces directory, checks ancestry and the checked-out
@@ -375,6 +376,14 @@ rebases or commits.
 
 ## Hard boundaries
 
+- **Never delete, move or overwrite game data or recordings** without the
+  user's explicit request naming them: `harness/roms/` (disc image, extracted
+  files, savestates), `~/melee-data/`, and `harness/traces/`. No `rm -rf`,
+  `git clean -x`, `git checkout`/`reset` or symlink change that could reach
+  them; never `git add harness`, `.` or `-A` (a symlinked lane once wiped them,
+  2026-09-09). Overwriting one scenario's own traces by re-recording that
+  scenario is fine; freeing disk means asking first, except for build output
+  (`target/`) and scratch files.
 - Never modify `third_party/melee-decomp` from this repo.
 - Never commit game data: no ISO, DOL, `.dat`, savestates, or extracted
   files. `harness/roms/` and `harness/traces/` are gitignored for this.
