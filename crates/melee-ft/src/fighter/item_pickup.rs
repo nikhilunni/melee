@@ -121,7 +121,7 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 101] = [
+const HELD_ITEM_STATES: [S; 117] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -202,6 +202,23 @@ const HELD_ITEM_STATES: [S; 101] = [
     S::DamageFlyTop,
     S::DamageFlyRoll,
     S::DamageFall,
+    // ftCo_Down*.c: bound, wait, damage, getups and spot never read the item.
+    S::DownBoundU,
+    S::DownWaitU,
+    S::DownDamageU,
+    S::DownStandU,
+    S::DownAttackU,
+    S::DownFowardU,
+    S::DownBackU,
+    S::DownSpotU,
+    S::DownBoundD,
+    S::DownWaitD,
+    S::DownDamageD,
+    S::DownStandD,
+    S::DownAttackD,
+    S::DownFowardD,
+    S::DownBackD,
+    S::DownSpotD,
     // ftCo_EscapeAir: no item branch; an air dodge keeps it.
     S::EscapeAir,
     // ftCo_Capture*: no item branch; a captured fighter keeps it.
