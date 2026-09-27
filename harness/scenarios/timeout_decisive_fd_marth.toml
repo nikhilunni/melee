@@ -1,0 +1,24 @@
+# A one-minute Marth/Fox stock match: Fox runs off the right edge (300) and
+# loses a stock, then both idle until the timer runs out with Marth ahead:
+# TIME!, then the results (no Sudden Death).
+# Boundary: start_fd_marth4_timer60.sav; tick clock.
+name = "timeout_decisive_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_marth4_timer60.sav"
+frames = 3839
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 300, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 360, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

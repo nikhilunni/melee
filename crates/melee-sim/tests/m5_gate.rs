@@ -1594,6 +1594,8 @@ const CORPUS_MATCHES: [(&str, usize); 48] = [
 fn timeout_and_sudden_death_match_retail() {
     for (name, ticks) in [
         ("timeout_tie_fd_marth", 3839),
+        // Fox loses a stock, then the timer runs out with Marth ahead.
+        ("timeout_decisive_fd_marth", 3839),
         ("sudden_death_start_fd_marth", 1697),
         ("sudden_death_bombs_fd_marth", 1300),
         ("sudden_death_idle_fd_marth", 1576),
