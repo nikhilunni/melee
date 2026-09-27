@@ -1216,3 +1216,11 @@ Newest first. One line per session: date, what landed, what is next.
   AppSRT generators (fixed). Matrix reconciled (76 -> 53 MISSING cells before
   this batch); explorer n7/sd12 clean. Next: Sudden Death item-holding
   witnesses and the remaining misc/reachability rows.
+- 2026-09-27 (tooling): parallel recording (`harness/record_many.py`, private
+  Dolphin user folders; byte-identical state traces; 8 Sudden Death scenes in
+  28 s wall vs ~21 s each serially) and `melee-sim search` (branch-and-clone
+  input search from a TOML spec; seconds instead of agent-minutes). Also the
+  held-item hand pose (opcode 35) and in-hand release staling fixes, tilt,
+  Down-state and GuardOff held-item fixes, and 61 more matrix witnesses; full
+  debug and release gates 1524/0. Next: settle the matrix's last open rows
+  with the new tools; triage report; mid-scenario savestates.
