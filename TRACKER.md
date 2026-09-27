@@ -1125,3 +1125,5 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-27: Turn throws witnessed; COVERAGE_AUDIT's held-item and item
   gap tables rewritten to the current state (each remaining gap with its
   reachability).
+- 2026-09-27: ftCo_8009515C's dash-shield branch: A inside a run or dash
+  shield's countdown is a LightThrowDash. Witness runshieldthrow.

@@ -59,14 +59,14 @@ turning, crouching, shielding, rolls, jumps, falls, landings, air dodges,
 taunts, specials of Fox, Falco and Marth, the ledge family, the damage
 family, capture and thrown states, and the throws) may run; entering any
 other state fails closed. Throws out of Turn (`sudden_death_turnthrow_bomb_fd_marth`),
-dash throws at an edge and C-stick smash throws are witnessed. The
+dash throws at an edge and out of a run shield's countdown
+(`sudden_death_runshieldthrow_bomb_fd_marth`) and C-stick smash throws are witnessed. The
 remaining gaps:
 
 | Retail path | Port | Reachability |
 | --- | --- | --- |
 | Down states while holding | Fail closed at the motion change | A tumble landing holding a Bob-omb; at Sudden Death's 300% every launch KOs first |
 | Tilts with a held item | Fail closed | Unreachable for a throwable item: A with the item is ftCo_Catch_CheckInput's throw first, and the C-stick is a smash stick by default |
-| A dash throw from a shield's dash countdown (ftCo_8009515C with x20) | Fail closed | Shielding out of a dash with an item held |
 | Specials of other characters while holding | Fail closed per character (SPECIALS_KEEP_HELD_ITEM) | Out of scope: other characters |
 | A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge; its lit walk lasts at most the blink countdown |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported | Unreachable: A also requests an aerial first |

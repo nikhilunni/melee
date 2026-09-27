@@ -1554,6 +1554,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_thrownlwhold_bomb_fd_marth", 1431),
         // A smash throw out of Turn.
         ("sudden_death_turnthrow_bomb_fd_marth", 1514),
+        // A in a run shield's countdown: LightThrowDash (ftCo_8009515C).
+        ("sudden_death_runshieldthrow_bomb_fd_marth", 1531),
     ] {
         combat_gate_ticks(name, ticks);
     }

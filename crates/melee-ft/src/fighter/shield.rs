@@ -408,7 +408,8 @@ impl Fighter {
         // throw inside the countdown, otherwise aimed by ftCo_80095A30.
         if self.core.held_item.is_some() && self.core.input.pressed.intersects(Buttons::A) {
             if self.guard().dash_item_throw_frames != 0 {
-                unimplemented!("ftCo_8009515C: LightThrowDash out of a dash's shield");
+                // ftCo_800957F4(gobj, ftCo_MS_LightThrowDash).
+                return self.enter_item_throw(S::LightThrowDash, assets);
             }
             return self.enter_ground_item_throw(assets);
         }
