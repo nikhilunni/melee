@@ -1491,6 +1491,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_zthrow_bomb_fd_marth", 1545),
         ("sudden_death_airdrop_bomb_fd_marth", 1545),
         ("sudden_death_hitholding_bomb_fd_marth", 1433),
+        // Fox's early run changes the rain; his dash attack launches Marth.
+        ("sudden_death_foxdash_fd_marth", 1545),
     ] {
         combat_gate_ticks(name, ticks);
     }
