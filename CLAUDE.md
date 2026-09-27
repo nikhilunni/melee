@@ -39,6 +39,7 @@ The port is verified, not trusted. Nothing merges with a known divergence.
 | `crates/melee-sim` | Headless simulator binary. Emits canonical traces. |
 | `crates/melee-lib` | Reusable match composition and curated create/step/inspect/clone API. |
 | `crates/melee-diff` | Compares two traces, reports first bit-level divergence. |
+| `crates/melee-trace-io` | Reads recorded traces as `<name>.jsonl` or `<name>.jsonl.zst`. Tooling/tests only (tests: `melee_test_support::trace`); Python twin `harness/trace_io.py`. |
 | `crates/slp` | Slippi replay parser. Produces scenarios and expected traces. |
 | `harness/` | Python oracle tooling: Dolphin script, symbol resolver, schema generator, decoder. Run with `cd harness && uv run ...`. |
 | `harness/schema/` | Field offset schemas shared by the decoder and the Rust `Snapshot` emitters. |

@@ -17,6 +17,8 @@ import json
 import tomllib
 from pathlib import Path
 
+import trace_io
+
 
 def steps_from_pads(lines) -> list[dict]:
     steps: list[dict] = []
@@ -79,7 +81,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--name", default=None)
     a = ap.parse_args(argv)
     scenario = tomllib.loads(a.scenario.read_text())
-    steps = steps_from_pads(a.pads.open())
+    with trace_io.open_text(a.pads) as pads:
+        steps = steps_from_pads(pads)
     write_replay_toml(scenario, steps, a.frames, a.name or f'{scenario["name"]}_replay', a.out)
     print(f"{len(steps)} human steps -> {a.out}")
 

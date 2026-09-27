@@ -14,6 +14,7 @@ from pathlib import Path
 import struct
 
 from decode import FOX_LASER_KIND
+import trace_io
 
 
 def item_float(state: dict, key: str) -> float:
@@ -261,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.max_draws < 0:
         parser.error("--max-draws must be nonnegative")
     try:
-        with args.trace.open() as stream:
+        with trace_io.open_text(args.trace) as stream:
             result = validate((json.loads(line) for line in stream if line.strip()),
                               args.max_draws, args.scripted)
     except (OSError, ValueError, KeyError, TypeError, struct.error, OverflowError) as exc:

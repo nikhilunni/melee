@@ -55,8 +55,9 @@ done <"$logs/lane-paths"
 echo "[PASS] data: no tracked game data or protected lane changes"
 
 # Follow the lane's trace-directory symlink. A legacy command-line override
-# cannot turn an empty oracle directory into a mergeable tree.
-oracle=$(find -L harness/traces -type f -name '*.expected.jsonl' -print -quit 2>/dev/null || true)
+# cannot turn an empty oracle directory into a mergeable tree. Recorded traces
+# may be zstd-compressed (<name>.expected.jsonl.zst, harness/trace_io.py).
+oracle=$(find -L harness/traces -type f \( -name '*.expected.jsonl' -o -name '*.expected.jsonl.zst' \) -print -quit 2>/dev/null || true)
 if [[ -z "$oracle" ]]; then
     echo "[FAIL] data: harness/traces is empty; record the required scenarios with harness/record.py <scenario>"
     if [[ "$allow_missing_data" == true ]]; then

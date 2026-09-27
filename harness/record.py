@@ -9,7 +9,10 @@ Runs, one Dolphin at a time:
   4. optionally the tick-aligned bone dump (dolphin_bones_tick_snippet.py, --bones N ticks)
   5. optionally the gameplay camera dump (dolphin_camera_tick_snippet.py, --camera N ticks)
 and prints P1's motion transitions and the RNG sites beyond the idle set.
-All outputs are machine-local under harness/traces (gitignored).
+All outputs are machine-local under harness/traces (gitignored). Once every
+capture has finished and validated, each large JSONL output is replaced by a
+verified `.jsonl.zst` (harness/trace_io.py; readers accept either form) unless
+--no-compress is given. `.done` markers, sidecars and small files stay plain.
 """
 from __future__ import annotations
 
@@ -24,6 +27,7 @@ from pathlib import Path
 
 import dolphin_config
 import pads_to_inputs
+import trace_io
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -69,7 +73,7 @@ def run_dolphin_until(script: Path, env: dict, done: Path, err: Path, log: Path,
 
 def motions(expected: Path, player: int = 0) -> list[tuple[int, int, float, float]]:
     out, last = [], None
-    for line in expected.open():
+    for line in trace_io.open_text(expected):
         if not line.strip():
             continue
         r = json.loads(line)
@@ -98,6 +102,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--timeout", type=float, default=600.0)
     ap.add_argument("--reuse-tick", action="store_true",
                     help="human scenes: keep the existing tick trace (and pad log) and run the rest")
+    ap.add_argument("--no-compress", action="store_true",
+                    help="leave the JSONL outputs plain (default: replace large ones with verified .zst)")
     ap.add_argument("--particle-ticks", type=int, default=0,
                     help="cap the particle dump at N ticks (the gate needs the initial state; a full "
                          "eight-minute dump is ~4 GB)")
@@ -113,9 +119,11 @@ def main(argv: list[str] | None = None) -> None:
 
     human_ports = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
                    if f.get("controller") == "human"]
+    # run_scenario leaves its outputs plain; this script compresses everything at the end.
     tick_cmd = [sys.executable, str(HERE / "dolphin/run_scenario.py"), str(scenario_path),
                 "--tick-trace", *(["--video", a.video] if a.video else []), "--ports", "2",
-                "--timeout", str(a.timeout)]
+                "--timeout", str(a.timeout), "--no-compress"]
+    outputs = [traces / f"{name}.tick.{kind}.jsonl" for kind in ("raw", "expected")]
     if human_ports:
         tick_cmd += ["--speed", "1", "--background-input"]
         keypad = Path(os.environ.setdefault("MELEE_KEYPAD", str(HERE / "roms" / ".remote" / "keypad.json")))
@@ -147,15 +155,18 @@ def main(argv: list[str] | None = None) -> None:
             print(f"   match ended early: frames = {ticks} written to {scenario_path.name}")
             frames = ticks
         pads = traces / f"{name}.tick.raw.jsonl.pads.jsonl"
-        steps = pads_to_inputs.steps_from_pads(pads.open())
+        with trace_io.open_text(pads) as pad_lines:
+            steps = pads_to_inputs.steps_from_pads(pad_lines)
+        outputs.append(pads)
         replay_path = traces / f"{name}.replay.toml"
         pads_to_inputs.write_replay_toml(scenario, steps, frames, f"{name}_replaycheck", replay_path)
         print(f"== {name}: {len(steps)} human pad steps -> {replay_path.name}; replaying the tick trace to verify")
         subprocess.run([sys.executable, str(HERE / "dolphin/run_scenario.py"), str(replay_path),
                         "--tick-trace", *(["--video", a.video] if a.video else []), "--ports", "2",
-                        "--timeout", str(a.timeout)], check=True, stdout=subprocess.DEVNULL)
+                        "--timeout", str(a.timeout), "--no-compress"], check=True, stdout=subprocess.DEVNULL)
         check = traces / f"{name}_replaycheck.tick.expected.jsonl"
-        for index, (human, replay) in enumerate(zip(expected.open(), check.open())):
+        outputs += [traces / f"{name}_replaycheck.tick.raw.jsonl", check]
+        for index, (human, replay) in enumerate(zip(trace_io.open_text(expected), trace_io.open_text(check))):
             h, r = json.loads(human), json.loads(replay)
             if h.get("state") != r.get("state") or h.get("inputs") != r.get("inputs"):
                 diff = [k for k in h.get("state", {}) if h["state"][k] != r.get("state", {}).get(k)]
@@ -164,6 +175,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if not a.no_ledger:
         out = traces / f"{name}.{a.ledger_suffix}.raw.jsonl"
+        outputs.append(out)
         print(f"== {name}: RNG ledger -> {out.name}")
         run_dolphin_until(HERE / "dolphin/rng_ledger.py",
                           {"MELEE_SCENARIO": str(replay_path), "MELEE_RAW_OUT": str(out)},
@@ -181,6 +193,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if not a.no_particles:
         out = traces / f"{name}.particles.jsonl"
+        outputs += [out, Path(str(out) + ".meta.jsonl"), Path(str(out) + ".initial.jsonl")]
         particle_ticks = min(frames, a.particle_ticks) if a.particle_ticks else frames
         print(f"== {name}: particle dump ({particle_ticks} ticks)")
         run_dolphin_until(HERE / "dolphin_particle_snippet.py",
@@ -192,6 +205,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if a.bones:
         out = traces / f"{name}.bones.jsonl"
+        outputs += [out, out.with_suffix(".raw.jsonl")]
         print(f"== {name}: bone dump ({a.bones} ticks)")
         run_dolphin_until(HERE / "dolphin_bones_tick_snippet.py",
                           {"MELEE_BONES_ANY_ANIM": "1", "MELEE_BONES_SAVESTATE": str(savestate),
@@ -204,6 +218,7 @@ def main(argv: list[str] | None = None) -> None:
                           traces / f"{name}.bones.dolphin.out", a.timeout, a.video)
     if a.camera:
         out = traces / f"{name}.camera.jsonl"
+        outputs += [out, out.with_suffix(".raw.jsonl")]
         print(f"== {name}: camera dump ({a.camera} ticks)")
         run_dolphin_until(HERE / "dolphin_camera_tick_snippet.py",
                           {"MELEE_CAMERA_SAVESTATE": str(savestate),
@@ -212,6 +227,9 @@ def main(argv: list[str] | None = None) -> None:
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
                           Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
                           traces / f"{name}.camera.dolphin.out", a.timeout, a.video)
+    if not a.no_compress:
+        print(f"== {name}: compressing large traces (verified zstd)")
+        trace_io.compress_outputs(outputs)
     print(f"== {name}: done")
 
 

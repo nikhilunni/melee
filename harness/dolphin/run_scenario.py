@@ -11,6 +11,9 @@ Outputs, under harness/traces/ unless --out is given:
     <name>.raw.jsonl        one record per frame, raw Fighter bytes
     <name>.raw.jsonl.done   summary: frames, fps, savestate load sync check
     <name>.expected.jsonl   the canonical melee-diff trace
+Once decoded (and validated, with --tick-trace), the raw and expected traces
+are replaced by verified `.jsonl.zst` files (harness/trace_io.py) unless
+--no-compress is given; every trace reader accepts either form.
 
 --tick-trace selects tick_trace.py, inserts `.tick` after <name>, interprets
 scenario.frames as scheduler ticks, and runs validate_ticks.py after decoding.
@@ -32,6 +35,7 @@ HARNESS = HERE.parent
 sys.path.insert(0, str(HARNESS))
 import decode  # noqa: E402
 import dolphin_config  # noqa: E402
+import trace_io  # noqa: E402
 
 ISO = HARNESS / "roms" / "GALE01.iso"
 
@@ -108,6 +112,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--keep", action="store_true", help="leave Dolphin running afterwards")
     ap.add_argument("--tick-trace", action="store_true",
                     help="capture scenario.frames scheduler ticks, then validate the idle trace")
+    ap.add_argument("--no-compress", action="store_true",
+                    help="leave the raw and expected traces as plain JSONL (default: verified .zst)")
     a = ap.parse_args(argv)
 
     scenario = tomllib.loads(a.scenario.read_text())
@@ -117,7 +123,7 @@ def main(argv: list[str] | None = None) -> None:
     raw = (a.out / f"{stem}.raw.jsonl").resolve()
     done, err = Path(str(raw) + ".done"), Path(str(raw) + ".err")
     expected = a.out / f"{stem}.expected.jsonl"
-    for p in (raw, done, err):
+    for p in (raw, trace_io.compressed_path(raw), done, err):
         p.unlink(missing_ok=True)
 
     env = {**os.environ, "MELEE_SCENARIO": str(a.scenario.resolve()), "MELEE_RAW_OUT": str(raw)}
@@ -185,6 +191,8 @@ def main(argv: list[str] | None = None) -> None:
             flags.append("--scripted")  # inputs drive the fighters: animation rates vary
         if validate_ticks.main([str(expected), *flags]):
             sys.exit(1)
+    if not a.no_compress:
+        trace_io.compress_outputs([raw, expected])
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ Same-tick motion changes merge; branches that keep the motion id are invisible.
     cd harness && uv run python interaction_matrix.py <out-dir>
 """
 import json, re, os, sys, collections, tomllib
+import trace_io
 R=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 S=sys.argv[1] if len(sys.argv)>1 else '.'
 os.makedirs(S, exist_ok=True)
@@ -34,7 +35,7 @@ for n in sorted(gated):
     p=R+'/harness/scenarios/'+n+'.toml'
     t=R+'/harness/traces/'+n+'.tick.expected.jsonl'
     if re.search(r"_(bf|dl|ys|fod)(_|$)",n) or n=="platform_bf_fox": continue
-    if os.path.exists(p) and os.path.exists(t):
+    if os.path.exists(p) and trace_io.exists(t):
         scen[n]=(tomllib.load(open(p,'rb')).get('frames'),t)
 trans=collections.defaultdict(lambda: collections.OrderedDict())
 visit=collections.defaultdict(set)
@@ -42,7 +43,7 @@ missing=[]
 for n,(frames,t) in scen.items():
     prev={}
     corpus=n.startswith('corpus')
-    for i,l in enumerate(open(t)):
+    for i,l in enumerate(trace_io.open_text(t)):
         if frames and i>=frames: break
         st=json.loads(l)['state']
         for p in range(4):

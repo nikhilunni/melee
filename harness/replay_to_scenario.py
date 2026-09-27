@@ -29,6 +29,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import trace_io
+
 HERE = Path(__file__).resolve().parent
 BOUNDARIES = HERE / "boundaries.toml"
 CALIBRATION = HERE / "dolphin" / "pad_calibration.json"
@@ -174,7 +176,7 @@ def verify(recording: dict, name: str) -> int:
     """Compare recorded game pads with the recording; return the first mismatching tick or -1."""
     fit_to_trace(name)
     trace = HERE / "traces" / f"{name}.tick.expected.jsonl"
-    lines = trace.open()
+    lines = trace_io.open_text(trace)
     next(lines)  # tick 0 is the boundary's; sample k drove tick k+1
     for k, (line, sample) in enumerate(zip(lines, recording["samples"]), start=1):
         pads = json.loads(line)["inputs"]

@@ -25,6 +25,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import trace_io
+
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "dolphin" / "pad_calibration.json"
 SAVESTATE = "harness/roms/idle_fd_marth4.sav"
@@ -76,7 +78,8 @@ def record(path: Path) -> list[dict]:
                     "--ports", "2"], check=True, stdout=subprocess.DEVNULL)
     name = path.stem
     trace = HERE / "traces" / f"{name}.tick.expected.jsonl"
-    return [json.loads(line) for line in trace.open()]
+    with trace_io.open_text(trace) as lines:
+        return [json.loads(line) for line in lines]
 
 
 def pads_by_input_frame(rows: list[dict]) -> dict[int, dict]:

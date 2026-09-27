@@ -110,6 +110,8 @@ fi
         traces.mkdir()
         if kind == "present":
             (traces / "fixture.expected.jsonl").write_text("{}\n")
+        elif kind == "compressed":
+            (traces / "fixture.expected.jsonl.zst").write_bytes(b"fixture")
         elif kind == "wrong-suffix":
             (traces / "fixture.raw.jsonl").write_text("{}\n")
         elif kind == "directory-only":
@@ -247,6 +249,12 @@ class MergeCheck(unittest.TestCase):
                     self.assertEqual(result.stdout.strip(),
                                      f"[FAIL] data: {variable} is set; unset it before running the merge chain")
                     self.assertEqual(calls, [])
+
+    def test_compressed_oracle_counts_as_present(self):
+        result, calls = self.run_chain(oracle="compressed")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("[PASS] data: oracle traces present", result.stdout)
+        self.assertEqual(len(calls), 7)
 
     def test_oracle_directory_symlink_is_followed(self):
         result, calls = self.run_chain(oracle="symlink")

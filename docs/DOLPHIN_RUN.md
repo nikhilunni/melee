@@ -542,6 +542,26 @@ prints P1's motion transitions and any RNG sites beyond the idle set. The
 particle and bone snippets replay the scenario's scripted inputs
 (`MELEE_PARTICLES_SCENARIO` / `MELEE_BONES_SCENARIO`).
 
+### Compressed traces (2026-09-27)
+
+After every capture has finished and validated, `record.py` (and a standalone
+`dolphin/run_scenario.py`) replaces each JSONL output of 1 MiB or more with
+`<file>.jsonl.zst` (zstd level 12, every core). The compressed file is
+decompressed and compared byte for byte with the plain one before the plain
+file is removed; `.done` markers, `.json` sidecars, logs and small files stay
+plain. `--no-compress` keeps everything plain. On `idle_fd_fox` and `jab_fd_fox` the
+whole capture set shrank 47x (239 MB to 5 MB): particle dumps ~60x, their
+metadata ~35x, ledgers ~35x, raw tick traces ~45x, expected traces 140-220x.
+
+Readers name the plain `.jsonl` path and accept either form, preferring the
+plain file: Rust through `crates/melee-trace-io` (tests reach it as
+`melee_test_support::trace`; `require_files` counts a `.zst` sibling as
+present), Python through `harness/trace_io.py`. Inspect one by hand with
+`zstd -dc <file>.jsonl.zst | head`. Existing plain traces migrate with
+`cd harness && uv run python compress_traces.py` (dry run; `--estimate`
+samples the ratio) and then `--apply`; it skips files modified in the last
+ten minutes and can be interrupted and rerun at any point.
+
 ### Headless recording (the default since 2026-09-26)
 
 Every scripted capture (`record.py`, `dolphin/run_scenario.py`) launches the

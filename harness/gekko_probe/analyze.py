@@ -13,7 +13,8 @@ probe.py) and, from the pairs alone:
     reproduces every captured pair.
 
 Nothing here comes from any emulator source; every number is fitted from the
-data.  Usage:  python3 analyze.py [traces_dir] [--table]
+data.  Usage:  uv run --project .. python analyze.py [traces_dir] [--table]
+(plain python3 works while the probe traces are uncompressed .jsonl).
 """
 from __future__ import annotations
 
@@ -21,6 +22,9 @@ import json
 import os
 import sys
 from collections import defaultdict
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import trace_io  # noqa: E402  (plain .jsonl or .jsonl.zst)
 
 TRACES = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("--") else \
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "traces")
@@ -32,7 +36,7 @@ M23 = (1 << 23) - 1
 
 def load(name: str) -> list[tuple[int, int]]:
     path = os.path.join(TRACES, name)
-    with open(path) as f:
+    with trace_io.open_text(path) as f:
         return [(int(d["input_bits"], 16), int(d["output_bits"], 16))
                 for d in map(json.loads, f)]
 

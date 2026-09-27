@@ -14,6 +14,7 @@ from collections import Counter
 from pathlib import Path
 
 import symbols
+import trace_io
 
 
 class SymbolMap:
@@ -45,7 +46,7 @@ def main() -> None:
     sm = SymbolMap()
     per_tick: list[list[str]] = []
     callers = Counter()
-    for line in args.raw.read_text().splitlines():
+    for line in trace_io.read_text(args.raw).splitlines():
         rec = json.loads(line)
         names = []
         for d in rec.get("rng_draws", []):

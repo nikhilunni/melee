@@ -15,7 +15,8 @@ Selection per instruction (deterministic, seeded):
     bits (next 11 / next 10);
   * random fill from the remaining pairs up to the per-instruction budget.
 
-Usage: python3 select_fixture.py [traces_dir] [out_dir]
+Usage: uv run --project .. python select_fixture.py [traces_dir] [out_dir]
+(plain python3 works while the probe traces are uncompressed .jsonl).
 """
 from __future__ import annotations
 
@@ -25,6 +26,9 @@ import random
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, ".."))
+import trace_io  # noqa: E402  (plain .jsonl or .jsonl.zst)
+
 TRACES = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "traces")
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
     HERE, "..", "..", "crates", "gekko-math", "tests", "data")
@@ -36,7 +40,7 @@ M23 = (1 << 23) - 1
 
 
 def load(name):
-    with open(os.path.join(TRACES, name)) as f:
+    with trace_io.open_text(os.path.join(TRACES, name)) as f:
         return [(int(d["input_bits"], 16), int(d["output_bits"], 16))
                 for d in map(json.loads, f)]
 

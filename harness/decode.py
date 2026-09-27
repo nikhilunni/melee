@@ -22,6 +22,7 @@ from pathlib import Path
 import yaml
 
 from item_kinds import ITEM_KIND_NAMES
+import trace_io
 
 HERE = Path(__file__).resolve().parent
 _FMT = {"u8": ">B", "s8": ">b", "u16": ">H", "s16": ">h", "u32": ">I", "s32": ">i",
@@ -144,7 +145,7 @@ def decode_pads(blob: bytes) -> dict:
 
 def main(inp: Path, out: Path) -> None:
     fighter = yaml.safe_load((HERE / "schema" / "fighter.yaml").read_text())
-    with inp.open() as fi, out.open("w") as fo:
+    with trace_io.open_text(inp) as fi, out.open("w") as fo:
         for line in fi:
             if not line.strip():
                 continue
