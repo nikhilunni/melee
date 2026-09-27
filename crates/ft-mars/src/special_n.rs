@@ -18,6 +18,51 @@ pub struct SpecialN {
     /// accessory4_cb = ftMs_SpecialN_801365A8.
     pub pending_effect: bool,
 }
+/// lb_800119DC's arguments for the charge loop's gust (80136B50..60).
+const CHARGE_GUST: Gust = Gust {
+    frames: 10,
+    strength: 0.5,
+    decay: 0.05,
+};
+/// The release's gust (80136FC8..D8), on this animation frame.
+const RELEASE_GUST: Gust = Gust {
+    frames: 120,
+    strength: 0.9,
+    decay: 0.02,
+};
+const RELEASE_GUST_FRAME: f32 = 9.0;
+
+struct Gust {
+    frames: i32,
+    strength: f32,
+    decay: f32,
+}
+
+/// lb_800119DC at the HipN joint (lb_8000B1CC with no offset): a radial
+/// field that pushes nearby dynamics chains, phase step MTXDegToRad(60).
+fn gust(f: &mut Fighter, a: &FighterAssets, gust: Gust) {
+    let hip = a
+        .parts
+        .joint(melee_types::FtPart::HipN)
+        .expect("Shield Breaker hip") as usize;
+    let c = &mut f.core;
+    let center = melee_ft::fighter::caches::bone_position(
+        &mut c.skeleton,
+        c.animation.root,
+        hip,
+        hsd_types::Vec3::ZERO,
+    );
+    c.commands
+        .radial_impulses
+        .push(melee_lb::radial_force::RadialImpulse {
+            center,
+            frames: gust.frames,
+            strength: gust.strength,
+            decay: gust.decay,
+            phase_step: (std::f64::consts::PI / 3.0) as f32,
+        });
+}
+
 pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     let divisor = f
         .character
@@ -70,6 +115,10 @@ pub fn hold(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>
         .shield_breaker
         .maximum_charge_levels
         * 30;
+    // doLoopAnim: every 30 charge ticks a small gust leaves the hips.
+    if f.character.get::<Marth>().special_n.charge_ticks % 30 == 0 {
+        gust(f, p.assets, CHARGE_GUST);
+    }
     let s = &mut f.character.get_mut::<Marth>().special_n;
     s.charge_ticks += 1;
     if s.charge_ticks > maximum {
@@ -108,6 +157,10 @@ pub fn end(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>>
                 hit.descriptor.damage = staled;
             }
         }
+    }
+    // inlineA0 (80136F94): the release's gust on animation frame 9.
+    if f.animation.frame == RELEASE_GUST_FRAME {
+        gust(f, p.assets, RELEASE_GUST);
     }
     if !f.animation.frames_remaining(&f.skeleton) {
         let state = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {

@@ -1357,7 +1357,7 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 47] = [
+const CORPUS_MATCHES: [(&str, usize); 48] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
     ("corpus_v2_s0_e2a_p1", 3307),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
@@ -1447,6 +1447,10 @@ const CORPUS_MATCHES: [(&str, usize); 47] = [
     // An Illusion cut short before s_link 9 never creates its trail: the
     // motion change clears accessory4 (ftFx_SpecialS_CreateGFX).
     ("corpus_v2_s1_effffffff_p1", 6000),
+    // Shield Breaker's gusts (lb_800119DC from the hips every 30 charge ticks
+    // and on the release's frame 9) push Marth's cape and Fox's tail; the
+    // tail's hurtbox then decides a later hit.
+    ("corpus_v2_s0_e2a_p2", 4337),
 ];
 
 #[test]

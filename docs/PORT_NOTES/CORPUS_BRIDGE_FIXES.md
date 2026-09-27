@@ -83,7 +83,7 @@ Retail expectations were never edited.
 
 ## Corpus status (2026-09-26, after the camera port)
 
-All 48 corpus v2 cases are bridged to retail. 47 pass fighter keys, items and
+All 48 corpus v2 cases are bridged to retail and all 48 pass fighter keys, items and
 ordered particle draws in `m5_gate::corpus_v2_matches_through_game`.
 
 The gameplay camera (`melee-cm`) unblocked five: an off-screen fighter's
@@ -110,8 +110,9 @@ the camera in isolation; all ticks match except the quake shake it cannot
 see and revival resets. The rest stop at:
 
 - the screen-KO approach (DeadUpFall's camera-space flight) is not ported;
-- s0_e2a_p2 (@2894): retail's GuardOn shield blocks Marth's Dancing Blade and
-  the port's is hit; earlier notes tie it to Fox's tail bone from 2788;
+- s0_e2a_p2 passes: Shield Breaker's gusts (lb_800119DC from the hips every
+  30 charge ticks and at the release's frame 9) were missing, so Marth's cape
+  and Fox's tail drifted and the tail's hurtbox took a hit retail misses;
 - the three former singles pass: shield recoil decays in the air in
   Fighter_procUpdate (s1_e12345678_p0), DownDamage applies the prone
   fighter's facing only after the knockback used the hit's and skips

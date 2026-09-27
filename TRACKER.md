@@ -884,3 +884,8 @@ Newest first. One line per session: date, what landed, what is next.
   lists both generator orders with MELEE_PARTICLE_LISTS=1. Remaining:
   s0_e2a_p2 (Fox's GuardOn shield vs Dancing Blade, tail/cape bones) and the
   screen-KO approach.
+- 2026-09-26: Shield Breaker's radial gusts (ftMs_SpecialNLoop/End_Anim ->
+  lb_800119DC) ported; s0_e2a_p2 passes, so all 48 corpus v2 cases gate
+  (the committed s0_e80000000_p1 stops before its screen KO). Next: the
+  screen-KO approach (DeadUpFall camera-space flight), then timer/tie/sudden
+  death and the coverage audit.
