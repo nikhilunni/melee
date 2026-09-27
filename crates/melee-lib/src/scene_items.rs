@@ -21,18 +21,36 @@ melee_it::item_kinds! {
     }
 }
 
-/// Item_IsGrabbable requires its enable bit and a non-null pickup callback.
-/// Return Unknown as soon as a kind/state can satisfy those prerequisites.
-pub fn pickup_search(items: &ItemPool) -> melee_ft::fighter::life::ItemPickupSearch {
-    use melee_ft::fighter::life::ItemPickupSearch;
-    if items
+/// The grabbable items (Item_IsGrabbable: xDC8 x15 and a pickup callback)
+/// in list order, as ftpickupitem_800942A0 walks HSD_GObj_Entities->items.
+pub fn pickup_candidates<'a>(
+    items: &'a ItemPool,
+    resources: &'a Resources,
+) -> impl Iterator<Item = melee_ft::fighter::item_pickup::PickupCandidate> + 'a {
+    items
         .iter()
-        .any(|item| (SceneItems::logic(item.kind).pickup_possible)(item))
-    {
-        ItemPickupSearch::Unknown
-    } else {
-        ItemPickupSearch::Empty
-    }
+        .filter(|item| {
+            !item.destroyed
+                && item.grabbable
+                && (SceneItems::logic(item.kind).pickup_possible)(item)
+        })
+        .map(|item| {
+            let assets = resources.get(item.kind);
+            melee_ft::fighter::item_pickup::PickupCandidate {
+                item: item.id,
+                // it_8026B344 (retail 8026B354: fmadds).
+                position: hsd_types::Vec2::new(
+                    gekko_math::fma::fmadds(item.facing, item.grab_offset.x, item.position.x),
+                    item.position.y + item.grab_offset.y,
+                ),
+                range: item.grab_range,
+                heavy: assets.heavy,
+                // it_8026B4F0: food, hearts, tomatoes, coins, eggs, apples.
+                consumable: false,
+                use_kind: assets.use_kind,
+                hand_hold_kind: assets.hand_hold_kind,
+            }
+        })
 }
 
 pub struct Resources {
@@ -144,6 +162,8 @@ pub fn prepare_scheduler(world: &mut World) {
 
 /// Fighter-owned context captured when its item request is dispatched.
 pub struct RequestOwner<'a> {
+    /// The requesting fighter; stage requests (the Bob-omb rain) have none.
+    pub slot: Option<u8>,
     pub held_item: Option<&'a melee_it::ItemOwner>,
     pub stale_multiplier: f32,
 }
@@ -174,6 +194,28 @@ pub fn request(
             pool.control::<SceneItems>(owner, kind, control);
             return;
         }
+        ItemRequest::PickUp { item, part } => {
+            // Item_8026AB54: attach, then the kind's pickup callback.
+            let lifetime = pool.common().lifetime;
+            let held = pool.get_mut(item).expect("picked-up item");
+            let assets = resources.get(held.kind);
+            held.attach_to_holder(
+                owner.slot.expect("pickup by a fighter"),
+                part,
+                assets,
+                lifetime,
+            );
+            (SceneItems::logic(held.kind).picked_up)(
+                held,
+                &mut ItemAnimationContext {
+                    owner: owner.held_item,
+                    holder: None,
+                    map,
+                    assets,
+                },
+            );
+            return;
+        }
     };
     let assets = resources.get(spawn.kind);
     if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
@@ -187,8 +229,10 @@ pub fn request(
             // Item_8026AB54 invokes the kind's pickup callback after attachment.
             (SceneItems::logic(spawn.kind).picked_up)(
                 pool.get_mut(id).unwrap(),
-                &ItemAnimationContext {
+                &mut ItemAnimationContext {
                     owner: Some(owner),
+                    holder: None,
+                    map,
                     assets,
                 },
             );
@@ -254,6 +298,7 @@ pub fn spawn_rain_bomb(
         objects,
         ItemRequest::Spawn(it_bombhei::rain_spawn(position, facing)),
         RequestOwner {
+            slot: None,
             held_item: None,
             stale_multiplier: 1.0,
         },

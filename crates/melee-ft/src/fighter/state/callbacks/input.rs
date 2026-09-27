@@ -255,6 +255,15 @@ pub fn walk(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftCo_MS_JumpAerialB (28), ftCo_MS_Fall (29), ftCo_MS_FallAerial (32), ftCo_MS_Pass (244).
 pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
+    // ftCo_Fall_IASA_Inner and siblings: ftCo_800D7100 after the special check.
+    if !fighter
+        .core
+        .input
+        .pressed
+        .intersects(crate::input::Buttons::B)
+    {
+        fighter.core.check_aerial_item_catch(assets);
+    }
     let transition = crate::fighter::fall::iasa_with_jump(
         &fighter.core.input,
         &assets.input,

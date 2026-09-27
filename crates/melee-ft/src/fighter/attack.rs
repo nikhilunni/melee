@@ -35,6 +35,10 @@ impl Fighter {
             (P::TiltDown, S::AttackLw3),
         ] {
             if self.first_ground_transition(assets, &context, &[predicate]) != T::None {
+                // decideAngle (8008B788): an item in reach is picked up instead.
+                if state == S::AttackS3S && self.try_item_pickup(assets)? {
+                    return Ok(());
+                }
                 let state = if state == S::AttackS3S {
                     self.side_tilt_state(assets)
                 } else {
@@ -48,6 +52,9 @@ impl Fighter {
     /// checkAttack11 (8008ABC0), also used by a looping jab combo.
     fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {
         self.character.jab_variant();
+        if self.try_item_pickup(assets)? {
+            return Ok(());
+        }
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
         self.change_motion_state(S::Attack11.into(), assets)?;
@@ -63,6 +70,10 @@ impl Fighter {
     /// ftCo_AttackHi4 doEnter (8008CA38), AttackLw4 (8008CC5C),
     /// AttackHi3 (8008BA38), AttackLw3 (8008BC70), AttackDash (8008B4D4).
     pub(super) fn enter_simple_attack(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+        // AttackLw3 doEnter (8008BC70): an item in reach is picked up instead.
+        if state == S::AttackLw3 && self.try_item_pickup(assets)? {
+            return Ok(());
+        }
         self.core.commands.allow_interrupt = false;
         self.core.commands.variables[0] = 0;
         self.change_motion_state(state.into(), assets)?;
@@ -197,7 +208,10 @@ impl Fighter {
         if std::mem::take(&mut self.core.commands.rapid_jab_loop_end) {
             if rapid.loop_started && !rapid.edge_pressed {
                 self.change_motion_state(S::Attack100End.into(), assets)?;
-            } else {
+            } else if !self.try_item_pickup(assets)? {
+                let MotionData::RapidJab(rapid) = &mut self.core.state_data else {
+                    panic!("rapid jab scratch")
+                };
                 rapid.edge_pressed = false;
             }
         }
@@ -276,6 +290,10 @@ impl Fighter {
         if self.core.commands.rapid_jab
             && jab.rapid_edges >= self.core.attributes.combat.rapid_jab_window
         {
+            // ftCo_800D6B00 (800D6B00): an item in reach is picked up instead.
+            if self.try_item_pickup(assets)? {
+                return Ok(());
+            }
             self.core.commands.rapid_jab_loop_end = false;
             self.change_motion_state(S::Attack100Start.into(), assets)?;
             self.step_animation(assets);
@@ -299,6 +317,11 @@ impl Fighter {
                 // doAttack13 -> doAttack12Rapid -> checkAttack11: restart entry
                 // includes ftAnim_8006EBA4 and the jab-2 window, unlike jab 2/3.
                 return self.enter_jab(assets);
+            }
+            // doAttack12Normal / doAttack13 (8008B0F8): an item in reach is
+            // picked up instead.
+            if self.try_item_pickup(assets)? {
+                return Ok(());
             }
             self.core.commands.jab_followup = false;
             self.change_motion_state(state.into(), assets)?;

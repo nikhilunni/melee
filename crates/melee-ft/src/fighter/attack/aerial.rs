@@ -101,6 +101,8 @@ pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
     if !fighter.core.commands.allow_interrupt {
         return;
     }
+    // ftCo_80095328 needs a held item; ftCo_800D7100 catches one.
+    fighter.core.check_aerial_item_catch(phase.assets);
     fighter.character.air_dodge_tether();
     if requested(&fighter.core.input, &phase.assets.input) {
         (fighter.character.table().enter_aerial)(fighter, phase.assets).expect("aerial interrupt");

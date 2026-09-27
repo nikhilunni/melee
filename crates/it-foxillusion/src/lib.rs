@@ -66,7 +66,7 @@ ghost!(FoxIllusion, FoxIllusion);
 ghost!(FalcoPhantasm, FalcoPhantasm);
 
 /// itFoxillusion_UnkMotion0_Anim (8029D094), shared by motion 1.
-fn travel_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
+fn travel_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let Some(owner) = ctx.owner.and_then(|owner| owner.illusion) else {
         return true;
     };
@@ -96,7 +96,7 @@ fn travel_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     }
 }
 /// itFoxillusion_UnkMotion2_Anim (8029D7EC): expire after the trailing lifetime.
-fn end_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
+fn end_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     if ctx.owner.and_then(|owner| owner.illusion).is_none() {
         return true;
     }

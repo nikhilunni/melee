@@ -9,14 +9,6 @@ use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
-/// Scene evidence for ftpickupitem_800942A0. Unknown never means empty.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ItemPickupSearch {
-    #[default]
-    Unknown,
-    Empty,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct Arena {
     pub left: f32,
@@ -668,18 +660,9 @@ impl Fighter {
         let pressed = self.core.input.pressed;
         let held = self.core.input.current.held;
         let stick = self.core.input.current.stick;
-        // ftCo_800D7100 may find an item before dodge/aerial priority. The
-        // scene proves an empty search from actual item eligibility; this is
-        // not an assumption based on random-item match settings.
-        if !pressed.intersects(Buttons::B)
-            && held.intersects(Buttons::SHIELD)
-            && pressed.intersects(Buttons::A)
-        {
-            assert_eq!(
-                self.status.item_pickup_search,
-                ItemPickupSearch::Empty,
-                "ftCo_800D7100: item pickup search requires an eligible-item implementation"
-            );
+        // ftCo_800D7100 after the special check: LR + A catches an item.
+        if !pressed.intersects(Buttons::B) {
+            self.core.check_aerial_item_catch(assets);
         }
         // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
         let priority = if pressed.intersects(Buttons::B) {

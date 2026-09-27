@@ -137,7 +137,6 @@ pub struct ItemCore {
     pub motion: u16,
     pub life_timer: f32,
     pub scale: f32,
-    pub attached: bool,
     pub frozen: bool,
     pub destroyed: bool,
     pub pending_damage_dealt: i32,
@@ -183,11 +182,29 @@ pub struct ItemCore {
     pub spin_speed: f32,
     /// xDC8 x19: the spin keeps its sign regardless of facing.
     pub spin_ignores_facing: bool,
-    /// xDC8 x15 (it_8026B390 / it_8026B3A8): the common lifetime counts down.
-    pub lifetime_enabled: bool,
+    /// xDC8 x15 (it_8026B390 / it_8026B3A8): Item_IsGrabbable requires it,
+    /// and it gates the common lifetime countdown (Item_80269528).
+    pub grabbable: bool,
+    /// xBCC / xBD4 (ItemAttr x30 / x38): the pickup box's offset from the
+    /// item's position and its half extents (ftpickupitem_800942A0).
+    pub grab_offset: hsd_types::Vec2,
+    pub grab_range: hsd_types::Vec2,
+    /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
+    /// nor leaves the blast zones.
+    pub held: bool,
+    /// xDC4: the holder's part it hangs from, a fp->parts index (the
+    /// character's own joint numbering, as ftData x8 stores it).
+    pub holder_part: u8,
+    /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
+    pub hits_owner: bool,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
     pub events: melee_types::fixed::FixedVec<ItemEvent, 8>,
+}
+/// lb_8000B804: the model root's authored rotation.
+pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
+    let r = assets.visual.model.rotation;
+    Vec3::new(r.x, r.y, r.z)
 }
 /// The tag that keeps item victim ids apart from fighter spawn numbers.
 const ITEM_VICTIM: u32 = 1 << 31;
@@ -221,6 +238,27 @@ impl ItemCore {
     pub fn record_damage_dealt(&mut self, damage: f32) {
         if damage > self.pending_damage_dealt as f32 {
             self.pending_damage_dealt = gekko_math::msl::fctiwz(damage);
+        }
+    }
+    /// it_802742F4 (802742F4), Item_8026AB54's attachment before the kind's
+    /// pickup callback: the model returns to its rest pose at the item's
+    /// scale, `owner` holds it at `part`, pickup and the lifetime countdown
+    /// stop, and a common item's lifetime restarts at `lifetime`.
+    /// it_80273168's pickup sound and the hand constraint are presentation.
+    pub fn attach_to_holder(&mut self, owner: u8, part: u8, assets: &ItemAssets, lifetime: f32) {
+        // lb_8000B804, then Item_8026849C.
+        self.rotation = rest_rotation(assets);
+        self.model_scale = Vec3::new(self.scale, self.scale, self.scale);
+        // ftLib_80086960: fighters only; xDC8 x0 (a secondary owner) is
+        // never set on a pickup-capable kind here.
+        self.owner = Some(owner);
+        self.held = true;
+        self.holder_part = part;
+        // it_8026B3A8.
+        self.grabbable = false;
+        if (self.kind as u32) < ItemKind::LGunRay as u32 {
+            // it_80275158: xD48's half-life copy only drives the warning blink.
+            self.life_timer = lifetime;
         }
     }
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
@@ -486,7 +524,6 @@ impl ItemPool {
             motion: 0,
             life_timer: self.common.lifetime,
             scale: assets.scale,
-            attached: false,
             frozen: false,
             destroyed: false,
             pending_damage_dealt: 0,
@@ -514,7 +551,12 @@ impl ItemPool {
             spin_rate: assets.spin_rate,
             spin_speed: 0.0,
             spin_ignores_facing: assets.rotate_to_facing,
-            lifetime_enabled: false,
+            grabbable: false,
+            grab_offset: assets.grab_offset,
+            grab_range: assets.grab_range,
+            held: false,
+            holder_part: 0,
+            hits_owner: false,
             queued_events: Default::default(),
             events: Default::default(),
         };
@@ -640,6 +682,8 @@ impl ItemPool {
         id: u32,
         assets: &ItemAssets,
         owner: Option<&ItemOwner>,
+        holder: Option<crate::ItemHolder<'_>>,
+        map: &mut melee_mp::CollMap,
     ) {
         let Some(item) = self.get_mut(id) else {
             return;
@@ -649,7 +693,15 @@ impl ItemPool {
             item.animation_frame += 1.0;
             item.advance_script(assets);
             let row = D::logic(item.kind).states[item.motion as usize];
-            item.destroyed |= (row.animation)(item, &ItemAnimationContext { owner, assets });
+            item.destroyed |= (row.animation)(
+                item,
+                &mut ItemAnimationContext {
+                    owner,
+                    holder,
+                    map,
+                    assets,
+                },
+            );
             if item.destroyed {
                 return;
             }
@@ -657,7 +709,7 @@ impl ItemPool {
         // Item_80269528's common-item lifetime: xDC8 x15 on a kind below
         // It_Kind_L_Gun_Ray (xDD0 b3, set on explosion, clears x15 here).
         // The x34 warning blink (it_802728C8) is visual.
-        if item.lifetime_enabled && (item.kind as u32) < ItemKind::LGunRay as u32 {
+        if item.grabbable && (item.kind as u32) < ItemKind::LGunRay as u32 {
             item.life_timer -= 1.0;
             if item.life_timer <= 0.0 {
                 item.destroyed = true;
@@ -734,13 +786,13 @@ impl ItemPool {
 /// Item_802697D4: audited retail uses four PSVECAdd calls; never reassociate
 /// velocity+nudge, position+delta, environmental movement, platform movement.
 fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
-    if !item.attached && !item.frozen && !item.in_hitlag {
+    if !item.held && !item.frozen && !item.in_hitlag {
         let delta = add(item.velocity, item.nudge);
         item.position = add(item.position, delta);
     }
     // Item_802697D4 -> Item_802696CC, before environmental/platform movement.
     // Item_802680CC enables all four bounds; attachment skips this whole block.
-    if !item.attached
+    if !item.held
         && (item.position.x > bounds.right
             || item.position.x < bounds.left
             || item.position.y > 10000.0
@@ -750,7 +802,7 @@ fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
         return;
     }
     // Item_802697D4 -> it_80274A64: an airborne item spins about its axis.
-    if !item.attached && item.spin_speed != 0.0 && item.ground_or_air == GroundOrAir::Air {
+    if !item.held && item.spin_speed != 0.0 && item.ground_or_air == GroundOrAir::Air {
         item.spin();
     }
     item.position = add(item.position, item.environmental_velocity);
@@ -802,6 +854,14 @@ mod tests {
             explosion_lifetime: 0.0,
             spin_rate: 0.0,
             fall_spin_degrees: 0.0,
+            animation_ends: Vec::new(),
+            release_box_scale: 0.0,
+            heavy: false,
+            use_kind: 0,
+            hand_hold_kind: 0,
+            throw_speed_multiplier: 1.0,
+            grab_offset: hsd_types::Vec2::ZERO,
+            grab_range: hsd_types::Vec2::ZERO,
         }
     }
     #[test]

@@ -217,6 +217,12 @@ pub fn cliff_catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<(
     Ok(())
 }
 
+/// ftData_MotionStateList: ftCo_MS_LightGet (92): ftpickupitem_Coll.
+pub fn item_get(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    fighter.item_get_collision(phase.map);
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
 pub fn escape_air(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;

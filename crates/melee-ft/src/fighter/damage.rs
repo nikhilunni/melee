@@ -972,6 +972,10 @@ impl Fighter {
         // A damage state is neither Jump nor JumpAerial, so the
         // float check (Peach) is always enabled here, as in procs.rs.
         let vertical_velocity = self.core.physics.self_velocity.y;
+        // ftCo_DamageFall_IASA: ftCo_800D7100 after the special check.
+        if !self.core.input.pressed.intersects(crate::input::Buttons::B) {
+            self.core.check_aerial_item_catch(assets);
+        }
         let transition = super::fall::iasa(
             &self.core.input,
             &assets.input,
@@ -1853,7 +1857,9 @@ impl Fighter {
         item: &mut melee_it::ItemCore,
         assets: &FighterAssets,
     ) -> Option<ItemHurtContact> {
-        if item.owner == Some(self.player.id)
+        // ftColl_8007925C (ftcoll.c:2026): an owned item misses its owner
+        // unless xDCD b5 lets it through (the Bob-omb blast).
+        if (item.owner == Some(self.player.id) && !item.hits_owner)
             || item.destroyed
             || self.status.disabled
             || self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible

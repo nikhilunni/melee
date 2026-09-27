@@ -23,6 +23,7 @@ pub mod grab_escape;
 pub mod grab_throw;
 mod hit_log;
 pub mod hitbox;
+pub mod item_pickup;
 pub mod jump;
 pub mod landing;
 pub mod ledge;
@@ -481,7 +482,6 @@ pub struct Status {
     pub ledge_intangibility: i32,
     /// Fighter +1994: revival protection allows contact sparks but no damage.
     pub revival_invincibility: i32,
-    pub item_pickup_search: life::ItemPickupSearch,
 
     /// x2100 (+2100), -1 disables sword afterimages.
     pub sword_trail: i32,
@@ -510,7 +510,6 @@ impl Status {
             grab_exclusions: ledge::GrabExclusions::NONE,
             ledge_intangibility: 0,
             revival_invincibility: 0,
-            item_pickup_search: life::ItemPickupSearch::Unknown,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
@@ -648,6 +647,10 @@ pub struct FighterCore {
     /// A grab link this fighter dropped by dying (ftCo_800DD100); the scene
     /// releases the partner.
     pub released_link: Option<grab::GrabLink>,
+    /// item_gobj (+1974): the item in hand.
+    pub held_item: Option<item_pickup::HeldItem>,
+    /// The grabbable items the scene offered to the running proc.
+    pub pickup_candidates: item_pickup::PickupCandidates,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
@@ -710,6 +713,10 @@ pub enum MotionData {
         wait_remaining: f32,
     },
     Catch,
+    /// mv.co.itemget: LightGet (false) or HeavyGet (true).
+    ItemGet {
+        heavy: bool,
+    },
     Capture(grab_escape::CaptureState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]

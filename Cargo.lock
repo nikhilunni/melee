@@ -695,6 +695,7 @@ dependencies = [
  "hsd-types",
  "melee-it",
  "melee-lb",
+ "melee-mp",
  "melee-test-support",
  "melee-types",
 ]

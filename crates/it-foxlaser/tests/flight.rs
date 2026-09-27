@@ -55,6 +55,14 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         "retail character category is unbounded"
     );
     let mut pool = ItemPool::new(data);
+    // A one-floor map far away: the lasers' animation never touches it.
+    let mut map = {
+        let mut builder = melee_mp::CollMapBuilder::new();
+        let left = builder.vertex(0, -1000.0, -1000.0);
+        let right = builder.vertex(0, -990.0, -1000.0);
+        builder.floor(0, left, right, 0);
+        melee_mp::CollMap::load(builder.build(), 1.0, melee_types::GrKind::Last)
+    };
     let root = fox.public("ftDataFox").unwrap();
     let laser = ItemAssets::from_fighter(&fox, root, 0, 2).unwrap();
     let blaster = ItemAssets::from_fighter(&fox, root, 1, 9).unwrap();
@@ -72,7 +80,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         .unwrap();
     initialize_laser(pool.get_mut(ray).unwrap(), &laser, 0.0, 7.0, 0);
     assert_eq!(pool.iter().map(|i| i.id).collect::<Vec<_>>(), [gun, ray]);
-    pool.animate::<Items>(ray, &laser, None);
+    pool.animate::<Items>(ray, &laser, None, None, &mut map);
     pool.physics::<Items>(
         ray,
         None,
@@ -97,7 +105,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
     pool.remove_destroyed::<Items>();
     assert_eq!(pool.iter().map(|i| i.id).collect::<Vec<_>>(), [ray]);
     for _ in 1..laser.special_attributes[0] as usize {
-        pool.animate::<Items>(ray, &laser, None);
+        pool.animate::<Items>(ray, &laser, None, None, &mut map);
     }
     pool.remove_destroyed::<Items>();
     assert!(pool.is_empty());

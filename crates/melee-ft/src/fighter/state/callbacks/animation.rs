@@ -130,6 +130,14 @@ pub fn appeal(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
     Ok(None)
 }
 
+/// ftData_MotionStateList: ftCo_MS_LightGet (92): ftpickupitem_Anim.
+pub fn item_get(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.step_animation(assets);
+    fighter.item_get_animation(assets)?;
+    Ok(None)
+}
+
 pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);

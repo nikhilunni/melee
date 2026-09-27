@@ -168,6 +168,98 @@ impl ItemCore {
         melee_mp::set_facing_dir(collision, facing);
     }
 
+    /// it_8027429C (8027429C): the holder lets go with `velocity`.
+    /// it_80273B50 places the item at the hand and aims it; it_80273F34 ends
+    /// the hold and sweeps the map from the holder's body to the hand
+    /// (it_80275BC8). The caller releases the holder's side
+    /// (Item_8026A848 -> ftCommon_8007E6DC) once the callback returns.
+    /// Heavy items, which hang below the hand, are not ported.
+    pub fn release_from_holder(
+        &mut self,
+        velocity: hsd_types::Vec3,
+        holder: &mut crate::ItemHolder<'_>,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
+        assert!(!assets.heavy, "it_80273B50: heavy item hand offset");
+        // it_80273B50. it_80275070 drops the hand constraint; it_8026B6C8's
+        // enemy kinds stay unpickable.
+        self.grabbable = true;
+        // it_80274990 reads the spin axis before lb_8000B804 resets the pose.
+        let rotation = self.ecb_angle();
+        self.rotation = crate::engine::rest_rotation(assets);
+        self.model_scale = hsd_types::Vec3::new(self.scale, self.scale, self.scale);
+        self.update_spin(rotation);
+        // retail 80273C3C..54: three fmuls by ItemAttr x4.
+        let multiplier = assets.throw_speed_multiplier;
+        self.velocity = hsd_types::Vec3::new(
+            velocity.x * multiplier,
+            velocity.y * multiplier,
+            velocity.z * multiplier,
+        );
+        // A NaN speed counts as moving, as the retail compare falls through.
+        let still = gekko_math::msl::fabsf(self.velocity.x) < 0.00001;
+        if !still || self.facing == 0.0 {
+            self.facing = if self.velocity.x >= 0.0 { 1.0 } else { -1.0 };
+        }
+        self.face_spin_axis();
+        let hand = holder.part_position();
+        self.position = hsd_types::Vec3::new(hand.x, hand.y, 0.0);
+        // it_80273F34.
+        self.held = false;
+        self.holder_part = 0;
+        self.enter_air();
+        self.sweep_from_holder(holder.center, map, assets);
+        self.face_spin_axis();
+        // it_8027B070: the holder's attack becomes the item's.
+        self.stale_source = holder.attack;
+        self.enter_air();
+    }
+
+    /// xDC8 x19 (HSD_JObjSetRotationY): a facing-locked model turns to face
+    /// its direction, (float) (M_PI_2 * facing) in double precision.
+    fn face_spin_axis(&mut self) {
+        if self.spin_ignores_facing {
+            self.rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(self.facing)) as f32;
+        }
+    }
+
+    /// it_80275BC8 (80275BC8): grow the saved ECB box by the common release
+    /// scale (it_80275D5C, as xDCE b7 is set at creation), then an airborne
+    /// pass from the holder's centre to the hand (it_80276100).
+    fn sweep_from_holder(
+        &mut self,
+        center: hsd_types::Vec3,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
+        let box_scale = assets.release_box_scale;
+        let b = assets.collision_box;
+        let (top, bottom, right, left) = (
+            b.top * box_scale,
+            b.bottom * box_scale,
+            b.right * box_scale,
+            b.left * box_scale,
+        );
+        let scale = self.scale;
+        let facing = if self.facing == -1.0 { -1 } else { 1 };
+        let mut collision = self.collision.take().expect("item map collision");
+        collision.cur_pos = self.position;
+        melee_mp::set_ecb_source_fixed(
+            &mut collision,
+            top * scale,
+            bottom * scale,
+            right * scale,
+            left * scale,
+        );
+        melee_mp::set_facing_dir(&mut collision, facing);
+        collision.last_pos = center;
+        melee_mp::mark_ecb_clear(&mut collision);
+        map.air_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.collision = Some(collision);
+    }
+
     /// it_802762BC (802762BC).
     pub fn enter_air(&mut self) {
         self.ground_or_air = GroundOrAir::Air;

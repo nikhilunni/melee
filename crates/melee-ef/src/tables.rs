@@ -208,12 +208,14 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 13] = [
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 5] = [
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 6] = [
     (0x402, 0x59),
     (0x403, 0x5E),
     (0x412, 0x13),
     (0x413, 0x37),
     (0x414, 0xE1),
+    // efasync.c:542-544: the item pickup sparkle.
+    (0x422, 0x5B),
 ];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 pub(super) static PARTICLE_KINDS: [i32; 23] = [

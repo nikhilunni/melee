@@ -83,6 +83,23 @@ pub struct ItemAssets {
     pub spin_rate: f32,
     /// ItCo common data +68: Item_ApplyFallingPhysics' spin degrees.
     pub fall_spin_degrees: f32,
+    /// Per article state: the frame its joint animation stops, if it does.
+    pub animation_ends: Vec<Option<f32>>,
+    /// it_804D6D28->xE8 (it_80275BC8): the ECB scale for a released item's
+    /// first sweep. Zero for fighter articles, which are never released.
+    pub release_box_scale: f32,
+    /// ItemAttr x0 bit 0x80 (itIsHeavy): picked up with HeavyGet.
+    pub heavy: bool,
+    /// ItemAttr x0 bits 0x78 (it_8026B30C): how a holder uses the item;
+    /// 5 is consumed on pickup (ftpickupitem_8009447C).
+    pub use_kind: u8,
+    /// ItemAttr x0 bits 0x07 (itGetHoldKind): the holder's hand pose.
+    pub hand_hold_kind: u8,
+    /// ItemAttr x4 (it_80273B50): the release velocity multiplier.
+    pub throw_speed_multiplier: f32,
+    /// ItemAttr x30 / x38: the pickup box offset and half extents.
+    pub grab_offset: hsd_types::Vec2,
+    pub grab_range: hsd_types::Vec2,
 }
 impl ItemAssets {
     /// ftData.x48_items -> Article, loaded once before any item exists. A
@@ -116,6 +133,7 @@ impl ItemAssets {
         let mut assets = Self::from_article(archive, article, article_states, special_attributes)?;
         assets.explosion_lifetime = r.f32(r.u32(public)? + 0xF8)?;
         assets.fall_spin_degrees = r.f32(r.u32(public)? + 0x68)?;
+        assets.release_box_scale = r.f32(r.u32(public)? + 0xE8)?;
         Ok(assets)
     }
 
@@ -150,13 +168,15 @@ impl ItemAssets {
         let special_attributes = (0..special_count)
             .map(|i| r.f32(special + i * 4))
             .collect::<Result<_>>()?;
+        let visual = hsd_archive::desc::item_visual::ItemVisual::read(
+            archive,
+            model_desc,
+            state_array,
+            article_state_count as usize,
+        )?;
         Ok(Self {
-            visual: hsd_archive::desc::item_visual::ItemVisual::read(
-                archive,
-                model_desc,
-                state_array,
-                article_state_count as usize,
-            )?,
+            animation_ends: visual.states.iter().map(animation_end).collect(),
+            visual,
             scripts,
             hit_flags,
             special_attributes,
@@ -178,8 +198,33 @@ impl ItemAssets {
             explosion_lifetime: 0.0,
             spin_rate: r.f32(common + 0xC)?,
             fall_spin_degrees: 0.0,
+            release_box_scale: 0.0,
+            heavy: r.u8(common)? & 0x80 != 0,
+            use_kind: (r.u8(common)? >> 3) & 0xF,
+            hand_hold_kind: r.u8(common)? & 7,
+            throw_speed_multiplier: r.f32(common + 4)?,
+            grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
+            grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
         })
     }
+}
+
+/// The frame at which an article state's joint animation stops (lb_8000B09C
+/// finds no running AObj), or None when it has none or loops.
+fn animation_end(state: &hsd_archive::desc::item_visual::ItemVisualState) -> Option<f32> {
+    let mut end: Option<f32> = None;
+    let mut stack: Vec<&hsd_archive::desc::AnimJoint> = state.joint.iter().collect();
+    while let Some(joint) = stack.pop() {
+        if let Some(aobj) = &joint.aobjdesc {
+            if aobj.flags & hsd_anim::aobj::AOBJ_LOOP != 0 {
+                return None;
+            }
+            end = Some(end.map_or(aobj.end_frame, |e| e.max(aobj.end_frame)));
+        }
+        stack.extend(joint.child.as_deref());
+        stack.extend(joint.next.as_deref());
+    }
+    end
 }
 
 /// itanimlist.c uses the shared ten control commands and its own payload table.

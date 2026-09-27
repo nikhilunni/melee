@@ -366,6 +366,26 @@ impl FighterCore {
         self.update_idle_animation(assets, rng)
     }
 
+    /// ftCo_8008A6D8 (8008A6D8): play idle animation `motion` from its
+    /// first frame with its own script, as a finished idle loop does.
+    pub(super) fn play_idle_animation(
+        &mut self,
+        assets: &FighterAssets,
+        motion: i32,
+    ) -> Result<()> {
+        self.animation
+            .set_animation(&mut self.skeleton, &assets.motions[&motion], 0.0, 1.0)?;
+        restart_idle_step(
+            &mut self.animation,
+            &mut self.skeleton,
+            &mut self.commands,
+            &mut self.ground_pose,
+            assets,
+        );
+        self.apply_dynamic_commands(assets);
+        Ok(())
+    }
+
     pub(super) fn update_idle_animation(
         &mut self,
         assets: &FighterAssets,
@@ -373,23 +393,20 @@ impl FighterCore {
     ) -> Result<Option<WaitChoice>> {
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
+        // ftCo_8008A7A8: holding an item, most kinds replay the current idle.
+        let holding = self.held_item.is_some() && !assets.idle_variants_while_holding;
         let result = self.animation.update_wait_with_restart(
             &mut self.skeleton,
             rng,
-            if self.motion_state.id == melee_types::CommonMotionState::SquatWait {
+            if holding {
+                None
+            } else if self.motion_state.id == melee_types::CommonMotionState::SquatWait {
                 assets.squat_choices.as_deref()
             } else {
                 assets.wait_choices.as_deref()
             },
             |id| &assets.motions[&id],
-            |animation, tree| {
-                commands.restart(assets.command_entries[&animation.motion_id]);
-                animation.step_with_hooks::<RetailTrig>(
-                    tree,
-                    |animation, tree| commands.step(animation, tree, ground_pose, assets),
-                    |_, _| {},
-                );
-            },
+            |animation, tree| restart_idle_step(animation, tree, commands, ground_pose, assets),
         )?;
         self.apply_dynamic_commands(assets);
         // ftCommon_8007E0E4: reset before the fighter-overlap nudge query.
@@ -679,4 +696,21 @@ impl FighterCore {
             },
         );
     }
+}
+
+/// ftCo_8008A6D8's restart after the idle motion is attached: its script from
+/// the top, then the first step (ftAnim_8006EBA4).
+fn restart_idle_step(
+    animation: &mut crate::anim::playback::FighterAnimation,
+    tree: &mut hsd_anim::jobj::JObjTree,
+    commands: &mut super::commands::CommandState,
+    ground_pose: &mut GroundPoseFlags,
+    assets: &FighterAssets,
+) {
+    commands.restart(assets.command_entries[&animation.motion_id]);
+    animation.step_with_hooks::<RetailTrig>(
+        tree,
+        |animation, tree| commands.step(animation, tree, ground_pose, assets),
+        |_, _| {},
+    );
 }

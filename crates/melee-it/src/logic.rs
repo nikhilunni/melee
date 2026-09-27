@@ -3,6 +3,9 @@ use melee_types::ItemKind;
 
 pub struct ItemAnimationContext<'a> {
     pub owner: Option<&'a ItemOwner>,
+    /// Present while the item is held (xDC8 x13).
+    pub holder: Option<crate::ItemHolder<'a>>,
+    pub map: &'a mut melee_mp::CollMap,
     pub assets: &'a ItemAssets,
 }
 pub struct ItemPhysicsContext<'a> {
@@ -32,7 +35,7 @@ impl<'a> ItemEventContext<'a> {
 #[derive(Clone, Copy)]
 pub struct ItemStateRow {
     pub animation_id: i32,
-    pub animation: fn(&mut ItemCore, &ItemAnimationContext<'_>) -> bool,
+    pub animation: fn(&mut ItemCore, &mut ItemAnimationContext<'_>) -> bool,
     pub physics: fn(&mut ItemCore, &ItemPhysicsContext<'_>),
     pub collision: fn(&mut ItemCore, &mut ItemCollisionContext<'_>) -> bool,
 }
@@ -56,7 +59,7 @@ pub trait ItemLogic {
     }
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
-    fn picked_up(_item: &mut ItemCore, _context: &ItemAnimationContext<'_>) {}
+    fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
     fn dropped(_item: &mut ItemCore) {}
     fn thrown(_item: &mut ItemCore) {}
     fn entered_air(_item: &mut ItemCore) {}
@@ -123,7 +126,7 @@ pub struct ItemLogicRow {
     pub spawned: fn(&mut ItemCore, &ItemAssets),
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub destroyed: fn(&mut ItemCore),
-    pub picked_up: fn(&mut ItemCore, &ItemAnimationContext<'_>),
+    pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore),
     pub thrown: fn(&mut ItemCore),
     pub entered_air: fn(&mut ItemCore),

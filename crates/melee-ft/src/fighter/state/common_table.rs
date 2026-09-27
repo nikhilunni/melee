@@ -427,6 +427,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         implemented: true,
     };
     // ftCo_MS_Attack11 = 44; ftData_MotionStateList[44].
+    // ftData_MotionStateList[92]: ftCo_SM_LightGet (78); ftpickupitem_IASA
+    // is empty and ftpickupitem_Phys is ft_80084F3C, Wait's physics.
+    rows[S::LightGet as usize] = MotionRow {
+        action: ActionId(92),
+        id: S::LightGet,
+        animation: 78,
+        anim: callbacks::animation::item_get,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::wait,
+        collision: callbacks::collision::item_get,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::Attack11 as usize] = MotionRow {
         action: ActionId(44),
         id: S::Attack11,

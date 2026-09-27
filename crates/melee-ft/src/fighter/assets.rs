@@ -58,6 +58,21 @@ pub struct CommonBehavior {
     pub morph_ball_roll: bool,
     /// ftCo_ShieldBreakFly.c:30: Jigglypuff can KO above the top boundary.
     pub shield_break_top_exit: bool,
+    /// ftCo_8008A7A8 (ftwaitanim.c:67): Fox and Mewtwo keep choosing idle
+    /// animations while holding an item; everyone else replays the current one.
+    pub idle_variants_while_holding: bool,
+    /// ftData_OnItemPickupExt / OnItemDropExt: the x8B0 hand-pose slots the
+    /// kind's Fighter_OnItemPickup call names. None: not ported.
+    pub item_hand: Option<ItemHandSlots>,
+}
+
+/// Fighter_OnItemPickup(gobj, flag, pose, shown) (ft/inlines.h:143): the
+/// held item's hold kind selects slot `pose`'s hand animation (x8B0.x10);
+/// a pickup then applies slot `shown`'s selection (ftAnim_80070C48).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ItemHandSlots {
+    pub pose: usize,
+    pub shown: usize,
 }
 impl CommonBehavior {
     /// Descriptor-layer defaults transcribed from retail's kind selections.
@@ -99,6 +114,38 @@ impl CommonBehavior {
             ),
             morph_ball_roll: matches!(kind, FighterKind::Samus),
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
+            idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
+            item_hand: match kind {
+                FighterKind::Mars | FighterKind::Emblem => {
+                    Some(ItemHandSlots { pose: 0, shown: 1 })
+                }
+                FighterKind::Pikachu
+                | FighterKind::Pichu
+                | FighterKind::Samus
+                | FighterKind::Boy
+                | FighterKind::Girl => Some(ItemHandSlots { pose: 0, shown: 0 }),
+                FighterKind::Mario
+                | FighterKind::Fox
+                | FighterKind::Captain
+                | FighterKind::Donkey
+                | FighterKind::Koopa
+                | FighterKind::Link
+                | FighterKind::Seak
+                | FighterKind::Ness
+                | FighterKind::Peach
+                | FighterKind::Popo
+                | FighterKind::Yoshi
+                | FighterKind::Luigi
+                | FighterKind::Zelda
+                | FighterKind::CLink
+                | FighterKind::DrMario
+                | FighterKind::Falco
+                | FighterKind::GameWatch
+                | FighterKind::Ganon
+                | FighterKind::GKoops => Some(ItemHandSlots { pose: 1, shown: 1 }),
+                // Kirby, Jigglypuff, Nana, Mewtwo and the bosses: own callbacks.
+                _ => None,
+            },
         }
     }
 }
@@ -168,6 +215,11 @@ pub struct FighterAssets {
     /// slot and decoded program.
     pub color_overlays: super::color_overlay::ColorOverlayTable,
     pub camera_extents: [hsd_types::Vec3; 2],
+    /// ftData x40 (itPickup): the item pickup boxes.
+    pub pickup: super::item_pickup::PickupBoxes,
+    /// CommonBehavior's item hand slots and held-item idle choice.
+    pub item_hand: Option<ItemHandSlots>,
+    pub idle_variants_while_holding: bool,
     pub magnifier: super::offscreen::MagnifierDamage,
     pub command_entries: BTreeMap<i32, usize>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
@@ -208,6 +260,8 @@ impl FighterAssets {
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
                 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
                 45, 46, 58, 167, 168, 169, 209, 242, 243,
+                // ftCo_SM_Wait1_1 (Wait holding an item) and ftCo_SM_LightGet.
+                6, 78,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -255,16 +309,33 @@ impl FighterAssets {
             })
             .chain(descriptor.additional_part_animations.iter().copied())
             .collect::<BTreeSet<_>>();
+        // Fighter_OnItemPickup selects hand poses 0..=3 by the item's hold
+        // kind; ftData_x1C has no variant count, so absent ones are skipped.
+        let item_hand_poses = descriptor
+            .common_behavior
+            .item_hand
+            .into_iter()
+            .flat_map(|hand| [hand.pose, hand.shown])
+            .flat_map(|group| (0..4).map(move |variant| (group, variant)))
+            .filter(|entry| !groups.contains(entry))
+            .collect::<BTreeSet<_>>();
         let part_table = data.link(root + 0x1C)?.ok_or("missing part animations")?;
         let mut part_animations = BTreeMap::new();
-        for (group, variant) in groups {
-            let set = data
-                .link(part_table + group as u32 * 4)?
-                .ok_or("missing part set")?;
+        for (group, variant) in groups.into_iter().chain(item_hand_poses.iter().copied()) {
+            let optional = item_hand_poses.contains(&(group, variant));
+            let Some(set) = data.link(part_table + group as u32 * 4)? else {
+                if optional {
+                    continue;
+                }
+                return Err("missing part set".into());
+            };
             let animations = data.link(set + 8)?.ok_or("missing part variants")?;
-            let offset = data
-                .link(animations + variant as u32 * 4)?
-                .ok_or("missing part variant")?;
+            let Some(offset) = data.link(animations + variant as u32 * 4)? else {
+                if optional {
+                    continue;
+                }
+                return Err("missing part variant".into());
+            };
             let source = desc::AnimJoint::read(data, offset)?;
             let mut nodes = Vec::new();
             flatten_part(&source, &mut nodes)?;
@@ -378,6 +449,8 @@ impl FighterAssets {
                         28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
                         217, 220, 224, 225, 226, 227, 228, 238, 45, 46, 58, 167, 168, 169, 209,
                         242, 243,
+                        // ftCo_SM_Wait1_1 (Wait holding an item) and ftCo_SM_LightGet.
+                        6, 78,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,
@@ -551,6 +624,12 @@ impl FighterAssets {
                 },
             },
             color_overlays,
+            item_hand: descriptor.common_behavior.item_hand,
+            idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
+            pickup: {
+                let p = data.link(root + 0x40)?.ok_or("missing item pickup boxes")?;
+                super::item_pickup::PickupBoxes::read(data, p)?
+            },
             camera_extents: {
                 let p = data.link(root + 0x3C)?.ok_or("missing camera extents")?;
                 [read_vec(data, p)?, read_vec(data, p + 12)?]

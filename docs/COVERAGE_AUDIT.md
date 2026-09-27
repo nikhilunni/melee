@@ -15,23 +15,30 @@ and the directed scenarios in `m5_gate`, the timeout and Sudden
 Death path (`tests/match_endings.rs`), cold starts, bones, particles and
 allocation gates.
 
-## Silent gaps (no boundary today): highest priority
+## Sudden Death items: highest priority
 
-Sudden Death makes common items reachable, and the port's item support was
-built for character articles, none of which can be picked up or hit.
+Sudden Death makes common items reachable. Ported and gated
+(`sudden_death_pickup_bomb_fd_marth`): the pickup search
+(ftpickupitem_800942A0) before jab, jab follow-ups, rapid jab, side and down
+tilt; LightGet; the held Bob-omb, the hand pose and item idle (Wait1_1); the
+lit fuse in hand and the blast releasing it from the hand (it_8027429C), which
+hits its holder (xDCD b5).
+
+While a fighter holds an item only LightGet and Wait are audited
+(`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
+The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| `ftpickupitem_80094790` before jab, jab follow-ups, rapid jab, side and down tilt (ftCo_Attack1.c, ftCo_AttackS3.c, ftCo_AttackLw3.c, ftCo_Attack100.c) | Skipped: the attack starts | A near a lit Bob-omb (grabbable while `xDC8 x15` is set) |
-| `ftCo_800D7100` / `ftCo_800D71D8` aerial catch | Asserts the scene proved no grabbable item; fails whenever a Bob-omb exists | Shield + A in the air during Sudden Death |
+| Held-item states: throws (A, smash inputs), drops (Z, shield, `fighter.c:2678` random drop on a hit), walking, jumping, damage and death while holding | Fail closed at the motion change | Any input or hit while holding a Bob-omb |
+| `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
+| HeavyGet | Fails closed | No heavy item appears in scope |
 | Fighter hitboxes versus item hurtboxes (Bob-omb `DmgReceived` detonates) | Not modelled; items have no hurtboxes | Attacking a Bob-omb |
 | Item hitboxes versus item hurtboxes (one explosion detonating another) | Not modelled | Two Bob-ombs within an explosion |
-| Holding, throwing and dropping items (LightGet, ItemThrow*, Bob-omb states 7–10) | Absent | Any pickup above |
+| Unlit Bob-omb pickup, walking and turning | Fail closed | Only after a soft landing, which the rain's speed prevents |
 
-Next packet: port the pickup search geometry, item hurtboxes and both item
-hurt tests, failing closed at the first unsupported response, then record
-directed Sudden Death witnesses (jab a falling bomb, stand under two bombs,
-pick one up and throw it) and implement the responses they show.
+Next packet: item hurtboxes and both item hurt tests, then throwing and
+dropping (ItemThrow*, Bob-omb states 9 and 10), each from a recorded witness.
 
 ## Explicit boundaries
 
@@ -84,7 +91,7 @@ victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.
 
 ## Exit status
 
-Not complete: the silent Sudden Death item interactions above are reachable
-and unported, as are the listed reachable boundaries. The timer, timeout and
+Not complete: the Sudden Death item interactions above are reachable and
+unported (they fail closed), as are the listed reachable boundaries. The timer, timeout and
 Sudden Death flow, the screen KO and the idle Bob-omb rain are complete and
 gated.

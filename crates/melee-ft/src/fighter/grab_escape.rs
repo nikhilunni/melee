@@ -397,13 +397,8 @@ pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
         f.enter_buffered_special(assets, true);
         return;
     }
-    if f.input.current.held.intersects(Buttons::SHIELD) && f.input.pressed.intersects(Buttons::A) {
-        assert_eq!(
-            f.status.item_pickup_search,
-            super::life::ItemPickupSearch::Empty,
-            "capture jump item pickup search"
-        );
-    }
+    // ftCo_CaptureJump_IASA: ftCo_800D7100 after the special check.
+    f.core.check_aerial_item_catch(assets);
     f.character.air_dodge_tether();
     if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         f.enter_air_dodge(assets).expect("capture jump air dodge");

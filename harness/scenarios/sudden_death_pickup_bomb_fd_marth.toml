@@ -4,7 +4,7 @@
 name = "sudden_death_pickup_bomb_fd_marth"
 input_clock = "tick"
 savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
-frames = 1600
+frames = 1433
 seed = 1
 stage = "FinalDestination"
 inputs = [

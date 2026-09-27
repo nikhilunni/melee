@@ -131,7 +131,7 @@ fn normalize_angle(angle: f32) -> f64 {
 }
 /// itFoxlaser_UnkMotion1_Anim (8029C6F4); fmuls at 8029C734/748,
 /// fdivs/fadds at 8029C8F4/8. No contraction.
-fn laser_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
+fn laser_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let ItemScratch::Ray(ray) = &mut item.scratch else {
         unreachable!()
     };
@@ -215,7 +215,7 @@ macro_rules! blaster {
             // Held setup it_80279CDC clears grabbable via it_8026B3A8.
             // Detached or external states require a complete pickup audit.
             fn pickup_possible(item: &ItemCore) -> bool {
-                !item.attached
+                !item.held
             }
             // ftFox_SpecialN: it_8026BAE8 sets the blaster model scale.
             const MODEL_COPIES: usize = 1;
@@ -229,14 +229,16 @@ macro_rules! blaster {
                 crate::pose::blaster(item, tree)
             }
             fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
-                item.attached = true;
+                // Item_8026AB54 at HELD_PART, through it_8026BAE8; the
+                // presentation resolves the part, so xDC4 is not modelled.
+                item.held = true;
                 item.scratch = ItemScratch::Held(HeldState {
                     visibility: 1,
                     ..Default::default()
                 });
                 item.change_motion(0, assets);
             }
-            fn picked_up(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) {
+            fn picked_up(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
                 // itFoxBlaster_Logic96_PickedUp: it_803F6E68 startup mapping.
                 const PICKUP_MOTIONS: [u16; 11] = [0, 9, 9, 3, 9, 9, 6, 7, 8, 9, 10];
                 let owner = ctx.owner.expect("held blaster owner");
@@ -288,7 +290,7 @@ blaster!(FoxBlaster, FoxBlaster, 0x1AE05, 0x1AE14);
 blaster!(FalcoBlaster, FalcoBlaster, 0x186F1, 0x18700);
 /// itFoxblaster_UnkMotion8_Anim: item motion follows the owner's SpecialN index;
 /// ending rows 2/5/6/7/8 retain their animation until cleanup.
-fn blaster_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
+fn blaster_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let Some(owner) = ctx.owner else {
         return true;
     };
@@ -323,7 +325,7 @@ fn blaster_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
         }
     }
 }
-fn remove_blaster(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
+fn remove_blaster(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
     true
 }
 fn remove_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
@@ -333,7 +335,7 @@ fn empty_physics(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {}
 fn empty_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
     false
 }
-fn external_blaster(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
+fn external_blaster(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
     unimplemented!("itFoxblaster_UnkMotion10_Anim external-owner scale")
 }
 

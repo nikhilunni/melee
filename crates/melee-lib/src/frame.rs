@@ -394,9 +394,37 @@ impl Runtime {
         match phase {
             0 => state.items.advance_hitlag(id),
             1 => {
-                state
+                // fp->item_gobj: the fighter holding this item in hand. Character
+                // articles held at spawn (the Blaster) are not item_gobj.
+                let held_part = state
                     .items
-                    .animate::<SceneItems>(id, state.assets.items.get(kind), owner.as_ref())
+                    .get_mut(id)
+                    .and_then(|item| item.held.then_some(item.holder_part));
+                let holder_index = state
+                    .fighters
+                    .iter()
+                    .position(|f| f.0.core.held_item.is_some_and(|held| held.item == id));
+                let holder = match (holder_index, held_part) {
+                    (Some(index), Some(part)) => {
+                        Some(state.fighters[index].0.core.item_holder(part))
+                    }
+                    _ => None,
+                };
+                state.items.animate::<SceneItems>(
+                    id,
+                    state.assets.items.get(kind),
+                    owner.as_ref(),
+                    holder,
+                    &mut state.map,
+                );
+                // Item_8026A848 -> ftCommon_8007E6DC: the hand lets go.
+                let released = state.items.get_mut(id).is_none_or(|item| !item.held);
+                if let (Some(index), true) = (holder_index, released) {
+                    state.fighters[index]
+                        .0
+                        .core
+                        .release_held_item(id, &state.assets.fighters[index]);
+                }
             }
             4 => state.items.physics::<SceneItems>(
                 id,
@@ -561,8 +589,16 @@ impl Runtime {
                 if proc == FighterProc::Map {
                     grab_pairs::map_capture(state, player)?;
                 }
-                let pickup_search = (proc == FighterProc::Input)
-                    .then(|| crate::scene_items::pickup_search(&state.items));
+                // ftpickupitem_800942A0 runs from input and animation callbacks.
+                let offers_items = matches!(proc, FighterProc::Input | FighterProc::Animation);
+                if offers_items {
+                    let candidates =
+                        crate::scene_items::pickup_candidates(&state.items, &state.assets.items);
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .pickup_candidates
+                        .offer(candidates));
+                }
                 let assets = &state.assets;
                 if proc == FighterProc::HitDetection {
                     use crate::scene_fighter::with_fighter;
@@ -643,9 +679,6 @@ impl Runtime {
                             SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
                             _ => Vec3::ZERO,
                         };
-                        if let Some(search) = pickup_search {
-                            f.status.item_pickup_search = search;
-                        }
                         dispatch_fighter(
                             f,
                             proc,
@@ -662,6 +695,12 @@ impl Runtime {
                         )
                     }
                 })?;
+                if offers_items {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .pickup_candidates
+                        .withdraw());
+                }
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {
                     state.quakes.request(&mut state.camera, kind);
                 }
@@ -943,7 +982,8 @@ impl Runtime {
                         | melee_it::ItemRequest::SpawnLaser { spawn, .. } => {
                             spawn.stale_source = f.combat.stale.attack()
                         }
-                        melee_it::ItemRequest::Control { .. } => {}
+                        melee_it::ItemRequest::Control { .. }
+                        | melee_it::ItemRequest::PickUp { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));
@@ -955,6 +995,7 @@ impl Runtime {
                         &mut self.item_objects,
                         request,
                         crate::scene_items::RequestOwner {
+                            slot: Some(f.player.id),
                             held_item: owner.as_ref(),
                             stale_multiplier: f
                                 .combat

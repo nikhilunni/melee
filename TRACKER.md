@@ -925,3 +925,18 @@ Newest first. One line per session: date, what landed, what is next.
   gated; `sudden_death_pickup_bomb_fd_marth` recorded as the retail witness
   for the item pickup packet. Next: Sudden Death item interactions
   (COVERAGE_AUDIT.md silent gaps).
+- 2026-09-26: Item pickup (ftpickupitem.c): the scene offers grabbable items
+  to input and animation procs; ftpickupitem_800942A0's box search before
+  jab, jab 2/3, rapid jab, side and down tilt; LightGet; Item_8026AB54
+  attachment at the character's parts index; Fighter_OnItemPickup hand poses
+  (CommonBehavior::item_hand); ft_8008A348's item idle (Wait1_1, named by
+  ftCo_MS_DeadUpFall = 6) and ftCo_8008A7A8's held-item idle replay; the held
+  lit Bob-omb (states 8) and its blast from the hand (it_8027429C: hand
+  position on demand, sweep from the ECB centre, owner hit via xDCD b5).
+  A held item fails closed outside LightGet/Wait; LR+A aerial catch
+  (ftCo_800D7100) fails closed when an item is in reach.
+  `sudden_death_pickup_bomb_fd_marth` gated (1433 ticks, bones match).
+  Next: item hurtboxes (fighter and item hits on Bob-ombs), then throws/drops.
+  Perf gate: melee-ft duplicate labels and tick time are within limits;
+  still red on binary size (red since 2026-09-11) and 104 > 100 cross-crate
+  duplicate labels (color_overlay drops in melee-lib, from earlier commits).

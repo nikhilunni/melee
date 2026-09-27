@@ -508,6 +508,15 @@ impl ModelSelections {
     }
 }
 
+impl CommandState {
+    /// throw_flags_b3, read and cleared (ftCheckThrowB3). The port tracks the
+    /// one retail bit as two consumers' latches; both clear together.
+    pub fn take_throw_flag_b3(&mut self) -> bool {
+        self.rapid_jab_loop_end = false;
+        std::mem::take(&mut self.grab_release)
+    }
+}
+
 impl super::FighterCore {
     /// ftAction_80071FC8 (80072014): select before graphics or effect procs draw.
     pub fn resolve_random_sound_commands(&mut self, rng: &mut gekko_math::HsdRng) {

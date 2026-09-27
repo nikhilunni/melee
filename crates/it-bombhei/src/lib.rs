@@ -1,7 +1,8 @@
 //! Bob-omb (It_Kind_BombHei), itbombhei.c (8027D670..80280F40): the Sudden
 //! Death rain's bomb. Ported so far: the rain spawn (it_8027D670), the lit
-//! fuse on the ground and in the air, landing and the explosion. Walking,
-//! turning, pickup and throwing are explicit `unimplemented!` rows.
+//! fuse on the ground, in the air and in a fighter's hand, landing and the
+//! explosion. Walking, turning, dropping and throwing are explicit
+//! `unimplemented!` rows.
 use gekko_math::msl::{fabsf, fctiwz};
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::*, *};
@@ -20,6 +21,9 @@ const UNK_0X1: u32 = 1;
 mod motion {
     pub const FALL: u16 = 1;
     pub const LIT: u16 = 5;
+    /// Held unlit / lit (itBombhei_Logic6_PickedUp).
+    pub const HELD: u16 = 7;
+    pub const HELD_LIT: u16 = 8;
     pub const LIT_FALL: u16 = 6;
     pub const EXPLODE: u16 = 11;
 }
@@ -55,8 +59,8 @@ impl Attributes<'_> {
     }
 }
 
-/// Retail rows: state 1 falls unlit, 5 and 6 carry the lit fuse on the
-/// ground and in the air, 11 is the explosion.
+/// Retail rows: state 1 falls unlit, 5, 6 and 8 carry the lit fuse on the
+/// ground, in the air and in a hand, 11 is the explosion.
 static STATES: [ItemStateRow; 13] = {
     const UNPORTED: ItemStateRow = ItemStateRow {
         animation_id: -1,
@@ -82,6 +86,13 @@ static STATES: [ItemStateRow; 13] = {
         animation: lit_fall_animation,
         physics: fall_physics,
         collision: lit_fall_collision,
+    };
+    // it_803F54D8[7..=8]: no physics, no collision callback.
+    rows[motion::HELD_LIT as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[8],
+        animation: held_animation,
+        physics: no_physics,
+        collision: no_collision,
     };
     rows[motion::EXPLODE as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[11],
@@ -112,6 +123,19 @@ impl ItemLogic for BombHei {
         });
         // it_8027DE18: from states 0 and 3 only it also resets the rotation.
         change(item, motion::FALL, ANIM_UPDATE, assets);
+    }
+    /// itBombhei_Logic6_PickedUp (8027DFC0): the model's spin axis and
+    /// facing lock for the hand, then the held state.
+    fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        // xDC8 x19 and x17.
+        item.spin_ignores_facing = true;
+        item.rotation_axis = 1;
+        if !bomb(item).lit {
+            // ap->x0 would slow the unlit hold animation; the port keeps
+            // item animations at one frame per tick.
+            unimplemented!("itBombhei_Logic6_PickedUp: unlit Bob-omb pickup");
+        }
+        change(item, motion::HELD_LIT, UNK_0X1, context.assets);
     }
     /// it_3F14_Logic6_DmgDealt: touching anything detonates it.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
@@ -161,13 +185,13 @@ pub fn rain_spawn(position: Vec3, facing: f32) -> SpawnItem {
 pub fn light(item: &mut ItemCore, assets: &ItemAssets, lifetime: f32) {
     item.velocity.x = 0.0;
     if bomb(item).lit {
-        item.lifetime_enabled = true;
+        item.grabbable = true;
         change(item, motion::LIT, UNK_0X1, assets);
         return;
     }
     let a = Attributes(&assets.special_attributes);
     // it_8026B390: the common lifetime runs from here.
-    item.lifetime_enabled = true;
+    item.grabbable = true;
     let state = bomb_mut(item);
     state.countdown = fctiwz(a.blink_period());
     state.blink_direction = 1;
@@ -196,7 +220,8 @@ fn bomb_mut(item: &mut ItemCore) -> &mut BombState {
 
 /// it_8027D820 (8027D820): the lit fuse. The model pulses (xDD8 flips every
 /// x18 frames) and the bomb detonates when the fuse runs out.
-fn burn_fuse(item: &mut ItemCore, assets: &ItemAssets) {
+fn burn_fuse(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
+    let assets = ctx.assets;
     let a = Attributes(&assets.special_attributes);
     let step = a.blink_scale();
     let state = bomb_mut(item);
@@ -214,14 +239,23 @@ fn burn_fuse(item: &mut ItemCore, assets: &ItemAssets) {
     state.fuse -= 1.0;
     state.life_frames -= 1.0;
     if state.fuse <= 0.0 && !state.exploded {
-        // it_80280DC0.
+        // it_80280DC0 -> it_80280B60: xDC8 x13 first lets go of the hand
+        // with no velocity (it_8027429C).
+        if item.held {
+            let holder = ctx.holder.as_mut().expect("held Bob-omb holder");
+            item.release_from_holder(Vec3::ZERO, holder, ctx.map, assets);
+        }
         explode(item, assets);
     }
 }
 
-/// it_3F14_Logic6_DmgDealt / DmgReceived: not while held (state 7).
+/// it_3F14_Logic6_DmgDealt / DmgReceived: not while held unlit (state 7).
 fn detonate_unless_held(item: &mut ItemCore, assets: &ItemAssets) {
-    if item.motion != 7 && !bomb(item).exploded {
+    if item.motion != motion::HELD && !bomb(item).exploded {
+        assert!(
+            !item.held,
+            "it_80280B60: a held Bob-omb detonated by contact"
+        );
         explode(item, assets);
     }
 }
@@ -230,10 +264,9 @@ fn detonate_unless_held(item: &mut ItemCore, assets: &ItemAssets) {
 /// stop, spawn the blast effect and a radial gust, then state 11 whose
 /// script owns the explosion hitbox.
 fn explode(item: &mut ItemCore, assets: &ItemAssets) {
-    // xDC8 x13 marks a held bomb; it_8027429C releases it from its owner.
-    assert!(item.owner.is_none(), "it_8027429C: held Bob-omb explosion");
+    assert!(!item.held, "it_8027429C: held Bob-omb explosion");
     // it_8026B3A8 and it_8026BD24: the common lifetime stops.
-    item.lifetime_enabled = false;
+    item.grabbable = false;
     item.hidden = true;
     // it_8027518C: the common explosion lifetime.
     item.life_timer = assets.explosion_lifetime;
@@ -247,6 +280,8 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
         position: item.position,
     });
     item.hitlag_enabled = false;
+    // it_80275444: the blast hits its owner too.
+    item.hits_owner = true;
     // lb_800119DC(&pos, 0x78, 1.0, 0.02, pi/3).
     item.events.push(ItemEvent::Gust {
         center: item.position,
@@ -261,7 +296,7 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
 /// it_80272C08's efSync_Spawn id.
 const EXPLOSION_EFFECT: u16 = 0x410;
 
-fn no_animation(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
+fn no_animation(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
     false
 }
 fn no_physics(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {}
@@ -270,9 +305,9 @@ fn no_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bo
 }
 
 /// itBombhei_UnkMotion5_Anim (8027FC08).
-fn lit_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
+fn lit_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     if bomb(item).lit {
-        burn_fuse(item, ctx.assets);
+        burn_fuse(item, ctx);
     }
     false
 }
@@ -282,7 +317,7 @@ fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> boo
     if !item.stay_grounded(ctx.map) {
         // fn_8027FCA8: it_8026B390 keeps the common lifetime running.
         item.velocity.x = 0.0;
-        item.lifetime_enabled = true;
+        item.grabbable = true;
         if bomb(item).lit {
             change(item, motion::LIT_FALL, UNK_0X1, ctx.assets);
         } else {
@@ -292,9 +327,22 @@ fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> boo
     false
 }
 
+/// itBombhei_UnkMotion8_Anim (8027E0AC): the hold animation restarts when
+/// it ends (it_80272C6C), and the lit fuse burns.
+fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    let end = ctx.assets.animation_ends[ARTICLE_STATES[motion::HELD_LIT as usize] as usize];
+    if end.is_some_and(|end| item.animation_frame >= end) {
+        change(item, motion::HELD_LIT, UNK_0X1, ctx.assets);
+    }
+    if bomb(item).lit {
+        burn_fuse(item, ctx);
+    }
+    false
+}
+
 /// itBombhei_UnkMotion6_Anim (8027FE70).
-fn lit_fall_animation(item: &mut ItemCore, ctx: &ItemAnimationContext<'_>) -> bool {
-    burn_fuse(item, ctx.assets);
+fn lit_fall_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    burn_fuse(item, ctx);
     false
 }
 
@@ -334,7 +382,7 @@ fn lit_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
             }
         } else {
             item.velocity.x = 0.0;
-            item.lifetime_enabled = true;
+            item.grabbable = true;
             if bomb(item).lit {
                 change(item, motion::LIT, UNK_0X1, ctx.assets);
             } else {
@@ -346,12 +394,12 @@ fn lit_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
 }
 
 /// itBombhei_UnkMotion11_Anim -> it_802751D8: the explosion's lifetime.
-fn explosion_animation(item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
+fn explosion_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
     item.life_timer -= 1.0;
     item.life_timer <= 0.0
 }
 
-fn unported_animation(item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
+fn unported_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
     unimplemented!("itbombhei.c: motion state {} animation", item.motion)
 }
 fn unported_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {

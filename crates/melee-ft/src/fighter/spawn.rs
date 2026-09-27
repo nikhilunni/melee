@@ -582,6 +582,7 @@ impl Fighter {
         let source = change.source;
         let row = self.row(state);
         let state = row.id;
+        self.core.require_held_item_state(state);
         self.core.begin_motion_change(source);
         // The port's attack-proc guard belongs to the state that set it (an
         // attack entry, or hitlag ending during an attack); attack entries
@@ -827,6 +828,8 @@ impl FighterCore {
             offscreen: Offscreen::default(),
             quake_request: None,
             released_link: None,
+            held_item: None,
+            pickup_candidates: Default::default(),
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),

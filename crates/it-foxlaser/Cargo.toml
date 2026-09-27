@@ -16,3 +16,4 @@ melee-lb = { path = "../melee-lb" }
 [dev-dependencies]
 hsd-archive = { path = "../hsd-archive" }
 melee-test-support = { path = "../melee-test-support" }
+melee-mp = { path = "../melee-mp" }

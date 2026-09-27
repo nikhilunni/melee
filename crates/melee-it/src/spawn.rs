@@ -77,6 +77,38 @@ pub enum ItemRequest {
         kind: ItemKind,
         control: ItemControl,
     },
+    /// ftpickupitem_800948A8 -> Item_8026AB54: the requesting fighter takes
+    /// `item` into its hand at `part`.
+    PickUp {
+        item: u32,
+        /// A fp->parts index (ftData x8 +0x10 or +0x11).
+        part: u8,
+    },
+}
+
+/// The holding fighter, lent to a held item's callbacks. A held item
+/// released from the hand starts at the hand (it_80273B50) and sweeps the
+/// map from the holder's body (it_80275BC8).
+pub struct ItemHolder<'a> {
+    /// The holder's skeleton and the held part's joint (ftLib_80086630:
+    /// fp->parts[xDC4].joint).
+    pub skeleton: &'a mut hsd_anim::jobj::JObjTree,
+    pub part: hsd_anim::jobj::JObjId,
+    /// ftLib_80086990: the holder's position raised to its ECB centre.
+    pub center: Vec3,
+    /// it_8027B070: the holder's current attack, which the item takes on release.
+    pub attack: Option<melee_types::combat::AttackInstance>,
+}
+impl ItemHolder<'_> {
+    /// lb_8000B1CC(part, 0): the part's world translation, set up on demand
+    /// (HSD_JObjSetupMatrix) as retail does only when it asks.
+    pub fn part_position(&mut self) -> Vec3 {
+        if self.skeleton.parent(self.part).is_none() {
+            return self.skeleton.translation(self.part);
+        }
+        let matrix = self.skeleton.get_mtx(self.part);
+        Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3])
+    }
 }
 
 /// Fighter-owned inputs sampled for the item callback; no fighter dependency.
