@@ -1209,3 +1209,10 @@ Newest first. One line per session: date, what landed, what is next.
   jump-squat up smash throws a held item; new hold-kind 0/6 items start
   intangible for ItCo +2C frames (item.c foobar). Next: n7/sd12 batches,
   full gates.
+- 2026-09-27 (night): 13 more witnesses from searched recipes (Marth aerial
+  specials, Ottotto, slow ledge options, Marth as victim of DownDamageU,
+  CaptureDamageHi, fly-roll and powershield; Fox air CaptureCut -> Fall),
+  all exact but one, which exposed efLib's 0x16D-0x170/0x7E2 standalone
+  AppSRT generators (fixed). Matrix reconciled (76 -> 53 MISSING cells before
+  this batch); explorer n7/sd12 clean. Next: Sudden Death item-holding
+  witnesses and the remaining misc/reachability rows.
