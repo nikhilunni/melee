@@ -198,6 +198,7 @@ pub fn request(
         ItemRequest::PickUp { item, part } => {
             // Item_8026AB54: attach, then the kind's pickup callback.
             let lifetime = pool.common().lifetime;
+            let half_life_scale = pool.common().half_life_scale;
             let held = pool.get_mut(item).expect("picked-up item");
             let assets = resources.get(held.kind);
             held.attach_to_holder(
@@ -205,6 +206,7 @@ pub fn request(
                 part,
                 assets,
                 lifetime,
+                half_life_scale,
             );
             (SceneItems::logic(held.kind).picked_up)(
                 held,

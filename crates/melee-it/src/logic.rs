@@ -20,6 +20,8 @@ pub struct ItemCollisionContext<'a> {
 #[derive(Clone, Copy)]
 pub struct ItemEventContext<'a> {
     pub reflected_facing: f32,
+    /// xC70: the reflector's speed multiplier (ReflectAttr x1A38).
+    pub reflected_speed: f32,
     pub shield_normal: hsd_types::Vec3,
     pub assets: &'a ItemAssets,
 }
@@ -27,6 +29,7 @@ impl<'a> ItemEventContext<'a> {
     pub fn new(assets: &'a ItemAssets) -> Self {
         Self {
             reflected_facing: 0.0,
+            reflected_speed: 1.0,
             shield_normal: hsd_types::Vec3::ZERO,
             assets,
         }

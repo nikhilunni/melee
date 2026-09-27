@@ -146,6 +146,9 @@ pub struct ItemCore {
     pub model_scale: Vec3,
     pub motion: u16,
     pub life_timer: f32,
+    /// xD48: the half-life it_80275158 sets beside the lifetime; a
+    /// reflection (it_80273030) restarts the lifetime from it.
+    pub half_life: f32,
     pub scale: f32,
     pub frozen: bool,
     pub destroyed: bool,
@@ -280,7 +283,14 @@ impl ItemCore {
     /// scale, `owner` holds it at `part`, pickup and the lifetime countdown
     /// stop, and a common item's lifetime restarts at `lifetime`.
     /// it_80273168's pickup sound and the hand constraint are presentation.
-    pub fn attach_to_holder(&mut self, owner: u8, part: u8, assets: &ItemAssets, lifetime: f32) {
+    pub fn attach_to_holder(
+        &mut self,
+        owner: u8,
+        part: u8,
+        assets: &ItemAssets,
+        lifetime: f32,
+        half_life_scale: f32,
+    ) {
         // lb_8000B804, then Item_8026849C.
         self.rotation = rest_rotation(assets);
         self.model_scale = Vec3::new(self.scale, self.scale, self.scale);
@@ -294,8 +304,9 @@ impl ItemCore {
         // it_8026B3A8.
         self.grabbable = false;
         if (self.kind as u32) < ItemKind::LGunRay as u32 {
-            // it_80275158: xD48's half-life copy only drives the warning blink.
+            // it_80275158: both timers.
             self.life_timer = lifetime;
+            self.half_life = lifetime * half_life_scale;
         }
     }
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
@@ -594,7 +605,9 @@ impl ItemPool {
             ),
             model_scale: [assets.scale; 3].into(),
             motion: 0,
+            // Item_80268B18's it_80275158: both timers.
             life_timer: self.common.lifetime,
+            half_life: self.common.lifetime * self.common.half_life_scale,
             scale: assets.scale,
             frozen: false,
             destroyed: false,
@@ -984,6 +997,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits,
             lifetime: 1.0,
+            half_life_scale: 0.5,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,
@@ -1010,6 +1024,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits: [None; 13],
             lifetime: 1.0,
+            half_life_scale: 0.5,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,

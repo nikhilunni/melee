@@ -199,6 +199,11 @@ impl ItemLogic for BombHei {
         detonate_unless_held(item, context.assets);
         false
     }
+    /// itBombhei_Logic6_Reflected (802810A4) -> it_80273030.
+    fn reflected(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
+        item.reverse_on_reflect(context.reflected_speed);
+        false
+    }
     /// itBombhei_Logic6_Clanked.
     fn clanked(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         if !bomb(item).exploded {

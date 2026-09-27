@@ -60,6 +60,15 @@ impl ItemCore {
             }
         }
     }
+    /// it_80273030 (80273030), the common reflected callback: velocity back
+    /// along itself at the reflector's speed multiplier (xC70), facing
+    /// flipped, and the lifetime restarted from the half-life (xD48).
+    pub fn reverse_on_reflect(&mut self, speed: f32) {
+        self.velocity.x = -self.velocity.x * speed;
+        self.velocity.y = -self.velocity.y * speed;
+        self.facing = -self.facing;
+        self.life_timer = self.half_life;
+    }
     pub(crate) fn reflect<D: ItemDispatch>(
         &mut self,
         pending: PendingReflection,
@@ -74,6 +83,7 @@ impl ItemCore {
         // The original attack/instance (stale_source) survives this transfer.
         let context = ItemEventContext {
             reflected_facing: pending.facing,
+            reflected_speed: pending.speed_multiplier,
             ..ItemEventContext::new(assets)
         };
         self.destroyed |= (D::logic(self.kind).reflected)(self, &context);
