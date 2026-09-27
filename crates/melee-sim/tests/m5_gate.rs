@@ -405,6 +405,19 @@ fn uair_fd_fox_300_ticks_and_ordered_particle_draws() {
     combat_gate("uair_fd_fox");
 }
 
+/// A grounded Reflector out of Run leaves the edge and jump-cancels: the
+/// aerial jump reads Run's second scratch word (mv.co.run.x4).
+#[test]
+fn reflector_runedge_jump_fd_fox_120_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("reflector_runedge_jump_fd_fox", 120);
+}
+
+/// A neutral air out of PassiveWallJump inherits the wall jump's scratch word.
+#[test]
+fn walljump_aerial_fd_fox_450_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("walljump_aerial_fd_fox", 450);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

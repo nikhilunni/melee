@@ -185,6 +185,24 @@ impl FighterCore {
                 ..
             }) => guard.tilt_magnitude,
             MotionData::FallSpecial(fall) => fall.animation.blend,
+            // The +2344 words of the ground states (ftCommon types.h): an
+            // int or enum is its bit pattern, as for Jump above.
+            MotionData::WallJump(wall_jump) => f32::from_bits(wall_jump.retained_zero as u32),
+            MotionData::Squat(squat) => squat.platform_drop_timer,
+            MotionData::Turn(turn) => turn.facing_after,
+            // mv.co.walk.msid: ftCo_Walk_Enter passes the base walk state.
+            MotionData::Walk(_) => {
+                f32::from_bits(melee_types::CommonMotionState::WalkSlow as u32)
+            }
+            MotionData::Dash(dash) => f32::from_bits(u32::from(dash.early_interrupts)),
+            MotionData::Run(run) => run.slippery_animation_velocity,
+            MotionData::RunBrake(brake) => brake.remaining_frames,
+            // mv.co.kneebend.jump_input: ftCo_JumpInput (LStick 1, CStick 2, XY 3).
+            MotionData::KneeBend(knee_bend) => f32::from_bits(match knee_bend.input {
+                super::jump::JumpInput::Stick => 1,
+                super::jump::JumpInput::CStick => 2,
+                super::jump::JumpInput::Buttons => 3,
+            }),
             _ => return None,
         })
     }

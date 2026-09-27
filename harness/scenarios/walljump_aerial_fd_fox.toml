@@ -1,0 +1,39 @@
+# Fox's underside wall jump (walljump_right_underside_fd_fox_candidate's
+# pads, tick clock) with A at 270: a neutral air straight out of
+# PassiveWallJump, whose entry inherits the wall jump's second scratch
+# word (mv+4, left zero by the wall jump).
+# Boundary: idle_fd_marth4.sav; tick clock.
+name = "walljump_aerial_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth4.sav"
+frames = 450
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 0, port = 0, buttons = {  }, raw = { } },
+  { frame = 0, port = 1, buttons = {  }, raw = { } },
+  { frame = 31, port = 1, buttons = {  }, raw = { button = 1024, stickX = 80 } },
+  { frame = 37, port = 1, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 73, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 201, port = 1, buttons = {  }, raw = { } },
+  { frame = 231, port = 1, buttons = {  }, raw = { substickY = -80 } },
+  { frame = 232, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 247, port = 1, buttons = {  }, raw = { button = 1024, stickX = -80 } },
+  { frame = 249, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 251, port = 1, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 254, port = 1, buttons = {  }, raw = { } },
+  { frame = 270, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 271, port = 1, buttons = {  }, raw = { } },
+  { frame = 291, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 336, port = 1, buttons = {  }, raw = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

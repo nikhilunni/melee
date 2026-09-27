@@ -1,0 +1,28 @@
+# Fox runs right from the idle boundary and shines at the edge out of Run
+# (23): the grounded Reflector leaves the ground, keeping Run's second
+# scratch word (mv.co.run.x4, +2344) as turnFrames, and X cancels it into
+# the aerial jump (27), which reads that word.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "reflector_runedge_jump_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 120
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 23, port = 1, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -127 } },
+  { frame = 25, port = 1, buttons = {  }, raw = {  } },
+  { frame = 27, port = 1, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 29, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
