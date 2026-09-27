@@ -124,7 +124,7 @@ impl CharacterTable {
             },
             air_dodge_tether: |state| state.get::<C>().air_dodge_tether(),
             on_landing: |state, allow_interrupt| state.get_mut::<C>().on_landing(allow_interrupt),
-            retained_scratch_word: |state, action| state.get::<C>().retained_scratch_word(action),
+            retained_scratch_word: C::RETAINED_SCRATCH_WORD,
             guard_variant: |state, commands| state.get::<C>().guard_variant(commands),
             escape_variant: C::escape_variant,
             check_float_input: |state, input, assets, vertical_velocity, phase| {
@@ -345,6 +345,11 @@ mod tests;
 // no-op body into every table owner.
 #[inline(never)]
 pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+
+#[inline(never)]
+pub(super) fn no_retained_scratch_word(_state: &CharacterState, _action: ActionId) -> Option<f32> {
+    None
+}
 
 pub(super) fn unsupported_taunt(
     _fighter: &mut Fighter,

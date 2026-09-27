@@ -2088,9 +2088,8 @@ impl TestSimulation {
         }
     }
     fn tick_without_snapshot(&mut self) -> Result<()> {
-        self.engine.set_inputs(std::array::from_fn(|p| {
-            self.pads.sample(self.engine.frame(), p)
-        }));
+        self.engine
+            .set_inputs(self.pads.samples(self.engine.frame()));
         self.engine.tick_without_snapshot()
     }
     fn tick(&mut self) -> Result<Record> {

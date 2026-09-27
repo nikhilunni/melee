@@ -429,6 +429,7 @@ impl FighterCore {
 impl FighterCore {
     /// The holder lent to its held item's callbacks: the part's joint
     /// (ftLib_80086630), the ECB centre and the current attack.
+    #[inline(never)] // one definition; melee-lib lends it to item callbacks
     pub fn item_holder(&mut self, part: u8) -> melee_it::ItemHolder<'_> {
         let joint = self.animation.parts[usize::from(part)].joint;
         // ftLib_80086990: vector_add(v, &cur_pos, 0, 0.5 * (top + bottom), 0),

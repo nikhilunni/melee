@@ -130,10 +130,16 @@ impl PadScript {
     /// The pad `port` consumed during tick `tick`. Past the end of the
     /// script the pad is neutral.
     pub fn sample(&self, tick: u64, port: usize) -> PadSample {
+        self.samples(tick)[port]
+    }
+
+    /// Every port's pad consumed during tick `tick`; neutral past the end.
+    pub fn samples(&self, tick: u64) -> [PadSample; PORTS] {
         usize::try_from(tick)
             .ok()
             .and_then(|t| self.ticks.get(t))
-            .map_or_else(PadSample::default, |pads| pads[port])
+            .copied()
+            .unwrap_or_default()
     }
 
     /// Take display passes from another capture of the same inputs (the RNG

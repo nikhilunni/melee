@@ -23,35 +23,70 @@ const INVINCIBILITY_FLASH: u8 = 9;
 /// ftCo_800DF0D0: a smash charge with color 0x7B installs no program.
 const NO_CHARGE_COLOR: u8 = 0x7B;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Entry {
     priority: u8,
     /// Fighter_804D653C_t.unk5: nonzero selects the secondary slot (x488).
     secondary: bool,
-    program: Result<Vec<OverlayCommand>, String>,
+    program: Program,
+}
+
+/// Where an entry's decoded program lives in the table's shared storage.
+#[derive(Clone, Copy, Debug)]
+enum Program {
+    /// `ColorOverlayTable::commands[start..end]`; gotos are program-relative.
+    Decoded { start: u32, end: u32 },
+    /// Index into `ColorOverlayTable::errors`: the program does not decode,
+    /// which only matters once something installs it.
+    Undecodable(u32),
 }
 
 /// The decoded color table; ids without a program (id 0) are idle.
+///
+/// Programs share one command buffer and entries are plain data, so the
+/// whole table drops as two vectors wherever the fighter's assets are freed.
 #[derive(Clone, Debug)]
 pub struct ColorOverlayTable {
-    entries: Vec<Option<Entry>>,
+    entries: [Option<Entry>; TABLE_LEN as usize],
+    commands: Vec<OverlayCommand>,
+    errors: Vec<String>,
 }
 impl ColorOverlayTable {
     pub fn read(archive: &Archive, table: u32) -> super::assets::Result<Self> {
         let r = archive.reader();
-        let mut entries = Vec::with_capacity(TABLE_LEN as usize);
+        let mut overlays = Self {
+            entries: [None; TABLE_LEN as usize],
+            commands: Vec::new(),
+            errors: Vec::new(),
+        };
         for id in 0..TABLE_LEN {
             let entry = table + id * 8;
-            entries.push(match archive.link(entry)? {
-                None => None,
-                Some(script) => Some(Entry {
-                    priority: r.u8(entry + 4)?,
-                    secondary: r.u8(entry + 5)? != 0,
-                    program: super::smash::read_overlay(archive, script).map_err(|e| e.to_string()),
-                }),
+            let Some(script) = archive.link(entry)? else {
+                continue;
+            };
+            let priority = r.u8(entry + 4)?;
+            let secondary = r.u8(entry + 5)? != 0;
+            let program = match super::smash::read_overlay(archive, script) {
+                Ok(program) => {
+                    let start = overlays.commands.len() as u32;
+                    overlays.commands.extend(program);
+                    Program::Decoded {
+                        start,
+                        end: overlays.commands.len() as u32,
+                    }
+                }
+                Err(error) => {
+                    overlays.errors.push(error.to_string());
+                    Program::Undecodable(overlays.errors.len() as u32 - 1)
+                }
+            };
+            overlays.entries[id as usize] = Some(Entry {
+                priority,
+                secondary,
+                program,
             });
         }
-        Ok(Self { entries })
+        Ok(overlays)
     }
     fn entry(&self, id: u8) -> &Entry {
         self.entries[usize::from(id)]
@@ -65,9 +100,11 @@ impl ColorOverlayTable {
             .map_or(0, |e| e.priority)
     }
     pub fn program(&self, id: u8) -> &[OverlayCommand] {
-        match &self.entry(id).program {
-            Ok(program) => program,
-            Err(error) => unimplemented!("color animation {id}: {error}"),
+        match self.entry(id).program {
+            Program::Decoded { start, end } => &self.commands[start as usize..end as usize],
+            Program::Undecodable(error) => {
+                unimplemented!("color animation {id}: {}", self.errors[error as usize])
+            }
         }
     }
     /// Whether a program affects gameplay (effects draw RNG, sounds queue).

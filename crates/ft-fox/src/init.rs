@@ -65,10 +65,15 @@ impl CharacterCallbacks for Fox {
     ) {
         ft_fox_family::enter_special::<Self>(fighter, slot, airborne, assets);
     }
-    fn retained_scratch_word(&self, action: melee_ft::fighter::ActionId) -> Option<f32> {
-        ft_fox_family::special_lw::retained_scratch_word(&self.special_lw, action)
-            .or_else(|| ft_fox_family::special_s::retained_scratch_word(&self.special_side, action))
-    }
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = |state, action| {
+        let scratch = state.get::<Self>();
+        ft_fox_family::special_lw::retained_scratch_word(&scratch.special_lw, action).or_else(
+            || ft_fox_family::special_s::retained_scratch_word(&scratch.special_side, action),
+        )
+    };
     fn accessory(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,

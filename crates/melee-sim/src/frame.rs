@@ -16,17 +16,15 @@ impl Simulation {
         }
     }
     pub fn tick_without_snapshot(&mut self) -> anyhow::Result<()> {
-        self.engine.set_inputs(std::array::from_fn(|p| {
-            self.pads.sample(self.engine.frame(), p)
-        }));
+        self.engine
+            .set_inputs(self.pads.samples(self.engine.frame()));
         self.engine
             .set_display_pass(self.pads.display_pass(self.engine.frame()));
         self.engine.tick_without_snapshot()
     }
     pub fn tick(&mut self) -> anyhow::Result<melee_diff::Record> {
-        self.engine.set_inputs(std::array::from_fn(|p| {
-            self.pads.sample(self.engine.frame(), p)
-        }));
+        self.engine
+            .set_inputs(self.pads.samples(self.engine.frame()));
         self.engine
             .set_display_pass(self.pads.display_pass(self.engine.frame()));
         self.engine.tick()
