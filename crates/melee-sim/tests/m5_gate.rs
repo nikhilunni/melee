@@ -937,7 +937,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 52] = [
+const MATRIX_WITNESSES: [(&str, usize); 61] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -990,6 +990,15 @@ const MATRIX_WITNESSES: [(&str, usize); 52] = [
     ("walljump_left_underside_fd_fox", 182),
     ("walljump_left_vertical_fd_fox", 175),
     ("sudden_death_specialhold_bomb_fd_fox", 1335),
+    ("passivewall_downdamage_victim_fd_marth", 216),
+    ("passivewall_thrownhi_victim_fd_marth", 230),
+    ("sudden_death_catchthrown_bomb_fd_marth", 1312),
+    ("sudden_death_firefoxhold_bomb_fd_fox", 1315),
+    ("sudden_death_illusionhold_bomb_fd_fox", 1312),
+    ("sudden_death_kohold_bomb_fd_fox", 1325),
+    ("sudden_death_rollthrow_bomb_fd_marth", 1305),
+    ("sudden_death_runshieldthrow_bomb_fd_fox", 1300),
+    ("sudden_death_turnthrow_bomb_fd_fox", 1285),
 ];
 
 #[test]

@@ -1,0 +1,34 @@
+# Marth walks to the left edge (10..59); Fox dash-grabs him (67) and down-throws (84): Marth lies at the
+# edge (DownWaitU 142). Fox short-hops and drills him (dair 148): DownDamageU 158 leaves the floor, the next
+# hit DownDamageD 163 drives him under the ledge; L (160) techs the wall airborne (PassiveWall 176). Boundary: idle_fd_marth.sav; tick clock.
+name = "passivewall_downdamage_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 216
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 60, port = 0, buttons = {  }, raw = {  } },
+  { frame = 67, port = 1, buttons = {  }, raw = { stickX = -127, button = 16 } },
+  { frame = 69, port = 1, buttons = {  }, raw = {  } },
+  { frame = 84, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 86, port = 1, buttons = {  }, raw = {  } },
+  { frame = 140, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 142, port = 1, buttons = {  }, raw = {  } },
+  { frame = 148, port = 1, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 150, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 162, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,29 @@
+# Sudden Death: Fox runs left early (1170..1189), picks up the first Bob-omb (LightGet, 1234),
+# jumps (1241) and up-Bs out of KneeBend holding it: SpecialHiHoldAir 1244, SpecialHiHold 1283
+# (lands), SpecialAirHi travel 1286; the held Bob-omb explodes at 1294. Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_firefoxhold_bomb_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1315
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1170, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1190, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1234, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 1236, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1241, port = 1, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 1243, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1244, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 1246, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
