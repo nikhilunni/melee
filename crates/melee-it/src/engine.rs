@@ -79,6 +79,8 @@ pub mod state_change {
     pub const ANIM_UPDATE: u32 = 1 << 1;
     /// ITEM_DROP_UPDATE: hitboxes take the throw speed as a damage scale.
     pub const DROP_UPDATE: u32 = 1 << 2;
+    /// ITEM_MODEL_UPDATE (it_80274740): the spin stops and its angle resets.
+    pub const MODEL_UPDATE: u32 = 1 << 3;
     pub const HIT_PRESERVE: u32 = 1 << 4;
     pub const CMD_UPDATE: u32 = 1 << 8;
 }
@@ -352,6 +354,16 @@ impl ItemCore {
     ) {
         self.motion = motion;
         self.animation_frame = 0.0;
+        if flags & state_change::MODEL_UPDATE != 0 {
+            // it_80274740 (80274740): the spin joint's angle about xDC8 x17's
+            // axis and the spin speed return to zero.
+            self.spin_speed = 0.0;
+            match self.rotation_axis {
+                0 => self.rotation.z = 0.0,
+                1 => self.rotation.x = 0.0,
+                _ => self.rotation.y = 0.0,
+            }
+        }
         self.hitbox_damage_scale = if flags & state_change::DROP_UPDATE != 0 {
             self.throw_speed
         } else {

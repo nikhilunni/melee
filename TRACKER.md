@@ -1090,3 +1090,9 @@ Newest first. One line per session: date, what landed, what is next.
   (ItemAttr x80), spark 0x405 (particle 0x2C through the item's efAsync
   queue, new ItemEvent::JointEffect) and hitbox damage times x58. Two
   witnesses (straight bounce, slope glance); full release gate 1471/0.
+- 2026-09-27: TurnRun keeps a held item. A Bob-omb knocked from a low hand
+  lands softly: fn_80280974's walk entry (walk speed x xC, off the pickup
+  list, hits owner/kindred items; ITEM_MODEL_UPDATE's it_80274740 spin
+  reset in the shared item state change). Explorer v6 (200 seeds, 1,200
+  port matches): one fault, Fox's Reflector turn frames from an unmodelled
+  scratch word; next.

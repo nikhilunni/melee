@@ -61,7 +61,7 @@ The remaining reachable gaps:
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
 | Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, C-stick ground throws, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
-| A thrown Bob-omb's soft landing (state 2) | Fails closed | Unreachable by Fox/Marth: a soft landing needs |vx| <= 0.8 and |vy| <= 0.7 (special attributes x20/x24), every light throw is faster and a drop from the hand lands at about 1.1 |
+| A walking Bob-omb (states 2 and 4) | The soft landing's entry (fn_80280974) is ported (`sudden_death_turnrunhold_bomb_fd_marth`: a hit drops it from a low hand); the walk and turn rows fail closed | A dropped Bob-omb that lands softly and is not set off at once |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hurtboxes (it_802706D0) | Detection ported; a landing contact fails closed | A thrown or dropped Bob-omb, or a kindred-striking hitbox, reaching another |

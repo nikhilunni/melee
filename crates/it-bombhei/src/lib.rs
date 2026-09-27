@@ -1,8 +1,8 @@
 //! Bob-omb (It_Kind_BombHei), itbombhei.c (8027D670..80280F40): the Sudden
 //! Death rain's bomb. Ported so far: the rain spawn (it_8027D670), the lit
-//! fuse on the ground, in the air and in a fighter's hand, landing and the
-//! explosion. Walking, turning, dropping and throwing are explicit
-//! `unimplemented!` rows.
+//! fuse on the ground, in the air and in a fighter's hand, throwing and
+//! dropping, landing (a soft landing starts the walk) and the explosion.
+//! The walk and turn rows themselves are explicit `unimplemented!` rows.
 use gekko_math::msl::{fabsf, fctiwz};
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::*, *};
@@ -24,6 +24,8 @@ mod motion {
     /// Held unlit / lit (itBombhei_Logic6_PickedUp).
     pub const HELD: u16 = 7;
     pub const HELD_LIT: u16 = 8;
+    /// Walking after a soft landing (itBombhei_UnkMotion2).
+    pub const WALK: u16 = 2;
     /// Thrown or dropped, lit (it_3F14_Logic6_Thrown).
     pub const THROWN_LIT: u16 = 10;
     pub const LIT_FALL: u16 = 6;
@@ -40,6 +42,10 @@ impl Attributes<'_> {
     /// x8: frames the lit fuse burns.
     fn fuse_frames(&self) -> f32 {
         self.0[2]
+    }
+    /// xC: the walking speed.
+    fn walk_speed(&self) -> f32 {
+        self.0[3]
     }
     fn wander_frames(&self) -> f32 {
         self.0[4]
@@ -404,7 +410,7 @@ fn thrown_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> 
 }
 
 /// itBombhei_UnkMotion10_Coll (80280B18): as the lit fall, a fast landing
-/// detonates; a soft one would start walking (state 2), which is unported.
+/// detonates; a soft one starts walking (fn_80280974).
 fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     bomb_mut(item).landing_velocity = item.velocity;
     if item.airborne_collision(ctx.map, ctx.assets).floor {
@@ -416,10 +422,29 @@ fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
                 explode(item, ctx.assets);
             }
         } else {
-            unimplemented!("fn_80280974: a thrown Bob-omb landing softly (state 2)");
+            start_walking(item, ctx.assets);
         }
     }
     false
+}
+
+/// fn_80280974's soft landing (fn_80280974_inline): off the hand's pickup
+/// list, walking at xC along its facing, and its hits reach its owner and
+/// kindred items again (it_80275444; xDCD b6 is not modelled). The state
+/// change keeps the squash joint (itBombhei_UpdateStatePreserveBoneMotion10).
+fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
+    item.grabbable = false;
+    // retail 80280A10: fmuls.
+    item.velocity.x = Attributes(&assets.special_attributes).walk_speed() * item.facing;
+    item.platform_drop = 0;
+    item.hits_owner = true;
+    item.strikes_kindred_items = true;
+    change(
+        item,
+        motion::WALK,
+        ANIM_UPDATE | MODEL_UPDATE | HIT_PRESERVE,
+        assets,
+    );
 }
 
 /// itBombhei_UnkMotion6_Anim (8027FE70).

@@ -1527,6 +1527,9 @@ fn timeout_and_sudden_death_match_retail() {
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),
+        // TurnRun holding it; a blast knocks it loose, it lands softly
+        // (fn_80280974 -> the walk) and a second blast sets it off.
+        ("sudden_death_turnrunhold_bomb_fd_marth", 1540),
     ] {
         combat_gate_ticks(name, ticks);
     }
