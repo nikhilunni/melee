@@ -265,7 +265,12 @@ fn main() -> anyhow::Result<()> {
                     .iter()
                     .map(|e| {
                         let hold = e.hold.map_or(String::new(), |h| format!(" for {h}"));
-                        format!("port {} @{} {}{hold}", e.port, e.tick, melee_sim::search::inline_raw(&e.raw))
+                        format!(
+                            "port {} @{} {}{hold}",
+                            e.port,
+                            e.tick,
+                            melee_sim::search::inline_raw(&e.raw)
+                        )
                     })
                     .collect();
                 println!("reached {:?}: {}", f.reached, edits.join("; "));
