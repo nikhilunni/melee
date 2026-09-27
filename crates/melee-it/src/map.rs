@@ -129,6 +129,66 @@ impl ItemCore {
         grounded
     }
 
+    /// it_8026D8A4 (8026D8A4) without its callback: it_80276214 twice, so
+    /// the pass starts where it ends, then a grounded pass that stops at
+    /// edges (mpColl_8004B2DC). Returns whether the item stayed grounded and
+    /// whether it stopped at an edge (it_802762D8). Unlike it_8026D62C a
+    /// loss of ground does not switch the item to the air.
+    pub fn walk_ground_pass(&mut self, map: &mut melee_mp::CollMap) -> (bool, bool) {
+        let mut collision = self.refresh_collision();
+        collision.last_pos = collision.cur_pos;
+        collision.cur_pos = self.position;
+        let grounded = map.ground_collide_stop_at_edge(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.floor_line_from(&collision, grounded);
+        let env = collision.env_flags as u32;
+        let edge = env & (collide::LEFT_EDGE | collide::RIGHT_EDGE) != 0;
+        self.collision = Some(collision);
+        (grounded, edge)
+    }
+
+    /// it_80276308 (80276308): 8 for a left wall, 4 for a right one (which
+    /// wins), whose line becomes xC30.
+    pub fn wall_bits(&mut self) -> u32 {
+        let collision = self.collision.as_ref().expect("item map collision");
+        let env = collision.env_flags as u32;
+        let mut bits = 0;
+        if env & collide::LEFT_WALL_MASK != 0 {
+            bits = 8;
+            self.floor_line = collision.left_facing_wall.index;
+        }
+        if env & collide::RIGHT_WALL_MASK != 0 {
+            self.floor_line = collision.right_facing_wall.index;
+            bits = 4;
+        }
+        bits
+    }
+
+    /// it_80276CB8 (80276CB8) -> it_802765BC(gobj, 0): on a floor, the model
+    /// leans with its slope about xDC8 x17's axis (it_8027649C: the angle
+    /// between the floor normal and up, signed by the normal's X and the
+    /// facing).
+    pub fn lean_with_floor(&mut self) {
+        let collision = self.collision.as_ref().expect("item map collision");
+        if collision.env_flags as u32 & collide::FLOOR_MASK == 0 {
+            return;
+        }
+        let normal = collision.floor.normal;
+        let angle = melee_lb::vector::angle(normal, hsd_types::Vec3::new(0.0, 1.0, 0.0));
+        let direction = if normal.x < 0.0 { -1.0 } else { 1.0 };
+        let lean = self.facing * (angle * direction);
+        match self.rotation_axis {
+            0 => self.rotation.z = -self.facing * lean,
+            1 => self.rotation.x = lean,
+            _ => self.rotation.y = lean,
+        }
+    }
+
+    /// it_802762B0 (802762B0): the item counts as grounded.
+    pub fn land_on_floor(&mut self) {
+        self.ground_or_air = GroundOrAir::Ground;
+    }
+
     /// it_8026E414 (8026E414) without its callbacks: an airborne pass
     /// (mpColl_800471F8), then the wall and ceiling bits. A landing restores
     /// the grounded ECB box (it_80275DFC) and grounds the item (it_802762B0).

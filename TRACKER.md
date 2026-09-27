@@ -1100,3 +1100,12 @@ Newest first. One line per session: date, what landed, what is next.
   (mv.co.guard.x4) in Guard and in a roll out of Guard (the roll writes only
   x0), so a Reflector entered after roll -> Wait inherits it. Witness
   corpus_v3_s0_e551dd0aa_p0 (2064 ticks, bridged from the explorer run).
+- 2026-09-27: The Bob-omb walk and turn rows (itBombhei_UnkMotion2/4: blink
+  timer, relight at its end, edge-stopping ground pass it_8026D8A4, turn at
+  edges and walls, lean with the floor it_80276CB8) and item hitboxes on
+  item hurtboxes (it_802706D0_sub3: victim group record, dealt damage, a
+  kind 2 log entry for it_80270E30 with the x78 still-speed direction).
+  The ledge family (CliffCatch..CliffJumpQuick2) keeps a held item. Found
+  with melee-sim dry-run; four witnesses. Corpus v6 sample: 35 bridged, 35
+  exact (5 more lost to a full disk: 203G of traces plus the 164G backup).
+  Full release gate 1471/0.

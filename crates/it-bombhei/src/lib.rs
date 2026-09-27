@@ -26,6 +26,8 @@ mod motion {
     pub const HELD_LIT: u16 = 8;
     /// Walking after a soft landing (itBombhei_UnkMotion2).
     pub const WALK: u16 = 2;
+    /// Turning round at an edge or wall (itBombhei_UnkMotion4).
+    pub const TURN: u16 = 4;
     /// Thrown or dropped, lit (it_3F14_Logic6_Thrown).
     pub const THROWN_LIT: u16 = 10;
     pub const LIT_FALL: u16 = 6;
@@ -82,6 +84,18 @@ static STATES: [ItemStateRow; 13] = {
         animation: no_animation,
         physics: unported_physics,
         collision: unported_collision,
+    };
+    rows[motion::WALK as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[2],
+        animation: walk_animation,
+        physics: no_physics,
+        collision: walk_collision,
+    };
+    rows[motion::TURN as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[4],
+        animation: turn_animation,
+        physics: no_physics,
+        collision: turn_collision,
     };
     rows[motion::LIT as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[5],
@@ -445,6 +459,99 @@ fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
         ANIM_UPDATE | MODEL_UPDATE | HIT_PRESERVE,
         assets,
     );
+}
+
+/// it_8027F8E0 (8027F8E0) for a lit Bob-omb: it stops and burns on the
+/// ground again. An unlit one would first light (see [`light`]).
+fn relight(item: &mut ItemCore, assets: &ItemAssets) {
+    assert!(
+        bomb(item).lit,
+        "it_8027F8E0: an unlit Bob-omb stops walking"
+    );
+    item.velocity.x = 0.0;
+    item.grabbable = true;
+    change(item, motion::LIT, UNK_0X1, assets);
+}
+
+/// The walk and turn count down the lit Bob-omb's blink timer (xDD4) and its
+/// whole life (xDEC); the fuse itself does not burn.
+fn count_down_walk(item: &mut ItemCore) -> bool {
+    let state = bomb_mut(item);
+    state.countdown -= 1;
+    state.life_frames -= 1.0;
+    state.countdown <= 0
+}
+
+/// it_80272C6C == 0: the state's joint animation has no frames left.
+fn animation_ended(item: &ItemCore, assets: &ItemAssets) -> bool {
+    let article = ARTICLE_STATES[item.motion as usize];
+    usize::try_from(article)
+        .ok()
+        .and_then(|article| assets.animation_ends[article])
+        .is_some_and(|end| item.animation_frame >= end)
+}
+
+/// itBombhei_UnkMotion2_Anim (8027EFD0): at the timer's end it stops and
+/// burns (it_8027F8E0); a finished cycle walks on. The squash joint
+/// (inline2_UnkMotion0_Anim) is not modelled.
+fn walk_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if count_down_walk(item) {
+        relight(item, ctx.assets);
+    }
+    if animation_ended(item, ctx.assets) {
+        start_walking(item, ctx.assets);
+    }
+    false
+}
+
+/// itBombhei_UnkMotion2_Coll (8027F270): a grounded pass that stops at
+/// edges; an edge or a wall turns it round (it_8027F42C) and it leans with
+/// the floor. Walking off the ground is not ported.
+fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    let (grounded, edge) = item.walk_ground_pass(ctx.map);
+    if edge {
+        start_turning(item, ctx.assets);
+    }
+    if !grounded {
+        unimplemented!("itBombhei_UnkMotion2_Coll: a walking Bob-omb leaving the ground");
+    }
+    if item.wall_bits() != 0 {
+        start_turning(item, ctx.assets);
+    }
+    item.lean_with_floor();
+    false
+}
+
+/// it_8027F42C (8027F42C): stop and turn round, remembering the facing to
+/// restore if the timer runs out mid-turn (xDF4).
+fn start_turning(item: &mut ItemCore, assets: &ItemAssets) {
+    item.land_on_floor();
+    change(item, motion::TURN, ANIM_UPDATE | HIT_PRESERVE, assets);
+    item.velocity.x = 0.0;
+    bomb_mut(item).turn_facing = -item.facing;
+}
+
+/// itBombhei_UnkMotion4_Anim (8027F5E8): a finished turn walks the other
+/// way; at the timer's end the saved facing returns and it burns.
+fn turn_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if animation_ended(item, ctx.assets) {
+        item.facing = -item.facing;
+        start_walking(item, ctx.assets);
+    }
+    if count_down_walk(item) {
+        item.facing = bomb(item).turn_facing;
+        relight(item, ctx.assets);
+    }
+    false
+}
+
+/// itBombhei_UnkMotion4_Coll (8027F8A0): it_8026D62C, then the lean.
+fn turn_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map) {
+        unimplemented!("it_8027DE18: a turning Bob-omb leaving the ground");
+    }
+    item.lean_with_floor();
+    false
 }
 
 /// itBombhei_UnkMotion6_Anim (8027FE70).

@@ -1530,6 +1530,14 @@ fn timeout_and_sudden_death_match_retail() {
         // TurnRun holding it; a blast knocks it loose, it lands softly
         // (fn_80280974 -> the walk) and a second blast sets it off.
         ("sudden_death_turnrunhold_bomb_fd_marth", 1540),
+        // A Bob-omb knocked from a low hand walks (itBombhei_UnkMotion2)
+        // until it relights; a walking one's blast sets off a falling one
+        // (it_802706D0, item on item).
+        ("sudden_death_walkbomb_fd_marth", 1422),
+        ("sudden_death_bombchain_fd_marth", 1523),
+        // Hanging on the ledge, and jumping from it, holding it.
+        ("sudden_death_ledgehold_bomb_fd_marth", 1545),
+        ("sudden_death_ledgejump_bomb_fd_marth", 1545),
     ] {
         combat_gate_ticks(name, ticks);
     }

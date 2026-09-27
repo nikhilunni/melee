@@ -14,13 +14,25 @@ pub struct HurtCapsule {
     pub matrix: Mtx,
 }
 
-/// A damage log entry (it_804A0E70) for a fighter's hitbox: the hit's
-/// numbers and the contact point lbColl_80006E58 found.
+/// Who landed a logged hit (it_804A0E70 x0/x4).
+#[derive(Clone, Copy, Debug)]
+pub enum ItemHitSource {
+    /// Kind 1, a fighter: its player slot and cur_pos.x.
+    Fighter { player: u8, x: f32 },
+    /// Kind 2, another item (it_802706D0): its fighter owner, if any (xCB0
+    /// is 6 otherwise), and its position and horizontal speed.
+    Item {
+        owner: Option<u8>,
+        position: Vec3,
+        velocity_x: f32,
+    },
+}
+
+/// A damage log entry (it_804A0E70): the hit's numbers and the contact
+/// point the capsule test found.
 #[derive(Clone, Copy, Debug)]
 pub struct ItemHit {
-    pub attacker: u8,
-    /// The attacker's cur_pos.x, for the incoming direction.
-    pub attacker_x: f32,
+    pub source: ItemHitSource,
     pub damage: f32,
     pub angle: u16,
     pub growth: u16,
@@ -48,6 +60,9 @@ pub struct ItemKnockback {
     /// xAC / xB0: the scale and base applied after the item's multiplier.
     pub scale: f32,
     pub base: f32,
+    /// x78: an item hitter slower than this counts as still, so the
+    /// incoming direction follows the two positions.
+    pub still_speed: f32,
 }
 
 impl ItemCore {
@@ -127,13 +142,31 @@ impl ItemCore {
         let Some(hit) = strongest else {
             return;
         };
-        // Damage log kind 1, a fighter.
-        self.hit_by = Some(hit.attacker);
-        self.hit_direction = if self.position.x > hit.attacker_x {
-            -1.0
-        } else {
-            1.0
+        let (hit_by, direction) = match hit.source {
+            ItemHitSource::Fighter { player, x } => {
+                (Some(player), if self.position.x > x { -1.0 } else { 1.0 })
+            }
+            ItemHitSource::Item {
+                owner,
+                position,
+                velocity_x,
+            } => {
+                let direction = if gekko_math::msl::fabsf(velocity_x) < constants.still_speed {
+                    if self.position.x > position.x {
+                        -1.0
+                    } else {
+                        1.0
+                    }
+                } else if velocity_x < 0.0 {
+                    1.0
+                } else {
+                    -1.0
+                };
+                (owner, direction)
+            }
         };
+        self.hit_by = hit_by;
+        self.hit_direction = direction;
         self.knockback_angle = hit.angle;
         self.pending_knockback = strongest_knockback;
     }

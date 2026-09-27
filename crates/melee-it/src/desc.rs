@@ -59,6 +59,7 @@ impl ItemCommonData {
                 weight_set_percent: r.f32(base + 0xA8)?,
                 scale: r.f32(base + 0xAC)?,
                 base: r.f32(base + 0xB0)?,
+                still_speed: r.f32(base + 0x78)?,
             },
         })
     }

@@ -75,8 +75,10 @@ impl Fighter {
                 "it_802703E8: an inert hitbox touching an item (fighter->unk_gobj)"
             );
             let hit = ItemHit {
-                attacker: self.player.id,
-                attacker_x: self.physics.position.x,
+                source: melee_it::hurt::ItemHitSource::Fighter {
+                    player: self.player.id,
+                    x: self.physics.position.x,
+                },
                 damage: desc.damage,
                 angle: desc.angle,
                 growth: desc.growth,
