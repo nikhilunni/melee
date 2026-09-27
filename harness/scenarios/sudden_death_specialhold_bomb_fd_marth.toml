@@ -1,0 +1,27 @@
+# Sudden Death: Marth turns left, picks up the first Bob-omb with A (tick
+# 1226, as in sudden_death_pickup_bomb_fd_marth), then presses B holding it (1244).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_specialhold_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1433
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1244, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 1246, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

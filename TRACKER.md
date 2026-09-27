@@ -1056,3 +1056,9 @@ Newest first. One line per session: date, what landed, what is next.
   (ftCo_8009563C's smash throw window), landing and Run/RunBrake; the IASA
   callbacks share FighterCore::wait_context, so every Catch_CheckInput
   site sees the held item. Five witnesses gated.
+- 2026-09-27: Held item through the aerial jump, taunts and character
+  specials: CharacterCallbacks::SPECIALS_KEEP_HELD_ITEM (true for the
+  ftFx family and Marth, whose special code never reads fp->item_gobj;
+  others still fail closed). A Fox jab on a Marth holding a lit Bob-omb
+  rolls the drop chance bit-exact. Four witnesses gated. Next: the aerial
+  catch (fn_800D6F58), a knock-loose drop, ceiling bounce/tech.

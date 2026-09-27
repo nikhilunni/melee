@@ -1505,6 +1505,12 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_rollhold_bomb_fd_marth", 1545),
         ("sudden_death_landhold_bomb_fd_marth", 1545),
         ("sudden_death_runhold_bomb_fd_marth", 1429),
+        // Double jumping, a special and a taunt with it; a hit while holding
+        // it rolls the drop chance.
+        ("sudden_death_airjumphold_bomb_fd_marth", 1482),
+        ("sudden_death_specialhold_bomb_fd_marth", 1433),
+        ("sudden_death_taunthold_bomb_fd_marth", 1433),
+        ("sudden_death_dashintofox_bomb_fd_marth", 1434),
     ] {
         combat_gate_ticks(name, ticks);
     }

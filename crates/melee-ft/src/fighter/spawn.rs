@@ -633,8 +633,10 @@ impl Fighter {
     ) -> Result<()> {
         let source = change.source;
         let row = self.row(state);
+        let special = (usize::from(row.action.0) >= super::COMMON_COUNT)
+            .then(|| self.character.table().specials_keep_held_item);
         let state = row.id;
-        self.core.require_held_item_state(state);
+        self.core.require_held_item_state(state, special);
         self.core.begin_motion_change(source);
         // The port's attack-proc guard belongs to the state that set it (an
         // attack entry, or hitlag ending during an attack); attack entries

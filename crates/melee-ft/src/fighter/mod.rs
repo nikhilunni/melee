@@ -121,6 +121,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
+    /// Whether every special row was audited to leave a held light item in
+    /// hand (no item branch in the character's special code); a special
+    /// entered while holding one otherwise fails closed.
+    const SPECIALS_KEEP_HELD_ITEM: bool = false;
     /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
     const DEATH: Option<fn(&mut Fighter)> = None;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {

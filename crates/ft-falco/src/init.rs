@@ -32,6 +32,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Falco>();
 
 impl CharacterCallbacks for Falco {
+    /// No special reads fp->item_gobj; a held item stays in hand.
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const KNOCKBACK_ENTER: fn(
         &mut melee_ft::fighter::Fighter,
         &melee_ft::fighter::assets::FighterAssets,

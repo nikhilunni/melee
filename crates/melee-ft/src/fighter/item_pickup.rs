@@ -121,9 +121,12 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 43] = [
+const HELD_ITEM_STATES: [S; 47] = [
     S::LightGet,
     S::Wait,
+    // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
+    S::AppealSR,
+    S::AppealSL,
     // ftCo_Walk: a light item changes nothing but the IASA's item throw.
     S::WalkSlow,
     S::WalkMiddle,
@@ -160,6 +163,9 @@ const HELD_ITEM_STATES: [S; 43] = [
     S::KneeBend,
     S::JumpF,
     S::JumpB,
+    // ftCo_JumpAerial_IASA runs the same item throw and catch checks.
+    S::JumpAerialF,
+    S::JumpAerialB,
     S::Fall,
     S::FallF,
     S::FallB,
@@ -301,8 +307,14 @@ impl FighterCore {
     }
 
     /// Keep a held item inside the audited states (see HELD_ITEM_STATES).
-    pub(super) fn require_held_item_state(&self, state: S) {
-        if self.held_item.is_some() && !HELD_ITEM_STATES.contains(&state) {
+    /// Character special rows pass `special` with the table's
+    /// `specials_keep_held_item` audit instead.
+    pub(super) fn require_held_item_state(&self, state: S, special: Option<bool>) {
+        let audited = match special {
+            Some(keeps_item) => keeps_item,
+            None => HELD_ITEM_STATES.contains(&state),
+        };
+        if self.held_item.is_some() && !audited {
             unimplemented!("holding an item: motion state {state:?} is not audited");
         }
     }
