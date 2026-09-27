@@ -1187,3 +1187,13 @@ Newest first. One line per session: date, what landed, what is next.
   (PlCo +348), a grounded special-fall entry, a Reflector inheriting
   Turn's word through an up smash and Wait; explorer batches at skip
   3000/4000 found only those; 8 bridged full matches exact.
+- 2026-09-27 (late): Perf lane merged (42cbeac..2739e41): 600-tick time
+  27.7 -> 18.0 ms (skeleton walks per capsule replaced by the parts table,
+  one-walk ECB bones, empty-queue early outs), cross-crate duplicate labels
+  106 -> 87, melee-ft within-crate 20. Stripped size stays ~4.59 MB against
+  the 3.69 MB ceiling: feature growth since 2026-09-10 (+755 KiB .text,
+  incl. ~68 KiB zstd); a baseline decision is the user's. New witnesses:
+  decisive timeout, DamageFall exits, Reflector turn walk-off, Fox's angled
+  forward tilts; explorer fixes for held items in FallAerial and Ottotto.
+  Normal explorer 6000+ (1,800) clean; bridged 6 more full matches exact.
+  Full release gate 1501/0 after the merge.
