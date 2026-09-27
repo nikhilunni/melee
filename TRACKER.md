@@ -1176,3 +1176,14 @@ Newest first. One line per session: date, what landed, what is next.
   bridged exact over 5740 ticks. Full release gate 1477/0 before the item
   fixes; m5 217/217 after. Disk: freed 20 GB of debug incremental cache;
   ~10 GB free, ~1.2 GB per Sudden Death witness with its backup.
+- 2026-09-27: Storage. At the user's request the 185 GB ~/melee-data traces
+  mirror was deleted (only harness/roms stays mirrored) and CLAUDE.md /
+  AGENTS.md gained a deletion-protection hard boundary. Traces are now
+  zstd-compressed (melee-trace-io crate, harness/trace_io.py; record.py
+  compresses verified outputs; harness/compress_traces.py migrated 3,300
+  files, 195.9 GB -> 5.3 GB). Opus worktree lanes are allowed again (two
+  at most); the compression lane merged as a8661b2/80f9ca0, a perf-gate
+  lane is running. Also landed: thrower invincibility at throw start
+  (PlCo +348), a grounded special-fall entry, a Reflector inheriting
+  Turn's word through an up smash and Wait; explorer batches at skip
+  3000/4000 found only those; 8 bridged full matches exact.
