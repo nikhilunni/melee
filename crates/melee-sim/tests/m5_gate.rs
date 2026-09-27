@@ -1575,7 +1575,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 29] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 31] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1641,6 +1641,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 29] = [
     // Fox rolls back out of shield, waits and reflects: the Reflector's
     // turn word is Guard's tilt (mv.co.guard.x4), kept through the roll.
     ("corpus_v3_s0_e551dd0aa_p0", 2064),
+    // Sudden Death explorer (`explore ... sudden-death`): a held Bob-omb
+    // leaves the hand while its hand animation is live (ftAnim_80070CC4).
+    ("corpus_sd_s1_ea4d5d9ec_p0", 1773),
+    ("corpus_sd_s1_ebac668de_p0", 1697),
 ];
 
 #[test]

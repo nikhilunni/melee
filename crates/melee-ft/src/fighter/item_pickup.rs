@@ -343,9 +343,40 @@ impl FighterCore {
         // ftAnim_80070FB4(pose, -1); the pose stays applied until the next
         // motion change reinstalls the (now empty) selection.
         self.animation.part_animations[hand.pose].previous = -1;
-        if self.animation.part_animations[hand.shown].current != -1 {
-            unimplemented!("ftAnim_80070CC4: removing a live hand animation");
+        self.remove_part_animation(hand.shown, assets);
+    }
+
+    /// ftAnim_80070CC4 (80070CC4): a live part animation's parts drop their
+    /// ownership (as ftAnim_80070F28 does), the slot goes inactive, and the
+    /// main motion takes the subtree back at its current frame
+    /// (ftAnim_8006EED4).
+    fn remove_part_animation(&mut self, group: usize, assets: &FighterAssets) {
+        use crate::anim::attach::PartFlags;
+        let slot = &mut self.animation.part_animations[group];
+        if slot.current == -1 {
+            return;
         }
+        slot.current = -1;
+        for &bone in slot.joints.iter() {
+            self.animation.parts[bone].flags.0 &= !PartFlags::PART_ANIMATION;
+        }
+        let root = usize::from(
+            assets.bones.animation_sets[group]
+                .as_ref()
+                .expect("part animation set")
+                .root_joint,
+        );
+        assert!(
+            self.animation.motion_id >= 0,
+            "ftAnim_8006FA58: removing a part animation without a motion"
+        );
+        self.animation
+            .resume_dynamic_subtree::<super::RetailTrig>(
+                &mut self.skeleton,
+                root,
+                &assets.motions[&self.animation.motion_id],
+            )
+            .expect("part animation subtree");
     }
 
     /// Keep a held item inside the audited states (see HELD_ITEM_STATES).

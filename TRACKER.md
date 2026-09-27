@@ -1127,3 +1127,8 @@ Newest first. One line per session: date, what landed, what is next.
   reachability).
 - 2026-09-27: ftCo_8009515C's dash-shield branch: A inside a run or dash
   shield's countdown is a LightThrowDash. Witness runshieldthrow.
+- 2026-09-27: Sudden Death explorer mode (100 seeds, 300 cases): two faults,
+  ftAnim_80070CC4 (a held item released while its hand animation is live:
+  the part's ownership drops and the main motion retakes the subtree at its
+  frame, ftAnim_8006EED4). Both bridged cases exact (corpus_sd_*); rerun
+  300/300 clean.
