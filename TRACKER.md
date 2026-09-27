@@ -1024,3 +1024,10 @@ Newest first. One line per session: date, what landed, what is next.
   again. The wall-contact pass (ft_80081F2C) is shared with the wall jump.
   The ceiling bounce and ceiling tech still fail closed. Witness
   corpus_v3_s0_e0211286e_p1.
+- 2026-09-27: Meteor cancel: a launch at a PlCo +7E8..+7EC angle
+  (ftColl_8007AC68) starts a +7F0 countdown; after it, doIasa lets an
+  airborne fighter still driven down cancel with a fresh up special or
+  aerial jump (ftCo_800D69C4 / ft_did_jump(.., true)), stopping knockback.
+  validate_ticks skips item motion during the final-KO freeze. Corpus v5
+  third batch: 40 bridged, 38 exact, both faults (wall bounce, meteor
+  cancel) fixed and gated.

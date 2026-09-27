@@ -118,6 +118,9 @@ pub struct DamageState {
     pub last_bounce: Option<super::fly_reflect::BounceSurface>,
     /// mv.damage.x18: frames before another bounce or wall tech (a byte).
     pub bounce_lock: u8,
+    /// mv.damage.x1A/x1B: a downward launch (a meteor) and the frames left
+    /// before a jump or up special may cancel it.
+    pub meteor_cancel: Option<u8>,
 }
 /// PlCo values retained by the damage state's status callback, which runs
 /// before input sampling and has no archive resource argument.
@@ -197,6 +200,10 @@ pub struct DamageParameters {
     /// PlCo +23C (int) / +240: percent floor and Randf chance for DamageFlyRoll.
     pub fly_roll_percent: i32,
     pub fly_roll_chance: f32,
+    /// PlCo +7E8/+7EC/+7F0: launch angles (degrees) that are meteors, and
+    /// the frames before one may be cancelled (ftColl_8007AC68).
+    pub meteor_angles: [u32; 2],
+    pub meteor_cancel_frames: i32,
     /// PlCo +418: a hit of this much damage always knocks a held light item
     /// loose (Fighter_8006CDA4 draws Randi(+418) < damage).
     pub item_drop_range: i32,
@@ -288,6 +295,8 @@ impl DamageParameters {
             large_quake_threshold: r.f32(p + 0x174)?,
             fly_roll_percent: r.s32(p + 0x23C)?,
             fly_roll_chance: r.f32(p + 0x240)?,
+            meteor_angles: [r.u32(p + 0x7E8)?, r.u32(p + 0x7EC)?],
+            meteor_cancel_frames: r.s32(p + 0x7F0)?,
             item_drop_range: r.s32(p + 0x418)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
@@ -342,6 +351,12 @@ impl DamageParameters {
             base: self.base,
             maximum: self.maximum,
         }
+    }
+    /// ftColl_8007AC68 (8007AC68): a fixed launch angle inside PlCo's meteor
+    /// range.
+    fn is_meteor(&self, angle: u16) -> bool {
+        let angle = u32::from(angle);
+        angle != 361 && self.meteor_angles[0] <= angle && angle <= self.meteor_angles[1]
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
     fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
@@ -1159,11 +1174,78 @@ impl Fighter {
             }
             let transition = crate::input::wait_iasa(&self.core.input, &assets.input, context);
             self.apply_ground_transition(assets, transition)?;
-        } else if crate::input::human::jump_input(&self.core.input, &assets.input) {
-            // doIasa (8008F938): record the remaining hitstun, not the input age.
-            damage.jump_buffer = damage.hitstun;
+        } else {
+            if self.try_meteor_cancel(assets)? {
+                return Ok(());
+            }
+            let MotionData::Damage(damage) = &mut self.core.state_data else {
+                unreachable!()
+            };
+            if crate::input::human::jump_input(&self.core.input, &assets.input) {
+                // doIasa (8008F938): record the remaining hitstun, not the input age.
+                damage.jump_buffer = damage.hitstun;
+            }
         }
         Ok(())
+    }
+
+    /// doIasa (8008F938): once a meteor's countdown ends, an airborne fighter
+    /// still driven down cancels it with an up special (ftCo_800D69C4) or an
+    /// aerial jump (ftCo_800CB8E0); the knockback stops.
+    fn try_meteor_cancel(&mut self, assets: &FighterAssets) -> Result<bool> {
+        let MotionData::Damage(damage) = &mut self.core.state_data else {
+            panic!("damage scratch missing")
+        };
+        let Some(frames) = &mut damage.meteor_cancel else {
+            return Ok(false);
+        };
+        *frames = frames.saturating_sub(1);
+        if *frames != 0
+            || self.core.physics.ground_or_air != GroundOrAir::Air
+            || self.core.physics.knockback_velocity.y >= 0.0
+        {
+            return Ok(false);
+        }
+        let input = &self.core.input;
+        let lockout = assets.damage.tech_lockout;
+        // ftCo_800D69C4: a fresh up special, not within PlCo +1C of the last.
+        let up_special = self.core.capabilities.specials[1]
+            && input.buttons.special_up == 0
+            && i32::from(input.buttons.previous_special_up) >= lockout;
+        // ft_did_jump(fp, true): a jump left, a tap or X/Y, and not a second
+        // press within PlCo +1C of the last.
+        let jump = !up_special
+            && i32::from(self.core.physics.jumps_used) < self.core.attributes.jumping.max_jumps
+            && crate::input::human::jump_input(input, &assets.input)
+            && i32::from(input.buttons.previous_jump) >= lockout;
+        if up_special {
+            (self.character.table().enter_special)(self, super::SpecialSlot::Up, true, assets);
+        } else if jump {
+            assert!(
+                self.character.multi_jump_attributes().is_none(),
+                "ftCo_800D730C: a multi-jump meteor cancel"
+            );
+            self.enter_aerial_jump(assets)?;
+        } else {
+            return Ok(false);
+        }
+        self.core.physics.knockback_velocity = Vec3::ZERO;
+        self.core
+            .commands
+            .rumble_requests
+            .push(super::commands::RumbleRequest {
+                all_players: false,
+                id: 12,
+                duration: 0,
+            });
+        self.core
+            .commands
+            .color_animations
+            .push(melee_cmd::ColorAnimationRequest {
+                id: 121,
+                duration: 0,
+            });
+        Ok(true)
     }
 }
 impl FighterCore {
@@ -1913,6 +1995,11 @@ impl FighterCore {
             // ftCo_Damage.c:463.
             last_bounce: None,
             bounce_lock: 0,
+            // ftCo_Damage_CalcAngle (8008D7F0) -> ftColl_8007AC68 (8007AC68).
+            meteor_cancel: assets
+                .damage
+                .is_meteor(hit.descriptor.angle)
+                .then_some(assets.damage.meteor_cancel_frames as u8),
         });
         self.status.in_hitstun = true;
         self.status.time_since_hit = 0;

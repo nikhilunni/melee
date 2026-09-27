@@ -36,7 +36,7 @@ class ItemValidator:
         self.skipped = 0
         self.present = False
 
-    def update(self, record: dict, ordinal: int, violations: list[str]) -> None:
+    def update(self, record: dict, ordinal: int, violations: list[str], frozen: bool = False) -> None:
         if self.present and "items" not in record:
             violations.append(f"ordinal {ordinal}: items field disappeared")
         self.present |= "items" in record
@@ -67,7 +67,7 @@ class ItemValidator:
             if before is not None:
                 if (int(before["gobj"], 16), int(before["base"], 16), before["kind"]) != (gobj, base, item["kind"]):
                     violations.append(f"{label}: live item changed GObj/Item address or kind")
-                elif self.free_laser(before["state"], state):
+                elif not frozen and self.free_laser(before["state"], state):
                     self.checked += 1
                     for axis in "xyz":
                         old = item_float(before["state"], f"pos.{axis}")
@@ -156,9 +156,12 @@ def validate(records, max_draws: int = 64, scripted: bool = False) -> dict:
     previous_anim = {}
     items = ItemValidator()
     count = 0
+    previous_pose = None
     for ordinal, record in enumerate(records):
         count += 1
-        items.update(record, ordinal, violations)
+        pose = fighter_pose(record["state"])
+        items.update(record, ordinal, violations, frozen=scene_frozen(previous_pose, pose))
+        previous_pose = pose
         state = record["state"]
         current_anim = animations(state)
         seed = state["rng.seed"]["v"]
@@ -216,6 +219,34 @@ def validate(records, max_draws: int = 64, scripted: bool = False) -> dict:
         result.update(item_events=items.events, item_motion_checked=items.checked,
                       item_motion_skipped=items.skipped)
     return result
+
+
+# ftCo_MS_DeadDown..DeadUpFallHitCameraIce: the KO states.
+DEAD_MOTIONS = range(0, 11)
+
+
+def fighter_pose(state: dict) -> list:
+    """Each fighter's motion, animation frame and position this tick."""
+    keys = ("motion_id", "cur_anim_frame", "cur_pos.x", "cur_pos.y")
+    pose = []
+    for slot in range(6):
+        if f"p{slot}.motion_id" not in state:
+            continue
+        pose.append(tuple(state[f"p{slot}.{key}"]["v"] if not isinstance(state[f"p{slot}.{key}"]["v"], dict)
+                          else state[f"p{slot}.{key}"]["v"]["bits"] for key in keys))
+    return pose
+
+
+# f32 bits of -1.0: a KO state's frame, as it plays no animation.
+NO_ANIMATION_FRAME = 0xBF800000
+
+
+def scene_frozen(before: list | None, after: list) -> bool:
+    """The match-end freeze after a final KO: a fighter is in a KO state
+    without animation and nobody's motion, frame or position moved, so
+    items stop too."""
+    return (before is not None and before == after
+            and any(pose[0] in DEAD_MOTIONS and pose[1] == NO_ANIMATION_FRAME for pose in after))
 
 
 def main(argv: list[str] | None = None) -> int:

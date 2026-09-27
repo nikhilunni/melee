@@ -161,6 +161,7 @@ pub(super) fn missed_footing_animation(
             influence: phase.assets.damage.influence,
             last_bounce: None,
             bounce_lock: 0,
+            meteor_cancel: None,
         });
     }
     Ok(None)
