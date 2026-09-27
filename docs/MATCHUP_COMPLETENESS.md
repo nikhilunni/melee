@@ -26,6 +26,7 @@ legal inputs in this matchup. Keep breadth paused while closing that gap.
 | Sudden Death, skip 7000 and 8000, 1,000 seeds each | 6,000 | FallAerial and Ottotto while holding (fixed) |
 | Normal, skip 7000, 300 seeds | 1,800 | a catch cut on its CatchWait entry tick left CaptureFlash sealed (fixed, `corpus_v3_s1_e19a3b12e_p2`) |
 | Sudden Death, skip 9000, 1,000 seeds | 3,000 | jump-squat up smash with a Bob-omb; then a rain bomb's creation intangibility (both fixed, `corpus_sd_s1_e00088bc5_p0`) |
+| Normal, skip 8000, 300 seeds; Sudden Death, skip 10000, 1,000 seeds | 4,800 | clean; bridged samples `corpus_v3_s0_e01a74e09_p0` (6,001 ticks) and `corpus_sd_s1_e2726590c_p0` (1,683) exact |
 
 Exactness sample: 34 clean explorer cases (20 Sudden Death, 14 full matches) bridged to Dolphin were all exact; the full matches `corpus_v3_s0_e035918d1_p1` and `corpus_v3_s1_e42b75250_p1` (one per port layout) are gated with the fault witnesses. Human full matches: `match_fd_foxmarth` (6,083 ticks) and `match2_fd_foxmarth` (10,059 ticks).
 
