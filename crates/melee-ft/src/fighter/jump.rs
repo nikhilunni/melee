@@ -235,9 +235,14 @@ impl Fighter {
         // the ordinary up-smash stick timer. C-stick still requires an edge.
         let input = &self.core.input;
         let threshold = assets.input.up_smash_threshold;
-        if (input.pressed.intersects(Buttons::A) && input.current.stick.y >= threshold)
-            || (input.previous.cstick.y < threshold && input.current.cstick.y >= threshold)
+        let cstick_up = input.previous.cstick.y < threshold && input.current.cstick.y >= threshold;
+        if (input.pressed.intersects(Buttons::A) && input.current.stick.y >= threshold) || cstick_up
         {
+            // With an item in hand, A (ftCo_80094E54) or the C-stick
+            // (ftCo_800DF30C) throws it upward instead.
+            if self.core.held_item.is_some() && (self.core.item_throw_pressed() || cstick_up) {
+                return self.enter_item_throw(CommonMotionState::LightThrowHi4, assets);
+            }
             return self.enter_simple_attack(CommonMotionState::AttackHi4, assets);
         }
         let MotionData::KneeBend(squat) = &mut self.core.state_data else {
