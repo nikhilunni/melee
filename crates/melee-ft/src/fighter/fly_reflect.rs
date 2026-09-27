@@ -6,7 +6,7 @@ use super::{
     state::CollisionPhase,
     Fighter, MotionData,
 };
-use gekko_math::{fma::fmadds, msl::fctiwz};
+use gekko_math::msl::fctiwz;
 use hsd_types::Vec3;
 use melee_mp::CollMap;
 use melee_types::{mp::collide, CommonMotionState as S};
@@ -123,13 +123,12 @@ impl Fighter {
         // fmuls by -2, then two fmadds.
         let v = self.core.physics.self_velocity;
         let kb = self.core.physics.knockback_velocity;
-        let (x, y) = (v.x + kb.x, v.y + kb.y);
-        let reflect = -2.0 * fmadds(normal.x, x, normal.y * y);
+        let mirrored = melee_lb::vector::mirror(Vec3::new(v.x + kb.x, v.y + kb.y, v.z), normal);
         let bounce = &assets.fly_reflect;
         // retail 800C1980 / 800C198C: fmuls by PlCo +1BC.
         self.core.physics.knockback_velocity = Vec3::new(
-            fmadds(normal.x, reflect, x) * bounce.damping,
-            fmadds(normal.y, reflect, y) * bounce.damping,
+            mirrored.x * bounce.damping,
+            mirrored.y * bounce.damping,
             v.z,
         );
         self.core.physics.self_velocity = Vec3::ZERO;

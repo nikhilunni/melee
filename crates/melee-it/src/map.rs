@@ -2,10 +2,14 @@
 //! lands keeps its own CollData (Item.x378_itemColl) with a fixed ECB box
 //! from its ItemAttr, resolved by the same mpColl passes fighters use.
 use crate::{desc::ItemAssets, ItemCore, SpawnItem};
+use gekko_math::fma::fmadds;
 use melee_types::{
     mp::{collide, CollData},
     GroundOrAir, ItemKind,
 };
+
+/// efAsync 0x405: an item's bounce spark (efLib_CreateGenerator 0x2C).
+const BOUNCE_SPARK: u16 = 0x405;
 
 /// What an airborne pass touched (it_8026E414's accumulated result bits).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -17,6 +21,16 @@ pub struct AirContact {
     /// Bits 3 / 2 (it_80276308); the right wall wins the stored line.
     pub left_wall: bool,
     pub right_wall: bool,
+}
+impl AirContact {
+    /// The result word it_80276FC4 receives: 1 floor, 2 ceiling, 4 right
+    /// wall, 8 left wall.
+    fn bits(self) -> u32 {
+        u32::from(self.floor)
+            | u32::from(self.ceiling) << 1
+            | u32::from(self.right_wall) << 2
+            | u32::from(self.left_wall) << 3
+    }
 }
 
 /// it_80275E98's ECB category (CollData.x34 b1234) by item kind range.
@@ -134,16 +148,176 @@ impl ItemCore {
         };
         self.position = collision.cur_pos;
         self.floor_line_from(&collision, floor);
+        // it_80276308 / it_802763E0: a wall, then a ceiling, becomes xC30.
+        if contact.left_wall {
+            self.floor_line = collision.left_facing_wall.index;
+        }
+        if contact.right_wall {
+            self.floor_line = collision.right_facing_wall.index;
+        }
+        if contact.ceiling {
+            self.floor_line = collision.ceiling.index;
+        }
         self.collision = Some(collision);
         if contact.ceiling || contact.left_wall || contact.right_wall {
-            // it_80276FC4: bounce off walls and ceilings.
-            unimplemented!("it_80276FC4: item wall/ceiling bounce");
+            self.bounce_off_surfaces(contact.bits(), map, assets);
         }
         if floor {
             self.restore_collision_box(assets);
             self.ground_or_air = GroundOrAir::Ground;
         }
         contact
+    }
+
+    /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's
+    /// velocity; unless the contact is a repeat, the bounce plays the kind's
+    /// sound, sparks and scales the hitboxes' damage by ItemAttr x58.
+    fn bounce_off_surfaces(&mut self, bits: u32, map: &melee_mp::CollMap, assets: &ItemAssets) {
+        self.reflect_velocity(map, assets);
+        if !self.leave_repeated_contact(bits) {
+            return;
+        }
+        // it_8027321C: xDCD b2 (muted) is never set for the ported kinds.
+        self.sound_requests.push(assets.bounce_sound);
+        self.push_bounce_spark(bits);
+        self.scale_hitbox_damage(assets.bounce_scale);
+    }
+
+    /// it_8027781C (8027781C): the velocity mirrored off every touched
+    /// surface it points into, summed, normalized and given back the old XY
+    /// speed times ItemAttr x58. Moving lines' speeds become x64.
+    fn reflect_velocity(&mut self, map: &melee_mp::CollMap, assets: &ItemAssets) -> bool {
+        use melee_lb::vector::{length_xy, mirror, normalize_xy};
+        let collision = self.collision.as_ref().expect("item map collision");
+        let velocity = self.velocity;
+        let speed = length_xy(velocity);
+        let env = collision.env_flags as u32;
+        let surfaces = [
+            (
+                collide::LEFT_WALL_MASK,
+                collision.left_facing_wall.normal,
+                map.left_wall_speed(collision),
+            ),
+            (
+                collide::RIGHT_WALL_MASK,
+                collision.right_facing_wall.normal,
+                map.right_wall_speed(collision),
+            ),
+            (
+                collide::CEILING_MASK,
+                collision.ceiling.normal,
+                map.ceiling_speed(collision),
+            ),
+            (
+                collide::FLOOR_MASK,
+                collision.floor.normal,
+                map.floor_speed(collision),
+            ),
+        ];
+        // it_803B857C / it_803B8570: both sums start at zero.
+        let mut direction = hsd_types::Vec3::ZERO;
+        let mut line_speed = hsd_types::Vec3::ZERO;
+        let mut touched = false;
+        for (mask, normal, surface_speed) in surfaces {
+            // retail 8027791C / 80277928: fmuls, then fmadds.
+            if env & mask == 0 || fmadds(velocity.x, normal.x, velocity.y * normal.y) >= 0.0 {
+                continue;
+            }
+            // lbVector_Add_xy: two fadds.
+            let mirrored = mirror(velocity, normal);
+            direction.x += mirrored.x;
+            direction.y += mirrored.y;
+            if let Some(surface_speed) = surface_speed {
+                line_speed.x += surface_speed.x;
+                line_speed.y += surface_speed.y;
+            }
+            touched = true;
+        }
+        if !touched {
+            return false;
+        }
+        if length_xy(direction) < 0.01 {
+            direction.x = velocity.x;
+            // retail 80277BB4 fmuls by -1.0: an exact negation.
+            direction.y = -velocity.y;
+        }
+        let direction = normalize_xy(direction);
+        // retail 80277BD0..E0: speed * x58 once, then per axis.
+        let speed = speed * assets.bounce_scale;
+        self.velocity = hsd_types::Vec3::new(direction.x * speed, direction.y * speed, direction.z);
+        self.platform_velocity = line_speed;
+        true
+    }
+
+    /// it_80276D9C (80276D9C): a contact already touching last pass nudges
+    /// the item 1.5 away instead of counting as a bounce.
+    fn leave_repeated_contact(&mut self, bits: u32) -> bool {
+        let collision = self.collision.as_ref().expect("item map collision");
+        let env = collision.env_flags as u32;
+        if env & collide::LEFT_WALL_MASK != 0 && env & collide::RIGHT_WALL_MASK != 0 {
+            unimplemented!("it_80276D9C: an item pressed between two walls");
+        }
+        let previous = collision.prev_env_flags as u32;
+        let mut bounced = true;
+        if bits & 4 != 0 && previous & collide::RIGHT_WALL_MASK != 0 {
+            bounced = false;
+            self.position.x += 1.5;
+        }
+        if bits & 8 != 0 && previous & collide::LEFT_WALL_MASK != 0 {
+            bounced = false;
+            self.position.x -= 1.5;
+        }
+        if bits & 2 != 0 && previous & collide::CEILING_MASK != 0 {
+            bounced = false;
+            self.position.y -= 1.5;
+        }
+        if bits & 1 != 0 && previous & collide::FLOOR_MASK != 0 {
+            bounced = false;
+            self.position.y += 1.5;
+        }
+        bounced
+    }
+
+    /// it_80277C40 (80277C40): effect 0x405 at the ECB point on the touched
+    /// side, through it_80278800 with no spread. xDCF b0 (no spark) is never
+    /// set for the ported kinds.
+    fn push_bounce_spark(&mut self, bits: u32) {
+        let ecb = self.collision.as_ref().expect("item map collision").ecb;
+        let mut point = hsd_types::Vec2::default();
+        if bits & 8 != 0 {
+            point = ecb.right;
+        }
+        if bits & 4 != 0 {
+            point = ecb.left;
+        }
+        if bits & 2 != 0 {
+            point = ecb.top;
+        }
+        if bits & 1 != 0 {
+            point = ecb.bottom;
+        }
+        self.events.push(crate::ItemEvent::ScriptEffect(
+            melee_types::combat::GraphicsCommand {
+                bone: 0,
+                common_bone: false,
+                item_bone: false,
+                destroy_on_state_change: false,
+                id: BOUNCE_SPARK,
+                parameter: 0.0,
+                offset: hsd_types::Vec3::new(point.x, point.y, 0.0),
+                range: hsd_types::Vec3::ZERO,
+            },
+        ));
+    }
+
+    /// it_80275640 (80275640) -> it_80272460: each live hitbox's damage
+    /// times `scale`, truncated to its count and restaled for the owner.
+    fn scale_hitbox_damage(&mut self, scale: f32) {
+        let stale = self.stale_multiplier;
+        for hit in self.hitboxes.iter_mut().flatten() {
+            hit.knockback_damage = gekko_math::msl::fctiwz(hit.descriptor.damage * scale) as u32;
+            hit.descriptor.damage = hit.knockback_damage as f32 * stale;
+        }
     }
 
     fn floor_line_from(&mut self, collision: &CollData, floor: bool) {

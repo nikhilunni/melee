@@ -109,6 +109,11 @@ pub struct ItemAssets {
     pub hand_hold_kind: u8,
     /// ItemAttr x4 (it_80273B50): the release velocity multiplier.
     pub throw_speed_multiplier: f32,
+    /// ItemAttr x58 (it_80276FC4): the speed and hitbox damage kept by a
+    /// wall or ceiling bounce.
+    pub bounce_scale: f32,
+    /// ItemAttr x80 (Item.xD84, it_8027321C): the bounce sound.
+    pub bounce_sound: u32,
     /// ItemAttr x30 / x38: the pickup box offset and half extents.
     pub grab_offset: hsd_types::Vec2,
     pub grab_range: hsd_types::Vec2,
@@ -240,6 +245,8 @@ impl ItemAssets {
             use_kind: (r.u8(common)? >> 3) & 0xF,
             hand_hold_kind: r.u8(common)? & 7,
             throw_speed_multiplier: r.f32(common + 4)?,
+            bounce_scale: r.f32(common + 0x58)?,
+            bounce_sound: r.u32(common + 0x80)?,
             grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
         })

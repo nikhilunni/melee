@@ -1083,3 +1083,10 @@ Newest first. One line per session: date, what landed, what is next.
   knockback_for_frame with the victim's weight), whose motion change zeroes
   kb_applied. Thrown Bob-omb soft landings are unreachable for Fox/Marth
   (audit). Two witnesses; full release gate 1471/0, clippy clean.
+- 2026-09-27: Item wall/ceiling bounce (it_80276FC4): velocity mirrored off
+  each touched surface (shared melee_lb::vector::mirror, also used by
+  FlyReflect; normalize_xy with the 4-step sqrtf), scaled by ItemAttr x58;
+  a repeat contact nudges 1.5 (it_80276D9C); otherwise the bounce sound
+  (ItemAttr x80), spark 0x405 (particle 0x2C through the item's efAsync
+  queue, new ItemEvent::JointEffect) and hitbox damage times x58. Two
+  witnesses (straight bounce, slope glance); full release gate 1471/0.

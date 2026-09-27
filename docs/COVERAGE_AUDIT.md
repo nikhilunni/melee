@@ -84,7 +84,7 @@ death while holding, each from a recorded witness.
 | `melee-ft/fighter/clank.rs` ftColl_8007925C | An inert hitbox touching an item | Investigate whether Fox/Marth own inert hitboxes |
 | `melee-ft/fighter/down.rs` | DownReflect wall bounce, DownDamage wall tech/bounce | Needs FD's walls under the stage; investigate |
 | `melee-ft/fighter/state/callbacks/collision.rs` ftCo_StopWall | Running into a wall | FD's side walls are below the ledge; investigate |
-| `melee-it/map.rs` it_80276FC4 | Item wall/ceiling bounce | A Bob-omb dropped over the ledge edge |
+| `melee-it/map.rs` it_80276D9C | An item pressed between two walls | Not reachable on FD's open sides |
 | `it-bombhei` unported rows | Walking, turning, held and thrown states | Follows from pickup; a soft landing never happens in the rain (terminal speed exceeds the explosion thresholds) |
 | `ft-fox-family/special_hi.rs` | Fire Fox platform skip | FD has no platforms: out of scope |
 

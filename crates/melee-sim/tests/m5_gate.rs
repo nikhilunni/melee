@@ -1524,6 +1524,9 @@ fn timeout_and_sudden_death_match_retail() {
         // only the captor, whose second throw record launches the victim.
         ("sudden_death_grabbomb_fd_marth", 1545),
         ("sudden_death_grabbombcaptor_fd_marth", 1471),
+        // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
+        ("sudden_death_wallbomb_fd_marth", 1441),
+        ("sudden_death_wallbombslope_fd_marth", 1441),
     ] {
         combat_gate_ticks(name, ticks);
     }

@@ -61,6 +61,9 @@ pub enum ItemEvent {
         joint: usize,
         offset: Vec3,
     },
+    /// efAsync kind 2: an effect at a joint offset, dispatched from the
+    /// item's queue (it_80278800's default path).
+    JointEffect { id: u16, joint: usize, offset: Vec3 },
     /// lb_800119DC: a radial gust.
     Gust {
         center: Vec3,
@@ -955,6 +958,8 @@ mod tests {
             use_kind: 0,
             hand_hold_kind: 0,
             throw_speed_multiplier: 1.0,
+            bounce_scale: 1.0,
+            bounce_sound: 0,
             grab_offset: hsd_types::Vec2::ZERO,
             grab_range: hsd_types::Vec2::ZERO,
         }

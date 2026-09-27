@@ -299,19 +299,44 @@ impl Runtime {
                         offset.x += 2.0 * range.x * (state.rng.randf() - 0.5);
                         offset.y += 2.0 * range.y * (state.rng.randf() - 0.5);
                         offset.z += 2.0 * range.z * (state.rng.randf() - 0.5);
-                        let kind = match graphics.id {
+                        // efAsync_Spawn below s_link 9 queues on the item.
+                        let event = match graphics.id {
                             // block_680 / 6B4 / 6E8: efAsync EF_SPAWN_CAMERA_SHAKE.
-                            0x513 => 2,
-                            0x514 => 3,
-                            0x515 => 4,
+                            0x513..=0x515 => melee_it::ItemEvent::Quake {
+                                kind: graphics.id - 0x511,
+                                joint: graphics.bone,
+                                offset,
+                            },
+                            // block_4A8: efAsync kind 2 (the bounce spark).
+                            0x405 => melee_it::ItemEvent::JointEffect {
+                                id: graphics.id,
+                                joint: graphics.bone,
+                                offset,
+                            },
                             id => anyhow::bail!("it_80278800: item effect {id:#x}"),
                         };
-                        // efAsync_Spawn below s_link 9 queues on the item.
-                        item.queued_events.push(melee_it::ItemEvent::Quake {
-                            kind,
-                            joint: graphics.bone,
-                            offset,
-                        });
+                        item.queued_events.push(event);
+                    }
+                    melee_it::ItemEvent::JointEffect { id, joint, offset } => {
+                        ensure!(joint == 0, "item effect at joint {joint}");
+                        // lb_8000B1CC(jobj, offset): the root's world matrix.
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.position,
+                            None,
+                        );
+                        let mut position = Vec3::ZERO;
+                        hsd_anim::mtx::mtx_mult_vec(&matrix, &offset, &mut position);
+                        state.effects.spawn_positional::<RetailTrig>(
+                            id,
+                            position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
                     }
                     melee_it::ItemEvent::Quake {
                         kind,

@@ -4,7 +4,7 @@
 //! against the retail DOL.
 use gekko_math::{
     fma::{fmadds, fmsubs},
-    msl::sqrtf,
+    msl::{sqrtf, sqrtf_accurate},
 };
 use hsd_anim::{mtx, quat::Quaternion};
 use hsd_types::{Mtx, Vec3};
@@ -23,6 +23,28 @@ pub fn normalize(v: Vec3) -> Vec3 {
     }
     let inv = 1.0 / len;
     Vec3::new(v.x * inv, v.y * inv, v.z * inv)
+}
+/// lbVector_NormalizeXY (0x8000D3B0): the XY length through the four-step
+/// inline sqrtf (sum unfused), a zero length left alone, then one reciprocal
+/// (fdivs) and two fmuls. Z is untouched.
+pub fn normalize_xy(v: Vec3) -> Vec3 {
+    let len = length_xy(v);
+    if len == 0.0 {
+        return v;
+    }
+    let inv = 1.0 / len;
+    Vec3::new(v.x * inv, v.y * inv, v.z)
+}
+/// The XY length as lbVector_NormalizeXY and it_8027781C inline it.
+pub fn length_xy(v: Vec3) -> f32 {
+    sqrtf_accurate(v.x * v.x + v.y * v.y)
+}
+/// lbVector_Mirror (0x8000DC6C): reflect the XY of `v` across the line with
+/// unit normal `n`; Z is untouched. Retail 8000DC78..9C: fmuls, fmadds for
+/// the dot, fmuls by -2, then fmadds per axis.
+pub fn mirror(v: Vec3, n: Vec3) -> Vec3 {
+    let reflect = -2.0 * fmadds(n.x, v.x, n.y * v.y);
+    Vec3::new(fmadds(n.x, reflect, v.x), fmadds(n.y, reflect, v.y), v.z)
 }
 /// lbVector_Angle (0x8000D620): lengths remain unfused; dot is fused.
 pub fn angle(a: Vec3, b: Vec3) -> f32 {
