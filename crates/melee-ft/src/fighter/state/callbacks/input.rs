@@ -277,6 +277,7 @@ pub fn wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     let context = fighter.core.wait_context();
     let transition = wait_iasa(&fighter.core.input, &assets.input, &context);
+    fighter.count_down_jab_window(assets, &context, &crate::input::WAIT_PREDICATES);
     fighter
         .apply_ground_transition(assets, transition)
         .expect("grounded transition");
@@ -321,9 +322,13 @@ impl FighterCore {
             }
         }
     }
-    fn input_fall_special(&mut self, _phase: InputPhase<'_>) {
-        // ftCo_FallSpecial_IASA (80096AF4): item/parasol predicates are
-        // excluded by require_supported; air-dodge entry consumed all jumps.
+    fn input_fall_special(&mut self, phase: InputPhase<'_>) {
+        // ftCo_FallSpecial_IASA (80096AF4): the parasol (ftCo_800CEE70)
+        // needs a parasol item; then ftCo_800D705C's catch window, then the
+        // aerial jump (air-dodge entry consumed all jumps).
+        if self.try_open_catch_window(phase.assets) {
+            return;
+        }
         if i32::from(self.physics.jumps_used) < self.attributes.jumping.max_jumps {
             unimplemented!("ftCo_FallSpecial.c:96-100: special fall with remaining aerial jumps");
         }

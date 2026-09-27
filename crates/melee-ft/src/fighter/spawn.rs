@@ -633,6 +633,14 @@ impl Fighter {
     ) -> Result<()> {
         let source = change.source;
         let row = self.row(state);
+        // fighter.c:1142-1144: only Wait and the walks keep the jab window.
+        use CommonMotionState as C;
+        if ![C::Wait, C::WalkSlow, C::WalkMiddle, C::WalkFast]
+            .into_iter()
+            .any(|kept| state == kept.into())
+        {
+            self.core.jab_countdown = 0.0;
+        }
         let special = (usize::from(row.action.0) >= super::COMMON_COUNT)
             .then(|| self.character.table().specials_keep_held_item);
         let state = row.id;
@@ -887,6 +895,9 @@ impl FighterCore {
             ledge_holders: Default::default(),
             accessory4_armed: false,
             item_catch_locked: false,
+            catch_window: 0,
+            jab_countdown: 0.0,
+            last_jab: None,
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
@@ -937,6 +948,7 @@ impl FighterCore {
             self.combat.combo.grace = assets.combo.grace_frames;
         }
         self.status.on_ledge = false;
+        self.catch_window = 0; // fighter.c:1072
         // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.status.ledge_timed_out = false;

@@ -17,6 +17,8 @@ impl Fighter {
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
         let choice = if self.core.begin_animation_phase(assets) {
+            // ftCo_800D71D8 follows ftAnim_8006EBA4, before the state's callback.
+            self.run_catch_window(assets);
             self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
             (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })?
         } else {

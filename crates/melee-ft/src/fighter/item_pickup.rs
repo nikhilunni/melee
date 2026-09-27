@@ -121,7 +121,7 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 93] = [
+const HELD_ITEM_STATES: [S; 96] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -161,6 +161,10 @@ const HELD_ITEM_STATES: [S; 93] = [
     S::LightThrowB4,
     S::LightThrowHi4,
     S::LightThrowLw4,
+    // ftCo_FallSpecial: no item branch for a held item.
+    S::FallSpecial,
+    S::FallSpecialF,
+    S::FallSpecialB,
     // A jump while holding, and ftCo_80095328's air throws.
     S::KneeBend,
     S::JumpF,
@@ -395,6 +399,30 @@ impl FighterCore {
 }
 
 impl FighterCore {
+    /// ftCo_800D7100 / ftCo_800D705C's shared test: LR held and A pressed
+    /// with an empty hand, no catch yet this airtime (x2224_b1) and the
+    /// previous A press at least PlCo +1C frames old (x683).
+    fn catch_input(&self, assets: &FighterAssets) -> bool {
+        use crate::input::Buttons;
+        self.held_item.is_none()
+            && self.input.current.held.intersects(Buttons::SHIELD)
+            && self.input.pressed.intersects(Buttons::A)
+            && !self.item_catch_locked
+            && i32::from(self.input.buttons.previous_attack) >= assets.damage.tech_lockout
+    }
+
+    /// ftCo_800D705C (800D705C): the same input with nothing caught yet
+    /// opens a catch window (ftCo_800D71D8 runs it). Returns whether it did.
+    pub(super) fn try_open_catch_window(&mut self, assets: &FighterAssets) -> bool {
+        if !self.catch_input(assets) {
+            return false;
+        }
+        self.catch_window = assets.damage.catch_window_frames as u16;
+        true
+    }
+}
+
+impl FighterCore {
     /// The holder lent to its held item's callbacks: the part's joint
     /// (ftLib_80086630), the ECB centre and the current attack.
     pub fn item_holder(&mut self, part: u8) -> melee_it::ItemHolder<'_> {
@@ -486,21 +514,32 @@ impl Fighter {
     /// press at least PlCo +1C frames old, catches the nearest light item in
     /// reach (fn_800D6F58). True when it caught one; the IASA then returns.
     pub(super) fn try_aerial_item_catch(&mut self, assets: &FighterAssets) -> bool {
-        use crate::input::Buttons;
-        let core = &self.core;
-        if core.held_item.is_some()
-            || !core.input.current.held.intersects(Buttons::SHIELD)
-            || !core.input.pressed.intersects(Buttons::A)
-            || core.item_catch_locked
-            || i32::from(core.input.buttons.previous_attack) < assets.damage.tech_lockout
-        {
+        if !self.core.catch_input(assets) {
             return false;
         }
-        let Some(item) = core.find_pickup(&assets.pickup, PickupWeights::LIGHT) else {
+        let Some(item) = self.core.find_pickup(&assets.pickup, PickupWeights::LIGHT) else {
             return false;
         };
         self.catch_item(item, assets);
         true
+    }
+
+    /// ftCo_800D71D8 (800D71D8), each unfrozen animation proc before the
+    /// state's callback: while the window is open an empty hand catches a
+    /// light item in reach; the window's last frame sets the catch lock.
+    pub(super) fn run_catch_window(&mut self, assets: &FighterAssets) {
+        if self.core.catch_window == 0 {
+            return;
+        }
+        let item = self.core.find_pickup(&assets.pickup, PickupWeights::LIGHT);
+        self.core.catch_window -= 1;
+        if self.core.catch_window == 0 {
+            self.core.item_catch_locked = true;
+        }
+        if let Some(item) = item {
+            self.catch_item(item, assets);
+            self.core.catch_window = 0;
+        }
     }
 
     /// fn_800D6F58 (800D6F58): the hand closes on `item` with no motion

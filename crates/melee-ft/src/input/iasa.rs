@@ -166,8 +166,6 @@ pub struct WaitContext {
     pub held_item: Option<bool>,
     /// Link/Young Link u.lk.xC or Samus u.ss.x223C != NULL.
     pub tether_active: bool,
-    /// hitlag_mul (+196C), the jab continuation countdown checked even at rest.
-    pub jab_countdown: f32,
 }
 impl Default for WaitContext {
     fn default() -> Self {
@@ -178,7 +176,6 @@ impl Default for WaitContext {
             fox_taunt_available: false,
             held_item: None,
             tether_active: false,
-            jab_countdown: 0.0,
         }
     }
 }
@@ -202,10 +199,6 @@ pub fn wait_iasa_observe(
     assert!(
         !context.tether_active,
         "Wait tether restrictions are outside T9"
-    );
-    assert!(
-        context.jab_countdown == 0.0,
-        "ftCo_Attack1_CheckInput jab countdown needs its state owner"
     );
     assert!(context.facing == 1.0 || context.facing == -1.0);
     for predicate in WAIT_PREDICATES {

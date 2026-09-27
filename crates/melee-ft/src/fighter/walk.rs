@@ -76,29 +76,8 @@ impl Fighter {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        let transition = self.first_ground_transition(
-            assets,
-            context,
-            &[
-                P::Grab,
-                P::SpecialSide,
-                P::SpecialUp,
-                P::SpecialNeutral,
-                P::SpecialDown,
-                P::SmashSide,
-                P::SmashUp,
-                P::SmashDown,
-                P::TiltSide,
-                P::TiltUp,
-                P::TiltDown,
-                P::Jab,
-                P::Shield,
-                P::Taunt,
-                P::Jump,
-                P::Dash,
-                P::Squat,
-            ],
-        );
+        let transition = self.first_ground_transition(assets, context, WALK_PREDICATES);
+        self.count_down_jab_window(assets, context, WALK_PREDICATES);
         if transition != T::None {
             return self.apply_ground_transition(assets, transition);
         }
@@ -211,6 +190,27 @@ impl FighterCore {
             .unwrap_or(T::None)
     }
 }
+
+/// ftCo_Walk_IASA's interrupt order.
+const WALK_PREDICATES: &[P] = &[
+    P::Grab,
+    P::SpecialSide,
+    P::SpecialUp,
+    P::SpecialNeutral,
+    P::SpecialDown,
+    P::SmashSide,
+    P::SmashUp,
+    P::SmashDown,
+    P::TiltSide,
+    P::TiltUp,
+    P::TiltDown,
+    P::Jab,
+    P::Shield,
+    P::Taunt,
+    P::Jump,
+    P::Dash,
+    P::Squat,
+];
 
 #[cfg(test)]
 mod tests {

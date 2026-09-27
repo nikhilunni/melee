@@ -819,7 +819,8 @@ impl FighterCore {
             ..Default::default()
         };
         self.effects = melee_ef::request::EffectQueue::default();
-        // fighter.c:461: x2224_b1.
+        // fighter.c:460-461: x209C and x2224_b1.
+        self.catch_window = 0;
         self.item_catch_locked = false;
         // Fighter_UnkInitReset leaves 2227.b1 intact. Only a subsequent
         // grounded motion entry clears the ledge-timeout provenance.

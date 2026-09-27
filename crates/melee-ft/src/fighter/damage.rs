@@ -209,6 +209,8 @@ pub struct DamageParameters {
     /// PlCo +418: a hit of this much damage always knocks a held light item
     /// loose (Fighter_8006CDA4 draws Randi(+418) < damage).
     pub item_drop_range: i32,
+    /// PlCo +414: the frames ftCo_800D705C's catch window stays open.
+    pub catch_window_frames: i32,
     pub grounded_angle_threshold: f32,
     pub sakurai_air_angle: f32,
     pub sakurai_ground_angle: f32,
@@ -300,6 +302,7 @@ impl DamageParameters {
             meteor_angles: [r.u32(p + 0x7E8)?, r.u32(p + 0x7EC)?],
             meteor_cancel_frames: r.s32(p + 0x7F0)?,
             item_drop_range: r.s32(p + 0x418)?,
+            catch_window_frames: r.s32(p + 0x414)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
             sakurai_air_angle: r.f32(p + 0x144)?,

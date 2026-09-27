@@ -10,9 +10,10 @@ use super::{
 use crate::input::{pad::Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
 use melee_types::CommonMotionState as S;
 
+/// mv.co.attack1: the combo input was pressed (x0) and the rapid-jab A
+/// edges counted so far. The window itself is FighterCore::jab_countdown.
 #[derive(Clone, Debug)]
 pub struct JabState {
-    pub followup_window: f32,
     pub followup_pressed: bool,
     pub rapid_edges: i32,
 }
@@ -50,7 +51,7 @@ impl Fighter {
                 return self.enter_simple_attack(state, assets);
             }
         }
-        self.enter_jab(assets)
+        self.enter_jab_or_combo(assets)
     }
     /// Wait's attack checks with an item in hand. A smash with A is already
     /// ftCo_Catch_CheckInput's throw, so these are C-stick smashes: side
@@ -122,13 +123,86 @@ impl Fighter {
         self.core.commands.rapid_jab = false;
         self.change_motion_state(S::Attack11.into(), assets)?;
         self.step_animation(assets);
+        self.core.jab_countdown = self.core.attributes.combat.jab_2_input_window;
+        self.core.last_jab = Some(S::Attack11);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = MotionData::Jab(JabState {
-            followup_window: self.core.attributes.combat.jab_2_input_window,
             followup_pressed: false,
             rapid_edges: 0,
         });
         Ok(())
+    }
+    /// ftCo_Attack1_CheckInput (8008A9F8) with A: an open combo window
+    /// (hitlag_mul, which survives into Wait and Walk) with the script's
+    /// combo flag (x2218_b1) continues the last jab (unk_msid), else a new
+    /// jab starts (decideAttack11).
+    fn enter_jab_or_combo(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.jab_countdown > 0.0 && self.core.commands.jab_followup {
+            let last = self.core.last_jab.expect("a jab window without a jab");
+            return self.continue_jab_combo(last, assets);
+        }
+        self.enter_jab(assets)
+    }
+    /// doAttack12 / doAttack13 (8008AE30 / 8008B194): Attack11 continues into
+    /// Attack12, Attack12 into the character's third jab (Marth restarts
+    /// Attack11 through doAttack12Rapid -> checkAttack11).
+    fn continue_jab_combo(&mut self, last: S, assets: &FighterAssets) -> Result<()> {
+        let state = if last == S::Attack11 {
+            S::Attack12
+        } else {
+            self.character.third_jab_state()
+        };
+        if state == S::Attack11 {
+            // checkAttack11's restart includes ftAnim_8006EBA4 and the jab-2
+            // window, unlike jabs 2 and 3.
+            return self.enter_jab(assets);
+        }
+        // doAttack12Normal / doAttack13: an item in reach is picked up
+        // instead (ftpickupitem_80094790).
+        if self.try_item_pickup(assets)? {
+            return Ok(());
+        }
+        // mv.co.attack1 keeps the rapid-jab edges the union still holds.
+        let edges = match &self.core.state_data {
+            MotionData::Jab(jab) => jab.rapid_edges,
+            _ => 0,
+        };
+        self.core.commands.jab_followup = false;
+        self.change_motion_state(state.into(), assets)?;
+        if state == S::Attack12 {
+            self.core.jab_countdown = self.core.attributes.combat.jab_3_input_window;
+            self.core.last_jab = Some(S::Attack12);
+        }
+        self.core.state_data = MotionData::Jab(JabState {
+            followup_pressed: false,
+            rapid_edges: edges,
+        });
+        Ok(())
+    }
+    /// ftCo_Attack1_CheckInput reached without A counts the combo window
+    /// down; it runs only when every earlier predicate of `predicates` fails.
+    pub(super) fn count_down_jab_window(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+        predicates: &[P],
+    ) {
+        if self.core.jab_countdown <= 0.0 {
+            return;
+        }
+        for &predicate in predicates {
+            if predicate == P::Jab {
+                if !self.core.input.pressed.intersects(Buttons::A) {
+                    self.core.jab_countdown -= 1.0;
+                }
+                return;
+            }
+            if crate::input::iasa::evaluate(predicate, &self.core.input, &assets.input, context)
+                != T::None
+            {
+                return;
+            }
+        }
     }
     /// ftCo_AttackHi4 doEnter (8008CA38), AttackLw4 (8008CC5C),
     /// AttackHi3 (8008BA38), AttackLw3 (8008BC70), AttackDash (8008B4D4).
@@ -363,37 +437,16 @@ impl Fighter {
             self.core.state_data = MotionData::RapidJab(RapidJabState::default());
             return Ok(());
         }
-        if jab.followup_window > 0.0 {
-            jab.followup_window -= 1.0;
+        // checkAttack12 / checkAttack13: the window counts down, noting A.
+        if self.core.jab_countdown > 0.0 {
+            self.core.jab_countdown -= 1.0;
             if self.core.input.pressed.intersects(Buttons::A) {
                 jab.followup_pressed = true;
             }
         }
         if jab.followup_pressed && self.core.commands.jab_followup {
-            let edges = jab.rapid_edges;
-            let state = if self.core.motion_state.id == S::Attack11 {
-                S::Attack12
-            } else {
-                self.character.third_jab_state()
-            };
-            if state == S::Attack11 {
-                // doAttack13 -> doAttack12Rapid -> checkAttack11: restart entry
-                // includes ftAnim_8006EBA4 and the jab-2 window, unlike jab 2/3.
-                return self.enter_jab(assets);
-            }
-            // doAttack12Normal / doAttack13 (8008B0F8): an item in reach is
-            // picked up instead.
-            if self.try_item_pickup(assets)? {
-                return Ok(());
-            }
-            self.core.commands.jab_followup = false;
-            self.change_motion_state(state.into(), assets)?;
-            self.core.state_data = MotionData::Jab(JabState {
-                followup_window: self.core.attributes.combat.jab_3_input_window,
-                followup_pressed: false,
-                rapid_edges: edges,
-            });
-            return Ok(());
+            let current = self.core.motion_state.id;
+            return self.continue_jab_combo(current, assets);
         }
         if self.core.commands.allow_interrupt {
             let transition = self.first_ground_transition(

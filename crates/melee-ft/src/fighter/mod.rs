@@ -669,6 +669,15 @@ pub struct FighterCore {
     /// x2224_b1: an item was just dropped or caught in the air, so the
     /// aerial catch waits for the next grounded motion entry.
     pub item_catch_locked: bool,
+    /// x209C: frames left in which an empty hand catches a light item in
+    /// reach (armed by ftCo_800D705C, run by ftCo_800D71D8); every motion
+    /// change closes it (fighter.c:1072).
+    pub catch_window: u16,
+    /// hitlag_mul (+196C): the jab combo window. Every motion change except
+    /// into Wait or Walk closes it (fighter.c:1142-1144).
+    pub jab_countdown: f32,
+    /// unk_msid: the jab a combo continues from (Attack11 or Attack12).
+    pub last_jab: Option<melee_types::CommonMotionState>,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
