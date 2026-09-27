@@ -1357,7 +1357,7 @@ fn damage_fly_roll_crouch() {
 /// replayed in retail from their four-stock boundary through the corpus
 /// bridge (`harness/replay_to_scenario.py`) and compared from match start to
 /// GAME. Each first exposed the retail behaviour named beside it.
-const CORPUS_MATCHES: [(&str, usize); 44] = [
+const CORPUS_MATCHES: [(&str, usize); 47] = [
     // Phantom contacts beside a real hit; SDI callbacks after a special.
     ("corpus_v2_s0_e2a_p1", 3307),
     // Item hit damage counts, overlay replacement, charge sparkle suppression,
@@ -1438,6 +1438,15 @@ const CORPUS_MATCHES: [(&str, usize); 44] = [
     // it as a shield volume (ftColl_80077688, the Counter's own item hitlag).
     ("corpus_v2_s0_e1_p1", 4271),
     ("corpus_v2_s0_effffffff_p0", 6000),
+    // Shield recoil decays in the air (Fighter_procUpdate), so Dolphin Slash
+    // leaving the ground after a shielded hit carries 0.62, not 0.67.
+    ("corpus_v2_s1_e12345678_p0", 6000),
+    // DownDamage keeps the prone fighter's facing after the knockback used
+    // the hit's (ftCo_8008DCE0's facing argument) and skips ftCommon_8007DB58.
+    ("corpus_v2_s0_e49_p2", 6000),
+    // An Illusion cut short before s_link 9 never creates its trail: the
+    // motion change clears accessory4 (ftFx_SpecialS_CreateGFX).
+    ("corpus_v2_s1_effffffff_p1", 6000),
 ];
 
 #[test]

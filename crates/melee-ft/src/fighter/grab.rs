@@ -448,9 +448,12 @@ impl Fighter {
         self.core.commands.grab_release = false;
         self.change_motion_state(S::CatchWait.into(), assets)?;
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+        // The entry callback's flash stays behind requests the same proc
+        // resolves later (the color program's effects), as retail's efAsync
+        // queue pops it first (corpus_v2_s1_effffffff_p1, tick 3832).
         self.core
             .effects
-            .push(melee_ef::request::EffectRequest::CaptureFlash {
+            .push_after_graphics(melee_ef::request::EffectRequest::CaptureFlash {
                 bone: usize::from(self.core.bones.model.shield),
             });
         Ok(())

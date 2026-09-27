@@ -247,7 +247,14 @@ pub fn release_throw(
     let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
     // fn_800DE798 restores the owner inside motion entry, before initial
     // damage-animation commands can create throw-owner-only hitboxes.
-    victim.begin_damage_reaction(hit, forced_motion, Some(attacker.spawn_number), va, rng)?;
+    victim.begin_damage_reaction(
+        hit,
+        forced_motion,
+        None,
+        Some(attacker.spawn_number),
+        va,
+        rng,
+    )?;
     // ftCo_800DE7C0: throw DI follows damage entry, without hitlag/ASDI.
     let stick = victim.input.current.stick;
     super::damage::apply_directional_influence(

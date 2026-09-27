@@ -191,6 +191,8 @@ pub struct DamageParameters {
     pub sakurai_ground_angle: f32,
     pub sakurai_maximum_threshold: f32,
     pub air_decay: f32,
+    /// PlCo +0x3E8: per-frame air decay of an attacker's shield recoil.
+    pub shield_recoil_air_decay: f32,
     pub landing_threshold: f32,
     pub tumble_landing_threshold: f32,
     pub ledge_height_scale: f32,
@@ -275,6 +277,7 @@ impl DamageParameters {
             sakurai_ground_angle: r.f32(p + 0x148)?,
             sakurai_maximum_threshold: r.f32(p + 0x150)?,
             air_decay: r.f32(p + 0x204)?,
+            shield_recoil_air_decay: r.f32(p + 0x3E8)?,
             landing_threshold: r.f32(p + 0x1e4)?,
             tumble_landing_threshold: r.f32(p + 0x1e0)?,
             ledge_height_scale: r.f32(p + 0x1cc)?,
@@ -704,10 +707,18 @@ impl Fighter {
                 // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
             } else if hit.knockback != 0.0 {
-                self.interrupt_actions();
-                // ftCo_8009F0F0 -> ftCo_8009F184: a light hit on a prone fighter.
+                // ftCo_8009F0F0 -> ftCo_8009F184: a light hit on a prone fighter
+                // keeps its facing (ftCo_8008DCE0's argument is fp->facing_dir,
+                // applied after the knockback used the hit's direction)
+                // and skips ftCommon_8007DB58, which only the ordinary branch calls.
                 let down = self.core.down_damage_state(hit.percent_damage, assets);
-                self.begin_damage_reaction(hit, down, None, assets, rng)?;
+                let facing = if down.is_some() {
+                    Some(self.core.physics.facing)
+                } else {
+                    self.interrupt_actions();
+                    None
+                };
+                self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
                 if down.is_some() {
                     self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
                 }
@@ -816,6 +827,7 @@ impl Fighter {
         &mut self,
         mut hit: ReceivedHit,
         forced_motion: Option<S>,
+        facing: Option<f32>,
         throw_owner: Option<u32>,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
@@ -849,6 +861,11 @@ impl Fighter {
                 .commands
                 .color_animations
                 .push(melee_cmd::ColorAnimationRequest { id, duration: 0 });
+        }
+        // ftCo_8008DCE0 block_42: a nonzero facing argument replaces the
+        // hit's facing once the knockback has been computed.
+        if let Some(facing) = facing {
+            self.core.physics.facing = facing;
         }
         self.change_damage_motion(state.into(), assets, throw_owner)?;
         self.step_animation(assets);
@@ -1282,22 +1299,46 @@ impl FighterCore {
         crate::physics::integrate::integrate_velocity(&mut self.physics);
         crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
     }
+    /// Fighter_procUpdate's air branch (8006B8F8..8006BB60): decay the hit
+    /// knockback, then the attacker's shield recoil.
     pub fn decay_air_knockback(&mut self, assets: &FighterAssets) {
         let v = &mut self.physics.knockback_velocity;
-        if v.x == 0.0 && v.y == 0.0 {
+        if v.x != 0.0 || v.y != 0.0 {
+            let angle = melee_lb::trigf::atan2f(v.y, v.x);
+            // retail 8006B938: fmadds; sqrt is the audited MSL refinement.
+            if sqrtf(fmadds(v.x, v.x, v.y * v.y)) < assets.damage.air_decay {
+                v.x = 0.0;
+                v.y = 0.0;
+            } else {
+                // retail 8006B9C8 / 8006B9E4: fnmsubs.
+                v.x = gekko_math::fma::fnmsubs(assets.damage.air_decay, cosf(angle), v.x);
+                v.y = gekko_math::fma::fnmsubs(assets.damage.air_decay, sinf(angle), v.y);
+            }
+            self.physics.ground_knockback_velocity = 0.0;
+        }
+        self.decay_air_shield_recoil(assets.damage.shield_recoil_air_decay);
+    }
+    /// Fighter_procUpdate 8006BA5C..8006BB60: the attacker's shield recoil
+    /// (x98) decays in the air like knockback.
+    fn decay_air_shield_recoil(&mut self, decay: f32) {
+        let recoil = self.physics.shield_knockback_velocity;
+        if recoil.x == 0.0 && recoil.y == 0.0 {
             return;
         }
-        let angle = melee_lb::trigf::atan2f(v.y, v.x);
-        // retail 8006B938: fmadds; sqrt is the audited MSL refinement.
-        if sqrtf(fmadds(v.x, v.x, v.y * v.y)) < assets.damage.air_decay {
-            v.x = 0.0;
-            v.y = 0.0;
+        let angle = melee_lb::trigf::atan2f(recoil.y, recoil.x);
+        // retail 8006BAA8: fmadds, y product first.
+        if sqrtf(fmadds(recoil.x, recoil.x, recoil.y * recoil.y)) < decay {
+            // retail 8006BB14/8006BB18: the store meant for the recoil's y
+            // clears the knockback's y instead (the invisible ceiling bug).
+            self.physics.knockback_velocity.y = 0.0;
+            self.physics.shield_knockback_velocity.x = 0.0;
         } else {
-            // retail 8006B9C8 / 8006B9E4: fnmsubs.
-            v.x = gekko_math::fma::fnmsubs(assets.damage.air_decay, cosf(angle), v.x);
-            v.y = gekko_math::fma::fnmsubs(assets.damage.air_decay, sinf(angle), v.y);
+            let recoil = &mut self.physics.shield_knockback_velocity;
+            // retail 8006BB34 / 8006BB50: fnmsubs.
+            recoil.x = gekko_math::fma::fnmsubs(decay, cosf(angle), recoil.x);
+            recoil.y = gekko_math::fma::fnmsubs(decay, sinf(angle), recoil.y);
         }
-        self.physics.ground_knockback_velocity = 0.0;
+        self.physics.ground_shield_knockback_velocity = 0.0;
     }
     /// ftCo_80090718: play the queued hit sound (ft_PlaySFX 127/64) and one voice
     /// drawn with HSD_Randi over the fighter's voice table (ft_800889F4).

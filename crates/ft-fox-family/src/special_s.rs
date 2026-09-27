@@ -481,8 +481,15 @@ fn end_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result
     Ok(())
 }
 
+/// ftFx_SpecialS_CreateGFX (800E9DF0), installed as accessory4 by the dash
+/// entry. Fighter_ChangeMotionState clears accessory4 unless KeepAccessory,
+/// which only the dash's own ground/air counterparts pass, so a dash cut
+/// short before s_link 9 never creates the trail.
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
-    if std::mem::take(&mut f.character.get_mut::<C>().special_side().trail_pending) {
+    let action = f.motion_state.action.0;
+    let dashing = action == S::SpecialS as u16 || action == S::SpecialAirS as u16;
+    let pending = std::mem::take(&mut f.character.get_mut::<C>().special_side().trail_pending);
+    if pending && dashing {
         // efAlt 0x48D -> Fox generator 0xBC0, attached to TopN.
         f.effects
             .push(melee_ef::request::EffectRequest::SyncAttached { id: 0x48D, bone: 0 });

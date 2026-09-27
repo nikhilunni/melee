@@ -875,3 +875,12 @@ Newest first. One line per session: date, what landed, what is next.
   which Fox's Illusion ghost needs. 44 corpus matches gated (was 37). Next:
   the screen-KO approach, the GuardOn shield case (s0_e2a_p2), then the
   remaining singles.
+- 2026-09-26: Three more corpus singles fixed (47/48 gated): air decay of the
+  attacker's shield recoil (Fighter_procUpdate 8006BA5C, including the
+  kb_vel.y store bug), DownDamage's facing argument after the knockback
+  (ftCo_8008DCE0 block_42) without ftCommon_8007DB58, and the Illusion trail
+  accessory (ftFx_SpecialS_CreateGFX) only in the dash states; CatchWait's
+  flash queues behind the proc's color-program effects. `particles-diff`
+  lists both generator orders with MELEE_PARTICLE_LISTS=1. Remaining:
+  s0_e2a_p2 (Fox's GuardOn shield vs Dancing Blade, tail/cape bones) and the
+  screen-KO approach.
