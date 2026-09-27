@@ -9,8 +9,10 @@ use hsd_anim::{
 use melee_cm::{GameCamera, QuakeKind};
 use melee_ft::fighter::RetailTrig;
 
-/// Instances prepared per one-shot kind; a request beyond them is a port limit.
-const INSTANCES_PER_KIND: usize = 4;
+/// Instances prepared per one-shot kind. Retail allocates a gobj per request
+/// (grLib_801C9CEC); a multi-hit tumble combo stacks several small quakes,
+/// and a request beyond these is a port limit.
+const INSTANCES_PER_KIND: usize = 16;
 const ONE_SHOT_KINDS: [QuakeKind; 3] = [QuakeKind::Small, QuakeKind::Medium, QuakeKind::Large];
 
 #[derive(Clone)]
