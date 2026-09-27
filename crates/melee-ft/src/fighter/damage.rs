@@ -448,6 +448,19 @@ pub struct DefenseVolume {
     pub fixed_bounce: bool,
 }
 
+/// getEnvDmg (ftcoll.c:205, inlined): zero stays zero; nonzero values which
+/// truncate to zero become one. Negative integers retain their sign.
+fn environment_damage(damage: f32) -> i32 {
+    let integer = fctiwz(damage);
+    if damage == 0.0 {
+        0
+    } else if integer == 0 {
+        1
+    } else {
+        integer
+    }
+}
+
 /// ftColl_80076CBC (80076CBC): health damage, strongest impact and group victims.
 fn record_shield_hit(
     victim: &mut FighterCore,
@@ -456,21 +469,21 @@ fn record_shield_hit(
     contact: Contact,
     assets: &FighterAssets,
 ) {
-    // ftColl_80076CBC (80076CBC): shield contact wins over hurtboxes.
-    if victim.shield.impact.is_some() {
-        unimplemented!("ftColl_80076CBC: simultaneous shield impact selection");
-    }
-    let damage = fctiwz(desc.damage).max(1);
+    // ftColl_80076CBC (80076CBC): shield contact wins over hurtboxes; the
+    // frame's strongest impact (x19A4, from zero) keeps its source.
+    let damage = environment_damage(desc.damage);
     let facing = if victim.physics.position.x > attacker.physics.position.x {
         -1.0
     } else {
         1.0
     };
-    victim.shield.impact = Some(super::shield::ShieldImpact {
-        damage,
-        facing,
-        element: desc.element,
-    });
+    if damage > victim.shield.impact.as_ref().map_or(0, |impact| impact.damage) {
+        victim.shield.impact = Some(super::shield::ShieldImpact {
+            damage,
+            facing,
+            element: desc.element,
+        });
+    }
     attacker.record_shield_recoil(damage, victim.shield.lightshield, -facing);
     let group = desc.group;
     melee_coll::detection::record_victim(
@@ -835,9 +848,10 @@ impl Fighter {
         // (dmg.x18a0) takes the hitlag branch with its halved damage (x1840).
         let phantom_hitlag = !received_knockback && self.core.combat.phantom_knockback != 0.0;
         if phantom_hitlag {
-            if self.core.shield.impact.is_some() {
-                unimplemented!("fighter.c:2907-2918: phantom contact and shield impact together");
-            }
+            // fighter.c:2907-2918: the phantom branch precedes x19A4's, so a
+            // shield impact the same frame gets no response (no stun, push or
+            // ShieldBreak); its health loss already applied (fighter.c:2816).
+            self.core.shield.impact = None;
             hit_damage = self.core.combat.phantom_max_damage;
         }
         // fighter.c:2956-2963: damage without knockback (zero-knockback hits,
@@ -1360,16 +1374,8 @@ impl FighterCore {
             .as_ref()
             .expect("eligible item hit")
             .descriptor;
-        // retail 800776DC..80077714: zero stays zero; nonzero values which
-        // truncate to zero become one. Negative integers retain their sign.
-        let integer = fctiwz(desc.damage);
-        let damage = if desc.damage == 0.0 {
-            0
-        } else if integer == 0 {
-            1
-        } else {
-            integer
-        };
+        // retail 800776DC..80077714.
+        let damage = environment_damage(desc.damage);
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
             item.pending_shield_deflection = if item.hit_flags[id].shield_bounce {
