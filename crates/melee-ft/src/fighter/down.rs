@@ -10,6 +10,17 @@ use melee_types::{CommonMotionState as S, FtPart};
 /// Shared getup animations from ftData_MotionStateList, prepared at asset load.
 pub(super) const MOTIONS: &[u32] = &[185, 186, 187, 188, 189, 193, 194, 195, 196, 197, 199, 200];
 
+impl super::FighterCore {
+    /// ftCo_800986B0 (800986B0): the shield was pressed within the tech
+    /// window, and not too soon after the previous press (the hammer never
+    /// applies here).
+    pub(super) fn tech_window_open(&self, assets: &FighterAssets) -> bool {
+        let timers = &self.input.buttons;
+        f32::from(timers.digital_shield) < assets.damage.tech_window
+            && i32::from(timers.previous_digital_shield) >= assets.damage.tech_lockout
+    }
+}
+
 impl Fighter {
     /// ftCo_80098400 / ftCo_800984D4: buffered AB at bounce completion,
     /// fresh AB during DownWait; an upward C-stick crossing works in both.
@@ -98,10 +109,7 @@ impl Fighter {
     }
     /// ftCo_800986B0 / ftCo_80098928 (800986B0 / 80098928): digital edge window.
     pub(super) fn try_tech(&mut self, assets: &FighterAssets) -> Result<bool> {
-        let timers = &self.core.input.buttons;
-        if f32::from(timers.digital_shield) >= assets.damage.tech_window
-            || i32::from(timers.previous_digital_shield) < assets.damage.tech_lockout
-        {
+        if !self.core.tech_window_open(assets) {
             return Ok(false);
         }
         let stick = self.core.input.current.stick.x;

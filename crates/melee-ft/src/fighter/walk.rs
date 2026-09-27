@@ -146,10 +146,11 @@ impl Fighter {
     ) -> Result<()> {
         match transition {
             T::None | T::Hold => Ok(()),
-            T::Special => {
-                self.enter_buffered_special(assets, false);
+            T::Special(slot) => {
+                self.enter_special(slot, false, assets);
                 Ok(())
             }
+            T::AirSpecial => unreachable!("ground transitions resolve their special slot"),
             T::Attack => self.enter_ground_attack(assets),
             T::Grab => self.enter_catch(assets),
             T::Shield => self.enter_shield(assets),

@@ -272,7 +272,7 @@ pub(super) fn iasa_with_jump(
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
     if input.pressed.intersects(Buttons::B) {
-        return T::Special;
+        return T::AirSpecial;
     }
     if allow_air_dodge && input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         return T::Escape;

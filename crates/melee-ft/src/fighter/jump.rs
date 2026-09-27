@@ -222,7 +222,7 @@ impl Fighter {
         let transition = self.first_ground_transition(assets, context, &[P::SpecialUp, P::Grab]);
         // ftCo_Attack100_CheckInput (800D695C) directly selects SpecialHi.
         // Ordinary special selection would prefer Side on diagonal input.
-        if transition == T::Special {
+        if matches!(transition, T::Special(_)) {
             (self.character.table().enter_special)(self, super::SpecialSlot::Up, false, assets);
             return Ok(());
         }

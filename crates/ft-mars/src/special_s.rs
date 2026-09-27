@@ -218,5 +218,6 @@ fn preservation() -> melee_ft::fighter::MotionPreservation {
         hit_status: true,
         hitboxes: true,
         effects: false,
+        ..Default::default()
     }
 }

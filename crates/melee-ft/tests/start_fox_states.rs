@@ -80,6 +80,7 @@ fn start_fox_state_callbacks_600() {
                     FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
                     FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO),
                     FighterProc::Map => {
+                        f.ledge_holders.offer(std::iter::empty());
                         f.proc_map_with_assets(&fixture.assets, &mut fixture.map)
                             .unwrap();
                         // Landing dust draws with the proc's graphics.

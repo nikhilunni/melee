@@ -632,6 +632,21 @@ impl Runtime {
                 }
                 if proc == FighterProc::Map {
                     grab_pairs::map_capture(state, player)?;
+                    use crate::scene_fighter::with_fighter;
+                    use melee_ft::fighter::ledge::LedgeHolder;
+                    let mut holders = [None; 6];
+                    for (slot, other) in holders.iter_mut().zip(&state.fighters) {
+                        *slot = with_fighter!(other, |f| LedgeHolder::of(&f.core));
+                    }
+                    let holders = holders
+                        .into_iter()
+                        .enumerate()
+                        .filter(|&(other, _)| other != player)
+                        .filter_map(|(_, holder)| holder);
+                    with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .ledge_holders
+                        .offer(holders));
                 }
                 // ftpickupitem_800942A0 runs from input and animation callbacks.
                 let offers_items = matches!(proc, FighterProc::Input | FighterProc::Animation);
@@ -743,6 +758,12 @@ impl Runtime {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
                         .pickup_candidates
+                        .withdraw());
+                }
+                if proc == FighterProc::Map {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .ledge_holders
                         .withdraw());
                 }
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {
@@ -1657,10 +1678,11 @@ fn dispatch_fighter(
         }
         f.effects = pending;
     } else {
-        if !f.commands.graphics.is_empty() {
+        if !f.commands.graphics.is_empty() || !f.commands.landing_effects.is_empty() {
             // Fighter_ChangeMotionState flushed efAsync (fighter.c:951) when
-            // this proc changed motion, before the new script's graphics
-            // drew their random offsets: dispatch what that entry sealed.
+            // this proc changed motion, before the new script's graphics or
+            // landing dust drew their random offsets: dispatch what that
+            // entry sealed.
             effects.flush::<melee_ft::fighter::RetailTrig>(
                 melee_ef::EffectTiming::Sealed,
                 player,

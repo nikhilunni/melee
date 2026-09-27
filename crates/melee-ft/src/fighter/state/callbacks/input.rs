@@ -290,7 +290,7 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
     );
     match transition {
         WaitTransition::None => {}
-        WaitTransition::Special => fighter.enter_buffered_special(assets, true),
+        WaitTransition::AirSpecial => fighter.enter_buffered_special(assets, true),
         WaitTransition::Attack => {
             (fighter.character.table().enter_aerial)(fighter, assets).expect("aerial attack")
         }

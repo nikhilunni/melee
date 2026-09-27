@@ -249,9 +249,12 @@ fn replay_config(
                             f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO)
                         }
                         // Landing dust draws with the graphics resolved below.
-                        FighterProc::Map => f
-                            .proc_map_with_assets(&fixture.assets, &mut fixture.map)
-                            .unwrap(),
+                        // Replays are single-fighter: no other ledge holder.
+                        FighterProc::Map => {
+                            f.ledge_holders.offer(std::iter::empty());
+                            f.proc_map_with_assets(&fixture.assets, &mut fixture.map)
+                                .unwrap()
+                        }
                         FighterProc::Pose => f.proc_pose(&fixture.map),
                         FighterProc::Accessories => f.proc_accessories(),
                         FighterProc::HitboxPositions => f.proc_hitbox_positions(),

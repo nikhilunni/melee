@@ -300,5 +300,6 @@ fn preservation(state: u16) -> melee_ft::fighter::MotionPreservation {
         hit_status: true,
         hitboxes: phase >= 2,
         effects: phase != 0,
+        ..Default::default()
     }
 }

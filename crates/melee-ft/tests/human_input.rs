@@ -1,5 +1,6 @@
 mod input_support;
 use input_support::{common, input_bytes};
+use melee_ft::fighter::SpecialSlot;
 use melee_ft::input::{human::apply_deadzone, pad::normalize_stick, *};
 use melee_types::PlayerKind;
 
@@ -305,25 +306,25 @@ fn wait_iasa_order_table_uses_real_input_predicates() {
         (
             "side before up special",
             pad(Buttons::A | Buttons::B, 0.8, 0.8),
-            T::Special,
+            T::Special(SpecialSlot::Side),
             P::SpecialSide,
         ),
         (
             "up special",
             pad(Buttons::B, 0.0, 0.8),
-            T::Special,
+            T::Special(SpecialSlot::Up),
             P::SpecialUp,
         ),
         (
             "neutral special before grab",
             pad(Buttons::B | Buttons::Z, 0.0, 0.0),
-            T::Special,
+            T::Special(SpecialSlot::Neutral),
             P::SpecialNeutral,
         ),
         (
             "down special",
             pad(Buttons::B, 0.0, -0.8),
-            T::Special,
+            T::Special(SpecialSlot::Down),
             P::SpecialDown,
         ),
         (

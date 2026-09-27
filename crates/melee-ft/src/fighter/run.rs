@@ -41,7 +41,7 @@ impl Fighter {
         context: &WaitContext,
     ) -> Result<()> {
         // S3: ftCo_Run_IASA keeps specials ahead of the grab/attack predicates.
-        if self.first_ground_transition(
+        if let crate::input::WaitTransition::Special(slot) = self.first_ground_transition(
             assets,
             context,
             &[
@@ -50,9 +50,8 @@ impl Fighter {
                 P::SpecialNeutral,
                 P::SpecialDown,
             ],
-        ) == crate::input::WaitTransition::Special
-        {
-            self.enter_buffered_special(assets, false);
+        ) {
+            self.enter_special(slot, false, assets);
             return Ok(());
         }
         if self.try_dash_catch(assets, context)? {

@@ -1495,7 +1495,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 11] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 17] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1512,6 +1512,21 @@ const CORPUS_V3_MATCHES: [(&str, usize); 11] = [
     // shield recoil (the invisible-ceiling store) decays in Fall.
     ("corpus_v3_s1_e2af099ca_p1", 4519),
     ("corpus_v3_s1_e4068796b_p0", 2877),
+    // The v5 sample. Counter catching Fire Fox with a stale powershield
+    // window takes ftColl_80076CBC's powershield branch (3400).
+    ("corpus_v3_s0_e1cda1301_p0", 6001),
+    // A ground Illusion dash leaving the stage the tick it starts drops its
+    // accessory4 trail (1038).
+    ("corpus_v3_s0_e4f8edfa8_p0", 2972),
+    // Marth's FallSpecial cannot catch the ledge Fox holds (3631).
+    ("corpus_v3_s0_e6d8e8b19_p0", 5710),
+    // The rotating effect bone survives a stock loss (3376); landing dust
+    // draws after the motion change dispatched the sealed overlay (3400).
+    ("corpus_v3_s0_ec21c8082_p0", 5346),
+    // Down tilt ending in SquatWait takes the up special its IASA matched.
+    ("corpus_v3_s1_e8be4d273_p0", 1407),
+    // DamageFlyTop ends through ftCo_80090780, keeping fast fall (2753).
+    ("corpus_v3_s1_e46703f61_p0", 5948),
 ];
 
 #[test]

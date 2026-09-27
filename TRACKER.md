@@ -967,3 +967,21 @@ Newest first. One line per session: date, what landed, what is next.
   803771D4; oracle test `pad_directions` over >10k retail pads). Corpus v3
   seeds 41..80: 240 matches, 2 faults, both fixed and gated (Illusion mv+4,
   a stale Fall assertion). Dancing Blade also carries mv+4 through.
+- 2026-09-26: Corpus v5 silent-divergence sample (40 bridged recordings, every
+  field and particle): 29 full passes, 8 faults found and fixed, gated as six
+  `corpus_v3_*` witnesses. (1) Counter shares ftColl_80076CBC's feedback: a
+  powershield window left over from Guard (x221C_b2) takes the powershield
+  branch (efSync 27, colanim 118, SFX 104). (2) Fighter_ChangeMotionState
+  clears accessory4 on every change, so an Illusion that leaves the ground the
+  tick it starts has no trail. (3) Ledge catch refuses a ledge another
+  fighter holds (ft_80082E3C via mpLinesConnected); the scene offers the
+  holders to the map proc (`LedgeHolders`). (4) The rotating effect bone
+  (x2220_b0) survives respawn; only Fighter_UnkInitLoad clears it. (5) A
+  motion change flushes efAsync before landing dust draws its offsets.
+  (6) `WaitTransition::Special(slot)` carries the matched slot: SquatWait
+  checks up-B before side-B. (7) DamageFly ends through ftCo_80090780, which
+  keeps fast fall (flags 0x18001: KeepFastFall, not KeepGfx). DamageFly
+  wall/ceiling tech and FlyReflect remain fail-closed checks. Open: two
+  off-screen magnifier timing faults (s0_e0d368f02 tick 1514, s0_e8be4d273
+  tick 4946) need a camera dump; three cases to re-bridge after the disk
+  filled (s1_edb4b01fd, s1_ee6ff560c, s1_ef5188d7f).

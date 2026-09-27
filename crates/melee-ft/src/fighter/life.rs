@@ -788,7 +788,12 @@ impl FighterCore {
             ..Default::default()
         };
         self.shield = super::shield::ShieldState::default();
-        self.effect_state = super::effects::FighterEffects::default();
+        // x2220_b0, the rotating effect-bone index, is cleared only by
+        // Fighter_UnkInitLoad (fighter.c:765), so it survives stock losses.
+        self.effect_state = super::effects::FighterEffects {
+            rotating_bone_index: self.effect_state.rotating_bone_index,
+            ..Default::default()
+        };
         self.effects = melee_ef::request::EffectQueue::default();
         // Fighter_UnkInitReset leaves 2227.b1 intact. Only a subsequent
         // grounded motion entry clears the ledge-timeout provenance.

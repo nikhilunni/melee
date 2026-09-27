@@ -90,9 +90,10 @@ impl Fighter {
         let common = &assets.running;
         if ((dash.early_interrupts && frame <= common.early_interrupt_frames)
             || frame <= common.redash_frames)
-            && self.first_ground_transition(assets, context, &[P::SpecialSide]) == T::Special
+            && self.first_ground_transition(assets, context, &[P::SpecialSide])
+                == T::Special(super::SpecialSlot::Side)
         {
-            self.enter_buffered_special(assets, false);
+            self.enter_special(super::SpecialSlot::Side, false, assets);
             self.apply_dash_interrupt_friction(assets);
             return Ok(());
         }

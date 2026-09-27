@@ -185,6 +185,8 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
                     fighter.input.current.stick.y = -fixture.assets.ledge.grab_down_threshold;
                 }
             }
+            // A lone fighter: no other fighter can hold a ledge.
+            fighter.ledge_holders.offer(std::iter::empty());
             fighter
                 .proc_map_with_assets(&fixture.assets, &mut fixture.map)
                 .unwrap();

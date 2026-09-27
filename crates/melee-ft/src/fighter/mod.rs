@@ -653,6 +653,8 @@ pub struct FighterCore {
     pub held_item: Option<item_pickup::HeldItem>,
     /// The grabbable items the scene offered to the running proc.
     pub pickup_candidates: item_pickup::PickupCandidates,
+    /// ft_80082E3C's view of the other fighters on ledges, offered to Map.
+    pub ledge_holders: ledge::LedgeHolders,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.

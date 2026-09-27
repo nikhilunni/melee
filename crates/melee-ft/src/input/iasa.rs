@@ -3,13 +3,17 @@
 //! item interactions, tether restrictions and jab continuation belong to later
 //! tasks; their preconditions are asserted, never silently treated as false.
 use super::{common::InputCommonData, human::jump_input, pad::Buttons, state::FighterInput};
+use crate::fighter::SpecialSlot;
 use gekko_math::msl::fabsf;
 use melee_lb::trigf::atan2f;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WaitTransition {
     None,
-    Special,
+    /// A ground special predicate matched this slot's buffer.
+    Special(SpecialSlot),
+    /// An airborne B press; ftCo_SpecialAir_CheckInput picks the slot.
+    AirSpecial,
     Grab,
     Attack,
     Escape,
@@ -231,19 +235,19 @@ pub fn evaluate(
         // ftCo_800D6824; ftCo_800D68C0. These read buffers, not raw B edges.
         P::SpecialSide => (
             context.specials_available[0] && input.buttons.special_side == 0,
-            T::Special,
+            T::Special(SpecialSlot::Side),
         ),
         P::SpecialUp => (
             context.specials_available[1] && input.buttons.special_up == 0,
-            T::Special,
+            T::Special(SpecialSlot::Up),
         ),
         P::SpecialNeutral => (
             context.specials_available[2] && input.buttons.special_neutral == 0,
-            T::Special,
+            T::Special(SpecialSlot::Neutral),
         ),
         P::SpecialDown => (
             context.specials_available[3] && input.buttons.special_down == 0,
-            T::Special,
+            T::Special(SpecialSlot::Down),
         ),
         // ftCo_Catch_CheckInput 800D8990; item/tether checks pass with this context.
         P::Grab => (shield_held && attack_pressed, T::Grab),

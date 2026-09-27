@@ -33,6 +33,8 @@ pub struct MotionPreservation {
     pub hit_status: bool,
     pub hitboxes: bool,
     pub effects: bool,
+    /// Ft_MF_KeepFastFall (bit 0).
+    pub fast_fall: bool,
 }
 
 /// Spawn inputs read from Player, pl/player.c:228-240 and fighter.c:688-739.
@@ -496,8 +498,8 @@ impl Fighter {
         )
     }
 
-    /// ftCo_80090780 (80090780): DamageFall entry with0x18001. KeepGfx and
-    /// SkipNametagVis are independent of ground/air command preservation.
+    /// ftCo_80090780 (80090780): DamageFall entry with 0x18001. KeepFastFall
+    /// and SkipNametagVis are independent of ground/air command preservation.
     /// KeepColAnimPartHitStatus leaves timed ledge status untouched; it does
     /// not preserve ordinary scripted hurt status/capsule overrides.
     pub(super) fn enter_damage_fall(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -510,8 +512,10 @@ impl Fighter {
             MotionChange {
                 rate: 1.0,
                 preserve_name_tag: true,
+                // ftCo_80090780: flags 0x18001, KeepFastFall | SkipNametagVis |
+                // KeepColAnimPartHitStatus; the effects are not kept.
                 preserve: MotionPreservation {
-                    effects: true,
+                    fast_fall: true,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -830,6 +834,7 @@ impl FighterCore {
             released_link: None,
             held_item: None,
             pickup_candidates: Default::default(),
+            ledge_holders: Default::default(),
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
@@ -903,11 +908,13 @@ impl FighterCore {
             self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
         }
         self.commands.capsule_overrides.clear();
-        // fighter.c:1101-1102: ordinary entries clear fast fall.
-        if !matches!(
-            state,
-            CommonMotionState::Fall | CommonMotionState::FallSpecial
-        ) {
+        // fighter.c:1101-1102: entries without Ft_MF_KeepFastFall clear it.
+        if !change.preserve.fast_fall
+            && !matches!(
+                state,
+                CommonMotionState::Fall | CommonMotionState::FallSpecial
+            )
+        {
             self.physics.fast_fall = false;
         }
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;

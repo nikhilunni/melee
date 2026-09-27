@@ -163,6 +163,9 @@ pub struct DamageParameters {
     pub down_wait_frames: f32,
     pub tech_window: f32,
     pub tech_lockout: i32,
+    /// PlCo +1B0: knockback speed toward a wall or ceiling that bounces a
+    /// launched fighter off it (ftCo_800C15F4, ftCo_800C17CC).
+    pub fly_reflect_speed: f32,
     pub tech_roll_threshold: f32,
     pub ground_knockback_limit: f32,
     pub trail_threshold: f32,
@@ -238,6 +241,7 @@ impl DamageParameters {
             tumble_exit_threshold: r.f32(p + 0x210)?,
             tumble_exit_window: r.s32(p + 0x214)?,
             tech_window: r.f32(p + 0x250)?,
+            fly_reflect_speed: r.f32(p + 0x1B0)?,
             tech_lockout: r.u32(p + 0x1C)? as i32,
             tech_roll_threshold: r.f32(p + 0x254)?,
             down_wait_frames: r.f32(p + 0x424)?,
@@ -422,9 +426,6 @@ fn record_shield_hit(
     } else {
         1.0
     };
-    if !victim.shield.powershield_window {
-        victim.shield.damage_taken += (damage + i32::from(desc.shield_damage)).max(0);
-    }
     victim.shield.impact = Some(super::shield::ShieldImpact {
         damage,
         facing,
@@ -437,19 +438,38 @@ fn record_shield_hit(
         group,
         victim.spawn_number,
     );
-    if victim.shield.powershield_window {
+    if victim.shield_contact_feedback(damage, desc.shield_damage, contact.position) {
         // ftCo_80094138: permit attacks during GuardOff and clear minimum hold.
         victim.guard().interrupt_frames = assets.shield.powershield_interrupt_frames;
         victim.guard().minimum_hold = 0.0;
-        victim
-            .commands
+    }
+}
+
+impl FighterCore {
+    /// ftColl_80076CBC (80076CBC), ftcoll.c:487-501: the defender's side of
+    /// a hit on a shield-like volume (Guard or a counter's ftColl_8007B1B8
+    /// volume). Returns whether the powershield window (x221C_b2) was open;
+    /// the caller then applies ftCo_80094138 to its own scratch. The flag
+    /// only counts down in Guard states, so it outlives the shield.
+    pub fn shield_contact_feedback(
+        &mut self,
+        damage: i32,
+        shield_damage: i8,
+        position: Vec3,
+    ) -> bool {
+        if !self.shield.powershield_window {
+            self.shield.damage_taken += (damage + i32::from(shield_damage)).max(0);
+            self.effects
+                .push(melee_ef::request::EffectRequest::ShieldSpark { position });
+            return false;
+        }
+        self.commands
             .color_animations
             .push(melee_cmd::ColorAnimationRequest {
                 id: 118,
                 duration: 0,
             });
-        victim
-            .commands
+        self.commands
             .footstep_sounds
             .push(super::commands::FootstepSound {
                 channel: super::commands::SoundChannel::Ordinary,
@@ -457,17 +477,9 @@ fn record_shield_hit(
                 volume: 127,
                 pan: 64,
             });
-        victim
-            .effects
-            .push(melee_ef::request::EffectRequest::PowershieldSpark {
-                position: contact.position,
-            });
-    } else {
-        victim
-            .effects
-            .push(melee_ef::request::EffectRequest::ShieldSpark {
-                position: contact.position,
-            });
+        self.effects
+            .push(melee_ef::request::EffectRequest::PowershieldSpark { position });
+        true
     }
 }
 
@@ -578,7 +590,9 @@ impl Fighter {
             }
             return Ok(());
         }
-        let Some(landed) = self.land_from_damage_air(assets, map)? else {
+        let landed = self.land_from_damage_air(assets, map)?;
+        self.check_fly_surface_contact(landed == Some(true), assets);
+        let Some(landed) = landed else {
             return Ok(());
         };
         if landed {
@@ -603,6 +617,38 @@ impl Fighter {
             self.try_grab_ledge(assets, map)?;
         }
         Ok(())
+    }
+
+    /// ftCo_DamageFly_Coll (8008FFC0) / ftCo_DamageFlyRoll_Coll: without a
+    /// landing, touching a wall or ceiling offers a wall tech (ftCo_800C1D38)
+    /// or ceiling tech (ftCo_800C23A0) inside the tech window, else a bounce
+    /// (ftCo_800C15F4 / ftCo_800C17CC) when the knockback drives into the
+    /// surface faster than PlCo x1B0. None is ported: a contact that would
+    /// act fails closed. mv.damage.x19 (the last bounced surface) stays
+    /// unset because no bounce has run.
+    fn check_fly_surface_contact(&self, landed: bool, assets: &FighterAssets) {
+        use melee_types::mp::collide::{CEILING_HUG, LEFT_WALL_HUG, RIGHT_WALL_HUG};
+        let flying = matches!(
+            self.core.motion_state.id,
+            S::DamageFlyHi | S::DamageFlyN | S::DamageFlyLw | S::DamageFlyTop | S::DamageFlyRoll
+        );
+        if !flying || landed {
+            return;
+        }
+        let env = self.core.collision.data.env_flags as u32;
+        let wall = env & (RIGHT_WALL_HUG | LEFT_WALL_HUG) != 0;
+        let ceiling = env & CEILING_HUG != 0;
+        if (wall || ceiling) && self.core.tech_window_open(assets) {
+            unimplemented!("ftCo_800C1D38 / ftCo_800C23A0: a wall or ceiling tech");
+        }
+        let speed = assets.damage.fly_reflect_speed;
+        let knockback = self.core.physics.knockback_velocity;
+        if (knockback.x < -speed && env & RIGHT_WALL_HUG != 0)
+            || (knockback.x > speed && env & LEFT_WALL_HUG != 0)
+            || (knockback.y > speed && ceiling)
+        {
+            unimplemented!("ftCo_800C17CC: FlyReflectWall / FlyReflectCeil bounce");
+        }
     }
 
     /// ft_80081DD4 (80081DD4): the airborne damage collision. During hitlag
@@ -949,13 +995,14 @@ impl Fighter {
                     return self.enter_aerial_jump(assets);
                 }
             }
+            if is_tumble(self.core.motion_state.id) {
+                // ftCo_DamageFly_Anim (8008FD98) -> ftCo_80090780: DamageFall
+                // keeps fast fall, clamps drift and rumbles, even from ground.
+                return self.enter_damage_fall(assets);
+            }
             self.change_motion_state(
                 (if self.core.physics.ground_or_air == GroundOrAir::Air {
-                    if is_tumble(self.core.motion_state.id) {
-                        S::DamageFall
-                    } else {
-                        S::Fall
-                    }
+                    S::Fall
                 } else {
                     S::Wait
                 })
@@ -1007,7 +1054,7 @@ impl Fighter {
             T::Attack => (self.character.table().enter_aerial)(self, assets),
             T::Jump => self.enter_aerial_jump(assets),
             T::Escape => self.enter_air_dodge(assets),
-            T::Special => {
+            T::AirSpecial => {
                 self.enter_buffered_special(assets, true);
                 Ok(())
             }

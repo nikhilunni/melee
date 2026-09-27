@@ -182,6 +182,7 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
             hit_status: true,
             hitboxes: true,
             effects: !stance,
+            ..Default::default()
         },
     )?;
     if stance && f.commands.variables[1] == 2 {
@@ -291,6 +292,7 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
     };
     let damage = gekko_math::msl::fctiwz(hit.descriptor.damage).max(1);
     let group = hit.descriptor.group;
+    let shield_damage = hit.descriptor.shield_damage;
     let facing = if f.physics.position.x > attacker.physics.position.x {
         -1.0
     } else {
@@ -305,10 +307,10 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
     attacker.combat.minimum_hitlag = minimum;
     attacker.record_shield_recoil(damage, f.shield.lightshield, -facing);
     melee_coll::detection::record_victim(&mut attacker.commands.hitboxes, group, f.spawn_number);
-    f.effects
-        .push(melee_ef::request::EffectRequest::ShieldSpark {
-            position: contact.position,
-        });
+    // A powershield flag left over from Guard takes the powershield branch;
+    // its ftCo_80094138 writes mv words +0x10/+0x1C, which the counter's
+    // scratch (mv x0 only) does not have.
+    f.shield_contact_feedback(damage, shield_damage, contact.position);
     true
 }
 /// ftMs_SpecialLw_80139140, called by Fighter_ProcessHit after pair detection.

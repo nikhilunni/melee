@@ -10,7 +10,7 @@ use gekko_math::{fma::fmadds, msl::fabsf};
 use hsd_archive::Archive;
 use hsd_types::Vec3;
 use melee_mp::CollMap;
-use melee_types::{mp::collide, CommonMotionState as S};
+use melee_types::{fixed::FixedVec, mp::collide, CommonMotionState as S};
 
 /// ftCommon_8007E2F4 (8007E2F4): grab-category exclusion flags, tested
 /// against the attacker's grab mask by ftcoll.c:1588.
@@ -66,15 +66,84 @@ pub struct CliffJumpState {
     pub physics_started: bool,
     pub retained_wait_frames: f32,
 }
+/// Another fighter holding a ledge (x221D_b7), as ft_80082E3C reads it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LedgeHolder {
+    pub facing: f32,
+    /// mv.co.common.x0; None when the holder's scratch is not the cliff's.
+    pub ledge_id: Option<i32>,
+}
+impl LedgeHolder {
+    /// The holder view of a fighter, if it is on a ledge.
+    pub fn of(core: &FighterCore) -> Option<Self> {
+        core.status.on_ledge.then_some(Self {
+            facing: core.physics.facing,
+            ledge_id: match &core.state_data {
+                MotionData::Cliff(cliff) => Some(cliff.ledge_id),
+                _ => None,
+            },
+        })
+    }
+}
+
+/// The other fighters on ledges, offered to the map proc in fighter-list
+/// order (retail walks the live list).
+#[derive(Clone, Debug, Default)]
+pub struct LedgeHolders {
+    offered: bool,
+    holders: FixedVec<LedgeHolder, 6>,
+}
+impl LedgeHolders {
+    pub fn offer(&mut self, holders: impl Iterator<Item = LedgeHolder>) {
+        self.holders.clear();
+        for holder in holders {
+            self.holders.push(holder);
+        }
+        self.offered = true;
+    }
+    pub fn withdraw(&mut self) {
+        self.offered = false;
+        self.holders.clear();
+    }
+}
+
+impl FighterCore {
+    /// ft_80082E3C (80082E3C): is the ledge this fighter touches already held?
+    /// A left-ledge touch is blocked by a right-facing holder on a connected
+    /// line, and the mirror for the right. (x213C, the blocked ledge id, only
+    /// feeds pl bonus stats.)
+    fn ledge_occupied(&self, map: &CollMap) -> bool {
+        assert!(
+            self.ledge_holders.offered,
+            "ft_80082E3C: the scene offered no ledge holders to this proc"
+        );
+        let flags = self.collision.data.env_flags as u32;
+        let data = &self.collision.data;
+        self.ledge_holders.holders.iter().any(|holder| {
+            let left = (holder.facing > 0.0 && flags & collide::LEFT_LEDGE_GRAB != 0)
+                .then_some(data.ledge_id_left);
+            let right = (holder.facing < 0.0 && flags & collide::RIGHT_LEDGE_GRAB != 0)
+                .then_some(data.ledge_id_right);
+            [left, right].into_iter().flatten().any(|ledge| {
+                let held = holder
+                    .ledge_id
+                    .expect("ft_80082E3C: a ledge holder outside the cliff scratch");
+                map.lines_connected(held, ledge)
+            })
+        })
+    }
+}
+
 impl Fighter {
     /// ftCliffCommon_80081298 (80081298), ftcliffcommon.c:23-53.
-    /// The caller must mark fighter interactions; occupied-ledge arbitration
-    /// (ft_80082E3C) is outside the isolated Fox / idle-opponent slice.
     pub fn try_grab_ledge(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<bool> {
         if self.core.input.current.stick.y <= -assets.ledge.grab_down_threshold
             || self.core.status.ledge_grab_disabled
             || self.core.collision.data.env_flags as u32 & collide::LEDGE_GRAB_MASK == 0
         {
+            return Ok(false);
+        }
+        if self.core.ledge_occupied(map) {
             return Ok(false);
         }
         self.enter_cliff_catch(assets, map)?;
