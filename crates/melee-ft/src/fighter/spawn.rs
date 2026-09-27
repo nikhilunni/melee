@@ -25,6 +25,8 @@ struct MotionChange<'a> {
     /// Ft_MF_SkipAnimVel (bit5): keep velocity when a grounded root-motion
     /// animation starts mid-way (fighter.c:1317-1336).
     skip_animation_velocity: bool,
+    /// Ft_MF_SkipHitStun (bit28): hitstun ownership survives the entry.
+    keep_hitstun: bool,
 }
 
 /// Retail motion-entry flags retained across a ground/air counterpart change.
@@ -556,6 +558,26 @@ impl Fighter {
         )
     }
 
+    /// ftCo_800C18A8's entry: Ft_MF_Unk06 | SkipNametagVis |
+    /// KeepColAnimPartHitStatus | SkipHitStun, frame 0, rate 1, no blend.
+    pub(super) fn change_fly_reflect_motion(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state.into(),
+            assets,
+            MotionChange {
+                rate: 1.0,
+                blend_frames: Some(0.0),
+                preserve_name_tag: true,
+                keep_hitstun: true,
+                ..Default::default()
+            },
+        )
+    }
+
     /// A ground/air counterpart change at the current frame and `rate`.
     pub fn change_ground_air_motion_at_rate(
         &mut self,
@@ -901,9 +923,8 @@ impl FighterCore {
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
-        // None of the current motion-entry masks includes Ft_MF_SkipHitStun.
         // Clearing ownership does not call OnKnockbackExit on interruption.
-        if self.status.in_hitstun {
+        if self.status.in_hitstun && !change.keep_hitstun {
             self.status.in_hitstun = false;
             self.combat.combo.grace = assets.combo.grace_frames;
         }

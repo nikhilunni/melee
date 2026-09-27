@@ -221,6 +221,8 @@ pub struct FighterAssets {
     pub item_throws: [super::item_throw::ItemThrowRow; super::item_throw::ITEM_THROW_ROWS],
     /// PlCo +400: the animation rate of a smash item throw (LightThrowF4 on).
     pub smash_throw_rate: f32,
+    /// PlCo +1B8..1C0: the tumble bounce off a wall.
+    pub fly_reflect: super::fly_reflect::BounceParameters,
     /// PlCo +3FC: an air throw within this many frames of the stick's move
     /// is a smash throw (ftCo_80095328).
     pub air_smash_throw_window: i32,
@@ -635,6 +637,7 @@ impl FighterAssets {
             color_overlays,
             item_throws: super::item_throw::read_throw_table(common, common_root)?,
             smash_throw_rate: common.reader().f32(common_data + 0x400)?,
+            fly_reflect: super::fly_reflect::BounceParameters::read(common, common_data)?,
             air_smash_throw_window: common.reader().s32(common_data + 0x3FC)?,
             item_hand: descriptor.common_behavior.item_hand,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
@@ -826,6 +829,8 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     indices.insert(181);
     // ftCo_SM_PassiveWall / PassiveWallJump: every fighter can tech a wall.
     indices.extend([202, 203]);
+    // ftCo_SM_WallDamage: the tumble bounce off a wall.
+    indices.insert(212);
     // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
     indices.extend([
         222, 245, 246, 247, 249, 250, 251, 252, 253, 256, 257, 258, 262, 264, 265,

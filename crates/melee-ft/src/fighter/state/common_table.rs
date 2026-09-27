@@ -1816,6 +1816,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 253,
         ..rows[S::CaptureDamageLw as usize]
     };
+    // ftCo_MS_FlyReflectWall = 247 (ftCo_SM_WallDamage).
+    rows[S::FlyReflectWall as usize] = MotionRow {
+        action: ActionId(247),
+        id: S::FlyReflectWall,
+        animation: 212,
+        anim: crate::fighter::fly_reflect::animation,
+        iasa: callbacks::input::damage,
+        physics: callbacks::physics::damage_fall,
+        collision: crate::fighter::fly_reflect::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_PassiveWall = 202: the same ftCo_PassiveWall callbacks.
     rows[S::PassiveWall as usize] = MotionRow {
         action: ActionId(202),

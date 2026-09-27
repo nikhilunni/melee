@@ -37,8 +37,9 @@ pub enum EffectRequest {
         bone: usize,
         scale: f32,
     },
-    /// efSync_Spawn(1030): fixed world origin and floor-relative Z rotation.
-    FireFoxRebound {
+    /// Effect 1030 (0x406): a bounce off a surface at a fixed world point,
+    /// rotated to the surface's normal (Fire Fox, tumble bounces).
+    SurfaceRebound {
         position: Vec3,
         angle: f32,
     },
@@ -270,7 +271,7 @@ impl EffectRequest {
             Self::OwnedRotation { .. }
                 | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
-                | Self::FireFoxRebound { .. }
+                | Self::SurfaceRebound { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

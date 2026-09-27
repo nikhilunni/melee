@@ -1016,3 +1016,11 @@ Newest first. One line per session: date, what landed, what is next.
   callback, the x2224_b1 catch lock); a launch while holding draws the drop
   chance (Fighter_8006CDA4). Full release gate 1471/0. Next: a knock-loose
   witness, shield and dash with an item, then more corpus sampling.
+- 2026-09-27: Tumble wall bounce (FlyReflectWall): ftCo_800C17CC /
+  800C15F4 / 800C18A8 mirror velocity plus knockback about the wall
+  (lbVector_Mirror's fmadds), damp by PlCo +1BC, spark (effect 0x406, now
+  the shared SurfaceRebound), small quake, bounce lock PlCo +1C0 and
+  intangibility +1B8; ftCo_FlyReflect_Coll lands, wall techs or bounces
+  again. The wall-contact pass (ft_80081F2C) is shared with the wall jump.
+  The ceiling bounce and ceiling tech still fail closed. Witness
+  corpus_v3_s0_e0211286e_p1.

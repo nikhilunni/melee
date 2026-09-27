@@ -571,7 +571,7 @@ fn enter_bound<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<
     };
     let position = f.physics.position;
     f.effects
-        .push(EffectRequest::FireFoxRebound { position, angle });
+        .push(EffectRequest::SurfaceRebound { position, angle });
     f.effect_state.destroy_on_state_change = true;
     f.effect_state.hitlag_callbacks = true;
     Ok(())

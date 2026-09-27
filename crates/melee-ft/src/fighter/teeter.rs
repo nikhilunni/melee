@@ -159,6 +159,8 @@ pub(super) fn missed_footing_animation(
             jump_buffer: 0.0,
             trail_timer: 0,
             influence: phase.assets.damage.influence,
+            last_bounce: None,
+            bounce_lock: 0,
         });
     }
     Ok(None)

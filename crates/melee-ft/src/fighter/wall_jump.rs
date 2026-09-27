@@ -197,7 +197,7 @@ impl Fighter {
         // 800C1F9C fnmsubs f0,f1,f0,f31; f0 is the negated NEW facing.
         self.core.physics.position.x =
             gekko_math::fma::fnmsubs(trans_z, -self.core.physics.facing, position.x);
-        self.wall_jump_entry_map(assets, map);
+        self.wall_contact_map(assets, map);
         self.core
             .commands
             .footstep_sounds
@@ -237,9 +237,11 @@ impl Fighter {
         Ok(())
     }
 
-    /// ft_80081F2C. Entry does not execute begin_map again: that would tick
-    /// the ECB lock twice in the same Fighter_procMap visit.
-    fn wall_jump_entry_map(&mut self, assets: &FighterAssets, map: &mut CollMap) {
+    /// ft_80081F2C (80081F2C): the wall-contact air pass; returns whether the
+    /// fighter landed. Entries after begin_map do not run it again: that
+    /// would tick the ECB lock twice in the same Fighter_procMap visit.
+    /// ft_80081A00's item landing is not in scope.
+    pub(super) fn wall_contact_map(&mut self, assets: &FighterAssets, map: &mut CollMap) -> bool {
         let core = &mut self.core;
         core.skeleton
             .set_translate(core.animation.root, &core.physics.position);
@@ -248,19 +250,21 @@ impl Fighter {
         cd.cur_pos = core.physics.position;
         let pose = EcbPose::read(&mut core.skeleton, core.animation.root, cd);
         let position = |i| pose.position(i);
-        if core.shield.allow_sdi {
-            map.air_collide_stay_ecb10(cd, Some(&position));
+        let landed = if core.shield.allow_sdi {
+            map.air_collide_stay_ecb10(cd, Some(&position))
         } else if core.status.ledge_cooldown != 0 {
-            map.air_collide_ecb10(cd, Some(&position));
+            map.air_collide_ecb10(cd, Some(&position))
         } else {
             let old_height = cd.ledge_snap_height;
             cd.ledge_snap_height = old_height * assets.damage.ledge_height_scale;
-            map.air_collide_ledge_ecb10(cd, Some(&position));
+            let landed = map.air_collide_ledge_ecb10(cd, Some(&position));
             cd.ledge_snap_height = old_height;
-        }
+            landed
+        };
         core.physics.position = cd.cur_pos;
         core.skeleton
             .set_translate(core.animation.root, &core.physics.position);
+        landed
     }
 }
 

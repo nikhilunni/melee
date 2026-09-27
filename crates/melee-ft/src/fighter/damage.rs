@@ -114,6 +114,10 @@ pub struct DamageState {
     pub jump_buffer: f32,
     pub trail_timer: u32,
     pub influence: InfluenceParameters,
+    /// mv.damage.x19: the surface of the last bounce (reset per launch).
+    pub last_bounce: Option<super::fly_reflect::BounceSurface>,
+    /// mv.damage.x18: frames before another bounce or wall tech (a byte).
+    pub bounce_lock: u8,
 }
 /// PlCo values retained by the damage state's status callback, which runs
 /// before input sampling and has no archive resource argument.
@@ -609,10 +613,7 @@ impl Fighter {
         };
         if landed {
             if is_tumble(self.core.motion_state.id) || self.core.motion_state.id == S::DamageFall {
-                if self.try_tech(assets)? {
-                    return Ok(());
-                }
-                return self.enter_down_bound(assets);
+                return self.tumble_landing(assets);
             }
             let v = self.core.physics.knockback_velocity;
             // retail 8008FBD4..E0: two fmuls then fadds, no contraction.
@@ -629,6 +630,15 @@ impl Fighter {
             self.try_grab_ledge(assets, map)?;
         }
         Ok(())
+    }
+
+    /// ftCo_80090184 (80090184): a tumbling fighter lands in a tech or a
+    /// DownBound.
+    pub(super) fn tumble_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.try_tech(assets)? {
+            return Ok(());
+        }
+        self.enter_down_bound(assets)
     }
 
     /// ftCo_DamageFly_Coll (8008FFC0) / ftCo_DamageFlyRoll_Coll: without a
@@ -659,14 +669,11 @@ impl Fighter {
         if ceiling && self.core.tech_window_open(assets) {
             unimplemented!("ftCo_800C23A0: a ceiling tech");
         }
-        let speed = assets.damage.fly_reflect_speed;
-        let knockback = self.core.physics.knockback_velocity;
-        if (knockback.x < -speed && env & RIGHT_WALL_HUG != 0)
-            || (knockback.x > speed && env & LEFT_WALL_HUG != 0)
-            || (knockback.y > speed && ceiling)
-        {
-            unimplemented!("ftCo_800C17CC: FlyReflectWall / FlyReflectCeil bounce");
+        // ftCo_800C17CC (800C17CC): the wall bounce, then the ceiling's.
+        if self.try_wall_bounce(assets, map)? {
+            return Ok(true);
         }
+        self.check_ceiling_bounce(assets);
         Ok(false)
     }
 
@@ -1903,6 +1910,9 @@ impl FighterCore {
             jump_buffer: 0.0,
             trail_timer: 0,
             influence: assets.damage.influence,
+            // ftCo_Damage.c:463.
+            last_bounce: None,
+            bounce_lock: 0,
         });
         self.status.in_hitstun = true;
         self.status.time_since_hit = 0;
@@ -1917,7 +1927,14 @@ impl FighterCore {
 fn is_tumble(state: S) -> bool {
     matches!(
         state,
-        S::DamageFlyHi | S::DamageFlyN | S::DamageFlyLw | S::DamageFlyTop | S::DamageFlyRoll
+        S::DamageFlyHi
+            | S::DamageFlyN
+            | S::DamageFlyLw
+            | S::DamageFlyTop
+            | S::DamageFlyRoll
+            // ftCo_FlyReflect_Anim / _IASA delegate to DamageFly's.
+            | S::FlyReflectWall
+            | S::FlyReflectCeil
     )
 }
 

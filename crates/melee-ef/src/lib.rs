@@ -524,7 +524,7 @@ impl Effects {
                 }
             }
             let (id, attachment) = match request {
-                EffectRequest::FireFoxRebound { .. } => (4, None),
+                EffectRequest::SurfaceRebound { .. } => (4, None),
                 EffectRequest::Death { .. } => (0x19, None),
                 EffectRequest::CaptureFlash { .. } | EffectRequest::WallJump { .. } => (0xF, None),
                 EffectRequest::HitSpark {
@@ -606,7 +606,7 @@ impl Effects {
                 | EffectRequest::PowershieldSpark { .. }
                 | EffectRequest::ShieldSpark { .. }
                 | EffectRequest::Clank { .. } => unreachable!(),
-                EffectRequest::FireFoxRebound {
+                EffectRequest::SurfaceRebound {
                     position: origin,
                     angle,
                 } => {
