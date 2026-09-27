@@ -621,6 +621,23 @@ recorded, pad-verified and gated in one pass (one Dolphin at a time); the
 2026-09-26 session drove this from a scratch script looping over
 `replay_to_scenario.py`, `record.py`, `--verify` and `melee-sim gate`.
 
+### Dry runs: search inputs before recording (2026-09-27)
+
+A tick-clock scenario (`input_clock = "tick"`) can run in the port alone
+from any recorded scenario of the same savestate:
+
+```sh
+cargo run -q --release -p melee-sim -- dry-run harness/scenarios/<new>.toml \
+  --state-from harness/scenarios/<recorded>.toml --out /tmp/dry.jsonl
+```
+
+The pads come from the scenario's own schedule (raw PADStatus, HSD's
+virtual stick directions added), the initial state and display clock from
+the reference recording; each record also carries the item state. Nothing
+is compared: use it to find inputs that reach a path (a panic names an
+unported one), then record only the winner. Replaying a recorded
+scenario's own schedule this way reproduces its trace exactly.
+
 ### Diagnostics for a diverging scenario (2026-09-26)
 
 - `melee-sim bones-diff <scenario> [--limit N] [--tick T]`: replays against

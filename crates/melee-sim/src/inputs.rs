@@ -57,6 +57,29 @@ impl PadScript {
         );
         Ok(script)
     }
+    /// A tick-clock schedule (`input_clock = "tick"`): each step's raw
+    /// PADStatus from its tick until the port's next step, with HSD's
+    /// virtual stick directions. Dry runs search inputs with it before a
+    /// recording exists; gates always replay the recorded pads instead.
+    pub fn from_tick_schedule(steps: &[crate::scenario::InputStep], ticks: usize) -> Result<Self> {
+        let mut script = Self::neutral(ticks);
+        let mut steps: Vec<_> = steps.iter().collect();
+        steps.sort_by_key(|step| step.frame);
+        let mut current = [PadSample::default(); PORTS];
+        let mut next = 0;
+        for (tick, pads) in script.ticks.iter_mut().enumerate() {
+            while next < steps.len() && steps[next].frame as usize == tick {
+                let step = steps[next];
+                let port = usize::from(step.port);
+                anyhow::ensure!(port < PORTS, "input step port {port}");
+                current[port] = scheduled_pad(&step.raw)?;
+                next += 1;
+            }
+            *pads = current;
+        }
+        Ok(script)
+    }
+
     /// All-neutral pads for `ticks` ticks (an idle scenario, or a trace
     /// recorded before the tracer captured pads).
     pub fn neutral(ticks: usize) -> Self {
@@ -239,6 +262,26 @@ fn parse_pad(fields: &Json) -> Result<PadSample> {
         left_trigger: float("nml_analogL")?,
         right_trigger: float("nml_analogR")?,
     })
+}
+
+/// One tick-clock step's raw PADStatus as HSD_PadGameStatus carries it.
+fn scheduled_pad(raw: &toml::Table) -> Result<PadSample> {
+    let value = |key: &str| -> Result<i64> {
+        raw.get(key).map_or(Ok(0), |v| {
+            v.as_integer().with_context(|| format!("raw {key}"))
+        })
+    };
+    let byte = |key: &str| -> Result<i8> { Ok(i8::try_from(value(key)?)?) };
+    Ok(PadSample::from_origin_adjusted(
+        Buttons(u32::try_from(value("button")?)?),
+        [byte("stickX")?, byte("stickY")?],
+        [byte("substickX")?, byte("substickY")?],
+        [
+            u8::try_from(value("triggerL")?)?,
+            u8::try_from(value("triggerR")?)?,
+        ],
+    )
+    .with_stick_directions())
 }
 
 #[cfg(test)]

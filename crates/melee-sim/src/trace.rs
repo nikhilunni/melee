@@ -101,6 +101,32 @@ pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
     out.flush()?;
     Ok(())
 }
+/// Run `scenario`'s tick-clock inputs from `reference`'s imported savestate
+/// (a recording of the same boundary), with item state beside each record:
+/// a port-only search for inputs worth recording. Nothing is compared.
+pub fn write_dry_run(scenario: &Scenario, reference: &Scenario, mut out: impl Write) -> Result<()> {
+    ensure!(
+        scenario.input_clock.as_deref() == Some("tick"),
+        "a dry run needs tick-clock inputs"
+    );
+    ensure!(
+        scenario.savestate == reference.savestate,
+        "the reference must start from the same savestate"
+    );
+    let pads = PadScript::from_tick_schedule(&scenario.inputs, scenario.frames as usize)?
+        .with_display_from(&reference.expected_path())?;
+    let mut simulation =
+        Simulation::with_inputs(InitialState::from_savestate_traces(reference)?, pads);
+    for frame in 0..scenario.frames {
+        let mut record = simulation.tick()?;
+        record.frame = frame;
+        record.state.extend(simulation.item_snapshot(frame).state);
+        serde_json::to_writer(&mut out, &record)?;
+        writeln!(out)?;
+    }
+    out.flush()?;
+    Ok(())
+}
 /// Unlike first_divergence alone, this also rejects extra keys/records.
 pub fn gate(scenario: &Scenario) -> Result<()> {
     gate_with_recording(scenario, false, false)?;

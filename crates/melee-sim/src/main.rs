@@ -33,6 +33,16 @@ enum Command {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Run a tick-clock scenario's own inputs from a recording of the same
+    /// savestate, with item state; searches inputs before recording them.
+    DryRun {
+        scenario: PathBuf,
+        /// A recorded scenario from the same savestate.
+        #[arg(long)]
+        state_from: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// Run and compare every key against the scenario's canonical tick trace.
     Gate { scenario: PathBuf },
     /// Gate a scenario and record external particle spawn/joint/flag inputs.
@@ -153,6 +163,19 @@ fn main() -> anyhow::Result<()> {
                 frames,
                 &pose,
                 io::BufWriter::new(io::stdout().lock()),
+            )
+        }
+        Command::DryRun {
+            scenario,
+            state_from,
+            out,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let reference = melee_sim::scenario::Scenario::load(&state_from)?;
+            melee_sim::trace::write_dry_run(
+                &scenario,
+                &reference,
+                io::BufWriter::new(std::fs::File::create(out)?),
             )
         }
         Command::Run { scenario, out } => {
