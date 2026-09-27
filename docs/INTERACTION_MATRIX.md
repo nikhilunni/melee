@@ -534,11 +534,19 @@ final-stock KO pair. Resolved as unreachable on FD: script Invincible
 hurtboxes (Fox and Marth author only Intangible; the reachable case, the
 thrower's 8 frames at throw start, is now ported), DeadUpFallHitCameraFlat,
 DownSpot, a grab pair losing its floor, revival-platform floor contact, and
-a grounded Counter losing support (it stops at the ledge). Still open:
-DamageHi1 and Fox's Lw1/Air1 (level-1 reactions; the table is shared),
-shield-break orientations, Fox's angled forward tilts (AttackS3HiS/LwS),
-DamageFall exits, captured-high throws, the Reflector's End/Turn/Hit ground
-rows leaving the ground, and a decisive timeout.
+a grounded Counter losing support (it stops at the ledge). Later the
+same day: Fox's level-1 reactions (`damage_level1_dancingblade_fd_marth`,
+`damage_air1_dancingblade_fd_marth`: N1, Hi1, Lw1, Air1), Fox's angled
+forward tilts (`ftilt_angled_fd_fox`), DamageFall exits
+(`damagefall_{jump,upb}_fd_fox`), captured-high throw and pummel/CaptureCut
+(`capture_hi_edge_{throwb,pummel}_fd_marth`), the Reflector's Turn, End and
+Hit rows leaving the ground (`reflector_{turn,end}_walkoff_fd_fox`,
+`sudden_death_reflecthit_walkoff_fd_marth`), a decisive timeout
+(`timeout_decisive_fd_marth`) and a shield broken by decay inside the Guard
+proc (`shieldbreak_hold_fd_marth`; the burst queues behind ShieldBreakFly's
+script graphics). Still open: the other shield-break orientation (research:
+needs a different landing height, not reachable on FD) and Marth as the
+level-1 or dizzy victim.
 
 These are the rows above with no gated retail witness, whose reachability
 in the Fox–Marth FD scope is shown or plausible. The ranking weighs how
