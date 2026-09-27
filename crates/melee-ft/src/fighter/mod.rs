@@ -46,6 +46,7 @@ mod snapshot;
 mod spawn;
 pub mod squat;
 pub mod state;
+pub mod passive_ceil;
 pub mod stop_ceil;
 pub mod teeter;
 pub mod turn;

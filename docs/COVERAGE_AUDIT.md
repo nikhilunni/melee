@@ -73,7 +73,7 @@ remaining gaps:
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hitboxes (it_8026FE68) and inert item hitboxes | Fail closed; item hitboxes on item hurtboxes are ported (`sudden_death_bombchain_fd_marth`) | Two live item hitboxes meeting |
 | Unlit Bob-omb states (idle, pickup, walk, throw) | Fail closed | Unreachable in Sudden Death: the rain lights every Bob-omb at spawn |
-| A fighter launched into a ceiling (FlyReflectCeil, ceiling tech) | Fail closed | FD's only ceiling is the underside (|x| <= 53.8, y = -55); the Sudden Death Bob-omb timing cannot put a fighter under it before its blast |
+| A fighter launched into a ceiling (FlyReflectCeil, ceiling tech) | Ported: ftCo_800C1718's bounce and FlyReflectCeil (`corpus_v3_s0_ef4efb740_p1`), ftCo_800C23A0's tech into PassiveCeil (`corpus_v3_s0_ef4efb740_p1_ceiltech`) | Reachable outside Sudden Death: a launch under FD's underside |
 
 ## How the Sudden Death gaps were searched
 

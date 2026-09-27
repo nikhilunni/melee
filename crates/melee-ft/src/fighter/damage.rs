@@ -703,16 +703,14 @@ impl Fighter {
         if self.try_wall_tech(assets, map)? {
             return Ok(true);
         }
-        let ceiling = env & CEILING_HUG != 0;
-        if ceiling && self.core.tech_window_open(assets) {
-            unimplemented!("ftCo_800C23A0: a ceiling tech");
+        if self.try_ceiling_tech(assets, map)? {
+            return Ok(true);
         }
         // ftCo_800C17CC (800C17CC): the wall bounce, then the ceiling's.
         if self.try_wall_bounce(assets, map)? {
             return Ok(true);
         }
-        self.check_ceiling_bounce(assets);
-        Ok(false)
+        self.try_ceiling_bounce(assets, map)
     }
 
     /// ft_80081DD4 (80081DD4): the airborne damage collision. During hitlag
@@ -730,6 +728,16 @@ impl Fighter {
             &mut self.core.skeleton,
             self.core.animation.root,
         );
+        Ok(self.damage_air_pass(assets, map))
+    }
+
+    /// ft_80081DD4's pass itself, for callers already inside a map proc
+    /// (ftCo_80090574 from the ceiling tech).
+    pub(super) fn damage_air_pass(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Option<bool> {
         if self.core.combat.hitlag_remaining > 0.0 {
             // ft_80081DD4: mpColl_800477E0 clamps SDI against the floor
             // without a landing transition while hitlag is active.
@@ -746,7 +754,7 @@ impl Fighter {
             self.core
                 .skeleton
                 .set_translate(self.core.animation.root, &self.core.physics.position);
-            return Ok(None);
+            return None;
         }
         let ledge_height = self.core.collision.data.ledge_snap_height;
         self.core.collision.data.ledge_snap_height *= assets.damage.ledge_height_scale;
@@ -759,7 +767,7 @@ impl Fighter {
             self.core.status.ledge_cooldown == 0,
         );
         self.core.collision.data.ledge_snap_height = ledge_height;
-        Ok(Some(landed))
+        Some(landed)
     }
 
     pub(super) fn process_damage(

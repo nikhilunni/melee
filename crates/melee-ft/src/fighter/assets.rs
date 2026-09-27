@@ -838,8 +838,10 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     indices.insert(181);
     // ftCo_SM_PassiveWall / PassiveWallJump: every fighter can tech a wall.
     indices.extend([202, 203]);
-    // ftCo_SM_WallDamage: the tumble bounce off a wall.
-    indices.insert(212);
+    // ftCo_SM_WallDamage / StopCeil: the tumble bounce off a wall or a
+    // ceiling (FlyReflectCeil plays StopCeil); ftCo_SM_PassiveCeil: a
+    // ceiling tech.
+    indices.extend([212, 214, 204]);
     // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
     indices.extend([
         222, 245, 246, 247, 249, 250, 251, 252, 253, 256, 257, 258, 262, 264, 265,

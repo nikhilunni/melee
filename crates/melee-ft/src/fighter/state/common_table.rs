@@ -1837,6 +1837,26 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_PassiveCeil = 204 (ftCo_SM_PassiveCeil): its IASA is empty,
+    // physics ft_80084DB0 and collision Fall's ft_800831CC.
+    rows[S::PassiveCeil as usize] = MotionRow {
+        action: ActionId(204),
+        id: S::PassiveCeil,
+        animation: 204,
+        anim: crate::fighter::passive_ceil::animation,
+        iasa: callbacks::input::entry, // ftCo_PassiveCeil_IASA: empty.
+        physics: callbacks::physics::damage_fall,
+        collision: callbacks::collision::fall,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_FlyReflectCeil = 248 (ftCo_SM_StopCeil): FlyReflectWall's callbacks.
+    rows[S::FlyReflectCeil as usize] = MotionRow {
+        action: ActionId(248),
+        id: S::FlyReflectCeil,
+        animation: 214,
+        ..rows[S::FlyReflectWall as usize]
+    };
     // ftCo_MS_PassiveWall = 202: the same ftCo_PassiveWall callbacks.
     rows[S::PassiveWall as usize] = MotionRow {
         action: ActionId(202),

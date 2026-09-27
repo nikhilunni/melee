@@ -12,6 +12,9 @@ use melee_types::CommonMotionState as S;
 pub struct TurnRunState {
     pub entry_facing: f32,
     pub animation_paused: bool,
+    /// mv+4 (+2344), which TurnRun never writes: its predecessor's word, or
+    /// `None` where the port does not model that.
+    pub retained_word: Option<f32>,
 }
 // The skid pose releases once velocity toward the old facing is this small.
 const TURN_RELEASE_SPEED: f32 = 0.01;
@@ -31,9 +34,11 @@ impl Fighter {
     /// ftCo_TurnRun_Enter (800C9D94), ftCo_TurnRun.c:44-56.
     fn enter_turn_run(&mut self, assets: &FighterAssets, start: f32) -> Result<()> {
         self.core.commands.variables[1] = 0;
+        let retained_word = self.inherited_scratch_word();
         self.core.state_data = MotionData::TurnRun(TurnRunState {
             entry_facing: self.core.physics.facing,
             animation_paused: false,
+            retained_word,
         });
         // Ft_MF_SkipAnimVel (fighter.c:1318-1324): retain ground momentum
         // when RunBrake supplies a nonzero phase.

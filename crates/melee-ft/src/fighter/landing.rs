@@ -197,6 +197,8 @@ impl FighterCore {
             MotionData::Dash(dash) => f32::from_bits(u32::from(dash.early_interrupts)),
             MotionData::Run(run) => run.slippery_animation_velocity,
             MotionData::RunBrake(brake) => brake.remaining_frames,
+            // TurnRun writes only +234C and +2354 (ftCo_TurnRun.c:48-51).
+            MotionData::TurnRun(turn) => turn.retained_word?,
             // mv.co.kneebend.jump_input: ftCo_JumpInput (LStick 1, CStick 2, XY 3).
             MotionData::KneeBend(knee_bend) => f32::from_bits(match knee_bend.input {
                 super::jump::JumpInput::Stick => 1,

@@ -82,28 +82,39 @@ impl Fighter {
             return Ok(false);
         };
         let offset = Vec3::new(corner.x, corner.y, 0.0);
-        self.enter_fly_reflect(normal, offset, assets, map)?;
+        self.enter_fly_reflect(S::FlyReflectWall, normal, offset, assets, map)?;
         self.damage_scratch().last_bounce = Some(surface);
         Ok(true)
     }
 
-    /// ftCo_800C1718 (800C1718): the ceiling bounce, which is not ported;
-    /// reaching it fails closed.
-    pub(super) fn check_ceiling_bounce(&mut self, assets: &FighterAssets) {
+    /// ftCo_800C1718 (800C1718): knockback driving up into a ceiling bounces
+    /// off it from the ECB's top, unless the ceiling was the last bounce.
+    pub(super) fn try_ceiling_bounce(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut CollMap,
+    ) -> Result<bool> {
         let env = self.core.collision.data.env_flags as u32;
-        if self.core.physics.knockback_velocity.y > assets.damage.fly_reflect_speed
-            && env & collide::CEILING_HUG != 0
-            && self.damage_scratch().last_bounce != Some(BounceSurface::Ceiling)
+        if self.core.physics.knockback_velocity.y <= assets.damage.fly_reflect_speed
+            || env & collide::CEILING_HUG == 0
+            || self.damage_scratch().last_bounce == Some(BounceSurface::Ceiling)
         {
-            unimplemented!("ftCo_800C1718: FlyReflectCeil (ft_80082084's ceiling pass)");
+            return Ok(false);
         }
+        let cd = &self.core.collision.data;
+        let offset = Vec3::new(0.0, cd.ecb.top.y, 0.0);
+        let normal = cd.ceiling.normal;
+        self.enter_fly_reflect(S::FlyReflectCeil, normal, offset, assets, map)?;
+        self.damage_scratch().last_bounce = Some(BounceSurface::Ceiling);
+        Ok(true)
     }
 
-    /// ftCo_800C18A8 (800C18A8) for the wall: spark and small quake at the
-    /// contact, velocity plus knockback mirrored about the wall and damped
-    /// into knockback, then FlyReflectWall facing away from it.
+    /// ftCo_800C18A8 (800C18A8): spark and small quake at the contact,
+    /// velocity plus knockback mirrored about the surface and damped into
+    /// knockback, then FlyReflectWall or FlyReflectCeil facing along it.
     fn enter_fly_reflect(
         &mut self,
+        state: S,
         normal: Vec3,
         offset: Vec3,
         assets: &FighterAssets,
@@ -137,20 +148,25 @@ impl Fighter {
         } else {
             1.0
         };
-        self.change_fly_reflect_motion(S::FlyReflectWall, assets)?;
-        let trans_z = self
+        self.change_fly_reflect_motion(state, assets)?;
+        let trans = self
             .core
             .animation
             .root_motion
             .as_ref()
-            .expect("FlyReflectWall TransN")
+            .expect("FlyReflect TransN")
             .primary_history
-            .position
-            .z;
-        // retail 800C1A1C / 800C1A20: fadds, then fnmsubs with the negated facing.
-        self.core.physics.position.x =
-            gekko_math::fma::fnmsubs(trans_z, -self.core.physics.facing, p.x + offset.x);
-        self.wall_contact_map(assets, map);
+            .position;
+        if state == S::FlyReflectWall {
+            // retail 800C1A1C / 800C1A20: fadds, then fnmsubs with the negated facing.
+            self.core.physics.position.x =
+                gekko_math::fma::fnmsubs(trans.z, -self.core.physics.facing, p.x + offset.x);
+            self.wall_contact_map(assets, map);
+        } else {
+            // x68C_transNPos.y + (cur_pos.y + offset.y): two fadds.
+            self.core.physics.position.y = trans.y + (p.y + offset.y);
+            self.ceiling_contact_map(assets, map);
+        }
         self.damage_scratch().bounce_lock = fctiwz(bounce.lock_frames) as u8;
         self.core
             .commands
@@ -170,16 +186,29 @@ impl Fighter {
     }
 }
 
-/// ftCo_FlyReflect_Coll (800C1B7C) for the wall: a landing techs or bounces
-/// on the floor (ftCo_80090184); the ceiling is fail-closed; once the lock
-/// runs out another wall tech or bounce may follow.
+/// ftCo_FlyReflect_Coll (800C1B7C): a landing techs or bounces on the floor
+/// (ftCo_80090184). Off a wall, a ceiling tech or bounce may follow, and
+/// once the lock runs out another wall tech or bounce; off a ceiling, a
+/// wall tech or bounce at once.
 pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = phase.assets.expect("FlyReflect collision assets");
-    assert_eq!(
-        fighter.core.motion_state.id,
-        S::FlyReflectWall,
-        "ftCo_FlyReflect_Coll: FlyReflectCeil (ft_80082084)"
-    );
+    if fighter.core.motion_state.id == S::FlyReflectCeil {
+        let core = &mut fighter.core;
+        crate::collision::air::begin_map(
+            &core.physics,
+            &mut core.collision,
+            &mut core.skeleton,
+            core.animation.root,
+        );
+        if fighter.ceiling_contact_map(assets, phase.map) {
+            return fighter.tumble_landing(assets);
+        }
+        if fighter.try_wall_tech(assets, phase.map)? {
+            return Ok(());
+        }
+        fighter.try_wall_bounce(assets, phase.map)?;
+        return Ok(());
+    }
     let core = &mut fighter.core;
     crate::collision::air::begin_map(
         &core.physics,
@@ -190,11 +219,12 @@ pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
     if fighter.wall_contact_map(assets, phase.map) {
         return fighter.tumble_landing(assets);
     }
-    let env = fighter.core.collision.data.env_flags as u32;
-    if env & collide::CEILING_HUG != 0 && fighter.core.tech_window_open(assets) {
-        unimplemented!("ftCo_800C23A0: a ceiling tech");
+    if fighter.try_ceiling_tech(assets, phase.map)? {
+        return Ok(());
     }
-    fighter.check_ceiling_bounce(assets);
+    if fighter.try_ceiling_bounce(assets, phase.map)? {
+        return Ok(());
+    }
     if fighter.damage_scratch().bounce_lock == 0 {
         if fighter.try_wall_tech(assets, phase.map)? {
             return Ok(());
@@ -202,7 +232,7 @@ pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
         if fighter.try_wall_bounce(assets, phase.map)? {
             return Ok(());
         }
-        fighter.check_ceiling_bounce(assets);
+        fighter.try_ceiling_bounce(assets, phase.map)?;
     }
     Ok(())
 }

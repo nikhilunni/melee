@@ -268,6 +268,37 @@ impl Fighter {
     }
 }
 
+impl Fighter {
+    /// ft_80082084 (80082084): ft_80081F2C's pass with the ECB loaded at 0x12
+    /// (mpColl_80048388 / 80048768 / 80048578); returns whether the fighter
+    /// landed.
+    pub(super) fn ceiling_contact_map(&mut self, assets: &FighterAssets, map: &mut CollMap) -> bool {
+        let core = &mut self.core;
+        core.skeleton
+            .set_translate(core.animation.root, &core.physics.position);
+        let cd = &mut core.collision.data;
+        cd.last_pos = cd.cur_pos;
+        cd.cur_pos = core.physics.position;
+        let pose = EcbPose::read(&mut core.skeleton, core.animation.root, cd);
+        let position = |i| pose.position(i);
+        let landed = if core.shield.allow_sdi {
+            map.air_collide_stay_ecb18(cd, Some(&position))
+        } else if core.status.ledge_cooldown != 0 {
+            map.air_collide_ecb18(cd, Some(&position))
+        } else {
+            let old_height = cd.ledge_snap_height;
+            cd.ledge_snap_height = old_height * assets.damage.ledge_height_scale;
+            let landed = map.air_collide_ledge_ecb18(cd, Some(&position));
+            cd.ledge_snap_height = old_height;
+            landed
+        };
+        core.physics.position = cd.cur_pos;
+        core.skeleton
+            .set_translate(core.animation.root, &core.physics.position);
+        landed
+    }
+}
+
 impl super::FighterCore {
     /// ftCo_800C1E0C (800C1E0C): a jump pressed within PlCo +250 frames or a
     /// tap-jump stick.
