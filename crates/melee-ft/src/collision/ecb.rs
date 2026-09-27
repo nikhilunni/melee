@@ -86,9 +86,10 @@ impl EcbPose {
                 pose.len += 1;
             }
             // One skeleton walk resolves every sampled bone.
-            let indices: [Option<usize>; 7] = std::array::from_fn(|slot| {
-                (slot < pose.len).then(|| pose.positions[slot].0 as usize)
-            });
+            let mut indices = [None; 7];
+            for (slot, &(index, _)) in indices.iter_mut().zip(&pose.positions[..pose.len]) {
+                *slot = Some(index as usize);
+            }
             let joints = tree.bones(root, indices);
             for (slot, joint) in joints[..pose.len].iter().enumerate() {
                 let joint = joint.expect("ECB bone outside skeleton");

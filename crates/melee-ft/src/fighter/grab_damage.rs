@@ -27,10 +27,10 @@ pub fn resolve_linked_hit(
     map: &mut melee_mp::CollMap,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
-    let Some(knockback) = fighter.combat.pending.as_ref().map(|hit| hit.knockback) else {
+    let Some(hit) = &fighter.combat.pending else {
         return Ok(());
     };
-    if knockback == 0.0 || fighter.combat.pair_order.is_some() || fighter.status.disabled {
+    if hit.knockback == 0.0 || fighter.combat.pair_order.is_some() || fighter.status.disabled {
         return Ok(());
     }
     // ftCo_8008E984 / inlineB0: armour (x221A_b3 with x18A8) is unported.
@@ -40,8 +40,7 @@ pub fn resolve_linked_hit(
     );
     // ftCo_800C3538 (cape) and ftCo_800C44CC / ftCo_800D2FA4 are not
     // reachable for the supported kinds and elements.
-    let partner_hit = partner.combat.pending.as_ref().map(|hit| hit.knockback);
-    let partner_launched = partner_hit.is_some_and(|knockback| knockback != 0.0);
+    let partner_launched = matches!(&partner.combat.pending, Some(hit) if hit.knockback != 0.0);
     match fighter.combat.grab {
         // x221B_b5: this fighter holds the other.
         Some(GrabLink::Holding { .. }) => {

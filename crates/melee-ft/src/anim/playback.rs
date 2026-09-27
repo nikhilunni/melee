@@ -493,7 +493,9 @@ impl FighterAnimation {
     /// whole generic playback path again.
     #[inline(never)]
     pub fn step_retail(&mut self, tree: &mut JObjTree) {
-        self.step::<crate::fighter::RetailTrig>(tree);
+        // `step` with no command or accessory hooks.
+        self.advance_main::<crate::fighter::RetailTrig>(tree);
+        self.advance_parts::<crate::fighter::RetailTrig>(tree);
     }
 
     pub fn step_with_hooks<T: InverseTrig>(
