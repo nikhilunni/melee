@@ -337,3 +337,27 @@ pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> 
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
+
+/// ftCo_8008EC90's tail for a launched captured fighter whose captor was not
+/// hit: after this fighter's launch, ftCommon_8007DB58 and ftCo_800DE2F0 on
+/// the captor it was freed from.
+pub(super) fn release_captor(state: &mut InitialState, player: usize) -> Result<()> {
+    let captor =
+        with_fighter!(&mut state.fighters[player], |f| f.combat.release_captor.take());
+    let Some(captor) = captor else {
+        return Ok(());
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .expect("released captor");
+    with_fighter!(&mut state.fighters[other], |f| {
+        melee_ft::fighter::grab_damage::launch_released_captor(
+            f,
+            &state.assets.fighters[other],
+            &mut state.rng,
+        )
+    })
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}

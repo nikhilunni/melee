@@ -56,6 +56,9 @@ pub struct CombatState {
     pub pending_from_captor: bool,
     /// x1828: the grab partner's ftCo_8008EC90 order for this ProcessHit.
     pub pair_order: Option<super::grab_damage::PairHitOrder>,
+    /// The captor (spawn number) that ftCo_800DE2F0 launches once this
+    /// fighter's ProcessHit has launched it out of that captor's grab.
+    pub release_captor: Option<u32>,
     /// Fighter.dmg.x1908 / x190C: the hit sound and voice set queued by the
     /// launch calculation, played by the next hit proc that starts no hitlag
     /// (Fighter_ProcessHit's else branch -> ftCo_80090718).

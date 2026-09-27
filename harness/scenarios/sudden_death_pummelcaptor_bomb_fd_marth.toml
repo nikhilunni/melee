@@ -1,0 +1,36 @@
+# Sudden Death: Marth walks left and turns (1285); Fox runs left and stops
+# in front of him (1284); Marth grabs (1300) and pummels (1320, 1381). The
+# second pummel lands on the frame a Bob-omb launches Marth (1387):
+# ftCo_800DE854 replaces Fox's light captor hit with Marth's throw record 1
+# and both are launched out of the released grab.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_pummelcaptor_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1471
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1236, port = 0, buttons = { StickX = -0.4375 }, raw = { stickX = -35 } },
+  { frame = 1236, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 1270, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1284, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1285, port = 0, buttons = { StickX = 0.375 }, raw = { stickX = 30 } },
+  { frame = 1287, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1300, port = 0, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 1302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1320, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1321, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1381, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1382, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

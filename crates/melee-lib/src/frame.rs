@@ -794,6 +794,9 @@ impl Runtime {
                         .pickup_candidates
                         .withdraw());
                 }
+                if proc == FighterProc::ProcessHit {
+                    grab_pairs::release_captor(state, player)?;
+                }
                 if proc == FighterProc::Map {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core

@@ -35,6 +35,9 @@ pub struct Parameters {
     /// PlCo +3BC: how far above a floor under a thrown fighter's release
     /// point it may start and still land there (ftCo_800DC920).
     pub release_floor_reach: f32,
+    /// PlCo +380 (lbColl_80008D30's record): the hit a captor takes when a
+    /// launch frees its victim and leaves it unhit (ftCo_800DE2F0).
+    pub captor_release_hit: melee_types::combat::ThrowHitbox,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -58,12 +61,32 @@ impl Parameters {
             horizontal_release_distance: r.f32(base + 0x34C)?,
             vertical_release_distance: r.f32(base + 0x350)?,
             release_floor_reach: r.f32(base + 0x3BC)?,
+            captor_release_hit: read_release_hit(archive, base + 0x380)?,
             decrement: r.f32(base + 0x3A4)?,
             mash_decrement: r.f32(base + 0x3A8)?,
             fast_frames: r.f32(base + 0x3B0)?,
             fast_rate: r.f32(base + 0x3B4)?,
         })
     }
+}
+
+/// lbColl_80008D30_arg1: state, damage, angle, growth, weight-set and base
+/// knockback, element and sound words; lbColl_80008D30 converts the damage
+/// to a float.
+fn read_release_hit(archive: &Archive, at: u32) -> Result<melee_types::combat::ThrowHitbox> {
+    let r = archive.reader();
+    let word = |offset| r.u32(at + offset);
+    Ok(melee_types::combat::ThrowHitbox {
+        damage: word(0x4)? as f32,
+        angle: word(0x8)? as u16,
+        growth: word(0xC)? as u16,
+        weight_knockback: word(0x10)? as u16,
+        base_knockback: word(0x14)? as u16,
+        element: melee_types::HitElement::try_from(word(0x18)? as i32)
+            .expect("PlCo +398: a hit element"),
+        sound_severity: word(0x1C)? as u8,
+        sound_kind: word(0x20)? as u8,
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -563,6 +586,16 @@ mod tests {
             horizontal_release_distance: 1.0,
             vertical_release_distance: 1.0,
             release_floor_reach: -3.0,
+            captor_release_hit: melee_types::combat::ThrowHitbox {
+                damage: 0.0,
+                angle: 0,
+                growth: 0,
+                weight_knockback: 0,
+                base_knockback: 0,
+                element: melee_types::HitElement::Normal,
+                sound_severity: 0,
+                sound_kind: 0,
+            },
         }
     }
 

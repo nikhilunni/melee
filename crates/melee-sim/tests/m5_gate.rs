@@ -1524,6 +1524,12 @@ fn timeout_and_sudden_death_match_retail() {
         // only the captor, whose second throw record launches the victim.
         ("sudden_death_grabbomb_fd_marth", 1545),
         ("sudden_death_grabbombcaptor_fd_marth", 1471),
+        // Only the held fighter launched: ftCo_800DE2F0's PlCo +380 hit on its captor.
+        ("sudden_death_releasecaptor_bomb_fd_marth", 1415),
+        // A pummel landing as a Bob-omb launches the captor: ftCo_800DE854 swaps
+        // in the captor's throw record 1; Fox's DownBound requests a Large quake
+        // that the screen KO's camera-space placement sees.
+        ("sudden_death_pummelcaptor_bomb_fd_marth", 1471),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),

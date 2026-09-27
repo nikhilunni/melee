@@ -181,6 +181,9 @@ impl Fighter {
                 offset: Vec3::ZERO,
                 range: Vec3::ZERO,
             });
+        // ftCo_800976A4's tail: Camera_RequestQuake(QuakeKind_Large) at
+        // cur_pos (the epicenter is unread); ftCommon_8007EBAC is rumble.
+        self.core.quake_request = Some(melee_cm::QuakeKind::Large);
         self.core.project_ground_knockback(assets);
         Ok(())
     }

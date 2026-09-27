@@ -58,7 +58,7 @@ pub fn resolve_linked_hit(
             // (x221C_b0) or dealt under PlCo +3C0 this frame.
             if partner.combat.pending_from_captor || partner.combat.frame_damage < LIGHT_HIT_DAMAGE
             {
-                unimplemented!("ftCo_800DE854: a light hit on the captured member");
+                take_captor_throw_hit(partner, fighter, partner_assets, fighter_assets);
             }
             release_pair(fighter, partner, partner_assets, map);
             fighter.combat.pair_order = Some(PairHitOrder::Launch);
@@ -76,7 +76,12 @@ pub fn resolve_linked_hit(
                 return Ok(());
             }
             if !partner_launched {
-                unimplemented!("ftCo_800DE2F0: the captured member launched, its captor not hit");
+                // ftCo_800DCE34(captor, gobj) and this fighter's launch; then
+                // (after it, `release_captor`) ftCo_800DE2F0 on the captor.
+                release_pair(partner, fighter, fighter_assets, map);
+                fighter.combat.pair_order = Some(PairHitOrder::Launch);
+                fighter.combat.release_captor = Some(partner.spawn_number);
+                return Ok(());
             }
             // ftCo_800DCE34(captor, gobj), then this fighter's launch; the
             // captor follows x1828 = 1.
@@ -134,6 +139,82 @@ fn launch_by_captor(
     // takes the no-knockback branch.
     captured.begin_damage_reaction(hit, None, None, None, captured_assets, rng)?;
     Ok(())
+}
+
+/// ftCo_800DE854 (800DE854): a captured fighter's light or captor-dealt hit
+/// is replaced by its captor's throw record 1 (xDF4[1]): ftColl_80079C70's
+/// knockback, the record's angle and element, facing against the captor on
+/// the middle hurtbox, and the record's damage taken at once. Its captor is
+/// credited (ftColl_8007891C). The launch itself follows x1828.
+fn take_captor_throw_hit(
+    captured: &mut Fighter,
+    captor: &mut Fighter,
+    captured_assets: &FighterAssets,
+    captor_assets: &FighterAssets,
+) {
+    let record = captor.commands.throw_hitboxes[1]
+        .as_ref()
+        .expect("ftCo_800DE854: throw record 1");
+    let descriptor = super::grab_throw::throw_descriptor(record);
+    let knockback = captured_assets.damage.knockback_for_frame(
+        &descriptor,
+        captured.physics.percent,
+        captured.combat.frame_damage,
+        captured.attributes.size.weight,
+        captor.commands.throw_damage_counts[1],
+    );
+    let damage = descriptor.damage;
+    let hit = captured
+        .combat
+        .pending
+        .as_mut()
+        .expect("ftCo_800DE854: the captured fighter's hit");
+    hit.descriptor = descriptor;
+    hit.knockback = knockback;
+    hit.facing = -captor.physics.facing;
+    hit.facing_override = None;
+    hit.height = melee_coll::hurtbox::HurtHeight::Middle;
+    captured.core.take_percent_damage(damage);
+    captor.credit_hit(captured.spawn_number, captor_assets);
+}
+
+/// ftCommon_8007DB58, then ftCo_800DE2F0 (800DE2F0): a captor whose victim
+/// was launched out of its grab takes PlCo +380's hit (lbColl_80008D30), with
+/// knockback from ftColl_80079AB0 on its own percent and this frame's damage,
+/// facing its own way, at TransN2 on the middle hurtbox.
+pub fn launch_released_captor(
+    captor: &mut Fighter,
+    assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
+    captor.interrupt_actions();
+    // ftColl_800788D4 records a sourceless hit for stats only; TransN2's
+    // position (x1854_collpos) has no reader in scope.
+    let descriptor = super::grab_throw::throw_descriptor(&assets.grab_escape.captor_release_hit);
+    let knockback = assets.damage.knockback_for_frame(
+        &descriptor,
+        captor.physics.percent,
+        captor.combat.frame_damage,
+        captor.attributes.size.weight,
+        fctiwz_damage(descriptor.damage),
+    );
+    let hit = melee_coll::damage::ReceivedHit {
+        facing: captor.physics.facing,
+        facing_override: None,
+        percent_damage: descriptor.damage,
+        descriptor,
+        height: melee_coll::hurtbox::HurtHeight::Middle,
+        knockback,
+    };
+    // Fighter_UnkTakeDamage_8006CC30, ftCo_Damage_CalcKnockback and
+    // ftCo_8008E908(gobj, 0.0).
+    captor.begin_damage_reaction(hit, None, None, None, assets, rng)?;
+    Ok(())
+}
+
+/// lbColl_80008D30 copies the record's integer damage to unk_count.
+fn fctiwz_damage(damage: f32) -> u32 {
+    gekko_math::msl::fctiwz(damage) as u32
 }
 
 /// PlCo +3C0 (an int, 6): below this frame's damage a captured fighter's

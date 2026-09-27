@@ -1,0 +1,29 @@
+# Sudden Death: Marth runs right and stops (1244), Fox runs left and stops
+# under the second Bob-omb (1251); Marth grabs Fox standing (1266). The
+# Bob-omb's blast (1277) launches only Fox: the grab is released and
+# ftCo_800DE2F0 launches Marth with PlCo +380's hit.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_releasecaptor_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1415
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1236, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 1236, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 1244, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1251, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1266, port = 0, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 1268, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
