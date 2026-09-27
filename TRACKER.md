@@ -1132,3 +1132,7 @@ Newest first. One line per session: date, what landed, what is next.
   the part's ownership drops and the main motion retakes the subtree at its
   frame, ftAnim_8006EED4). Both bridged cases exact (corpus_sd_*); rerun
   300/300 clean.
+- 2026-09-27: Sudden Death explorer, 1,000 more seeds (3,000 cases): two
+  faults, a hand animation removed with no motion attached
+  (ftAnim_8006FA58's descriptor pose over the subtree); fixed, both bridged
+  exact, rerun 3,000/3,000 clean. Full release gate 1471/0.

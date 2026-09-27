@@ -432,6 +432,17 @@ impl FighterAnimation {
         self.reset_pose_range(target, blending, 1, self.parts.len());
     }
 
+    /// `ftAnim_8006FA58` (8006FA58) from part `bone` when no motion is
+    /// attached: the descriptor pose returns to its subtree, and to its
+    /// following siblings, which ftAnim_GetNextJointInTree walks on into.
+    pub fn reset_subtree_pose(&self, tree: &mut JObjTree, bone: usize) {
+        let depth = self.parts[bone].depth;
+        let end = (bone + 1..self.parts.len())
+            .find(|&i| self.parts[i].depth < depth)
+            .unwrap_or(self.parts.len());
+        self.reset_pose_range(tree, false, bone, end);
+    }
+
     fn reset_pose_range(&self, target: &mut JObjTree, blending: bool, start: usize, end: usize) {
         for (index, part) in self.parts.iter().enumerate().take(end).skip(start) {
             if part.motion_mask != 0 {

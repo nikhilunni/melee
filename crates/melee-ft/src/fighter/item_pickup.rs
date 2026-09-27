@@ -349,7 +349,7 @@ impl FighterCore {
     /// ftAnim_80070CC4 (80070CC4): a live part animation's parts drop their
     /// ownership (as ftAnim_80070F28 does), the slot goes inactive, and the
     /// main motion takes the subtree back at its current frame
-    /// (ftAnim_8006EED4).
+    /// (ftAnim_8006EED4), or with none attached the descriptor pose does.
     fn remove_part_animation(&mut self, group: usize, assets: &FighterAssets) {
         use crate::anim::attach::PartFlags;
         let slot = &mut self.animation.part_animations[group];
@@ -366,10 +366,11 @@ impl FighterCore {
                 .expect("part animation set")
                 .root_joint,
         );
-        assert!(
-            self.animation.motion_id >= 0,
-            "ftAnim_8006FA58: removing a part animation without a motion"
-        );
+        if self.animation.motion_id < 0 {
+            // x590 is NULL: ftAnim_8006FA58 from the costume's descriptor.
+            self.animation.reset_subtree_pose(&mut self.skeleton, root);
+            return;
+        }
         self.animation
             .resume_dynamic_subtree::<super::RetailTrig>(
                 &mut self.skeleton,
