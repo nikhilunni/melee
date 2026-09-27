@@ -72,6 +72,27 @@ fn bone_index_follows_the_ftparts_walk() {
 }
 
 #[test]
+fn bones_resolve_several_indices_like_bone() {
+    let (tree, ids) = sample();
+    let root = ids[0];
+    let indices = [Some(7), None, Some(2), Some(9), Some(2), Some(0)];
+    let expected = indices.map(|index| index.and_then(|i| tree.bone(root, i)));
+    assert_eq!(tree.bones(root, indices), expected);
+    assert_eq!(
+        expected,
+        [
+            Some(ids[7]),
+            None,
+            Some(ids[2]),
+            None,
+            Some(ids[2]),
+            Some(root)
+        ]
+    );
+    assert_eq!(tree.bones(root, [None::<usize>; 3]), [None; 3]);
+}
+
+#[test]
 fn instance_nodes_hide_their_children_from_the_walk() {
     let (mut tree, ids) = sample();
     let root = ids[0];

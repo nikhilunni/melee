@@ -59,9 +59,9 @@ impl FighterCore {
     /// ftLib_800866DC (800866DC): the camera bone's world position, offset by
     /// the zoom offset (co_attrs x170).
     pub fn camera_bone_position(&mut self) -> Vec3 {
-        caches::bone_position(
+        caches::part_position(
             &mut self.skeleton,
-            self.animation.root,
+            &self.animation,
             self.attributes.camera.camera_zoom_target_bone as usize,
             self.attributes.camera.zoom_offset,
         )

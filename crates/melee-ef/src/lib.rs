@@ -201,6 +201,10 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
+        // Most procs queue nothing; skip moving an empty fixed-capacity batch.
+        if fighter.effect_queue().is_empty() {
+            return Ok(());
+        }
         let requests = fighter.effect_queue().drain(timing);
         for queued in requests.iter() {
             let request = queued.request;

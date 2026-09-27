@@ -5,6 +5,7 @@ use hsd_anim::{
 };
 use hsd_types::Vec3;
 
+use crate::anim::playback::FighterAnimation;
 use melee_coll::hurtbox::HurtCapsule;
 #[derive(Clone, Debug)]
 pub struct DynamicCollider {
@@ -28,18 +29,18 @@ pub struct ThrownHitbox {
     pub previous_position: Vec3,
 }
 impl ThrownHitbox {
-    pub fn update(&mut self, tree: &mut JObjTree, root: JObjId) {
+    pub fn update(&mut self, tree: &mut JObjTree, animation: &FighterAnimation) {
         match self.state {
             0 => {}
             1 => {
-                self.position = bone_position(tree, root, self.bone, self.offset);
+                self.position = part_position(tree, animation, self.bone, self.offset);
                 self.previous_position = self.position;
                 self.state = 2;
             }
             2 | 3 => {
                 self.state = 3;
                 self.previous_position = self.position;
-                self.position = bone_position(tree, root, self.bone, self.offset);
+                self.position = part_position(tree, animation, self.bone, self.offset);
             }
             _ => unimplemented!("ft_07C1.c:71: unsupported HitCapsule state {}", self.state),
         }
@@ -49,6 +50,28 @@ impl ThrownHitbox {
 /// copies the matrix translation directly (preserving signed zero).
 pub fn bone_position(tree: &mut JObjTree, root: JObjId, bone: usize, offset: Vec3) -> Vec3 {
     let joint = tree.bone(root, bone).expect("collision bone");
+    joint_position(tree, joint, offset)
+}
+/// `bone_position` for one of a fighter's own bones. Retail's capsules hold
+/// the bone's JObj (Fighter.parts, filled by the same depth-first walk at
+/// load), so the per-tick caches read the parts table instead of walking the
+/// skeleton again for every capsule.
+pub fn part_position(
+    tree: &mut JObjTree,
+    animation: &FighterAnimation,
+    bone: usize,
+    offset: Vec3,
+) -> Vec3 {
+    let joint = animation.parts[bone].joint;
+    debug_assert_eq!(
+        tree.bone(animation.root, bone),
+        Some(joint),
+        "fighter parts follow the skeleton's depth-first order"
+    );
+    joint_position(tree, joint, offset)
+}
+/// lb_8000B1CC's transform of `offset` by a joint's world matrix.
+fn joint_position(tree: &mut JObjTree, joint: JObjId, offset: Vec3) -> Vec3 {
     if offset.x == 0.0 && offset.y == 0.0 && offset.z == 0.0 {
         return crate::collision::ecb::world_position(tree, joint);
     }
@@ -62,7 +85,7 @@ pub fn bone_position(tree: &mut JObjTree, root: JObjId, bone: usize, offset: Vec
 pub fn hurtbox_extents(
     boxes: &mut [HurtCapsule],
     tree: &mut JObjTree,
-    root: JObjId,
+    animation: &FighterAnimation,
     position: Vec3,
     facing: f32,
     player_scale: f32,
@@ -72,7 +95,7 @@ pub fn hurtbox_extents(
         if !hurt.cached {
             hurt.positions = hurt
                 .offsets
-                .map(|offset| bone_position(tree, root, hurt.bone, offset));
+                .map(|offset| part_position(tree, animation, hurt.bone, offset));
             hurt.cached = true;
         }
         // asm.py ftCo_800A0DA4 --fused: none. Each bound is a separate add/sub.

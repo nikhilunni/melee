@@ -53,10 +53,9 @@ impl FlatGroundPose<'_> {
             if flags.0 & mask == 0 {
                 continue;
             }
-            let ids = leg.map(|index| {
-                tree.bone(root, index as usize)
-                    .expect("ground pose bone outside skeleton")
-            });
+            let ids = tree
+                .bones(root, leg.map(|index| Some(index as usize)))
+                .map(|id| id.expect("ground pose bone outside skeleton"));
             let [hip, knee, foot] = ids.map(|id| world_position(tree, id));
             let player_scale = self.player_scale;
             // ft_80089B08: 0x80089B80/84 fadds then fmuls; no contraction.

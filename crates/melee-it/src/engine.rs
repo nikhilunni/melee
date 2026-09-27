@@ -542,6 +542,15 @@ impl ItemPool {
     pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut ItemCore> {
         self.items.iter_mut()
     }
+    /// The common data beside mutable items, for passes that read both.
+    pub fn common_and_iter_mut(
+        &mut self,
+    ) -> (
+        &ItemCommonData,
+        impl DoubleEndedIterator<Item = &mut ItemCore>,
+    ) {
+        (&self.common, self.items.iter_mut())
+    }
     pub fn len(&self) -> usize {
         self.items.len()
     }

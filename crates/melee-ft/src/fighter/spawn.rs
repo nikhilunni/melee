@@ -235,7 +235,6 @@ impl Fighter {
             rng,
             counter,
         } = context;
-        let root = self.core.animation.root;
         let supported = self
             .core
             .initialize_spawn_geometry(map, counter, initial_scale);
@@ -245,7 +244,7 @@ impl Fighter {
         self.core.thrown_hitbox.state = 1;
         self.core
             .thrown_hitbox
-            .update(&mut self.core.skeleton, root);
+            .update(&mut self.core.skeleton, &self.core.animation);
         self.core.cpu =
             CpuState::initialize(self.core.player.cpu_mode, self.core.player.cpu_level, rng);
         supported

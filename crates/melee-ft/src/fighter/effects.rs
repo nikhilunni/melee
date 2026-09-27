@@ -64,12 +64,13 @@ impl super::FighterCore {
         rng: &mut gekko_math::HsdRng,
     ) -> usize {
         let mut draws = 0;
-        let mut graphics = std::mem::take(&mut self.commands.graphics);
         let mut index = 0;
-        while !graphics.is_empty() {
+        // Consumed in place: nothing below queues graphics, and moving the
+        // fixed-capacity queue out and back would copy all of its slots.
+        while !self.commands.graphics.is_empty() {
             draws += self.resolve_landing_effects(rng, index);
             index += 1;
-            let command = graphics.remove(0);
+            let command = self.commands.graphics.remove(0);
             if self.effect_state.invisible {
                 continue;
             }
@@ -183,7 +184,6 @@ impl super::FighterCore {
         }
         draws += self.resolve_landing_effects(rng, usize::MAX);
         self.effects.finish_graphics();
-        self.commands.graphics = graphics;
         draws
     }
 }

@@ -584,6 +584,27 @@ impl JObjTree {
         self.depth_first(root).nth(index)
     }
 
+    /// [`JObjTree::bone`] for several indices from a single walk; `None`
+    /// indices, and indices past the end of the walk, stay `None`.
+    pub fn bones<const N: usize>(
+        &self,
+        root: JObjId,
+        indices: [Option<usize>; N],
+    ) -> [Option<JObjId>; N] {
+        let mut found = [None; N];
+        let Some(last) = indices.iter().flatten().copied().max() else {
+            return found;
+        };
+        for (bone, id) in self.depth_first(root).take(last + 1).enumerate() {
+            for (slot, index) in found.iter_mut().zip(indices) {
+                if index == Some(bone) {
+                    *slot = Some(id);
+                }
+            }
+        }
+        found
+    }
+
     // -- loading ------------------------------------------------------------
 
     /// `HSD_JObjLoadJoint` (`jobj.c:667`): `JObjLoadJointSub(joint, NULL)`

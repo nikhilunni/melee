@@ -460,15 +460,10 @@ impl FighterCore {
         if !self.status.disabled {
             self.status.require_supported();
             for hit in self.commands.hitboxes.iter_mut().flatten() {
-                super::hitbox::update(
-                    hit,
-                    &mut self.skeleton,
-                    self.animation.root,
-                    self.player.scale,
-                );
+                super::hitbox::update(hit, &mut self.skeleton, &self.animation, self.player.scale);
             }
             self.thrown_hitbox
-                .update(&mut self.skeleton, self.animation.root);
+                .update(&mut self.skeleton, &self.animation);
         }
     }
     /// Fighter_UnkProcessGrab_8006CA5C (0x8006CA5C), s_link 12.
@@ -615,7 +610,7 @@ impl FighterCore {
         self.cpu.hurtbox_extents = caches::hurtbox_extents(
             &mut self.hurtboxes,
             &mut self.skeleton,
-            self.animation.root,
+            &self.animation,
             self.physics.position,
             self.physics.facing,
             self.player.scale,
@@ -637,9 +632,9 @@ impl FighterCore {
     /// ftCo_8009DD94: collider positions before the first dynamics set.
     fn update_dynamic_colliders(&mut self) {
         for collider in &mut self.dynamic_colliders {
-            collider.position = caches::bone_position(
+            collider.position = caches::part_position(
                 &mut self.skeleton,
-                self.animation.root,
+                &self.animation,
                 collider.bone,
                 collider.offset,
             );

@@ -77,15 +77,22 @@ impl EcbPose {
             x10c_joint,
         } = collision.ecb_source.params
         {
+            // Each distinct bone once, in first-use order.
             for index in x10c_joint.into_iter().chain([x108_joint]).flatten() {
                 if pose.positions[..pose.len].iter().any(|&(i, _)| i == index) {
                     continue;
                 }
-                let joint = tree
-                    .bone(root, index as usize)
-                    .expect("ECB bone outside skeleton");
-                pose.positions[pose.len] = (index, world_position(tree, joint));
+                pose.positions[pose.len].0 = index;
                 pose.len += 1;
+            }
+            // One skeleton walk resolves every sampled bone.
+            let indices: [Option<usize>; 7] = std::array::from_fn(|slot| {
+                (slot < pose.len).then(|| pose.positions[slot].0 as usize)
+            });
+            let joints = tree.bones(root, indices);
+            for (slot, joint) in joints[..pose.len].iter().enumerate() {
+                let joint = joint.expect("ECB bone outside skeleton");
+                pose.positions[slot].1 = world_position(tree, joint);
             }
         }
         pose
