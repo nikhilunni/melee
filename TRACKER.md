@@ -1136,3 +1136,13 @@ Newest first. One line per session: date, what landed, what is next.
   faults, a hand animation removed with no motion attached
   (ftAnim_8006FA58's descriptor pose over the subtree); fixed, both bridged
   exact, rerun 3,000/3,000 clean. Full release gate 1471/0.
+- 2026-09-27: Sudden Death corpus bridge (20-case sample): 16 exact, two
+  silent divergences and two undecodable traces. The divergences were a jab
+  continued from Wait/Walk: ftCo_Attack1_CheckInput's hitlag_mul window now
+  lives on the fighter (every motion change but Wait/Walk closes it,
+  fighter.c:1142), counts down in the Wait and Walk IASAs and re-enters
+  Attack12/13 from unk_msid. decode.py wrote stale NaN item words as JSON
+  NaN; approx is now 0 for non-finite values (bits exact). FallSpecial may
+  hold an item and runs ftCo_800D705C's catch window (ported, opening
+  unwitnessed). Five new corpus_sd cases gated; next: more explorer seeds
+  and bridging.

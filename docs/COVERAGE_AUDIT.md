@@ -69,11 +69,24 @@ remaining gaps:
 | Tilts with a held item | Fail closed | Unreachable for a throwable item: A with the item is ftCo_Catch_CheckInput's throw first, and the C-stick is a smash stick by default |
 | Specials of other characters while holding | Fail closed per character (SPECIALS_KEEP_HELD_ITEM) | Out of scope: other characters |
 | A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge; its lit walk lasts at most the blink countdown |
-| ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported | Unreachable: A also requests an aerial first |
+| ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Ported for FallSpecial (its only reachable opener: elsewhere A requests an aerial first); a held FallSpecial is witnessed (`corpus_sd_s1_eea202b0d_p2`), an open window is not | An empty-handed fighter in FallSpecial pressing A beside a live Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hitboxes (it_8026FE68) and inert item hitboxes | Fail closed; item hitboxes on item hurtboxes are ported (`sudden_death_bombchain_fd_marth`) | Two live item hitboxes meeting |
 | Unlit Bob-omb states (idle, pickup, walk, throw) | Fail closed | Unreachable in Sudden Death: the rain lights every Bob-omb at spawn |
 | A fighter launched into a ceiling (FlyReflectCeil, ceiling tech) | Fail closed | FD's only ceiling is the underside (|x| <= 53.8, y = -55); the Sudden Death Bob-omb timing cannot put a fighter under it before its blast |
+
+## How the Sudden Death gaps were searched
+
+Hand-made witnesses start from `sudden_death_fd_marth4_timer60.sav`; inputs
+are searched first with `melee-sim dry-run` (the port alone, from a
+recording of the same savestate) and only the winners are recorded. The
+corpus explorer's `sudden-death` mode (`cargo run -p melee-replay --release
+--example explore -- harness/roms/files <out> <count> <skip> sudden-death`)
+plays random but cautious inputs from the retail Sudden Death boundary:
+4,300 cases found three faults (all fixed and gated as `corpus_sd_*`), and
+its recordings bridge to Dolphin like any corpus case. Bridging a sample
+found one silent divergence (a jab continued from Wait or Walk inside the
+jab window, now gated) and taught the decoder to encode stale NaN words.
 
 ## Explicit boundaries
 
