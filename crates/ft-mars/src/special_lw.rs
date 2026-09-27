@@ -185,6 +185,13 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
             ..Default::default()
         },
     )?;
+    // Fighter_ChangeMotionState zeroes shield_unk0/1 (fighter.c:1052); the
+    // transition re-installs the volume (ftColl_8007B1B8) but not them, so a
+    // Counter that changed ground/air sets no minimum hitlag.
+    f.character
+        .get_mut::<Marth>()
+        .special_lw
+        .collision_multiplier = 0.0;
     if stance && f.commands.variables[1] == 2 {
         let m = f.character.get_mut::<Marth>();
         let v = &m.attributes.counter_volume;
