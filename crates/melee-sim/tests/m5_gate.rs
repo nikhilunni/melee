@@ -542,6 +542,36 @@ fn reflector_turn_walkoff_fd_fox_200_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("reflector_turn_walkoff_fd_fox", 200);
 }
 
+/// A capture over the edge goes high (CaptureWaitHi); a back throw from it.
+#[test]
+fn capture_hi_edge_throwb_fd_marth_220_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("capture_hi_edge_throwb_fd_marth", 220);
+}
+
+/// Pummels in a high capture, then CaptureCut in the air.
+#[test]
+fn capture_hi_edge_pummel_fd_marth_220_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("capture_hi_edge_pummel_fd_marth", 220);
+}
+
+/// Level-1 reactions on Fox (DamageN1, DamageHi1, DamageLw1) from Dancing Blade.
+#[test]
+fn damage_level1_dancingblade_fd_marth_170_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damage_level1_dancingblade_fd_marth", 170);
+}
+
+/// DamageAir1 on Fox from Dancing Blade.
+#[test]
+fn damage_air1_dancingblade_fd_marth_170_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damage_air1_dancingblade_fd_marth", 170);
+}
+
+/// A landed Reflector end sliding off the edge (LwEnd -> AirLwEnd).
+#[test]
+fn reflector_end_walkoff_fd_fox_154_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("reflector_end_walkoff_fd_fox", 154);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]
@@ -1695,6 +1725,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_smashbomb_fd_fox", 1545),
         // Fox catches a falling Bob-omb in the air, lands and throws it at Marth.
         ("sudden_death_foxcatchthrow_bomb_fd_marth", 1481),
+        // A reflecting Reflector sliding off the edge (LwHit -> AirLwHit).
+        ("sudden_death_reflecthit_walkoff_fd_marth", 1343),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),

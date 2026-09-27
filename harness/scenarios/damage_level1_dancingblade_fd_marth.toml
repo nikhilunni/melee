@@ -1,0 +1,31 @@
+# Marth Dancing Blade side, side, side, down (30/46/62/80); Fox dashes left (30), stops (47) and is hit by
+# the down-fourth multi-hit at 0-11%: DamageN1 (92), DamageHi1 (101), DamageLw1 (109), DamageN1 (117), finisher DamageHi3 (125).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "damage_level1_dancingblade_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 170
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 30, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 32, port = 0, buttons = {  }, raw = {  } },
+  { frame = 46, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 47, port = 1, buttons = {  }, raw = {  } },
+  { frame = 48, port = 0, buttons = {  }, raw = {  } },
+  { frame = 62, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 64, port = 0, buttons = {  }, raw = {  } },
+  { frame = 80, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 82, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

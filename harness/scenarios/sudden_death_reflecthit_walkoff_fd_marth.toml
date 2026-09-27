@@ -1,0 +1,32 @@
+# Sudden Death: Marth picks up the Bob-omb (1226) as in sudden_death_reflectbomb; Fox runs left past him (1210)
+# toward the left edge; Marth forward-throws it left (1266); Fox run-shines at the edge (1273), reflects it
+# (SpecialLwHit 1276) and slides off the edge in the hit (SpecialAirLwHit 1278); the Bob-omb KOs Marth.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_reflecthit_walkoff_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1343
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = {  }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1210, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1226, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1266, port = 0, buttons = {  }, raw = { button = 256, stickX = -50 } },
+  { frame = 1268, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1273, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 1275, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 1313, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

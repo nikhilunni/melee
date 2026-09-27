@@ -1,0 +1,30 @@
+# Fox walks to the right edge and teeters (32); Marth runs right and dash-grabs him (76): the pulled Fox's
+# position leaves the floor (CapturePulledLw 85 -> CapturePulledHi 86 -> CaptureWaitHi 87); Marth back-throws (100, ThrownB).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "capture_hi_edge_throwb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 220
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 12, port = 1, buttons = {  }, raw = {  } },
+  { frame = 20, port = 1, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 50, port = 1, buttons = {  }, raw = {  } },
+  { frame = 76, port = 0, buttons = {  }, raw = { stickX = 127, button = 16 } },
+  { frame = 78, port = 0, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

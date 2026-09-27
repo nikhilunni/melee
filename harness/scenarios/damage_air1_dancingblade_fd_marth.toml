@@ -1,0 +1,32 @@
+# As damage_level1_dancingblade_fd_marth, but Fox dashes later (42) and short-hops (71): the first
+# down-fourth hit catches him airborne (DamageAir1 92), later hits DamageN1.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "damage_air1_dancingblade_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 170
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 32, port = 0, buttons = {  }, raw = {  } },
+  { frame = 42, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 46, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 48, port = 0, buttons = {  }, raw = {  } },
+  { frame = 62, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 64, port = 0, buttons = {  }, raw = {  } },
+  { frame = 71, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 72, port = 1, buttons = {  }, raw = {  } },
+  { frame = 80, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 82, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
