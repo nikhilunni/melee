@@ -1040,3 +1040,10 @@ Newest first. One line per session: date, what landed, what is next.
   (airborne DownDamage drifting after its count ran out) fixed: damage air
   physics test the hitstun flag x221C_b6 as retail. Next: the last sixth
   (NR%6==0), then the full gate.
+- 2026-09-27: Corpus v5 sample complete: all six sixths (240 recordings)
+  bridged and gated; the last batch was 40/40 exact. Every fault found was
+  fixed and gated as a corpus_v3 witness. Full release gate 1471/0, clippy
+  clean, harness 243 passed. Remaining milestone items (fail-closed until a
+  witness reaches them): ceiling bounce/tech, a hit knocking a held item
+  loose, shield/dash with an item, the other Sudden Death gaps in
+  docs/COVERAGE_AUDIT.md.
