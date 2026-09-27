@@ -44,6 +44,17 @@ pub struct FighterEffects {
     pub invisible: bool,
 }
 impl super::FighterCore {
+    /// Install a one-shot accessory4 after this entry's motion change.
+    pub fn arm_accessory4(&mut self) {
+        self.accessory4_armed = true;
+    }
+    /// A one-shot accessory4 call: the character's pending action runs only
+    /// while its accessory is still installed, and uninstalls it
+    /// (accessory4_cb = NULL). A pending action whose accessory a motion
+    /// change removed is dropped.
+    pub fn run_accessory4<T>(&mut self, pending: Option<T>) -> Option<T> {
+        pending.filter(|_| std::mem::take(&mut self.accessory4_armed))
+    }
     /// ftCo_8009F834 (0x8009F834). Called at the command-owning proc boundary,
     /// before another fighter or stage can draw from the shared RNG.
     pub fn resolve_graphics_commands(

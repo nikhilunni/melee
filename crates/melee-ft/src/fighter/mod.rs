@@ -655,6 +655,10 @@ pub struct FighterCore {
     pub pickup_candidates: item_pickup::PickupCandidates,
     /// ft_80082E3C's view of the other fighters on ledges, offered to Map.
     pub ledge_holders: ledge::LedgeHolders,
+    /// accessory4_cb != NULL for a character's one-shot accessory (effects
+    /// created after the deferred flush). The character keeps what it will
+    /// do; every Fighter_ChangeMotionState disarms it (fighter.c:1377).
+    pub accessory4_armed: bool,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.

@@ -135,6 +135,7 @@ fn release(f: &mut Fighter, full: bool, a: &FighterAssets) -> Result<()> {
     f.change_motion_state_at(ActionId(base + u16::from(full)), a, 1.0)?;
     f.commands.variables[0] = u32::from(full);
     f.character.get_mut::<Marth>().special_n.pending_effect = true;
+    f.arm_accessory4();
     Ok(())
 }
 pub fn input(f: &mut Fighter, p: InputPhase<'_>) {
@@ -224,7 +225,8 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 pub fn accessory(f: &mut Fighter, _: &FighterAssets) {
-    if std::mem::take(&mut f.character.get_mut::<Marth>().special_n.pending_effect) {
+    let pending = std::mem::take(&mut f.character.get_mut::<Marth>().special_n.pending_effect);
+    if f.run_accessory4(pending.then_some(())).is_some() {
         let id = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
             0x4F3
         } else {

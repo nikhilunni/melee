@@ -66,7 +66,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C, false>,
             shorten::<C>,
             travel_physics::<C, false>,
-            ground_travel_collision::<C>,
+            ground_travel_collision,
         ),
         row(
             S::SpecialSEnd,
@@ -90,7 +90,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 6] {
             travel::<C, true>,
             shorten::<C>,
             travel_physics::<C, true>,
-            air_travel_collision::<C>,
+            air_travel_collision,
         ),
         row(
             S::SpecialAirSEnd,
@@ -178,6 +178,7 @@ fn start<C: FoxFamily, const AIR: bool>(
         scratch.ghost_rotations.fill(rotation);
         scratch.ghosts_recorded = true;
         scratch.trail_pending = true;
+        f.arm_accessory4();
     }
     Ok(None)
 }
@@ -394,19 +395,8 @@ fn ground_startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()
     ground_collision(f, p, S::SpecialAirSStart, false)
 }
 
-fn ground_travel_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    let action = f.motion_state.action;
-    ground_collision(f, p, S::SpecialAirS, true)?;
-    drop_trail_on_change::<C>(f, action);
-    Ok(())
-}
-
-/// Fighter_ChangeMotionState clears accessory4 on every change, so a dash
-/// that switches ground/air before s_link 9 never creates the trail.
-fn drop_trail_on_change<C: FoxFamily>(f: &mut Fighter, before: melee_ft::fighter::ActionId) {
-    if f.motion_state.action != before {
-        f.character.get_mut::<C>().special_side().trail_pending = false;
-    }
+fn ground_travel_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    ground_collision(f, p, S::SpecialAirS, true)
 }
 
 /// ftFx_SpecialSStart_GroundToAir (800EA1D4), SpecialS_GroundToAir (800EA698).
@@ -452,11 +442,8 @@ fn air_startup_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
 }
 
 /// ftFx_SpecialAirS_AirToGround (800EA700): flags 0x0C4C5884.
-fn air_travel_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    let action = f.motion_state.action;
-    air_counterpart_collision(f, p, S::SpecialS, true)?;
-    drop_trail_on_change::<C>(f, action);
-    Ok(())
+fn air_travel_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    air_counterpart_collision(f, p, S::SpecialS, true)
 }
 
 fn air_counterpart_collision(
@@ -527,10 +514,8 @@ fn end_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result
 /// (fighter.c:1377), even to the dash's own ground/air counterpart, so a
 /// dash that changes state before s_link 9 never creates the trail.
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
-    let action = f.motion_state.action.0;
-    let dashing = action == S::SpecialS as u16 || action == S::SpecialAirS as u16;
     let pending = std::mem::take(&mut f.character.get_mut::<C>().special_side().trail_pending);
-    if pending && dashing {
+    if f.run_accessory4(pending.then_some(())).is_some() {
         // efAlt 0x48D -> Fox generator 0xBC0, attached to TopN.
         f.effects
             .push(melee_ef::request::EffectRequest::SyncAttached { id: 0x48D, bone: 0 });

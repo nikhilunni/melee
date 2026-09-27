@@ -124,6 +124,7 @@ pub fn enter<C: FoxFamily>(f: &mut Fighter, air: bool, assets: &FighterAssets) {
         assets,
     )
     .expect("Fire Fox charge assets");
+    f.arm_accessory4();
     f.step_animation(assets);
 }
 fn hold<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
@@ -173,6 +174,7 @@ fn launch<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     scratch.travel_ticks = 0;
     scratch.collision_ticks = 0;
     scratch.pending_effect = Some(0x48C);
+    f.arm_accessory4();
     f.physics.self_velocity.x = f.physics.facing * (speed * cosf(angle));
     f.physics.self_velocity.y = speed * sinf(angle);
     f.physics.jumps_used = f.attributes.jumping.max_jumps as u8;
@@ -302,6 +304,7 @@ fn hold_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -
             },
         )?;
         f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48B);
+        f.arm_accessory4();
     }
     Ok(())
 }
@@ -321,6 +324,7 @@ fn travel_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>)
             },
         )?;
         f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48C);
+        f.arm_accessory4();
     } else if f.collision.data.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0 {
         let n = f.collision.data.floor.normal;
         let angle = melee_lb::trigf::atan2f(-n.x * f.physics.facing, n.y);
@@ -367,6 +371,7 @@ fn hold_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> R
             },
         )?;
         f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48B);
+        f.arm_accessory4();
         let maximum = f.attributes.air.air_drift_max;
         f.physics.self_velocity.x = f.physics.self_velocity.x.clamp(-maximum, maximum);
     } else {
@@ -489,7 +494,7 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
         .special_hi()
         .pending_effect
         .take();
-    if let Some(id) = pending {
+    if let Some(id) = f.run_accessory4(pending) {
         // Fighter_SetEffectHitlagCallbacks, charge/launch accessory callback.
         f.effect_state.hitlag_callbacks = true;
         let part = if id == 0x48B {
@@ -545,6 +550,7 @@ fn launch_ground<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Resul
     s.travel_ticks = 0;
     s.collision_ticks = 0;
     s.pending_effect = Some(0x48C);
+    f.arm_accessory4();
     f.physics.ground_velocity = speed * f.physics.facing;
     let n = f.collision.data.floor.normal;
     let angle = melee_lb::trigf::atan2f(-n.x * f.physics.facing, n.y);

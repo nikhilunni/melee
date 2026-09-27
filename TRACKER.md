@@ -996,3 +996,8 @@ Newest first. One line per session: date, what landed, what is next.
   pushed off at passivewall_vel_x. Every fighter loads submotions 202/203.
   Gated by corpus_v3_s1_edb4b01fd_p0. The ceiling tech (ftCo_800C23A0) and
   FlyReflect bounces stay fail-closed until a recording reaches them.
+- 2026-09-27: accessory4 is now modeled in the core (`accessory4_armed`):
+  characters arm their one-shot accessories after the entry's motion change
+  and run them through `run_accessory4`; every Fighter_ChangeMotionState
+  disarms it. This replaces the Illusion-only fix and also covers the
+  Reflector started at the edge (s1_ec21c8082), Fire Fox and Shield Breaker.

@@ -835,6 +835,7 @@ impl FighterCore {
             held_item: None,
             pickup_candidates: Default::default(),
             ledge_holders: Default::default(),
+            accessory4_armed: false,
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
@@ -908,6 +909,8 @@ impl FighterCore {
             self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
         }
         self.commands.capsule_overrides.clear();
+        // fighter.c:1377: no supported entry passes Ft_MF_KeepAccessory.
+        self.accessory4_armed = false;
         // fighter.c:1101-1102: entries without Ft_MF_KeepFastFall clear it.
         if !change.preserve.fast_fall
             && !matches!(

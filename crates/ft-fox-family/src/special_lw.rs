@@ -203,6 +203,7 @@ pub fn enter<C: FoxFamily>(f: &mut Fighter, air: bool, assets: &FighterAssets) {
         pending_effect: Some(0x489),
         ..Default::default()
     };
+    f.arm_accessory4();
     f.commands.variables[1] = 4;
 }
 fn released<C: FoxFamily>(f: &mut Fighter, count_down: bool) -> bool {
@@ -260,6 +261,7 @@ fn start<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<
         enter_loop::<C>(f, p.assets)?;
         destroy_effect(f);
         f.character.get_mut::<C>().special_lw().pending_effect = Some(0x488);
+        f.arm_accessory4();
     }
     Ok(None)
 }
@@ -280,6 +282,7 @@ fn hit<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<Wa
             enter_loop::<C>(f, p.assets)?;
             destroy_effect(f);
             f.character.get_mut::<C>().special_lw().pending_effect = Some(0x488);
+            f.arm_accessory4();
         }
     }
     Ok(None)
@@ -342,6 +345,7 @@ fn enter_turn<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<(
     f.commands.variables[0] = 0;
     advance_turn::<C>(f);
     f.character.get_mut::<C>().special_lw().pending_effect = Some(0x488);
+    f.arm_accessory4();
     Ok(())
 }
 
@@ -572,16 +576,17 @@ pub fn on_reflect<C: FoxFamily>(
     f.change_motion_state(reaction.action.into(), assets)?;
     f.combat.reflector_enabled = true;
     f.character.get_mut::<C>().special_lw().pending_effect = Some(0x48A);
+    f.arm_accessory4();
     Ok(reaction)
 }
 pub fn accessory<C: FoxFamily>(f: &mut Fighter, _: &FighterAssets) {
-    if let Some(id) = f
+    let pending = f
         .character
         .get_mut::<C>()
         .special_lw()
         .pending_effect
-        .take()
-    {
+        .take();
+    if let Some(id) = f.run_accessory4(pending) {
         // All three retail accessory callbacks install PauseAll/ResumeAll,
         // including KeepGfx turns that do not create another model.
         f.effect_state.hitlag_callbacks = true;
