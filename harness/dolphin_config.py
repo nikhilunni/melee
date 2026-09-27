@@ -10,15 +10,22 @@ Environment overrides:
   DOLPHIN_GUI=1     use the windowed app everywhere
   DOLPHIN_PLATFORM  no-GUI window platform (default "headless")
   DOLPHIN_AUDIO=1   keep host audio output
+  DOLPHIN_USER_DIR  a private Dolphin user folder (-u); parallel recordings
+                    each get one from isolated_user_dir()
 """
 from __future__ import annotations
 
+import contextlib
 import os
+import shutil
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 
 BINARIES = Path.home() / "Projects/dolphin-scripting/build/Binaries"
 HEADLESS_BIN = BINARIES / "DolphinHeadless.app/Contents/MacOS/dolphin-emu-nogui"
 GUI_BIN = BINARIES / "Dolphin.app/Contents/MacOS/Dolphin"
+DEFAULT_USER_DIR = Path.home() / "Library/Application Support/Dolphin"
 
 
 def binary(gui: bool = False) -> Path:
@@ -48,4 +55,19 @@ def launch_flags(executable: Path, video: str | None) -> list[str]:
         # The backend only plays samples the emulated DSP already produced, so
         # muting it cannot change game state.
         flags += ["-C", "Dolphin.DSP.Backend=No Audio Output"]
+    if user_dir := os.environ.get("DOLPHIN_USER_DIR"):
+        flags += ["-u", user_dir]
     return flags
+
+
+@contextlib.contextmanager
+def isolated_user_dir() -> Iterator[Path]:
+    """A private copy of the default user folder (a few MB: config, SRAM,
+    memory cards), removed afterwards. Callers pass it to their Dolphin as
+    DOLPHIN_USER_DIR in the child's environment, so concurrent emulators never
+    share config, logs or card writes. It never touches os.environ, which
+    record_many's threads share."""
+    with tempfile.TemporaryDirectory(prefix="dolphin-user-") as tmp:
+        root = Path(tmp) / "Dolphin"
+        shutil.copytree(DEFAULT_USER_DIR, root, ignore=shutil.ignore_patterns("Cache", "Logs", "Dump", "ScreenShots"))
+        yield root

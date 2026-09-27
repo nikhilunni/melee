@@ -73,6 +73,7 @@ cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 # Dolphin oracle: headless, silent, Null video by default (docs/DOLPHIN_RUN.md)
 tools/build-headless-dolphin.sh                                   # once, and after any fork rebuild
 cd harness && uv run python record.py scenarios/<name>.toml [--bones N]
+cd harness && uv run python record_many.py scenarios/a.toml scenarios/b.toml ... [--jobs 8]   # parallel, isolated
 cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>   # port recording -> retail scenario
 cargo run -q --release -p melee-sim -- dry-run <new.toml> --state-from <recorded.toml> --out o.jsonl  # search tick-clock inputs in the port
 cargo run -q --release -p melee-replay --example explore -- harness/roms/files <out> <n> <skip> [sudden-death]  # corpus explorer
@@ -126,7 +127,12 @@ produces byte-identical traces to the windowed app and avoids the macOS
 IOSurface limit. Never launch the windowed app for scripted scenes; it is only
 for live human play (`record.py` picks it automatically) and menu driving
 (`dolphin/drive.py`). `DOLPHIN_GUI=1` forces windowed; `DOLPHIN_AUDIO=1` unmutes.
-Run recordings one at a time.
+Several scripted scenarios record at once through `harness/record_many.py`
+(`--jobs`, default 8): each headless Dolphin gets a private user folder, and the
+game-state traces are byte-identical to serial ones (2026-09-27; only the
+`vi_frame` metadata can shift with host load). Never start two bare `record.py`
+runs concurrently (they would share Dolphin's user folder), and record human
+scenes one at a time.
 
 Parallel work (currently suspended; see "Delegating work"): independent tasks (different crates, different decomp
 directories) can be given to subagents at once. Each subagent touches only
