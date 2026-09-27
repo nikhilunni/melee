@@ -583,6 +583,12 @@ impl Fighter {
         let row = self.row(state);
         let state = row.id;
         self.core.begin_motion_change(source);
+        // The port's attack-proc guard belongs to the state that set it (an
+        // attack entry, or hitlag ending during an attack); attack entries
+        // set it again after this change.
+        if self.core.status.interaction == super::Interaction::Attack {
+            self.core.status.interaction = super::Interaction::Idle;
+        }
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
         }
@@ -820,6 +826,7 @@ impl FighterCore {
             camera: melee_cm::Subject::default(),
             offscreen: Offscreen::default(),
             quake_request: None,
+            released_link: None,
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),

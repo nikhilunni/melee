@@ -645,6 +645,9 @@ pub struct FighterCore {
     pub offscreen: Offscreen,
     /// Camera_RequestQuake from this tick's procs, for the scene to forward.
     pub quake_request: Option<melee_cm::QuakeKind>,
+    /// A grab link this fighter dropped by dying (ftCo_800DD100); the scene
+    /// releases the partner.
+    pub released_link: Option<grab::GrabLink>,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.

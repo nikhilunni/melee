@@ -10,7 +10,8 @@ legal inputs in scope can reach it, **out of scope** when only another
 character, stage, mode or CPU can, and **investigate** when neither is shown.
 
 Evidence of exactness for what is implemented: 48 generated full matches
-(corpus v2) and the directed scenarios in `m5_gate`, the timeout and Sudden
+(corpus v2), the nine corpus v3 matches that faulted the port (240 explored)
+and the directed scenarios in `m5_gate`, the timeout and Sudden
 Death path (`tests/match_endings.rs`), cold starts, bones, particles and
 allocation gates.
 
@@ -23,7 +24,6 @@ built for character articles, none of which can be picked up or hit.
 | --- | --- | --- |
 | `ftpickupitem_80094790` before jab, jab follow-ups, rapid jab, side and down tilt (ftCo_Attack1.c, ftCo_AttackS3.c, ftCo_AttackLw3.c, ftCo_Attack100.c) | Skipped: the attack starts | A near a lit Bob-omb (grabbable while `xDC8 x15` is set) |
 | `ftCo_800D7100` / `ftCo_800D71D8` aerial catch | Asserts the scene proved no grabbable item; fails whenever a Bob-omb exists | Shield + A in the air during Sudden Death |
-| `ftColl_8007BC90` catch boxes versus items | Not modelled | Z near an item whose `xD0C` has cleared |
 | Fighter hitboxes versus item hurtboxes (Bob-omb `DmgReceived` detonates) | Not modelled; items have no hurtboxes | Attacking a Bob-omb |
 | Item hitboxes versus item hurtboxes (one explosion detonating another) | Not modelled | Two Bob-ombs within an explosion |
 | Holding, throwing and dropping items (LightGet, ItemThrow*, Bob-omb states 7–10) | Absent | Any pickup above |
@@ -40,7 +40,6 @@ pick one up and throw it) and implement the responses they show.
 | Site | Boundary | Note |
 | --- | --- | --- |
 | `melee-ft/fighter/damage.rs` ftCo_8008EC90 | Third-party hit on a captured fighter | A Bob-omb explosion during a grab |
-| `melee-ft/fighter/life.rs` ftCo_800D331C | Release a linked fighter on death | A Bob-omb KO during a grab |
 | `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Same interaction family |
 | `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together | Corpus fault family; needs a witness |
 | `melee-ft/fighter/damage.rs` ftColl_80076CBC | Simultaneous shield impacts | Two hitboxes on one shield in a frame |
@@ -78,6 +77,10 @@ other than the Fox articles and the Bob-omb (`melee-it`).
 | `input.rs` special fall with jumps left | Entry spends the jumps; likely unreachable |
 | `life.rs` gm_80167320 final stock | The scene freezes before the timer can expire; unreachable |
 | `state/special.rs` buffered special | Entry without a supported special buffer |
+
+Catch boxes against items (`ftColl_8007BC90`) are not a gap: the item side
+requires `xDD0 b4`, which only stage enemies set. A grabber dying with its
+victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.
 
 ## Exit status
 

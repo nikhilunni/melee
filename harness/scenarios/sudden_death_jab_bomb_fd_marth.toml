@@ -1,0 +1,29 @@
+# Sudden Death: Marth dashes left under the first Bob-omb (dropped at
+# x = -75 on tick 1204) and presses A three times while it falls.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_jab_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1369
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 1212, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1222, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1224, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1230, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1232, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

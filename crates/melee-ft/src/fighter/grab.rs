@@ -432,11 +432,12 @@ pub fn map_capture(
     let c = &mut victim.core;
     c.skeleton
         .set_translate(c.animation.root, &c.physics.position);
+    // Only the Capture rows' own collision callback consumes this; a
+    // CaptureDamage row (possibly just re-entered by a departure) has none.
     if normal_phase {
-        let MotionData::Capture(capture) = &mut victim.state_data else {
-            unreachable!()
-        };
-        capture.map_prepared = true;
+        if let MotionData::Capture(capture) = &mut victim.state_data {
+            capture.map_prepared = true;
+        }
     }
     Ok(())
 }

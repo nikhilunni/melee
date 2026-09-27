@@ -594,17 +594,39 @@ impl Fighter {
     /// the Blaster away). Held items (item_gobj, x197C, x1980), metal and the
     /// x2226_b4 hat are not part of the port yet.
     fn release_for_death(&mut self) {
-        if self.core.combat.grab.is_some() {
-            unimplemented!("ftCo_800D331C: release linked fighter on death");
-        }
         if let Some(death) = self.character.table().death {
             death(self);
+        }
+        // ftCo_800DD100 -> ftCo_800DC920: separate a grab pair. The scene
+        // releases the partner (ftCommon_8007D92C) right after this proc.
+        if let Some(link) = self.core.combat.grab.take() {
+            assert!(
+                self.core.combat.thrown_pose.is_none(),
+                "ftCo_800DC920: a thrown fighter's constraint release on death"
+            );
+            self.core.released_link = Some(link);
         }
         self.core.clear_velocities();
         // ftCommon_8007DB24: x2219_b0 = 0, then efLib_DestroyAll.
         self.core.effect_state.destroy_on_state_change = false;
         self.core.effects.push(EffectRequest::DestroyOwned);
         // x6C / x70 keep the fatal motion id for the stale-move stats.
+    }
+    /// ftCo_800DD100's other half: the partner of a fighter that died while
+    /// linked loses the link (ftCo_800DC920's unconstrained path) and
+    /// ftCommon_8007D92C (8007D92C) settles it: Fall in the air, else Wait.
+    pub fn release_from_dead_partner(&mut self, assets: &FighterAssets) -> Result<()> {
+        assert!(
+            self.core.combat.thrown_pose.is_none(),
+            "ftCo_800DC920: a thrown fighter's constraint release"
+        );
+        self.core.combat.grab = None;
+        let state = if self.core.physics.ground_or_air == GroundOrAir::Air {
+            S::Fall
+        } else {
+            S::Wait
+        };
+        self.change_motion_state(state.into(), assets)
     }
     /// ftCo_800D4FF4 (800D4FF4), after Fighter_UnkProcessDeath reset.
     pub fn enter_revival(&mut self, assets: &FighterAssets, target: Vec3) -> Result<()> {

@@ -914,3 +914,14 @@ Newest first. One line per session: date, what landed, what is next.
   `timeout_tie_fd_marth` (3839), `sudden_death_start_fd_marth` (1697), both
   also rebuilt cold; `melee-lib/tests/match_endings.rs` runs the whole path
   through the public API bit-exact. Next: the final coverage audit.
+- 2026-09-26: Corpus v3 (`explore <dir> 40`, 240 matches from xorshift seeds
+  of 0x00C0FFEE): 9 port faults, all fixed and gated
+  (`m5_gate::corpus_v3_matches_retail`). A motion change ends the attack
+  interaction; grabs and throws use the stop-at-edge map pass (ft_800841B8 ->
+  ft_800827A0), not the fall-off one; a dying grabber releases its victim
+  (ftCo_800D331C/ftCo_800DD100); thrown positioning (accessory1) waits out
+  hitlag (Fighter_CallAcessoryCallbacks_8006C624); Marth's Counter volume dies
+  with the motion (fighter.c:1049 `x221B_b0`). `sudden_death_jab_bomb_fd_marth`
+  gated; `sudden_death_pickup_bomb_fd_marth` recorded as the retail witness
+  for the item pickup packet. Next: Sudden Death item interactions
+  (COVERAGE_AUDIT.md silent gaps).

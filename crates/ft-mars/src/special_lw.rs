@@ -198,7 +198,16 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
 
 /// The Counter's shield volume where its bone holds it this frame
 /// (ftColl_8007B1B8's shield_hit, placed by lbColl_80007BCC).
+///
+/// Fighter_ChangeMotionState (fighter.c:1049) clears the volume flag
+/// `x221B_b0` on every motion change, and only the two stance rows set it
+/// again, so a volume left in the scratch outside them (Marth grabbed or hit
+/// out of the stance) is stale.
 fn counter_volume(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseVolume> {
+    if !matches!(f.motion_state.action.0, 369 | 371) {
+        f.character.get_mut::<Marth>().special_lw.volume = None;
+        return None;
+    }
     let volume = f.character.get::<Marth>().special_lw.volume.as_ref()?;
     let (bone, offset, radius) = (volume.bone, volume.offset, volume.radius);
     let c = &mut f.core;

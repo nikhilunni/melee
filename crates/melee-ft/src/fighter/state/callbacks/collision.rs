@@ -147,6 +147,31 @@ pub fn catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
+/// ftData_MotionStateList: ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216),
+/// ftCo_MS_ThrowF..ThrowLw (219..222) while grounded: ft_800841B8 -> ft_800827A0
+/// (mpColl_8004B2DC), which stops at the floor's edge. Losing the floor would
+/// separate the pair (fn_800DA004, fn_800DA440, fn_800DD684) and send both
+/// fighters to Fall.
+pub fn grab_hold(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    assert_eq!(
+        fighter.core.physics.ground_or_air,
+        melee_types::GroundOrAir::Ground,
+        "ftCo_Throw*_Coll: airborne throw collision (ft_80083C00 / ft_80083CE4)"
+    );
+    if map_escape(
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
+        phase.map,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.input.current.stick.x,
+    ) == WaitGroundResult::EnterFall
+    {
+        unimplemented!("ftCo_800DC920: a grab pair losing its floor");
+    }
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1
 /// (78), ftCo_MS_DamageN2 (79), ftCo_MS_DamageFlyN (88).
 /// ftCo_DamageFall_Coll (80090960), independent of the retained union owner.

@@ -665,6 +665,20 @@ impl Runtime {
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {
                     state.quakes.request(&mut state.camera, kind);
                 }
+                if let Some(link) = state.fighters[player].0.released_link.take() {
+                    let partner = match link {
+                        melee_ft::fighter::grab::GrabLink::Holding { victim, .. } => victim,
+                        melee_ft::fighter::grab::GrabLink::Captured { captor } => captor,
+                    };
+                    let index = state
+                        .fighters
+                        .iter()
+                        .position(|f| f.0.spawn_number == partner)
+                        .expect("linked partner");
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+                        .release_from_dead_partner(&state.assets.fighters[index]))
+                    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                }
                 if proc == FighterProc::Animation {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         if matches!(
@@ -698,7 +712,9 @@ impl Runtime {
                     grab_pairs::accessory(state, player)?;
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         f.update_revival_platform();
-                        if f.combat.thrown_pose.is_some() {
+                        // Fighter_CallAcessoryCallbacks_8006C624: hitlag
+                        // (x2219_b5) runs accessory3 instead of accessory1.
+                        if f.combat.thrown_pose.is_some() && f.combat.hitlag_remaining == 0.0 {
                             f.thrown_accessory(&state.assets.fighters[player]);
                         }
                     });

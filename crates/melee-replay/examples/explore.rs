@@ -1,5 +1,8 @@
 //! Deterministic robustness corpus. Exactness requires separate retail replay.
-//! cargo run -p melee-replay --release --example explore -- <assets> <output>
+//! cargo run -p melee-replay --release --example explore -- <assets> <output> [count]
+//!
+//! With `count`, version 3 explores that many further input seeds (a
+//! xorshift sequence from `EXTRA_SEED_START`) instead of version 2's eight.
 //!
 //! Version 2 starts every case from a retail match-start boundary
 //! (`harness/boundaries.toml`), so `harness/replay_to_scenario.py` can replay
@@ -25,6 +28,7 @@ const SEEDS: [u32; 8] = [
     u32::MAX,
 ];
 const TICKS: u64 = 6000;
+const EXTRA_SEED_START: u32 = 0x00C0_FFEE;
 /// Boundary seeds of `start_fd_fox4` (Fox P1) and `start_fd_marth4` (Marth P1).
 const BOUNDARY_SEEDS: [u32; 2] = [2_477_457_595, 629_775_590];
 
@@ -211,12 +215,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut arguments = std::env::args().skip(1);
     let directory = PathBuf::from(arguments.next().ok_or("missing asset directory")?);
     let output = PathBuf::from(arguments.next().ok_or("missing output directory")?);
+    let (version, seeds): (u32, Vec<u32>) = match arguments.next() {
+        None => (CORPUS_VERSION, SEEDS.to_vec()),
+        Some(count) => {
+            let mut next = Choices(EXTRA_SEED_START);
+            let count: usize = count.parse()?;
+            (
+                CORPUS_VERSION + 1,
+                (0..count).map(|_| next.next()).collect(),
+            )
+        }
+    };
     if output.exists() {
         return Err("output directory must be new to preserve prior evidence".into());
     }
     std::fs::create_dir_all(&output)?;
     let mut report = Report {
-        version: CORPUS_VERSION,
+        version,
         ticks_per_case: TICKS,
         results: Vec::new(),
     };
@@ -235,7 +250,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with_stocks(4);
         let assets = GameAssets::load(&directory, &base)?;
-        for seed in SEEDS {
+        for &seed in &seeds {
             for profile in 0u32..3 {
                 let config = base
                     .clone()
@@ -245,7 +260,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut held = [Held::default(); 2];
                 let mut choices = Choices(seed ^ (profile + 1).wrapping_mul(0x9e3779b9));
                 let name = format!(
-                    "v{CORPUS_VERSION}-swap{}-explore{seed:08x}-profile{profile}",
+                    "v{version}-swap{}-explore{seed:08x}-profile{profile}",
                     u8::from(swapped)
                 );
                 let mut row = ResultRow {

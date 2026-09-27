@@ -1466,6 +1466,7 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_start_fd_marth", 1697),
         ("sudden_death_bombs_fd_marth", 1300),
         ("sudden_death_idle_fd_marth", 1576),
+        ("sudden_death_jab_bomb_fd_marth", 1369),
     ] {
         combat_gate_ticks(name, ticks);
     }
@@ -1474,6 +1475,33 @@ fn timeout_and_sudden_death_match_retail() {
 #[test]
 fn corpus_v2_matches_through_game() {
     for (name, ticks) in CORPUS_MATCHES {
+        combat_gate_ticks(name, ticks);
+    }
+}
+
+/// Corpus version 3 (`explore <dir> <count>`, seeds from a xorshift of
+/// 0x00C0FFEE): the matches that faulted the port. Together they exposed
+/// that a motion change ends the attack interaction, that grabs and throws
+/// stop at the edge (ft_800841B8 -> ft_800827A0), that a dying grabber
+/// releases its victim (ftCo_800DD100), that thrown positioning waits out
+/// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
+/// drops the Counter volume (fighter.c:1049, `x221B_b0`).
+const CORPUS_V3_MATCHES: [(&str, usize); 9] = [
+    // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
+    ("corpus_v3_s1_e9943b4ab_p0", 700),
+    ("corpus_v3_s1_ec0a10b25_p1", 420),
+    ("corpus_v3_s0_e6cc80d32_p1", 957),
+    ("corpus_v3_s0_e720659b1_p1", 327),
+    ("corpus_v3_s0_e9943b4ab_p2", 3479),
+    ("corpus_v3_s0_ed97ea327_p0", 3009),
+    ("corpus_v3_s1_e6cc80d32_p2", 4559),
+    ("corpus_v3_s1_e720659b1_p0", 3317),
+    ("corpus_v3_s1_ee62c6106_p0", 2854),
+];
+
+#[test]
+fn corpus_v3_matches_retail() {
+    for (name, ticks) in CORPUS_V3_MATCHES {
         combat_gate_ticks(name, ticks);
     }
 }

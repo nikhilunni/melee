@@ -1387,8 +1387,11 @@ impl FighterCore {
             } else if self.combat.grab.is_some() {
                 // Pummel freezes both members of the pair without damage-state scratch.
                 self.status.interaction = Interaction::Idle;
-            } else {
+            } else if self.in_attack_state() {
                 self.status.interaction = Interaction::Attack;
+            } else {
+                // An attacker's hitlag can outlast its attack (Illusion's end).
+                self.status.interaction = Interaction::Idle;
             }
         }
     }

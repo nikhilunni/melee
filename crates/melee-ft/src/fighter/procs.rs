@@ -203,6 +203,35 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// The port's attack-proc guard: motion scratch of an attack, a rebound,
+    /// a ledge attack, or a character special with a staled move.
+    pub(super) fn in_attack_state(&self) -> bool {
+        matches!(
+            self.state_data,
+            super::MotionData::Jab(_)
+                | super::MotionData::RapidJab(_)
+                | super::MotionData::Aerial { .. }
+                | super::MotionData::Tilt
+                | super::MotionData::DashAttack { .. }
+                | super::MotionData::Smash
+                | super::MotionData::DownTilt { .. }
+                | super::MotionData::Down { .. }
+        ) || matches!(
+            (&self.state_data, self.motion_state.id),
+            (
+                super::MotionData::Rebound(_),
+                melee_types::CommonMotionState::ReboundStop
+                    | melee_types::CommonMotionState::Rebound
+            )
+        ) || (matches!(self.state_data, super::MotionData::Cliff(_))
+            && matches!(
+                self.motion_state.id,
+                melee_types::CommonMotionState::CliffAttackQuick
+                    | melee_types::CommonMotionState::CliffAttackSlow
+            ))
+            || (usize::from(self.motion_state.action.0) >= super::COMMON_COUNT
+                && self.combat.stale.current_move().is_some())
+    }
     /// Fighter_8006A1BC (0x8006A1BC), s_link 0, fighter.c:1393-1442.
     /// Hitlag expires here; unported interactions remain explicit guards.
     pub fn proc_status(&mut self) {
@@ -219,34 +248,9 @@ impl FighterCore {
                 matches!(self.state_data, super::MotionData::Damage(_)),
                 "damage requires damage state"
             ),
-            super::Interaction::Attack => assert!(
-                matches!(
-                    self.state_data,
-                    super::MotionData::Jab(_)
-                        | super::MotionData::RapidJab(_)
-                        | super::MotionData::Aerial { .. }
-                        | super::MotionData::Tilt
-                        | super::MotionData::DashAttack { .. }
-                        | super::MotionData::Smash
-                        | super::MotionData::DownTilt { .. }
-                        | super::MotionData::Down { .. }
-                ) || matches!(
-                    (&self.state_data, self.motion_state.id),
-                    (
-                        super::MotionData::Rebound(_),
-                        melee_types::CommonMotionState::ReboundStop
-                            | melee_types::CommonMotionState::Rebound
-                    )
-                ) || (matches!(self.state_data, super::MotionData::Cliff(_))
-                    && matches!(
-                        self.motion_state.id,
-                        melee_types::CommonMotionState::CliffAttackQuick
-                            | melee_types::CommonMotionState::CliffAttackSlow
-                    ))
-                    || (usize::from(self.motion_state.action.0) >= super::COMMON_COUNT
-                        && self.combat.stale.current_move().is_some()),
-                "attack requires attack state"
-            ),
+            super::Interaction::Attack => {
+                assert!(self.in_attack_state(), "attack requires attack state")
+            }
             _ => {}
         }
         self.tick_hitlag();

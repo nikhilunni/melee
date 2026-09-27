@@ -999,7 +999,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::catch_pull,
         iasa: callbacks::input::catch,
         physics: callbacks::physics::catch,
-        collision: callbacks::collision::catch,
+        collision: callbacks::collision::grab_hold,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1024,7 +1024,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::capture,
         iasa: callbacks::input::catch,
         physics: callbacks::physics::catch,
-        collision: callbacks::collision::catch,
+        collision: callbacks::collision::grab_hold,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1036,7 +1036,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::throw,
         iasa: callbacks::input::catch,
         physics: callbacks::physics::jab,
-        collision: callbacks::collision::catch,
+        collision: callbacks::collision::grab_hold,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
