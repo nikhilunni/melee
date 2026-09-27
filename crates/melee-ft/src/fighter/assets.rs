@@ -817,6 +817,8 @@ fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTr
     indices.extend(68..78);
     // ftData_MotionStateList[91]: common DamageFlyRoll animation/script.
     indices.insert(181);
+    // ftCo_SM_PassiveWall / PassiveWallJump: every fighter can tech a wall.
+    indices.extend([202, 203]);
     // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
     indices.extend([
         222, 245, 246, 247, 249, 250, 251, 252, 253, 256, 257, 258, 262, 264, 265,

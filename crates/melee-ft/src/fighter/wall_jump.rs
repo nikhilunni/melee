@@ -1,4 +1,5 @@
-//! ftWallJump_8008169C and the ordinary PassiveWallJump branch of ftCo_PassiveWall.
+//! ftWallJump_8008169C and ftCo_PassiveWall: the wall jump and the wall tech
+//! (PassiveWall / PassiveWallJump) share ftCo_800C1E64 and these states.
 use super::state::{AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase};
 use super::{
     assets::{FighterAssets, Result},
@@ -15,6 +16,8 @@ pub struct Parameters {
     pub stick_threshold: f32,
     pub tilt_window: f32,
     pub freeze_frames: i32,
+    /// PlCo +760: the wall tech's freeze before its push-off.
+    pub tech_freeze_frames: i32,
     pub intangible_frames: i32,
     pub vertical_decay: f32,
     pub jump_buffer_window: f32,
@@ -27,6 +30,7 @@ impl Parameters {
             stick_threshold: r.f32(base + 0x76C)?,
             tilt_window: r.f32(base + 0x770)?,
             freeze_frames: r.s32(base + 0x774)?,
+            tech_freeze_frames: r.s32(base + 0x760)?,
             intangible_frames: r.s32(base + 0x764)?,
             vertical_decay: r.f32(base + 0x778)?,
             jump_buffer_window: r.f32(base + 0x250)?,
@@ -99,7 +103,9 @@ impl Fighter {
                 || (wall.side == 1.0 && stick <= -params.stick_threshold))
             && f32::from(self.core.input.horizontal.tilt) < params.tilt_window
         {
-            self.enter_wall_jump(assets, map, wall)?;
+            let freeze = assets.wall_jump.freeze_frames;
+            let exponent = i32::from(wall.used);
+            self.enter_wall_contact(assets, map, S::PassiveWallJump, freeze, wall.side, exponent)?;
             self.core.status.wall_jump.contact_age = 254;
             self.core.status.wall_jump.used = self.core.status.wall_jump.used.saturating_add(1);
             return Ok(true);
@@ -107,16 +113,48 @@ impl Fighter {
         Ok(false)
     }
 
-    /// ftCo_800C1E64. This entry owns only ordinary walljump203; wall-tech202
-    /// must call its own predicate and choose its own freeze timer.
-    fn enter_wall_jump(
+    /// ftCo_800C1D38 (800C1D38): a tumbling fighter against a wall inside
+    /// the tech window techs it; a buffered jump (ftCo_800C1E0C) makes it the
+    /// wall-tech jump. Returns whether it teched.
+    pub(super) fn try_wall_tech(
         &mut self,
         assets: &FighterAssets,
         map: &mut CollMap,
-        wall: WallJump,
+    ) -> Result<bool> {
+        let flags = self.core.collision.data.env_flags as u32;
+        if flags & (collide::RIGHT_WALL_HUG | collide::LEFT_WALL_HUG) == 0
+            || !self.core.tech_window_open(assets)
+        {
+            return Ok(false);
+        }
+        let state = if self.core.wall_jump_buffered(assets) {
+            S::PassiveWallJump
+        } else {
+            S::PassiveWall
+        };
+        let side = if flags & collide::RIGHT_WALL_HUG != 0 {
+            -1.0
+        } else {
+            1.0
+        };
+        let freeze = assets.wall_jump.tech_freeze_frames;
+        self.enter_wall_contact(assets, map, state, freeze, side, 0)?;
+        Ok(true)
+    }
+
+    /// ftCo_800C1E64 (800C1E64): push off a wall, facing away from it, frozen
+    /// for `freeze` frames; shared by the wall jump and the wall tech.
+    fn enter_wall_contact(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut CollMap,
+        state: S,
+        freeze: i32,
+        side: f32,
+        vertical_exponent: i32,
     ) -> Result<()> {
         self.core.commands.variables[0] = 1;
-        self.core.physics.facing = -wall.side;
+        self.core.physics.facing = -side;
         self.core.clear_movement();
         let cd = &self.core.collision.data;
         let offset = if cd.env_flags as u32 & collide::RIGHT_WALL_HUG != 0 {
@@ -124,9 +162,9 @@ impl Fighter {
         } else {
             cd.ecb.right
         };
-        let timer = assets.wall_jump.freeze_frames;
+        let timer = freeze;
         self.change_motion_state_with_rate(
-            S::PassiveWallJump.into(),
+            state.into(),
             assets,
             0.0,
             if timer != 0 { 0.0 } else { 1.0 },
@@ -137,7 +175,7 @@ impl Fighter {
             freeze_frames: timer,
             retained_zero: 0,
             jump_buffered: false,
-            vertical_exponent: i32::from(wall.used),
+            vertical_exponent,
         });
         let position = Vec3::new(
             self.core.physics.position.x + offset.x,
@@ -226,6 +264,15 @@ impl Fighter {
     }
 }
 
+impl super::FighterCore {
+    /// ftCo_800C1E0C (800C1E0C): a jump pressed within PlCo +250 frames or a
+    /// tap-jump stick.
+    fn wall_jump_buffered(&self, assets: &FighterAssets) -> bool {
+        f32::from(self.input.buttons.jump_button) < assets.wall_jump.jump_buffer_window
+            || self.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
+    }
+}
+
 pub fn animation(
     fighter: &mut Fighter,
     phase: AnimationPhase<'_>,
@@ -261,13 +308,18 @@ pub fn animation(
                     .animation
                     .set_rate(&mut fighter.core.skeleton, 1.0, false);
             }
-            fighter.core.physics.self_velocity.x = fighter.core.physics.facing
-                * fighter.core.attributes.wall.wall_jump_horizontal_velocity;
-            fighter.core.physics.self_velocity.y =
-                fighter.core.attributes.wall.wall_jump_vertical_velocity;
-            if fighter.core.status.wall_jump.used != 0 {
-                fighter.core.physics.self_velocity.y *=
-                    melee_lb::trigf::powf(assets.wall_jump.vertical_decay, exponent as f32);
+            let wall = &fighter.core.attributes.wall;
+            if fighter.core.motion_state.id == S::PassiveWall {
+                fighter.core.physics.self_velocity.x =
+                    fighter.core.physics.facing * wall.passivewall_vel_x;
+            } else {
+                fighter.core.physics.self_velocity.x =
+                    fighter.core.physics.facing * wall.wall_jump_horizontal_velocity;
+                fighter.core.physics.self_velocity.y = wall.wall_jump_vertical_velocity;
+                if fighter.core.status.wall_jump.used != 0 {
+                    fighter.core.physics.self_velocity.y *=
+                        melee_lb::trigf::powf(assets.wall_jump.vertical_decay, exponent as f32);
+                }
             }
         }
     }
@@ -287,9 +339,10 @@ pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
         panic!("walljump scratch missing")
     };
     if state.freeze_frames != 0 {
-        if f32::from(fighter.core.input.buttons.jump_button) < assets.wall_jump.jump_buffer_window
-            || fighter.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
-        {
+        if fighter.core.wall_jump_buffered(assets) {
+            let MotionData::WallJump(state) = &mut fighter.core.state_data else {
+                unreachable!()
+            };
             state.jump_buffered = true;
         }
         return;

@@ -597,7 +597,9 @@ impl Fighter {
             return Ok(());
         }
         let landed = self.land_from_damage_air(assets, map)?;
-        self.check_fly_surface_contact(landed == Some(true), assets);
+        if landed != Some(true) && self.fly_surface_contact(assets, map)? {
+            return Ok(());
+        }
         let Some(landed) = landed else {
             return Ok(());
         };
@@ -629,23 +631,29 @@ impl Fighter {
     /// landing, touching a wall or ceiling offers a wall tech (ftCo_800C1D38)
     /// or ceiling tech (ftCo_800C23A0) inside the tech window, else a bounce
     /// (ftCo_800C15F4 / ftCo_800C17CC) when the knockback drives into the
-    /// surface faster than PlCo x1B0. None is ported: a contact that would
-    /// act fails closed. mv.damage.x19 (the last bounced surface) stays
-    /// unset because no bounce has run.
-    fn check_fly_surface_contact(&self, landed: bool, assets: &FighterAssets) {
+    /// surface faster than PlCo x1B0. The ceiling tech and the bounces are
+    /// not ported: a contact that would take one fails closed. mv.damage.x19
+    /// (the last bounced surface) stays unset because no bounce has run.
+    fn fly_surface_contact(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<bool> {
         use melee_types::mp::collide::{CEILING_HUG, LEFT_WALL_HUG, RIGHT_WALL_HUG};
         let flying = matches!(
             self.core.motion_state.id,
             S::DamageFlyHi | S::DamageFlyN | S::DamageFlyLw | S::DamageFlyTop | S::DamageFlyRoll
         );
-        if !flying || landed {
-            return;
-        }
         let env = self.core.collision.data.env_flags as u32;
-        let wall = env & (RIGHT_WALL_HUG | LEFT_WALL_HUG) != 0;
+        if !flying || env & (RIGHT_WALL_HUG | LEFT_WALL_HUG | CEILING_HUG) == 0 {
+            return Ok(false);
+        }
+        if self.try_wall_tech(assets, map)? {
+            return Ok(true);
+        }
         let ceiling = env & CEILING_HUG != 0;
-        if (wall || ceiling) && self.core.tech_window_open(assets) {
-            unimplemented!("ftCo_800C1D38 / ftCo_800C23A0: a wall or ceiling tech");
+        if ceiling && self.core.tech_window_open(assets) {
+            unimplemented!("ftCo_800C23A0: a ceiling tech");
         }
         let speed = assets.damage.fly_reflect_speed;
         let knockback = self.core.physics.knockback_velocity;
@@ -655,6 +663,7 @@ impl Fighter {
         {
             unimplemented!("ftCo_800C17CC: FlyReflectWall / FlyReflectCeil bounce");
         }
+        Ok(false)
     }
 
     /// ft_80081DD4 (80081DD4): the airborne damage collision. During hitlag

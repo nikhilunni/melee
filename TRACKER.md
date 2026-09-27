@@ -988,5 +988,11 @@ Newest first. One line per session: date, what landed, what is next.
   off-screen pass and its 1% by two ticks (found with the camera dump's
   ifMagnify flags). (9) A throw release (ftCo_800DDDE4) only adds its damage
   to x1838 (ftColl_80076640), so the release's fly-roll check reads the old
-  percent. The re-bridged s1_ee6ff560c and s1_ef5188d7f pass; s1_edb4b01fd
-  is the first witness of a wall tech (PassiveWall at 713), next.
+  percent. The re-bridged s1_ee6ff560c and s1_ef5188d7f pass.
+- 2026-09-27: Wall tech. ftCo_800C1D38 from DamageFly's collision: against a
+  wall inside the tech window the fighter enters PassiveWall (or
+  PassiveWallJump with a buffered jump, ftCo_800C1E0C) through the wall
+  jump's ftCo_800C1E64 entry, now shared, frozen PlCo +760 frames, then
+  pushed off at passivewall_vel_x. Every fighter loads submotions 202/203.
+  Gated by corpus_v3_s1_edb4b01fd_p0. The ceiling tech (ftCo_800C23A0) and
+  FlyReflect bounces stay fail-closed until a recording reaches them.
