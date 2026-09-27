@@ -1,0 +1,37 @@
+# Sudden Death: as sudden_death_throw_bomb_fd_marth, while Fox runs left
+# (1270), jumps (1292) and catches the falling Bob-omb in the air with L+A
+# (1301); he lands holding it and throws it forward (LightThrowF, 1326)
+# into Marth, who is launched and KO'd.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_foxcatchthrow_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames =     1481
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1244, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1246, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1270, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1288, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1292, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1294, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1301, port = 1, buttons = {  }, raw = { button = 320, triggerL = 255 } },
+  { frame = 1303, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1326, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 1328, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

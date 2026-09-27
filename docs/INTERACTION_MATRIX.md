@@ -61,7 +61,7 @@ rows (`ft-fox-family`, `ft-mars`).
 | Fox | DownDamageU | Witnessed: `downdamage_up_fd_marth` |
 | Fox | ShieldBreakFall, ShieldBreakDownD, ShieldBreakStandD | Yes, a break in the air or in the other orientation: **MISSING** |
 | Fox | Fx.SpecialAirLwHit | Yes, an aerial Reflector reflecting something (a Marth-thrown Bob-omb in Sudden Death, or a returned laser): **MISSING** |
-| Fox | Every LightThrow* except Dash | Yes, Fox throwing a Bob-omb in Sudden Death: **MISSING** (LightGet and LightThrowDash are corpus only) |
+| Fox | LightThrow* other than F and Dash | Yes: **MISSING**. An aerial catch, a held landing and LightThrowF are witnessed (`sudden_death_foxcatchthrow_bomb_fd_marth`); LightGet and LightThrowDash are corpus only |
 | Fox | Attack13 | n/a: Fox's third jab is the rapid jab (Attack100*, witnessed) |
 | Fox | AttackS3HiS, AttackS3LwS | Investigate: Fox only ever enters AttackS3Hi/S/Lw. Check whether the intermediate angles are authored |
 | Both | AppealSL | n/a: `enter_common_taunt` needs `left_taunt_available`, which neither character has |

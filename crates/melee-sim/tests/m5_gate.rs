@@ -1587,6 +1587,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_illusionbomb_fd_marth", 1545),
         // Fox forward-smashes a thrown Bob-omb as it arrives.
         ("sudden_death_smashbomb_fd_fox", 1545),
+        // Fox catches a falling Bob-omb in the air, lands and throws it at Marth.
+        ("sudden_death_foxcatchthrow_bomb_fd_marth", 1481),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),
