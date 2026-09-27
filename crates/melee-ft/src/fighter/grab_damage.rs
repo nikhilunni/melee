@@ -24,6 +24,7 @@ pub fn resolve_linked_hit(
     partner: &mut Fighter,
     fighter_assets: &FighterAssets,
     partner_assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     let Some(knockback) = fighter.combat.pending.as_ref().map(|hit| hit.knockback) else {
@@ -49,7 +50,7 @@ pub fn resolve_linked_hit(
                 // throw record launches the unhit victim.
                 partner.interrupt_actions();
                 launch_by_captor(partner, fighter, partner_assets, fighter_assets, rng)?;
-                release_pair(fighter, partner);
+                release_pair(fighter, partner, partner_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
                 return Ok(());
             }
@@ -59,7 +60,7 @@ pub fn resolve_linked_hit(
             {
                 unimplemented!("ftCo_800DE854: a light hit on the captured member");
             }
-            release_pair(fighter, partner);
+            release_pair(fighter, partner, partner_assets, map);
             fighter.combat.pair_order = Some(PairHitOrder::Launch);
             partner.combat.pair_order = Some(PairHitOrder::Launch);
         }
@@ -79,7 +80,7 @@ pub fn resolve_linked_hit(
             }
             // ftCo_800DCE34(captor, gobj), then this fighter's launch; the
             // captor follows x1828 = 1.
-            release_pair(partner, fighter);
+            release_pair(partner, fighter, fighter_assets, map);
             fighter.combat.pair_order = Some(PairHitOrder::Launch);
             partner.combat.pair_order = Some(PairHitOrder::Launch);
         }
@@ -139,18 +140,111 @@ fn launch_by_captor(
 /// hit counts as light (inlineB1).
 const LIGHT_HIT_DAMAGE: f32 = 6.0;
 
-/// ftCo_800DCE34 (800DCE34) -> ftCo_800DC920's unconstrained path: both
-/// links go, then the captured fighter's root takes its position.
-/// Fighter_UnkSetFlag_8006CFBC only acts on x2219_b7, whose source
-/// (x221A_b0) is unported.
-fn release_pair(captor: &mut Fighter, captured: &mut Fighter) {
-    assert!(
-        captured.combat.thrown_pose.is_none(),
-        "ftCo_800DC920: releasing a constrained (thrown) fighter"
-    );
+/// ftCo_800DCE34 (800DCE34) -> ftCo_800DC920 (800DC920): both links go;
+/// a thrown (constrained, x2226_b2) fighter is first set down where its
+/// XRotN points (release_thrown). Then the captured fighter's root takes its
+/// position. Fighter_UnkSetFlag_8006CFBC only acts on x2219_b7, whose
+/// source (x221A_b0) is unported.
+fn release_pair(
+    captor: &mut Fighter,
+    captured: &mut Fighter,
+    captured_assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+) {
     captor.combat.grab = None;
+    if captured.combat.thrown_pose.is_some() {
+        release_thrown(captor, captured, captured_assets, map);
+    }
     captured.combat.grab = None;
     let root = captured.animation.root;
+    let position = captured.physics.position;
+    captured.skeleton.set_translate(root, &position);
+}
+
+/// ftCo_800DC920's x2226_b2 path: the release point is XRotN plus the
+/// capture offset (retail 800DCA40 / 800DCA54: fmadds, as ftCo_800DE508),
+/// the constraint and saved translation are restored, and the fighter lands
+/// on a floor under it connected to the captor's, if one is within PlCo
+/// +3BC, else sweeps there from the captor's centre.
+fn release_thrown(
+    captor: &Fighter,
+    captured: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+) {
+    use super::caches::bone_position;
+    use hsd_types::Vec3;
+    let xrot = usize::from(
+        assets
+            .parts
+            .joint(melee_types::FtPart::XRotN)
+            .expect("XRotN"),
+    );
+    let root = captured.animation.root;
+    let mut point = bone_position(&mut captured.skeleton, root, xrot, Vec3::ZERO);
+    let offset = captured.combat.capture_geometry.root_offset;
+    let scale = captured.player.scale;
+    point.x = gekko_math::fma::fmadds(captured.physics.facing, offset.z * scale, point.x);
+    point.y = gekko_math::fma::fmadds(offset.y, scale, point.y);
+    point.z = 0.0;
+    let pose = captured.combat.thrown_pose.take().expect("thrown pose");
+    let joint = captured.animation.parts[xrot].joint;
+    captured.skeleton.set_position_constraint(joint, None);
+    captured
+        .skeleton
+        .set_translate(joint, &pose.saved_translation);
+    let captor_floor = captor.collision.data.floor.index;
+    if map.line_is_active(captor_floor) {
+        let floor = map.floor_below(&point, -1, -1);
+        if floor != -1 && map.lines_connected(floor, captor_floor) {
+            captured.collision.data.floor.index = floor;
+            if let Some(probe) = map.floor_probe(floor, &point) {
+                if probe.delta >= assets.grab_escape.release_floor_reach {
+                    let landed = Vec3::new(point.x, point.y + probe.delta, point.z);
+                    captured.physics.position = landed;
+                    melee_mp::set_position(&mut captured.collision.data, &landed);
+                    return;
+                }
+            }
+        }
+    }
+    // No floor to land on: sweep from the captor's ECB centre (three fadds,
+    // 0.5 * (top + bottom) on Y) to the release point.
+    let centre = Vec3::new(
+        captor.physics.position.x + 0.0,
+        captor.physics.position.y
+            + 0.5 * (captor.collision.data.ecb.top.y + captor.collision.data.ecb.bottom.y),
+        captor.physics.position.z + 0.0,
+    );
+    let cd = &mut captured.collision.data;
+    cd.last_pos = centre;
+    melee_mp::mark_ecb_clear(cd);
+    cd.cur_pos = point;
+    captured.skeleton.set_translate(root, &point);
+    let core = &mut captured.core;
+    let ecb_pose =
+        crate::collision::ecb::EcbPose::read(&mut core.skeleton, root, &core.collision.data);
+    let bones = |bone| ecb_pose.position(bone);
+    let grounded = captured.physics.ground_or_air == melee_types::GroundOrAir::Ground;
+    let touched = if grounded {
+        map.air_collide_ecb5(&mut captured.collision.data, Some(&bones))
+    } else {
+        // ftCommon_UnlockECB.
+        captured.collision.lock_frames = 0;
+        captured.collision.data.x130_flags &= !melee_types::mp::coll_data_x130::LOCKED;
+        map.air_collide_stay(&mut captured.collision.data, Some(&bones))
+    };
+    if touched {
+        if !grounded {
+            captured.land();
+        }
+        captured.physics.position = captured.collision.data.cur_pos;
+    } else {
+        if captured.physics.ground_or_air != melee_types::GroundOrAir::Air {
+            captured.leave_ground();
+        }
+        captured.physics.position = point;
+    }
     let position = captured.physics.position;
     captured.skeleton.set_translate(root, &position);
 }

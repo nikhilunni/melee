@@ -1546,6 +1546,12 @@ fn timeout_and_sudden_death_match_retail() {
         // blast launching both with the captured member first.
         ("sudden_death_airdodgehold_bomb_fd_marth", 1433),
         ("sudden_death_grabbedhold_bomb_fd_marth", 1430),
+        // Thrown holding it: released before the blast (back, up), or blasted
+        // mid-throw (forward, down; ftCo_800DC920's constrained release).
+        ("sudden_death_thrownbhold_bomb_fd_marth", 1526),
+        ("sudden_death_thrownhihold_bomb_fd_marth", 1545),
+        ("sudden_death_thrownfhold_bomb_fd_marth", 1545),
+        ("sudden_death_thrownlwhold_bomb_fd_marth", 1431),
     ] {
         combat_gate_ticks(name, ticks);
     }

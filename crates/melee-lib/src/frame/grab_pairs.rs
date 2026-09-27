@@ -331,6 +331,7 @@ pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> 
             p,
             &state.assets.fighters[player],
             &state.assets.fighters[other],
+            &mut state.map,
             &mut state.rng,
         )
     }))

@@ -32,6 +32,9 @@ pub struct Parameters {
     pub jump_interrupt_delay: f32,
     pub horizontal_release_distance: f32,
     pub vertical_release_distance: f32,
+    /// PlCo +3BC: how far above a floor under a thrown fighter's release
+    /// point it may start and still land there (ftCo_800DC920).
+    pub release_floor_reach: f32,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -54,6 +57,7 @@ impl Parameters {
             jump_interrupt_delay: r.f32(base + 0x3B8)?,
             horizontal_release_distance: r.f32(base + 0x34C)?,
             vertical_release_distance: r.f32(base + 0x350)?,
+            release_floor_reach: r.f32(base + 0x3BC)?,
             decrement: r.f32(base + 0x3A4)?,
             mash_decrement: r.f32(base + 0x3A8)?,
             fast_frames: r.f32(base + 0x3B0)?,
@@ -558,6 +562,7 @@ mod tests {
             jump_interrupt_delay: 1.0,
             horizontal_release_distance: 1.0,
             vertical_release_distance: 1.0,
+            release_floor_reach: -3.0,
         }
     }
 

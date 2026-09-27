@@ -1116,3 +1116,9 @@ Newest first. One line per session: date, what landed, what is next.
   held item (no item branch in retail); ftCo_8008EC90's branch for a
   launched captured member processed first (release, both follow x1828 =
   1). Two witnesses (air dodge; grabbed holding a Bob-omb).
+- 2026-09-27: Thrown states keep a held item; ftCo_800DC920's constrained
+  path releases a thrown fighter hit mid-throw (XRotN release point, floor
+  under it if connected and within PlCo +3BC, else a sweep from the
+  captor's centre). A thrown holder's XRotN constraint is refreshed before
+  its held item's link-1 proc, as retail rebuilds it from the captor's live
+  TransN2. Four witnesses (Fox's four throws); full release gate 1471/0.

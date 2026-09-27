@@ -438,6 +438,13 @@ impl Runtime {
                     .fighters
                     .iter()
                     .position(|f| f.0.core.held_item.is_some_and(|held| held.item == id));
+                // A thrown holder's XRotN follows its captor's TransN2 through
+                // a robj constraint retail evaluates when the hand's matrix is
+                // rebuilt; the captor may have moved since the holder's last
+                // proc refreshed it.
+                if let Some(index) = holder_index {
+                    grab_pairs::constrain(state, index);
+                }
                 let holder = match (holder_index, held_part) {
                     (Some(index), Some(part)) => {
                         Some(state.fighters[index].0.core.item_holder(part))
