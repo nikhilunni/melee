@@ -168,12 +168,10 @@ impl ItemCore {
         melee_mp::set_facing_dir(collision, facing);
     }
 
-    /// it_8027429C (8027429C): the holder lets go with `velocity`.
-    /// it_80273B50 places the item at the hand and aims it; it_80273F34 ends
-    /// the hold and sweeps the map from the holder's body to the hand
-    /// (it_80275BC8). The caller releases the holder's side
-    /// (Item_8026A848 -> ftCommon_8007E6DC) once the callback returns.
-    /// Heavy items, which hang below the hand, are not ported.
+    /// it_8027429C (8027429C): the holder lets go with `velocity` where
+    /// the hand is (it_80273B50), then the hold ends (it_80273F34).
+    /// The caller releases the holder's side (Item_8026A848 ->
+    /// ftCommon_8007E6DC) once the callback returns.
     pub fn release_from_holder(
         &mut self,
         velocity: hsd_types::Vec3,
@@ -181,9 +179,24 @@ impl ItemCore {
         map: &mut melee_mp::CollMap,
         assets: &ItemAssets,
     ) {
-        assert!(!assets.heavy, "it_80273B50: heavy item hand offset");
-        // it_80273B50. it_80275070 drops the hand constraint; it_8026B6C8's
-        // enemy kinds stay unpickable; it_802756E0 lets hits land again.
+        let hand = holder.part_position();
+        self.leave_hand(velocity, hand, assets);
+        self.end_hold(holder.center, holder.attack, map, assets);
+    }
+
+    /// it_80273B50 / it_80273748 (80273748): out of the hand at `position`
+    /// with `velocity`. The model returns to rest, the spin restarts from
+    /// the held angle, and the item faces its motion. Heavy items, which
+    /// hang below the hand, are not ported.
+    pub fn leave_hand(
+        &mut self,
+        velocity: hsd_types::Vec3,
+        position: hsd_types::Vec3,
+        assets: &ItemAssets,
+    ) {
+        assert!(!assets.heavy, "it_80273748: heavy item hand offset");
+        // it_80275070 drops the hand constraint; it_8026B6C8's enemy kinds
+        // stay unpickable; it_802756E0 lets hits land again.
         self.grabbable = true;
         self.hurt_intangible = false;
         // it_80274990 reads the spin axis before lb_8000B804 resets the pose.
@@ -204,16 +217,25 @@ impl ItemCore {
             self.facing = if self.velocity.x >= 0.0 { 1.0 } else { -1.0 };
         }
         self.face_spin_axis();
-        let hand = holder.part_position();
-        self.position = hsd_types::Vec3::new(hand.x, hand.y, 0.0);
-        // it_80273F34.
+        self.position = hsd_types::Vec3::new(position.x, position.y, 0.0);
+    }
+
+    /// it_80273F34 (80273F34): the hold ends; a sweep from the holder's body
+    /// (`center`) to the release point keeps the item out of walls, and the
+    /// holder's attack becomes the item's (it_8027B070).
+    pub fn end_hold(
+        &mut self,
+        center: hsd_types::Vec3,
+        attack: Option<melee_types::combat::AttackInstance>,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
         self.held = false;
         self.holder_part = 0;
         self.enter_air();
-        self.sweep_from_holder(holder.center, map, assets);
+        self.sweep_from_holder(center, map, assets);
         self.face_spin_axis();
-        // it_8027B070: the holder's attack becomes the item's.
-        self.stale_source = holder.attack;
+        self.stale_source = attack;
         self.enter_air();
     }
 

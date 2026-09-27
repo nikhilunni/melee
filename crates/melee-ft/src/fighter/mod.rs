@@ -25,6 +25,7 @@ mod hit_log;
 pub mod hitbox;
 pub mod item_hits;
 pub mod item_pickup;
+pub mod item_throw;
 pub mod jump;
 pub mod landing;
 pub mod ledge;
@@ -718,6 +719,7 @@ pub enum MotionData {
     ItemGet {
         heavy: bool,
     },
+    ItemThrow(item_throw::ItemThrowState),
     Capture(grab_escape::CaptureState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]

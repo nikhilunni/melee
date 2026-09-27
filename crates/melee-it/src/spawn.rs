@@ -84,6 +84,17 @@ pub enum ItemRequest {
         /// A fp->parts index (ftData x8 +0x10 or +0x11).
         part: u8,
     },
+    /// ftCo_80095EFC -> Item_8026AD20: the holder throws `item` from
+    /// `position` with `velocity`; `speed` scales the thrown hitboxes.
+    /// `center` and `attack` are the holder's (ftLib_80086990, it_8027B070).
+    Throw {
+        item: u32,
+        position: Vec3,
+        velocity: Vec3,
+        speed: f32,
+        center: Vec3,
+        attack: Option<melee_types::combat::AttackInstance>,
+    },
 }
 
 /// The holding fighter, lent to a held item's callbacks. A held item

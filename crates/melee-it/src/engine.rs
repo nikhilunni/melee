@@ -74,6 +74,8 @@ pub enum ItemEvent {
 /// Item_StateChangeFlags (it/forward.h) that Item_80268E5C consults.
 pub mod state_change {
     pub const ANIM_UPDATE: u32 = 1 << 1;
+    /// ITEM_DROP_UPDATE: hitboxes take the throw speed as a damage scale.
+    pub const DROP_UPDATE: u32 = 1 << 2;
     pub const HIT_PRESERVE: u32 = 1 << 4;
     pub const CMD_UPDATE: u32 = 1 << 8;
 }
@@ -200,6 +202,11 @@ pub struct ItemCore {
     pub holder_part: u8,
     /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
     pub hits_owner: bool,
+    /// xC44: the speed the item was thrown or dropped at (Item_8026AD20).
+    pub throw_speed: f32,
+    /// xC40: the damage scale new hitboxes take, the throw speed after a
+    /// DROP_UPDATE state change and 1 otherwise (Item_80268E5C).
+    pub hitbox_damage_scale: f32,
     /// HSD_GObj_804D7838->s_link > 11: the running proc comes after item
     /// link 11's capsule refresh (it_802790C0).
     pub past_hitbox_refresh: bool,
@@ -342,6 +349,11 @@ impl ItemCore {
     ) {
         self.motion = motion;
         self.animation_frame = 0.0;
+        self.hitbox_damage_scale = if flags & state_change::DROP_UPDATE != 0 {
+            self.throw_speed
+        } else {
+            1.0
+        };
         if flags & state_change::HIT_PRESERVE == 0 && self.hitboxes.iter().any(Option::is_some) {
             self.hitboxes.fill(None);
             for history in &mut self.reflection_history {
@@ -414,7 +426,15 @@ impl ItemCore {
                             .map(|i| self.reflection_history[i].clone())
                             .unwrap_or_default();
                     }
-                    melee_coll::hitbox::spawn(&mut self.hitboxes, *id, descriptor);
+                    // it_802790C0 -> it_80272460: the command damage scaled by
+                    // xC40 (xC3C is 1) and truncated to the hit's count.
+                    let mut descriptor = descriptor.clone();
+                    if self.hitbox_damage_scale != 1.0 {
+                        descriptor.damage =
+                            gekko_math::msl::fctiwz(descriptor.damage * self.hitbox_damage_scale)
+                                as f32;
+                    }
+                    melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     let hit = self.hitboxes[*id].as_mut().unwrap();
                     hit.descriptor.damage *= self.stale_multiplier;
                     // it_802790C0 -> it_80275594(1 / scl): the capsule radius is
@@ -594,6 +614,8 @@ impl ItemPool {
             held: false,
             holder_part: 0,
             hits_owner: false,
+            throw_speed: 1.0,
+            hitbox_damage_scale: 1.0,
             past_hitbox_refresh: false,
             hurt_intangible: false,
             hurt_by_owner: false,

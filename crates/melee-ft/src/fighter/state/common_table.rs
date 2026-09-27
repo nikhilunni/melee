@@ -440,6 +440,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftData_MotionStateList[94]: ftCo_SM_LightThrowF (79); the IASA is
+    // empty and the physics is ft_80084F3C.
+    rows[S::LightThrowF as usize] = MotionRow {
+        action: ActionId(94),
+        id: S::LightThrowF,
+        animation: 79,
+        anim: callbacks::animation::item_throw,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::wait,
+        collision: callbacks::collision::item_throw,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::Attack11 as usize] = MotionRow {
         action: ActionId(44),
         id: S::Attack11,

@@ -62,6 +62,8 @@ pub struct PickupCandidate {
     /// ItemAttr x0 bits 0x78 and 0x07 (it_8026B30C, itGetHoldKind).
     pub use_kind: u8,
     pub hand_hold_kind: u8,
+    /// ItemAttr x1C (itGetDamageMultiplier).
+    pub damage_multiplier: f32,
 }
 
 /// The items offered to the current proc, in the item list's order.
@@ -111,11 +113,15 @@ pub struct HeldItem {
     pub item: u32,
     pub heavy: bool,
     pub hand_hold_kind: u8,
+    /// it_8026B30C: 0 throws, 2 swings, 3 shoots.
+    pub use_kind: u8,
+    /// ItemAttr x1C (itGetDamageMultiplier).
+    pub damage_multiplier: f32,
 }
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 2] = [S::LightGet, S::Wait];
+const HELD_ITEM_STATES: [S; 3] = [S::LightGet, S::Wait, S::LightThrowF];
 
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348
 /// names it by the equal enum value ftCo_MS_DeadUpFall (6).
@@ -336,6 +342,8 @@ impl Fighter {
             item: item.item,
             heavy: item.heavy,
             hand_hold_kind: item.hand_hold_kind,
+            use_kind: item.use_kind,
+            damage_multiplier: item.damage_multiplier,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143).
@@ -366,7 +374,7 @@ impl Fighter {
         });
     }
 
-    /// ftpickupitem_Coll (80094B4C): ft_800841B8, whose ground loss drops
+    /// ftpickupitem_Coll (80094B44): ft_800841B8, whose ground loss drops
     /// the item and falls (ftpickupitem_80094D90).
     pub(super) fn item_get_collision(&mut self, map: &mut melee_mp::CollMap) {
         use crate::collision::ground::{map_escape, WaitGroundResult};

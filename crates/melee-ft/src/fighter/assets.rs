@@ -217,6 +217,8 @@ pub struct FighterAssets {
     pub camera_extents: [hsd_types::Vec3; 2],
     /// ftData x40 (itPickup): the item pickup boxes.
     pub pickup: super::item_pickup::PickupBoxes,
+    /// Fighter_804D6550: the item throw table.
+    pub item_throws: [super::item_throw::ItemThrowRow; super::item_throw::ITEM_THROW_ROWS],
     /// CommonBehavior's item hand slots and held-item idle choice.
     pub item_hand: Option<ItemHandSlots>,
     pub idle_variants_while_holding: bool,
@@ -260,8 +262,9 @@ impl FighterAssets {
                 2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
                 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
                 45, 46, 58, 167, 168, 169, 209, 242, 243,
-                // ftCo_SM_Wait1_1 (Wait holding an item) and ftCo_SM_LightGet.
-                6, 78,
+                // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet and
+                // ftCo_SM_LightThrowF.
+                6, 78, 79,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -449,8 +452,9 @@ impl FighterAssets {
                         28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
                         217, 220, 224, 225, 226, 227, 228, 238, 45, 46, 58, 167, 168, 169, 209,
                         242, 243,
-                        // ftCo_SM_Wait1_1 (Wait holding an item) and ftCo_SM_LightGet.
-                        6, 78,
+                        // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet
+                        // and ftCo_SM_LightThrowF.
+                        6, 78, 79,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,
@@ -624,6 +628,7 @@ impl FighterAssets {
                 },
             },
             color_overlays,
+            item_throws: super::item_throw::read_throw_table(common, common_root)?,
             item_hand: descriptor.common_behavior.item_hand,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
             pickup: {

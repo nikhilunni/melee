@@ -24,6 +24,8 @@ mod motion {
     /// Held unlit / lit (itBombhei_Logic6_PickedUp).
     pub const HELD: u16 = 7;
     pub const HELD_LIT: u16 = 8;
+    /// Thrown or dropped, lit (it_3F14_Logic6_Thrown).
+    pub const THROWN_LIT: u16 = 10;
     pub const LIT_FALL: u16 = 6;
     pub const EXPLODE: u16 = 11;
 }
@@ -94,6 +96,12 @@ static STATES: [ItemStateRow; 13] = {
         physics: no_physics,
         collision: no_collision,
     };
+    rows[motion::THROWN_LIT as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[10],
+        animation: thrown_animation,
+        physics: fall_physics,
+        collision: thrown_collision,
+    };
     rows[motion::EXPLODE as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[11],
         animation: explosion_animation,
@@ -124,7 +132,7 @@ impl ItemLogic for BombHei {
         // it_8027DE18: from states 0 and 3 only it also resets the rotation.
         change(item, motion::FALL, ANIM_UPDATE, assets);
     }
-    /// itBombhei_Logic6_PickedUp (8027DFC0): the model's spin axis and
+    /// itBombhei_Logic6_PickedUp (8027E0B4): the model's spin axis and
     /// facing lock for the hand, then the held state.
     fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         // xDC8 x19 and x17.
@@ -136,6 +144,15 @@ impl ItemLogic for BombHei {
             unimplemented!("itBombhei_Logic6_PickedUp: unlit Bob-omb pickup");
         }
         change(item, motion::HELD_LIT, UNK_0X1, context.assets);
+    }
+    /// it_3F14_Logic6_Thrown (80280380): the thrown state, whose hitboxes
+    /// take the throw speed (ITEM_DROP_UPDATE); the blast's owner and kin
+    /// flags clear (it_80275474).
+    fn thrown(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        if !bomb(item).lit {
+            unimplemented!("it_3F14_Logic6_Thrown: unlit Bob-omb throw (state 9)");
+        }
+        enter_thrown_lit(item, context.assets);
     }
     /// it_3F14_Logic6_DmgDealt: touching anything detonates it.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
@@ -330,7 +347,7 @@ fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> boo
     false
 }
 
-/// itBombhei_UnkMotion8_Anim (8027E0AC): the hold animation restarts when
+/// itBombhei_UnkMotion8_Anim (8027E3E4): the hold animation restarts when
 /// it ends (it_80272C6C), and the lit fuse burns.
 fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let end = ctx.assets.animation_ends[ARTICLE_STATES[motion::HELD_LIT as usize] as usize];
@@ -339,6 +356,53 @@ fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
     }
     if bomb(item).lit {
         burn_fuse(item, ctx);
+    }
+    false
+}
+
+/// The lit branch of it_3F14_Logic6_Thrown and itBombhei_UnkMotion10_Anim:
+/// state 10 with CMD_UPDATE | DROP_UPDATE (0x104), then it_80275474.
+fn enter_thrown_lit(item: &mut ItemCore, assets: &ItemAssets) {
+    change(item, motion::THROWN_LIT, CMD_UPDATE | DROP_UPDATE, assets);
+    item.hits_owner = false;
+    item.strikes_kindred_items = false;
+    // xDE8: it_80274484 rescales the model after a Bob-omb was made
+    // bigger or smaller, which nothing here does.
+    assert_eq!(
+        bomb(item).throw_scale,
+        1.0,
+        "it_80274484: rescaled Bob-omb throw"
+    );
+}
+
+/// itBombhei_UnkMotion10_Anim (802806CC): the thrown animation restarts when
+/// it ends, and the lit fuse burns.
+fn thrown_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    let end = ctx.assets.animation_ends[ARTICLE_STATES[motion::THROWN_LIT as usize] as usize];
+    if end.is_some_and(|end| item.animation_frame >= end) {
+        enter_thrown_lit(item, ctx.assets);
+    }
+    if bomb(item).lit {
+        burn_fuse(item, ctx);
+    }
+    false
+}
+
+/// itBombhei_UnkMotion10_Coll (80280B18): as the lit fall, a fast landing
+/// detonates; a soft one would start walking (state 2), which is unported.
+fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    bomb_mut(item).landing_velocity = item.velocity;
+    if item.airborne_collision(ctx.map, ctx.assets).floor {
+        // fn_80280974 (80280974).
+        let (x, y) = Attributes(&ctx.assets.special_attributes).explode_speed();
+        let v = bomb(item).landing_velocity;
+        if fabsf(v.x) > x || fabsf(v.y) > y {
+            if !bomb(item).exploded {
+                explode(item, ctx.assets);
+            }
+        } else {
+            unimplemented!("fn_80280974: a thrown Bob-omb landing softly (state 2)");
+        }
     }
     false
 }

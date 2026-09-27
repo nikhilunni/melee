@@ -24,6 +24,9 @@ impl Fighter {
             facing: self.core.physics.facing,
             ..WaitContext::default()
         };
+        if let Some(held) = self.core.held_item {
+            return self.enter_held_item_attack(held, assets, &context);
+        }
         if self.first_ground_transition(assets, &context, &[P::SmashSide]) != T::None {
             return self.enter_forward_smash(assets);
         }
@@ -48,6 +51,34 @@ impl Fighter {
             }
         }
         self.enter_jab(assets)
+    }
+    /// Wait's attack checks with an item in hand: the smash and tilt checks
+    /// throw it in their direction (ftCo_80095A30 and kin), unported here;
+    /// ftCo_Attack1_CheckInput (8008A9F8) throws a throwable item forward.
+    fn enter_held_item_attack(
+        &mut self,
+        held: super::item_pickup::HeldItem,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        let directed = [
+            P::SmashSide,
+            P::SmashUp,
+            P::SmashDown,
+            P::TiltSide,
+            P::TiltUp,
+            P::TiltDown,
+        ];
+        if self.first_ground_transition(assets, context, &directed) != T::None {
+            unimplemented!("held-item smash or tilt throw");
+        }
+        if held.use_kind != 0 {
+            unimplemented!(
+                "ftCo_Attack1_CheckInput: using a held item of kind {}",
+                held.use_kind
+            );
+        }
+        self.enter_item_throw(S::LightThrowF, assets)
     }
     /// checkAttack11 (8008ABC0), also used by a looping jab combo.
     fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {

@@ -138,6 +138,14 @@ pub fn item_get(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opti
     Ok(None)
 }
 
+/// ftData_MotionStateList: ftCo_MS_LightThrowF (94): ftCo_ItemThrow_Anim.
+pub fn item_throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, rng: _ } = phase;
+    fighter.step_animation(assets);
+    fighter.item_throw_animation(assets)?;
+    Ok(None)
+}
+
 pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, rng: _ } = phase;
     fighter.step_animation(assets);

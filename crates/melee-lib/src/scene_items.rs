@@ -49,6 +49,7 @@ pub fn pickup_candidates<'a>(
                 consumable: false,
                 use_kind: assets.use_kind,
                 hand_hold_kind: assets.hand_hold_kind,
+                damage_multiplier: assets.collision_damage_multiplier,
             }
         })
 }
@@ -214,6 +215,36 @@ pub fn request(
                     assets,
                 },
             );
+            return;
+        }
+        ItemRequest::Throw {
+            item,
+            position,
+            velocity,
+            speed,
+            center,
+            attack,
+        } => {
+            // Item_8026AD20: it_802731E0's sound, xC44, it_80273748, the
+            // kind's thrown callback, it_802741F4 (it_80273F34), then
+            // it_802754D4.
+            let thrown = pool.get_mut(item).expect("thrown item");
+            let assets = resources.get(thrown.kind);
+            thrown.throw_speed = speed;
+            thrown.leave_hand(velocity, position, assets);
+            (SceneItems::logic(thrown.kind).thrown)(
+                thrown,
+                &mut ItemAnimationContext {
+                    owner: owner.held_item,
+                    holder: None,
+                    map,
+                    assets,
+                },
+            );
+            thrown.end_hold(center, attack, map, assets);
+            // xDCE b0 and b2: the thrower's hits land on it, and so do its
+            // kin's.
+            thrown.hurt_by_owner = true;
             return;
         }
     };

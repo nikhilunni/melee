@@ -68,6 +68,9 @@ pub struct CommandState {
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
+    /// cmd_timer (+2214): the script timer when the release flag was set
+    /// (ftAction_800718A4), for the item throw's in-frame interpolation.
+    pub release_timer: f32,
     pub throw_reverse: bool,
     /// Fighter throw_flags_b0, consumed by character throw article callbacks.
     pub throw_accessory: bool,
@@ -208,6 +211,7 @@ impl CommandState {
                     // ftAction_800718A4: throw_flags_b3 is also the rapid-jab loop checkpoint.
                     self.grab_release = true;
                     self.rapid_jab_loop_end = true;
+                    self.release_timer = self.script.timer;
                 }
                 Command::ThrowReverse => self.throw_reverse = true,
                 Command::SetThrowHitbox { id, descriptor } => {

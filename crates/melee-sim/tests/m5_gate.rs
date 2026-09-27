@@ -1463,6 +1463,8 @@ const CORPUS_MATCHES: [(&str, usize); 48] = [
 /// item idle until it blows up in his hand (it_8027429C) and KOs him. His
 /// forward smash detonates a falling one (it_802703E8, it_80270E30), and the
 /// rain then drops a bomb where his star KO froze his player coordinates.
+/// He also throws a held one forward (LightThrowF, ftCo_80095EFC) off the
+/// stage, where its fuse runs out.
 #[test]
 fn timeout_and_sudden_death_match_retail() {
     for (name, ticks) in [
@@ -1473,6 +1475,7 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_jab_bomb_fd_marth", 1369),
         ("sudden_death_pickup_bomb_fd_marth", 1433),
         ("sudden_death_smash_bomb_fd_marth", 1496),
+        ("sudden_death_throw_bomb_fd_marth", 1545),
     ] {
         combat_gate_ticks(name, ticks);
     }

@@ -223,6 +223,12 @@ pub fn item_get(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> 
     Ok(())
 }
 
+/// ftData_MotionStateList: ftCo_MS_LightThrowF (94): ftCo_LightThrow_Coll.
+pub fn item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    fighter.item_throw_collision(phase.map);
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
 pub fn escape_air(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;

@@ -950,3 +950,11 @@ Newest first. One line per session: date, what landed, what is next.
   rain aims at Player_LoadPlayerCoords (the s_link 22 mirror), which a star
   KO freezes. `sudden_death_smash_bomb_fd_marth` gated (1496 ticks, bones).
   Next: throwing/dropping items, then damage/death while holding.
+- 2026-09-26: Item throw: Wait's A with a throwable item enters LightThrowF
+  (ftCo_Attack1_CheckInput -> ftCo_800957F4); the accessory (ftCo_80095EFC)
+  follows the hand and on the release flag interpolates the release point by
+  cmd_timer (fmadds), takes the velocity from PlCo's throw table
+  (Fighter_804D6550) and the fighter's multipliers, and hands the item over
+  (Item_8026AD20: leave_hand/thrown/end_hold, xC44 as the thrown hitboxes'
+  damage scale through DROP_UPDATE). Bob-omb thrown lit state 10.
+  `sudden_death_throw_bomb_fd_marth` gated (1545 ticks, bones).

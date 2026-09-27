@@ -25,7 +25,9 @@ lit fuse in hand and the blast releasing it from the hand (it_8027429C), which
 hits its holder (xDCD b5). Fighter hitboxes land on item hurt capsules
 (it_802703E8), with the item's hit spark, knockback and hitlag
 (it_80270E30, OnTakeDamageThink), so a smash detonates a falling Bob-omb
-(`sudden_death_smash_bomb_fd_marth`).
+(`sudden_death_smash_bomb_fd_marth`). A neutral A throws a held item
+forward (LightThrowF, ftCo_80095EFC, Item_8026AD20; the Bob-omb's thrown
+state 10) (`sudden_death_throw_bomb_fd_marth`).
 
 While a fighter holds an item only LightGet and Wait are audited
 (`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
@@ -33,14 +35,15 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states: throws (A, smash inputs), drops (Z, shield, `fighter.c:2678` random drop on a hit), walking, jumping, damage and death while holding | Fail closed at the motion change | Any input or hit while holding a Bob-omb |
+| Held-item states beyond LightGet, Wait and LightThrowF: directed and smash throws, air and dash throws, drops (LR+A, Z, shield, `fighter.c:2678` random drop on a hit), walking, jumping, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
 | `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hurtboxes (it_802706D0) | Detection ported; a landing contact fails closed | A thrown or dropped Bob-omb, or a kindred-striking hitbox, reaching another |
 | Unlit Bob-omb pickup, walking and turning | Fail closed | Only after a soft landing, which the rain's speed prevents |
 
-Next packet: throwing and dropping (ItemThrow*, Bob-omb states 9 and 10)
-and damage or death while holding, each from a recorded witness.
+Next packet: the remaining throws and drops, a soft landing, and damage or
+death while holding, each from a recorded witness.
 
 ## Explicit boundaries
 

@@ -1029,7 +1029,8 @@ impl Runtime {
                             spawn.stale_source = f.combat.stale.attack()
                         }
                         melee_it::ItemRequest::Control { .. }
-                        | melee_it::ItemRequest::PickUp { .. } => {}
+                        | melee_it::ItemRequest::PickUp { .. }
+                        | melee_it::ItemRequest::Throw { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));
@@ -1556,6 +1557,7 @@ fn dispatch_fighter(
             if !f.status.disabled
                 && f.combat.hitlag_remaining == 0.0
                 && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
+                && !f.item_throw_accessory(assets)
             {
                 f.character_accessory(assets);
             }
