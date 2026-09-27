@@ -14,6 +14,8 @@ pub enum WaitTransition {
     Special(SpecialSlot),
     /// An airborne B press; ftCo_SpecialAir_CheckInput picks the slot.
     AirSpecial,
+    /// A held item leaves in the stick's direction (ftCo_80095A30).
+    ItemThrow,
     Grab,
     Attack,
     Escape,
@@ -159,8 +161,9 @@ pub struct WaitContext {
     pub shield_health: f32,
     /// Kind is Fox/Falco AND grCorneria_801E2CE8() AND appeal count is zero.
     pub fox_taunt_available: bool,
-    /// item_gobj (+1974). Item decisions are outside this item-free port.
-    pub holding_item: bool,
+    /// item_gobj (+1974): Some(throwable) while holding an item, where a
+    /// throwable item (it_8026B30C == 0) leaves on A alone (ftCo_80094E54).
+    pub held_item: Option<bool>,
     /// Link/Young Link u.lk.xC or Samus u.ss.x223C != NULL.
     pub tether_active: bool,
     /// hitlag_mul (+196C), the jab continuation countdown checked even at rest.
@@ -173,7 +176,7 @@ impl Default for WaitContext {
             specials_available: [true; 4],
             shield_health: 60.0,
             fox_taunt_available: false,
-            holding_item: false,
+            held_item: None,
             tether_active: false,
             jab_countdown: 0.0,
         }
@@ -196,10 +199,6 @@ pub fn wait_iasa_observe(
     context: &WaitContext,
     mut visited: impl FnMut(WaitPredicate),
 ) -> WaitTransition {
-    assert!(
-        !context.holding_item,
-        "Wait item/hammer paths are outside T9"
-    );
     assert!(
         !context.tether_active,
         "Wait tether restrictions are outside T9"
@@ -249,8 +248,12 @@ pub fn evaluate(
             context.specials_available[3] && input.buttons.special_down == 0,
             T::Special(SpecialSlot::Down),
         ),
-        // ftCo_Catch_CheckInput 800D8990; item/tether checks pass with this context.
-        P::Grab => (shield_held && attack_pressed, T::Grab),
+        // ftCo_Catch_CheckInput 800D8990: ftCo_800951D0 throws a held item
+        // first (A with LR held, or A alone for a throwable item).
+        P::Grab => match context.held_item {
+            Some(throwable) => (attack_pressed && (shield_held || throwable), T::ItemThrow),
+            None => (shield_held && attack_pressed, T::Grab),
+        },
         P::SmashSide
         | P::SmashUp
         | P::SmashDown

@@ -121,7 +121,38 @@ pub struct HeldItem {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 3] = [S::LightGet, S::Wait, S::LightThrowF];
+const HELD_ITEM_STATES: [S; 27] = [
+    S::LightGet,
+    S::Wait,
+    // ftCo_Walk: a light item changes nothing but the IASA's item throw.
+    S::WalkSlow,
+    S::WalkMiddle,
+    S::WalkFast,
+    // ftCo_80095A30's ground throws: the item leaves at the release flag.
+    S::LightThrowF,
+    S::LightThrowB,
+    S::LightThrowHi,
+    S::LightThrowLw,
+    S::LightThrowF4,
+    S::LightThrowB4,
+    S::LightThrowHi4,
+    S::LightThrowLw4,
+    // A jump while holding, and ftCo_80095328's air throws.
+    S::KneeBend,
+    S::JumpF,
+    S::JumpB,
+    S::Fall,
+    S::FallF,
+    S::FallB,
+    S::LightThrowAirF,
+    S::LightThrowAirB,
+    S::LightThrowAirHi,
+    S::LightThrowAirLw,
+    S::LightThrowAirF4,
+    S::LightThrowAirB4,
+    S::LightThrowAirHi4,
+    S::LightThrowAirLw4,
+];
 
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348
 /// names it by the equal enum value ftCo_MS_DeadUpFall (6).
@@ -132,6 +163,16 @@ const WAIT_HOLDING_ITEM_ANIMATION: i32 = 6;
 const PICKUP_SEARCH_LIMIT: f32 = 30000.0;
 
 impl FighterCore {
+    /// The ground IASA context: facing, specials, shield and the held item.
+    pub fn wait_context(&self) -> crate::input::WaitContext {
+        crate::input::WaitContext {
+            facing: self.physics.facing,
+            specials_available: self.capabilities.specials,
+            shield_health: self.status.shield_health,
+            held_item: self.held_item.map(|held| held.use_kind == 0),
+            ..Default::default()
+        }
+    }
     /// ftpickupitem_800942A0 (800942A0): the nearest offered item whose
     /// pickup range overlaps the fighter's pickup box.
     pub fn find_pickup(

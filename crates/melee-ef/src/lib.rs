@@ -661,7 +661,7 @@ impl Effects {
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    if !matches!(id, 0x3FA | 0x3FB | 0x404 | 0x406 | 0x423 | 0x424) {
+                    if !matches!(id, 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x423 | 0x424) {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {

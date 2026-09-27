@@ -27,6 +27,7 @@ pub fn common() -> InputCommonData {
             squat_stick_threshold: 0.6875,
         },
         tilt_angle: f32::from_bits(0x3F5F66F3),
+        item_smash_window_extension: 0.0,
         aerial_horizontal_threshold: 0.3,
         aerial_vertical_threshold: 0.3,
         l_cancel_window: 7,

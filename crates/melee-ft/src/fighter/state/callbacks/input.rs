@@ -240,12 +240,7 @@ pub fn run_brake(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// (17).
 pub fn walk(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     fighter
         .walk_input(assets, &context)
         .expect("walk transition");
@@ -262,6 +257,9 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         .pressed
         .intersects(crate::input::Buttons::B)
     {
+        if fighter.try_air_item_throw(assets).expect("air item throw") {
+            return;
+        }
         fighter.core.check_aerial_item_catch(assets);
     }
     let transition = crate::fighter::fall::iasa_with_jump(
@@ -320,12 +318,7 @@ pub fn entry(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 /// ftData_MotionStateList: ftCo_MS_Wait (14).
 pub fn wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
-    let context = WaitContext {
-        facing: fighter.core.physics.facing,
-        specials_available: fighter.core.capabilities.specials,
-        shield_health: fighter.core.status.shield_health,
-        ..WaitContext::default()
-    };
+    let context = fighter.core.wait_context();
     let transition = wait_iasa(&fighter.core.input, &assets.input, &context);
     fighter
         .apply_ground_transition(assets, transition)

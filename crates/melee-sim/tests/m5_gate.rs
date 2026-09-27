@@ -1476,6 +1476,15 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_pickup_bomb_fd_marth", 1433),
         ("sudden_death_smash_bomb_fd_marth", 1496),
         ("sudden_death_throw_bomb_fd_marth", 1545),
+        // ftCo_80095A30's directed and smash ground throws, a throw after
+        // walking, and ftCo_80095328's air throw.
+        ("sudden_death_throwb_bomb_fd_marth", 1545),
+        ("sudden_death_throwhi_bomb_fd_marth", 1545),
+        ("sudden_death_throwlw_bomb_fd_marth", 1394),
+        ("sudden_death_throwf4_bomb_fd_marth", 1545),
+        ("sudden_death_throwhi4_bomb_fd_marth", 1544),
+        ("sudden_death_walkthrow_bomb_fd_marth", 1545),
+        ("sudden_death_airthrow_bomb_fd_marth", 1451),
     ] {
         combat_gate_ticks(name, ticks);
     }

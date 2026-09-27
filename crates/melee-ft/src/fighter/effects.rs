@@ -133,6 +133,7 @@ impl super::FighterCore {
                         | 0x3F2
                         | 0x3FA
                         | 0x3FB
+                        | 0x3FC
                         | 0x3FD
                         | 0x3F8
                         | 0x3F9

@@ -27,15 +27,22 @@ hits its holder (xDCD b5). Fighter hitboxes land on item hurt capsules
 (it_80270E30, OnTakeDamageThink), so a smash detonates a falling Bob-omb
 (`sudden_death_smash_bomb_fd_marth`). A neutral A throws a held item
 forward (LightThrowF, ftCo_80095EFC, Item_8026AD20; the Bob-omb's thrown
-state 10) (`sudden_death_throw_bomb_fd_marth`).
+state 10) (`sudden_death_throw_bomb_fd_marth`). With an item in hand, A (or
+LR+A) is taken by the grab check first and ftCo_80095A30 aims the throw:
+back, up and down tilt throws and the smash throws (PlCo +400 rate), gated
+by `sudden_death_throw{b,hi,lw,f4,hi4}_bomb_fd_marth`; walking while holding
+(`sudden_death_walkthrow_bomb_fd_marth`); jumping while holding and
+ftCo_80095328's air throws, which switch to the ground throw on landing
+(`sudden_death_airthrow_bomb_fd_marth`).
 
-While a fighter holds an item only LightGet and Wait are audited
+While a fighter holds an item only LightGet, Wait, walking, jumping, falling
+and the light throws are audited
 (`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
 The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond LightGet, Wait and LightThrowF: directed and smash throws, air and dash throws, drops (LR+A, Z, shield, `fighter.c:2678` random drop on a hit), walking, jumping, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: dash, run and turn throws, drops (LR+A in the air, shield, `fighter.c:2678` random drop on a hit), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
 | `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |

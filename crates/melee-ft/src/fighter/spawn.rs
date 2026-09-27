@@ -556,6 +556,26 @@ impl Fighter {
         )
     }
 
+    /// A ground/air counterpart change at the current frame and `rate`.
+    pub fn change_ground_air_motion_at_rate(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        rate: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start: self.animation.frame,
+                rate,
+                ground_air: true,
+                preserve_material_animation: true,
+                ..Default::default()
+            },
+        )
+    }
+
     /// Fighter_ChangeMotionState at the current frame with Ft_MF_SkipColAnim |
     /// Ft_MF_UpdateCmd only (ftFx_MF_SpecialLwEnd_Coll): commands advance
     /// without re-running, but visibility, material animation and owned

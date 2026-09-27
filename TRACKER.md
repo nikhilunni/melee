@@ -1001,3 +1001,12 @@ Newest first. One line per session: date, what landed, what is next.
   and run them through `run_accessory4`; every Fighter_ChangeMotionState
   disarms it. This replaces the Illusion-only fix and also covers the
   Reflector started at the edge (s1_ec21c8082), Fire Fox and Shield Breaker.
+- 2026-09-27: Held-item throws. A (LR+A) with an item is taken by the grab
+  check (ftCo_Catch_CheckInput -> ftCo_800951D0) before the attack checks;
+  ftCo_80095A30 aims the ground throw (smash throws at PlCo +400), walking
+  keeps the item, and ftCo_80095328 throws in the air, the throw switching
+  to its ground/air counterpart at the same frame (ftCo_80096250/80096374).
+  Seven new Sudden Death witnesses gated; graphic 0x3FC (model 0x17) ported.
+  Also: Counter minimum hitlag across ground/air (e2ba447), stacked quakes
+  (40fd2be), core accessory4 (0f8bf25). Next: resume the corpus v5 sample
+  (18 of 40 left in the second batch), then drops and damage while holding.

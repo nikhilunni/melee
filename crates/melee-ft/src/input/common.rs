@@ -8,6 +8,9 @@ use hsd_archive::{Archive, Reader};
 #[derive(Debug, Clone)]
 pub struct InputCommonData {
     pub thresholds: IdleInputAttributes,
+    /// PlCo +44: added to the smash window for a held item's smash throw
+    /// (ftCo_80095A30).
+    pub item_smash_window_extension: f32,
     /// PlCo +20 (x20_radians), +98, +AC, +B0.
     pub tilt_angle: f32,
     /// PlCo +DC/+E0: aerial direction and C-stick edge thresholds.
@@ -53,6 +56,7 @@ impl InputCommonData {
         Ok(Self {
             thresholds,
             tilt_angle: r.f32(0x20)?,
+            item_smash_window_extension: r.f32(0x44)?,
             aerial_horizontal_threshold: r.f32(0xDC)?,
             aerial_vertical_threshold: r.f32(0xE0)?,
             l_cancel_window: r.s32(0xE4)?,

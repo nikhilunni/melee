@@ -453,6 +453,51 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // The other ground light throws share ftCo_ItemThrow's callbacks.
+    const LIGHT_THROWS: [(S, i32); 7] = [
+        (S::LightThrowB, 80),
+        (S::LightThrowHi, 81),
+        (S::LightThrowLw, 82),
+        (S::LightThrowF4, 96),
+        (S::LightThrowB4, 97),
+        (S::LightThrowHi4, 98),
+        (S::LightThrowLw4, 99),
+    ];
+    let mut i = 0;
+    while i < LIGHT_THROWS.len() {
+        let (state, animation) = LIGHT_THROWS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            ..rows[S::LightThrowF as usize]
+        };
+        i += 1;
+    }
+    // The air throws (ftCo_LightThrowAir_Phys / _Coll).
+    const AIR_THROWS: [(S, i32); 8] = [
+        (S::LightThrowAirF, 85),
+        (S::LightThrowAirB, 86),
+        (S::LightThrowAirHi, 87),
+        (S::LightThrowAirLw, 88),
+        (S::LightThrowAirF4, 100),
+        (S::LightThrowAirB4, 101),
+        (S::LightThrowAirHi4, 102),
+        (S::LightThrowAirLw4, 103),
+    ];
+    let mut i = 0;
+    while i < AIR_THROWS.len() {
+        let (state, animation) = AIR_THROWS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            physics: callbacks::physics::fall,
+            collision: callbacks::collision::air_item_throw,
+            ..rows[S::LightThrowF as usize]
+        };
+        i += 1;
+    }
     rows[S::Attack11 as usize] = MotionRow {
         action: ActionId(44),
         id: S::Attack11,

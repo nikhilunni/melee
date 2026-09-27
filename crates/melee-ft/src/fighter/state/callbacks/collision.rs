@@ -225,8 +225,14 @@ pub fn item_get(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> 
 
 /// ftData_MotionStateList: ftCo_MS_LightThrowF (94): ftCo_LightThrow_Coll.
 pub fn item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
-    fighter.item_throw_collision(phase.map);
-    Ok(())
+    let assets = phase.assets.expect("item throw collision assets");
+    fighter.item_throw_collision(phase.map, assets)
+}
+
+/// ftCo_LightThrowAir_Coll (800962D4).
+pub fn air_item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("air item throw collision assets");
+    fighter.air_item_throw_collision(phase.map, assets)
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).

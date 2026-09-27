@@ -219,6 +219,11 @@ pub struct FighterAssets {
     pub pickup: super::item_pickup::PickupBoxes,
     /// Fighter_804D6550: the item throw table.
     pub item_throws: [super::item_throw::ItemThrowRow; super::item_throw::ITEM_THROW_ROWS],
+    /// PlCo +400: the animation rate of a smash item throw (LightThrowF4 on).
+    pub smash_throw_rate: f32,
+    /// PlCo +3FC: an air throw within this many frames of the stick's move
+    /// is a smash throw (ftCo_80095328).
+    pub air_smash_throw_window: i32,
     /// CommonBehavior's item hand slots and held-item idle choice.
     pub item_hand: Option<ItemHandSlots>,
     pub idle_variants_while_holding: bool,
@@ -263,8 +268,8 @@ impl FighterAssets {
                 40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
                 45, 46, 58, 167, 168, 169, 209, 242, 243,
                 // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet and
-                // ftCo_SM_LightThrowF.
-                6, 78, 79,
+                // the ground light throws (F/B/Hi/Lw, then their smash forms).
+                6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103,
             ],
             &idle_motions,
             descriptor.additional_motions,
@@ -453,8 +458,8 @@ impl FighterAssets {
                         217, 220, 224, 225, 226, 227, 228, 238, 45, 46, 58, 167, 168, 169, 209,
                         242, 243,
                         // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet
-                        // and ftCo_SM_LightThrowF.
-                        6, 78, 79,
+                        // and the ground light throws (F/B/Hi/Lw, smash forms).
+                        6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103,
                     ],
                     &idle_motions,
                     descriptor.additional_motions,
@@ -629,6 +634,8 @@ impl FighterAssets {
             },
             color_overlays,
             item_throws: super::item_throw::read_throw_table(common, common_root)?,
+            smash_throw_rate: common.reader().f32(common_data + 0x400)?,
+            air_smash_throw_window: common.reader().s32(common_data + 0x3FC)?,
             item_hand: descriptor.common_behavior.item_hand,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
             pickup: {

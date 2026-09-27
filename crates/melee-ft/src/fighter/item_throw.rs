@@ -9,7 +9,7 @@ use super::{
     assets::{FighterAssets, Result},
     Fighter, MotionData,
 };
-use gekko_math::fma::fmadds;
+use gekko_math::{fma::fmadds, msl::fabsf};
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
 
@@ -38,6 +38,11 @@ pub struct ItemThrowState {
     pub facing: f32,
     /// mv.co.itemthrow4.x8: the hand's position at the previous accessory.
     pub hand: Vec3,
+    /// mv.co.itemthrow4.anim_spd: the entry's animation rate, kept by a
+    /// ground/air switch.
+    pub rate: f32,
+    /// facing_dir1: the facing at entry, restored for a ground/air switch.
+    pub entry_facing: f32,
 }
 
 pub fn read_throw_table(
@@ -64,6 +69,128 @@ pub fn read_throw_table(
 }
 
 impl Fighter {
+    /// ftCo_80095A30 (80095A30): a held item leaves toward the stick, smash
+    /// directions before tilts, else forward.
+    pub(super) fn enter_ground_item_throw(&mut self, assets: &FighterAssets) -> Result<()> {
+        let held = self
+            .core
+            .held_item
+            .expect("an item throw needs a held item");
+        let input = &self.core.input;
+        let common = &assets.input;
+        let stick = input.current.stick;
+        let forward = stick.x * self.core.physics.facing >= 0.0;
+        let horizontal_age = f32::from(input.horizontal.tilt);
+        let vertical_age = f32::from(input.vertical.tilt);
+        // ftCo_GetLStickAngle (8007D964): atan2f(y, |x|).
+        let angle = melee_lb::trigf::atan2f(stick.y, fabsf(stick.x));
+        let state = if fabsf(stick.x) >= common.thresholds.dash_smash_stick_threshold
+            && horizontal_age
+                < common.thresholds.dash_smash_window as f32 + common.item_smash_window_extension
+        {
+            if forward {
+                S::LightThrowF4
+            } else {
+                S::LightThrowB4
+            }
+        } else if stick.y >= common.up_smash_threshold
+            && vertical_age
+                < common.up_smash_window + self.core.attributes.jumping.jump_startup_time
+        {
+            S::LightThrowHi4
+        } else if stick.y <= common.down_smash_threshold && vertical_age < common.down_smash_window
+        {
+            S::LightThrowLw4
+        } else if fabsf(stick.x) >= common.side_tilt_threshold && fabsf(angle) <= common.tilt_angle
+        {
+            if forward {
+                S::LightThrowF
+            } else {
+                S::LightThrowB
+            }
+        } else if stick.y >= common.up_tilt_threshold && angle > common.tilt_angle {
+            S::LightThrowHi
+        } else if stick.y <= common.down_tilt_threshold && angle < -common.tilt_angle {
+            S::LightThrowLw
+        } else if held.use_kind == 0 {
+            S::LightThrowF
+        } else {
+            unimplemented!("ftCo_80095A30: swinging a held item (state 99)");
+        };
+        self.enter_item_throw(state, assets)
+    }
+
+    /// ftCo_80095328 (80095328): a held item thrown in the air, by a C-stick
+    /// flick (ftCo_800DF50C) or A (ftCo_80094E54). Returns whether it threw.
+    pub(super) fn try_air_item_throw(&mut self, assets: &FighterAssets) -> Result<bool> {
+        use crate::input::Buttons;
+        let Some(held) = self.core.held_item else {
+            return Ok(false);
+        };
+        let input = &self.core.input;
+        let common = &assets.input;
+        let throwable = held.use_kind == 0;
+        let lr = input.current.held.intersects(Buttons::SHIELD);
+        // ftCo_800DF478: a C-stick axis crossing its aerial threshold.
+        let (cstick, previous) = (input.current.cstick, input.previous.cstick);
+        let flicked = (fabsf(previous.x) < common.aerial_horizontal_threshold
+            && fabsf(cstick.x) >= common.aerial_horizontal_threshold)
+            || (fabsf(previous.y) < common.aerial_vertical_threshold
+                && fabsf(cstick.y) >= common.aerial_vertical_threshold);
+        let (stick, horizontal_age, vertical_age) = if flicked {
+            assert!(
+                throwable,
+                "ftCo_800DF50C: gm_8016B0FC for a non-throwable item"
+            );
+            (cstick, 0.0, 0.0)
+        } else if input.pressed.intersects(Buttons::A) && (lr || throwable) {
+            let stick = input.current.stick;
+            (
+                stick,
+                f32::from(input.horizontal.tilt),
+                f32::from(input.vertical.tilt),
+            )
+        } else {
+            return Ok(false);
+        };
+        let state = if fabsf(stick.x) < common.aerial_horizontal_threshold
+            && fabsf(stick.y) < common.aerial_vertical_threshold
+        {
+            if !throwable || lr {
+                unimplemented!("ftCo_80095744: dropping a held item in the air");
+            }
+            S::LightThrowAirF
+        } else {
+            let smash = |age: f32| age < assets.air_smash_throw_window as f32;
+            let angle = melee_lb::trigf::atan2f(stick.y, fabsf(stick.x));
+            if angle > common.tilt_angle {
+                if smash(vertical_age) {
+                    S::LightThrowAirHi4
+                } else {
+                    S::LightThrowAirHi
+                }
+            } else if angle < -common.tilt_angle {
+                if smash(vertical_age) {
+                    S::LightThrowAirLw4
+                } else {
+                    S::LightThrowAirLw
+                }
+            } else if stick.x * self.core.physics.facing >= 0.0 {
+                if smash(horizontal_age) {
+                    S::LightThrowAirF4
+                } else {
+                    S::LightThrowAirF
+                }
+            } else if smash(horizontal_age) {
+                S::LightThrowAirB4
+            } else {
+                S::LightThrowAirB
+            }
+        };
+        self.enter_item_throw(state, assets)?;
+        Ok(true)
+    }
+
     /// ftCo_800957F4 (800957F4): enter a throw state; the accessory runs
     /// once at once to record the hand.
     pub(super) fn enter_item_throw(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
@@ -73,23 +200,27 @@ impl Fighter {
         // throw_flags = 0.
         self.core.commands.take_throw_flag_b3();
         self.core.commands.throw_reverse = false;
-        // getAnimSpeed: 1 / itGetDamageMultiplier, with PlCo x400 from
-        // LightThrowF4 on.
-        assert!(
-            (state as u16) < S::LightThrowF4 as u16 && held.damage_multiplier == 1.0,
-            "ftCo_800957F4: a throw animation speed other than 1"
-        );
+        // getAnimSpeed (ftCo_800957F4): PlCo +400 from LightThrowF4 on, then
+        // times 1 / itGetDamageMultiplier; separate fmuls, no fusion.
+        let mut rate = 1.0;
+        if state as u16 >= S::LightThrowF4 as u16 {
+            rate *= assets.smash_throw_rate;
+        }
+        rate *= 1.0 / held.damage_multiplier;
         let facing = if BACK_THROWS.contains(&(state as u16)) {
             -self.core.physics.facing
         } else {
             self.core.physics.facing
         };
-        self.change_motion_state(state.into(), assets)?;
+        self.change_motion_state_with_rate(state.into(), assets, 0.0, rate)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::ItemThrow(ItemThrowState {
             facing,
             hand: Vec3::ZERO,
+            rate,
+            entry_facing: self.core.physics.facing,
         });
+        self.arm_accessory4();
         self.item_throw_accessory(assets);
         Ok(())
     }
@@ -105,17 +236,24 @@ impl Fighter {
                 self.core.held_item.is_none(),
                 "ft_8008A2BC: a throw ending with the item still held"
             );
-            if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
-                unimplemented!("ftCo_Fall_Enter after an item throw");
-            }
-            self.change_motion_state(S::Wait.into(), assets)?;
+            // ftCommon_8007D92C: Fall in the air, Wait on the ground.
+            let next = if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+                S::Fall
+            } else {
+                S::Wait
+            };
+            self.change_motion_state(next.into(), assets)?;
         }
         Ok(())
     }
 
     /// ftCo_LightThrow_Coll (80096228): ft_800841B8; leaving the ground
-    /// switches to the air throw (ftCo_80096250), which is unported.
-    pub(super) fn item_throw_collision(&mut self, map: &mut melee_mp::CollMap) {
+    /// switches to the air throw (ftCo_80096250).
+    pub(super) fn item_throw_collision(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &FighterAssets,
+    ) -> Result<()> {
         use crate::collision::ground::{map_escape, WaitGroundResult};
         if map_escape(
             &mut self.core.physics,
@@ -126,8 +264,56 @@ impl Fighter {
             self.core.input.current.stick.x,
         ) == WaitGroundResult::EnterFall
         {
-            unimplemented!("ftCo_80096250: an item throw leaving the ground");
+            self.leave_ground();
+            self.switch_item_throw(true, assets)?;
         }
+        Ok(())
+    }
+
+    /// ftCo_LightThrowAir_Coll (800962D4): ft_80082C74; landing switches to
+    /// the ground throw (ftCo_80096374).
+    pub(super) fn air_item_throw_collision(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        crate::collision::air::begin_map(
+            &self.core.physics,
+            &mut self.core.collision,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+        );
+        if crate::collision::air::collide_air_dodge(
+            &mut self.core.physics,
+            &mut self.core.collision,
+            map,
+            &mut self.core.skeleton,
+            self.core.animation.root,
+        ) {
+            self.land();
+            self.switch_item_throw(false, assets)?;
+        }
+        Ok(())
+    }
+
+    /// ftCo_80096250 / ftCo_80096374 inlineA0: the same throw in the other
+    /// ground/air table (air throws sit 6 rows after the ground ones, 4
+    /// among the smash throws), at the entry facing, frame and rate; the
+    /// accessory is reinstalled and runs at once.
+    fn switch_item_throw(&mut self, to_air: bool, assets: &FighterAssets) -> Result<()> {
+        let MotionData::ItemThrow(throw) = self.core.state_data else {
+            panic!("item throw scratch missing")
+        };
+        let id = self.core.motion_state.action.0;
+        let step = if id >= S::LightThrowF4 as u16 { 4 } else { 6 };
+        let next = if to_air { id + step } else { id - step };
+        let facing = self.core.physics.facing;
+        self.core.physics.facing = throw.entry_facing;
+        self.change_ground_air_motion_at_rate(super::ActionId(next), assets, throw.rate)?;
+        self.core.physics.facing = facing;
+        self.arm_accessory4();
+        self.item_throw_accessory(assets);
+        Ok(())
     }
 
     /// ftCo_80095EFC (80095EFC), accessory4 in the throw states. Returns
@@ -136,6 +322,9 @@ impl Fighter {
         let MotionData::ItemThrow(throw) = self.core.state_data else {
             return false;
         };
+        if !self.core.accessory4_armed {
+            return false;
+        }
         let Some(held) = self.core.held_item else {
             return true;
         };
