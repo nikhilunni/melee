@@ -1,0 +1,29 @@
+# Sudden Death (300%): Fox dashes right, skids to the edge (1243) and turns
+# at the lip (1248), sliding off facing the stage into CliffCatch (1258);
+# at 1280 he takes the slow ledge option (CliffAttackSlow).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_ledgeattack_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1370
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1234, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 1243, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1248, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1260, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1280, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 1282, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+

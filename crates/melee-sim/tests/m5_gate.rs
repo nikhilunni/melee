@@ -418,6 +418,24 @@ fn walljump_aerial_fd_fox_450_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("walljump_aerial_fd_fox", 450);
 }
 
+/// Furafura (the shield-break dizzy) expiring into Wait, and a jab knocking
+/// Fox out of it.
+#[test]
+fn furafura_expire_fd_marth_830_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("furafura_expire_fd_marth", 830);
+}
+
+#[test]
+fn furafura_hit_fd_marth_460_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("furafura_hit_fd_marth", 460);
+}
+
+/// A sub-7% hit on a fighter lying face up: DownDamageU.
+#[test]
+fn downdamage_up_fd_marth_280_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("downdamage_up_fd_marth", 280);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]
@@ -1550,6 +1568,12 @@ fn timeout_and_sudden_death_match_retail() {
         // in the captor's throw record 1; Fox's DownBound requests a Large quake
         // that the screen KO's camera-space placement sees.
         ("sudden_death_pummelcaptor_bomb_fd_marth", 1471),
+        // Fox's slow ledge options at 300% (CliffClimbSlow, CliffEscapeSlow,
+        // CliffAttackSlow, CliffJumpSlow1/2) after an edge turn into CliffCatch.
+        ("sudden_death_ledgeclimb_fd_fox", 1370),
+        ("sudden_death_ledgeroll_fd_fox", 1370),
+        ("sudden_death_ledgeattack_fd_fox", 1370),
+        ("sudden_death_ledgejump_fd_fox", 1370),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),

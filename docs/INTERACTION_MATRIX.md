@@ -56,9 +56,9 @@ rows (`ft-fox-family`, `ft-mars`).
 
 | Character | Never entered in any gated trace | Reachable? |
 | --- | --- | --- |
-| Fox | CliffAttackSlow, CliffClimbSlow, CliffEscapeSlow, CliffJumpSlow1/2 | Yes, at 100% or more on the ledge: **MISSING** |
+| Fox | CliffAttackSlow, CliffClimbSlow, CliffEscapeSlow, CliffJumpSlow1/2 | Witnessed at 300%: `sudden_death_ledge{climb,roll,attack,jump}_fd_fox` |
 | Fox | DamageHi1, DamageLw1, DamageAir1 | Yes, from weak hits: **MISSING** |
-| Fox | DownDamageU | Yes, hit while lying face up: **MISSING** |
+| Fox | DownDamageU | Witnessed: `downdamage_up_fd_marth` |
 | Fox | ShieldBreakFall, ShieldBreakDownD, ShieldBreakStandD | Yes, a break in the air or in the other orientation: **MISSING** |
 | Fox | Fx.SpecialAirLwHit | Yes, an aerial Reflector reflecting something (a Marth-thrown Bob-omb in Sudden Death, or a returned laser): **MISSING** |
 | Fox | Every LightThrow* except Dash | Yes, Fox throwing a Bob-omb in Sudden Death: **MISSING** (LightGet and LightThrowDash are corpus only) |
@@ -315,7 +315,7 @@ press entering GuardOn (178).
 | Shield pushed off the edge -> MissFoot | ftCo_Guard*_Coll | corpus:3 (GuardOn, GuardOff, GuardSetOff) | corpus:1 |
 | Guard -> ShieldBreakFly -> DownU -> StandU -> Furafura | ftCo_ShieldBreakFly_Anim | `shieldbreak_fd_marth` | `laser_reflect_overflow_air_timed_fd_marth` (Fall/DownD/StandD path) |
 | Break in the other orientation (Fox D, Marth U) | ftCo_ShieldBreakDown_Anim | **MISSING** | **MISSING** |
-| **Furafura -> Wait (dizzy wears off); Furafura -> damage** | ftCo_Furafura_Anim / hit | **MISSING** (never leaves Furafura in any gated window) | **MISSING** |
+| Furafura -> Wait (dizzy wears off); Furafura -> damage | ftCo_Furafura_Anim / hit | `furafura_expire_fd_marth`, `furafura_hit_fd_marth` | **MISSING** |
 | Shield break at the edge or offstage (fly into the blast zone) | ftCo_ShieldBreakFly_Coll | **MISSING** | **MISSING** |
 | Simultaneous shield impacts (two hitboxes in one frame) | ftColl_80076CBC | Ported (the strongest impact wins, getEnvDmg rounding); unwitnessed: every Fox/Marth hitbox is group 0, so only a laser and a melee hit together can do it | same |
 | Phantom contact and shield impact in the same frame | fighter.c:2907 | Ported (the phantom branch drops the impact's response); unwitnessed: the phantom band is 0.01 of overlap | same |
@@ -391,7 +391,7 @@ Retail: `ftCo_Damage_IASA`, `ftCo_Damage_CheckAirMotion`, `ftCo_DamageFall_IASA`
 | DownBound -> DownWait -> getup (stand, roll F/B, attack) | ftCo_Down_CheckInput | face up: `getupstand_fd_fox`, `getuproll_fd_fox`, `getupattack_fd_fox`; face down: `match2_fd_foxmarth`, `match_fd_foxmarth` (attack, forward, back, stand) | DownWaitU -> getups corpus only; DownBound -> DownAttack/DownFoward directed (`match2_fd_foxmarth`, `match_fd_foxmarth`); DownStand*/DownBack* corpus only |
 | DownWait -> DownBack (face up) | same | `match_fd_foxmarth` | corpus:2 |
 | DownBound -> Fall (bounce off the edge) | ftCo_DownBound_Coll | `match2_fd_foxmarth` +1 | corpus:1 |
-| DownWait hit -> DownDamageU/D | ftCo_DownDamage_* | U **MISSING**; D corpus:1 (by name `corpus_v2_s0_effffffff_p2`, `corpus_v3_s0_e0fe4dd03_p1`) | U **MISSING**; D corpus:4 |
+| DownWait hit -> DownDamageU/D | ftCo_DownDamage_* | U `downdamage_up_fd_marth`; D corpus:1 (by name `corpus_v2_s0_effffffff_p2`, `corpus_v3_s0_e0fe4dd03_p1`) | U **MISSING**; D corpus:4 |
 | DownDamage keeping facing / hitstun air physics | ftCo_8008DCE0 | (by name) `corpus_v2_s0_e49_p2`, `corpus_v3_s0_e0fe4dd03_p1` | same |
 | DownReflect wall bounce, DownDamage wall tech/bounce | ftCo_800C7CA0, ftCo_800C1D38 (port `unimplemented!`) | Investigate (audit) | same |
 | DownSpot | ftCo_DownSpot_Enter | Investigate: never seen and unported | same |
@@ -523,9 +523,8 @@ in the Fox–Marth FD scope is shown or plausible. The ranking weighs how
 often a real match reaches the branch against how cheaply a directed
 Dolphin scenario could witness it.
 
-1. **Furafura exits (dizzy -> recover, dizzy fighter hit).** Every shield
-   break in a real match ends here, and the opponent almost always punishes.
-   Neither character leaves Furafura in any gated window.
+1. ~~Furafura exits~~: witnessed for Fox (`furafura_expire_fd_marth`,
+   `furafura_hit_fd_marth`, 2026-09-27); Marth as the dizzy fighter remains.
 2. **Fighter hitbox against a script-invincible hurtbox.** It is a port
    `unimplemented!` (damage.rs:1662). If any Fox or Marth startup (Dolphin
    Slash, the ledge getups, the getup attacks) is authored Invincible rather

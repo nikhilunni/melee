@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> None:
         if records != wanted or summary.get("ticks") != records:
             sys.exit("tick trace record count does not match the scenario and .done marker")
         flags = ["--max-draws", "256"]
-        if any(step.get("buttons") for step in scenario.get("inputs", [])) or any(
+        if any(step.get("buttons") or step.get("raw") for step in scenario.get("inputs", [])) or any(
                 f.get("controller") == "human" for f in scenario.get("fighters", [])):
             flags.append("--scripted")  # inputs drive the fighters: animation rates vary
         if validate_ticks.main([str(expected), *flags]):

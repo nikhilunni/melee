@@ -1,0 +1,29 @@
+# shieldbreak_fd_marth's pads on the tick clock, run until Fox's dizzy
+# (Furafura, entered at 313) expires into Wait (803).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "furafura_expire_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 830
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 0, port = 0, buttons = {  }, raw = { } },
+  { frame = 0, port = 1, buttons = {  }, raw = { } },
+  { frame = 31, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 87, port = 0, buttons = {  }, raw = { } },
+  { frame = 111, port = 1, buttons = {  }, raw = { button = 64 } },
+  { frame = 119, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 216, port = 0, buttons = {  }, raw = { } },
+  { frame = 291, port = 1, buttons = {  }, raw = { } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
