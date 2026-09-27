@@ -1552,6 +1552,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_thrownhihold_bomb_fd_marth", 1545),
         ("sudden_death_thrownfhold_bomb_fd_marth", 1545),
         ("sudden_death_thrownlwhold_bomb_fd_marth", 1431),
+        // A smash throw out of Turn.
+        ("sudden_death_turnthrow_bomb_fd_marth", 1514),
     ] {
         combat_gate_ticks(name, ticks);
     }

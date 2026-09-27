@@ -1122,3 +1122,6 @@ Newest first. One line per session: date, what landed, what is next.
   captor's centre). A thrown holder's XRotN constraint is refreshed before
   its held item's link-1 proc, as retail rebuilds it from the captor's live
   TransN2. Four witnesses (Fox's four throws); full release gate 1471/0.
+- 2026-09-27: Turn throws witnessed; COVERAGE_AUDIT's held-item and item
+  gap tables rewritten to the current state (each remaining gap with its
+  reachability).

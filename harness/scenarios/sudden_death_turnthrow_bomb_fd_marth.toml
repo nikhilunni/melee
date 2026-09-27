@@ -1,0 +1,28 @@
+# Sudden Death: Marth picks up the first Bob-omb (1226), turns round (1235)
+# and presses A with the stick held (1236): a smash throw out of Turn.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_turnthrow_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1514
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1235, port = 0, buttons = { StickX = 0.5 }, raw = { stickX = 64 } },
+  { frame = 1236, port = 0, buttons = { A = true, StickX = 0.5 }, raw = { button = 256, stickX = 64 } },
+  { frame = 1238, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

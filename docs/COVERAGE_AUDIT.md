@@ -53,22 +53,27 @@ the Fox/Falco/Marth specials keep it. LR + A in the air catches a light item
 in reach without a motion change (ftCo_800D7100 -> fn_800D6F58,
 `sudden_death_aircatch{dash,shield}_bomb_fd_marth`).
 
-While a fighter holds an item only the states listed above and the light
-throws are audited
-(`item_pickup::HELD_ITEM_STATES`); entering any other state fails closed.
-The remaining reachable gaps:
+While a fighter holds an item only the audited states
+(`item_pickup::HELD_ITEM_STATES`: standing, walking, dashing, running,
+turning, crouching, shielding, rolls, jumps, falls, landings, air dodges,
+taunts, specials of Fox, Falco and Marth, the ledge family, the damage
+family, capture and thrown states, and the throws) may run; entering any
+other state fails closed. Throws out of Turn (`sudden_death_turnthrow_bomb_fd_marth`),
+dash throws at an edge and C-stick smash throws are witnessed. The
+remaining gaps:
 
-| Retail path | Port | Reachable by |
+| Retail path | Port | Reachability |
 | --- | --- | --- |
-| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, tilts with an item, down states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
-| A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge, which its short lit walk rarely reaches |
-| ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
+| Down states while holding | Fail closed at the motion change | A tumble landing holding a Bob-omb; at Sudden Death's 300% every launch KOs first |
+| Tilts with a held item | Fail closed | Unreachable for a throwable item: A with the item is ftCo_Catch_CheckInput's throw first, and the C-stick is a smash stick by default |
+| A dash throw from a shield's dash countdown (ftCo_8009515C with x20) | Fail closed | Shielding out of a dash with an item held |
+| Specials of other characters while holding | Fail closed per character (SPECIALS_KEEP_HELD_ITEM) | Out of scope: other characters |
+| A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge; its lit walk lasts at most the blink countdown |
+| ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported | Unreachable: A also requests an aerial first |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hitboxes (it_8026FE68) and inert item hitboxes | Fail closed; item hitboxes on item hurtboxes are ported (`sudden_death_bombchain_fd_marth`) | Two live item hitboxes meeting |
-| Unlit Bob-omb pickup, walking and turning | Fail closed | Only after a soft landing, which the rain's speed prevents |
-
-Next packet: the remaining throws and drops, a soft landing, and damage or
-death while holding, each from a recorded witness.
+| Unlit Bob-omb states (idle, pickup, walk, throw) | Fail closed | Unreachable in Sudden Death: the rain lights every Bob-omb at spawn |
+| A fighter launched into a ceiling (FlyReflectCeil, ceiling tech) | Fail closed | FD's only ceiling is the underside (|x| <= 53.8, y = -55); the Sudden Death Bob-omb timing cannot put a fighter under it before its blast |
 
 ## Explicit boundaries
 
@@ -85,7 +90,6 @@ death while holding, each from a recorded witness.
 | `melee-ft/fighter/down.rs` | DownReflect wall bounce, DownDamage wall tech/bounce | Needs FD's walls under the stage; investigate |
 | `melee-ft/fighter/state/callbacks/collision.rs` ftCo_StopWall | Running into a wall | FD's side walls are below the ledge; investigate |
 | `melee-it/map.rs` it_80276D9C | An item pressed between two walls | Not reachable on FD's open sides |
-| `it-bombhei` unported rows | Walking, turning, held and thrown states | Follows from pickup; a soft landing never happens in the rain (terminal speed exceeds the explosion thresholds) |
 | `ft-fox-family/special_hi.rs` | Fire Fox platform skip | FD has no platforms: out of scope |
 
 ### Out of scope (other characters, stages, CPU or modes)
