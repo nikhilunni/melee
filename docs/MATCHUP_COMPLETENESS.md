@@ -4,6 +4,29 @@ Approved next milestone, 2026-09-11. The recorded steel thread established
 exactness for particular matches. It did not establish completeness for all
 legal inputs in this matchup. Keep breadth paused while closing that gap.
 
+## Status — 2026-09-27: exit criteria
+
+| Exit criterion | Evidence | Open |
+| --- | --- | --- |
+| Every audited in-scope gap implemented and tested; reachability resolved | `COVERAGE_AUDIT.md`: every explicit boundary is ported, fails closed as out of scope, or is shown unreachable with evidence. Ported from the retail branch order but unwitnessed: the shield-impact combinations and an airborne DownDamage wall contact | The Sudden Death item rows it lists (held-item states the explorer has not reached) |
+| A reviewed interaction matrix | `INTERACTION_MATRIX.md` (regenerate with `harness/interaction_matrix.py`); its MISSING list shrank from 20 to the rows its status block names | DamageHi1 and Fox's Lw1/Air1, shield-break orientations, captured-high throws, the Reflector's End/Hit ground rows leaving the ground |
+| Focused Dolphin traces compare state, RNG and item/particle fields | `m5_gate` (235 tests), the corpus and Sudden Death lists in it, bones and particle gates; every witness recorded this milestone is exact | none |
+| Debug/release gates, clippy, zero allocation, capture non-mutation | Full release gate 1501/0 (2026-09-27, after the perf merge); clippy clean; the alloc and capture gates are part of `cargo gate` | Perf gate: time and duplicate definitions pass; stripped size is over its 2026-09-10 ceiling from feature growth, pending a baseline decision |
+| Fixed, versioned corpus and full matches, both port layouts | Below | none |
+
+**Corpus workload.** The explorer (`cargo run -p melee-replay --release --example explore -- harness/roms/files <out> <count> <skip> [sudden-death]`, corpus version 3) is deterministic per seed. Each normal case is a full match from a retail match-start boundary, both port layouts, three input profiles.
+
+| Batch | Cases | Result |
+| --- | --- | --- |
+| Normal, skip 2000, 300 seeds | 1,800 | FlyReflectCeil (fixed, `corpus_v3_s0_ef4efb740_p1`) |
+| Normal, skip 3000, 300 seeds | 1,800 | Reflector turnFrames through a smash (fixed, `corpus_v3_s0_efaccaf3d_p0`) |
+| Normal, skip 4000, 300 seeds | 1,800 | grounded special fall (fixed, `corpus_v3_s1_e7d968d2d_p1`) |
+| Normal, skip 5000 and 6000, 300 seeds each | 3,600 | clean |
+| Sudden Death, skips 0..5000 | 7,300 | faults fixed and gated as `corpus_sd_*` |
+| Sudden Death, skip 7000 and 8000, 1,000 seeds each | 6,000 | FallAerial and Ottotto while holding (fixed) |
+
+Exactness sample: 34 clean explorer cases (20 Sudden Death, 14 full matches) bridged to Dolphin were all exact; the full matches `corpus_v3_s0_e035918d1_p1` and `corpus_v3_s1_e42b75250_p1` (one per port layout) are gated with the fault witnesses. Human full matches: `match_fd_foxmarth` (6,083 ticks) and `match2_fd_foxmarth` (10,059 ticks).
+
 ## Status — 2026-09-26
 
 Resumed. Corpus v2 starts from retail boundaries, and any case replays in
