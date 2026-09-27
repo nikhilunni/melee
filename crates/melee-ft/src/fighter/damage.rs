@@ -1066,9 +1066,9 @@ impl Fighter {
         // A damage state is neither Jump nor JumpAerial, so the
         // float check (Peach) is always enabled here, as in procs.rs.
         let vertical_velocity = self.core.physics.self_velocity.y;
-        // ftCo_DamageFall_IASA: ftCo_800D7100 after the special check.
+        // ftCo_80095328, then ftCo_800D7100, after the special check.
         if !self.core.input.pressed.intersects(crate::input::Buttons::B)
-            && self.try_aerial_item_catch(assets)
+            && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets))
         {
             return Ok(());
         }
@@ -1937,7 +1937,7 @@ impl FighterCore {
             "ftCo_8008E984: an armoured launch while holding"
         );
         if rng.randi(assets.damage.item_drop_range) < damage {
-            unimplemented!("Item_8026ABD8: a hit knocks the held item loose");
+            self.drop_held_item(held, assets);
         }
     }
 

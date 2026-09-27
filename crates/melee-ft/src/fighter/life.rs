@@ -46,6 +46,23 @@ pub enum LifeState {
         target: Vec3,
     },
 }
+impl FighterCore {
+    /// x2219_b1: a death entry (ftCo_800D3680..ftCo_800D481C) or the respawn
+    /// wait (ftCo_800D4F24) sets it after its motion change, and every
+    /// motion change clears it. Fighter_8006CB94 skips all hit detection
+    /// while it is set; Revival does not set it.
+    pub fn out_of_play(&self) -> bool {
+        matches!(
+            self.state_data,
+            MotionData::Life(
+                LifeState::Dead { .. }
+                    | LifeState::StarKo { .. }
+                    | LifeState::ScreenKo(_)
+                    | LifeState::AwaitingRespawn
+            )
+        )
+    }
+}
 impl LifeState {
     /// Between ftCo_800D34E0's stock loss and the respawn request: the HUD
     /// percent explodes (ifStatus_PercentOnDeathAnimationThink) in this window.
@@ -281,7 +298,7 @@ impl Fighter {
         effect_position: Vec3,
         effect_angle: f32,
     ) -> Result<()> {
-        self.release_for_death();
+        self.release_for_death(assets);
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::Dead {
             remaining: assets.life.death_delay,
@@ -305,7 +322,7 @@ impl Fighter {
     /// ftCo_800D40B8 (800D40B8): the star KO entry, DeadUpStar. The stock is only
     /// lost when the star vanishes (ftCo_DeadUpStar_Anim phase 1).
     fn enter_star_ko(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
-        self.release_for_death();
+        self.release_for_death(assets);
         self.change_motion_state(S::DeadUpStar.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::StarKo {
             remaining: assets.life.star.hold,
@@ -379,7 +396,7 @@ impl Fighter {
     }
     /// ftCo_800D4780 -> ftCo_800D4580 (800D4580): the screen KO entry, DeadUpFall.
     fn enter_screen_ko(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.release_for_death();
+        self.release_for_death(assets);
         let parameters = &assets.life.screen_ko;
         self.change_motion_state(S::DeadUpFall.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::ScreenKo(ScreenKo {
@@ -583,9 +600,10 @@ impl Fighter {
     }
     /// ftCo_800D331C (800D331C): detach everything the fighter owns before a death
     /// entry, starting with the character's death callbacks (Fox and Falco put
-    /// the Blaster away). Held items (item_gobj, x197C, x1980), metal and the
+    /// the Blaster away). A held item is destroyed (Item_8026A8EC, whose
+    /// DestroyItemInline releases the hand); x197C/x1980, metal and the
     /// x2226_b4 hat are not part of the port yet.
-    fn release_for_death(&mut self) {
+    fn release_for_death(&mut self, assets: &FighterAssets) {
         if let Some(death) = self.character.table().death {
             death(self);
         }
@@ -599,6 +617,12 @@ impl Fighter {
             self.core.released_link = Some(link);
         }
         self.core.clear_velocities();
+        if let Some(held) = self.core.held_item {
+            self.core
+                .item_requests
+                .push(melee_it::ItemRequest::Destroy { item: held.item });
+            self.core.release_held_item(held.item, assets);
+        }
         // ftCommon_8007DB24: x2219_b0 = 0, then efLib_DestroyAll.
         self.core.effect_state.destroy_on_state_change = false;
         self.core.effects.push(EffectRequest::DestroyOwned);

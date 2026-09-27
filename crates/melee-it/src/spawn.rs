@@ -104,6 +104,10 @@ pub enum ItemRequest {
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
     },
+    /// Item_8026A8EC: `item` is destroyed at once (a holder's death).
+    Destroy {
+        item: u32,
+    },
 }
 
 /// The holding fighter, lent to a held item's callbacks. A held item

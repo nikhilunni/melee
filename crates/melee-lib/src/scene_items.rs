@@ -247,6 +247,11 @@ pub fn request(
             thrown.hurt_by_owner = true;
             return;
         }
+        ItemRequest::Destroy { item } => {
+            destroy_object(world, objects, item);
+            pool.destroy::<SceneItems>(item);
+            return;
+        }
         ItemRequest::Drop {
             item,
             position,
@@ -371,11 +376,16 @@ pub fn spawn_rain_bomb(
 
 pub fn cleanup(pool: &mut ItemPool, world: &mut World, objects: &mut Objects) {
     for item in pool.iter().filter(|item| item.destroyed) {
-        let index = objects
-            .iter()
-            .position(|(id, _)| *id == item.id)
-            .expect("item GObj");
-        world.destroy(objects.remove(index).1);
+        destroy_object(world, objects, item.id);
     }
     pool.remove_destroyed::<SceneItems>();
+}
+
+/// HSD_GObjPLink_80390228 for an item: its scene object goes too.
+fn destroy_object(world: &mut World, objects: &mut Objects, item: u32) {
+    let index = objects
+        .iter()
+        .position(|(id, _)| *id == item)
+        .expect("item GObj");
+    world.destroy(objects.remove(index).1);
 }

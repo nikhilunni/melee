@@ -854,6 +854,17 @@ impl ItemPool {
             },
         );
     }
+    /// Item_8026A8EC (8026A8EC) outside the item procs: remove `id` now and
+    /// run its kind's destroyed callback.
+    pub fn destroy<D: ItemDispatch>(&mut self, id: u32) {
+        let index = self
+            .items
+            .iter()
+            .position(|item| item.id == id)
+            .expect("Item_8026A8EC: Not Found Item_Struct");
+        let mut item = self.items.remove(index);
+        (D::logic(item.kind).destroyed)(&mut item);
+    }
     pub fn remove_destroyed<D: ItemDispatch>(&mut self) {
         let mut index = 0;
         while index < self.items.len() {

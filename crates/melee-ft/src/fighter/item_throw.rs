@@ -159,7 +159,7 @@ impl Fighter {
             if !throwable || lr {
                 // The state is unchanged; the aerial catch stays shut until
                 // the next grounded motion entry (x2224_b1).
-                self.drop_held_item(held, assets);
+                self.core.drop_held_item(held, assets);
                 self.core.item_catch_locked = true;
                 return Ok(true);
             }
@@ -193,24 +193,6 @@ impl Fighter {
         };
         self.enter_item_throw(state, assets)?;
         Ok(true)
-    }
-
-    /// ftCo_80095744 (80095744) -> Item_8026ABD8: let go of the held item at
-    /// the hand with no push (xC44 = 1). Parasol states are not in scope.
-    fn drop_held_item(&mut self, held: super::item_pickup::HeldItem, assets: &FighterAssets) {
-        let mut holder = self
-            .core
-            .item_holder(self.core.bones.model.animation_translation);
-        let position = holder.part_position();
-        let (center, attack) = (holder.center, holder.attack);
-        self.core.item_requests.push(melee_it::ItemRequest::Drop {
-            item: held.item,
-            position,
-            speed: 1.0,
-            center,
-            attack,
-        });
-        self.core.release_held_item(held.item, assets);
     }
 
     /// ftCo_800D8A38 / ftCo_800D8AE0's item half (ftCo_80095254): A with a
@@ -477,5 +459,28 @@ impl super::FighterCore {
     pub fn held_part_position(&mut self) -> Vec3 {
         let part = self.bones.model.animation_translation;
         self.item_holder(part).part_position()
+    }
+}
+
+impl super::FighterCore {
+    /// Item_8026ABD8 from ftCo_80095744 (80095744) or Fighter_8006CDA4: let
+    /// go of the held item at the hand with no push (vec 0, xC44 = 1).
+    /// Parasol states are not in scope.
+    pub(super) fn drop_held_item(
+        &mut self,
+        held: super::item_pickup::HeldItem,
+        assets: &FighterAssets,
+    ) {
+        let mut holder = self.item_holder(self.bones.model.animation_translation);
+        let position = holder.part_position();
+        let (center, attack) = (holder.center, holder.attack);
+        self.item_requests.push(melee_it::ItemRequest::Drop {
+            item: held.item,
+            position,
+            speed: 1.0,
+            center,
+            attack,
+        });
+        self.release_held_item(held.item, assets);
     }
 }

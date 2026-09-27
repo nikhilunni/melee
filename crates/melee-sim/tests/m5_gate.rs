@@ -1515,6 +1515,11 @@ fn timeout_and_sudden_death_match_retail() {
         // and from a jump out of shield that then lands holding it.
         ("sudden_death_aircatchdash_bomb_fd_marth", 1439),
         ("sudden_death_aircatchshield_bomb_fd_marth", 1513),
+        // Fox smashes Marth while he holds it: the drop roll knocks it loose,
+        // or he flies holding it, or dies holding it (the item is destroyed).
+        ("sudden_death_knockloose_bomb_fd_marth", 1542),
+        ("sudden_death_launchhold_bomb_fd_marth", 1545),
+        ("sudden_death_kohold_bomb_fd_marth", 1540),
     ] {
         combat_gate_ticks(name, ticks);
     }

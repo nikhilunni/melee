@@ -1,0 +1,33 @@
+# Sudden Death: Marth picks up the first Bob-omb (1226) and runs right
+# holding it (1234); Fox dashes left (1228..1236) and forward smashes
+# (1256) into him: the drop roll misses (52), he tumbles holding it
+# (DamageFlyRoll) and star-KOs as it explodes; the death destroys the
+# held item (Item_8026A8EC) and the dead fighter takes no hit.
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_kohold_bomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1540
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1228, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 1234, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 1236, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1256, port = 1, buttons = { A = true, StickX = -1.0 }, raw = { button = 256, stickX = -127 } },
+  { frame = 1258, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -659,7 +659,11 @@ impl Runtime {
                         .offer(candidates));
                 }
                 let assets = &state.assets;
-                if proc == FighterProc::HitDetection {
+                // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.
+                if proc == FighterProc::HitDetection
+                    && !state.fighters[player].0.status.disabled
+                    && !state.fighters[player].0.out_of_play()
+                {
                     use crate::scene_fighter::with_fighter;
                     // Fighter_8006CB94 -> ftColl_800765E0: fresh damage logs.
                     with_fighter!(&mut state.fighters[player], |f| f
@@ -1052,7 +1056,8 @@ impl Runtime {
                         melee_it::ItemRequest::Control { .. }
                         | melee_it::ItemRequest::PickUp { .. }
                         | melee_it::ItemRequest::Throw { .. }
-                        | melee_it::ItemRequest::Drop { .. } => {}
+                        | melee_it::ItemRequest::Drop { .. }
+                        | melee_it::ItemRequest::Destroy { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));

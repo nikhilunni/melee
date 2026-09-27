@@ -1067,3 +1067,11 @@ Newest first. One line per session: date, what landed, what is next.
   through the LightGet helper, spawns the 0x422 sparkle and sets the catch
   lock; every aerial IASA returns on a catch. Landing keeps a held item.
   Two witnesses gated (dash jump; jump out of shield, then landing).
+- 2026-09-27: Hits on a fighter holding an item: Fighter_8006CDA4's drop
+  knocks it loose (shared FighterCore::drop_held_item with the Z drop);
+  the damage family keeps it and DamageFall/post-hitstun air input throws it
+  (ftCo_80095328); a death destroys it (ItemRequest::Destroy,
+  Item_8026A8EC); Fighter_8006CB94 is skipped while x2219_b1
+  (FighterCore::out_of_play). An exploding held Bob-omb leaves the hand
+  before its hit, so it never rolls the drop. Three witnesses; full release
+  gate 1471/0, clippy clean.

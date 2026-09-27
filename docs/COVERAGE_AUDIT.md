@@ -37,8 +37,13 @@ ftCo_80095328's air throws, which switch to the ground throw on landing
 (`sudden_death_zthrow_bomb_fd_marth`); Z in the air drops the item
 (ftCo_80095744, Item_8026ABD8, it_3F14_Logic6_Dropped) and locks the aerial
 catch until a grounded motion entry (`sudden_death_airdrop_bomb_fd_marth`).
-A launch while holding draws Fighter_8006CDA4's drop chance; an actual
-knock-loose still fails closed. Shielding keeps the item and A in shield throws it (ftCo_8009515C,
+A launch while holding draws Fighter_8006CDA4's drop chance: Randi(PlCo
++418) under the damage knocks the item loose through Item_8026ABD8
+(`sudden_death_knockloose_bomb_fd_marth`); otherwise the fighter keeps it
+through the damage states (`sudden_death_launchhold_bomb_fd_marth`), and a
+death destroys it (Item_8026A8EC in ftCo_800D331C,
+`sudden_death_kohold_bomb_fd_marth`). A dead fighter (x2219_b1) skips hit
+detection. Shielding keeps the item and A in shield throws it (ftCo_8009515C,
 `sudden_death_shield{hold,throw}_bomb_fd_marth`); dashing keeps it and A
 mid-dash is a dash throw (LightThrowDash, ftCo_800D8A38) or, in the first
 frames, a forward smash throw (`sudden_death_dash{hold,throw}_bomb_fd_marth`).
@@ -55,7 +60,7 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, drops (a hit that knocks the item loose), C-stick ground throws, LandingFallSpecial, damage and death while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, C-stick ground throws, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |
