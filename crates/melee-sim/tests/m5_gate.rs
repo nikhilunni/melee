@@ -519,6 +519,12 @@ fn tech_rollf_victim_fd_marth_240_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("tech_rollf_victim_fd_marth", 240);
 }
 
+/// Fox's intermediate forward-tilt angles (AttackS3HiS, AttackS3LwS).
+#[test]
+fn ftilt_angled_fd_fox_140_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("ftilt_angled_fd_fox", 140);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

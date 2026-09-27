@@ -1,0 +1,30 @@
+# Fox walks (10), eases the stick to (-80, +25) and forward-tilts (20):
+# AttackS3HiS; then again at (-80, -25) (70, 80): AttackS3LwS. Retail's
+# ftCo_AttackS3 angle bands (10..17 degrees) on the processed stick.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "ftilt_angled_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 140
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 14, port = 1, buttons = {  }, raw = { stickX = -80, stickY = 25 } },
+  { frame = 20, port = 1, buttons = {  }, raw = { button = 256, stickX = -80, stickY = 25 } },
+  { frame = 22, port = 1, buttons = {  }, raw = {  } },
+  { frame = 70, port = 1, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 74, port = 1, buttons = {  }, raw = { stickX = -80, stickY = -25 } },
+  { frame = 80, port = 1, buttons = {  }, raw = { button = 256, stickX = -80, stickY = -25 } },
+  { frame = 82, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
