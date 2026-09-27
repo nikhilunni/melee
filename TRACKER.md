@@ -1149,3 +1149,18 @@ Newest first. One line per session: date, what landed, what is next.
 - 2026-09-27: Sudden Death explorer, 1,000 new seeds (skip 5000, 3,000
   cases): no faults. Bridged 20 (all three profiles) to Dolphin: 20/20
   exact, traces discarded.
+- 2026-09-27: The user allowed Opus subagents; with 9 GB free (no room for
+  worktree target dirs) they ran read-only. Four research reports (shield
+  impacts, walls/inert hitboxes, the Investigate list, an interaction
+  matrix) turned into: ftCo_800DE2F0 / ftCo_800DE854 grab-pair launches
+  and DownBound's Large quake (ec54421); phantom-plus-shield and
+  simultaneous shield impacts from the retail branch order (f7bf527,
+  unwitnessed); ftCo_SpecialAir_CheckInput's inclusive bounds, a silent
+  divergence (50c9122); the ground states' mv+4 words (72756b1);
+  docs/INTERACTION_MATRIX.md with harness/interaction_matrix.py. Perf gate
+  still red on size (+5%) and 600-tick time (+10%) against the old
+  baselines; a new per-character duplicate was removed (31d884b), seven
+  cross-crate drop-glue/leaf duplicates remain. Next: the matrix's MISSING
+  list (Furafura exit, weak hit reactions, DownDamageU, shield-break
+  orientations, Fox Bob-omb throws, slow ledge options), TurnRun's word and
+  DownDamage wall contact.

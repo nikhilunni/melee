@@ -94,15 +94,15 @@ jab window, now gated) and taught the decoder to encode stale NaN words.
 
 | Site | Boundary | Note |
 | --- | --- | --- |
-| `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched, whichever member comes first (`sudden_death_grabbomb_fd_marth`, `sudden_death_grabbedhold_bomb_fd_marth`), and when only the captor is (ftCo_800DCFD4, `sudden_death_grabbombcaptor_fd_marth`); a light third-party hit on the victim (ftCo_800DE854), only the victim launched (ftCo_800DE2F0) and armoured members fail closed | Fox grabbing Marth under a Bob-omb |
+| `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched, whichever member comes first (`sudden_death_grabbomb_fd_marth`, `sudden_death_grabbedhold_bomb_fd_marth`), when only the captor is (ftCo_800DCFD4, `sudden_death_grabbombcaptor_fd_marth`), when only the victim is (ftCo_800DE2F0, the captor takes PlCo +380's hit, `sudden_death_releasecaptor_bomb_fd_marth`) and when the captor is launched as its pummel lands (ftCo_800DE854, `sudden_death_pummelcaptor_bomb_fd_marth`). A light third-party hit on the victim and armoured members fail closed | Unreachable in a 1v1: the only third-party hitboxes are items; a Bob-omb hits for 25 (17 after a wall bounce), not under PlCo +3C0's 6, and a captor's laser flies away from the victim it holds |
 | `melee-ft/fighter/damage.rs` ftColl_80076ED8 | A third fighter's hit on a captured fighter | Needs three fighters: out of scope in a 1v1 |
 | `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Same interaction family |
-| `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together | Corpus fault family; needs a witness |
-| `melee-ft/fighter/damage.rs` ftColl_80076CBC | Simultaneous shield impacts | Two hitboxes on one shield in a frame |
-| `melee-ft/fighter/clank.rs` ftColl_8007925C | An inert hitbox touching an item | Investigate whether Fox/Marth own inert hitboxes |
-| `melee-ft/fighter/down.rs` | DownReflect wall bounce, DownDamage wall tech/bounce | Needs FD's walls under the stage; investigate |
-| `melee-ft/fighter/state/callbacks/collision.rs` ftCo_StopWall | Running into a wall | FD's side walls are below the ledge; investigate |
-| `melee-it/map.rs` it_80276D9C | An item pressed between two walls | Not reachable on FD's open sides |
+| `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together: ported (the phantom branch precedes x19A4's, so the impact gets no response) | Unwitnessed: the phantom band is PlCo +7A8 = 0.01 of overlap; a directed Marth dtilt search against a shrinking Fox shield jumps from shield contact to 1.39 overlap |
+| `melee-ft/fighter/damage.rs` ftColl_80076CBC | Simultaneous shield impacts: ported (the strongest impact wins; getEnvDmg rounding, a zero-damage hit sets none) | Unwitnessed: every Fox/Marth hitbox is in group 0 (a scan of PlFx/PlMs scripts), so only an item and a fighter hit together could do it |
+| `melee-ft/fighter/clank.rs` ftColl_8007925C | An inert (element 11) hitbox touching an item | Unreachable: no element 11 in any Fox or Marth script, article or the Bob-omb (element 15 appears only in the out-of-scope item Swing states) |
+| `melee-ft/fighter/down.rs` | DownReflect wall bounce; DownDamage wall tech/bounce | Grounded DownReflect is unreachable on FD: the wall-hug flag comes only from the ECB side-point sweep, and a grounded ECB's side points sit above y = 0 while every FD wall is at or below it. An airborne DownDamage (a sub-7% hit on a prone fighter) reaching a wall needs a second hit sending it back under the stage: reachable in principle, fails closed |
+| `melee-ft/fighter/state/callbacks/collision.rs` ftCo_StopWall | Running into a wall | Unreachable on FD, for the same grounded-ECB reason as DownReflect |
+| `melee-it/map.rs` it_80276D9C | An item pressed between two walls | Unreachable: FD's opposite walls are at least 107 units apart |
 | `ft-fox-family/special_hi.rs` | Fire Fox platform skip | FD has no platforms: out of scope |
 
 ### Out of scope (other characters, stages, CPU or modes)
@@ -118,20 +118,20 @@ armor, DamageIce, model-scaled victims; `spawn.rs` scaled attributes;
 (`melee-gr`), the zoomed single-player camera (`melee-cm`), and item kinds
 other than the Fox articles and the Bob-omb (`melee-it`).
 
-### Investigate
+### Investigations resolved (2026-09-27)
 
-| Site | Question |
+| Site | Verdict |
 | --- | --- |
-| `jump.rs` ftCo_Jump.c:69 | Which inputs reach KneeBend without tap or X/Y (C-stick up with jump-on-C is a controller option retail stores per port) |
-| `landing.rs` scratch inheritance | Landing from a state whose second scratch word the port does not track |
-| `procs.rs` ft_081B.c terrain footsteps | FD's floor has flags 0; unreachable on FD |
-| `procs.rs` ft_0899.c pose paths | Which pose paths the corpus has not exercised |
-| `commands.rs` sound behaviors | Script sound behaviors outside the Fox/Marth scripts |
-| `color_overlay.rs` | Secondary-slot programs with effects outside the smash charge |
-| `special_lw.rs` Reflector turnFrames | The unmodelled scratch word's reachable sources |
-| `input.rs` special fall with jumps left | Entry spends the jumps; likely unreachable |
-| `life.rs` gm_80167320 final stock | The scene freezes before the timer can expire; unreachable |
-| `state/special.rs` buffered special | Entry without a supported special buffer |
+| `jump.rs` ftCo_Jump.c:69 | Unreachable: NTSC 1.02 stores only rumble per port (no tap-jump or jump-on-C option), and every `enter_knee_bend` caller first checks `human::jump_input`, which matches ftCo_Jump_GetInput (0x800CAE80) |
+| `landing.rs` scratch inheritance | Ported for Walk, Dash, Run, RunBrake, Turn, Squat, KneeBend and WallJump (`reflector_runedge_jump_fd_fox`, `walljump_aerial_fd_fox`). TurnRun never writes mv+4 and keeps its predecessor's word, which the port does not retain: still fails closed |
+| `procs.rs` ft_081B.c terrain footsteps | Unreachable on FD: the floor has flags 0 |
+| `procs.rs` ft_0899.c pose paths | Unreachable on FD: the remaining path is body tilt, which needs a sloped floor or a floor line shorter than 5 (FD's are flat, 10.57/150/10.57) |
+| `commands.rs` sound behaviors | Unreachable: a scan of every PlFx and PlMs script (following calls and gotos) finds only behaviors 0, 1, 2, 3 and 6, all ported |
+| `color_overlay.rs` secondary programs | Unreachable: in scope only the smash charge (0x77) requests one with effects; 0x6C/0x6D come from item Swing states and 0x64 is Roy's |
+| `special_lw.rs` Reflector turnFrames | Ported with the scratch words above; TurnRun as noted |
+| `input.rs` special fall with jumps left | Likely unreachable: entry spends the jumps |
+| `life.rs` gm_80167320 final stock | Unreachable: the scene freezes before the timer can expire |
+| `state/special.rs` buffered special | Fixed: ftCo_SpecialAir_CheckInput (8009665C) reads the stick with inclusive bounds; the port's reuse of the ground's strict tilt timers took the side special at exactly (0.6, -0.55) (`airspecial_bound_fd_marth`) |
 
 Catch boxes against items (`ftColl_8007BC90`) are not a gap: the item side
 requires `xDD0 b4`, which only stage enemies set. A grabber dying with its
@@ -139,7 +139,9 @@ victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.
 
 ## Exit status
 
-Not complete: the Sudden Death item interactions above are reachable and
-unported (they fail closed), as are the listed reachable boundaries. The timer, timeout and
-Sudden Death flow, the screen KO and the idle Bob-omb rain are complete and
-gated.
+Not complete. Remaining reachable boundaries: TurnRun's inherited scratch
+word, an airborne DownDamage fighter reaching a wall, captured damage
+outside low capture or throw, and the Sudden Death item gaps in the table
+above. The shield-impact combinations are ported from the retail branch
+order but unwitnessed. `INTERACTION_MATRIX.md` lists the reachable
+transitions no gated trace covers yet.
