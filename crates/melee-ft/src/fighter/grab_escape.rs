@@ -38,6 +38,9 @@ pub struct Parameters {
     /// PlCo +380 (lbColl_80008D30's record): the hit a captor takes when a
     /// launch frees its victim and leaves it unhit (ftCo_800DE2F0).
     pub captor_release_hit: melee_types::combat::ThrowHitbox,
+    /// PlCo +348: the thrower's invincibility at the start of a throw
+    /// (ftCo_800DD398 -> ftColl_8007B7A4).
+    pub throw_invincible_frames: i32,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -62,6 +65,7 @@ impl Parameters {
             vertical_release_distance: r.f32(base + 0x350)?,
             release_floor_reach: r.f32(base + 0x3BC)?,
             captor_release_hit: read_release_hit(archive, base + 0x380)?,
+            throw_invincible_frames: r.s32(base + 0x348)?,
             decrement: r.f32(base + 0x3A4)?,
             mash_decrement: r.f32(base + 0x3A8)?,
             fast_frames: r.f32(base + 0x3B0)?,
@@ -596,6 +600,7 @@ mod tests {
                 sound_severity: 0,
                 sound_kind: 0,
             },
+            throw_invincible_frames: 8,
         }
     }
 

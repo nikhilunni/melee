@@ -158,6 +158,18 @@ pub fn enter_throw(
         aa,
         saved_translation,
     );
+    // ftCo_800DD398's tail, ftColl_8007B7A4(gobj, PlCo +348): x1994 =
+    // max(x1994, frames) and colour animation 9 (x198C's flash type is
+    // renderer state), as the revival platform's exit does.
+    let status = &mut attacker.core.status;
+    status.revival_invincibility = status
+        .revival_invincibility
+        .max(aa.grab_escape.throw_invincible_frames);
+    attacker
+        .core
+        .commands
+        .color_animations
+        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
     Ok(())
 }
 
