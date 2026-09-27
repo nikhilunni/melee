@@ -434,6 +434,54 @@ fn downdamage_up_fd_marth_280_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("downdamage_up_fd_marth", 280);
 }
 
+/// Exits from a mature shield (both rolls, spot dodge, jump, grab).
+#[test]
+fn shield_exits_fd_marth_400_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("shield_exits_fd_marth", 400);
+}
+
+/// Jump-cancelled grab and up smash, dash jump, dash grab and boost grab.
+#[test]
+fn tech_interrupts_fd_marth_360_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("tech_interrupts_fd_marth", 360);
+}
+
+/// Interrupts out of a held crouch, then a standing side-B.
+#[test]
+fn squat_interrupts_fd_marth_380_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("squat_interrupts_fd_marth", 380);
+}
+
+/// Marth down-thrown by Fox gets up face up: DownStandU.
+#[test]
+fn getup_stand_fd_marth_280_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("getup_stand_fd_marth", 280);
+}
+
+/// Marth down-thrown by Fox gets up face up: DownFowardU.
+#[test]
+fn getup_rollf_fd_marth_280_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("getup_rollf_fd_marth", 280);
+}
+
+/// Marth down-thrown by Fox gets up face up: DownBackU.
+#[test]
+fn getup_rollb_fd_marth_280_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("getup_rollb_fd_marth", 280);
+}
+
+/// Marth down-thrown by Fox gets up face up: DownAttackU.
+#[test]
+fn getup_attack_fd_marth_280_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("getup_attack_fd_marth", 280);
+}
+
+/// Marth crouch-cancels Fox's jab (DamageN1 back into Squat).
+#[test]
+fn crouchcancel_victim_fd_marth_200_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("crouchcancel_victim_fd_marth", 200);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

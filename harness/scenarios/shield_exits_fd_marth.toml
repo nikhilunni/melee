@@ -1,0 +1,51 @@
+# Both fighters hold shield past its startup (Guard), then leave it: forward
+# roll (40), back roll (110), spot dodge (180), jump (250), grab (330).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "shield_exits_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 10, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 40, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255, stickX = 127 } },
+  { frame = 40, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255, stickX = -127 } },
+  { frame = 42, port = 0, buttons = {  }, raw = {  } },
+  { frame = 42, port = 1, buttons = {  }, raw = {  } },
+  { frame = 80, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 80, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255, stickX = 127 } },
+  { frame = 110, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255, stickX = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 112, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 180, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255, stickY = -127 } },
+  { frame = 180, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255, stickY = -127 } },
+  { frame = 182, port = 0, buttons = {  }, raw = {  } },
+  { frame = 182, port = 1, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 220, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 1088, triggerL = 255 } },
+  { frame = 250, port = 1, buttons = {  }, raw = { button = 1088, triggerL = 255 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+  { frame = 252, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 300, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 320, triggerL = 255 } },
+  { frame = 330, port = 1, buttons = {  }, raw = { button = 320, triggerL = 255 } },
+  { frame = 332, port = 0, buttons = {  }, raw = {  } },
+  { frame = 332, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

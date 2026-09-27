@@ -1,0 +1,54 @@
+# Both fighters, mirrored: jump-cancelled grab (10), jump-cancelled up smash
+# (70), dash into jump (130), dash back into a dash grab (200), and a dash
+# attack cancelled into a grab (boost grab, 276), where Marth catches Fox.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "tech_interrupts_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 10, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 12, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 12, port = 1, buttons = {  }, raw = { button = 16 } },
+  { frame = 14, port = 0, buttons = {  }, raw = {  } },
+  { frame = 14, port = 1, buttons = {  }, raw = {  } },
+  { frame = 70, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 70, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 72, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 72, port = 1, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 74, port = 0, buttons = {  }, raw = {  } },
+  { frame = 74, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 134, port = 1, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 136, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = { button = 16, stickX = -127 } },
+  { frame = 204, port = 1, buttons = {  }, raw = { button = 16, stickX = 127 } },
+  { frame = 206, port = 0, buttons = {  }, raw = {  } },
+  { frame = 206, port = 1, buttons = {  }, raw = {  } },
+  { frame = 270, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 270, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 276, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 276, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 278, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 278, port = 1, buttons = {  }, raw = { button = 16 } },
+  { frame = 280, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

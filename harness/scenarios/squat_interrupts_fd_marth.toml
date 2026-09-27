@@ -1,0 +1,50 @@
+# Both fighters, mirrored, out of a held crouch (SquatWait): down tilt (30),
+# jump (100), forward smash (170), shield (250); then a standing side-B
+# (Fox's Illusion, Marth's Dancing Blade, 300).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "squat_interrupts_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 380
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 10, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 30, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 30, port = 1, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 32, port = 0, buttons = {  }, raw = {  } },
+  { frame = 32, port = 1, buttons = {  }, raw = {  } },
+  { frame = 80, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 80, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024, stickY = -127 } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 1024, stickY = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 102, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 150, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 170, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+  { frame = 172, port = 1, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 230, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255, stickY = -127 } },
+  { frame = 250, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255, stickY = -127 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 300, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 302, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
