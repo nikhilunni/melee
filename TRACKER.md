@@ -1075,3 +1075,11 @@ Newest first. One line per session: date, what landed, what is next.
   (FighterCore::out_of_play). An exploding held Bob-omb leaves the hand
   before its hit, so it never rolls the drop. Three witnesses; full release
   gate 1471/0, clippy clean.
+- 2026-09-27: A launch on a grab pair (ftCo_8008EC90's linked branch, new
+  `grab_damage` module with a scene pre-pass before each ProcessHit): both
+  members launched releases the pair (ftCo_800DCE34) and orders the victim's
+  launch through x1828 (PairHitOrder); a launched captor with an unhit
+  victim launches it with throw record 1 (ftCo_800DCFD4, ftColl_80079C70 =
+  knockback_for_frame with the victim's weight), whose motion change zeroes
+  kb_applied. Thrown Bob-omb soft landings are unreachable for Fox/Marth
+  (audit). Two witnesses; full release gate 1471/0, clippy clean.

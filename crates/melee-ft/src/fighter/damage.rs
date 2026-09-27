@@ -54,6 +54,8 @@ pub struct CombatState {
     pub pending_credit: Option<u32>,
     /// ftColl_8007A06C: the selected hit came from this captured fighter's captor.
     pub pending_from_captor: bool,
+    /// x1828: the grab partner's ftCo_8008EC90 order for this ProcessHit.
+    pub pair_order: Option<super::grab_damage::PairHitOrder>,
     /// Fighter.dmg.x1908 / x190C: the hit sound and voice set queued by the
     /// launch calculation, played by the next hit proc that starts no hitlag
     /// (Fighter_ProcessHit's else branch -> ftCo_80090718).
@@ -787,12 +789,19 @@ impl Fighter {
                     Vec3::new(normal.y * speed, -normal.x * speed, 0.0);
             }
         }
+        // fighter.c:3019: x1828 is consumed by this ProcessHit.
+        let pair_order = self.core.combat.pair_order.take();
         if let Some(hit) = self.core.combat.pending.take() {
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
             if hit.descriptor.element == melee_types::HitElement::Electric {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
-            if std::mem::take(&mut self.core.combat.pending_from_captor) {
+            if pair_order == Some(super::grab_damage::PairHitOrder::Launch) && hit.knockback != 0.0
+            {
+                self.core.combat.pending_from_captor = false;
+                self.launch_by_pair_order(hit, assets, rng)?;
+                hit_damage = self.core.combat.frame_max_damage;
+            } else if std::mem::take(&mut self.core.combat.pending_from_captor) {
                 // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
             } else if hit.knockback != 0.0 {

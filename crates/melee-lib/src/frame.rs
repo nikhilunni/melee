@@ -658,6 +658,9 @@ impl Runtime {
                         .pickup_candidates
                         .offer(candidates));
                 }
+                if proc == FighterProc::ProcessHit {
+                    grab_pairs::linked_hit(state, player)?;
+                }
                 let assets = &state.assets;
                 // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.
                 if proc == FighterProc::HitDetection

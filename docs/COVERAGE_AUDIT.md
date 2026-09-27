@@ -61,7 +61,7 @@ The remaining reachable gaps:
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
 | Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, C-stick ground throws, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
-| A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
+| A thrown Bob-omb's soft landing (state 2) | Fails closed | Unreachable by Fox/Marth: a soft landing needs |vx| <= 0.8 and |vy| <= 0.7 (special attributes x20/x24), every light throw is faster and a drop from the hand lands at about 1.1 |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |
 | Item hitboxes versus item hurtboxes (it_802706D0) | Detection ported; a landing contact fails closed | A thrown or dropped Bob-omb, or a kindred-striking hitbox, reaching another |
@@ -76,7 +76,8 @@ death while holding, each from a recorded witness.
 
 | Site | Boundary | Note |
 | --- | --- | --- |
-| `melee-ft/fighter/damage.rs` ftCo_8008EC90 | Third-party hit on a captured fighter | A Bob-omb explosion during a grab |
+| `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched and when only the captor is (ftCo_800DCFD4, `sudden_death_grabbomb{,captor}_fd_marth`); a light hit on the victim with the captor launched (ftCo_800DE854), the captured member processed first, and armoured members fail closed | Fox grabbing Marth under a Bob-omb |
+| `melee-ft/fighter/damage.rs` ftColl_80076ED8 | A third fighter's hit on a captured fighter | Needs three fighters: out of scope in a 1v1 |
 | `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Same interaction family |
 | `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together | Corpus fault family; needs a witness |
 | `melee-ft/fighter/damage.rs` ftColl_80076CBC | Simultaneous shield impacts | Two hitboxes on one shield in a frame |

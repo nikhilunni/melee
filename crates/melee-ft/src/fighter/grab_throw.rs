@@ -278,28 +278,7 @@ fn prepare_throw_release(
     let hit = attacker.commands.throw_hitboxes[0]
         .as_ref()
         .expect("throw damage");
-    // Throw records use the same damage shape, with unused collision fields zero.
-    let descriptor = melee_types::combat::HitboxDescriptor {
-        group: 0,
-        bone: 0,
-        common_bone: false,
-        requires_throw_owner: false,
-        damage: hit.damage,
-        shield_damage: 0,
-        sound_severity: hit.sound_severity,
-        radius: 0.0,
-        offset: Vec3::ZERO,
-        angle: hit.angle,
-        growth: hit.growth,
-        weight_knockback: hit.weight_knockback,
-        base_knockback: hit.base_knockback,
-        element: hit.element,
-        hit_ground: true,
-        hit_air: true,
-        ignore_scale: false,
-        clank: false,
-        rebound: false,
-    };
+    let descriptor = throw_descriptor(hit);
     let knockback = va.damage.knockback_with_damage(
         &descriptor,
         victim.physics.percent,
@@ -372,6 +351,34 @@ fn prepare_throw_release(
         descriptor,
         height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,
+    }
+}
+
+/// A throw record (xDF4) as a hit descriptor: the same damage shape, with
+/// the unused collision fields zero.
+pub(super) fn throw_descriptor(
+    hit: &melee_types::combat::ThrowHitbox,
+) -> melee_types::combat::HitboxDescriptor {
+    melee_types::combat::HitboxDescriptor {
+        group: 0,
+        bone: 0,
+        common_bone: false,
+        requires_throw_owner: false,
+        damage: hit.damage,
+        shield_damage: 0,
+        sound_severity: hit.sound_severity,
+        radius: 0.0,
+        offset: Vec3::ZERO,
+        angle: hit.angle,
+        growth: hit.growth,
+        weight_knockback: hit.weight_knockback,
+        base_knockback: hit.base_knockback,
+        element: hit.element,
+        hit_ground: true,
+        hit_air: true,
+        ignore_scale: false,
+        clank: false,
+        rebound: false,
     }
 }
 

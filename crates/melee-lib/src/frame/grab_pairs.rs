@@ -309,3 +309,30 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<()> {
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
+
+/// Fighter_ProcessHit -> ftCo_8008EC90: a launched member of a grab pair
+/// decides for both before its own hit processing.
+pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> {
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let partner = match link {
+        Some(GrabLink::Holding { victim, .. }) => victim,
+        Some(GrabLink::Captured { captor }) => captor,
+        None => return Ok(()),
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == partner))
+        .expect("live grab partner");
+    let (fighter, partner) = pair(&mut state.fighters, player, other);
+    with_fighter!(fighter, |f| with_fighter!(partner, |p| {
+        melee_ft::fighter::grab_damage::resolve_linked_hit(
+            f,
+            p,
+            &state.assets.fighters[player],
+            &state.assets.fighters[other],
+            &mut state.rng,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}

@@ -20,6 +20,7 @@ pub mod escape;
 pub mod fall;
 pub mod fly_reflect;
 pub mod grab;
+pub mod grab_damage;
 pub mod grab_escape;
 pub mod grab_throw;
 mod hit_log;

@@ -1520,6 +1520,10 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_knockloose_bomb_fd_marth", 1542),
         ("sudden_death_launchhold_bomb_fd_marth", 1545),
         ("sudden_death_kohold_bomb_fd_marth", 1540),
+        // A Bob-omb blast on a grab pair (ftCo_8008EC90): both launched, or
+        // only the captor, whose second throw record launches the victim.
+        ("sudden_death_grabbomb_fd_marth", 1545),
+        ("sudden_death_grabbombcaptor_fd_marth", 1471),
     ] {
         combat_gate_ticks(name, ticks);
     }
