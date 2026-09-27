@@ -1197,3 +1197,8 @@ Newest first. One line per session: date, what landed, what is next.
   forward tilts; explorer fixes for held items in FallAerial and Ottotto.
   Normal explorer 6000+ (1,800) clean; bridged 6 more full matches exact.
   Full release gate 1501/0 after the merge.
+- 2026-09-27 (shield decay): a shield broken by decay inside the Guard proc
+  queues ShieldBreakFly's script graphics and the burst (ftCo_80098B20,
+  0x80098B20) newest-first; the port now queues the burst behind the
+  script graphics. `shieldbreak_hold_fd_marth` exact over 700 ticks; all
+  582 scenarios gated with no other change (worktree agent, reviewed).

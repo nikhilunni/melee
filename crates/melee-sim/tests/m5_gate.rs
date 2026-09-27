@@ -840,6 +840,13 @@ fn shieldbreak_fd_marth_520_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("shieldbreak_fd_marth", 520);
 }
 
+/// A shield held until it decays and breaks inside the Guard proc: the
+/// queued ShieldBreakFly script graphics and burst flush newest-first.
+#[test]
+fn shieldbreak_hold_fd_marth_700_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("shieldbreak_hold_fd_marth", 700);
+}
+
 #[test]
 fn s6_shield_scenes_before_cross_lane_boundaries() {
     for (name, frames, prefix) in [

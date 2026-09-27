@@ -1,0 +1,23 @@
+# Marth holds shield from 10 until it depletes (225): ShieldBreakFly ->
+# ShieldBreakFall (284) -> DownU (285) -> StandU -> Furafura (Marth's break
+# flight ends before he lands; Fox's does not).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "shieldbreak_hold_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
