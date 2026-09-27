@@ -24,3 +24,15 @@ stage = "FinalDestination"
 players = ["Marth", "Fox"]
 stocks = 4
 seed = 629775590
+
+# Sudden Death from its first frame (gm_SetupSuddenDeath: one stock at 300%,
+# the Bob-omb rain). The explorer's `sudden-death` mode starts here.
+[[boundary]]
+name = "sudden_death_start_fd_marth"
+cold = "sudden_death_start_fd_marth_cold"
+savestate = "harness/roms/sudden_death_start_fd_marth4.sav"
+stage = "FinalDestination"
+players = ["Marth", "Fox"]
+stocks = 1
+sudden_death = true
+seed = 4258399878

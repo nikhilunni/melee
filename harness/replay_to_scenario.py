@@ -50,8 +50,10 @@ def f32(bits: int) -> float:
 
 def boundary_for(config: dict) -> dict:
     players = [p[1] for p in sorted(config["players"])]
+    sudden_death = config.get("sudden_death", False)
     layout = [b for b in tomllib.loads(BOUNDARIES.read_text())["boundary"]
-              if (b["stage"], b["players"], b["stocks"]) == (config["stage"], players, config["stocks"])]
+              if (b["stage"], b["players"], b["stocks"], b.get("sudden_death", False))
+              == (config["stage"], players, config["stocks"], sudden_death)]
     if not layout:
         raise SystemExit(f"no boundary in {BOUNDARIES.name} for {config['stage']} {players} "
                          f"{config['stocks']} stocks")

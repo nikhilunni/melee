@@ -10,6 +10,10 @@ pub struct Config {
     stocks: u8,
     all_characters_unlocked: bool,
     seed: u32,
+    /// A Sudden Death match (`MatchRules::sudden_death`); absent in older
+    /// recordings, which are never Sudden Death.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    sudden_death: bool,
 }
 
 const CHARACTERS: [(Character, &str); 7] = [
@@ -51,6 +55,7 @@ impl From<&MatchConfig> for Config {
             stocks: config.rules.stocks,
             all_characters_unlocked: config.rules.all_characters_unlocked,
             seed: config.seed.0,
+            sudden_death: config.rules.sudden_death,
         }
     }
 }
@@ -79,6 +84,7 @@ impl Config {
             .with_stocks(self.stocks)
             .with_seed(Seed(self.seed));
         config.rules.all_characters_unlocked = self.all_characters_unlocked;
+        config.rules.sudden_death = self.sudden_death;
         Ok(config)
     }
 }

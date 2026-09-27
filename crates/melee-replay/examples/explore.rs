@@ -3,7 +3,10 @@
 //!
 //! With `count`, version 3 explores that many further input seeds (a
 //! xorshift sequence from `EXTRA_SEED_START`) instead of version 2's eight;
-//! `skip` continues the sequence past seeds an earlier batch explored.
+//! `skip` continues the sequence past seeds an earlier batch explored. A
+//! fifth argument `sudden-death` starts every case from the retail Sudden
+//! Death boundary instead (`sudden_death_start_fd_marth`: Marth P1, Fox P2,
+//! one stock at 300%, the Bob-omb rain), to reach item interactions.
 //!
 //! Version 2 starts every case from a retail match-start boundary
 //! (`harness/boundaries.toml`), so `harness/replay_to_scenario.py` can replay
@@ -32,6 +35,10 @@ const TICKS: u64 = 6000;
 const EXTRA_SEED_START: u32 = 0x00C0_FFEE;
 /// Boundary seeds of `start_fd_fox4` (Fox P1) and `start_fd_marth4` (Marth P1).
 const BOUNDARY_SEEDS: [u32; 2] = [2_477_457_595, 629_775_590];
+/// `sudden_death_start_fd_marth_cold`'s seed (Marth P1, Fox P2).
+const SUDDEN_DEATH_SEED: u32 = 0xFDD2_0686;
+/// A Sudden Death case: its countdown and GO take about 1200 ticks.
+const SUDDEN_DEATH_TICKS: u64 = 3000;
 
 // Caller-owned randomness must never consume the simulated game's RNG.
 struct Choices(u32);
@@ -194,6 +201,48 @@ fn choose(
     }
 }
 
+/// Sudden Death's policy: at 300% one hit ends the match, so attacks wait
+/// until the opponent is far away, where A and Z mostly pick up, throw or
+/// drop Bob-ombs and the C-stick throws them.
+fn choose_sudden_death(
+    f: FighterObservation<'_>,
+    other: FighterObservation<'_>,
+    choices: &mut Choices,
+) -> Held {
+    let choice = choices.next();
+    let mut pad = ControllerState::default();
+    let far = (other.position().x - f.position().x).abs() > 35.0;
+    let inward = if f.position().x >= 0.0 { -1.0 } else { 1.0 };
+    let duration = [1, 2, 3, 5, 8, 13, 21, 34][(choices.next() % 8) as usize];
+    // Stay on the stage: near an edge every move heads inward.
+    let near_edge = f.position().x.abs() > 55.0 || f.position().y < -5.0;
+    let side = if near_edge || choice & 0x100 != 0 {
+        inward
+    } else {
+        -inward
+    };
+    match choice % 12 {
+        0 => {}
+        1 | 2 => pad.stick.x = side,
+        3 => pad.stick.x = 0.5 * side,
+        4 if !near_edge => pad.buttons = Buttons::X,
+        5 => pad.buttons = Buttons::L,
+        6 => pad.stick.y = -1.0,
+        7 if far => pad.buttons = Buttons::A,
+        8 if far => pad.buttons = Buttons::Z,
+        9 if far => pad.cstick = direction(choice >> 4),
+        10 => pad.buttons = Buttons::UP,
+        _ => pad.stick.x = 0.7 * side,
+    }
+    if pad.buttons.intersects(Buttons::L) {
+        pad.left_trigger = 1.0;
+    }
+    Held {
+        pad,
+        remaining: duration,
+    }
+}
+
 #[derive(Serialize)]
 struct ResultRow {
     name: String,
@@ -228,16 +277,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         }
     };
+    let sudden_death = match arguments.next().as_deref() {
+        None => false,
+        Some("sudden-death") => true,
+        Some(other) => return Err(format!("unknown mode {other}").into()),
+    };
+    let ticks = if sudden_death {
+        SUDDEN_DEATH_TICKS
+    } else {
+        TICKS
+    };
     if output.exists() {
         return Err("output directory must be new to preserve prior evidence".into());
     }
     std::fs::create_dir_all(&output)?;
     let mut report = Report {
         version,
-        ticks_per_case: TICKS,
+        ticks_per_case: ticks,
         results: Vec::new(),
     };
-    for swapped in [false, true] {
+    // Sudden Death's boundary has Marth on P1 only.
+    let orders: &[bool] = if sudden_death {
+        &[true]
+    } else {
+        &[false, true]
+    };
+    for &swapped in orders {
         let characters = if swapped {
             [Character::Marth, Character::Fox]
         } else {
@@ -251,18 +316,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ],
         )
         .with_stocks(4);
+        let base = if sudden_death {
+            let mut base = base.with_stocks(1).with_seed(Seed(SUDDEN_DEATH_SEED));
+            base.rules.sudden_death = true;
+            base
+        } else {
+            base.with_seed(Seed(BOUNDARY_SEEDS[usize::from(swapped)]))
+        };
         let assets = GameAssets::load(&directory, &base)?;
         for &seed in &seeds {
             for profile in 0u32..3 {
-                let config = base
-                    .clone()
-                    .with_seed(Seed(BOUNDARY_SEEDS[usize::from(swapped)]));
+                let config = base.clone();
                 let mut game = Match::new(&assets, config.clone())?;
                 let mut recording = Recording::new(&config, &assets);
                 let mut held = [Held::default(); 2];
                 let mut choices = Choices(seed ^ (profile + 1).wrapping_mul(0x9e3779b9));
                 let name = format!(
-                    "v{version}-swap{}-explore{seed:08x}-profile{profile}",
+                    "v{version}{}-swap{}-explore{seed:08x}-profile{profile}",
+                    if sudden_death { "sd" } else { "" },
                     u8::from(swapped)
                 );
                 let mut row = ResultRow {
@@ -277,7 +348,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     fault: None,
                 };
                 let mut previous = [None; 2];
-                while game.status().is_running() && game.tick().0 < TICKS {
+                while game.status().is_running() && game.tick().0 < ticks {
                     let mut inputs = Inputs::default();
                     {
                         let view = game.observe()?;
@@ -295,8 +366,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             previous[i] = Some(action);
                             if held[i].remaining == 0 {
-                                held[i] =
-                                    choose(fighters[i], fighters[1 - i], &mut choices, profile);
+                                held[i] = if sudden_death {
+                                    choose_sudden_death(fighters[i], fighters[1 - i], &mut choices)
+                                } else {
+                                    choose(fighters[i], fighters[1 - i], &mut choices, profile)
+                                };
                             }
                             inputs.0[i] = held[i].pad;
                             held[i].remaining -= 1;
