@@ -220,6 +220,12 @@ pub struct ItemCore {
     pub past_hitbox_refresh: bool,
     /// xD0C == 2 (it_802756D0 / it_802756E0): hurtboxes take no hits.
     pub hurt_intangible: bool,
+    /// xD40 with xDD0 b6 (item.c foobar): creation's intangible frames
+    /// still to run, counted down in Item_80269528.
+    pub spawn_intangible_frames: Option<f32>,
+    /// xDD0 b7: the item was already intangible at creation, so the
+    /// countdown's end leaves it so.
+    pub keeps_intangible: bool,
     /// xDC8 x14: set when a throw ends the hold (it_80273F34), cleared by
     /// the next state change or a pickup; it_8026B1D4 then adds speed to
     /// the item's contact damage.
@@ -408,6 +414,29 @@ impl ItemCore {
             }
         }
         self.advance_script(assets);
+    }
+    /// item.c foobar (Item_80268B18): common and hold-kind 6 items start
+    /// intangible for ItCo +2C frames. The it_80279B88 colour flash is visual.
+    fn begin_spawn_intangibility(&mut self, frames: f32) {
+        if matches!(self.hold_kind, 0 | 6) {
+            self.keeps_intangible = self.hurt_intangible;
+            self.spawn_intangible_frames = Some(frames);
+            self.hurt_intangible = true;
+        }
+    }
+    /// Item_80269528: the creation countdown runs even while frozen; at its
+    /// end it_802756E0 restores hits unless the item began intangible.
+    fn count_down_spawn_intangibility(&mut self) {
+        let Some(frames) = &mut self.spawn_intangible_frames else {
+            return;
+        };
+        *frames -= 1.0;
+        if *frames <= 0.0 {
+            self.spawn_intangible_frames = None;
+            if !self.keeps_intangible {
+                self.hurt_intangible = false;
+            }
+        }
     }
     /// it_8027137C / it_8027129C: refresh world capsules at item s-link 11.
     pub fn update_hitboxes(&mut self) {
@@ -662,6 +691,8 @@ impl ItemPool {
             hitbox_damage_scale: 1.0,
             past_hitbox_refresh: false,
             hurt_intangible: false,
+            spawn_intangible_frames: None,
+            keeps_intangible: false,
             speed_damage: false,
             hurt_by_owner: false,
             strikes_kindred_items: false,
@@ -678,6 +709,7 @@ impl ItemPool {
         // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
         item.update_spin(self.common.spawn_spin_degrees);
         (D::logic(item.kind).spawned)(&mut item, assets);
+        item.begin_spawn_intangibility(self.common.spawn_intangible_frames);
         self.items.push(item);
         Some(id)
     }
@@ -834,6 +866,7 @@ impl ItemPool {
                 return;
             }
         }
+        item.count_down_spawn_intangibility();
         // Item_80269528's common-item lifetime: xDC8 x15 on a kind below
         // It_Kind_L_Gun_Ray (xDD0 b3, set on explosion, clears x15 here).
         // The x34 warning blink (it_802728C8) is visual.
@@ -1014,6 +1047,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits,
             lifetime: 1.0,
+            spawn_intangible_frames: 0.0,
             half_life_scale: 0.5,
             speed_damage_scale: 0.0,
             speed_damage_base: 0.0,
@@ -1043,6 +1077,7 @@ mod tests {
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits: [None; 13],
             lifetime: 1.0,
+            spawn_intangible_frames: 0.0,
             half_life_scale: 0.5,
             speed_damage_scale: 0.0,
             speed_damage_base: 0.0,

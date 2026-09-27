@@ -7,6 +7,9 @@ use melee_types::combat::HitboxDescriptor;
 pub struct ItemCommonData {
     pub hold_limits: [Option<usize>; 13],
     pub lifetime: f32,
+    /// +2C: frames a new hold-kind 0 or 6 item takes no hits (item.c
+    /// foobar's xD40), converted from its integer.
+    pub spawn_intangible_frames: f32,
     /// +4C: it_80275158's half-life (xD48) as a fraction of the lifetime.
     pub half_life_scale: f32,
     /// +94 / +98 (x80[5], x80[6]): it_8026B1D4's contact damage per unit of
@@ -51,6 +54,7 @@ impl ItemCommonData {
         Ok(Self {
             hold_limits,
             lifetime: r.u32(base + 0x30)? as f32,
+            spawn_intangible_frames: r.u32(base + 0x2C)? as i32 as f32,
             half_life_scale: r.f32(base + 0x4C)?,
             speed_damage_scale: r.f32(base + 0x94)?,
             speed_damage_base: r.f32(base + 0x98)?,
