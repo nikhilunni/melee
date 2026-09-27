@@ -1578,6 +1578,10 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_laserbomb_fd_marth", 1545),
         // Fox's Reflector turns a thrown Bob-omb back (it_80273030).
         ("sudden_death_reflectbomb_fd_marth", 1545),
+        // A thrown Bob-omb hits Fox's shield.
+        ("sudden_death_shieldbomb_fd_marth", 1472),
+        // Marth's aerial Counter triggered by a Bob-omb's blast.
+        ("sudden_death_counterbomb_fd_marth", 1471),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),

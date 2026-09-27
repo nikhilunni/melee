@@ -454,7 +454,7 @@ fails closed for anything else.
 | Fighter hitbox detonates a Bob-omb | `sudden_death_smash_bomb_fd_marth` (Marth smash); Fox dash attack `sudden_death_foxdash_fd_marth` hits Marth, not the bomb | Fox hitting a Bob-omb: **MISSING** |
 | Item hits item (chain), walk after a soft landing, wall bounce | `sudden_death_bombchain/walkbomb/wallbomb{,slope}_fd_marth`, `sudden_death_turnrunhold_bomb_fd_marth` | shared |
 | Held item leaves the hand mid-animation / with no motion | (by name) `corpus_sd_*` (9 cases) | same |
-| Laser hits a Bob-omb (`sudden_death_laserbomb_fd_marth`: a thrown one blows up mid-air); Reflector reflects a thrown Bob-omb; Counter against a thrown Bob-omb or its blast; shield against a thrown Bob-omb; Illusion hits a Bob-omb | Laser witnessed; the rest **MISSING** | **MISSING** |
+| Laser hits a Bob-omb; Reflector reflects a thrown Bob-omb; shield against a thrown Bob-omb; Counter against a Bob-omb's blast; Illusion hits a Bob-omb | `sudden_death_laserbomb_fd_marth`, `sudden_death_reflectbomb_fd_marth` (it_80273030, fixed), `sudden_death_shieldbomb_fd_marth`; Illusion **MISSING** | `sudden_death_counterbomb_fd_marth` |
 | Down states while holding; tilts with an item; HeavyGet; unlit Bob-omb; a walking Bob-omb leaving the ground | Audit: fail closed, classified unreachable or needing investigation | same |
 | Item hitbox against an item hitbox (it_8026FE68) | Fails closed (audit) | same |
 

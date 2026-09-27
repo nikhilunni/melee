@@ -1,0 +1,32 @@
+# Sudden Death: as sudden_death_throwb_bomb_fd_marth (Marth back-throws the
+# lit Bob-omb toward Fox, 1244); Fox dashes in (1250) and shields (1274),
+# and the flying Bob-omb hits his shield (it_3F14_Logic6_HitShield).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_shieldbomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1472
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1244, port = 0, buttons = { A = true, StickX = 0.390625 }, raw = { button = 256, stickX = 50 } },
+  { frame = 1246, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1250, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1256, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1274, port = 1, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 1300, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
