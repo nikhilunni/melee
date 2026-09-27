@@ -988,6 +988,24 @@ impl Effect {
                             spawn_particle::<T>(particles, bank, request, rng, draws)?;
                             continue;
                         }
+                        if matches!(hi, 0x16D..=0x170 | 0x7E2) {
+                            // efLib_SpawnParticleEffect (8005D174), eflib.c:919-930:
+                            // standalone in bank gfx_id / 1000 with an AppSRT (status
+                            // 1) taking the root's rot.y and translation; no joint,
+                            // so it outlives its owner.
+                            let root = self.tree.get(self.root);
+                            let mut request = SpawnRequest::new((hi / 1000) as u8, hi as u32, 0);
+                            request.application_transform =
+                                Some(hsd_particle::generator::ApplicationTransform {
+                                    translation: self.tree.translation(self.root),
+                                    rotation: Vec3::new(0.0, root.rotate.y, 0.0),
+                                    status: 1,
+                                    ..Default::default()
+                                });
+                            sink.spawn(&request, false, false);
+                            spawn_particle::<T>(particles, bank, request, rng, draws)?;
+                            continue;
+                        }
                         let mut request = SpawnRequest::new(lo as u8, hi as u32, 0);
                         request.joint = Some((self.joint_base + jobj.0, self.matrix(jobj)));
                         if matches!(hi, 0x2D | 0x2E | 0x31) {
