@@ -736,7 +736,11 @@ impl Default for Offscreen {
 #[derive(Clone, Debug, Default)]
 pub enum MotionData {
     Life(life::LifeState),
-    Smash,
+    /// The smash attacks: mv+4 as their predecessor left it, which they do
+    /// not write (`None` where the port does not model it).
+    Smash {
+        retained_word: Option<f32>,
+    },
     Down {
         wait_remaining: f32,
     },
@@ -756,7 +760,11 @@ pub enum MotionData {
     DownTilt {
         repeat_pressed: bool,
     },
-    Tilt,
+    /// AttackHi4, AttackLw4 and AttackHi3: mv+4 as their predecessor left
+    /// it (`None` where the port does not model it).
+    Tilt {
+        retained_word: Option<f32>,
+    },
     /// mv.co.attackdash.x0 (+2340): frames left in which holding shield
     /// cancels the dash attack into a dash grab.
     DashAttack {

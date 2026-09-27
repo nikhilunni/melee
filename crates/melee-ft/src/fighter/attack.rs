@@ -213,6 +213,9 @@ impl Fighter {
         }
         self.core.commands.allow_interrupt = false;
         self.core.commands.variables[0] = 0;
+        // AttackHi4, AttackLw4 and AttackHi3 write no mv field (AttackLw3
+        // and AttackDash only +2340), so mv+4 stays the predecessor's.
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
@@ -222,7 +225,7 @@ impl Fighter {
             },
             // doEnter (8008B4D4): the dash-grab window starts closed.
             S::AttackDash => MotionData::DashAttack { grab_window: 0 },
-            _ => MotionData::Tilt,
+            _ => MotionData::Tilt { retained_word },
         };
         Ok(())
     }

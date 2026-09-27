@@ -213,9 +213,9 @@ impl FighterCore {
             super::MotionData::Jab(_)
                 | super::MotionData::RapidJab(_)
                 | super::MotionData::Aerial { .. }
-                | super::MotionData::Tilt
+                | super::MotionData::Tilt { .. }
                 | super::MotionData::DashAttack { .. }
-                | super::MotionData::Smash
+                | super::MotionData::Smash { .. }
                 | super::MotionData::DownTilt { .. }
                 | super::MotionData::Down { .. }
         ) || matches!(

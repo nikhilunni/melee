@@ -80,9 +80,12 @@ impl Fighter {
         self.core.commands.variables[0] = 0;
         self.core.commands.grab_release = false;
         self.core.commands.throw_reverse = false;
+        // The smash attacks write no mv field, so mv+4 stays the
+        // predecessor's.
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
-        self.core.state_data = MotionData::Smash;
+        self.core.state_data = MotionData::Smash { retained_word };
         self.core.status.interaction = super::Interaction::Attack;
         Ok(())
     }

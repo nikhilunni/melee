@@ -1640,7 +1640,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 40] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 41] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -1721,6 +1721,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 40] = [
     // FlyReflectCeil off FD's underside, and a ceiling tech (PassiveCeil).
     ("corpus_v3_s0_ef4efb740_p1", 5740),
     ("corpus_v3_s0_ef4efb740_p1_ceiltech", 5740),
+    // A Reflector inheriting Turn's mv+4 through an up smash and Wait.
+    ("corpus_v3_s0_efaccaf3d_p0", 1400),
 ];
 
 #[test]
