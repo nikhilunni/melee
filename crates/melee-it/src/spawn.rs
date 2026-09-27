@@ -95,6 +95,15 @@ pub enum ItemRequest {
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
     },
+    /// Item_8026ABD8: the holder lets go of `item` at the hand (`position`)
+    /// without a push; `speed` becomes xC44.
+    Drop {
+        item: u32,
+        position: Vec3,
+        speed: f32,
+        center: Vec3,
+        attack: Option<melee_types::combat::AttackInstance>,
+    },
 }
 
 /// The holding fighter, lent to a held item's callbacks. A held item

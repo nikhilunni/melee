@@ -33,7 +33,12 @@ back, up and down tilt throws and the smash throws (PlCo +400 rate), gated
 by `sudden_death_throw{b,hi,lw,f4,hi4}_bomb_fd_marth`; walking while holding
 (`sudden_death_walkthrow_bomb_fd_marth`); jumping while holding and
 ftCo_80095328's air throws, which switch to the ground throw on landing
-(`sudden_death_airthrow_bomb_fd_marth`).
+(`sudden_death_airthrow_bomb_fd_marth`). Z on the ground throws forward
+(`sudden_death_zthrow_bomb_fd_marth`); Z in the air drops the item
+(ftCo_80095744, Item_8026ABD8, it_3F14_Logic6_Dropped) and locks the aerial
+catch until a grounded motion entry (`sudden_death_airdrop_bomb_fd_marth`).
+A launch while holding draws Fighter_8006CDA4's drop chance; an actual
+knock-loose still fails closed.
 
 While a fighter holds an item only LightGet, Wait, walking, jumping, falling
 and the light throws are audited
@@ -42,7 +47,7 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: dash, run and turn throws, drops (LR+A in the air, shield, `fighter.c:2678` random drop on a hit), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: dash, run and turn throws, drops (shield, a hit that knocks the item loose), C-stick ground throws, landing, damage and death while holding | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A thrown Bob-omb's soft landing (state 2) | Fails closed | A short toss onto the stage |
 | `fn_800D6F58` aerial catch (ftCo_800D7100) | Fails closed when LR + A finds a light item in reach | Shield + A in the air beside a Bob-omb |
 | HeavyGet | Fails closed | No heavy item appears in scope |

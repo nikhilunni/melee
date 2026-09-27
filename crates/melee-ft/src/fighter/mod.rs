@@ -659,6 +659,9 @@ pub struct FighterCore {
     /// created after the deferred flush). The character keeps what it will
     /// do; every Fighter_ChangeMotionState disarms it (fighter.c:1377).
     pub accessory4_armed: bool,
+    /// x2224_b1: an item was just dropped or caught in the air, so the
+    /// aerial catch waits for the next grounded motion entry.
+    pub item_catch_locked: bool,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.

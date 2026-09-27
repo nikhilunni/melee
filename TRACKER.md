@@ -1010,3 +1010,9 @@ Newest first. One line per session: date, what landed, what is next.
   Also: Counter minimum hitlag across ground/air (e2ba447), stacked quakes
   (40fd2be), core accessory4 (0f8bf25). Next: resume the corpus v5 sample
   (18 of 40 left in the second batch), then drops and damage while holding.
+- 2026-09-27: Corpus v5 second batch done: 40 bridged, 38 exact, both faults
+  fixed earlier (quake pool, Counter hitlag). Z throws forward on the ground;
+  Z in the air drops the held item (Item_8026ABD8, the Bob-omb's dropped
+  callback, the x2224_b1 catch lock); a launch while holding draws the drop
+  chance (Fighter_8006CDA4). Full release gate 1471/0. Next: a knock-loose
+  witness, shield and dash with an item, then more corpus sampling.

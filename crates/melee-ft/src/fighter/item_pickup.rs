@@ -242,6 +242,7 @@ impl FighterCore {
     pub fn check_aerial_item_catch(&self, assets: &FighterAssets) {
         use crate::input::Buttons;
         if self.held_item.is_none()
+            && !self.item_catch_locked
             && self.input.current.held.intersects(Buttons::SHIELD)
             && self.input.pressed.intersects(Buttons::A)
             && self

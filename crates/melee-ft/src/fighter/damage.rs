@@ -193,6 +193,9 @@ pub struct DamageParameters {
     /// PlCo +23C (int) / +240: percent floor and Randf chance for DamageFlyRoll.
     pub fly_roll_percent: i32,
     pub fly_roll_chance: f32,
+    /// PlCo +418: a hit of this much damage always knocks a held light item
+    /// loose (Fighter_8006CDA4 draws Randi(+418) < damage).
+    pub item_drop_range: i32,
     pub grounded_angle_threshold: f32,
     pub sakurai_air_angle: f32,
     pub sakurai_ground_angle: f32,
@@ -281,6 +284,7 @@ impl DamageParameters {
             large_quake_threshold: r.f32(p + 0x174)?,
             fly_roll_percent: r.s32(p + 0x23C)?,
             fly_roll_chance: r.f32(p + 0x240)?,
+            item_drop_range: r.s32(p + 0x418)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
             sakurai_air_angle: r.f32(p + 0x144)?,
@@ -1672,6 +1676,7 @@ impl FighterCore {
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> (S, f32) {
+        self.maybe_drop_held_item(hit, assets, rng);
         let airborne = self.physics.ground_or_air == GroundOrAir::Air;
         let stun = hit.knockback * assets.damage.hitstun_scale;
         let base_level = assets
@@ -1794,6 +1799,33 @@ impl FighterCore {
             self.physics.facing = facing;
         }
         (state, stun)
+    }
+
+    /// Fighter_8006CDA4 (8006CDA4), first in ftCo_8008DCE0: a launch draws
+    /// whether it knocks a held light item loose. The armour flags
+    /// (x2220_b3/b4), x2226_b2 and the excluded Kirby/ice states are
+    /// unreachable here; Fox and Marth hold no second item (x1978/x197C).
+    fn maybe_drop_held_item(
+        &mut self,
+        hit: &ReceivedHit,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        let Some(held) = self.held_item else {
+            return;
+        };
+        if held.heavy || hit.descriptor.element == melee_types::HitElement::Cape {
+            return;
+        }
+        let damage = fctiwz(hit.percent_damage);
+        // ftCo_8008E984: armour could still hold the item; not in scope.
+        assert!(
+            self.combat.armor == 0.0,
+            "ftCo_8008E984: an armoured launch while holding"
+        );
+        if rng.randi(assets.damage.item_drop_range) < damage {
+            unimplemented!("Item_8026ABD8: a hit knocks the held item loose");
+        }
     }
 
     /// ftCo_8008DCE0 blocks 20..28: grounded launches and downward tumble bounce.

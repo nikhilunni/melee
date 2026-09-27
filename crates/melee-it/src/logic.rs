@@ -60,7 +60,9 @@ pub trait ItemLogic {
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
-    fn dropped(_item: &mut ItemCore) {}
+    fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
+        unimplemented!("dropped callback for this kind")
+    }
     fn thrown(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
         unimplemented!("thrown callback for this kind")
     }
@@ -129,7 +131,7 @@ pub struct ItemLogicRow {
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
-    pub dropped: fn(&mut ItemCore),
+    pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub thrown: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub entered_air: fn(&mut ItemCore),
     pub damage_dealt: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,

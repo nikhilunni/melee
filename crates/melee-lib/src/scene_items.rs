@@ -247,6 +247,34 @@ pub fn request(
             thrown.hurt_by_owner = true;
             return;
         }
+        ItemRequest::Drop {
+            item,
+            position,
+            speed,
+            center,
+            attack,
+        } => {
+            // Item_8026ABD8: it_802731A4's sound, xC44, it_80273B50 at the
+            // hand with no push, the kind's dropped callback, it_80274198
+            // (it_80273F34), then it_802754D4; it_8026B6C8's stage enemies
+            // are not in scope.
+            let dropped = pool.get_mut(item).expect("dropped item");
+            let assets = resources.get(dropped.kind);
+            dropped.throw_speed = speed;
+            dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
+            (SceneItems::logic(dropped.kind).dropped)(
+                dropped,
+                &mut ItemAnimationContext {
+                    owner: owner.held_item,
+                    holder: None,
+                    map,
+                    assets,
+                },
+            );
+            dropped.end_hold(center, attack, map, assets);
+            dropped.hurt_by_owner = true;
+            return;
+        }
     };
     let assets = resources.get(spawn.kind);
     if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {

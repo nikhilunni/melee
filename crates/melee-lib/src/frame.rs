@@ -1051,7 +1051,8 @@ impl Runtime {
                         }
                         melee_it::ItemRequest::Control { .. }
                         | melee_it::ItemRequest::PickUp { .. }
-                        | melee_it::ItemRequest::Throw { .. } => {}
+                        | melee_it::ItemRequest::Throw { .. }
+                        | melee_it::ItemRequest::Drop { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));

@@ -154,6 +154,21 @@ impl ItemLogic for BombHei {
         }
         enter_thrown_lit(item, context.assets);
     }
+    /// it_3F14_Logic6_Dropped (8027E648): spin about X ignoring facing, then
+    /// the thrown state without it_80275474's owner/kin changes.
+    fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        item.spin_ignores_facing = true;
+        item.rotation_axis = 1;
+        if !bomb(item).lit {
+            unimplemented!("it_3F14_Logic6_Dropped: unlit Bob-omb drop (state 9)");
+        }
+        change(
+            item,
+            motion::THROWN_LIT,
+            UNK_0X1 | DROP_UPDATE,
+            context.assets,
+        );
+    }
     /// it_3F14_Logic6_DmgDealt: touching anything detonates it.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         detonate_unless_held(item, context.assets);

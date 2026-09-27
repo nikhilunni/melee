@@ -1485,6 +1485,12 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_throwhi4_bomb_fd_marth", 1544),
         ("sudden_death_walkthrow_bomb_fd_marth", 1545),
         ("sudden_death_airthrow_bomb_fd_marth", 1451),
+        // Z on the ground throws forward; Z in the air drops the Bob-omb
+        // (ftCo_80095744, Item_8026ABD8, it_3F14_Logic6_Dropped); a rain
+        // Bob-omb hits Fox and the held one explodes on Marth.
+        ("sudden_death_zthrow_bomb_fd_marth", 1545),
+        ("sudden_death_airdrop_bomb_fd_marth", 1545),
+        ("sudden_death_hitholding_bomb_fd_marth", 1433),
     ] {
         combat_gate_ticks(name, ticks);
     }

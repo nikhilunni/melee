@@ -856,6 +856,7 @@ impl FighterCore {
             pickup_candidates: Default::default(),
             ledge_holders: Default::default(),
             accessory4_armed: false,
+            item_catch_locked: false,
             hurtboxes: assets.hurtboxes.clone(),
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
@@ -910,6 +911,7 @@ impl FighterCore {
         // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.status.ledge_timed_out = false;
+            self.item_catch_locked = false;
         }
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
         if !change.ground_air {

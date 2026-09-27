@@ -157,7 +157,11 @@ impl Fighter {
             && fabsf(stick.y) < common.aerial_vertical_threshold
         {
             if !throwable || lr {
-                unimplemented!("ftCo_80095744: dropping a held item in the air");
+                // The state is unchanged; the aerial catch stays shut until
+                // the next grounded motion entry (x2224_b1).
+                self.drop_held_item(held, assets);
+                self.core.item_catch_locked = true;
+                return Ok(true);
             }
             S::LightThrowAirF
         } else {
@@ -189,6 +193,24 @@ impl Fighter {
         };
         self.enter_item_throw(state, assets)?;
         Ok(true)
+    }
+
+    /// ftCo_80095744 (80095744) -> Item_8026ABD8: let go of the held item at
+    /// the hand with no push (xC44 = 1). Parasol states are not in scope.
+    fn drop_held_item(&mut self, held: super::item_pickup::HeldItem, assets: &FighterAssets) {
+        let mut holder = self
+            .core
+            .item_holder(self.core.bones.model.animation_translation);
+        let position = holder.part_position();
+        let (center, attack) = (holder.center, holder.attack);
+        self.core.item_requests.push(melee_it::ItemRequest::Drop {
+            item: held.item,
+            position,
+            speed: 1.0,
+            center,
+            attack,
+        });
+        self.core.release_held_item(held.item, assets);
     }
 
     /// ftCo_800957F4 (800957F4): enter a throw state; the accessory runs
