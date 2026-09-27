@@ -488,6 +488,14 @@ impl FighterAnimation {
         self.step_with_hooks::<T>(tree, |_, _| {}, |_, _| {});
     }
 
+    /// `step` with retail trigonometry, compiled once here: callers in other
+    /// crates (the savestate importer) reuse it instead of instantiating the
+    /// whole generic playback path again.
+    #[inline(never)]
+    pub fn step_retail(&mut self, tree: &mut JObjTree) {
+        self.step::<crate::fighter::RetailTrig>(tree);
+    }
+
     pub fn step_with_hooks<T: InverseTrig>(
         &mut self,
         tree: &mut JObjTree,

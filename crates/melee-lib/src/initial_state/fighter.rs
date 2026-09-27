@@ -5,7 +5,7 @@ use hsd_types::Vec3;
 use melee_ft::fighter::{assets::FighterAssets, CharacterState};
 use melee_ft::{
     collision::pose::GroundPoseFlags,
-    fighter::{Fighter, PlayerSlot, RetailTrig},
+    fighter::{Fighter, PlayerSlot},
     input::{AnalogTimers, Buttons, FighterInput, InputFrame, Stick},
 };
 use melee_mp::CollMap;
@@ -55,7 +55,7 @@ pub(crate) fn import(
             )
             .unwrap();
         f.animation.blend_progress = float(raw, 0x8A8) - 1.0;
-        f.core.animation.step::<RetailTrig>(&mut f.core.skeleton);
+        f.core.animation.step_retail(&mut f.core.skeleton);
         f.animation.blend_progress = float(raw, 0x8A8);
         f.animation.remainder = float(raw, 0x898);
     }
@@ -197,11 +197,13 @@ fn restore_part_animations(core: &mut melee_ft::fighter::FighterCore, raw: &[u8]
         state.rate = float(raw, offset + 12);
         state.previous = raw[offset + 16] as i8;
         state.current = raw[offset + 17] as i8;
-        state.joints = core.bones.animation_sets[index]
-            .as_ref()
-            .map_or_else(Default::default, |set| {
-                set.joints.iter().map(|&joint| usize::from(joint)).collect()
-            });
+        // Filled in place: the fixed-capacity joint list is large to move.
+        state.joints.clear();
+        if let Some(set) = &core.bones.animation_sets[index] {
+            for &joint in &set.joints {
+                state.joints.push(usize::from(joint));
+            }
+        }
     }
 }
 fn import_input(raw: &[u8]) -> FighterInput {
