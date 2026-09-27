@@ -1,0 +1,25 @@
+# Parameters only: the one-minute Marth/Fox match built from scratch and
+# compared with the retail timeout witness through TIME! and the scene exit.
+# Seed is after stage/fighter creation, before music (the savestate's).
+name = "timeout_tie_fd_marth_cold"
+expected = "timeout_tie_fd_marth"
+frames = 3839
+seed = 0xB02E05DA
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 60
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"

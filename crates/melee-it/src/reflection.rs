@@ -65,6 +65,7 @@ impl ItemCore {
         pending: PendingReflection,
         stale: f32,
         cap: u32,
+        assets: &crate::desc::ItemAssets,
     ) {
         if !pending.preserve_owner {
             self.owner = Some(pending.owner);
@@ -73,7 +74,7 @@ impl ItemCore {
         // The original attack/instance (stale_source) survives this transfer.
         let context = ItemEventContext {
             reflected_facing: pending.facing,
-            ..Default::default()
+            ..ItemEventContext::new(assets)
         };
         self.destroyed |= (D::logic(self.kind).reflected)(self, &context);
         if self.destroyed {

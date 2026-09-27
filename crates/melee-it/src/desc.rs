@@ -12,6 +12,12 @@ pub struct ItemCommonData {
     /// +B8/+BC: item hitlag frames from contact damage (it_8026B424).
     pub hitlag_scale: f32,
     pub hitlag_base: f32,
+    /// +F8: it_8027518C's lifetime once an item explodes.
+    pub explosion_lifetime: f32,
+    /// +6C / +68: it_80274658's spin degrees at creation (Item_80267130) and
+    /// while falling (Item_ApplyFallingPhysics).
+    pub spawn_spin_degrees: f32,
+    pub fall_spin_degrees: f32,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -41,6 +47,9 @@ impl ItemCommonData {
             maximum_reflected_damage: r.u32(base + 0xD8)?,
             hitlag_scale: r.f32(base + 0xB8)?,
             hitlag_base: r.f32(base + 0xBC)?,
+            explosion_lifetime: r.f32(base + 0xF8)?,
+            spawn_spin_degrees: r.f32(base + 0x6C)?,
+            fall_spin_degrees: r.f32(base + 0x68)?,
         })
     }
 }
@@ -61,9 +70,23 @@ pub struct ItemAssets {
     /// ItemAttr x1_67_cam_kind (Item.xDCD): 0 none, 1 an Active camera
     /// subject, 2 an Auto one (item.c foobar3).
     pub camera_kind: u8,
+    /// ItemAttr x10 / x14: Item_ApplyFallingPhysics' gravity and the speed
+    /// it stops accelerating at (it_80272860).
+    pub fall_acceleration: f32,
+    pub fall_speed_limit: f32,
+    /// ItemAttr x1_1 (Item.xDC8 x17 at creation): the ECB rotation axis.
+    pub rotation_axis: u8,
+    /// ItCo common data +F8 (it_8027518C): an explosion's lifetime. Zero
+    /// for character articles, which do not explode.
+    pub explosion_lifetime: f32,
+    /// ItemAttr xC (spin_spd).
+    pub spin_rate: f32,
+    /// ItCo common data +68: Item_ApplyFallingPhysics' spin degrees.
+    pub fall_spin_degrees: f32,
 }
 impl ItemAssets {
-    /// ftData.x48_items -> Article, loaded once before any item exists.
+    /// ftData.x48_items -> Article, loaded once before any item exists. A
+    /// character article's state rows are its motion states in order.
     pub fn from_fighter(
         archive: &Archive,
         fighter_data: u32,
@@ -73,19 +96,58 @@ impl ItemAssets {
         let r = archive.reader();
         let items = r.u32(fighter_data + 0x48)?;
         let article = r.u32(items + item_index * 4)?;
+        let rows: Vec<i32> = (0..states as i32).collect();
+        Self::from_article(archive, article, &rows, 10)
+    }
+
+    /// it_804D6D24 (itPublicData +4)[kind]: a common item's Article in ItCo.
+    /// `article_states` is the kind's ItemStateTable anim_id column: the
+    /// article state each motion state plays, or -1 for none.
+    pub fn from_common(
+        archive: &Archive,
+        public: u32,
+        kind: melee_types::ItemKind,
+        article_states: &[i32],
+        special_attributes: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let r = archive.reader();
+        let articles = r.u32(public + 4)?;
+        let article = r.u32(articles + kind as u32 * 4)?;
+        let mut assets = Self::from_article(archive, article, article_states, special_attributes)?;
+        assets.explosion_lifetime = r.f32(r.u32(public)? + 0xF8)?;
+        assets.fall_spin_degrees = r.f32(r.u32(public)? + 0x68)?;
+        Ok(assets)
+    }
+
+    fn from_article(
+        archive: &Archive,
+        article: u32,
+        article_states: &[i32],
+        special_count: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let r = archive.reader();
         let common = r.u32(article)?;
         let special = r.u32(article + 4)?;
         let state_array = r.u32(article + 12)?;
         let model_desc = r.u32(article + 16)?;
-        let mut scripts = Vec::with_capacity(states);
-        let mut hit_flags = Vec::with_capacity(states);
-        for state in 0..states {
-            let script = r.u32(state_array + state as u32 * 16 + 12)?;
-            let (commands, flags) = read_script(archive, script)?;
+        let mut scripts = Vec::with_capacity(article_states.len());
+        let mut hit_flags = Vec::with_capacity(article_states.len());
+        for &row in article_states {
+            let (commands, flags) = if row < 0 {
+                (Vec::new(), Vec::new())
+            } else {
+                read_script(archive, r.u32(state_array + row as u32 * 16 + 12)?)?
+            };
             scripts.push(commands);
             hit_flags.push(flags);
         }
-        let special_attributes = (0..10)
+        let article_state_count = article_states
+            .iter()
+            .map(|&s| s + 1)
+            .max()
+            .unwrap_or(0)
+            .max(0);
+        let special_attributes = (0..special_count)
             .map(|i| r.f32(special + i * 4))
             .collect::<Result<_>>()?;
         Ok(Self {
@@ -93,7 +155,7 @@ impl ItemAssets {
                 archive,
                 model_desc,
                 state_array,
-                states,
+                article_state_count as usize,
             )?,
             scripts,
             hit_flags,
@@ -110,19 +172,53 @@ impl ItemAssets {
             collision_damage_multiplier: r.f32(common + 0x1C)?,
             hitlag: r.u8(common + 1)? & 0x08 != 0,
             camera_kind: (r.u8(common + 1)? >> 1) & 3,
+            fall_acceleration: r.f32(common + 0x10)?,
+            fall_speed_limit: r.f32(common + 0x14)?,
+            rotation_axis: r.u8(common + 1)? >> 6,
+            explosion_lifetime: 0.0,
+            spin_rate: r.f32(common + 0xC)?,
+            fall_spin_degrees: 0.0,
         })
     }
 }
 
 /// itanimlist.c uses the shared ten control commands and its own payload table.
 type DecodedScript = (Vec<Command>, Vec<Option<ItemHitFlags>>);
-fn read_script(archive: &Archive, mut offset: u32) -> Result<DecodedScript> {
+/// Decode a state's script and every subroutine it calls into one list;
+/// Call targets and continuations are indices into it (Command_05/06).
+fn read_script(archive: &Archive, offset: u32) -> Result<DecodedScript> {
     if offset == 0 {
         return Ok((Vec::new(), Vec::new()));
     }
+    let mut script = (Vec::new(), Vec::new());
+    let mut blocks: Vec<(u32, usize)> = Vec::new();
+    let mut calls: Vec<(usize, u32)> = Vec::new();
+    let mut pending = vec![offset];
+    while let Some(block) = pending.pop() {
+        if blocks.iter().any(|&(start, _)| start == block) {
+            continue;
+        }
+        blocks.push((block, script.0.len()));
+        read_block(archive, block, &mut script, &mut calls)?;
+        pending.extend(calls.iter().map(|&(_, target)| target));
+    }
+    for (index, target) in calls {
+        let start = blocks.iter().find(|&&(b, _)| b == target).unwrap().1;
+        if let Command::Call { target, .. } = &mut script.0[index] {
+            *target = start;
+        }
+    }
+    Ok(script)
+}
+
+/// One block up to its End (Command_00) or Return (Command_06).
+fn read_block(
+    archive: &Archive,
+    mut offset: u32,
+    (commands, flags): &mut DecodedScript,
+    calls: &mut Vec<(usize, u32)>,
+) -> Result<()> {
     let r = archive.reader();
-    let mut commands = Vec::new();
-    let mut flags = Vec::new();
     loop {
         let word = r.u32(offset)?;
         let op = word >> 26;
@@ -130,6 +226,27 @@ fn read_script(archive: &Archive, mut offset: u32) -> Result<DecodedScript> {
         let command = match op {
             0..=4 | 6 | 8 => {
                 melee_cmd::decode::decode(&[word], None, 0).expect("shared item command")
+            }
+            // Command_05: the target word follows; resolved once decoded.
+            5 => {
+                calls.push((commands.len(), r.u32(offset + 4)?));
+                offset += 4;
+                Command::Call {
+                    target: usize::MAX,
+                    continuation: commands.len() + 1,
+                }
+            }
+            // it_80278F2C: five words, an effect at a joint with a random spread.
+            10 => {
+                let w = [
+                    word,
+                    r.u32(offset + 4)?,
+                    r.u32(offset + 8)?,
+                    r.u32(offset + 12)?,
+                    r.u32(offset + 16)?,
+                ];
+                offset += 16;
+                Command::Graphics(item_graphics(w))
             }
             11 => {
                 let w = [
@@ -157,14 +274,44 @@ fn read_script(archive: &Archive, mut offset: u32) -> Result<DecodedScript> {
                 index: (op - 17) as usize,
                 value: word & 0x03ff_ffff,
             },
+            // it_8027990C -> ftLib_80086DC4: rumble on every fighter's controller.
+            23 => Command::Rumble {
+                all_players: true,
+                id: ((word >> 16) & 0x3FF) as u16,
+                duration: word as u16,
+            },
             _ => unimplemented!("itanimlist.c item script opcode {op}"),
         };
         commands.push(command);
         flags.push(hit_flags);
         offset += 4;
-        if op == 0 {
-            return Ok((commands, flags));
+        if op == 0 || op == 6 {
+            return Ok(());
         }
+    }
+}
+
+/// it_80278F2C (80278F2C): joint (low ten bits), effect id and parameter,
+/// then offset and random range in 1/256 units.
+fn item_graphics(w: [u32; 5]) -> melee_types::combat::GraphicsCommand {
+    const SCALE: f32 = 0.003906;
+    let half = |word: u32, high: bool| -> f32 {
+        SCALE
+            * (if high {
+                (word >> 16) as i16
+            } else {
+                word as i16
+            }) as f32
+    };
+    melee_types::combat::GraphicsCommand {
+        bone: (w[0] & 0x3FF) as usize,
+        common_bone: false,
+        item_bone: false,
+        destroy_on_state_change: false,
+        id: (w[1] >> 16) as u16,
+        parameter: (w[1] & 0xFFFF) as f32,
+        offset: hsd_types::Vec3::new(half(w[2], true), half(w[2], false), half(w[3], true)),
+        range: hsd_types::Vec3::new(half(w[3], false), half(w[4], true), half(w[4], false)),
     }
 }
 

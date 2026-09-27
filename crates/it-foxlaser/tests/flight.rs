@@ -38,7 +38,7 @@ fn laser_damage_callback_waits_for_item_event_phase() {
     pool.record_damage_dealt(id, 2.0);
     assert!(!pool.get_mut(id).unwrap().destroyed);
     assert_eq!(pool.get_mut(id).unwrap().pending_damage_dealt, 3);
-    pool.process_events::<Items>(id);
+    pool.process_events::<Items>(id, &assets);
     assert!(pool.get_mut(id).unwrap().destroyed);
     assert_eq!(pool.get_mut(id).unwrap().pending_damage_dealt, 0);
     pool.remove_destroyed::<Items>();
@@ -81,6 +81,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
             right: 246.0,
             bottom: -140.0,
         },
+        &laser,
     );
     let item = pool.get_mut(ray).unwrap();
     assert_eq!(item.position.x.to_bits(), 7.0f32.to_bits());

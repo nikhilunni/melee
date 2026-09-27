@@ -83,6 +83,19 @@ impl FinalDestination {
         result
     }
 
+    /// Ground_801C0FB8's GObjs, which a stage still waiting for its start
+    /// (Versus countdown) creates only then: the zako generator's
+    /// fn_801CADBC and the common Ground_801C0C2C (the Sudden Death rain).
+    pub fn start_proc_table(&self) -> Vec<ProcRegistration> {
+        if !self.ground.waiting_for_start {
+            return Vec::new();
+        }
+        vec![
+            registration(0, 4, None, "fn_801CADBC", 0x801CADBC),
+            registration(10, 5, None, "Ground_801C0C2C", 0x801C0C2C),
+        ]
+    }
+
     /// All ten `StageCallbacks.gobj_proc` functions (addresses in proc_table).
     /// The eight empty C callbacks deliberately do nothing. Engine wrappers
     /// at s_link 0/1/10 are separate entries, not implicitly run here.

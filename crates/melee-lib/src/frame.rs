@@ -1,5 +1,6 @@
 //! Scene composition through HSD's real scheduler. Registrations, rather than
 //! a sorted callback replay, preserve same-tick insertion/deferred destruction.
+use crate::banner::BannerKind;
 use crate::initial_state::scheduler_resume::{Continuation, ProcKey};
 use crate::initial_state::stage;
 use crate::initial_state::InitialState;
@@ -24,7 +25,7 @@ enum Callback {
         id: u32,
         phase: u8,
     },
-    Countdown,
+    Banner,
     Stage {
         map: Option<u8>,
         address: u32,
@@ -95,7 +96,7 @@ impl Registration {
             Callback::Camera => 0x8002_F360,
             Callback::Quakes => 0x801C_9C40,
             // Cold-only composite callback has no single retail proc identity.
-            Callback::Countdown => 0,
+            Callback::Banner => 0,
         };
         ProcKey {
             p_link: self.p_link,
@@ -219,6 +220,9 @@ fn register(
 struct Runtime {
     radial_forces: melee_lb::radial_force::RadialForces,
     item_objects: crate::scene_items::Objects,
+    /// Registration rows (index, p_link, s_link) whose GObjs
+    /// Ground_801C0FB8 creates at stage start.
+    stage_start_rows: Vec<(usize, u8, u8)>,
     stage_objects: [Option<hsd_gobj::GObjId>; 10],
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
@@ -240,6 +244,7 @@ impl Clone for Runtime {
         Self {
             radial_forces: self.radial_forces.clone(),
             item_objects: self.item_objects.clone(),
+            stage_start_rows: self.stage_start_rows.clone(),
             stage_objects: self.stage_objects,
             state: self.state.clone(),
             pads: self.pads,
@@ -255,6 +260,97 @@ impl Clone for Runtime {
 }
 
 impl Runtime {
+    /// Item requests made during a proc, in request order: effects spawn and
+    /// draw now; efAsync requests below s_link 9 wait for the item's link 9
+    /// flush (Item_80269A9C -> efAsync_QueueFlush), which `flush` performs.
+    fn drain_item_events(&mut self, flush: bool) -> Result<()> {
+        let state = &mut self.state;
+        for item in state.items.iter_mut() {
+            if flush {
+                while !item.queued_events.is_empty() {
+                    let event = item.queued_events.remove(0);
+                    item.events.push(event);
+                }
+            }
+            while !item.events.is_empty() {
+                match item.events.remove(0) {
+                    melee_it::ItemEvent::Effect { id, position } => {
+                        state.effects.spawn_positional::<RetailTrig>(
+                            id,
+                            position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                    melee_it::ItemEvent::ScriptEffect(graphics) => {
+                        // it_80278800: the offset's random spread, x then y then z.
+                        let mut offset = graphics.offset;
+                        let range = graphics.range;
+                        offset.x += 2.0 * range.x * (state.rng.randf() - 0.5);
+                        offset.y += 2.0 * range.y * (state.rng.randf() - 0.5);
+                        offset.z += 2.0 * range.z * (state.rng.randf() - 0.5);
+                        let kind = match graphics.id {
+                            // block_680 / 6B4 / 6E8: efAsync EF_SPAWN_CAMERA_SHAKE.
+                            0x513 => 2,
+                            0x514 => 3,
+                            0x515 => 4,
+                            id => anyhow::bail!("it_80278800: item effect {id:#x}"),
+                        };
+                        // efAsync_Spawn below s_link 9 queues on the item.
+                        item.queued_events.push(melee_it::ItemEvent::Quake {
+                            kind,
+                            joint: graphics.bone,
+                            offset,
+                        });
+                    }
+                    melee_it::ItemEvent::Quake {
+                        kind,
+                        joint,
+                        offset,
+                    } => {
+                        ensure!(joint == 0, "item quake at joint {joint}");
+                        // lb_8000B1CC(jobj, offset): the root's world matrix.
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.position,
+                            None,
+                        );
+                        let mut _position = Vec3::ZERO;
+                        hsd_anim::mtx::mtx_mult_vec(&matrix, &offset, &mut _position);
+                        let kind = match kind {
+                            2 => melee_cm::QuakeKind::Small,
+                            3 => melee_cm::QuakeKind::Medium,
+                            4 => melee_cm::QuakeKind::Large,
+                            _ => unreachable!(),
+                        };
+                        state.quakes.request(&mut state.camera, kind);
+                    }
+                    melee_it::ItemEvent::Gust {
+                        center,
+                        frames,
+                        strength,
+                        decay,
+                        phase_step,
+                    } => {
+                        self.radial_forces
+                            .insert(melee_lb::radial_force::RadialImpulse {
+                                center,
+                                frames,
+                                strength,
+                                decay,
+                                phase_step,
+                            });
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
         use crate::scene_items::SceneItems;
         let state = &mut self.state;
@@ -310,10 +406,16 @@ impl Runtime {
                     right: state.assets.arena.right,
                     bottom: state.assets.arena.bottom,
                 },
+                state.assets.items.get(kind),
             ),
             5 => {
                 let contact = state.items.stage_contact(id, &mut state.map);
-                state.items.collide::<SceneItems>(id, contact);
+                state.items.collide::<SceneItems>(
+                    id,
+                    contact,
+                    &mut state.map,
+                    state.assets.items.get(kind),
+                );
             }
             9 => {
                 let item = state.items.get_mut(id).unwrap();
@@ -351,9 +453,11 @@ impl Runtime {
                 item.update_hitboxes();
                 item.decay_reflection_history();
             }
-            14 => state
-                .items
-                .process_events_with_stale::<SceneItems>(id, reflected_stale),
+            14 => state.items.process_events_with_stale::<SceneItems>(
+                id,
+                reflected_stale,
+                state.assets.items.get(kind),
+            ),
             12 | 13 | 16 => {}
             _ => unreachable!(),
         }
@@ -381,22 +485,44 @@ impl Runtime {
         match row.callback {
             Callback::Item { id, phase } => {
                 self.dispatch_item(id, phase)?;
+                self.drain_item_events(phase == 9)?;
             }
-            Callback::Countdown => {
-                if state
-                    .countdown
-                    .as_mut()
-                    .is_some_and(|countdown| countdown.tick())
-                {
-                    for fighter in &mut state.fighters {
-                        crate::scene_fighter::with_fighter!(fighter, |f| f.status.input_frozen =
-                            false);
-                    }
-                    state.countdown = None;
-                    // Ground_801C0FB8 invokes the stage's deferred start callback
-                    // when Versus releases the countdown (grLast_8021A9AC).
-                    if let SceneStage::FinalDestination(stage) = &mut state.stage {
-                        stage.ground.start();
+            Callback::Banner => {
+                let finished = state.banner.as_mut().is_some_and(|banner| banner.tick());
+                if finished {
+                    match state.banner.as_ref().unwrap().kind {
+                        BannerKind::Countdown | BannerKind::SuddenDeathCountdown => {
+                            // fn_8016B7F8: ftLib_800868A4 releases every input freeze.
+                            for fighter in &mut state.fighters {
+                                crate::scene_fighter::with_fighter!(fighter, |f| f
+                                    .status
+                                    .input_frozen =
+                                    false);
+                            }
+                            // Ground_801C0FB8 invokes the stage's deferred start callback
+                            // when Versus releases the countdown (grLast_8021A9AC).
+                            if let SceneStage::FinalDestination(stage) = &mut state.stage {
+                                stage.ground.start();
+                                // Ground_801C0FB8: GObj_Create(stage, p_link, 0)
+                                // and its proc, one per deferred row.
+                                for &(index, p_link, s_link) in &self.stage_start_rows {
+                                    let object = world.create(0, p_link, 0);
+                                    world.add_tagged_proc(object, s_link, index);
+                                }
+                            }
+                            // ifStatus_802F6EA4(4, ..., fn_8016B784): GO.
+                            // Its GObj joins this s_link 0 pass after the
+                            // countdown's, so it takes its first step now.
+                            let mut go = state.go_banner.take().expect("preloaded GO banner");
+                            go.start();
+                            assert!(!go.tick(), "GO banner ended on its first step");
+                            state.banner = Some(go);
+                        }
+                        BannerKind::Go => {
+                            // fn_8016B784: the HUD, and with it the match clock.
+                            state.clock.hud_enabled = true;
+                            state.banner = None;
+                        }
                     }
                 }
             }
@@ -632,7 +758,47 @@ impl Runtime {
                     }
                     state.map.finish_ground_animation();
                 }
-                0x801C461C | 0x801CADBC | 0x801C1D38 | 0x801C0C2C => {}
+                0x801C0C2C => {
+                    let players = std::array::from_fn(|slot| {
+                        state.fighters.get(slot).map(|fighter| {
+                            crate::scene_fighter::with_fighter!(fighter, |f| f.physics.position)
+                        })
+                    });
+                    if let Some(position) = state
+                        .clock
+                        .sudden_death
+                        .then(|| {
+                            state.bomb_rain.drop_position(
+                                state.clock.frame_count,
+                                state.assets.stage_desc.kind,
+                                &players,
+                                state.assets.stage_camera.blast_top(),
+                                &state.assets.drop_markers,
+                                &mut state.rng,
+                            )
+                        })
+                        .flatten()
+                    {
+                        // it_8026BE84 (BobOmbRain kind 6) -> it_8027D670: the
+                        // facing is drawn before the item exists.
+                        let facing = crate::scene_items::facing_toward_fighters(
+                            position,
+                            &mut state.fighters,
+                            &mut state.rng,
+                        );
+                        crate::scene_items::spawn_rain_bomb(
+                            &mut state.items,
+                            &state.assets.items,
+                            &mut state.map,
+                            world,
+                            &mut self.item_objects,
+                            position,
+                            facing,
+                        );
+                        self.drain_item_events(false)?;
+                    }
+                }
+                0x801C461C | 0x801CADBC | 0x801C1D38 => {}
                 _ => {
                     let map_id = map.expect("stage callback map");
                     // Ground_801C2FE0 also runs from FD's controller. Even static
@@ -945,15 +1111,34 @@ impl Simulation {
             link.reserve(PARTICLES_PER_LINK_RESERVE.saturating_sub(link.len()));
         }
         let mut rows = registrations(&state.stage);
-        if state.countdown.is_some() {
+        if state.banner.is_some() {
             rows.push(Registration {
                 s_link: 0,
                 p_link: 14,
                 priority: 0,
                 object: 0,
-                callback: Callback::Countdown,
+                callback: Callback::Banner,
             });
         }
+        // Ground_801C0FB8's GObjs join the scheduler when the stage starts.
+        let start_rows: Vec<(usize, u8, u8)> = state
+            .stage
+            .start_proc_table()
+            .into_iter()
+            .map(|r| {
+                rows.push(Registration {
+                    s_link: r.s_link,
+                    p_link: r.p_link,
+                    priority: r.p_priority,
+                    object: u8::MAX,
+                    callback: Callback::Stage {
+                        map: None,
+                        address: r.address,
+                    },
+                });
+                (rows.len() - 1, r.p_link, r.s_link)
+            })
+            .collect();
         use crate::scene_fighter::with_fighter;
         let interface = std::array::from_fn(|player| {
             melee_if::PercentDisplay::new(with_fighter!(&state.fighters[player], |f| f
@@ -964,6 +1149,7 @@ impl Simulation {
             radial_forces: Default::default(),
             item_objects: Default::default(),
             stage_objects: Default::default(),
+            stage_start_rows: start_rows.clone(),
             state,
             interface,
             match_finished: false,
@@ -978,6 +1164,9 @@ impl Simulation {
         let mut world = World::new(WorldConfig::MELEE);
         let mut objects = BTreeMap::new();
         for (index, row) in rows.iter().enumerate() {
+            if start_rows.iter().any(|&(start, ..)| start == index) {
+                continue;
+            }
             let object = *objects
                 .entry((row.p_link, row.object))
                 .or_insert_with(|| world.create(0, row.p_link, row.priority));
@@ -1025,7 +1214,11 @@ impl Simulation {
             runtime.particle_draws.0.clear();
             runtime.state.effects.direct_draws.clear();
             if let Some((music, unlocked)) = runtime.state.pending_music.take() {
-                runtime.state.selected_music = Some(music.select(unlocked, &mut runtime.state.rng));
+                runtime.state.selected_music = Some(if runtime.state.clock.sudden_death {
+                    music.select_sudden_death()
+                } else {
+                    music.select(unlocked, &mut runtime.state.rng)
+                });
                 let seed = runtime.state.rng.seed;
                 runtime.rng_writers.push((None, seed));
             }
@@ -1044,10 +1237,14 @@ impl Simulation {
         let runtime = self.runtime.as_mut();
         // gm_GetFFAOutcome (8016BF74): the supported two-player stock match ends
         // when only one player retains stocks. The pause takes effect next tick.
-        runtime.match_finished |=
-            runtime.state.fighters.iter().any(|fighter| {
+        runtime.match_finished |= runtime.state.clock.timed_out()
+            || runtime.state.fighters.iter().any(|fighter| {
                 crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
             });
+        // gm_Scene_Vs_OnFrame -> fn_8016CD98, only while no outcome is decided.
+        if !runtime.match_finished {
+            runtime.state.clock.advance();
+        }
         let rows = &self.registrations;
         self.world.run_procs_with(|world, _, index| {
             let row = if index >= crate::scene_items::TAG_BASE {

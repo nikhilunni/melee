@@ -34,6 +34,14 @@ impl GameAssets {
     }
 }
 
+/// fn_8016D634's hold after an outcome: StartMeleeRules xD, 110 frames in
+/// Versus.
+const VERSUS_RESULT_HOLD_FRAMES: usize = 110;
+/// From the outcome's frozen tick to the scene exit: the outcome tick, the
+/// hold (`unk_30++ <= xD`), the frame that sets unk_0 = 3 and the frame whose
+/// gm_801A4B60 leaves the scene.
+const SCENE_EXIT_TICKS: usize = 1 + (VERSUS_RESULT_HOLD_FRAMES + 1) + 1 + 1;
+
 /// Successful public ticks since construction, or since reset.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Tick(pub u64);
@@ -42,6 +50,9 @@ pub struct Tick(pub u64);
 pub enum MatchOutcome {
     Winner(Port),
     Draw,
+    /// The timer ran out with equal stocks; retail continues with a Sudden
+    /// Death match (one stock each at 300%).
+    SuddenDeath,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,6 +113,46 @@ impl Match {
         if !assets.compatible(&config) {
             return Err(StartError::IncompatibleAssets);
         }
+        Self::from_setup(assets, config, setup)
+    }
+
+    /// The Sudden Death match retail plays after this one timed out on a
+    /// stock tie. The finished scene first runs frozen to its exit (TIME!
+    /// held for StartMeleeRules xD frames, fn_8016D634), then the tie screen
+    /// leaves the RNG untouched and the new scene's setup draws carry it on.
+    pub fn sudden_death(&self) -> Result<Self, StartError> {
+        if self.status() != MatchStatus::Finished(MatchOutcome::SuddenDeath) {
+            return Err(StartError::InvalidConfig(
+                "Sudden Death follows a timed-out stock tie",
+            ));
+        }
+        let mut engine = self.engine.clone();
+        let exited = catch_unwind(AssertUnwindSafe(|| {
+            for _ in 0..SCENE_EXIT_TICKS {
+                engine.tick_without_snapshot()?;
+            }
+            crate::initial_state::boundary_seed_after(
+                engine.state().rng.seed,
+                engine.state().assets.stage_desc.kind,
+                engine.state().fighters.len(),
+            )
+        }))
+        .map_err(|p| StartError::Initialization(panic_message(p)))?
+        .map_err(|e| StartError::Initialization(format!("{e:#}")))?;
+        let mut config = self.config.clone();
+        config.rules.stocks = 1;
+        config.rules.time_limit_seconds = None;
+        config.rules.sudden_death = true;
+        config.seed = Seed(exited);
+        let setup = config.setup()?;
+        Self::from_setup(&self.assets, config, setup)
+    }
+
+    fn from_setup(
+        assets: &GameAssets,
+        config: MatchConfig,
+        setup: crate::setup::Setup,
+    ) -> Result<Self, StartError> {
         let engine = catch_unwind(AssertUnwindSafe(|| {
             let state = InitialState::from_assets(&setup, Arc::clone(&assets.inner))?;
             let mut engine = Simulation::new(state);
@@ -142,11 +193,28 @@ impl Match {
     pub fn tick(&self) -> Tick {
         Tick(self.engine.frame())
     }
+    /// The configuration this match was built from (Sudden Death's is derived).
+    pub fn config(&self) -> &MatchConfig {
+        &self.config
+    }
     pub fn status(&self) -> MatchStatus {
         if self.engine.is_faulted() {
             return MatchStatus::Faulted;
         }
         let fighters = &self.engine.state().fighters;
+        if self.engine.state().clock.timed_out() {
+            // The results screen ranks a timed-out stock match by stocks.
+            let stocks = fighters.each_ref().map(|f| f.0.player.stocks);
+            return MatchStatus::Finished(match stocks[0].cmp(&stocks[1]) {
+                std::cmp::Ordering::Greater => {
+                    MatchOutcome::Winner(Port::from_index(fighters[0].0.player.id))
+                }
+                std::cmp::Ordering::Less => {
+                    MatchOutcome::Winner(Port::from_index(fighters[1].0.player.id))
+                }
+                std::cmp::Ordering::Equal => MatchOutcome::SuddenDeath,
+            });
+        }
         let alive = fighters.each_ref().map(|f| f.0.player.stocks > 0);
         match alive {
             [true, false] => MatchStatus::Finished(MatchOutcome::Winner(Port::from_index(

@@ -133,7 +133,14 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 12] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 13] = [
+    // efasync.c 0x410 (80063... efLib_CreateGenerator 0x22A): an item's
+    // explosion (it_80272C08).
+    DustSpawn {
+        request: 0x410,
+        particle: 0x22A,
+        directional: false,
+    },
     // S6: dizzy animation sparkle, efasync.c:117-119.
     DustSpawn {
         request: 0x3E9,

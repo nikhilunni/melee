@@ -898,3 +898,19 @@ Newest first. One line per session: date, what landed, what is next.
   (5208 ticks). Next: Sudden Death (recorded: Bob-omb rain from
   Ground_801C0C2C after frame 1200 -> it_8026BE84/itbombhei.c), then the
   one-minute timeout/tie flow and the coverage audit.
+- 2026-09-26: Sudden Death ported and gated (`sudden_death_bombs_fd_marth`
+  1300 ticks, `sudden_death_idle_fd_marth` 1576 ticks through the Bob-omb KO
+  and GAME; particles match too). HUD banners (countdown, GO) and the match
+  clock (lbl_8046B6A0), the rain (Ground_801C0C2C/801C0A70, Stage_80224FDC),
+  the Bob-omb (`it-bombhei`) and shared item engine pieces: common Articles,
+  script subroutines, map collision, spin, lifetime, hitbox radius at 1/scl.
+  `docs/PORT_NOTES/SUDDEN_DEATH.md`. Next: the timeout (timer, TIME!,
+  standings) and the live transition into Sudden Death.
+- 2026-09-26: Timeout and the live Sudden Death transition. Timer rule and
+  countdown (fn_8016CD98, gm_GetMatchOutcome), stock standings, the frozen
+  hold to the scene exit (fn_8016D634), `Match::sudden_death` (exit seed plus
+  the setup draws), cold Sudden Death setup, GO stepping in its creation
+  pass, FD's start-created procs registered at stage start. New witnesses:
+  `timeout_tie_fd_marth` (3839), `sudden_death_start_fd_marth` (1697), both
+  also rebuilt cold; `melee-lib/tests/match_endings.rs` runs the whole path
+  through the public API bit-exact. Next: the final coverage audit.

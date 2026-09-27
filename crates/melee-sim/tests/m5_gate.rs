@@ -93,6 +93,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     let compare_items = name.starts_with("cstick_throw_")
         || name.starts_with("laser_reflect_")
         || name.starts_with("corpus_")
+        || name.starts_with("sudden_death_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -1453,6 +1454,22 @@ const CORPUS_MATCHES: [(&str, usize); 48] = [
     // tail's hurtbox then decides a later hit.
     ("corpus_v2_s0_e2a_p2", 4337),
 ];
+
+/// A one-minute match idles into TIME! (the timer runs once GO ends and
+/// times out at 0:00 with 59 frames), then Sudden Death after the tie: after
+/// twenty seconds Bob-ombs rain (Ground_801C0C2C), spin as they fall, explode
+/// on landing, and one KOs Marth at 300%.
+#[test]
+fn timeout_and_sudden_death_match_retail() {
+    for (name, ticks) in [
+        ("timeout_tie_fd_marth", 3839),
+        ("sudden_death_start_fd_marth", 1697),
+        ("sudden_death_bombs_fd_marth", 1300),
+        ("sudden_death_idle_fd_marth", 1576),
+    ] {
+        combat_gate_ticks(name, ticks);
+    }
+}
 
 #[test]
 fn corpus_v2_matches_through_game() {

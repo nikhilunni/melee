@@ -2,6 +2,7 @@
 mod camera;
 pub use camera::{decode_camera, decode_subject, magnified};
 mod cold;
+pub(crate) use cold::boundary_seed_after;
 #[cfg(test)]
 mod cold_tests;
 mod collision;
@@ -12,6 +13,7 @@ pub(crate) use melee_mp::CollMap;
 pub(crate) use saved_pose::SavedPose;
 pub(crate) mod particles;
 mod saved_pose;
+mod scene_flow;
 pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
@@ -69,7 +71,12 @@ pub struct InitialState {
     /// Match setup still owes Stage_80225074 before the first observation.
     pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
     pub(crate) selected_music: Option<i32>,
-    pub(crate) countdown: Option<crate::countdown::Countdown>,
+    /// The HUD banner running now (countdown or GO).
+    pub(crate) banner: Option<crate::banner::Banner>,
+    /// GO, loaded up front and started when the countdown ends.
+    pub(crate) go_banner: Option<crate::banner::Banner>,
+    pub(crate) clock: crate::match_clock::MatchClock,
+    pub(crate) bomb_rain: melee_gr::bomb_rain::BombRain,
     pub(crate) resume: scheduler_resume::SchedulerResume,
     /// game_camera and the screen-shake models it drives.
     pub(crate) camera: melee_cm::GameCamera,
@@ -208,6 +215,7 @@ impl InitialState {
         // The camera and its subjects: the list runs newest first, and each
         // fighter linked its subject at creation (fighter.c:893). A fighter the
         // setup resume creates keeps the subject its spawn reset.
+        let (clock, bomb_rain) = scene_flow::restore_clock(&saved)?;
         let (camera, subjects) = camera::restore(&saved)?;
         ensure!(
             subjects.len() <= fighters.len(),
@@ -390,14 +398,22 @@ impl InitialState {
             spawn_counter,
             // A match-start savestate is taken before the first countdown tick, so the
             // Versus countdown (and its input release, ftLib_800868A4 at tick 85) starts
-            // from frame 0 exactly as in a cold start.
-            countdown: if match_start {
-                Some(crate::countdown::Countdown::from_archive(
+            // from frame 0 exactly as in a cold start. Later boundaries resume the
+            // banner running in saved MEM1, if any.
+            banner: if match_start {
+                Some(scene_flow::match_start_countdown(
+                    &clock,
                     &assets.interface,
                 )?)
             } else {
-                None
+                scene_flow::restore_banner(&saved, &assets.interface)?
             },
+            go_banner: Some(crate::banner::Banner::preload(
+                &assets.interface,
+                crate::banner::BannerKind::Go,
+            )?),
+            clock,
+            bomb_rain,
             pending_music,
             selected_music: None,
             assets,

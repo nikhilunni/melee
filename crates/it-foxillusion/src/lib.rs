@@ -46,7 +46,7 @@ macro_rules! ghost {
             }
             /// itFoxIllusion_Logic14_DmgDealt (8029CF8C): hitting a fighter
             /// never puts the ghost into hitlag (xCA8 = 0).
-            fn damage_dealt(item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+            fn damage_dealt(item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
                 item.hitlag_damage = 0;
                 false
             }
@@ -117,7 +117,7 @@ fn end_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
         }
     }
 }
-fn collision(_item: &mut ItemCore, _ctx: &ItemCollisionContext) -> bool {
+fn collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
     false
 }
 

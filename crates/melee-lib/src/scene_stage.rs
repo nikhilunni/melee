@@ -79,6 +79,13 @@ impl SceneStage {
             Self::Pupupu(s) => s.proc_table(),
         }
     }
+    /// Procs whose GObjs the stage creates when the countdown releases it.
+    pub fn start_proc_table(&self) -> Vec<ProcRegistration> {
+        match self {
+            Self::FinalDestination(s) => s.start_proc_table(),
+            _ => Vec::new(),
+        }
+    }
     pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<bool> {
         match self {
             Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),

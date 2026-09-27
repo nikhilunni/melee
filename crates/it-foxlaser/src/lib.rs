@@ -36,19 +36,19 @@ macro_rules! laser {
                 // motion once in initialize_laser; running motion 0 here would
                 // execute its hitbox commands before the selected throw script.
             }
-            fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext) -> bool {
+            fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
                 true
             }
-            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext) -> bool {
+            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
                 true
             }
-            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext) -> bool {
+            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
                 true
             }
-            fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext) -> bool {
+            fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
                 true
             }
-            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext) -> bool {
+            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
                 if item.facing != ctx.reflected_facing {
                     item.facing = ctx.reflected_facing;
                     item.rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(item.facing)) as f32;
@@ -62,7 +62,7 @@ macro_rules! laser {
                 item.model_scale.z = ray.scale;
                 false
             }
-            fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext) -> bool {
+            fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
                 // lbVector_Mirror, 8000DC84/8C/9C: three fmadds.
                 let n = ctx.shield_normal;
                 let dot = gekko_math::fma::fmadds(n.x, item.velocity.x, n.y * item.velocity.y);
@@ -168,7 +168,7 @@ fn laser_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
     ray.previous_position = item.position;
 }
 /// itFoxlaser_UnkMotion1_Coll: environment contact expires next animation tick.
-fn laser_collision(item: &mut ItemCore, ctx: &ItemCollisionContext) -> bool {
+fn laser_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if ctx.stage_contact {
         item.life_timer = 1.0;
     }
@@ -326,11 +326,11 @@ fn blaster_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
 fn remove_blaster(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {
     true
 }
-fn remove_collision(_item: &mut ItemCore, _ctx: &ItemCollisionContext) -> bool {
+fn remove_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
     true
 }
 fn empty_physics(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {}
-fn empty_collision(_item: &mut ItemCore, _ctx: &ItemCollisionContext) -> bool {
+fn empty_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
     false
 }
 fn external_blaster(_item: &mut ItemCore, _ctx: &ItemAnimationContext<'_>) -> bool {

@@ -17,6 +17,7 @@ melee_it::item_kinds! {
         FalcoLaser: it_foxlaser::FalcoLaser,
         FoxBlaster: it_foxlaser::FoxBlaster,
         FalcoBlaster: it_foxlaser::FalcoBlaster,
+        BombHei: it_bombhei::BombHei,
     }
 }
 
@@ -45,12 +46,21 @@ impl Resources {
         characters: &[crate::assets::CharacterArchive],
     ) -> Result<Self> {
         let archive = |file| -> Result<Archive> { Ok(Archive::parse(&read(file)?)?) };
-        let common = archive("ItCo.dat")?;
-        let common = ItemCommonData::read(
-            &common,
-            common.public("itPublicData").context("itPublicData")?,
-        )?;
-        let mut kinds = Vec::new();
+        let common_archive = archive("ItCo.dat")?;
+        let public = common_archive
+            .public("itPublicData")
+            .context("itPublicData")?;
+        let common = ItemCommonData::read(&common_archive, public)?;
+        let mut kinds = vec![(
+            ItemKind::BombHei,
+            ItemAssets::from_common(
+                &common_archive,
+                public,
+                ItemKind::BombHei,
+                &it_bombhei::ARTICLE_STATES,
+                it_bombhei::SPECIAL_ATTRIBUTES,
+            )?,
+        )];
         let mut visual_archives = Vec::new();
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
@@ -188,6 +198,70 @@ pub fn request(
             world.add_tagged_proc(object, phase, tag(id, phase));
         }
         objects.push((id, object));
+    }
+}
+
+/// ftLib_800864A8 (800864A8) with no excluded fighter: face toward where more
+/// fighters stand, by the sign of each camera bone's x relative to
+/// `position`; a tie is a coin flip (HSD_Randi(2)).
+pub fn facing_toward_fighters(
+    position: hsd_types::Vec3,
+    fighters: &mut [crate::scene_fighter::SceneFighter],
+    rng: &mut gekko_math::HsdRng,
+) -> f32 {
+    let mut balance = 0;
+    for fighter in fighters.iter_mut() {
+        crate::scene_fighter::with_fighter!(fighter, |f| {
+            // x221F_b3: sleeping fighters do not count.
+            if !f.status.disabled {
+                let x = f.camera_bone_position().x - position.x;
+                balance += if x > 0.0 {
+                    1
+                } else if x < 0.0 {
+                    -1
+                } else {
+                    0
+                };
+            }
+        });
+    }
+    if balance == 0 {
+        balance = if rng.randi(2) != 0 { 1 } else { -1 };
+    }
+    if balance < 0 {
+        -1.0
+    } else {
+        1.0
+    }
+}
+
+/// it_8026BE84 (BobOmbRain kind 6) -> it_8027D670: a lit Bob-omb at `position`.
+pub fn spawn_rain_bomb(
+    pool: &mut ItemPool,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    position: hsd_types::Vec3,
+    facing: f32,
+) {
+    let before = pool.len();
+    request(
+        pool,
+        resources,
+        map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_bombhei::rain_spawn(position, facing)),
+        RequestOwner {
+            held_item: None,
+            stale_multiplier: 1.0,
+        },
+    );
+    if pool.len() > before {
+        let lifetime = pool.common().lifetime;
+        let item = pool.iter_mut().last().expect("spawned Bob-omb");
+        it_bombhei::light(item, resources.get(ItemKind::BombHei), lifetime);
     }
 }
 

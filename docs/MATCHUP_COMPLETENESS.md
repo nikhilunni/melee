@@ -12,8 +12,8 @@ hits and simultaneous hit logs are implemented; seven generated full matches
 match retail start to GAME after twelve shared fixes
 (`PORT_NOTES/CORPUS_BRIDGE_FIXES.md`). Open: captured damage outside
 low-capture/throw states, Reflector ground-to-air, timer/Sudden Death
-(Bob-omb rain), and bridging the rest of the corpus. The screen KO landed
-2026-09-26.
+bridging the rest of the corpus. The screen KO, the timeout and Sudden
+Death (with the live transition and its Bob-omb rain) landed 2026-09-26.
 
 ## Paused handoff — 2026-09-12
 
@@ -48,9 +48,9 @@ tie resolution explicitly; do not silently redefine a complete match as only
 one ending through stock exhaustion. CPU, other stages/characters, random
 items, and exact rendered pixels are separate milestones.
 
-Current API limitation: `MatchRules` explicitly supports no timer. Adding the
-eight-minute rule and its terminal behavior is part of this milestone, not a
-configuration already available to the UI.
+`MatchRules::time_limit_seconds` sets the timer (480 for eight minutes). A
+timed-out stock tie reports `MatchOutcome::SuddenDeath`, and
+`Match::sudden_death` continues into the retail Sudden Death match.
 
 ## Work order
 
@@ -100,7 +100,7 @@ This is a partial source audit, not an exhaustive reachability classification.
 | Shared contacts | Mutual clank, both priority winners, no-rebound and airborne controls pass directed raw/SRT/particle/allocation checks and both full profiles | Phantom, invincible and simultaneous contact reachability; [contact notes](PORT_NOTES/CONTACT_CLOSURE.md) |
 | Shield exits | Standing/dash/run grabs, C-stick jumps, delayed powershield and reflection implemented; reflector overflow now passes the full 600-tick fall/down/stand recovery trajectory with both full profiles passing | Remaining depletion combinations |
 | Ledge variants | C-stick options and hang timeout pass ten directed fighter/RNG/particle, raw, SRT and allocation gates; slow rows are source-ported | Recorded slow-option witnesses, occupied ledges, further priorities and wall/ceiling interactions |
-| Match endings | Revival lifecycle and the screen KO gated. Natural one-minute stock fixture reaches Sudden Death; `sudden_death_bombs_fd_marth` matches until the first Bob-omb (tick 1204) | Clock/scene transitions, tie resolution and Sudden Death Bob-omb closure |
+| Match endings | Revival lifecycle, the screen KO, the timeout (TIME!, standings, scene exit), the live transition into Sudden Death and its Bob-omb rain through the bomb KO are gated, cold and from savestates; [notes](PORT_NOTES/SUDDEN_DEATH.md) | Bob-omb interactions beyond the idle rain (pickup, throws, hits on bombs); simultaneous-KO draws |
 | Diagonal smash | Authored fallback and stick priority implemented; four directed Fox/Marth gates pass | Full regression/commit status in TRACKER.md |
 | DamageFlyRoll | Landed (`PORT_NOTES/DAMAGE_FLY_ROLL.md`): three Fox witnesses pass | Marth witness; DamageFly wall/ceiling tech chain |
 | Hitstun exit | Attack entry, tumble/ordinary input priority and air-dodge knockback decay implemented; seven directed gates pass | Full regression/commit status in TRACKER.md; `PORT_NOTES/POST_HITSTUN_INPUT.md` |

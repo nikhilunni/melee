@@ -395,6 +395,7 @@ pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::
         primary: r.s32(row + 4)?,
         alternate: r.s32(row + 8)?,
         alternate_chance: r.s16(row + 0x16)?,
+        sudden_death: r.s32(row + 0xC)?,
     })
 }
 

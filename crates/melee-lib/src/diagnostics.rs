@@ -108,6 +108,8 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             stage: stage_descriptor(&self.stage).unwrap(),
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,
+            time_limit: self.time_limit,
+            sudden_death: self.sudden_death,
         })
     }
     fn is_cold(&self) -> bool {

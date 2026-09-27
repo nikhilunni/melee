@@ -17,6 +17,8 @@ pub struct Assets {
     pub(crate) items: crate::scene_items::Resources,
     pub arena: melee_ft::fighter::life::Arena,
     pub stage_camera: melee_cm::StageCamera,
+    /// Ground_801C2D24 at the markers the Sudden Death rain reads.
+    pub drop_markers: melee_gr::bomb_rain::DropMarkers,
     pub(crate) fighters: ManuallyDrop<[FighterAssets; 2]>,
     pub stage: Archive,
     pub(crate) visual_effect_archives: [Archive; 3],
@@ -114,6 +116,25 @@ impl Assets {
             player_revival_markers: stage_desc.kind == melee_types::GrKind::Last,
         };
         let stage_camera = stage_camera(&stage_desc, marker(0x94)?, camera, [low, high])?;
+        // Ground_801C2D24 fails for a marker the stage binds no joint to.
+        let bound_marker = |index: i16| -> Result<Option<hsd_types::Vec3>> {
+            if stage_desc
+                .position_bindings
+                .iter()
+                .any(|b| b.stage_position == index)
+            {
+                marker(index).map(Some)
+            } else {
+                Ok(None)
+            }
+        };
+        let mut drop_markers = melee_gr::bomb_rain::DropMarkers::default();
+        for (i, slot) in drop_markers.items.iter_mut().enumerate() {
+            *slot = bound_marker(melee_gr::bomb_rain::ITEM_MARKER_FIRST + i as i16)?;
+        }
+        for (i, slot) in drop_markers.spawns.iter_mut().enumerate() {
+            *slot = bound_marker(i as i16)?;
+        }
         let fox_effects = archive("EfFxData.dat")?;
         let mars_effects = archive("EfMsData.dat")?;
         let effect_resources = melee_ef::Resources::load(&effects, &fox_effects, &mars_effects)?;
@@ -130,6 +151,7 @@ impl Assets {
             items,
             arena,
             stage_camera,
+            drop_markers,
             fighters: ManuallyDrop::new(fighters),
             stage,
             stage_descriptor,

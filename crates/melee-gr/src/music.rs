@@ -18,8 +18,22 @@ pub struct MusicParameters {
     pub primary: i32,
     pub alternate: i32,
     pub alternate_chance: i16,
+    /// StageParam xC: the Sudden Death track.
+    pub sudden_death: i32,
 }
+/// Ground_801C24F8's track id that asks for a random character track.
+const RANDOM_CHARACTER_TRACK: i32 = -2;
 impl MusicParameters {
+    /// Stage_80225074 under the Sudden Death rule (gm_8016B238): arg 0x11,
+    /// so no unlock-rule draw, and StageParam xC. (Arg 0x12, after an
+    /// alternate Versus track, would pick x10; a cold start has none.)
+    pub fn select_sudden_death(self) -> i32 {
+        assert_ne!(
+            self.sudden_death, RANDOM_CHARACTER_TRACK,
+            "Ground_801C24F8: random Sudden Death track"
+        );
+        self.sudden_death
+    }
     /// ground.c:1398-1406; gm_80164ABC checks the eleven unlock bits.
     /// Retail 801C26AC calls HSD_Randi(100) before comparing the threshold.
     pub fn select(self, all_characters_unlocked: bool, rng: &mut HsdRng) -> i32 {
@@ -44,6 +58,7 @@ mod tests {
             primary: 1,
             alternate: 2,
             alternate_chance: 0,
+            sudden_death: 3,
         };
         let mut rng = HsdRng::new(17);
         assert_eq!(music.select(false, &mut rng), 1);
@@ -66,6 +81,7 @@ mod primary_tests {
                 primary: 7,
                 alternate: -1,
                 alternate_chance: 100,
+                sudden_death: 8,
             };
             let mut rng = HsdRng::new(17);
             assert_eq!(music.select(unlocked, &mut rng), 7);

@@ -119,6 +119,14 @@ impl PlayerConfig {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MatchRules {
     pub stocks: u8,
+    /// StartMeleeRules time_limit: a counting-down timer, in seconds (eight
+    /// minutes is 480). When it runs out the player with more stocks wins; a
+    /// stock tie goes to Sudden Death.
+    pub time_limit_seconds: Option<u32>,
+    /// A Sudden Death match (gm_SetupSuddenDeath): one stock at 300%, its own
+    /// countdown and the Bob-omb rain, no timer. `Match::sudden_death`
+    /// continues a timed-out tie into one.
+    pub sudden_death: bool,
     /// Retail music rule 6 consults the roster unlock state.
     pub all_characters_unlocked: bool,
 }
@@ -126,6 +134,8 @@ impl Default for MatchRules {
     fn default() -> Self {
         Self {
             stocks: 4,
+            time_limit_seconds: None,
+            sudden_death: false,
             all_characters_unlocked: true,
         }
     }
@@ -162,6 +172,16 @@ impl MatchConfig {
                 "players must occupy distinct ascending ports",
             ));
         }
+        if self.rules.sudden_death
+            && (self.rules.stocks != 1 || self.rules.time_limit_seconds.is_some())
+        {
+            return Err(StartError::InvalidConfig(
+                "Sudden Death has one stock and no timer",
+            ));
+        }
+        if self.rules.time_limit_seconds == Some(0) {
+            return Err(StartError::InvalidConfig("a time limit must be positive"));
+        }
         if !(1..=99).contains(&self.rules.stocks) {
             return Err(StartError::InvalidConfig("stocks must be in 1..=99"));
         }
@@ -181,6 +201,8 @@ impl MatchConfig {
             stage: self.stage.descriptor(),
             seed: Some(self.seed.0),
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
+            time_limit: self.rules.time_limit_seconds,
+            sudden_death: self.rules.sudden_death,
         })
     }
 }

@@ -7,21 +7,34 @@ pub struct ItemAnimationContext<'a> {
 }
 pub struct ItemPhysicsContext<'a> {
     pub owner: Option<&'a ItemOwner>,
+    pub assets: &'a ItemAssets,
 }
-pub struct ItemCollisionContext {
+pub struct ItemCollisionContext<'a> {
     pub stage_contact: bool,
+    pub map: &'a mut melee_mp::CollMap,
+    pub assets: &'a ItemAssets,
 }
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ItemEventContext {
+#[derive(Clone, Copy)]
+pub struct ItemEventContext<'a> {
     pub reflected_facing: f32,
     pub shield_normal: hsd_types::Vec3,
+    pub assets: &'a ItemAssets,
+}
+impl<'a> ItemEventContext<'a> {
+    pub fn new(assets: &'a ItemAssets) -> Self {
+        Self {
+            reflected_facing: 0.0,
+            shield_normal: hsd_types::Vec3::ZERO,
+            assets,
+        }
+    }
 }
 #[derive(Clone, Copy)]
 pub struct ItemStateRow {
     pub animation_id: i32,
     pub animation: fn(&mut ItemCore, &ItemAnimationContext<'_>) -> bool,
     pub physics: fn(&mut ItemCore, &ItemPhysicsContext<'_>),
-    pub collision: fn(&mut ItemCore, &ItemCollisionContext) -> bool,
+    pub collision: fn(&mut ItemCore, &mut ItemCollisionContext<'_>) -> bool,
 }
 /// `it/kinds/types.h:26`: one implementation per ItemLogicTable row.
 pub trait ItemLogic {
@@ -47,25 +60,25 @@ pub trait ItemLogic {
     fn dropped(_item: &mut ItemCore) {}
     fn thrown(_item: &mut ItemCore) {}
     fn entered_air(_item: &mut ItemCore) {}
-    fn damage_dealt(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn damage_dealt(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn damage_received(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn damage_received(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn reflected(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn reflected(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn clanked(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn clanked(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn absorbed(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn absorbed(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn shield_bounced(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn shield_bounced(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
-    fn hit_shield(_item: &mut ItemCore, _context: &ItemEventContext) -> bool {
+    fn hit_shield(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
     fn owner_removed(item: &mut ItemCore, owner: u8) {
@@ -114,13 +127,13 @@ pub struct ItemLogicRow {
     pub dropped: fn(&mut ItemCore),
     pub thrown: fn(&mut ItemCore),
     pub entered_air: fn(&mut ItemCore),
-    pub damage_dealt: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub damage_received: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub reflected: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub clanked: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub absorbed: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub shield_bounced: fn(&mut ItemCore, &ItemEventContext) -> bool,
-    pub hit_shield: fn(&mut ItemCore, &ItemEventContext) -> bool,
+    pub damage_dealt: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub damage_received: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub reflected: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub clanked: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub absorbed: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub shield_bounced: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub owner_removed: fn(&mut ItemCore, u8),
     pub control: fn(&mut ItemCore, ItemControl),
 }

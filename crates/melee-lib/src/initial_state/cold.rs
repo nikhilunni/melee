@@ -45,15 +45,11 @@ impl InitialState {
         // The supplied seed is after creation, before music. grLast's four
         // draws (Battle/Story: one; Dream Land: two), then two CPU draws per slot.
         // Invert this fixed, audited interval; never search an oracle at runtime.
-        let stage_draws = match assets.stage_desc.kind {
-            GrKind::Last => 4,
-            GrKind::Battle | GrKind::Story => 1,
-            GrKind::OldPupupu => 2,
-            _ => anyhow::bail!("cold setup supports FD, Battlefield, Yoshi's Story and Dream Land"),
-        };
         let boundary_seed = scenario.seed.expect("validated cold seed");
-        let fighter_draws = CPU_SETUP_DRAWS_PER_PLAYER * scenario.fighters.len();
-        let mut rng = HsdRng::new(before_setup(boundary_seed, stage_draws + fighter_draws));
+        let mut rng = HsdRng::new(before_setup(
+            boundary_seed,
+            setup_draws(assets.stage_desc.kind, scenario.fighters.len())?,
+        ));
         let mut particles = ParticleSystem::default();
         let (stage, mut stage_animations) = initialize_stage(&assets, &mut rng, &mut particles)?;
         for (&id, animation) in &mut stage_animations {
@@ -95,9 +91,26 @@ impl InitialState {
                 }),
             )?,
             spawn_counter: melee_ft::fighter::SpawnCounter(3),
-            countdown: Some(crate::countdown::Countdown::from_archive(
+            banner: Some(crate::banner::Banner::from_archive(
                 &assets.interface,
+                if scenario.sudden_death {
+                    crate::banner::BannerKind::SuddenDeathCountdown
+                } else {
+                    crate::banner::BannerKind::Countdown
+                },
             )?),
+            go_banner: Some(crate::banner::Banner::preload(
+                &assets.interface,
+                crate::banner::BannerKind::Go,
+            )?),
+            clock: crate::match_clock::MatchClock {
+                sudden_death: scenario.sudden_death,
+                timer: scenario
+                    .time_limit
+                    .map(crate::match_clock::CountdownTimer::start),
+                ..Default::default()
+            },
+            bomb_rain: Default::default(),
             assets,
             map,
             stage,
@@ -118,6 +131,29 @@ impl InitialState {
 }
 
 /// Inverse of the odd HSD LCG multiplier, modulo 2^32.
+/// The setup's fixed RNG interval: grLast's four draws (Battle/Story: one;
+/// Dream Land: two), then two CPU draws per slot.
+fn setup_draws(stage: GrKind, players: usize) -> Result<usize> {
+    let stage_draws = match stage {
+        GrKind::Last => 4,
+        GrKind::Battle | GrKind::Story => 1,
+        GrKind::OldPupupu => 2,
+        _ => anyhow::bail!("cold setup supports FD, Battlefield, Yoshi's Story and Dream Land"),
+    };
+    Ok(stage_draws + CPU_SETUP_DRAWS_PER_PLAYER * players)
+}
+
+/// A scene built after another one ends: the RNG carries over unchanged
+/// through the scenes between (the Sudden Death tie screen draws nothing),
+/// so the new scene's boundary seed is the old seed after its setup draws.
+pub(crate) fn boundary_seed_after(seed: u32, stage: GrKind, players: usize) -> Result<u32> {
+    let mut rng = HsdRng::new(seed);
+    for _ in 0..setup_draws(stage, players)? {
+        rng.rand();
+    }
+    Ok(rng.seed)
+}
+
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;
     for _ in 0..draws {
@@ -258,6 +294,9 @@ fn initialize_stage(
 }
 
 /// fn_8016E2BC: populate Player slots and create fighters in port order.
+/// player_standings_inline: PlayerInitData x12 = 300 for Sudden Death.
+const SUDDEN_DEATH_DAMAGE: f32 = 300.0;
+
 fn create_players(
     scenario: &Setup,
     assets: &Assets,
@@ -294,7 +333,11 @@ fn create_players(
             position: positions[p],
             facing: facing[p],
             scale: 1.0,
-            damage: 0.0,
+            damage: if scenario.sudden_death {
+                SUDDEN_DEATH_DAMAGE
+            } else {
+                0.0
+            },
             cpu_mode: 4,
             cpu_level: 1,
         };

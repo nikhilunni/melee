@@ -18,6 +18,7 @@ members = [
     "crates/melee-it",
     "crates/it-foxlaser",
     "crates/it-foxillusion",
+    "crates/it-bombhei",
     "crates/melee-ft",
     "crates/melee-cmd",
     "crates/melee-coll",

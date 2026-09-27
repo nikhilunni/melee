@@ -4,6 +4,8 @@ mod engine;
 mod reflection;
 pub use reflection::*;
 mod logic;
+mod map;
+pub use map::AirContact;
 mod spawn;
 pub use engine::*;
 pub use logic::*;

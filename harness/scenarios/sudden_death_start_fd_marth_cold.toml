@@ -1,0 +1,26 @@
+# Parameters only: the Sudden Death scene built from scratch (one stock each
+# at 300%, its countdown, the rain rule) and compared with the retail scene
+# recorded from its first frame. Seed is after stage/fighter creation, before
+# music (the savestate's).
+name = "sudden_death_start_fd_marth_cold"
+expected = "sudden_death_start_fd_marth"
+frames = 1697
+seed = 0xFDD20686
+stage = "FinalDestination"
+all_characters_unlocked = true
+sudden_death = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 0
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 0
+stocks = 1
+controller = "idle"

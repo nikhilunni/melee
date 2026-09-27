@@ -52,12 +52,20 @@ pub fn revival(fighter: &mut Fighter, phase: CameraPhase<'_>) {
 
 /// ftLib_800866DC: the camera bone's world position.
 fn camera_bone(fighter: &mut FighterCore) -> Vec3 {
-    caches::bone_position(
-        &mut fighter.skeleton,
-        fighter.animation.root,
-        fighter.attributes.camera.camera_zoom_target_bone as usize,
-        fighter.attributes.camera.zoom_offset,
-    )
+    fighter.camera_bone_position()
+}
+
+impl FighterCore {
+    /// ftLib_800866DC (800866DC): the camera bone's world position, offset by
+    /// the zoom offset (co_attrs x170).
+    pub fn camera_bone_position(&mut self) -> Vec3 {
+        caches::bone_position(
+            &mut self.skeleton,
+            self.animation.root,
+            self.attributes.camera.camera_zoom_target_bone as usize,
+            self.attributes.camera.zoom_offset,
+        )
+    }
 }
 
 /// ftCamera_80076018: the ftData camera box scaled by the fighter's y

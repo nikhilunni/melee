@@ -19,6 +19,12 @@ pub struct Setup {
     pub stage: &'static crate::scene_stage::StageDescriptor,
     pub seed: Option<u32>,
     pub all_characters_unlocked: Option<bool>,
+    /// A counting-down match timer, in seconds.
+    pub time_limit: Option<u32>,
+    /// The Sudden Death scene after a timed-out tie (gm_SetupSuddenDeath,
+    /// gm_Scene_SuddenDeath_OnEnter): one stock each at 300%, its own
+    /// countdown and the Bob-omb rain.
+    pub sudden_death: bool,
 }
 impl Setup {
     pub fn stage_descriptor(&self) -> &'static crate::scene_stage::StageDescriptor {

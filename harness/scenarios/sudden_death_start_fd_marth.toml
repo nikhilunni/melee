@@ -1,0 +1,22 @@
+# Sudden Death from its first frame: after the one-minute tie (TIME!, then A
+# pressed twice on the tie screen) both fighters start their Entry at 300%
+# with one stock. Idle through the Sudden Death countdown, GO, the Bob-omb
+# rain and the bomb KO. Boundary: sudden_death_start_fd_marth4.sav
+# (save-when-fighters, recorded 2026-09-26); tick clock.
+name = "sudden_death_start_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_start_fd_marth4.sav"
+frames = 1697
+seed = 1
+stage = "FinalDestination"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

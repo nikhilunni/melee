@@ -2,6 +2,19 @@
 use super::*;
 const REVERSE_BRAKE_DUST_REQUEST: u16 = 0x400;
 impl Effects {
+    /// efSync_Spawn -> efAsync_Dispatch's positional generator rows for an
+    /// owner without effect state (items): the generator starts at once.
+    pub fn spawn_positional<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        position: Vec3,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        self.spawn_dust_generator::<T>(id, position, 1.0, bank, particles, rng)
+    }
+
     pub(super) fn spawn_dust_generator<T: InverseTrig>(
         &mut self,
         id: u16,

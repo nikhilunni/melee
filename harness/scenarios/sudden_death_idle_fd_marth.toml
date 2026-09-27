@@ -1,0 +1,21 @@
+# Sudden Death after a one-minute Marth/Fox timeout tie (recorded 2026-09-12):
+# both fighters idle at 300% through the Bob-omb rain until a bomb KO ends it.
+# Boundary: sudden_death_fd_marth4_timer60.sav, saved when both fighters were
+# in Wait; tick clock (dolphin/tick_trace.py).
+name = "sudden_death_idle_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames = 1576
+seed = 1
+stage = "FinalDestination"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

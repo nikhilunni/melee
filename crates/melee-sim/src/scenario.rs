@@ -20,6 +20,12 @@ pub struct Scenario {
     /// Cold-start seed; a restored match uses its saved seed instead.
     #[serde(default)]
     pub seed: Option<u32>,
+    /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
+    #[serde(default)]
+    pub sudden_death: bool,
+    /// A cold match's counting-down timer, in seconds.
+    #[serde(default)]
+    pub time_limit: Option<u32>,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -294,6 +300,8 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
             stage: self.stage_descriptor(),
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,
+            time_limit: self.time_limit,
+            sudden_death: self.sudden_death,
         })
     }
     fn is_cold(&self) -> bool {

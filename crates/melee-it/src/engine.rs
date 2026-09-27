@@ -5,7 +5,7 @@ use crate::{
 use hsd_types::Vec3;
 use melee_cmd::{Command, ScriptState};
 use melee_coll::hitbox::HitCapsule;
-use melee_types::ItemKind;
+use melee_types::{GroundOrAir, ItemKind};
 
 /// Checked port storage budget. Retail Item_8026784C does NOT cap hold-kind 8;
 /// unlike the admission limits this is deliberately not called a retail bound.
@@ -44,12 +44,73 @@ pub struct AfterimageState {
     pub secondary_position: Vec3,
     pub secondary_rotation: Vec3,
 }
+/// Requests an item makes of the scene during a proc, drained after it.
+#[derive(Clone, Debug)]
+pub enum ItemEvent {
+    /// efSync_Spawn(id, gobj, &pos): a world-space effect.
+    Effect { id: u16, position: Vec3 },
+    /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
+    /// a random spread (it_80278800) when the scene resolves it.
+    ScriptEffect(melee_types::combat::GraphicsCommand),
+    /// EF_SPAWN_CAMERA_SHAKE: Camera_RequestQuake(kind) at a joint offset.
+    Quake {
+        kind: u16,
+        joint: usize,
+        offset: Vec3,
+    },
+    /// lb_800119DC: a radial gust.
+    Gust {
+        center: Vec3,
+        frames: i32,
+        strength: f32,
+        decay: f32,
+        phase_step: f32,
+    },
+}
+
+/// Item_StateChangeFlags (it/forward.h) that Item_80268E5C consults.
+pub mod state_change {
+    pub const ANIM_UPDATE: u32 = 1 << 1;
+    pub const HIT_PRESERVE: u32 = 1 << 4;
+    pub const CMD_UPDATE: u32 = 1 << 8;
+}
+
 #[derive(Clone, Debug)]
 pub enum ItemScratch {
     Afterimage(AfterimageState),
     Ray(RayState),
     Held(HeldState),
+    Bomb(BombState),
     None,
+}
+/// Item.xDD4_itemVar.bombhei (itbombhei.c).
+#[derive(Clone, Debug, Default)]
+pub struct BombState {
+    /// xDD4: the current phase's frame countdown.
+    pub countdown: i32,
+    /// xDD8: the blink's scale direction, +1 or -1.
+    pub blink_direction: i32,
+    /// xDDC: it_80280B60 has run.
+    pub exploded: bool,
+    /// xDE0: the fuse is lit.
+    pub lit: bool,
+    /// xDE4: walked before (it_8027E978).
+    pub walked: bool,
+    /// xDE8: the thrown scale factor.
+    pub throw_scale: f32,
+    /// xDEC: frames left in the whole life, counting every phase.
+    pub life_frames: f32,
+    /// xDF0: frames left on the lit fuse.
+    pub fuse: f32,
+    /// xDF4: the facing to restore after turning.
+    pub turn_facing: f32,
+    /// xDF8 / xDFC: per-frame squash and tilt while waking.
+    pub squash_step: f32,
+    pub tilt_step: f32,
+    /// xE04: the per-frame turn.
+    pub turn_step: f32,
+    /// xE0C: the velocity before this frame's landing.
+    pub landing_velocity: Vec3,
 }
 #[derive(Clone, Debug)]
 pub struct ItemCore {
@@ -106,6 +167,27 @@ pub struct ItemCore {
     pub hitboxes: [Option<HitCapsule>; 4],
     pub scratch: ItemScratch,
     pub hit_flags: [desc::ItemHitFlags; 4],
+    /// x378_itemColl, created by it_80275E98 at spawn.
+    pub collision: Option<melee_types::mp::CollData>,
+    /// xDC8 x17: the model rotation axis the fixed ECB follows (0 Z, 1 X, else Y).
+    pub rotation_axis: u8,
+    /// xC30: the floor (or wall/ceiling) line of the last map contact.
+    pub floor_line: i32,
+    /// xD5C: it_80277544's fall-through-platform state.
+    pub platform_drop: u32,
+    /// JOBJ_HIDDEN on the model (it_80280B60).
+    pub hidden: bool,
+    /// spin_spd: ItemAttr xC, degrees-per-frame scale of the spin.
+    pub spin_rate: f32,
+    /// xD3C_spinSpeed: radians added to the model rotation per airborne frame.
+    pub spin_speed: f32,
+    /// xDC8 x19: the spin keeps its sign regardless of facing.
+    pub spin_ignores_facing: bool,
+    /// xDC8 x15 (it_8026B390 / it_8026B3A8): the common lifetime counts down.
+    pub lifetime_enabled: bool,
+    /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
+    pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
+    pub events: melee_types::fixed::FixedVec<ItemEvent, 8>,
 }
 /// The tag that keeps item victim ids apart from fighter spawn numbers.
 const ITEM_VICTIM: u32 = 1 << 31;
@@ -141,43 +223,6 @@ impl ItemCore {
             self.pending_damage_dealt = gekko_math::msl::fctiwz(damage);
         }
     }
-    /// Item_80267130 -> it_80275E98 -> it_80276100, before kind initialization.
-    /// Even a clear spawn path passes through mpColl's six-unit subdivisions;
-    /// assigning the muzzle directly misses their float rounding boundary.
-    pub fn initialize_collision(
-        &mut self,
-        spawn: SpawnItem,
-        assets: &ItemAssets,
-        map: &mut melee_mp::CollMap,
-    ) {
-        let mut collision = melee_types::mp::CollData {
-            cur_pos: spawn.previous_position,
-            ..Default::default()
-        };
-        map.coll_data_init(&mut collision);
-        // Item_802674AC/it_80275E98: implemented character articles use category5.
-        assert_eq!(
-            spawn.hold_kind, 8,
-            "initial collision for other hold kinds is not ported"
-        );
-        collision.x34_flags.b1234 = 5;
-        let b = assets.collision_box;
-        melee_mp::set_ecb_source_fixed(
-            &mut collision,
-            b.top * self.scale,
-            b.bottom * self.scale,
-            b.right * self.scale,
-            b.left * self.scale,
-        );
-        melee_mp::set_facing_dir(&mut collision, if self.facing == -1.0 { -1 } else { 1 });
-        collision.x50 = assets.collision_damage_multiplier;
-        collision.last_pos = spawn.position;
-        melee_mp::mark_ecb_clear(&mut collision);
-        if spawn.initial_collision {
-            map.air_collide_pass(&mut collision, None);
-        }
-        self.position = collision.cur_pos;
-    }
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
         self.motion = motion;
         self.animation_frame = 0.0;
@@ -190,6 +235,71 @@ impl ItemCore {
             self.script.restart(0);
             self.advance_script(assets);
         }
+    }
+    /// it_80274658 (80274658): the spin speed for `degrees` per frame at
+    /// spin_spd, reversed when the item moves against its facing and, unless
+    /// xDC8 x19 is set, signed by the facing. retail 80274674..7C: fmuls
+    /// 0.01*spin_spd and (pi/180)*degrees separately, then their product.
+    pub fn update_spin(&mut self, degrees: f32) {
+        let mut speed = 0.0;
+        if self.spin_rate != 0.0 {
+            speed = (0.01 * self.spin_rate) * (0.017_453_292 * degrees);
+        }
+        self.spin_speed = speed;
+        let facing = if self.facing < 0.0 { -1 } else { 1 };
+        let moving = if self.velocity.x < 0.0 { -1 } else { 1 };
+        if moving != facing {
+            self.spin_speed = -self.spin_speed;
+        }
+        if !self.spin_ignores_facing {
+            self.spin_speed *= -self.facing;
+        }
+    }
+
+    /// it_80274A64 (80274A64): add the spin about xDC8 x17's axis (retail
+    /// 80274AE4 and siblings: fadds into the JObj rotation).
+    fn spin(&mut self) {
+        match self.rotation_axis {
+            0 => self.rotation.z += self.spin_speed,
+            1 => self.rotation.x += self.spin_speed,
+            _ => self.rotation.y += self.spin_speed,
+        }
+    }
+
+    /// Item_80268E5C (80268E5C) with its flags: the frame restarts; without
+    /// HIT_PRESERVE any live hitbox is cleared (it_802725D4); ANIM_UPDATE or
+    /// CMD_UPDATE restart the script, which then runs its first step; a state
+    /// without an article row has no script. Other flags only touch the model.
+    pub fn change_motion_with(
+        &mut self,
+        motion: u16,
+        article_state: i32,
+        flags: u32,
+        assets: &ItemAssets,
+    ) {
+        self.motion = motion;
+        self.animation_frame = 0.0;
+        if flags & state_change::HIT_PRESERVE == 0 && self.hitboxes.iter().any(Option::is_some) {
+            self.hitboxes.fill(None);
+            for history in &mut self.reflection_history {
+                history.clear();
+            }
+        }
+        if article_state < 0 {
+            self.script = ScriptState::default();
+            return;
+        }
+        if flags & (state_change::ANIM_UPDATE | state_change::CMD_UPDATE) != 0 {
+            self.script = ScriptState::default();
+            if assets
+                .scripts
+                .get(motion as usize)
+                .is_some_and(|s| !s.is_empty())
+            {
+                self.script.restart(0);
+            }
+        }
+        self.advance_script(assets);
     }
     /// it_8027137C / it_8027129C: refresh world capsules at item s-link 11.
     pub fn update_hitboxes(&mut self) {
@@ -235,7 +345,11 @@ impl ItemCore {
                             .unwrap_or_default();
                     }
                     melee_coll::hitbox::spawn(&mut self.hitboxes, *id, descriptor);
-                    self.hitboxes[*id].as_mut().unwrap().descriptor.damage *= self.stale_multiplier;
+                    let hit = self.hitboxes[*id].as_mut().unwrap();
+                    hit.descriptor.damage *= self.stale_multiplier;
+                    // it_802790C0 -> it_80275594(1 / scl): the capsule radius is
+                    // stored unscaled; contacts multiply the item scale back in.
+                    hit.descriptor.radius *= 1.0 / self.scale;
                     let index = self
                         .script
                         .instruction
@@ -263,6 +377,11 @@ impl ItemCore {
                     }
                 }
                 Command::SetVariable { index, value } => self.command_variables[*index] = *value,
+                Command::Graphics(graphics) => {
+                    self.events.push(ItemEvent::ScriptEffect(graphics.clone()))
+                }
+                // it_8027990C: controller rumble only.
+                Command::Rumble { .. } => {}
                 _ => unimplemented!("item command {command:?}"),
             }
         }
@@ -284,6 +403,10 @@ impl ItemPool {
             common,
             next_id: 0,
         }
+    }
+    /// it_804D6D28: ItCo's common item data.
+    pub fn common(&self) -> &ItemCommonData {
+        &self.common
     }
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &ItemCore> {
         self.items.iter()
@@ -383,7 +506,20 @@ impl ItemPool {
             hitboxes: std::array::from_fn(|_| None),
             scratch: ItemScratch::None,
             hit_flags: [desc::ItemHitFlags::default(); 4],
+            collision: None,
+            rotation_axis: assets.rotation_axis,
+            floor_line: -1,
+            platform_drop: 0,
+            hidden: false,
+            spin_rate: assets.spin_rate,
+            spin_speed: 0.0,
+            spin_ignores_facing: assets.rotate_to_facing,
+            lifetime_enabled: false,
+            queued_events: Default::default(),
+            events: Default::default(),
         };
+        // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
+        item.update_spin(self.common.spawn_spin_degrees);
         (D::logic(item.kind).spawned)(&mut item, assets);
         self.items.push(item);
         Some(id)
@@ -396,10 +532,15 @@ impl ItemPool {
     }
     /// Item_8026A294 -> OnGiveDamageThink, after all fighter/item detection.
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
-    pub fn process_events<D: ItemDispatch>(&mut self, id: u32) {
-        self.process_events_with_stale::<D>(id, 1.0);
+    pub fn process_events<D: ItemDispatch>(&mut self, id: u32, assets: &ItemAssets) {
+        self.process_events_with_stale::<D>(id, 1.0, assets);
     }
-    pub fn process_events_with_stale<D: ItemDispatch>(&mut self, id: u32, reflected_stale: f32) {
+    pub fn process_events_with_stale<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        reflected_stale: f32,
+        assets: &ItemAssets,
+    ) {
         let cap = self.common.maximum_reflected_damage;
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
         let bounce_limit =
@@ -414,7 +555,7 @@ impl ItemPool {
             }) {
                 let context = ItemEventContext {
                     shield_normal: deflection.normal,
-                    ..Default::default()
+                    ..ItemEventContext::new(assets)
                 };
                 item.destroyed |= (D::logic(item.kind).shield_bounced)(item, &context);
             } else {
@@ -422,22 +563,22 @@ impl ItemPool {
                     item.hitlag_damage = item.pending_shield_damage;
                 }
                 item.destroyed |=
-                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::default());
+                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::new(assets));
             }
         } else if item.pending_clank_damage != 0 {
             // OnClankThink: the clank damage becomes the hitlag damage.
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_clank_damage;
             }
-            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::default());
+            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets));
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_damage_dealt;
             }
             item.destroyed |=
-                (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::default());
+                (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::new(assets));
         } else if let Some(reflection) = item.pending_reflection {
-            item.reflect::<D>(reflection, reflected_stale, cap);
+            item.reflect::<D>(reflection, reflected_stale, cap, assets);
         }
         // Item_8026A294: a surviving item enters hitlag from xCA8. (The xCC0
         // path is a counter-style shield's own hitlag; no supported fighter
@@ -504,19 +645,31 @@ impl ItemPool {
             return;
         };
         // Item_80269528: hitlag pauses the animation and its callback.
-        if item.frozen || item.in_hitlag {
-            return;
+        if !(item.frozen || item.in_hitlag) {
+            item.animation_frame += 1.0;
+            item.advance_script(assets);
+            let row = D::logic(item.kind).states[item.motion as usize];
+            item.destroyed |= (row.animation)(item, &ItemAnimationContext { owner, assets });
+            if item.destroyed {
+                return;
+            }
         }
-        item.animation_frame += 1.0;
-        item.advance_script(assets);
-        let row = D::logic(item.kind).states[item.motion as usize];
-        item.destroyed |= (row.animation)(item, &ItemAnimationContext { owner, assets });
+        // Item_80269528's common-item lifetime: xDC8 x15 on a kind below
+        // It_Kind_L_Gun_Ray (xDD0 b3, set on explosion, clears x15 here).
+        // The x34 warning blink (it_802728C8) is visual.
+        if item.lifetime_enabled && (item.kind as u32) < ItemKind::LGunRay as u32 {
+            item.life_timer -= 1.0;
+            if item.life_timer <= 0.0 {
+                item.destroyed = true;
+            }
+        }
     }
     pub fn physics<D: ItemDispatch>(
         &mut self,
         id: u32,
         owner: Option<&ItemOwner>,
         bounds: &ItemBounds,
+        assets: &ItemAssets,
     ) {
         let Some(item) = self.get_mut(id) else {
             return;
@@ -524,7 +677,7 @@ impl ItemPool {
         if !item.frozen && !item.in_hitlag {
             (D::logic(item.kind).states[item.motion as usize].physics)(
                 item,
-                &ItemPhysicsContext { owner },
+                &ItemPhysicsContext { owner, assets },
             );
         }
         integrate(item, bounds);
@@ -547,13 +700,23 @@ impl ItemPool {
         )
         .is_some()
     }
-    pub fn collide<D: ItemDispatch>(&mut self, id: u32, stage_contact: bool) {
+    pub fn collide<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        stage_contact: bool,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
         let Some(item) = self.get_mut(id) else {
             return;
         };
         item.destroyed |= (D::logic(item.kind).states[item.motion as usize].collision)(
             item,
-            &ItemCollisionContext { stage_contact },
+            &mut ItemCollisionContext {
+                stage_contact,
+                map,
+                assets,
+            },
         );
     }
     pub fn remove_destroyed<D: ItemDispatch>(&mut self) {
@@ -585,6 +748,10 @@ fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
     {
         item.destroyed = true;
         return;
+    }
+    // Item_802697D4 -> it_80274A64: an airborne item spins about its axis.
+    if !item.attached && item.spin_speed != 0.0 && item.ground_or_air == GroundOrAir::Air {
+        item.spin();
     }
     item.position = add(item.position, item.environmental_velocity);
     item.position = add(item.position, item.platform_velocity);
@@ -629,6 +796,12 @@ mod tests {
             collision_damage_multiplier: 1.0,
             hitlag: false,
             camera_kind: 0,
+            fall_acceleration: 0.0,
+            fall_speed_limit: 0.0,
+            rotation_axis: 0,
+            explosion_lifetime: 0.0,
+            spin_rate: 0.0,
+            fall_spin_degrees: 0.0,
         }
     }
     #[test]
@@ -643,6 +816,9 @@ mod tests {
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,
             hitlag_base: 0.0,
+            explosion_lifetime: 0.0,
+            spawn_spin_degrees: 0.0,
+            fall_spin_degrees: 0.0,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -665,6 +841,9 @@ mod tests {
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,
             hitlag_base: 0.0,
+            explosion_lifetime: 0.0,
+            spawn_spin_degrees: 0.0,
+            fall_spin_degrees: 0.0,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,
