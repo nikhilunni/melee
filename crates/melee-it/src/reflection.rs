@@ -60,6 +60,25 @@ impl ItemCore {
             }
         }
     }
+    /// it_8026B1D4 (8026B1D4): a hitbox's contact damage; after a throw
+    /// (xDC8 x14) it grows with the item's speed, at least 1.
+    pub fn contact_damage(&self, damage: f32, common: &crate::desc::ItemCommonData) -> f32 {
+        if !self.speed_damage {
+            return damage;
+        }
+        let v = self.velocity;
+        // retail 8026B1F4..8026B20C: three fmuls, then z² + (x² + y²).
+        let squares = v.x * v.x + v.y * v.y;
+        let speed = gekko_math::msl::sqrtf(v.z * v.z + squares);
+        // retail 8026B274: fmadds, then fadds.
+        let damage =
+            gekko_math::fma::fmadds(speed, common.speed_damage_scale, damage) + common.speed_damage_base;
+        if f64::from(damage) <= 1.0 {
+            1.0
+        } else {
+            damage
+        }
+    }
     /// it_80273030 (80273030), the common reflected callback: velocity back
     /// along itself at the reflector's speed multiplier (xC70), facing
     /// flipped, and the lifetime restarted from the half-life (xD48).

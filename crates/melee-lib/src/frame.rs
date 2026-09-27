@@ -719,13 +719,14 @@ impl Runtime {
                             )
                         }));
                     }
+                    let common = state.items.common().clone();
                     for item in state.items.iter_mut() {
                         let owner = state
                             .fighters
                             .iter()
                             .position(|f| Some(f.player.id) == item.owner);
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
-                            f.detect_item_hit(item, &assets.fighters[player])
+                            f.detect_item_hit(item, &assets.fighters[player], &common)
                         });
                         if let Some(contact) = hit {
                             if contact.logged_damage {

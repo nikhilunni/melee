@@ -150,20 +150,10 @@ impl ItemCore {
                 owner,
                 position,
                 velocity_x,
-            } => {
-                let direction = if gekko_math::msl::fabsf(velocity_x) < constants.still_speed {
-                    if self.position.x > position.x {
-                        -1.0
-                    } else {
-                        1.0
-                    }
-                } else if velocity_x < 0.0 {
-                    1.0
-                } else {
-                    -1.0
-                };
-                (owner, direction)
-            }
+            } => (
+                owner,
+                hit_direction(self.position.x, position.x, velocity_x, constants.still_speed),
+            ),
         };
         self.hit_by = hit_by;
         self.hit_direction = direction;
@@ -198,5 +188,22 @@ impl ItemCore {
         } else {
             scaled
         }
+    }
+}
+
+/// ftColl_8007A06C's item entry (and it_80270E30's): an item moving faster
+/// than it_804D6D28 +78 pushes against its velocity, a slower one away
+/// from its position.
+pub fn hit_direction(victim_x: f32, item_x: f32, item_velocity_x: f32, still_speed: f32) -> f32 {
+    if gekko_math::msl::fabsf(item_velocity_x) < still_speed {
+        if victim_x > item_x {
+            -1.0
+        } else {
+            1.0
+        }
+    } else if item_velocity_x < 0.0 {
+        1.0
+    } else {
+        -1.0
     }
 }

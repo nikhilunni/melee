@@ -9,6 +9,10 @@ pub struct ItemCommonData {
     pub lifetime: f32,
     /// +4C: it_80275158's half-life (xD48) as a fraction of the lifetime.
     pub half_life_scale: f32,
+    /// +94 / +98 (x80[5], x80[6]): it_8026B1D4's contact damage per unit of
+    /// a thrown item's speed, and its constant term.
+    pub speed_damage_scale: f32,
+    pub speed_damage_base: f32,
     pub shield_bounce_degrees: f32,
     pub maximum_reflected_damage: u32,
     /// +B8/+BC: item hitlag frames from contact damage (it_8026B424).
@@ -48,6 +52,8 @@ impl ItemCommonData {
             hold_limits,
             lifetime: r.u32(base + 0x30)? as f32,
             half_life_scale: r.f32(base + 0x4C)?,
+            speed_damage_scale: r.f32(base + 0x94)?,
+            speed_damage_base: r.f32(base + 0x98)?,
             shield_bounce_degrees: r.f32(base + 0xE0)?,
             maximum_reflected_damage: r.u32(base + 0xD8)?,
             hitlag_scale: r.f32(base + 0xB8)?,

@@ -466,6 +466,7 @@ impl ItemCore {
     ) {
         self.held = false;
         self.holder_part = 0;
+        self.speed_damage = true;
         self.enter_air();
         self.sweep_from_holder(center, map, assets);
         self.face_spin_axis();

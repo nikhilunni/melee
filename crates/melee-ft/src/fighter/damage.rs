@@ -2127,10 +2127,13 @@ pub struct ItemHurtContact {
 
 impl Fighter {
     /// ftColl_80078C70 item pass -> ftColl_8007A06C: receiver and capsule order.
+    /// `common` is it_804D6D28: ftColl_8007A06C's item direction threshold
+    /// (+78) and it_8026B1D4's speed damage.
     pub fn detect_item_hit(
         &mut self,
         item: &mut melee_it::ItemCore,
         assets: &FighterAssets,
+        common: &melee_it::desc::ItemCommonData,
     ) -> Option<ItemHurtContact> {
         // ftColl_8007925C (ftcoll.c:2026): an owned item misses its owner
         // unless xDCD b5 lets it through (the Bob-omb blast).
@@ -2233,13 +2236,15 @@ impl Fighter {
                 continue;
             };
             if contact.overlap < assets.damage.phantom_threshold {
-                self.log_item_phantom_contact(item, &hit, contact, height, assets);
+                self.log_item_phantom_contact(item, &hit, contact, height, assets, common);
                 return None;
             }
             let mut descriptor = hit.descriptor.clone();
-            // ftColl_80077C60: an item entry's damage count is its hitbox damage
-            // (it_8026B1D4, already staled) truncated, not the command count.
-            let raw_damage = hit.descriptor.damage;
+            // ftColl_80077C60: an item entry's damage count is its contact
+            // damage (it_8026B1D4 of the staled hitbox damage) truncated, not
+            // the command count.
+            let raw_damage = item.contact_damage(hit.descriptor.damage, common);
+            descriptor.damage = raw_damage;
             let knockback_damage = fctiwz(raw_damage) as u32;
             // ftColl_80077C60, 80077DE4: item hits scale damage while captured.
             if matches!(
@@ -2263,12 +2268,14 @@ impl Fighter {
                     logged_damage: false,
                 });
             }
-            // ftColl_80077C60's ordinary branch: log for ftColl_8007AB48.
-            let facing = if self.physics.position.x > item.position.x {
-                -1.0
-            } else {
-                1.0
-            };
+            // ftColl_80077C60's ordinary branch: log for ftColl_8007AB48,
+            // whose ftColl_8007A06C takes the item's direction.
+            let facing = melee_it::hurt::hit_direction(
+                self.physics.position.x,
+                item.position.x,
+                item.velocity.x,
+                common.knockback.still_speed,
+            );
             self.combat.log_hit(LoggedHit {
                 source: HitSource::Item,
                 hit: ReceivedHit {
@@ -2308,6 +2315,7 @@ impl Fighter {
         contact: Contact,
         height: HurtHeight,
         assets: &FighterAssets,
+        common: &melee_it::desc::ItemCommonData,
     ) {
         if !self.combat.hit_log.is_empty()
             || self.combat.phantom_lockout != 0.0
@@ -2316,6 +2324,8 @@ impl Fighter {
             return;
         }
         let mut descriptor = hit.descriptor.clone();
+        // it_8026B1D4's contact damage, as in the ordinary branch.
+        descriptor.damage = item.contact_damage(descriptor.damage, common);
         let raw = fctiwz(descriptor.damage);
         if matches!(
             self.combat.grab,
@@ -2340,11 +2350,12 @@ impl Fighter {
         if self.commands.hurt_status == melee_types::combat::HurtStatus::Normal
             && self.status.revival_invincibility == 0
         {
-            let facing = if self.physics.position.x > item.position.x {
-                -1.0
-            } else {
-                1.0
-            };
+            let facing = melee_it::hurt::hit_direction(
+                self.physics.position.x,
+                item.position.x,
+                item.velocity.x,
+                common.knockback.still_speed,
+            );
             self.combat.phantom_max_damage = self.combat.phantom_max_damage.max(fctiwz(damage));
             self.combat.phantom_log.push(LoggedHit {
                 source: HitSource::Item,

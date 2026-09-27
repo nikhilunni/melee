@@ -220,6 +220,10 @@ pub struct ItemCore {
     pub past_hitbox_refresh: bool,
     /// xD0C == 2 (it_802756D0 / it_802756E0): hurtboxes take no hits.
     pub hurt_intangible: bool,
+    /// xDC8 x14: set when a throw ends the hold (it_80273F34), cleared by
+    /// the next state change or a pickup; it_8026B1D4 then adds speed to
+    /// the item's contact damage.
+    pub speed_damage: bool,
     /// xDCE b0 (it_802754D4): the owner's hits land too, once dropped or thrown.
     pub hurt_by_owner: bool,
     /// xDCD b7 (it_80275444 / it_80275474): hitboxes reach items whose owner
@@ -303,6 +307,8 @@ impl ItemCore {
         self.hurt_intangible = true;
         // it_8026B3A8.
         self.grabbable = false;
+        // The pickup (it_26B1.c:597) clears xDC8 x14.
+        self.speed_damage = false;
         if (self.kind as u32) < ItemKind::LGunRay as u32 {
             // it_80275158: both timers.
             self.life_timer = lifetime;
@@ -365,6 +371,7 @@ impl ItemCore {
     ) {
         self.motion = motion;
         self.animation_frame = 0.0;
+        self.speed_damage = false;
         if flags & state_change::MODEL_UPDATE != 0 {
             // it_80274740 (80274740): the spin joint's angle about xDC8 x17's
             // axis and the spin speed return to zero.
@@ -646,6 +653,7 @@ impl ItemPool {
             hitbox_damage_scale: 1.0,
             past_hitbox_refresh: false,
             hurt_intangible: false,
+            speed_damage: false,
             hurt_by_owner: false,
             strikes_kindred_items: false,
             damage_percent: 0,
@@ -998,6 +1006,8 @@ mod tests {
             hold_limits,
             lifetime: 1.0,
             half_life_scale: 0.5,
+            speed_damage_scale: 0.0,
+            speed_damage_base: 0.0,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,
@@ -1025,6 +1035,8 @@ mod tests {
             hold_limits: [None; 13],
             lifetime: 1.0,
             half_life_scale: 0.5,
+            speed_damage_scale: 0.0,
+            speed_damage_base: 0.0,
             shield_bounce_degrees: 0.0,
             maximum_reflected_damage: 999,
             hitlag_scale: 0.0,
