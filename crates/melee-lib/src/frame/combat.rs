@@ -4,7 +4,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_coll::hitbox::CapsulePhase;
 use melee_ft::fighter::{Fighter, MotionData};
-use std::{fs, io::BufRead, path::Path};
+use std::{io::BufRead, path::Path};
 
 const REFLECTOR_INPUT_SCENARIOS: [&str; 7] = [
     "reflectorturn_fd_fox",
@@ -207,11 +207,11 @@ fn replay_scratch_until(name: &str, ticks: usize) {
         if !melee_test_support::require_files([bones.clone()]) {
             return;
         }
-        Some(std::io::BufReader::new(fs::File::open(bones).unwrap()).lines())
+        Some(melee_test_support::trace::open(&bones).unwrap().lines())
     } else {
         None
     };
-    let raw = fs::read_to_string(path).unwrap();
+    let raw = melee_test_support::trace::read_to_string(&path).unwrap();
     assert_eq!(raw.lines().count(), scenario.frames as usize);
     for (tick, line) in raw.lines().take(ticks).enumerate() {
         let row: serde_json::Value = serde_json::from_str(line).unwrap();
@@ -512,7 +512,7 @@ fn shield_exhaustion_and_dizzy_match_retail_milestones() {
         InitialState::from_savestate_traces(&scenario).unwrap(),
         crate::trace::pad_script(&scenario).unwrap(),
     );
-    let raw = fs::read_to_string(raw_path).unwrap();
+    let raw = melee_test_support::trace::read_to_string(&raw_path).unwrap();
     let milestones = [(220, 205), (257, 207), (283, 209), (313, 211), (519, 211)];
     for (tick, line) in raw.lines().enumerate() {
         sim.tick().unwrap();
@@ -587,7 +587,7 @@ fn reflector_turn_root_rotation_matches_retail_bits() {
             InitialState::from_savestate_traces(&scenario).unwrap(),
             crate::trace::pad_script(&scenario).unwrap(),
         );
-        let bones = fs::read_to_string(path).unwrap();
+        let bones = melee_test_support::trace::read_to_string(&path).unwrap();
         assert_eq!(bones.lines().count(), ticks);
         for (tick, line) in bones.lines().enumerate() {
             let row: serde_json::Value = serde_json::from_str(line).unwrap();

@@ -3,7 +3,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
 use melee_sim::inputs::PadScript;
-use std::{fs, path::Path};
+use std::path::Path;
 
 fn replay(name: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -24,7 +24,11 @@ fn replay(name: &str) {
         pads,
     );
     let mut ticks = 0;
-    for (tick, row) in fs::read_to_string(ledger).unwrap().lines().enumerate() {
+    for (tick, row) in melee_test_support::trace::read_to_string(&ledger)
+        .unwrap()
+        .lines()
+        .enumerate()
+    {
         let row: serde_json::Value = serde_json::from_str(row).unwrap();
         let raw = row["fighters"][0]["bytes"].as_str().unwrap();
         let word =

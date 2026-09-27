@@ -42,7 +42,7 @@ pub fn decode_state(state: &serde_json::Value) -> Result<(GameCamera, Vec<Subjec
 }
 
 pub fn read_dump(path: &Path) -> Result<Vec<CameraSample>> {
-    std::fs::read_to_string(path)
+    melee_trace_io::read_to_string(path)
         .with_context(|| format!("reading {}", path.display()))?
         .lines()
         .map(|line| {

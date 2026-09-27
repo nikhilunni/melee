@@ -1,8 +1,6 @@
 use anyhow::Context;
 use clap::Parser;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Compare two canonical JSONL state traces and report the first divergence.
 #[derive(Parser)]
@@ -14,14 +12,17 @@ struct Args {
     actual: PathBuf,
 }
 
+/// A trace named by its plain path; a `.zst` sibling is read transparently.
+fn read(path: &Path) -> anyhow::Result<Vec<melee_diff::Record>> {
+    melee_diff::read_trace(
+        melee_trace_io::open(path).with_context(|| format!("open {}", path.display()))?,
+    )
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let exp = melee_diff::read_trace(BufReader::new(
-        File::open(&args.expected).with_context(|| format!("open {}", args.expected.display()))?,
-    ))?;
-    let act = melee_diff::read_trace(BufReader::new(
-        File::open(&args.actual).with_context(|| format!("open {}", args.actual.display()))?,
-    ))?;
+    let exp = read(&args.expected)?;
+    let act = read(&args.actual)?;
     match melee_diff::first_divergence(&exp, &act) {
         None => {
             println!("OK: {} records match", exp.len());

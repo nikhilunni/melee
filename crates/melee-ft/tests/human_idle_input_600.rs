@@ -3,7 +3,7 @@ use hsd_archive::Archive;
 use input_support::{input_bytes, root};
 use melee_ft::input::*;
 use melee_types::PlayerKind;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 #[test]
 fn human_idle_input_600() {
@@ -20,11 +20,23 @@ fn human_idle_input_600() {
     let archive =
         Archive::parse(&std::fs::read(root.join("harness/roms/files/PlCo.dat")).unwrap()).unwrap();
     let common = InputCommonData::read(&archive).unwrap();
+    // The decoder takes plain copies: recorded traces may be zstd-compressed.
+    let plain = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("human-idle-input-{}", std::process::id()));
+    std::fs::create_dir_all(&plain).unwrap();
+    let traces = ["tick.expected.jsonl", "tick.raw.jsonl"].map(|suffix| {
+        let copy = plain.join(format!("idle_fd_fox.{suffix}"));
+        let recorded = root.join(format!("harness/traces/idle_fd_fox.{suffix}"));
+        std::fs::write(&copy, melee_test_support::trace::read(&recorded).unwrap()).unwrap();
+        copy
+    });
     let decoded = Command::new("python3")
         .arg(root.join("crates/melee-ft/tests/ref/input/decode_idle.py"))
         .arg(&root)
+        .args(&traces)
         .output()
         .expect("python3 trace decoder");
+    std::fs::remove_dir_all(&plain).unwrap();
     assert!(
         decoded.status.success(),
         "{}",

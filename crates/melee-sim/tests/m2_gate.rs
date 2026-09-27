@@ -1,6 +1,6 @@
 //! Yoshi's Story VI matrix oracle. A capture ordinal is not animation time:
 //! align to complete simulated fighter poses using frame/position bits.
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
 use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenario};
 use melee_test_support::{rendered_pose::PoseTimeline, M2_CAPTURE_COMMAND};
@@ -13,7 +13,7 @@ const MIN_COVERED_TICKS: usize = 100;
 const BONES: usize = 73;
 
 fn json_lines(path: &Path) -> Vec<Value> {
-    fs::read_to_string(path)
+    melee_test_support::trace::read_to_string(path)
         .unwrap()
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())

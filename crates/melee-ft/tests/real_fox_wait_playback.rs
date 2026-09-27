@@ -23,7 +23,7 @@ impl InverseTrig for RetailTrig {
     }
 }
 fn json_lines(path: &Path) -> Vec<Value> {
-    fs::read_to_string(path)
+    melee_test_support::trace::read_to_string(path)
         .unwrap()
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())

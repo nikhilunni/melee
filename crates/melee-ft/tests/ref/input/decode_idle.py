@@ -11,14 +11,17 @@ import struct
 import sys
 
 root = pathlib.Path(sys.argv[1])
+# Plain copies of the expected and raw tick traces. The Rust caller decompresses
+# them (the recorded traces may be .jsonl.zst) so this script needs only the stdlib.
+expected_path, raw_path = map(pathlib.Path, sys.argv[2:4])
 def schema(name):
     text = (root / 'harness/schema' / name).read_text()
     return {name: (int(offset, 16), kind) for name, offset, kind in re.findall(
         r'^\s+([\w.]+):\s*\{ offset: (0x[0-9A-Fa-f]+), type: (\w+)', text, re.M)}
 generated = schema('fighter.generated.yaml')
 canonical = schema('fighter.yaml')
-expected = [json.loads(s) for s in (root / 'harness/traces/idle_fd_fox.tick.expected.jsonl').read_text().splitlines()]
-raw = [json.loads(s) for s in (root / 'harness/traces/idle_fd_fox.tick.raw.jsonl').read_text().splitlines()]
+expected = [json.loads(s) for s in expected_path.read_text().splitlines()]
+raw = [json.loads(s) for s in raw_path.read_text().splitlines()]
 assert len(expected) == len(raw) == 600
 for key, offset in [('input.lstick', 0x620), ('input.cstick', 0x638), ('input.triggers', 0x650),
                     ('input.held_buttons', 0x65c), ('input.pressed_buttons', 0x668), ('input.released_buttons', 0x66c)]:

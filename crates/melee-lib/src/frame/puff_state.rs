@@ -3,7 +3,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::MotionData;
 use melee_sim::inputs::PadScript;
-use std::{fs, path::Path};
+use std::path::Path;
 
 fn scenario(name: &str) -> Option<Scenario> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -29,7 +29,11 @@ fn puff_multijump_turn_and_input_age_match_retail_scratch() {
             pads,
         );
         let mut jumps = 0;
-        for (tick, row) in fs::read_to_string(path).unwrap().lines().enumerate() {
+        for (tick, row) in melee_test_support::trace::read_to_string(&path)
+            .unwrap()
+            .lines()
+            .enumerate()
+        {
             let row: serde_json::Value = serde_json::from_str(row).unwrap();
             let raw = row["fighters"][0]["bytes"].as_str().unwrap();
             let word =

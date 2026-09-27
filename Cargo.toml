@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/melee-test-support", # Dev-only oracle preflight; no gameplay dependencies.
+    "crates/melee-trace-io", # Plain or zstd oracle trace reading; tooling and tests only.
     # Layer 0: leaf crates. Tiny, stable, everything depends on them.
     "crates/gekko-math",
     "crates/hsd-types",

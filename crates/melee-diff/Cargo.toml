@@ -11,6 +11,18 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
+# The command-line tool reads plain or zstd traces; library users (melee-lib)
+# opt out with `default-features = false` so zstd never reaches gameplay builds.
+melee-trace-io = { path = "../melee-trace-io", optional = true }
+
+[features]
+default = ["cli"]
+cli = ["dep:melee-trace-io"]
+
+[[bin]]
+name = "melee-diff"
+path = "src/main.rs"
+required-features = ["cli"]
 
 [dev-dependencies]
 hsd-types = { path = "../hsd-types" }

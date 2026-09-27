@@ -24,7 +24,7 @@ pub fn harness() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness")
 }
 pub fn json_lines(path: &Path) -> Vec<Value> {
-    fs::read_to_string(path)
+    melee_test_support::trace::read_to_string(path)
         .unwrap()
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())

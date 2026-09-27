@@ -1,10 +1,6 @@
 //! Independent recorded joint/AppSRT checks across FD's layered and tilt phases.
 use super::*;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::{io::BufRead, path::Path};
 
 #[test]
 fn fd_unobserved_animation_clocks_and_late_matrix_reads_match_eager() {
@@ -70,7 +66,8 @@ fn human_match_fd_transition_attachments() {
     let frames = [
         1886, 2000, 4000, 6000, 7095, 7096, 7200, 8500, 8900, 8901, 9000,
     ];
-    let captured: BTreeMap<usize, serde_json::Value> = BufReader::new(File::open(path).unwrap())
+    let captured: BTreeMap<usize, serde_json::Value> = melee_test_support::trace::open(&path)
+        .unwrap()
         .lines()
         .enumerate()
         .filter(|(frame, _)| frames.contains(frame))

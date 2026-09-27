@@ -9,7 +9,7 @@ pub use crate::scene_stage::{
     YOSHIS_STORY,
 };
 pub use crate::setup::{PlayerSetup, Setup};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub fn character_descriptor(
     name: &str,
 ) -> Option<&'static melee_ft::fighter::assets::CharacterDescriptor> {
@@ -82,6 +82,10 @@ pub trait ScenarioSource {
     fn trace_path(&self, suffix: &str) -> PathBuf;
     fn boundary_path(&self, suffix: &str) -> PathBuf;
     fn savestate_path(&self) -> PathBuf;
+    /// Read a captured trace named by its plain `.jsonl` path. The consuming
+    /// tool owns trace storage (plain or zstd-compressed), so melee-lib never
+    /// links a decompressor.
+    fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>>;
 }
 
 pub use crate::initial_state::{decode_camera, decode_subject, magnified};
@@ -129,5 +133,8 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
     }
     fn savestate_path(&self) -> PathBuf {
         self.savestate_path()
+    }
+    fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
+        Ok(Box::new(melee_test_support::trace::open(path)?))
     }
 }

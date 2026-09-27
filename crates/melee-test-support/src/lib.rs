@@ -2,12 +2,15 @@
 use std::{env, path::Path};
 
 pub mod rendered_pose;
+/// Trace readers that accept `<name>.jsonl` or its `<name>.jsonl.zst` sibling.
+pub use melee_trace_io as trace;
 
 /// Record from the main checkout; this helper never launches Dolphin.
 pub const M2_CAPTURE_COMMAND: &str = r#"MELEE_BONES_SAVESTATE="$PWD/harness/roms/idle_ys_fox.sav" MELEE_BONES_OUT="$PWD/harness/traces/fox_ys.bones.expected.jsonl" MELEE_BONES_FRAMES=130 MELEE_BONES_FIGHTER_INDEX=0 MELEE_BONES_ANY_ANIM=1 "$HOME/Projects/dolphin-scripting/build/Binaries/Dolphin.app/Contents/MacOS/Dolphin" -v OGL -C Dolphin.Core.SIDevice0=6 -C Dolphin.Core.SIDevice1=6 -e "$PWD/harness/roms/GALE01.iso" --script "$PWD/harness/dolphin_bones_snippet.py""#;
 
 /// Check required files in caller order. Missing data fails the test unless
 /// `MELEE_ALLOW_MISSING_DATA=1`; only that opt-in returns `false` to the caller.
+/// A compressed `<path>.zst` sibling counts as the file (see [`trace`]).
 ///
 /// `MELEE_TEST_DATA_ROOT` replaces `harness/` for this preflight only, allowing
 /// absence tests without moving real data. It does not redirect asset reads.
@@ -23,7 +26,7 @@ pub fn require_files(paths: impl IntoIterator<Item = impl AsRef<Path>>) -> bool 
                 .map(|_| Path::new(root).join(components.as_path()))
         });
         let path = resolved.as_deref().unwrap_or(original);
-        if path.is_file() {
+        if trace::exists(path) {
             continue;
         }
         let recovery = recovery_command(original);

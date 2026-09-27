@@ -194,7 +194,7 @@ pub fn bones_diff(
     only_tick: Option<u64>,
 ) -> Result<Vec<String>> {
     let path = scenario.trace_path("bones.jsonl");
-    let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)
+    let rows: Vec<serde_json::Value> = melee_trace_io::read_to_string(&path)
         .with_context(|| format!("reading {}", path.display()))?
         .lines()
         .map(serde_json::from_str)

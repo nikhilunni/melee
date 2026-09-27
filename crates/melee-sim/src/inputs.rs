@@ -9,11 +9,7 @@
 use anyhow::{bail, Context, Result};
 use melee_ft::input::{Buttons, PadSample, Stick};
 use serde_json::Value as Json;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::{io::BufRead, path::Path};
 
 /// Controller ports on the GameCube.
 pub const PORTS: usize = 4;
@@ -94,9 +90,8 @@ impl PadScript {
     /// `require`: fail if any record lacks `inputs` (scripted scenarios must
     /// carry them); otherwise records without them are neutral.
     pub fn from_expected_trace(path: &Path, require: bool) -> Result<Self> {
-        let reader = BufReader::new(
-            File::open(path).with_context(|| format!("opening {}", path.display()))?,
-        );
+        let reader =
+            melee_trace_io::open(path).with_context(|| format!("opening {}", path.display()))?;
         let mut ticks = Vec::new();
         let mut display_clock = Vec::new();
         for (index, line) in reader.lines().enumerate() {
@@ -145,9 +140,8 @@ impl PadScript {
     /// ledger or particle dump run): each Dolphin run has its own VI timing,
     /// and particle order follows the run being compared.
     pub fn with_display_from(mut self, path: &Path) -> Result<Self> {
-        let reader = BufReader::new(
-            File::open(path).with_context(|| format!("opening {}", path.display()))?,
-        );
+        let reader =
+            melee_trace_io::open(path).with_context(|| format!("opening {}", path.display()))?;
         self.display_clock.clear();
         for line in reader.lines() {
             let line = line?;
@@ -317,7 +311,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("melee-sim-inputs-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("t.jsonl");
-        let mut f = File::create(&path).unwrap();
+        let mut f = std::fs::File::create(&path).unwrap();
         writeln!(f, "{}", pad_json(0x100, 0x3F80_0000)).unwrap();
         writeln!(f, r#"{{"frame":1,"phase":"frame_end","state":{{}}}}"#).unwrap();
         drop(f);

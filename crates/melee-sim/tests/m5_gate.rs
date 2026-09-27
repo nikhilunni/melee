@@ -1,5 +1,5 @@
 use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenario, trace};
-use std::{fs, path::Path};
+use std::path::Path;
 
 #[test]
 fn match_fd_foxmarth_6083_ticks_and_ordered_particle_draws() {
@@ -122,7 +122,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         InitialState::from_savestate_traces(&scenario).unwrap(),
         trace::pad_script(&scenario).unwrap(),
     );
-    let ledger = fs::read_to_string(ledger_path).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     assert_eq!(ledger.lines().count(), ticks);
     let mut particle_draws = 0;
     for (tick, line) in ledger.lines().enumerate() {
@@ -163,7 +163,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
 #[test]
 fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
     use melee_diff::{first_divergence, read_trace};
-    use std::io::BufReader;
+
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/grab_fd_marth.toml");
     let scenario = Scenario::load(&path).unwrap();
@@ -176,11 +176,11 @@ fn grab_fd_marth_catch_startup_127_ticks_and_ordered_particle_draws() {
     ) {
         return;
     }
-    let expected = read_trace(BufReader::new(
-        fs::File::open(scenario.trace_path("tick.expected.jsonl")).unwrap(),
-    ))
+    let expected = read_trace(
+        melee_test_support::trace::open(&scenario.trace_path("tick.expected.jsonl")).unwrap(),
+    )
     .unwrap();
-    let ledger = fs::read_to_string(ledger_path).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     assert_eq!(expected.len(), 300);
     assert_eq!(ledger.lines().count(), 300);
     let mut simulation = Simulation::with_inputs(
@@ -320,7 +320,7 @@ fn airillusion_fd_fox_300_ticks_with_items_and_particle_order() {
 
 fn special_gate(name: &str) {
     use melee_diff::{first_divergence, read_trace};
-    use std::io::BufReader;
+
     let scenario = Scenario::load(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml")),
     )
@@ -334,12 +334,10 @@ fn special_gate(name: &str) {
     ) {
         return;
     }
-    let expected = read_trace(BufReader::new(
-        fs::File::open(scenario.expected_path()).unwrap(),
-    ))
-    .unwrap();
-    let raw = fs::read_to_string(scenario.expected_path()).unwrap();
-    let ledger = fs::read_to_string(ledger_path).unwrap();
+    let expected =
+        read_trace(melee_test_support::trace::open(&scenario.expected_path()).unwrap()).unwrap();
+    let raw = melee_test_support::trace::read_to_string(&scenario.expected_path()).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     let mut simulation = Simulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
         trace::pad_script(&scenario).unwrap(),
@@ -536,12 +534,12 @@ fn s2_prefix_gate(name: &str, ticks: usize) {
     ) {
         return;
     }
-    let expected = read_trace(std::io::BufReader::new(
-        fs::File::open(scenario.trace_path("tick.expected.jsonl")).unwrap(),
-    ))
+    let expected = read_trace(
+        melee_test_support::trace::open(&scenario.trace_path("tick.expected.jsonl")).unwrap(),
+    )
     .unwrap();
     assert_eq!(expected.len(), 300);
-    let ledger = fs::read_to_string(ledger_path).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     assert_eq!(ledger.lines().count(), 300);
     let mut simulation = Simulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
@@ -730,11 +728,9 @@ fn s6_shield_prefix(name: &str, frames: usize, prefix: usize) {
         return;
     }
     assert_eq!(scenario.frames as usize, frames);
-    let expected = read_trace(std::io::BufReader::new(
-        fs::File::open(scenario.expected_path()).unwrap(),
-    ))
-    .unwrap();
-    let ledger = fs::read_to_string(ledger_path).unwrap();
+    let expected =
+        read_trace(melee_test_support::trace::open(&scenario.expected_path()).unwrap()).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     assert_eq!(expected.len(), frames);
     assert_eq!(ledger.lines().count(), frames);
     assert!(prefix < frames);

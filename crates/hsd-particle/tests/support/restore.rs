@@ -9,7 +9,7 @@ use hsd_particle::{
     system::ParticleSystem,
 };
 use melee_diff::{Record, Value};
-use std::{collections::BTreeMap, fs::File, io::BufReader, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
 pub trait Banks {
     fn bank(&self, id: u8) -> &ParticleBank;
@@ -26,7 +26,7 @@ impl Banks for BTreeMap<u8, ParticleBank> {
 }
 
 pub fn read(path: &Path) -> Vec<Record> {
-    melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap()
+    melee_diff::read_trace(melee_test_support::trace::open(path).unwrap()).unwrap()
 }
 pub fn uint(record: &Record, key: &str) -> u64 {
     match record.state.get(key) {

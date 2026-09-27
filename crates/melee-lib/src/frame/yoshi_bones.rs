@@ -3,7 +3,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::Fighter;
 use serde_json::Value;
-use std::{fs, path::Path};
+use std::path::Path;
 
 fn compare(fighter: &Fighter, expected: &Value, player: usize, tick: usize) -> usize {
     let mut compared = 0;
@@ -63,7 +63,7 @@ fn replay(name: &str, ticks: usize) {
     assert_eq!(yoshi.animation.parts.len(), 70);
     let dynamic_bones: usize = yoshi.dynamics.iter().map(|set| set.bones.len()).sum();
     assert_eq!(dynamic_bones, 0);
-    let rows: Vec<Value> = fs::read_to_string(bones_path)
+    let rows: Vec<Value> = melee_test_support::trace::read_to_string(&bones_path)
         .unwrap()
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())

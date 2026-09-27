@@ -68,6 +68,11 @@ fn missing_files_fail_unless_explicitly_opted_out() {
     }
     let (success, text) = run(None, None);
     assert!(success && text.contains("oracle body reached"), "{text}");
+    // A compressed sibling stands in for the plain trace.
+    let second = traces.join("second.tick.expected.jsonl");
+    std::fs::rename(&second, traces.join("second.tick.expected.jsonl.zst")).unwrap();
+    let (success, text) = run(None, None);
+    assert!(success && text.contains("oracle body reached"), "{text}");
     let empty = root.join("empty");
     std::fs::create_dir(&empty).unwrap();
     let (success, text) = run(None, Some(&empty));

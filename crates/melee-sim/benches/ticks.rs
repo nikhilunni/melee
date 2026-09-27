@@ -10,7 +10,11 @@ fn ticks(c: &mut Criterion) {
     .unwrap();
     assert_eq!(scenario.frames, 600);
     for path in scenario.required_files() {
-        assert!(path.is_file(), "benchmark requires {}", path.display());
+        assert!(
+            melee_test_support::trace::exists(&path),
+            "benchmark requires {}",
+            path.display()
+        );
     }
     let load = || {
         Simulation::with_inputs(

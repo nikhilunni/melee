@@ -66,9 +66,7 @@ fn oracle_replay(scene: &str) -> Option<(Replay, Vec<Record>)> {
     if !melee_test_support::require_files([&path, &root().join("harness/roms/files/PlCo.dat")]) {
         return None;
     }
-    let expected =
-        melee_diff::read_trace(std::io::BufReader::new(std::fs::File::open(path).unwrap()))
-            .unwrap();
+    let expected = melee_diff::read_trace(melee_test_support::trace::open(&path).unwrap()).unwrap();
     let mut replay = fixture("v3.13.slp");
     // The recorded cold oracle uses items off; v3.13's template has items on.
     replay.start.item_spawn_behavior = -1;

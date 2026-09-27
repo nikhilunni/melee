@@ -3,17 +3,14 @@ use melee_ft::input::PadSample;
 use melee_sim::inputs::{replay_pad, PadScript};
 use serde_json::Value as Json;
 use slp::cold::ControllerFrame;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::PathBuf,
-};
+use std::{io::BufRead, path::PathBuf};
 
 fn traces() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/traces")
 }
 fn lines(path: &std::path::Path) -> Vec<Json> {
-    BufReader::new(File::open(path).unwrap())
+    melee_test_support::trace::open(path)
+        .unwrap()
         .lines()
         .map(|l| serde_json::from_str(&l.unwrap()).unwrap())
         .collect()

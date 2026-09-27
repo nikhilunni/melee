@@ -6,7 +6,7 @@ use melee_ft::fighter::{fall::FallState, Fighter, MotionData};
 use melee_sim::inputs::PadScript;
 use melee_types::CommonMotionState as S;
 use serde_json::Value;
-use std::{fs, path::Path};
+use std::path::Path;
 
 fn word(bytes: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap())
@@ -68,7 +68,7 @@ fn falls_match_retail_scratch_and_command_clocks() {
             InitialState::from_savestate_traces(&scenario).unwrap(),
             pads,
         );
-        let ledger = fs::read_to_string(ledger_path).unwrap();
+        let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
         assert_eq!(ledger.lines().count(), scenario.frames as usize);
         let mut fall_ticks = 0;
         for (tick, line) in ledger.lines().enumerate() {

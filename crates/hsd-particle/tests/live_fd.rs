@@ -76,7 +76,7 @@ fn capture() -> Option<Capture> {
         })
         .collect();
     let states = restore::read(&paths[2]);
-    let ledger = fs::read_to_string(&paths[3])
+    let ledger = melee_test_support::trace::read_to_string(&paths[3])
         .unwrap()
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())

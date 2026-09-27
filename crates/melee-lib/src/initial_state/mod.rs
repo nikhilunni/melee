@@ -44,11 +44,7 @@ use melee_diff::{first_divergence, Record, RecordSink};
 use melee_sim::scenario::Scenario;
 use melee_types::snapshot::{PrefixSink, Snapshot};
 use serde_json::Value as Json;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::{fs::File, io::BufRead, path::Path};
 
 /// The sole trace-to-runtime boundary. No expected records or ledger draws are
 /// retained by Simulation. Imports vs archive-derived state are listed in M3.md.
@@ -82,12 +78,14 @@ pub struct InitialState {
     pub(crate) camera: melee_cm::GameCamera,
     pub(crate) quakes: crate::quake::Quakes,
 }
-fn first_json(path: &Path) -> Result<Json> {
-    let line =
-        BufReader::new(File::open(path).with_context(|| format!("opening {}", path.display()))?)
-            .lines()
-            .next()
-            .context("empty boundary trace")??;
+/// The first record of a captured trace, plain or compressed as the source reads it.
+fn first_json(scenario: &impl crate::diagnostics::ScenarioSource, path: &Path) -> Result<Json> {
+    let line = scenario
+        .open_trace(path)
+        .with_context(|| format!("opening {}", path.display()))?
+        .lines()
+        .next()
+        .context("empty boundary trace")??;
     Ok(serde_json::from_str(&line)?)
 }
 impl InitialState {
@@ -108,9 +106,11 @@ impl InitialState {
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         // Only the first line is read. Later rows (including all rng_draws)
         // never enter simulation, even transiently.
-        let boundary = first_json(&scenario.trace_path("tick.raw.jsonl"))?;
-        let expected: Record =
-            serde_json::from_value(first_json(&scenario.trace_path("tick.expected.jsonl"))?)?;
+        let boundary = first_json(scenario, &scenario.trace_path("tick.raw.jsonl"))?;
+        let expected: Record = serde_json::from_value(first_json(
+            scenario,
+            &scenario.trace_path("tick.expected.jsonl"),
+        )?)?;
         ensure!(
             expected.frame == 0 && expected.phase == "frame_end",
             "expected frame-zero boundary"
@@ -259,6 +259,7 @@ impl InitialState {
         // The particle population belongs to the savestate, so scripted
         // scenarios recorded from the same savestate share this capture.
         let initial: Record = serde_json::from_value(first_json(
+            scenario,
             &scenario.boundary_path("particles.jsonl.initial.jsonl"),
         )?)?;
         let metadata: Json = serde_json::from_reader(File::open(

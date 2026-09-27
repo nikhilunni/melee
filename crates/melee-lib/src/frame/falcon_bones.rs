@@ -3,7 +3,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::Fighter;
 use serde_json::Value;
-use std::{fs, path::Path};
+use std::path::Path;
 
 fn compare(fighter: &Fighter, expected: &Value, player: usize, tick: usize) -> usize {
     let mut compared = 0;
@@ -71,7 +71,7 @@ fn replay(name: &str, ticks: usize) {
             .collect::<Vec<_>>()
     );
     assert_eq!(dynamic_bones, 0);
-    let rows: Vec<Value> = fs::read_to_string(bones_path)
+    let rows: Vec<Value> = melee_test_support::trace::read_to_string(&bones_path)
         .unwrap()
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
@@ -114,8 +114,7 @@ fn idle_falcon_partial_emission_particles_600() {
     ) {
         return;
     }
-    let expected =
-        melee_diff::read_trace(std::io::BufReader::new(fs::File::open(path).unwrap())).unwrap();
+    let expected = melee_diff::read_trace(melee_test_support::trace::open(&path).unwrap()).unwrap();
     assert_eq!(expected.len(), 600);
     let initial = InitialState::from_savestate_traces(&scenario).unwrap();
     // Whether the saved boundary interrupted a particle emission depends on the

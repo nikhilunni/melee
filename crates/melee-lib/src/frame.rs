@@ -1935,11 +1935,7 @@ mod tests {
 mod start_tests {
     use super::*;
     use crate::{initial_state::particles, scenario::Scenario};
-    use std::{
-        fs::File,
-        io::{BufRead, BufReader},
-        path::Path,
-    };
+    use std::{fs::File, io::BufRead, path::Path};
     #[test]
     fn start_effect_matrices_and_particle_state() {
         let scenario = Scenario::load(
@@ -1953,9 +1949,11 @@ mod start_tests {
         ) {
             return;
         }
-        let expected = melee_diff::read_trace(BufReader::new(File::open(path).unwrap())).unwrap();
+        let expected =
+            melee_diff::read_trace(melee_test_support::trace::open(&path).unwrap()).unwrap();
         let metadata: Vec<serde_json::Value> =
-            BufReader::new(File::open(scenario.trace_path("particles.jsonl.meta.jsonl")).unwrap())
+            melee_test_support::trace::open(&scenario.trace_path("particles.jsonl.meta.jsonl"))
+                .unwrap()
                 .lines()
                 .map(|line| serde_json::from_str(&line.unwrap()).unwrap())
                 .collect();

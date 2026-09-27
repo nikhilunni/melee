@@ -105,7 +105,7 @@ impl Banner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{BufRead, BufReader};
+    use std::io::BufRead;
 
     #[test]
     fn countdown_completion_matches_retail_input_freeze_flags() {
@@ -118,7 +118,8 @@ mod tests {
         let mut countdown = Banner::load(&files, BannerKind::Countdown).unwrap();
         let mut frozen = true;
         let mut release_tick = None;
-        for (tick, line) in BufReader::new(std::fs::File::open(ledger).unwrap())
+        for (tick, line) in melee_test_support::trace::open(&ledger)
+            .unwrap()
             .lines()
             .enumerate()
         {

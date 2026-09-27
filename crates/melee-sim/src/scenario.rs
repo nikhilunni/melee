@@ -210,7 +210,7 @@ impl Scenario {
             .root
             .join("harness/traces")
             .join(format!("{}.{suffix}", self.boundary_name()));
-        if shared.is_file() {
+        if melee_trace_io::exists(&shared) {
             return shared;
         }
         // A newly captured savestate may have its initial population alongside
@@ -321,5 +321,8 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     }
     fn savestate_path(&self) -> PathBuf {
         self.savestate_path()
+    }
+    fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
+        Ok(Box::new(melee_trace_io::open(path)?))
     }
 }

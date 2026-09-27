@@ -11,7 +11,7 @@ use melee_diff::{first_divergence, read_trace, Record};
 use std::{
     collections::BTreeSet,
     fs::File,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, Write},
     path::Path,
 };
 
@@ -140,7 +140,7 @@ pub fn gate_items(scenario: &Scenario) -> Result<()> {
 }
 
 pub fn compared_keys(scenario: &Scenario) -> Result<usize> {
-    let first = BufReader::new(File::open(scenario.expected_path())?)
+    let first = melee_trace_io::open(&scenario.expected_path())?
         .lines()
         .next()
         .transpose()?
@@ -180,9 +180,9 @@ fn gate_with_recording(
     record_spawns: bool,
     compare_items: bool,
 ) -> Result<std::collections::BTreeMap<u64, Vec<serde_json::Value>>> {
-    let expected = read_trace(BufReader::new(File::open(scenario.expected_path())?))?;
+    let expected = read_trace(melee_trace_io::open(&scenario.expected_path())?)?;
     let item_rows = if compare_items {
-        BufReader::new(File::open(scenario.expected_path())?)
+        melee_trace_io::open(&scenario.expected_path())?
             .lines()
             .enumerate()
             .map(|(frame, line)| {
@@ -246,7 +246,7 @@ fn gate_with_recording(
 /// where they differ.
 pub fn particle_site_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
     let ledger_path = scenario.trace_path("ledger.raw.jsonl");
-    let ledger = std::fs::read_to_string(&ledger_path)?;
+    let ledger = melee_trace_io::read_to_string(&ledger_path)?;
     let mut simulation = simulation_displayed_as(scenario, &ledger_path)?;
     let mut report = Vec::new();
     for (tick, line) in ledger.lines().enumerate().take(to as usize + 1) {
@@ -287,7 +287,7 @@ pub fn particle_site_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec
 /// from the AppSRT display caches.
 pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
     let path = scenario.trace_path("particles.jsonl");
-    let expected = read_trace(std::io::BufReader::new(std::fs::File::open(&path)?))?;
+    let expected = read_trace(melee_trace_io::open(&path)?)?;
     // The dump's per-tick VI frames live in its metadata sidecar.
     let meta = scenario.trace_path("particles.jsonl.meta.jsonl");
     let mut simulation = simulation_displayed_as(scenario, &meta)?;

@@ -35,7 +35,7 @@ ft-peach = { path = "../ft-peach" }
 ft-yoshi = { path = "../ft-yoshi" }
 ft-purin = { path = "../ft-purin" }
 ft-mario = { path = "../ft-mario" }
-melee-diff = { path = "../melee-diff" }
+melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

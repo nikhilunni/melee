@@ -3,7 +3,7 @@ use super::*;
 use crate::scenario::Scenario;
 use melee_ft::fighter::Fighter;
 use serde_json::Value;
-use std::{fs, path::Path};
+use std::path::Path;
 
 const SCENARIOS: [&str; 5] = [
     "illusion_start_landing_fd_fox",
@@ -73,7 +73,7 @@ fn replay_bones(name: &str, frames: usize) {
     let initial = InitialState::from_savestate_traces(&scenario).unwrap();
     let mut simulation =
         super::TestSimulation::with_inputs(initial, crate::trace::pad_script(&scenario).unwrap());
-    let bones = fs::read_to_string(path).unwrap();
+    let bones = melee_test_support::trace::read_to_string(&path).unwrap();
     assert_eq!(bones.lines().count(), frames);
     for (tick, line) in bones.lines().enumerate() {
         let row: Value = serde_json::from_str(line).unwrap();
@@ -331,7 +331,7 @@ fn replay_particle_fields(names: &[&str]) {
             crate::trace::pad_script(&scenario).unwrap(),
         );
         let expected =
-            melee_diff::read_trace(std::io::BufReader::new(fs::File::open(path).unwrap())).unwrap();
+            melee_diff::read_trace(melee_test_support::trace::open(&path).unwrap()).unwrap();
         assert_eq!(expected.len(), scenario.frames as usize);
         for mut record in expected {
             simulation.tick().unwrap();

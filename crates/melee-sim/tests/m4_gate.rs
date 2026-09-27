@@ -57,7 +57,7 @@ fn particle_rng_sites_with_ledger(name: &str, expected_ticks: usize, ledger_suff
     if !melee_test_support::require_files([&path]) {
         return;
     }
-    let ledger = std::fs::read_to_string(path).unwrap();
+    let ledger = melee_test_support::trace::read_to_string(&path).unwrap();
     let pads =
         PadScript::from_expected_trace(&scenario.trace_path("tick.expected.jsonl"), true).unwrap();
     let mut simulation = Simulation::with_inputs(

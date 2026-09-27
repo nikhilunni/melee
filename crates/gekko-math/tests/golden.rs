@@ -49,7 +49,7 @@ fn load_pairs_jsonl(path: &Path) -> Vec<(u64, u64)> {
         let end = rest[start..].find('"').unwrap() + start;
         u64::from_str_radix(&rest[start..end], 16).unwrap()
     }
-    let text = std::fs::read_to_string(path).unwrap();
+    let text = melee_test_support::trace::read_to_string(path).unwrap();
     text.lines()
         .filter(|l| !l.trim().is_empty())
         .map(|l| (field(l, "\"input_bits\""), field(l, "\"output_bits\"")))

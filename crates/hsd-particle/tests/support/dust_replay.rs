@@ -165,7 +165,7 @@ fn replay_fields(
     }
     let initial = restore::read(&paths[0]);
     let states = restore::read(&paths[1]);
-    let ledger: Vec<Json> = fs::read_to_string(&paths[2])
+    let ledger: Vec<Json> = melee_test_support::trace::read_to_string(&paths[2])
         .unwrap()
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())

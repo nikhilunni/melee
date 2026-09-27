@@ -1,7 +1,7 @@
 //! Additional raw item fields distinguish reflection from an ordinary laser hit.
 use super::*;
 use crate::scenario::Scenario;
-use std::{collections::BTreeMap, fs, path::Path};
+use std::{collections::BTreeMap, path::Path};
 
 fn word(bytes: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap())
@@ -30,7 +30,11 @@ fn laser_reflection_damage_history_and_original_identity() {
         );
         let mut identities = BTreeMap::new();
         let mut compared_histories = 0;
-        for (tick, line) in fs::read_to_string(path).unwrap().lines().enumerate() {
+        for (tick, line) in melee_test_support::trace::read_to_string(&path)
+            .unwrap()
+            .lines()
+            .enumerate()
+        {
             let row: serde_json::Value = serde_json::from_str(line).unwrap();
             simulation.tick().unwrap();
             let state = &simulation.runtime.state;

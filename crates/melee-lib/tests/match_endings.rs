@@ -3,17 +3,15 @@
 //! Sudden Death match retail plays next.
 use melee_lib::{diagnostics, *};
 use melee_sim::scenario::Scenario;
-use std::{fs::File, io::BufReader, path::PathBuf};
+use std::path::PathBuf;
 
 fn root() -> PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn expected(scenario: &Scenario) -> Vec<melee_diff::Record> {
-    melee_diff::read_trace(BufReader::new(
-        File::open(scenario.expected_path()).unwrap(),
-    ))
-    .unwrap()
+    melee_diff::read_trace(melee_test_support::trace::open(&scenario.expected_path()).unwrap())
+        .unwrap()
 }
 
 /// Step with neutral pads while the match runs, comparing each tick with

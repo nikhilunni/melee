@@ -1,7 +1,7 @@
 //! HSD_PadADConvert against retail: every pad recorded in these corpus traces
 //! carries the virtual stick direction bits the game synthesized; the port
 //! must derive the same bits from the same clamped sticks.
-use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
+use std::{io::BufRead, path::PathBuf};
 
 /// Generated matches with every stick direction and many diagonals.
 const TRACES: [&str; 4] = [
@@ -24,7 +24,10 @@ fn stick_direction_bits_match_retail() {
     }
     let mut checked = 0;
     for name in TRACES {
-        for line in BufReader::new(File::open(trace(name)).unwrap()).lines() {
+        for line in melee_test_support::trace::open(&trace(name))
+            .unwrap()
+            .lines()
+        {
             let row: serde_json::Value = serde_json::from_str(&line.unwrap()).unwrap();
             for port in ["p0", "p1"] {
                 let pad = &row["inputs"][port];
