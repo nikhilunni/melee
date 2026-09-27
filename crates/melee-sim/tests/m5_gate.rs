@@ -501,6 +501,24 @@ fn reflector_loop_walkoff_fd_fox_200_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("reflector_loop_walkoff_fd_fox", 200);
 }
 
+/// Marth techs a back throw's landing: Passive.
+#[test]
+fn tech_inplace_victim_fd_marth_240_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("tech_inplace_victim_fd_marth", 240);
+}
+
+/// Marth techs a back throw's landing: PassiveStandB.
+#[test]
+fn tech_rollb_victim_fd_marth_240_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("tech_rollb_victim_fd_marth", 240);
+}
+
+/// Marth techs a back throw's landing: PassiveStandF.
+#[test]
+fn tech_rollf_victim_fd_marth_240_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("tech_rollf_victim_fd_marth", 240);
+}
+
 /// ftCo_SpecialAir_CheckInput's inclusive bounds: a stick at exactly
 /// (0.6, -0.55) takes the down special in the air.
 #[test]

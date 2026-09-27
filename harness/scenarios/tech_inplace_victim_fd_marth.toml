@@ -1,0 +1,29 @@
+# Fox dashes in, grabs Marth and back-throws him (100, 120); Marth presses L
+# just before landing (164) and techs: Passive.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "tech_inplace_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 240
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 70, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 122, port = 1, buttons = {  }, raw = {  } },
+  { frame = 164, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
