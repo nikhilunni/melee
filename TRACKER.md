@@ -1109,3 +1109,6 @@ Newest first. One line per session: date, what landed, what is next.
   with melee-sim dry-run; four witnesses. Corpus v6 sample: 35 bridged, 35
   exact (5 more lost to a full disk: 203G of traces plus the 164G backup).
   Full release gate 1471/0.
+- 2026-09-27: C-stick smashes with a held item throw it: ftCo_AttackS4's
+  checkItemThrow (LightThrowF4/B4 by the stick's sign) and AttackHi4/Lw4's
+  item branch (LightThrowHi4/Lw4). Three witnesses.

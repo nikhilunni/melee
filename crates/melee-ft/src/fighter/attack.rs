@@ -52,8 +52,11 @@ impl Fighter {
         }
         self.enter_jab(assets)
     }
-    /// Wait's attack checks with an item in hand: the smash and tilt checks
-    /// throw it in their direction (ftCo_80095A30 and kin), unported here;
+    /// Wait's attack checks with an item in hand. A smash with A is already
+    /// ftCo_Catch_CheckInput's throw, so these are C-stick smashes: side
+    /// (ftCo_AttackS4.c checkItemThrow) throws LightThrowF4/B4 by the stick's
+    /// sign, up and down (ftCo_AttackHi4/Lw4_CheckInput with ftCo_800DF30C /
+    /// ftCo_800DF3DC) LightThrowHi4/Lw4. Tilts with an item are unported;
     /// ftCo_Attack1_CheckInput (8008A9F8) throws a throwable item forward.
     fn enter_held_item_attack(
         &mut self,
@@ -61,16 +64,45 @@ impl Fighter {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        let directed = [
-            P::SmashSide,
-            P::SmashUp,
-            P::SmashDown,
-            P::TiltSide,
-            P::TiltUp,
-            P::TiltDown,
-        ];
-        if self.first_ground_transition(assets, context, &directed) != T::None {
-            unimplemented!("held-item smash or tilt throw");
+        for predicate in [P::SmashSide, P::SmashUp, P::SmashDown] {
+            if self.first_ground_transition(assets, context, &[predicate]) == T::None {
+                continue;
+            }
+            if held.use_kind != 0 {
+                unimplemented!(
+                    "checkItemThrow: a smash with a held item of kind {}",
+                    held.use_kind
+                );
+            }
+            let state = match predicate {
+                P::SmashUp => S::LightThrowHi4,
+                P::SmashDown => S::LightThrowLw4,
+                _ => {
+                    // checkLStick picks the main stick's sign, else the C-stick's.
+                    let input = &self.core.input;
+                    let t = &assets.input.thresholds;
+                    let main = input.pressed.intersects(Buttons::A)
+                        && gekko_math::msl::fabsf(input.current.stick.x)
+                            >= t.dash_smash_stick_threshold
+                        && i32::from(input.horizontal.tilt) < t.dash_smash_window;
+                    let x = if main {
+                        input.current.stick.x
+                    } else {
+                        input.current.cstick.x
+                    };
+                    let sign = if x >= 0.0 { 1.0 } else { -1.0 };
+                    if sign * self.core.physics.facing >= 0.0 {
+                        S::LightThrowF4
+                    } else {
+                        S::LightThrowB4
+                    }
+                }
+            };
+            return self.enter_item_throw(state, assets);
+        }
+        let tilts = [P::TiltSide, P::TiltUp, P::TiltDown];
+        if self.first_ground_transition(assets, context, &tilts) != T::None {
+            unimplemented!("held-item tilt throw");
         }
         if held.use_kind != 0 {
             unimplemented!(

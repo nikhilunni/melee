@@ -60,7 +60,7 @@ The remaining reachable gaps:
 
 | Retail path | Port | Reachable by |
 | --- | --- | --- |
-| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, C-stick ground throws, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
+| Held-item states beyond those: turn and run-brake throws, a dash throw leaving the ground, tilts with an item, LandingFallSpecial, capture, down and other non-tumble damage states while holding, specials of characters other than Fox, Falco and Marth | Fail closed at the motion change or input | Any other input or a hit while holding a Bob-omb |
 | A walking Bob-omb leaving the ground (states 2/4 -> 1) | The walk and turn rows are ported (`sudden_death_walkbomb_fd_marth`); walking or turning off the ground fails closed | A walking Bob-omb at an edge, which its short lit walk rarely reaches |
 | ftCo_800D705C's catch window (x209C, ftCo_800D71D8) | Not ported; unreachable while A also requests an aerial | LR + A in an IASA without the aerial check |
 | HeavyGet | Fails closed | No heavy item appears in scope |

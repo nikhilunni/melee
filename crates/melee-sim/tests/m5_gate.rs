@@ -1538,6 +1538,10 @@ fn timeout_and_sudden_death_match_retail() {
         // Hanging on the ledge, and jumping from it, holding it.
         ("sudden_death_ledgehold_bomb_fd_marth", 1545),
         ("sudden_death_ledgejump_bomb_fd_marth", 1545),
+        // C-stick smashes with it throw it (LightThrowB4/Hi4/Lw4).
+        ("sudden_death_cstickb4_bomb_fd_marth", 1420),
+        ("sudden_death_cstickhi4_bomb_fd_marth", 1544),
+        ("sudden_death_csticklw4_bomb_fd_marth", 1394),
     ] {
         combat_gate_ticks(name, ticks);
     }
