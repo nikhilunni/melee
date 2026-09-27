@@ -1,0 +1,33 @@
+# Fox teeters at the right edge, walks off (95) and double-jumps (106); Marth runs to the
+# edge (Ottotto 107) and grabs Fox in the air off-stage (130; CapturePulledHi 137, CaptureWaitHi 138).
+# The grab breaks in the air (CaptureCut 212) and Fox falls (Fall 242). Boundary: idle_fd_marth.sav; tick clock.
+name = "capture_hi_edge_cut_fall_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 266
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 12, port = 1, buttons = {  }, raw = {  } },
+  { frame = 20, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 20, port = 1, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 50, port = 1, buttons = {  }, raw = {  } },
+  { frame = 90, port = 0, buttons = {  }, raw = {  } },
+  { frame = 95, port = 1, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 99, port = 1, buttons = {  }, raw = {  } },
+  { frame = 106, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 108, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

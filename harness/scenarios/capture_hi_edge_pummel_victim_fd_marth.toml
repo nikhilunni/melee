@@ -1,0 +1,30 @@
+# Roles of capture_hi_edge_pummel_fd_marth swapped: Marth walks left and teeters at
+# the left edge (70); Fox runs over and dash-grabs him (75), pulling him off-stage
+# into CaptureWaitHi; Fox pummels (100, CaptureDamageHi), then the grab breaks
+# in the air (CaptureCut) and Marth catches the ledge.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "capture_hi_edge_pummel_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 220
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 20, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 75, port = 1, buttons = {  }, raw = { stickX = -127, button = 16 } },
+  { frame = 77, port = 1, buttons = {  }, raw = {  } },
+  { frame = 90, port = 0, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 102, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

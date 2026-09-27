@@ -1,0 +1,25 @@
+# Marth: runs left, brakes (RunBrake, 124) and slides into the edge (Ottotto, 133), then grabs from
+# the teeter (OttottoWait 141 -> Catch, 152). Boundary: idle_fd_marth.sav; tick clock.
+name = "ottotto_marth_runbrake_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 220
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 30, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 124, port = 0, buttons = {  }, raw = {  } },
+  { frame = 152, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 154, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

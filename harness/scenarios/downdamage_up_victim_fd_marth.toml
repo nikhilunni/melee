@@ -1,0 +1,30 @@
+# getup_stand_fd_marth's Fox pads: Fox down-throws Marth (100, 120), who lands
+# face up (DownWaitU, 178); Fox jabs him on the ground (185), a sub-7% hit
+# that forces DownDamageU (187), then DownStandU (203).
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "downdamage_up_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 245
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 70, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 122, port = 1, buttons = {  }, raw = {  } },
+  { frame = 185, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 187, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

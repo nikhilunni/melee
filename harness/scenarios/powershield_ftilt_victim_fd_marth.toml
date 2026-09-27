@@ -1,0 +1,29 @@
+# Roles of powershield_ftilt_fd_marth swapped: Fox dashes in and stops (30-66),
+# then forward-tilts (118); Marth presses digital L two ticks before it lands
+# (120, GuardReflect) and powershields the hit (GuardSetOff 122); releases at 160.
+# Boundary: idle_fd_marth.sav; tick clock.
+name = "powershield_ftilt_victim_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 215
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 30, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 66, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 1, buttons = {  }, raw = { stickX = -38 } },
+  { frame = 118, port = 1, buttons = {  }, raw = { stickX = -38, button = 256 } },
+  { frame = 120, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 160, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

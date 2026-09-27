@@ -854,6 +854,85 @@ fn damage_level1_victim_fd_marth_225_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("damage_level1_victim_fd_marth", 225);
 }
 
+/// An aerial Counter catching Fox's neutral air ends in the air (AirLwHit -> Fall).
+#[test]
+fn counter_air_fall_fd_marth_230_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("counter_air_fall_fd_marth", 230);
+}
+
+/// Aerial Dancing Blade's fourth hit up (AirS4Hi) and down (AirS4Lw).
+#[test]
+fn marth_air_dancingblade4_fd_marth_340_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("marth_air_dancingblade4_fd_marth", 340);
+}
+
+/// A fully charged Shield Breaker released offstage (AirNEnd1); its 0x16D-0x170
+/// generators are standalone AppSRT ones that outlive Marth's KO.
+#[test]
+fn marth_airn_end1_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("marth_airn_end1_fd_marth", 300);
+}
+
+/// Fox's push tips Marth's edge-stopped dash attack into Ottotto; then Catch.
+#[test]
+fn ottotto_marth_attackdash_fd_marth_250_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("ottotto_marth_attackdash_fd_marth", 250);
+}
+
+/// Run -> Ottotto at the edge, then OttottoWait -> jab.
+#[test]
+fn ottotto_marth_run_fd_marth_220_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("ottotto_marth_run_fd_marth", 220);
+}
+
+/// RunBrake -> Ottotto at the edge, then OttottoWait -> Catch.
+#[test]
+fn ottotto_marth_runbrake_fd_marth_220_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("ottotto_marth_runbrake_fd_marth", 220);
+}
+
+/// Fox caught in the air offstage cuts free into Fall.
+#[test]
+fn capture_hi_edge_cut_fall_fd_fox_266_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("capture_hi_edge_cut_fall_fd_fox", 266);
+}
+
+/// Marth pulled over the edge and held high takes a pummel (CaptureDamageHi).
+#[test]
+fn capture_hi_edge_pummel_victim_fd_marth_220_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("capture_hi_edge_pummel_victim_fd_marth", 220);
+}
+
+/// Marth at 115% tumbles (DamageFlyRoll) from Fox's forward smash.
+#[test]
+fn damage_fly_roll_victim_fd_marth_740_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damage_fly_roll_victim_fd_marth", 740);
+}
+
+/// Fox jabs Marth lying face up (DownDamageU).
+#[test]
+fn downdamage_up_victim_fd_marth_245_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("downdamage_up_victim_fd_marth", 245);
+}
+
+/// Marth powershields Fox's forward tilt.
+#[test]
+fn powershield_ftilt_victim_fd_marth_215_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("powershield_ftilt_victim_fd_marth", 215);
+}
+
+/// Marth's slow ledge climb at 300% (CliffClimbSlow).
+#[test]
+fn sudden_death_ledgeclimb_fd_marth_1385_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("sudden_death_ledgeclimb_fd_marth", 1385);
+}
+
+/// Marth's slow ledge roll at 300% (CliffEscapeSlow).
+#[test]
+fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("sudden_death_ledgeroll_fd_marth", 1410);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {
