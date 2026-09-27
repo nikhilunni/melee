@@ -57,8 +57,9 @@ impl Fighter {
     /// ftCo_Catch_CheckInput's throw, so these are C-stick smashes: side
     /// (ftCo_AttackS4.c checkItemThrow) throws LightThrowF4/B4 by the stick's
     /// sign, up and down (ftCo_AttackHi4/Lw4_CheckInput with ftCo_800DF30C /
-    /// ftCo_800DF3DC) LightThrowHi4/Lw4. Tilts with an item are unported;
-    /// ftCo_Attack1_CheckInput (8008A9F8) throws a throwable item forward.
+    /// ftCo_800DF3DC) LightThrowHi4/Lw4. Tilts throw LightThrowF/Hi/Lw
+    /// (ftCo_AttackS3/Hi3/Lw3_CheckInput); ftCo_Attack1_CheckInput
+    /// (8008A9F8) throws a throwable item forward.
     fn enter_held_item_attack(
         &mut self,
         held: super::item_pickup::HeldItem,
@@ -101,9 +102,24 @@ impl Fighter {
             };
             return self.enter_item_throw(state, assets);
         }
-        let tilts = [P::TiltSide, P::TiltUp, P::TiltDown];
-        if self.first_ground_transition(assets, context, &tilts) != T::None {
-            unimplemented!("held-item tilt throw");
+        for predicate in [P::TiltSide, P::TiltUp, P::TiltDown] {
+            if self.first_ground_transition(assets, context, &[predicate]) == T::None {
+                continue;
+            }
+            // ftCo_AttackS3_CheckInput throws on a held shoulder or a
+            // throwable item; AttackHi3/Lw3 on ftCo_80094E54 (the same test).
+            let throws = self.core.item_throw_pressed()
+                || (predicate == P::TiltSide
+                    && self.core.input.current.held.intersects(Buttons::SHIELD));
+            if !throws {
+                unimplemented!("a tilt with a non-throwable held item of kind {}", held.use_kind);
+            }
+            let state = match predicate {
+                P::TiltSide => S::LightThrowF,
+                P::TiltUp => S::LightThrowHi,
+                _ => S::LightThrowLw,
+            };
+            return self.enter_item_throw(state, assets);
         }
         if held.use_kind != 0 {
             unimplemented!(
