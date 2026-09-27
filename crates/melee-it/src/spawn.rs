@@ -122,6 +122,9 @@ pub struct ItemHolder<'a> {
     pub center: Vec3,
     /// it_8027B070: the holder's current attack, which the item takes on release.
     pub attack: Option<melee_types::combat::AttackInstance>,
+    /// The holder's stale multiplier for `attack`: hitboxes the item makes
+    /// after it lets go are restaled for it (it_80272460 -> ft_80089228).
+    pub attack_stale: f32,
 }
 impl ItemHolder<'_> {
     /// lb_8000B1CC(part, 0): the part's world translation, set up on demand

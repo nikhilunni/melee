@@ -446,9 +446,12 @@ impl Runtime {
                     grab_pairs::constrain(state, index);
                 }
                 let holder = match (holder_index, held_part) {
-                    (Some(index), Some(part)) => {
-                        Some(state.fighters[index].0.core.item_holder(part))
-                    }
+                    (Some(index), Some(part)) => Some(
+                        state.fighters[index]
+                            .0
+                            .core
+                            .item_holder(part, &state.assets.fighters[index]),
+                    ),
                     _ => None,
                 };
                 state.items.animate::<SceneItems>(

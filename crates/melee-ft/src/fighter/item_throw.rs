@@ -344,7 +344,7 @@ impl Fighter {
         };
         // lb_8000B1CC(it_80272C90(item), NULL): the item's hold joint sits on
         // the hand it is constrained to.
-        let hand = self.core.held_part_position();
+        let hand = self.core.held_part_position(assets);
         if !self.core.commands.take_throw_flag_b3() {
             if let MotionData::ItemThrow(throw) = &mut self.core.state_data {
                 throw.hand = hand;
@@ -376,7 +376,7 @@ impl Fighter {
         );
         let holder = self
             .core
-            .item_holder(self.core.bones.model.animation_translation);
+            .item_holder(self.core.bones.model.animation_translation, assets);
         let (center, attack) = (holder.center, holder.attack);
         self.core.item_requests.push(melee_it::ItemRequest::Throw {
             item: held.item,
@@ -456,9 +456,9 @@ impl super::FighterCore {
     }
 
     /// The world translation of the held part (ftData x8 +0x10).
-    pub fn held_part_position(&mut self) -> Vec3 {
+    pub fn held_part_position(&mut self, assets: &FighterAssets) -> Vec3 {
         let part = self.bones.model.animation_translation;
-        self.item_holder(part).part_position()
+        self.item_holder(part, assets).part_position()
     }
 }
 
@@ -471,7 +471,7 @@ impl super::FighterCore {
         held: super::item_pickup::HeldItem,
         assets: &FighterAssets,
     ) {
-        let mut holder = self.item_holder(self.bones.model.animation_translation);
+        let mut holder = self.item_holder(self.bones.model.animation_translation, assets);
         let position = holder.part_position();
         let (center, attack) = (holder.center, holder.attack);
         self.item_requests.push(melee_it::ItemRequest::Drop {

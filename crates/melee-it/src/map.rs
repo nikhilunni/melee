@@ -416,6 +416,10 @@ impl ItemCore {
         let hand = holder.part_position();
         self.leave_hand(velocity, hand, assets);
         self.end_hold(holder.center, holder.attack, map, assets);
+        // it_80272460 reads xD88 when a hitbox is made, so one the release
+        // callback makes in this same update (a Bob-omb exploding in hand)
+        // is staled for the attack just taken over.
+        self.stale_multiplier = holder.attack_stale;
     }
 
     /// it_80273B50 / it_80273748 (80273748): out of the hand at `position`

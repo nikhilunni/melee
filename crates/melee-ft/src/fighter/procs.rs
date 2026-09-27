@@ -270,11 +270,13 @@ impl FighterCore {
         // finish before the independent part blends are evaluated.
         self.animation
             .advance_main::<RetailTrig>(&mut self.skeleton);
+        let hand = self.held_item_hand(assets);
         self.commands.step(
             &mut self.animation,
             &mut self.skeleton,
             &mut self.ground_pose,
             assets,
+            hand,
         );
         for state in std::mem::take(&mut self.commands.airborne_changes) {
             match state {
@@ -377,12 +379,14 @@ impl FighterCore {
     ) -> Result<()> {
         self.animation
             .set_animation(&mut self.skeleton, &assets.motions[&motion], 0.0, 1.0)?;
+        let hand = self.held_item_hand(assets);
         restart_idle_step(
             &mut self.animation,
             &mut self.skeleton,
             &mut self.commands,
             &mut self.ground_pose,
             assets,
+            hand,
         );
         self.apply_dynamic_commands(assets);
         Ok(())
@@ -393,6 +397,7 @@ impl FighterCore {
         assets: &FighterAssets,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
+        let hand = self.held_item_hand(assets);
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
         // ftCo_8008A7A8: holding an item, most kinds replay the current idle.
@@ -408,7 +413,9 @@ impl FighterCore {
                 assets.wait_choices.as_deref()
             },
             |id| &assets.motions[&id],
-            |animation, tree| restart_idle_step(animation, tree, commands, ground_pose, assets),
+            |animation, tree| {
+                restart_idle_step(animation, tree, commands, ground_pose, assets, hand)
+            },
         )?;
         self.apply_dynamic_commands(assets);
         // ftCommon_8007E0E4: reset before the fighter-overlap nudge query.
@@ -703,11 +710,12 @@ fn restart_idle_step(
     commands: &mut super::commands::CommandState,
     ground_pose: &mut GroundPoseFlags,
     assets: &FighterAssets,
+    hand: super::commands::HeldItemHand,
 ) {
     commands.restart(assets.command_entries[&animation.motion_id]);
     animation.step_with_hooks::<RetailTrig>(
         tree,
-        |animation, tree| commands.step(animation, tree, ground_pose, assets),
+        |animation, tree| commands.step(animation, tree, ground_pose, assets, hand),
         |_, _| {},
     );
 }

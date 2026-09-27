@@ -1000,6 +1000,22 @@ impl FighterCore {
                 .push(melee_ef::request::EffectRequest::DestroyOwned);
         }
         super::commands::reset_parts(&mut self.animation, &mut self.skeleton, assets);
+        // fighter.c:1087-1091: without Ft_MF_SkipItemVis (part of
+        // ftCommon_GroundAirColl_MF) the held item shows again, leaving the
+        // hand pose reset_parts just reinstalled; a counterpart change keeps a
+        // hidden item hidden and releases the hand again (ftCommon_8007F578).
+        if !change.ground_air {
+            self.commands.held_item_hidden = false;
+        } else if self.commands.held_item_hidden {
+            if let super::commands::HeldItemHand::Light(slot) = self.held_item_hand(assets) {
+                super::commands::remove_part_animation(
+                    &mut self.animation,
+                    &mut self.skeleton,
+                    assets,
+                    slot,
+                );
+            }
+        }
         if matches!(
             state,
             CommonMotionState::Entry | CommonMotionState::EntryEnd
@@ -1196,19 +1212,23 @@ impl FighterCore {
             self.commands.timer = -start;
             self.commands.advance_control(&self.animation, assets);
         } else if start != 0.0 {
+            let hand = self.held_item_hand(assets);
             self.commands.seek(
                 &mut self.animation,
                 &mut self.skeleton,
                 &mut self.ground_pose,
                 assets,
+                hand,
             );
         } else {
             self.advance_color_overlay(assets);
+            let hand = self.held_item_hand(assets);
             self.commands.step(
                 &mut self.animation,
                 &mut self.skeleton,
                 &mut self.ground_pose,
                 assets,
+                hand,
             );
         }
         self.apply_dynamic_commands(assets);

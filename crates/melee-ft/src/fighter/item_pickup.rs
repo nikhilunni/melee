@@ -371,41 +371,27 @@ impl FighterCore {
         // ftAnim_80070FB4(pose, -1); the pose stays applied until the next
         // motion change reinstalls the (now empty) selection.
         self.animation.part_animations[hand.pose].previous = -1;
-        self.remove_part_animation(hand.shown, assets);
+        super::commands::remove_part_animation(
+            &mut self.animation,
+            &mut self.skeleton,
+            assets,
+            hand.shown,
+        );
     }
 
-    /// ftAnim_80070CC4 (80070CC4): a live part animation's parts drop their
-    /// ownership (as ftAnim_80070F28 does), the slot goes inactive, and the
-    /// main motion takes the subtree back at its current frame
-    /// (ftAnim_8006EED4), or with none attached the descriptor pose does.
-    fn remove_part_animation(&mut self, group: usize, assets: &FighterAssets) {
-        use crate::anim::attach::PartFlags;
-        let slot = &mut self.animation.part_animations[group];
-        if slot.current == -1 {
-            return;
+    /// ftCommon_8007F5CC's hook target for the item now in hand.
+    pub(super) fn held_item_hand(&self, assets: &FighterAssets) -> super::commands::HeldItemHand {
+        use super::commands::HeldItemHand;
+        match &self.held_item {
+            None => HeldItemHand::Empty,
+            Some(item) if item.heavy => HeldItemHand::Heavy,
+            Some(_) => HeldItemHand::Light(
+                assets
+                    .item_hand
+                    .expect("ftData_OnItemInvisible for this kind")
+                    .shown,
+            ),
         }
-        slot.current = -1;
-        for &bone in slot.joints.iter() {
-            self.animation.parts[bone].flags.0 &= !PartFlags::PART_ANIMATION;
-        }
-        let root = usize::from(
-            assets.bones.animation_sets[group]
-                .as_ref()
-                .expect("part animation set")
-                .root_joint,
-        );
-        if self.animation.motion_id < 0 {
-            // x590 is NULL: ftAnim_8006FA58 from the costume's descriptor.
-            self.animation.reset_subtree_pose(&mut self.skeleton, root);
-            return;
-        }
-        self.animation
-            .resume_dynamic_subtree::<super::RetailTrig>(
-                &mut self.skeleton,
-                root,
-                &assets.motions[&self.animation.motion_id],
-            )
-            .expect("part animation subtree");
     }
 
     /// Keep a held item inside the audited states (see HELD_ITEM_STATES).
@@ -448,10 +434,12 @@ impl FighterCore {
 
 impl FighterCore {
     /// The holder lent to its held item's callbacks: the part's joint
-    /// (ftLib_80086630), the ECB centre and the current attack.
+    /// (ftLib_80086630), the ECB centre and the current attack with its
+    /// stale multiplier.
     #[inline(never)] // one definition; melee-lib lends it to item callbacks
-    pub fn item_holder(&mut self, part: u8) -> melee_it::ItemHolder<'_> {
+    pub fn item_holder(&mut self, part: u8, assets: &FighterAssets) -> melee_it::ItemHolder<'_> {
         let joint = self.animation.parts[usize::from(part)].joint;
+        let attack = self.combat.stale.attack();
         // ftLib_80086990: vector_add(v, &cur_pos, 0, 0.5 * (top + bottom), 0),
         // three fadds (retail 800869A4..C8).
         let ecb = &self.collision.data.ecb;
@@ -465,7 +453,11 @@ impl FighterCore {
             skeleton: &mut self.skeleton,
             part: joint,
             center,
-            attack: self.combat.stale.attack(),
+            attack,
+            attack_stale: self
+                .combat
+                .stale
+                .multiplier_for(attack.map(|attack| attack.move_id), &assets.stale_weights),
         }
     }
 }
@@ -612,11 +604,12 @@ impl Fighter {
             self.core.animation.part_animations[hand.pose].previous = pose;
         }
         // ftAnim_80070C48: apply the shown slot's selection.
-        let shown = self.core.animation.part_animations[hand.shown].previous;
-        if shown != -1 {
-            self.core
-                .apply_part_animation(assets, hand.shown, shown as usize, 0.0);
-        }
+        super::commands::show_part_selection(
+            &mut self.core.animation,
+            &mut self.core.skeleton,
+            assets,
+            hand.shown,
+        );
         // Item_8026AB54 at the light item part (ftData x8 +0x10).
         self.core.item_requests.push(melee_it::ItemRequest::PickUp {
             item: item.item,

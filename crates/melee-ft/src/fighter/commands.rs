@@ -81,7 +81,9 @@ pub struct CommandState {
     pub articles_visible: bool,
     /// Fighter +221E bit 5: hide the fighter model (ftdrawcommon.c:233).
     pub fighter_hidden: bool,
-    pub held_item_visible: bool,
+    /// Fighter +221E bit 3, inverted (retail sets it to 1 on reset,
+    /// fighter.c:380): a subaction has hidden the held item (opcode 35).
+    pub held_item_hidden: bool,
     pub hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
@@ -154,14 +156,17 @@ impl CommandState {
         {}
     }
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
+    /// `held_item_hand` names what a held-item visibility command acts on
+    /// (see [`HeldItemHand`]).
     pub fn step(
         &mut self,
         animation: &mut FighterAnimation,
         tree: &mut JObjTree,
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
+        held_item_hand: HeldItemHand,
     ) {
-        self.step_inner(animation, tree, pose, assets, false);
+        self.step_inner(animation, tree, pose, assets, held_item_hand, false);
     }
 
     /// ftAction_80073354 (0x80073354): seek a newly installed script to a
@@ -172,8 +177,9 @@ impl CommandState {
         tree: &mut JObjTree,
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
+        held_item_hand: HeldItemHand,
     ) {
-        self.step_inner(animation, tree, pose, assets, true);
+        self.step_inner(animation, tree, pose, assets, held_item_hand, true);
     }
 
     fn step_inner(
@@ -182,6 +188,7 @@ impl CommandState {
         tree: &mut JObjTree,
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
+        held_item_hand: HeldItemHand,
         seeking: bool,
     ) {
         let borrowed_script = self.borrowed_script.clone();
@@ -311,7 +318,10 @@ impl CommandState {
                 }
                 Command::FighterVisibility(hidden) => self.fighter_hidden = *hidden,
                 Command::ArticleVisibility(visible) => self.articles_visible = *visible,
-                Command::HeldItemVisibility(visible) => self.held_item_visible = *visible,
+                Command::HeldItemVisibility(visible) => {
+                    // ftAction_80071F34 (80071F34) -> ftCommon_8007F5CC.
+                    self.set_held_item_visibility(*visible, animation, tree, assets, held_item_hand)
+                }
                 Command::SmashCharge(charge) => self.smash_charge = Some(*charge),
                 Command::SetAirborne(state) => self.airborne_changes.push(*state),
                 Command::HurtStatus(status) => self.hurt_status = *status,
@@ -449,6 +459,93 @@ fn apply_part(
         }
         index += 1;
     }
+}
+
+/// What ftCommon_8007F5CC's per-kind visibility hooks act on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HeldItemHand {
+    /// fp->item_gobj is NULL: only the visibility bit changes.
+    Empty,
+    /// A heavy item: Fighter_OnItemInvisible/Visible (ft/inlines.h:167-184)
+    /// skip the hand animation for it (itIsHeavy).
+    Heavy,
+    /// A light item whose hand pose shows in this x8B0 slot: every ported
+    /// kind's ftData_OnItemInvisible/Visible entry passes the same slot as
+    /// its OnItemPickup `shown` argument (e.g. ftFx_Init_OnItemInvisible).
+    Light(usize),
+}
+
+impl CommandState {
+    /// ftCommon_8007F5CC (8007F5CC): with an item in hand, a change of
+    /// visibility runs the kind's hook. Hiding releases the hand pose to the
+    /// main motion (ftAnim_80070CC4); showing reapplies the slot's selection
+    /// (ftAnim_80070C48).
+    pub(super) fn set_held_item_visibility(
+        &mut self,
+        visible: bool,
+        animation: &mut FighterAnimation,
+        tree: &mut JObjTree,
+        assets: &FighterAssets,
+        hand: HeldItemHand,
+    ) {
+        if hand != HeldItemHand::Empty && self.held_item_hidden == visible {
+            if let HeldItemHand::Light(slot) = hand {
+                if visible {
+                    show_part_selection(animation, tree, assets, slot);
+                } else {
+                    remove_part_animation(animation, tree, assets, slot);
+                }
+            }
+        }
+        self.held_item_hidden = !visible;
+    }
+}
+
+/// ftAnim_80070C48 (80070C48): apply slot `group`'s persistent selection.
+pub(super) fn show_part_selection(
+    animation: &mut FighterAnimation,
+    tree: &mut JObjTree,
+    assets: &FighterAssets,
+    group: usize,
+) {
+    let selection = animation.part_animations[group].previous;
+    if selection != -1 {
+        apply_part(animation, tree, assets, group, selection as usize, 0.0);
+    }
+}
+
+/// ftAnim_80070CC4 (80070CC4): a live part animation's parts drop their
+/// ownership (as ftAnim_80070F28 does), the slot goes inactive, and the
+/// main motion takes the subtree back at its current frame
+/// (ftAnim_8006EED4), or with none attached the descriptor pose does.
+pub(super) fn remove_part_animation(
+    animation: &mut FighterAnimation,
+    tree: &mut JObjTree,
+    assets: &FighterAssets,
+    group: usize,
+) {
+    let slot = &mut animation.part_animations[group];
+    if slot.current == -1 {
+        return;
+    }
+    slot.current = -1;
+    for &bone in slot.joints.iter() {
+        animation.parts[bone].flags.0 &= !PartFlags::PART_ANIMATION;
+    }
+    let root = usize::from(
+        assets.bones.animation_sets[group]
+            .as_ref()
+            .expect("part animation set")
+            .root_joint,
+    );
+    if animation.motion_id < 0 {
+        // x590 is NULL: ftAnim_8006FA58 from the costume's descriptor.
+        animation.reset_subtree_pose(tree, root);
+        return;
+    }
+    animation
+        .resume_dynamic_subtree::<RetailTrig>(tree, root, &assets.motions[&animation.motion_id])
+        .expect("part animation subtree");
 }
 
 /// ftAnim_80070F28 (0x80070F28), then ftAnim_80070E74 (0x80070E74).
