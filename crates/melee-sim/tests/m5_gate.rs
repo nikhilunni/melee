@@ -1574,6 +1574,8 @@ fn timeout_and_sudden_death_match_retail() {
         ("sudden_death_ledgeroll_fd_fox", 1370),
         ("sudden_death_ledgeattack_fd_fox", 1370),
         ("sudden_death_ledgejump_fd_fox", 1370),
+        // A laser meets a thrown Bob-omb and blows it up mid-air.
+        ("sudden_death_laserbomb_fd_marth", 1545),
         // A thrown Bob-omb bouncing off the wall under the stage (it_80276FC4).
         ("sudden_death_wallbomb_fd_marth", 1441),
         ("sudden_death_wallbombslope_fd_marth", 1441),

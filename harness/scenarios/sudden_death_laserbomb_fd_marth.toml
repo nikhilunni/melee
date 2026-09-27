@@ -1,0 +1,34 @@
+# Sudden Death: as sudden_death_throwb_bomb_fd_marth (Marth back-throws the
+# lit Bob-omb toward Fox, 1244), while Fox fires his blaster (1248, 1260,
+# 1272): a laser meets the flying Bob-omb and blows it up mid-air (1277).
+# Boundary: sudden_death_fd_marth4_timer60.sav; tick clock.
+name = "sudden_death_laserbomb_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/sudden_death_fd_marth4_timer60.sav"
+frames =     1545
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1206, port = 0, buttons = { StickX = -0.35 }, raw = { stickX = -45 } },
+  { frame = 1207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1226, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1244, port = 0, buttons = { A = true, StickX = 0.390625 }, raw = { button = 256, stickX = 50 } },
+  { frame = 1246, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1248, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 1249, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1260, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 1261, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1272, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 1273, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

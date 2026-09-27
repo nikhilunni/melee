@@ -96,7 +96,7 @@ jab window, now gated) and taught the decoder to encode stale NaN words.
 | --- | --- | --- |
 | `melee-ft/fighter/grab_damage.rs` ftCo_8008EC90 | A launch on a grab pair: ported when both are launched, whichever member comes first (`sudden_death_grabbomb_fd_marth`, `sudden_death_grabbedhold_bomb_fd_marth`), when only the captor is (ftCo_800DCFD4, `sudden_death_grabbombcaptor_fd_marth`), when only the victim is (ftCo_800DE2F0, the captor takes PlCo +380's hit, `sudden_death_releasecaptor_bomb_fd_marth`) and when the captor is launched as its pummel lands (ftCo_800DE854, `sudden_death_pummelcaptor_bomb_fd_marth`). A light third-party hit on the victim and armoured members fail closed | Unreachable in a 1v1: the only third-party hitboxes are items; a Bob-omb hits for 25 (17 after a wall bounce), not under PlCo +3C0's 6, and a captor's laser flies away from the victim it holds |
 | `melee-ft/fighter/damage.rs` ftColl_80076ED8 | A third fighter's hit on a captured fighter | Needs three fighters: out of scope in a 1v1 |
-| `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Same interaction family |
+| `melee-ft/fighter/grab_escape.rs` ftCo_8008EC90 | Captured damage outside low capture or throw | Unreachable in a 1v1: the branch needs a hit from the captor (only pummels, in CaptureWait/CaptureDamage, and throws, in the Thrown states, which are ported) or a light third-party hit (see the grab-pair row) |
 | `melee-ft/fighter/damage.rs` fighter.c:2907 | Phantom contact and shield impact together: ported (the phantom branch precedes x19A4's, so the impact gets no response) | Unwitnessed: the phantom band is PlCo +7A8 = 0.01 of overlap; a directed Marth dtilt search against a shrinking Fox shield jumps from shield contact to 1.39 overlap |
 | `melee-ft/fighter/damage.rs` ftColl_80076CBC | Simultaneous shield impacts: ported (the strongest impact wins; getEnvDmg rounding, a zero-damage hit sets none) | Unwitnessed: every Fox/Marth hitbox is in group 0 (a scan of PlFx/PlMs scripts), so only an item and a fighter hit together could do it |
 | `melee-ft/fighter/clank.rs` ftColl_8007925C | An inert (element 11) hitbox touching an item | Unreachable: no element 11 in any Fox or Marth script, article or the Bob-omb (element 15 appears only in the out-of-scope item Swing states) |
@@ -139,9 +139,7 @@ victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.
 
 ## Exit status
 
-Not complete. Remaining reachable boundaries: TurnRun's inherited scratch
-word, an airborne DownDamage fighter reaching a wall, captured damage
-outside low capture or throw, and the Sudden Death item gaps in the table
-above. The shield-impact combinations are ported from the retail branch
+Not complete. Remaining reachable boundaries: an airborne DownDamage
+fighter reaching a wall and the Sudden Death item gaps in the table above. The shield-impact combinations are ported from the retail branch
 order but unwitnessed. `INTERACTION_MATRIX.md` lists the reachable
 transitions no gated trace covers yet.

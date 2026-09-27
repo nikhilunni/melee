@@ -454,7 +454,7 @@ fails closed for anything else.
 | Fighter hitbox detonates a Bob-omb | `sudden_death_smash_bomb_fd_marth` (Marth smash); Fox dash attack `sudden_death_foxdash_fd_marth` hits Marth, not the bomb | Fox hitting a Bob-omb: **MISSING** |
 | Item hits item (chain), walk after a soft landing, wall bounce | `sudden_death_bombchain/walkbomb/wallbomb{,slope}_fd_marth`, `sudden_death_turnrunhold_bomb_fd_marth` | shared |
 | Held item leaves the hand mid-animation / with no motion | (by name) `corpus_sd_*` (9 cases) | same |
-| Laser hits a Bob-omb; Reflector reflects a thrown Bob-omb; Counter against a thrown Bob-omb or its blast; shield against a thrown Bob-omb; Illusion hits a Bob-omb | **MISSING** (none witnessed) | **MISSING** |
+| Laser hits a Bob-omb (`sudden_death_laserbomb_fd_marth`: a thrown one blows up mid-air); Reflector reflects a thrown Bob-omb; Counter against a thrown Bob-omb or its blast; shield against a thrown Bob-omb; Illusion hits a Bob-omb | Laser witnessed; the rest **MISSING** | **MISSING** |
 | Down states while holding; tilts with an item; HeavyGet; unlit Bob-omb; a walking Bob-omb leaving the ground | Audit: fail closed, classified unreachable or needing investigation | same |
 | Item hitbox against an item hitbox (it_8026FE68) | Fails closed (audit) | same |
 
@@ -509,7 +509,7 @@ gm_80167320 (final stock).
 | Stock loss, last-stock pause, GAME | `match_fd_marth_scripted`, `ko_fd_marth` (by name) | same |
 | Timeout: TIME!, standings, tie -> Sudden Death, Bob-omb rain, bomb KO | `timeout_tie_fd_marth`, `sudden_death_start_fd_marth`, `melee-lib` `match_endings.rs` (cold) | same |
 | Timeout with unequal stocks or percents (a decisive timeout) | **MISSING** (only the tie is recorded) | same |
-| Simultaneous KO on the last stocks (draw) | **MISSING** (MATCHUP_COMPLETENESS lists it as open) | same |
+| Simultaneous KO on the last stocks | `sudden_death_ledgejump_bomb_fd_marth`: both fighters die on tick 1522 (DeadDown, DeadRight) and the trace stays exact to 1545; the results screen after it is not gated | same |
 | Final stock / elimination (gm_80167320) | Audit: unreachable because the scene freezes first | same |
 | Swapped ports (Fox P1) | `start_fd_fox4` start boundary (not in m5_gate); directed `*_foxmarth` and `*_marthfox` capture scenarios; most other directed scenes use Marth P1 | **Thin**: swapped-port gameplay is almost entirely corpus |
 | Pause during a match | Investigate: reachable by a human in versus mode; not classified in the audit | same |
