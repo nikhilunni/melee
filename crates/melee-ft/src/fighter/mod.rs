@@ -74,7 +74,8 @@ pub type DefenseContact = fn(&mut Fighter, &mut Fighter, &assets::FighterAssets,
 pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
 /// A character shield volume against item hitbox `id` (ftColl_8007925C's
 /// shield step, ftColl_80077688). Returns true when it caught the hit.
-pub type ItemDefenseContact = fn(&mut Fighter, &mut melee_it::ItemCore, usize) -> bool;
+pub type ItemDefenseContact =
+    fn(&mut Fighter, &mut melee_it::ItemCore, usize, &assets::FighterAssets) -> bool;
 
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a

@@ -435,6 +435,9 @@ pub struct DefenseVolume {
     /// The volume bone's world matrix.
     pub matrix: hsd_types::Mtx,
     pub radius: f32,
+    /// x221B_b1: a counter's volume, off which a bouncing item leaves at
+    /// PlCo +2D0 degrees whatever the geometry (ftColl_80077688).
+    pub fixed_bounce: bool,
 }
 
 /// ftColl_80076CBC (80076CBC): health damage, strongest impact and group victims.
@@ -1406,6 +1409,7 @@ impl FighterCore {
         contact: Contact,
         volume: &DefenseVolume,
         own_hitlag: f32,
+        assets: &FighterAssets,
     ) -> i32 {
         let hit = item.hitboxes[id].as_ref().expect("eligible item hit");
         let desc = &hit.descriptor;
@@ -1420,14 +1424,33 @@ impl FighterCore {
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
             item.pending_shield_deflection = item.hit_flags[id].shield_bounce.then(|| {
-                melee_lb::shield::deflection(
+                let deflection = melee_lb::shield::deflection(
                     volume.position,
                     &volume.matrix,
                     hit.previous_position,
                     hit.position,
                     volume.radius,
                     desc.radius * if desc.ignore_scale { 1.0 } else { item.scale },
-                )
+                );
+                if !volume.fixed_bounce {
+                    return deflection;
+                }
+                // ftcoll.c:909-921: angle 0 and a fixed normal, mirrored by
+                // the side the geometric normal points to.
+                let radians = std::f32::consts::PI / 180.0 * assets.shield.counter_bounce_degrees;
+                let cosine = gekko_math::msl::cosf(radians);
+                melee_lb::shield::ShieldDeflection {
+                    normal: Vec3::new(
+                        if deflection.normal.x >= 0.0 {
+                            cosine
+                        } else {
+                            -cosine
+                        },
+                        gekko_math::msl::sinf(radians),
+                        0.0,
+                    ),
+                    angle: 0.0,
+                }
             });
             if own_hitlag != 0.0 {
                 item.pending_shield_hitlag = own_hitlag;
@@ -2169,7 +2192,7 @@ impl Fighter {
                 && hit.descriptor.element != melee_types::HitElement::Inert
             {
                 if let Some(contact) = self.character.table().item_defense_contact {
-                    if contact(self, item, id) {
+                    if contact(self, item, id, assets) {
                         continue;
                     }
                 }

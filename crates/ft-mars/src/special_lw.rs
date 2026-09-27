@@ -226,6 +226,8 @@ fn counter_volume(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseV
         position,
         matrix,
         radius,
+        // ftMs_SpecialLw_Anim: x221B_b1 after ftColl_8007B1B8.
+        fixed_bounce: true,
     })
 }
 
@@ -260,7 +262,12 @@ fn counter_contact(
 
 /// ftColl_8007925C's shield step against the Counter, then ftColl_80077688:
 /// an item's hit is caught like a fighter's, keeping the strongest contact.
-pub fn item_contact(f: &mut Fighter, item: &mut melee_it::ItemCore, id: usize) -> bool {
+pub fn item_contact(
+    f: &mut Fighter,
+    item: &mut melee_it::ItemCore,
+    id: usize,
+    assets: &FighterAssets,
+) -> bool {
     let Some(volume) = counter_volume(f) else {
         return false;
     };
@@ -269,7 +276,7 @@ pub fn item_contact(f: &mut Fighter, item: &mut melee_it::ItemCore, id: usize) -
         return false;
     };
     let own_hitlag = f.character.get::<Marth>().special_lw.collision_multiplier;
-    let damage = f.record_item_volume_hit(item, id, contact, &volume, own_hitlag);
+    let damage = f.record_item_volume_hit(item, id, contact, &volume, own_hitlag, assets);
     let facing = if f.physics.position.x > item.position.x {
         -1.0
     } else {

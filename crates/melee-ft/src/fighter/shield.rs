@@ -41,6 +41,8 @@ pub struct ShieldParameters {
     pub reflect_radius: f32,
     pub reflect_damage: f32,
     pub reflect_speed: f32,
+    /// PlCo +2D0: the bounce angle off a counter's volume (ftColl_80077688).
+    pub counter_bounce_degrees: f32,
     pub powershield_frames: f32,
     pub powershield_interrupt_frames: i32,
     pub size_range: [f32; 2],
@@ -80,6 +82,7 @@ impl ShieldParameters {
             reflect_radius: r.f32(p + 0x2A8)?,
             reflect_damage: r.f32(p + 0x2AC)?,
             reflect_speed: r.f32(p + 0x2B0)?,
+            counter_bounce_degrees: r.f32(p + 0x2D0)?,
             powershield_frames: r.f32(p + 0x2B4)?,
             powershield_interrupt_frames: r.s32(p + 0x2B8)?,
             size_range: [r.f32(p + 0x2D4)?, r.f32(p + 0x2D8)?],

@@ -1031,3 +1031,8 @@ Newest first. One line per session: date, what landed, what is next.
   validate_ticks skips item motion during the final-KO freeze. Corpus v5
   third batch: 40 bridged, 38 exact, both faults (wall bounce, meteor
   cancel) fixed and gated.
+- 2026-09-27: Corpus v5 fourth batch: 40 bridged, 38 exact. A counter's
+  volume (x221B_b1) bounces an item at PlCo +2D0 degrees regardless of the
+  geometry (ftColl_80077688); MissFoot ends through ftCo_80090780 (keeping
+  fast fall). Both gated. Four sampled batches: 160 recordings, 8 new
+  faults found and fixed after the first; remaining v5 sixths: NR%6==0, 5.

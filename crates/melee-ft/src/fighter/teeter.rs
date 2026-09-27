@@ -151,9 +151,7 @@ pub(super) fn missed_footing_animation(
 ) -> Result<Option<crate::anim::WaitChoice>> {
     fighter.step_animation(phase.assets);
     if !fighter.animation.frames_remaining(&fighter.skeleton) {
-        fighter.change_motion_state(S::DamageFall.into(), phase.assets)?;
-        let maximum = fighter.attributes.air.air_drift_max;
-        fighter.physics.self_velocity.x = fighter.physics.self_velocity.x.clamp(-maximum, maximum);
+        fighter.enter_damage_fall(phase.assets)?;
         fighter.state_data = super::MotionData::Damage(super::damage::DamageState {
             hitstun: 0.0,
             jump_buffer: 0.0,
