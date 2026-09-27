@@ -847,6 +847,13 @@ fn shieldbreak_hold_fd_marth_700_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("shieldbreak_hold_fd_marth", 700);
 }
 
+/// Fox's jab 1 on a crouching Marth's head capsule and a taunting Marth's
+/// legs: DamageHi1 and DamageLw1 (the only level-1 Hi/Lw pair on Marth).
+#[test]
+fn damage_level1_victim_fd_marth_225_ticks_and_ordered_particle_draws() {
+    combat_gate_ticks("damage_level1_victim_fd_marth", 225);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {
