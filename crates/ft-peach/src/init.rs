@@ -51,6 +51,11 @@ impl CharacterCallbacks for Peach {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
+    const ENTER_TAUNT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     fn kind(&self) -> FighterKind {
         FighterKind::Peach
     }

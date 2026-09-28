@@ -937,7 +937,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 65] = [
+const MATRIX_WITNESSES: [(&str, usize); 68] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1004,6 +1004,10 @@ const MATRIX_WITNESSES: [(&str, usize); 65] = [
     ("bf_shielddrop_guard_pass", 150),
     ("yoshi_armor_jab_fd_fox4", 260),
     ("yoshi_armor_smash_fd_fox4", 260),
+    // ftCo_800DEA28 default arm: AppealSR, turn, then AppealSL.
+    ("taunt_start_fd_captainfalcon_fox4", 600),
+    ("taunt_start_fd_peach_fox4", 600),
+    ("taunt_start_fd_yoshi_fox4", 600),
 ];
 
 #[test]
@@ -1963,7 +1967,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 57] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 58] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2078,6 +2082,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 57] = [
     ("corpus_v3_fd_yoshi_fox4_e726cfdde_p1", 127),
     ("yoshi_egg_fd_fox4_e1502cb40_p2", 164),
     ("yoshi_egg_fd_fox4_e726cfdde_p2", 133),
+    // Falco's taunt: ftCo_800DEA28's default arm (common AppealS).
+    ("corpus_v3_fd_falco_fox4_e89a89d0e_p1", 102),
 ];
 
 #[test]

@@ -200,7 +200,14 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Restore character-owned fields from a retail Fighter dump when a scene
     /// starts from a savestate (the shared fields are restored by the scene).
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
-    /// ftCo_800DEA28: explicitly bind each audited character entry.
+    /// ftCo_800DEA28 (0x800DEA28): taunt entry. Retail switches on kind:
+    /// Young Link (ftCl_Init_80149318), Dr. Mario (ftDr_Init_80149910) and
+    /// Ganondorf (lb_800119DC effect, then ftCo_800DEBD0 twice) have their
+    /// own arms; every other kind takes ftCo_800DEBD0, which also calls
+    /// ftKb_SpecialN_800F5D04 for Kirby (Peach/Zelda arms need DbLevel >= 3,
+    /// never true in retail). Characters on the default arm bind
+    /// `Fighter::enter_common_taunt`; the pl_80040120 taunt stat is not
+    /// modelled. Unaudited kinds keep the panic.
     const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
         character::unsupported_taunt;
     fn on_load(&mut self, capabilities: &mut Capabilities);

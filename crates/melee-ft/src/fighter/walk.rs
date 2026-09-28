@@ -37,7 +37,8 @@ fn walk_state(
 }
 
 impl Fighter {
-    /// ftCo_800DEAE8 (800DEAE8): clear IASA, select authored left variant,
+    /// ftCo_800DEBD0 -> ftCo_800DEAE8 (800DEAE8), the default arm of the
+    /// ftCo_800DEA28 taunt entry: clear IASA, select authored left variant,
     /// ordinary motion entry; unlike attack entry, no ftAnim_8006EBA4 call.
     pub fn enter_common_taunt(&mut self, assets: &FighterAssets) -> Result<()> {
         self.commands.allow_interrupt = false;

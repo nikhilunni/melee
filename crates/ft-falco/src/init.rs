@@ -50,6 +50,11 @@ impl CharacterCallbacks for Falco {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
+    const ENTER_TAUNT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_fox_family::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &ft_fox_family::rows::<Self>();
