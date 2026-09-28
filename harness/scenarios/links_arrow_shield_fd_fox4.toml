@@ -1,0 +1,32 @@
+# LINKS directed witness: Link's arrows at Fox's shield
+# (itLinkArrow_Logic98_HitShield, itLinkarrow_UnkMotion2_*): Fox walks in and
+# shields; a tapped arrow falls short into the floor, a charged one sticks in
+# the shield, rides its rim as it shrinks and goes when Fox lets it down.
+name = "links_arrow_shield_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 140, port = 1, buttons = {  }, raw = {  } },
+  { frame = 145, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

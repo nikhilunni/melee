@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 365] = [
+const MATRIX_WITNESSES: [(&str, usize); 369] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1445,6 +1445,11 @@ const MATRIX_WITNESSES: [(&str, usize); 365] = [
     // Link's and Young Link's bow and arrows: draws, shots, stuck arrows, the fire arrow's flame.
     ("links_bow_fd_fox4", 600),
     ("links_yl_bow_fd_fox4", 600),
+    // Link's and Young Link's bombs, the arrow held by a shield and Young Link's taunt milk.
+    ("links_bomb_fd_fox4", 900),
+    ("links_yl_bomb_fd_fox4", 900),
+    ("links_arrow_shield_fd_fox4", 420),
+    ("links_yl_milk_fd_fox4", 600),
 ];
 
 #[test]
@@ -2506,7 +2511,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 358] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 379] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3084,6 +3089,31 @@ const CORPUS_V3_MATCHES: [(&str, usize); 358] = [
     // Link: the bow and arrow (SpecialN), fixed with its port.
     ("corpus_v3_fd_link_fox4_e50814092_p1", 3861),
     ("corpus_v3_fd_link_fox4_e75fb4a9a_p1", 86),
+    // Link / Young Link explorer cases: bombs held, thrown, dropped and exploding in hand;
+    // item hitboxes following the JObj; the arrow at the archer's scale and in shields;
+    // thrown/dropped hitboxes placed past link 11; self-hits leave the stale queue alone;
+    // timed shield victims; Fox's blaster callbacks per motion; the taunt milk.
+    ("corpus_v3_fd_link_fox4_e7ff378da_p0", 96),
+    ("corpus_v3_fd_link_fox4_ec3145eb3_p0", 120),
+    ("corpus_v3_fd_link_fox4_ecad2716f_p0", 2933),
+    ("corpus_v3_fd_link_fox4_ef17f3433_p1", 5943),
+    ("corpus_v3_fd_link_fox4_ef17f3433_p2", 6001),
+    ("corpus_v3_fd_link_fox4_ef5188d7f_p0", 6001),
+    ("corpus_v3_fd_link_fox4_ef5188d7f_p1", 6001),
+    ("corpus_v3_fd_link_fox4_ef5188d7f_p2", 6001),
+    ("corpus_v3_fd_link_fox4_ef5e3e043_p1", 6001),
+    ("corpus_v3_fd_link_fox4_ef6b5a67f_p0", 6001),
+    ("corpus_v3_fd_link_fox4_ef6b5a67f_p1", 6001),
+    ("corpus_v3_fd_link_fox4_ef6b5a67f_p2", 6001),
+    ("corpus_v3_fd_link_fox4_ef9e858d4_p1", 6001),
+    ("corpus_v3_fd_link_fox4_efc6a328f_p1", 6001),
+    ("corpus_v3_fd_link_fox4_efc6a328f_p2", 6001),
+    ("corpus_v3_fd_younglink_fox4_eeda0d0fc_p0", 6001),
+    ("corpus_v3_fd_younglink_fox4_eeda0d0fc_p1", 5788),
+    ("corpus_v3_fd_younglink_fox4_ef89b3e70_p2", 6001),
+    ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p0", 6001),
+    ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p1", 6001),
+    ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p2", 6001),
 ];
 
 #[test]

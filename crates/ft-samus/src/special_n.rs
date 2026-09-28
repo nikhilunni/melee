@@ -181,6 +181,7 @@ fn form_shot(f: &mut Fighter) {
         spawn,
         part: HAND_PART as u8,
         hold: false,
+        catch_item: false,
     });
     f.character.get_mut::<Samus>().charge_article = true;
     install_damage_callbacks(f);

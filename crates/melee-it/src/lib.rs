@@ -10,6 +10,8 @@ pub mod hurt;
 mod link;
 pub use link::*;
 mod logic;
+mod landing;
+pub use landing::AirLanding;
 mod map;
 pub mod particle_track;
 pub use map::AirContact;

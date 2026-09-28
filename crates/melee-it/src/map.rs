@@ -101,7 +101,7 @@ impl ItemCore {
     /// position and moves to the item's current one. xDCE_flag.b7 (always set
     /// at creation) also re-aims the fixed ECB at the model's rotation.
     /// The CollData is taken for the pass and stored back by the caller.
-    fn refresh_collision(&mut self) -> CollData {
+    pub(crate) fn refresh_collision(&mut self) -> CollData {
         let angle = self.ecb_angle();
         let mut collision = self.collision.take().expect("item map collision");
         collision.last_pos = collision.cur_pos;
@@ -348,7 +348,7 @@ impl ItemCore {
     /// grounded box; near-zero speeds are zero; true (and no velocity) once
     /// both axes are within ItemAttr x5C, or when the kind keeps no bounce
     /// speed (x58 zero). xDCD b4 is never set for the ported kinds.
-    fn settle(&mut self, assets: &ItemAssets) -> bool {
+    pub(crate) fn settle(&mut self, assets: &ItemAssets) -> bool {
         if self.land_count <= 1 {
             self.update_spin(assets.landing_spin_degrees);
             self.restore_collision_box(assets);
@@ -373,7 +373,7 @@ impl ItemCore {
     /// it_8026DD5C (8026DD5C): the landing count resets and the item is
     /// grounded; unless it slides (it_80277040) its spin stops
     /// (it_80274740). it_80276CEC's stored normal only feeds the slide.
-    fn come_to_rest(&mut self, assets: &ItemAssets) -> bool {
+    pub(crate) fn come_to_rest(&mut self, assets: &ItemAssets) -> bool {
         self.land_count = 0;
         self.land_on_floor();
         if self.slides(assets) {
@@ -392,7 +392,7 @@ impl ItemCore {
     /// kind without a slide speed (x50) never does; neither does anything
     /// on a floor flatter than ItCo +C0, which covers every ported stage's
     /// floors.
-    fn slides(&mut self, assets: &ItemAssets) -> bool {
+    pub(crate) fn slides(&mut self, assets: &ItemAssets) -> bool {
         if gekko_math::msl::fabsf(assets.slide_speed) < 0.00001 {
             return false;
         }
@@ -562,14 +562,14 @@ impl ItemCore {
         }
     }
 
-    fn floor_line_from(&mut self, collision: &CollData, floor: bool) {
+    pub(crate) fn floor_line_from(&mut self, collision: &CollData, floor: bool) {
         if floor {
             self.floor_line = collision.floor.index;
         }
     }
 
     /// it_80275DFC (80275DFC): the fixed ECB from the ItemAttr box again.
-    fn restore_collision_box(&mut self, assets: &ItemAssets) {
+    pub fn restore_collision_box(&mut self, assets: &ItemAssets) {
         let b = assets.collision_box;
         let scale = self.scale;
         let facing = if self.facing == -1.0 { -1 } else { 1 };
@@ -595,8 +595,12 @@ impl ItemCore {
         map: &mut melee_mp::CollMap,
         assets: &ItemAssets,
     ) {
+        // it_80273B50: an article (hold kind 8) leaves from its attach
+        // joint's offset through the hand, anything else from the hand.
         let hand = holder.part_position();
-        self.leave_hand(velocity, hand, assets);
+        let matrix = holder.part_matrix();
+        let position = self.drop_release_point(hand, &matrix, assets);
+        self.leave_hand(velocity, position, assets);
         self.end_hold(holder.center, holder.attack, map, assets);
         // it_80272460 reads xD88 when a hitbox is made, so one the release
         // callback makes in this same update (a Bob-omb exploding in hand)
@@ -700,6 +704,8 @@ impl ItemCore {
         self.held = false;
         self.holder_part = 0;
         self.speed_damage = true;
+        self.throw_count += 1;
+        self.land_count = 0;
         self.enter_air();
         self.sweep_from_holder(center, map, assets);
         self.face_spin_axis();
@@ -810,6 +816,13 @@ impl ItemCore {
         self.velocity.y *= scale;
         self.velocity.z *= scale;
         true
+    }
+
+    /// mpCollSetFacingDir on the item's CollData.
+    pub fn set_collision_facing(&mut self, facing: i32) {
+        if let Some(collision) = &mut self.collision {
+            melee_mp::set_facing_dir(collision, facing);
+        }
     }
 
     /// it_802762BC (802762BC).

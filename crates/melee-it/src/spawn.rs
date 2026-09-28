@@ -168,6 +168,9 @@ pub enum ItemRequest {
         spawn: SpawnItem,
         part: u8,
         hold: bool,
+        /// With `hold`, ftpickupitem_80094818's catch flag: the hand also
+        /// takes the shown selection (Fighter_OnItemPickup's ftAnim_80070C48).
+        catch_item: bool,
     },
     /// The owner sends its held article of `kind` out of the hand
     /// (it_802B28C8, the Egg Throw): see [`Launch`].
@@ -327,6 +330,8 @@ pub struct ItemOwner {
     /// (ftLk_SpecialN_GetIndex: 0..5 through the bow special's rows),
     /// or None.
     pub article_stage: Option<u8>,
+    /// ftLib_800869D4 (ftCommon_GetModelScale): the owner's model scale.
+    pub model_scale: f32,
     /// The owner's count of articles it has fired, which its articles
     /// compare with the count at their own launch (Samus's missiles read
     /// u.ss.x2238 through ftSs_SpecialS_8012A068). Zero for other kinds.

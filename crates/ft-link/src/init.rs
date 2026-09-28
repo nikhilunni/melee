@@ -49,6 +49,10 @@ impl CharacterCallbacks for Link {
         &TABLE
     }
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
+    /// The specials keep a held light item: only the bomb's (a bomb in
+    /// hand is thrown instead) and the bow's shot (the hand is posed for it
+    /// again) read it.
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         Fighter::enter_common_taunt;
     /// ftLk_Init_OnKnockbackEnter (Fighter_OnKnockbackEnter(gobj, 1)).

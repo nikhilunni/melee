@@ -126,6 +126,7 @@ pub fn start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitC
             spawn,
             part,
             hold: false,
+            catch_item: false,
         });
         sheik(f).holding_needles = true;
         let air = f.motion_state.action == AIR_START;

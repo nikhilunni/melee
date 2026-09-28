@@ -111,8 +111,10 @@ pub fn enter_special<C: FoxFamily>(
         f.physics.ground_velocity = 0.0;
         f.physics.self_velocity = Vec3::ZERO;
     }
+    // ftFox_SpecialN_SpawnBlaster: the blaster, then ftFox_SpecialN_SetCall.
     *f.character.get_mut::<C>().special_neutral() = SpecialNeutral {
         blaster_present: true,
+        callbacks_armed: true,
         ..SpecialNeutral::default()
     };
     let spawn = SpawnItem::held(
@@ -162,7 +164,10 @@ fn start<C: FoxFamily, const AIR: bool>(
         )?;
         // ftFx_SpecialN_OnChangeAction -> ft_800892A0: each firing cycle is a new instance.
         f.combat.stale.new_instance();
-        f.character.get_mut::<C>().special_neutral().accessory_shot = true;
+        let scratch = f.character.get_mut::<C>().special_neutral();
+        scratch.accessory_shot = true;
+        // ftFox_SpecialN_SetCall.
+        scratch.callbacks_armed = true;
         control::<C>(f, ItemControl::Visibility(1));
     }
     Ok(None)
@@ -202,6 +207,8 @@ fn firing<C: FoxFamily, const AIR: bool>(
             f.character.get_mut::<C>().special_neutral().accessory_shot = false;
             f.commands.variables[1] = 1;
         }
+        // ftFox_SpecialN_SetCall after either transition.
+        f.character.get_mut::<C>().special_neutral().callbacks_armed = true;
         control::<C>(f, ItemControl::Visibility(1));
     }
     fire::<C>(f, phase.assets);
@@ -309,8 +316,13 @@ fn fire<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
     });
 }
 
-/// ftFx_SpecialN_RemoveBlaster (800E5EBC): synchronous take-damage cleanup.
+/// ftFx_Init_800E5588 -> ftFx_SpecialN_RemoveBlaster (800E5EBC): the
+/// take-damage and death cleanup, while ftFox_SpecialN_SetCall's callbacks
+/// are installed.
 pub fn remove_blaster<C: FoxFamily>(f: &mut Fighter) {
+    if !f.character.get_mut::<C>().special_neutral().callbacks_armed {
+        return;
+    }
     control::<C>(f, ItemControl::Remove);
     f.character.get_mut::<C>().special_neutral().blaster_present = false;
     f.character.get_mut::<C>().special_neutral().accessory_shot = false;
@@ -362,6 +374,7 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
         in_hitlag: f.core.in_hitlag(),
         anchor: f.physics.position,
         article_stage: None,
+        model_scale: f.player.scale * f.attributes.size.model_scaling,
     }
 }
 
@@ -396,7 +409,10 @@ pub fn throw_animation<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
                     f.physics.position,
                     f.physics.facing,
                 );
-                f.character.get_mut::<C>().special_neutral().blaster_present = true;
+                let scratch = f.character.get_mut::<C>().special_neutral();
+                scratch.blaster_present = true;
+                // ftFox_SpecialN_SetCall.
+                scratch.callbacks_armed = true;
                 f.item_requests.push(ItemRequest::SpawnHeld(spawn));
                 // Retail returns immediately after successful or failed creation.
                 return;

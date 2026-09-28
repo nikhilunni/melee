@@ -56,6 +56,9 @@ melee_it::item_kinds! {
         CLinkBow: it_link::YoungLinkBow,
         LinkArrow: it_link::LinkArrow,
         CLinkArrow: it_link::YoungLinkArrow,
+        LinkBomb: it_link::LinkBomb,
+        CLinkBomb: it_link::YoungLinkBomb,
+        CLinkMilk: it_link::milk::Milk,
     }
 }
 
@@ -618,7 +621,39 @@ impl Resources {
                 it_link::bow::SPECIAL_ATTRIBUTES,
             )?;
             kinds.push((bow_kind, bow));
-            visual_archives.push((bow_kind, a));
+            visual_archives.push((bow_kind, std::sync::Arc::clone(&a)));
+            // [0] the bomb, which falls, spins, explodes and lands.
+            let bomb_kind = if young {
+                ItemKind::CLinkBomb
+            } else {
+                ItemKind::LinkBomb
+            };
+            let mut bomb = ItemAssets::from_fighter_states_with_count(
+                &a,
+                root,
+                it_link::bomb::ARTICLE_INDEX,
+                &it_link::bomb::ARTICLE_STATES,
+                it_link::bomb::SPECIAL_ATTRIBUTES,
+                it_link::bomb::ARTICLE_STATE_COUNT,
+            )?;
+            bomb.read_common_release(&common_archive, public)?;
+            // The lit fuse's joint animation may carry DPtcl keys.
+            bomb.read_particle_tracks(&a)
+                .map_err(|e| anyhow::anyhow!("Link bomb particle track: {e}"))?;
+            kinds.push((bomb_kind, bomb));
+            visual_archives.push((bomb_kind, std::sync::Arc::clone(&a)));
+            // Young Link's [5]: the taunt milk.
+            if young {
+                let milk = ItemAssets::from_fighter_states(
+                    &a,
+                    root,
+                    it_link::milk::ARTICLE_INDEX,
+                    &it_link::milk::ARTICLE_STATES,
+                    it_link::milk::SPECIAL_ATTRIBUTES,
+                )?;
+                kinds.push((ItemKind::CLinkMilk, milk));
+                visual_archives.push((ItemKind::CLinkMilk, a));
+            }
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -867,6 +902,9 @@ pub fn request(
             // it_802754D4.
             let thrown = pool.get_mut(item).expect("thrown item");
             let assets = resources.get(thrown.kind);
+            // it_802790C0 reads the running proc's s_link: a hitbox the
+            // thrown callback makes is placed at once past link 11.
+            thrown.past_hitbox_refresh = owner_context.after_hitbox_refresh;
             thrown.throw_speed = speed;
             let position = thrown.throw_release_point(position, &hand, assets);
             thrown.leave_hand(velocity, position, assets);
@@ -968,6 +1006,8 @@ pub fn request(
             // are not in scope.
             let dropped = pool.get_mut(item).expect("dropped item");
             let assets = resources.get(dropped.kind);
+            // it_802790C0: as for a throw.
+            dropped.past_hitbox_refresh = owner_context.after_hitbox_refresh;
             dropped.throw_speed = speed;
             let position = dropped.drop_release_point(position, &hand, assets);
             dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);

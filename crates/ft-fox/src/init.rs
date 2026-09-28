@@ -132,6 +132,10 @@ impl CharacterCallbacks for Fox {
         ];
     }
     /// ftFx_Init_OnDeath (0x800E5554), ftfox.c:448-455; called at cold spawn.
+    /// Fighter_ChangeMotionState: take_dmg_cb and death2_cb go.
+    fn on_motion_change(&mut self) {
+        self.special_neutral.callbacks_armed = false;
+    }
     fn on_reset(&mut self) {
         self.special_neutral = Default::default();
         self.special_side = Default::default();

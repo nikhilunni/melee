@@ -40,7 +40,7 @@ impl LinkFamily for YoungLink {
     }
 }
 
-static SPECIAL_ROWS: [MotionRow; FamilyState::COUNT] = ft_link_family::rows::<YoungLink>();
+static SPECIAL_ROWS: [MotionRow; FamilyState::COUNT] = ft_link_family::young_rows::<YoungLink>();
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<YoungLink>();
 
@@ -48,6 +48,13 @@ impl CharacterCallbacks for YoungLink {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// The specials keep a held light item: only the bomb's (a bomb in
+    /// hand is thrown instead) and the bow's shot (the hand is posed for it
+    /// again) read it.
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
+    /// ftCo_800DEA28's FTKIND_CLINK arm: ftCl_Init_80149318.
+    const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
+        ft_link_family::milk::enter_taunt;
     /// ftCl_Init_OnKnockbackEnter (Fighter_OnKnockbackEnter(gobj, 1)).
     const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) =
         |fighter, _assets| fighter.set_knockback_texture_frames(3.0);

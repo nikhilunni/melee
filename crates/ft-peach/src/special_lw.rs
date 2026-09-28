@@ -88,6 +88,7 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
         spawn,
         part,
         hold: true,
+        catch_item: false,
     });
     // setupVeg: the pull's effect, then death2_cb and take_dmg_cb.
     let position = f.physics.position;

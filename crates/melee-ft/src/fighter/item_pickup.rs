@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 118] = [
+const HELD_ITEM_STATES: [S; 125] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -280,6 +280,15 @@ const HELD_ITEM_STATES: [S; 118] = [
     S::LightThrowAirB4,
     S::LightThrowAirHi4,
     S::LightThrowAirLw4,
+    // ftCo_Passive*.c: the techs never read the item.
+    S::Passive,
+    S::PassiveStandF,
+    S::PassiveStandB,
+    S::PassiveWall,
+    S::PassiveWallJump,
+    S::PassiveCeil,
+    // ftCo_MissFoot.c: the slip off an edge never reads the item.
+    S::MissFoot,
 ];
 
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348
@@ -721,15 +730,40 @@ impl Fighter {
         );
     }
 
+    /// ftpickupitem_80094818(gobj, false) (800943BC) with fp->item_gobj
+    /// already held: Fighter_OnItemPickup's hand pose for a light item,
+    /// without the shown selection.
+    pub fn pose_hand_for_held_item(&mut self, assets: &FighterAssets) {
+        let Some(held) = self.core.held_item else {
+            return;
+        };
+        if !held.heavy {
+            self.core.pose_hand_for_item(held.hand_hold_kind, assets);
+        }
+    }
+
     /// A character article created straight into the hand (Peach's
-    /// setupVeg: fp->item_gobj = the new item, then
-    /// ftpickupitem_80094818(gobj, false), which poses the hand without
-    /// ftAnim_80070C48's shown selection). Item_8026AB54 has already run.
-    pub fn hold_spawned_item(&mut self, item: HeldItem, assets: &FighterAssets) {
+    /// setupVeg, Link's bomb: fp->item_gobj = the new item, then
+    /// ftpickupitem_80094818(gobj, catch_item), which poses the hand and,
+    /// with the catch flag, applies ftAnim_80070C48's shown selection).
+    /// Item_8026AB54 has already run.
+    pub fn hold_spawned_item(&mut self, item: HeldItem, catch_item: bool, assets: &FighterAssets) {
         assert!(self.core.held_item.is_none(), "x1978: a second held item");
         self.core.held_item = Some(item);
-        if !item.heavy {
-            self.core.pose_hand_for_item(item.hand_hold_kind, assets);
+        if item.heavy {
+            return;
+        }
+        self.core.pose_hand_for_item(item.hand_hold_kind, assets);
+        if catch_item {
+            let hand = assets
+                .item_hand
+                .expect("ftData_OnItemPickupExt for this kind");
+            super::commands::show_part_selection(
+                &mut self.core.animation,
+                &mut self.core.skeleton,
+                assets,
+                hand.shown,
+            );
         }
     }
 

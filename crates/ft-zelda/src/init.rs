@@ -181,6 +181,7 @@ impl CharacterCallbacks for Zelda {
             in_hitlag: f.core.in_hitlag(),
             anchor: f.physics.position,
             article_stage: None,
+            model_scale: f.player.scale * f.attributes.size.model_scaling,
         };
         crate::special_s::item_owner(f, &mut owner);
         owner

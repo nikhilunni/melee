@@ -19,9 +19,11 @@ pub struct HylianShield {
 }
 
 /// ftLk_AttackAir_800EB3BC (800EB3BC) / ftCl_Init_8014919C: with the shield
-/// in hand (x5F4_arr[2].prev == 0), raise the volume.
+/// in hand (x5F4_arr[2].prev == 0), raise the volume. An item in hand
+/// holds group 2 at selection 1 (ftLk_Init_OnItemPickupExt; OnItemDropExt
+/// returns it to 0).
 pub fn raise<C: LinkFamily>(f: &mut Fighter) {
-    if f.character.get::<C>().shield_model_group() != 0 {
+    if f.character.get::<C>().shield_model_group() != 0 || f.held_item.is_some() {
         return;
     }
     f.character.get_mut::<C>().specials().hylian.raised = true;

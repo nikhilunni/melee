@@ -108,6 +108,7 @@ fn create<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
         spawn,
         part: hand_part,
         hold: false,
+        catch_item: false,
     });
     let specials = f.character.get_mut::<C>().specials();
     specials.vars.boomerang_out = true;

@@ -23,6 +23,8 @@ pub const ARTICLE_INDEX: u32 = 3;
 mod motion {
     pub const NOCKED: u16 = 0;
     pub const FLYING: u16 = 1;
+    /// Stuck in a fighter's shield.
+    pub const IN_SHIELD: u16 = 2;
     pub const STUCK: u16 = 4;
 }
 
@@ -92,8 +94,9 @@ fn no_physics(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {}
 fn no_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
     false
 }
-fn unported_anim(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
-    unimplemented!("itLinkarrow_UnkMotion2/3: an arrow stuck in a shield")
+/// itLinkarrow_UnkMotion3_Anim: nothing (no code enters state 3).
+fn idle_anim(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    false
 }
 
 static STATES: [ItemStateRow; 5] = [
@@ -111,13 +114,13 @@ static STATES: [ItemStateRow; 5] = [
     },
     ItemStateRow {
         animation_id: ARTICLE_STATES[2],
-        animation: unported_anim,
-        physics: no_physics,
+        animation: in_shield_anim,
+        physics: in_shield_physics,
         collision: no_collision,
     },
     ItemStateRow {
         animation_id: ARTICLE_STATES[3],
-        animation: unported_anim,
+        animation: idle_anim,
         physics: no_physics,
         collision: no_collision,
     },
@@ -155,8 +158,9 @@ impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
         item.half_life = lifetime * common.half_life_scale;
         item.scratch = ItemScratch::Arrow(ArrowState {
             archer: spawn.owner,
-            // ftLib_800869D4: the archer's model scale (1 in a versus match).
-            scale: 1.0,
+            // xC0 = ftLib_800869D4(archer): read from the archer's view at
+            // the first animation, before anything uses it (unset: zero).
+            scale: 0.0,
             line: -1,
             ..Default::default()
         });
@@ -200,10 +204,39 @@ impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
     fn clanked(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         true
     }
-    /// itLinkArrow_Logic98_HitShield (802A9B...): stuck in the shield
-    /// (state 2, orbiting the shield's centre) is not ported.
-    fn hit_shield(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itLinkArrow_Logic98_HitShield: an arrow stuck in a fighter's shield")
+    /// itLinkArrow_Logic98_HitShield (802A9C04): a fighter's shield holds
+    /// it (it_80272D40 is zero for fighters): at its scale, the stuck
+    /// lifetime, still, state 2 (its hitboxes go); it follows that fighter
+    /// (xC4) at the shield's radius times the fighter's scale, at the angle
+    /// of the midpoint of its position and tail about the shield's centre
+    /// (retail 802A9C88 / 802A9CA0: fmadds).
+    fn hit_shield(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
+        let (Some(fighter), Some(view)) = (item.pending_shield_owner, item.shield_view) else {
+            return true;
+        };
+        apply_scale(item);
+        // it_80275158 (its half-life feeds nothing the arrow does).
+        item.life_timer = Attributes(&context.assets.special_attributes).stuck_lifetime();
+        item.velocity = Vec3::ZERO;
+        item.change_motion_with(
+            motion::IN_SHIELD,
+            ARTICLE_STATES[usize::from(motion::IN_SHIELD)],
+            ANIM_UPDATE,
+            context.assets,
+        );
+        item.shield_anchor = Some(fighter);
+        let radius = view.scale * view.size;
+        let tail = state_ref(item).tail;
+        // 0.5 * (pos + tail): fadds, then fmuls.
+        let half_x = 0.5 * (item.position.x + tail.x);
+        let half_y = 0.5 * (item.position.y + tail.y);
+        let angle = melee_lb::trigf::atan2f(half_y - view.center.y, half_x - view.center.x);
+        let s = state(item);
+        s.shield_center = view.center;
+        s.shield_radius = radius;
+        s.shield_angle = angle;
+        orbit_shield(item);
+        false
     }
     /// itLinkArrow_Logic98_Reflected (802A9D...): it turns round, steps its
     /// new speed at once, and its angle turns by pi (in double), wrapped by
@@ -251,6 +284,10 @@ impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
 /// itLinkarrow_UnkMotion0_Anim (802A8B78): nocked, the arrow goes once the
 /// archer leaves the draw (or a row with x2071_b6), or is gone.
 fn nocked_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if state(item).scale == 0.0 {
+        state(item).scale = ctx.owner.map_or(1.0, |owner| owner.model_scale);
+    }
+    apply_scale(item);
     let archer = state(item).archer;
     if archer.is_none() {
         return true;
@@ -267,6 +304,12 @@ fn nocked_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool 
         return true;
     }
     false
+}
+
+/// HSD_JObjSetScale(jobj, xC0): the model at the archer's scale.
+fn apply_scale(item: &mut ItemCore) {
+    let scale = state(item).scale;
+    item.model_scale = Vec3::new(scale, scale, scale);
 }
 
 /// it_80275158: the lifetime and its half.
@@ -340,6 +383,7 @@ fn shoot<const YOUNG: bool>(
 /// itLinkarrow_UnkMotion1_Anim (802A8CEC): the charged damage once
 /// (it_80272460 on hitbox 0), then the lifetime (it_80273130).
 fn flying_anim(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    apply_scale(item);
     if item.command_variables[2] == 0 {
         let damage = state(item).damage;
         item.set_hitbox_damage(0, damage);
@@ -404,11 +448,56 @@ fn ride_line(item: &mut ItemCore, map: &mut melee_mp::CollMap, line: i32) {
     }
 }
 
+/// The arrow on the shield's rim: fmadds(radius, cosf / sinf(angle),
+/// centre), on the stage plane.
+fn orbit_shield(item: &mut ItemCore) {
+    let s = *state_ref(item);
+    item.position.x = gekko_math::fma::fmadds(
+        s.shield_radius,
+        gekko_math::msl::cosf(s.shield_angle),
+        s.shield_center.x,
+    );
+    item.position.y = gekko_math::fma::fmadds(
+        s.shield_radius,
+        gekko_math::msl::sinf(s.shield_angle),
+        s.shield_center.y,
+    );
+    item.position.z = 0.0;
+}
+
+/// itLinkarrow_UnkMotion2_Anim (802A934C): it goes once the fighter holds
+/// no shield (ftLib_80086A18: not GuardOn, Guard or GuardSetOff) or its
+/// lifetime runs out (it_80273130).
+fn in_shield_anim(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    let guarding = item
+        .shield_view
+        .expect("a shield-held arrow's fighter view")
+        .guarding;
+    if !guarding {
+        return true;
+    }
+    item.life_timer -= 1.0;
+    item.life_timer <= 0.0
+}
+
+/// itLinkarrow_UnkMotion2_Phys (802A93B4): the shield's centre and size
+/// now (ftCo_80094098, times ftLib_800869D4), the arrow on its rim.
+fn in_shield_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
+    let view = item
+        .shield_view
+        .expect("a shield-held arrow's fighter view");
+    let s = state(item);
+    s.shield_center = view.center;
+    s.shield_radius = view.size * view.scale;
+    orbit_shield(item);
+}
+
 /// it_802A9458 (802A9458): the stuck lifetime, 3..6 wobbles (HSD_Randi),
 /// state 4 (its hitboxes go), the model at its flight angle; the fire
 /// arrow's flame.
 fn stick(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) {
     let a = Attributes(&ctx.assets.special_attributes);
+    apply_scale(item);
     // it_80275158 (the half-life beside it feeds nothing the arrow does).
     item.life_timer = a.stuck_lifetime();
     let cell = ctx.rng.expect("it_802A9458 draws");

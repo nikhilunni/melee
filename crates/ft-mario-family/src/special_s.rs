@@ -124,6 +124,7 @@ pub fn create_cape<C: MarioFamily>(f: &mut Fighter, assets: &FighterAssets) {
         spawn,
         part,
         hold: false,
+        catch_item: false,
     });
     cape::<C>(f).present = true;
     install_callbacks::<C>(f);

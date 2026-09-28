@@ -679,21 +679,53 @@ impl FighterCore {
     /// ftCo_80091D58 (0x80091D58); same inlined size math at 80092014/1C.
     pub(super) fn update_shield_size(&mut self, assets: &FighterAssets) {
         let p = &assets.shield;
-        // retail 80091DAC / 80091DB4 fmadds; health fraction product rounds first.
-        let light = fmadds(
-            self.shield.lightshield,
-            p.size_range[1] - p.size_range[0],
-            p.size_range[0],
-        );
-        let health = (self.status.shield_health / assets.shield_health) * light;
-        let size = fmadds(1.0 - p.minimum_size, health, p.minimum_size)
-            * self.attributes.shield.initial_shield_size;
+        let size = self.shield_bubble_size(assets);
         self.shield.size = size;
         let bone = self.animation.parts[usize::from(self.bones.model.shield)].joint;
         self.skeleton.set_scale(bone, &Vec3::new(size, size, size));
         // inlineD0: integer truncation before the alpha addition, no FMA.
         self.shield.alpha =
             fctiwz(p.alpha + fctiwz(self.shield.lightshield * (255.0 - p.alpha)) as f32) as u8;
+    }
+    /// inlineB0 (ftCo_Guard.c:177): the bubble's size from the light-shield
+    /// amount and the health left (retail 80091DAC / 80091DB4 and
+    /// 80094114 / 8009411C: fmadds; the health fraction product rounds
+    /// first). Yoshi's stays at its initial size.
+    pub(super) fn shield_bubble_size(&self, assets: &FighterAssets) -> f32 {
+        let initial = self.attributes.shield.initial_shield_size;
+        if assets.fixed_shield_size {
+            return initial;
+        }
+        let p = &assets.shield;
+        let light = fmadds(
+            self.shield.lightshield,
+            p.size_range[1] - p.size_range[0],
+            p.size_range[0],
+        );
+        let health = (self.status.shield_health / assets.shield_health) * light;
+        fmadds(1.0 - p.minimum_size, health, p.minimum_size) * initial
+    }
+    /// What an item stuck in this fighter's shield reads: ftLib_80086A18
+    /// (GuardOn, Guard or GuardSetOff), ftCo_80094098 (the shield joint's
+    /// world position and inlineB0) and ftLib_800869D4 (the model scale).
+    pub fn shield_view(&mut self, assets: &FighterAssets) -> melee_it::ShieldView {
+        use melee_types::CommonMotionState as S;
+        let guarding = [S::GuardOn, S::Guard, S::GuardSetOff]
+            .iter()
+            .any(|&s| self.motion_state.action == s.into());
+        let center = super::caches::part_position(
+            &mut self.skeleton,
+            &self.animation,
+            usize::from(self.bones.model.shield),
+            Vec3::ZERO,
+        );
+        melee_it::ShieldView {
+            guarding,
+            center,
+            size: self.shield_bubble_size(assets),
+            // ftCommon_GetModelScale (retail 0x8007F69C fmuls).
+            scale: self.player.scale * self.attributes.size.model_scaling,
+        }
     }
     /// ftCo_80091E78 (0x80091E78): shield pose is collision/model state.
     pub(super) fn update_guard_pose(&mut self, assets: &FighterAssets, blend: f32) -> Result<()> {

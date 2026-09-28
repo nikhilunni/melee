@@ -154,6 +154,8 @@ pub enum ItemScratch {
     Boomerang(BoomerangState),
     Bow(BowState),
     Arrow(ArrowState),
+    LinkBomb(LinkBombState),
+    Milk(MilkState),
     None,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
@@ -244,6 +246,40 @@ pub struct DinFireState {
     /// The explosion's xDD8: the hitbox's authored size, once read.
     pub hitbox_size: f32,
 }
+/// Item.xDD4_itemVar.clinkmilk (itclinkmilk.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MilkState {
+    /// x0: the fighter holding it.
+    pub parent: Option<u8>,
+}
+/// What an item stuck in a fighter's shield reads of that fighter.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShieldView {
+    /// ftLib_80086A18: the fighter is in GuardOn, Guard or GuardSetOff.
+    pub guarding: bool,
+    /// ftCo_80094098: the shield joint's world position and the bubble's
+    /// size now (inlineB0).
+    pub center: Vec3,
+    pub size: f32,
+    /// ftLib_800869D4: the fighter's model scale.
+    pub scale: f32,
+}
+/// Item.xDD4_itemVar.linkbomb (itlinkbomb.c). x8 and xC, the fuse joint's
+/// per-frame drop and turn, move bone 3 of the model only.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LinkBombState {
+    /// x0 b0: the fuse is lit (the model plays article state 3; state
+    /// changes keep that animation and only restart the script).
+    pub lit: bool,
+    /// x0 b1: it rolls along the floor (it_8029F18C).
+    pub rolling: bool,
+    /// x0 b2: a hit already knocked it about (Logic16_DmgReceived).
+    pub knocked: bool,
+    /// x4: the roll's direction, the sign of its speed on landing.
+    pub roll_direction: f32,
+    /// x10: the fighter that pulled it.
+    pub puller: Option<u8>,
+}
 /// Item.xDD4_itemVar.linkbow (itlinkbow.c).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BowState {
@@ -281,6 +317,12 @@ pub struct ArrowState {
     pub previous_normal_angle: f32,
     /// xF0: frames since it faded out (after its stuck lifetime).
     pub faded_frames: i32,
+    /// Stuck in a shield: xC8..xD0, the shield's centre (ftCo_80094098),
+    /// xD4, its radius at the fighter's scale, and xD8, the arrow's angle
+    /// about it.
+    pub shield_center: Vec3,
+    pub shield_radius: f32,
+    pub shield_angle: f32,
 }
 /// Item.xDD4_itemVar.linkboomerang (itlinkboomerang.c). The trail models'
 /// pose history (xDD8..xDDC, xDF0, xEB0, xF90) is drawing only.
@@ -519,6 +561,19 @@ pub struct ItemCore {
     pub floor_line: i32,
     /// xD5C: it_80277544's fall-through-platform state.
     pub platform_drop: u32,
+    /// xCF4 (ftColl_80077688): the fighter whose shield took this frame's
+    /// strongest hit.
+    pub pending_shield_owner: Option<u8>,
+    /// A fighter whose shield the item reads each frame (the Link arrow's
+    /// xC4), and the scene's view of it (or of `pending_shield_owner` for
+    /// the hit-shield callback) refreshed before the item's procs.
+    pub shield_anchor: Option<u8>,
+    pub shield_view: Option<ShieldView>,
+    /// xD50: landings since the last throw or bounce-free touchdown
+    /// (it_8026DDFC, it_8026DD5C).
+    pub land_count: u32,
+    /// xD54: throws since creation (it_80273F34).
+    pub throw_count: u32,
     /// JOBJ_HIDDEN on the model (it_80280B60).
     pub hidden: bool,
     /// spin_spd: ItemAttr xC, degrees-per-frame scale of the spin.
@@ -613,8 +668,6 @@ pub struct ItemCore {
     pub pose_steps: u32,
     /// The article state the motion plays (its ItemStateTable anim_id).
     pub article_state: usize,
-    /// xD50_landNum: floor contacts since the item last came to rest.
-    pub land_count: u32,
     /// Each hitbox slot's last placed positions (HitCapsule x58 and x4C:
     /// previous, current), which a cleared slot keeps in retail until a
     /// new capsule there is first placed.
@@ -728,6 +781,35 @@ impl ItemCore {
             self.advance_script(assets);
         }
     }
+    /// it_80274740 (80274740): the spin joint's angle about xDC8 x17's axis
+    /// and the spin speed return to zero.
+    pub fn reset_spin(&mut self) {
+        self.spin_speed = 0.0;
+        match self.rotation_axis {
+            0 => self.rotation.z = 0.0,
+            1 => self.rotation.x = 0.0,
+            _ => self.rotation.y = 0.0,
+        }
+    }
+    /// Item_80268D34 then HSD_JObjAnimAll (itlinkbomb.c's lit fuse): the
+    /// model plays `article_state`'s joint animation from its first frame
+    /// while the motion state and its script stay.
+    pub fn play_article_animation(&mut self, article_state: usize, assets: &ItemAssets) {
+        self.article_state = article_state;
+        self.animation_frame = 0.0;
+        self.pose_steps = 1;
+        self.emit_particle_keys(assets, self.root_translation);
+    }
+    /// it_80272C6C == 0: the joint animation the model plays has no frames
+    /// left.
+    pub fn article_animation_ended(&self, assets: &ItemAssets) -> bool {
+        assets
+            .animation_ends
+            .get(self.article_state)
+            .copied()
+            .flatten()
+            .is_some_and(|end| self.animation_frame >= end)
+    }
     /// it_80274658 (80274658): the spin speed for `degrees` per frame at
     /// spin_spd, reversed when the item moves against its facing and, unless
     /// xDC8 x19 is set, signed by the facing. retail 80274674..7C: fmuls
@@ -770,17 +852,12 @@ impl ItemCore {
         assets: &ItemAssets,
     ) {
         self.motion = motion;
+        // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first.
+        self.root_translation = self.position;
         self.animation_frame = 0.0;
         self.speed_damage = false;
         if flags & state_change::MODEL_UPDATE != 0 {
-            // it_80274740 (80274740): the spin joint's angle about xDC8 x17's
-            // axis and the spin speed return to zero.
-            self.spin_speed = 0.0;
-            match self.rotation_axis {
-                0 => self.rotation.z = 0.0,
-                1 => self.rotation.x = 0.0,
-                _ => self.rotation.y = 0.0,
-            }
+            self.reset_spin();
         }
         // item.c:1205 HSD_JObjSetFacingDirItem, after the model reset.
         self.face_spin_axis();
@@ -857,9 +934,14 @@ impl ItemCore {
             scale: self.model_scale,
         }
     }
-    /// it_8027129C (8027129C): one capsule's position from its bone.
+    /// it_8027129C (8027129C): one capsule's position from its bone. The
+    /// root is the model's JObj, which follows `position` at a state change
+    /// (Item_80268E5C) and after the collision proc (Item_80269978).
     fn update_hitbox(&mut self, id: usize, assets: &ItemAssets) {
-        let root = self.root_srt();
+        let root = crate::pose::RootSrt {
+            translate: self.root_translation,
+            ..self.root_srt()
+        };
         let (state, steps) = (self.article_state, self.pose_steps);
         let Some(hit) = &mut self.hitboxes[id] else {
             return;
@@ -870,7 +952,7 @@ impl ItemCore {
                 &mut matrix,
                 &self.model_scale,
                 &self.rotation,
-                &self.position,
+                &self.root_translation,
                 None,
             );
             matrix
@@ -1235,6 +1317,11 @@ impl ItemPool {
             rotation_axis: assets.rotation_axis,
             floor_line: -1,
             platform_drop: 0,
+            land_count: 0,
+            throw_count: 0,
+            pending_shield_owner: None,
+            shield_anchor: None,
+            shield_view: None,
             hidden: false,
             spin_rate: assets.spin_rate,
             spin_speed: 0.0,
@@ -1278,7 +1365,6 @@ impl ItemPool {
             owner_request: None,
             pose_steps: 0,
             article_state: 0,
-            land_count: 0,
             hitbox_trace: Default::default(),
         };
         // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
@@ -1397,6 +1483,7 @@ impl ItemPool {
         item.pending_damage_without_hitlag = 0;
         item.pending_shield_damage = 0;
         item.pending_shield_deflection = None;
+        item.pending_shield_owner = None;
         item.pending_shield_hitlag = 0.0;
         item.pending_clank_damage = 0;
         item.hitlag_damage = 0;
@@ -1691,6 +1778,7 @@ mod tests {
             animation_ends: Vec::new(),
             hurtboxes: Vec::new(),
             release_box_scale: 0.0,
+            throw_break: 0,
             heavy: false,
             use_kind: 0,
             hand_hold_kind: 0,

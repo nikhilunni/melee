@@ -137,6 +137,7 @@ fn take_bow<C: LinkFamily>(f: &mut Fighter, a: &FighterAssets) -> bool {
         spawn,
         part: part(a, FtPart::RThumbNb),
         hold: false,
+        catch_item: false,
     });
     bow::<C>(f).bow_out = true;
     arm_removal::<C>(f);
@@ -160,6 +161,7 @@ fn nock<C: LinkFamily>(f: &mut Fighter, a: &FighterAssets) -> bool {
         spawn,
         part: part(a, FtPart::LThumbNb),
         hold: false,
+        catch_item: false,
     });
     bow::<C>(f).arrow_out = true;
     arm_removal::<C>(f);
@@ -394,6 +396,9 @@ fn shoot<C: LinkFamily>(f: &mut Fighter, a: &FighterAssets) {
         launch,
     });
     bow::<C>(f).arrow_out = false;
+    // doEndColl keeps fp->item_gobj across the shot, then
+    // ftpickupitem_80094818(gobj, false) poses the hand for it again.
+    f.pose_hand_for_held_item(a);
 }
 
 /// ftLk_SpecialNStart_Coll / Loop_Coll (doColl): off the floor, the

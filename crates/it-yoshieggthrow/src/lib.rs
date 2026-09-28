@@ -164,6 +164,9 @@ pub fn launch(
         item.position.y + launch.offset.y,
         item.position.z + launch.offset.z,
     );
+    // HSD_JObjSetTranslate(jobj, &pos): the capsules the refresh places
+    // follow the nudged position.
+    item.root_translation = item.position;
     item.update_spin(launch.spin_degrees);
 }
 

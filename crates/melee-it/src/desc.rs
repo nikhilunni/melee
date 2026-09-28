@@ -150,6 +150,11 @@ pub struct ItemAssets {
     /// it_804D6D28->xE8 (it_80275BC8): the ECB scale for a released item's
     /// first sweep. Zero for fighter articles, which are never released.
     pub release_box_scale: f32,
+    /// ItCo common data +48 (it_8026DDFC): a thrown item's first landing
+    /// breaks it after `throw_break >> 4` throws, or when
+    /// HSD_Randi(`throw_break & 0xF`) draws zero; zero until
+    /// `read_common_release`.
+    pub throw_break: u8,
     /// ItemAttr x0 bit 0x80 (itIsHeavy): picked up with HeavyGet.
     pub heavy: bool,
     /// ItemAttr x0 bits 0x78 (it_8026B30C): how a holder uses the item;
@@ -249,6 +254,30 @@ impl ItemAssets {
         Self::from_article(archive, article, article_states, special_attributes)
     }
 
+    /// [`Self::from_fighter_states`] for an article whose code plays an
+    /// article state no motion state names (Item_80268D34 on a fixed desc,
+    /// the Link bomb's lit fuse): its visual reads `article_state_count`
+    /// states at least.
+    pub fn from_fighter_states_with_count(
+        archive: &Archive,
+        fighter_data: u32,
+        item_index: u32,
+        article_states: &[i32],
+        special_attributes: u32,
+        article_state_count: usize,
+    ) -> hsd_archive::desc::Result<Self> {
+        let r = archive.reader();
+        let items = r.u32(fighter_data + 0x48)?;
+        let article = r.u32(items + item_index * 4)?;
+        Self::from_article_with_count(
+            archive,
+            article,
+            article_states,
+            special_attributes,
+            article_state_count,
+        )
+    }
+
     /// The ItCo common data (it_804D6D28) an article reads once it leaves
     /// the hand or explodes: +F8 (it_8027518C), +68 and +E8 (it_80275BC8),
     /// and +74 (it_8026DC24).
@@ -263,6 +292,7 @@ impl ItemAssets {
         self.fall_spin_degrees = r.f32(common + 0x68)?;
         self.release_box_scale = r.f32(common + 0xE8)?;
         self.landing_spin_degrees = r.f32(common + 0x74)?;
+        self.throw_break = r.u8(common + 0x48)?;
         Ok(())
     }
 
@@ -290,6 +320,16 @@ impl ItemAssets {
         article_states: &[i32],
         special_count: u32,
     ) -> hsd_archive::desc::Result<Self> {
+        Self::from_article_with_count(archive, article, article_states, special_count, 0)
+    }
+
+    fn from_article_with_count(
+        archive: &Archive,
+        article: u32,
+        article_states: &[i32],
+        special_count: u32,
+        minimum_article_states: usize,
+    ) -> hsd_archive::desc::Result<Self> {
         let r = archive.reader();
         let common = r.u32(article)?;
         let special = r.u32(article + 4)?;
@@ -311,7 +351,8 @@ impl ItemAssets {
             .map(|&s| s + 1)
             .max()
             .unwrap_or(0)
-            .max(0);
+            .max(0)
+            .max(minimum_article_states as i32);
         let special_attributes = (0..special_count)
             .map(|i| r.f32(special + i * 4))
             .collect::<Result<_>>()?;
@@ -377,6 +418,7 @@ impl ItemAssets {
             spin_rate: r.f32(common + 0xC)?,
             fall_spin_degrees: 0.0,
             release_box_scale: 0.0,
+            throw_break: 0,
             heavy: r.u8(common)? & 0x80 != 0,
             use_kind: (r.u8(common)? >> 3) & 0xF,
             hand_hold_kind: r.u8(common)? & 7,
@@ -747,6 +789,9 @@ pub struct ItemHitFlags {
     pub reflectable: bool,
     pub defense_interaction: bool,
     pub damage_without_hitlag: bool,
+    /// x41_b6: a shield contact records the victim with the rehit timer
+    /// (ftColl_80077688's mode 2), so the hitbox may strike the shield again.
+    pub shield_rehit: bool,
     pub absorbable: bool,
     pub shieldable: bool,
     pub shield_bounce: bool,
@@ -764,6 +809,7 @@ impl ItemHitFlags {
             reflectable: extra & (1 << 20) != 0,
             defense_interaction: extra & (1 << 15) != 0,
             damage_without_hitlag: extra & (1 << 22) != 0,
+            shield_rehit: extra & (1 << 21) != 0,
             absorbable: extra & (1 << 17) != 0,
             shieldable: extra & (1 << 18) != 0,
             shield_bounce: extra & (1 << 16) != 0,

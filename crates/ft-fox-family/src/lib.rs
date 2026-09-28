@@ -20,6 +20,10 @@ pub struct SpecialNeutral {
     pub repeat: bool,
     pub blaster_present: bool,
     pub accessory_shot: bool,
+    /// take_dmg_cb and death2_cb = ftFx_Init_800E5588 (ftFox_SpecialN_SetCall),
+    /// installed with the blaster and at each firing transition; every
+    /// motion change clears them (fighter.c:1385-1389).
+    pub callbacks_armed: bool,
 }
 
 pub trait FoxFamily: CharacterCallbacks {

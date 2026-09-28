@@ -65,6 +65,8 @@ pub struct CommonBehavior {
     /// ftData_OnItemPickupExt / OnItemDropExt: the x8B0 hand-pose slots the
     /// kind's Fighter_OnItemPickup call names. None: not ported.
     pub item_hand: Option<ItemHandSlots>,
+    /// ftCo_Guard.c inlineB0: Yoshi's shield keeps its initial size.
+    pub fixed_shield_size: bool,
 }
 
 /// Fighter_OnItemPickup(gobj, flag, pose, shown) (ft/inlines.h:143): the
@@ -117,6 +119,7 @@ impl CommonBehavior {
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
             stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),
+            fixed_shield_size: matches!(kind, FighterKind::Yoshi),
             item_hand: match kind {
                 FighterKind::Mars | FighterKind::Emblem => {
                     Some(ItemHandSlots { pose: 0, shown: 1 })
@@ -236,6 +239,8 @@ pub struct FighterAssets {
     /// it applies scaled, and that scale (ftCo_LightThrowDash_Phys).
     pub dash_throw_friction: [f32; 3],
     /// CommonBehavior's item hand slots and held-item idle choice.
+    /// CommonBehavior::fixed_shield_size.
+    pub fixed_shield_size: bool,
     pub item_hand: Option<ItemHandSlots>,
     pub idle_variants_while_holding: bool,
     pub magnifier: super::offscreen::MagnifierDamage,
@@ -718,6 +723,7 @@ impl FighterAssets {
                 common.reader().f32(common_data + 0x40C)?,
             ],
             item_hand: descriptor.common_behavior.item_hand,
+            fixed_shield_size: descriptor.common_behavior.fixed_shield_size,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
             pickup: {
                 let p = data.link(root + 0x40)?.ok_or("missing item pickup boxes")?;

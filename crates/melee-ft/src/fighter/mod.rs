@@ -273,6 +273,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             in_hitlag: fighter.core.in_hitlag(),
             anchor: fighter.physics.position,
             article_stage: None,
+            model_scale: fighter.player.scale * fighter.attributes.size.model_scaling,
         }
     }
 

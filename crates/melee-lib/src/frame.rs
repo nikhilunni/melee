@@ -666,6 +666,28 @@ impl Runtime {
                 |f| f.item_owner(&state.assets.fighters[index])
             ))
         });
+        // The fighter whose shield the item reads in this proc: the one it
+        // is stuck to, or for the hit-shield callback the one it struck
+        // (xCF4).
+        if matches!(phase, 1 | 4 | 14) {
+            let watched = state.items.get_mut(id).and_then(|item| {
+                if phase == 14 {
+                    item.pending_shield_owner.or(item.shield_anchor)
+                } else {
+                    item.shield_anchor
+                }
+            });
+            if let Some(slot) = watched {
+                let view = crate::scene_items::owner_index(&state.fighters, Some(slot), false)
+                    .map(|index| {
+                        crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+                            .shield_view(&state.assets.fighters[index]))
+                    });
+                if let Some(item) = state.items.get_mut(id) {
+                    item.shield_view = view;
+                }
+            }
+        }
         match phase {
             0 => state.items.advance_hitlag(id),
             1 => {
@@ -1170,7 +1192,11 @@ impl Runtime {
                         let item = state.items.common_and_item_mut(index).1;
                         if let Some(contact) = hit {
                             if contact.logged_damage {
-                                if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
+                                // plStale_UpdateStaleMovesFromItem: not when
+                                // the item strikes its own owner.
+                                if let (Some(owner), Some(attack)) =
+                                    (owner.filter(|&o| o != player), item.stale_source)
+                                {
                                     state.fighters[owner].combat.stale.record_attack(attack);
                                 }
                                 // ftColl_80078998 -> ftColl_8007646C: the owner's
@@ -1770,10 +1796,12 @@ impl Runtime {
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));
-                    let hold = matches!(
-                        request,
-                        melee_it::ItemRequest::SpawnInHand { hold: true, .. }
-                    );
+                    let (hold, catch_item) = match request {
+                        melee_it::ItemRequest::SpawnInHand {
+                            hold, catch_item, ..
+                        } => (hold, catch_item),
+                        _ => (false, false),
+                    };
                     let spawned = crate::scene_items::request(
                         &mut state.items,
                         &state.assets.items,
@@ -1815,6 +1843,7 @@ impl Runtime {
                                 use_kind: item.use_kind,
                                 damage_multiplier: item.collision_damage_multiplier,
                             },
+                            catch_item,
                             &state.assets.fighters[slot],
                         );
                     }
@@ -3427,7 +3456,17 @@ fn item_hits_by_items(
                     3.0 * victim.scale,
                 )
             });
-            if let Some(contact) = contact {
+            // it_802706D0_sub3 -> it_8026FAC4 records the victim in every
+            // hitbox of the landing one's group at once, so a later hitbox
+            // of that group no longer reaches it this frame.
+            let group = desc.group;
+            let landed = landings.iter().any(|l| {
+                l.hitter == other.id
+                    && other.hitboxes[l.hit]
+                        .as_ref()
+                        .is_some_and(|h| h.descriptor.group == group)
+            });
+            if let Some(contact) = contact.filter(|_| !landed) {
                 landings.push(Landing {
                     hitter: other.id,
                     hit: id,

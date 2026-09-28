@@ -53,6 +53,19 @@ pub fn cos_angle(a: Vec3, b: Vec3) -> f32 {
     let lengths = sqrtf(a.x * a.x + a.y * a.y) * sqrtf(b.x * b.x + b.y * b.y);
     fmadds(a.x, b.x, a.y * b.y) / lengths
 }
+/// lbVector_AngleXY (0x8000D790): the angle between the XY projections,
+/// from lbVector_Len_xy_accurate lengths (squares summed unfused) and the
+/// XY dot (retail 8000D8BC: fmadds, Y product first), clamped to acosf's
+/// domain; zero when either projection is empty.
+pub fn angle_xy(a: Vec3, b: Vec3) -> f32 {
+    let lengths =
+        sqrtf_accurate(a.x * a.x + a.y * a.y) * sqrtf_accurate(b.x * b.x + b.y * b.y);
+    if lengths == 0.0 {
+        return 0.0;
+    }
+    let cosine = fmadds(a.x, b.x, a.y * b.y) / lengths;
+    crate::trigf::acosf(cosine.clamp(-1.0, 1.0))
+}
 /// lbVector_Angle (0x8000D620): lengths remain unfused; dot is fused.
 pub fn angle(a: Vec3, b: Vec3) -> f32 {
     let lengths = length(a) * length(b);

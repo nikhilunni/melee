@@ -1558,6 +1558,7 @@ impl FighterCore {
         let damage = environment_damage(desc.damage);
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
+            item.pending_shield_owner = Some(self.player.id);
             item.pending_shield_deflection = if item.hit_flags[id].shield_bounce {
                 let volume = &self.shield.hit;
                 let joint = self.animation.parts[volume.bone].joint;
@@ -1593,7 +1594,12 @@ impl FighterCore {
             });
         }
         let group = desc.group;
-        melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        // it_8026FAC4 with mode 2 (x41_b6, timed) or 1.
+        if item.hit_flags[id].shield_rehit {
+            item.record_timed_victim(group, self.spawn_number);
+        } else {
+            melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        }
         self.effects
             .push(melee_ef::request::EffectRequest::ShieldSpark {
                 position: contact.position,
@@ -1625,6 +1631,8 @@ impl FighterCore {
         };
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
+            // inlineItemA1: xCF4 = the volume's fighter.
+            item.pending_shield_owner = Some(self.player.id);
             let bounces = item.hit_flags[id].shield_bounce && !volume.no_bounce;
             item.pending_shield_deflection = bounces.then(|| {
                 let deflection = melee_lb::shield::deflection(
@@ -1660,7 +1668,12 @@ impl FighterCore {
             }
         }
         let group = desc.group;
-        melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        // inlineItemA1: it_8026FAC4 with mode 4 (x41_b5, timed) or 3.
+        if item.hit_flags[id].damage_without_hitlag {
+            item.record_timed_victim(group, self.spawn_number);
+        } else {
+            melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);
+        }
         self.effects
             .push(melee_ef::request::EffectRequest::ShieldSpark {
                 position: contact.position,
