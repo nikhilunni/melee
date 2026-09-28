@@ -185,3 +185,52 @@ fn recording_and_stepping_together_allocate_nothing() {
     COUNTING.with(|c| c.set(false));
     assert_eq!(ALLOCATIONS.with(Cell::get), 0);
 }
+
+/// Pokémon Stadium's first transformation polls the form archive's read:
+/// the recording keeps each poll's outcome, and replaying them reproduces
+/// the match; a completion one poll later is a different match.
+#[test]
+fn stadium_read_polls_are_recorded_and_replayed() {
+    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    if !melee_test_support::require_files([files.join("GrPs.dat")]) {
+        return;
+    }
+    let config = MatchConfig::versus(
+        Stage::PokemonStadium,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(7));
+    let assets = GameAssets::load(files, &config).unwrap();
+    let mut recording = Recording::new(&config, &assets);
+    let mut direct = Match::new(&assets, config.clone()).unwrap();
+    // The first base duration is under 3800 ticks; the read and its
+    // announcement follow within a few dozen, and the arena sinks under the
+    // fighters 300 ticks later.
+    for _ in 0..4400 {
+        recording.push(Inputs::default()).unwrap();
+        direct.step(&Inputs::default()).unwrap();
+        recording.note_events(direct.consumed_events());
+    }
+    let polls = recording.stage_reads();
+    assert!(polls.len() > 1 && polls.last().unwrap().completed);
+    assert!(polls[..polls.len() - 1].iter().all(|p| !p.completed));
+    let decoded = roundtrip(&recording);
+    assert_eq!(decoded.stage_reads(), polls);
+    let replayed = decoded.replay(&assets).unwrap();
+    assert_eq!(
+        diagnostics::inspect(&replayed).unwrap(),
+        diagnostics::inspect(&direct).unwrap()
+    );
+    let mut json = serde_json::to_value(&recording).unwrap();
+    let last = json["stage_reads"].as_array().unwrap().len() - 1;
+    json["stage_reads"][last]["completed"] = serde_json::json!(false);
+    let delayed = Recording::read(serde_json::to_vec(&json).unwrap().as_slice()).unwrap();
+    let replayed = delayed.replay(&assets).unwrap();
+    assert_ne!(
+        diagnostics::inspect(&replayed).unwrap(),
+        diagnostics::inspect(&direct).unwrap()
+    );
+}

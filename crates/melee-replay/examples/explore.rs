@@ -450,6 +450,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         row.fault = Some(message);
                         break;
                     }
+                    recording.note_events(game.consumed_events());
                 }
                 row.ticks = game.tick().0;
                 row.status = format!("{:?}", game.status());

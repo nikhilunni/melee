@@ -235,6 +235,7 @@ impl Session {
                 self.recording.fail(error.to_string());
                 return Err(self.stop_with_replay(message));
             }
+            self.recording.note_events(self.game.consumed_events());
         }
         if ticks > 0 {
             if let Err(error) = self.presentation.capture(&self.game) {

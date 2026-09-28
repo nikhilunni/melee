@@ -3,7 +3,8 @@ pub mod boundary;
 mod config;
 pub use config::Config;
 use melee_lib::{
-    diagnostics, Buttons, ControllerState, GameAssets, Inputs, Match, MatchConfig, Stick,
+    diagnostics, Buttons, ConsumedEvents, ControllerState, ExternalEvents, GameAssets, Inputs,
+    Match, MatchConfig, StageRead, Stick,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -54,6 +55,15 @@ impl Sample {
     }
 }
 
+/// One poll of the stage's archive read the port consumed (see
+/// `melee_lib::ExternalEvents`), at a zero-based sample index.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageReadPoll {
+    pub sample: usize,
+    pub completed: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Fault {
@@ -70,6 +80,11 @@ pub struct Recording {
     asset_fingerprint: u64,
     pub fault: Option<Fault>,
     samples: Vec<Sample>,
+    /// The external events each step consumed (optional: older recordings
+    /// have none, and replay then takes the port's default policies, which
+    /// is what recorded them).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    stage_reads: Vec<StageReadPoll>,
 }
 impl Recording {
     pub fn new(config: &MatchConfig, assets: &GameAssets) -> Self {
@@ -79,6 +94,7 @@ impl Recording {
             asset_fingerprint: diagnostics::asset_fingerprint(assets),
             fault: None,
             samples: Vec::with_capacity(MAX_TICKS),
+            stage_reads: Vec::new(),
         }
     }
     pub fn samples(&self) -> &[Sample] {
@@ -98,6 +114,27 @@ impl Recording {
         self.samples.push(inputs.into());
         Ok(())
     }
+    /// Called after a successful Match::step with `Match::consumed_events`,
+    /// for the last pushed sample.
+    pub fn note_events(&mut self, consumed: ConsumedEvents) {
+        if let (Some(completed), Some(sample)) =
+            (consumed.stage_read, self.samples.len().checked_sub(1))
+        {
+            self.stage_reads.push(StageReadPoll { sample, completed });
+        }
+    }
+    pub fn stage_reads(&self) -> &[StageReadPoll] {
+        &self.stage_reads
+    }
+    /// The external events that reproduce sample `index`.
+    pub fn events(&self, index: usize) -> ExternalEvents {
+        let stage_read = match self.stage_reads.binary_search_by_key(&index, |p| p.sample) {
+            Ok(at) if self.stage_reads[at].completed => StageRead::Completed,
+            Ok(_) => StageRead::InFlight,
+            Err(_) => StageRead::Default,
+        };
+        ExternalEvents { stage_read }
+    }
     pub fn fail(&mut self, message: String) {
         self.fault = Some(Fault {
             attempt: self.samples.len(),
@@ -106,6 +143,7 @@ impl Recording {
     }
     pub fn reset(&mut self) {
         self.samples.clear();
+        self.stage_reads.clear();
         self.fault = None;
     }
     pub fn write(&self, writer: impl Write) -> Result<(), String> {
@@ -154,6 +192,17 @@ impl Recording {
         if result.samples.len() > MAX_TICKS {
             return Err("replay exceeds tick limit".into());
         }
+        if !result
+            .stage_reads
+            .windows(2)
+            .all(|pair| pair[0].sample < pair[1].sample)
+            || result
+                .stage_reads
+                .last()
+                .is_some_and(|last| last.sample >= result.samples.len())
+        {
+            return Err("stage reads must name increasing recorded samples".into());
+        }
         if let Some(fault) = &result.fault {
             if fault.attempt == 0 || fault.attempt != result.samples.len() {
                 return Err("fault must identify the final attempted tick".into());
@@ -185,10 +234,11 @@ impl Recording {
         let config = self.config.decode().map_err(start_error)?;
         let mut game = Match::new(assets, config).map_err(|e| start_error(e.to_string()))?;
         for (index, sample) in self.samples.iter().enumerate() {
-            game.step(&sample.inputs()).map_err(|e| Fault {
-                attempt: index + 1,
-                message: e.to_string(),
-            })?;
+            game.step_with_events(&sample.inputs(), &self.events(index))
+                .map_err(|e| Fault {
+                    attempt: index + 1,
+                    message: e.to_string(),
+                })?;
         }
         Ok(game)
     }
