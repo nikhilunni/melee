@@ -559,6 +559,7 @@ pub fn article_destroyed(
 /// it_802D8618 (802D8618): one Shy Guy of a grStory_801E3418 group, created
 /// airborne (it_8027B5B0 -> Item_80268B18) facing `facing`, then placed in
 /// its group.
+#[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn spawn_shy_guy(
     pool: &mut ItemPool,
     resources: &Resources,
