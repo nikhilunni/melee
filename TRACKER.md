@@ -1224,3 +1224,10 @@ Newest first. One line per session: date, what landed, what is next.
   Down-state and GuardOff held-item fixes, and 61 more matrix witnesses; full
   debug and release gates 1524/0. Next: settle the matrix's last open rows
   with the new tools; triage report; mid-scenario savestates.
+- 2026-09-28: Fox-Marth milestone exit criteria met: the interaction matrix has
+  no open rows (the last ones witnessed or shown not reachable with
+  `melee-sim search` evidence), final debug/release gates 1526/0 and 1527/0,
+  clippy clean, perf gate PASS after the user raised the size baseline.
+  Tooling: `melee-sim triage` (one-shot divergence report) and
+  `harness/explore_batch.py` (explore -> bridge -> parallel record -> gate ->
+  triage). Next milestone per docs/PLAN.md.

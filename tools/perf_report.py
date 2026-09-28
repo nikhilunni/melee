@@ -73,7 +73,15 @@ def compare_duplicates(current, previous, reviewed=None):
     return failures
 
 
-C15_STRIPPED_LIMIT = 3_747_632
+# Size baseline raised by the user (2026-09-28) after feature growth: the
+# Fox-Marth milestone's gameplay and the melee-sim search/triage tools took
+# the stripped binary from 3.52 MB (C15) to 4.96 MB. Size compares against the
+# larger of the last PASS block and this reviewed floor until a PASS block is
+# recorded after the review date; from then on the ordinary ratchet applies.
+# The fixed ceiling is the floor plus 5%.
+REVIEWED_SIZE = {"stripped_bytes": 4_956_208, "text_bytes": 4_554_752}
+REVIEWED_SIZE_DATE = "2026-09-28"
+C15_STRIPPED_LIMIT = 5_204_018
 C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
 PAIR_HELPERS = {
     "melee_ft::fighter::grab::capture_pair",
@@ -163,15 +171,16 @@ def estimate(path):
     return {"ns": numbers[0], "lower_ns": numbers[1], "upper_ns": numbers[2]}
 
 
-def compare(current, previous, time_percent, size_percent, reviewed=None):
+def compare(current, previous, time_percent, size_percent, reviewed=None, size_floor=None):
     failures = []
     for name in ("stripped_bytes", "text_bytes", "load_ns", "ticks_600_ns"):
         if name not in previous or name not in current:
             continue
         percent = time_percent if name.endswith("_ns") else size_percent
-        limit = previous[name] * (1 + percent / 100)
+        floor = max(previous[name], (size_floor or {}).get(name, 0))
+        limit = floor * (1 + percent / 100)
         if current[name] > limit:
-            failures.append(f"{name}: {current[name]:.3f} > {limit:.3f} (previous {previous[name]:.3f}, +{percent:g}%)")
+            failures.append(f"{name}: {current[name]:.3f} > {limit:.3f} (baseline {floor:.3f}, +{percent:g}%)")
     failures += compare_duplicates(current, previous, reviewed if reviewed is not None else c15_census())
     return failures
 
@@ -228,7 +237,8 @@ def main(run, report):
         baseline = {**baseline, **c15_census()}
     common_labels, common_failures = concrete_shell_census(contributions)
     (run / "common-definitions.json").write_text(json.dumps(common_labels, indent=2, sort_keys=True))
-    regressions = compare(metrics, baseline, time_percent, size_percent)
+    size_floor = REVIEWED_SIZE if not previous or previous["date"] < REVIEWED_SIZE_DATE else None
+    regressions = compare(metrics, baseline, time_percent, size_percent, size_floor=size_floor)
     regressions += concrete_limits(metrics) + common_failures
     status = "INCOMPLETE" if missing else "REGRESSION" if regressions else "PASS"
     now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")

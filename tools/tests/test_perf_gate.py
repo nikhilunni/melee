@@ -101,6 +101,17 @@ class PerformanceBudget(unittest.TestCase):
             self.assertIn("### melee-ft: 4 labels, 4 emitted definitions (informational); 0 duplicate labels", report.read_text())
 
 
+class ReviewedSizeFloor(unittest.TestCase):
+    def test_the_floor_lifts_only_the_size_baseline(self):
+        previous = dict(stripped_bytes=100, text_bytes=100, load_ns=100, ticks_600_ns=100)
+        grown = dict(previous, stripped_bytes=150, text_bytes=150, load_ns=150)
+        floor = dict(stripped_bytes=150, text_bytes=150)
+        failures = perf.compare(grown, previous, 10, 5, reviewed={}, size_floor=floor)
+        self.assertEqual([f.split(":")[0] for f in failures], ["load_ns"])
+        failures = perf.compare(grown, previous, 10, 5, reviewed={})
+        self.assertEqual(sorted(f.split(":")[0] for f in failures), ["load_ns", "stripped_bytes", "text_bytes"])
+
+
 class ConcreteShellBudget(unittest.TestCase):
     def pairs(self):
         return [dict(function=name, copies=1, lines=10) for name in perf.PAIR_HELPERS]
