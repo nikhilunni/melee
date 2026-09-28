@@ -4,9 +4,10 @@ use melee_sim::{frame::Simulation, initial_state::InitialState, scenario::Scenar
 use std::{hint::black_box, path::Path, time::Duration};
 
 fn ticks(c: &mut Criterion) {
-    let scenario = Scenario::load(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/start_fd_fox.toml"),
-    )
+    let scenario = Scenario::load(&std::env::var_os("MELEE_BENCH_SCENARIO").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/scenarios/start_fd_fox.toml"),
+        std::path::PathBuf::from,
+    ))
     .unwrap();
     assert_eq!(scenario.frames, 600);
     for path in scenario.required_files() {
