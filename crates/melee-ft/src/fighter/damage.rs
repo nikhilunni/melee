@@ -1263,9 +1263,14 @@ impl Fighter {
         // DamageFall use ftCo_DamageFall_IASA instead, which never calls
         // ftPe_8011BA54 / ftPe_8011BAD8 (retail 80090828..8009091C).
         let vertical_velocity = self.core.physics.self_velocity.y;
-        // ftCo_80095328, then ftCo_800D7100, after the special check.
+        // ftCo_80095328, ftCo_800D7100, then ftCo_800C3B10, after the
+        // special check.
         let special = self.air_special_pressed(assets);
-        if !special && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets)) {
+        if !special
+            && (self.try_air_item_throw(assets)?
+                || self.try_aerial_item_catch(assets)
+                || self.try_air_tether(assets))
+        {
             return Ok(());
         }
         // ftCo_800CB870: a multijumper's later jumps take held X/Y

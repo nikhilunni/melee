@@ -2312,7 +2312,8 @@ fn deliver_owner_request(
     let part = crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
         .article_request(&state.assets.fighters[index], kind, request));
     match (request, part) {
-        (melee_it::OwnerRequest::Catch, None) | (melee_it::OwnerRequest::Released, _) => {}
+        (melee_it::OwnerRequest::Catch, None)
+        | (melee_it::OwnerRequest::Released | melee_it::OwnerRequest::ArticleStep(_), _) => {}
         (melee_it::OwnerRequest::Catch, Some(part)) => {
             let lifetime = state.items.common().lifetime;
             let half_life_scale = state.items.common().half_life_scale;
@@ -2579,7 +2580,11 @@ fn dispatch_fighter(
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::Pose => f.proc_pose(assets, map),
-        FighterProc::Accessories => f.proc_accessories(),
+        FighterProc::Accessories => {
+            f.proc_accessories();
+            // accessory2 (accessory3 in hitlag) before the scene's accessory1.
+            f.tether_accessory(assets, map);
+        }
         FighterProc::HitboxPositions => {
             effects.flush::<melee_ft::fighter::RetailTrig>(
                 melee_ef::EffectTiming::Deferred,

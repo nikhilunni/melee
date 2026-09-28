@@ -288,6 +288,33 @@ pub fn escape(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
+/// ftData_MotionStateList: ftCo_MS_Catch (212), ftCo_MS_CatchDash (214).
+/// ftCo_Catch_Coll / ftCo_CatchDash_Coll -> ft_800841B8 with fn_800D8E30:
+/// off the floor, a tether article goes (fn_800D949C) before the Fall.
+pub fn catch_startup(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let CollisionPhase { assets, map } = phase;
+    let collided = map_escape(
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
+        map,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.input.current.stick.x,
+    );
+    if collided == WaitGroundResult::EnterFall {
+        if let Some(tether) = fighter.character.table().tether {
+            (tether.departed)(fighter);
+        }
+        let assets = assets.expect("ground departure needs proc_map_with_assets");
+        fighter.leave_ground();
+        fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
+    } else if collided == WaitGroundResult::EnterTeeter {
+        let assets = assets.expect("teeter entry needs proc_map_with_assets");
+        fighter.enter_teeter(assets)?;
+    }
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_Dash (20), ftCo_MS_Run (21).
 pub fn running(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;

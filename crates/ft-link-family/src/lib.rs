@@ -2,9 +2,12 @@
 //! (ftCl_Init_MotionStateTable points at the same callbacks, except its
 //! side taunt rows). Character differences are the family trait's
 //! constants and typed accessors.
+mod air_catch;
+pub mod attack_air;
 mod attack_s42;
 pub mod attributes;
 mod common;
+pub mod hookshot;
 pub mod special_hi;
 pub mod special_s;
 
@@ -41,7 +44,8 @@ pub struct FighterVars {
 }
 
 /// Fighter state the family owns: ftLk_FighterVars, mv.lk and the one-shot
-/// callbacks the states install.
+/// callbacks the states install. The hookshot's chain is allocated with the
+/// fighter and reused by every throw.
 #[derive(Clone, Debug, Default)]
 pub struct Specials {
     pub vars: FighterVars,
@@ -53,6 +57,28 @@ pub struct Specials {
     /// take_dmg_cb / death2_cb = ftLk_800EAF58 for this motion: the articles
     /// go when the fighter is hit.
     pub removal_armed: bool,
+    /// fp->u.lk.xC: the hookshot while it is out.
+    pub hookshot: Option<hookshot::Hookshot>,
+    /// The hookshot's links (its ItemLink list).
+    pub chain: it_link::hookshot::chain::Chain,
+    /// mv+0 of the grabs and the aerial hookshot: frames since entry.
+    pub hookshot_timer: f32,
+    /// The down aerial's bounce (ftLk_AttackAir_Enter's callbacks).
+    pub down_air: attack_air::DownAir,
+}
+impl Specials {
+    /// ftLk_Init_OnDeath's clears, keeping the chain's allocation.
+    pub fn reset(&mut self) {
+        self.vars = FighterVars::default();
+        self.accessory = Accessory::None;
+        self.retained_word = None;
+        self.removal_armed = false;
+        self.hookshot = None;
+        self.hookshot_timer = 0.0;
+        self.down_air.armed = false;
+        self.down_air.frame_start = 0.0;
+        self.down_air.hits.fill(None);
+    }
 }
 
 /// accessory4_cb while a family state owns it.
@@ -155,6 +181,7 @@ pub const fn rows<C: LinkFamily>() -> [MotionRow; FamilyState::COUNT] {
     let spin = special_hi::rows::<C>();
     rows[FamilyState::SpecialHi.index()] = spin[0];
     rows[FamilyState::SpecialAirHi.index()] = spin[1];
+    rows[FamilyState::AirCatch.index()] = air_catch::motion_row::<C>();
     rows
 }
 
@@ -229,34 +256,40 @@ pub fn enter_special<C: LinkFamily>(
     }
 }
 
-/// ftCo_800C3B10's Link/Young Link arm once the common tests passed:
-/// ftCo_800C3BE8 enters ftLk_MS_AirCatch in the air (on the ground it
-/// only spends the tether), which throws the hookshot.
-pub fn air_tether<C: LinkFamily>(f: &mut Fighter, _assets: &FighterAssets) -> bool {
+/// ftCo_800C3B10's Link/Young Link arm once the common tests passed: no
+/// hookshot out (accessory2, death1 and accessory3 unset), then
+/// ftCo_800C3BE8, which enters ftLk_MS_AirCatch in the air (on the ground
+/// it only spends the tether).
+pub fn air_tether<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) -> bool {
+    if f.character.get::<C>().specials_ref().hookshot.is_some() {
+        return false;
+    }
     if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
-        unimplemented!("ftCo_800C3BE8: ftLk_MS_AirCatch and the hookshot (itlinkhookshot.c)");
+        air_catch::enter::<C>(f, assets).expect("AirCatch assets");
     }
     true
 }
 
-/// The standing and dash grabs (ftCo_0D8E.c fn_800D8EC8 / fn_800D9228)
-/// throw the hookshot article and grab through it.
-pub fn catch_variant() {
-    unimplemented!("ftCo_0D8E.c:43-173: the Links' hookshot grab (itlinkhookshot.c)");
-}
-
-/// ftLk_800EAF58 (800EAF58), take_dmg_cb and death2_cb while armed: the
-/// boomerang goes (the hookshot, arrow, bow and milk are not ported).
+/// ftCommon_8007DB58's callbacks: ftLk_800EAF58 (take_dmg_cb while armed:
+/// the boomerang and the hookshot go; the arrow, bow and milk are not
+/// ported), then death1_cb (the hookshot's it_802A7AAC).
 pub fn take_damage<C: LinkFamily>(f: &mut Fighter) {
     if f.character.get::<C>().specials_ref().removal_armed {
         special_s::remove_boomerang::<C>(f);
+        // ftCo_800D94D8.
+        hookshot::remove::<C>(f);
     }
+    // ftCommon_8007DB58 then runs death1_cb, it_802A7AAC while the
+    // hookshot is out.
+    hookshot::remove::<C>(f);
 }
 
 /// ftCo_800D331C's death callbacks: death2_cb (ftLk_800EAF58, while armed)
 /// and death3_cb (ftLk_800EAF38, installed with the boomerang and never
 /// removed): the boomerang goes either way.
 pub fn death<C: LinkFamily>(f: &mut Fighter) {
+    // death1_cb = it_802A7AAC while the hookshot is out.
+    hookshot::remove::<C>(f);
     special_s::remove_boomerang::<C>(f);
 }
 
@@ -264,6 +297,7 @@ pub fn death<C: LinkFamily>(f: &mut Fighter) {
 /// callbacks go.
 pub fn motion_changed(specials: &mut Specials) {
     specials.removal_armed = false;
+    specials.down_air.armed = false;
 }
 
 /// An owned article reached back (it_802A07B4 / Logic18_Destroyed's
@@ -289,6 +323,10 @@ pub fn article_request<C: LinkFamily>(
         }
         (K::LinkBoomerang | K::CLinkBoomerang, melee_it::OwnerRequest::Released) => {
             special_s::forget_boomerang::<C>(f);
+            None
+        }
+        (K::LinkHShot | K::CLinkHShot, melee_it::OwnerRequest::ArticleStep(step)) => {
+            hookshot::install_step::<C>(f, step);
             None
         }
         _ => unimplemented!("{kind:?} asked {request:?} of a Link"),
@@ -373,4 +411,17 @@ pub fn down_air_frames(assets: &FighterAssets) -> f32 {
         .motions
         .get(&attributes::DOWN_AIR_ANIMATION)
         .map_or(0.0, |motion| motion.animation.frames)
+}
+
+/// The grabs' hookshot (the FTKIND_LINK / FTKIND_CLINK arms of the common
+/// catch code and the article's accessory callbacks).
+pub const fn tether<C: LinkFamily>() -> melee_ft::fighter::tether::Tether {
+    melee_ft::fighter::tether::Tether {
+        animate: hookshot::grab_animation::<C>,
+        departed: hookshot::release::<C>,
+        caught: hookshot::caught::<C>,
+        pull_done: hookshot::pull_done::<C>,
+        released: hookshot::release::<C>,
+        accessory: hookshot::accessory::<C>,
+    }
 }

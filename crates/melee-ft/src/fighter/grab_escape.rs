@@ -285,6 +285,7 @@ pub fn pummel_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
         f.change_motion_state(S::CatchAttack.into(), phase.assets)
             .expect("pummel entry");
         f.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+        f.release_tether();
     }
 }
 

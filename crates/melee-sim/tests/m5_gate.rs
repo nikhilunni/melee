@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 353] = [
+const MATRIX_WITNESSES: [(&str, usize); 360] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1424,6 +1424,18 @@ const MATRIX_WITNESSES: [(&str, usize); 353] = [
     ("links_yl_boomerang_fd_fox4", 600),
     ("links_yl_spin_ground_fd_fox4", 420),
     ("links_yl_spin_air_fd_fox4", 420),
+    // LINKS: the hookshot (itlinkhookshot.c, run from its thrower's accessory
+    // proc): standing and dash grabs whiffing and catching Fox (CatchPull waits
+    // on the reel-in), Z-airs (ftLk_MS_AirCatch) whiffing and landing with the
+    // chain out, for Link and Young Link; Link's down aerial bounce (lwOnHit /
+    // lwOnAnim).
+    ("links_grab_fd_fox4", 560),
+    ("links_dashgrab_fd_fox4", 560),
+    ("links_zair_fd_fox4", 520),
+    ("links_zair_hit_fd_fox4", 520),
+    ("links_yl_grab_fd_fox4", 560),
+    ("links_yl_zair_fd_fox4", 520),
+    ("links_dair_fd_fox4", 480),
 ];
 
 #[test]
@@ -2485,7 +2497,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 349] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 355] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3049,6 +3061,15 @@ const CORPUS_V3_MATCHES: [(&str, usize); 349] = [
     // Link from its start boundary: the forward smash's second hit
     // (ftCo_800CED30, ftLk_MS_AttackS42).
     ("corpus_v3_fd_link_fox4_e9943b4ab_p2", 110),
+    // Link explorer matches with hookshot grabs and Z-airs, a boomerang
+    // bouncing off the floor and a wall (its release sweep's box, it_80275D5C),
+    // and Link hit with the hookshot out (death1_cb, it_802A7AAC).
+    ("corpus_v3_fd_link_fox4_e2b9e1400_p2", 3928),
+    ("corpus_v3_fd_link_fox4_e1b05b110_p1", 3553),
+    ("corpus_v3_fd_link_fox4_ecdf8887e_p2", 2847),
+    ("corpus_v3_fd_link_fox4_ed97ea327_p1", 2793),
+    ("corpus_v3_fd_link_fox4_e266e1150_p0", 2688),
+    ("corpus_v3_fd_link_fox4_e2b9e1400_p0", 2682),
 ];
 
 #[test]

@@ -103,6 +103,17 @@ impl Fighter {
         )
     }
 
+    /// ftCo_800968C8 (800968C8): FallSpecial with ordinary gravity, the
+    /// ordinary landing (fp->x2EC, the Landing animation's length) and full
+    /// mobility.
+    pub fn enter_ordinary_special_fall(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+    ) -> super::assets::Result<()> {
+        let lag = assets.motions[&35].animation.frames;
+        self.enter_special_fall(assets, true, false, true, 1.0, lag)
+    }
+
     /// ftCo_80096900, ordinary-gravity path shared by air dodge and SpecialN.
     pub fn enter_special_fall(
         &mut self,

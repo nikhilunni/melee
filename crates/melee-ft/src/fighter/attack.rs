@@ -296,6 +296,10 @@ impl Fighter {
             .current
             .held
             .intersects(crate::input::Buttons::SHIELD);
+        // fn_800D8E94 returns before the window's countdown.
+        if self.core.tether_article {
+            return self.tilt_input(assets, context);
+        }
         let MotionData::DashAttack { grab_window, .. } = &mut self.core.state_data else {
             panic!("dash attack scratch")
         };

@@ -57,6 +57,9 @@ pub enum OwnerRequest {
     /// The article no longer belongs to its thrower (a reflected boomerang:
     /// ftLk_SpecialS_RemoveBoomerang0).
     Released,
+    /// The article's physics proc installed its state's step for the
+    /// owner's accessory proc to run (the hookshot's `linkhookshot.x10`).
+    ArticleStep(u8),
 }
 
 /// The partner as a reader sees it during its own proc.

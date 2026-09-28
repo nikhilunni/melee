@@ -221,14 +221,7 @@ impl Fighter {
             unimplemented!("fighter.c:1588: ftCo_80095744 drops the Parasol item");
         }
         self.core.parasol.spent = true;
-        self.enter_parasol_closed_fall(assets)
-    }
-
-    /// ftCo_800968C8 (800968C8): FallSpecial with ordinary gravity, the
-    /// ordinary landing and full mobility.
-    fn enter_parasol_closed_fall(&mut self, assets: &FighterAssets) -> Result<()> {
-        let lag = assets.motions[&35].animation.frames;
-        self.enter_special_fall(assets, true, false, true, 1.0, lag)
+        self.enter_ordinary_special_fall(assets)
     }
 }
 
@@ -307,7 +300,7 @@ pub fn fall_special_input(f: &mut Fighter, p: InputPhase<'_>) {
     if f.core.input.current.stick.y <= p.assets.parasol.close_threshold
         && f.special_parasol().map(|parasol| parasol.status) == Some(ParasolStatus::Opening)
     {
-        f.enter_parasol_closed_fall(p.assets)
+        f.enter_ordinary_special_fall(p.assets)
             .expect("parasol close");
     } else {
         f.try_aerial_jump(p.assets).expect("parasol aerial jump");

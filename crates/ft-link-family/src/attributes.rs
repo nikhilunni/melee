@@ -24,10 +24,14 @@ pub struct LinkAttributes {
     pub down_air: DownAirAttributes,
     /// +0x64: SwordAttrs, the sword afterimage's shape and colours.
     pub sword_trail: [u32; 8],
-    /// +0x84..+0xBB: the hookshot's chain parameters (itlinkhookshot.c).
-    pub hookshot: [u32; 14],
+    /// +0x84..+0xBB: when the grabs and the aerial hookshot throw and
+    /// reel in the hookshot (ftCo_0D8E.c, ftCo_AirCatch.c).
+    pub hookshot: HookshotAttributes,
     /// +0xBC: the hookshot item kind.
     pub hookshot_item: u32,
+    /// The hookshot article's special attributes
+    /// (ftData.x48_items[2]->x4, itLinkHookshotAttributes x0..x50).
+    pub hookshot_article: [f32; HOOKSHOT_ARTICLE_WORDS],
     /// +0xC0. TODO(meaning)
     pub unknown_c0: u32,
     pub shield: ShieldAttributes,
@@ -92,6 +96,39 @@ pub struct DownAirAttributes {
     pub hitbox_flags: [u32; 3],
 }
 
+/// One throw's frames, counted by mv+0 from the motion's entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HookshotFrames {
+    /// The article is created in the hand (it_802A2BA4).
+    pub spawn: i32,
+    /// The claw flies out (it_802A78B8).
+    pub launch: i32,
+    /// It reels back in (it_802A77DC).
+    pub reel: i32,
+    /// It is removed (it_802A2B10).
+    pub remove: i32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HookshotAttributes {
+    /// +0x84: the standing grab (fn_800D8EC8).
+    pub grab: HookshotFrames,
+    /// +0x94: the dash grab (fn_800D9228).
+    pub dash_grab: HookshotFrames,
+    /// +0xA4: the aerial hookshot (ftCo_AirCatch_Anim).
+    pub aerial: HookshotFrames,
+    /// +0xB4: ftCo_8009B390's argument when the wall hang lets go
+    /// (it_802A3828).
+    pub wall_release: f32,
+    /// +0xB8: the wall hang's frames (it_802A7A04).
+    pub wall_hang_frames: i32,
+}
+
+/// itLinkHookshotAttributes' float and int words before its joints.
+pub const HOOKSHOT_ARTICLE_WORDS: usize = 21;
+/// ftData.x48_items index of the hookshot article.
+pub const HOOKSHOT_ARTICLE: u32 = 2;
+
 /// +0xC4: the AbsorbDesc ftColl_8007B1B8 reads as a ShieldDesc (its
 /// damage multiplier is +0xD8).
 #[derive(Clone, Debug, PartialEq)]
@@ -111,7 +148,22 @@ pub fn read(archive: &Archive, data_symbol: &str) -> Result<LinkAttributes> {
             name: data_symbol.into(),
         })
     })?;
-    LinkAttributes::read(archive, special_attributes_offset(archive, root)?)
+    let mut attributes = LinkAttributes::read(archive, special_attributes_offset(archive, root)?)?;
+    attributes.hookshot_article = read_hookshot_article(archive, root)?;
+    Ok(attributes)
+}
+
+/// ftData.x48_items[2]->x4: the hookshot article's special attributes.
+fn read_hookshot_article(archive: &Archive, root: u32) -> Result<[f32; HOOKSHOT_ARTICLE_WORDS]> {
+    let r = archive.reader();
+    let items = r.u32(root + 0x48)?;
+    let article = r.u32(items + HOOKSHOT_ARTICLE * 4)?;
+    let words = r.u32(article + 4)?;
+    let mut out = [0.0; HOOKSHOT_ARTICLE_WORDS];
+    for (i, word) in out.iter_mut().enumerate() {
+        *word = r.f32(words + 4 * i as u32)?;
+    }
+    Ok(out)
 }
 
 impl LinkAttributes {
@@ -125,8 +177,21 @@ impl LinkAttributes {
         };
         let mut sword_trail = [0; 8];
         words(0x64, &mut sword_trail)?;
-        let mut hookshot = [0; 14];
-        words(0x84, &mut hookshot)?;
+        let frames = |at: u32| -> Result<HookshotFrames> {
+            Ok(HookshotFrames {
+                spawn: r.u32(at)? as i32,
+                launch: r.u32(at + 4)? as i32,
+                reel: r.u32(at + 8)? as i32,
+                remove: r.u32(at + 0xC)? as i32,
+            })
+        };
+        let hookshot = HookshotAttributes {
+            grab: frames(0x84)?,
+            dash_grab: frames(0x94)?,
+            aerial: frames(0xA4)?,
+            wall_release: r.f32(0xB4)?,
+            wall_hang_frames: r.u32(0xB8)? as i32,
+        };
         Ok(Self {
             bow: BowAttributes {
                 max_charge: r.f32(0x0)?,
@@ -162,6 +227,7 @@ impl LinkAttributes {
             sword_trail,
             hookshot,
             hookshot_item: r.u32(0xBC)?,
+            hookshot_article: [0.0; HOOKSHOT_ARTICLE_WORDS],
             unknown_c0: r.u32(0xC0)?,
             shield: ShieldAttributes {
                 bone: r.u32(0xC4)? as i32,

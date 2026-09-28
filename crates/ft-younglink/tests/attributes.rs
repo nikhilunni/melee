@@ -9,21 +9,29 @@ use support::{archive, word};
 
 #[test]
 fn relocated_zero_preserves_float_payloads_and_integer_signedness() {
-    let mut data = vec![0; 0xE4];
+    // ftData at +DC: ext_attr (+4) points at offset zero; x48_items (+48,
+    // at +124) at the item table (+128), whose [2] (+130) is the hookshot
+    // article (+134), with its special attributes (+4, at +138) at +13C.
+    let mut data = vec![0; 0x190];
     word(&mut data, 0, 0x8000_0000);
+    word(&mut data, 0x124, 0x128);
+    word(&mut data, 0x130, 0x134);
+    word(&mut data, 0x138, 0x13C);
+    word(&mut data, 0x13C + 0x10, 0x4000_0000);
+    let relocs = [0xE0, 0x124, 0x130, 0x138];
     word(&mut data, 0x2C, 0x3C);
     word(&mut data, 0xC4, (-2_i32) as u32);
     word(&mut data, 0xD8, 0x7FC0_1234);
-    // ftData at +DC has a relocated ext_attr pointer to offset zero.
-    let source = archive(&data, &[0xE0], Some(("ftDataClink", 0xDC)));
+    let source = archive(&data, &relocs, Some(("ftDataClink", 0xDC)));
     let attrs = read_young_link_attributes(&source).unwrap();
     assert_eq!(attrs.bow.max_charge.to_bits(), 0x8000_0000);
     assert_eq!(attrs.boomerang.item, 0x3C);
     assert_eq!(attrs.shield.bone, -2);
     assert_eq!(attrs.shield.damage_scale.to_bits(), 0x7FC0_1234);
+    assert_eq!(attrs.hookshot_article[4], 2.0);
     assert!(read_young_link_attributes(&archive(&data, &[], Some(("ftDataClink", 0xDC)))).is_err());
     assert!(
-        read_young_link_attributes(&archive(&data, &[0xE0], Some(("ftDataFox", 0xDC)))).is_err()
+        read_young_link_attributes(&archive(&data, &relocs, Some(("ftDataFox", 0xDC)))).is_err()
     );
     assert!(LinkAttributes::read(&archive(&data[..0xDB], &[], None), 0).is_err());
 }

@@ -523,8 +523,11 @@ name = "ft-link-family"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
  "hsd-archive",
  "hsd-types",
+ "it-link",
+ "melee-coll",
  "melee-ef",
  "melee-ft",
  "melee-it",

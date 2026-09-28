@@ -56,6 +56,7 @@ impl Fighter {
             facing: self.core.physics.facing,
             specials_available: self.core.capabilities.specials,
             shield_health: self.core.status.shield_health,
+            tether_active: self.core.tether_article,
             ..WaitContext::default()
         };
         let transition = crate::input::iasa_with_predicates(

@@ -61,6 +61,7 @@ pub mod stop_ceil;
 pub mod stop_wall;
 pub mod teeter;
 pub mod transform;
+pub mod tether;
 pub mod turn;
 pub mod turn_run;
 pub mod walk;
@@ -394,6 +395,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// accessory3 installed) and enters the tether (ftCo_800C3BE8), returning
     /// whether it did. `None`: the kind has no tether.
     const AIR_TETHER: Option<fn(&mut Fighter, &assets::FighterAssets) -> bool> = None;
+    /// The grabs' tether article (the FTKIND_LINK / FTKIND_CLINK arms of
+    /// ftCo_Catch.c, ftCo_CatchPull.c, ftCo_CatchWait.c and the accessory
+    /// callbacks); `None` for an ordinary grab.
+    const TETHER: Option<tether::Tether> = None;
 
     /// The second motion scratch word (mv+4) while `action`, one of this
     /// character's special rows, is current. Common states that leave that

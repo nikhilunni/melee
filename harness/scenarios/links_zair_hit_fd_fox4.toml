@@ -1,0 +1,34 @@
+# LINKS directed witness: a full-hop aerial hookshot whiff, then Fox dashes
+# in and Link short-hop Z-airs at him from 14 units: in retail the claw
+# passes over Fox's head (no hit), the chain hangs fully out, and Link
+# lands with it out (Landing while the article reels in and goes).
+name = "links_zair_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 138, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 336, port = 1, buttons = {  }, raw = {  } },
+  { frame = 350, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 352, port = 0, buttons = {  }, raw = {  } },
+  { frame = 356, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 358, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -66,8 +66,18 @@ impl Fighter {
         }
     }
 
-    /// ftCo_Catch_Anim (800D8CC8): item/tether callbacks are character hooks.
-    pub(super) fn catch_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+    /// ftCo_Catch_Anim (800D8CC8) / ftCo_CatchDash_Anim: the tether's frame
+    /// (fn_800D8EC8 / fn_800D9228), then Wait at the animation's end.
+    pub(super) fn catch_animation(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        if let Some(tether) = self.character.table().tether {
+            if (tether.animate)(self, assets, map)? {
+                return Ok(());
+            }
+        }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
             self.change_motion_state(S::Wait.into(), assets)?;
         }
@@ -251,6 +261,10 @@ pub fn capture_pair(
     }
     attacker.character.catch_variant();
     attacker.core.physics.ground_velocity = 0.0;
+    // fn_800D9CE8's kind arm, before the pull's motion change.
+    if let Some(tether) = attacker.character.table().tether {
+        (tether.caught)(attacker);
+    }
     let frame = attacker.core.animation.frame;
     let (pull, frame) = if attacker.motion_state.id == S::Catch {
         let start = attacker.character.table().catch_pull_start;
@@ -291,6 +305,8 @@ pub fn capture_pair(
 }
 
 /// fn_800DAC78 (800DAC78), no fused sites: hold bone minus captured XRotN.
+/// The hold bone is mv.co.capturedamage.x18: a tether's claw while it
+/// reels the catch in.
 fn capture_positions(
     victim: &mut FighterCore,
     attacker: &mut FighterCore,
@@ -541,6 +557,9 @@ impl Fighter {
 
 /// fn_800DB6C8 -> fn_800DBAE4 (800DBAE4), before victim's own Anim proc.
 pub fn capture_wait(victim: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    if victim.core.tether_article {
+        unimplemented!("fn_800DB6C8: a captured Link's hookshot reels in (it_802A7840)");
+    }
     let state = if matches!(
         victim.motion_state.id,
         S::CapturePulledHi | S::CaptureDamageHi

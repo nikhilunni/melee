@@ -88,6 +88,13 @@ pub fn animation(
     phase: AnimationPhase<'_>,
 ) -> Result<Option<crate::anim::WaitChoice>> {
     fighter.step_animation(phase.assets);
+    finish_animation(fighter, phase.assets)?;
+    Ok(None)
+}
+
+/// ftCo_AttackAir_Anim's body after the animation step, which a
+/// character's own aerial callback (ftLk_AttackAir lwOnAnim) runs last.
+pub fn finish_animation(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     if std::mem::take(&mut fighter.core.commands.grab_release) {
         fighter.core.physics.facing = -fighter.core.physics.facing;
     }
@@ -96,9 +103,9 @@ pub fn animation(
         .animation
         .frames_remaining(&fighter.core.skeleton)
     {
-        fighter.change_motion_state(S::Fall.into(), phase.assets)?;
+        fighter.change_motion_state(S::Fall.into(), assets)?;
     }
-    Ok(None)
+    Ok(())
 }
 
 /// AttackAirN/F/B/Hi/Lw_IASA (8008D08C..8008D4AC) share DO_IASA.

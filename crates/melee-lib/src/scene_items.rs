@@ -50,6 +50,8 @@ melee_it::item_kinds! {
         ZeldaDinFireExplode: it_zelda::DinFireExplode,
         LinkBoomerang: it_link::LinkBoomerang,
         CLinkBoomerang: it_link::YoungLinkBoomerang,
+        LinkHShot: it_link::LinkHookshot,
+        CLinkHShot: it_link::YoungLinkHookshot,
     }
 }
 
@@ -550,7 +552,7 @@ impl Resources {
             }
         }
         // ftLk_Init_OnLoad / ftCl_Init_OnLoad: ftData.x48_items[1] is the
-        // boomerang.
+        // boomerang, [2] the hookshot.
         for (file, symbol, kind) in [
             ("PlLk.dat", "ftDataLink", ItemKind::LinkBoomerang),
             ("PlCl.dat", "ftDataClink", ItemKind::CLinkBoomerang),
@@ -560,15 +562,32 @@ impl Resources {
             };
             let a = std::sync::Arc::clone(&character.data);
             let root = a.public(symbol).context("Link fighter data")?;
-            let boomerang = ItemAssets::from_fighter_states(
+            let mut boomerang = ItemAssets::from_fighter_states(
                 &a,
                 root,
                 it_link::boomerang::ARTICLE_INDEX,
                 &it_link::boomerang::ARTICLE_STATES,
                 it_link::boomerang::SPECIAL_ATTRIBUTES,
             )?;
+            // The throw's release sweep grows its box (it_80275D5C).
+            boomerang.read_common_release(&common_archive, public)?;
             kinds.push((kind, boomerang));
-            visual_archives.push((kind, a));
+            visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[2]: the hookshot.
+            let hookshot_kind = if kind == ItemKind::LinkBoomerang {
+                ItemKind::LinkHShot
+            } else {
+                ItemKind::CLinkHShot
+            };
+            let hookshot = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_link::hookshot::ARTICLE_INDEX,
+                &it_link::hookshot::ARTICLE_STATES,
+                it_link::hookshot::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((hookshot_kind, hookshot));
+            visual_archives.push((hookshot_kind, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

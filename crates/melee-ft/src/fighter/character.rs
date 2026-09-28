@@ -63,6 +63,7 @@ pub struct CharacterTable {
     pub on_motion_change: fn(&mut CharacterState),
     pub dynamics_first_force_bone: fn(&CharacterState, usize, usize) -> usize,
     pub air_tether: Option<fn(&mut Fighter, &assets::FighterAssets) -> bool>,
+    pub tether: Option<tether::Tether>,
     pub on_landing: fn(&mut CharacterState, bool),
     pub retained_scratch_word: fn(&CharacterState, ActionId) -> Option<f32>,
     pub guard_variant: fn(&CharacterState, &mut commands::CommandState),
@@ -176,6 +177,7 @@ impl CharacterTable {
                 state.get::<C>().dynamics_first_force_bone(set, count)
             },
             air_tether: C::AIR_TETHER,
+            tether: C::TETHER,
             on_landing: |state, allow_interrupt| state.get_mut::<C>().on_landing(allow_interrupt),
             retained_scratch_word: C::RETAINED_SCRATCH_WORD,
             guard_variant: |state, commands| state.get::<C>().guard_variant(commands),

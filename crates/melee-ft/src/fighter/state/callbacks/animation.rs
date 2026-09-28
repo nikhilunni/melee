@@ -91,12 +91,18 @@ pub fn catch_pull(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
     let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
-    if fighter.core.commands.grab_release
-        || !fighter
-            .core
-            .animation
-            .frames_remaining(&fighter.core.skeleton)
-    {
+    // ftCo_CatchPull_Anim: a tether's pull waits on its article alone.
+    let done = match fighter.character.table().tether {
+        Some(tether) => (tether.pull_done)(fighter),
+        None => {
+            fighter.core.commands.grab_release
+                || !fighter
+                    .core
+                    .animation
+                    .frames_remaining(&fighter.core.skeleton)
+        }
+    };
+    if done {
         fighter.enter_catch_wait(assets)?;
     }
     Ok(None)
@@ -104,10 +110,10 @@ pub fn catch_pull(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 
 /// ftData_MotionStateList: ftCo_MS_Catch (212).
 pub fn catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, .. } = phase;
+    let AnimationPhase { assets, map, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
-    fighter.catch_animation(assets)?;
+    fighter.catch_animation(assets, map)?;
     Ok(None)
 }
 

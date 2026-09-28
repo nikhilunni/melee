@@ -83,6 +83,12 @@ impl CharacterCallbacks for Link {
         melee_ft::fighter::ActionId,
     ) -> Option<f32> = ft_link_family::retained_scratch_word::<Self>;
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(ft_link_family::take_damage::<Self>);
+    /// ftLk_AttackAir_Enter (ftCo_AttackAir.c decideFighter).
+    const ENTER_AERIAL: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
+        ft_link_family::attack_air::enter::<Self>;
+    /// The down aerial's lwOnHit.
+    const DEAL_DAMAGE: Option<fn(&mut Fighter, &FighterAssets)> =
+        Some(ft_link_family::attack_air::deal_damage::<Self>);
     const DEATH: Option<fn(&mut Fighter)> = Some(ft_link_family::death::<Self>);
     const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
         ft_link_family::article_destroyed::<Self>;
@@ -102,11 +108,14 @@ impl CharacterCallbacks for Link {
     /// ftCo_800C3B10 / ftCo_800C3BE8: the aerial hookshot.
     const AIR_TETHER: Option<fn(&mut Fighter, &FighterAssets) -> bool> =
         Some(ft_link_family::air_tether::<Self>);
-    /// ftCo_Catch.c / ftCo_0D8E.c:43-173: the standing and dash grabs throw
-    /// the hookshot.
+    /// ftCo_800D8C54: mv+0, the hookshot's frame count, restarts.
     fn catch_variant(&mut self) {
-        ft_link_family::catch_variant();
+        ft_link_family::hookshot::restart_count::<Self>(&mut self.specials);
     }
+    /// ftCo_0D8E.c and the catch states' Link arms: the grabs throw the
+    /// hookshot and pull through it.
+    const TETHER: Option<melee_ft::fighter::tether::Tether> =
+        Some(ft_link_family::tether::<Self>());
     fn kind(&self) -> FighterKind {
         FighterKind::Link
     }
@@ -134,7 +143,7 @@ impl CharacterCallbacks for Link {
     /// the FighterVars reset.
     fn on_reset(&mut self) {
         self.model_groups = [0; 3];
-        self.specials = Specials::default();
+        self.specials.reset();
     }
 }
 

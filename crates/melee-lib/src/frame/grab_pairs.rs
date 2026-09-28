@@ -158,13 +158,18 @@ pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<Opt
         .expect("live victim");
     let (attacker, victim) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
-        grab_throw::enter_throw(
+        let entered = grab_throw::enter_throw(
             throw,
             v,
             a,
             &state.assets.fighters[other],
             &state.assets.fighters[player],
-        )
+        );
+        // ftCo_CatchWait_IASA: it_802A7AAC after the throw's entry.
+        if entered.is_ok() {
+            a.release_tether();
+        }
+        entered
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(Some(other))

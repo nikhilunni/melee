@@ -1091,7 +1091,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: callbacks::input::catch,
         physics: callbacks::physics::catch,
         // ftCo_Catch_Coll uses the stop-at-edge helper ft_800827A0.
-        collision: callbacks::collision::escape,
+        collision: callbacks::collision::catch_startup,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };

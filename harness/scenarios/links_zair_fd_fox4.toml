@@ -1,0 +1,33 @@
+# LINKS directed witness: Link's aerial hookshot (Z in the air: ftCo_800C3BE8
+# -> ftLk_MS_AirCatch 360) whiffing from a full hop and landing; then Fox
+# dashes in and a short-hop Z-air strikes him (AirCatchHit 361).
+name = "links_zair_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 138, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 318, port = 1, buttons = {  }, raw = {  } },
+  { frame = 350, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 352, port = 0, buttons = {  }, raw = {  } },
+  { frame = 356, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 358, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
