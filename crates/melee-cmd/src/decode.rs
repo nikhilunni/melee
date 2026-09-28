@@ -99,7 +99,8 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             items: word & 2 != 0,
             enabled: word & 1 != 0,
         },
-        15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
+        // ftAction_80071784, 800717A0: clrlwi keeps all 26 bits as the index.
+        15 => Command::ClearHitbox((word & 0x03ff_ffff) as usize),
         16 => Command::ClearHitboxes,
         27 => Command::HurtCapsuleStatus {
             bone: None,

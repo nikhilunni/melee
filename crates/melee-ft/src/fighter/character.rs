@@ -28,6 +28,7 @@ pub struct CharacterTable {
     /// Fighter.deal_dmg_cb: Fighter_ProcessHit's damage-dealt branch.
     pub deal_damage: Option<fn(&mut Fighter)>,
     pub death: Option<fn(&mut Fighter)>,
+    pub hurtbox_detect: Option<fn(&mut Fighter, &assets::FighterAssets, u32)>,
     pub item_muzzle: fn(&mut Fighter, &assets::FighterAssets) -> Option<(Vec3, f32)>,
     pub item_owner: fn(&mut Fighter, &assets::FighterAssets) -> melee_it::ItemOwner,
     pub forward_smash_variant: fn(&CharacterState),
@@ -105,6 +106,7 @@ impl CharacterTable {
             take_damage: C::TAKE_DAMAGE,
             deal_damage: C::DEAL_DAMAGE,
             death: C::DEATH,
+            hurtbox_detect: C::HURTBOX_DETECT,
             item_muzzle: C::item_muzzle,
             item_owner: C::item_owner,
             forward_smash_variant: |state| state.get::<C>().forward_smash_variant(),

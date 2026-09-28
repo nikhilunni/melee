@@ -1,0 +1,26 @@
+# FALCON-SPECIALS: running grounded Falcon Kick that passes Fox without a hit
+# (357 -> 358 -> Wait).
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_kick_hit_run22"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 220
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 52, buttons = { B = true, StickY = -1.0 } },
+  { frame = 55, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

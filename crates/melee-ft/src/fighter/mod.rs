@@ -176,6 +176,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
+    /// Fighter_ProcessHit's hurtbox_detect_cb (fighter.c:2950-2954): an
+    /// inert hitbox of this fighter touched another fighter (`unk_gobj`, the
+    /// touched fighter's spawn number). Per-motion in retail, like DEAL_DAMAGE.
+    const HURTBOX_DETECT: Option<fn(&mut Fighter, &assets::FighterAssets, u32)> = None;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }

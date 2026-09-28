@@ -316,6 +316,47 @@ impl Effects {
                 }
                 continue;
             }
+            if let EffectRequest::AttachedParameter {
+                id: 0x490,
+                bone,
+                parameter,
+            } = request
+            {
+                // efAlt_Spawn 0x490 (efalt.c:163-170): efLib_Create_Attach
+                // 0xFA2 (no scale), params.z = the angle, and the update
+                // callback efLib_Cb_SetRotYZ_FromParamZ_FighterDir.
+                let mut effect = self.acquire(0xFA2, particles);
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.hitlag_pause = HitlagPause::Active;
+                effect.attachment = Some(player);
+                effect.attachment_bone = Some(bone);
+                effect.scale_attachment = false;
+                // eflib.c:1261-1276: M_PI_2_F by facing; Z negated facing right.
+                effect.callback_rotation = Some(if fighter.effect_facing() < 0.0 {
+                    Vec3::new(0.0, -std::f32::consts::FRAC_PI_2, parameter)
+                } else {
+                    Vec3::new(0.0, std::f32::consts::FRAC_PI_2, -parameter)
+                });
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+                effect.animate_banks::<T>(
+                    resources::Banks {
+                        common: bank,
+                        characters: &self.character_banks,
+                    },
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                )?;
+                self.instances.push(effect);
+                continue;
+            }
             if let EffectRequest::SyncAttachedPair { id: 0x48F, bones } = request {
                 // efAlt_Spawn 0x48F (efalt.c:153-161): two
                 // efLib_Create_Attach_Scale_FacingDir models, 0xFA0 then 0xFA1.
@@ -368,15 +409,23 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x488..=0x48C | 0x4F2..=0x4F3),
+                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4F2..=0x4F3),
                 bone,
             } = request
             {
                 let model = match id {
                     0x488..=0x48C => 0xBB8 + u32::from(id - 0x488),
+                    // efalt.c:172-210: Raptor Boost's start and lunge models.
+                    0x491 => 0xFA4,
+                    0x492 => 0xFA3,
+                    0x493 => 0xFA5,
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     _ => unreachable!(),
                 };
+                // efLib_Create_Attach_Scale, and a root rotation Y from the
+                // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3).
+                let scaled = matches!(id, 0x488..=0x48A | 0x492..=0x493 | 0x4F2..=0x4F3);
+                let faces = matches!(id, 0x492..=0x493 | 0x4F2..=0x4F3);
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
@@ -386,14 +435,14 @@ impl Effects {
                 effect.attachment = Some(player);
                 effect.attachment_bone = Some(bone);
                 effect.scale_attachment = false;
-                if id <= 0x48A || id >= 0x4F2 {
+                if scaled {
                     // efLib_Create_Attach_Scale: the fighter root supplies uniform scale.
                     let mut scale = fighter.effect_scale();
                     scale.x = scale.y;
                     scale.z = scale.y;
                     effect.tree.set_scale(effect.root, &scale);
                 }
-                if id >= 0x4F2 {
+                if faces {
                     effect.tree.set_rotation_y(
                         effect.root,
                         std::f32::consts::FRAC_PI_2 * fighter.effect_facing(),
@@ -699,6 +748,7 @@ impl Effects {
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
                 | EffectRequest::Attached { .. }
+                | EffectRequest::AttachedParameter { .. }
                 | EffectRequest::SyncAttached { .. }
                 | EffectRequest::SyncAttachedPair { .. }
                 | EffectRequest::FollowingGenerator { .. }

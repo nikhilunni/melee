@@ -13,6 +13,12 @@ pub struct CaptainFalcon {
     pub raptor_boost_lunge_effect_active: bool,
     /// ftCa_Init_OnDeath resets model group 0 to its default variant.
     pub model_group: i32,
+    /// mv.ca.speciallw: the grounded Falcon Kick's hit slowdown.
+    pub falcon_kick: crate::special_lw::FalconKick,
+    /// mv.ca.specials: the aerial Raptor Boost's vertical velocity.
+    pub raptor_boost: crate::special_s::RaptorBoost,
+    /// mv.ca.specialhi: Falcon Dive's carried velocity and flags.
+    pub falcon_dive: crate::special_hi::FalconDive,
 }
 impl CaptainFalcon {
     pub fn new(attributes: CaptainAttributes) -> Self {
@@ -21,6 +27,9 @@ impl CaptainFalcon {
             raptor_boost_start_effect_active: false,
             raptor_boost_lunge_effect_active: false,
             model_group: 0,
+            falcon_kick: Default::default(),
+            raptor_boost: Default::default(),
+            falcon_dive: Default::default(),
         }
     }
 }
@@ -40,11 +49,30 @@ impl CharacterCallbacks for CaptainFalcon {
         use melee_ft::fighter::SpecialSlot;
         match slot {
             SpecialSlot::Neutral => crate::special_n::enter(f, air, a),
-            SpecialSlot::Side => unimplemented!("ftCa_SpecialS_Enter / ftCa_SpecialAirS_Enter"),
-            SpecialSlot::Up => unimplemented!("ftCa_SpecialHi_Enter / ftCa_SpecialAirHi_Enter"),
-            SpecialSlot::Down => unimplemented!("ftCa_SpecialLw_Enter / ftCa_SpecialAirLw_Enter"),
+            SpecialSlot::Side => crate::special_s::enter(f, air, a),
+            SpecialSlot::Up => crate::special_hi::enter(f, air, a),
+            SpecialSlot::Down => crate::special_lw::enter(f, air, a),
         }
     }
+    const DEAL_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(crate::special_lw::deal_damage);
+    const HURTBOX_DETECT: Option<
+        fn(&mut melee_ft::fighter::Fighter, &melee_ft::fighter::assets::FighterAssets, u32),
+    > = Some(crate::special_s::detect);
+    /// ftCa_Init_800E28C8: Raptor Boost's take_dmg_cb.
+    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(crate::special_s::remove_effects);
+    /// ftCa_Init_800E28C8: Raptor Boost's death2_cb.
+    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(crate::special_s::remove_effects);
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = |state, action| {
+        let falcon = state.get::<Self>();
+        crate::special_s::retained_scratch_word(falcon, action)
+            .or_else(|| crate::special_hi::retained_scratch_word(falcon, action))
+    };
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

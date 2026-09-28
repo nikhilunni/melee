@@ -1,0 +1,26 @@
+# FALCON-SPECIALS: grounded Falcon Dive reversed by a held back stick in the IASA
+# window: FallSpecial off the left edge, then a KO.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_dive_turn"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { B = true, StickY = 1.0 } },
+  { frame = 33, buttons = { StickX = -1.0 } },
+  { frame = 60, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

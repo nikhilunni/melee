@@ -107,6 +107,13 @@ pub enum EffectRequest {
         id: u16,
         bone: usize,
     },
+    /// efAsync kind 3 (EF_SPAWN_ATTACH_PARAM): at the flush, efSync_Spawn
+    /// on the live joint with one float parameter (efAlt 0x490, Falcon Kick).
+    AttachedParameter {
+        id: u16,
+        bone: usize,
+        parameter: f32,
+    },
     /// efAsync kind 7 (EF_SPAWN_ATTACH_OFFSET), efAsync_Dispatch 0x446:
     /// efLib_CreateGenerator_AppSRT_SetPos. An empty model follows the bone
     /// at a world-axis offset and carries one AppSRT generator.
@@ -335,6 +342,7 @@ impl EffectRequest {
             | Self::EggShell { bone, .. }
             | Self::CaptureFlash { bone }
             | Self::Attached { bone, .. }
+            | Self::AttachedParameter { bone, .. }
             | Self::SyncAttached { bone, .. }
             | Self::FollowingGenerator { bone, .. }
             | Self::Graphics { bone, .. } => Some(bone),

@@ -508,7 +508,7 @@ impl Fighter {
 
     /// Fighter_ChangeMotionState (800693AC), fighter.c:1268-1296:
     /// install the caller's rate before frame-zero animation and commands.
-    pub(super) fn change_motion_state_with_rate(
+    pub fn change_motion_state_with_rate(
         &mut self,
         state: ActionId,
         assets: &FighterAssets,

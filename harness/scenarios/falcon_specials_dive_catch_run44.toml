@@ -1,0 +1,27 @@
+# FALCON-SPECIALS: running grounded Falcon Dive just out of catch range. The
+# script's ftAction_80071784 clears hitbox 1 (all 26 index bits), so the
+# remaining catch box never reaches Fox: FallSpecial, landing, Wait.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_dive_catch_run44"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 240
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 74, buttons = { B = true, StickY = 1.0 } },
+  { frame = 77, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

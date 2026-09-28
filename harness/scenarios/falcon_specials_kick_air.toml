@@ -1,0 +1,27 @@
+# FALCON-SPECIALS: short-hop aerial Falcon Kick (359) that lands (360 at the landing
+# rate) and returns to Wait.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_kick_air"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 160
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 32, buttons = {} },
+  { frame = 38, buttons = { B = true, StickY = -1.0 } },
+  { frame = 41, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

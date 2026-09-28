@@ -1,0 +1,26 @@
+# FALCON-SPECIALS: running grounded Falcon Kick that hits Fox (9%): the kick's
+# deal_dmg_cb (ftCa_SpecialHi_800E400C) slows it; 357 -> 358 -> Wait.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_kick_hit_run28"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 220
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 58, buttons = { B = true, StickY = -1.0 } },
+  { frame = 61, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

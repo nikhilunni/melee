@@ -1,0 +1,26 @@
+# FALCON-SPECIALS: grounded Falcon Kick (ftCa_SpecialLw, 357) that stops short of Fox,
+# then SpecialLwEnd (358) at the ending rate and Wait. The flame is efAsync
+# 0x490 on the right foot.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_kick_ground"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 160
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { B = true, StickY = -1.0 } },
+  { frame = 33, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -1,0 +1,30 @@
+# FALCON-SPECIALS: aerial Raptor Boost off stage after a double jump: FallSpecial,
+# then a KO.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_boost_offstage"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 20, buttons = { StickX = -1.0 } },
+  { frame = 40, buttons = { X = true, StickX = -1.0 } },
+  { frame = 44, buttons = { StickX = -1.0 } },
+  { frame = 56, buttons = { X = true, StickX = -1.0 } },
+  { frame = 58, buttons = {} },
+  { frame = 62, buttons = { B = true, StickX = -1.0 } },
+  { frame = 65, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

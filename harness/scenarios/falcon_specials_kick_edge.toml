@@ -1,0 +1,27 @@
+# FALCON-SPECIALS: run off the left edge into Fall, then an aerial Falcon Kick (359)
+# off stage that ends in the air (361, SpecialAirLwEndAir) and falls to a KO.
+# 361 plays ftCa_SM_SpecialAirLwEndAir, listed after SpecialLwEndAir.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_kick_edge"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 20, buttons = { StickX = -1.0 } },
+  { frame = 36, buttons = { B = true, StickY = -1.0 } },
+  { frame = 39, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

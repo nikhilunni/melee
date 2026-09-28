@@ -75,6 +75,9 @@ pub struct CombatState {
     pub queued_hit_sfx: Option<u32>,
     pub queued_voice: Option<DamageVoice>,
     pub dealt_damage: i32,
+    /// unk_gobj: the fighter (spawn number) one of this fighter's inert
+    /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
+    pub detected: Option<u32>,
     pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
@@ -794,6 +797,7 @@ impl Fighter {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
         let dealt_damage = hit_damage;
+        let detected = self.core.combat.detected.take();
         let clank = self.core.combat.clank;
         self.core.combat.clank.damage = 0;
         self.core.combat.clank.duration = 0.0;
@@ -934,6 +938,11 @@ impl Fighter {
         {
             if let Some(reflection) = reflection {
                 self.process_reflection(reflection, assets)?;
+            } else if let Some(target) = detected {
+                // fighter.c:2950-2954: the last branch, an inert touch.
+                if let Some(detect) = self.character.table().hurtbox_detect {
+                    detect(self, assets, target);
+                }
             }
         }
         if hit_damage == 0 {
@@ -1679,14 +1688,28 @@ fn detect_eligible_hit(
     {
         return;
     }
+    let inert = desc.element == melee_types::HitElement::Inert;
     if victim.shield.active {
         if let Some(contact) = victim.shield_contact(hit, attacker.player.scale) {
-            let descriptor = desc.clone();
-            record_shield_hit(victim, attacker, &descriptor, contact, assets);
-            return;
+            if !inert {
+                let descriptor = desc.clone();
+                record_shield_hit(victim, attacker, &descriptor, contact, assets);
+                return;
+            }
+            // ftColl_80078C70: an inert hitbox on a shield marks the touch
+            // (x221C_b5, unk_gobj) and still tests the hurtboxes.
+            attacker.combat.detected = Some(victim.spawn_number);
         }
     }
     let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
+    if inert {
+        // ftColl_80078C70: an inert hitbox only records the touched
+        // fighter; it logs no hit and never marks the victim on its group.
+        if contact.is_some() {
+            attacker.combat.detected = Some(victim.spawn_number);
+        }
+        return;
+    }
     if let Some((contact, height)) = contact {
         // Retail's hit path reads the victim's state only for DamageIce
         // (ftcoll.c:199/576/1155); crouch cancel (ftCo_Damage.c:124-127) and the

@@ -11,6 +11,9 @@ melee-ft = { path = "../melee-ft" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 melee-ef = { path = "../melee-ef" }
+melee-lb = { path = "../melee-lb" }
+hsd-types = { path = "../hsd-types" }
+melee-mp = { path = "../melee-mp" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }
