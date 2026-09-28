@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 159] = [
+const MATRIX_WITNESSES: [(&str, usize); 165] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1156,6 +1156,15 @@ const MATRIX_WITNESSES: [(&str, usize); 159] = [
     ("peach3_turnip_floor", 260),
     ("peach3_turnip_air_downb", 320),
     ("peach3_turnip_shield", 300),
+    // Jigglypuff's specials against Fox: Rest's sleep hitbox, Sing's sleep
+    // and wake, a full-charge Rollout hit, a Rollout that runs out, an aerial
+    // Rollout that bounces and lands rolling, Pound into a shield.
+    ("puff_rest_hit_fd_fox4", 480),
+    ("puff_sing_sleep_fd_fox4", 425),
+    ("puff_rollout_hit_fd_fox4", 360),
+    ("puff_rollout_whiff_fd_fox4", 316),
+    ("puff_rollout_air_fd_fox4", 360),
+    ("puff_pound_shield_fd_fox4", 272),
 ];
 
 #[test]
@@ -2194,7 +2203,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 128] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 158] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2438,6 +2447,48 @@ const CORPUS_V3_MATCHES: [(&str, usize); 128] = [
     // Peach's down special pulls a turnip (ftPe_SpecialLw_Enter).
     ("corpus_v3_fd_peach_fox4_e4068796b_p1", 989),
     ("corpus_v3_fd_peach_fox4_e98e8f6a6_p2", 87),
+    // Jigglypuff's specials enter (ftData_SpecialN/S/Hi/Lw[Purin]): Rollout,
+    // Pound, Sing (the notes, efSync 1238) and Rest, ground and air.
+    ("corpus_v3_fd_fox_jigglypuff4_e00f31913_p0", 88),
+    ("corpus_v3_fd_fox_jigglypuff4_e1502cb40_p1", 103),
+    ("corpus_v3_fd_fox_jigglypuff4_e726cfdde_p0", 268),
+    ("corpus_v3_fd_fox_jigglypuff4_e75fb4a9a_p2", 168),
+    ("corpus_v3_fd_fox_jigglypuff4_e89a89d0e_p0", 252),
+    ("corpus_v3_fd_fox_jigglypuff4_e89a89d0e_p2", 86),
+    ("corpus_v3_fd_fox_jigglypuff4_e9943b4ab_p0", 92),
+    ("corpus_v3_fd_fox_jigglypuff4_ef89b3e70_p1", 260),
+    ("corpus_v3_fd_jigglypuff_fox4_e00f31913_p0", 224),
+    ("corpus_v3_fd_jigglypuff_fox4_e19f8579b_p1", 203),
+    ("corpus_v3_fd_jigglypuff_fox4_e726cfdde_p0", 144),
+    ("corpus_v3_fd_jigglypuff_fox4_e726cfdde_p1", 209),
+    ("corpus_v3_fd_jigglypuff_fox4_e89a89d0e_p0", 138),
+    ("corpus_v3_fd_jigglypuff_fox4_ec13743d5_p0", 125),
+    ("corpus_v3_fd_jigglypuff_fox4_ec13743d5_p2", 87),
+    ("corpus_v3_fd_jigglypuff_fox4_edb2b114a_p1", 104),
+    // Puff's later aerial jumps out of damage need held X/Y (ftCo_800D730C),
+    // not the press ftCo_Damage_IASA/inlineC0 synthesize.
+    ("corpus_v3_fd_fox_jigglypuff4_e1611c835_p0", 3979),
+    ("corpus_v3_fd_fox_jigglypuff4_e3e74affa_p0", 4757),
+    ("corpus_v3_fd_jigglypuff_fox4_e2b9e1400_p0", 1951),
+    // Sing's sleep (ftCo_800C318C..DamageSongRv); the wake seals the old
+    // script's bubbles before DamageSongRv's stars (efAsync_QueueFlush).
+    ("corpus_v3_fd_fox_jigglypuff4_e4068796b_p0", 3339),
+    ("corpus_v3_fd_fox_jigglypuff4_e8f0de8c6_p0", 6001),
+    // Sing's zero-damage hit on a revival-invincible Fox sets no x1914.
+    ("corpus_v3_fd_fox_jigglypuff4_eb17a6598_p0", 5481),
+    // A Rollout into a shield: x1924, not x1914, so no deal_dmg_cb bounce.
+    ("corpus_v3_fd_jigglypuff_fox4_e4f8edfa8_p0", 5061),
+    // Dash into GuardOn/GuardReflect (Ft_MF_SkipAnim): the outgoing root
+    // motion clamps gr_vel to dash speed (fighter.c:1363-1368).
+    ("corpus_v3_fd_fox_jigglypuff4_eae52f0ea_p0", 6001),
+    ("corpus_v3_fd_fox_jigglypuff4_e4f8edfa8_p0", 2307),
+    // Pound into Fox's shield.
+    ("corpus_v3_fd_jigglypuff_fox4_e0fcbde24_p0", 4618),
+    ("corpus_v3_fd_fox_jigglypuff4_edb4b01fd_p0", 5128),
+    // Rollouts that turn, run out, bounce off Fox (ftPr_SpecialS_8013D764).
+    ("corpus_v3_fd_jigglypuff_fox4_e7ff378da_p0", 5108),
+    ("corpus_v3_fd_fox_jigglypuff4_e3ef41ca4_p0", 5135),
+    ("corpus_v3_fd_jigglypuff_fox4_efc6a328f_p0", 3728),
 ];
 
 #[test]

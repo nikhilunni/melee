@@ -13,7 +13,10 @@ struct MotionChange<'a> {
     /// Fighter_ChangeMotionState's explicit interpolation override; None uses asset data.
     blend_frames: Option<f32>,
     source: Option<super::grab_throw::ThrowSource<'a>>,
+    /// Ft_MF_SkipItemVis (bit18), part of ftCommon_GroundAirColl_MF.
     ground_air: bool,
+    /// Ft_MF_SkipModelPartVis (bit22), also part of ftCommon_GroundAirColl_MF.
+    skip_model_part_visibility: bool,
     update_commands: bool,
     preserve_name_tag: bool,
     skip_animation: bool,
@@ -733,6 +736,7 @@ impl Fighter {
                 start: self.animation.frame,
                 rate: 1.0,
                 ground_air: true,
+                skip_model_part_visibility: true,
                 update_commands: true,
                 preserve_material_animation: true,
                 keep_secondary_color: true,
@@ -767,15 +771,8 @@ impl Fighter {
                 unimplemented!("Fighter_ChangeMotionState flags {:#X}: {line}", flags.0);
             }
         }
-        // fighter.c:1087-1099: the port keeps item and article visibility
-        // together, as ftCommon_GroundAirColl_MF sets both bits.
+        // fighter.c:1087-1095: item and article visibility are separate bits.
         let item = flags.contains(F::SKIP_ITEM_VIS);
-        if item != flags.contains(F::SKIP_MODEL_PART_VIS) {
-            unimplemented!(
-                "Fighter_ChangeMotionState flags {:#X}: fighter.c:1087-1095",
-                flags.0
-            );
-        }
         self.change_motion_state_with_options(
             state,
             assets,
@@ -783,6 +780,7 @@ impl Fighter {
                 start,
                 rate,
                 ground_air: item,
+                skip_model_part_visibility: flags.contains(F::SKIP_MODEL_PART_VIS),
                 update_commands: flags.contains(F::UPDATE_CMD),
                 preserve_name_tag: flags.contains(F::SKIP_NAMETAG_VIS),
                 skip_animation: flags.contains(F::SKIP_ANIM),
@@ -836,6 +834,7 @@ impl Fighter {
                 start: self.animation.frame,
                 rate,
                 ground_air: true,
+                skip_model_part_visibility: true,
                 update_commands: true,
                 preserve_material_animation: true,
                 keep_secondary_color: true,
@@ -939,9 +938,10 @@ impl Fighter {
                 crate::anim::MotionFlags::ROOT_MOTION | crate::anim::MotionFlags::SECOND_ROOT,
             );
             self.core.clear_animation();
-            // Fighter_ChangeMotionState: the no-animation branch still reaches
-            // the outgoing root-motion clamp (fighter.c:1363-1368).
-            if row.animation < 0 && had_root_motion {
+            // Fighter_ChangeMotionState: the no-animation branch (anim_id -1,
+            // or Ft_MF_SkipAnim, which leaves x594 clear) still reaches the
+            // outgoing root-motion clamp (fighter.c:1363-1368).
+            if had_root_motion {
                 let max = self.core.attributes.running.dash_max_velocity;
                 self.core.physics.ground_velocity =
                     self.core.physics.ground_velocity.clamp(-max, max);
@@ -1153,6 +1153,7 @@ impl FighterCore {
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
             grab_handicap: 9, // gm default handicap, before any saved-player override.
+            standing_rank: 0,
             player,
         }
     }
@@ -1211,7 +1212,9 @@ impl FighterCore {
         self.status.special_grab = None;
         // fighter.c:1063: fp->invisible.
         self.effect_state.invisible = false;
-        if !change.ground_air {
+        // fighter.c:1093-1095: without Ft_MF_SkipModelPartVis the articles
+        // show again (x221E_b4).
+        if !change.skip_model_part_visibility {
             self.commands.articles_visible = true;
             self.commands.fighter_hidden = false;
         }

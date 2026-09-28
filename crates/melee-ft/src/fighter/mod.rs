@@ -12,6 +12,7 @@ pub mod clank;
 pub mod color_overlay;
 pub mod commands;
 pub mod damage;
+mod damage_song;
 pub mod dash;
 pub mod down;
 mod dynamic_commands;
@@ -161,7 +162,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Fighter.deal_dmg_cb (fighter.c:2929): Fighter_ProcessHit when this
     /// fighter's hit landed and nothing it received took precedence. The hook
     /// decides whether the current motion installed the callback.
-    const DEAL_DAMAGE: Option<fn(&mut Fighter)> = None;
+    const DEAL_DAMAGE: Option<fn(&mut Fighter, &assets::FighterAssets)> = None;
     /// Whether every special row was audited to leave a held light item in
     /// hand (no item branch in the character's special code); a special
     /// entered while holding one otherwise fails closed.
@@ -814,6 +815,9 @@ pub struct FighterCore {
     pub thrown_hitbox: caches::ThrownHitbox,
     /// Player_GetHandicap; initialized by match setup or the saved player boundary.
     pub grab_handicap: u8,
+    /// Player_80033BB8: this player's stock standing (0 leads; ties share
+    /// a rank), refreshed by the scene before Fighter_ProcessHit.
+    pub standing_rank: u8,
 }
 
 /// Retail inverse trig adapter used by HSD animation.

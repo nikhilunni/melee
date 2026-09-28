@@ -1,0 +1,27 @@
+# PUFF directed witness: grounded Sing (SpecialHiL 365/367) puts Fox to sleep
+# (DamageSong 297, DamageSongWait 298); he wakes (DamageSongRv 299) to Wait.
+# melee-sim search: reached [p1.motion_id == 297; p1.motion_id == 298; p1.motion_id == 299; p1.motion_id == 14] at ticks [210, 240, 305, 365].
+name = "puff_sing_sleep_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 425
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 139, port = 1, buttons = {  }, raw = {  } },
+  { frame = 139, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

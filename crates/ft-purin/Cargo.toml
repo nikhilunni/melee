@@ -6,10 +6,16 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+melee-coll = { path = "../melee-coll" }
+melee-ef = { path = "../melee-ef" }
+melee-lb = { path = "../melee-lb" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
+melee-cm = { path = "../melee-cm" }
+melee-mp = { path = "../melee-mp" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }

@@ -167,12 +167,13 @@ impl Assets {
         for (i, slot) in drop_markers.spawns.iter_mut().enumerate() {
             *slot = bound_marker(i as i16)?;
         }
-        let [fox_effects, captain_effects, yoshi_effects, peach_effects, mars_effects] =
+        let [fox_effects, captain_effects, yoshi_effects, purin_effects, peach_effects, mars_effects] =
             melee_ef::CHARACTER_EFFECT_FILES.map(|file| archive(file.file));
         let character_effects = [
             fox_effects?,
             captain_effects?,
             yoshi_effects?,
+            purin_effects?,
             peach_effects?,
             mars_effects?,
         ];
@@ -194,8 +195,8 @@ impl Assets {
         Ok(Self {
             fingerprint: fingerprint.into_inner().finish(),
             visual_effect_archives: {
-                let [fox, captain, yoshi, peach, mars] = character_effects;
-                [effects, fox, captain, yoshi, peach, mars]
+                let [fox, captain, yoshi, purin, peach, mars] = character_effects;
+                [effects, fox, captain, yoshi, purin, peach, mars]
             },
             effect_resources,
             interface,

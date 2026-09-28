@@ -54,8 +54,9 @@ impl CharacterCallbacks for CaptainFalcon {
             SpecialSlot::Down => crate::special_lw::enter(f, air, a),
         }
     }
-    const DEAL_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
-        Some(crate::special_lw::deal_damage);
+    const DEAL_DAMAGE: Option<
+        fn(&mut melee_ft::fighter::Fighter, &melee_ft::fighter::assets::FighterAssets),
+    > = Some(crate::special_lw::deal_damage);
     const HURTBOX_DETECT: Option<
         fn(
             &mut melee_ft::fighter::Fighter,

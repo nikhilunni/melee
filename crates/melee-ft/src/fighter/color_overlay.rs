@@ -133,7 +133,7 @@ impl FighterCore {
 
     /// ftCo_800BFFD0 called directly, returning whether `id` was installed.
     /// Requests queued earlier were installed earlier in retail, so they go first.
-    pub(super) fn install_color_overlay_now(
+    pub fn install_color_overlay_now(
         &mut self,
         id: u8,
         assets: &super::assets::FighterAssets,
@@ -168,7 +168,7 @@ impl FighterCore {
     /// they run, so this motion's queued secondary requests went too. No
     /// supported kind has ftData_UnkMotionStates4, and the Hammer states
     /// (ftCo_800C53E4) are out of scope.
-    pub(super) fn clear_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
+    pub fn clear_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
         self.combat.secondary_color_overlay = ColorOverlaySlot::default();
         let queued = &mut self.commands.color_animations;
         let mut i = 0;

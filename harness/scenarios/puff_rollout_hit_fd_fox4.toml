@@ -1,0 +1,26 @@
+# PUFF directed witness: a fully charged grounded Rollout (SpecialNFull 349),
+# released (350) into idle Fox; the hit bounces Puff (SpecialNHit 362) to a
+# landing.
+# melee-sim search: reached [p0.motion_id == 349; p0.motion_id == 350; p0.motion_id == 362; p1.percent > 0] at ticks [163, 164, 191, 191].
+name = "puff_rollout_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 164, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

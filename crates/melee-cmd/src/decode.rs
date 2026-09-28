@@ -93,6 +93,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             id: ((word >> 23) & 7) as usize,
             damage: (word & 0x007f_ffff) as f32,
         },
+        // ftAction_8007169C (800716B4 clrlwi, 800716C0 extrwi): three-bit
+        // capsule id, unsigned 23-bit size; 800716DC fmuls by 0.003906f.
+        13 => Command::SetHitboxRadius {
+            id: ((word >> 23) & 7) as usize,
+            radius: 0.003906 * (word & 0x007f_ffff) as f32,
+        },
         // ftAction_80071708: idx:24, type:1, value:1 below the opcode.
         14 => Command::HitboxTargets {
             id: ((word >> 2) & 0x00ff_ffff) as usize,

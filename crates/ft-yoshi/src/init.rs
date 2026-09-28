@@ -70,7 +70,8 @@ impl CharacterCallbacks for Yoshi {
     /// in hand, fn_8012EDE8 in the Egg Roll; at most one is installed.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(take_damage);
     /// fn_8012EFF4, installed by the Egg Roll states.
-    const DEAL_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_s::hit_dealt);
+    const DEAL_DAMAGE: Option<fn(&mut Fighter, &melee_ft::fighter::assets::FighterAssets)> =
+        Some(crate::special_s::hit_dealt);
     /// Fighter.death2_cb: ftYs_Init_8012BA8C (Egg Throw) or fn_8012EC7C (Egg Roll).
     const DEATH: Option<fn(&mut Fighter)> = Some(death);
     /// The Egg Throw's egg (fn_8012E110) and the Yoshi Bomb landing's stars

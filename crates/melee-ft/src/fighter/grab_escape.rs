@@ -41,6 +41,18 @@ pub struct Parameters {
     /// PlCo +348: the thrower's invincibility at the start of a throw
     /// (ftCo_800DD398 -> ftColl_8007B7A4).
     pub throw_invincible_frames: i32,
+    /// PlCo +624..+644: ftCo_800C318C's sleep timer (as the grab timer,
+    /// with its own terms), its per-frame decay and mash decrement, and
+    /// the Sleep element's multiplier.
+    pub song_base_timer: f32,
+    pub song_handicap_scale: f32,
+    pub song_handicap_origin: f32,
+    pub song_rank_scale: f32,
+    pub song_rank_origin: f32,
+    pub song_percent_scale: f32,
+    pub song_decrement: f32,
+    pub song_mash_decrement: f32,
+    pub sleep_timer_multiplier: f32,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -70,6 +82,15 @@ impl Parameters {
             mash_decrement: r.f32(base + 0x3A8)?,
             fast_frames: r.f32(base + 0x3B0)?,
             fast_rate: r.f32(base + 0x3B4)?,
+            song_base_timer: r.f32(base + 0x624)?,
+            song_handicap_scale: r.f32(base + 0x628)?,
+            song_handicap_origin: r.f32(base + 0x62C)?,
+            song_rank_scale: r.f32(base + 0x630)?,
+            song_rank_origin: r.f32(base + 0x634)?,
+            song_percent_scale: r.f32(base + 0x638)?,
+            song_decrement: r.f32(base + 0x63C)?,
+            song_mash_decrement: r.f32(base + 0x640)?,
+            sleep_timer_multiplier: r.f32(base + 0x644)?,
         })
     }
 }
@@ -605,6 +626,15 @@ mod tests {
                 sound_kind: 0,
             },
             throw_invincible_frames: 8,
+            song_base_timer: 30.0,
+            song_handicap_scale: 8.0,
+            song_handicap_origin: 9.0,
+            song_rank_scale: 15.0,
+            song_rank_origin: 4.0,
+            song_percent_scale: 1.6,
+            song_decrement: 1.0,
+            song_mash_decrement: 6.0,
+            sleep_timer_multiplier: 2.0,
         }
     }
 

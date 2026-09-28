@@ -1716,6 +1716,32 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_DamageSong.c: a sleep-element hit (800C318C..800C3538).
+    rows[S::DamageSong as usize] = MotionRow {
+        action: ActionId(297),
+        id: S::DamageSong,
+        animation: 206,
+        anim: crate::fighter::damage_song::fall_asleep_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::guard_on,
+        collision: callbacks::collision::ground_wait,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::DamageSongWait as usize] = MotionRow {
+        action: ActionId(298),
+        id: S::DamageSongWait,
+        animation: 207,
+        anim: crate::fighter::damage_song::asleep_animation,
+        ..rows[S::DamageSong as usize]
+    };
+    rows[S::DamageSongRv as usize] = MotionRow {
+        action: ActionId(299),
+        id: S::DamageSongRv,
+        animation: 208,
+        anim: crate::fighter::damage_song::wake_animation,
+        ..rows[S::DamageSong as usize]
+    };
     // S7/S8: common throw pairs and quick ledge attack.
     rows[S::ThrowF as usize] = MotionRow {
         action: ActionId(S::ThrowF as u16),

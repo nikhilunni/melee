@@ -1,0 +1,27 @@
+# PUFF directed witness: a hopped Rollout charged in the air (354/355, 356),
+# released (358); the floor bounce lands it rolling (350).
+# melee-sim search: reached [p0.motion_id == 356; p0.motion_id == 358; p0.motion_id == 350] at ticks [124, 125, 140].
+name = "puff_rollout_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 105, port = 0, buttons = {  }, raw = {  } },
+  { frame = 109, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 125, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -351,7 +351,7 @@ fn b_breaks(f: &Fighter) -> bool {
 
 /// fn_8012EFF4 (8012EFF4), deal_dmg_cb: a landed roll hit costs roll time
 /// and slows the roll toward its target speed.
-pub fn hit_dealt(f: &mut Fighter) {
+pub fn hit_dealt(f: &mut Fighter, _: &FighterAssets) {
     if hooks(f).is_none() {
         return;
     }

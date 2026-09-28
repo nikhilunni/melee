@@ -48,6 +48,11 @@ pub enum Command {
         id: usize,
         damage: f32,
     },
+    /// ftAction_8007169C: set a capsule's size (HitCapsule.scale).
+    SetHitboxRadius {
+        id: usize,
+        radius: f32,
+    },
     ClearHitboxes,
     JabFollowup(bool),
     RapidJab(bool),

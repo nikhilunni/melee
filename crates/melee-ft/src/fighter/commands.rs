@@ -305,6 +305,15 @@ impl CommandState {
                         }
                     }
                 }
+                Command::SetHitboxRadius { id, radius } => {
+                    // ftAction_8007169C; seeking skips the word
+                    // (ftAction_800716F8). A disabled capsule is not kept.
+                    if !seeking {
+                        if let Some(hit) = &mut self.hitboxes[*id] {
+                            hit.descriptor.radius = *radius;
+                        }
+                    }
+                }
                 Command::ClearHitboxes => {
                     if !seeking {
                         self.hitboxes.fill(None);

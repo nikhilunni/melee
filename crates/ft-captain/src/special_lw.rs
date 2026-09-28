@@ -87,7 +87,7 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
 
 /// ftCa_SpecialHi_800E400C, the grounded kick's deal_dmg_cb: each damaging
 /// hit up to the limit slows the kick further.
-pub fn deal_damage(f: &mut Fighter) {
+pub fn deal_damage(f: &mut Fighter, _: &melee_ft::fighter::assets::FighterAssets) {
     if f.motion_state.action != GROUND {
         return;
     }

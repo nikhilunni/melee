@@ -422,7 +422,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4F2..=0x4F3),
+                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4D6 | 0x4F2..=0x4F3),
                 bone,
             } = request
             {
@@ -432,12 +432,14 @@ impl Effects {
                     0x491 => 0xFA4,
                     0x492 => 0xFA3,
                     0x493 => 0xFA5,
+                    // efsync.c:305-308: efLib_Create_Attach_Scale(0x2AF8).
+                    0x4D6 => 0x2AF8,
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     _ => unreachable!(),
                 };
                 // efLib_Create_Attach_Scale, and a root rotation Y from the
                 // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3).
-                let scaled = matches!(id, 0x488..=0x48A | 0x492..=0x493 | 0x4F2..=0x4F3);
+                let scaled = matches!(id, 0x488..=0x48A | 0x492..=0x493 | 0x4D6 | 0x4F2..=0x4F3);
                 let faces = matches!(id, 0x492..=0x493 | 0x4F2..=0x4F3);
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
@@ -1167,7 +1169,8 @@ impl Effect {
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
-        const NO_CHARACTER_BANKS: resources::CharacterBanks = [None, None, None, None, None];
+        const NO_CHARACTER_BANKS: resources::CharacterBanks =
+            [const { None }; resources::CHARACTER_EFFECT_FILES.len()];
         let banks = resources::Banks {
             common: bank,
             characters: &NO_CHARACTER_BANKS,

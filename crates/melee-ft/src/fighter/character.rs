@@ -26,7 +26,7 @@ pub struct CharacterTable {
     pub special_grab: SpecialGrab,
     pub take_damage: Option<fn(&mut Fighter)>,
     /// Fighter.deal_dmg_cb: Fighter_ProcessHit's damage-dealt branch.
-    pub deal_damage: Option<fn(&mut Fighter)>,
+    pub deal_damage: Option<fn(&mut Fighter, &assets::FighterAssets)>,
     pub death: Option<fn(&mut Fighter)>,
     pub hurtbox_detect: Option<fn(&mut Fighter, &assets::FighterAssets, damage::InertTouch)>,
     pub item_muzzle: fn(&mut Fighter, &assets::FighterAssets) -> Option<(Vec3, f32)>,

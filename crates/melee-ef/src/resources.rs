@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 5] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 6] = [
     CharacterEffectFile {
         bank: 3,
         file: "EfFxData.dat",
@@ -38,6 +38,13 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 5] = [
         file: "EfYsData.dat",
         table: "effYoshiDataTable",
         models: 0,
+    },
+    // Sing's notes, model 0x2AF8 (efsync.c:305-308).
+    CharacterEffectFile {
+        bank: 11,
+        file: "EfPrData.dat",
+        table: "effPurinDataTable",
+        models: 1,
     },
     // Model 0x3A98 (efSync 0x4D2): the vegetable pull.
     CharacterEffectFile {

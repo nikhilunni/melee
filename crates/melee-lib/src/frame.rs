@@ -795,6 +795,16 @@ impl Runtime {
                 let was_in_hitlag = grab_pairs::in_hitlag(state, player);
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::linked_hit(state, player)?;
+                    // Player_80033BB8 (ftCo_800C318C's sleep timer): stock
+                    // standings, ties share a rank.
+                    use crate::scene_fighter::with_fighter;
+                    let stocks = with_fighter!(&state.fighters[player], |f| f.player.stocks);
+                    let rank = state
+                        .fighters
+                        .iter()
+                        .filter(|f| with_fighter!(f, |f| f.player.stocks > stocks))
+                        .count() as u8;
+                    with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
                 let assets = &state.assets;
                 // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.

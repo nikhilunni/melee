@@ -75,6 +75,8 @@ pub struct CombatState {
     /// (Fighter_ProcessHit's else branch -> ftCo_80090718).
     pub queued_hit_sfx: Option<u32>,
     pub queued_voice: Option<DamageVoice>,
+    /// dmg.x1914: the largest damage this fighter's hits dealt to fighters
+    /// this frame (deal_dmg_cb's trigger).
     pub dealt_damage: i32,
     /// A Falcon Dive captor changed to its throw this tick; the scene then
     /// runs ftCo_800DDDE4 / ftCo_800DE7C0 on the pair.
@@ -82,6 +84,9 @@ pub struct CombatState {
     /// unk_gobj / x221C_b5: the fighter one of this fighter's inert
     /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
     pub detected: Option<InertTouch>,
+    /// dmg.x1924: the largest damage its hits dealt to shields this frame;
+    /// hitlag falls back to it when x1914 is zero.
+    pub shield_recoil_damage: i32,
     pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
@@ -811,8 +816,14 @@ impl Fighter {
         rng: &mut gekko_math::HsdRng,
     ) -> Result<()> {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
-        let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
-        let dealt_damage = hit_damage;
+        let dealt_damage = std::mem::take(&mut self.core.combat.dealt_damage);
+        let shield_recoil_damage = std::mem::take(&mut self.core.combat.shield_recoil_damage);
+        // Fighter_ProcessHit, fighter.c:2928-2941: x1914 before x1924.
+        let mut hit_damage = if dealt_damage != 0 {
+            dealt_damage
+        } else {
+            shield_recoil_damage
+        };
         let detected = self.core.combat.detected.take();
         let clank = self.core.combat.clank;
         self.core.combat.clank.damage = 0;
@@ -892,15 +903,29 @@ impl Fighter {
                 // applied after the knockback used the hit's direction)
                 // and skips ftCommon_8007DB58, which only the ordinary branch calls.
                 let down = self.core.down_damage_state(hit.percent_damage, assets);
-                let facing = if down.is_some() {
-                    Some(self.core.physics.facing)
-                } else {
+                let element = hit.descriptor.element;
+                if down.is_none()
+                    && matches!(
+                        element,
+                        melee_types::HitElement::Nap | melee_types::HitElement::Sleep
+                    )
+                    && !self.core.status.ledge_grab_disabled
+                {
+                    // ftCommon_8007DB58, then ftCo_8008E908's sleep branch
+                    // (ftCo_Damage.c:676-677): asleep, not launched.
                     self.interrupt_actions();
-                    None
-                };
-                self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
-                if down.is_some() {
-                    self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
+                    self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
+                } else {
+                    let facing = if down.is_some() {
+                        Some(self.core.physics.facing)
+                    } else {
+                        self.interrupt_actions();
+                        None
+                    };
+                    self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
+                    if down.is_some() {
+                        self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
+                    }
                 }
                 // fighter.c:2888: hitlag uses dmg.x183C_applied, the largest
                 // damage logged this frame.
@@ -944,7 +969,7 @@ impl Fighter {
             && dealt_damage != 0
         {
             if let Some(deal_damage) = self.character.table().deal_damage {
-                deal_damage(self);
+                deal_damage(self, assets);
             }
         }
         if !received_knockback
@@ -1138,8 +1163,8 @@ impl Fighter {
                 && damage.jump_buffer <= assets.damage.jump_buffer_window
             {
                 self.core.input.pressed |= crate::input::Buttons::XY;
-                if i32::from(self.core.physics.jumps_used) < self.core.attributes.jumping.max_jumps
-                {
+                // ftCo_800CB870: a multijumper's later jumps need held X/Y.
+                if self.aerial_jump_requested(assets) {
                     return self.enter_aerial_jump(assets);
                 }
             }
@@ -1173,11 +1198,13 @@ impl Fighter {
         {
             return Ok(());
         }
-        let transition = super::fall::iasa(
+        // ftCo_800CB870: a multijumper's later jumps take held X/Y
+        // (ftCo_800D730C), not the press ftCo_Damage_IASA synthesizes.
+        let jump = self.aerial_jump_requested(assets);
+        let transition = super::fall::iasa_with_jump(
             &self.core.input,
             &assets.input,
-            self.core.physics.jumps_used,
-            self.core.attributes.jumping.max_jumps,
+            jump,
             // DamageFly delegates to DamageFall (80090828), whose
             // input chain omits ordinary Fall's air-dodge check.
             !tumbling,
@@ -1367,8 +1394,8 @@ impl FighterCore {
     /// ftColl_80076CBC (80076CBC): ordinary shields and Counter both record
     /// attacker recoil from the defender's retained lightshield amount.
     pub fn record_shield_recoil(&mut self, damage: i32, lightshield: f32, direction: f32) {
-        if damage > self.combat.dealt_damage {
-            self.combat.dealt_damage = damage;
+        if damage > self.combat.shield_recoil_damage {
+            self.combat.shield_recoil_damage = damage;
             if self.physics.ground_or_air == GroundOrAir::Ground {
                 // Retail 80076CBC: separately rounded lightshield * integer damage.
                 self.combat.shield_pushback = Some((lightshield * damage as f32, direction));
@@ -1743,9 +1770,14 @@ fn detect_eligible_hit(
         if victim.status.revival_invincibility != 0 {
             // ftColl_80078C70 inlineB3: record the contact and attacker hitlag,
             // but omit damage logging/staling while x198C selects invincibility.
+            // ftColl_80076ED8: x1914 takes the scaled damage's count, zero
+            // for a zero-damage hit (Sing), so no attacker hitlag then.
             let group = desc.group;
-            attacker.combat.dealt_damage =
-                attacker.combat.dealt_damage.max(fctiwz(desc.damage).max(1));
+            let damage = desc.damage * victim.received_damage_scale();
+            attacker.combat.dealt_damage = attacker
+                .combat
+                .dealt_damage
+                .max(super::hit_log::damage_count(damage));
             melee_coll::detection::record_victim(
                 &mut attacker.commands.hitboxes,
                 group,

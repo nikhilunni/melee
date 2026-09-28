@@ -129,6 +129,36 @@ pub fn collide_box(
     landed
 }
 
+/// ft_8008239C (8008239C): an airborne pass with a fixed box that, when
+/// `can_grab_ledge` (no ledge cooldown), catches ledges on the `direction`
+/// side (mpColl_800475F4); otherwise mpColl_8004730C. The item landing
+/// (ft_80081A00) is not modelled.
+#[allow(clippy::too_many_arguments)]
+pub fn collide_box_catching_ledges(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    ecb: FtCollisionBox,
+    direction: i32,
+    can_grab_ledge: bool,
+) -> bool {
+    let ecb = facing_box(ecb, state.facing);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let landed = if can_grab_ledge {
+        set_facing_dir(cd, direction);
+        map.air_collide_ledge_box(cd, &ecb)
+    } else {
+        map.air_collide_box(cd, &ecb)
+    };
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    landed
+}
+
 /// ft_80082C74 -> ft_80081D0C (80081D0C): air dodge uses ordinary airborne
 /// collision, without ledge grabs or platform-drop filtering.
 pub fn collide_air_dodge(

@@ -128,6 +128,21 @@ impl FighterCore {
         knockback: f32,
         assets: &FighterAssets,
     ) {
+        // ftcoll.c hit_effect_ids: these elements have no effect (-1, and
+        // ReDead's 0, which the switch's default ignores).
+        if matches!(
+            element,
+            HitElement::Nap
+                | HitElement::Sleep
+                | HitElement::Catch
+                | HitElement::Inert
+                | HitElement::Disable
+                | HitElement::ScrewAttack
+                | HitElement::Lipstick
+                | HitElement::ReDead
+        ) {
+            return;
+        }
         self.effects.push(EffectRequest::HitSpark {
             position,
             element,
