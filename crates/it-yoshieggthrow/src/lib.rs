@@ -91,8 +91,9 @@ impl ItemLogic for YoshiEggThrow {
         false
     }
     /// it_802B2F88 (802B2F88) -> itColl_BounceOffShield.
-    fn shield_bounced(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
-        unimplemented!("it_802B2F88: itColl_BounceOffShield (Yoshi egg off a shield)")
+    fn shield_bounced(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
+        item.bounce_off_shield(context.shield_normal);
+        false
     }
     /// it_802B2E7C (802B2E7C).
     fn hit_shield(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {

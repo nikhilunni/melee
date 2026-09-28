@@ -82,8 +82,8 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.grab_release = false;
     f.commands.throw_reverse = false;
     // x2222_b2 (immunity to Sing, ftCo_800C3538) is not modelled.
-    let held = if f.core.held_item.is_some() {
-        unimplemented!("ftpeachspecialhi.c doEnter: up special with an item in hand")
+    let held = if f.core.held_item.is_some_and(|held| held.kind == ItemKind::Parasol) {
+        HeldAtStart::ParasolItem
     } else if f.core.article_in_hand.is_some_and(|a| a.kind == ItemKind::PeachParasol) {
         HeldAtStart::PeachParasol
     } else {
@@ -102,7 +102,7 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
 
 /// ftPe_SpecialHi_8011D424 (8011D424): the parasol hangs from joint 109
 /// unless one is already out.
-pub fn draw_parasol(f: &mut Fighter) {
+pub fn draw_parasol(f: &mut Fighter, assets: &FighterAssets) {
     let peach = f.character.get_mut::<Peach>();
     if peach.special_hi.held == HeldAtStart::Nothing {
         peach.special_hi.held = HeldAtStart::PeachParasol;
@@ -114,6 +114,13 @@ pub fn draw_parasol(f: &mut Fighter) {
                 crate::special_n::ARTICLE_JOINT,
                 Vec3::ZERO,
             );
+            // A held item (a turnip) is stowed under the parasol: it stays in
+            // hand, hidden and frozen, as u.pe.parasol_gobj_1.
+            if f.core.held_item.is_some() {
+                f.character.get_mut::<Peach>().items.parasol[1] = true;
+                f.stow_held_item(assets);
+            }
+            let c = &mut f.core;
             let spawn =
                 SpawnItem::attached(ItemKind::PeachParasol, c.player.id, position, c.physics.facing);
             c.item_requests.push(ItemRequest::SpawnHeld(spawn));

@@ -628,6 +628,13 @@ pub fn request(
             thrown.hurt_by_owner = true;
             return None;
         }
+        ItemRequest::Stow { item, stowed } => {
+            let held = pool.get_mut(item).expect("stowed item");
+            // it_8026B73C also sets x5 when x7 is set; no stowable kind sets x7.
+            held.hidden = stowed;
+            held.frozen = stowed;
+            return None;
+        }
         ItemRequest::Destroy { item } => {
             destroy_object(world, objects, item);
             pool.destroy::<SceneItems>(item);

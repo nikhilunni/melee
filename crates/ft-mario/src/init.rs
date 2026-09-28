@@ -61,6 +61,16 @@ impl MarioFamily for Mario {
 }
 
 impl CharacterCallbacks for Mario {
+    /// ftMr_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
+    /// texture frames only.
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

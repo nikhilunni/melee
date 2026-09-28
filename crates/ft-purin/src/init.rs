@@ -62,6 +62,16 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Jigglypuff>();
 
 impl CharacterCallbacks for Jigglypuff {
+    /// ftPr_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
+    /// texture frames only.
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     /// ftPr_SpecialN_8014222C, Rollout's x21F8 after a cape turnaround.
     const CAPE_TURN_END: fn(&mut melee_ft::fighter::Fighter) = |_| {
         unimplemented!(

@@ -20,6 +20,7 @@ pub struct CharacterTable {
     pub enter_aerial: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
     pub special_rows: &'static [MotionRow],
     pub specials_keep_held_item: bool,
+    pub down_bound_inverted: bool,
     pub special_moves: &'static [Option<melee_types::combat::StaleMove>],
     pub enter_special: fn(&mut Fighter, SpecialSlot, bool, &assets::FighterAssets),
     pub accessory: fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng),
@@ -94,6 +95,7 @@ pub struct CharacterTable {
     pub set_parasol_animation: fn(&mut Fighter, usize, f32),
     pub article_destroyed: fn(&mut Fighter, melee_types::ItemKind),
     pub landing_articles: fn(&mut Fighter, bool),
+    pub wait_articles: fn(&mut Fighter),
     pub cape_turn_blocked: fn(&mut Fighter) -> bool,
     pub cape_turn_end: fn(&mut Fighter),
 }
@@ -106,6 +108,7 @@ impl CharacterTable {
             descriptor: C::descriptor,
             special_rows: C::SPECIAL_ROWS,
             specials_keep_held_item: C::SPECIALS_KEEP_HELD_ITEM,
+            down_bound_inverted: C::DOWN_BOUND_INVERTED,
             special_moves: C::SPECIAL_MOVES,
             enter_aerial: C::ENTER_AERIAL,
             enter_special: C::enter_special,
@@ -180,6 +183,7 @@ impl CharacterTable {
             set_parasol_animation: C::SET_PARASOL_ANIMATION,
             article_destroyed: C::ARTICLE_DESTROYED,
             landing_articles: C::LANDING_ARTICLES,
+            wait_articles: C::WAIT_ARTICLES,
             cape_turn_blocked: C::CAPE_TURN_BLOCKED,
             cape_turn_end: C::CAPE_TURN_END,
         }
@@ -390,6 +394,7 @@ pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize
 }
 pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
 pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
+pub(super) fn no_wait_articles(_fighter: &mut Fighter) {}
 pub(super) fn cape_turn_allowed(_fighter: &mut Fighter) -> bool {
     false
 }

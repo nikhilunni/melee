@@ -55,6 +55,26 @@ impl Yoshi {
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Yoshi>();
 
+/// The eye poses ftYs_Init_OnKnockbackEnter/Exit select: callback-owned,
+/// so they need not occur in a loaded script.
+const KNOCKBACK_PART_ANIMATIONS: &[(usize, usize)] = &[(3, 2), (4, 2), (3, 3), (4, 3)];
+
+/// ftYs_Init_OnKnockbackEnter (8012BCC8): Fighter_OnKnockbackEnter(gobj, 1),
+/// then part animation 3 of groups 3 and 4 (the eyes) at once.
+fn knockback_enter(fighter: &mut Fighter, assets: &FighterAssets) {
+    fighter.set_knockback_texture_frames(3.0);
+    fighter.apply_part_animation(assets, 3, 3, 0.0);
+    fighter.apply_part_animation(assets, 4, 3, 0.0);
+}
+
+/// ftYs_Init_OnKnockbackExit: Fighter_OnKnockbackExit(gobj, 1), then part
+/// animation 2 of groups 3 and 4.
+fn knockback_exit(fighter: &mut Fighter, assets: &FighterAssets) {
+    fighter.set_knockback_texture_frames(0.0);
+    fighter.apply_part_animation(assets, 3, 2, 0.0);
+    fighter.apply_part_animation(assets, 4, 2, 0.0);
+}
+
 impl CharacterCallbacks for Yoshi {
     /// fn_8013295C, the egg roll's x21F8 after a cape turnaround.
     const CAPE_TURN_END: fn(&mut Fighter) =
@@ -67,6 +87,10 @@ impl CharacterCallbacks for Yoshi {
         &mut melee_ft::fighter::Fighter,
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
+    /// ftYs_Init_OnLoad (ftyoshi.c:475): fp->x2226_b1 = 1.
+    const DOWN_BOUND_INVERTED: bool = true;
+    const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) = knockback_enter;
+    const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) = knockback_exit;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::rows::moves();
     /// Fighter.take_dmg_cb: ftYs_Init_8012BA8C while the Egg Throw's egg is
@@ -273,7 +297,7 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     animation_count: 314,
     part_count: 54,
     part_animation_count: 5,
-    additional_part_animations: &[],
+    additional_part_animations: KNOCKBACK_PART_ANIMATIONS,
     costumes: &[
         CostumeDescriptor {
             file: "PlYsNr.dat",

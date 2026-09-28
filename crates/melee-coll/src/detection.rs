@@ -77,17 +77,38 @@ impl PairCursor {
     }
 }
 /// ftColl_80078C70: the first colliding hurt capsule wins in data-table order.
+/// Callers that do not handle an invincible capsule use this form.
 pub fn first_contact<C: Collider>(
     victim: &mut C,
     hit: &HitCapsule,
     attacker_scale: f32,
 ) -> Option<(Contact, HurtHeight)> {
+    let (contact, height, status) = first_hurt_contact(victim, hit, attacker_scale)?;
+    if status == melee_types::combat::HurtStatus::Invincible {
+        unimplemented!("ftColl_80078C70: invincible capsule contact")
+    }
+    Some((contact, height))
+}
+/// ftColl_80078C70: the first colliding non-intangible hurt capsule in
+/// data-table order, with its state (an invincible capsule still takes the
+/// contact; ftColl_80076ED8 then logs no damage).
+pub fn first_hurt_contact<C: Collider>(
+    victim: &mut C,
+    hit: &HitCapsule,
+    attacker_scale: f32,
+) -> Option<(Contact, HurtHeight, melee_types::combat::HurtStatus)> {
     let desc = &hit.descriptor;
     for index in 0..victim.hurt_count() {
         if desc.element == HitElement::Catch && !victim.grabbable(index) {
             continue;
         }
-        if victim.hurt_status(index) == melee_types::combat::HurtStatus::Intangible {
+        // lbColl_80007ECC (a grab) contacts only an enabled capsule;
+        // lbColl_8000805C skips only an intangible one.
+        let status = victim.hurt_status(index);
+        if status == melee_types::combat::HurtStatus::Intangible
+            || (desc.element == HitElement::Catch
+                && status != melee_types::combat::HurtStatus::Normal)
+        {
             continue;
         }
         let (hurt, matrix) = victim.sample_hurt(index);
@@ -110,10 +131,7 @@ pub fn first_contact<C: Collider>(
             &matrix,
             3.0 * victim.scale(),
         ) {
-            if victim.hurt_status(index) == melee_types::combat::HurtStatus::Invincible {
-                unimplemented!("ftColl_80078C70: invincible capsule contact")
-            }
-            return Some((contact, hurt.height));
+            return Some((contact, hurt.height, victim.hurt_status(index)));
         }
     }
     None

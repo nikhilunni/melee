@@ -7,7 +7,7 @@ use melee_ft::{
     anim::WaitChoice,
     fighter::{
         assets::{FighterAssets, Result},
-        damage::InertTouch,
+        damage::{InertTarget, InertTouch},
         state::{callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
         ActionId, Fighter, MotionEntryFlags,
     },
@@ -423,12 +423,17 @@ pub fn inert_contact(f: &mut Fighter, assets: &FighterAssets, touch: InertTouch)
         return;
     }
     if touch.shield {
-        let counters: &[u16] = match touch.kind {
+        let InertTarget::Fighter { kind, action, .. } = touch.target else {
+            unimplemented!(
+                "doAirEnd0 (8011C440): x221C_b5 with unk_gobj an item, read as a fighter"
+            );
+        };
+        let counters: &[u16] = match kind {
             FighterKind::Mars | FighterKind::Emblem => &[369, 371],
             FighterKind::Peach => &[365, 367],
             _ => return,
         };
-        if !counters.contains(&touch.action.0) {
+        if !counters.contains(&action.0) {
             return;
         }
     }

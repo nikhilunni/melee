@@ -24,6 +24,8 @@ impl Fighter {
         if self.core.combat.grab.is_some() {
             unimplemented!("ftCo_800DD168: sleeping in a grab pair");
         }
+        // ftCo_DamageSong.c writes no mv field: mv+4 carries through.
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(S::DamageSong.into(), assets)?;
         let p = &assets.grab_escape;
         // 800C31F8..3278: the rank term (fsubs, fsubs, fmuls), the handicap
@@ -46,6 +48,7 @@ impl Fighter {
         self.core.state_data = MotionData::Dizzy(DizzyState {
             remaining: timer,
             stick_directions: [0; 2],
+            retained_word,
         });
         Ok(())
     }

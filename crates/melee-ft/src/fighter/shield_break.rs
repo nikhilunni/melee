@@ -13,10 +13,16 @@ use melee_types::{combat::HurtStatus, CommonMotionState as S, FtPart};
 pub struct DizzyState {
     pub remaining: f32,
     pub stick_directions: [i8; 2],
+    /// mv+4: the shield-break chain and Furafura never write the motion
+    /// scratch, so it is the word the guard state left; nor do DamageSong
+    /// and its sequels (`None` where the port does not model it).
+    pub retained_word: Option<f32>,
 }
 impl Fighter {
     /// ftCo_80098B20 (80098B20): launch, burst, rumble and intangibility.
     pub(super) fn enter_shield_break(&mut self, assets: &FighterAssets) -> Result<()> {
+        // ftCo_ShieldBreakFly..Stand and ftCo_Furafura write no mv field.
+        let retained_word = self.inherited_scratch_word();
         self.leave_ground();
         self.change_motion_state(S::ShieldBreakFly.into(), assets)?;
         self.step_animation(assets);
@@ -26,7 +32,7 @@ impl Fighter {
         self.core.status.unconditional_top_exit = (self.character.table().descriptor)()
             .common_behavior
             .shield_break_top_exit;
-        self.core.state_data = MotionData::None;
+        self.core.state_data = MotionData::ShieldBreak { retained_word };
         self.core.status.interaction = super::Interaction::Idle;
         let bone = usize::from(self.core.bones.model.shield);
         let joint = self.core.animation.parts[bone].joint;
@@ -92,12 +98,17 @@ impl Fighter {
     }
     /// ftCo_80099010 (80099010): health and timer reset on dizzy entry.
     fn enter_dizzy(&mut self, assets: &FighterAssets) -> Result<()> {
+        let retained_word = match self.core.state_data {
+            MotionData::ShieldBreak { retained_word } => retained_word,
+            _ => None,
+        };
         self.change_motion_state(S::Furafura.into(), assets)?;
         let p = &assets.shield;
         self.core.status.shield_health = p.break_health;
         self.core.state_data = MotionData::Dizzy(DizzyState {
             remaining: (p.dizzy_base - self.core.physics.percent).max(0.0) + p.dizzy_extra,
             stick_directions: [0; 2],
+            retained_word,
         });
         self.core.shield_rumble(25);
         self.core

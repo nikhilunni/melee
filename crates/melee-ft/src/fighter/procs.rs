@@ -290,20 +290,10 @@ impl FighterCore {
         );
         character_turn_end
     }
-    pub fn step_animation(&mut self, assets: &FighterAssets) {
-        // ftAnim_8006EBA4: command-driven animation ownership changes must
-        // finish before the independent part blends are evaluated.
-        self.animation
-            .advance_main::<RetailTrig>(&mut self.skeleton);
-        let hand = self.held_item_hand(assets);
-        self.commands.step(
-            &mut self.animation,
-            &mut self.skeleton,
-            &mut self.ground_pose,
-            assets,
-            hand,
-        );
-        self.apply_script_damage();
+    /// Command 25 (ftAction set ground/air), applied as the script runs:
+    /// in the ordinary animation step and in Fighter_ChangeMotionState's
+    /// frame-zero run (ftAction_80073240).
+    pub(super) fn apply_airborne_commands(&mut self) {
         for state in std::mem::take(&mut self.commands.airborne_changes) {
             match state {
                 melee_cmd::AirborneMode::Ground => self.land(),
@@ -319,6 +309,22 @@ impl FighterCore {
                 }
             }
         }
+    }
+    pub fn step_animation(&mut self, assets: &FighterAssets) {
+        // ftAnim_8006EBA4: command-driven animation ownership changes must
+        // finish before the independent part blends are evaluated.
+        self.animation
+            .advance_main::<RetailTrig>(&mut self.skeleton);
+        let hand = self.held_item_hand(assets);
+        self.commands.step(
+            &mut self.animation,
+            &mut self.skeleton,
+            &mut self.ground_pose,
+            assets,
+            hand,
+        );
+        self.apply_script_damage();
+        self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);
         self.animation
             .advance_parts::<RetailTrig>(&mut self.skeleton);

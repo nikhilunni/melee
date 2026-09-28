@@ -65,9 +65,6 @@ fn release_parasol(f: &mut Fighter) {
     peach.items.parasol[0] = false;
     peach.items.death3_armed = false;
     peach.items.take_damage_armed = false;
-    if peach.items.parasol[1] {
-        unimplemented!("ftPe_8011D518: restore the item stashed under the parasol");
-    }
     // Item_8026A8EC releases fp->item_gobj with the item.
     if f
         .core
@@ -75,6 +72,10 @@ fn release_parasol(f: &mut Fighter) {
         .is_some_and(|a| a.kind == ItemKind::PeachParasol)
     {
         f.core.article_in_hand = None;
+    }
+    // ftPe_8011D518: the item stowed under the parasol comes back to hand.
+    if std::mem::take(&mut f.character.get_mut::<Peach>().items.parasol[1]) {
+        f.core.restore_stowed_item();
     }
 }
 
@@ -140,6 +141,18 @@ pub fn put_away(f: &mut Fighter) {
         release_toad(f.character.get_mut::<Peach>());
     }
     crate::special_lw::put_away(f);
+}
+
+/// ft_8008A348 (8008A348), ft_08A1.c:85-91: entering Wait with the parasol
+/// in hand destroys it (it_802BDB94).
+pub fn wait(f: &mut Fighter) {
+    if f
+        .core
+        .article_in_hand
+        .is_some_and(|a| a.kind == ItemKind::PeachParasol)
+    {
+        remove_parasol(f);
+    }
 }
 
 /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: a landing with its

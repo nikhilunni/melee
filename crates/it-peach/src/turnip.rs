@@ -158,10 +158,10 @@ impl ItemLogic for PeachTurnip {
         false
     }
     /// itPeachTurnip_Logic56_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!(
-            "itPeachTurnip_Logic56_ShieldBounced: itColl_BounceOffShield (it_2725.c:430)"
-        )
+    /// itPeachTurnip_Logic56_ShieldBounced -> itColl_BounceOffShield.
+    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        item.bounce_off_shield(ctx.shield_normal);
+        false
     }
 }
 

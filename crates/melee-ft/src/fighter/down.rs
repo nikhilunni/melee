@@ -79,8 +79,11 @@ impl Fighter {
             (false, true) => S::DownFowardD,
             (false, false) => S::DownBackD,
         };
+        // ftCo_80098324 (80098324): enter, first animation step, then
+        // ftCommon_8007CCE8 projects the knockback along the floor.
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
+        self.core.project_ground_knockback(assets);
         Ok(true)
     }
 
@@ -135,14 +138,18 @@ impl Fighter {
             });
         Ok(true)
     }
-    /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN.
+    /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN,
+    /// inverted for a kind with x2226_b1.
     pub(super) fn enter_down_bound(&mut self, assets: &FighterAssets) -> Result<()> {
         self.land();
         let hip = self.core.animation.parts
             [usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"))]
         .joint;
         let matrix = self.core.skeleton.get_mtx(hip);
-        let state = if matrix.0[1][1] > 0.0 {
+        // ftCo_80097570 reads mtx[1][2] instead with x2226_b0, set only by
+        // the Sandbag (ftsandbag.c:58), which is not ported.
+        let face_up = (matrix.0[1][1] > 0.0) != self.character.table().down_bound_inverted;
+        let state = if face_up {
             S::DownBoundU
         } else {
             S::DownBoundD

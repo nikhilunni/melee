@@ -31,8 +31,12 @@ pub fn try_enter(f: &mut Fighter, assets: &FighterAssets) -> Result<bool> {
     if !requested || f.character.get::<Peach>().float_remaining <= 0.0 {
         return Ok(false);
     }
-    if f.held_item.is_some() {
-        unimplemented!("ftpeachfloatattack.c:31-35: float aerial with a held item (ftCo_800CDDA0)");
+    // ftpeachfloatattack.c:30-35: a shooting item (it_8026B30C == 3) held
+    // into a neutral or forward aerial fires instead.
+    let aerial = aerial::select(&f.input, &assets.input, f.physics.facing);
+    let shoots = f.held_item.is_some_and(|held| held.use_kind == 3);
+    if shoots && matches!(aerial, CommonMotionState::AttackAirN | CommonMotionState::AttackAirF) {
+        unimplemented!("ftpeachfloatattack.c:31-35: float aerial with a shooting item (ftCo_800CDDA0)");
     }
     enter(f, assets)?;
     Ok(true)

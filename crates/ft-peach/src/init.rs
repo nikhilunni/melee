@@ -93,6 +93,16 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Peach>();
 
 impl CharacterCallbacks for Peach {
+    /// ftPe_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
+    /// texture frames only.
+    const KNOCKBACK_ENTER: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    const KNOCKBACK_EXIT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    ) = |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -128,7 +138,7 @@ impl CharacterCallbacks for Peach {
     /// Fighter_8006C80C: the special's one-shot accessory4.
     fn accessory(
         f: &mut melee_ft::fighter::Fighter,
-        _assets: &FighterAssets,
+        assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) {
         let pending = f.character.get::<Peach>().accessory;
@@ -149,7 +159,7 @@ impl CharacterCallbacks for Peach {
         match pending {
             Accessory::DrawToad => crate::special_n::draw_toad(f),
             Accessory::ReleaseSpore => crate::special_n::release_spore(f),
-            Accessory::DrawParasol => crate::special_hi::draw_parasol(f),
+            Accessory::DrawParasol => crate::special_hi::draw_parasol(f, assets),
             Accessory::None | Accessory::PullVegetable => unreachable!(),
         }
     }
@@ -248,6 +258,7 @@ impl CharacterCallbacks for Peach {
     }
     /// ftCo_Landing.c:56-57: ftPe_8011D598 when the landing is interruptible.
     const LANDING_ARTICLES: fn(&mut melee_ft::fighter::Fighter, bool) = crate::articles::landing;
+    const WAIT_ARTICLES: fn(&mut melee_ft::fighter::Fighter) = crate::articles::wait;
     fn special_parasol(&self) -> Option<melee_ft::fighter::parasol::SpecialParasol> {
         crate::articles::special_parasol(self)
     }

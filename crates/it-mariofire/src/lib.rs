@@ -103,8 +103,9 @@ impl ItemLogic for MarioFire {
         true
     }
     /// itMarioFireball_Logic87_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itMarioFireball_Logic87_ShieldBounced: itColl_BounceOffShield")
+    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        item.bounce_off_shield(ctx.shield_normal);
+        false
     }
 }
 

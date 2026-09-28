@@ -332,6 +332,11 @@ impl Fighter {
     /// Fighter_ChangeMotionState (0x800693AC) at frame zero. Entering Wait
     /// is ft_8008A348's: with an item in hand the kind's item idle follows.
     pub fn change_motion_state(&mut self, state: ActionId, assets: &FighterAssets) -> Result<()> {
+        if state == CommonMotionState::Wait.into() {
+            // ft_8008A348, ft_08A1.c:85-91: the kind's article leaves the
+            // hand before the motion change (Peach's parasol, it_802BDB94).
+            (self.character.table().wait_articles)(self);
+        }
         self.change_motion_state_at(state, assets, 0.0)?;
         if state == CommonMotionState::Wait.into() {
             self.core.play_wait_holding_idle(assets)?;
@@ -1141,6 +1146,9 @@ impl FighterCore {
             parasol: Default::default(),
             pending_forward_smash: false,
             article_in_hand: None,
+            stowed_item: None,
+            pickup_pose_pending: false,
+            drop_pose_pending: false,
             pickup_candidates: Default::default(),
             owned_article: None,
             partner_position: None,
@@ -1539,6 +1547,8 @@ impl FighterCore {
             );
             self.apply_script_damage();
         }
+        // A frame-zero set ground/air command takes effect inside the entry.
+        self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);
         // Fighter_ChangeMotionState, fighter.c:1363-1368: leaving root motion
         // clamps gr_vel to dash speed. Retail tests the new b0 twice.

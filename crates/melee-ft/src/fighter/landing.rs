@@ -192,6 +192,10 @@ impl FighterCore {
                 ..
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
+            // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).
+            MotionData::ItemThrow(throw) => throw.rate,
+            MotionData::ShieldBreak { retained_word } => (*retained_word)?,
+            MotionData::Dizzy(dizzy) => dizzy.retained_word?,
             // mv.co.guard.x4: the shield's smoothed tilt magnitude.
             MotionData::Guard(guard) => guard.tilt_magnitude,
             // A roll writes only mv.co.escape.x0 (ftCo_80099314); x4 is the

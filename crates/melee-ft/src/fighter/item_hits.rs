@@ -2,7 +2,10 @@
 //! (itcoll.c:397-488). The item owns the damage log and resolves it
 //! (melee_it::hurt); the attacker records the item as a victim and the
 //! damage it dealt.
-use super::Fighter;
+use super::{
+    damage::{InertTarget, InertTouch},
+    Fighter,
+};
 use melee_coll::geometry::{capsule_contact, Capsule};
 use melee_it::{hurt::HurtCapsules, hurt::ItemHit, ItemCore};
 use melee_types::{fixed::FixedVec, GroundOrAir, HitElement};
@@ -70,11 +73,16 @@ impl Fighter {
             let Some(contact) = contact else {
                 continue;
             };
-            assert_ne!(
-                desc.element,
-                HitElement::Inert,
-                "it_802703E8: an inert hitbox touching an item (fighter->unk_gobj)"
-            );
+            if desc.element == HitElement::Inert {
+                // itcoll.c:482: fighter->unk_gobj = the item; nothing is
+                // logged and x221C_b5 keeps any shield touch this frame.
+                let shield = self.combat.detected.is_some_and(|touch| touch.shield);
+                self.combat.detected = Some(InertTouch {
+                    target: InertTarget::Item { kind: item.kind },
+                    shield,
+                });
+                continue;
+            }
             let hit = ItemHit {
                 source: melee_it::hurt::ItemHitSource::Fighter {
                     player: self.player.id,

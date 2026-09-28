@@ -17,6 +17,9 @@ pub struct ItemCommonData {
     pub speed_damage_scale: f32,
     pub speed_damage_base: f32,
     pub shield_bounce_degrees: f32,
+    /// +B4: an item hitbox stops against another item's when its damage,
+    /// less this, is below the other's (it_8026FE68).
+    pub clank_priority_gap: i32,
     pub maximum_reflected_damage: u32,
     /// +B8/+BC: item hitlag frames from contact damage (it_8026B424).
     pub hitlag_scale: f32,
@@ -75,6 +78,7 @@ impl ItemCommonData {
             speed_damage_base: r.f32(base + 0x98)?,
             shield_bounce_degrees: r.f32(base + 0xE0)?,
             maximum_reflected_damage: r.u32(base + 0xD8)?,
+            clank_priority_gap: r.u32(base + 0xB4)? as i32,
             hitlag_scale: r.f32(base + 0xB8)?,
             hitlag_base: r.f32(base + 0xBC)?,
             explosion_lifetime: r.f32(base + 0xF8)?,

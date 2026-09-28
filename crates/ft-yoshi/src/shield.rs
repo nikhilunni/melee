@@ -275,11 +275,15 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         // change restores the capsules; no shell burst.
         return fighter.enter_catch(assets);
     }
-    if fighter.collision.data.floor.flags & 0x100 != 0
+    // ftCo_8009A080 (8009A080): with LR held, a fresh stick tap down on a
+    // platform (ftCo_80099F1C) drops through it (ftCo_8009A228); the motion
+    // change restores the capsules, as for the grab.
+    if fighter.input.current.held.intersects(Buttons::SHIELD)
         && fighter.input.current.stick.y <= -assets.movement.platform_drop_threshold
         && f32::from(fighter.input.vertical.tilt) < assets.movement.platform_drop_window
+        && fighter.collision.data.floor.flags & 0x100 != 0
     {
-        unimplemented!("ftyoshiguard.c:142,207: egg shield platform drop");
+        return fighter.enter_pass(assets);
     }
     Ok(())
 }

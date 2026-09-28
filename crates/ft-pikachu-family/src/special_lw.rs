@@ -381,8 +381,13 @@ pub fn lead_gone<C: PikachuFamily>(f: &mut Fighter) {
     }
     let action = f.motion_state.action;
     let in_thunder = (S::SpecialLwStart as u16..=S::SpecialAirLwEnd as u16).contains(&action.0);
+    let in_quick_attack =
+        (S::SpecialHiStart0 as u16..=S::SpecialAirHiEnd as u16).contains(&action.0);
     if in_thunder {
         thunder::<C>(f).state = LEAD_GONE;
+    } else if in_quick_attack {
+        // mv.pk.specialhi.x4 is Quick Attack's own word.
+        f.character.get_mut::<C>().specials().quick_attack.zip_frames = Some(LEAD_GONE);
     } else if action.0 < S::SpecialN as u16 {
         // mv.pk.specialhi.x4 = 3 lands in whatever the common state keeps
         // at mv+4 (an int, read back as the float word).

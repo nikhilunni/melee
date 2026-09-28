@@ -111,12 +111,23 @@ pub struct CombatState {
 /// motion at +10).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InertTouch {
-    /// The touched fighter's spawn number.
-    pub target: u32,
-    pub kind: FighterKind,
-    pub action: super::ActionId,
+    /// unk_gobj: the last object an inert hitbox touched this frame.
+    pub target: InertTarget,
     /// x221C_b5: some touch this frame was on a shield volume; sticky.
     pub shield: bool,
+}
+/// What unk_gobj points at.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum InertTarget {
+    /// A fighter's hurtbox or shield (ftColl_80078C70).
+    Fighter {
+        /// The touched fighter's spawn number.
+        spawn_number: u32,
+        kind: FighterKind,
+        action: super::ActionId,
+    },
+    /// An item's hurt capsule (it_802703E8, itcoll.c:482).
+    Item { kind: melee_types::ItemKind },
 }
 /// ftColl_8007A06C's DmgResult for the phantom log (Fighter.dmg.x1870..x1898).
 #[derive(Clone, Debug)]
@@ -1233,8 +1244,10 @@ impl Fighter {
     /// DamageFly after hitstun and ordinary airborne damage with dodge enabled.
     fn post_hitstun_air_input(&mut self, assets: &FighterAssets, tumbling: bool) -> Result<()> {
         use crate::input::WaitTransition as T;
-        // A damage state is neither Jump nor JumpAerial, so the
-        // float check (Peach) is always enabled here, as in procs.rs.
+        // A damage state is neither Jump nor JumpAerial, so ftCo_Damage_IASA's
+        // ftCo_Fall_IASA_Inner always checks float (Peach). DamageFly and
+        // DamageFall use ftCo_DamageFall_IASA instead, which never calls
+        // ftPe_8011BA54 / ftPe_8011BAD8 (retail 80090828..8009091C).
         let vertical_velocity = self.core.physics.self_velocity.y;
         // ftCo_80095328, then ftCo_800D7100, after the special check.
         if !self.core.input.pressed.intersects(crate::input::Buttons::B)
@@ -1253,8 +1266,13 @@ impl Fighter {
             // input chain omits ordinary Fall's air-dodge check.
             !tumbling,
             |phase| {
-                self.character
-                    .check_float_input(&self.core.input, assets, vertical_velocity, phase)
+                !tumbling
+                    && self.character.check_float_input(
+                        &self.core.input,
+                        assets,
+                        vertical_velocity,
+                        phase,
+                    )
             },
         );
         match transition {
@@ -1796,7 +1814,8 @@ fn detect_eligible_hit(
             shield_touch = true;
         }
     }
-    let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
+    let contact =
+        melee_coll::detection::first_hurt_contact(victim, hit, attacker.player.scale);
     if inert {
         // ftColl_80078C70: an inert hitbox only records the touched
         // fighter; it logs no hit and never marks the victim on its group.
@@ -1805,7 +1824,7 @@ fn detect_eligible_hit(
         }
         return;
     }
-    if let Some((contact, height)) = contact {
+    if let Some((contact, height, capsule_status)) = contact {
         // Retail's hit path reads the victim's state only for DamageIce
         // (ftcoll.c:199/576/1155); crouch cancel (ftCo_Damage.c:124-127) and the
         // airborne launch states (ftCo_Damage.c:543-558) are applied by the
@@ -1814,11 +1833,14 @@ fn detect_eligible_hit(
         if victim.motion_state.id == S::DamageIce {
             unimplemented!("ftcoll.c:199: DamageIce victim");
         }
+        // ftColl_80076ED8: x1988, x198C, x221D_b6 or the capsule's own state
+        // (hit1->state) keep the hit out of the damage and phantom logs.
+        let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible;
         if contact.overlap < assets.damage.phantom_threshold {
-            log_phantom_contact(victim, attacker, id, contact, height);
+            log_phantom_contact(victim, attacker, id, contact, height, invincible);
             return;
         }
-        if victim.status.revival_invincibility != 0 {
+        if victim.status.revival_invincibility != 0 || invincible {
             // ftColl_80078C70 inlineB3: record the contact and attacker hitlag,
             // but omit damage logging/staling while x198C selects invincibility.
             // ftColl_80076ED8: x1914 takes the scaled damage's count, zero
@@ -1894,9 +1916,11 @@ fn detect_eligible_hit(
 fn record_inert_touch(victim: &FighterCore, attacker: &mut FighterCore, shield: bool) {
     let shield = shield || attacker.combat.detected.is_some_and(|touch| touch.shield);
     attacker.combat.detected = Some(InertTouch {
-        target: victim.spawn_number,
-        kind: victim.kind,
-        action: victim.motion_state.action,
+        target: InertTarget::Fighter {
+            spawn_number: victim.spawn_number,
+            kind: victim.kind,
+            action: victim.motion_state.action,
+        },
         shield,
     });
 }
@@ -1928,6 +1952,7 @@ fn log_phantom_contact(
     id: usize,
     contact: Contact,
     height: HurtHeight,
+    invincible_capsule: bool,
 ) {
     let hit = attacker.commands.hitboxes[id]
         .as_ref()
@@ -1953,6 +1978,7 @@ fn log_phantom_contact(
     );
     if victim.commands.hurt_status == melee_types::combat::HurtStatus::Normal
         && victim.status.revival_invincibility == 0
+        && !invincible_capsule
     {
         victim.combat.phantom_max_damage = victim.combat.phantom_max_damage.max(fctiwz(damage));
         victim.combat.phantom_log.push(LoggedHit {

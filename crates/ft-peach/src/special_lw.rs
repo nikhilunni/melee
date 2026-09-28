@@ -154,6 +154,9 @@ pub fn put_away(f: &mut Fighter) {
     f.core
         .item_requests
         .push(ItemRequest::Destroy { item: held.item });
+    // Item_8026A8EC -> ftCommon_8007E6DC: the hand is empty at once, so a
+    // hit in the same frame has nothing to drop.
+    f.core.release_held_item_now(held.item);
     f.character.get_mut::<Peach>().items.vegetable = false;
 }
 

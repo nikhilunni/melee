@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 117] = [
+const HELD_ITEM_STATES: [S; 118] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -198,6 +198,9 @@ const HELD_ITEM_STATES: [S; 117] = [
     S::FallAerialF,
     S::FallAerialB,
     S::FallB,
+    // ftCo_Pass (ftCo_Pass.c): the drop through a platform has Fall's IASA
+    // item checks (ftCo_80095328, ftCo_800D7100) and no item branch.
+    S::Pass,
     // ftCo_Damage / DamageFly / DamageFall: no item branch; a launch rolls
     // Fighter_8006CDA4's drop first, and after hitstun the IASA throws.
     S::DamageHi1,
@@ -392,10 +395,41 @@ impl FighterCore {
         }
     }
 
+    /// ftPe_8011D518's restore: fp->item_gobj is the stowed item again,
+    /// shown and unfrozen (it_8026BB20, it_8026B73C); the hand's pickup pose
+    /// (ftpickupitem_80094818(gobj, true)) follows once assets are at hand
+    /// ([`Fighter::apply_pending_pickup_pose`]).
+    pub fn restore_stowed_item(&mut self) {
+        let held = self.stowed_item.take().expect("a stowed item");
+        assert!(self.held_item.is_none(), "ftPe_8011D518: the hand is not empty");
+        self.held_item = Some(held);
+        self.item_requests.push(melee_it::ItemRequest::Stow {
+            item: held.item,
+            stowed: false,
+        });
+        self.pickup_pose_pending = true;
+    }
+
     /// fp->item_gobj is released: Item_8026A848 -> ftCommon_8007E6DC.
     pub fn release_held_item(&mut self, item: u32, assets: &FighterAssets) {
         let held = self.held_item.take().expect("released item was held");
         assert_eq!(held.item, item, "ftLib_800867A0: released another item");
+        self.release_hand_pose(assets);
+    }
+
+    /// A callback without the fighter's assets destroys the held item
+    /// (Item_8026A8EC -> ftCommon_8007E6DC): fp->item_gobj is empty at once;
+    /// the hand's drop pose follows before the proc's item requests
+    /// ([`Fighter::apply_pending_pickup_pose`]).
+    pub fn release_held_item_now(&mut self, item: u32) {
+        let held = self.held_item.take().expect("released item was held");
+        assert_eq!(held.item, item, "ftLib_800867A0: released another item");
+        self.pickup_pose_pending = false;
+        self.drop_pose_pending = true;
+    }
+
+    /// Fighter_OnItemDrop(gobj, true) for the item just let go.
+    fn release_hand_pose(&mut self, assets: &FighterAssets) {
         // ftCo_800C5240 is the hammer; OnItemDropExt: Fighter_OnItemDrop
         // (ft/inlines.h:188); ftLib_80086724 passes drop flag 1, so the shown
         // slot's live hand animation is removed too (ftAnim_80070CC4).
@@ -642,6 +676,48 @@ impl Fighter {
             item: item.item,
             part: self.core.bones.model.animation_translation,
         });
+    }
+
+    /// ftPe_SpecialHi_8011D424's stow: the held item is hidden and frozen
+    /// in place (it_8026BB44, it_8026B724), then the hand lets it go as
+    /// fp->item_gobj (ftCommon_8007E6DC(gobj, item, true)) for the article
+    /// about to take the hand.
+    pub fn stow_held_item(&mut self, assets: &FighterAssets) {
+        let held = self.core.held_item.expect("a stowed item is held");
+        self.core.item_requests.push(melee_it::ItemRequest::Stow {
+            item: held.item,
+            stowed: true,
+        });
+        self.core.release_held_item(held.item, assets);
+        self.core.stowed_item = Some(held);
+    }
+
+    /// Apply a pending [`FighterCore::restore_stowed_item`] hand pose.
+    pub fn apply_pending_pickup_pose(&mut self, assets: &FighterAssets) {
+        if std::mem::take(&mut self.core.drop_pose_pending) {
+            self.core.release_hand_pose(assets);
+        }
+        if !std::mem::take(&mut self.core.pickup_pose_pending) {
+            return;
+        }
+        let Some(held) = self.core.held_item else {
+            return;
+        };
+        // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
+        // Fighter_OnItemPickup (ft/inlines.h:143), light items only.
+        if held.heavy {
+            return;
+        }
+        self.core.pose_hand_for_item(held.hand_hold_kind, assets);
+        let hand = assets
+            .item_hand
+            .expect("ftData_OnItemPickupExt for this kind");
+        super::commands::show_part_selection(
+            &mut self.core.animation,
+            &mut self.core.skeleton,
+            assets,
+            hand.shown,
+        );
     }
 
     /// A character article created straight into the hand (Peach's

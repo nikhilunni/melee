@@ -747,15 +747,17 @@ impl Runtime {
         };
         let assets = state.assets.items.get(item.kind);
         let capsules = item.hurt_capsules(assets);
-        if capsules.is_empty() {
-            return;
-        }
         let mut log = melee_it::hurt::ItemHitLog::default();
-        for fighter in state.fighters.iter_mut() {
-            let hits =
-                crate::scene_fighter::with_fighter!(fighter, |f| f.strike_item(item, &capsules));
-            for hit in hits {
-                log.push(hit);
+        // it_802703E8 returns at once without hurt capsules; it_802706D0
+        // still meets other items' hitboxes with this item's.
+        if !capsules.is_empty() {
+            for fighter in state.fighters.iter_mut() {
+                let hits = crate::scene_fighter::with_fighter!(fighter, |f| {
+                    f.strike_item(item, &capsules)
+                });
+                for hit in hits {
+                    log.push(hit);
+                }
             }
         }
         item_hits_by_items(&mut state.items, id, &capsules, &mut log);
@@ -1521,6 +1523,7 @@ impl Runtime {
         let state = &mut self.state;
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
+                f.apply_pending_pickup_pose(&state.assets.fighters[slot]);
                 while !f.item_requests.is_empty() {
                     let mut request = f.item_requests.remove(0);
                     match &mut request {
@@ -1536,6 +1539,7 @@ impl Runtime {
                         | melee_it::ItemRequest::Throw { .. }
                         | melee_it::ItemRequest::Drop { .. }
                         | melee_it::ItemRequest::Destroy { .. }
+                        | melee_it::ItemRequest::Stow { .. }
                         | melee_it::ItemRequest::DropArticle { .. }
                         | melee_it::ItemRequest::Launch { .. } => {}
                     }
@@ -2839,11 +2843,92 @@ mod api_fault_tests {
     }
 }
 
-/// it_802706D0 (802706D0): other items' hitboxes against this item's hurt
-/// capsules, in item list order. A contact (it_802706D0_sub3) records the
-/// victim in the hitter's group, sets the hitter's dealt damage and logs a
-/// kind 2 hit for it_80270E30. Hitbox against hitbox (it_8026FE68, and an
-/// inert touch) fails closed; the stats and hit sound are not modelled.
+/// it_8026FE68 (8026FE68): two items' clanking hitboxes met. Each side whose
+/// damage, less it_804D6D28 +B4, is below the other's stops: its hit group
+/// remembers the other item (it_8026FAC4, which also closes that group to
+/// further meetings this pass), xC48 keeps the largest clank damage and the
+/// clank spark (0x41C) plays at the midpoint. The victim side goes first.
+/// (xCF4, xC38, xCD4 and the knockback direction xCB8 have no reader among
+/// the supported items.)
+fn item_clank(
+    items: &mut melee_it::ItemPool,
+    other_index: usize,
+    other_hit: usize,
+    victim_id: u32,
+    victim_hit: usize,
+    (victim_point, other_point): (Vec3, Vec3),
+    meets: &mut [bool; 4],
+) {
+    // retail 8026FE9C..: fadds, then fmuls by 0.5.
+    let midpoint = Vec3::new(
+        0.5 * (other_point.x + victim_point.x),
+        0.5 * (other_point.y + victim_point.y),
+        0.5 * (other_point.z + victim_point.z),
+    );
+    let gap = items.common().clank_priority_gap;
+    let other_id = items.iter().nth(other_index).expect("listed item").id;
+    let (other_damage, victim_damage, other_tag, victim_tag) = {
+        let other = items.iter().nth(other_index).expect("listed item");
+        let victim = items.iter().find(|i| i.id == victim_id).expect("struck item");
+        (
+            other.hitboxes[other_hit].as_ref().expect("clanking hit").descriptor.damage,
+            victim.hitboxes[victim_hit].as_ref().expect("clanking hit").descriptor.damage,
+            other.hitbox_victim(),
+            victim.hitbox_victim(),
+        )
+    };
+    let stop = |items: &mut melee_it::ItemPool,
+                id: u32,
+                hit: usize,
+                opponent: u32,
+                damage: f32,
+                meets: Option<&mut [bool; 4]>| {
+        let item = items.get_mut(id).expect("clanking item");
+        let mark = melee_it::ItemPool::group_victim_mark(item);
+        let group = item.hitboxes[hit].as_ref().expect("clanking hit").descriptor.group;
+        // it_8026FA2C: lbColl_80008688 records the opponent on every live
+        // hitbox of the group; with chk, a newly recorded one leaves
+        // it_804D6D1C.
+        if let Some(meets) = meets {
+            for (slot, own) in item.hitboxes.iter().enumerate() {
+                if own.as_ref().is_some_and(|own| {
+                    own.descriptor.group == group && !own.victims.contains(&opponent)
+                }) {
+                    meets[slot] = false;
+                }
+            }
+        }
+        melee_coll::detection::record_victim(&mut item.hitboxes, group, opponent);
+        let clank_damage = gekko_math::msl::fctiwz(damage);
+        if clank_damage > item.pending_clank_damage {
+            item.pending_clank_damage = clank_damage;
+        }
+        item.events.push(melee_it::ItemEvent::Effect {
+            id: CLANK_SPARK,
+            position: midpoint,
+        });
+        if let Some(mark) = &mark {
+            items.share_group_victims(id, mark);
+        }
+    };
+    if gekko_math::msl::fctiwz(victim_damage) - gap < gekko_math::msl::fctiwz(other_damage) {
+        stop(items, victim_id, victim_hit, other_tag, victim_damage, Some(meets));
+    }
+    if gekko_math::msl::fctiwz(other_damage) - gap < gekko_math::msl::fctiwz(victim_damage) {
+        stop(items, other_id, other_hit, victim_tag, other_damage, None);
+    }
+}
+
+/// efSync_Spawn 0x41C: the spark of two clanking hitboxes.
+const CLANK_SPARK: u16 = 0x41C;
+
+/// it_802706D0 (802706D0): other items' hitboxes against this item, in item
+/// list order. An item later in the list first meets this item's own live
+/// hitboxes (it_804D6D1C): two clanking hitboxes stop each other by damage
+/// (it_8026FE68, [`item_clank`]). Otherwise a contact with the hurt capsules
+/// (it_802706D0_sub3) records the victim in the hitter's group, sets the
+/// hitter's dealt damage and logs a kind 2 hit for it_80270E30. An inert
+/// touch fails closed; the stats and hit sound are not modelled.
 fn item_hits_by_items(
     items: &mut melee_it::ItemPool,
     victim_id: u32,
@@ -2857,109 +2942,148 @@ fn item_hits_by_items(
         hit: usize,
         contact: Vec3,
     }
+    let reaches = |hit: &melee_coll::hitbox::HitCapsule, ground: GroundOrAir| {
+        let grounded = ground == GroundOrAir::Ground;
+        (hit.descriptor.hit_air && !grounded) || (hit.descriptor.hit_ground && grounded)
+    };
     let mut landings = melee_types::fixed::FixedVec::<Landing, 16>::default();
-    {
-        let victim = items
-            .iter()
-            .find(|item| item.id == victim_id)
-            .expect("struck item");
-        if victim.hurt_intangible {
-            return;
+    let mut after_victim = false;
+    for index in 0..items.len() {
+        let (other_id, other_destroyed) = {
+            let other = items.iter().nth(index).expect("listed item");
+            (other.id, other.destroyed)
+        };
+        if other_id == victim_id {
+            after_victim = true;
+            continue;
+        }
+        if other_destroyed {
+            continue;
+        }
+        let (victim, other) = {
+            let victim = items.iter().find(|i| i.id == victim_id).expect("struck item");
+            let other = items.iter().nth(index).expect("listed item");
+            (victim, other)
+        };
+        // Items sharing an owner (or both unowned) pass each other unless
+        // the hitter reaches kindred items (xDCD b7) or the victim was
+        // dropped or thrown (xDCE b2). Teams are off.
+        let kindred = victim.owner == other.owner;
+        if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
+            continue;
+        }
+        // it_804D6D1C: this item's hitboxes that may meet the later item's
+        // (xDD0 b1, an item grab, is never set by a supported kind).
+        let mut meets = [false; 4];
+        if after_victim {
+            let other_tag = other.hitbox_victim();
+            for (slot, own) in victim.hitboxes.iter().enumerate() {
+                meets[slot] = own.as_ref().is_some_and(|own| {
+                    own.descriptor.element != HitElement::Catch
+                        && reaches(own, other.ground_or_air)
+                        && !own.victims.contains(&other_tag)
+                });
+            }
         }
         let tag = victim.hitbox_victim();
-        let mut after_victim = false;
-        for other in items.iter() {
-            if other.id == victim.id {
-                after_victim = true;
-                continue;
-            }
-            if other.destroyed {
-                continue;
-            }
-            // Items sharing an owner (or both unowned) pass each other unless
-            // the hitter reaches kindred items (xDCD b7) or the victim was
-            // dropped or thrown (xDCE b2). Teams are off.
-            let kindred = victim.owner == other.owner;
-            if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
-                continue;
-            }
-            let reaches = |hit: &melee_coll::hitbox::HitCapsule, ground: GroundOrAir| {
-                let grounded = ground == GroundOrAir::Ground;
-                (hit.descriptor.hit_air && !grounded) || (hit.descriptor.hit_ground && grounded)
+        for id in 0..other.hitboxes.len() {
+            let (victim, other) = {
+                let victim = items.iter().find(|i| i.id == victim_id).expect("struck item");
+                let other = items.iter().nth(index).expect("listed item");
+                (victim, other)
             };
-            for (id, hit) in other.hitboxes.iter().enumerate() {
-                let Some(hit) = hit else {
-                    continue;
-                };
-                let desc = &hit.descriptor;
-                if !other.hit_flags[id].hits_items
-                    || !reaches(hit, victim.ground_or_air)
-                    || hit.victims.contains(&tag)
-                {
-                    continue;
-                }
-                // The victim's own live hitboxes meet a later item's first
-                // (it_804D6D1C): a clank or inert touch is not ported.
-                if after_victim {
-                    let other_tag = other.hitbox_victim();
-                    for own in victim.hitboxes.iter().flatten() {
-                        if own.descriptor.element == HitElement::Catch
-                            || !reaches(own, other.ground_or_air)
-                            || own.victims.contains(&other_tag)
-                        {
-                            continue;
-                        }
-                        let inert = desc.element == HitElement::Inert
-                            || own.descriptor.element == HitElement::Inert;
-                        let clank = desc.clank && own.descriptor.clank;
-                        let meet = (inert && desc.element != own.descriptor.element) || clank;
-                        assert!(
-                            !meet
-                                || melee_coll::geometry::hitbox_pair_contact(
-                                    Capsule {
-                                        start: hit.previous_position,
-                                        end: hit.position,
-                                        radius: desc.radius * other.scale,
-                                    },
-                                    Capsule {
-                                        start: own.previous_position,
-                                        end: own.position,
-                                        radius: own.descriptor.radius * victim.scale,
-                                    },
-                                )
-                                .is_none(),
-                            "it_8026FE68: an item hitbox meeting another item's hitbox"
-                        );
+            let Some(hit) = &other.hitboxes[id] else {
+                continue;
+            };
+            let desc = &hit.descriptor;
+            if !other.hit_flags[id].hits_items
+                || !reaches(hit, victim.ground_or_air)
+                || hit.victims.contains(&tag)
+            {
+                continue;
+            }
+            if meets.contains(&true) {
+                let mut met = None;
+                for (slot, own) in victim.hitboxes.iter().enumerate() {
+                    let Some(own) = own.as_ref().filter(|_| meets[slot]) else {
+                        continue;
+                    };
+                    let inert = desc.element == HitElement::Inert
+                        || own.descriptor.element == HitElement::Inert;
+                    let clank = !inert && desc.clank && own.descriptor.clank;
+                    if !(clank || (inert && desc.element != own.descriptor.element)) {
+                        continue;
                     }
-                }
-                assert_ne!(
-                    desc.element,
-                    HitElement::Inert,
-                    "it_802706D0: an inert item hitbox"
-                );
-                let contact = capsules.iter().find_map(|capsule| {
-                    melee_coll::geometry::capsule_contact(
+                    // lbColl_80007AFC(hit, own, item->scl, arg_item->scl)
+                    // passes its second capsule first (see clank.rs).
+                    let Some(points) = melee_coll::geometry::hitbox_pair_contact(
+                        Capsule {
+                            start: own.previous_position,
+                            end: own.position,
+                            radius: own.descriptor.radius * victim.scale,
+                        },
                         Capsule {
                             start: hit.previous_position,
                             end: hit.position,
                             radius: desc.radius * other.scale,
                         },
-                        Capsule {
-                            start: capsule.start,
-                            end: capsule.end,
-                            radius: capsule.radius,
-                        },
-                        &capsule.matrix,
-                        3.0 * victim.scale,
-                    )
-                });
-                if let Some(contact) = contact {
-                    landings.push(Landing {
-                        hitter: other.id,
-                        hit: id,
-                        contact: contact.position,
-                    });
+                    ) else {
+                        continue;
+                    };
+                    if inert {
+                        unimplemented!("it_802706D0: an inert item hitbox touching another item's");
+                    }
+                    met = Some((slot, points));
+                    break;
                 }
+                if let Some((slot, points)) = met {
+                    item_clank(items, index, id, victim_id, slot, points, &mut meets);
+                    continue;
+                }
+            }
+            if capsules.is_empty() {
+                continue;
+            }
+            let (victim, other) = {
+                let victim = items.iter().find(|i| i.id == victim_id).expect("struck item");
+                let other = items.iter().nth(index).expect("listed item");
+                (victim, other)
+            };
+            let Some(hit) = &other.hitboxes[id] else {
+                continue;
+            };
+            let desc = &hit.descriptor;
+            // arg_item->xD0C == 2: the hurt capsules take no hits.
+            if victim.hurt_intangible {
+                continue;
+            }
+            assert_ne!(
+                desc.element,
+                HitElement::Inert,
+                "it_802706D0: an inert item hitbox"
+            );
+            let contact = capsules.iter().find_map(|capsule| {
+                melee_coll::geometry::capsule_contact(
+                    Capsule {
+                        start: hit.previous_position,
+                        end: hit.position,
+                        radius: desc.radius * other.scale,
+                    },
+                    Capsule {
+                        start: capsule.start,
+                        end: capsule.end,
+                        radius: capsule.radius,
+                    },
+                    &capsule.matrix,
+                    3.0 * victim.scale,
+                )
+            });
+            if let Some(contact) = contact {
+                landings.push(Landing {
+                    hitter: other.id,
+                    hit: id,
+                    contact: contact.position,
+                });
             }
         }
     }

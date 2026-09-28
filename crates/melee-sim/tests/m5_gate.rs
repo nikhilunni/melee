@@ -2332,7 +2332,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 274] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 303] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2788,6 +2788,46 @@ const CORPUS_V3_MATCHES: [(&str, usize); 274] = [
     ("corpus_v3_fd_luigi_fox4_ef89b3e70_p0", 5660),
     ("corpus_v3_fd_luigi_fox4_ef9e858d4_p0", 5340),
     ("corpus_v3_fd_luigi_fox4_efc6a328f_p2", 5007),
+    // CROSS: explorer matches from the non-Fox cross-matchup boundaries.
+    // DamageFly/DamageFall never float (ftCo_DamageFall_IASA); Peach's parasol.
+    ("corpus_v3_fd_marth_peach4_ef89b3e70_p0", 3948),
+    ("corpus_v3_fd_marth_peach4_e75fb4a9a_p1", 2848),
+    ("corpus_v3_fd_marth_peach4_e573e2d95_p1", 1526),
+    ("corpus_v3_fd_marth_peach4_eeda0d0fc_p0", 4737),
+    // Yoshi's knockback eyes, inverted down bound and airborne DownBoundD; the down roll's floor projection; the inert Peach Bomber on a Shy Guy.
+    ("corpus_v3_ys_peach_yoshi4_edb2b114a_p0", 1760),
+    ("corpus_v3_ys_peach_yoshi4_e726cfdde_p0", 920),
+    ("corpus_v3_ys_peach_yoshi4_eeda0d0fc_p0", 1907),
+    ("corpus_v3_bf_yoshi_pikachu4_e726cfdde_p1", 3132),
+    // Invincible hurt capsules and grabs; Peach's float aerial with a turnip; Wait takes Peach's parasol; a turnip destroyed by her damage callback empties the hand.
+    ("corpus_v3_ys_peach_yoshi4_e89a89d0e_p1", 1810),
+    ("corpus_v3_ys_peach_yoshi4_e6af4a7bb_p0", 1911),
+    ("corpus_v3_ys_peach_yoshi4_e0fcf0c70_p1", 4660),
+    ("corpus_v3_ys_peach_yoshi4_ecad2716f_p0", 1219),
+    ("corpus_v3_bf_yoshi_pikachu4_ee133b82f_p2", 2228),
+    // Item throw accessory scoped to the throw states, and its mv+4; Peach's up special with a turnip stowed under the parasol.
+    ("corpus_v3_fd_peach_falco4_e00f31913_p1", 4395),
+    ("corpus_v3_fd_peach_falco4_ec3145eb3_p0", 154),
+    // mv+4 through Sing and the shield-break chain; Thunder's bolt end in Quick Attack and common states; the jolt crawler reflected by the cape.
+    ("corpus_v3_ps_marth_jigglypuff4_e573e2d95_p1", 5239),
+    ("corpus_v3_fod_pikachu_mario4_e50814092_p2", 1555),
+    ("corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2", 1619),
+    ("corpus_v3_fod_pikachu_mario4_e89a89d0e_p1", 2703),
+    // Item hitboxes clank with each other (it_8026FE68); Yoshi's egg bounces off a shield.
+    ("corpus_v3_bf_yoshi_pikachu4_ecad2716f_p1", 679),
+    // Exact cross-matchup samples.
+    ("corpus_v3_fd_falco_captainfalcon4_e89a89d0e_p2", 5461),
+    ("corpus_v3_fd_falco_captainfalcon4_eeda0d0fc_p1", 6001),
+    // Mario's fireball bounces off a shield (itColl_BounceOffShield).
+    ("corpus_v3_fod_pikachu_mario4_eae52f0ea_p2", 1366),
+    // Peach drops through a platform holding a turnip (Pass keeps the item).
+    ("corpus_v3_ys_peach_yoshi4_ea4d5d9ec_p1", 2354),
+    // More exact cross-matchup matches.
+    ("corpus_v3_fd_peach_falco4_ec0a10b25_p0", 1668),
+    ("corpus_v3_fod_pikachu_mario4_ec0a10b25_p0", 1658),
+    ("corpus_v3_fd_peach_falco4_e6cc80d32_p2", 6001),
+    ("corpus_v3_dl_captainfalcon_jigglypuff4_e6cc80d32_p2", 6001),
+    ("corpus_v3_dl_mario_falco4_e6cc80d32_p0", 6001),
 ];
 
 #[test]

@@ -169,6 +169,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// hand (no item branch in the character's special code); a special
     /// entered while holding one otherwise fails closed.
     const SPECIALS_KEEP_HELD_ITEM: bool = false;
+    /// Fighter x2226_b1, set by the kind's OnLoad (Yoshi, ftYs_Init_OnLoad):
+    /// the down bound's face-up/face-down choice from HipN is inverted
+    /// (ftCo_8009794C, ftCo_DownBound.c:129-131).
+    const DOWN_BOUND_INVERTED: bool = false;
     /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
     const DEATH: Option<fn(&mut Fighter)> = None;
     /// The character's own parasol while it hangs on fp->item_gobj
@@ -186,6 +190,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
+    /// ft_8008A348's kind branch on entering Wait (ft_08A1.c:85-91).
+    const WAIT_ARTICLES: fn(&mut Fighter) = character::no_wait_articles;
     /// ftCo_800C3538's x2222_b2: the character's current state takes a cape
     /// hit without the turnaround (Fox's Illusion).
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = character::cape_turn_allowed;
@@ -822,6 +828,16 @@ pub struct FighterCore {
     pub pending_forward_smash: bool,
     /// fp->item_gobj while it holds one of the fighter's own articles.
     pub article_in_hand: Option<item_pickup::ArticleInHand>,
+    /// An item still attached to the hand, frozen and hidden, while an
+    /// article holds fp->item_gobj (Peach's u.pe.parasol_gobj_1).
+    pub stowed_item: Option<item_pickup::HeldItem>,
+    /// Fighter_OnItemPickup(gobj, true) owed to a stowed item brought back
+    /// by a callback without the fighter's assets; the scene applies it
+    /// before the proc's item requests.
+    pub pickup_pose_pending: bool,
+    /// Fighter_OnItemDrop(gobj, true) owed to a held item a callback without
+    /// the fighter's assets destroyed (see `release_held_item_now`).
+    pub drop_pose_pending: bool,
     /// The grabbable items the scene offered to the running proc.
     pub pickup_candidates: item_pickup::PickupCandidates,
     /// The article this fighter tracks, as the scene sampled it before the
@@ -969,6 +985,11 @@ pub enum MotionData {
     Damage(damage::DamageState),
     Rebound(clank::State),
     Guard(shield::GuardState),
+    /// ShieldBreakFly through ShieldBreakStand: mv+4 as the guard state
+    /// left it (`None` where not modelled).
+    ShieldBreak {
+        retained_word: Option<f32>,
+    },
     Dizzy(shield_break::DizzyState),
     Escape(escape::EscapeState),
     EscapeAir(air_dodge::AirDodgeState),

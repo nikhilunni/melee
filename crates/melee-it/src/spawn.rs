@@ -134,6 +134,14 @@ pub enum ItemRequest {
     Destroy {
         item: u32,
     },
+    /// An item in hand stowed under an article (ftPe_SpecialHi_8011D424:
+    /// it_8026BB44 hides it, it_8026B724 sets xDC8 x3, which freezes it) or
+    /// brought back (ftPe_8011D518: it_8026BB20, it_8026B73C). It stays
+    /// attached to the hand throughout.
+    Stow {
+        item: u32,
+        stowed: bool,
+    },
     /// it_802B1DF8: `count` copies of `spawn` in list order, each linked
     /// to the next (its partner), set up by a [`crate::LinkMessage::Chain`]
     /// with its index, `index * delay` and `velocity`.

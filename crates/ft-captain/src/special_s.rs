@@ -16,7 +16,7 @@ use melee_ft::{
 };
 use melee_types::{
     mp::collide::{LEFT_WALL_MASK, RIGHT_WALL_MASK},
-    CommonMotionState, FtPart,
+    CommonMotionState, FtPart, ItemKind,
 };
 
 use crate::init::CaptainFalcon;
@@ -120,10 +120,17 @@ pub fn remove_effects(f: &mut Fighter) {
 }
 
 /// ftCa_SpecialS_OnDetect (800E3780): with the script's window open, an
-/// inert touch on a fighter starts the lunge from frame zero.
-pub fn detect(f: &mut Fighter, a: &FighterAssets, _touch: melee_ft::fighter::damage::InertTouch) {
+/// inert touch on a fighter, or on an item of the kinds below, starts the
+/// lunge from frame zero.
+pub fn detect(f: &mut Fighter, a: &FighterAssets, touch: melee_ft::fighter::damage::InertTouch) {
+    use melee_ft::fighter::damage::InertTarget;
     if f.commands.variables[0] == 0 {
         return;
+    }
+    if let InertTarget::Item { kind } = touch.target {
+        if !lunges_at_item(kind) {
+            return;
+        }
     }
     let result = match f.motion_state.action {
         GROUND_START => detect_on_ground(f, a),
@@ -131,6 +138,17 @@ pub fn detect(f: &mut Fighter, a: &FighterAssets, _touch: melee_ft::fighter::dam
         _ => return,
     };
     result.expect("Raptor Boost lunge assets");
+}
+
+/// ftcaptainspecials.c:174-190: the item kinds the lunge takes as a target:
+/// below Bob-omb, Goomba up to the Octorok's stone, Old Goomba up to the
+/// Arwing laser (Shy Guys among them), and a Poke Ball's random Pokemon.
+fn lunges_at_item(kind: ItemKind) -> bool {
+    let id = i32::from(kind);
+    id < i32::from(ItemKind::BombHei)
+        || (i32::from(ItemKind::Kuriboh)..i32::from(ItemKind::OctarockStone)).contains(&id)
+        || (i32::from(ItemKind::OldKuri)..i32::from(ItemKind::ArwingLaser)).contains(&id)
+        || kind == ItemKind::PokemonRandom
 }
 
 /// onDetectGround: land, enter 350, keep only horizontal speed, scaled.

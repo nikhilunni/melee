@@ -337,6 +337,13 @@ impl Fighter {
         let MotionData::ItemThrow(throw) = self.core.state_data else {
             return false;
         };
+        // accessory4_cb is ftCo_80095EFC only in the throw states: a later
+        // entry (Wait, then a special) installs its own accessory4 while the
+        // throw's scratch is still in place.
+        let action = self.core.motion_state.action.0;
+        if !(S::LightThrowF as u16..=S::HeavyThrowLw4 as u16).contains(&action) {
+            return false;
+        }
         if !self.core.accessory4_armed {
             return false;
         }
