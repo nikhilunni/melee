@@ -121,7 +121,7 @@ pub fn remove_effects(f: &mut Fighter) {
 
 /// ftCa_SpecialS_OnDetect (800E3780): with the script's window open, an
 /// inert touch on a fighter starts the lunge from frame zero.
-pub fn detect(f: &mut Fighter, a: &FighterAssets, _target: u32) {
+pub fn detect(f: &mut Fighter, a: &FighterAssets, _touch: melee_ft::fighter::damage::InertTouch) {
     if f.commands.variables[0] == 0 {
         return;
     }

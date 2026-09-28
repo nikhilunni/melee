@@ -88,7 +88,11 @@ impl CharacterCallbacks for Marth {
         }
     }
 
-    fn accessory(f: &mut melee_ft::fighter::Fighter, a: &melee_ft::fighter::assets::FighterAssets) {
+    fn accessory(
+        f: &mut melee_ft::fighter::Fighter,
+        a: &melee_ft::fighter::assets::FighterAssets,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
         crate::special_n::accessory(f, a);
     }
     const RETAINED_SCRATCH_WORD: fn(

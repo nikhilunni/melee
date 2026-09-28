@@ -49,6 +49,13 @@ pub enum EffectRequest {
         position: Vec3,
         angle: f32,
     },
+    /// efSync_Spawn(id, gobj, &pos) -> efLib_Create_Attach_Pos: a
+    /// character model the fighter owns at a fixed world point (0x4D2,
+    /// Peach's vegetable pull).
+    PositionalModel {
+        id: u16,
+        position: Vec3,
+    },
     /// efSync_Spawn(id, gobj, &pos, &facing, &angle) for a Graphics model
     /// row (0x3FF: Yoshi's rolling dust): a fixed world point, turned to the
     /// facing (efAsync_SetEffectFacingDir) and rotated about Z.
@@ -326,6 +333,7 @@ impl EffectRequest {
                 | Self::SyncAttachedPair { .. }
                 | Self::SurfaceRebound { .. }
                 | Self::PositionalGraphics { .. }
+                | Self::PositionalModel { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

@@ -6,13 +6,15 @@ pub mod float;
 pub mod float_attack;
 pub mod init;
 pub mod special_hi;
+pub mod special_lw;
 pub mod special_n;
+pub mod special_s;
 
 /// ftPe_Init_MotionStateTable: rows 341..370, contiguous from ftCo_MS_Count.
 pub const SPECIAL_ROW_COUNT: usize = 30;
 
-/// ftPe_Init_MotionStateTable (ftpeach.c). The forward smashes, side and
-/// down specials stay unported rows.
+/// ftPe_Init_MotionStateTable (ftpeach.c). ftPe_MS_SpecialSJump (356) has
+/// no callbacks and no entry.
 pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT] {
     use melee_ft::fighter::{
         parasol,
@@ -91,6 +93,41 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
             callbacks::collision::escape,
         );
         i += 1;
+    }
+    // ftPe_MS_SpecialLw / SpecialAirLw (352 / 353) share ftPe_SM_SpecialLw (301).
+    rows[11] = row(
+        352,
+        301,
+        special_lw::anim,
+        special_s::no_input,
+        special_lw::physics,
+        special_lw::collision,
+    );
+    rows[12] = row(
+        353,
+        301,
+        special_lw::air_anim,
+        special_s::no_input,
+        special_lw::air_physics,
+        special_lw::air_collision,
+    );
+    // ftPe_MS_SpecialSStart..SpecialAirSJump (354..360), ftPe_SM 302..307;
+    // the jump reuses ftPe_SM_SpecialSJump (304).
+    {
+        use special_s as s;
+        rows[13] = row(354, 302, s::start_anim, s::no_input, s::start_physics, s::start_collision);
+        rows[14] = row(355, 303, s::end_anim, s::no_input, s::end_physics, s::end_collision);
+        rows[16] = row(
+            357,
+            305,
+            s::air_start_anim,
+            s::no_input,
+            s::air_physics,
+            s::air_start_collision,
+        );
+        rows[17] = row(358, 306, s::air_end_anim, s::no_input, s::air_physics, s::air_end_collision);
+        rows[18] = row(359, 307, s::air_end_anim, s::no_input, s::air_physics, s::air_end_collision);
+        rows[19] = row(360, 304, s::jump_anim, s::no_input, s::jump_physics, s::jump_collision);
     }
     // ftPe_MS_SpecialHiStart..SpecialAirHiEnd (361..364), ftPe_SM 308..311.
     rows[20] = row(

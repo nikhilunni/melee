@@ -399,6 +399,7 @@ name = "ft-falco"
 version = "0.0.1"
 dependencies = [
  "ft-fox-family",
+ "gekko-math",
  "hsd-archive",
  "hsd-types",
  "melee-ft",

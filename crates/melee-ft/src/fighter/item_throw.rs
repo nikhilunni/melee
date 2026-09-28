@@ -208,7 +208,7 @@ impl Fighter {
 
     /// ftCo_800957F4 (800957F4): enter a throw state; the accessory runs
     /// once at once to record the hand.
-    pub(super) fn enter_item_throw(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_item_throw(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         let held = self.core.held_item.expect("a throw needs a held item");
         self.core.commands.variables[0] = 0;
         self.core.commands.variables[1] = 0;
@@ -375,13 +375,15 @@ impl Fighter {
             S::LightThrowDrop,
             "Item_8026AC74: dropping an item"
         );
-        let holder = self
+        let mut holder = self
             .core
             .item_holder(self.core.bones.model.animation_translation, assets);
+        let hand = holder.part_matrix();
         let (center, attack) = (holder.center, holder.attack);
         self.core.item_requests.push(melee_it::ItemRequest::Throw {
             item: held.item,
             position,
+            hand,
             velocity,
             speed,
             center,
@@ -474,10 +476,12 @@ impl super::FighterCore {
     ) {
         let mut holder = self.item_holder(self.bones.model.animation_translation, assets);
         let position = holder.part_position();
+        let hand = holder.part_matrix();
         let (center, attack) = (holder.center, holder.attack);
         self.item_requests.push(melee_it::ItemRequest::Drop {
             item: held.item,
             position,
+            hand,
             speed: 1.0,
             center,
             attack,

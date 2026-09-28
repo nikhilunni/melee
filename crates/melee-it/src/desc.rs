@@ -32,6 +32,18 @@ pub struct ItemCommonData {
     /// Fighter common data it_8027B798 reads; the scene fills it in from
     /// PlCo after loading ItCo.
     pub launch: crate::hurt::ItemLaunch,
+    /// +58 / +5C / +60: itColl_BounceOffVictim's rebound.
+    pub victim_bounce: VictimBounce,
+}
+
+/// itColl_BounceOffVictim (80272DB0): an item rebounding off what it hit.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct VictimBounce {
+    /// +58: the horizontal speed kept.
+    pub horizontal_scale: f32,
+    /// +5C / +60: the vertical speed kept, and the pop added to it.
+    pub vertical_scale: f32,
+    pub vertical_pop: f32,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -78,6 +90,11 @@ impl ItemCommonData {
                 still_speed: r.f32(base + 0x78)?,
             },
             launch: Default::default(),
+            victim_bounce: VictimBounce {
+                horizontal_scale: r.f32(base + 0x58)?,
+                vertical_scale: r.f32(base + 0x5C)?,
+                vertical_pop: r.f32(base + 0x60)?,
+            },
         })
     }
 }
@@ -460,44 +477,50 @@ fn animation_end(state: &hsd_archive::desc::item_visual::ItemVisualState) -> Opt
 
 /// itanimlist.c uses the shared ten control commands and its own payload table.
 type DecodedScript = (Vec<Command>, Vec<Option<ItemHitFlags>>);
-/// Decode a state's script and every subroutine it calls into one list;
-/// Call targets and continuations are indices into it (Command_05/06).
+/// Decode a state's script and every subroutine it calls or jumps to into
+/// one list; Call and Goto targets and continuations are indices into it
+/// (Command_05/06/07). A target inside an already decoded block resolves to
+/// that command.
 fn read_script(archive: &Archive, offset: u32) -> Result<DecodedScript> {
     if offset == 0 {
         return Ok((Vec::new(), Vec::new()));
     }
     let mut script = (Vec::new(), Vec::new());
-    let mut blocks: Vec<(u32, usize)> = Vec::new();
-    let mut calls: Vec<(usize, u32)> = Vec::new();
+    // Each decoded command's archive offset, in list order.
+    let mut offsets: Vec<u32> = Vec::new();
+    let mut jumps: Vec<(usize, u32)> = Vec::new();
     let mut pending = vec![offset];
     while let Some(block) = pending.pop() {
-        if blocks.iter().any(|&(start, _)| start == block) {
+        if offsets.contains(&block) {
             continue;
         }
-        blocks.push((block, script.0.len()));
-        read_block(archive, block, &mut script, &mut calls)?;
-        pending.extend(calls.iter().map(|&(_, target)| target));
+        read_block(archive, block, &mut script, &mut offsets, &mut jumps)?;
+        pending.extend(jumps.iter().map(|&(_, target)| target));
     }
-    for (index, target) in calls {
-        let start = blocks.iter().find(|&&(b, _)| b == target).unwrap().1;
-        if let Command::Call { target, .. } = &mut script.0[index] {
-            *target = start;
+    for (index, target) in jumps {
+        let start = offsets.iter().position(|&o| o == target).unwrap();
+        match &mut script.0[index] {
+            Command::Call { target, .. } | Command::Goto(target) => *target = start,
+            _ => unreachable!("jump fix-up on a non-jump command"),
         }
     }
     Ok(script)
 }
 
-/// One block up to its End (Command_00) or Return (Command_06).
+/// One block up to its End (Command_00), Return (Command_06) or Goto
+/// (Command_07).
 fn read_block(
     archive: &Archive,
     mut offset: u32,
     (commands, flags): &mut DecodedScript,
-    calls: &mut Vec<(usize, u32)>,
+    offsets: &mut Vec<u32>,
+    jumps: &mut Vec<(usize, u32)>,
 ) -> Result<()> {
     let r = archive.reader();
     loop {
         let word = r.u32(offset)?;
         let op = word >> 26;
+        offsets.push(offset);
         let mut hit_flags = None;
         let command = match op {
             0..=4 | 6 | 8 => {
@@ -505,12 +528,18 @@ fn read_block(
             }
             // Command_05: the target word follows; resolved once decoded.
             5 => {
-                calls.push((commands.len(), r.u32(offset + 4)?));
+                jumps.push((commands.len(), r.u32(offset + 4)?));
                 offset += 4;
                 Command::Call {
                     target: usize::MAX,
                     continuation: commands.len() + 1,
                 }
+            }
+            // Command_07: a jump to the address in the next word.
+            7 => {
+                jumps.push((commands.len(), r.u32(offset + 4)?));
+                offset += 4;
+                Command::Goto(usize::MAX)
             }
             // it_80278F2C: five words, an effect at a joint with a random spread.
             10 => {
@@ -567,7 +596,7 @@ fn read_block(
         commands.push(command);
         flags.push(hit_flags);
         offset += 4;
-        if op == 0 || op == 6 {
+        if op == 0 || op == 6 || op == 7 {
             return Ok(());
         }
     }

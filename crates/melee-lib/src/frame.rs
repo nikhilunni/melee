@@ -283,7 +283,7 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
-                    melee_it::ItemEvent::DestroyEffect { id } => {
+                    melee_it::ItemEvent::DestroyEffect { id, root } => {
                         // it_80278800: zero offset and range, but the three
                         // spread draws still happen.
                         for _ in 0..3 {
@@ -291,7 +291,7 @@ impl Runtime {
                         }
                         state.effects.spawn_positional::<RetailTrig>(
                             id,
-                            item.position,
+                            root.unwrap_or(item.position),
                             &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
@@ -1288,7 +1288,11 @@ impl Runtime {
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));
-                    crate::scene_items::request(
+                    let hold = matches!(
+                        request,
+                        melee_it::ItemRequest::SpawnInHand { hold: true, .. }
+                    );
+                    let spawned = crate::scene_items::request(
                         &mut state.items,
                         &state.assets.items,
                         &mut state.map,
@@ -1298,6 +1302,7 @@ impl Runtime {
                         crate::scene_items::RequestOwner {
                             slot: Some(f.player.id),
                             held_item: owner.as_ref(),
+                            after_hitbox_refresh: row.s_link > 11,
                             stale_multiplier: f
                                 .combat
                                 .stale
@@ -1305,15 +1310,42 @@ impl Runtime {
                         },
                         &mut state.rng,
                     );
+                    // Item_8026A8EC's DestroyItemInline: a destroyed held
+                    // item lets go of the hand (ftCommon_8007E6DC).
+                    if let Some(held) = f.held_item {
+                        if !state.items.iter().any(|i| i.id == held.item) {
+                            f.core
+                                .release_held_item(held.item, &state.assets.fighters[slot]);
+                        }
+                    }
+                    if let Some(id) = spawned.filter(|_| hold) {
+                        let kind = state.items.iter().find(|i| i.id == id).unwrap().kind;
+                        let item = state.assets.items.get(kind);
+                        f.hold_spawned_item(
+                            melee_ft::fighter::item_pickup::HeldItem {
+                                item: id,
+                                kind,
+                                heavy: item.heavy,
+                                hand_hold_kind: item.hand_hold_kind,
+                                use_kind: item.use_kind,
+                                damage_multiplier: item.collision_damage_multiplier,
+                            },
+                            &state.assets.fighters[slot],
+                        );
+                    }
                 }
             });
         }
-        // A new article's own efSync_Spawn (it_802BE2E8) belongs to its
-        // spawner's proc.
-        if state
-            .items
-            .iter()
-            .any(|item| item.events.iter().any(|e| matches!(e, melee_it::ItemEvent::OwnEffect { .. })))
+        // A new article's own efSync_Spawn (it_802BE2E8, it_802BD248's
+        // it_80272C08) belongs to its spawner's proc.
+        if state.items.iter().any(|item| {
+            item.events.iter().any(|e| {
+                matches!(
+                    e,
+                    melee_it::ItemEvent::OwnEffect { .. } | melee_it::ItemEvent::Effect { .. }
+                )
+            })
+        })
         {
             self.drain_item_events(false)?;
         }
@@ -1865,7 +1897,7 @@ fn dispatch_fighter(
                 && !f.item_throw_accessory(assets)
                 && !f.core.egg_accessory()
             {
-                f.character_accessory(assets);
+                f.character_accessory(assets, rng);
             }
             f.proc_hitbox_positions();
         }

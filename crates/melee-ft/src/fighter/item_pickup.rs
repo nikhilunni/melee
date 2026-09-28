@@ -51,6 +51,8 @@ impl PickupBoxes {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PickupCandidate {
     pub item: u32,
+    /// itGetKind.
+    pub kind: melee_types::ItemKind,
     /// it_8026B344: the item's pickup point.
     pub position: Vec2,
     /// itGetGrabRangeX / Y.
@@ -111,6 +113,8 @@ impl PickupWeights {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HeldItem {
     pub item: u32,
+    /// itGetKind(fp->item_gobj).
+    pub kind: melee_types::ItemKind,
     pub heavy: bool,
     pub hand_hold_kind: u8,
     /// it_8026B30C: 0 throws, 2 swings, 3 shoots.
@@ -370,6 +374,24 @@ impl FighterCore {
         result
     }
 
+    /// Fighter_OnItemPickup's ftAnim_80070FB4: the hand's pose for the
+    /// item's hold kind (itGetHoldKind).
+    fn pose_hand_for_item(&mut self, hand_hold_kind: u8, assets: &FighterAssets) {
+        let hand = assets
+            .item_hand
+            .expect("ftData_OnItemPickupExt for this kind");
+        let pose = match hand_hold_kind {
+            1 => Some(1),
+            2 => Some(0),
+            3 => Some(2),
+            4 => Some(3),
+            _ => None,
+        };
+        if let Some(pose) = pose {
+            self.animation.part_animations[hand.pose].previous = pose;
+        }
+    }
+
     /// fp->item_gobj is released: Item_8026A848 -> ftCommon_8007E6DC.
     pub fn release_held_item(&mut self, item: u32, assets: &FighterAssets) {
         let held = self.held_item.take().expect("released item was held");
@@ -594,6 +616,7 @@ impl Fighter {
         assert_ne!(item.use_kind, 5, "ftpickupitem_8009447C: consumable pickup");
         self.core.held_item = Some(HeldItem {
             item: item.item,
+            kind: item.kind,
             heavy: item.heavy,
             hand_hold_kind: item.hand_hold_kind,
             use_kind: item.use_kind,
@@ -601,20 +624,10 @@ impl Fighter {
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143).
+        self.core.pose_hand_for_item(item.hand_hold_kind, assets);
         let hand = assets
             .item_hand
             .expect("ftData_OnItemPickupExt for this kind");
-        let pose = match item.hand_hold_kind {
-            1 => Some(1),
-            2 => Some(0),
-            3 => Some(2),
-            4 => Some(3),
-            _ => None,
-        };
-        if let Some(pose) = pose {
-            // ftAnim_80070FB4.
-            self.core.animation.part_animations[hand.pose].previous = pose;
-        }
         // ftAnim_80070C48: apply the shown slot's selection.
         super::commands::show_part_selection(
             &mut self.core.animation,
@@ -627,6 +640,18 @@ impl Fighter {
             item: item.item,
             part: self.core.bones.model.animation_translation,
         });
+    }
+
+    /// A character article created straight into the hand (Peach's
+    /// setupVeg: fp->item_gobj = the new item, then
+    /// ftpickupitem_80094818(gobj, false), which poses the hand without
+    /// ftAnim_80070C48's shown selection). Item_8026AB54 has already run.
+    pub fn hold_spawned_item(&mut self, item: HeldItem, assets: &FighterAssets) {
+        assert!(self.core.held_item.is_none(), "x1978: a second held item");
+        self.core.held_item = Some(item);
+        if !item.heavy {
+            self.core.pose_hand_for_item(item.hand_hold_kind, assets);
+        }
     }
 
     /// ftpickupitem_Coll (80094B44): ft_800841B8, whose ground loss drops

@@ -1,16 +1,22 @@
-//! Peach's articles (ftData.x48_items[2..=4] of PlPe.dat): the parasol
-//! (itpeachparasol.c), Toad (itpeachtoad.c) and Toad's spores
-//! (itpeachtoadspore.c). The parasol and Toad hang on the owner's joint 109
-//! for as long as the owner stays in the motions that use them.
+//! Peach's articles (ftData.x48_items of PlPe.dat): Peach Bomber's blast
+//! (itpeachexplode.c), the turnip (itpeachturnip.c), the parasol
+//! (itpeachparasol.c), Toad
+//! (itpeachtoad.c) and Toad's spores (itpeachtoadspore.c). The parasol and
+//! Toad hang on the owner's joint 109 for as long as the owner stays in the
+//! motions that use them.
 use melee_it::{desc::ItemAssets, ItemCore};
 
+pub mod explode;
 pub mod parasol;
 pub mod spore;
 pub mod toad;
+pub mod turnip;
 
+pub use explode::PeachExplode;
 pub use parasol::PeachParasol;
 pub use spore::PeachToadSpore;
 pub use toad::PeachToad;
+pub use turnip::PeachTurnip;
 
 /// lbGetJObjCurrFrame: a non-looping joint animation stops at its last
 /// frame, so the item's x5CC does too.

@@ -57,7 +57,11 @@ impl CharacterCallbacks for CaptainFalcon {
     const DEAL_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
         Some(crate::special_lw::deal_damage);
     const HURTBOX_DETECT: Option<
-        fn(&mut melee_ft::fighter::Fighter, &melee_ft::fighter::assets::FighterAssets, u32),
+        fn(
+            &mut melee_ft::fighter::Fighter,
+            &melee_ft::fighter::assets::FighterAssets,
+            melee_ft::fighter::damage::InertTouch,
+        ),
     > = Some(crate::special_s::detect);
     /// ftCommon_8007E2D0's grab_cb (ftCa_SpecialLw_800E5128) and grabbed_cb
     /// (ftCo_8009CA0C).
@@ -66,6 +70,7 @@ impl CharacterCallbacks for CaptainFalcon {
     fn accessory(
         fighter: &mut melee_ft::fighter::Fighter,
         _assets: &melee_ft::fighter::assets::FighterAssets,
+        _rng: &mut gekko_math::HsdRng,
     ) {
         crate::special_hi_catch::follow_victim(fighter);
     }

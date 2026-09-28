@@ -20,6 +20,8 @@ melee_it::item_kinds! {
         BombHei: it_bombhei::BombHei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
         YoshiStar: it_yoshistar::YoshiStar,
+        PeachExplode: it_peach::PeachExplode,
+        PeachTurnip: it_peach::PeachTurnip,
         PeachParasol: it_peach::PeachParasol,
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
@@ -44,6 +46,7 @@ pub fn pickup_candidates<'a>(
             let assets = resources.get(item.kind);
             melee_ft::fighter::item_pickup::PickupCandidate {
                 item: item.id,
+                kind: item.kind,
                 // it_8026B344 (retail 8026B354: fmadds).
                 position: hsd_types::Vec2::new(
                     gekko_math::fma::fmadds(item.facing, item.grab_offset.x, item.position.x),
@@ -141,8 +144,8 @@ impl Resources {
         kinds.push((ItemKind::YoshiStar, ItemAssets::from_fighter(&yoshi, root, 1, 1)?));
         visual_archives.push((ItemKind::YoshiStar, std::sync::Arc::clone(&yoshi)));
         visual_archives.push((ItemKind::YoshiEggThrow, yoshi));
-        // ftPe_Init_OnLoad: ftData.x48_items[2..=4] are the parasol, Toad
-        // and Toad's spores.
+        // ftPe_Init_OnLoad: ftData.x48_items[0] is Peach Bomber's blast,
+        // [1] the turnip, [2..=4] the parasol, Toad and Toad's spores.
         if let Some(character) = characters
             .iter()
             .find(|c| c.descriptor.data_file == "PlPe.dat")
@@ -150,6 +153,12 @@ impl Resources {
             let a = std::sync::Arc::clone(&character.data);
             let root = a.public("ftDataPeach").context("Peach fighter data")?;
             for (kind, index, states, attributes) in [
+                (
+                    ItemKind::PeachExplode,
+                    0,
+                    &it_peach::explode::ARTICLE_STATES[..],
+                    0,
+                ),
                 (
                     ItemKind::PeachParasol,
                     2,
@@ -175,6 +184,18 @@ impl Resources {
                 ));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
+            // The turnip leaves the hand like a common item (it_80275BC8,
+            // Item_ApplyFallingPhysics).
+            let mut turnip = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                1,
+                &it_peach::turnip::ARTICLE_STATES,
+                it_peach::turnip::SPECIAL_ATTRIBUTES,
+            )?;
+            turnip.read_common_release(&common_archive, public)?;
+            kinds.push((ItemKind::PeachTurnip, turnip));
+            visual_archives.push((ItemKind::PeachTurnip, std::sync::Arc::clone(&a)));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -242,6 +263,10 @@ pub struct RequestOwner<'a> {
     /// The requesting fighter; stage requests (the Bob-omb rain) have none.
     pub slot: Option<u8>,
     pub held_item: Option<&'a melee_it::ItemOwner>,
+    /// The requesting proc runs past item link 11 (HSD_GObj_804D7838's
+    /// s_link > 11): hitboxes a new item's script creates are placed at once
+    /// (it_802790C0).
+    pub after_hitbox_refresh: bool,
     pub stale_multiplier: f32,
 }
 
@@ -255,7 +280,7 @@ pub fn request(
     request: ItemRequest,
     owner: RequestOwner<'_>,
     rng: &mut gekko_math::HsdRng,
-) {
+) -> Option<u32> {
     let owner_context = &owner;
     let (spawn, ray, held_owner) = match request {
         ItemRequest::Spawn(spawn) => (spawn, None, None),
@@ -272,7 +297,7 @@ pub fn request(
             control,
         } => {
             pool.control::<SceneItems>(owner, kind, control, resources.get(kind));
-            return;
+            return None;
         }
         ItemRequest::PickUp { item, part } => {
             // Item_8026AB54: attach, then the kind's pickup callback.
@@ -296,11 +321,12 @@ pub fn request(
                     assets,
                 },
             );
-            return;
+            return None;
         }
         ItemRequest::Throw {
             item,
             position,
+            hand,
             velocity,
             speed,
             center,
@@ -312,6 +338,7 @@ pub fn request(
             let thrown = pool.get_mut(item).expect("thrown item");
             let assets = resources.get(thrown.kind);
             thrown.throw_speed = speed;
+            let position = thrown.throw_release_point(position, &hand, assets);
             thrown.leave_hand(velocity, position, assets);
             (SceneItems::logic(thrown.kind).thrown)(
                 thrown,
@@ -326,12 +353,12 @@ pub fn request(
             // xDCE b0 and b2: the thrower's hits land on it, and so do its
             // kin's.
             thrown.hurt_by_owner = true;
-            return;
+            return None;
         }
         ItemRequest::Destroy { item } => {
             destroy_object(world, objects, item);
             pool.destroy::<SceneItems>(item);
-            return;
+            return None;
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
         ItemRequest::Launch {
@@ -350,7 +377,7 @@ pub fn request(
                 .find(|item| item.owner == Some(slot) && item.kind == kind && item.held)
                 .expect("launched article in its owner's hand");
             it_yoshieggthrow::launch(item, &launch, half_life_scale, map, resources.get(kind));
-            return;
+            return None;
         }
         ItemRequest::DropArticle {
             owner,
@@ -366,12 +393,9 @@ pub fn request(
             let offset = hsd_types::Vec3::new(-t.x, -t.y, -t.z);
             let mut position = hsd_types::Vec3::ZERO;
             hsd_anim::mtx::mtx_mult_vec(&hold, &offset, &mut position);
-            let Some(dropped) = pool
+            let dropped = pool
                 .iter_mut()
-                .find(|i| i.owner == Some(owner) && i.kind == kind)
-            else {
-                return;
-            };
+                .find(|i| i.owner == Some(owner) && i.kind == kind)?;
             dropped.throw_speed = 1.0;
             dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
             (SceneItems::logic(kind).dropped)(
@@ -385,11 +409,12 @@ pub fn request(
             );
             dropped.end_hold(center, attack, map, assets);
             dropped.hurt_by_owner = true;
-            return;
+            return None;
         }
         ItemRequest::Drop {
             item,
             position,
+            hand,
             speed,
             center,
             attack,
@@ -401,6 +426,7 @@ pub fn request(
             let dropped = pool.get_mut(item).expect("dropped item");
             let assets = resources.get(dropped.kind);
             dropped.throw_speed = speed;
+            let position = dropped.drop_release_point(position, &hand, assets);
             dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
             (SceneItems::logic(dropped.kind).dropped)(
                 dropped,
@@ -413,17 +439,27 @@ pub fn request(
             );
             dropped.end_hold(center, attack, map, assets);
             dropped.hurt_by_owner = true;
-            return;
+            return None;
         }
     };
     let assets = resources.get(spawn.kind);
     if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
-        pool.get_mut(id)
-            .unwrap()
-            .initialize_collision(spawn, assets, map);
+        let item = pool.get_mut(id).unwrap();
+        item.initialize_collision(spawn, assets, map);
+        item.past_hitbox_refresh = owner.after_hitbox_refresh;
         if let Some((angle, speed, motion)) = ray {
             it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
         }
+        // The spawner's own set-up after Item_80268B18 (it_802BE2E8,
+        // it_802BD4AC's turnip fields before its Item_8026AB54).
+        let common = pool.common().clone();
+        (SceneItems::logic(spawn.kind).launched)(
+            pool.get_mut(id).unwrap(),
+            assets,
+            &common,
+            &spawn,
+            rng,
+        );
         if let ItemRequest::SpawnInHand { part, .. } = request {
             // Item_8026AB54: it_802742F4's attachment, then the kind's
             // pickup callback.
@@ -447,9 +483,6 @@ pub fn request(
                 },
             );
         }
-        // The spawner's own set-up after Item_80268B18 (it_802BE2E8).
-        let common = pool.common().clone();
-        (SceneItems::logic(spawn.kind).launched)(pool.get_mut(id).unwrap(), assets, &common, rng);
         if let Some(owner) = held_owner {
             // Item_8026AB54 invokes the kind's pickup callback after attachment.
             (SceneItems::logic(spawn.kind).picked_up)(
@@ -462,12 +495,15 @@ pub fn request(
                 },
             );
         }
+        pool.get_mut(id).unwrap().past_hitbox_refresh = false;
         let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
         for phase in melee_it::ITEM_PROCESS_LINKS {
             world.add_tagged_proc(object, phase, tag(id, phase));
         }
         objects.push((id, object));
+        return Some(id);
     }
+    None
 }
 
 /// ftLib_800864A8 (800864A8) with no excluded fighter: face toward where more
@@ -527,6 +563,7 @@ pub fn spawn_rain_bomb(
         RequestOwner {
             slot: None,
             held_item: None,
+            after_hitbox_refresh: false,
             stale_multiplier: 1.0,
         },
         rng,
@@ -581,6 +618,7 @@ pub fn spawn_shy_guy(
         RequestOwner {
             slot: None,
             held_item: None,
+            after_hitbox_refresh: false,
             stale_multiplier: 1.0,
         },
         rng,

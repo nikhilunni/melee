@@ -60,8 +60,10 @@ pub enum ItemEvent {
     OwnEffect { id: u16 },
     /// ItemSwitch -> it_8027327C -> it_802787B4 (802787B4): the kind's
     /// destroy effect at the item's root, through it_80278800's zero-range
-    /// offset spread (three HSD_Randf draws).
-    DestroyEffect { id: u16 },
+    /// offset spread (three HSD_Randf draws). `root` is the JObj translation
+    /// when it trails the item's position (a collision destroy); otherwise
+    /// the item's position when the event is handled.
+    DestroyEffect { id: u16, root: Option<Vec3> },
     /// efSync_Spawn(0x3E8, gobj, &pos, &damage): the spark of a hit landing
     /// on the item (it_80270E30).
     HitSpark { position: Vec3, damage: f32 },
@@ -112,6 +114,7 @@ pub enum ItemScratch {
     Held(HeldState),
     Bomb(BombState),
     Heiho(HeihoState),
+    Turnip(TurnipState),
     None,
 }
 /// Item.xDD4_itemVar.heiho (itheiho.c): a Yoshi's Story Shy Guy.
@@ -144,6 +147,18 @@ impl Default for HeihoState {
             bone_step: 0,
         }
     }
+}
+/// Item.xDD4_itemVar.peachturnip (itpeachturnip.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TurnipState {
+    /// xDD8: the face (article state 0's animation frame).
+    pub face: i32,
+    /// xDDC: the face's damage, which the thrown hitbox takes.
+    pub damage: i32,
+    /// xDD4 b0: it has been in a hand before (a later pickup plays state 4).
+    pub picked_up: bool,
+    /// xDE0: the scale when pulled, which each throw restores.
+    pub scale: f32,
 }
 /// Item.xDD4_itemVar.bombhei (itbombhei.c).
 #[derive(Clone, Debug, Default)]
@@ -258,6 +273,13 @@ pub struct ItemCore {
     /// item's position and its half extents (ftpickupitem_800942A0).
     pub grab_offset: hsd_types::Vec2,
     pub grab_range: hsd_types::Vec2,
+    /// The model root JObj's translation, which trails `position`: the
+    /// collision proc (Item_80269978) and a release from the hand
+    /// (it_80273748 / it_80273B50) copy `position` into it.
+    pub root_translation: Vec3,
+    /// Item.x3C: the size of the last hitbox a script command made, before
+    /// it_80275594 divides the capsule by the scale.
+    pub hitbox_size: f32,
     /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
     /// nor leaves the blast zones.
     pub held: bool,
@@ -548,12 +570,41 @@ impl ItemCore {
     }
     /// Item_8026A8EC's ItemSwitch (item.c:1993-1995): the kind's destroy
     /// effect, unless suppressed or the item is still in its owner's hand.
-    fn queue_destroy_effect(&mut self, effect: Option<u16>) {
+    fn queue_destroy_effect(&mut self, effect: Option<u16>, root: Option<Vec3>) {
         if self.destroy_effect_suppressed || (self.held && self.owner.is_some()) {
             return;
         }
         if let Some(id) = effect {
-            self.events.push(ItemEvent::DestroyEffect { id });
+            self.events.push(ItemEvent::DestroyEffect { id, root });
+        }
+    }
+    /// it_80273670(item, 0, frame) (80273670): the model posed at article
+    /// state 0's `frame`; its joint animation and script are removed, so no
+    /// further script command runs until the next state change.
+    pub fn pose_article_frame(&mut self, frame: f32) {
+        self.animation_frame = frame;
+        self.script = ScriptState::default();
+    }
+    /// it_80274484 (80274484): the model at `scale`; every live hitbox
+    /// takes x3C, the command size, as its radius (it_80275534), and the
+    /// grab range grows by the scale (it_80274DFC). it_80274E44's ECB boxes
+    /// (xBDC / xBEC) have no port consumer.
+    pub fn rescale(&mut self, scale: f32) {
+        self.scale = scale;
+        self.model_scale = Vec3::new(scale, scale, scale);
+        let size = self.hitbox_size;
+        for hit in self.hitboxes.iter_mut().flatten() {
+            hit.descriptor.radius = size;
+        }
+        self.grab_range.x *= scale;
+        self.grab_range.y *= scale;
+    }
+    /// it_80272460 (80272460) for an existing hitbox `id`: its count and
+    /// the damage restaled for the item's attack (ft_80089228).
+    pub fn set_hitbox_damage(&mut self, id: usize, damage: u32) {
+        if let Some(hit) = &mut self.hitboxes[id] {
+            hit.knockback_damage = damage;
+            hit.descriptor.damage = damage as f32 * self.stale_multiplier;
         }
     }
     /// Item_802694CC (802694CC): the joint animation advances by the item's
@@ -600,8 +651,10 @@ impl ItemCore {
                     melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     let hit = self.hitboxes[*id].as_mut().unwrap();
                     hit.descriptor.damage *= self.stale_multiplier;
-                    // it_802790C0 -> it_80275594(1 / scl): the capsule radius is
-                    // stored unscaled; contacts multiply the item scale back in.
+                    // it_802790C0: x3C keeps the command's size, then
+                    // it_80275594(1 / scl): the capsule radius is stored
+                    // unscaled; contacts multiply the item scale back in.
+                    self.hitbox_size = hit.descriptor.radius;
                     hit.descriptor.radius *= 1.0 / self.scale;
                     let index = self
                         .script
@@ -787,6 +840,12 @@ impl ItemPool {
             grabbable: false,
             grab_offset: assets.grab_offset,
             grab_range: assets.grab_range,
+            hitbox_size: 0.0,
+            root_translation: if spawn.initial_collision {
+                spawn.previous_position
+            } else {
+                spawn.position
+            },
             held: false,
             holder_part: 0,
             hits_owner: false,
@@ -852,9 +911,8 @@ impl ItemPool {
             item.damage_percent = (item.damage_percent + item.pending_damage_taken).min(999);
             item.hitlag_damage = item.pending_damage_taken;
             let context = ItemEventContext {
-                launch: common.launch,
                 rng: Some(rng),
-                ..ItemEventContext::new(assets)
+                ..ItemEventContext::new(assets, &common)
             };
             item.destroyed |= (D::logic(item.kind).damage_received)(item, &context);
         } else if item.pending_shield_damage != 0 {
@@ -863,7 +921,7 @@ impl ItemPool {
             }) {
                 let context = ItemEventContext {
                     shield_normal: deflection.normal,
-                    ..ItemEventContext::new(assets)
+                    ..ItemEventContext::new(assets, &common)
                 };
                 item.destroyed |= (D::logic(item.kind).shield_bounced)(item, &context);
             } else {
@@ -871,26 +929,26 @@ impl ItemPool {
                     item.hitlag_damage = item.pending_shield_damage;
                 }
                 item.destroyed |=
-                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::new(assets));
+                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::new(assets, &common));
             }
         } else if item.pending_clank_damage != 0 {
             // OnClankThink: the clank damage becomes the hitlag damage.
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_clank_damage;
             }
-            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets));
+            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets, &common));
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_damage_dealt;
             }
             item.destroyed |=
-                (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::new(assets));
+                (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::new(assets, &common));
         } else if let Some(reflection) = item.pending_reflection {
-            item.reflect::<D>(reflection, reflected_stale, cap, assets);
+            item.reflect::<D>(reflection, reflected_stale, cap, assets, &common);
         }
         // processCallback (item.c:1739): destroy_type 2.
         if alive && item.destroyed {
-            item.queue_destroy_effect(assets.event_destroy_effect);
+            item.queue_destroy_effect(assets.event_destroy_effect, None);
         }
         // Item_8026A294: a surviving item enters hitlag from xCA8. (The xCC0
         // path is a counter-style shield's own hitlag; no supported fighter
@@ -984,7 +1042,7 @@ impl ItemPool {
             );
             if ended && !item.destroyed {
                 // Item_80269528: destroy_type 0.
-                item.queue_destroy_effect(assets.destroy_effect);
+                item.queue_destroy_effect(assets.destroy_effect, None);
             }
             item.destroyed |= ended;
             if item.destroyed {
@@ -1055,6 +1113,7 @@ impl ItemPool {
         let Some(item) = self.get_mut(id) else {
             return;
         };
+        let alive = !item.destroyed;
         item.destroyed |= (D::logic(item.kind).states[item.motion as usize].collision)(
             item,
             &mut ItemCollisionContext {
@@ -1064,6 +1123,15 @@ impl ItemPool {
                 bounds,
             },
         );
+        if alive && item.destroyed {
+            // Item_80269978: destroy_type 1, ItemSwitch's x68 effect at the
+            // root JObj, which this proc has not yet moved to `position`.
+            let root = item.root_translation;
+            item.queue_destroy_effect(assets.event_destroy_effect, Some(root));
+        } else {
+            // Item_80269978: HSD_JObjSetTranslate(jobj, &pos).
+            item.root_translation = item.position;
+        }
     }
     /// Item_8026A8EC (8026A8EC) outside the item procs: remove `id` now and
     /// run its kind's destroyed callback.
@@ -1200,6 +1268,7 @@ mod tests {
             fall_spin_degrees: 0.0,
             knockback: Default::default(),
             launch: Default::default(),
+            victim_bounce: Default::default(),
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -1231,6 +1300,7 @@ mod tests {
             fall_spin_degrees: 0.0,
             knockback: Default::default(),
             launch: Default::default(),
+            victim_bounce: Default::default(),
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

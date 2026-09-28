@@ -139,7 +139,7 @@ impl super::FighterCore {
                 });
                 continue;
             }
-            if matches!(id, 0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422) {
+            if matches!(id, 0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422 | 0x4D1) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
                 self.effects.push_graphics(EffectRequest::Attached { id, bone });
                 continue;

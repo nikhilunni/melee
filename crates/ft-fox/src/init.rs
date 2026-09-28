@@ -77,6 +77,7 @@ impl CharacterCallbacks for Fox {
     fn accessory(
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
+        _rng: &mut gekko_math::HsdRng,
     ) {
         ft_fox_family::special_n::accessory::<Self>(fighter, assets);
         ft_fox_family::special_s::accessory::<Self>(fighter, assets);

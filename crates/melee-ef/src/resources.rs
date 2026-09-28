@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 4] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 5] = [
     CharacterEffectFile {
         bank: 3,
         file: "EfFxData.dat",
@@ -38,6 +38,13 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 4] = [
         file: "EfYsData.dat",
         table: "effYoshiDataTable",
         models: 0,
+    },
+    // Model 0x3A98 (efSync 0x4D2): the vegetable pull.
+    CharacterEffectFile {
+        bank: 15,
+        file: "EfPeData.dat",
+        table: "effPeachDataTable",
+        models: 1,
     },
     CharacterEffectFile {
         bank: 16,
@@ -112,12 +119,20 @@ pub(super) fn character(
     let table = archive
         .public(symbol)
         .with_context(|| format!("{symbol} effect table"))?;
-    let commands = archive.link(table)?.context("particle commands")? as usize;
-    let textures = archive.link(table + 4)?.context("particle textures")? as usize;
-    let particles = ParticleBank::from_bytes(
-        &archive.data()[commands..textures],
-        &archive.data()[textures..],
-    )?;
+    // effPeachDataTable has models only: both particle links are null.
+    let particles = match (archive.link(table)?, archive.link(table + 4)?) {
+        (Some(commands), Some(textures)) => ParticleBank::from_bytes(
+            &archive.data()[commands as usize..textures as usize],
+            &archive.data()[textures as usize..],
+        )?,
+        (None, None) => ParticleBank {
+            version: 0,
+            first_descriptor_id: 0,
+            descriptors: Arc::new([]),
+            textures: Arc::new([]),
+        },
+        _ => anyhow::bail!("{symbol}: particle commands without textures"),
+    };
     let models = (0..file.models)
         .map(|index| {
             Effect::load_table(

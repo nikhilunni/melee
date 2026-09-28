@@ -8,6 +8,9 @@ use melee_types::{
     GroundOrAir, ItemKind,
 };
 
+/// Item_802674AC's hold kind for character articles (It_Kind_Mario_Fire
+/// up to It_Kind_Unk4).
+const ARTICLE_HOLD_KIND: u8 = 8;
 /// efAsync 0x405: an item's bounce spark (efLib_CreateGenerator 0x2C).
 const BOUNCE_SPARK: u16 = 0x405;
 
@@ -258,10 +261,34 @@ impl ItemCore {
         contact
     }
 
+    /// it_8026DAA8 (8026DAA8): an airborne pass (mpColl_800471F8) that
+    /// neither lands nor bounces; the result word it_80276FC4 takes (1 floor,
+    /// 2 ceiling, 4 right wall, 8 left wall) with the touched line as xC30.
+    pub fn air_contact_bits(&mut self, map: &mut melee_mp::CollMap) -> u32 {
+        let mut collision = self.refresh_collision();
+        let floor = map.air_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.floor_line_from(&collision, floor);
+        self.collision = Some(collision);
+        // it_80276308 (walls), then it_802763E0 (ceiling).
+        let mut bits = u32::from(floor) | self.wall_bits();
+        let collision = self.collision.as_ref().expect("item map collision");
+        if collision.env_flags as u32 & collide::CEILING_MASK != 0 {
+            self.floor_line = collision.ceiling.index;
+            bits |= 2;
+        }
+        bits
+    }
+
     /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's
     /// velocity; unless the contact is a repeat, the bounce plays the kind's
     /// sound, sparks and scales the hitboxes' damage by ItemAttr x58.
-    fn bounce_off_surfaces(&mut self, bits: u32, map: &melee_mp::CollMap, assets: &ItemAssets) {
+    pub fn bounce_off_surfaces(
+        &mut self,
+        bits: u32,
+        map: &melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
         self.reflect_velocity(map, assets);
         if !self.leave_repeated_contact(bits) {
             return;
@@ -485,6 +512,53 @@ impl ItemCore {
         }
         self.face_spin_axis();
         self.position = hsd_types::Vec3::new(position.x, position.y, 0.0);
+        self.root_translation = self.position;
+    }
+
+    /// it_80273748's release point for a throw from `position`: an article
+    /// (hold kind 8) hangs from the hand by its attach joint, so the offset
+    /// of that joint's negated translation through `hand` from the hand
+    /// itself is added (fsubs, then fadds). Other light items leave at
+    /// `position`.
+    pub fn throw_release_point(
+        &self,
+        position: hsd_types::Vec3,
+        hand: &hsd_types::Mtx,
+        assets: &ItemAssets,
+    ) -> hsd_types::Vec3 {
+        if self.hold_kind != ARTICLE_HOLD_KIND {
+            return position;
+        }
+        let hung = self.hung_from(hand, assets);
+        let at = hsd_types::Vec3::new(hand.0[0][3], hand.0[1][3], hand.0[2][3]);
+        hsd_types::Vec3::new(
+            position.x + (hung.x - at.x),
+            position.y + (hung.y - at.y),
+            0.0,
+        )
+    }
+
+    /// it_80273B50's release point for a drop at `hand`: an article's
+    /// attach joint offset through the hand, else the hand itself.
+    pub fn drop_release_point(
+        &self,
+        position: hsd_types::Vec3,
+        hand: &hsd_types::Mtx,
+        assets: &ItemAssets,
+    ) -> hsd_types::Vec3 {
+        if self.hold_kind != ARTICLE_HOLD_KIND {
+            return position;
+        }
+        self.hung_from(hand, assets)
+    }
+
+    /// lb_8000B1CC(hand, -it_80272C90's translation).
+    fn hung_from(&self, hand: &hsd_types::Mtx, assets: &ItemAssets) -> hsd_types::Vec3 {
+        let t = assets.attach_translation();
+        let offset = hsd_types::Vec3::new(-t.x, -t.y, -t.z);
+        let mut hung = hsd_types::Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(hand, &offset, &mut hung);
+        hung
     }
 
     /// it_80273F34 (80273F34): the hold ends; a sweep from the holder's body
@@ -505,6 +579,8 @@ impl ItemCore {
         self.face_spin_axis();
         self.stale_source = attack;
         self.enter_air();
+        // it_80273F34: HSD_JObjSetTranslate(jobj, &pos) after the sweep.
+        self.root_translation = self.position;
     }
 
     /// xDC8 x19 (HSD_JObjSetRotationY): a facing-locked model turns to face
@@ -549,6 +625,14 @@ impl ItemCore {
         map.air_collide_pass(&mut collision, None);
         self.position = collision.cur_pos;
         self.collision = Some(collision);
+    }
+
+    /// itColl_BounceOffVictim (80272DB0): the item pops back off what it hit.
+    pub fn bounce_off_victim(&mut self, bounce: crate::desc::VictimBounce) {
+        // retail 80272DC0: fmuls; 80272DD8: fmadds.
+        self.velocity.x *= bounce.horizontal_scale;
+        self.velocity.y =
+            gekko_math::fma::fmadds(self.velocity.y, bounce.vertical_scale, bounce.vertical_pop);
     }
 
     /// it_802762BC (802762BC).

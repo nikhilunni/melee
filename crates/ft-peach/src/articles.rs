@@ -87,11 +87,14 @@ fn release_toad(peach: &mut Peach) {
 }
 
 /// The Destroyed callbacks of Peach's articles (itPeachParasol_Logic60_
-/// Destroyed, itPeachToad_Logic91_Destroyed); the spores have none.
+/// Destroyed, itPeachToad_Logic91_Destroyed, itPeachTurnip_Logic56_
+/// Destroyed); the spores and the blast have none.
 pub fn destroyed(f: &mut Fighter, kind: ItemKind) {
     match kind {
         ItemKind::PeachParasol => release_parasol(f),
         ItemKind::PeachToad => release_toad(f.character.get_mut::<Peach>()),
+        // itPeachTurnip_Logic56_Destroyed -> ftPe_SpecialLw_UnsetVeg.
+        ItemKind::PeachTurnip => f.character.get_mut::<Peach>().items.vegetable = false,
         _ => {}
     }
 }
@@ -136,10 +139,7 @@ pub fn put_away(f: &mut Fighter) {
         remove(f, ItemKind::PeachToad);
         release_toad(f.character.get_mut::<Peach>());
     }
-    // ftPe_SpecialLw_8011CFA0: the turnip.
-    if f.character.get::<Peach>().items.vegetable {
-        unimplemented!("ftPe_SpecialLw_8011CFA0: put away a held turnip");
-    }
+    crate::special_lw::put_away(f);
 }
 
 /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: a landing with its

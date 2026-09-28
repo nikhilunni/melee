@@ -14,7 +14,7 @@ use melee_coll::damage_log::{DamageLog, HitSource, LoggedHit};
 use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
 use melee_gr::wind::Wind;
 use melee_types::combat::HitboxDescriptor;
-use melee_types::{CommonMotionState as S, GroundOrAir};
+use melee_types::{CommonMotionState as S, FighterKind, GroundOrAir};
 
 #[derive(Default, Clone)]
 pub struct CombatState {
@@ -79,9 +79,9 @@ pub struct CombatState {
     /// A Falcon Dive captor changed to its throw this tick; the scene then
     /// runs ftCo_800DDDE4 / ftCo_800DE7C0 on the pair.
     pub special_throw_release: bool,
-    /// unk_gobj: the fighter (spawn number) one of this fighter's inert
+    /// unk_gobj / x221C_b5: the fighter one of this fighter's inert
     /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
-    pub detected: Option<u32>,
+    pub detected: Option<InertTouch>,
     pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
@@ -97,6 +97,18 @@ pub struct CombatState {
     pub combo: super::attack::combo::ComboState,
     /// Egg Lay's swallow, for the scene to apply to the captured fighter.
     pub capture_requests: super::capture_yoshi::CaptureRequests,
+}
+/// unk_gobj and x221C_b5 as hurtbox_detect_cb reads them (doAirEnd0,
+/// retail 8011C440..84: the x221C bit, then unk_gobj's kind at +4 and
+/// motion at +10).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InertTouch {
+    /// The touched fighter's spawn number.
+    pub target: u32,
+    pub kind: FighterKind,
+    pub action: super::ActionId,
+    /// x221C_b5: some touch this frame was on a shield volume; sticky.
+    pub shield: bool,
 }
 /// ftColl_8007A06C's DmgResult for the phantom log (Fighter.dmg.x1870..x1898).
 #[derive(Clone, Debug)]
@@ -942,10 +954,10 @@ impl Fighter {
         {
             if let Some(reflection) = reflection {
                 self.process_reflection(reflection, assets)?;
-            } else if let Some(target) = detected {
+            } else if let Some(touch) = detected {
                 // fighter.c:2950-2954: the last branch, an inert touch.
                 if let Some(detect) = self.character.table().hurtbox_detect {
-                    detect(self, assets, target);
+                    detect(self, assets, touch);
                 }
             }
         }
@@ -1693,6 +1705,7 @@ fn detect_eligible_hit(
         return;
     }
     let inert = desc.element == melee_types::HitElement::Inert;
+    let mut shield_touch = false;
     if victim.shield.active {
         if let Some(contact) = victim.shield_contact(hit, attacker.player.scale) {
             if !inert {
@@ -1702,15 +1715,15 @@ fn detect_eligible_hit(
             }
             // ftColl_80078C70: an inert hitbox on a shield marks the touch
             // (x221C_b5, unk_gobj) and still tests the hurtboxes.
-            attacker.combat.detected = Some(victim.spawn_number);
+            shield_touch = true;
         }
     }
     let contact = victim.contact_with_hurtboxes(hit, attacker.player.scale);
     if inert {
         // ftColl_80078C70: an inert hitbox only records the touched
         // fighter; it logs no hit and never marks the victim on its group.
-        if contact.is_some() {
-            attacker.combat.detected = Some(victim.spawn_number);
+        if shield_touch || contact.is_some() {
+            record_inert_touch(victim, attacker, shield_touch);
         }
         return;
     }
@@ -1791,6 +1804,18 @@ fn detect_eligible_hit(
             victim.spawn_number,
         );
     }
+}
+
+/// ftColl_80078C70 (ftcoll.c:1843-1845, 1954): unk_gobj becomes the touched
+/// fighter; a shield touch also sets x221C_b5, which only ProcessHit clears.
+fn record_inert_touch(victim: &FighterCore, attacker: &mut FighterCore, shield: bool) {
+    let shield = shield || attacker.combat.detected.is_some_and(|touch| touch.shield);
+    attacker.combat.detected = Some(InertTouch {
+        target: victim.spawn_number,
+        kind: victim.kind,
+        action: victim.motion_state.action,
+        shield,
+    });
 }
 
 /// ftColl_80076ED8 logs a thrown fighter's hitbox under its thrower.

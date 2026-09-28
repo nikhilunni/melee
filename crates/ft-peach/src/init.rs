@@ -34,6 +34,8 @@ pub enum Accessory {
     ReleaseSpore,
     /// ftPe_SpecialHi_8011D424: the parasol hangs from joint 109.
     DrawParasol,
+    /// spawnVeg (8011D018): the pull, each frame until the motion changes.
+    PullVegetable,
 }
 #[derive(Clone, Debug)]
 pub struct Peach {
@@ -55,6 +57,8 @@ pub struct Peach {
     pub special_n: crate::special_n::SpecialN,
     /// fp->mv.pe.specialhi.
     pub special_hi: crate::special_hi::SpecialHi,
+    /// fp->mv.pe.specials.
+    pub bomber: crate::special_s::Bomber,
     /// mv+4 as the state before a special left it: Toad and the parasol
     /// start write only mv+0.
     pub retained_word: Option<f32>,
@@ -75,6 +79,7 @@ impl Peach {
             accessory: Accessory::None,
             special_n: Default::default(),
             special_hi: Default::default(),
+            bomber: Default::default(),
             retained_word: None,
             registered_items: Vec::new(),
             model_groups: [0; 7],
@@ -97,10 +102,15 @@ impl CharacterCallbacks for Peach {
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
+    /// ftpeach*.c read fp->item_gobj only in the down special (a held
+    /// turnip is thrown), the up special (its own unimplemented branch) and
+    /// the float aerials (ftPe_8011BE80, which fails closed); every other
+    /// row leaves a held item in hand.
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     /// ftCo_AttackS4.c decideFighter: ftPe_AttackS4_Enter.
     const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
-    /// ftData_SpecialN/Hi[Peach]; side and down specials are unported.
+    /// ftData_SpecialN/S/Hi/Lw[Peach].
     fn enter_special(
         f: &mut melee_ft::fighter::Fighter,
         slot: melee_ft::fighter::SpecialSlot,
@@ -111,17 +121,27 @@ impl CharacterCallbacks for Peach {
         match slot {
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
-            SpecialSlot::Side => unimplemented!(
-                "ftPe_SpecialS_Enter / ftPe_SpecialAirS_Enter: Peach Bomber (airborne: {airborne})"
-            ),
-            SpecialSlot::Down => unimplemented!(
-                "ftPe_SpecialLw_Enter / ftPe_SpecialAirLw_Enter: turnip (airborne: {airborne})"
-            ),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
         }
     }
     /// Fighter_8006C80C: the special's one-shot accessory4.
-    fn accessory(f: &mut melee_ft::fighter::Fighter, _assets: &FighterAssets) {
+    fn accessory(
+        f: &mut melee_ft::fighter::Fighter,
+        _assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
         let pending = f.character.get::<Peach>().accessory;
+        if pending == Accessory::PullVegetable {
+            // spawnVeg stays installed: it runs every frame of the pull.
+            let action = f.motion_state.action;
+            if f.accessory4_armed
+                && (action == crate::special_lw::PULL || action == crate::special_lw::AIR_PULL)
+            {
+                crate::special_lw::pull(f, rng);
+            }
+            return;
+        }
         if !f.run_accessory4(pending != Accessory::None) {
             return;
         }
@@ -130,7 +150,7 @@ impl CharacterCallbacks for Peach {
             Accessory::DrawToad => crate::special_n::draw_toad(f),
             Accessory::ReleaseSpore => crate::special_n::release_spore(f),
             Accessory::DrawParasol => crate::special_hi::draw_parasol(f),
-            Accessory::None => unreachable!(),
+            Accessory::None | Accessory::PullVegetable => unreachable!(),
         }
     }
     /// itPeachParasol_Logic60_Destroyed / itPeachToad_Logic91_Destroyed:
@@ -147,6 +167,14 @@ impl CharacterCallbacks for Peach {
     };
     const ARTICLE_DESTROYED: fn(&mut melee_ft::fighter::Fighter, ItemKind) =
         crate::articles::destroyed;
+    /// hurtbox_detect_cb = doAirEnd0 in the Peach Bomber jump.
+    const HURTBOX_DETECT: Option<
+        fn(
+            &mut melee_ft::fighter::Fighter,
+            &FighterAssets,
+            melee_ft::fighter::damage::InertTouch,
+        ),
+    > = Some(crate::special_s::inert_contact);
     const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
         Some(crate::special_n::contact);
     const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
@@ -160,7 +188,9 @@ impl CharacterCallbacks for Peach {
         &DESCRIPTOR
     }
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
-        Ok(Self::new(crate::attributes::read_peach_attributes(data)?))
+        let mut attributes = crate::attributes::read_peach_attributes(data)?;
+        attributes.turnip_faces = crate::attributes::read_turnip_faces(data)?;
+        Ok(Self::new(attributes))
     }
     fn restore_saved(&mut self, raw: &[u8]) {
         let word = |offset| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());

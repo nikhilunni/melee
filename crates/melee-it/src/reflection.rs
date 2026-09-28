@@ -94,6 +94,7 @@ impl ItemCore {
         stale: f32,
         cap: u32,
         assets: &crate::desc::ItemAssets,
+        common: &crate::desc::ItemCommonData,
     ) {
         if !pending.preserve_owner {
             self.owner = Some(pending.owner);
@@ -103,7 +104,7 @@ impl ItemCore {
         let context = ItemEventContext {
             reflected_facing: pending.facing,
             reflected_speed: pending.speed_multiplier,
-            ..ItemEventContext::new(assets)
+            ..ItemEventContext::new(assets, common)
         };
         self.destroyed |= (D::logic(self.kind).reflected)(self, &context);
         if self.destroyed {

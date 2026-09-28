@@ -150,7 +150,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const SPECIAL_GRAB: SpecialGrab = character::unsupported_special_grab;
 
     /// Fighter_8006C80C: character-owned accessory4, after the deferred effect flush.
-    fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+    fn accessory(
+        _fighter: &mut Fighter,
+        _assets: &assets::FighterAssets,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
+    }
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
     /// Fighter.deal_dmg_cb (fighter.c:2929): Fighter_ProcessHit when this
@@ -179,9 +184,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
     /// Fighter_ProcessHit's hurtbox_detect_cb (fighter.c:2950-2954): an
-    /// inert hitbox of this fighter touched another fighter (`unk_gobj`, the
-    /// touched fighter's spawn number). Per-motion in retail, like DEAL_DAMAGE.
-    const HURTBOX_DETECT: Option<fn(&mut Fighter, &assets::FighterAssets, u32)> = None;
+    /// inert hitbox of this fighter touched another fighter (`unk_gobj`
+    /// and x221C_b5). Per-motion in retail, like DEAL_DAMAGE.
+    const HURTBOX_DETECT: Option<fn(&mut Fighter, &assets::FighterAssets, damage::InertTouch)> =
+        None;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }
@@ -683,8 +689,12 @@ impl std::ops::DerefMut for Fighter {
     }
 }
 impl Fighter {
-    pub fn character_accessory(&mut self, assets: &assets::FighterAssets) {
-        (self.character.table().accessory)(self, assets);
+    pub fn character_accessory(
+        &mut self,
+        assets: &assets::FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        (self.character.table().accessory)(self, assets, rng);
     }
     pub fn item_muzzle(&mut self, assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         (self.character.table().item_muzzle)(self, assets)

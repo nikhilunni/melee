@@ -75,7 +75,7 @@ impl CharacterCallbacks for Yoshi {
     const DEATH: Option<fn(&mut Fighter)> = Some(death);
     /// The Egg Throw's egg (fn_8012E110) and the Yoshi Bomb landing's stars
     /// (fn_8012E644); each runs only in its own motion.
-    fn accessory(fighter: &mut Fighter, assets: &FighterAssets) {
+    fn accessory(fighter: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
         crate::special_hi::accessory(fighter, assets);
         crate::special_lw::spawn_stars(fighter, assets);
     }

@@ -63,6 +63,7 @@ impl ItemLogic for PeachToadSpore {
         item: &mut ItemCore,
         assets: &ItemAssets,
         common: &ItemCommonData,
+        _spawn: &melee_it::SpawnItem,
         rng: &mut gekko_math::HsdRng,
     ) {
         let a = Attributes(&assets.special_attributes);

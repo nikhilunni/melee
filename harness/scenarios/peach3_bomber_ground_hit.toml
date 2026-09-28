@@ -1,0 +1,33 @@
+# PEACH3 Peach Bomber on the ground into Fox: Fox runs in and stops; Peach
+# runs, side-Bs (ftPe_SpecialS_Enter, 354), lifts into the flying jump (360)
+# whose inert hitbox touches Fox (ftcoll.c:1954, unk_gobj), and
+# hurtbox_detect_cb (doAirEnd0) recoils into SpecialAirSEnd_1 (359), leaving
+# the PeachExplode blast (it_802BD158) at her hip.
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). Input frames count tick
+# records.
+name = "peach3_bomber_ground_hit"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 280
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 116, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 128, port = 0, buttons = { B = true, StickX = 1.0 }, raw = { button = 512, stickX = 127 } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -710,6 +710,13 @@ impl Effects {
                     element: melee_types::HitElement::Slash,
                     ..
                 } => (8, None),
+                EffectRequest::PositionalModel { id, .. } => {
+                    let (_, model) = POSITIONAL_MODELS
+                        .iter()
+                        .find(|(request, _)| *request == id)
+                        .context("unsupported positional model effect")?;
+                    (*model, None)
+                }
                 EffectRequest::Graphics { id, .. }
                 | EffectRequest::PositionalGraphics { id, .. }
                 | EffectRequest::Shield { id, .. }
@@ -783,6 +790,10 @@ impl Effects {
                 | EffectRequest::PowershieldSpark { .. }
                 | EffectRequest::ShieldSpark { .. }
                 | EffectRequest::Clank { .. } => unreachable!(),
+                // efLib_Create_Attach_Pos: HSD_JObjSetTranslate only.
+                EffectRequest::PositionalModel {
+                    position: origin, ..
+                } => position = origin,
                 EffectRequest::SurfaceRebound {
                     position: origin,
                     angle,
@@ -1156,7 +1167,7 @@ impl Effect {
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
-        const NO_CHARACTER_BANKS: resources::CharacterBanks = [None, None, None, None];
+        const NO_CHARACTER_BANKS: resources::CharacterBanks = [None, None, None, None, None];
         let banks = resources::Banks {
             common: bank,
             characters: &NO_CHARACTER_BANKS,

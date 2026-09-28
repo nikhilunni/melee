@@ -110,6 +110,8 @@ pub enum ItemRequest {
     Throw {
         item: u32,
         position: Vec3,
+        /// The world matrix of the hand joint holding it (ftLib_80086630).
+        hand: hsd_types::Mtx,
         velocity: Vec3,
         speed: f32,
         center: Vec3,
@@ -120,6 +122,8 @@ pub enum ItemRequest {
     Drop {
         item: u32,
         position: Vec3,
+        /// The world matrix of the hand joint holding it (ftLib_80086630).
+        hand: hsd_types::Mtx,
         speed: f32,
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
@@ -130,10 +134,12 @@ pub enum ItemRequest {
     },
     /// Item_80268B18 then Item_8026AB54: `spawn` is created and taken at
     /// once into its owner's hand at `part`, a fp->parts index
-    /// (it_802B2A10, Yoshi's Egg Throw egg).
+    /// (it_802B2A10, Yoshi's Egg Throw egg). With `hold`, the owner's
+    /// fp->item_gobj becomes the new item (Peach's setupVeg).
     SpawnInHand {
         spawn: SpawnItem,
         part: u8,
+        hold: bool,
     },
     /// The owner sends its held article of `kind` out of the hand
     /// (it_802B28C8, the Egg Throw): see [`Launch`].
@@ -189,6 +195,10 @@ pub struct ItemHolder<'a> {
     pub attack_stale: f32,
 }
 impl ItemHolder<'_> {
+    /// The part's world matrix, set up on demand (HSD_JObjSetupMatrix).
+    pub fn part_matrix(&mut self) -> hsd_types::Mtx {
+        *self.skeleton.get_mtx(self.part)
+    }
     /// lb_8000B1CC(part, 0): the part's world translation, set up on demand
     /// (HSD_JObjSetupMatrix) as retail does only when it asks.
     pub fn part_position(&mut self) -> Vec3 {

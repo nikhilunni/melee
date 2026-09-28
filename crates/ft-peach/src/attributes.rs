@@ -14,7 +14,19 @@ pub struct PeachAttributes {
     pub toad: ToadAttributes,
     /// +AC..BC: AbsorbDesc, used as Toad's counter volume.
     pub toad_volume: CounterVolume,
+    /// The turnip article's face weights (ftData.x48_items[1]
+    /// itPeachTurnipAttributes x8[].x0_odds), which it_802BD32C draws from
+    /// right after the pull chose a turnip. Filled by `read_turnip_faces`.
+    pub turnip_faces: TurnipFaces,
 }
+/// itPeachTurnipAttributes x4_length and x8[].x0_odds.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TurnipFaces {
+    pub count: usize,
+    pub weights: [i32; TURNIP_FACE_CAPACITY],
+}
+/// Retail PlPe.dat has eight turnip faces.
+pub const TURNIP_FACE_CAPACITY: usize = 8;
 #[derive(Clone, Debug, PartialEq)]
 pub struct FloatAttributes {
     /// +0x00, ftPeach/types.h.
@@ -130,6 +142,25 @@ pub fn read_peach_attributes(archive: &Archive) -> Result<PeachAttributes> {
     })?;
     PeachAttributes::read(archive, special_attributes_offset(archive, root)?)
 }
+/// ftData.x48_items[1] (the turnip Article) +4: itPeachTurnipAttributes.
+pub fn read_turnip_faces(archive: &Archive) -> Result<TurnipFaces> {
+    let root = archive.public("ftDataPeach").ok_or_else(|| {
+        FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
+            name: "ftDataPeach".into(),
+        })
+    })?;
+    let r = archive.reader();
+    let items = r.u32(root + 0x48)?;
+    let article = r.u32(items + 4)?;
+    let special = r.u32(article + 4)?;
+    let count = r.s32(special + 4)? as usize;
+    assert!(count <= TURNIP_FACE_CAPACITY, "itPeachTurnipAttributes x4_length");
+    let mut weights = [0; TURNIP_FACE_CAPACITY];
+    for (i, weight) in weights.iter_mut().enumerate().take(count) {
+        *weight = r.s32(special + 8 + 8 * i as u32)?;
+    }
+    Ok(TurnipFaces { count, weights })
+}
 impl PeachAttributes {
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = Reader::new(archive.reader().slice(offset, PEACH_ATTRIBUTES_SIZE)?);
@@ -199,6 +230,10 @@ impl PeachAttributes {
                 bone: r.s32(0xAC)?,
                 offset: Vec3::new(r.f32(0xB0)?, r.f32(0xB4)?, r.f32(0xB8)?),
                 radius: r.f32(0xBC)?,
+            },
+            turnip_faces: TurnipFaces {
+                count: 0,
+                weights: [0; TURNIP_FACE_CAPACITY],
             },
         })
     }

@@ -274,9 +274,15 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 19] = [
         directional: false,
     },
 ];
+// efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
+// request id and the model it creates at the given point.
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 1] = [
+    // efsync.c:433-435: Peach's vegetable pull.
+    (0x4D2, 0x3A98),
+];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 7] = [
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 8] = [
     (0x402, 0x59),
     (0x403, 0x5E),
     (0x412, 0x13),
@@ -286,6 +292,8 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 7] = [
     (0x422, 0x5B),
     // efsync.c:443-445: Peach's float sparkle, efLib_CreateGenerator_Attach.
     (0x4D4, 0x11E),
+    // efsync.c:430-432: the vegetable pull's script effect, hsd_8039EFAC.
+    (0x4D1, 0x64),
 ];
 // eflib.c:761-768: efLib_CreateGenerator_Attach clears PSAPPSRT_UNK_B10
 // after hsd_8039EFAC; the other attached rows keep it.

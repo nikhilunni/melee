@@ -32,16 +32,19 @@ pub struct ItemEventContext<'a> {
     pub launch: crate::hurt::ItemLaunch,
     /// HSD_Randi / HSD_Randf, where the event may draw (OnTakeDamage).
     pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
+    /// it_804D6D28 +58..+60, for itColl_BounceOffVictim.
+    pub victim_bounce: crate::desc::VictimBounce,
 }
 impl<'a> ItemEventContext<'a> {
-    pub fn new(assets: &'a ItemAssets) -> Self {
+    pub fn new(assets: &'a ItemAssets, common: &crate::desc::ItemCommonData) -> Self {
         Self {
             reflected_facing: 0.0,
             reflected_speed: 1.0,
             shield_normal: hsd_types::Vec3::ZERO,
             assets,
-            launch: Default::default(),
+            launch: common.launch,
             rng: None,
+            victim_bounce: common.victim_bounce,
         }
     }
 }
@@ -77,6 +80,7 @@ pub trait ItemLogic {
         _item: &mut ItemCore,
         _assets: &ItemAssets,
         _common: &crate::desc::ItemCommonData,
+        _spawn: &crate::SpawnItem,
         _rng: &mut gekko_math::HsdRng,
     ) {
     }
@@ -155,6 +159,7 @@ pub struct ItemLogicRow {
         &mut ItemCore,
         &ItemAssets,
         &crate::desc::ItemCommonData,
+        &crate::SpawnItem,
         &mut gekko_math::HsdRng,
     ),
     pub pickup_possible: fn(&ItemCore) -> bool,

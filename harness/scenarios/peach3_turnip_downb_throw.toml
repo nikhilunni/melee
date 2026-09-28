@@ -1,0 +1,31 @@
+# PEACH3 Vegetable with a turnip in hand: down-B throws it as a forward smash
+# throw (throwVegIfHeld -> ftCo_800957F4 LightThrowF4) into Fox.
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). Input frames count tick
+# records.
+name = "peach3_turnip_downb_throw"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 124, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 107, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 162, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

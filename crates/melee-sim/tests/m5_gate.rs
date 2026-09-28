@@ -97,6 +97,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("yoshi_upb_")
         || name.starts_with("peach2_")
         || name.starts_with("slope_")
+        || name.starts_with("peach3_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -940,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 147] = [
+const MATRIX_WITNESSES: [(&str, usize); 159] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1134,6 +1135,27 @@ const MATRIX_WITNESSES: [(&str, usize); 147] = [
     ("yoshi_shield_release_stun", 232),
     ("yoshi_shield_powershield_stun", 232),
     ("yoshi_shield_hit_break", 399),
+    // Peach Bomber (ftpeachspecials.c): ground and aerial flights whose inert
+    // hitbox touches Fox (unk_gobj -> doAirEnd0) and leaves the PeachExplode
+    // blast, a smash-input flight (blast motion 1), one passing through a
+    // shield (x221C_b5), and whiffs landing into the grounded recoil.
+    ("peach3_bomber_ground_hit", 280),
+    ("peach3_bomber_ground_whiff", 220),
+    ("peach3_bomber_air_hit", 300),
+    ("peach3_bomber_smash_shield", 300),
+    ("peach3_bomber_smash_hit", 300),
+    ("peach3_bomber_air_whiff", 260),
+    // Vegetable (ftpeachspeciallw.c): the pull (HSD_Randi rare-item and face
+    // draws, the turnip straight into her hand), then smash, tilt, down-B and
+    // aerial down-B throws through the shared item throws, rebounding off
+    // Fox and his shield, and meeting the floor; an empty-handed aerial
+    // down-B does nothing.
+    ("peach3_turnip_throw_hit", 300),
+    ("peach3_turnip_downb_throw", 300),
+    ("peach3_turnip_tilt_throw", 300),
+    ("peach3_turnip_floor", 260),
+    ("peach3_turnip_air_downb", 320),
+    ("peach3_turnip_shield", 300),
 ];
 
 #[test]
@@ -2159,7 +2181,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 121] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 127] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2392,6 +2414,14 @@ const CORPUS_V3_MATCHES: [(&str, usize); 121] = [
     ("corpus_v3_fod_fox_marth4_e9943b4ab_p1", 3045),
     ("corpus_v3_fod_fox_marth4_e89a89d0e_p0", 3205),
     ("corpus_v3_fod_fox_marth4_ef89b3e70_p0", 3715),
+    // Peach Bomber's ground and aerial entries (ftPe_SpecialS_Enter / AirS).
+    ("corpus_v3_fd_peach_fox4_e255c070a_p0", 110),
+    ("corpus_v3_fd_peach_fox4_e9a8e5048_p2", 106),
+    ("corpus_v3_fd_peach_fox4_e4068796b_p0", 210),
+    ("corpus_v3_fd_peach_fox4_e41b2c2b8_p2", 211),
+    // Peach's down special pulls a turnip (ftPe_SpecialLw_Enter).
+    ("corpus_v3_fd_peach_fox4_e4068796b_p1", 989),
+    ("corpus_v3_fd_peach_fox4_e98e8f6a6_p2", 87),
 ];
 
 #[test]
