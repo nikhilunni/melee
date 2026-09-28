@@ -145,8 +145,8 @@ pub fn cliff_wait(fighter: &mut Fighter, phase: InputPhase<'_>) {
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
-pub fn escape_air(fighter: &mut Fighter, _phase: InputPhase<'_>) {
-    fighter.air_dodge_input();
+pub fn escape_air(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    fighter.air_dodge_input(phase.assets);
 }
 
 /// ftData_MotionStateList: ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234).
@@ -241,6 +241,9 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
             return;
         }
         if fighter.try_aerial_item_catch(assets) {
+            return;
+        }
+        if fighter.try_air_tether(assets) {
             return;
         }
     }

@@ -896,6 +896,8 @@ impl Fighter {
         }
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
+            // fighter.c:1138.
+            self.core.status.used_tether = false;
             self.core.parasol.restore_on_ground();
         }
         let move_id = if usize::from(row.action.0) < super::COMMON_COUNT {
@@ -1129,6 +1131,9 @@ impl FighterCore {
             quake_request: None,
             released_link: None,
             held_item: None,
+            grafted_part: None,
+            holds_by_graft: false,
+            tether_article: false,
             parasol: Default::default(),
             pending_forward_smash: false,
             article_in_hand: None,

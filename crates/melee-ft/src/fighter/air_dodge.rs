@@ -71,14 +71,17 @@ impl Fighter {
     }
     /// ftCo_EscapeAir_IASA (80099C24), item-free path; item interaction is
     /// rejected by Status::require_supported before the saved-momentum throw branch.
-    pub(super) fn air_dodge_input(&mut self) {
+    pub(super) fn air_dodge_input(&mut self, assets: &FighterAssets) {
         let MotionData::EscapeAir(dodge) = &mut self.core.state_data else {
             panic!("air dodge scratch missing")
         };
         if dodge.item_throw_frames != 0 {
             dodge.item_throw_frames -= 1;
         }
-        self.character.air_dodge_tether();
+        // ftCo_800C3B10 last: a tether keeps a tenth of the drift (fmuls).
+        if self.try_air_tether(assets) {
+            self.core.physics.self_velocity.x *= 0.1;
+        }
     }
     /// ftCo_EscapeAir_Phys (80099CEC): separate fmuls; no velocity table.
     pub(super) fn air_dodge_physics(&mut self, assets: &FighterAssets) {
@@ -88,5 +91,37 @@ impl Fighter {
         } else {
             self.airborne_physics(assets);
         }
+    }
+}
+
+impl Fighter {
+    /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79: the common tests,
+    /// then the kind's tether (Link, Young Link, Samus), which also checks
+    /// its own article and enters ftCo_800C3BE8's state. Sets used_tether
+    /// when it does.
+    pub fn try_air_tether(&mut self, assets: &FighterAssets) -> bool {
+        use crate::input::Buttons;
+        if self.core.status.used_tether {
+            return false;
+        }
+        let table = self.character.table();
+        let hook = table.air_tether;
+        if hook.is_none() && !(table.descriptor)().common_behavior.air_dodge_tether {
+            return false;
+        }
+        if self.core.held_item.is_some()
+            || !self.core.input.current.held.intersects(Buttons::SHIELD)
+            || !self.core.input.pressed.intersects(Buttons::A)
+        {
+            return false;
+        }
+        let Some(hook) = hook else {
+            unimplemented!("ftCo_AirCatch.c:54-79: {:?}'s tether", self.core.kind);
+        };
+        if !hook(self, assets) {
+            return false;
+        }
+        self.core.status.used_tether = true;
+        true
     }
 }

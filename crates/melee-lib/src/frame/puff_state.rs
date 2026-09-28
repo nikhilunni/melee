@@ -104,7 +104,7 @@ fn puff_held_jump_visits_all_five_states_then_exhausts_air_jumps() {
     let mut actions = vec![341];
     for tick in 1..=200 {
         fighter
-            .proc_anim(assets, &initial.map, &mut initial.rng)
+            .proc_anim(assets, &mut initial.map, &mut initial.rng)
             .unwrap();
         fighter.proc_input(assets, &held);
         if tick < 5 {

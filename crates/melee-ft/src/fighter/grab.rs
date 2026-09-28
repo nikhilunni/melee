@@ -39,7 +39,31 @@ impl Fighter {
         self.core.physics.animation_velocity = Vec3::ZERO;
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Catch { retained_word };
+        if let Some(entered) = self.character.table().catch_entered {
+            entered(self);
+        }
         Ok(())
+    }
+
+    /// Fighter_CallAcessoryCallbacks_8006C624's character callbacks: in
+    /// hitlag accessory3, otherwise accessory2 (accessory1 follows, in the
+    /// scene's grab pairs).
+    pub fn character_proc_accessories(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        if self.status.disabled {
+            return;
+        }
+        let table = self.character.table();
+        if self.in_hitlag() {
+            if let Some(accessory) = table.hitlag_accessory {
+                accessory(self, rng);
+            }
+        } else if let Some(accessory) = table.accessory2 {
+            accessory(self, map, rng);
+        }
     }
 
     /// ftCo_Catch_Anim (800D8CC8): item/tether callbacks are character hooks.
@@ -237,6 +261,9 @@ pub fn capture_pair(
     attacker.core.commands.grab_release = false;
     attacker.core.commands.throw_reverse = false;
     attacker.change_motion_state_at(pull.into(), attacker_assets, frame)?;
+    if let Some(pulled) = attacker.character.table().catch_pulled {
+        pulled(attacker);
+    }
     attacker.core.combat.grab = Some(GrabLink::Holding {
         victim: victim.core.spawn_number,
         vertical_offset: 0.0,
@@ -269,12 +296,16 @@ fn capture_positions(
     attacker: &mut FighterCore,
     assets: &FighterAssets,
 ) -> (Vec3, Vec3) {
-    let target = super::caches::bone_position(
-        &mut attacker.skeleton,
-        attacker.animation.root,
-        usize::from(attacker.bones.model.shield),
-        Vec3::ZERO,
-    );
+    let target = match attacker.grafted_part {
+        // lb_8000B1CC on the tether's tip model (x18 = its jobj).
+        Some(grafted) if attacker.holds_by_graft => grafted.position,
+        _ => super::caches::bone_position(
+            &mut attacker.skeleton,
+            attacker.animation.root,
+            usize::from(attacker.bones.model.shield),
+            Vec3::ZERO,
+        ),
+    };
     let origin = super::caches::bone_position(
         &mut victim.skeleton,
         victim.animation.root,
@@ -488,10 +519,12 @@ pub fn map_capture(
 
 impl Fighter {
     /// fn_800DA1D8 (800DA1D8): switch captor first, then linked victim in the scene.
-    pub(super) fn enter_catch_wait(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_catch_wait(&mut self, assets: &FighterAssets) -> Result<()> {
         self.core.physics.ground_velocity = 0.0;
         self.core.commands.grab_release = false;
         self.change_motion_state(S::CatchWait.into(), assets)?;
+        // fn_800DA1D8: x18 is the hold bone again.
+        self.core.holds_by_graft = false;
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         // The flash is queued after graphics the motion change issued (a color
         // program step in Fighter_ChangeMotionState: corpus_v2_s1_effffffff_p1,

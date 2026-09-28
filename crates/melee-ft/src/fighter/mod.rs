@@ -340,12 +340,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         0
     }
 
-    /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79.
-    fn air_dodge_tether(&self) {
-        if Self::descriptor().common_behavior.air_dodge_tether {
-            unimplemented!("ftCo_AirCatch.c:54-79: character tether hook");
-        }
-    }
+    /// ftCo_800C3B10 (800C3B10), ftCo_AirCatch.c:54-79: the kind's tether
+    /// once the common tests pass (unused this airtime, no held item, LR held
+    /// and A pressed). The hook checks its own article (accessory2/death1/
+    /// accessory3 installed) and enters the tether (ftCo_800C3BE8), returning
+    /// whether it did. `None`: the kind has no tether.
+    const AIR_TETHER: Option<fn(&mut Fighter, &assets::FighterAssets) -> bool> = None;
 
     /// The second motion scratch word (mv+4) while `action`, one of this
     /// character's special rows, is current. Common states that leave that
@@ -368,6 +368,19 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_800992A8's kind arm before ftCo_80099314's motion change for a
     /// roll (Samus's ftCo_80099390 clears cmd_vars[0] and mv+4 first).
     const PREPARE_ROLL: Option<fn(&mut Fighter)> = None;
+    /// ftCo_800D8C54's grab entry, once the Catch or CatchDash row is in:
+    /// a kind whose grab throws an article takes over its callbacks.
+    const CATCH_ENTERED: Option<fn(&mut Fighter)> = None;
+    /// fn_800D9CE8's kind arm, once the captor's pull row is in (the
+    /// tethers' pull reels their article in).
+    const CATCH_PULLED: Option<fn(&mut Fighter)> = None;
+    /// accessory2_cb (Fighter_CallAcessoryCallbacks_8006C624) outside
+    /// hitlag, ahead of accessory1: an article the fighter drives from its
+    /// own proc (Samus's grapple beam, it_802BAC80).
+    const ACCESSORY2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)> =
+        None;
+    /// accessory3_cb, which runs instead in hitlag (it_802BACC4).
+    const HITLAG_ACCESSORY: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
     fn escape_variant(
         _fighter: &mut Fighter,
@@ -606,10 +619,22 @@ pub enum Interaction {
     CoinMatch,
 }
 
+/// A parts slot an article's model fills (see `FighterCore::grafted_part`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GraftedPart {
+    /// The fp->parts index.
+    pub part: usize,
+    /// The model's world translation.
+    pub position: Vec3,
+}
+
 /// Reset sentinels used by the ordinary Wait proc path.
 #[derive(Clone, Debug)]
 pub struct Status {
     pub wall_jump: wall_jump::WallJump,
+    /// used_tether (+2228 bit 6): ftCo_800C3B10 already tethered this
+    /// airtime; a grounded motion change clears it.
+    pub used_tether: bool,
     /// x221F_b3 (+221F mask 10).
     pub disabled: bool,
     /// Fighter +221C mask2: damage owns hitstun completion until cleared.
@@ -657,6 +682,7 @@ impl Status {
     pub fn reset(shield_health: f32) -> Self {
         Self {
             wall_jump: wall_jump::WallJump::default(),
+            used_tether: false,
             disabled: false,
             in_hitstun: false,
             input_frozen: false,
@@ -832,6 +858,15 @@ pub struct FighterCore {
     pub released_link: Option<grab::GrabLink>,
     /// item_gobj (+1974): the item in hand.
     pub held_item: Option<item_pickup::HeldItem>,
+    /// A parts slot past the model that an article's model fills (Samus's
+    /// grapple tip, fp->parts[0x8B]): its world translation as last posed.
+    pub grafted_part: Option<GraftedPart>,
+    /// mv.co.capturedamage.x18 is the grafted part (fn_800D9CE8's tether
+    /// arms) rather than the hold bone, until CatchWait (fn_800DA1D8).
+    pub holds_by_graft: bool,
+    /// Link/Young Link u.lk.xC or Samus u.ss.x223C != NULL: a tether
+    /// article is out, so a grab is refused (fn_800D8E94, fn_800D952C).
+    pub tether_article: bool,
     /// x2221_b4..b7 and x2104: the parasol's open timer.
     pub parasol: parasol::ParasolTimer,
     /// A character forward smash chosen this IASA, entered by

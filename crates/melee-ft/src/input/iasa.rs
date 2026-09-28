@@ -198,10 +198,6 @@ pub fn wait_iasa_observe(
     context: &WaitContext,
     mut visited: impl FnMut(WaitPredicate),
 ) -> WaitTransition {
-    assert!(
-        !context.tether_active,
-        "Wait tether restrictions are outside T9"
-    );
     assert!(context.facing == 1.0 || context.facing == -1.0);
     for predicate in WAIT_PREDICATES {
         visited(predicate);
@@ -244,10 +240,14 @@ pub fn evaluate(
             T::Special(SpecialSlot::Down),
         ),
         // ftCo_Catch_CheckInput 800D8990: ftCo_800951D0 throws a held item
-        // first (A with LR held, or A alone for a throwable item).
+        // first (A with LR held, or A alone for a throwable item); a tether
+        // article out refuses the grab (fn_800D8E94, fn_800D952C).
         P::Grab => match context.held_item {
             Some(throwable) => (attack_pressed && (shield_held || throwable), T::ItemThrow),
-            None => (shield_held && attack_pressed, T::Grab),
+            None => (
+                shield_held && attack_pressed && !context.tether_active,
+                T::Grab,
+            ),
         },
         P::SmashSide
         | P::SmashUp

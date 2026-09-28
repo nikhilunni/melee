@@ -2,6 +2,7 @@
 pub mod attributes;
 pub mod common;
 pub mod escape;
+pub mod grapple;
 pub mod init;
 pub mod special_hi;
 pub mod special_lw;
@@ -26,6 +27,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, special_n::rows());
     place_all(&mut rows, special_s::rows());
     place_all(&mut rows, special_lw::rows());
+    place_all(&mut rows, grapple::air::rows());
     rows
 }
 

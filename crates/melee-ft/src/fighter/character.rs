@@ -60,11 +60,15 @@ pub struct CharacterTable {
     pub on_grounded_motion: fn(&mut CharacterState),
     pub on_motion_change: fn(&mut CharacterState),
     pub dynamics_first_force_bone: fn(&CharacterState, usize, usize) -> usize,
-    pub air_dodge_tether: fn(&CharacterState),
+    pub air_tether: Option<fn(&mut Fighter, &assets::FighterAssets) -> bool>,
     pub on_landing: fn(&mut CharacterState, bool),
     pub retained_scratch_word: fn(&CharacterState, ActionId) -> Option<f32>,
     pub guard_variant: fn(&CharacterState, &mut commands::CommandState),
     pub prepare_roll: Option<fn(&mut Fighter)>,
+    pub catch_entered: Option<fn(&mut Fighter)>,
+    pub catch_pulled: Option<fn(&mut Fighter)>,
+    pub accessory2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)>,
+    pub hitlag_accessory: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
     pub escape_variant: fn(&mut Fighter, &assets::FighterAssets, bool) -> assets::Result<()>,
     pub check_float_input: fn(
         &CharacterState,
@@ -157,11 +161,15 @@ impl CharacterTable {
             dynamics_first_force_bone: |state, set, count| {
                 state.get::<C>().dynamics_first_force_bone(set, count)
             },
-            air_dodge_tether: |state| state.get::<C>().air_dodge_tether(),
+            air_tether: C::AIR_TETHER,
             on_landing: |state, allow_interrupt| state.get_mut::<C>().on_landing(allow_interrupt),
             retained_scratch_word: C::RETAINED_SCRATCH_WORD,
             guard_variant: |state, commands| state.get::<C>().guard_variant(commands),
             prepare_roll: C::PREPARE_ROLL,
+            catch_entered: C::CATCH_ENTERED,
+            catch_pulled: C::CATCH_PULLED,
+            accessory2: C::ACCESSORY2,
+            hitlag_accessory: C::HITLAG_ACCESSORY,
             escape_variant: C::escape_variant,
             check_float_input: |state, input, assets, vertical_velocity, phase| {
                 state
@@ -323,9 +331,6 @@ impl CharacterState {
     }
     pub fn dynamics_first_force_bone(&self, set: usize, count: usize) -> usize {
         (self.table.dynamics_first_force_bone)(self, set, count)
-    }
-    pub fn air_dodge_tether(&self) {
-        (self.table.air_dodge_tether)(self)
     }
     pub fn on_landing(&mut self, allow_interrupt: bool) {
         (self.table.on_landing)(self, allow_interrupt)

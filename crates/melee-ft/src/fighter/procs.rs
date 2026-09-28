@@ -19,7 +19,7 @@ impl Fighter {
     pub fn proc_anim(
         &mut self,
         assets: &FighterAssets,
-        map: &CollMap,
+        map: &mut CollMap,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
         let choice = if self.core.begin_animation_phase(assets) {
@@ -580,7 +580,13 @@ impl FighterCore {
         if !self.status.disabled {
             self.status.require_supported();
             for hit in self.commands.hitboxes.iter_mut().flatten() {
-                super::hitbox::update(hit, &mut self.skeleton, &self.animation, self.player.scale);
+                super::hitbox::update(
+                    hit,
+                    &mut self.skeleton,
+                    &self.animation,
+                    self.player.scale,
+                    self.grafted_part,
+                );
             }
             self.thrown_hitbox
                 .update(&mut self.skeleton, &self.animation);

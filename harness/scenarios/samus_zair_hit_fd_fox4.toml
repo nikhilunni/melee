@@ -1,0 +1,28 @@
+# SAMUS: retail: the Z-air grapple passes over Fox (no hit); the rope's sag while rising.
+# SAMUS directed witness: Fox dashes in; Samus jumps and her Z-air grapple strikes him
+name = "samus_zair_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 142, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 148, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,24 @@
+# SAMUS: the beam flies, sags, is reeled in and removed (fn_800D9558, sparks draw the RNG).
+# SAMUS directed witness: a standing grapple grab (ftCo_Catch, fn_800D9558) that catches nothing
+name = "samus_grab_whiff_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

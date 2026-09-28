@@ -459,7 +459,9 @@ pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
     if f.try_aerial_item_catch(assets) {
         return;
     }
-    f.character.air_dodge_tether();
+    if f.try_air_tether(assets) {
+        return;
+    }
     if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         f.enter_air_dodge(assets).expect("capture jump air dodge");
     } else if super::attack::aerial::requested(&f.input, &assets.input) {

@@ -226,7 +226,7 @@ fn replay_config(
                         FighterProc::Status => f.proc_status(),
                         FighterProc::Animation => {
                             if let Some(choice) = f
-                                .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                                .proc_anim(&fixture.assets, &mut fixture.map, &mut rng)
                                 .unwrap()
                             {
                                 used += choice.draws;

@@ -747,13 +747,16 @@ impl Fighter {
         if !special && self.try_aerial_item_catch(assets) {
             return Ok(());
         }
+        if !pressed.intersects(Buttons::B) && self.try_air_tether(assets) {
+            return Ok(());
+        }
         // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
         let priority = if special {
             // ftCo_SpecialAir_CheckInput
             self.enter_buffered_special(assets, true);
             true
         } else if pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
-            // ftCo_800C3B10 is tether characters only; ftCo_80099A58 -> EscapeAir.
+            // ftCo_80099A58 -> EscapeAir (the tether came first).
             self.enter_air_dodge(assets)?;
             true
         } else if super::attack::aerial::requested(&self.core.input, common) {

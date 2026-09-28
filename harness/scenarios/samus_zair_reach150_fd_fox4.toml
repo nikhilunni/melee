@@ -1,0 +1,28 @@
+# SAMUS: retail: a short-hop Z-air short of Fox (no hit).
+# SAMUS directed witness: Fox dashes in and stops; Samus short-hops and throws the Z-air grapple toward him
+name = "samus_zair_reach150_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 130, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 151, port = 0, buttons = {  }, raw = {  } },
+  { frame = 153, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 155, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

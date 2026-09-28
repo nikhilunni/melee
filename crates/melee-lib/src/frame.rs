@@ -1247,6 +1247,8 @@ impl Runtime {
                     credit_phantom_source(state, player);
                 }
                 if proc == FighterProc::Accessories {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .character_proc_accessories(&mut state.map, &mut state.rng));
                     if let Some(victim) = grab_pairs::accessory(state, player)? {
                         // ftCo_800DC920 changes the captor, then the victim;
                         // each Fighter_ChangeMotionState flushes efAsync then.

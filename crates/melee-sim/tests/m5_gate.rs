@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 302] = [
+const MATRIX_WITNESSES: [(&str, usize); 319] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1355,6 +1355,29 @@ const MATRIX_WITNESSES: [(&str, usize); 302] = [
     ("samus_bomb_walk_fd_fox4", 300),
     ("samus_bomb_roll_fd_fox4", 320),
     ("samus_bomb_squat_fd_fox4", 300),
+    // Grapple beam (itsamusgrapple.c, ftCo_0D95.c): the grab and dash
+    // grab timelines with their RNG sparks, the rope's throw, sag and reel,
+    // a catch reeled in to CatchWait, pummels, throws.
+    ("samus_grab_whiff_fd_fox4", 260),
+    ("samus_grab_dash_fd_fox4", 260),
+    ("samus_grab_fox_fd_fox4", 320),
+    ("samus_grab_dashfox_fd_fox4", 300),
+    ("samus_grab_pummel_fd_fox4", 320),
+    ("samus_grab_shined_fd_fox4", 300),
+    ("samus_grab_throwf_fd_fox4", 320),
+    ("samus_grab_throwb_fd_fox4", 320),
+    ("samus_grab_throwd_fd_fox4", 320),
+    // The aerial grapple (ftCo_AirCatch.c, ftCo_800C3B10): Z and the air
+    // dodge's tether, the throw with the drift, the rope in the air, landing
+    // without interrupt, and a whiff off the edge.
+    ("samus_zair_fd_fox4", 260),
+    ("samus_zair_land_fd_fox4", 260),
+    ("samus_zair_dodge_fd_fox4", 260),
+    ("samus_zair_twice_fd_fox4", 300),
+    ("samus_zair_hit_fd_fox4", 300),
+    ("samus_zair_shined_fd_fox4", 300),
+    ("samus_zair_reach150_fd_fox4", 300),
+    ("samus_grab_edge_fd_fox4", 300),
 ];
 
 #[test]

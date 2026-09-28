@@ -99,7 +99,7 @@ fn idle_fox_600() {
                             } as u32;
                         }
                         if let Some(choice) = f
-                            .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                            .proc_anim(&fixture.assets, &mut fixture.map, &mut rng)
                             .unwrap()
                         {
                             used += choice.draws;

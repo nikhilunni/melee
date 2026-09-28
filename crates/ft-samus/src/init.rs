@@ -34,6 +34,12 @@ pub struct Samus {
     pub charge_article: bool,
     /// Charge Shot's motion scratch.
     pub charge_shot: crate::special_n::ChargeShot,
+    /// The grab's frame counter (mv.ca.specials.grav, fn_800D9558).
+    pub grab_frames: f32,
+    /// The grapple beam and its rope (u.ss.x223C).
+    pub grapple: crate::grapple::Grapple,
+    /// The beam's article attributes (ftData.x48_items[3]).
+    pub grapple_article: crate::attributes::GrappleArticle,
 }
 
 /// accessory4_cb while a special owns it.
@@ -61,6 +67,9 @@ impl Samus {
             accessory: Accessory::None,
             charge_article: false,
             charge_shot: Default::default(),
+            grab_frames: 0.0,
+            grapple: Default::default(),
+            grapple_article: Default::default(),
         }
     }
 }
@@ -76,6 +85,10 @@ pub fn install_damage_callbacks(f: &mut Fighter) {
 /// the Screw Attack's flag (ftSs_SpecialS_8012A640), and so does the
 /// grapple beam (ftCo_800D9C98).
 fn damage_callback(f: &mut Fighter) {
+    // ftCommon_8007DB58 also runs death1_cb, the beam's it_802BAC3C.
+    if f.character.get::<Samus>().grapple.callbacks {
+        crate::grapple::on_death(f);
+    }
     if !f.character.get::<Samus>().damage_callbacks {
         return;
     }
@@ -160,11 +173,24 @@ impl CharacterCallbacks for Samus {
     fn on_motion_change(&mut self) {
         self.damage_callbacks = false;
     }
-    /// ftCo_Catch.c:26-136 (fn_800D952C, fn_800D9558, fn_800D9930): the
-    /// grapple beam replaces the body grab.
-    fn catch_variant(&mut self) {
-        unimplemented!("ftCo_Catch.c:125: Samus grapple beam (fn_800D9558)");
-    }
+    /// ftCo_Catch.c:115-136 (fn_800D9558, fn_800D9930): the grapple beam's
+    /// timeline runs in the grab's rows.
+    const CATCH_ENTERED: Option<fn(&mut Fighter)> = Some(crate::grapple::catch_entered);
+    /// ftCo_800C3B10's FTKIND_SAMUS arm: the aerial grapple.
+    const AIR_TETHER: Option<fn(&mut Fighter, &FighterAssets) -> bool> =
+        Some(crate::grapple::air::try_tether);
+    /// it_802BAC80: the beam's rope.
+    const ACCESSORY2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)> =
+        Some(crate::grapple::accessory);
+    /// it_802BACC4: the rope in hitlag.
+    const HITLAG_ACCESSORY: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> =
+        Some(crate::grapple::hitlag_accessory);
+    /// ftCo_Throw.c:152's FTKIND_SAMUS arm, ftSs_Init_CreateThrowGrappleBeam:
+    /// the beam's throw model is fp->x20A0_accessory, drawn and animated
+    /// only (Fighter_8006C80C); nothing simulated reads it.
+    fn throw_variant(&self) {}
+    /// fn_800D9CE8's FTKIND_SAMUS arm.
+    const CATCH_PULLED: Option<fn(&mut Fighter)> = Some(crate::grapple::catch_pulled);
 
     /// ftCo_800992A8's FTKIND_SAMUS arm: ftCo_80099390.
     const PREPARE_ROLL: Option<fn(&mut Fighter)> = Some(crate::escape::prepare_roll);
@@ -186,7 +212,9 @@ impl CharacterCallbacks for Samus {
         &DESCRIPTOR
     }
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
-        Ok(Self::new(read_samus_attributes(data)?))
+        let mut samus = Self::new(read_samus_attributes(data)?);
+        samus.grapple_article = crate::attributes::read_grapple_article(data)?;
+        Ok(samus)
     }
     /// ftSamus_FighterVars +222C..+2248. The charge-shot and grapple GObjs
     /// (+222C, +223C) are not modelled; a save with either set fails closed.

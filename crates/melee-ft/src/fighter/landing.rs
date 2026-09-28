@@ -98,14 +98,24 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
-    pub(super) fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.enter_landing_with(assets, true)
+    }
+    /// ftCo_Landing_Enter (0x800D5AEC) on Landing at frame 0, rate 1, with
+    /// the caller's mv.co.landing.allow_interrupt (ftCo_AirCatch_Coll
+    /// passes false).
+    pub fn enter_landing_with(
+        &mut self,
+        assets: &FighterAssets,
+        allow_interrupt: bool,
+    ) -> Result<()> {
         let retained_drop_timer = self.retained_drop_timer();
         self.land();
         self.change_motion_state(CommonMotionState::Landing.into(), assets)?;
-        self.character.on_landing(true);
-        (self.character.table().landing_articles)(self, true);
+        self.character.on_landing(allow_interrupt);
+        (self.character.table().landing_articles)(self, allow_interrupt);
         self.core.state_data = MotionData::Landing {
-            allow_interrupt: true,
+            allow_interrupt,
             retained_drop_timer,
         };
         Ok(())

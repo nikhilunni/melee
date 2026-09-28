@@ -13,6 +13,7 @@ melee-it = { path = "../melee-it" }
 it-samus = { path = "../it-samus" }
 melee-coll = { path = "../melee-coll" }
 melee-mp = { path = "../melee-mp" }
+melee-lb = { path = "../melee-lb" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }

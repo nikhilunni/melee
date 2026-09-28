@@ -83,6 +83,9 @@ pub enum ItemControl {
     OwnerHitlag(bool),
     /// it_802B1FC8: the owner struck by its lead Thunder bolt.
     Strike,
+    /// Item_80268E5C(item, state, ITEM_ANIM_UPDATE) from the owner's proc
+    /// (Samus's grapple beam, which its owner drives).
+    Motion(u16),
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {

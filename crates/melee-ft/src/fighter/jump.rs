@@ -278,9 +278,9 @@ impl FighterCore {
         }
     }
 
-    /// ftCommon_CheckFallFast (8007D528), FallFast (8007D4E4), Fall (8007D494).
-    /// Shared by ordinary airborne physics and ft_80084E1C's multijump drift.
-    pub(super) fn apply_fall_gravity(&mut self, assets: &FighterAssets) {
+    /// ftCommon_CheckFallFast (8007D528): a flick down while sinking starts
+    /// the fast fall.
+    pub fn check_fast_fall(&mut self, assets: &FighterAssets) {
         if !self.physics.fast_fall
             && self.physics.self_velocity.y < 0.0
             && self.input.current.stick.y <= -assets.jumping.fast_fall_threshold
@@ -289,6 +289,12 @@ impl FighterCore {
             self.physics.fast_fall = true;
             self.input.vertical.tilt = 0xFE;
         }
+    }
+
+    /// ftCommon_CheckFallFast (8007D528), FallFast (8007D4E4), Fall (8007D494).
+    /// Shared by ordinary airborne physics and ft_80084E1C's multijump drift.
+    pub(super) fn apply_fall_gravity(&mut self, assets: &FighterAssets) {
+        self.check_fast_fall(assets);
         let air = &self.attributes.air;
         self.physics.self_velocity.y = if self.physics.fast_fall {
             -air.fast_fall_velocity

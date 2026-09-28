@@ -212,3 +212,63 @@ impl SamusAttributes {
         })
     }
 }
+
+/// itSamusGrappleAttributes' base words (PlSs.dat ftData.x48_items[3], the
+/// Article's +4), which it_802B75FC scales into the rope's.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GrappleArticle {
+    /// x0: what a bounce keeps of the tip's velocity.
+    pub bounce: f32,
+    /// xC: the rope's links at scale 1.
+    pub links: i32,
+    /// x10 / x14: the longest and shortest span between links.
+    pub span: f32,
+    pub min_span: f32,
+    /// x18: the throw's speed.
+    pub throw_speed: f32,
+    /// x1C: the hanging rope's gravity.
+    pub gravity: f32,
+    /// x20.
+    // TODO(meaning): read only into x48, which the grabs do not use.
+    pub x20: f32,
+    /// x24: the reel-in speed (x4C).
+    pub retract_speed: f32,
+    /// x28.
+    // TODO(meaning): read only into x50, which the grabs do not use.
+    pub x28: f32,
+    /// x2C: the pull's reel speed (x54).
+    pub reel_speed: f32,
+    /// x30: the loose tip's air friction (x58).
+    pub friction: f32,
+    /// x5C / x60: a grab's and the aerial tether's coefficient.
+    pub grab_coefficient: f32,
+    pub air_coefficient: f32,
+}
+
+/// ftSs_Init_OnLoad's ftData.x48_items[3]: the grapple beam's attributes.
+pub fn read_grapple_article(archive: &Archive) -> Result<GrappleArticle> {
+    let root = archive.public("ftDataSamus").ok_or_else(|| {
+        FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
+            name: "ftDataSamus".into(),
+        })
+    })?;
+    let r = archive.reader();
+    let items = r.u32(root + 0x48)?;
+    let article = r.u32(items + 3 * 4)?;
+    let base = r.u32(article + 4)?;
+    Ok(GrappleArticle {
+        bounce: r.f32(base)?,
+        links: r.s32(base + 0xC)?,
+        span: r.f32(base + 0x10)?,
+        min_span: r.f32(base + 0x14)?,
+        throw_speed: r.f32(base + 0x18)?,
+        gravity: r.f32(base + 0x1C)?,
+        x20: r.f32(base + 0x20)?,
+        retract_speed: r.f32(base + 0x24)?,
+        x28: r.f32(base + 0x28)?,
+        reel_speed: r.f32(base + 0x2C)?,
+        friction: r.f32(base + 0x30)?,
+        grab_coefficient: r.f32(base + 0x5C)?,
+        air_coefficient: r.f32(base + 0x60)?,
+    })
+}

@@ -193,7 +193,7 @@ fn spawn_counter_skips_zero_after_wrapping() {
 fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     use melee_ft::fighter::state::unimplemented_anim;
     use std::panic::{catch_unwind, AssertUnwindSafe};
-    let Some(fixture) = Fixture::load() else {
+    let Some(mut fixture) = Fixture::load() else {
         return;
     };
     let mut fighter = fixture.prepared(Fixture::player(0));
@@ -240,7 +240,7 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     fighter.motion_row.anim = unimplemented_anim;
     assert!(catch_unwind(AssertUnwindSafe(|| fighter.proc_anim(
         &fixture.assets,
-        &fixture.map,
+        &mut fixture.map,
         &mut HsdRng::new(1)
     )))
     .is_err());

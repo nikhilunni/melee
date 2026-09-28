@@ -112,7 +112,9 @@ pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
     if fighter.try_aerial_item_catch(phase.assets) {
         return;
     }
-    fighter.character.air_dodge_tether();
+    if fighter.try_air_tether(phase.assets) {
+        return;
+    }
     if requested(&fighter.core.input, &phase.assets.input) {
         (fighter.character.table().enter_aerial)(fighter, phase.assets).expect("aerial interrupt");
     } else if fighter.aerial_jump_requested(phase.assets) {

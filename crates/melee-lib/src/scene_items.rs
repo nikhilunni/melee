@@ -41,6 +41,7 @@ melee_it::item_kinds! {
         SamusMissile: it_samus::SamusMissile,
         SamusCharge: it_samus::SamusCharge,
         SamusBomb: it_samus::SamusBomb,
+        SamusGBeam: it_samus::SamusGrapple,
     }
 }
 
@@ -447,7 +448,18 @@ impl Resources {
             )?;
             bomb.read_common_release(&common_archive, public)?;
             kinds.push((ItemKind::SamusBomb, bomb));
-            visual_archives.push((ItemKind::SamusBomb, a));
+            visual_archives.push((ItemKind::SamusBomb, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[3]: the grapple beam, whose rope its owner
+            // simulates.
+            let grapple = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_samus::grapple::ARTICLE_INDEX,
+                &it_samus::grapple::ARTICLE_STATES,
+                it_samus::grapple::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::SamusGBeam, grapple));
+            visual_archives.push((ItemKind::SamusGBeam, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
