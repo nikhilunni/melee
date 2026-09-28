@@ -38,7 +38,9 @@ fn read_bank(data: &[u8]) -> Result<Vec<ParticleTexture>> {
         let h = Reader::new(header);
         let images = h.u32(0)?;
         let format = h.u32(4)?;
-        let palette_format = h.u32(8)?;
+        // psdisp.c:2116: the TLUT format is `(u8) tex_group->tlutfmt`; some
+        // banks (EfCaData, EfYsData) set bits above the low byte.
+        let palette_format = h.u32(8)? & 0xFF;
         let width =
             u16::try_from(h.u32(12)?).map_err(|_| invalid(base, "particle image too wide"))?;
         let height =
