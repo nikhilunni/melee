@@ -2016,7 +2016,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 79] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 81] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2182,6 +2182,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 79] = [
     // Up smash out of a down tilt, then Dolphin Slash: mv+4 carries through
     // AttackLw3, which writes only +2340.
     ("corpus_v3_bf_marth_fox4_e50f774a0_p2", 380),
+    // Long wave5 samples, exact end to end (FD Fox P1 5415 ticks; BF Fox P1 3623).
+    ("corpus_v3_s0_ee98155f3_p0", 5415),
+    ("corpus_v3_bf_fox_marth4_efd4a7dd2_p2", 3623),
 ];
 
 #[test]
