@@ -2304,7 +2304,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 229] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 241] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2697,6 +2697,21 @@ const CORPUS_V3_MATCHES: [(&str, usize); 229] = [
     // (ftCo_8009F834 block_70, efAsync kind 2: generator 0x5D).
     ("corpus_v3_fd_drmario_fox4_e0dee256e_p2", 144),
     ("corpus_v3_fd_drmario_fox4_e67c8e917_p2", 144),
+    // DRMARIO: exact samples of a 100-seed batch (300 cases, none faulted) from
+    // start_fd_drmario_fox4: every row 341..350, thrown and taunt Megavitamins,
+    // the Super Sheet, Bob-ombs and Fox's lasers.
+    ("corpus_v3_fd_drmario_fox4_ef89b3e70_p0", 3393),
+    ("corpus_v3_fd_drmario_fox4_e19f8579b_p1", 4229),
+    ("corpus_v3_fd_drmario_fox4_eeda0d0fc_p2", 3228),
+    ("corpus_v3_fd_drmario_fox4_ee62c6106_p0", 2934),
+    ("corpus_v3_fd_drmario_fox4_ec0a10b25_p1", 5965),
+    ("corpus_v3_fd_drmario_fox4_ea4d5d9ec_p2", 4035),
+    ("corpus_v3_fd_drmario_fox4_eb17a6598_p0", 5084),
+    ("corpus_v3_fd_drmario_fox4_ee32d950f_p1", 6001),
+    ("corpus_v3_fd_drmario_fox4_ea7e2e7e9_p2", 6001),
+    ("corpus_v3_fd_drmario_fox4_ee8d2a62f_p0", 6001),
+    ("corpus_v3_fd_drmario_fox4_e2bf046d4_p1", 6001),
+    ("corpus_v3_fd_drmario_fox4_e0d368f02_p2", 6001),
 ];
 
 #[test]
