@@ -55,6 +55,12 @@ impl Fighter {
         Ok(())
     }
 
+    /// ft_80082B1C (80082B1C) for a character row's landing: a slow
+    /// descent lands into Wait, a faster one into Landing.
+    pub fn land_from_air(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.stop_ceil_land(assets)
+    }
+
     /// ft_80082B1C, also the landing arm of ft_80082D40.
     fn stop_ceil_land(&mut self, assets: &FighterAssets) -> Result<()> {
         if self.physics.self_velocity.y > assets.soft_landing_speed {

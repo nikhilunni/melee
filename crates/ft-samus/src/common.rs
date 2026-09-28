@@ -14,6 +14,11 @@ use melee_types::{CommonMotionState, GroundOrAir};
 const FIRST_SPECIAL_ACTION: u16 = 341;
 const FIRST_SPECIAL_ANIMATION: i32 = 295;
 
+/// ftCommon_GroundAirColl_MF (ftCommon/forward.h:9-12): SkipMatAnim |
+/// SkipColAnim | UpdateCmd | SkipItemVis | Unk19 | SkipModelPartVis |
+/// SkipModelFlags | Unk27.
+pub const GROUND_AIR: MotionEntryFlags = MotionEntryFlags(0x0C4C_5080);
+
 /// A ported row of ftSs_Init_MotionStateTable (341..358).
 pub const fn row(
     action: ActionId,
@@ -322,4 +327,19 @@ pub fn clamp_self_velocity_x(f: &mut Fighter, maximum: f32) {
 /// part enum directly (no ftParts_GetBoneIndex), so these are parts indices.
 pub fn part(part: melee_types::FtPart) -> usize {
     i32::from(part) as usize
+}
+
+/// Fighter_ChangeMotionState's efAsync_QueueFlush (fighter.c:951) from an
+/// animation callback: what the outgoing script issued this frame spawns
+/// before the change, ahead of the new script's frame-0 effects and colour
+/// step. Resolving those graphics commands now (their offset draws are the
+/// proc's next RNG work) lets the change seal them with the outgoing pose.
+pub fn seal_graphics(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) {
+    if !f.core.commands.graphics.is_empty() {
+        f.core.resolve_graphics_commands(assets, rng);
+    }
 }

@@ -169,7 +169,7 @@ impl ItemLogic for DrMarioPill {
     /// itDrMarioPill_802C061C, the taunt pill's on_accessory: it sits at
     /// its owner's position (the JObj's Y rotation, M_PI_2 * facing, and
     /// Z rotation are the model's alone).
-    fn accessory(item: &mut ItemCore, owner: Option<&ItemOwner>) {
+    fn accessory(item: &mut ItemCore, owner: Option<&ItemOwner>, _assets: &ItemAssets) {
         if item.motion != TAUNT {
             return;
         }

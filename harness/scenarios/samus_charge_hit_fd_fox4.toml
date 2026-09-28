@@ -1,0 +1,28 @@
+# SAMUS directed witness: Fox runs in and hits Samus as she charges: take_dmg_cb
+# (ftSs_Init_80128428) drops the shot and resets the kept charge.
+# melee-sim search: reached [p0.percent > 0] at ticks [154].
+name = "samus_charge_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 214
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 142, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 145, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

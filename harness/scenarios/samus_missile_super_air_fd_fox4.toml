@@ -1,0 +1,26 @@
+# SAMUS directed witness: a jump, then an aerial super missile (ftSs_MS_SpecialAirSSmash)
+# from a fresh smash; it strikes Fox.
+name = "samus_missile_super_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 98, port = 0, buttons = {  }, raw = {  } },
+  { frame = 106, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 108, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

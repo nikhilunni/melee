@@ -195,6 +195,21 @@ pub struct Launch {
     pub center: Vec3,
     pub attack: Option<melee_types::combat::AttackInstance>,
     pub attack_stale: f32,
+    /// A release that also aims the article (Samus's charge shot,
+    /// it_802B56E4), if any.
+    pub aim: Option<Aim>,
+}
+
+/// it_802B56E4's arguments: the point the article leaves from, its angle
+/// in radians, the charge it carries and the full charge, as floats, and
+/// the holder's facing (ftLib_800865C0).
+#[derive(Clone, Copy, Debug)]
+pub struct Aim {
+    pub position: Vec3,
+    pub angle: f32,
+    pub charge: f32,
+    pub full_charge: f32,
+    pub facing: f32,
 }
 
 /// The holding fighter, lent to a held item's callbacks. A held item
@@ -248,4 +263,37 @@ pub struct ItemOwner {
     /// fp->motion_id, read by articles whose lifetime follows the owner's
     /// motion (ftPe_SpecialN_IsActive, ftPe_SpecialHi_NotActive).
     pub motion: u16,
+    /// The owner's count of articles it has fired, which its articles
+    /// compare with the count at their own launch (Samus's missiles read
+    /// u.ss.x2238 through ftSs_SpecialS_8012A068). Zero for other kinds.
+    pub articles_fired: u32,
+    /// ftSs_SpecialLw_80129100: while the owner holds a charging article
+    /// (u.ss.x222C), its charge level and full level (fctiwz of x18).
+    pub charge: Option<(i32, i32)>,
+}
+
+/// A fighter an article may lock on to (ftLib_80086368's candidates): its
+/// player, whether it is out of play (x221F_b3) and its camera bone's
+/// position with the zoom offset (ftLib_800866DC).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LockOnFighter {
+    pub player: u8,
+    pub disabled: bool,
+    pub position: Vec3,
+}
+
+/// An item an article may lock on to (it_8026C258's candidates, already
+/// filtered by hold kind, grab and holder): its ECB-centre position
+/// (it_8026BB88).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LockOnItem {
+    pub position: Vec3,
+}
+
+/// The candidates of a homing article's physics, in the object lists'
+/// order. Only kinds with [`crate::ItemLogic::LOCKS_ON`] receive them.
+#[derive(Clone, Debug, Default)]
+pub struct LockOnTargets {
+    pub fighters: melee_types::fixed::FixedVec<LockOnFighter, 6>,
+    pub items: melee_types::fixed::FixedVec<LockOnItem, 64>,
 }

@@ -12,6 +12,8 @@ pub struct ItemAnimationContext<'a> {
 }
 pub struct ItemPhysicsContext<'a> {
     pub owner: Option<&'a ItemOwner>,
+    /// Lock-on candidates, for kinds with `ItemLogic::LOCKS_ON`.
+    pub targets: &'a crate::LockOnTargets,
     pub assets: &'a ItemAssets,
     pub bounds: &'a crate::ItemBounds,
     /// HSD_Randi / HSD_Randf for callbacks that draw.
@@ -80,6 +82,9 @@ pub trait ItemLogic {
     /// (Item_802697D4) and collision (Item_80269978) procs once at once,
     /// with the blast-zone check (xDCC b3) off (it_8029B6F8).
     const PROCS_AT_SPAWN: bool = false;
+    /// The physics callback looks for a target (Samus's missile,
+    /// it_802B64FC): the scene supplies `ItemPhysicsContext::targets`.
+    const LOCKS_ON: bool = false;
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     /// The spawning code's own set-up once Item_80268B18 returns (e.g.
     /// it_802BE2E8 for Toad's spores), which may draw from the RNG.
@@ -101,6 +106,17 @@ pub trait ItemLogic {
         _spawn: &crate::SpawnItem,
         _map: &mut melee_mp::CollMap,
     ) {
+    }
+    /// The holder sends its held article out (ItemRequest::Launch): the
+    /// Egg Throw's it_802B28C8, the charge shot's it_802B56E4.
+    fn launch(
+        _item: &mut ItemCore,
+        _launch: &crate::Launch,
+        _common: &crate::desc::ItemCommonData,
+        _map: &mut melee_mp::CollMap,
+        _assets: &ItemAssets,
+    ) {
+        unimplemented!("held article launch for this kind")
     }
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
@@ -134,7 +150,7 @@ pub trait ItemLogic {
     }
     /// Item_80269A9C (item link 9): the item's on_accessory callback, which
     /// hitlag skips.
-    fn accessory(_item: &mut ItemCore, _owner: Option<&ItemOwner>) {}
+    fn accessory(_item: &mut ItemCore, _owner: Option<&ItemOwner>, _assets: &ItemAssets) {}
     fn owner_removed(item: &mut ItemCore, owner: u8) {
         if item.owner == Some(owner) {
             item.owner = None;
@@ -149,6 +165,16 @@ pub trait ItemLogic {
     /// The Destroyed callback clears the partner's pointer back (as
     /// it_2725_Logic106_Destroyed's it_802B43B0 does).
     const UNLINKS_PARTNER_ON_DESTROY: bool = false;
+    /// The world matrix of the joint the kind's own generators follow
+    /// (efSync_Spawn on one of its JObjs), given the root's. The root by
+    /// default; Samus's missile's trail rides its model's grandchild.
+    fn effect_joint_matrix(
+        _item: &ItemCore,
+        _assets: &ItemAssets,
+        root: hsd_types::Mtx,
+    ) -> hsd_types::Mtx {
+        root
+    }
     /// What the owner reads of this article, if it is the one tracked.
     fn owner_report(_item: &ItemCore, _assets: &ItemAssets) -> Option<crate::ArticleReport> {
         None
@@ -177,6 +203,8 @@ pub trait ItemLogic {
         spawned_with_map: Self::spawned_with_map,
         pickup_possible: Self::pickup_possible,
         procs_at_spawn: Self::PROCS_AT_SPAWN,
+        locks_on: Self::LOCKS_ON,
+        launch: Self::launch,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
         dropped: Self::dropped,
@@ -195,6 +223,7 @@ pub trait ItemLogic {
         partner_bone: Self::PARTNER_BONE,
         unlinks_partner_on_destroy: Self::UNLINKS_PARTNER_ON_DESTROY,
         owner_report: Self::owner_report,
+        effect_joint_matrix: Self::effect_joint_matrix,
         notifies_owner: Self::notifies_owner,
         link_received: Self::link_received,
     };
@@ -223,6 +252,14 @@ pub struct ItemLogicRow {
     ),
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub procs_at_spawn: bool,
+    pub locks_on: bool,
+    pub launch: fn(
+        &mut ItemCore,
+        &crate::Launch,
+        &crate::desc::ItemCommonData,
+        &mut melee_mp::CollMap,
+        &ItemAssets,
+    ),
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
@@ -235,12 +272,13 @@ pub struct ItemLogicRow {
     pub absorbed: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub shield_bounced: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
-    pub accessory: fn(&mut ItemCore, Option<&ItemOwner>),
+    pub accessory: fn(&mut ItemCore, Option<&ItemOwner>, &ItemAssets),
     pub owner_removed: fn(&mut ItemCore, u8),
     pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
     pub partner_bone: Option<usize>,
     pub unlinks_partner_on_destroy: bool,
     pub owner_report: fn(&ItemCore, &ItemAssets) -> Option<crate::ArticleReport>,
+    pub effect_joint_matrix: fn(&ItemCore, &ItemAssets, hsd_types::Mtx) -> hsd_types::Mtx,
     pub notifies_owner: fn(&ItemCore) -> bool,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
 }

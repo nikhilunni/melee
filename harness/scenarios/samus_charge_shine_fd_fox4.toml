@@ -1,0 +1,29 @@
+# SAMUS directed witness: a full Charge Shot reflected by Fox's Reflector
+# (it_2725_Logic108_Reflected: the angle turned half a circle, wrapped) back at Samus.
+# melee-sim search: reached [items.0.owner == 1] at ticks [308].
+name = "samus_charge_shine_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 398
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 286, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 311, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -221,6 +221,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             blaster_action: 9,
             remove_blaster: true,
             motion: fighter.motion_state.action.0,
+            articles_fired: 0,
+            charge: None,
         }
     }
 

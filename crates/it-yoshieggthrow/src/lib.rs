@@ -75,6 +75,16 @@ impl ItemLogic for YoshiEggThrow {
     fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         change(item, motion::HELD, ANIM_UPDATE, context.assets);
     }
+    /// it_802B28C8, from the owner's throw.
+    fn launch(
+        item: &mut ItemCore,
+        launch: &Launch,
+        common: &melee_it::desc::ItemCommonData,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+    ) {
+        self::launch(item, launch, common.half_life_scale, map, assets);
+    }
     /// it_802B2C04 (802B2C04).
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         burst_unless_bursting(item, context.assets);

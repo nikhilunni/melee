@@ -665,6 +665,7 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "it-samus",
  "melee-coll",
  "melee-ef",
  "melee-ft",
@@ -979,6 +980,19 @@ name = "it-pikachu"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-types",
+]
+
+[[package]]
+name = "it-samus"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-anim",
  "hsd-types",
  "melee-it",
  "melee-lb",
@@ -1314,6 +1328,7 @@ dependencies = [
  "it-mariofire",
  "it-peach",
  "it-pikachu",
+ "it-samus",
  "it-yoshieggthrow",
  "it-yoshistar",
  "melee-cm",

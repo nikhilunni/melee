@@ -193,7 +193,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 24] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 25] = [
     // efasync.c:353-355: efLib_CreateGenerator(0x19) at the point (it_80272AC4,
     // an item meeting the floor: Thunder's lead bolt).
     DustSpawn {
@@ -338,12 +338,21 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 24] = [
         particle: 0x4658,
         directional: false,
     },
+    // efalt.c:89-91: efAlt_Spawn 0x483, Samus's bank-2 generator 0x7D7 at
+    // the missile's launch point (ftSs_SpecialS_8012A168).
+    DustSpawn {
+        request: 0x483,
+        particle: 0x7D7,
+        directional: false,
+    },
 ];
 // efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
 // request id and the model it creates at the given point.
-pub(super) static POSITIONAL_MODELS: [(u16, u32); 1] = [
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 2] = [
     // efsync.c:433-435: Peach's vegetable pull.
     (0x4D2, 0x3A98),
+    // efalt.c:98-113: Samus's charge shot muzzle flash, turned to the facing.
+    (0x486, 0x7D1),
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.

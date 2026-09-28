@@ -157,6 +157,18 @@ impl ItemCore {
         (grounded, edge)
     }
 
+    /// it_8026DA08 (8026DA08): an airborne pass (mpColl_800471F8) that
+    /// moves the item to the resolved position; a touched floor's line
+    /// becomes xC30. Nothing lands or bounces.
+    pub fn air_pass(&mut self, map: &mut melee_mp::CollMap) -> bool {
+        let mut collision = self.refresh_collision();
+        let floor = map.air_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.floor_line_from(&collision, floor);
+        self.collision = Some(collision);
+        floor
+    }
+
     /// it_8026DA70 (8026DA70): an airborne pass (mpColl_800471F8) that only
     /// senses the map: whether it found a floor. Unlike it_8026E414 the
     /// item keeps its own position; the CollData keeps the resolved one, so
@@ -278,6 +290,26 @@ impl ItemCore {
             bits |= 2;
         }
         bits
+    }
+
+    /// it_8026E71C (8026E71C) without its callback: it_8026DAA8's pass
+    /// and bits; a wall touched on the last pass as well nudges the item
+    /// (it_80276D9C), and a floor restores the grounded box and grounds it
+    /// (it_80275DFC, it_802762B0). True on any contact, when retail calls
+    /// the callback.
+    pub fn air_contact_any(&mut self, map: &mut melee_mp::CollMap, assets: &ItemAssets) -> bool {
+        let bits = self.air_contact_bits(map);
+        if bits & 0xF == 0 {
+            return false;
+        }
+        if bits & 0xC != 0 {
+            self.leave_repeated_contact(bits);
+        }
+        if bits & 1 != 0 {
+            self.restore_collision_box(assets);
+            self.land_on_floor();
+        }
+        true
     }
 
     /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's

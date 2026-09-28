@@ -84,6 +84,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
     pool.physics::<Items>(
         ray,
         None,
+        &Default::default(),
         &melee_it::ItemBounds {
             left: -246.0,
             right: 246.0,

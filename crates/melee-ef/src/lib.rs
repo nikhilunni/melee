@@ -1010,8 +1010,23 @@ impl Effects {
                 | EffectRequest::Clank { .. } => unreachable!(),
                 // efLib_Create_Attach_Pos: HSD_JObjSetTranslate only.
                 EffectRequest::PositionalModel {
-                    position: origin, ..
-                } => position = origin,
+                    position: origin,
+                    id,
+                } => {
+                    position = origin;
+                    if id == 0x486 {
+                        // efAlt 0x486: HSD_JObjSetRotationY of an f64
+                        // +-M_PI_2 by the facing, rounded.
+                        effect.tree.set_rotation_y(
+                            effect.root,
+                            if fighter.effect_facing() < 0.0 {
+                                -std::f64::consts::FRAC_PI_2 as f32
+                            } else {
+                                std::f64::consts::FRAC_PI_2 as f32
+                            },
+                        );
+                    }
+                }
                 EffectRequest::SurfaceRebound {
                     position: origin,
                     angle,
@@ -1125,7 +1140,7 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            if scaled_facing {
+            if scaled_facing || matches!(request, EffectRequest::PositionalModel { .. }) {
                 // efSync_Spawn's efLib_AnimQueue drain (efsync.c:654-660);
                 // the model's particles come from its character bank.
                 effect.animate_banks::<T>(

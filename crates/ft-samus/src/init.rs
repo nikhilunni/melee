@@ -28,6 +28,21 @@ pub struct Samus {
     pub damage_callbacks: bool,
     /// Screw Attack's motion scratch.
     pub screw_attack: crate::special_hi::ScrewAttack,
+    /// The accessory4 callback a special installed.
+    pub accessory: Accessory,
+    /// Fighter +222C, x222C: the charge shot in Samus's hand.
+    pub charge_article: bool,
+    /// Charge Shot's motion scratch.
+    pub charge_shot: crate::special_n::ChargeShot,
+}
+
+/// accessory4_cb while a special owns it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// ftSs_SpecialS_8012A074: the missile on the script's throw flag.
+    Missile,
 }
 impl Samus {
     pub fn new(attributes: SamusAttributes) -> Self {
@@ -41,6 +56,9 @@ impl Samus {
             ball: false,
             damage_callbacks: false,
             screw_attack: Default::default(),
+            accessory: Accessory::None,
+            charge_article: false,
+            charge_shot: Default::default(),
         }
     }
 }
@@ -59,14 +77,11 @@ fn damage_callback(f: &mut Fighter) {
     if !f.character.get::<Samus>().damage_callbacks {
         return;
     }
-    let samus = f.character.get_mut::<Samus>();
-    // ftSamus_UnkAndDestroyAllEF: no charge shot item is modelled yet.
-    let charge_effects = std::mem::take(&mut samus.charge_effects);
-    samus.charge_level = 0;
-    samus.screw_effect = false;
-    if charge_effects {
-        f.effects.push(EffectRequest::DestroyOwned);
-    }
+    // ftSs_SpecialN_80129258: ftSamus_UnkAndDestroyAllEF, x2230 = 0.
+    crate::special_n::drop_shot(f);
+    crate::special_n::set_charge_level(f, 0);
+    // ftSs_SpecialS_8012A640.
+    f.character.get_mut::<Samus>().screw_effect = false;
     f.effects.push(EffectRequest::DestroyOwned);
     // ftCo_800D9C98 clears take_dmg_cb and death2_cb.
     f.character.get_mut::<Samus>().damage_callbacks = false;
@@ -89,11 +104,49 @@ impl CharacterCallbacks for Samus {
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             _ => unimplemented!(
                 "ftData_Special{slot:?}[Samus] (airborne: {airborne}): character special entry"
             ),
         }
     }
+    /// Fighter_8006C80C: the special's accessory4 while installed.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<Samus>().accessory {
+            Accessory::Missile => crate::special_s::fire(f),
+            Accessory::None => {}
+        }
+    }
+    /// The missiles read the count of missiles fired (u.ss.x2238).
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            articles_fired: f.character.get::<Samus>().missiles_fired,
+            charge: f.character.get::<Samus>().charge_article.then(|| {
+                (
+                    f.character.get::<Samus>().charge_level,
+                    crate::special_n::full_charge(f),
+                )
+            }),
+        }
+    }
+    /// it_2725_Logic108_Destroyed: a shot that never left the hand lets
+    /// Samus go of it (ftSs_SpecialN_801291F0).
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::SamusCharge {
+            crate::special_n::let_go(f);
+        }
+    };
     /// ftCommon_8007DB58: take_dmg_cb (ftSs_Init_80128428) when installed.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(damage_callback);
     /// ftCo_800D331C: death2_cb, the same callback.

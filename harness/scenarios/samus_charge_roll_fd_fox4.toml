@@ -1,0 +1,26 @@
+# SAMUS directed witness: a horizontal smash out of the Charge Shot hold rolls
+# (ftCo_8009917C -> the morph-ball roll) and the shot is let go (ftSamus_UnkAndDestroyAllEF).
+name = "samus_charge_roll_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

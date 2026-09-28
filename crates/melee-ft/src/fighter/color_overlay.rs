@@ -162,12 +162,12 @@ impl FighterCore {
     }
 
     /// ftCo_800C0134 (800C0134) on a motion change without Ft_MF_SkipColAnim:
-    /// lb_80014498 on the secondary slot. Retail installs script requests as
-    /// they run, so this motion's queued secondary requests went too. No
-    /// supported kind has ftData_UnkMotionStates4, and the Hammer states
-    /// (ftCo_800C53E4) are out of scope.
+    /// lb_80014498 on the secondary slot and ftData_UnkMotionStates4.
+    /// Retail installs script requests as they run, so this motion's queued
+    /// secondary requests went too. The Hammer states (ftCo_800C53E4) are
+    /// out of scope.
     pub fn clear_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
-        self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+        self.empty_secondary_color_overlay(table);
         let queued = &mut self.commands.color_animations;
         let mut i = 0;
         while i < queued.len() {
@@ -232,7 +232,16 @@ impl FighterCore {
             if !ended && !expired {
                 break;
             }
-            self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+            self.empty_secondary_color_overlay(table);
+        }
+    }
+
+    /// lb_80014498 on the secondary slot (x488), then the kind's
+    /// ftData_UnkMotionStates4 (`secondary_color_fallback`).
+    fn empty_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
+        self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+        if let Some(id) = self.combat.secondary_color_fallback {
+            self.install_color_overlay(id, 0, table);
         }
     }
 
@@ -246,8 +255,8 @@ impl FighterCore {
     }
 
     /// ftCo_800C0200 (800C0200): a released smash charge clears its color's
-    /// slot. The secondary slot just empties (no supported kind has
-    /// ftData_UnkMotionStates4; the Hammer check is out of scope); the
+    /// slot. The secondary slot empties and takes the kind's
+    /// ftData_UnkMotionStates4 (the Hammer check is out of scope); the
     /// primary slot takes ftCo_800C0408's fallbacks. Requests queued before
     /// the release were installed earlier in retail, so they go first.
     pub(super) fn release_charge_color(&mut self, id: u8, assets: &super::assets::FighterAssets) {
@@ -258,7 +267,7 @@ impl FighterCore {
         self.install_requested_color_overlays(assets);
         let table = &assets.color_overlays;
         if table.entry(id).secondary {
-            self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+            self.empty_secondary_color_overlay(table);
         } else {
             self.clear_color_overlay(table);
         }

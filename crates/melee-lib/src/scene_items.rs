@@ -38,6 +38,8 @@ melee_it::item_kinds! {
         DrMarioVitamin: it_drmariopill::DrMarioPill,
         DrMarioSheet: it_mariocape::DrMarioSheet,
         LuigiFire: it_luigifire::LuigiFire,
+        SamusMissile: it_samus::SamusMissile,
+        SamusCharge: it_samus::SamusCharge,
     }
 }
 
@@ -400,6 +402,39 @@ impl Resources {
             kinds.push((ItemKind::IceClimberIce, ice));
             visual_archives.push((ItemKind::IceClimberIce, a));
         }
+        // ftSs_Init_OnLoad: ftData.x48_items[2] is the missile.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlSs.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataSamus").context("Samus fighter data")?;
+            let mut missile = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_samus::missile::ARTICLE_INDEX,
+                &it_samus::missile::ARTICLE_STATES,
+                it_samus::missile::SPECIAL_ATTRIBUTES,
+            )?;
+            // it_8027518C: the explosion's common lifetime.
+            missile.read_common_release(&common_archive, public)?;
+            // The trail follows the model's grandchild.
+            missile
+                .read_pose(&a)
+                .map_err(|e| anyhow::anyhow!("missile pose: {e}"))?;
+            kinds.push((ItemKind::SamusMissile, missile));
+            visual_archives.push((ItemKind::SamusMissile, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[1]: the charge shot.
+            let charge = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_samus::charge::ARTICLE_INDEX,
+                &it_samus::charge::ARTICLE_STATES,
+                it_samus::charge::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::SamusCharge, charge));
+            visual_archives.push((ItemKind::SamusCharge, a));
+        }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
             stage,
@@ -684,14 +719,8 @@ pub fn request(
             kind,
             launch,
         } => {
-            assert_eq!(
-                kind,
-                ItemKind::YoshiEggThrow,
-                "held article launch for {kind:?}"
-            );
-            let half_life_scale = pool.common().half_life_scale;
-            let item = pool
-                .iter_mut()
+            let (common, mut items) = pool.common_and_items_mut();
+            let item = items
                 .find(|item| {
                     item.owner == Some(slot)
                         && item.owner_secondary == owner_context.secondary
@@ -699,7 +728,7 @@ pub fn request(
                         && item.held
                 })
                 .expect("launched article in its owner's hand");
-            it_yoshieggthrow::launch(item, &launch, half_life_scale, map, resources.get(kind));
+            (SceneItems::logic(kind).launch)(item, &launch, common, map, resources.get(kind));
             return None;
         }
         ItemRequest::DropArticle {
@@ -801,7 +830,7 @@ pub fn request(
             // blast-zone test (xDCC b3 cleared, then set again).
             pool.get_mut(id).unwrap().blast_zone_checked = false;
             let cell = std::cell::Cell::new(*rng);
-            pool.physics::<SceneItems>(id, None, bounds, assets, &cell);
+            pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, &cell);
             *rng = cell.get();
             let contact = pool.stage_contact(id, map);
             pool.collide::<SceneItems>(id, None, contact, map, bounds, assets);

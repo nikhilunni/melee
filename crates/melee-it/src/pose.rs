@@ -248,6 +248,46 @@ impl ItemPose {
         matrix
     }
 
+    /// [`Self::bone_matrix`] with one joint's X rotation replaced (a kind
+    /// that turns a joint below the root itself, HSD_JObjSetRotationX), as
+    /// `(joint, angle)`. An article state without a joint animation keeps
+    /// the rest pose (Item_80268D34 restores it on every state change).
+    pub fn bone_matrix_turned(
+        &self,
+        state: usize,
+        steps: u32,
+        bone: usize,
+        root: RootSrt,
+        turned: Option<(usize, f32)>,
+    ) -> Mtx {
+        let source: &[LocalSrt] = match &self.states[state] {
+            Some(samples) => {
+                assert!(
+                    !self.looping.contains(&state) || (steps as usize) <= samples.len(),
+                    "item pose: a looping animation played past its samples"
+                );
+                &samples[(steps.max(1) as usize - 1).min(samples.len() - 1)]
+            }
+            None => &self.rest,
+        };
+        let mut locals = [LocalSrt {
+            flags: 0,
+            rotate: Quaternion::default(),
+            scale: Vec3::ZERO,
+            translate: Vec3::ZERO,
+        }; 16];
+        assert!(source.len() <= locals.len(), "item pose: too many joints");
+        locals[..source.len()].copy_from_slice(source);
+        if let Some((joint, angle)) = turned {
+            assert!(
+                locals[joint].flags & JOBJ_USE_QUATERNION == 0,
+                "item pose: turning a quaternion joint"
+            );
+            locals[joint].rotate.x = angle;
+        }
+        self.matrix_from_locals(&locals[..source.len()], bone, root)
+    }
+
     /// `bone`'s local transform `steps` animation steps into article state
     /// `state` (HSD_JObjGetRotationX and friends read these).
     pub fn local(&self, state: usize, steps: u32, bone: usize) -> &LocalSrt {

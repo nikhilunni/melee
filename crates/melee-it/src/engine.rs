@@ -139,7 +139,42 @@ pub enum ItemScratch {
     Jolt(JoltState),
     Thunder(ThunderState),
     ClimbersIce(ClimbersIceState),
+    Missile(MissileState),
+    ChargeShot(ChargeShotState),
     None,
+}
+/// Item.xDD4_itemVar.samuschargeshot (itsamuschargeshot.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ChargeShotState {
+    /// xE00: the fighter that formed the shot.
+    pub original_owner: Option<u8>,
+    /// xDD8: the flight's angle, in radians.
+    pub angle: f32,
+    /// xDDC: the flight's speed.
+    pub speed: f32,
+    /// xDE4 (flight) / the hand's scale: the model grandchild's scale.
+    pub scale: f32,
+    /// xDE8: fired.
+    pub launched: bool,
+    /// xDEC / xDF0: the charge level and the full level.
+    pub level: i32,
+    pub full: i32,
+    /// xDF4: the full shot's sparkle counter, 0..2.
+    pub sparkle: i32,
+    /// xDF8: the damage the charge gives (nothing ported reads it).
+    pub damage: u32,
+    /// xDFC: the hand glow plays.
+    pub glowing: bool,
+}
+/// Item.xDD4_itemVar.samusmissile (itsamusmissile.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MissileState {
+    /// is_smash_missile: a super missile.
+    pub smash: bool,
+    /// x4: the owner's missile count (u.ss.x2238) at launch.
+    pub launch_count: i32,
+    /// x8: the homing turn, the model child's X rotation.
+    pub turn: f32,
 }
 /// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
 /// Pikachu's Thunder chain; the partner is the next bolt (x34).
@@ -904,6 +939,12 @@ impl ItemPool {
     pub fn common_and_item_mut(&mut self, index: usize) -> (&ItemCommonData, &mut ItemCore) {
         (&self.common, &mut self.items[index])
     }
+    /// The common data beside every item, mutably.
+    pub fn common_and_items_mut(
+        &mut self,
+    ) -> (&ItemCommonData, impl DoubleEndedIterator<Item = &mut ItemCore>) {
+        (&self.common, self.items.iter_mut())
+    }
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
@@ -1255,10 +1296,12 @@ impl ItemPool {
             }
         }
     }
+    #[allow(clippy::too_many_arguments)] // Owner, targets and bounds stay separate.
     pub fn physics<D: ItemDispatch>(
         &mut self,
         id: u32,
         owner: Option<&ItemOwner>,
+        targets: &crate::LockOnTargets,
         bounds: &ItemBounds,
         assets: &ItemAssets,
         rng: &core::cell::Cell<gekko_math::HsdRng>,
@@ -1271,6 +1314,7 @@ impl ItemPool {
                 item,
                 &ItemPhysicsContext {
                     owner,
+                    targets,
                     assets,
                     bounds,
                     rng,

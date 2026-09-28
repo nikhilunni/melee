@@ -31,6 +31,10 @@ pub struct CombatState {
     /// changes without Ft_MF_SkipColAnim (ftCo_800C0134). A smash charge
     /// installs its color here and clears it on release (ftCo_800C0200).
     pub secondary_color_overlay: super::color_overlay::ColorOverlaySlot,
+    /// ftData_UnkMotionStates4[kind]: the color animation the kind installs
+    /// whenever the secondary slot empties (Samus's full charge glow, 53,
+    /// while u.ss.x2230 == x18). The character keeps it current.
+    pub secondary_color_fallback: Option<u8>,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,

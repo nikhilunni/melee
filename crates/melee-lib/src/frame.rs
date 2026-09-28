@@ -317,6 +317,12 @@ impl Runtime {
                             &item.position,
                             None,
                         );
+                        let matrix = (<crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                            item.kind,
+                        )
+                        .effect_joint_matrix)(
+                            item, state.assets.items.get(item.kind), matrix
+                        );
                         state.effects.spawn_item_generators::<RetailTrig>(
                             id,
                             item.id,
@@ -336,6 +342,12 @@ impl Runtime {
                             &item.rotation,
                             &item.root_translation,
                             None,
+                        );
+                        let matrix = (<crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                            item.kind,
+                        )
+                        .effect_joint_matrix)(
+                            item, state.assets.items.get(item.kind), matrix
                         );
                         state
                             .effects
@@ -684,9 +696,14 @@ impl Runtime {
             }
             4 => {
                 let rng = std::cell::Cell::new(state.rng);
+                let mut targets = melee_it::LockOnTargets::default();
+                if <SceneItems as melee_it::ItemDispatch>::logic(kind).locks_on {
+                    lock_on_targets(state, &mut targets);
+                }
                 state.items.physics::<SceneItems>(
                     id,
                     owner.as_ref(),
+                    &targets,
                     &item_bounds(&state.assets),
                     state.assets.items.get(kind),
                     &rng,
@@ -712,6 +729,7 @@ impl Runtime {
                     (<SceneItems as melee_it::ItemDispatch>::logic(kind).accessory)(
                         item,
                         owner.as_ref(),
+                        state.assets.items.get(kind),
                     );
                 }
                 if let melee_it::ItemScratch::Held(held) = &mut item.scratch {
@@ -1580,6 +1598,12 @@ impl Runtime {
                             &item.position,
                             None,
                         );
+                        let matrix = (<crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                            item.kind,
+                        )
+                        .effect_joint_matrix)(
+                            item, state.assets.items.get(item.kind), matrix
+                        );
                         state
                             .effects
                             .update_item_joint(item.id, matrix, &mut state.particles);
@@ -1680,7 +1704,8 @@ impl Runtime {
         self.deliver_item_links(row.s_link, world)?;
         let state = &mut self.state;
         // A new article's own efSync_Spawn (it_802BE2E8, it_802BD248's
-        // it_80272C08) belongs to its spawner's proc.
+        // it_80272C08) belongs to its spawner's proc, as does an article
+        // the proc destroyed at once (it_802B5974's efLib_DestroyAll).
         if state.items.iter().any(|item| {
             item.events.iter().any(|e| {
                 matches!(
@@ -1688,6 +1713,7 @@ impl Runtime {
                     melee_it::ItemEvent::OwnEffect { .. }
                         | melee_it::ItemEvent::Effect { .. }
                         | melee_it::ItemEvent::JointParticle { .. }
+                        | melee_it::ItemEvent::DestroyEffects
                 )
             })
         }) {
@@ -2227,6 +2253,40 @@ fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
         state
             .article_poses
             .display(item, templates, after_tick, &hand, orientation);
+    }
+}
+
+/// A homing article's candidates: every fighter in the fighter list with its
+/// out-of-play flag and ftLib_800866DC's camera bone position, and the items
+/// it_8026C258 accepts (hold kinds 4..=7, not held by an owner) at their
+/// ECB centre (it_8026BB88: fadds of the halved top and bottom).
+fn lock_on_targets(state: &mut InitialState, targets: &mut melee_it::LockOnTargets) {
+    for fighter in state.fighters.iter_mut() {
+        crate::scene_fighter::with_fighter!(fighter, |f| {
+            let f: &mut melee_ft::fighter::Fighter = f;
+            targets.fighters.push(melee_it::LockOnFighter {
+                player: f.core.player.id,
+                disabled: f.core.status.disabled,
+                position: f.core.camera_bone_position(),
+            });
+        });
+    }
+    for item in state.items.iter() {
+        if item.destroyed || !(4..=7).contains(&item.hold_kind) {
+            continue;
+        }
+        if item.held && item.owner.is_some() {
+            continue;
+        }
+        let ecb = item.collision.as_ref().expect("item map collision").ecb;
+        let offset = 0.5 * (ecb.top.y + ecb.bottom.y);
+        targets.items.push(melee_it::LockOnItem {
+            position: hsd_types::Vec3::new(
+                item.position.x + 0.0,
+                item.position.y + offset,
+                item.position.z + 0.0,
+            ),
+        });
     }
 }
 

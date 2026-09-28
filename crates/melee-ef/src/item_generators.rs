@@ -60,6 +60,35 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             kinds: &[0x1B58],
             add_appsrt: false,
         },
+        // efalt.c:92-97: Samus's missile trails, hsd_8039EFAC(0, 2, 0x7DB /
+        // 0x7DE, jobj) on the missile model's grandchild.
+        // efalt.c:77-85: the charge shot's glow in hand (0x7D4, on the
+        // model's grandchild) and a full shot's two sparkles (0x7D2, 0x7D3).
+        0x47F => ItemGenerators {
+            bank: 2,
+            kinds: &[0x7D4],
+            add_appsrt: false,
+        },
+        0x480 => ItemGenerators {
+            bank: 2,
+            kinds: &[0x7D2],
+            add_appsrt: false,
+        },
+        0x481 => ItemGenerators {
+            bank: 2,
+            kinds: &[0x7D3],
+            add_appsrt: false,
+        },
+        0x484 => ItemGenerators {
+            bank: 2,
+            kinds: &[0x7DB],
+            add_appsrt: false,
+        },
+        0x485 => ItemGenerators {
+            bank: 2,
+            kinds: &[0x7DE],
+            add_appsrt: false,
+        },
         _ => anyhow::bail!("efSync_Spawn {id:#x} on an item JObj"),
     })
 }

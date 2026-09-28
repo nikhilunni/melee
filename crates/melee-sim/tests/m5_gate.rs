@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 270] = [
+const MATRIX_WITNESSES: [(&str, usize); 286] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1311,6 +1311,29 @@ const MATRIX_WITNESSES: [(&str, usize); 270] = [
     ("samus_x_e573e2d95_p2", 345),
     ("samus_x_e00f31913_p2", 364),
     ("samus_x_e3e74affa_p1", 486),
+    // Missiles (ftSs_SpecialS, itsamusmissile.c): homing and super, grounded
+    // and aerial, a homing hit, and Fox's Reflector turning one back; the
+    // trail rides the model's grandchild (0 differing particle ticks).
+    ("samus_x_e9943b4ab_p0", 349),
+    ("samus_x_e573e2d95_p0", 352),
+    ("samus_missile_homing_fd_fox4", 260),
+    ("samus_missile_super_fd_fox4", 300),
+    ("samus_missile_air_fd_fox4", 300),
+    ("samus_missile_super_air_fd_fox4", 300),
+    ("samus_missile_shine_fd_fox4", 300),
+    // Charge Shot (ftSs_SpecialN, itsamuschargeshot.c): charging to full
+    // (colour 53 and ftSs_Init_UnkMotionStates4), partial and full shots,
+    // the shield cancel keeping the level, an aerial shot's recoil, a roll
+    // and a hit dropping the shot, and Fox reflecting a full shot.
+    ("samus_x_ec3145eb3_p2", 332),
+    ("samus_x_edb2b114a_p1", 344),
+    ("samus_charge_fire_fd_fox4", 300),
+    ("samus_charge_full_fd_fox4", 400),
+    ("samus_charge_air_fd_fox4", 300),
+    ("samus_charge_cancel_air_fd_fox4", 330),
+    ("samus_charge_roll_fd_fox4", 300),
+    ("samus_charge_hit_fd_fox4", 214),
+    ("samus_charge_shine_fd_fox4", 398),
 ];
 
 #[test]
