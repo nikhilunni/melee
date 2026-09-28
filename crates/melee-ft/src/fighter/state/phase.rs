@@ -12,6 +12,8 @@ use melee_mp::CollMap;
 /// Fighter_8006A360 (8006A360), s_link 1: playback and animation callbacks.
 pub struct AnimationPhase<'a> {
     pub assets: &'a FighterAssets,
+    /// Read-only: some callbacks query the floor line (ftCo_8009A134).
+    pub map: &'a CollMap,
     pub rng: &'a mut HsdRng,
 }
 /// Fighter_Spaghetti_8006AD10 (8006AD10), s_link 3: the input sample has already been applied.

@@ -225,8 +225,10 @@ fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
     fighter.status.interaction = Interaction::Idle;
     // Dispatch must consult the installed callback, not just motion_id=Wait.
     fighter.motion_row.anim = unimplemented_anim;
-    assert!(catch_unwind(AssertUnwindSafe(
-        || fighter.proc_anim(&fixture.assets, &mut HsdRng::new(1))
-    ))
+    assert!(catch_unwind(AssertUnwindSafe(|| fighter.proc_anim(
+        &fixture.assets,
+        &fixture.map,
+        &mut HsdRng::new(1)
+    )))
     .is_err());
 }

@@ -139,7 +139,7 @@ fn hold<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
                 && melee_lb::shield::angle_xy(normal, direction) >= std::f32::consts::FRAC_PI_2;
             // ftFx_SpecialAirHi_AirToGround (800E7AE4): on a platform,
             // ftCo_8009A134 skips it and the launch goes airborne instead.
-            if grounded && !f.skip_platform_floor() {
+            if grounded && !f.skip_platform_floor(p.map) {
                 return launch_ground::<C>(f, p.assets).map(|()| None);
             }
             f.leave_ground_with_spent_jumps();
@@ -413,7 +413,7 @@ fn travel_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) ->
     let flags = f.collision.data.env_flags as u32;
     // ftFox_SpecialHi_IsBound: before bounce_var ticks, a platform landing
     // is skipped (ftCo_8009A134) and handled like no landing at all.
-    if landed && (bound_ready || !f.skip_platform_floor()) {
+    if landed && (bound_ready || !f.skip_platform_floor(p.map)) {
         let shallow_contact =
             melee_lb::shield::angle_xy(f.collision.data.floor.normal, f.physics.self_velocity)
                 < threshold;

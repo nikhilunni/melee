@@ -225,7 +225,10 @@ fn replay_config(
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match proc {
                         FighterProc::Status => f.proc_status(),
                         FighterProc::Animation => {
-                            if let Some(choice) = f.proc_anim(&fixture.assets, &mut rng).unwrap() {
+                            if let Some(choice) = f
+                                .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                                .unwrap()
+                            {
                                 used += choice.draws;
                                 total_draws += choice.draws;
                                 assert!(

@@ -160,7 +160,7 @@ fn start_anim<C: PikachuFamily, const AIR: bool>(
         if AIR {
             zip_air::<C>(f, p.assets)?;
         } else {
-            zip_ground::<C>(f, p.assets)?;
+            zip_ground::<C>(f, p.assets, p.map)?;
         }
     }
     Ok(None)
@@ -216,7 +216,11 @@ fn begin_zip<C: PikachuFamily>(
 /// floor's plane side, unless the floor is a platform the zip drops
 /// through (ftCo_8009A134); otherwise Pikachu leaves the floor with every
 /// jump spent (ftCommon_8007D60C) and zips in the air.
-fn zip_ground<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+fn zip_ground<C: PikachuFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &melee_mp::CollMap,
+) -> Result<()> {
     let mut magnitude = stick_magnitude(f);
     if magnitude > MAXIMUM_STICK {
         magnitude = MAXIMUM_STICK;
@@ -226,7 +230,8 @@ fn zip_ground<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) -> Resu
     if magnitude >= minimum {
         let stick = f.input.current.stick;
         let direction = Vec3::new(stick.x, stick.y, 0.0);
-        if angle_xy(f.collision.data.floor.normal, direction) >= HALF_PI && !f.skip_platform_floor()
+        if angle_xy(f.collision.data.floor.normal, direction) >= HALF_PI
+            && !f.skip_platform_floor(map)
         {
             // ftCommon_UpdateFacing.
             f.physics.facing = if stick.x >= 0.0 { 1.0 } else { -1.0 };
@@ -544,12 +549,12 @@ fn zip_ground_collision<C: PikachuFamily>(
 /// ftPikachu_GetBool: a floor ends the zip once it has flown long enough
 /// (the int count against the float attribute), otherwise unless it is a
 /// platform the zip drops through (ftCo_8009A134).
-fn floor_counts<C: PikachuFamily>(f: &mut Fighter) -> bool {
+fn floor_counts<C: PikachuFamily>(f: &mut Fighter, map: &melee_mp::CollMap) -> bool {
     let frames = scratch::<C>(f).air_frames as f32;
     if frames >= attributes::<C>(f).landing_frames {
         return true;
     }
-    !f.skip_platform_floor()
+    !f.skip_platform_floor(map)
 }
 
 /// The teleport thresholds: 0.017453292 * (90 + degrees) (retail fadds of
@@ -567,7 +572,7 @@ fn zip_air_collision<C: PikachuFamily>(f: &mut Fighter, mut p: CollisionPhase<'_
     let assets = p.assets.expect("Quick Attack zip collision assets");
     scratch::<C>(f).air_frames += 1;
     let threshold = surface_threshold(attributes::<C>(f).floor_angle_degrees);
-    if lands_facing(f, &mut p) && floor_counts::<C>(f) {
+    if lands_facing(f, &mut p) && floor_counts::<C>(f, p.map) {
         let angle = angle_xy(f.collision.data.floor.normal, f.physics.self_velocity);
         f.land();
         if angle > threshold {
@@ -672,7 +677,7 @@ fn end_anim<C: PikachuFamily, const AIR: bool>(
             if AIR {
                 zip_air::<C>(f, p.assets)?;
             } else {
-                zip_ground::<C>(f, p.assets)?;
+                zip_ground::<C>(f, p.assets, p.map)?;
             }
         } else {
             f.commands.variables[0] = 2;

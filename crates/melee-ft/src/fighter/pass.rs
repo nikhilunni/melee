@@ -10,11 +10,12 @@ impl Fighter {
     /// is a platform (mpColl_IsOnPlatform), skip it for floor queries and
     /// report true. Up-specials use this to launch through soft platforms;
     /// the next Fighter_ChangeMotionState clears the skip (fighter.c:1080).
-    /// mpColl_IsOnPlatform re-reads the line's flags; the floor flags cached
-    /// at contact carry the same platform bit, as the crouch drop reads it.
-    pub fn skip_platform_floor(&mut self) -> bool {
+    /// mpColl_IsOnPlatform re-reads the line's flags from the map: a
+    /// dynamic platform's bit (mpJointUpdateDynamics, Pokemon Stadium's
+    /// forms) is not in the floor flags cached at contact.
+    pub fn skip_platform_floor(&mut self, map: &melee_mp::CollMap) -> bool {
         let cd = &mut self.core.collision.data;
-        if cd.floor.flags & melee_types::mp::line_flag::PLATFORM == 0 {
+        if !map.is_on_platform(cd) {
             return false;
         }
         melee_mp::update_floor_skip(cd);

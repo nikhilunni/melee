@@ -63,7 +63,9 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
             fighter.proc_input(&fixture.assets, &held);
             assert_eq!(fighter.motion_state.id, S::KneeBend);
             for tick in 1..=3 {
-                fighter.proc_anim(&fixture.assets, &mut rng).unwrap();
+                fighter
+                    .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                    .unwrap();
                 if fighter.motion_state.id == S::JumpF {
                     break;
                 }
@@ -171,7 +173,9 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
         let mut fighter = fixture.import(&boundary);
         let mut rng = HsdRng::new(1);
         for (tick, pad) in pads.iter().enumerate().take(catch_tick + 1).skip(1) {
-            fighter.proc_anim(&fixture.assets, &mut rng).unwrap();
+            fighter
+                .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                .unwrap();
             fighter.proc_input(&fixture.assets, &recorded_pad(pad, 0));
             if tick == catch_tick {
                 fighter.status.ledge_cooldown = cooldown;

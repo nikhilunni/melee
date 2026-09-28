@@ -2234,7 +2234,7 @@ fn dispatch_fighter(
             f.proc_status()
         }
         FighterProc::Animation => {
-            f.proc_anim(assets, rng)
+            f.proc_anim(assets, map, rng)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::CpuGate => f.proc_cpu_gate(),

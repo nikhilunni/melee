@@ -65,7 +65,10 @@ fn start_fox_state_callbacks_600() {
                 match proc {
                     FighterProc::Status => f.proc_status(),
                     FighterProc::Animation => {
-                        if let Some(choice) = f.proc_anim(&fixture.assets, &mut rng).unwrap() {
+                        if let Some(choice) = f
+                            .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                            .unwrap()
+                        {
                             used += choice.draws;
                             total_draws += choice.draws;
                             assert!(used <= sites.len(), "extra Wait draw tick {tick} p{player}");

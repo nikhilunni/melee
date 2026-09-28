@@ -10,21 +10,21 @@ pub fn dead(fighter: &mut Fighter, _phase: AnimationPhase<'_>) -> Result<Option<
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpStar (4).
 pub fn dead_star(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.star_ko_animation(assets)?;
     Ok(None)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpFall (6).
 pub fn dead_screen(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng } = phase;
+    let AnimationPhase { assets, rng, .. } = phase;
     fighter.screen_ko_animation(assets, rng)?;
     Ok(None)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
 pub fn revival(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng } = phase;
+    let AnimationPhase { assets, rng, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     let choice = fighter.update_idle_animation(assets, rng)?;
@@ -34,7 +34,7 @@ pub fn revival(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Optio
 
 /// ftData_MotionStateList: ftCo_MS_PassiveStandB (201).
 pub fn tech_roll(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     if !fighter
@@ -49,7 +49,7 @@ pub fn tech_roll(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opt
 
 /// ftData_MotionStateList: ftCo_MS_DownBoundD (191), ftCo_MS_DownWaitD (192).
 pub fn down_bound(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.down_animation(assets)?;
@@ -63,7 +63,7 @@ pub fn thrown(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
 
 /// ftData_MotionStateList: ftCo_MS_ThrowB (220).
 pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     (fighter.character.table().throw_animation)(fighter, assets);
@@ -88,7 +88,7 @@ pub fn capture(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Optio
 
 /// ftData_MotionStateList: ftCo_MS_CatchPull (213).
 pub fn catch_pull(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     if fighter.core.commands.grab_release
@@ -104,7 +104,7 @@ pub fn catch_pull(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 
 /// ftData_MotionStateList: ftCo_MS_Catch (212).
 pub fn catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.catch_animation(assets)?;
@@ -114,7 +114,7 @@ pub fn catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
 /// ftData_MotionStateList: ftCo_MS_DamageHi3 (77), ftCo_MS_DamageN1 (78), ftCo_MS_DamageN2
 /// (79), ftCo_MS_DamageFlyN (88).
 pub fn damage(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.damage_animation(assets)?;
@@ -132,7 +132,7 @@ pub fn appeal(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
 
 /// ftData_MotionStateList: ftCo_MS_LightGet (92): ftpickupitem_Anim.
 pub fn item_get(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.item_get_animation(assets)?;
     Ok(None)
@@ -140,14 +140,14 @@ pub fn item_get(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opti
 
 /// ftData_MotionStateList: ftCo_MS_LightThrowF (94): ftCo_ItemThrow_Anim.
 pub fn item_throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.item_throw_animation(assets)?;
     Ok(None)
 }
 
 pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.jab_animation(assets)?;
@@ -157,7 +157,7 @@ pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<Wa
 /// ftData_MotionStateList: ftCo_MS_GuardOn (178), ftCo_MS_Guard (179), ftCo_MS_GuardOff (180),
 /// ftCo_MS_GuardSetOff (181), ftCo_MS_GuardReflect (182).
 pub fn guard_on(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.shield_animation(assets)?;
@@ -168,7 +168,7 @@ pub fn guard_on(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opti
 /// ftCo_MS_CliffJumpSlow1 (260), ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick1 (262),
 /// ftCo_MS_CliffJumpQuick2 (263).
 pub fn cliff_catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.ledge_animation(assets)?;
@@ -177,7 +177,7 @@ pub fn cliff_catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
 
 /// ftData_MotionStateList: ftCo_MS_EscapeAir (236).
 pub fn escape_air(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.air_dodge_animation(assets)?;
@@ -186,7 +186,7 @@ pub fn escape_air(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 
 /// ftData_MotionStateList: ftCo_MS_EscapeF (233), ftCo_MS_EscapeB (234), ftCo_MS_EscapeN (235).
 pub fn escape(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.escape_animation(assets)?;
@@ -195,7 +195,7 @@ pub fn escape(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
 
 /// ftData_MotionStateList: ftCo_MS_Squat (39), ftCo_MS_SquatRv (41).
 pub fn squat(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.squat_animation(assets)?;
@@ -204,7 +204,7 @@ pub fn squat(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
 
 /// ftData_MotionStateList: ftCo_MS_Turn (18).
 pub fn turn(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.turn_animation(assets)?;
@@ -213,7 +213,7 @@ pub fn turn(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<W
 
 /// ftData_MotionStateList: ftCo_MS_Dash (20).
 pub fn dash(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.dash_animation(assets)?;
@@ -227,7 +227,7 @@ pub fn run(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<Wa
 
 /// ftData_MotionStateList: ftCo_MS_TurnRun (19).
 pub fn turn_run(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.turn_run_animation(assets)?;
@@ -236,7 +236,7 @@ pub fn turn_run(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opti
 
 /// ftData_MotionStateList: ftCo_MS_CliffClimbQuick (255), ftCo_MS_CliffEscapeQuick (259).
 pub fn cliff_climb(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.cliff_climb_animation(assets)?;
@@ -245,7 +245,7 @@ pub fn cliff_climb(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
 
 /// ftData_MotionStateList: ftCo_MS_RunBrake (23).
 pub fn run_brake(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.run_brake_animation(assets)?;
@@ -266,7 +266,7 @@ pub fn squat_wait(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
 /// (324).
 pub fn entry(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.entry_animation(assets)?;
@@ -276,7 +276,7 @@ pub fn entry(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
 /// ftCo_JumpAerialF1_Anim (800D7590), ftPr_Init_MotionStateTable[0..5]:
 /// Jigglypuff actions 341..345 retain the shared animation and turn behavior.
 pub fn multi_jump(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.multi_jump_animation(assets)?;
@@ -285,7 +285,7 @@ pub fn multi_jump(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 
 /// ftData_MotionStateList: ftCo_MS_KneeBend (24).
 pub fn knee_bend(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.knee_bend_animation(assets)?;
@@ -295,7 +295,7 @@ pub fn knee_bend(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Opt
 /// ftData_MotionStateList: ftCo_MS_JumpF (25), ftCo_MS_JumpB (26), ftCo_MS_JumpAerialF (27),
 /// ftCo_MS_JumpAerialB (28), ftCo_MS_Pass (244).
 pub fn pass(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.jump_animation(assets)?;
@@ -310,7 +310,7 @@ pub fn fall(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<W
 
 /// ftData_MotionStateList: ftCo_MS_Landing (42), ftCo_MS_LandingFallSpecial (43).
 pub fn landing(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.landing_animation(assets)?;
@@ -328,47 +328,47 @@ impl FighterCore {
         Ok(None)
     }
     fn animation_thrown(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng: _ } = phase;
+        let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.thrown_animation(assets);
         Ok(None)
     }
     fn animation_capture(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng: _ } = phase;
+        let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         Ok(None)
     }
     fn animation_run(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng: _ } = phase;
+        let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.run_animation();
         Ok(None)
     }
     fn animation_walk(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng: _ } = phase;
+        let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.walk_animation(assets);
         Ok(None)
     }
     fn animation_squat_wait(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng } = phase;
+        let AnimationPhase { assets, rng, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.update_idle_animation(assets, rng)
     }
     fn animation_fall(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng: _ } = phase;
+        let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.fall_animation(assets)?;
         Ok(None)
     }
     fn animation_wait(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-        let AnimationPhase { assets, rng } = phase;
+        let AnimationPhase { assets, rng, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
         self.update_idle_animation(assets, rng)
@@ -398,7 +398,7 @@ pub fn rapid_loop(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
 
 /// ftData_MotionStateList: ftCo_MS_Ottotto (245).
 pub fn ottotto(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.teeter_animation(assets)?;
     Ok(None)
 }
@@ -408,7 +408,7 @@ pub fn ottotto_wait(
     fighter: &mut Fighter,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, rng: _ } = phase;
+    let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     Ok(None)
 }

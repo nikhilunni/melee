@@ -98,7 +98,10 @@ fn idle_fox_600() {
                                 draws[index - 1]["seed"].as_u64().unwrap()
                             } as u32;
                         }
-                        if let Some(choice) = f.proc_anim(&fixture.assets, &mut rng).unwrap() {
+                        if let Some(choice) = f
+                            .proc_anim(&fixture.assets, &fixture.map, &mut rng)
+                            .unwrap()
+                        {
                             used += choice.draws;
                             total_draws += choice.draws;
                             assert!(used <= sites.len(), "extra Wait draw tick {tick} p{player}");
