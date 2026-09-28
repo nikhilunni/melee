@@ -226,7 +226,7 @@ Retail: `ftFx_SpecialN_Enter`, `ftFx_SpecialS_Enter`, `ftFx_SpecialHi_Enter`,
 | AirHi -> HiBound (floor rebound) -> FallSpecial | ftFx_SpecialHiBound_Enter | `firefox_floor_rebound_fd_fox` |
 | HiFall -> HiLanding | ftFx_SpecialHiFall_AirToGround | `firefox_end_air_landing_fd_fox` |
 | AirHi / HiFall / HiHoldAir -> CliffCatch | ftFx_SpecialAirHi_Coll | corpus:4 / corpus:13 / corpus:3 |
-| AirHi travel landing without a rebound (AirHi -> Hi) | ftFx_SpecialAirHi_AirToGround | Shallow floor contact without a rebound or landing (the rotation branch, every snap): `firefox_shallow_floor_fd_fox`. AirHi -> Hi itself is still **MISSING** (MATCHUP_COMPLETENESS: remaining travel landing) |
+| AirHi travel landing without a rebound (AirHi -> Hi) | ftFx_SpecialAirHi_AirToGround | Shallow floor contact without a rebound or landing (the rotation branch, every snap): `firefox_shallow_floor_fd_fox`. AirHi -> Hi itself is n/a: in the retail asm the only ChangeMotionState(SpecialHi) is ftFx_SpecialAirHi_AirToGround (800E7AF4), called only from SpecialHiHold_Anim/SpecialHiHoldAir_Anim (800E7398/800E73F8) when the charge ends grounded; travel floor contact only rebounds or rotates |
 | Fire Fox travel into FD's wall | ftFx_SpecialHi_Coll | `firefox_wall_ledge_fd_fox` (pinned on the wall under the ledge, HiFall -> CliffCatch), `firefox_wall_notch_fd_fox` (pinned on the notch wall, HiFall -> FallSpecial) |
 | Fire Fox platform skip | ftCo_8009A134 | n/a (FD has no platforms) |
 | Reflector: LwStart -> LwLoop -> LwEnd -> Wait | ftFx_SpecialLw_Enter | `reflector_fd_fox` +5 |
@@ -243,7 +243,7 @@ Retail: `ftFx_SpecialN_Enter`, `ftFx_SpecialS_Enter`, `ftFx_SpecialHi_Enter`,
 | LwStart -> AirLwStart (started at the edge) | ftFx_SpecialLwStart_GroundToAir | `reflector_runedge_jump_fd_fox` (out of Run, jump-cancelled) / corpus:1 |
 | LwLoop / LwEnd / LwTurn / LwHit leaving the ground | ftFx_SpecialLw{Loop,End,Turn,Hit}_GroundToAir | `reflector_loop_walkoff_fd_fox`, `reflector_end_walkoff_fd_fox`, `reflector_turn_walkoff_fd_fox`, `sudden_death_reflecthit_walkoff_fd_marth` |
 | AirLwHit (aerial reflect) and AirLwHit -> LwHit landing | ftFx_SpecialAirLwHit_* | AirLwHit -> AirLwLoop after a walk-off: `sudden_death_reflecthit_walkoff_fd_marth`; a reflect started in the air and its landing: `sudden_death_airreflect_bomb_fd_fox` (a Bob-omb) |
-| Reflector turnFrames inherited from an unmodelled scratch word | special_lw.rs `unimplemented!` | Ported for every predecessor whose mv+4 the port models (COVERAGE_AUDIT: Walk, Dash, Run, RunBrake, Turn, Squat, KneeBend, WallJump, the aerial and jump states); fails closed only when the Reflector starts from an unmodelled one (TurnRun's retained word, an unmodelled smash/tilt word) and a later state reads it. TurnRun itself exits only to the running jump (ftCo_TurnRun_IASA -> fn_800CAF78). No gated trace reaches it; reachability (unverified) |
+| Reflector turnFrames inherited from an unmodelled scratch word | special_lw.rs `unimplemented!` | Ported for every predecessor whose mv+4 the port models (COVERAGE_AUDIT: Walk, Dash, Run, RunBrake, Turn, Squat, KneeBend, WallJump, the aerial and jump states); fails closed only when the Reflector starts from an unmodelled one (TurnRun's retained word, an unmodelled smash/tilt word) and a later state reads it. TurnRun itself exits only to the running jump (ftCo_TurnRun_IASA -> fn_800CAF78). No gated trace reaches it; `melee-sim search` over every grounded action (jab, tilts, smashes, grab, taunt, walk, dash, crouch, jump, shield; then a move, then the special 1-60 ticks later) entered the special 27,897 times (Reflector) and 78,477 times (Marth) with no fault: not reached in practice |
 | Reflector platform drop (CheckPass) | ftFx_SpecialLwStart_CheckPass | n/a (FD) |
 
 ## 5. Marth specials
@@ -272,7 +272,7 @@ Retail: `ftMs_SpecialN_Enter`, `ftMs_SpecialS_Enter`, `ftMs_SpecialHi_Enter`,
 | AirS4Hi, AirS4Lw | same | `marth_air_dancingblade4_fd_marth` |
 | Aerial Dancing Blade landing (AirSn -> Sn) | ftMs_SpecialAirS* collision | AirS4Hi -> S4Hi, AirS4Lw -> S4Lw `marth_air_dancingblade4_fd_marth`; the rest corpus only (AirS1 2, AirS2Hi 4, AirS2Lw 10, AirS3* 1-2) |
 | Ground Dancing Blade leaving the ground (Sn -> AirSn) | ftMs_SpecialS* collision | n/a on FD: the ground rows call ft_800827A0 -> mpColl_8004B2DC with flags = 2, and mpColl_8004A45C_Floor snaps to the floor end unless a wall crosses a probe starting at the edge's y+1; FD's walls are all at y <= 0 and it has no platforms |
-| Dancing Blade mv+4 inherited from an unmodelled scratch word | special_s.rs `unimplemented!` | Same guard as the Reflector row: ported for the modelled predecessors, fail-closed otherwise; no gated trace reaches it; reachability (unverified) |
+| Dancing Blade mv+4 inherited from an unmodelled scratch word | special_s.rs `unimplemented!` | Same guard as the Reflector row: ported for the modelled predecessors, fail-closed otherwise; no gated trace reaches it; `melee-sim search` over every grounded action (jab, tilts, smashes, grab, taunt, walk, dash, crouch, jump, shield; then a move, then the special 1-60 ticks later) entered the special 27,897 times (Reflector) and 78,477 times (Marth) with no fault: not reached in practice |
 | Dolphin Slash: Wait -> SpecialHi -> FallSpecial -> LandingFallSpecial | ftMs_SpecialHi_Enter | `dolphinslash_fd_marth` +5 |
 | AirHi -> FallSpecial | ftMs_SpecialAirHi_Anim | `match2_fd_foxmarth` |
 | AirHi -> LandingFallSpecial / CliffCatch | ftMs_SpecialAirHi_Coll | corpus:2 / corpus:5 |
@@ -323,7 +323,7 @@ press entering GuardOn (178).
 | Phantom contact and shield impact in the same frame | fighter.c:2907 | Ported (the phantom branch drops the impact's response); unwitnessed: the phantom band is 0.01 of overlap | same |
 | Dash -> EscapeF (dash defense) | ftCo_Dash_IASA | `dash_escape_fd_fox` | `dash_escape_fd_marth` |
 | EscapeF/B/N -> Wait / GuardOn; IASA actions | ftCo_Escape_IASA | `roll_fd_fox`, `spotdodge_fd_fox`; the rest corpus | `roll_fd_marth`, `spotdodge_fd_marth`; the rest corpus |
-| Roll with an item: A is a smash throw | ftCo_8009563C | `sudden_death_rollthrow_bomb_fd_fox` (EscapeF -> LightThrowF4) | no directed throw-from-roll: **MISSING** |
+| Roll with an item: A is a smash throw | ftCo_8009563C | `sudden_death_rollthrow_bomb_fd_fox` (EscapeF -> LightThrowF4) | `sudden_death_rollthrow_bomb_fd_marth` (EscapeB -> LightThrowB4; the stick at A never changes it) |
 
 ## 7. Grabs, throws, capture
 
@@ -355,7 +355,7 @@ Retail: `ftCo_Catch_CheckInput`, `ftCo_Catch_Anim`, `ftCo_CatchWait_IASA`,
 | CaptureWait -> CaptureJump -> Landing / Fall | ftCo_CaptureJump_Anim | `capture_jump_{up_release,xy_latch}_fd_marthfox_candidate` | `capture_jump_*_fd_foxmarth_candidate`, `capture_edge_fox_air_up_release_candidate` |
 | CaptureWaitHi -> Thrown* | ftCo_Thrown*_Anim | ThrownB `capture_hi_edge_throwb_fd_marth`; the rest corpus:3 | corpus:3 |
 | ThrownF/B/Hi/Lw -> DamageAir/DamageFly | ftCo_Thrown*_Anim | `cstick_throw_*_fd_marth` | `cstick_throw_*_fd_fox` |
-| Thrown into the wall -> PassiveWall | ftCo_PassiveWall | (by name) `corpus_v3_s1_edb4b01fd_p0`; the trace attributes the PassiveWall to Fox, while the comment says Marth | Thrown: **MISSING** by trace; Marth's wall tech out of an aerial hit is `passivewall_victim_fd_marth` |
+| Thrown into the wall -> PassiveWall | ftCo_PassiveWall | (by name) `corpus_v3_s1_edb4b01fd_p0`; the trace attributes the PassiveWall to Fox, while the comment says Marth | `passivewall_thrownhi_victim_fd_marth` (ThrownHi -> DamageFlyTop -> PassiveWall); also out of an aerial hit, `passivewall_victim_fd_marth`. Fox's column is right by trace (`corpus_v3_s1_edb4b01fd_p0`: p1 ThrownLw -> PassiveWall) |
 | Meteor cancel of a down throw off the ledge | ftCo_JumpAerial_CheckInput | n/a | (by name) `corpus_v3_s1_e8be4d273_p1` |
 | Thrown positioning waits out hitlag | Fighter_CallAcessoryCallbacks_8006C624 | (by name) corpus v3 | same |
 | Throw damage deferred to ProcessHit (no roll at release) | x1838 | (by name) `corpus_v3_s0_e8be4d273_p0` | same |
@@ -395,7 +395,7 @@ Retail: `ftCo_Damage_IASA`, `ftCo_Damage_CheckAirMotion`, `ftCo_DamageFall_IASA`
 | DownBound -> Fall (bounce off the edge) | ftCo_DownBound_Coll | `match2_fd_foxmarth` +1 | corpus:1 |
 | DownWait hit -> DownDamageU/D | ftCo_DownDamage_* | U `downdamage_up_fd_marth`; D corpus:1 (by name `corpus_v2_s0_effffffff_p2`, `corpus_v3_s0_e0fe4dd03_p1`) | U `downdamage_up_victim_fd_marth`; D corpus:4 |
 | DownDamage keeping facing / hitstun air physics | ftCo_8008DCE0 | (by name) `corpus_v2_s0_e49_p2`, `corpus_v3_s0_e0fe4dd03_p1` | same |
-| DownReflect wall bounce, DownDamage wall tech/bounce | ftCo_800C7CA0, ftCo_800C1D38 (port `unimplemented!` for DownReflect) | DownReflect: n/a on FD (COVERAGE_AUDIT: the wall-hug flag comes only from the ECB side-point sweep, a grounded ECB's side points sit above y = 0 and every FD wall is at or below it). Airborne DownDamage into a wall (tech, else ftCo_800C17CC's wall then ceiling bounce): ported, reachable in principle (a sub-7% hit on a prone fighter plus a second hit sending it under the stage), **MISSING** | same |
+| DownReflect wall bounce, DownDamage wall tech/bounce | ftCo_800C7CA0, ftCo_800C1D38 (port `unimplemented!` for DownReflect) | DownReflect: n/a on FD (COVERAGE_AUDIT: the wall-hug flag comes only from the ECB side-point sweep, a grounded ECB's side points sit above y = 0 and every FD wall is at or below it). Airborne DownDamage into a wall: tech `passivewall_downdamage_victim_fd_marth`. The bounce (ftCo_800C17CC) is not reachable in practice on FD: it needs |kb.x| > PlCo +1B0 (1.0) toward a hugged wall, but DownDamage's sub-7% hits at 155% still gave |kb.x| <= 0.71, and FD's walls run down and inward from the ledge, so a hit from the stage side pushes the victim away from them. `melee-sim search` found no bounce in 652k candidates (Fox aerials, jabs and tilts on a prone Marth at the ledge, with DI); the bounce helper itself is witnessed from tumbling (FlyReflectWall) | same |
 | DownSpot | ftCo_DownSpot_Enter | n/a on FD (status, 2026-09-27) | same |
 | Tech in place (Passive) | ftCo_Passive_* | `match2_fd_foxmarth` | `tech_inplace_victim_fd_marth` |
 | Tech roll (PassiveStandB / F) | ftCo_PassiveStand_* | B `tech_fd_marth`; F corpus:6 | `tech_rollb_victim_fd_marth`, `tech_rollf_victim_fd_marth` |
@@ -443,15 +443,15 @@ fails closed for anything else.
 | Pickup (LightGet) and hold (Wait1_1) | `sudden_death_pickup_bomb_fd_marth` +45 | `sudden_death_airdrop_bomb_fd_fox` +33 (Wait -> LightGet); GuardOff/Walk -> LightGet corpus |
 | Ground throws F, B, Hi, Lw, F4, Hi4 | `sudden_death_throw{,b,hi,lw,f4,hi4}_bomb_fd_marth` | F `sudden_death_zthrow_bomb_fd_fox`, `sudden_death_foxcatchthrow_bomb_fd_marth` (out of a landing); B, Hi, Lw `sudden_death_throw{b,hi,lw}_bomb_fd_fox` (tilt throws), Lw from a crouch `sudden_death_squatthrow_bomb_fd_fox`; F4 `sudden_death_throwf4_bomb_fd_fox`, `sudden_death_rollthrow_bomb_fd_fox`; Hi4 `sudden_death_cstickhi4_bomb_fd_fox` (A+up in GuardOff is a jump: `sudden_death_throwhi4_bomb_fd_fox`) |
 | C-stick smash throws B4, Hi4, Lw4 | `sudden_death_cstick{b4,hi4,lw4}_bomb_fd_marth` | `sudden_death_cstick{b4,hi4,lw4}_bomb_fd_fox` |
-| Walk, turn, turn-run, run, dash, crouch, roll, land, shield, ledge and taunt holding it | `sudden_death_{walkthrow,turnhold,turnrunhold,runhold,dashhold,crouchhold,rollhold,landhold,shieldhold,ledgehold,taunthold}_bomb_fd_marth` | Walk (every `*_bomb_fd_fox` pickup), turn (`sudden_death_csticklw4_bomb_fd_fox`), turn-run (`sudden_death_turnrunhold_bomb_fd_fox`), run and Ottotto (`sudden_death_ottottohold_bomb_fd_fox`), dash (`sudden_death_dashthrow_bomb_fd_fox`), crouch (`sudden_death_squatthrow_bomb_fd_fox`), roll (`sudden_death_rollthrow_bomb_fd_fox`), land (`sudden_death_landhold_bomb_fd_fox`), shield (`sudden_death_throwhi4_bomb_fd_fox`), taunt (`sudden_death_taunthold_bomb_fd_fox`). Ledge: **MISSING** (not reached before the fuse ends) |
-| Special while holding | `sudden_death_specialhold_bomb_fd_marth` (Marth) | Reflector: `sudden_death_reflectorhold_bomb_fd_fox`. Blaster: **MISSING** (`sudden_death_specialhold_bomb_fd_fox` recorded, not yet gated: the held-item hand pose during SpecialN is being fixed). Illusion and Fire Fox with an item: **MISSING** |
-| Dash throw, run-shield throw, throw out of Turn | `sudden_death_dashthrow/runshieldthrow/turnthrow_bomb_fd_marth` | Dash throw `sudden_death_dashthrow_bomb_fd_fox`; run-shield and Turn throws **MISSING** (shared code) |
+| Walk, turn, turn-run, run, dash, crouch, roll, land, shield, ledge and taunt holding it | `sudden_death_{walkthrow,turnhold,turnrunhold,runhold,dashhold,crouchhold,rollhold,landhold,shieldhold,ledgehold,taunthold}_bomb_fd_marth` | Walk (every `*_bomb_fd_fox` pickup), turn (`sudden_death_csticklw4_bomb_fd_fox`), turn-run (`sudden_death_turnrunhold_bomb_fd_fox`), run and Ottotto (`sudden_death_ottottohold_bomb_fd_fox`), dash (`sudden_death_dashthrow_bomb_fd_fox`), crouch (`sudden_death_squatthrow_bomb_fd_fox`), roll (`sudden_death_rollthrow_bomb_fd_fox`), land (`sudden_death_landhold_bomb_fd_fox`), shield (`sudden_death_throwhi4_bomb_fd_fox`), taunt (`sudden_death_taunthold_bomb_fd_fox`). Ledge: not reachable in practice (the held Bob-omb's fuse ends 58 ticks after Fox's pickup; running off the edge faces away from the ledge and a turned backward jump cannot come back down in time: `melee-sim search`, 5,118 candidates, none caught the ledge); the shared ledge states hold the item for Marth (`sudden_death_ledgehold_bomb_fd_marth`) |
+| Special while holding | `sudden_death_specialhold_bomb_fd_marth` (Marth) | Reflector: `sudden_death_reflectorhold_bomb_fd_fox`. Blaster: `sudden_death_specialhold_bomb_fd_fox` (the script's held-item hide releases the grip, opcode 35). Illusion: `sudden_death_illusionhold_bomb_fd_fox`; Fire Fox: `sudden_death_firefoxhold_bomb_fd_fox` |
+| Dash throw, run-shield throw, throw out of Turn | `sudden_death_dashthrow/runshieldthrow/turnthrow_bomb_fd_marth` | Dash throw `sudden_death_dashthrow_bomb_fd_fox`; run-shield `sudden_death_runshieldthrow_bomb_fd_fox`, Turn `sudden_death_turnthrow_bomb_fd_fox` |
 | Z on the ground (forward throw); Z in the air (drop) | `sudden_death_zthrow_bomb_fd_marth`, `sudden_death_airdrop_bomb_fd_marth` | `sudden_death_zthrow_bomb_fd_fox`, `sudden_death_airdrop_bomb_fd_fox` |
 | Air throws: AirF, AirB4 | `sudden_death_airthrow_bomb_fd_marth`, `sudden_death_wallbomb*_fd_marth` | `sudden_death_airthrow_bomb_fd_fox`, `sudden_death_airthrowb4_bomb_fd_fox` |
 | Air throws AirB, AirHi, AirLw, AirF4, AirHi4, AirLw4 | `sudden_death_airthrow{b,hi,lw,f4,hi4,lw4}_bomb_fd_marth` | `sudden_death_airthrow{b,hi,lw,f4,hi4,lw4}_bomb_fd_fox` (AirF/B/Hi/F4/B4/Hi4 also land into the ground throw) |
 | Aerial catch LR+A (from a dash jump, from a shield jump) | (by name) `sudden_death_aircatch{dash,shield}_bomb_fd_marth` | (by name) `sudden_death_foxcatchthrow_bomb_fd_marth` (a falling Bob-omb) |
-| Catching a thrown (not falling) Bob-omb | **MISSING** | `sudden_death_catchthrown_bomb_fd_fox` (A as Marth's forward smash throw arrives: LightGet) |
-| Hit while holding: knocked loose, flies holding it, dies holding it | `sudden_death_knockloose/launchhold/kohold_bomb_fd_marth`, `sudden_death_hitholding_bomb_fd_marth` | Knocked loose `sudden_death_knockloose_bomb_fd_fox`; launched holding it (DownBoundD) `sudden_death_hitholding_bomb_fd_fox`; dying holding it: **MISSING** (unverified) |
+| Catching a thrown (not falling) Bob-omb | `sudden_death_catchthrown_bomb_fd_marth` (A at 1253-1255 as Fox's forward smash throw arrives) | `sudden_death_catchthrown_bomb_fd_fox` (A as Marth's forward smash throw arrives: LightGet) |
+| Hit while holding: knocked loose, flies holding it, dies holding it | `sudden_death_knockloose/launchhold/kohold_bomb_fd_marth`, `sudden_death_hitholding_bomb_fd_marth` | Knocked loose `sudden_death_knockloose_bomb_fd_fox`; launched holding it (DownBoundD) `sudden_death_hitholding_bomb_fd_fox`; dying holding it `sudden_death_kohold_bomb_fd_fox` (star KO at 1289; the death destroys the held item) |
 | Grabbed or thrown while holding | `sudden_death_grabbedhold_bomb_fd_marth`, `sudden_death_thrown{b,f,hi,lw}hold_bomb_fd_marth` | `sudden_death_grabbedhold_bomb_fd_fox`, `sudden_death_thrown{b,f,hi,lw}hold_bomb_fd_fox` |
 | Fighter hitbox detonates a Bob-omb | `sudden_death_smash_bomb_fd_marth` (Marth smash); Fox dash attack `sudden_death_foxdash_fd_marth` hits Marth, not the bomb | (by name) `sudden_death_smashbomb_fd_fox` (Fox forward-smashes a thrown Bob-omb) |
 | Item hits item (chain), walk after a soft landing, wall bounce | `sudden_death_bombchain/walkbomb/wallbomb{,slope}_fd_marth`, `sudden_death_turnrunhold_bomb_fd_marth` | shared |
@@ -514,7 +514,7 @@ gm_80167320 (final stock).
 | Simultaneous KO on the last stocks | `sudden_death_ledgejump_bomb_fd_marth`: both fighters die on tick 1522 (DeadDown, DeadRight) and the trace stays exact to 1545; the results screen after it is not gated | same |
 | Final stock / elimination (gm_80167320) | Audit: unreachable because the scene freezes first | same |
 | Swapped ports (Fox P1) | `start_fd_fox4` start boundary (not in m5_gate); directed `*_foxmarth` and `*_marthfox` capture scenarios; most other directed scenes use Marth P1 | **Thin**: swapped-port gameplay is almost entirely corpus |
-| Pause during a match | **MISSING**: reachable by a human in versus mode (Start); no gated scenario pauses, and whether the port models a Start pause is unverified | same |
+| Pause during a match | Out of scope: the port does not model gm_DoPauseChecksAndRoutine (8016CA68) / gm_DefaultVSGetPauser (8016BC74); a Start press in a dry run leaves every key byte-identical. Tick-clock scenarios never pause; porting pause is a separate task (TRACKER) | same |
 
 ---
 
@@ -647,11 +647,12 @@ Dolphin scenario could witness it.
     `timeout_decisive_fd_marth`, `sudden_death_ledgejump_bomb_fd_marth`.
 19. **Dash -> Squat (corpus only).** ~~Run/RunBrake/AttackDash -> Ottotto;
     OttottoWait -> attacks (Marth)~~: `ottotto_marth_{run,runbrake,attackdash}_fd_marth`.
-20. **Open, reachable in principle:** an airborne DownDamage into a wall
-    (tech or bounce), pause during a match, and a thrown Marth teching the
-    wall. **Fail-closed guards, reachability unverified:** the Reflector and
-    Dancing Blade scratch words inherited from an unmodelled predecessor.
-    (Resolved as n/a: relaxed or C-stick jump entry, FallSpecial with jumps
+20. ~~Open, reachable in principle~~ (2026-09-28): the DownDamage wall tech
+    and a thrown Marth's wall tech are witnessed; the DownDamage wall bounce
+    and Fox holding a Bob-omb on the ledge are not reachable in practice
+    (`melee-sim search`, 652k and 5k candidates); pause is out of scope (not
+    modelled); the Reflector and Dancing Blade scratch-word guards were never
+    reached in 259k searched predecessor sequences. (Resolved as n/a: relaxed or C-stick jump entry, FallSpecial with jumps
     left, grounded DownReflect, StopWall, the airborne ftCo_Damage_IASA
     catch-all, inert hitboxes, the invincible contact,
     DeadUpFallHitCameraFlat, DownSpot, a grab pair losing its floor and

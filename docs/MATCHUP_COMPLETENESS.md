@@ -4,14 +4,14 @@ Approved next milestone, 2026-09-11. The recorded steel thread established
 exactness for particular matches. It did not establish completeness for all
 legal inputs in this matchup. Keep breadth paused while closing that gap.
 
-## Status — 2026-09-27: exit criteria
+## Status — 2026-09-28: exit criteria
 
 | Exit criterion | Evidence | Open |
 | --- | --- | --- |
-| Every audited in-scope gap implemented and tested; reachability resolved | `COVERAGE_AUDIT.md`: every explicit boundary is ported, fails closed as out of scope, or is shown unreachable with evidence. Ported from the retail branch order but unwitnessed: the shield-impact combinations and an airborne DownDamage wall contact | The Sudden Death item rows it lists (held-item states the explorer has not reached) |
-| A reviewed interaction matrix | `INTERACTION_MATRIX.md` (regenerate with `harness/interaction_matrix.py`); its MISSING list shrank from 20 to the rows its status block names | The other shield-break orientation only (needs a different landing height; not reachable on FD per research) |
-| Focused Dolphin traces compare state, RNG and item/particle fields | `m5_gate` (235 tests), the corpus and Sudden Death lists in it, bones and particle gates; every witness recorded this milestone is exact | none |
-| Debug/release gates, clippy, zero allocation, capture non-mutation | Full release gate 1501/0 (2026-09-27, after the perf merge); clippy clean; the alloc and capture gates are part of `cargo gate` | Perf gate: time and duplicate definitions pass; stripped size is over its 2026-09-10 ceiling from feature growth, pending a baseline decision |
+| Every audited in-scope gap implemented and tested; reachability resolved | `COVERAGE_AUDIT.md` and `INTERACTION_MATRIX.md`: every boundary is ported and witnessed, fails closed as out of scope (Start pause, other stages and characters), or is shown not reachable with decomp, geometry or `melee-sim search` evidence (Fox's other shield-break orientation, a shield break off the stage, laser plus melee on one shield, ground Dancing Blade leaving FD, repeated wall jumps, the DownDamage wall bounce, Fox holding a Bob-omb on the ledge, Fire Fox AirHi -> Hi, the scratch-word guards). Ported from the shared shield-impact code but unwitnessed for Fox's shield: two impacts in one frame (Marth's shield takes a laser plus a blast in `sudden_death_shieldlaserbomb_fd_marth`) | none |
+| A reviewed interaction matrix | `INTERACTION_MATRIX.md` (regenerate with `harness/interaction_matrix.py`): no MISSING or unverified cells remain (52 -> 0 on 2026-09-27/28) | none |
+| Focused Dolphin traces compare state, RNG and item/particle fields | `m5_gate`: 258 tests, including `MATRIX_WITNESSES` (61 scenarios) and `CORPUS_V3_MATCHES` (48); bones and particle gates; every witness recorded this milestone is exact | none |
+| Debug/release gates, clippy, zero allocation, capture non-mutation | Full debug and release gates 1524/0 each (2026-09-27, after the last port fix); clippy clean; the alloc and capture gates are part of `cargo gate` | Perf gate: time and duplicate definitions pass; stripped size is over its 2026-09-10 ceiling from feature growth, pending the user's baseline decision |
 | Fixed, versioned corpus and full matches, both port layouts | Below | none |
 
 **Corpus workload.** The explorer (`cargo run -p melee-replay --release --example explore -- harness/roms/files <out> <count> <skip> [sudden-death]`, corpus version 3) is deterministic per seed. Each normal case is a full match from a retail match-start boundary, both port layouts, three input profiles.
