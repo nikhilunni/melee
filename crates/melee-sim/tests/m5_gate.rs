@@ -938,7 +938,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 98] = [
+const MATRIX_WITNESSES: [(&str, usize); 101] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1057,6 +1057,13 @@ const MATRIX_WITNESSES: [(&str, usize); 98] = [
     ("yoshi_sidedown_roll_ground", 300),
     ("yoshi_sidedown_roll_hit", 300),
     ("yoshi_sidedown_roll_air", 300),
+    // Yoshi's mouth hold escaped (ftCo_800DC920's x2226_b2 release from
+    // XRotN against Yoshi's CatchCut pose): with a buffered jump (CaptureJump
+    // lands at once into Wait) and without (CaptureCut); a hit on the egg
+    // (dmg.x182c_behavior damage scale, ftCo_800BC3D0's timer cut, no reaction).
+    ("yoshi_hold_mouth_escape_jump", 900),
+    ("yoshi_hold_mouth_escape_cut", 900),
+    ("yoshi_hold_egg_hit", 420),
 ];
 
 #[test]
@@ -2025,7 +2032,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 85] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 87] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2202,6 +2209,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 85] = [
     // Fox grabs Falco: CatchWait's flash (fn_800DA1D8) is queued before the
     // color program's effect when that step runs after the entry callback.
     ("corpus_v3_fd_fox_falco4_eb8786a38_p1", 5788),
+    // Fox mashes out of Yoshi's mouth hold (ftCo_800DC920's x2226_b2 release).
+    ("corpus_v3_fd_yoshi_fox4_eb8786a38_p0", 829),
+    // Fox is hit inside Yoshi's egg (ftCo_800BC3D0, x1828 = 4).
+    ("corpus_v3_fd_yoshi_fox4_e12d92447_p1", 258),
 ];
 
 #[test]

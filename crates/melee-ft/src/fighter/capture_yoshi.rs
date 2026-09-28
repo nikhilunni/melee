@@ -390,7 +390,33 @@ pub fn egg_collision(f: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
+/// Fighter_ProcessHit's knockback branch for the egg: the frame's damage
+/// reaches percent (Fighter_UnkTakeDamage_8006CC30), then take_dmg_2_cb
+/// ftCo_800BC3D0 (800BC3D0) takes it, scaled, off the escape timer.
+pub(super) fn egg_hit(fighter: &mut FighterCore, hit: &melee_coll::damage::ReceivedHit) {
+    fighter.physics.percent += hit.percent_damage;
+    let state = egg(fighter);
+    // retail 800BC3F0: fnmsubs, timer = -(percentTemp * ratio - timer).
+    state.timer = gekko_math::fma::fnmsubs(
+        hit.percent_damage,
+        state.parameters.damage_ratio,
+        state.timer,
+    );
+    // 800BC3F8: dmg.x18CC == 3 (a stage hazard's hit) with a burying
+    // x18D0 empties the timer; fighter and item hits log 1 and 2.
+}
+
 impl FighterCore {
+    /// dmg.x182c_behavior (Fighter +182C): Fighter_ChangeMotionState resets
+    /// it to 1; ftCo_800BBED4 sets the egg's +18. Hit detection multiplies
+    /// every received damage by it (ftColl_800765F0, ftcoll.c:580 / 1158).
+    pub(super) fn received_damage_scale(&self) -> f32 {
+        match &self.state_data {
+            MotionData::YoshiEgg(egg) => egg.parameters.damage_behavior,
+            _ => 1.0,
+        }
+    }
+
     /// ftCo_800BBCC0 (800BBCC0), the egg's accessory4: grow the body into the
     /// egg, then restore the model scale and uninstall. Returns whether the
     /// accessory4 slot is the egg's. Separate fsubs/fdivs/fmuls/fadds.

@@ -311,7 +311,7 @@ fn release_pair(
 /// the constraint and saved translation are restored, and the fighter lands
 /// on a floor under it connected to the captor's, if one is within PlCo
 /// +3BC, else sweeps there from the captor's centre.
-fn release_thrown(
+pub(super) fn release_thrown(
     captor: &Fighter,
     captured: &mut Fighter,
     assets: &FighterAssets,

@@ -280,12 +280,9 @@ pub fn release(
     attacker: &mut Fighter,
     va: &FighterAssets,
     aa: &FighterAssets,
+    map: &mut melee_mp::CollMap,
     cause: ReleaseCause,
 ) -> Result<()> {
-    assert!(
-        victim.combat.thrown_pose.is_none(),
-        "capture cut needs thrown constraint release"
-    );
     let (jump, retained_drop_timer) = {
         let MotionData::Capture(capture) = &victim.state_data else {
             unreachable!()
@@ -310,9 +307,16 @@ pub fn release(
         victim.physics.self_velocity.x = -victim.physics.facing * va.grab_escape.air_escape_speed;
         victim.physics.self_velocity.y = va.grab_escape.air_escape_vertical_speed;
     }
-    // ftCo_800DC920's ordinary unconstraint-free path removes both links.
-    victim.combat.grab = None;
+    // ftCo_800DC920: both links go; a victim pinned in Yoshi's mouth
+    // (x2226_b2) is first set down where its XRotN points. lb_8000B1CC
+    // rebuilds XRotN's matrix, whose constraint reads the captor's TransN2
+    // in its new CatchCut pose (ftCo_800DA698 ran first).
     attacker.combat.grab = None;
+    if victim.combat.thrown_pose.is_some() {
+        super::grab_throw::update_constraint(&mut victim.core, &mut attacker.core, va, aa);
+        super::grab_damage::release_thrown(attacker, victim, va, map);
+    }
+    victim.combat.grab = None;
     if !jump {
         let velocity = -victim.physics.facing * va.grab_escape.escape_speed;
         if victim.physics.ground_or_air == GroundOrAir::Ground {

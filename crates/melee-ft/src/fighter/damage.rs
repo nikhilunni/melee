@@ -837,18 +837,20 @@ impl Fighter {
         let pair_order = self.core.combat.pair_order.take();
         let light_capture_hit = std::mem::take(&mut self.core.combat.light_capture_hit);
         if let Some(hit) = self.core.combat.pending.take() {
-            match self.core.motion_state.id {
-                // take_dmg_2_cb = ftCo_800BC3D0 (x1828 = 4) with the egg's
-                // dmg.x182c_behavior.
-                S::YoshiEgg => unimplemented!("ftCo_YoshiEgg.c:196-205: a hit on Yoshi's egg"),
-                S::CaptureYoshi => unimplemented!("ftCo_8008EC90: a hit on Egg Lay's catch"),
-                _ => {}
+            if self.core.motion_state.id == S::CaptureYoshi {
+                unimplemented!("ftCo_8008EC90: a hit on Egg Lay's catch");
             }
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
             if hit.descriptor.element == melee_types::HitElement::Electric {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
-            if pair_order == Some(super::grab_damage::PairHitOrder::Launch) && hit.knockback != 0.0
+            if self.core.motion_state.id == S::YoshiEgg && hit.knockback != 0.0 {
+                // take_dmg_2_cb = ftCo_800BC3D0 sets x1828 = 4, which no
+                // reaction case takes: the egg keeps rolling into hitlag.
+                super::capture_yoshi::egg_hit(&mut self.core, &hit);
+                hit_damage = self.core.combat.frame_max_damage;
+            } else if pair_order == Some(super::grab_damage::PairHitOrder::Launch)
+                && hit.knockback != 0.0
             {
                 self.core.combat.pending_from_captor = false;
                 self.launch_by_pair_order(hit, assets, rng)?;
@@ -1725,6 +1727,8 @@ fn detect_eligible_hit(
                 unimplemented!("ftCo_8008EC90: third-party hit on a captured fighter");
             }
         }
+        // ftColl_80076ED8 inlineB3: the victim's damage scale (fmuls).
+        let damage = descriptor.damage * victim.received_damage_scale();
         // ftColl_80076ED8's ordinary branch: log the hit for ftColl_8007AB48,
         // whose knockback and effects wait until every contact is logged.
         victim.combat.log_hit(LoggedHit {
@@ -1739,11 +1743,12 @@ fn detect_eligible_hit(
                 },
                 knockback: 0.0,
                 facing_override: None,
-                percent_damage: descriptor.damage,
+                percent_damage: damage,
             },
             position: contact.position,
             knockback_damage: hit.knockback_damage,
-            damage: descriptor.damage,
+            damage,
+            // DmgLogEntry.x20: the hitbox's own damage.
             effect_damage: descriptor.damage,
         });
         attacker.combat.has_recorded_hit = true;
@@ -1752,7 +1757,7 @@ fn detect_eligible_hit(
         attacker.combat.dealt_damage = attacker
             .combat
             .dealt_damage
-            .max(super::hit_log::damage_count(descriptor.damage));
+            .max(super::hit_log::damage_count(damage));
         melee_coll::detection::record_victim(
             &mut attacker.commands.hitboxes,
             descriptor.group,
@@ -1799,7 +1804,8 @@ fn log_phantom_contact(
         return;
     }
     let descriptor = hit.descriptor.clone();
-    let damage = phantom_damage(descriptor.damage);
+    // ftColl_80076ED8 inlineB3: the victim's damage scale before halving.
+    let damage = phantom_damage(descriptor.damage * victim.received_damage_scale());
     // len = unk_count >> 1, at least 1 when nonzero.
     let count = match hit.knockback_damage >> 1 {
         0 if hit.knockback_damage != 0 => 1,
@@ -2297,6 +2303,8 @@ impl Fighter {
             ) {
                 descriptor.damage *= assets.damage.captured_item_damage_scale;
             }
+            // ftColl_80077C60 (ftcoll.c:1158): the victim's damage scale.
+            descriptor.damage *= self.received_damage_scale();
             if self.status.revival_invincibility != 0 {
                 melee_coll::detection::record_victim(
                     &mut item.hitboxes,
@@ -2377,6 +2385,7 @@ impl Fighter {
         ) {
             descriptor.damage *= assets.damage.captured_item_damage_scale;
         }
+        descriptor.damage *= self.received_damage_scale();
         let scaled = fctiwz(descriptor.damage);
         let damage = match 0.5 * scaled as f32 {
             half if fctiwz(half) == 0 && scaled != 0 => 1.0,

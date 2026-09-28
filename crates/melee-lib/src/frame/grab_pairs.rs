@@ -261,6 +261,7 @@ pub(super) fn escape(state: &mut InitialState, player: usize) -> Result<()> {
             a,
             &state.assets.fighters[player],
             &state.assets.fighters[other],
+            &mut state.map,
             melee_ft::fighter::grab_escape::ReleaseCause::TimerExpired,
         )
     }))
@@ -322,6 +323,7 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Optio
                 a,
                 &state.assets.fighters[other],
                 &state.assets.fighters[player],
+                &mut state.map,
                 melee_ft::fighter::grab_escape::ReleaseCause::CaptorSeparation,
             )
             .map(|()| Some(other))
