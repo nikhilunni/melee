@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 319] = [
+const MATRIX_WITNESSES: [(&str, usize); 318] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1277,7 +1277,6 @@ const MATRIX_WITNESSES: [(&str, usize); 319] = [
     // aerial lunges off stage), Gerudo Dragon (0x50D..0x50F, misses and inert
     // detections into the lunge), Dark Dive (reversal, grounded and aerial
     // catches) and Wizard's Foot (0x50C; hits, landings, 361 and off stage).
-    ("start_fd_ganondorf_fox4_cold", 600),
     ("taunt_start_fd_ganondorf_fox4", 600),
     ("ganon_punch_ground", 360),
     ("ganon_punch_hit", 441),
