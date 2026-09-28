@@ -127,7 +127,19 @@ fn decoding_preserves_signed_fields_and_relocated_control_targets() {
     ));
     assert!(decode(&[5 << 26, 0], None, 0).is_err());
     assert!(decode(&[11 << 26], None, 0).is_err());
-    assert!(decode(&[63 << 26], None, 0).is_err());
+    assert!(matches!(
+        decode(&[63 << 26], None, 0).unwrap(),
+        Command::Unported(63)
+    ));
+}
+#[test]
+#[should_panic(expected = "subaction opcode 63")]
+fn reaching_an_unported_opcode_names_it() {
+    let code = [Command::Unported(63)];
+    let mut state = ScriptState::default();
+    state.restart(0);
+    state.begin_frame(0.0, 1.0);
+    state.next(&code, 1.0);
 }
 #[test]
 fn graphics_and_capsules_use_retail_literal_and_signed_halfwords() {

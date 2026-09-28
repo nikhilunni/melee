@@ -101,6 +101,9 @@ pub enum Command {
         indices: Vec<usize>,
         frame: f32,
     },
+    /// An ftAction opcode the port does not decode yet. Its length is unknown,
+    /// so decoding stops here; reaching it at run time is `unimplemented!`.
+    Unported(u32),
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ChargePhase {

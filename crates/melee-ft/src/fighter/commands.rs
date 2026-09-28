@@ -205,7 +205,8 @@ impl CommandState {
                 | Command::Wait(_)
                 | Command::AtFrame(_)
                 | Command::Call { .. }
-                | Command::Return => unreachable!("interpreter consumes control flow"),
+                | Command::Return
+                | Command::Unported(_) => unreachable!("interpreter consumes control flow"),
                 Command::ThrowAccessory => {
                     self.throw_accessory = true;
                 }

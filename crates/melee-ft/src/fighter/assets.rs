@@ -34,8 +34,6 @@ pub struct CharacterDescriptor {
     pub part_count: u32,
     pub part_animation_count: usize,
     pub costumes: &'static [CostumeDescriptor],
-    /// Character table animations using ported shared callbacks.
-    pub additional_motions: &'static [u32],
     /// Part sources installed by character callbacks rather than subaction commands.
     pub additional_part_animations: &'static [(usize, usize)],
 }
@@ -254,35 +252,14 @@ impl FighterAssets {
             .ok_or("missing PlCo root")?;
         let common_data = common.link(common_root)?.ok_or("missing common data")?;
         let motion_table = table.table_offset.ok_or("missing motion table")?;
-        // ftwaitanim.c chooses from each character's sentinel-terminated
-        // tables. Load every referenced idle/squat motion and its script.
         let wait_choices = read_wait_table(data, root)?;
         let squat_choices = crate::desc::playback::read_squat_table(data, root)?;
-        let idle_motions: BTreeSet<_> = wait_choices
-            .iter()
-            .flatten()
-            .chain(squat_choices.iter().flatten())
-            .filter(|entry| entry.motion >= 0)
-            .map(|entry| entry.motion as u32)
-            .collect();
         let mut entries = BTreeMap::new();
         let mut words = BTreeMap::new();
-        let script_ids = motion_indices(
-            &[
-                2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 23, 26, 30, 31, 34, 35, 37, 38, 39,
-                40, 41, 42, 43, 17, 19, 36, 44, 11, 216, 217, 220, 224, 225, 226, 227, 228, 238,
-                45, 46, 58, 167, 168, 169, 209, 242, 243,
-                // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet and
-                // the ground light throws (F/B/Hi/Lw, then their smash forms).
-                6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103, 83,
-            ],
-            &idle_motions,
-            descriptor.additional_motions,
-        );
-        for id in script_ids {
-            if table.entries[id as usize].aj_size == 0 {
-                continue;
-            }
+        // Fighter_ChangeMotionState loads any motion row on demand (ftData_80085CD8), so every
+        // row with authored animation data carries its script and animation.
+        let script_ids = authored_motions(&table);
+        for &id in &script_ids {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -456,29 +433,16 @@ impl FighterAssets {
             )?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: {
-                let mut motions: BTreeMap<i32, Motion> = motion_indices(
-                    &[
-                        2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27,
-                        28, 30, 31, 34, 35, 37, 38, 39, 40, 41, 42, 43, 17, 19, 36, 44, 11, 216,
-                        217, 220, 224, 225, 226, 227, 228, 238, 45, 46, 58, 167, 168, 169, 209,
-                        242, 243,
-                        // ftCo_SM_Wait1_1 (Wait holding an item), ftCo_SM_LightGet
-                        // and the ground light throws (F/B/Hi/Lw, smash forms).
-                        6, 78, 79, 80, 81, 82, 96, 97, 98, 99, 85, 86, 87, 88, 100, 101, 102, 103,
-                        83,
-                    ],
-                    &idle_motions,
-                    descriptor.additional_motions,
-                )
-                .into_iter()
-                .filter(|&id| table.entries[id as usize].aj_size != 0)
-                .map(|id| {
-                    Ok((
-                        id as i32,
-                        read_playback_motion(data, root, &table, aj, id as usize)?,
-                    ))
-                })
-                .collect::<Result<_>>()?;
+                let mut motions: BTreeMap<i32, Motion> = script_ids
+                    .iter()
+                    .copied()
+                    .map(|id| {
+                        Ok((
+                            id as i32,
+                            read_playback_motion(data, root, &table, aj, id as usize)?,
+                        ))
+                    })
+                    .collect::<Result<_>>()?;
                 // Borrowed throw motions own their prepared maps through the existing
                 // MotionRemap storage, keeping resource destruction in the same owners.
                 for throw in [
@@ -690,7 +654,8 @@ fn read_script(
             .map_err(|error| format!("{error} at {offset:#x}, opcode {opcode}"))?;
         commands.insert(offset, command.clone());
         match command {
-            Command::End | Command::Return => break,
+            // An unported opcode's length is unknown; the interpreter stops there.
+            Command::End | Command::Return | Command::Unported(_) => break,
             Command::Goto(target) => {
                 read_script(archive, target as u32, commands)?;
                 break;
@@ -817,36 +782,12 @@ fn read_guard_pose(a: &Archive, root: u32) -> Result<Vec<hsd_anim::jobj::JObj>> 
         .collect())
 }
 
-/// Prepare each archive animation once, in retail index order. Keeping the
-/// common, idle and character lists separate avoids deeply nested iterator
-/// instantiations when another common motion family adds its resources.
-fn motion_indices(base: &[u32], idle: &BTreeSet<u32>, additional: &[u32]) -> BTreeSet<u32> {
-    let mut indices = idle.clone();
-    for list in [
-        base,
-        additional,
-        super::down::MOTIONS,
-        super::shield_break::MOTIONS,
-        super::teeter::MOTIONS,
-        super::life::MOTIONS,
-    ] {
-        indices.extend(list.iter().copied());
-    }
-    // S2: ftData_MotionStateList[65..74] aerials and directional landing lag (motions 68..78).
-    indices.extend(68..78);
-    // ftData_MotionStateList[91]: common DamageFlyRoll animation/script.
-    indices.insert(181);
-    // ftCo_SM_PassiveWall / PassiveWallJump: every fighter can tech a wall.
-    indices.extend([202, 203]);
-    // ftCo_SM_WallDamage / StopCeil: the tumble bounce off a wall or a
-    // ceiling (FlyReflectCeil plays StopCeil); ftCo_SM_PassiveCeil: a
-    // ceiling tech.
-    indices.extend([212, 214, 204]);
-    // S7/S8: throw pairs, pummel, grab release, and quick ledge attack.
-    indices.extend([
-        222, 245, 246, 247, 249, 250, 251, 252, 253, 256, 257, 258, 262, 264, 265,
-    ]);
-    indices
+/// The motion table rows with authored AJ data (ftData_80085FD4 `x8`
+/// size): the rows a motion change can attach.
+fn authored_motions(table: &crate::desc::FighterAnimations) -> Vec<u32> {
+    (0..table.entries.len() as u32)
+        .filter(|&id| table.entries[id as usize].aj_size != 0)
+        .collect()
 }
 
 /// One `FtSFXArr` (`{ int num; s32* sfx_ids; }`) hanging off the fighter's `FtSFX`

@@ -7,9 +7,6 @@ use crate::input::{WaitContext, WaitTransition};
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
 
-/// ftCo_SM_Ottotto / ftCo_SM_OttottoWait: the motions these rows play.
-pub const MOTIONS: &[u32] = &[210, 211, 215];
-
 /// PlCo teeter parameters.
 #[derive(Clone, Copy, Debug)]
 pub struct TeeterParameters {

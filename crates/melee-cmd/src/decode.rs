@@ -1,7 +1,8 @@
 //! Typed decoding of the supported ftaction.c subaction vocabulary.
 use crate::Command;
 pub type Result<T> = std::result::Result<T, &'static str>;
-/// Number of words consumed, including the opcode; unsupported codes fail closed.
+/// Number of words consumed, including the opcode; an unported code counts
+/// one word and decodes to [`Command::Unported`].
 pub fn word_count(opcode: u32) -> usize {
     match opcode {
         38 => 7,
@@ -159,7 +160,7 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
                 frame: (word & 2047) as f32,
             }
         }
-        _ => return Err("unsupported subaction opcode"),
+        _ => Command::Unported(opcode),
     })
 }
 fn half(words: &[u32], index: usize) -> u16 {

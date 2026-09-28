@@ -1958,7 +1958,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 48] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 50] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2056,6 +2056,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 48] = [
     // A jump-squat up smash throwing a Bob-omb upward past a rain bomb in
     // its creation intangibility (item.c foobar).
     ("corpus_sd_s1_e00088bc5_p0", 1758),
+    // A forward smash (AttackS4S) whose motion row the old per-state load list
+    // omitted: every authored motion row now loads (ftData_80085CD8).
+    ("corpus_v3_fd_falco_fox4_e9943b4ab_p2", 88),
+    ("corpus_v3_fd_captainfalcon_fox4_e9943b4ab_p2", 88),
 ];
 
 #[test]

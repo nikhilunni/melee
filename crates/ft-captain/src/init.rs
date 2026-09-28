@@ -75,7 +75,6 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     part_count: 54,
     part_animation_count: 3,
     additional_part_animations: &[],
-    additional_motions: &[],
     costumes: &[
         CostumeDescriptor {
             file: "PlCaNr.dat",

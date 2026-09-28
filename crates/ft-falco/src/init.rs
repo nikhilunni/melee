@@ -146,10 +146,6 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
         part_count: 54,
         part_animation_count: 5,
         additional_part_animations: ft_fox_family::KNOCKBACK_PART_ANIMATIONS,
-        additional_motions: &[
-            295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311,
-            312, 313, 314, 315, 316, 317, 318, 319, 320,
-        ],
         costumes: &[
             melee_ft::fighter::assets::CostumeDescriptor {
                 file: "PlFcNr.dat",

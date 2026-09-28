@@ -7,9 +7,6 @@ use super::{
 use hsd_types::Vec3;
 use melee_types::{CommonMotionState as S, FtPart};
 
-/// Shared getup animations from ftData_MotionStateList, prepared at asset load.
-pub(super) const MOTIONS: &[u32] = &[185, 186, 187, 188, 189, 193, 194, 195, 196, 197, 199, 200];
-
 impl super::FighterCore {
     /// ftCo_800986B0 (800986B0): the shield was pressed within the tech
     /// window, and not too soon after the previous press (the hammer never

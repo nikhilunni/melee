@@ -153,9 +153,6 @@ pub struct ScreenKo {
     pub displacement: Vec3,
 }
 
-/// ftCo_SM_DeadUpFallHitCamera (0) and ftCo_SM_DeadUpFallHitCameraFlat (1).
-pub const MOTIONS: &[u32] = &[0, 1];
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenKoPhase {
     Hold = 0,

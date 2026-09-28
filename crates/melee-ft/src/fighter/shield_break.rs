@@ -8,9 +8,6 @@ use crate::{anim::WaitChoice, input::Buttons};
 use hsd_types::Vec3;
 use melee_types::{combat::HurtStatus, CommonMotionState as S, FtPart};
 
-/// ftCo_Submotion: ShieldBreakFly/Fall, DownU/D, StandU/D and FuraFura.
-pub(super) const MOTIONS: &[u32] = &[286, 287, 288, 289, 290, 291, 205];
-
 /// ftCommon_InitGrab / GrabMash scratch, without capture ownership.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DizzyState {

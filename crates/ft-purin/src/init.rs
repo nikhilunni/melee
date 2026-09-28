@@ -85,7 +85,6 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     part_count: 54,
     part_animation_count: 2,
     additional_part_animations: &[],
-    additional_motions: &[295, 296, 297, 298, 299],
     costumes: &[
         CostumeDescriptor {
             file: "PlPrNr.dat",
