@@ -1,12 +1,15 @@
 """Explore, bridge, record and triage in one command.
 
     cd harness && uv run python explore_batch.py <out-dir> <count> <skip> [--sudden-death]
-                                                 [--samples K] [--jobs 8]
+                          [--boundary NAME ...] [--per-fault N] [--samples K] [--jobs 8]
 
 1. Builds and runs the corpus explorer (`melee-replay` example `explore`) for
-   `count` seeds after `skip`; recordings land in <out-dir>/recordings, which
-   must not exist yet (the explorer never overwrites evidence).
-2. Bridges every faulted case to a retail scenario with replay_to_scenario.py,
+   `count` seeds after `skip`, from the given registered boundaries
+   (boundaries.toml; default: the Fox-Marth FD workload); recordings land in
+   <out-dir>/recordings, which must not exist yet (the explorer never
+   overwrites evidence).
+2. Bridges faulted cases to retail scenarios with replay_to_scenario.py: the
+   N shortest per distinct fault message (default 2; 0 bridges every fault),
    plus K clean samples (evenly spread) as exactness checks.
 3. Records all of them at once with record_many.py, sets each scenario's
    `frames` to its trace length, and runs `melee-sim triage` on each.
@@ -14,7 +17,9 @@
    case's gate result, and a triage report file per divergent case.
 
 Scenario names follow the corpus convention: corpus_v3_s<swap>_e<seed>_p<profile>
-(corpus_sd_... for Sudden Death). Existing scenarios of the same name are left
+for the Fox-Marth workload (corpus_sd_... for Sudden Death), and
+corpus_v3_<boundary>_e<seed>_p<profile> for other boundaries (the name without
+`start_`). Existing scenarios of the same name are left
 alone and reused. Nothing is registered in the gates or committed: a fixed
 fault's scenario is added to m5_gate by hand, with its reason.
 """
@@ -32,13 +37,32 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import trace_io  # noqa: E402
 
-CASE = re.compile(r"^(v3(?:sd)?-swap(\d)-explore([0-9a-f]+)-profile(\d)): ticks=(\d+) status=(\S+) fault=(.*)$")
+CASE = re.compile(r"^(?P<case>v3(?:sd)?-(?P<tag>\S+?)-explore(?P<seed>[0-9a-f]+)-profile(?P<profile>\d)): "
+                  r"ticks=(?P<ticks>\d+) status=(?P<status>\S+) fault=(?P<fault>.*)$")
 
 
 def scenario_name(case: str) -> str:
-    m = re.match(r"v3(sd)?-swap(\d)-explore([0-9a-f]+)-profile(\d)", case)
+    m = re.match(r"v3(sd)?-(\S+?)-explore([0-9a-f]+)-profile(\d)", case)
     kind = "sd" if m.group(1) else "v3"
-    return f"corpus_{kind}_s{m.group(2)}_e{m.group(3)}_p{m.group(4)}"
+    swap = re.fullmatch(r"swap(\d)", m.group(2))
+    where = f"s{swap.group(1)}" if swap else m.group(2)
+    return f"corpus_{kind}_{where}_e{m.group(3)}_p{m.group(4)}"
+
+
+def faulted(m: re.Match) -> bool:
+    return m.group("status") == "Faulted"
+
+
+def pick_faults(faults: list[re.Match], per_fault: int) -> list[re.Match]:
+    """The `per_fault` shortest cases of each distinct fault message (all when 0)."""
+    if per_fault <= 0:
+        return faults
+    groups: dict[str, list[re.Match]] = {}
+    for m in faults:
+        groups.setdefault(m.group("fault"), []).append(m)
+    picked = [m for group in groups.values()
+              for m in sorted(group, key=lambda m: int(m.group("ticks")))[:per_fault]]
+    return sorted(picked, key=faults.index)
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -51,6 +75,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("count", type=int)
     ap.add_argument("skip", type=int)
     ap.add_argument("--sudden-death", action="store_true")
+    ap.add_argument("--boundary", action="append", default=[], help="registered boundary (repeatable)")
+    ap.add_argument("--per-fault", type=int, default=2, help="bridge the N shortest cases per fault (0: all)")
     ap.add_argument("--samples", type=int, default=0, help="also bridge K clean cases")
     ap.add_argument("--jobs", type=int, default=8)
     a = ap.parse_args(argv)
@@ -70,28 +96,33 @@ def main(argv: list[str] | None = None) -> None:
     print(f"== exploring {a.count} seeds after {a.skip}", flush=True)
     log = out / "explore.log"
     with log.open("w") as f:
+        # Exit status 1 only means "faults found"; the log says which.
         subprocess.run([str(explore), str(HERE / "roms/files"), str(recordings), str(a.count), str(a.skip),
-                        *(["sudden-death"] if a.sudden_death else [])],
-                       cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, check=True)
+                        *(["sudden-death"] if a.sudden_death else []),
+                        *[arg for name in a.boundary for arg in ("--boundary", name)]],
+                       cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
     cases = [m for line in log.read_text().splitlines() if (m := CASE.match(line))]
-    faults = [m for m in cases if m.group(6) == "Faulted"]
-    clean = [m for m in cases if m.group(6) != "Faulted"]
+    if not cases:
+        sys.exit(f"the explorer ran no cases; see {log}")
+    faults = pick_faults([m for m in cases if faulted(m)], a.per_fault)
+    clean = [m for m in cases if not faulted(m)]
     step = max(1, len(clean) // a.samples) if a.samples else 0
     samples = clean[::step][: a.samples] if a.samples else []
-    outcomes = Counter(m.group(7) if m.group(6) == "Faulted" else m.group(6).split("(")[0] for m in cases)
-    print(f"   {len(cases)} cases: {len(faults)} faulted, bridging {len(faults) + len(samples)}", flush=True)
+    outcomes = Counter(m.group("fault") if faulted(m) else m.group("status").split("(")[0] for m in cases)
+    print(f"   {len(cases)} cases: {sum(map(faulted, cases))} faulted ({len(outcomes)} outcomes), "
+          f"bridging {len(faults) + len(samples)}", flush=True)
 
     bridged: list[tuple[str, str, str]] = []  # (scenario, case, why)
     for m, why in [(m, "fault") for m in faults] + [(m, "sample") for m in samples]:
-        name = scenario_name(m.group(1))
+        name = scenario_name(m.group("case"))
         path = HERE / "scenarios" / f"{name}.toml"
         if not path.exists():
-            r = run([sys.executable, str(HERE / "replay_to_scenario.py"), str(recordings / f"{m.group(1)}.json"),
-                     "--name", name], cwd=HERE)
+            r = run([sys.executable, str(HERE / "replay_to_scenario.py"),
+                     str(recordings / f"{m.group('case')}.json"), "--name", name], cwd=HERE)
             if r.returncode:
                 print(f"   bridge failed: {name}: {r.stderr.strip()[-300:]}", flush=True)
                 continue
-        bridged.append((name, m.group(1), why))
+        bridged.append((name, m.group("case"), why))
     if not bridged:
         (out / "summary.md").write_text(summary(a, outcomes, []))
         print(f"== nothing to record; {out / 'summary.md'}")
@@ -128,7 +159,9 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def summary(a, outcomes: Counter, results: list) -> str:
-    lines = [f"# Explorer batch: {a.count} seeds after {a.skip}{' (Sudden Death)' if a.sudden_death else ''}", "",
+    where = ", ".join(a.boundary) or "the Fox-Marth FD workload"
+    lines = [f"# Explorer batch: {a.count} seeds after {a.skip} from {where}"
+             f"{' (Sudden Death)' if a.sudden_death else ''}", "",
              "| Outcome | Cases |", "|---|---:|"]
     lines += [f"| {k} | {v} |" for k, v in outcomes.most_common()]
     lines += ["", "| Scenario | Case | Why | Result | Triage |", "|---|---|---|---|---|"]

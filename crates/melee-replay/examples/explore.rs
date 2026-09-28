@@ -1,24 +1,31 @@
 //! Deterministic robustness corpus. Exactness requires separate retail replay.
 //! cargo run -p melee-replay --release --example explore -- <assets> <output> [count [skip]]
+//!     [sudden-death] [--boundary <name>]...
 //!
-//! With `count`, version 3 explores that many further input seeds (a
-//! xorshift sequence from `EXTRA_SEED_START`) instead of version 2's eight;
-//! `skip` continues the sequence past seeds an earlier batch explored. A
-//! fifth argument `sudden-death` starts every case from the retail Sudden
-//! Death boundary instead (`sudden_death_start_fd_marth`: Marth P1, Fox P2,
-//! one stock at 300%, the Bob-omb rain), to reach item interactions.
+//! Every case starts from a retail match-start boundary registered in
+//! `harness/boundaries.toml` (`harness/make_boundary.py` adds them), so
+//! `harness/replay_to_scenario.py` can replay any case in Dolphin. The game
+//! seed is the boundary's; the input seeds vary only the explorer's choices.
 //!
-//! Version 2 starts every case from a retail match-start boundary
-//! (`harness/boundaries.toml`), so `harness/replay_to_scenario.py` can replay
-//! any case in Dolphin. The game seed is therefore fixed per port layout; the
-//! eight seeds below vary only the explorer's own input choices.
+//! `--boundary` picks the boundaries (repeatable; any registered stage and
+//! character pair the port runs). Without it, the versioned Fox-Marth workload
+//! of `docs/MATCHUP_COMPLETENESS.md` runs: `start_fd_fox4` and
+//! `start_fd_marth4`, or with `sudden-death` the Sudden Death boundary
+//! `sudden_death_start_fd_marth` (one stock at 300%, the Bob-omb rain).
+//! A Sudden Death boundary always uses the Sudden Death policy.
+//!
+//! With `count`, version 3 explores that many input seeds (a xorshift sequence
+//! from `EXTRA_SEED_START`) instead of version 2's eight; `skip` continues the
+//! sequence past seeds an earlier batch explored.
 use melee_lib::{
-    Buttons, Character, ControllerState, FighterObservation, GameAssets, Inputs, Match,
-    MatchConfig, PlayerConfig, Port, Seed, Stage, Stick,
+    Buttons, ControllerState, FighterObservation, GameAssets, Inputs, Match, Port, Stage, Stick,
 };
-use melee_replay::Recording;
+use melee_replay::{boundary, Recording};
 use serde::Serialize;
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 const CORPUS_VERSION: u32 = 2;
 const SEEDS: [u32; 8] = [
@@ -33,12 +40,36 @@ const SEEDS: [u32; 8] = [
 ];
 const TICKS: u64 = 6000;
 const EXTRA_SEED_START: u32 = 0x00C0_FFEE;
-/// Boundary seeds of `start_fd_fox4` (Fox P1) and `start_fd_marth4` (Marth P1).
-const BOUNDARY_SEEDS: [u32; 2] = [2_477_457_595, 629_775_590];
-/// `sudden_death_start_fd_marth_cold`'s seed (Marth P1, Fox P2).
-const SUDDEN_DEATH_SEED: u32 = 0xFDD2_0686;
 /// A Sudden Death case: its countdown and GO take about 1200 ticks.
 const SUDDEN_DEATH_TICKS: u64 = 3000;
+/// The default workloads and their case-name tags, fixed so that earlier
+/// batches keep their names (`swap1` is Marth on P1).
+const FOX_MARTH_FD: [(&str, &str); 2] = [("start_fd_fox4", "swap0"), ("start_fd_marth4", "swap1")];
+const FOX_MARTH_FD_SUDDEN_DEATH: [(&str, &str); 1] = [("sudden_death_start_fd_marth", "swap1")];
+
+/// Where the policies treat a fighter as near an edge or off the stage: the
+/// main platform's ledge x minus a margin. Final Destination keeps the values
+/// the recorded corpus batches ran with.
+#[derive(Clone, Copy)]
+struct StageEdges {
+    /// Off stage beyond this |x| (or below y = -12): recover.
+    offstage_x: f32,
+    /// Sudden Death: beyond this |x| every move heads inward.
+    sudden_death_x: f32,
+}
+fn stage_edges(stage: Stage) -> StageEdges {
+    // Ledge x: FD 85.57, BF 68.40, YS 56.00, DL 77.27 (the stages' ledge lines).
+    let (offstage_x, sudden_death_x) = match stage {
+        Stage::FinalDestination => (80.0, 55.0),
+        Stage::Battlefield => (63.0, 38.0),
+        Stage::YoshisStory => (51.0, 26.0),
+        Stage::DreamLand => (72.0, 47.0),
+    };
+    StageEdges {
+        offstage_x,
+        sudden_death_x,
+    }
+}
 
 // Caller-owned randomness must never consume the simulated game's RNG.
 struct Choices(u32);
@@ -76,6 +107,7 @@ fn choose(
     other: FighterObservation<'_>,
     choices: &mut Choices,
     profile: u32,
+    edges: StageEdges,
 ) -> Held {
     let choice = choices.next();
     let mut pad = ControllerState::default();
@@ -109,7 +141,7 @@ fn choose(
             5 => pad.stick.y = -1.0,
             _ => pad.cstick = direction(choice),
         }
-    } else if !f.grounded() && (f.position().y < -12.0 || f.position().x.abs() > 80.0) {
+    } else if !f.grounded() && (f.position().y < -12.0 || f.position().x.abs() > edges.offstage_x) {
         match choice % 5 {
             0 => {
                 pad.buttons = Buttons::X;
@@ -208,6 +240,7 @@ fn choose_sudden_death(
     f: FighterObservation<'_>,
     other: FighterObservation<'_>,
     choices: &mut Choices,
+    edges: StageEdges,
 ) -> Held {
     let choice = choices.next();
     let mut pad = ControllerState::default();
@@ -215,7 +248,7 @@ fn choose_sudden_death(
     let inward = if f.position().x >= 0.0 { -1.0 } else { 1.0 };
     let duration = [1, 2, 3, 5, 8, 13, 21, 34][(choices.next() % 8) as usize];
     // Stay on the stage: near an edge every move heads inward.
-    let near_edge = f.position().x.abs() > 55.0 || f.position().y < -5.0;
+    let near_edge = f.position().x.abs() > edges.sudden_death_x || f.position().y < -5.0;
     let side = if near_edge || choice & 0x100 != 0 {
         inward
     } else {
@@ -246,8 +279,8 @@ fn choose_sudden_death(
 #[derive(Serialize)]
 struct ResultRow {
     name: String,
+    boundary: String,
     seed: u32,
-    swapped: bool,
     profile: u32,
     ticks: u64,
     status: String,
@@ -262,26 +295,71 @@ struct Report {
     results: Vec<ResultRow>,
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut positional = Vec::new();
+    let mut chosen = Vec::new();
+    let mut sudden_death = false;
     let mut arguments = std::env::args().skip(1);
-    let directory = PathBuf::from(arguments.next().ok_or("missing asset directory")?);
-    let output = PathBuf::from(arguments.next().ok_or("missing output directory")?);
-    let (version, seeds): (u32, Vec<u32>) = match arguments.next() {
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--boundary" => chosen.push(arguments.next().ok_or("--boundary needs a name")?),
+            "sudden-death" => sudden_death = true,
+            _ => positional.push(argument),
+        }
+    }
+    let mut positional = positional.into_iter();
+    let directory = PathBuf::from(positional.next().ok_or("missing asset directory")?);
+    let output = PathBuf::from(positional.next().ok_or("missing output directory")?);
+    let (version, seeds): (u32, Vec<u32>) = match positional.next() {
         None => (CORPUS_VERSION, SEEDS.to_vec()),
         Some(count) => {
             let mut next = Choices(EXTRA_SEED_START);
             let count: usize = count.parse()?;
-            let skip: usize = arguments.next().map_or(Ok(0), |skip| skip.parse())?;
+            let skip: usize = positional.next().map_or(Ok(0), |skip| skip.parse())?;
             (
                 CORPUS_VERSION + 1,
                 (0..skip + count).map(|_| next.next()).skip(skip).collect(),
             )
         }
     };
-    let sudden_death = match arguments.next().as_deref() {
-        None => false,
-        Some("sudden-death") => true,
-        Some(other) => return Err(format!("unknown mode {other}").into()),
+    if let Some(extra) = positional.next() {
+        return Err(format!("unexpected argument {extra}").into());
+    }
+    let registry = boundary::load(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/boundaries.toml"),
+    )?;
+    let defaults: &[(&str, &str)] = if sudden_death {
+        &FOX_MARTH_FD_SUDDEN_DEATH
+    } else {
+        &FOX_MARTH_FD
     };
+    let names: Vec<String> = if chosen.is_empty() {
+        defaults.iter().map(|(name, _)| name.to_string()).collect()
+    } else {
+        chosen
+    };
+    let mut runs = Vec::new();
+    for name in &names {
+        let found = registry
+            .iter()
+            .find(|b| &b.name == name)
+            .ok_or_else(|| format!("{name} is not in harness/boundaries.toml"))?;
+        if found.sudden_death != sudden_death {
+            return Err(format!(
+                "{name}: pass `sudden-death` exactly when every boundary is a Sudden Death one"
+            )
+            .into());
+        }
+        // Default workloads keep their historical tags; others use the name.
+        let tag = FOX_MARTH_FD
+            .iter()
+            .chain(&FOX_MARTH_FD_SUDDEN_DEATH)
+            .find(|(n, _)| n == name)
+            .map_or_else(
+                || name.strip_prefix("start_").unwrap_or(name).to_string(),
+                |(_, tag)| tag.to_string(),
+            );
+        runs.push((found.clone(), tag));
+    }
     let ticks = if sudden_death {
         SUDDEN_DEATH_TICKS
     } else {
@@ -296,33 +374,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ticks_per_case: ticks,
         results: Vec::new(),
     };
-    // Sudden Death's boundary has Marth on P1 only.
-    let orders: &[bool] = if sudden_death {
-        &[true]
-    } else {
-        &[false, true]
-    };
-    for &swapped in orders {
-        let characters = if swapped {
-            [Character::Marth, Character::Fox]
-        } else {
-            [Character::Fox, Character::Marth]
-        };
-        let base = MatchConfig::versus(
-            Stage::FinalDestination,
-            [
-                PlayerConfig::new(Port::P1, characters[0]),
-                PlayerConfig::new(Port::P2, characters[1]),
-            ],
-        )
-        .with_stocks(4);
-        let base = if sudden_death {
-            let mut base = base.with_stocks(1).with_seed(Seed(SUDDEN_DEATH_SEED));
-            base.rules.sudden_death = true;
-            base
-        } else {
-            base.with_seed(Seed(BOUNDARY_SEEDS[usize::from(swapped)]))
-        };
+    for (boundary, tag) in &runs {
+        let base = boundary.config()?;
+        let edges = stage_edges(base.stage);
         let assets = GameAssets::load(&directory, &base)?;
         for &seed in &seeds {
             for profile in 0u32..3 {
@@ -332,14 +386,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut held = [Held::default(); 2];
                 let mut choices = Choices(seed ^ (profile + 1).wrapping_mul(0x9e3779b9));
                 let name = format!(
-                    "v{version}{}-swap{}-explore{seed:08x}-profile{profile}",
+                    "v{version}{}-{tag}-explore{seed:08x}-profile{profile}",
                     if sudden_death { "sd" } else { "" },
-                    u8::from(swapped)
                 );
                 let mut row = ResultRow {
                     name: name.clone(),
+                    boundary: boundary.name.clone(),
                     seed,
-                    swapped,
                     profile,
                     ticks: 0,
                     status: String::new(),
@@ -367,9 +420,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             previous[i] = Some(action);
                             if held[i].remaining == 0 {
                                 held[i] = if sudden_death {
-                                    choose_sudden_death(fighters[i], fighters[1 - i], &mut choices)
+                                    choose_sudden_death(
+                                        fighters[i],
+                                        fighters[1 - i],
+                                        &mut choices,
+                                        edges,
+                                    )
                                 } else {
-                                    choose(fighters[i], fighters[1 - i], &mut choices, profile)
+                                    choose(
+                                        fighters[i],
+                                        fighters[1 - i],
+                                        &mut choices,
+                                        profile,
+                                        edges,
+                                    )
                                 };
                             }
                             inputs.0[i] = held[i].pad;

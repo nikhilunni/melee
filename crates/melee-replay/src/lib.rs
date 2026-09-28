@@ -1,4 +1,5 @@
 //! Input capture belongs to consumers, outside the deterministic simulation core.
+pub mod boundary;
 mod config;
 pub use config::Config;
 use melee_lib::{

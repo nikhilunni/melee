@@ -9,6 +9,7 @@ license.workspace = true
 melee-lib = { path = "../melee-lib" }
 serde.workspace = true
 serde_json.workspace = true
+toml = "1.1"
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }

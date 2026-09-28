@@ -54,7 +54,8 @@ melee-sim dry-run <new.toml> --state-from <recorded.toml> --out o.jsonl   # run 
 melee-sim search <base.toml> --state-from <recorded.toml> --spec <spec.toml> [--out new.toml --name n]
 cd harness && uv run python record_many.py scenarios/a.toml ... [--jobs 8]   # record in parallel
 cd harness && uv run python record.py scenarios/<name>.toml [--bones N]      # one scene, or human play
-cd harness && uv run python explore_batch.py <out> <n> <skip> [--sudden-death] [--samples K]
+cd harness && uv run python explore_batch.py <out> <n> <skip> [--boundary NAME ...] [--sudden-death] [--samples K]
+cd harness && uv run python make_boundary.py --stage <Stage> --players <P1> <P2>   # new retail start boundary
 cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>
 cd harness && uv run python asm.py <symbol> --fused                          # retail asm (docs/ASM.md)
 ```
@@ -76,8 +77,10 @@ contributors without the disc may set `MELEE_ALLOW_MISSING_DATA=1`
 ## Verification workflow
 
 **Finding bugs.** The explorer (random inputs over full matches from retail
-boundaries) finds real divergences fastest. `explore_batch.py` runs it,
-bridges every fault to a retail scenario, records, gates and writes a triage
+boundaries) finds real divergences fastest. `explore_batch.py` runs it from
+any registered boundaries (`harness/boundaries.toml`; `make_boundary.py` adds
+a stage or character layout in one command), bridges the shortest cases of
+each distinct fault to retail scenarios, records, gates and writes a triage
 report per divergence. Fixed faults' scenarios join `CORPUS_V3_MATCHES` in
 `crates/melee-sim/tests/m5_gate.rs` with a one-line reason.
 

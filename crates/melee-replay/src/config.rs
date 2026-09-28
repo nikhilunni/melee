@@ -5,15 +5,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    stage: String,
-    players: [(u8, String, u8); 2],
-    stocks: u8,
-    all_characters_unlocked: bool,
-    seed: u32,
+    pub(crate) stage: String,
+    pub(crate) players: [(u8, String, u8); 2],
+    pub(crate) stocks: u8,
+    pub(crate) all_characters_unlocked: bool,
+    pub(crate) seed: u32,
     /// A Sudden Death match (`MatchRules::sudden_death`); absent in older
     /// recordings, which are never Sudden Death.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    sudden_death: bool,
+    pub(crate) sudden_death: bool,
 }
 
 const CHARACTERS: [(Character, &str); 7] = [
