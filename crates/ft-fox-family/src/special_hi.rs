@@ -174,6 +174,8 @@ fn launch<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     scratch.collision_ticks = 0;
     scratch.pending_effect = Some(0x48C);
     f.arm_accessory4();
+    // ftfoxspecialhi.c:530: x21F8 = ftCommon_8007F76C.
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedForward);
     f.physics.self_velocity.x = f.physics.facing * (speed * cosf(angle));
     f.physics.self_velocity.y = speed * sinf(angle);
     f.physics.jumps_used = f.attributes.jumping.max_jumps as u8;
@@ -201,6 +203,8 @@ fn travel<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option
             .into(),
             p.assets,
         )?;
+        // ftfoxspecialhi.c:646, 660: x21F8 = ftCommon_8007F76C.
+        f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedForward);
     }
     Ok(None)
 }
@@ -548,6 +552,8 @@ fn launch_ground<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Resul
     s.collision_ticks = 0;
     s.pending_effect = Some(0x48C);
     f.arm_accessory4();
+    // ftfoxspecialhi.c:472: x21F8 = ftCommon_8007F76C.
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedForward);
     f.physics.ground_velocity = speed * f.physics.facing;
     let n = f.collision.data.floor.normal;
     let angle = melee_lb::trigf::atan2f(-n.x * f.physics.facing, n.y);
@@ -558,6 +564,8 @@ fn launch_ground<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Resul
 fn enter_bound<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.change_motion_state(S::SpecialHiBound.into(), assets)?;
     f.step_animation(assets);
+    // ftfoxspecialhi.c:768: x21F8 = ftCommon_8007F76C.
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedForward);
     f.physics.self_velocity.x *= f.character.get::<C>().attributes().fire_fox.bound_vel_x;
     f.commands.variables[0] = 0;
     let n = f.collision.data.floor.normal;

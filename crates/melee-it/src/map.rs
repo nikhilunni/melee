@@ -283,12 +283,7 @@ impl ItemCore {
     /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's
     /// velocity; unless the contact is a repeat, the bounce plays the kind's
     /// sound, sparks and scales the hitboxes' damage by ItemAttr x58.
-    pub fn bounce_off_surfaces(
-        &mut self,
-        bits: u32,
-        map: &melee_mp::CollMap,
-        assets: &ItemAssets,
-    ) {
+    pub fn bounce_off_surfaces(&mut self, bits: u32, map: &melee_mp::CollMap, assets: &ItemAssets) {
         self.reflect_velocity(map, assets);
         if !self.leave_repeated_contact(bits) {
             return;
@@ -592,7 +587,7 @@ impl ItemCore {
 
     /// xDC8 x19 (HSD_JObjSetRotationY): a facing-locked model turns to face
     /// its direction, (float) (M_PI_2 * facing) in double precision.
-    fn face_spin_axis(&mut self) {
+    pub(crate) fn face_spin_axis(&mut self) {
         if self.spin_ignores_facing {
             self.rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(self.facing)) as f32;
         }

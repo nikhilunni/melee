@@ -34,6 +34,17 @@ pub struct SpecialSide {
 /// Illusion's actions, SpecialSStart (347) through SpecialAirSEnd (352).
 const ILLUSION: std::ops::RangeInclusive<u16> = S::SpecialSStart as u16..=S::SpecialAirSEnd as u16;
 
+/// ftCo_800C3538's x2222_b2: set once the dash creates the ghost and by
+/// the end's entry (ftfoxspecials.c:263, 576), kept across ground/air
+/// changes (ftCommon_GroundAirColl_MF has Ft_MF_Unk19), cleared by the
+/// start's entry.
+pub fn cape_turn_blocked<C: FoxFamily>(f: &mut melee_ft::fighter::Fighter) -> bool {
+    let action = f.motion_state.action.0;
+    let travel = action == S::SpecialS as u16 || action == S::SpecialAirS as u16;
+    let end = action == S::SpecialSEnd as u16 || action == S::SpecialAirSEnd as u16;
+    end || (travel && f.character.get_mut::<C>().special_side().ghost_present)
+}
+
 /// The second motion scratch word (mv+4, ghostEffectPos[0].x) in Illusion.
 pub fn retained_scratch_word(
     scratch: &SpecialSide,

@@ -271,6 +271,8 @@ fn smash_input(f: &mut Fighter) -> bool {
 fn set_hooks(f: &mut Fighter, hooks: Hooks) {
     let action = f.motion_state.action;
     f.character.get_mut::<Yoshi>().egg_roll_hooks = Some((action, hooks));
+    // Both installers set x21F8 = fn_8013295C.
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::Character);
 }
 
 /// The callbacks installed in the current motion, if any: Fighter_ChangeMotionState

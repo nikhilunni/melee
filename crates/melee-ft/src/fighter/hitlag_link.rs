@@ -24,7 +24,9 @@ pub struct HitlagLink {
 impl FighterCore {
     /// x2219_b5: frozen in hitlag, by its own countdown or by its partner.
     pub fn in_hitlag(&self) -> bool {
-        self.combat.hitlag_remaining > 0.0 || self.combat.hitlag_link.frozen
+        self.combat.hitlag_remaining > 0.0
+            || self.combat.cape_turn.freeze > 0.0
+            || self.combat.hitlag_link.frozen
     }
 }
 

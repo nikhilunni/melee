@@ -143,6 +143,12 @@ impl FighterCore {
         ) {
             return;
         }
+        // hit_effect_ids: Ground and Cape hits take the normal spark
+        // (Ef_Id_Unk1000 -> ftColl_80078538).
+        let element = match element {
+            HitElement::Ground | HitElement::Cape => HitElement::Normal,
+            element => element,
+        };
         self.effects.push(EffectRequest::HitSpark {
             position,
             element,

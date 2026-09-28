@@ -17,6 +17,8 @@ pub enum Accessory {
     None,
     /// ftMr_SpecialN_ItemFireSpawn: the fireball on the script's throw flag.
     Fireball,
+    /// ftMr_SpecialS_CreateCape: the cape, once per swing.
+    CreateCape,
 }
 
 #[derive(Clone, Debug)]
@@ -38,6 +40,8 @@ pub struct Mario {
     pub super_jump_punch: crate::special_hi::SuperJumpPunch,
     /// Mario Tornado's motion scratch and callbacks.
     pub tornado: crate::special_lw::Tornado,
+    /// The cape and the swing's reflector.
+    pub cape: crate::special_s::Cape,
 }
 impl Mario {
     pub fn new(attributes: MarioAttributes) -> Self {
@@ -51,6 +55,7 @@ impl Mario {
             accessory: Accessory::None,
             super_jump_punch: Default::default(),
             tornado: Default::default(),
+            cape: Default::default(),
         }
     }
 }
@@ -84,21 +89,32 @@ impl CharacterCallbacks for Mario {
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
-            _ => unimplemented!(
-                "ftData_Special{slot:?}[Mario] (airborne: {airborne}): character special entry"
-            ),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
         }
     }
-    /// ftCommon_8007DB58: take_dmg_cb, the Tornado's updateRot.
-    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
-        Some(crate::special_lw::clear_tilt);
-    /// ftCo_800D331C: death2_cb, the Tornado's updateRot.
-    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(crate::special_lw::clear_tilt);
+    /// ftCommon_8007DB58: take_dmg_cb, the Tornado's updateRot or the
+    /// cape's ftMr_Init_OnTakeDamage (one installed at a time).
+    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(damage_callback);
+    /// ftCo_800D331C: death2_cb, the same pair.
+    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(damage_callback);
     /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
     /// callbacks go.
     fn on_motion_change(&mut self) {
         self.tornado.callbacks = false;
+        self.cape.damage_callbacks = false;
     }
+    /// itMarioCape_Logic41_Destroyed: the cape resets its owner.
+    const ARTICLE_DESTROYED: fn(&mut melee_ft::fighter::Fighter, melee_types::ItemKind) =
+        |f, kind| {
+            if kind == melee_types::ItemKind::MarioCape {
+                crate::special_s::reset(f);
+            }
+        };
+    /// The cape's reflector (ftColl_CreateReflectHit, no hit callback).
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
+        Some(crate::special_s::reflector_contact);
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(crate::special_s::reflect_hit);
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
     fn accessory(
@@ -111,6 +127,7 @@ impl CharacterCallbacks for Mario {
         }
         match f.character.get::<Mario>().accessory {
             Accessory::Fireball => crate::special_n::spawn_fireball(f, assets),
+            Accessory::CreateCape => crate::special_s::create_cape(f, assets),
             Accessory::None => {}
         }
     }
@@ -194,3 +211,10 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
+
+/// take_dmg_cb / death2_cb: whichever of the Tornado's and the cape's
+/// callbacks the current motion installed.
+fn damage_callback(f: &mut melee_ft::fighter::Fighter) {
+    crate::special_lw::clear_tilt(f);
+    crate::special_s::remove_cape(f);
+}

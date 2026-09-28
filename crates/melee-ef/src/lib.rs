@@ -6,9 +6,9 @@
 //! No spawn schedules or captured matrices are runtime inputs.
 mod dust;
 mod egg_shell;
+pub mod fixture_spawns;
 mod item_generators;
 mod mario;
-pub mod fixture_spawns;
 mod pool;
 mod resources;
 mod visual;
@@ -66,6 +66,8 @@ pub struct Effects {
     fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
     /// Items whose JObj carries generators (item_generators.rs).
     item_joints: FixedVec<u32, 64>,
+    /// Item model bones generators follow, as (item, bone).
+    item_bones: FixedVec<(u32, u8), 64>,
 }
 #[derive(Clone)]
 struct Effect {

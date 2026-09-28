@@ -233,8 +233,8 @@ fn wall_ahead(f: &Fighter) -> bool {
 }
 
 /// enterAirJump (8011C9E0): the flight's speed, then the jump, which arms
-/// hurtbox_detect_cb (see [`inert_contact`]). x21F8 = ftCommon_8007F76C
-/// only runs after a cape turnaround (ftCo_800C37A0), not modelled.
+/// hurtbox_detect_cb (see [`inert_contact`]), and x21F8 =
+/// ftCommon_8007F76C for a cape turnaround's end (ftCo_800C37A0).
 fn enter_jump(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let a = attributes(f).clone();
     let speed = if f.character.get::<Peach>().bomber.smash {
@@ -245,7 +245,9 @@ fn enter_jump(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     // retail 8011CA0C / 8011CA20: fmuls.
     f.physics.self_velocity.x = speed * f.physics.facing;
     f.physics.self_velocity.y = a.travel_vertical_speed;
-    f.change_motion_state(JUMP, assets)
+    f.change_motion_state(JUMP, assets)?;
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedForward);
+    Ok(())
 }
 
 /// ftPe_SpecialAirSJump_Anim (8011C878): the script's end flag or the
@@ -357,6 +359,7 @@ pub fn air_end_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<(
 fn enter_end(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.change_motion_state(END, assets)?;
     leave_blast(f);
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedBackward);
     Ok(())
 }
 
@@ -374,12 +377,13 @@ fn enter_air_end(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     };
     f.change_motion_state(state, assets)?;
     leave_blast(f);
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::SpeedBackward);
     Ok(())
 }
 
 /// doPostEnd (inlined in both recoils): after a connection the blast
-/// appears at the hip, on the stage plane, and Peach rebounds. x21F8 =
-/// ftCommon_8007F7B4 is not modelled (see [`enter_jump`]).
+/// appears at the hip, on the stage plane, and Peach rebounds. Either way
+/// x21F8 = ftCommon_8007F7B4.
 fn leave_blast(f: &mut Fighter) {
     if f.commands.variables[var::BLAST] == 0 {
         return;

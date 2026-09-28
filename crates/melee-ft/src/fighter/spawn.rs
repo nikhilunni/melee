@@ -1190,7 +1190,10 @@ impl FighterCore {
         }
         self.shield.clear_collision();
         self.combat.reflector_enabled = false;
+        self.cancel_cape_turn();
+        self.clear_cape_turn_end();
         self.effect_state.hitlag_callbacks = false;
+        self.effect_state.article_hitlag = None;
         // fighter.c:1381-1383: hitlag_cb / post_hitlag_cb reset with the row.
         self.combat.hitlag_callbacks = super::damage::HitlagCallbacks::None;
         self.status.unconditional_top_exit = false; // fighter.c:1075

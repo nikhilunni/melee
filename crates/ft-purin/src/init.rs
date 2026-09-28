@@ -62,6 +62,12 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Jigglypuff>();
 
 impl CharacterCallbacks for Jigglypuff {
+    /// ftPr_SpecialN_8014222C, Rollout's x21F8 after a cape turnaround.
+    const CAPE_TURN_END: fn(&mut melee_ft::fighter::Fighter) = |_| {
+        unimplemented!(
+            "ftPr_SpecialN_8014222C (ftpurinspecialn.c:1447): Rollout after a cape turnaround"
+        )
+    };
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

@@ -23,6 +23,7 @@ members = [
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",
     "crates/it-mariofire",
+    "crates/it-mariocape",
     "crates/it-peach",
     "crates/it-pikachu",
     "crates/it-heiho",

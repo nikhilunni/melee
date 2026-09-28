@@ -437,6 +437,13 @@ impl JointSpec {
 pub struct JObjTree {
     /// Resolved external positions for REFTYPE_JOBJ subtype 1 constraints.
     position_constraints: std::collections::BTreeMap<JObjId, Option<Vec3>>,
+    /// REFTYPE_JOBJ subtype 4 (lb_8000C290): the target joint, and the
+    /// retail rotation recovery (HSD_MtxGetRotation with the caller's
+    /// inverse trigonometry) JObjUpdateFunc type 0x37 runs.
+    orientation_constraints: std::collections::BTreeMap<
+        JObjId,
+        (crate::orientation::OrientationTarget, OrientationRecovery),
+    >,
     nodes: Vec<JObj>,
     /// Inactive joint track buffers, reserved once by fixed-skeleton owners.
     spare_tracks: Vec<Vec<crate::fobj::FObj>>,
@@ -448,6 +455,9 @@ pub struct JObjTree {
 /// Depth-first walk in the order Melee's `ftParts` bone-indexing loops use
 /// (`ftparts.c:405-441`, `:470-497`, `:964-987`). See
 /// [`JObjTree::depth_first`].
+/// `HSD_MtxGetRotation` instantiated with a retail inverse trigonometry.
+pub type OrientationRecovery = fn(&Mtx, &mut Vec3);
+
 pub struct DepthFirst<'a> {
     tree: &'a JObjTree,
     cur: Option<JObjId>,
@@ -510,6 +520,56 @@ impl JObjTree {
             self.position_constraints.insert(id, position);
         }
         self.set_mtx_dirty_sub(id);
+    }
+
+    /// lb_8000C290 / resolveCnsOrientation: the target joint for this frame
+    /// (`None` removes the constraint).
+    pub fn set_orientation_constraint(
+        &mut self,
+        id: JObjId,
+        target: Option<(crate::orientation::OrientationTarget, OrientationRecovery)>,
+    ) {
+        match target {
+            Some(target) => {
+                self.orientation_constraints.insert(id, target);
+            }
+            None => {
+                self.orientation_constraints.remove(&id);
+            }
+        }
+        self.set_mtx_dirty_sub(id);
+    }
+
+    /// resolveCnsOrientation (8037B7B0): the target's axes become this
+    /// joint's matrix columns (JObjUpdateFunc 0x32..0x34), then
+    /// JObjUpdateFunc 0x37 recovers the local rotation.
+    fn resolve_orientation(
+        &mut self,
+        id: JObjId,
+        target: &crate::orientation::OrientationTarget,
+        recover: OrientationRecovery,
+    ) {
+        let axes = target.axes(&self.nodes[id.0].mtx);
+        let m = &mut self.nodes[id.0].mtx.0;
+        for (column, v) in axes.iter().enumerate() {
+            m[0][column] = v.x;
+            m[1][column] = v.y;
+            m[2][column] = v.z;
+        }
+        let mut local = self.nodes[id.0].mtx;
+        if let Some(parent) = self.nodes[id.0].parent {
+            mtx::hsd_mtx_inverse_concat(
+                &self.nodes[parent.0].mtx,
+                &self.nodes[id.0].mtx,
+                &mut local,
+            );
+        }
+        let mut rotation = Vec3::ZERO;
+        recover(&local, &mut rotation);
+        let rotate = &mut self.nodes[id.0].rotate;
+        rotate.x = rotation.x;
+        rotate.y = rotation.y;
+        rotate.z = rotation.z;
     }
 
     /// Number of nodes allocated.
@@ -1084,6 +1144,9 @@ impl JObjTree {
                     );
                 }
                 self.nodes[id.0].translate = Vec3::new(local.0[0][3], local.0[1][3], local.0[2][3]);
+            }
+            if let Some((target, recover)) = self.orientation_constraints.get(&id).copied() {
+                self.resolve_orientation(id, &target, recover);
             }
             self.nodes[id.0].flags &= !JOBJ_MTX_DIRTY;
         }
@@ -1696,6 +1759,7 @@ impl Clone for JObjTree {
     fn clone(&self) -> Self {
         Self {
             position_constraints: self.position_constraints.clone(),
+            orientation_constraints: self.orientation_constraints.clone(),
             nodes: hsd_types::storage::clone_vec(&self.nodes),
             spare_tracks: self
                 .spare_tracks

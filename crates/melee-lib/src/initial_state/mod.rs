@@ -52,6 +52,8 @@ use std::{fs::File, io::BufRead, path::Path};
 #[derive(Clone)]
 pub struct InitialState {
     pub(crate) items: Box<melee_it::ItemPool>,
+    /// Posed articles whose bones effects follow (crate::article_pose).
+    pub(crate) article_poses: Box<crate::article_pose::ArticlePoses>,
     pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
     pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
     pub(crate) assets: std::sync::Arc<Assets>,
@@ -348,13 +350,8 @@ impl InitialState {
         let pending_emission = partial_emission
             .then(|| particle_resume::PendingEmission::restore(&saved, &particles, &metadata))
             .transpose()?;
-        let (stage, mut stage_animations) = stage::restore_scene(
-            &saved,
-            &assets,
-            match_start,
-            &mut particles,
-            &metadata,
-        )?;
+        let (stage, mut stage_animations) =
+            stage::restore_scene(&saved, &assets, match_start, &mut particles, &metadata)?;
         crate::frame::validate_saved_resume(&resume, &stage)?;
         if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
             for (&id, animation) in &mut stage_animations {
@@ -416,6 +413,9 @@ impl InitialState {
         let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
+            article_poses: Box::new(crate::article_pose::ArticlePoses::new(
+                &assets.items.article_skeletons,
+            )),
             stock_displays,
             spawn_counter,
             // A match-start savestate is taken before the first countdown tick, so the

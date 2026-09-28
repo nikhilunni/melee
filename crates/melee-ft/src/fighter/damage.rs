@@ -18,6 +18,8 @@ use melee_types::{CommonMotionState as S, FighterKind, GroundOrAir};
 
 #[derive(Default, Clone)]
 pub struct CombatState {
+    /// dmg.x18F4 / x1954 / x2220_b4: a cape's turnaround.
+    pub cape_turn: super::cape_turn::CapeTurn,
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
     /// SmashAttr.x2130_sfxBool: the charge sound already played.
@@ -180,6 +182,8 @@ pub struct InfluenceParameters {
 use melee_coll::damage::ReceivedHit;
 pub struct DamageParameters {
     pub influence: InfluenceParameters,
+    /// PlCo +648..+654: a cape's turnaround.
+    pub cape_turn: super::cape_turn::CapeTurnParameters,
     pub jump_buffer_window: f32,
     pub knockback_replace_window: i32,
     pub air_cancel_window: i32,
@@ -280,6 +284,12 @@ impl DamageParameters {
                 maximum_angle_degrees: r.f32(p + 0x1A8)?,
                 shield_velocity_scale: r.f32(p + 0x1AC)?,
                 shield_influence_scale: r.f32(p + 0x4C0)?,
+            },
+            cape_turn: super::cape_turn::CapeTurnParameters {
+                frames: r.s32(p + 0x648)?,
+                air_speed: r.f32(p + 0x64C)?,
+                ground_speed: r.f32(p + 0x650)?,
+                shield_speed: r.f32(p + 0x654)?,
             },
             jump_buffer_window: r.f32(p + 0x1D0)?,
             knockback_replace_window: r.s32(p + 0xFC)?,
@@ -404,7 +414,7 @@ impl DamageParameters {
         angle != 361 && self.meteor_angles[0] <= angle && angle <= self.meteor_angles[1]
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
-    fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
+    pub(super) fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
         const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
         if angle != 361 {
             // retail 8008D854: fmuls after integer-to-single conversion.
@@ -526,7 +536,13 @@ fn record_shield_hit(
     } else {
         1.0
     };
-    if damage > victim.shield.impact.as_ref().map_or(0, |impact| impact.damage) {
+    if damage
+        > victim
+            .shield
+            .impact
+            .as_ref()
+            .map_or(0, |impact| impact.damage)
+    {
         victim.shield.impact = Some(super::shield::ShieldImpact {
             damage,
             facing,
@@ -903,29 +919,56 @@ impl Fighter {
                 // keeps its facing (ftCo_8008DCE0's argument is fp->facing_dir,
                 // applied after the knockback used the hit's direction)
                 // and skips ftCommon_8007DB58, which only the ordinary branch calls.
-                let down = self.core.down_damage_state(hit.percent_damage, assets);
                 let element = hit.descriptor.element;
-                if down.is_none()
-                    && matches!(
-                        element,
-                        melee_types::HitElement::Nap | melee_types::HitElement::Sleep
-                    )
-                    && !self.core.status.ledge_grab_disabled
-                {
-                    // ftCommon_8007DB58, then ftCo_8008E908's sleep branch
-                    // (ftCo_Damage.c:676-677): asleep, not launched.
-                    self.interrupt_actions();
-                    self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
-                } else {
-                    let facing = if down.is_some() {
-                        Some(self.core.physics.facing)
-                    } else {
+                if element == melee_types::HitElement::Cape {
+                    // Fighter_UnkTakeDamage_8006CC30, then ftCo_8008EC90's
+                    // cape branch: ftCo_800C3538's ftCo_800C3598, or, when it
+                    // is blocked, the ordinary reaction facing as before and
+                    // ftCo_800C3598 at ret_A8C.
+                    let knockback = self.core.modified_knockback(hit.knockback, assets);
+                    if self.cape_turn_blocked() {
+                        assert!(
+                            self.core.combat.grab.is_none(),
+                            "ftCo_8008EC90: a blocked cape hit on a grab pair member"
+                        );
+                        let facing = self.core.physics.facing;
                         self.interrupt_actions();
-                        None
-                    };
-                    self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
-                    if down.is_some() {
-                        self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
+                        self.begin_damage_reaction(
+                            hit.clone(),
+                            None,
+                            Some(facing),
+                            None,
+                            assets,
+                            rng,
+                        )?;
+                    } else {
+                        self.core.physics.percent += hit.percent_damage;
+                    }
+                    self.core.cape_turn(&hit, knockback, assets);
+                } else {
+                    let down = self.core.down_damage_state(hit.percent_damage, assets);
+                    if down.is_none()
+                        && matches!(
+                            element,
+                            melee_types::HitElement::Nap | melee_types::HitElement::Sleep
+                        )
+                        && !self.core.status.ledge_grab_disabled
+                    {
+                        // ftCommon_8007DB58, then ftCo_8008E908's sleep branch
+                        // (ftCo_Damage.c:676-677): asleep, not launched.
+                        self.interrupt_actions();
+                        self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
+                    } else {
+                        let facing = if down.is_some() {
+                            Some(self.core.physics.facing)
+                        } else {
+                            self.interrupt_actions();
+                            None
+                        };
+                        self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
+                        if down.is_some() {
+                            self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
+                        }
                     }
                 }
                 // fighter.c:2888: hitlag uses dmg.x183C_applied, the largest
@@ -1679,7 +1722,14 @@ impl FighterCore {
     }
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
-        if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
+        // fighter.c:1398-1405: a cape's freeze (dmg.x1954) counts first; its
+        // end with no hitlag left ends the frozen state.
+        if self.tick_cape_freeze() && !self.combat.hitlag_link.held {
+            self.end_hitlag();
+        }
+        if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining)
+            && self.combat.cape_turn.freeze <= 0.0
+        {
             if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
             }
@@ -2139,7 +2189,9 @@ impl FighterCore {
         );
         let damage = fctiwz(hit.percent_damage);
         if rng.randi(assets.damage.item_drop_range) < damage {
-            let hold = *self.skeleton.get_mtx(self.animation.parts[article.part].joint);
+            let hold = *self
+                .skeleton
+                .get_mtx(self.animation.parts[article.part].joint);
             let holder = self.item_holder(self.bones.model.animation_translation, assets);
             let (center, attack) = (holder.center, holder.attack);
             self.item_requests.push(melee_it::ItemRequest::DropArticle {
@@ -2201,7 +2253,7 @@ impl FighterCore {
 
     /// ftCo_Damage_CalcVel (8008DC0C): old and new opposite components add;
     /// same-direction components keep the larger magnitude after PlCo +FC.
-    fn combine_knockback(&mut self, x: f32, y: f32, assets: &FighterAssets) {
+    pub(super) fn combine_knockback(&mut self, x: f32, y: f32, assets: &FighterAssets) {
         let velocity = &mut self.physics.knockback_velocity;
         if self.status.time_since_hit < assets.damage.knockback_replace_window {
             velocity.x = x;

@@ -133,6 +133,13 @@ impl SceneFighter {
         }
         with_fighter!(self, |f| matrix(f, bone))
     }
+    /// Part `part` as an orientation constraint's target (resolveCnsOrientation).
+    pub fn orientation_target(&mut self, part: usize) -> hsd_anim::orientation::OrientationTarget {
+        with_fighter!(self, |f| {
+            let joint = f.animation.parts[part].joint;
+            f.skeleton.orientation_target(joint)
+        })
+    }
 }
 
 impl std::ops::Deref for SceneFighter {

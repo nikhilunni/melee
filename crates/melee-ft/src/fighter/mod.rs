@@ -7,6 +7,8 @@ pub mod air_dodge;
 pub mod assets;
 pub mod attack;
 pub mod caches;
+pub mod cape_turn;
+pub mod capture_captain;
 pub mod capture_yoshi;
 pub mod clank;
 pub mod color_overlay;
@@ -25,7 +27,6 @@ pub mod grab;
 pub mod grab_damage;
 pub mod grab_escape;
 pub mod grab_throw;
-pub mod capture_captain;
 mod hit_log;
 pub mod hitbox;
 pub mod hitlag_link;
@@ -39,8 +40,10 @@ pub mod life;
 pub mod multi_jump;
 pub mod offscreen;
 pub mod overlap;
+pub mod parasol;
 pub mod part_rotation;
 mod pass;
+pub mod passive_ceil;
 mod procs;
 pub mod reflection;
 pub mod run;
@@ -50,10 +53,8 @@ pub mod smash;
 mod snapshot;
 mod spawn;
 pub mod squat;
-pub mod state;
-pub mod parasol;
-pub mod passive_ceil;
 mod stage_wind;
+pub mod state;
 pub mod stop_ceil;
 pub mod stop_wall;
 pub mod teeter;
@@ -185,6 +186,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
+    /// ftCo_800C3538's x2222_b2: the character's current state takes a cape
+    /// hit without the turnaround (Fox's Illusion).
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = character::cape_turn_allowed;
+    /// ftCo_800C37A0's fp->x21F8 when the state installed
+    /// `CapeTurnEnd::Character` (Yoshi's and Jigglypuff's rolls).
+    const CAPE_TURN_END: fn(&mut Fighter) = character::no_cape_turn_end;
     /// Fighter_ProcessHit's hurtbox_detect_cb (fighter.c:2950-2954): an
     /// inert hitbox of this fighter touched another fighter (`unk_gobj`
     /// and x221C_b5). Per-motion in retail, like DEAL_DAMAGE.

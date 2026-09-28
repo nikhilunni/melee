@@ -185,13 +185,20 @@ impl Fighter {
     /// ftCo_80092E50 (80092E50): the kind's shield-stun entry (ftCo_80092F2C,
     /// or a character's, such as Yoshi's ftYs_Shield_8012C600), then hitlag.
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
-        if impact.element == melee_types::HitElement::Cape {
-            unimplemented!("ftCo_80092E50: cape shield response");
-        }
+        // x19B0 == HitElement_Cape: the stun without the pushback, then
+        // ftCo_800C36DC's turnaround.
+        let cape = impact.element == melee_types::HitElement::Cape;
         if let Some(result) = (self.character.table().enter_shield_stun)(self, &impact, assets) {
+            assert!(
+                !cape,
+                "ftCo_80092E50: a cape against a character's shield stun"
+            );
             result?;
         } else {
-            self.enter_guard_set_off(&impact, assets)?;
+            self.enter_guard_set_off(&impact, cape, assets)?;
+        }
+        if cape {
+            self.core.shield_cape_turn(impact.facing, assets);
         }
         // Both entries install the shield SDI/ASDI callbacks; x670 = -2 (254).
         self.core.combat.hitlag_callbacks = super::damage::HitlagCallbacks::Guard;
@@ -201,12 +208,17 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_80092F2C (80092F2C): GuardSetOff, shield stun and defender pushback.
-    fn enter_guard_set_off(&mut self, impact: &ShieldImpact, assets: &FighterAssets) -> Result<()> {
+    fn enter_guard_set_off(
+        &mut self,
+        impact: &ShieldImpact,
+        cape: bool,
+        assets: &FighterAssets,
+    ) -> Result<()> {
         self.character.guard_variant(&mut self.core.commands);
         self.change_motion_state(S::GuardSetOff.into(), assets)?;
         // Fighter_ChangeMotionState already stepped the color programs
         // (fighter.c:1346), including a powershield flash requested at contact.
-        self.core.apply_shield_impact(impact, assets);
+        self.core.apply_shield_impact(impact, cape, assets);
         Ok(())
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
@@ -733,7 +745,7 @@ impl FighterCore {
         false
     }
     /// ftCo_80092F2C (80092F2C): shield stun and push after motion entry.
-    fn apply_shield_impact(&mut self, impact: &ShieldImpact, assets: &FighterAssets) {
+    fn apply_shield_impact(&mut self, impact: &ShieldImpact, cape: bool, assets: &FighterAssets) {
         self.input.horizontal.tilt = 254;
         if !self.shield.powershield_window {
             self.queue_shield_effect(0x419);
@@ -760,7 +772,10 @@ impl FighterCore {
             push *= p.ordinary_pushback_multiplier;
         }
         let push = push.min(p.pushback_maximum);
-        self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
+        // ftCo_80092F2C(gobj, true): a cape leaves gr_vel alone.
+        if !cape {
+            self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
+        }
         self.install_shield();
         self.update_shield_size(assets);
     }

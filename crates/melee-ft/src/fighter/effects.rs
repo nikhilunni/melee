@@ -40,6 +40,10 @@ pub struct FighterEffects {
     pub destroy_on_state_change: bool,
     /// Installed pre/post-hitlag efLib pause callbacks, cleared on motion entry.
     pub hitlag_callbacks: bool,
+    /// Installed pre/post-hitlag callbacks that freeze the fighter's article
+    /// of this kind (it_8026B724 / it_8026B73C: Mario's cape), cleared on
+    /// motion entry like the efLib pair.
+    pub article_hitlag: Option<melee_types::ItemKind>,
     pub rotating_bone_index: u8,
     pub invisible: bool,
 }
@@ -133,16 +137,18 @@ impl super::FighterCore {
             if id == 0x446 {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.
-                self.effects.push_graphics(EffectRequest::FollowingGenerator {
-                    id,
-                    bone,
-                    offset: command.offset,
-                });
+                self.effects
+                    .push_graphics(EffectRequest::FollowingGenerator {
+                        id,
+                        bone,
+                        offset: command.offset,
+                    });
                 continue;
             }
             if matches!(id, 0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422 | 0x4D1) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
-                self.effects.push_graphics(EffectRequest::Attached { id, bone });
+                self.effects
+                    .push_graphics(EffectRequest::Attached { id, bone });
                 continue;
             }
             if !(id < 0x250

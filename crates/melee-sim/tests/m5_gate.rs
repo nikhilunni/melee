@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 187] = [
+const MATRIX_WITNESSES: [(&str, usize); 193] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1200,6 +1200,14 @@ const MATRIX_WITNESSES: [(&str, usize); 187] = [
     // 349 off: 975 search candidates (entry 106..130, one tap 2..40 later), none.
     ("mario_tornado_ground_fd_fox4", 300),
     ("mario_tornado_air_fd_fox4", 300),
+    // MARIO: the cape (reflector, turnaround on the ground, in the air and on a
+    // shield, a whiff) and Fox reflecting the fireball; scenario headers say what retail does.
+    ("mario_cape_whiff_fd_fox4", 300),
+    ("mario_cape_turn_ground_fd_fox4", 300),
+    ("mario_cape_turn_air_fd_fox4", 300),
+    ("mario_cape_turn_shield_fd_fox4", 300),
+    ("mario_cape_reflect_laser_fd_fox4", 300),
+    ("mario_fireball_shine_fd_fox4", 300),
 ];
 
 #[test]
@@ -2258,7 +2266,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 192] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 208] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2575,30 +2583,49 @@ const CORPUS_V3_MATCHES: [(&str, usize); 192] = [
     // Mario's Fireball (ftMr_SpecialN, it_8029B6F8): the item's DPtcl trail
     // (1002) before the hand flash (efAlt 0x47A), bounces (efAlt 0x47B);
     // forward smash flame 0x411; landing flash 0x423 (ftCo_8009F834 block_67).
-    ("corpus_v3_fd_mario_fox4_e75fb4a9a_p1", 428),
+    ("corpus_v3_fd_mario_fox4_e75fb4a9a_p1", 5087),
     ("corpus_v3_fd_mario_fox4_edb2b114a_p1", 671),
     ("corpus_v3_fd_mario_fox4_e00f31913_p1", 893),
     ("corpus_v3_fd_mario_fox4_ef89b3e70_p2", 855),
     ("corpus_v3_fd_mario_fox4_e9943b4ab_p2", 212),
-    ("corpus_v3_fd_mario_fox4_e19f8579b_p0", 1292),
+    ("corpus_v3_fd_mario_fox4_e19f8579b_p0", 2789),
     ("corpus_v3_fd_mario_fox4_e19f8579b_p1", 2946),
     ("corpus_v3_fd_mario_fox4_ef89b3e70_p1", 2241),
     ("corpus_v3_fd_mario_fox4_e89a89d0e_p2", 2033),
     // Super Jump Punch (ftMr_SpecialHi): ft_80085154's steered rise, coin hits
     // (hit_effect_ids[HitElement_Coin] = efAlt 0x479, generator 1010).
     ("corpus_v3_fd_mario_fox4_e00f31913_p2", 470),
-    ("corpus_v3_fd_mario_fox4_ec13743d5_p0", 1222),
-    ("corpus_v3_fd_mario_fox4_e89a89d0e_p0", 964),
-    ("corpus_v3_fd_mario_fox4_edb2b114a_p0", 552),
-    ("corpus_v3_fd_mario_fox4_e726cfdde_p2", 558),
+    ("corpus_v3_fd_mario_fox4_ec13743d5_p0", 6001),
+    ("corpus_v3_fd_mario_fox4_e89a89d0e_p0", 4067),
+    ("corpus_v3_fd_mario_fox4_edb2b114a_p0", 4005),
+    ("corpus_v3_fd_mario_fox4_e726cfdde_p2", 2418),
     ("corpus_v3_fd_mario_fox4_e1502cb40_p2", 915),
     ("corpus_v3_fd_mario_fox4_e9943b4ab_p1", 3970),
     ("corpus_v3_fd_mario_fox4_e19f8579b_p2", 2646),
     ("corpus_v3_fd_mario_fox4_e726cfdde_p1", 829),
     // Mario Tornado (ftMr_SpecialLw): both entries in the aerial row 350, landing
     // into 349 (doAirCollIfUnk), efAlt 0x47C with efLib_Cb_ftMr_SpecialLw's tilt.
-    ("corpus_v3_fd_mario_fox4_e1502cb40_p0", 1802),
-    ("corpus_v3_fd_mario_fox4_e726cfdde_p0", 182),
+    ("corpus_v3_fd_mario_fox4_e1502cb40_p0", 3513),
+    ("corpus_v3_fd_mario_fox4_e726cfdde_p0", 2068),
+    // MARIO: Mario vs Fox explorer cases through the cape (turnaround, blocked
+    // turnaround in catch/throw states, shield push), fireball destroy order and Fox's
+    // Fire Fox x21F8 after a cape turn.
+    ("corpus_v3_fd_mario_fox4_e00f31913_p0", 4770),
+    ("corpus_v3_fd_mario_fox4_e75fb4a9a_p0", 4348),
+    ("corpus_v3_fd_mario_fox4_e9943b4ab_p0", 6001),
+    ("corpus_v3_fd_mario_fox4_ec13743d5_p1", 5655),
+    ("corpus_v3_fd_mario_fox4_ef89b3e70_p0", 4235),
+    ("corpus_v3_fd_mario_fox4_e89a89d0e_p1", 6001),
+    ("corpus_v3_fd_mario_fox4_e573e2d95_p0", 2081),
+    ("corpus_v3_fd_mario_fox4_ec3145eb3_p0", 6001),
+    ("corpus_v3_fd_mario_fox4_e50814092_p0", 6001),
+    ("corpus_v3_fd_mario_fox4_e6af4a7bb_p0", 6001),
+    ("corpus_v3_fd_mario_fox4_e3e74affa_p0", 4489),
+    ("corpus_v3_fd_mario_fox4_edafcfddf_p0", 4839),
+    ("corpus_v3_fd_mario_fox4_eeda0d0fc_p0", 2937),
+    ("corpus_v3_fd_mario_fox4_e005a4f43_p0", 2785),
+    ("corpus_v3_fd_mario_fox4_e7ff378da_p0", 4594),
+    ("corpus_v3_fd_mario_fox4_e0dee256e_p0", 6001),
 ];
 
 #[test]

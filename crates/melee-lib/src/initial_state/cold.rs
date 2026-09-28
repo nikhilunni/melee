@@ -91,6 +91,9 @@ impl InitialState {
         let rendered_camera = camera.render_camera(&assets.stage_camera);
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
+            article_poses: Box::new(crate::article_pose::ArticlePoses::new(
+                &assets.items.article_skeletons,
+            )),
             stock_displays: super::stock::create(
                 &assets.interface,
                 std::array::from_fn(|slot| {

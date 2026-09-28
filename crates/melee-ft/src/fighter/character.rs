@@ -93,6 +93,8 @@ pub struct CharacterTable {
     pub set_parasol_animation: fn(&mut Fighter, usize, f32),
     pub article_destroyed: fn(&mut Fighter, melee_types::ItemKind),
     pub landing_articles: fn(&mut Fighter, bool),
+    pub cape_turn_blocked: fn(&mut Fighter) -> bool,
+    pub cape_turn_end: fn(&mut Fighter),
 }
 impl CharacterTable {
     pub const fn new<C: CharacterCallbacks>() -> Self {
@@ -176,6 +178,8 @@ impl CharacterTable {
             set_parasol_animation: C::SET_PARASOL_ANIMATION,
             article_destroyed: C::ARTICLE_DESTROYED,
             landing_articles: C::LANDING_ARTICLES,
+            cape_turn_blocked: C::CAPE_TURN_BLOCKED,
+            cape_turn_end: C::CAPE_TURN_END,
         }
     }
 }
@@ -384,6 +388,12 @@ pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize
 }
 pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
 pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
+pub(super) fn cape_turn_allowed(_fighter: &mut Fighter) -> bool {
+    false
+}
+pub(super) fn no_cape_turn_end(_fighter: &mut Fighter) {
+    unreachable!("CapeTurnEnd::Character installed without a CAPE_TURN_END hook")
+}
 
 #[inline(never)]
 pub(super) fn catch_frame(

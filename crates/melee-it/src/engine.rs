@@ -58,8 +58,9 @@ pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, jobj): generators that follow the item's own
     /// root JObj (Toad's spores, 0x4D3).
     OwnEffect { id: u16 },
-    /// efLib_DestroyAll(gobj) on a living item: the generators on its JObj
-    /// go (the Thunder Jolt ball's trail).
+    /// efLib_DestroyAll(gobj): the generators on the item's JObj go, from
+    /// the kind's own code (the Thunder Jolt ball's trail) or from
+    /// Item_8026A8EC before ItemSwitch's destroy effect (item.c:1991).
     DestroyEffects,
     /// ItemSwitch -> it_8027327C -> it_802787B4 (802787B4): the kind's
     /// destroy effect at the item's root, through it_80278800's zero-range
@@ -89,6 +90,9 @@ pub enum ItemEvent {
     /// model root: effect `id` at the root's world translation when the
     /// request is processed, with kind 4's float parameter.
     RootEffect { id: u16, parameter: Option<f32> },
+    /// efAsync kind 0 (EF_SPAWN_ATTACH) on one of the model's bones
+    /// (xBBC_dynamicBoneTable->bones[bone]): efAlt's attached generator.
+    BoneGenerator { id: u16, bone: usize },
     /// efLib_Cb_DPtcl from the item's joint animation: generator `id` of
     /// `bank` attached to the model root, whose transform at the AnimAll
     /// step is given.
@@ -308,6 +312,9 @@ pub struct ItemCore {
     pub animation_rate: f32,
     /// xDCF b2 (it_8027518C): the item ends without its destroy effect.
     pub destroy_effect_suppressed: bool,
+    /// Item_8026A8EC's efLib_DestroyAll already ran in the proc that ended
+    /// the item.
+    pub effects_destroyed: bool,
     pub script: ScriptState,
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
@@ -564,6 +571,8 @@ impl ItemCore {
                 _ => self.rotation.y = 0.0,
             }
         }
+        // item.c:1205 HSD_JObjSetFacingDirItem, after the model reset.
+        self.face_spin_axis();
         self.hitbox_damage_scale = if flags & state_change::DROP_UPDATE != 0 {
             self.throw_speed
         } else {
@@ -665,9 +674,13 @@ impl ItemCore {
         hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
         hit.update_position(position);
     }
-    /// Item_8026A8EC's ItemSwitch (item.c:1993-1995): the kind's destroy
-    /// effect, unless suppressed or the item is still in its owner's hand.
+    /// Item_8026A8EC (item.c:1991-1995): efLib_DestroyAll, then ItemSwitch's
+    /// destroy effect unless suppressed or the item is still in its owner's
+    /// hand.
     fn queue_destroy_effect(&mut self, effect: Option<u16>, root: Option<Vec3>) {
+        // item.c:1991: efLib_DestroyAll first.
+        self.events.push(ItemEvent::DestroyEffects);
+        self.effects_destroyed = true;
         if self.destroy_effect_suppressed || (self.held && self.owner.is_some()) {
             return;
         }
@@ -956,6 +969,7 @@ impl ItemPool {
             animation_frame: 0.0,
             animation_rate: 1.0,
             destroy_effect_suppressed: false,
+            effects_destroyed: false,
             script: ScriptState::default(),
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),

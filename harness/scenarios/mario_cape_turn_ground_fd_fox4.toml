@@ -1,0 +1,28 @@
+# MARIO directed witness: Mario runs in and capes a standing Fox (HitElement_Cape,
+# ftCo_800C3538 allowed). Fox takes 8% with no reaction, freezes for PlCo +648
+# frames while TransN spins (ftCo_800C37A0), is pushed along the grounded launch
+# angle (ftCo_800C3598) and faces right at the end.
+name = "mario_cape_turn_ground_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mario_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 158, port = 0, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

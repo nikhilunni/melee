@@ -16,6 +16,7 @@ it-heiho = { path = "../it-heiho" }
 it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 it-mariofire = { path = "../it-mariofire" }
+it-mariocape = { path = "../it-mariocape" }
 melee-coll = { path = "../melee-coll" }
 melee-cmd = { path = "../melee-cmd" }
 melee-ef = { path = "../melee-ef" }

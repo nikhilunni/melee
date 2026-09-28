@@ -248,9 +248,11 @@ impl FighterCore {
     }
     /// Fighter_8006A1BC (0x8006A1BC), s_link 0, fighter.c:1393-1442.
     /// Hitlag expires here; unported interactions remain explicit guards.
-    pub fn proc_status(&mut self) {
+    /// Returns whether a cape turn ended with a character's x21F8 to run
+    /// (`Fighter::proc_status` runs it).
+    pub fn proc_status(&mut self) -> bool {
         if self.status.disabled {
-            return;
+            return false;
         }
         self.status.require_supported();
         match self.status.interaction {
@@ -269,6 +271,7 @@ impl FighterCore {
         }
         self.release_separated_hold();
         self.tick_hitlag();
+        let character_turn_end = self.step_cape_turn();
         // ft_800819A8 (0x800819A8), ft_0819.c:32-46: three fadds.
         let cd = &self.collision.data;
         self.previous_collision_bounds = Vec3::new(
@@ -276,6 +279,7 @@ impl FighterCore {
             cd.ecb.right.x + cd.cur_pos.x,
             self.physics.position.y + self.attributes.camera.damage_camera_y_offset,
         );
+        character_turn_end
     }
     pub fn step_animation(&mut self, assets: &FighterAssets) {
         // ftAnim_8006EBA4: command-driven animation ownership changes must

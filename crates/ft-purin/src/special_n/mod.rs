@@ -284,16 +284,18 @@ fn setup(f: &mut Fighter) {
         ..Default::default()
     };
     puff.rollout_callbacks.bounce = true;
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::Character);
 }
 
 /// setupPurinCallbacks: death2, take_dmg, deal_dmg and x21F8 (the
 /// reversal hook, ftPr_SpecialN_8014222C, which only ftCo_800C37A0's
-/// cape turnaround calls; the port does not model that turnaround).
+/// cape turnaround calls).
 fn install_callbacks(f: &mut Fighter) {
     f.character.get_mut::<Jigglypuff>().rollout_callbacks = Callbacks {
         restore: true,
         bounce: true,
     };
+    f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::Character);
 }
 
 /// A Rollout state change with a retail flag word, installing every

@@ -87,6 +87,9 @@ impl CharacterCallbacks for Falco {
     }
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
         Some(ft_fox_family::special_lw::reflector_contact::<Self>);
+    /// Illusion's x2222_b2 (ftCo_800C3538).
+    const CAPE_TURN_BLOCKED: fn(&mut melee_ft::fighter::Fighter) -> bool =
+        ft_fox_family::special_s::cape_turn_blocked::<Self>;
     const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
         Some(ft_fox_family::special_lw::reflect_hit::<Self>);
     const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =

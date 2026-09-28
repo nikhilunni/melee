@@ -1,4 +1,5 @@
 //! Deterministic Melee matches, independent of any application or renderer.
+mod article_pose;
 mod assets;
 mod banner;
 pub mod diagnostics;

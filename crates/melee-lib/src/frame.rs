@@ -316,7 +316,22 @@ impl Runtime {
                         )?;
                     }
                     melee_it::ItemEvent::DestroyEffects => {
-                        state.effects.expire_item_joint(item.id, &mut state.particles);
+                        // A generator kept for its particles goes on reading
+                        // the JObj, whose translation is the root's.
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.root_translation,
+                            None,
+                        );
+                        state
+                            .effects
+                            .update_item_joint(item.id, matrix, &mut state.particles);
+                        state
+                            .effects
+                            .expire_item_joint(item.id, &mut state.particles);
                     }
                     melee_it::ItemEvent::JointParticle {
                         bank,
@@ -331,6 +346,24 @@ impl Runtime {
                             bank,
                             id,
                             item.id,
+                            matrix,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                    melee_it::ItemEvent::BoneGenerator { id, bone } => {
+                        let matrix = article_bone_matrix(
+                            &mut state.fighters,
+                            &mut state.article_poses,
+                            &state.assets.items.article_skeletons,
+                            item,
+                            bone,
+                            self.frame,
+                        );
+                        state.effects.spawn_item_bone_generator::<RetailTrig>(
+                            id,
+                            item.id,
+                            bone,
                             matrix,
                             &mut state.particles,
                             &mut state.rng,
@@ -1409,6 +1442,33 @@ impl Runtime {
                     &mut state.rng,
                 )?,
             Callback::ParticlesMain => {
+                // Generators on a posed article's bones read their matrices.
+                let mut index = 0;
+                loop {
+                    let Some((id, bone)) = state.effects.followed_item_bones().nth(index) else {
+                        break;
+                    };
+                    let followed = state.effects.followed_item_bones().count();
+                    let Some(item) = state.items.iter().find(|i| i.id == id) else {
+                        index += 1;
+                        continue;
+                    };
+                    let matrix = article_bone_matrix(
+                        &mut state.fighters,
+                        &mut state.article_poses,
+                        &state.assets.items.article_skeletons,
+                        item,
+                        bone,
+                        self.frame,
+                    );
+                    state
+                        .effects
+                        .update_item_bone(id, bone, matrix, &mut state.particles);
+                    // A bone nothing follows any more left the list.
+                    if state.effects.followed_item_bones().count() == followed {
+                        index += 1;
+                    }
+                }
                 // Generators on an item's JObj read its current matrix.
                 for item in state.items.iter() {
                     if state.effects.follows_item(item.id) {
@@ -1586,12 +1646,39 @@ impl Runtime {
         // release their owner's references.
         for item in state.items.iter().filter(|item| item.destroyed) {
             crate::scene_items::article_destroyed(&mut state.fighters, item);
-            // Item_8026A8EC frees the JObj its generators follow.
-            state
-                .effects
-                .expire_item_joint(item.id, &mut state.particles);
+            // Generators kept on a torn-down article's bones.
+            let mut index = 0;
+            loop {
+                let Some((id, bone)) = state.effects.followed_item_bones().nth(index) else {
+                    break;
+                };
+                let followed = state.effects.followed_item_bones().count();
+                if id == item.id {
+                    if let Some(matrix) = state.article_poses.detached_bone_matrix(id, bone) {
+                        state
+                            .effects
+                            .update_item_bone(id, bone, matrix, &mut state.particles);
+                    }
+                }
+                // A bone nothing follows any more left the list.
+                if state.effects.followed_item_bones().count() == followed {
+                    index += 1;
+                }
+            }
+            // Item_8026A8EC frees the JObj its generators follow, unless its
+            // proc already did (ItemEvent::DestroyEffects).
+            if !item.effects_destroyed {
+                state
+                    .effects
+                    .expire_item_joint(item.id, &mut state.particles);
+            }
+            state.effects.forget_item(item.id);
         }
         crate::scene_items::cleanup(&mut state.items, world, &mut self.item_objects);
+        let items = &state.items;
+        state
+            .article_poses
+            .retain(|id| items.iter().any(|item| item.id == id));
         self.particle_draws.0.append(&mut state.effects.draws.0);
         Ok(())
     }
@@ -1842,6 +1929,7 @@ impl Simulation {
                 }
                 runtime.state.particles.sort_for_display(7);
                 render_cameras(&mut runtime.state);
+                display_posed_articles(&mut runtime.state, runtime.frame - 1);
             }
         }
         let runtime = self.runtime.as_mut();
@@ -1955,6 +2043,52 @@ impl Simulation {
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.
 const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
 
+/// A posed article's bone matrix, its attach bone constrained to its
+/// holder's part as the holder stands now.
+fn article_bone_matrix(
+    fighters: &mut [crate::scene_fighter::SceneFighter],
+    poses: &mut crate::article_pose::ArticlePoses,
+    templates: &[crate::article_pose::ArticleSkeleton],
+    item: &melee_it::ItemCore,
+    bone: usize,
+    tick: u64,
+) -> hsd_types::Mtx {
+    let holder = item.owner.expect("a posed article's holder");
+    let fighter = fighters
+        .iter_mut()
+        .find(|f| f.player.id == holder)
+        .expect("a posed article's holder fighter");
+    let part = usize::from(item.holder_part);
+    let hand = fighter.bone_matrix(Some(part));
+    let orientation = fighter.orientation_target(part);
+    poses.bone_matrix(item, templates, bone, tick, &hand, orientation)
+}
+
+/// A display pass draws each held posed article (its render callback's
+/// HSD_JObjDispAll), setting up its joints with the holder as it stands.
+fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
+    let templates = &state.assets.items.article_skeletons;
+    for item in state.items.iter() {
+        if item.owner.is_none()
+            || !crate::article_pose::ArticlePoses::poses_kind(templates, item.kind)
+        {
+            continue;
+        }
+        let holder = item.owner.expect("checked above");
+        let fighter = state
+            .fighters
+            .iter_mut()
+            .find(|f| f.player.id == holder)
+            .expect("a posed article's holder fighter");
+        let part = usize::from(item.holder_part);
+        let hand = fighter.bone_matrix(Some(part));
+        let orientation = fighter.orientation_target(part);
+        state
+            .article_poses
+            .display(item, templates, after_tick, &hand, orientation);
+    }
+}
+
 /// The stage limits item callbacks read: the blast zones (Stage_GetBlastZone*
 /// Offset) and the camera centre (Stage_UnkSetVec3TCam_Offset).
 fn item_bounds(assets: &crate::assets::Assets) -> melee_it::ItemBounds {
@@ -2054,6 +2188,7 @@ fn dispatch_fighter(
     let assets = &scene_assets.fighters[player];
     let was_in_hitlag = f.in_hitlag();
     let had_effect_callbacks = f.effect_state.hitlag_callbacks;
+    let had_article_hitlag = f.effect_state.article_hitlag;
     match proc {
         FighterProc::Status => {
             // Fighter_8006A360: the parasol timer (fighter.c:1577) precedes
@@ -2125,6 +2260,23 @@ fn dispatch_fighter(
         && f.effect_state.hitlag_callbacks
     {
         effects.set_owner_hitlag(player, true);
+    }
+    // The same transitions for an article's pre/post-hitlag pair: the
+    // scene applies the freeze with this proc's item requests.
+    let article_hitlag = if proc == FighterProc::Status && was_in_hitlag && !f.in_hitlag() {
+        had_article_hitlag.map(|kind| (kind, false))
+    } else if proc == FighterProc::ProcessHit && !was_in_hitlag && f.in_hitlag() {
+        f.effect_state.article_hitlag.map(|kind| (kind, true))
+    } else {
+        None
+    };
+    if let Some((kind, frozen)) = article_hitlag {
+        let owner = f.player.id;
+        f.core.item_requests.push(melee_it::ItemRequest::Control {
+            owner,
+            kind,
+            control: melee_it::ItemControl::OwnerHitlag(frozen),
+        });
     }
     // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
     // operands; queue lifetime is owned by the scene's ground controller.

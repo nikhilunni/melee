@@ -9,6 +9,26 @@ fn item_joint(item: u32) -> usize {
     FIRST_ITEM_JOINT + item as usize
 }
 
+// An item's model bones occupy their own range, 32 per item.
+const FIRST_ITEM_BONE_JOINT: usize = 1 << 26;
+const ITEM_BONE_STRIDE: usize = 32;
+
+fn item_bone_joint(item: u32, bone: usize) -> usize {
+    assert!(bone < ITEM_BONE_STRIDE);
+    FIRST_ITEM_BONE_JOINT + item as usize * ITEM_BONE_STRIDE + bone
+}
+
+/// efAlt rows that attach one generator to a joint (hsd_8039EFAC(0, bank,
+/// generator, jobj)).
+fn bone_generator(id: u16) -> Result<(u8, u32)> {
+    Ok(match id {
+        // efalt.c:68-73: the sparkles along Mario's cape.
+        0x47D => (1, 0x3F0),
+        0x47E => (1, 0x3F1),
+        _ => anyhow::bail!("efAsync kind 0 {id:#x} on an item bone"),
+    })
+}
+
 /// An efSync_Spawn row whose generators follow the item's root JObj.
 struct ItemGenerators {
     /// The particle bank (0 common, else a character's).
@@ -108,6 +128,70 @@ impl Effects {
         Ok(())
     }
 
+    /// efAsync kind 0 on an item's model bone, dispatched at the item's
+    /// queue flush: efAlt's hsd_8039EFAC(0, bank, generator, bone), a
+    /// generator that follows the bone with no AppSRT.
+    pub fn spawn_item_bone_generator<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        bone: usize,
+        matrix: Mtx,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let (bank, generator) = bone_generator(id)?;
+        let joint = item_bone_joint(item, bone);
+        let mut spawn = SpawnRequest::new(bank, generator, 0);
+        spawn.joint = Some((joint, matrix));
+        self.events.spawn(&spawn, false, false);
+        let particle_bank = resources::character_bank(&self.character_banks, i32::from(bank))?;
+        if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some()
+            && !self.item_bones.contains(&(item, bone as u8))
+        {
+            self.item_bones.push((item, bone as u8));
+        }
+        Ok(())
+    }
+
+    /// The item bones generators follow, as (item, bone).
+    pub fn followed_item_bones(&self) -> impl Iterator<Item = (u32, usize)> + '_ {
+        self.item_bones
+            .iter()
+            .map(|&(item, bone)| (item, usize::from(bone)))
+    }
+
+    /// A followed item bone's world matrix for its generators.
+    pub fn update_item_bone(
+        &mut self,
+        item: u32,
+        bone: usize,
+        matrix: Mtx,
+        particles: &mut ParticleSystem,
+    ) {
+        let joint = item_bone_joint(item, bone);
+        if !particles
+            .generators
+            .iter()
+            .any(|g| g.attachment_id == Some(joint))
+        {
+            self.forget_item_bone(item, bone);
+            return;
+        }
+        self.events.update_joint(joint, matrix);
+        particles.update_joint(joint, matrix);
+    }
+
+    fn forget_item_bone(&mut self, item: u32, bone: usize) {
+        let index = self
+            .item_bones
+            .iter()
+            .position(|&entry| entry == (item, bone as u8));
+        if let Some(index) = index {
+            self.item_bones.remove(index);
+        }
+    }
+
     /// Whether generators still follow `item`'s JObj.
     pub fn follows_item(&self, item: u32) -> bool {
         self.item_joints.contains(&item)
@@ -131,8 +215,20 @@ impl Effects {
     /// Item_8026A8EC: the item's JObj goes, and with it the generators on it.
     /// efLib_DestroyAll (eflib.c:280-282) walks the item's JObj tree with
     /// hsd_8039D688 even when no generator follows it, which still parks the
-    /// generator insertion cursor at the list's tail.
+    /// generator insertion cursor at the list's tail. A generator kept for
+    /// its particles (hsd_8039D3AC) still reads the JObj, which lives until
+    /// the frame's end, so the item stays followed until [`Self::forget_item`].
     pub fn expire_item_joint(&mut self, item: u32, particles: &mut ParticleSystem) {
+        // The walk reaches the model's bones too.
+        loop {
+            let Some(index) = self.item_bones.iter().position(|&(i, _)| i == item) else {
+                break;
+            };
+            let (_, bone) = self.item_bones.remove(index);
+            let joint = item_bone_joint(item, usize::from(bone));
+            self.events.expire_joint(joint);
+            particles.expire_joint(joint);
+        }
         if !self.item_joints.contains(&item) {
             particles.walk_unowned_joint();
             return;
@@ -140,10 +236,10 @@ impl Effects {
         let joint = item_joint(item);
         self.events.expire_joint(joint);
         particles.expire_joint(joint);
-        self.forget_item(item);
     }
 
-    fn forget_item(&mut self, item: u32) {
+    /// The item's GObj is gone (end of frame): nothing reads its JObj.
+    pub fn forget_item(&mut self, item: u32) {
         let index = self.item_joints.iter().position(|&i| i == item);
         if let Some(index) = index {
             self.item_joints.remove(index);

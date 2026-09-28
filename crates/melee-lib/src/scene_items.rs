@@ -30,6 +30,7 @@ melee_it::item_kinds! {
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
         PikachuThunder: it_pikachu::ThunderBolt,
         MarioFire: it_mariofire::MarioFire,
+        MarioCape: it_mariocape::MarioCape,
     }
 }
 
@@ -71,6 +72,8 @@ pub struct Resources {
     pub common: ItemCommonData,
     kinds: Vec<(ItemKind, ItemAssets)>,
     visual_archives: Vec<(ItemKind, std::sync::Arc<Archive>)>,
+    /// Articles whose bones effects follow (crate::article_pose).
+    pub(crate) article_skeletons: Vec<crate::article_pose::ArticleSkeleton>,
 }
 impl Resources {
     pub fn load(
@@ -97,6 +100,7 @@ impl Resources {
             )?,
         )];
         let mut visual_archives = Vec::new();
+        let mut article_skeletons = Vec::new();
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
                 "PlFx.dat",
@@ -267,7 +271,22 @@ impl Resources {
             fire.read_particle_tracks(&a)
                 .map_err(|e| anyhow::anyhow!("fireball particle track: {e}"))?;
             kinds.push((ItemKind::MarioFire, fire));
-            visual_archives.push((ItemKind::MarioFire, a));
+            visual_archives.push((ItemKind::MarioFire, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[2]: the cape, whose sparkles follow its bones.
+            let cape = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_mariocape::ARTICLE_INDEX,
+                &it_mariocape::ARTICLE_STATES,
+                0,
+            )?;
+            article_skeletons.push(crate::article_pose::ArticleSkeleton::load(
+                ItemKind::MarioCape,
+                &a,
+                &cape.visual,
+            )?);
+            kinds.push((ItemKind::MarioCape, cape));
+            visual_archives.push((ItemKind::MarioCape, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -286,6 +305,7 @@ impl Resources {
             common,
             kinds,
             visual_archives,
+            article_skeletons,
         })
     }
     pub fn visual_models(&self) -> impl Iterator<Item = (ItemKind, &Archive, u32)> {

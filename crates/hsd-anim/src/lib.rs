@@ -13,6 +13,7 @@ pub mod load;
 pub mod material_playback;
 pub mod mobj;
 pub mod mtx;
+pub mod orientation;
 pub mod quat;
 pub mod tobj;
 
