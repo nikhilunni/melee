@@ -58,6 +58,10 @@ pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, jobj): generators that follow the item's own
     /// root JObj (Toad's spores, 0x4D3).
     OwnEffect { id: u16 },
+    /// efSync_Spawn(id, gobj, jobj, &offset) through
+    /// efLib_CreateGenerator_AppSRT_SetPos: a model that each update sits
+    /// at the item's root JObj plus `offset` (the fire arrow's flame, 0x448).
+    FollowingEffect { id: u16, offset: Vec3 },
     /// efAsync kinds 0 (EF_SPAWN_ATTACH) and 3 (EF_SPAWN_ATTACH_PARAM,
     /// the item's facing) on the model root's child (HSD_JObjGetChild):
     /// efSync's generators that follow that joint (the Ice Climbers' ice).
@@ -148,6 +152,8 @@ pub enum ItemScratch {
     SamusBomb(SamusBombState),
     DinFire(DinFireState),
     Boomerang(BoomerangState),
+    Bow(BowState),
+    Arrow(ArrowState),
     None,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
@@ -237,6 +243,44 @@ pub struct DinFireState {
     pub effects: bool,
     /// The explosion's xDD8: the hitbox's authored size, once read.
     pub hitbox_size: f32,
+}
+/// Item.xDD4_itemVar.linkbow (itlinkbow.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BowState {
+    /// x0: the model scale (ftLib_800869D4 of the owner at creation).
+    pub scale: f32,
+    /// x4: the fighter that drew it.
+    pub archer: Option<u8>,
+}
+/// Item.xDD4_itemVar.linkarrow (itlinkarrow.c). The trail models' pose
+/// history (x24..x90, xB0, xB4) is drawing only.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ArrowState {
+    /// x18: the tail (while nocked, the bow hand; in flight, the last
+    /// frame's position).
+    pub tail: Vec3,
+    /// x94: the flight angle (the model's root rotation Z).
+    pub angle: f32,
+    /// x9C: stuck, the model's remaining wobbles.
+    pub wobbles: i32,
+    /// xA0: shot.
+    pub shot: bool,
+    /// xA4 / xA8: the charged damage and speed.
+    pub damage: u32,
+    pub speed: f32,
+    /// xAC: the charge it was shot with.
+    pub charge: f32,
+    /// xC0: the model scale (ftLib_800869D4 of the archer at creation).
+    pub scale: f32,
+    /// xE0: the fighter that nocked it.
+    pub archer: Option<u8>,
+    /// xE4: the line it is stuck in, or -1.
+    pub line: i32,
+    /// xE8 / xEC: that line's normal angle now and a frame ago.
+    pub normal_angle: f32,
+    pub previous_normal_angle: f32,
+    /// xF0: frames since it faded out (after its stuck lifetime).
+    pub faded_frames: i32,
 }
 /// Item.xDD4_itemVar.linkboomerang (itlinkboomerang.c). The trail models'
 /// pose history (xDD8..xDDC, xDF0, xEB0, xF90) is drawing only.
@@ -1410,6 +1454,7 @@ impl ItemPool {
             item.efasync_immediate = false;
         }
     }
+    #[allow(clippy::too_many_arguments)] // Owner, holder, map, partner and RNG stay separate.
     pub fn animate<D: ItemDispatch>(
         &mut self,
         id: u32,
@@ -1418,6 +1463,7 @@ impl ItemPool {
         holder: Option<crate::ItemHolder<'_>>,
         map: &mut melee_mp::CollMap,
         partner: Option<crate::PartnerView>,
+        rng: &core::cell::Cell<gekko_math::HsdRng>,
     ) {
         let Some(item) = self.get_mut(id) else {
             return;
@@ -1434,6 +1480,7 @@ impl ItemPool {
                     map,
                     assets,
                     partner,
+                    rng: Some(rng),
                 },
             );
             if ended && !item.destroyed {

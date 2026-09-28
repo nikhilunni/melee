@@ -180,6 +180,7 @@ impl CharacterCallbacks for Zelda {
             motion_flags: f.motion_flags(),
             in_hitlag: f.core.in_hitlag(),
             anchor: f.physics.position,
+            article_stage: None,
         };
         crate::special_s::item_owner(f, &mut owner);
         owner

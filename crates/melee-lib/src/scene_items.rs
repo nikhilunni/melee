@@ -52,6 +52,10 @@ melee_it::item_kinds! {
         CLinkBoomerang: it_link::YoungLinkBoomerang,
         LinkHShot: it_link::LinkHookshot,
         CLinkHShot: it_link::YoungLinkHookshot,
+        LinkBow: it_link::LinkBow,
+        CLinkBow: it_link::YoungLinkBow,
+        LinkArrow: it_link::LinkArrow,
+        CLinkArrow: it_link::YoungLinkArrow,
     }
 }
 
@@ -587,7 +591,34 @@ impl Resources {
                 it_link::hookshot::SPECIAL_ATTRIBUTES,
             )?;
             kinds.push((hookshot_kind, hookshot));
-            visual_archives.push((hookshot_kind, a));
+            visual_archives.push((hookshot_kind, std::sync::Arc::clone(&a)));
+            // [3] the arrow, [4] the bow.
+            let young = kind == ItemKind::CLinkBoomerang;
+            let (arrow_kind, bow_kind) = if young {
+                (ItemKind::CLinkArrow, ItemKind::CLinkBow)
+            } else {
+                (ItemKind::LinkArrow, ItemKind::LinkBow)
+            };
+            let mut arrow = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_link::arrow::ARTICLE_INDEX,
+                &it_link::arrow::ARTICLE_STATES,
+                it_link::arrow::SPECIAL_ATTRIBUTES,
+            )?;
+            // The shot's release sweep (it_80275D5C).
+            arrow.read_common_release(&common_archive, public)?;
+            kinds.push((arrow_kind, arrow));
+            visual_archives.push((arrow_kind, std::sync::Arc::clone(&a)));
+            let bow = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_link::bow::ARTICLE_INDEX,
+                &it_link::bow::ARTICLE_STATES,
+                it_link::bow::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((bow_kind, bow));
+            visual_archives.push((bow_kind, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -817,6 +848,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
             return None;
@@ -846,6 +878,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
             thrown.end_hold(center, attack, map, assets);
@@ -914,6 +947,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
             dropped.end_hold(center, attack, map, assets);
@@ -945,6 +979,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
             dropped.end_hold(center, attack, map, assets);
@@ -1014,6 +1049,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
         }
@@ -1027,6 +1063,7 @@ pub fn request(
                     map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
         }

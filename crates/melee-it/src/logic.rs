@@ -9,6 +9,9 @@ pub struct ItemAnimationContext<'a> {
     pub assets: &'a ItemAssets,
     /// The item's partner as it stands (see [`crate::PartnerView`]).
     pub partner: Option<crate::PartnerView>,
+    /// HSD_Randi / HSD_Randf for animation callbacks that draw (a stuck
+    /// arrow's wobble); None outside the item's own procs.
+    pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
 }
 pub struct ItemPhysicsContext<'a> {
     pub owner: Option<&'a ItemOwner>,

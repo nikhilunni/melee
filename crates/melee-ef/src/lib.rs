@@ -73,6 +73,8 @@ pub struct Effects {
     item_joints: FixedVec<u32, 64>,
     /// Item model bones generators follow, as (item, bone).
     item_bones: FixedVec<(u32, u8), 64>,
+    /// Root translations of the items models follow (`update_item_roots`).
+    item_roots: FixedVec<(u32, Vec3), 16>,
 }
 /// efsync.c:504-521 (efSync 0x501): the model's life and the bone its
 /// efLib_Cb_LifetimeEndSpawn generator uses (fp->parts[85]).
@@ -111,6 +113,9 @@ struct Effect {
     /// left, the common generator 0x1AB on this bone of the attached
     /// fighter, and 0x27 more frames.
     lifetime_end_spawn: Option<usize>,
+    /// The same callback on an item's root JObj (the fire arrow's flame,
+    /// efSync 0x448): the item and the world-axis offset.
+    follow_item: Option<(u32, Vec3)>,
     hitlag_pause: HitlagPause,
     joint_base: usize,
     paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
@@ -212,6 +217,57 @@ impl Effects {
         }
         self.instances.push(effect);
         Ok(())
+    }
+    /// efSync_Spawn 0x448 (efasync.c:830-837) on an item's root JObj ->
+    /// efLib_CreateGenerator_AppSRT_SetPos (eflib.c:1513): model 0 with a
+    /// 0xB4-tick lifetime and generator 0x92 on its root, which each update
+    /// sets at the item's root plus `offset` (the stuck fire arrow's flame).
+    pub fn spawn_item_following_generator<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        offset: Vec3,
+        common_bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let (generator, lifetime) = match id {
+            0x448 => (0x92, 0xB4),
+            _ => anyhow::bail!("efSync_Spawn {id:#x}: an item-following generator"),
+        };
+        let mut effect = self.acquire(0, particles);
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        effect.hitlag_pause = HitlagPause::Active;
+        effect.lifetime = lifetime;
+        effect.indefinite = false;
+        effect.follow_item = Some((item, offset));
+        let joint = effect.joint_base + effect.root.0;
+        let mut spawn = SpawnRequest::new(0, generator, 0);
+        spawn.joint = Some((joint, effect.matrix(effect.root)));
+        // psAddGeneratorAppSRT_begin(generator, 0).
+        spawn.application_transform = Some(Default::default());
+        self.events.spawn(&spawn, false, false);
+        if let Some(id) = spawn_particle::<T>(particles, common_bank, spawn, rng, &mut self.draws)?
+        {
+            self.events.flags(joint, 0x600, 0x800);
+            let generator = particles.generator_mut(id).unwrap();
+            generator.flags = (generator.flags & !0x600) | 0x800;
+        }
+        self.instances.push(effect);
+        Ok(())
+    }
+    /// Reads the root JObj translation of every item a model follows, for
+    /// this update's callbacks (an item that is gone has no entry).
+    pub fn update_item_roots(&mut self, root: impl Fn(u32) -> Option<Vec3>) {
+        self.item_roots.clear();
+        for effect in self.instances.iter() {
+            if let Some((item, _)) = effect.follow_item {
+                if let Some(position) = root(item) {
+                    self.item_roots.push((item, position));
+                }
+            }
+        }
     }
     /// it_802AEAB4 -> efLib_DestroyAll(item): remove only this owner's muzzle models.
     pub fn destroy_blaster_muzzles(&mut self, owner: usize, particles: &mut ParticleSystem) {
@@ -1436,10 +1492,24 @@ impl Effects {
                     ),
                 );
             }
+            if let Some((item, offset)) = effect.follow_item {
+                let root = self
+                    .item_roots
+                    .iter()
+                    .find(|(id, _)| *id == item)
+                    .map(|(_, p)| *p)
+                    .unwrap_or_else(|| unimplemented!("efLib_Cb_AccumOffset_FromParams on a freed item JObj"));
+                // lb_8000B1CC, then three separate fadds.
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(root.x + offset.x, root.y + offset.y, root.z + offset.z),
+                );
+            }
             if effect.callback_rotation.is_some()
                 || effect.callback_rotation_z.is_some()
                 || effect.facing_rotation.is_some()
                 || effect.follow_bone.is_some()
+                || effect.follow_item.is_some()
             {
                 if let Some(rotation) = effect.callback_rotation {
                     effect.tree.set_rotation_y(effect.root, rotation.y);
@@ -1567,6 +1637,7 @@ impl Effect {
             facing_rotation: None,
             follow_bone: None,
             lifetime_end_spawn: None,
+            follow_item: None,
             hitlag_pause: HitlagPause::Ignore,
             attachment: None,
             owner: None,

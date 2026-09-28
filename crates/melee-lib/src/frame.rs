@@ -333,6 +333,16 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::FollowingEffect { id, offset } => {
+                        state.effects.spawn_item_following_generator::<RetailTrig>(
+                            id,
+                            item.id,
+                            offset,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::DestroyEffects => {
                         // A generator kept for its particles goes on reading
                         // the JObj, whose translation is the root's.
@@ -687,6 +697,7 @@ impl Runtime {
                     ),
                     _ => None,
                 };
+                let rng = std::cell::Cell::new(state.rng);
                 state.items.animate::<SceneItems>(
                     id,
                     state.assets.items.get(kind),
@@ -694,7 +705,9 @@ impl Runtime {
                     holder,
                     &mut state.map,
                     partner,
+                    &rng,
                 );
+                state.rng = rng.get();
                 // Item_8026A848 -> ftCommon_8007E6DC: the hand lets go.
                 let released = state.items.get_mut(id).is_none_or(|item| !item.held);
                 if let (Some(index), true) = (holder_index, released) {
@@ -1644,15 +1657,26 @@ impl Runtime {
                     }
                 }
             }
-            Callback::Effects => state
-                .effects
-                .tick_with_pause::<melee_ft::fighter::RetailTrig>(
-                    self.match_finished,
-                    |player, bone| state.fighters[player].bone_matrix(bone),
-                    &state.assets.common_particle_bank,
-                    &mut state.particles,
-                    &mut state.rng,
-                )?,
+            Callback::Effects => {
+                // efLib_Cb_AccumOffset_FromParams reads followed items'
+                // root JObjs (lb_8000B1CC).
+                let items = &state.items;
+                state.effects.update_item_roots(|id| {
+                    items
+                        .iter()
+                        .find(|i| i.id == id)
+                        .map(|i| i.root_translation)
+                });
+                state
+                    .effects
+                    .tick_with_pause::<melee_ft::fighter::RetailTrig>(
+                        self.match_finished,
+                        |player, bone| state.fighters[player].bone_matrix(bone),
+                        &state.assets.common_particle_bank,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?
+            }
             Callback::ParticlesMain => {
                 // Generators on a posed article's bones read their matrices.
                 let mut index = 0;
@@ -1807,6 +1831,7 @@ impl Runtime {
                 matches!(
                     e,
                     melee_it::ItemEvent::OwnEffect { .. }
+                        | melee_it::ItemEvent::FollowingEffect { .. }
                         | melee_it::ItemEvent::Effect { .. }
                         | melee_it::ItemEvent::JointParticle { .. }
                         | melee_it::ItemEvent::DestroyEffects
@@ -2328,6 +2353,7 @@ fn deliver_owner_request(
                     map: &mut state.map,
                     assets,
                     partner: None,
+                    rng: None,
                 },
             );
         }

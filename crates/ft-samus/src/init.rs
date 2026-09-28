@@ -159,6 +159,7 @@ impl CharacterCallbacks for Samus {
             motion_flags: f.motion_flags(),
             in_hitlag: f.core.in_hitlag(),
             anchor: f.physics.position,
+            article_stage: None,
         }
     }
     /// it_2725_Logic108_Destroyed: a shot that never left the hand lets

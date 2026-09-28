@@ -273,6 +273,7 @@ fn throw_egg(f: &mut Fighter, assets: &FighterAssets) {
         aim: None,
         angle: 0.0,
         long_lifetime: false,
+        shot: None,
     };
     f.core.item_requests.push(ItemRequest::Launch {
         owner: f.player.id,

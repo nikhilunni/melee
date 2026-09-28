@@ -231,6 +231,7 @@ fn fire_shot(f: &mut Fighter, assets: &FighterAssets) {
         }),
         angle: 0.0,
         long_lifetime: false,
+        shot: None,
     };
     f.core.item_requests.push(ItemRequest::Launch {
         owner: f.player.id,

@@ -157,6 +157,7 @@ impl CharacterCallbacks for Sheik {
             motion_flags: f.motion_flags(),
             in_hitlag: f.core.in_hitlag(),
             anchor: f.physics.position,
+            article_stage: None,
         }
     }
     /// The chain's links are Sheik's: its on_accessory is her work.

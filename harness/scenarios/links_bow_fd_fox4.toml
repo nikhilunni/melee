@@ -1,0 +1,36 @@
+# LINKS directed witness: Link's bow (ftLk_MS_SpecialN*, itlinkbow.c and
+# itlinkarrow.c): a tapped shot, a fully charged shot at Fox, a short-hop
+# shot landing mid-draw, and arrows sticking in the floor, wobbling and
+# fading (it_802A9458, itLinkarrow_UnkMotion4_Anim).
+name = "links_bow_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 122, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 300, port = 0, buttons = {  }, raw = {  } },
+  { frame = 380, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 382, port = 0, buttons = {  }, raw = {  } },
+  { frame = 388, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 400, port = 0, buttons = {  }, raw = {  } },
+  { frame = 470, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 500, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

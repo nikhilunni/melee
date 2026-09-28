@@ -182,6 +182,7 @@ fn launch<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
         angle,
         long_lifetime: smash,
         aim: None,
+        shot: None,
     };
     let kind = kind::<C>(f);
     f.core.item_requests.push(ItemRequest::Launch {

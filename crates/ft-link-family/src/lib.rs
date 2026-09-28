@@ -10,6 +10,7 @@ mod common;
 pub mod hookshot;
 pub mod hylian;
 pub mod special_hi;
+pub mod special_n;
 pub mod special_s;
 
 use attributes::LinkAttributes;
@@ -70,6 +71,8 @@ pub struct Specials {
     pub down_air: attack_air::DownAir,
     /// The Hylian shield's volume while standing or crouching.
     pub hylian: hylian::HylianShield,
+    /// The bow special's scratch and articles.
+    pub bow: special_n::Bow,
 }
 impl Specials {
     /// ftLk_Init_OnDeath's clears, keeping the chain's allocation.
@@ -84,6 +87,7 @@ impl Specials {
         self.down_air.frame_start = 0.0;
         self.down_air.hits.fill(None);
         self.hylian = hylian::HylianShield::default();
+        self.bow = special_n::Bow::default();
     }
 }
 
@@ -188,6 +192,12 @@ pub const fn rows<C: LinkFamily>() -> [MotionRow; FamilyState::COUNT] {
     rows[FamilyState::SpecialHi.index()] = spin[0];
     rows[FamilyState::SpecialAirHi.index()] = spin[1];
     rows[FamilyState::AirCatch.index()] = air_catch::motion_row::<C>();
+    let bow = special_n::rows::<C>();
+    let mut i = 0;
+    while i < bow.len() {
+        rows[FamilyState::SpecialNStart.index() + i] = bow[i];
+        i += 1;
+    }
     rows
 }
 
@@ -255,6 +265,7 @@ pub fn enter_special<C: LinkFamily>(
     match slot {
         SpecialSlot::Up => special_hi::enter::<C>(f, airborne, assets),
         SpecialSlot::Side => special_s::enter::<C>(f, airborne, assets),
+        SpecialSlot::Neutral => special_n::enter::<C>(f, airborne, assets),
         _ => unimplemented!(
             "ftData_Special{slot:?}[{:?}] (airborne: {airborne}): character special entry",
             f.core.kind
@@ -284,6 +295,8 @@ pub fn take_damage<C: LinkFamily>(f: &mut Fighter) {
         special_s::remove_boomerang::<C>(f);
         // ftCo_800D94D8.
         hookshot::remove::<C>(f);
+        // ftLk_SpecialN_ProcessFv10 / ProcessFv14.
+        special_n::remove_articles::<C>(f);
     }
     // ftCommon_8007DB58 then runs death1_cb, it_802A7AAC while the
     // hookshot is out.
@@ -311,8 +324,11 @@ pub fn motion_changed(specials: &mut Specials) {
 /// ftLk_SpecialS_RemoveBoomerang0).
 pub fn article_destroyed<C: LinkFamily>(f: &mut Fighter, kind: melee_types::ItemKind) {
     use melee_types::ItemKind as K;
-    if matches!(kind, K::LinkBoomerang | K::CLinkBoomerang) {
-        special_s::forget_boomerang::<C>(f);
+    match kind {
+        K::LinkBoomerang | K::CLinkBoomerang => special_s::forget_boomerang::<C>(f),
+        // The thrower removed it (it_802A2B10) and already let go.
+        K::LinkHShot | K::CLinkHShot => {}
+        _ => special_n::article_destroyed::<C>(f, kind),
     }
 }
 
@@ -362,6 +378,7 @@ pub fn item_owner<C: LinkFamily>(f: &mut Fighter, _assets: &FighterAssets) -> me
         stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
         steering_article: false,
         detonating_article: false,
+        article_stage: special_n::stage::<C>(f),
     }
 }
 
@@ -399,6 +416,10 @@ pub fn retained_scratch_word<C: LinkFamily>(
     let last = FamilyState::SpecialAirLw as u16;
     if !(first..=last).contains(&action.0) {
         return None;
+    }
+    // The bow's rows keep the charge there (mv.lk.specialn.x0.y).
+    if action.0 <= FamilyState::SpecialAirNEnd as u16 {
+        return Some(state.get::<C>().specials_ref().bow.charge);
     }
     Some(
         state

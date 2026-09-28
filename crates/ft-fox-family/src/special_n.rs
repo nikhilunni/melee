@@ -361,6 +361,7 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
         motion_flags: f.motion_flags(),
         in_hitlag: f.core.in_hitlag(),
         anchor: f.physics.position,
+        article_stage: None,
     }
 }
 

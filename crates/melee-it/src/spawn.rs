@@ -89,6 +89,9 @@ pub enum ItemControl {
     /// it_802C3D44: the owner lets its article fly on without it (Zelda
     /// hit or dying with Din's Fire out).
     Orphan,
+    /// it_802A8398: a drawn arrow follows the hands (its position is the
+    /// tip, its tail the bow hand).
+    Aim { tip: Vec3, tail: Vec3 },
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
@@ -205,6 +208,8 @@ pub struct Launch {
     /// throw's longer one).
     pub angle: f32,
     pub long_lifetime: bool,
+    /// itLinkArrow_802A850C's aim and draw, for a shot article.
+    pub shot: Option<Shot>,
     /// A release that also aims the article (Samus's charge shot,
     /// it_802B56E4), if any.
     pub aim: Option<Aim>,
@@ -219,6 +224,22 @@ pub struct Aim {
     pub angle: f32,
     pub charge: f32,
     pub full_charge: f32,
+    pub facing: f32,
+}
+
+/// A drawn arrow's release (ftLk_SpecialNEnd_Coll -> itLinkArrow_802A850C).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Shot {
+    /// The drawing hand's thumb (the arrow's tip) and the bow hand's (its
+    /// tail), at z 0.
+    pub tip: Vec3,
+    pub tail: Vec3,
+    /// The flight angle (radians).
+    pub angle: f32,
+    /// Frames drawn, and the most that count.
+    pub charge: f32,
+    pub max_charge: f32,
+    /// The archer's facing (ftLib_800865C0).
     pub facing: f32,
 }
 
@@ -302,6 +323,10 @@ pub struct ItemOwner {
     /// (ftLk_SpecialHi_GetPosWithAdjustedY: cur_pos raised by an attribute);
     /// the position for other kinds.
     pub anchor: Vec3,
+    /// The stage of the owner's special its articles follow
+    /// (ftLk_SpecialN_GetIndex: 0..5 through the bow special's rows),
+    /// or None.
+    pub article_stage: Option<u8>,
     /// The owner's count of articles it has fired, which its articles
     /// compare with the count at their own launch (Samus's missiles read
     /// u.ss.x2238 through ftSs_SpecialS_8012A068). Zero for other kinds.

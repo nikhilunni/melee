@@ -287,7 +287,8 @@ macro_rules! blaster {
                     | ItemControl::OwnerHitlag(_)
                     | ItemControl::Strike
                     | ItemControl::Motion(_)
-                    | ItemControl::Orphan => {
+                    | ItemControl::Orphan
+                    | ItemControl::Aim { .. } => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

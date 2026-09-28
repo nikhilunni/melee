@@ -99,6 +99,7 @@ impl Effects {
             fighter_joints: [false; FIGHTER_SLOTS * FIGHTER_JOINT_STRIDE],
             item_joints: FixedVec::default(),
             item_bones: FixedVec::default(),
+            item_roots: FixedVec::default(),
         }
     }
     pub(super) fn recycle_where(&mut self, remove: impl Fn(&Effect) -> bool) {
@@ -179,6 +180,7 @@ impl Effect {
         self.callback_rotation = None;
         self.facing_rotation = None;
         self.follow_bone = None;
+        self.follow_item = None;
         self.hitlag_pause = initial.hitlag_pause;
         self.joint_base = 0;
         self.tree.events.clear();
