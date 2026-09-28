@@ -295,7 +295,7 @@ impl FighterCore {
     /// in the ordinary animation step and in Fighter_ChangeMotionState's
     /// frame-zero run (ftAction_80073240).
     pub(super) fn apply_airborne_commands(&mut self) {
-        for state in std::mem::take(&mut self.commands.airborne_changes) {
+        for state in self.commands.airborne_changes.take_all() {
             match state {
                 melee_cmd::AirborneMode::Ground => self.land(),
                 melee_cmd::AirborneMode::Air => self.leave_ground(),
@@ -367,7 +367,7 @@ impl FighterCore {
             .floor_terrain_flags(self.physics.ground_or_air)
             .map(|flags| melee_mp::terrain_footstep(self.collision.stage, flags));
         let mut inserted = 0;
-        for step in std::mem::take(&mut self.commands.terrain_footsteps) {
+        for step in self.commands.terrain_footsteps.take_all() {
             let Some(terrain) = terrain else {
                 self.play_command_sound(step.sound, rng);
                 continue;

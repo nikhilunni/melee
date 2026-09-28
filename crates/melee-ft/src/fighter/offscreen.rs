@@ -51,7 +51,7 @@ impl FighterCore {
     /// The subaction self-damage (ftAction_80072BF4) the last command step
     /// ran, in script order.
     pub(super) fn apply_script_damage(&mut self) {
-        for amount in std::mem::take(&mut self.commands.self_damage) {
+        for amount in self.commands.self_damage.take_all() {
             self.take_percent_damage(amount);
         }
     }

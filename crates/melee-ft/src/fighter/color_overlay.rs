@@ -123,8 +123,7 @@ pub struct ColorOverlaySlot {
 impl FighterCore {
     /// ftCo_800BFFD0 -> lb_800144C8 for queued requests, in request order.
     fn install_requested_color_overlays(&mut self, assets: &super::assets::FighterAssets) {
-        let requests = std::mem::take(&mut self.commands.color_animations);
-        for request in requests.iter() {
+        for request in self.commands.color_animations.take_all() {
             self.install_color_overlay(request.id, request.duration, &assets.color_overlays);
         }
     }

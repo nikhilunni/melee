@@ -55,6 +55,15 @@ impl<T, const N: usize> FixedVec<T, N> {
         self.len -= 1;
         value
     }
+    /// Move the entries out in order, leaving `self` empty: the
+    /// `for x in std::mem::take(&mut queue)` idiom for per-tick request
+    /// queues, except that an empty queue copies no storage.
+    pub fn take_all(&mut self) -> impl Iterator<Item = T> {
+        (self.len != 0)
+            .then(|| std::mem::take(self))
+            .into_iter()
+            .flatten()
+    }
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> {
         self.entries[..self.len].iter().map(|v| v.as_ref().unwrap())
     }
@@ -67,9 +76,11 @@ impl<T, const N: usize> FixedVec<T, N> {
 
 impl<T, const N: usize> IntoIterator for FixedVec<T, N> {
     type Item = T;
-    type IntoIter = std::iter::Flatten<std::array::IntoIter<Option<T>, N>>;
+    type IntoIter = std::iter::Flatten<std::iter::Take<std::array::IntoIter<Option<T>, N>>>;
+    /// Entries past `len` are always `None`; the walk stops at `len`.
     fn into_iter(self) -> Self::IntoIter {
-        self.entries.into_iter().flatten()
+        let len = self.len;
+        self.entries.into_iter().take(len).flatten()
     }
 }
 
@@ -86,5 +97,26 @@ impl<T, const N: usize> FromIterator<T> for FixedVec<T, N> {
             result.push(value);
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FixedVec;
+
+    #[test]
+    fn take_all_moves_entries_in_order_and_empties() {
+        let mut queue: FixedVec<u32, 8> = FixedVec::default();
+        assert_eq!(queue.take_all().count(), 0);
+        for value in [3, 1, 4, 1, 5] {
+            queue.push(value);
+        }
+        queue.remove(1);
+        queue.insert(0, 9);
+        let taken: Vec<u32> = queue.take_all().collect();
+        assert_eq!(taken, [9, 3, 4, 1, 5]);
+        assert!(queue.is_empty());
+        queue.push(2);
+        assert_eq!(queue.into_iter().collect::<Vec<_>>(), [2]);
     }
 }

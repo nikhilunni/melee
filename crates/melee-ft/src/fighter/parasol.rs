@@ -125,7 +125,7 @@ impl Fighter {
 
     /// ftAction_80072894 requests queued by this frame's commands.
     pub(super) fn apply_parasol_commands(&mut self) {
-        for (index, frames) in std::mem::take(&mut self.core.commands.parasol_animations) {
+        for (index, frames) in self.core.commands.parasol_animations.take_all() {
             if self.special_parasol().is_none() {
                 // ftcommon.c:1069: HSD_ASSERT(ftGetParasolStatus != -1).
                 unimplemented!("ftCommon_8007E83C: parasol command without a special parasol");

@@ -4,7 +4,7 @@ use super::FighterCore;
 use crate::anim::attach::PartFlags;
 impl FighterCore {
     pub(super) fn apply_dynamic_commands(&mut self, assets: &FighterAssets) {
-        for bone in std::mem::take(&mut self.commands.dynamic_toggles) {
+        for bone in self.commands.dynamic_toggles.take_all() {
             let part = &mut self.animation.parts[bone];
             let joint = part.joint;
             let Some((set, index)) = self.dynamics.iter().enumerate().find_map(|(set, data)| {

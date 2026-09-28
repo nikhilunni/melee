@@ -1881,7 +1881,7 @@ impl Runtime {
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
                 if !f.core.effects_after_items.is_empty() {
-                    for request in std::mem::take(&mut f.core.effects_after_items) {
+                    for request in f.core.effects_after_items.take_all() {
                         f.core.effects.push(request);
                     }
                     state.effects.flush::<RetailTrig>(
@@ -2702,7 +2702,7 @@ fn dispatch_fighter(
     }
     // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
     // operands; queue lifetime is owned by the scene's ground controller.
-    for wind in std::mem::take(&mut f.commands.wind_effects) {
+    for wind in f.commands.wind_effects.take_all() {
         let c = &mut f.core;
         let center = melee_ft::fighter::caches::bone_position(
             &mut c.skeleton,
@@ -2726,7 +2726,7 @@ fn dispatch_fighter(
             phase_step: 0.003906 * f32::from(wind.angle),
         });
     }
-    for impulse in std::mem::take(&mut f.commands.radial_impulses) {
+    for impulse in f.commands.radial_impulses.take_all() {
         radial_forces.insert(impulse);
     }
     // ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi per smash voice.
@@ -2760,7 +2760,7 @@ fn dispatch_fighter(
             rng,
         )?;
         let pending = std::mem::take(&mut f.effects);
-        for command in std::mem::take(&mut f.commands.graphics) {
+        for command in f.commands.graphics.take_all() {
             f.commands.graphics.push(command);
             f.resolve_graphics_commands(assets, rng);
             effects.flush::<melee_ft::fighter::RetailTrig>(
