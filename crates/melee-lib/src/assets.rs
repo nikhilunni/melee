@@ -146,7 +146,16 @@ impl Assets {
         let character_effects = [fox_effects?, captain_effects?, yoshi_effects?, mars_effects?];
         let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?;
         let interface = archive("IfAll.usd")?;
-        let items = crate::scene_items::Resources::load(&read, &characters)?;
+        // it_8027B798 reads p_ftCommonData, the same PlCo every slot loads.
+        let common_damage = &fighters[0].damage;
+        let launch = melee_it::hurt::ItemLaunch {
+            velocity_scale: common_damage.velocity_scale,
+            air_angle: common_damage.sakurai_air_angle,
+            ground_angle: common_damage.sakurai_ground_angle,
+            ground_threshold: common_damage.grounded_angle_threshold,
+            ground_maximum: common_damage.sakurai_maximum_threshold,
+        };
+        let items = crate::scene_items::Resources::load(&read, &characters, &stage, launch)?;
         let fighters = fighters.try_into().ok().expect("two character resources");
         let characters = characters.try_into().ok().expect("two character archives");
         // Finish all fallible work before installing manually dropped ownership.

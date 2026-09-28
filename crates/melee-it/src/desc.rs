@@ -29,6 +29,9 @@ pub struct ItemCommonData {
     pub fall_spin_degrees: f32,
     /// x9C..xB0 (it_80270E30).
     pub knockback: crate::hurt::ItemKnockback,
+    /// Fighter common data it_8027B798 reads; the scene fills it in from
+    /// PlCo after loading ItCo.
+    pub launch: crate::hurt::ItemLaunch,
 }
 impl ItemCommonData {
     /// Item_80266FCC: maps the common data fields into hold-kind counters.
@@ -74,6 +77,7 @@ impl ItemCommonData {
                 base: r.f32(base + 0xB0)?,
                 still_speed: r.f32(base + 0x78)?,
             },
+            launch: Default::default(),
         })
     }
 }
@@ -142,6 +146,12 @@ pub struct ItemAssets {
     /// bone (ItemModelDesc x8), which it_80273B50 undoes when a character
     /// article (hold kind 8) leaves the hand.
     pub attachment_translation: hsd_types::Vec3,
+    /// The joint whose animation moves the kind (itUpdateVelocityFromBone),
+    /// sampled by [`Self::read_bone_motion`].
+    pub bone_motion: Option<crate::bone_motion::BoneMotion>,
+    /// Special attribute words that point at an integer (itHeiho x0), read
+    /// through by [`Self::from_stage_item`]: the integer at each.
+    pub special_pointees: Vec<i32>,
 }
 impl ItemAssets {
     /// it_80272C90 / it_2725_JObjGetTranslation: the local translation of
@@ -329,7 +339,61 @@ impl ItemAssets {
             grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
             attachment_translation,
+            bone_motion: None,
+            special_pointees: Vec::new(),
         })
+    }
+
+    /// Ground_801C0800 -> it_8026B40C: a stage's `itemdata` table pairs an
+    /// item kind with its Article (it_804A0F60). `pointer_attributes` lists
+    /// the special attribute words that hold a pointer to an integer; their
+    /// integers become [`Self::special_pointees`] in that order. `None`
+    /// when the stage carries no Article for `kind`.
+    pub fn from_stage_item(
+        archive: &Archive,
+        kind: melee_types::ItemKind,
+        article_states: &[i32],
+        special_attributes: u32,
+        pointer_attributes: &[u32],
+    ) -> hsd_archive::desc::Result<Option<Self>> {
+        let Some(table) = archive.public("itemdata") else {
+            return Ok(None);
+        };
+        let r = archive.reader();
+        for index in 0.. {
+            let entry = r.u32(table + index * 4)?;
+            if entry == 0 {
+                return Ok(None);
+            }
+            if r.u32(entry)? != kind as u32 {
+                continue;
+            }
+            let article = r.u32(entry + 4)?;
+            let mut assets =
+                Self::from_article(archive, article, article_states, special_attributes)?;
+            let special = r.u32(article + 4)?;
+            for &word in pointer_attributes {
+                let pointee = r.u32(special + word * 4)?;
+                assets.special_pointees.push(r.u32(pointee)? as i32);
+            }
+            return Ok(Some(assets));
+        }
+        unreachable!()
+    }
+
+    /// Samples dynamic bone `bone`'s animation in every article state for
+    /// itUpdateVelocityFromBone.
+    pub fn read_bone_motion(
+        &mut self,
+        archive: &Archive,
+        bone: usize,
+    ) -> std::result::Result<(), hsd_anim::load::LoadError> {
+        self.bone_motion = Some(crate::bone_motion::BoneMotion::read(
+            archive,
+            &self.visual,
+            bone,
+        )?);
+        Ok(())
     }
 }
 

@@ -81,8 +81,6 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.shy_timer", &stage.shy_timer);
             sink.field("stage.previous_pattern", &stage.previous_pattern);
             sink.field("stage.spawn_count", &stage.spawn_count);
-            sink.field("stage.occupied_frames", &stage.occupied_frames);
-            sink.field("stage.shy_guys", &(stage.shy_guys.len() as u32));
         }
     }
     sink.field("scheduler.resume_s_link", &state.resume.s_link);

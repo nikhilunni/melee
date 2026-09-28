@@ -85,6 +85,7 @@ impl Fighter {
                 growth: desc.growth,
                 weight_knockback: desc.weight_knockback,
                 base_knockback: desc.base_knockback,
+                element: desc.element,
                 contact: contact.position,
             };
             let group = desc.group;

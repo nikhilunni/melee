@@ -1,0 +1,26 @@
+# STAGE-YS witness: Fox Fire Foxes up-right (stick 80,100) from the left platform (-42) at 470. The
+# Fire Fox hits the Shy Guy walking left overhead at 530 for more than its 12-damage threshold: a fire
+# spark and itHeiho state 2, knocked spinning away with a Randi(3) spin each frame until the bottom
+# blast zone removes it (636). Fox lands on the main floor at 590 and walks, so its terrain footsteps
+# (ftAction_80072CD8) make ft_PlaySFX pitch draws. Found with melee-sim search.
+name = "stage_ys_shyguy_firefox"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_fox_marth4.sav"
+frames = 660
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 470, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 472, port = 0, buttons = {  }, raw = {  } },
+  { frame = 472, port = 0, buttons = {  }, raw = { stickX = 80, stickY = 100 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

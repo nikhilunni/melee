@@ -36,8 +36,9 @@ pub use mpcoll::{
     air_flags, clear_floor_skip, coll_prev, copy_coll_data, interpolate_ecb, load_ecb,
     load_ecb_box, load_ecb_fixed, load_ecb_jobj, load_ecb_with_flags, mark_ecb_clear,
     sanitize_desired_ecb, set_ecb_angle, set_ecb_source_fixed, set_ecb_source_jobj, set_facing_dir,
-    set_ledge_snap, set_position, squeeze_horizontal, squeeze_vertical, terrain_speed_scale,
-    update_floor_skip, BoneLookup, DynamicAttrHook, TERRAIN_SPEED_SCALE,
+    set_ledge_snap, set_position, squeeze_horizontal, squeeze_vertical, terrain_footstep,
+    terrain_speed_scale, update_floor_skip, BoneLookup, DynamicAttrHook, TerrainFootstep,
+    TERRAIN_SPEED_SCALE,
 };
 pub use query::{FloorWalk, LedgeHit, LineFilter, LineHit, SurfaceProbe};
 

@@ -167,6 +167,8 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             id: words[1],
             volume: (words[2] >> 8) as u8,
             pan: words[2] as u8,
+            // ftAction_80072CD8: opcode 54 consults the floor's terrain.
+            terrain: opcode == 54,
         },
         55 => Command::LandingEffect((word & 0xFFFF) as u16),
         52 => Command::GroundPose((word & 7) as u8),

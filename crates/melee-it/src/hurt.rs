@@ -38,7 +38,23 @@ pub struct ItemHit {
     pub growth: u16,
     pub weight_knockback: u16,
     pub base_knockback: u16,
+    pub element: melee_types::HitElement,
     pub contact: Vec3,
+}
+
+/// The fighter common data (p_ftCommonData) it_8027B798 reads to turn an
+/// item's knockback into a launch.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ItemLaunch {
+    /// +100: speed per unit of knockback.
+    pub velocity_scale: f32,
+    /// +144: the 361-degree angle in the air, in radians.
+    pub air_angle: f32,
+    /// +148 / +14C / +150: on the ground, the angle in degrees reached at
+    /// the maximum knockback, and the knockback band it grows over.
+    pub ground_angle: f32,
+    pub ground_threshold: f32,
+    pub ground_maximum: f32,
 }
 
 /// Room for every fighter hitbox that can land on one item in a frame.
@@ -124,16 +140,19 @@ impl ItemCore {
         let mut strongest = None;
         for hit in hits.iter() {
             let knockback = self.knockback(hit, constants, assets.collision_damage_multiplier);
-            // xDCF b1 is never set here; hold kinds 4 and 6 (Pokemon) use
-            // the element's effect instead.
-            assert!(
-                !matches!(self.hold_kind, 4 | 6),
-                "it_80270E30: element hit effects"
-            );
-            self.events.push(ItemEvent::HitSpark {
-                position: hit.contact,
-                damage: hit.damage,
-            });
+            // xDCF b1 is never set here; stage enemies and Pokemon (hold
+            // kinds 4 and 6) show the element's effect instead.
+            let spark = if matches!(self.hold_kind, 4 | 6) {
+                element_spark(hit)
+            } else {
+                Some(ItemEvent::HitSpark {
+                    position: hit.contact,
+                    damage: hit.damage,
+                })
+            };
+            if let Some(spark) = spark {
+                self.events.push(spark);
+            }
             if knockback > strongest_knockback {
                 strongest_knockback = knockback;
                 strongest = Some(*hit);
@@ -188,6 +207,75 @@ impl ItemCore {
         } else {
             scaled
         }
+    }
+}
+
+/// it_80270E30's hold kind 4 / 6 branch: hit_effect_ids[element] through
+/// efSync_Spawn. The plain spark keeps its damage-scaled size; the others
+/// receive the item (or its facing), which their generators ignore.
+fn element_spark(hit: &ItemHit) -> Option<ItemEvent> {
+    use melee_types::HitElement::*;
+    let position = hit.contact;
+    match hit.element {
+        // Ef_Id_Unk1000.
+        Normal | Ground | Cape => Some(ItemEvent::HitSpark {
+            position,
+            damage: hit.damage,
+        }),
+        // Ef_Id_Unk1001 / Unk1002: positional generators.
+        Electric => Some(ItemEvent::Effect {
+            id: 0x3E9,
+            position,
+        }),
+        Fire => Some(ItemEvent::Effect {
+            id: 0x3EA,
+            position,
+        }),
+        // Ef_Id_Unk1004.
+        Slash => Some(ItemEvent::SlashSpark { position }),
+        // -1: no effect.
+        Nap | Sleep | Catch | Inert | Disable | ScrewAttack | Lipstick => None,
+        Coin | Ice | Dark | ReDead => {
+            unimplemented!("it_80270E30: {:?} hit effect on a stage enemy", hit.element)
+        }
+    }
+}
+
+impl ItemCore {
+    /// it_8027B798 (8027B798): the launch velocity for this frame's
+    /// knockback (xCC8, its angle xCAC); the item turns to face the hit
+    /// (xCCC). Returns whether a grounded item's launch leaves its floor.
+    /// Only the airborne branch is ported.
+    pub fn knockback_launch(&mut self, launch: &ItemLaunch) -> (Vec3, bool) {
+        const DEG_TO_RAD: f32 = 0.017_453_292;
+        let knockback = self.pending_knockback;
+        // retail 8027B7E0: fmuls.
+        let speed = knockback * launch.velocity_scale;
+        let angle = if self.knockback_angle != 361 {
+            DEG_TO_RAD * f32::from(self.knockback_angle)
+        } else if self.ground_or_air == melee_types::GroundOrAir::Air {
+            launch.air_angle
+        } else if knockback < launch.ground_threshold {
+            0.0
+        } else {
+            let fraction = (knockback - launch.ground_threshold)
+                / (launch.ground_maximum - launch.ground_threshold);
+            // retail 8027B854: fmadds, then the separately rounded conversion.
+            let angle = DEG_TO_RAD * fmadds(launch.ground_angle, fraction, 1.0);
+            let limit = DEG_TO_RAD * launch.ground_angle;
+            if angle > limit {
+                limit
+            } else {
+                angle
+            }
+        };
+        let dx = speed * gekko_math::msl::cosf(angle);
+        let dy = speed * gekko_math::msl::sinf(angle);
+        self.facing = self.hit_direction;
+        if self.ground_or_air != melee_types::GroundOrAir::Air {
+            unimplemented!("it_8027B798: a grounded item's launch along its floor");
+        }
+        (Vec3::new(-dx * self.facing, dy, 0.0), false)
     }
 }
 

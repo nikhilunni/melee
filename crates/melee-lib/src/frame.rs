@@ -315,6 +315,14 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::SlashSpark { position } => {
+                        state.effects.spawn_item_slash_spark::<RetailTrig>(
+                            position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Effect { id, position } => {
                         state.effects.spawn_positional::<RetailTrig>(
                             id,
@@ -513,22 +521,24 @@ impl Runtime {
                         .release_held_item(id, &state.assets.fighters[index]);
                 }
             }
-            4 => state.items.physics::<SceneItems>(
-                id,
-                owner.as_ref(),
-                &melee_it::ItemBounds {
-                    left: state.assets.arena.left,
-                    right: state.assets.arena.right,
-                    bottom: state.assets.arena.bottom,
-                },
-                state.assets.items.get(kind),
-            ),
+            4 => {
+                let rng = std::cell::Cell::new(state.rng);
+                state.items.physics::<SceneItems>(
+                    id,
+                    owner.as_ref(),
+                    &item_bounds(&state.assets),
+                    state.assets.items.get(kind),
+                    &rng,
+                );
+                state.rng = rng.get();
+            }
             5 => {
                 let contact = state.items.stage_contact(id, &mut state.map);
                 state.items.collide::<SceneItems>(
                     id,
                     contact,
                     &mut state.map,
+                    &item_bounds(&state.assets),
                     state.assets.items.get(kind),
                 );
             }
@@ -568,11 +578,16 @@ impl Runtime {
                 item.update_hitboxes();
                 item.decay_reflection_history();
             }
-            14 => state.items.process_events_with_stale::<SceneItems>(
-                id,
-                reflected_stale,
-                state.assets.items.get(kind),
-            ),
+            14 => {
+                let rng = std::cell::Cell::new(state.rng);
+                state.items.process_events_with_stale::<SceneItems>(
+                    id,
+                    reflected_stale,
+                    state.assets.items.get(kind),
+                    &rng,
+                );
+                state.rng = rng.get();
+            }
             13 => self.detect_item_hurts(id),
             12 | 16 => {}
             _ => unreachable!(),
@@ -1061,6 +1076,37 @@ impl Runtime {
                 0x801C461C | 0x801CADBC | 0x801C1D38 => {}
                 _ => {
                     let map_id = map.expect("stage callback map");
+                    // grStory_801E3334: the Shy Guy spawner (grStory_801E3418)
+                    // runs before the map's collision update.
+                    if address == STORY_SHY_GUY_PROC
+                        && continuation != Continuation::GroundCollision
+                    {
+                        let SceneStage::Story(story) = &mut state.stage else {
+                            unreachable!("grStory_801E3334 outside Yoshi's Story")
+                        };
+                        let live = state.items.iter().any(|item| {
+                            item.kind == melee_types::ItemKind::Heiho && !item.destroyed
+                        });
+                        story.tick_shy_guys(&mut state.rng, live, |rng, spawn| {
+                            // it_8027B5B0 -> it_8026B684: the facing is drawn
+                            // before the item exists.
+                            let facing = crate::scene_items::facing_toward_fighters(
+                                spawn.position,
+                                &mut state.fighters,
+                                rng,
+                            );
+                            crate::scene_items::spawn_shy_guy(
+                                &mut state.items,
+                                &state.assets.items,
+                                &mut state.map,
+                                world,
+                                &mut self.item_objects,
+                                spawn,
+                                facing,
+                                rng,
+                            );
+                        });
+                    }
                     // Ground_801C2FE0 also runs from FD's controller. Even static
                     // transforms advance the collision epoch and select remapped sweeps.
                     if matches!(state.stage, SceneStage::Story(_)) || address == 0x8021_AAB0 {
@@ -1080,9 +1126,13 @@ impl Runtime {
                         animation.update_collision(&mut state.map, bindings);
                     }
                     // lb_800115F4 (dynamics fields' decay and expiry) ends
-                    // grLast_8021AAB0 and grBattle_GObj6_Callback2 (0x8021A174),
-                    // and is all of grOldPupupu_80210BC0.
-                    if address == 0x8021_AAB0 || address == 0x8021_A174 || address == 0x8021_0BC0 {
+                    // grLast_8021AAB0, grBattle_GObj6_Callback2 (0x8021A174) and
+                    // grStory_801E3334, and is all of grOldPupupu_80210BC0.
+                    if address == 0x8021_AAB0
+                        || address == 0x8021_A174
+                        || address == 0x8021_0BC0
+                        || address == STORY_SHY_GUY_PROC
+                    {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
                         let wind = self.radial_forces.wind_state();
@@ -1117,7 +1167,9 @@ impl Runtime {
                             &mut self.particle_draws,
                             &mut self.radial_forces,
                         )?;
-                    } else if state.stage.run_stage_proc(map_id, &mut state.rng)? {
+                    } else if address != STORY_SHY_GUY_PROC
+                        && state.stage.run_stage_proc(map_id, &mut state.rng)?
+                    {
                         // grLib_801C97DC (0x801C97DC): detached puff at the
                         // current world position of archive descendant 1.
                         let matrix = state
@@ -1658,6 +1710,24 @@ impl Simulation {
     }
 }
 
+/// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.
+const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
+
+/// The stage limits item callbacks read: the blast zones (Stage_GetBlastZone*
+/// Offset) and the camera centre (Stage_UnkSetVec3TCam_Offset).
+fn item_bounds(assets: &crate::assets::Assets) -> melee_it::ItemBounds {
+    melee_it::ItemBounds {
+        left: assets.arena.left,
+        right: assets.arena.right,
+        bottom: assets.arena.bottom,
+        top: assets.arena.top,
+        camera_offset: hsd_types::Vec2::new(
+            assets.stage_camera.offset_x,
+            assets.stage_camera.offset_y,
+        ),
+    }
+}
+
 /// ftColl_8007BE3C: an expired phantom credits its source fighter's current
 /// move (plStale_UpdateStaleMovesFromFighter, ftColl_80076444) while the
 /// victim's ProcessHit runs; the victim only records whom to credit.
@@ -1857,6 +1927,8 @@ fn dispatch_fighter(
     }
     // S3: opcode 38 owns this draw before the following effect boundary.
     f.resolve_random_sound_commands(rng);
+    // Opcode 54's footstep pitch draws (ftAction_80072CD8 -> ft_PlaySFX).
+    f.resolve_terrain_footsteps(rng);
     if proc.s_link() >= 9 && !f.commands.graphics.is_empty() {
         // efAsync_Spawn (800679B0): link >=9 dispatches each command now,
         // before the next graphics command draws its three random offsets.
@@ -2478,6 +2550,7 @@ fn item_hits_by_items(
             growth: desc.growth,
             weight_knockback: desc.weight_knockback,
             base_knockback: desc.base_knockback,
+            element: desc.element,
             contact: landing.contact,
         });
     }

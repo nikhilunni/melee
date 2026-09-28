@@ -85,11 +85,14 @@ pub enum Command {
     },
     /// ftAction_80071FC8: seven-word random sound selection.
     RandomSound(RandomSound),
+    /// ftAction_80071B50 (opcode 17), or ftAction_80072CD8 (opcode 54,
+    /// `terrain`), whose sound the floor's terrain may replace.
     FootstepSound {
         behavior: u8,
         id: u32,
         volume: u8,
         pan: u8,
+        terrain: bool,
     },
     Wait(f32),
     AtFrame(f32),

@@ -1161,6 +1161,17 @@ fn dream_land_wind_and_flyby_match_retail() {
     combat_gate_ticks("stage_dl_windright_fox_marth4", 2400);
 }
 
+/// Yoshi's Story's Shy Guys (itheiho.c) from the Fox/Marth start boundary:
+/// a Fire Fox knocks one spinning away (state 2) and Fox then walks the
+/// stage's terrain; a light nair stuns one and it flees (states 3 and 4);
+/// Marth's up-air knocks one away.
+#[test]
+fn yoshis_story_shy_guys_match_retail() {
+    combat_gate_ticks("stage_ys_shyguy_firefox", 660);
+    combat_gate_ticks("stage_ys_shyguy_nair", 780);
+    combat_gate_ticks("stage_ys_shyguy_marth", 620);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {

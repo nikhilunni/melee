@@ -729,6 +729,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-heiho"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-peach"
 version = "0.0.1"
 dependencies = [
@@ -1046,6 +1056,7 @@ dependencies = [
  "it-bombhei",
  "it-foxillusion",
  "it-foxlaser",
+ "it-heiho",
  "it-peach",
  "it-yoshieggthrow",
  "it-yoshistar",

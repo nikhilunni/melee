@@ -88,8 +88,11 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
             left: -246.0,
             right: 246.0,
             bottom: -140.0,
+            top: 188.0,
+            camera_offset: hsd_types::Vec2::ZERO,
         },
         &laser,
+        &std::cell::Cell::new(gekko_math::HsdRng::default()),
     );
     let item = pool.get_mut(ray).unwrap();
     assert_eq!(item.position.x.to_bits(), 7.0f32.to_bits());

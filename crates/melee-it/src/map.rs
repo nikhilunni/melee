@@ -36,10 +36,15 @@ impl AirContact {
 /// it_80275E98's ECB category (CollData.x34 b1234) by item kind range.
 fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
     // Character articles (hold kind 8) are category 5; common items below
-    // It_Kind_L_Gun_Ray are category 2. Other ranges are not ported yet.
+    // It_Kind_L_Gun_Ray are category 2; stage enemies (It_Kind_Old_Kuri up
+    // to It_Kind_Arwing_Laser, hold kind 4) are 3. Other ranges are not
+    // ported yet.
+    let stage_enemy =
+        (ItemKind::OldKuri as u32..ItemKind::ArwingLaser as u32).contains(&(kind as u32));
     match hold_kind {
         8 => 5,
         0 if (kind as u32) < ItemKind::LGunRay as u32 => 2,
+        4 if stage_enemy => 3,
         _ => unimplemented!("it_80275E98: collision category for {kind:?}"),
     }
 }
@@ -70,7 +75,9 @@ impl ItemCore {
             b.right * self.scale,
             b.left * self.scale,
         );
-        melee_mp::set_facing_dir(&mut collision, if self.facing == -1.0 { -1 } else { 1 });
+        // Item_80267130 sets the facing before the kind's spawned callback
+        // (Item_8026A810) may change it.
+        melee_mp::set_facing_dir(&mut collision, if spawn.facing == -1.0 { -1 } else { 1 });
         collision.x50 = assets.collision_damage_multiplier;
         collision.last_pos = spawn.position;
         melee_mp::mark_ecb_clear(&mut collision);
@@ -145,6 +152,17 @@ impl ItemCore {
         let edge = env & (collide::LEFT_EDGE | collide::RIGHT_EDGE) != 0;
         self.collision = Some(collision);
         (grounded, edge)
+    }
+
+    /// it_8026DA70 (8026DA70): an airborne pass (mpColl_800471F8) that only
+    /// senses the map: whether it found a floor. Unlike it_8026E414 the
+    /// item keeps its own position; the CollData keeps the resolved one, so
+    /// the next pass starts there.
+    pub fn sense_air_collision(&mut self, map: &mut melee_mp::CollMap) -> bool {
+        let mut collision = self.refresh_collision();
+        let floor = map.air_collide_pass(&mut collision, None);
+        self.collision = Some(collision);
+        floor
     }
 
     /// it_80276308 (80276308): 8 for a left wall, 4 for a right one (which

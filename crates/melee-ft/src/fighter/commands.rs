@@ -128,9 +128,11 @@ pub struct CommandState {
     pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, DYNAMICS_REQUEST_CAPACITY>,
     /// ftAction_800728F8: controller-output requests, no RNG.
     pub rumble_requests: FixedVec<RumbleRequest, COMMAND_REQUEST_CAPACITY>,
-    /// ftAction_80072CD8 (0x80072CD8) -> ftAction_80071B50 (0x80071B50).
-    /// FD default terrain has no footstep particle; audio is an output request.
+    /// ftAction_80071B50 (0x80071B50) requests; audio is an output request.
     pub footstep_sounds: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
+    /// ftAction_80072CD8 (0x80072CD8) requests this step, before the floor's
+    /// terrain decides which sounds they make (see `resolve_terrain_footsteps`).
+    pub terrain_footsteps: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
 }
 impl CommandState {
     /// ft_80089228 (80089228): stale a hitbox's damage for the current move.
@@ -392,6 +394,7 @@ impl CommandState {
                     id,
                     volume,
                     pan,
+                    terrain,
                 } => {
                     if !seeking {
                         let channel = match behavior {
@@ -406,12 +409,17 @@ impl CommandState {
                             15 => SoundChannel::StopOverrideVoice,
                             _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
                         };
-                        self.footstep_sounds.push(FootstepSound {
+                        let sound = FootstepSound {
                             channel,
                             id: *id,
                             volume: *volume,
                             pan: *pan,
-                        });
+                        };
+                        if *terrain {
+                            self.terrain_footsteps.push(sound);
+                        } else {
+                            self.footstep_sounds.push(sound);
+                        }
                     }
                 }
                 Command::LandingEffect(id) => {

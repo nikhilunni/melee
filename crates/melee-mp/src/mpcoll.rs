@@ -128,6 +128,61 @@ pub fn terrain_speed_scale(flags: u32) -> f32 {
     TERRAIN_SPEED_SCALE[idx]
 }
 
+/// A terrain's footstep row (mpLib_803BF248_t_x4 x4[0], x14[0], x14[1]),
+/// read by ft_80084BFC for ftAction_80072CD8.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TerrainFootstep {
+    /// x4[0]: the sound played in the command's place, if any.
+    pub sound: Option<u32>,
+    /// x14[0]: the command's own sound plays as well.
+    pub keeps_sound: bool,
+    /// x14[1]: an effect spawned at the foot, if any.
+    pub effect: Option<u32>,
+}
+const fn footstep(sound: i32, keeps_sound: bool) -> TerrainFootstep {
+    TerrainFootstep {
+        sound: if sound < 0 { None } else { Some(sound as u32) },
+        keeps_sound,
+        effect: None,
+    }
+}
+/// The shared per-material rows (mpLib_803BD3D8..803BDBC0, mplib.c:92-235)
+/// every stage the port loads uses. Fountain of Dreams, Pokemon Stadium,
+/// Icicle Mountain and the Shrine route swap in rows with effects.
+pub const TERRAIN_FOOTSTEPS: [TerrainFootstep; 20] = [
+    footstep(-1, false),
+    footstep(0x161, true),
+    footstep(0x152, true),
+    footstep(0x155, true),
+    footstep(0x16D, true),
+    footstep(0x15B, true),
+    footstep(0x158, true),
+    footstep(0x16A, true),
+    footstep(0x15E, false),
+    footstep(-1, false),
+    footstep(0x14F, true),
+    footstep(-1, false),
+    footstep(-1, false),
+    footstep(-1, false),
+    footstep(0x14C, true),
+    footstep(0x164, true),
+    footstep(0x170, false),
+    footstep(0x15E, true),
+    footstep(0x167, true),
+    footstep(-1, false),
+];
+
+/// `mpLib_80056A1C` / `mpLib_80056A54` (mplib.c:5160-5174): the footstep
+/// row of a line's material byte.
+pub fn terrain_footstep(flags: u32) -> TerrainFootstep {
+    let idx = (flags & line_flag::MATERIAL_MASK) as usize;
+    assert!(
+        idx < TERRAIN_FOOTSTEPS.len(),
+        "mpLib_80056A1C: material {idx} out of table"
+    );
+    TERRAIN_FOOTSTEPS[idx]
+}
+
 // ---------------------------------------------------------------------------
 // CollData-only functions
 // ---------------------------------------------------------------------------

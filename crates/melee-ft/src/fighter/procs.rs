@@ -9,6 +9,9 @@ use gekko_math::rng::HsdRng;
 use melee_gr::wind::Wind;
 use melee_mp::CollMap;
 
+/// ft_PlaySFX (80088148): the footstep sound ids whose pitch it varies.
+const FOOTSTEP_PITCH_SOUNDS: std::ops::RangeInclusive<u32> = 332..=370;
+
 impl Fighter {
     /// Fighter_8006A360 (0x8006A360), s_link 1, fighter.c:1444-1701.
     /// Main playback precedes Wait_Anim and its immediate animation restart.
@@ -275,7 +278,6 @@ impl FighterCore {
         );
     }
     pub fn step_animation(&mut self, assets: &FighterAssets) {
-        let first_footstep = self.commands.footstep_sounds.len();
         // ftAnim_8006EBA4: command-driven animation ownership changes must
         // finish before the independent part blends are evaluated.
         self.animation
@@ -325,13 +327,45 @@ impl FighterCore {
                 pose.saved_translation = self.skeleton.translation(joint);
             }
         }
-        if self.commands.footstep_sounds.len() != first_footstep
-            && self.collision.data.floor.flags & 255 != 0
-        {
-            unimplemented!(
-                "ft_081B.c:1258-1296: non-default terrain footstep sound/effect mapping"
-            );
+    }
+    /// ftAction_80072CD8 (80072CD8): a footstep on the ground asks the
+    /// floor's terrain (ft_80084BFC) for a sound to play instead, whether
+    /// the command's own sound still plays, and a foot effect. In the air
+    /// only the command's sound plays. Each sound goes through
+    /// ftAction_80071B50, whose ft_PlaySFX draws a pitch for footstep
+    /// sounds. The scene resolves the step's requests after the proc, as it
+    /// does random sounds (a script step mixing both is not ordered).
+    pub fn resolve_terrain_footsteps(&mut self, rng: &mut HsdRng) {
+        let floor = &self.collision.data.floor;
+        let terrain = (self.physics.ground_or_air == melee_types::GroundOrAir::Ground
+            && floor.index != -1)
+            .then(|| melee_mp::terrain_footstep(floor.flags));
+        for step in std::mem::take(&mut self.commands.terrain_footsteps) {
+            let Some(terrain) = terrain else {
+                self.play_command_sound(step, rng);
+                continue;
+            };
+            if let Some(id) = terrain.sound {
+                self.play_command_sound(super::commands::FootstepSound { id, ..step.clone() }, rng);
+            }
+            if let Some(effect) = terrain.effect {
+                unimplemented!("ftAction_80072CD8: terrain footstep effect {effect:#x}");
+            }
+            if terrain.keeps_sound {
+                self.play_command_sound(step, rng);
+            }
         }
+    }
+    /// ftAction_80071B50 for a resolved footstep: ft_PlaySFX (behavior 0)
+    /// varies a footstep sound's pitch (ft_0877.c:460-461, HSD_Randi(200)
+    /// for ids 332..=370 after ft_80087D0C, which keeps footstep ids there).
+    fn play_command_sound(&mut self, sound: super::commands::FootstepSound, rng: &mut HsdRng) {
+        if matches!(sound.channel, super::commands::SoundChannel::Ordinary)
+            && FOOTSTEP_PITCH_SOUNDS.contains(&sound.id)
+        {
+            let _pitch = rng.randi(200) - 100;
+        }
+        self.commands.footstep_sounds.push(sound);
     }
     /// Finish ftAnim_8006E9B4 suspended in the blend-tree evaluator, or the
     /// Wait restart's ftAnim_8006EBE8 rate setup. The importer validates that

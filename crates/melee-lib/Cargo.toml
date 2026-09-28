@@ -11,6 +11,7 @@ it-foxillusion = { path = "../it-foxillusion" }
 it-bombhei = { path = "../it-bombhei" }
 it-yoshieggthrow = { path = "../it-yoshieggthrow" }
 it-peach = { path = "../it-peach" }
+it-heiho = { path = "../it-heiho" }
 it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 melee-coll = { path = "../melee-coll" }

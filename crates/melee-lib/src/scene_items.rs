@@ -23,6 +23,7 @@ melee_it::item_kinds! {
         PeachParasol: it_peach::PeachParasol,
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
+        Heiho: it_heiho::Heiho,
     }
 }
 
@@ -68,13 +69,16 @@ impl Resources {
     pub fn load(
         read: &impl Fn(&str) -> Result<Vec<u8>>,
         characters: &[crate::assets::CharacterArchive],
+        stage: &Archive,
+        launch: melee_it::hurt::ItemLaunch,
     ) -> Result<Self> {
         let archive = |file| -> Result<Archive> { Ok(Archive::parse(&read(file)?)?) };
         let common_archive = archive("ItCo.dat")?;
         let public = common_archive
             .public("itPublicData")
             .context("itPublicData")?;
-        let common = ItemCommonData::read(&common_archive, public)?;
+        let mut common = ItemCommonData::read(&common_archive, public)?;
+        common.launch = launch;
         let mut kinds = vec![(
             ItemKind::BombHei,
             ItemAssets::from_common(
@@ -171,6 +175,19 @@ impl Resources {
                 ));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
+        }
+        // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
+        if let Some(mut heiho) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::Heiho,
+            &it_heiho::ARTICLE_STATES,
+            it_heiho::SPECIAL_ATTRIBUTES,
+            &it_heiho::POINTER_ATTRIBUTES,
+        )? {
+            heiho
+                .read_bone_motion(stage, it_heiho::GAIT_BONE)
+                .map_err(|e| anyhow::anyhow!("Shy Guy gait: {e}"))?;
+            kinds.push((ItemKind::Heiho, heiho));
         }
         Ok(Self {
             common,
@@ -536,6 +553,46 @@ pub fn article_destroyed(
                 f.article_destroyed(item.kind);
             }
         });
+    }
+}
+
+/// it_802D8618 (802D8618): one Shy Guy of a grStory_801E3418 group, created
+/// airborne (it_8027B5B0 -> Item_80268B18) facing `facing`, then placed in
+/// its group.
+pub fn spawn_shy_guy(
+    pool: &mut ItemPool,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    spawn: melee_gr::story::ShyGuySpawn,
+    facing: f32,
+    rng: &mut gekko_math::HsdRng,
+) {
+    let before = pool.len();
+    request(
+        pool,
+        resources,
+        map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_heiho::spawn(spawn.position, facing)),
+        RequestOwner {
+            slot: None,
+            held_item: None,
+            stale_multiplier: 1.0,
+        },
+        rng,
+    );
+    if pool.len() > before {
+        let item = pool.iter_mut().last().expect("spawned Shy Guy");
+        it_heiho::join_group(
+            item,
+            spawn.group_index,
+            spawn.speed_variant,
+            spawn.delay,
+            resources.get(ItemKind::Heiho),
+        );
     }
 }
 

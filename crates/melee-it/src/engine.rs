@@ -19,6 +19,12 @@ pub struct ItemBounds {
     pub left: f32,
     pub right: f32,
     pub bottom: f32,
+    /// Stage_GetBlastZoneTopOffset: read by kinds that watch the blast zone
+    /// themselves (it_802D9714); Item_802696CC's ceiling is fixed.
+    pub top: f32,
+    /// Stage_UnkSetVec3TCam_Offset: the camera's centre (cam_x_offset,
+    /// cam_y_offset).
+    pub camera_offset: hsd_types::Vec2,
 }
 #[derive(Clone, Debug, Default)]
 pub struct RayState {
@@ -59,6 +65,9 @@ pub enum ItemEvent {
     /// efSync_Spawn(0x3E8, gobj, &pos, &damage): the spark of a hit landing
     /// on the item (it_80270E30).
     HitSpark { position: Vec3, damage: f32 },
+    /// efSync_Spawn(0x3EC, item, &pos, item): a slashing hit's spark on a
+    /// stage enemy or Pokemon (it_80270E30).
+    SlashSpark { position: Vec3 },
     /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
     /// a random spread (it_80278800) when the scene resolves it.
     ScriptEffect(melee_types::combat::GraphicsCommand),
@@ -102,7 +111,39 @@ pub enum ItemScratch {
     Ray(RayState),
     Held(HeldState),
     Bomb(BombState),
+    Heiho(HeihoState),
     None,
+}
+/// Item.xDD4_itemVar.heiho (itheiho.c): a Yoshi's Story Shy Guy.
+#[derive(Clone, Debug)]
+pub struct HeihoState {
+    /// x20: its place in the spawned group.
+    pub group_index: i8,
+    /// x21: which walking speed (special attributes x4..xC) it uses.
+    pub speed_variant: i8,
+    /// x24: frames left of the spawn delay, the stun, or the turn.
+    pub countdown: i32,
+    /// x22: it has been inside the blast zones once (it_802D9714).
+    pub entered_screen: bool,
+    /// x3C: the gait joint's last reading (itUpdateVelocityFromBone).
+    pub bone_previous: Vec3,
+    /// Where the gait joint's animation stands: its rate schedule and the
+    /// steps taken since the state began.
+    pub bone_rate: crate::bone_motion::BoneRate,
+    pub bone_step: usize,
+}
+impl Default for HeihoState {
+    fn default() -> Self {
+        Self {
+            group_index: 0,
+            speed_variant: 0,
+            countdown: 0,
+            entered_screen: false,
+            bone_previous: Vec3::ZERO,
+            bone_rate: crate::bone_motion::BoneRate::Steady,
+            bone_step: 0,
+        }
+    }
 }
 /// Item.xDD4_itemVar.bombhei (itbombhei.c).
 #[derive(Clone, Debug, Default)]
@@ -263,6 +304,9 @@ pub struct ItemCore {
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
     pub events: melee_types::fixed::FixedVec<ItemEvent, 8>,
+    /// xDCC b3 (Item_80268B18 sets it): Item_802696CC removes the item past
+    /// the blast zones. A Shy Guy clears it until it has been on screen.
+    pub blast_zone_checked: bool,
 }
 /// lb_8000B804: the model root's authored rotation.
 pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
@@ -393,7 +437,7 @@ impl ItemCore {
 
     /// it_80274A64 (80274A64): add the spin about xDC8 x17's axis (retail
     /// 80274AE4 and siblings: fadds into the JObj rotation).
-    fn spin(&mut self) {
+    pub fn spin(&mut self) {
         match self.rotation_axis {
             0 => self.rotation.z += self.spin_speed,
             1 => self.rotation.x += self.spin_speed,
@@ -764,6 +808,7 @@ impl ItemPool {
             hit_by: None,
             queued_events: Default::default(),
             events: Default::default(),
+            blast_zone_checked: true,
         };
         // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
         item.update_spin(self.common.spawn_spin_degrees);
@@ -781,13 +826,15 @@ impl ItemPool {
     /// Item_8026A294 -> OnGiveDamageThink, after all fighter/item detection.
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
     pub fn process_events<D: ItemDispatch>(&mut self, id: u32, assets: &ItemAssets) {
-        self.process_events_with_stale::<D>(id, 1.0, assets);
+        let rng = core::cell::Cell::new(gekko_math::HsdRng::default());
+        self.process_events_with_stale::<D>(id, 1.0, assets, &rng);
     }
     pub fn process_events_with_stale<D: ItemDispatch>(
         &mut self,
         id: u32,
         reflected_stale: f32,
         assets: &ItemAssets,
+        rng: &core::cell::Cell<gekko_math::HsdRng>,
     ) {
         let cap = self.common.maximum_reflected_damage;
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
@@ -804,8 +851,12 @@ impl ItemPool {
             // frame's damage becomes the hitlag damage (xCA8), unconditionally.
             item.damage_percent = (item.damage_percent + item.pending_damage_taken).min(999);
             item.hitlag_damage = item.pending_damage_taken;
-            item.destroyed |=
-                (D::logic(item.kind).damage_received)(item, &ItemEventContext::new(assets));
+            let context = ItemEventContext {
+                launch: common.launch,
+                rng: Some(rng),
+                ..ItemEventContext::new(assets)
+            };
+            item.destroyed |= (D::logic(item.kind).damage_received)(item, &context);
         } else if item.pending_shield_damage != 0 {
             if let Some(deflection) = item.pending_shield_deflection.filter(|d| {
                 item.ground_or_air == melee_types::GroundOrAir::Air && d.angle < bounce_limit
@@ -957,6 +1008,7 @@ impl ItemPool {
         owner: Option<&ItemOwner>,
         bounds: &ItemBounds,
         assets: &ItemAssets,
+        rng: &core::cell::Cell<gekko_math::HsdRng>,
     ) {
         let Some(item) = self.get_mut(id) else {
             return;
@@ -964,7 +1016,12 @@ impl ItemPool {
         if !item.frozen && !item.in_hitlag {
             (D::logic(item.kind).states[item.motion as usize].physics)(
                 item,
-                &ItemPhysicsContext { owner, assets },
+                &ItemPhysicsContext {
+                    owner,
+                    assets,
+                    bounds,
+                    rng,
+                },
             );
         }
         integrate(item, bounds);
@@ -992,6 +1049,7 @@ impl ItemPool {
         id: u32,
         stage_contact: bool,
         map: &mut melee_mp::CollMap,
+        bounds: &ItemBounds,
         assets: &ItemAssets,
     ) {
         let Some(item) = self.get_mut(id) else {
@@ -1003,6 +1061,7 @@ impl ItemPool {
                 stage_contact,
                 map,
                 assets,
+                bounds,
             },
         );
     }
@@ -1039,6 +1098,7 @@ fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
     // Item_802697D4 -> Item_802696CC, before environmental/platform movement.
     // Item_802680CC enables all four bounds; attachment skips this whole block.
     if !item.held
+        && item.blast_zone_checked
         && (item.position.x > bounds.right
             || item.position.x < bounds.left
             || item.position.y > 10000.0
@@ -1115,6 +1175,8 @@ mod tests {
             grab_offset: hsd_types::Vec2::ZERO,
             grab_range: hsd_types::Vec2::ZERO,
             attachment_translation: Vec3::ZERO,
+            bone_motion: None,
+            special_pointees: Vec::new(),
         }
     }
     #[test]
@@ -1137,6 +1199,7 @@ mod tests {
             spawn_spin_degrees: 0.0,
             fall_spin_degrees: 0.0,
             knockback: Default::default(),
+            launch: Default::default(),
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -1167,6 +1230,7 @@ mod tests {
             spawn_spin_degrees: 0.0,
             fall_spin_degrees: 0.0,
             knockback: Default::default(),
+            launch: Default::default(),
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,
@@ -1184,6 +1248,8 @@ mod tests {
                 left: f32::NEG_INFINITY,
                 right: f32::INFINITY,
                 bottom: f32::NEG_INFINITY,
+                top: f32::INFINITY,
+                camera_offset: hsd_types::Vec2::ZERO,
             },
         );
         assert_eq!(item.position.x.to_bits(), 0.0f32.to_bits());

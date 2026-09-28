@@ -44,6 +44,33 @@ impl Effects {
         Ok(())
     }
 
+    /// efSync_Spawn(0x3EC, item, &pos, item) -> efAsync_Dispatch: a slashing
+    /// hit's spark on a stage enemy (it_80270E30), model 8 turned about Z
+    /// by a random angle (efasync.c:34-36: M_TAU is double, multiply then
+    /// round), as on a fighter.
+    pub fn spawn_item_slash_spark<T: InverseTrig>(
+        &mut self,
+        position: Vec3,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut effect = self.acquire(8, particles);
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        effect.attachment = None;
+        effect.owner = None;
+        self.events.external_randf(0x8006_3b70);
+        effect.tree.set_rotation_z(
+            effect.root,
+            (std::f64::consts::TAU * f64::from(rng.randf())) as f32,
+        );
+        effect.tree.set_translate(effect.root, &position);
+        effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+        self.instances.push(effect);
+        Ok(())
+    }
+
     pub(super) fn spawn_dust_generator<T: InverseTrig>(
         &mut self,
         id: u16,

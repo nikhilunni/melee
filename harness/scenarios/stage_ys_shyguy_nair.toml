@@ -1,0 +1,28 @@
+# STAGE-YS witness: Fox full hops on the left platform (-42) at 526, double jumps at 539 and nairs at 540;
+# the late nair hits the Shy Guy walking left overhead at 566 (under its 12-damage threshold): it is
+# stunned (itHeiho state 3, it_8027B798 launch) and at 586 flees left at 1.5 times its speed (state 4,
+# gait at double rate), leaving through the left blast zone. Found with melee-sim search.
+name = "stage_ys_shyguy_nair"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_fox_marth4.sav"
+frames = 780
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 526, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 527, port = 0, buttons = {  }, raw = {  } },
+  { frame = 539, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 540, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 542, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

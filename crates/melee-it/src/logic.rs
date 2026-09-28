@@ -11,11 +11,15 @@ pub struct ItemAnimationContext<'a> {
 pub struct ItemPhysicsContext<'a> {
     pub owner: Option<&'a ItemOwner>,
     pub assets: &'a ItemAssets,
+    pub bounds: &'a crate::ItemBounds,
+    /// HSD_Randi / HSD_Randf for callbacks that draw.
+    pub rng: &'a core::cell::Cell<gekko_math::HsdRng>,
 }
 pub struct ItemCollisionContext<'a> {
     pub stage_contact: bool,
     pub map: &'a mut melee_mp::CollMap,
     pub assets: &'a ItemAssets,
+    pub bounds: &'a crate::ItemBounds,
 }
 #[derive(Clone, Copy)]
 pub struct ItemEventContext<'a> {
@@ -24,6 +28,10 @@ pub struct ItemEventContext<'a> {
     pub reflected_speed: f32,
     pub shield_normal: hsd_types::Vec3,
     pub assets: &'a ItemAssets,
+    /// p_ftCommonData's launch constants (it_8027B798).
+    pub launch: crate::hurt::ItemLaunch,
+    /// HSD_Randi / HSD_Randf, where the event may draw (OnTakeDamage).
+    pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
 }
 impl<'a> ItemEventContext<'a> {
     pub fn new(assets: &'a ItemAssets) -> Self {
@@ -32,6 +40,8 @@ impl<'a> ItemEventContext<'a> {
             reflected_speed: 1.0,
             shield_normal: hsd_types::Vec3::ZERO,
             assets,
+            launch: Default::default(),
+            rng: None,
         }
     }
 }

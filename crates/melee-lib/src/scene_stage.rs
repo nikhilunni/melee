@@ -93,7 +93,7 @@ impl SceneStage {
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
-                3 => stage.tick_shy_guys(rng),
+                3 => unreachable!("the Shy Guy spawner needs the item pool"),
                 2 => return Ok(stage.tick_puff(rng)),
                 _ => unreachable!("Story callback map"),
             },
