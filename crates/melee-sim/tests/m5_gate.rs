@@ -939,7 +939,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 140] = [
+const MATRIX_WITNESSES: [(&str, usize); 143] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1119,6 +1119,11 @@ const MATRIX_WITNESSES: [(&str, usize); 140] = [
     ("falcon_specials_dive_aircatch_run36", 300),
     ("falcon_specials_dive_aircatch_run40", 300),
     ("falcon_specials_dive_aircatch_run44", 300),
+    // Falcon Dive catches on a grounded Fox: Falcon hangs from the victim
+    // (CaptureCaptain), the throw (356) releases and launches him.
+    ("falcon_specials_dive_catch_run48", 300),
+    ("falcon_specials_dive_catch_run51", 300),
+    ("falcon_specials_dive_catch_run54", 300),
 ];
 
 #[test]
@@ -2087,7 +2092,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 97] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 107] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2282,6 +2287,20 @@ const CORPUS_V3_MATCHES: [(&str, usize); 97] = [
     ("corpus_v3_fd_captainfalcon_fox4_e09db17e3_p1", 173),
     ("corpus_v3_fd_captainfalcon_fox4_e50f475b4_p2", 258),
     ("corpus_v3_fd_captainfalcon_fox4_ee62c6106_p1", 342),
+    // Falcon Dive catches an airborne Fox (the victim hangs, ftCo_800DB464).
+    ("corpus_v3_fd_captainfalcon_fox4_ed5eb74a7_p1", 300),
+    ("corpus_v3_fd_captainfalcon_fox4_ec48387e0_p0", 355),
+    // Raptor Boost's inert hitbox touching a Fox laser (ftColl_8007925C).
+    ("corpus_v3_fd_captainfalcon_fox4_e317831ba_p0", 181),
+    ("corpus_v3_fd_captainfalcon_fox4_edea229bd_p2", 236),
+    // Falcon Dive grabbing the ledge (ftCliffCommon_80081370 twice).
+    ("corpus_v3_fd_captainfalcon_fox4_e4f8edfa8_p2", 840),
+    ("corpus_v3_fd_captainfalcon_fox4_e0211286e_p0", 1680),
+    // Clean explorer samples: whole Falcon-Fox matches with every special.
+    ("corpus_v3_fd_captainfalcon_fox4_e8d30e8ed_p0", 5791),
+    ("corpus_v3_fd_captainfalcon_fox4_e45a17231_p0", 6001),
+    ("corpus_v3_fd_captainfalcon_fox4_e188c0a9b_p0", 4464),
+    ("corpus_v3_fd_captainfalcon_fox4_e1a1346bb_p0", 4432),
 ];
 
 #[test]

@@ -292,10 +292,13 @@ pub fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
         } else {
             stay_airborne(f, &mut p);
         }
-    } else if window_open && f.try_grab_ledge(p.assets.expect("Falcon Dive ledge assets"), p.map)? {
-        unimplemented!(
-            "ftcaptainspecialhi.c:137-138: Falcon Dive ledge grab (ftCliffCommon_80081370 runs again)"
-        );
+    } else if window_open {
+        let assets = p.assets.expect("Falcon Dive ledge assets");
+        // ftCliffCommon_80081298 enters CliffCatch itself; doAirColl then
+        // calls ftCliffCommon_80081370 a second time (ftcaptainspecialhi.c:137-138).
+        if f.try_grab_ledge(assets, p.map)? {
+            f.enter_cliff_catch(assets, p.map)?;
+        }
     }
     Ok(())
 }

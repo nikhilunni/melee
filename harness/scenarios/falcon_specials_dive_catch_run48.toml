@@ -1,0 +1,26 @@
+# FALCON-SPECIALS: running grounded Falcon Dive that catches Fox (355, CaptureCaptain),
+# throws him (356) and falls; Fox is launched and lands.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_specials_dive_catch_run48"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { StickX = 1.0 } },
+  { frame = 78, buttons = { B = true, StickY = 1.0 } },
+  { frame = 81, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -189,9 +189,11 @@ pub(super) fn capture_damage(
     hit: &melee_coll::damage::ReceivedHit,
     assets: &FighterAssets,
 ) -> Result<i32> {
+    // CaptureCaptain (Falcon Dive's victim) is neither 0xE0/0xE1 nor
+    // 0xE3/0xE4: like a throw it keeps its motion.
     let thrown = matches!(
         f.motion_state.id,
-        S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw
+        S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw | S::CaptureCaptain
     );
     if !thrown
         && !matches!(
@@ -209,7 +211,12 @@ pub(super) fn capture_damage(
     // ftCo_8008EC90 inlineB2, 8008ECD4..ED84: thrown states keep their
     // borrowed animation, pose and link while sharing the captor hitlag.
     if thrown {
-        f.core.unlaunched_damage_flash(knockback, hit, assets);
+        // Fighter_ProcessHit (fighter.c:2851-2852) reaches ftCo_8008EC90 only
+        // with dmg.kb_applied set; a knockback-free captor hit (Falcon Dive's
+        // catch hitbox on CaptureCaptain) takes damage without the flash.
+        if hit.knockback != 0.0 {
+            f.core.unlaunched_damage_flash(knockback, hit, assets);
+        }
         return Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1));
     }
     let state = if matches!(f.motion_state.id, S::CaptureWaitHi | S::CaptureDamageHi) {

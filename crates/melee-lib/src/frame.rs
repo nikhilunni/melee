@@ -700,6 +700,9 @@ impl Runtime {
                 if proc == FighterProc::Grab {
                     grab_pairs::select(state, player)?;
                 }
+                if proc == FighterProc::HitboxPositions {
+                    grab_pairs::offer_partner_position(state, player);
+                }
                 if proc == FighterProc::Update {
                     grab_pairs::align(state, player)?;
                 }
@@ -854,6 +857,9 @@ impl Runtime {
                         .pickup_candidates
                         .withdraw());
                 }
+                if proc == FighterProc::HitboxPositions {
+                    grab_pairs::withdraw_partner_position(state, player);
+                }
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::release_captor(state, player)?;
                     grab_pairs::hold_partner_hitlag(state, player, was_in_hitlag)?;
@@ -936,7 +942,15 @@ impl Runtime {
                         f.update_revival_platform();
                         // Fighter_CallAcessoryCallbacks_8006C624: hitlag
                         // (x2219_b5) runs accessory3 instead of accessory1.
-                        if f.combat.thrown_pose.is_some() && !f.in_hitlag() {
+                        // accessory1 ftCo_800DE508 / ftCo_800DB464 belongs to a
+                        // victim; a constrained captor follows with accessory4.
+                        if f.combat.thrown_pose.is_some()
+                            && !f.in_hitlag()
+                            && matches!(
+                                f.combat.grab,
+                                Some(melee_ft::fighter::grab::GrabLink::Captured { .. })
+                            )
+                        {
                             f.thrown_accessory(&state.assets.fighters[player]);
                         }
                     });
@@ -946,6 +960,7 @@ impl Runtime {
                     grab_pairs::escape(state, player)?;
                     grab_pairs::sync_wait(state, player)?;
                     grab_pairs::release(state, player)?;
+                    grab_pairs::special_throw_release(state, player)?;
                     let assets = &state.assets;
                     use crate::scene_fighter::with_fighter;
                     let bodies = std::array::from_fn::<_, 2, _>(|slot| {

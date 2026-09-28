@@ -149,8 +149,9 @@ impl Fighter {
         self.enter_cliff_catch(assets, map)?;
         Ok(true)
     }
-    /// ftCliffCommon_80081370 (80081370), ftcliffcommon.c:55-114.
-    fn enter_cliff_catch(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<()> {
+    /// ftCliffCommon_80081370 (80081370), ftcliffcommon.c:55-114. Falcon
+    /// Dive calls it once more after ftCliffCommon_80081298 already has.
+    pub fn enter_cliff_catch(&mut self, assets: &FighterAssets, map: &CollMap) -> Result<()> {
         self.core.physics.facing =
             if self.core.collision.data.env_flags as u32 & collide::LEFT_LEDGE_GRAB != 0 {
                 1.0
@@ -178,10 +179,13 @@ impl Fighter {
             neutral_seen: false,
         });
         self.ledge_physics(assets, map)?;
+        // efAsync_Spawn after the entry's frame-0 commands queued their
+        // effects, so the flush pops it before them; the port resolves those
+        // graphics at the proc's end.
+        let position = self.ledge_position(map, ledge_id);
         self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::LedgeGrab {
-                position: self.ledge_position(map, ledge_id),
+            .push_effect_after_issued_graphics(melee_ef::request::EffectRequest::LedgeGrab {
+                position,
             });
         Ok(())
     }

@@ -1735,6 +1735,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 250,
         ..rows[S::ThrowB as usize]
     };
+    // ftCo_MS_CaptureCaptain = 275; ftData_MotionStateList[275]: the
+    // captor's ftCo_SM_CaptureCaptain (276) plays on the victim.
+    rows[S::CaptureCaptain as usize] = MotionRow {
+        action: ActionId(275),
+        id: S::CaptureCaptain,
+        animation: crate::fighter::capture_captain::VICTIM_MOTION,
+        anim: crate::fighter::capture_captain::animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::capture_captain::physics,
+        collision: crate::fighter::capture_captain::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::ThrownF as usize] = MotionRow {
         action: ActionId(S::ThrownF as u16),
         id: S::ThrownF,

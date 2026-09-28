@@ -1140,6 +1140,7 @@ impl FighterCore {
             pending_forward_smash: false,
             article_in_hand: None,
             pickup_candidates: Default::default(),
+            partner_position: None,
             ledge_holders: Default::default(),
             accessory4_armed: false,
             item_catch_locked: false,

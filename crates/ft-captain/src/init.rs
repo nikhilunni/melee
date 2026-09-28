@@ -59,6 +59,16 @@ impl CharacterCallbacks for CaptainFalcon {
     const HURTBOX_DETECT: Option<
         fn(&mut melee_ft::fighter::Fighter, &melee_ft::fighter::assets::FighterAssets, u32),
     > = Some(crate::special_s::detect);
+    /// ftCommon_8007E2D0's grab_cb (ftCa_SpecialLw_800E5128) and grabbed_cb
+    /// (ftCo_8009CA0C).
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_hi_catch::grab;
+    /// accessory4: Falcon Dive's ftCa_SpecialLw_800E550C.
+    fn accessory(
+        fighter: &mut melee_ft::fighter::Fighter,
+        _assets: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        crate::special_hi_catch::follow_victim(fighter);
+    }
     /// ftCa_Init_800E28C8: Raptor Boost's take_dmg_cb.
     const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
         Some(crate::special_s::remove_effects);

@@ -834,7 +834,7 @@ impl Effects {
                     mtx_mult_vec(&matrix, &offset, &mut position);
                     if !matches!(
                         id,
-                        0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x423 | 0x424
+                        0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x41D | 0x423 | 0x424
                     ) {
                         effect.tree.set_rotation_y(
                             effect.root,
@@ -845,8 +845,9 @@ impl Effects {
                             },
                         );
                     }
-                    // efasync.c:192-197: 0x3F5 takes the facing, no Z rotation.
-                    if id != 0x3F5 {
+                    // efasync.c:192-197: 0x3F5 takes the facing, no Z rotation;
+                    // efasync.c:524-529: 0x41D sets no rotation at all.
+                    if id != 0x3F5 && id != 0x41D {
                         effect.tree.set_rotation_z(effect.root, floor_angle);
                     }
                 }

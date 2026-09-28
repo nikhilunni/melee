@@ -72,6 +72,7 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownHi
                 | melee_types::CommonMotionState::ThrownLw
                 | melee_types::CommonMotionState::CaptureYoshi
+                | melee_types::CommonMotionState::CaptureCaptain
         ))
     {
         return Ok(());
@@ -169,15 +170,19 @@ pub(super) fn constrain(state: &mut InitialState, player: usize) {
     if !with_fighter!(&state.fighters[player], |f| f.combat.thrown_pose.is_some()) {
         return;
     }
+    // A thrown victim hangs from its captor; a Falcon Dive captor hangs
+    // from its grounded victim (ftCo_800DB368 with the roles swapped).
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
-    let Some(GrabLink::Captured { captor }) = link else {
-        panic!("thrown without captor");
+    let anchor = match link {
+        Some(GrabLink::Captured { captor }) => captor,
+        Some(GrabLink::Holding { victim, .. }) => victim,
+        None => panic!("constrained without a partner"),
     };
     let other = state
         .fighters
         .iter()
-        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
-        .expect("live captor");
+        .position(|f| with_fighter!(f, |f| f.spawn_number == anchor))
+        .expect("live constraint anchor");
     let (victim, attacker) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
         grab_throw::update_constraint(
@@ -280,6 +285,10 @@ pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()>
     let Some(GrabLink::Captured { captor }) = link else {
         return Ok(());
     };
+    // CaptureCaptain has its own collision callback.
+    if with_fighter!(&state.fighters[player], |f| f.in_capture_captain()) {
+        return Ok(());
+    }
     let other = state
         .fighters
         .iter()
@@ -372,8 +381,10 @@ pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> 
 /// hit: after this fighter's launch, ftCommon_8007DB58 and ftCo_800DE2F0 on
 /// the captor it was freed from.
 pub(super) fn release_captor(state: &mut InitialState, player: usize) -> Result<()> {
-    let captor =
-        with_fighter!(&mut state.fighters[player], |f| f.combat.release_captor.take());
+    let captor = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .release_captor
+        .take());
     let Some(captor) = captor else {
         return Ok(());
     };
@@ -492,6 +503,59 @@ pub(super) fn swallow(state: &mut InitialState, player: usize) -> Result<()> {
             ),
             None => Ok(()),
         }
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// The held fighter's position for a captor's accessory proc (Falcon Dive's
+/// accessory4, ftCa_SpecialLw_800E550C); withdrawn after the proc.
+pub(super) fn offer_partner_position(state: &mut InitialState, player: usize) {
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Holding { victim, .. }) = link else {
+        return;
+    };
+    let position = state
+        .fighters
+        .iter()
+        .find(|f| with_fighter!(f, |f| f.spawn_number == victim))
+        .map(|f| with_fighter!(f, |f| f.physics.position));
+    with_fighter!(&mut state.fighters[player], |f| f.core.partner_position =
+        position);
+}
+
+pub(super) fn withdraw_partner_position(state: &mut InitialState, player: usize) {
+    with_fighter!(&mut state.fighters[player], |f| f.core.partner_position =
+        None);
+}
+
+/// ftCo_800DDDE4 / ftCo_800DE7C0 after a Falcon Dive captor changed to its
+/// throw in its animation callback.
+pub(super) fn special_throw_release(state: &mut InitialState, player: usize) -> Result<()> {
+    let pending = with_fighter!(&mut state.fighters[player], |f| std::mem::take(
+        &mut f.combat.special_throw_release
+    ));
+    if !pending {
+        return Ok(());
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Holding { victim, .. }) = link else {
+        panic!("attached release without a victim");
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
+        .expect("live victim");
+    let (attacker, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+        melee_ft::fighter::capture_captain::release(
+            v,
+            a,
+            &state.assets.fighters[other],
+            &state.assets.fighters[player],
+            &mut state.map,
+            &mut state.rng,
+        )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }

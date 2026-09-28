@@ -295,15 +295,27 @@ pub fn release_throw(
     let hit = release_captured(&mut victim.core, &mut attacker.core, va, aa, map, true);
     // fn_800DE798 restores the owner inside motion entry, before initial
     // damage-animation commands can create throw-owner-only hitboxes.
-    victim.begin_damage_reaction(
+    launch_thrown(
+        victim,
         hit,
         forced_motion,
-        None,
         Some(attacker.spawn_number),
         va,
         rng,
-    )?;
-    // ftCo_800DE7C0: throw DI follows damage entry, without hitlag/ASDI.
+    )
+}
+
+/// ftCo_800DE7C0's launch: the damage entry, then throw DI without hitlag
+/// or ASDI.
+pub(super) fn launch_thrown(
+    victim: &mut Fighter,
+    hit: melee_coll::damage::ReceivedHit,
+    forced_motion: Option<S>,
+    throw_owner: Option<u32>,
+    va: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
+    victim.begin_damage_reaction(hit, forced_motion, None, throw_owner, va, rng)?;
     let stick = victim.input.current.stick;
     super::damage::apply_directional_influence(
         &mut victim.physics.knockback_velocity,
@@ -325,6 +337,23 @@ pub(super) fn release_captured(
     map: &mut melee_mp::CollMap,
     offset: bool,
 ) -> melee_coll::damage::ReceivedHit {
+    let hit = record_throw_hit(victim, attacker, va, aa);
+    // ftCommon_8007D5D4 on the constrained fighter, here the victim.
+    victim.leave_ground();
+    detach(victim, attacker, va, aa, map, offset);
+    victim.combat.grab = None;
+    attacker.combat.grab = None;
+    hit
+}
+
+/// ftCo_800DDDE4's damage half: the captor's throw record 0 against the
+/// victim, the captor's stale-move entry and the victim's launch data.
+pub(super) fn record_throw_hit(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) -> melee_coll::damage::ReceivedHit {
     attacker.commands.grab_release = false;
     let hit = attacker.commands.throw_hitboxes[0]
         .as_ref()
@@ -341,58 +370,6 @@ pub(super) fn release_captured(
     attacker.combat.stale.record();
     attacker.commands.stale_multiplier = Some(attacker.combat.stale.multiplier(&aa.stale_weights));
     attacker.commands.first_hit_stale_penalty = Some(aa.first_stale_penalty);
-    let mut position = bone_position(
-        &mut attacker.skeleton,
-        attacker.animation.root,
-        usize::from(aa.parts.joint(FtPart::TransN2).expect("throw TransN2")),
-        Vec3::ZERO,
-    );
-    if offset {
-        let offset = victim.combat.capture_geometry.root_offset;
-        // retail 800DE084/800DE098: fmadds, separate scale of local Z first.
-        position.x = gekko_math::fma::fmadds(
-            victim.physics.facing,
-            offset.z * victim.player.scale,
-            position.x,
-        );
-        position.y = gekko_math::fma::fmadds(offset.y, victim.player.scale, position.y);
-        position.z = 0.0;
-    }
-    let pose = victim.combat.thrown_pose.take().expect("throw pose");
-    let xrot =
-        victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
-    victim.skeleton.set_position_constraint(xrot, None);
-    victim.skeleton.set_translate(xrot, &pose.saved_translation);
-    victim.leave_ground();
-    let cd = &mut victim.collision.data;
-    cd.last_pos = Vec3::new(
-        attacker.physics.position.x,
-        attacker.physics.position.y
-            + 0.5 * (attacker.collision.data.ecb.top.y + attacker.collision.data.ecb.bottom.y),
-        attacker.physics.position.z,
-    );
-    melee_mp::mark_ecb_clear(cd);
-    cd.cur_pos = position;
-    victim
-        .skeleton
-        .set_translate(victim.animation.root, &position);
-    victim.collision.lock_frames = 0;
-    victim.collision.data.x130_flags &= !melee_types::mp::coll_data_x130::LOCKED;
-    let ecb_pose = crate::collision::ecb::EcbPose::read(
-        &mut victim.skeleton,
-        victim.animation.root,
-        &victim.collision.data,
-    );
-    map.air_collide_pass(
-        &mut victim.collision.data,
-        Some(&|bone| ecb_pose.position(bone)),
-    );
-    victim.physics.position = victim.collision.data.cur_pos;
-    victim
-        .skeleton
-        .set_translate(victim.animation.root, &victim.physics.position);
-    victim.combat.grab = None;
-    attacker.combat.grab = None;
     melee_coll::damage::ReceivedHit {
         facing: -attacker.physics.facing,
         facing_override: if descriptor.angle > 90 && descriptor.angle < 270 {
@@ -405,6 +382,80 @@ pub(super) fn release_captured(
         height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,
     }
+}
+
+/// ftCo_800DDDE4's release geometry (x2226_b2): the constrained fighter
+/// lets go of `anchor`'s TransN2, takes back its XRotN translation (x2174)
+/// and re-enters the map from the anchor's centre to that point.
+pub(super) fn detach(
+    constrained: &mut FighterCore,
+    anchor: &mut FighterCore,
+    constrained_assets: &FighterAssets,
+    anchor_assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+    offset: bool,
+) {
+    let mut position = bone_position(
+        &mut anchor.skeleton,
+        anchor.animation.root,
+        usize::from(
+            anchor_assets
+                .parts
+                .joint(FtPart::TransN2)
+                .expect("throw TransN2"),
+        ),
+        Vec3::ZERO,
+    );
+    if offset {
+        let offset = constrained.combat.capture_geometry.root_offset;
+        // retail 800DE084/800DE098: fmadds, separate scale of local Z first.
+        position.x = gekko_math::fma::fmadds(
+            constrained.physics.facing,
+            offset.z * constrained.player.scale,
+            position.x,
+        );
+        position.y = gekko_math::fma::fmadds(offset.y, constrained.player.scale, position.y);
+        position.z = 0.0;
+    }
+    let pose = constrained.combat.thrown_pose.take().expect("throw pose");
+    let xrot = constrained.animation.parts[usize::from(
+        constrained_assets
+            .parts
+            .joint(FtPart::XRotN)
+            .expect("XRotN"),
+    )]
+    .joint;
+    constrained.skeleton.set_position_constraint(xrot, None);
+    constrained
+        .skeleton
+        .set_translate(xrot, &pose.saved_translation);
+    let cd = &mut constrained.collision.data;
+    cd.last_pos = Vec3::new(
+        anchor.physics.position.x,
+        anchor.physics.position.y
+            + 0.5 * (anchor.collision.data.ecb.top.y + anchor.collision.data.ecb.bottom.y),
+        anchor.physics.position.z,
+    );
+    melee_mp::mark_ecb_clear(cd);
+    cd.cur_pos = position;
+    constrained
+        .skeleton
+        .set_translate(constrained.animation.root, &position);
+    constrained.collision.lock_frames = 0;
+    constrained.collision.data.x130_flags &= !melee_types::mp::coll_data_x130::LOCKED;
+    let ecb_pose = crate::collision::ecb::EcbPose::read(
+        &mut constrained.skeleton,
+        constrained.animation.root,
+        &constrained.collision.data,
+    );
+    map.air_collide_pass(
+        &mut constrained.collision.data,
+        Some(&|bone| ecb_pose.position(bone)),
+    );
+    constrained.physics.position = constrained.collision.data.cur_pos;
+    constrained
+        .skeleton
+        .set_translate(constrained.animation.root, &constrained.physics.position);
 }
 
 /// A throw record (xDF4) as a hit descriptor: the same damage shape, with

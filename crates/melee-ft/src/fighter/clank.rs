@@ -368,9 +368,16 @@ pub(super) fn item_contact(
             if a.descriptor.element == b.descriptor.element {
                 continue;
             }
-            // Setting the item's touched flag (xDCE b6) needs an item with a
-            // touch callback.
-            unimplemented!("ftColl_8007925C: an inert hitbox touching an item");
+            // ftcoll.c:2200-2213: a touch marks the item (xDCE b6, toucher)
+            // and ends this item hitbox's tests. Only the Motion-Sensor Bomb
+            // and a castle stage object install the `touched` callback that
+            // reads the mark (item.c:1836), and neither is ported.
+            if hitbox_pair_contact(geometry(&b, fighter.player.scale), geometry(&a, item.scale))
+                .is_some()
+            {
+                return true;
+            }
+            continue;
         }
         if !a.descriptor.clank || !b.descriptor.clank {
             continue;

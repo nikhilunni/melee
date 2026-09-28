@@ -79,6 +79,27 @@ pub const fn special_rows() -> [MotionRow; ROW_COUNT] {
         &mut rows,
         row(hi::AIR, hi::anim, hi::input, hi::physics, hi::collision),
     );
+    use special_hi_catch as catch;
+    place(
+        &mut rows,
+        row(
+            hi::CATCH,
+            catch::catch_anim,
+            catch::no_input,
+            catch::catch_physics,
+            catch::catch_collision,
+        ),
+    );
+    place(
+        &mut rows,
+        row(
+            hi::THROW,
+            catch::throw_anim,
+            catch::no_input,
+            catch::throw_physics,
+            catch::throw_collision,
+        ),
+    );
     use special_s as s;
     let no_iasa = no_input as state::InputFn;
     place(

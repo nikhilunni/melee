@@ -75,6 +75,9 @@ pub struct CombatState {
     pub queued_hit_sfx: Option<u32>,
     pub queued_voice: Option<DamageVoice>,
     pub dealt_damage: i32,
+    /// A Falcon Dive captor changed to its throw this tick; the scene then
+    /// runs ftCo_800DDDE4 / ftCo_800DE7C0 on the pair.
+    pub special_throw_release: bool,
     /// unk_gobj: the fighter (spawn number) one of this fighter's inert
     /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
     pub detected: Option<u32>,

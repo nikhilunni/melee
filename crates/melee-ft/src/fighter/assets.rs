@@ -466,7 +466,10 @@ impl FighterAssets {
                 let borrowed = super::grab_throw::THROWS
                     .iter()
                     .map(|throw| throw.victim_motion)
-                    .chain([super::capture_yoshi::EGG_MOTION]);
+                    .chain([
+                        super::capture_yoshi::EGG_MOTION,
+                        super::capture_captain::VICTIM_MOTION,
+                    ]);
                 for borrowed in borrowed {
                     if let Some(motion) = motions.get_mut(&borrowed) {
                         let source = crate::desc::bones::AnimationSource::read(

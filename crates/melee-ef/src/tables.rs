@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 19] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 20] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -115,6 +115,14 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 19] = [
         model: 4,
         attached: false,
     },
+    // efAsync kind 2 0x41D (efasync.c:524-529): efLib_Create_Attach_Pos(0xF)
+    // at the bone-offset point, like the wall jump's flash.
+    ModelSpawn {
+        request: 0x41D,
+        source: ModelSource::Graphics,
+        model: 0xF,
+        attached: false,
+    },
     ModelSpawn {
         request: 0x417,
         source: ModelSource::Shield,
@@ -155,7 +163,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 18] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 19] = [
     // efasync.c:381-383: an article's vanishing puff (it_80272BA4),
     // efLib_CreateGenerator 0x4B.
     DustSpawn {
@@ -256,6 +264,13 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 18] = [
     DustSpawn {
         request: 0x421,
         particle: 0x3F,
+        directional: false,
+    },
+    // efasync.c:372-374: efLib_CreateGenerator(0x43) at the offset position
+    // (Falcon Dive's catch script).
+    DustSpawn {
+        request: 0x40E,
+        particle: 0x43,
         directional: false,
     },
 ];
