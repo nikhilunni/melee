@@ -18,8 +18,9 @@ use melee_gr::{
 use melee_types::{GrKind, PlayerKind};
 use std::collections::BTreeMap;
 
-/// ftCo_800A101C and ftCo_800B9704, including human slots.
-const CPU_SETUP_DRAWS_PER_PLAYER: usize = 2;
+/// ftCo_800A101C and ftCo_800B9704, including human slots and a
+/// player's partner fighter (Nana).
+const CPU_SETUP_DRAWS_PER_FIGHTER: usize = 2;
 /// fn_8016D8AC increments Player's Entry delay by five per entering slot.
 const ENTRY_STAGGER_FRAMES: i32 = 5;
 
@@ -34,7 +35,7 @@ impl InitialState {
         let setup = source.setup()?;
         let assets = std::sync::Arc::new(Assets::load(
             &source.assets_path(),
-            std::array::from_fn(|p| setup.fighters[p].descriptor()),
+            &setup.roster_descriptors(),
             setup.stage_descriptor(),
         )?);
         Self::from_assets(&setup, assets)
@@ -48,7 +49,7 @@ impl InitialState {
         let boundary_seed = scenario.seed.expect("validated cold seed");
         let mut rng = HsdRng::new(before_setup(
             boundary_seed,
-            setup_draws(assets.stage_desc.kind, scenario.fighters.len())?,
+            setup_draws(assets.stage_desc.kind, scenario.roster().len())?,
         ));
         let mut particles = ParticleSystem::default();
         let (stage, mut stage_animations) =
@@ -65,14 +66,16 @@ impl InitialState {
                 map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
             }
         }
-        let mut fighters = create_players(scenario, &assets, &mut map, &mut rng)?;
+        let (mut fighters, spawn_counter) = create_players(scenario, &assets, &mut map, &mut rng)?;
         // gm_16AE: Camera_80030730 (the stage's field of view, see
         // StageCamera::fov), then Camera_8002F3AC snaps to the players.
         let mut camera = melee_cm::GameCamera::new();
         {
-            let [a, b] = &mut fighters;
-            let mut subjects = [&mut b.0.camera, &mut a.0.camera];
-            camera.snap_standard(&mut subjects, &assets.stage_camera);
+            // cm_804D6468 runs newest first: the reverse of creation.
+            let subjects = fighters.iter_mut().rev().map(|f| &mut f.0.camera);
+            crate::frame::with_subjects(subjects, |subjects| {
+                camera.snap_standard(subjects, &assets.stage_camera)
+            });
         }
         let quakes =
             crate::quake::Quakes::load(&assets.stage, assets.stage_desc.quake_model.as_ref())?;
@@ -96,11 +99,9 @@ impl InitialState {
             )),
             stock_displays: super::stock::create(
                 &assets.interface,
-                std::array::from_fn(|slot| {
-                    crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
-                }),
+                std::array::from_fn(|slot| scenario.fighters[slot].stocks),
             )?,
-            spawn_counter: melee_ft::fighter::SpawnCounter(3),
+            spawn_counter,
             banner: Some(crate::banner::Banner::from_archive(
                 &assets.interface,
                 if scenario.sudden_death {
@@ -145,7 +146,7 @@ impl InitialState {
 /// Inverse of the odd HSD LCG multiplier, modulo 2^32.
 /// The setup's fixed RNG interval: grLast's four draws (Battle/Story/
 /// Pokemon Stadium: one; Dream Land: two), then two CPU draws per slot.
-fn setup_draws(stage: GrKind, players: usize) -> Result<usize> {
+fn setup_draws(stage: GrKind, fighters: usize) -> Result<usize> {
     let stage_draws = match stage {
         GrKind::Last => 4,
         GrKind::Battle | GrKind::Story | GrKind::PStadium => 1,
@@ -157,15 +158,15 @@ fn setup_draws(stage: GrKind, players: usize) -> Result<usize> {
              and Pokemon Stadium"
         ),
     };
-    Ok(stage_draws + CPU_SETUP_DRAWS_PER_PLAYER * players)
+    Ok(stage_draws + CPU_SETUP_DRAWS_PER_FIGHTER * fighters)
 }
 
 /// A scene built after another one ends: the RNG carries over unchanged
 /// through the scenes between (the Sudden Death tie screen draws nothing),
 /// so the new scene's boundary seed is the old seed after its setup draws.
-pub(crate) fn boundary_seed_after(seed: u32, stage: GrKind, players: usize) -> Result<u32> {
+pub(crate) fn boundary_seed_after(seed: u32, stage: GrKind, fighters: usize) -> Result<u32> {
     let mut rng = HsdRng::new(seed);
-    for _ in 0..setup_draws(stage, players)? {
+    for _ in 0..setup_draws(stage, fighters)? {
         rng.rand();
     }
     Ok(rng.seed)
@@ -334,7 +335,7 @@ fn create_players(
     assets: &Assets,
     map: &mut melee_mp::CollMap,
     rng: &mut HsdRng,
-) -> Result<[SceneFighter; 2]> {
+) -> Result<(Vec<SceneFighter>, SpawnCounter)> {
     let positions: Vec<_> = scenario
         .fighters
         .iter()
@@ -356,9 +357,13 @@ fn create_players(
     };
     let mut counter = SpawnCounter(1);
     let mut fighters = Vec::new();
-    for p in 0..2 {
+    // Player_80031AD0 per slot: the player's fighter, then its partner, which
+    // reads the same Player position, facing and entry delay.
+    for (index, entry) in scenario.roster().into_iter().enumerate() {
+        let p = entry.player;
         let player = PlayerSlot {
             id: scenario.fighters[p].slot,
+            secondary: entry.secondary,
             control: PlayerKind::Human,
             costume: scenario.fighters[p].costume,
             stocks: scenario.fighters[p].stocks,
@@ -375,8 +380,8 @@ fn create_players(
         };
         // fn_8016D8AC: increment by five for each entering Player slot.
         fighters.push(SceneFighter::from_parameters(
-            &assets.characters[p],
-            &assets.fighters[p],
+            &assets.characters[index],
+            &assets.fighters[index],
             player,
             ENTRY_STAGGER_FRAMES * (p as i32 + 1),
             SpawnContext {
@@ -386,6 +391,13 @@ fn create_players(
                 counter: &mut counter,
             },
         )?);
+        if entry.secondary {
+            // ftCo_800A101C's FTKIND_NANA loop reads the player's own
+            // fighter, created just before (ftCo_800A589C).
+            let own = &fighters[index - 1].0;
+            let (position, facing) = (own.physics.position, own.physics.facing);
+            fighters[index].0.cpu.seed_follow_ring(position, facing);
+        }
     }
-    Ok(fighters.try_into().ok().expect("two players"))
+    Ok((fighters, counter))
 }

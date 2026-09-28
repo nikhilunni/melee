@@ -6,6 +6,7 @@ pub(crate) use cold::boundary_seed_after;
 #[cfg(test)]
 mod cold_tests;
 mod collision;
+mod cpu;
 mod fighter;
 mod particle_resume;
 pub(crate) use fighter::import as import_fighter;
@@ -57,7 +58,9 @@ pub struct InitialState {
     pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
     pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
     pub(crate) assets: std::sync::Arc<Assets>,
-    pub(crate) fighters: [SceneFighter; 2],
+    /// Every fighter GObj in fighter-list order (`Setup::roster`); a
+    /// player's partner (Nana) follows its main fighter.
+    pub(crate) fighters: Vec<SceneFighter>,
     pub(crate) map: melee_mp::CollMap,
     pub(crate) stage: crate::scene_stage::SceneStage,
     pub(crate) particles: ParticleSystem,
@@ -87,6 +90,17 @@ pub struct InitialState {
     pub(crate) rendered_camera: hsd_anim::cobj::PerspectiveCamera,
     pub(crate) quakes: crate::quake::Quakes,
 }
+impl InitialState {
+    /// The fighter-list index of player `player`'s own fighter (x221F_b4
+    /// clear), `player` counting players in port order.
+    pub(crate) fn player_fighter_index(&self, player: usize) -> usize {
+        crate::scene_fighter::player_fighter_index(&self.fighters, player)
+    }
+    /// Player_GetEntity: player `player`'s own fighter.
+    pub(crate) fn player_fighter(&self, player: usize) -> &SceneFighter {
+        &self.fighters[self.player_fighter_index(player)]
+    }
+}
 /// The first record of a captured trace, plain or compressed as the source reads it.
 fn first_json(scenario: &impl crate::diagnostics::ScenarioSource, path: &Path) -> Result<Json> {
     let line = scenario
@@ -108,7 +122,7 @@ impl InitialState {
         );
         let assets = std::sync::Arc::new(Assets::load(
             &scenario.assets_path(),
-            std::array::from_fn(|p| setup.fighters[p].descriptor()),
+            &setup.roster_descriptors(),
             setup.stage_descriptor(),
         )?);
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
@@ -133,7 +147,18 @@ impl InitialState {
         let rows = boundary["fighters"]
             .as_array()
             .context("missing fighters")?;
-        ensure!(rows.len() == 2, "requires two fighters");
+        let roster = setup.roster();
+        ensure!(
+            rows.len() == roster.len(),
+            "requires {} fighters, found {}",
+            roster.len(),
+            rows.len()
+        );
+        // The player slot (port) each fighter-list entry belongs to.
+        let ports: Vec<usize> = roster
+            .iter()
+            .map(|entry| usize::from(setup.fighters[entry.player].slot))
+            .collect();
         let bytes = rows
             .iter()
             .map(|row| -> Result<Vec<u8>> {
@@ -145,11 +170,11 @@ impl InitialState {
                     .collect::<Result<_>>()
             })
             .collect::<Result<Vec<_>>>()?;
-        for (slot, raw) in bytes.iter().enumerate() {
+        for (index, raw) in bytes.iter().enumerate() {
             ensure!(
-                usize::from(raw[12]) == slot
-                    && usize::from(raw[0x619]) < assets.characters[slot].descriptor.costumes.len()
-                    && word(raw, 4) == i32::from(assets.characters[slot].descriptor.kind) as u32
+                usize::from(raw[12]) == ports[index]
+                    && usize::from(raw[0x619]) < assets.characters[index].descriptor.costumes.len()
+                    && word(raw, 4) == i32::from(assets.characters[index].descriptor.kind) as u32
                     && matches!(word(raw, 0x10), 14 | 322),
                 "unsupported fighter boundary"
             );
@@ -164,7 +189,9 @@ impl InitialState {
         let saved = saved_pose::SavedPose::load(&scenario.savestate_path(), &bytes[0], address);
         let match_start = word(&bytes[0], 0x10) == 322;
         ensure!(
-            word(&bytes[1], 0x10) == word(&bytes[0], 0x10),
+            bytes
+                .iter()
+                .all(|raw| word(raw, 0x10) == word(&bytes[0], 0x10)),
             "fighters must share the imported Wait/Entry boundary"
         );
         let resume = scheduler_resume::SchedulerResume::restore(
@@ -177,27 +204,30 @@ impl InitialState {
             .is_some_and(|(_, action)| action == scheduler_resume::Continuation::ParticleEmission);
         // The raw tick-zero row locates MEM1; it may be one full tick after
         // the saved idle boundary. Runtime imports always use saved memory.
-        let saved_bytes = rows
+        let bases = rows
             .iter()
-            .map(|row| -> Result<Vec<u8>> {
-                let address = u32::from_str_radix(
+            .map(|row| -> Result<u32> {
+                Ok(u32::from_str_radix(
                     row["base"]
                         .as_str()
                         .context("fighter address")?
                         .trim_start_matches("0x"),
                     16,
-                )?;
-                Ok(saved.bytes(address, 0x23EC).to_vec())
+                )?)
             })
             .collect::<Result<Vec<_>>>()?;
+        let saved_bytes = bases
+            .iter()
+            .map(|&address| saved.bytes(address, 0x23EC).to_vec())
+            .collect::<Vec<_>>();
         let bytes = saved_bytes;
-        for (slot, raw) in bytes.iter().enumerate() {
+        for (index, raw) in bytes.iter().enumerate() {
             let unfinished = match_start && word(raw, 0x10) == 0 && word(raw, 0x2C) == 0;
             ensure!(
                 unfinished
-                    || (usize::from(raw[12]) == slot
+                    || (usize::from(raw[12]) == ports[index]
                         && word(raw, 4)
-                            == i32::from(assets.characters[slot].descriptor.kind) as u32
+                            == i32::from(assets.characters[index].descriptor.kind) as u32
                         && matches!(word(raw, 0x10), 14 | 322)),
                 "unsupported saved fighter boundary"
             );
@@ -206,9 +236,13 @@ impl InitialState {
             stage_izumi::restore_collision(&saved, &mut map)?;
         }
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
-        let mut fighters: [SceneFighter; 2] = (0..2)
+        let mut fighters: Vec<SceneFighter> = (0..roster.len())
             .map(|p| {
                 if match_start && word(&bytes[p], 0x10) == 0 && word(&bytes[p], 0x2C) == 0 {
+                    ensure!(
+                        !roster[p].secondary && ports[p] == p,
+                        "an unfinished partner or port-shifted fighter creation is not imported"
+                    );
                     setup_resume::fighter(&saved, &assets, p, &mut map, &mut rng)
                 } else {
                     Ok(SceneFighter::from_saved(
@@ -220,10 +254,17 @@ impl InitialState {
                     ))
                 }
             })
-            .collect::<Result<Vec<_>>>()?
-            .try_into()
-            .ok()
-            .expect("two players");
+            .collect::<Result<Vec<_>>>()?;
+        for (index, fighter) in fighters.iter_mut().enumerate() {
+            let unfinished =
+                match_start && word(&bytes[index], 0x10) == 0 && word(&bytes[index], 0x2C) == 0;
+            // Only a CPU-driven fighter reads the rest of CpuFighter; a
+            // human's keeps stale words (Peach's savestates hold an old x4C).
+            let cpu_driven = fighter.0.input_source() == melee_ft::input::human::InputSource::Cpu;
+            if !unfinished && cpu_driven {
+                fighter.0.cpu = cpu::restore(&bytes[index], bases[index], &bases);
+            }
+        }
         for fighter in &mut fighters {
             crate::scene_fighter::with_fighter!(fighter, |f| {
                 // Player_GetHandicap, StaticPlayer +4B, stride E90.
@@ -254,7 +295,7 @@ impl InitialState {
                 // x221F bit 0 (MSB-first) and dmg.x1910.
                 f.offscreen.outside_camera = raw[0x221F] & 0x80 != 0;
                 f.offscreen.magnified_ticks = word(raw, 0x1910) as i32;
-                f.offscreen.magnified = camera::restore_magnified(&saved, slot);
+                f.offscreen.magnified = camera::restore_magnified(&saved, ports[slot]);
             });
         }
         let quakes =
@@ -352,7 +393,7 @@ impl InitialState {
             .transpose()?;
         let (stage, mut stage_animations) =
             stage::restore_scene(&saved, &assets, match_start, &mut particles, &metadata)?;
-        crate::frame::validate_saved_resume(&resume, &stage)?;
+        crate::frame::validate_saved_resume(&resume, &stage, fighters.len())?;
         if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
             for (&id, animation) in &mut stage_animations {
                 let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
@@ -381,7 +422,8 @@ impl InitialState {
             stock::create(
                 &assets.interface,
                 std::array::from_fn(|slot| {
-                    crate::scene_fighter::with_fighter!(&fighters[slot], |f| f.player.stocks)
+                    let own = crate::scene_fighter::player_fighter_index(&fighters, slot);
+                    crate::scene_fighter::with_fighter!(&fighters[own], |f| f.player.stocks)
                 }),
             )?
         } else {

@@ -246,6 +246,14 @@ pub struct FighterAssets {
 }
 /// ftCo_SM_GuardDamage: the shield-stun animation of ftCo_MS_GuardSetOff.
 const GUARD_DAMAGE_ANIMATION: i32 = 40;
+/// Another fighter's animations a fighter plays where its own table
+/// authors none: ftData_80085FD4 hands Nana Popo's row (gFtDataList[POPO]
+/// ->xC[msid]) whenever her own row's animation is absent.
+pub struct AnimationFallback<'a> {
+    pub descriptor: &'a CharacterDescriptor,
+    pub data: &'a Archive,
+    pub aj: &'a [u8],
+}
 impl FighterAssets {
     /// Fighter_LoadCommonData (0x80067ABC) / ftData_80085CD8:
     /// Shared Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
@@ -254,6 +262,20 @@ impl FighterAssets {
         data: &Archive,
         common: &Archive,
         aj: &[u8],
+    ) -> Result<Self> {
+        Self::load_with_fallback(descriptor, data, common, aj, None)
+    }
+
+    /// [`Self::load`] with the animations of `fallback` standing in for rows
+    /// this fighter's table leaves without animation. The row's own flags,
+    /// blend frames and script still apply (Fighter_ChangeMotionState reads
+    /// fp->x24; only ftData_80085CD8's figatree comes from the fallback).
+    pub fn load_with_fallback(
+        descriptor: &CharacterDescriptor,
+        data: &Archive,
+        common: &Archive,
+        aj: &[u8],
+        fallback: Option<AnimationFallback<'_>>,
     ) -> Result<Self> {
         let root = data
             .public(descriptor.data_symbol)
@@ -270,7 +292,30 @@ impl FighterAssets {
         let mut words = BTreeMap::new();
         // Fighter_ChangeMotionState loads any motion row on demand (ftData_80085CD8), so every
         // row with authored animation data carries its script and animation.
-        let script_ids = authored_motions(&table);
+        let own_ids = authored_motions(&table);
+        let fallback = fallback
+            .map(|fallback| -> Result<_> {
+                let root = fallback
+                    .data
+                    .public(fallback.descriptor.data_symbol)
+                    .ok_or("missing fallback fighter data symbol")?;
+                let table = read_fighter_animations(
+                    fallback.data,
+                    root,
+                    fallback.descriptor.animation_count,
+                )?;
+                Ok((fallback, root, table))
+            })
+            .transpose()?;
+        let borrowed_ids: Vec<u32> = fallback.as_ref().map_or(Vec::new(), |(_, _, table)| {
+            authored_motions(table)
+                .into_iter()
+                .filter(|id| !own_ids.contains(id) && (*id as usize) < table.entries.len())
+                .collect()
+        });
+        let mut script_ids = own_ids.clone();
+        script_ids.extend(borrowed_ids.iter().copied());
+        script_ids.sort_unstable();
         // ftData_80085CD8 with x590 NULL: a thrower's unanimated thrown-victim
         // row, or an unanimated shield stun (Yoshi's egg), still supplies
         // its flags and script.
@@ -453,6 +498,8 @@ impl FighterAssets {
                 horizontal_step: common.reader().f32(common_data + 0x450)?,
                 depth_step: common.reader().f32(common_data + 0x454)?,
                 depth_limit: common.reader().f32(common_data + 0x458)?,
+                partner_depth_step: common.reader().f32(common_data + 0x45C)?,
+                partner_depth_limit: common.reader().f32(common_data + 0x460)?,
             },
             hurtboxes: read_hurtboxes(data, root)?,
             dynamics: crate::dynamics::read_sets(data, root)?,
@@ -463,7 +510,7 @@ impl FighterAssets {
             )?,
             dynamic_colliders: read_dynamic_colliders(data, root)?,
             motions: {
-                let mut motions: BTreeMap<i32, Motion> = script_ids
+                let mut motions: BTreeMap<i32, Motion> = own_ids
                     .iter()
                     .copied()
                     .map(|id| {
@@ -473,6 +520,26 @@ impl FighterAssets {
                         ))
                     })
                     .collect::<Result<_>>()?;
+                if let Some((fallback, fallback_root, fallback_table)) = &fallback {
+                    for &id in &borrowed_ids {
+                        let mut motion = read_playback_motion(
+                            fallback.data,
+                            *fallback_root,
+                            fallback_table,
+                            fallback.aj,
+                            id as usize,
+                        )?;
+                        let (flags, blend_frames) = crate::desc::playback::read_motion_header(
+                            data,
+                            root,
+                            &table,
+                            id as usize,
+                        )?;
+                        motion.flags = flags;
+                        motion.blend_frames = blend_frames;
+                        motions.insert(id as i32, motion);
+                    }
+                }
                 // Borrowed throw motions own their prepared maps through the existing
                 // MotionRemap storage, keeping resource destruction in the same owners.
                 // Yoshi's egg (ftCo_SM_YoshiEgg) is borrowed the same way.

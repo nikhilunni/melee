@@ -24,6 +24,7 @@
 mod builder;
 pub mod desc;
 mod geom;
+pub mod island;
 mod map;
 mod mpcoll;
 mod query;

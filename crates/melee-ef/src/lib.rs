@@ -42,6 +42,8 @@ use tables::*;
 // Stable fighter-bone identities occupy a range beyond effect model joints.
 const FIRST_FIGHTER_JOINT: usize = 1 << 24;
 const FIGHTER_JOINT_STRIDE: usize = 256;
+// Fighter objects a scene may hold (a player can own two: the Ice Climbers).
+const FIGHTER_SLOTS: usize = 8;
 // EF_EffectDesc: lifetime plus four model/animation pointers (ef/types.h).
 
 // Port-only diagnostic budget, drained by the scheduler each tick. Retail has
@@ -65,7 +67,7 @@ pub struct Effects {
     /// efAsync_DatEntries rows the match's fighters loaded (one bit each).
     loaded_banks: u64,
     next_joint: usize,
-    fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
+    fighter_joints: [bool; FIGHTER_SLOTS * FIGHTER_JOINT_STRIDE],
     /// Items whose JObj carries generators (item_generators.rs).
     item_joints: FixedVec<u32, 64>,
     /// Item model bones generators follow, as (item, bone).

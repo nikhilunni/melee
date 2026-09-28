@@ -173,9 +173,10 @@ impl Presentation {
             instance_ranges: std::iter::once(0..1).collect(),
         };
         let assets = Arc::clone(&result.assets);
-        for slot in 0..2 {
+        // Every fighter's model, a player's partner (Nana) included.
+        for slot in 0..game.engine.state().fighters.len() {
             let character = &assets.characters[slot];
-            let costume = result.players[slot].costume.0;
+            let costume = game.engine.state().fighters[slot].0.player.costume;
             let archive = character.costume(costume);
             let desc = hsd_archive::desc::read_public_jobj(
                 archive,
@@ -329,12 +330,8 @@ impl Presentation {
                 "presentation belongs to different match assets or players",
             ));
         }
-        for (target, fighter) in self
-            .camera_targets
-            .iter_mut()
-            .zip(&game.engine.state().fighters)
-        {
-            let fighter = &fighter.0;
+        for (player, target) in self.camera_targets.iter_mut().enumerate() {
+            let fighter = &game.engine.state().player_fighter(player).0;
             *target = (fighter.player.stocks > 0)
                 .then_some([fighter.physics.position.x, fighter.physics.position.y]);
         }

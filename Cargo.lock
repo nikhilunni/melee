@@ -492,6 +492,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-iceclimbers"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-luigi"
 version = "0.0.1"
 dependencies = [
@@ -1124,7 +1136,10 @@ name = "melee-cpu"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-archive",
+ "hsd-types",
  "melee-ft",
+ "melee-lb",
  "melee-mp",
  "melee-types",
 ]
@@ -1246,6 +1261,7 @@ dependencies = [
  "ft-fox",
  "ft-fox-family",
  "ft-ganon",
+ "ft-iceclimbers",
  "ft-luigi",
  "ft-mario",
  "ft-mars",

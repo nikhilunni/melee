@@ -94,6 +94,14 @@ SSS_FORCE_STAGE = 0x3
 SEED_ADDR = symbols.addr("seed")
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
 MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
+# pl/player.c:58 ftMapping_list: CKIND_POPONANA creates a second fighter
+# (Nana, player_entity[1]) for its port (Player_80031AD0).
+CKIND_ICE_CLIMBERS = 0x0E
+
+
+def fighter_count(players: list[int]) -> int:
+    """Fighter GObjs a match creates for these CSS kinds (Nana is her own)."""
+    return sum(2 if kind == CKIND_ICE_CLIMBERS else 1 for kind in players)
 
 PULSE_PERIOD = 40   # menus ignore input for ~40 frames after a transition
 PRESS_FRAMES = 3
@@ -199,7 +207,7 @@ class BoundaryDriver:
             # Fighter_Create reads as motion 0 at the origin, before its CPU
             # setup draws, and would leave the seed short of post-creation.
             fighters = self.read_fighters()
-            if len(fighters) == len(self.config["players"]) and all(
+            if len(fighters) == fighter_count(self.config["players"]) and all(
                     f["motion_id"] == MS_ENTRY for f in fighters):
                 self.save(self.config["savestate"])
                 self.done = True

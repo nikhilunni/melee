@@ -1742,3 +1742,26 @@ mod mpcoll {
         set_ecb_angle(&mut cd, 1.0);
     }
 }
+
+#[test]
+fn islands_split_the_floors_and_find_a_line_or_the_floor_below() {
+    let mut map = fd();
+    let (stage, platform) = (map.island_of_line(FLOOR), map.island_of_line(PLATFORM));
+    assert_eq!((stage, platform), (Some(0), Some(1)));
+    let island = *map.island(0);
+    assert_eq!((island.left.x, island.right.x), (-STAGE_HALF, STAGE_HALF));
+    assert_eq!(
+        (island.first_line, island.last_line, island.flags),
+        (0, 0, 0)
+    );
+    // Walls and ceilings belong to no floor island; -1 is no line.
+    assert_eq!(map.island_of_line(RIGHT_WALL), None);
+    assert_eq!(map.island_of_line(NO_ID), None);
+    // mpIsland_8005AC14: the floor within `dy` below a point.
+    assert_eq!(
+        map.island_below(Vec3::new(0.0, PLAT_Y + 5.0, 0.0), -10.0),
+        Some(1)
+    );
+    assert_eq!(map.island_below(Vec3::new(50.0, 5.0, 0.0), -10.0), Some(0));
+    assert_eq!(map.island_below(Vec3::new(50.0, 50.0, 0.0), -10.0), None);
+}

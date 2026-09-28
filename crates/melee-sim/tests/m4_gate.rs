@@ -1543,3 +1543,20 @@ fn ledgeescape_fd_mario_420() {
 fn ledgeescape_mario_particle_draw_order() {
     particle_rng_sites_with_ledger("ledgeescape_fd_mario", 420, "ledger");
 }
+
+/// Ice Climbers vs Fox from the FD start boundary: Nana is a second fighter
+/// of port 1, entering beside Popo, whose inputs her CPU (mode 6) follows.
+#[test]
+fn start_fd_iceclimbers_fox4_600() {
+    movement_gate_ticks("start_fd_iceclimbers_fox4", 600);
+}
+
+#[test]
+fn start_fd_iceclimbers_fox4_cold_600() {
+    movement_gate_ticks("start_fd_iceclimbers_fox4_cold", 600);
+}
+
+#[test]
+fn start_iceclimbers_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");
+}

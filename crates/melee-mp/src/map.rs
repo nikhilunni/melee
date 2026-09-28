@@ -79,6 +79,8 @@ pub struct CollMap {
     pub dynamic_attr_hook: Option<crate::mpcoll::DynamicAttrHook>,
     /// `stage_info.grkind`, which selects the terrain tables.
     pub(crate) grkind: GrKind,
+    /// `mpIsland_80458E88`: the floor and ceiling islands.
+    pub(crate) islands: crate::island::Islands,
 }
 
 /// `F32_MAX`
@@ -219,8 +221,9 @@ impl CollMap {
             coll: Default::default(),
             dynamic_attr_hook: None,
             grkind,
+            islands: Default::default(),
         };
-        // mpIsland_8005A728(): deferred (see `island_update`).
+        map.build_islands();
         map.uncheck_bounding();
         map
     }
@@ -444,11 +447,8 @@ impl CollMap {
     // -----------------------------------------------------------------------
 
     /// `mpIsland_8005B334(joint_id, vtx_start, vtx_count, enabled)`: the
-    /// `mpisland.c` update every joint state change ends with. **Deferred**:
-    /// island data only feeds the CPU player (`ftcpuattack.c`) and Link's
-    /// hookshot, neither of which is ported. Recorded here so every call
-    /// site is visible.
-    #[allow(unused_variables)]
+    /// `mpisland.c` update every joint state change ends with (see
+    /// `island.rs`).
     pub(crate) fn island_update(
         &mut self,
         joint_id: i32,
@@ -456,7 +456,7 @@ impl CollMap {
         vtx_count: i16,
         enabled: bool,
     ) {
-        // TODO(mpisland): port mpisland.c and call mpIsland_8005B334 here.
+        self.update_islands(joint_id, vtx_start, vtx_count, enabled);
     }
 
     /// The `var_r6` computation repeated before most island calls:

@@ -229,7 +229,7 @@ pub(crate) fn show(state: &mut InitialState, mode: ScreenMode) {
 }
 
 struct Players<'a> {
-    fighters: &'a [SceneFighter; 2],
+    fighters: &'a [SceneFighter],
     /// The main CObj as last rendered.
     camera: &'a hsd_anim::cobj::PerspectiveCamera,
 }

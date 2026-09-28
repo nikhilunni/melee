@@ -318,3 +318,12 @@ stage = "FinalDestination"
 players = ["Ganondorf", "Fox"]
 stocks = 4
 seed = 2009794032
+
+[[boundary]]
+name = "start_fd_iceclimbers_fox4"
+cold = "start_fd_iceclimbers_fox4_cold"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+stage = "FinalDestination"
+players = ["IceClimbers", "Fox"]
+stocks = 4
+seed = 605098153

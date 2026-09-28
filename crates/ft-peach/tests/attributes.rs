@@ -152,6 +152,7 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
         &assets,
         &melee_ft::fighter::PlayerSlot {
             id: 0,
+            secondary: false,
             control: melee_types::PlayerKind::Human,
             costume: 0,
             stocks: 4,

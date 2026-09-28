@@ -120,6 +120,7 @@ impl Fixture {
     pub fn player(id: u8) -> PlayerSlot {
         PlayerSlot {
             id,
+            secondary: false,
             control: PlayerKind::Human,
             costume: 0,
             stocks: 1,

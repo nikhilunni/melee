@@ -272,11 +272,8 @@ fn human_slot_cpu_mode_does_not_enable_ai_and_override_mode_reads_pad() {
         }
     }
     assert_eq!(input_source(PlayerKind::Cpu, 5), InputSource::Pad);
-    assert_eq!(
-        input_source(PlayerKind::Cpu, 4),
-        InputSource::CpuUnimplemented
-    );
-    run_cpu_input_proc(true, InputSource::CpuUnimplemented);
+    assert_eq!(input_source(PlayerKind::Cpu, 4), InputSource::Cpu);
+    run_cpu_input_proc(true, InputSource::Cpu);
     assert_eq!(
         resolve_player_kind(PlayerKind::Human, true, true),
         PlayerKind::Cpu
@@ -292,9 +289,9 @@ fn human_slot_cpu_mode_does_not_enable_ai_and_override_mode_reads_pad() {
 }
 
 #[test]
-#[should_panic(expected = "melee-cpu, M5")]
-fn cpu_path_is_explicitly_unimplemented() {
-    run_cpu_input_proc(false, InputSource::CpuUnimplemented);
+#[should_panic(expected = "runs in melee-cpu")]
+fn cpu_path_belongs_to_the_scene() {
+    run_cpu_input_proc(false, InputSource::Cpu);
 }
 
 #[test]

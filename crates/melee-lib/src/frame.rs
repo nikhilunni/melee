@@ -109,7 +109,9 @@ impl Registration {
         }
     }
 }
-fn registrations(stage: &SceneStage) -> Vec<Registration> {
+/// Scheduled procs for `stage`, two players' HUDs and `fighters` fighter
+/// GObjs (a player's partner, such as Nana, is a fighter of its own).
+fn registrations(stage: &SceneStage, fighters: usize) -> Vec<Registration> {
     let mut rows: Vec<_> = stage
         .proc_table()
         .into_iter()
@@ -132,6 +134,8 @@ fn registrations(stage: &SceneStage) -> Vec<Registration> {
             object: player as u8,
             callback: Callback::Interface { player },
         });
+    }
+    for player in 0..fighters {
         rows.extend(FighterProc::ALL.map(|proc| Registration {
             s_link: proc.s_link(),
             p_link: 8,
@@ -186,10 +190,11 @@ fn registrations(stage: &SceneStage) -> Vec<Registration> {
 pub(crate) fn validate_saved_resume(
     resume: &crate::initial_state::scheduler_resume::SchedulerResume,
     stage: &SceneStage,
+    fighters: usize,
 ) -> Result<()> {
     if let Some((key, _)) = resume.current {
         ensure!(
-            registrations(stage)
+            registrations(stage, fighters)
                 .iter()
                 .filter(|row| row.s_link == resume.s_link && row.key() == key)
                 .count()
@@ -861,24 +866,19 @@ impl Runtime {
                 }
             }
             Callback::Camera => {
-                let [a, b] = &mut state.fighters;
-                // cm_804D6468 runs newest first: player 2's subject, then player
-                // 1's; a stage subject created at the stage's start is newer.
+                // cm_804D6468 runs newest first: the fighters' subjects in
+                // reverse creation order; a stage subject created at the
+                // stage's start is newer still.
                 let stage_subject = match &mut state.stage {
                     SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
                     _ => None,
                 };
-                if let Some(screen) = stage_subject {
-                    let mut subjects = [screen, &mut b.0.camera, &mut a.0.camera];
-                    state
-                        .camera
-                        .update_standard(&mut subjects, &state.assets.stage_camera);
-                } else {
-                    let mut subjects = [&mut b.0.camera, &mut a.0.camera];
-                    state
-                        .camera
-                        .update_standard(&mut subjects, &state.assets.stage_camera);
-                }
+                let fighters = state.fighters.iter_mut().rev().map(|f| &mut f.0.camera);
+                let camera = &mut state.camera;
+                let stage_camera = &state.assets.stage_camera;
+                with_subjects(stage_subject.into_iter().chain(fighters), |subjects| {
+                    camera.update_standard(subjects, stage_camera)
+                });
                 state.quakes.retire_loop(&state.camera);
                 let unzoomed = state.camera.zoom() == 1.0;
                 for fighter in &mut state.fighters {
@@ -1036,54 +1036,63 @@ impl Runtime {
                         f.core.resolve_hit_logs(&assets.fighters[player])
                     });
                 }
-                crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
-                    let f: &mut melee_ft::fighter::Fighter = f;
-                    if let Continuation::Animation {
-                        restart,
-                        configuring,
-                    } = continuation
-                    {
-                        f.resume_wait_animation(
-                            &assets.fighters[player],
-                            &mut state.rng,
+                // Fighter_8006ABA0: the CPU proc runs ftCo_800B3900 for a
+                // fighter whose input the CPU supplies (Nana).
+                let cpu_driven = proc == FighterProc::CpuGate
+                    && continuation == Continuation::Invoke
+                    && state.fighters[player].0.cpu_driven();
+                if cpu_driven {
+                    crate::cpu::think(state, player);
+                } else {
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        let f: &mut melee_ft::fighter::Fighter = f;
+                        if let Continuation::Animation {
                             restart,
                             configuring,
-                        )
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
-                        Ok(())
-                    } else if let Continuation::Collision { in_sweep } = continuation {
-                        melee_ft::collision::ground::resume_wait(
-                            &mut f.core.physics,
-                            &mut f.core.collision,
-                            &mut state.map,
-                            &mut f.core.skeleton,
-                            f.core.animation.root,
-                            in_sweep,
-                        );
-                        Ok(())
-                    } else {
-                        // Each fighter samples the device after integrating
-                        // its velocity (ftColl_GetWindOffsetVec).
-                        let wind = match &state.stage {
-                            SceneStage::Pupupu(stage) => stage.wind(),
-                            _ => melee_gr::wind::Wind::CALM,
-                        };
-                        dispatch_fighter(
-                            f,
-                            proc,
-                            player,
-                            self.frame,
-                            state_pads,
-                            assets,
-                            &mut state.map,
-                            &mut state.effects,
-                            &mut state.particles,
-                            &mut state.rng,
-                            &mut self.radial_forces,
-                            wind,
-                        )
-                    }
-                })?;
+                        } = continuation
+                        {
+                            f.resume_wait_animation(
+                                &assets.fighters[player],
+                                &mut state.rng,
+                                restart,
+                                configuring,
+                            )
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            Ok(())
+                        } else if let Continuation::Collision { in_sweep } = continuation {
+                            melee_ft::collision::ground::resume_wait(
+                                &mut f.core.physics,
+                                &mut f.core.collision,
+                                &mut state.map,
+                                &mut f.core.skeleton,
+                                f.core.animation.root,
+                                in_sweep,
+                            );
+                            Ok(())
+                        } else {
+                            // Each fighter samples the device after integrating
+                            // its velocity (ftColl_GetWindOffsetVec).
+                            let wind = match &state.stage {
+                                SceneStage::Pupupu(stage) => stage.wind(),
+                                _ => melee_gr::wind::Wind::CALM,
+                            };
+                            dispatch_fighter(
+                                f,
+                                proc,
+                                player,
+                                self.frame,
+                                state_pads,
+                                assets,
+                                &mut state.map,
+                                &mut state.effects,
+                                &mut state.particles,
+                                &mut state.rng,
+                                &mut self.radial_forces,
+                                wind,
+                            )
+                        }
+                    })?;
+                }
                 if offers_items {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
@@ -1218,13 +1227,23 @@ impl Runtime {
                     grab_pairs::special_throw_release(state, player)?;
                     let assets = &state.assets;
                     use crate::scene_fighter::with_fighter;
-                    let bodies = std::array::from_fn::<_, 2, _>(|slot| {
-                        with_fighter!(&state.fighters[slot], |f| f
-                            .overlap_body(&assets.fighters[slot]))
-                    });
+                    let mut bodies = [melee_coll::overlap::OverlapBody::default(); MAX_FIGHTERS];
+                    for (slot, fighter) in state.fighters.iter().enumerate() {
+                        bodies[slot] =
+                            with_fighter!(fighter, |f| f.overlap_body(&assets.fighters[slot]));
+                    }
+                    let owner = crate::scene_fighter::with_fighter!(&state.fighters[player], |f| f
+                        .player
+                        .id);
+                    let owner = state
+                        .fighters
+                        .iter()
+                        .position(|f| f.0.player.id == owner && !f.0.player.secondary)
+                        .expect("the player's own fighter");
                     let nudge = melee_coll::overlap::nudge(
                         player,
-                        &bodies,
+                        owner,
+                        &bodies[..state.fighters.len()],
                         &assets.fighters[player].overlap,
                         |floor| [state.map.line_next(floor), state.map.line_prev(floor)],
                     );
@@ -1448,16 +1467,17 @@ impl Runtime {
             },
             Callback::Interface { player } => {
                 use crate::scene_fighter::with_fighter;
-                let percent = with_fighter!(&state.fighters[player], |f| f.physics.percent);
-                let dead =
-                    crate::scene_fighter::with_fighter!(&state.fighters[player], |f| matches!(
-                        &f.state_data,
-                        melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
-                    ));
+                // The HUD follows the player's own fighter (Player_GetEntity).
+                let own = state.player_fighter_index(player);
+                let percent = with_fighter!(&state.fighters[own], |f| f.physics.percent);
+                let dead = crate::scene_fighter::with_fighter!(&state.fighters[own], |f| matches!(
+                    &f.state_data,
+                    melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
+                ));
                 self.interface[player].set_dead(dead, &mut state.rng);
                 self.interface[player].tick(percent, &mut state.rng);
                 if let Some(display) = &mut state.stock_displays[player] {
-                    let stocks = with_fighter!(&state.fighters[player], |f| f.player.stocks);
+                    let stocks = with_fighter!(&state.fighters[own], |f| f.player.stocks);
                     for position in display.tick(stocks) {
                         let mut request = hsd_particle::system::SpawnRequest::new(0, 0xF7, 1);
                         request.position = [position.x, position.y, position.z];
@@ -1856,7 +1876,7 @@ impl Simulation {
         for link in &mut state.particles.particles {
             link.reserve(PARTICLES_PER_LINK_RESERVE.saturating_sub(link.len()));
         }
-        let mut rows = registrations(&state.stage);
+        let mut rows = registrations(&state.stage, state.fighters.len());
         if state.banner.is_some() {
             rows.push(Registration {
                 s_link: 0,
@@ -1887,7 +1907,7 @@ impl Simulation {
             .collect();
         use crate::scene_fighter::with_fighter;
         let interface = std::array::from_fn(|player| {
-            melee_if::PercentDisplay::new(with_fighter!(&state.fighters[player], |f| f
+            melee_if::PercentDisplay::new(with_fighter!(state.player_fighter(player), |f| f
                 .physics
                 .percent))
         });
@@ -2097,6 +2117,29 @@ const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
 
 /// A posed article's bone matrix, its attach bone constrained to its
 /// holder's part as the holder stands now.
+/// Fighter GObjs a Versus match can hold: four players and their partners.
+pub(crate) const MAX_FIGHTERS: usize = 8;
+/// Run `f` over the camera subjects as one slice, without allocating:
+/// at most four players, their partners and a stage subject.
+pub(crate) fn with_subjects<'a, R>(
+    mut subjects: impl Iterator<Item = &'a mut melee_cm::Subject>,
+    f: impl FnOnce(&mut [&'a mut melee_cm::Subject]) -> R,
+) -> R {
+    let first: [Option<&'a mut melee_cm::Subject>; 10] = std::array::from_fn(|_| subjects.next());
+    assert!(
+        subjects.next().is_none(),
+        "more camera subjects than players"
+    );
+    match first {
+        [None, ..] => f(&mut []),
+        [Some(a), None, ..] => f(&mut [a]),
+        [Some(a), Some(b), None, ..] => f(&mut [a, b]),
+        [Some(a), Some(b), Some(c), None, ..] => f(&mut [a, b, c]),
+        [Some(a), Some(b), Some(c), Some(d), None, ..] => f(&mut [a, b, c, d]),
+        [Some(a), Some(b), Some(c), Some(d), Some(e), None, ..] => f(&mut [a, b, c, d, e]),
+        _ => unimplemented!("more than five camera subjects"),
+    }
+}
 fn article_bone_matrix(
     fighters: &mut [crate::scene_fighter::SceneFighter],
     poses: &mut crate::article_pose::ArticlePoses,
@@ -2463,13 +2506,13 @@ mod tests {
             callback: 0x8006_A360,
         };
         resume.current = Some((key, Continuation::Invoke));
-        assert!(validate_saved_resume(&resume, &stage()).is_ok());
+        assert!(validate_saved_resume(&resume, &stage(), 2).is_ok());
         resume.current = Some((ProcKey { object: 9, ..key }, Continuation::Invoke));
-        assert!(validate_saved_resume(&resume, &stage()).is_err());
+        assert!(validate_saved_resume(&resume, &stage(), 2).is_err());
     }
     #[test]
     fn m3_proc_order() {
-        let rows = registrations(&stage());
+        let rows = registrations(&stage(), 2);
         let calls = Rc::new(RefCell::new(Vec::new()));
         let output = Rc::clone(&calls);
         let mut world = World::new(WorldConfig::MELEE);

@@ -1,5 +1,6 @@
 use super::assets::{FighterAssets, Result};
 use super::*;
+use crate::input::InputSource;
 use crate::{
     anim::WaitChoice,
     collision::pose::GroundPose,
@@ -526,10 +527,21 @@ impl FighterCore {
     }
     /// Fighter_8006ABA0 (0x8006ABA0), s_link 2, fighter.c:1703-1709.
     pub fn proc_cpu_gate(&mut self) {
-        run_cpu_input_proc(
-            self.status.disabled,
-            input_source(self.player.control, self.cpu.mode),
-        );
+        run_cpu_input_proc(self.status.disabled, self.input_source());
+    }
+    /// ftCo_800A2040 (0x800A2040): Player_8003248C resolves the slot's kind
+    /// for this fighter. PdPmdat's entry z is zero for the Ice Climbers, the
+    /// only character whose second fighter is a partner rather than a
+    /// transformation, so Nana is a CPU in a human slot.
+    pub fn input_source(&self) -> InputSource {
+        let kind =
+            crate::input::resolve_player_kind(self.player.control, self.player.secondary, true);
+        input_source(kind, self.cpu.mode)
+    }
+    /// Fighter_8006ABA0's gate: ftCo_800A2040 and x221F_b3 clear. The scene
+    /// then runs melee-cpu's ftCo_800B3900 for this fighter.
+    pub fn cpu_driven(&self) -> bool {
+        !self.status.disabled && self.input_source() == InputSource::Cpu
     }
     /// Fighter_8006C5F4 (0x8006C5F4), s_link 7, fighter.c:2518-2525.
     pub fn proc_pose(&mut self, assets: &FighterAssets, map: &CollMap) {
@@ -643,9 +655,18 @@ impl FighterCore {
         }
         self.status.require_supported();
         let hitlag = self.in_hitlag();
+        // Fighter_Spaghetti_8006AD10 (fighter.c:1802-1869): ftCo_800A2040
+        // selects the CPU's getters over HSD_PadGameStatus.
+        let cpu_sample;
+        let sample = if self.input_source() == InputSource::Cpu {
+            cpu_sample = self.cpu.pad_sample();
+            &cpu_sample
+        } else {
+            sample
+        };
         let effects = update_input(
             &mut self.input,
-            input_source(self.player.control, self.cpu.mode),
+            InputSource::Pad,
             sample,
             &assets.input,
             InputContext {

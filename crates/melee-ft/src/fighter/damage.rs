@@ -2675,10 +2675,10 @@ impl FighterCore {
         }
         // 8008D9E0..8008DA18: max(armor0, armor1) by fcmpo, plus PlCo +6F0
         // when metal (no supported mode makes a fighter metal), then fsubs.
-        // armor0 (Bowser, Giga Bowser, Nana) is zero for the supported roster.
-        const ARMOR0: f32 = 0.0;
-        let armor = if ARMOR0 > self.combat.armor {
-            ARMOR0
+        // armor0 is the kind's OnDeath value (Nana, Bowser, Giga Bowser).
+        let armor0 = self.capabilities.armor;
+        let armor = if armor0 > self.combat.armor {
+            armor0
         } else {
             self.combat.armor
         };

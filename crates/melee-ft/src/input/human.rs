@@ -10,7 +10,8 @@ use melee_types::PlayerKind;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputSource {
     Pad,
-    CpuUnimplemented,
+    /// The CPU (melee-cpu) supplies the sample (CpuState::pad_sample).
+    Cpu,
 }
 
 /// ftCo_800A2040 (0x800A2040, ftCommon/ftCo_0A01.c:1080-1089).
@@ -18,7 +19,7 @@ pub enum InputSource {
 /// CPU mode numbers remain owned by melee-cpu; 5 selects controller override.
 pub fn input_source(resolved_player_kind: PlayerKind, cpu_mode: i32) -> InputSource {
     if resolved_player_kind == PlayerKind::Cpu && cpu_mode != 5 {
-        InputSource::CpuUnimplemented
+        InputSource::Cpu
     } else {
         InputSource::Pad
     }
@@ -47,7 +48,7 @@ pub fn run_cpu_input_proc(disabled: bool, source: InputSource) {
     }
     match source {
         InputSource::Pad => {}
-        InputSource::CpuUnimplemented => unimplemented!("ftCo_800B3900: melee-cpu, M5"),
+        InputSource::Cpu => unreachable!("ftCo_800B3900 runs in melee-cpu, which the scene calls"),
     }
 }
 
@@ -140,7 +141,7 @@ pub fn update_input(
     }
     match source {
         InputSource::Pad => update_human_input(input, sample, common, context),
-        InputSource::CpuUnimplemented => unimplemented!("CPU getters: melee-cpu, M5"),
+        InputSource::Cpu => unreachable!("the caller passes CpuState::pad_sample as a pad"),
     }
 }
 

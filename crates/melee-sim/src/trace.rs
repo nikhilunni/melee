@@ -15,11 +15,21 @@ use std::{
     path::Path,
 };
 
+/// The fighters a record carries: `p0`, `p1`, ... in fighter-list order (a
+/// player's partner, such as Nana, is a fighter of its own).
+fn fighter_count(record: &Record) -> usize {
+    (0..)
+        .take_while(|i| record.state.contains_key(&format!("p{i}.kind")))
+        .count()
+}
+
 pub fn check_schema(record: &Record) -> Result<()> {
     let schema = Schema::fighter_hand();
     let coverage = SchemaCoverage::new(&schema, &[]);
     let mut required = BTreeSet::from(["rng.seed".to_string()]);
-    for player in 0..2 {
+    let fighters = fighter_count(record);
+    ensure!(fighters >= 2, "a scene has at least two fighters");
+    for player in 0..fighters {
         let prefix = format!("p{player}.");
         let paths = record
             .state
@@ -35,8 +45,9 @@ pub fn check_schema(record: &Record) -> Result<()> {
         );
     }
     ensure!(
-        record.state.keys().cloned().collect::<BTreeSet<_>>() == required && required.len() == 49,
-        "scene must emit exactly the 49 schema keys"
+        record.state.keys().cloned().collect::<BTreeSet<_>>() == required
+            && required.len() == 1 + 24 * fighters,
+        "scene must emit exactly the schema keys of {fighters} fighters"
     );
     Ok(())
 }
@@ -146,7 +157,10 @@ pub fn compared_keys(scenario: &Scenario) -> Result<usize> {
         .transpose()?
         .ok_or_else(|| anyhow::anyhow!("empty expected trace"))?;
     let json: serde_json::Value = serde_json::from_str(&first)?;
-    Ok(49
+    let fighters = (0..)
+        .take_while(|i| json["state"].get(format!("p{i}.kind")).is_some())
+        .count();
+    Ok(1 + 24 * fighters
         + if json.get("items").is_some() {
             crate::trace_items::KEYS.len() + 1
         } else {
@@ -242,10 +256,15 @@ fn gate_with_recording(
 }
 
 /// Particle RNG call sites per tick, port versus the retail ledger
-/// (`<name>.ledger.raw.jsonl`), for ticks `from..=to`: one line per tick
+/// (`<name>.<ledger>.raw.jsonl`), for ticks `from..=to`: one line per tick
 /// where they differ.
-pub fn particle_site_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
-    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+pub fn particle_site_diff(
+    scenario: &Scenario,
+    from: u64,
+    to: u64,
+    ledger: &str,
+) -> Result<Vec<String>> {
+    let ledger_path = scenario.trace_path(&format!("{ledger}.raw.jsonl"));
     let ledger = melee_trace_io::read_to_string(&ledger_path)?;
     let mut simulation = simulation_displayed_as(scenario, &ledger_path)?;
     let mut report = Vec::new();

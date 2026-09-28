@@ -64,7 +64,7 @@ pub fn triage(scenario: &Scenario) -> Result<String> {
     }
     section(&mut out, "Particle RNG call sites");
     let from = d.tick.saturating_sub(1);
-    match trace::particle_site_diff(scenario, from, d.tick) {
+    match trace::particle_site_diff(scenario, from, d.tick, "ledger") {
         Ok(lines) if lines.is_empty() => writeln!(out, "identical through tick {}", d.tick)?,
         Ok(lines) => {
             for line in &lines {

@@ -80,6 +80,9 @@ pub struct MotionPreservation {
 #[derive(Clone, Debug)]
 pub struct PlayerSlot {
     pub id: u8,
+    /// x221F_b4 (plAllocInfo.b0): the player's second fighter, such as
+    /// Nana beside Popo (Player_80031AD0's `player_entity[1]`).
+    pub secondary: bool,
     pub control: PlayerKind,
     pub costume: u8,
     pub stocks: u8,
@@ -112,48 +115,6 @@ impl SpawnCounter {
             self.0 = 1;
         }
         number
-    }
-}
-impl CpuState {
-    /// ftCo_800A101C (0x800A101C), ftCo_0A01.c:674-750.
-    /// Human and CPU slots both consume the reaction and attack-delay draws.
-    pub fn initialize(mode: i32, level: i32, rng: &mut HsdRng) -> Self {
-        let behavior = match mode {
-            1 | 25 => 12,
-            15 => 0,
-            _ => 1,
-        };
-        // Retail 0x800A124C fmul / 0x800A1258 fctiwz: double 10.0 * Randf then fctiwz.
-        // asm.py ftCo_800A101C --fused: no multiply-add sites.
-        let reaction_timer = (10.0_f64 * f64::from(rng.randf())) as i32;
-        let attack_delay = Self::initial_attack_delay(mode, level, rng);
-        Self {
-            buttons: 0,
-            stick: [0; 2],
-            mode,
-            level,
-            behavior,
-            reaction_timer,
-            attack_delay,
-            hurtbox_extents: [1.0, 1.0, 1.0, 2.0],
-        }
-    }
-
-    /// ftCo_800B9704 (ftcpuattack.c:2098-2106), called at 0x800A1744.
-    fn initial_attack_delay(mode: i32, level: i32, rng: &mut HsdRng) -> i32 {
-        // Retail 0x800B9718 draws even for humans. 0x800B9734/0x800B974C
-        // are fmadds; 0x800B9750 truncates with fctiwz before mode-7 halving.
-        let random_delay = gekko_math::fma::fmadds(15.0, rng.randf(), 15.0);
-        let delay = gekko_math::msl::fctiwz(gekko_math::fma::fmadds(
-            (10 - level) as f32,
-            random_delay,
-            10.0,
-        ));
-        if mode == 7 {
-            delay / 2
-        } else {
-            delay
-        }
     }
 }
 impl Fighter {
@@ -282,8 +243,37 @@ impl Fighter {
         self.core
             .thrown_hitbox
             .update(&mut self.core.skeleton, &self.core.animation);
-        self.core.cpu =
-            CpuState::initialize(self.core.player.cpu_mode, self.core.player.cpu_level, rng);
+        let position = self.core.physics.position;
+        // ftCo_800A0FB0 (0x800A0FB0): no stage the port runs ignores a floor
+        // line (ftCo_800A1B38 names Big Blue, Mushroom Kingdom, Corneria
+        // and Venom).
+        let floor_below = map
+            .check_floor(
+                position.x,
+                10.0 + position.y,
+                position.x,
+                position.y - 1000.0,
+                0.0,
+                -1,
+                -1,
+                -1,
+                None,
+            )
+            .map(|hit| hit.pos);
+        let attributes = &self.core.attributes;
+        self.core.cpu = CpuState::initialize(
+            &super::cpu::CpuSetup {
+                mode: self.core.player.cpu_mode,
+                level: self.core.player.cpu_level,
+                partner: self.core.capabilities.cpu_partner,
+                position,
+                gravity: attributes.air.gravity,
+                jump_velocity: attributes.jumping.jump_v_initial_velocity,
+                air_jump_multiplier: attributes.jumping.air_jump_v_multiplier,
+                floor_below,
+            },
+            rng,
+        );
         supported
     }
 
@@ -1013,8 +1003,9 @@ impl FighterCore {
         capabilities: Capabilities,
         motion_state: MotionState,
     ) -> Self {
-        // fighter.c:241, retail 0x80067CE8: fmadds. x40 was reset to +0.
-        let offset = 0.0 * player.scale; // ftCommon_800804EC: separate fmuls.
+        // fighter.c:241, retail 0x80067CE8: fmadds. OnLoad set x40 before
+        // Fighter_UnkProcessDeath (zero unless the kind sets it).
+        let offset = capabilities.spawn_offset * player.scale; // ftCommon_800804EC: fmuls.
         let position = Vec3::new(
             gekko_math::fma::fmadds(player.facing, offset, player.position.x),
             player.position.y,
@@ -1119,16 +1110,7 @@ impl FighterCore {
             item_requests: Default::default(),
             effects_after_items: Default::default(),
             capabilities,
-            cpu: CpuState {
-                buttons: 0,
-                stick: [0; 2],
-                mode: player.cpu_mode,
-                level: player.cpu_level,
-                behavior: 1,
-                reaction_timer: 0,
-                attack_delay: 0,
-                hurtbox_extents: [1.0, 1.0, 1.0, 2.0],
-            },
+            cpu: CpuState::prepared(player.cpu_mode, player.cpu_level),
             status: Status::reset(assets.shield_health),
             commands: commands::CommandState::default(),
             ground_pose: GroundPoseFlags::default(),

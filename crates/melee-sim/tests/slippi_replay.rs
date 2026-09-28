@@ -16,7 +16,7 @@ fn fixture_matched_frame_counts_never_decrease() {
     // Pin the composition and the reason as well, so an unconditional skip or
     // a setup/parser regression cannot masquerade as a successful zero floor.
     let cases = [
-        ("ics.slp", "FinalDestination", "IceClimbers", 0),
+        ("ics.slp", "FinalDestination", "Cpu control", 0),
         ("joystick_udlr.slp", "FinalDestination", "Ganondorf", 0),
         ("netplay.slp", "FountainOfDreams", "cold stage", 0),
         ("v0.1.slp", "DreamLand", "cold stage", 0),

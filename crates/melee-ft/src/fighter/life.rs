@@ -85,10 +85,11 @@ pub enum LifeState {
     },
 }
 impl FighterCore {
-    /// x2219_b1: a death entry (ftCo_800D3680..ftCo_800D481C) or the respawn
-    /// wait (ftCo_800D4F24) sets it after its motion change, and every
-    /// motion change clears it. Fighter_8006CB94 skips all hit detection
-    /// while it is set; Revival does not set it.
+    /// x2219_b1: a death entry (ftCo_800D3680..ftCo_800D481C), the respawn
+    /// wait (ftCo_800D4F24) or the match entry (ftCo_800C61B0 and the
+    /// Entry states after it, ft_0C31.c:43,99,263) sets it after its motion
+    /// change, and every motion change clears it. Fighter_8006CB94 skips
+    /// all hit detection while it is set; Revival does not set it.
     pub fn out_of_play(&self) -> bool {
         matches!(
             self.state_data,
@@ -97,7 +98,7 @@ impl FighterCore {
                     | LifeState::StarKo { .. }
                     | LifeState::ScreenKo(_)
                     | LifeState::AwaitingRespawn
-            )
+            ) | MotionData::Entry(_)
         )
     }
 }
@@ -235,7 +236,10 @@ impl Fighter {
         // fn_80167638: stage_info.unk8C.b4 gives each player its own marker
         // (4 + slot); otherwise players share marker 4, spaced by a timed slot.
         let (marker, offset) = if arena.player_revival_markers {
-            (arena.revival_positions[usize::from(self.core.player.id)], 0.0)
+            (
+                arena.revival_positions[usize::from(self.core.player.id)],
+                0.0,
+            )
         } else {
             (arena.revival_positions[0], offsets.allocate())
         };
@@ -250,11 +254,11 @@ impl Fighter {
         // Every ported stage sets stage_info.unk8C.b5, so fn_8016719C skips
         // Player_80032FA4 and the fighter's marker index stays -1 (player.c:1954):
         // ftCo_800D4FF4 aims at the spawn platform position once, at entry.
-        // retail 0x800D5050: fmadds with ftCommon_800804EC (x40 is +0; separate fmuls).
+        // retail 0x800D5050: fmadds with ftCommon_800804EC (x40 * scale, fmuls).
         let target = Vec3::new(
             gekko_math::fma::fmadds(
                 self.core.player.facing,
-                0.0 * self.core.player.scale,
+                self.core.capabilities.spawn_offset * self.core.player.scale,
                 platform.x,
             ),
             platform.y,
@@ -837,7 +841,7 @@ impl FighterCore {
     fn reset_life(&mut self, assets: &FighterAssets, map: &melee_mp::CollMap) {
         let player = &self.player;
         // Same audited coordinate calculation as initial preparation (80067CE8).
-        let offset = 0.0 * player.scale;
+        let offset = self.capabilities.spawn_offset * player.scale;
         let position = Vec3::new(
             gekko_math::fma::fmadds(player.facing, offset, player.position.x),
             player.position.y,

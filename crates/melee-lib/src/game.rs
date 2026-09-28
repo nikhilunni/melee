@@ -16,12 +16,8 @@ pub struct GameAssets {
 impl GameAssets {
     pub fn load(directory: impl AsRef<Path>, config: &MatchConfig) -> Result<Self, StartError> {
         let setup = config.setup()?;
-        let inner = Assets::load(
-            directory.as_ref(),
-            std::array::from_fn(|p| setup.fighters[p].descriptor()),
-            setup.stage,
-        )
-        .map_err(|e| StartError::Load(format!("{e:#}")))?;
+        let inner = Assets::load(directory.as_ref(), &setup.roster_descriptors(), setup.stage)
+            .map_err(|e| StartError::Load(format!("{e:#}")))?;
         Ok(Self {
             inner: Arc::new(inner),
             stage: config.stage,
@@ -89,7 +85,7 @@ impl Match {
             _ => unreachable!("validated imported stage"),
         };
         let players = std::array::from_fn(|i| {
-            let f = &engine.state().fighters[i].0;
+            let f = &engine.state().player_fighter(i).0;
             PlayerConfig {
                 port: Port::from_index(f.player.id),
                 character: Character::from_kind(f.kind),
@@ -227,7 +223,8 @@ impl Match {
         if self.engine.is_faulted() {
             return MatchStatus::Faulted;
         }
-        let fighters = &self.engine.state().fighters;
+        let state = self.engine.state();
+        let fighters = [state.player_fighter(0), state.player_fighter(1)];
         if self.engine.state().clock.timed_out() {
             // The results screen ranks a timed-out stock match by stocks.
             let stocks = fighters.each_ref().map(|f| f.0.player.stocks);
@@ -250,7 +247,7 @@ impl Match {
                 fighters[1].0.player.id,
             ))),
             [false, false] => MatchStatus::Finished(MatchOutcome::Draw),
-            _ if fighters.iter().any(|f| f.0.status.input_frozen) => MatchStatus::Startup,
+            _ if state.fighters.iter().any(|f| f.0.status.input_frozen) => MatchStatus::Startup,
             _ => MatchStatus::Playing,
         }
     }

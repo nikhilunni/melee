@@ -15,6 +15,7 @@ mod setup;
 use melee_sim::{scenario, trace};
 
 mod config;
+mod cpu;
 mod error;
 mod events;
 mod game;

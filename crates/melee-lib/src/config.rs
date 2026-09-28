@@ -41,6 +41,8 @@ pub enum Character {
     Luigi,
     Pichu,
     Ganondorf,
+    /// Popo, with Nana as the player's partner fighter.
+    IceClimbers,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -59,6 +61,7 @@ impl Character {
             Self::Luigi => "Luigi",
             Self::Pichu => "Pichu",
             Self::Ganondorf => "Ganondorf",
+            Self::IceClimbers => "IceClimbers",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -81,6 +84,7 @@ impl Character {
             melee_types::FighterKind::Luigi => Self::Luigi,
             melee_types::FighterKind::Pichu => Self::Pichu,
             melee_types::FighterKind::Ganon => Self::Ganondorf,
+            melee_types::FighterKind::Popo => Self::IceClimbers,
             _ => unreachable!("unregistered match character"),
         }
     }

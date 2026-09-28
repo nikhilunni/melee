@@ -8,10 +8,12 @@ pub use phase::{
     InputPhase, PhysicsFn, PhysicsPhase,
 };
 mod names;
+mod partner_sync;
 mod row;
 mod special;
 pub use action::{ActionId, SpecialSlot, COMMON_COUNT};
 pub use common_table::{common_table, COMMON};
+pub use partner_sync::partner_sync;
 pub(crate) use row::unsupported_action;
 pub use row::{unimplemented_anim, unimplemented_row, MotionRow, MotionState};
 

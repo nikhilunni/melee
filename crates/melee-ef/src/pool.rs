@@ -96,7 +96,7 @@ impl Effects {
             character_banks: Default::default(),
             loaded_banks: 0,
             next_joint: 0,
-            fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
+            fighter_joints: [false; FIGHTER_SLOTS * FIGHTER_JOINT_STRIDE],
             item_joints: FixedVec::default(),
             item_bones: FixedVec::default(),
         }

@@ -108,6 +108,9 @@ enum Command {
         from: u64,
         #[arg(long)]
         to: u64,
+        /// The ledger capture's suffix (`ledger600` for a start scene).
+        #[arg(long, default_value = "ledger")]
+        ledger: String,
     },
     /// Emit Fox Wait1 bone matrices and SRT with an identity world transform.
     Bones {
@@ -236,9 +239,14 @@ fn main() -> anyhow::Result<()> {
             println!("{} differing ticks", report.len());
             Ok(())
         }
-        Command::ParticleSites { scenario, from, to } => {
+        Command::ParticleSites {
+            scenario,
+            from,
+            to,
+            ledger,
+        } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
-            let report = melee_sim::trace::particle_site_diff(&scenario, from, to)?;
+            let report = melee_sim::trace::particle_site_diff(&scenario, from, to, &ledger)?;
             for line in &report {
                 println!("{line}");
             }

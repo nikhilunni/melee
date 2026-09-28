@@ -3,8 +3,8 @@ use super::*;
 pub(super) fn floors(game: &Match) -> [[f32; 4]; 2] {
     use melee_types::mp::{line_flag, line_kind};
     let state = game.engine.state();
-    std::array::from_fn(|slot| {
-        let fighter = &state.fighters[slot].0;
+    std::array::from_fn(|player| {
+        let fighter = &state.player_fighter(player).0;
         let p = fighter.physics.position;
         let mut selected = [1.0, 0.0, -1.0, 0.0];
         let mut highest = f32::NEG_INFINITY;

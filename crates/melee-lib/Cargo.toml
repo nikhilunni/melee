@@ -50,6 +50,7 @@ ft-mario = { path = "../ft-mario" }
 ft-drmario = { path = "../ft-drmario" }
 ft-luigi = { path = "../ft-luigi" }
 ft-ganon = { path = "../ft-ganon" }
+ft-iceclimbers = { path = "../ft-iceclimbers" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

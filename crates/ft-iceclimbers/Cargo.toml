@@ -1,0 +1,16 @@
+[package]
+name = "ft-iceclimbers"
+description = "Fighters: Popo and Nana, the Ice Climbers (decomp src/melee/ft/kinds/ftPopo, ftNana)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+hsd-types = { path = "../hsd-types" }
+hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

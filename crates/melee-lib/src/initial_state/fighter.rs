@@ -20,6 +20,7 @@ pub(crate) fn import(
 ) -> Fighter {
     let mut player = PlayerSlot {
         id: raw[12],
+        secondary: raw[0x221F] & 0x08 != 0,
         control: PlayerKind::Human,
         costume: 0,
         stocks: 1,
@@ -36,6 +37,12 @@ pub(crate) fn import(
     player.costume = raw[0x619];
     let (tree, root) = archive.model(player.costume);
     let mut f = Fighter::prepare(player, character, assets, tree, root, map);
+    // prepare places the fighter at the Player position plus the kind's
+    // spawn offset (x40); the dump already holds the final position.
+    let position = vector(raw, 0xB0);
+    f.core.physics.position = position;
+    let root = f.core.animation.root;
+    f.core.skeleton.set_translate(root, &position);
     f.spawn_number = word(raw, 0x8);
     f.combat.capture_geometry = melee_ft::fighter::grab_throw::CaptureGeometry {
         hip_scale: float(raw, 0x1A6C),

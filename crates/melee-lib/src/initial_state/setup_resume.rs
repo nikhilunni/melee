@@ -71,6 +71,7 @@ pub(super) fn fighter(
     );
     let player = PlayerSlot {
         id: slot as u8,
+        secondary: false,
         control: melee_types::PlayerKind::Human,
         costume: raw[0x44],
         stocks: raw[0x8E],

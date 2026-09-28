@@ -17,7 +17,7 @@ fn repeated_revival_retains_owners_without_allocating() {
     }
     let assets = Assets::load(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files"),
-        [
+        &[
             ft_fox::init::Fox::descriptor(),
             ft_mars::init::Marth::descriptor(),
         ],
@@ -34,6 +34,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
     let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc).unwrap();
     let player = PlayerSlot {
         id: slot as u8,
+        secondary: false,
         control: PlayerKind::Human,
         costume: 0,
         stocks: 4,

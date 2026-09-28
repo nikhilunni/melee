@@ -22,6 +22,8 @@ pub struct CharacterTable {
     pub specials_keep_held_item: bool,
     pub down_bound_inverted: bool,
     pub special_moves: &'static [Option<melee_types::combat::StaleMove>],
+    /// MotionState.x9_b0 of the character's rows (see `state::partner_sync`).
+    pub special_partner_sync: &'static [bool],
     pub enter_special: fn(&mut Fighter, SpecialSlot, bool, &assets::FighterAssets),
     pub accessory: fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng),
     pub special_grab: SpecialGrab,
@@ -110,6 +112,7 @@ impl CharacterTable {
             specials_keep_held_item: C::SPECIALS_KEEP_HELD_ITEM,
             down_bound_inverted: C::DOWN_BOUND_INVERTED,
             special_moves: C::SPECIAL_MOVES,
+            special_partner_sync: C::SPECIAL_PARTNER_SYNC,
             enter_aerial: C::ENTER_AERIAL,
             enter_special: C::enter_special,
             accessory: C::accessory,

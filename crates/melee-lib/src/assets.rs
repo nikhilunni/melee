@@ -19,7 +19,8 @@ pub struct Assets {
     pub stage_camera: melee_cm::StageCamera,
     /// Ground_801C2D24 at the markers the Sudden Death rain reads.
     pub drop_markers: melee_gr::bomb_rain::DropMarkers,
-    pub(crate) fighters: ManuallyDrop<[FighterAssets; 2]>,
+    /// One per fighter GObj, in fighter-list order (`Setup::roster`).
+    pub(crate) fighters: ManuallyDrop<Vec<FighterAssets>>,
     pub stage: Archive,
     /// EfCoData.dat, then melee_ef::CHARACTER_EFFECT_FILES in order.
     pub(crate) visual_effect_archives: [Archive; 1 + melee_ef::CHARACTER_EFFECT_FILES.len()],
@@ -27,10 +28,13 @@ pub struct Assets {
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
     pub common_particle_bank: ParticleBank,
-    pub characters: [CharacterArchive; 2],
+    /// One per fighter GObj, in fighter-list order.
+    pub characters: Vec<CharacterArchive>,
     /// Pokemon Stadium's form archives (grpstadium.c `datfiles`), read
     /// mid-match by the transformation; indexed by `Form::archive`.
     pub stage_forms: Vec<FormArchive>,
+    /// PlCo's CPU tables (Fighter_804D64FC), for fighters the CPU drives.
+    pub(crate) cpu: melee_cpu::desc::CpuData,
 }
 /// One archive of maps loaded after the stage's own (grDatFiles_801C6478).
 pub struct FormArchive {
@@ -38,13 +42,13 @@ pub struct FormArchive {
     pub models: Vec<melee_gr::desc::ModelDesc>,
 }
 impl Assets {
-    pub fn fighters(&self) -> &[FighterAssets; 2] {
+    pub fn fighters(&self) -> &[FighterAssets] {
         &self.fighters
     }
 
     pub fn load(
         files: &Path,
-        descriptors: [&'static CharacterDescriptor; 2],
+        descriptors: &[&'static CharacterDescriptor],
         stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     ) -> Result<Self> {
         use std::hash::Hasher;
@@ -60,10 +64,19 @@ impl Assets {
         };
         let archive = |name| -> Result<Archive> { Ok(Archive::parse(&read(name)?)?) };
         let common = archive("PlCo.dat")?;
+        let cpu = melee_cpu::desc::CpuData::read(&common).map_err(anyhow::Error::msg)?;
         let mut characters = Vec::new();
         let mut fighters = Vec::new();
         let mut data_archives = std::collections::BTreeMap::new();
-        for descriptor in descriptors {
+        // The previous fighter's descriptor, data and AJ bytes: a player's
+        // partner (Nana) plays its own fighter's animations where its table
+        // authors none (ftData_80085FD4).
+        let mut previous: Option<(
+            &'static CharacterDescriptor,
+            std::sync::Arc<Archive>,
+            Vec<u8>,
+        )> = None;
+        for &descriptor in descriptors {
             let data = if let Some(data) = data_archives.get(descriptor.data_file) {
                 std::sync::Arc::clone(data)
             } else {
@@ -71,13 +84,21 @@ impl Assets {
                 data_archives.insert(descriptor.data_file, std::sync::Arc::clone(&data));
                 data
             };
-            let resources = FighterAssets::load(
-                descriptor,
-                &data,
-                &common,
-                &read(descriptor.animation_file)?,
-            )
-            .map_err(|e| anyhow::anyhow!("{} resources: {e}", descriptor.data_symbol))?;
+            let aj = read(descriptor.animation_file)?;
+            let fallback = previous.as_ref().and_then(|(owner, data, aj)| {
+                let partner = crate::scene_fighter::SceneFighter::partner_for(owner)?;
+                (partner.kind == descriptor.kind).then_some(
+                    melee_ft::fighter::assets::AnimationFallback {
+                        descriptor: owner,
+                        data,
+                        aj,
+                    },
+                )
+            });
+            let resources =
+                FighterAssets::load_with_fallback(descriptor, &data, &common, &aj, fallback)
+                    .map_err(|e| anyhow::anyhow!("{} resources: {e}", descriptor.data_symbol))?;
+            previous = Some((descriptor, std::sync::Arc::clone(&data), aj));
             let costumes = descriptor
                 .costumes
                 .iter()
@@ -187,8 +208,6 @@ impl Assets {
             ground_maximum: common_damage.sakurai_maximum_threshold,
         };
         let items = crate::scene_items::Resources::load(&read, &characters, &stage, launch)?;
-        let fighters = fighters.try_into().ok().expect("two character resources");
-        let characters = characters.try_into().ok().expect("two character archives");
         // Finish all fallible work before installing manually dropped ownership.
         Ok(Self {
             fingerprint: fingerprint.into_inner().finish(),
@@ -211,6 +230,7 @@ impl Assets {
             common_particle_bank,
             characters,
             stage_forms,
+            cpu,
         })
     }
 }

@@ -26,7 +26,42 @@ pub struct Setup {
     /// countdown and the Bob-omb rain.
     pub sudden_death: bool,
 }
+/// One fighter GObj a match creates, in creation order (the fighter list
+/// order): each player's fighter, then its partner (Player_80031AD0 creates
+/// `player_entity[0]`, then `player_entity[1]` for ftMapping_list's
+/// `extra_internal_id`, e.g. Nana with Popo).
+#[derive(Clone, Copy)]
+pub struct RosterEntry {
+    /// Index into `Setup::fighters`.
+    pub player: usize,
+    pub descriptor: &'static CharacterDescriptor,
+    /// x221F_b4: the player's second fighter (plAllocInfo.b0).
+    pub secondary: bool,
+}
 impl Setup {
+    /// Every fighter the players create, in fighter-list order.
+    pub fn roster(&self) -> Vec<RosterEntry> {
+        let mut roster = Vec::with_capacity(2 * self.fighters.len());
+        for (player, setup) in self.fighters.iter().enumerate() {
+            roster.push(RosterEntry {
+                player,
+                descriptor: setup.descriptor,
+                secondary: false,
+            });
+            if let Some(partner) = crate::scene_fighter::SceneFighter::partner_for(setup.descriptor)
+            {
+                roster.push(RosterEntry {
+                    player,
+                    descriptor: partner,
+                    secondary: true,
+                });
+            }
+        }
+        roster
+    }
+    pub fn roster_descriptors(&self) -> Vec<&'static CharacterDescriptor> {
+        self.roster().iter().map(|entry| entry.descriptor).collect()
+    }
     pub fn stage_descriptor(&self) -> &'static crate::scene_stage::StageDescriptor {
         self.stage
     }

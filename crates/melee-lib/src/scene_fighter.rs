@@ -17,7 +17,7 @@ use std::mem::ManuallyDrop;
 /// Every scene slot then owns one concrete fighter. Its box is allocated once
 /// at setup; common gameplay dispatches through the installed static table.
 macro_rules! scene_characters {
-    ($( $name:literal => $variant:ident ( $ty:path ) ),* $(,)?) => {
+    ($( $name:literal => $variant:ident ( $ty:path ) $( partner ( $partner:path ) )? ),* $(,)?) => {
         #[derive(Clone)]
         pub(crate) struct SceneFighter(pub(crate) ManuallyDrop<Box<Fighter>>);
         macro_rules! with_fighter {
@@ -57,6 +57,14 @@ macro_rules! scene_characters {
                         character.on_costume_loaded(archive.costume(costume), costume).map_err(|e| anyhow::anyhow!("{e}"))?;
                         return Ok(character.into_state());
                     }
+                    $(
+                        if archive.descriptor.kind == <$partner as CharacterCallbacks>::descriptor().kind {
+                            let mut character = <$partner as CharacterCallbacks>::from_archive(&archive.data)
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            character.on_costume_loaded(archive.costume(costume), costume).map_err(|e| anyhow::anyhow!("{e}"))?;
+                            return Ok(character.into_state());
+                        }
+                    )?
                 )*
                 unreachable!("validated character descriptor")
             }
@@ -67,6 +75,21 @@ macro_rules! scene_characters {
                     $( $name => Some(<$ty as CharacterCallbacks>::descriptor()), )*
                     _ => None,
                 }
+            }
+            /// ftMapping_list's `extra_internal_id` without a transformation:
+            /// the second fighter a player of this character creates.
+            pub(crate) fn partner_for(
+                descriptor: &CharacterDescriptor,
+            ) -> Option<&'static CharacterDescriptor> {
+                $(
+                    $(
+                        if descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
+                            return Some(<$partner as CharacterCallbacks>::descriptor());
+                        }
+                    )?
+                )*
+                let _ = descriptor;
+                None
             }
             /// Build the slot's fighter from the loaded archives and a retail
             /// Fighter dump, dispatching on the archive's descriptor kind.
@@ -81,6 +104,11 @@ macro_rules! scene_characters {
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
                         return Self::new(construct::<$ty>(archive, resources, map, raw, saved));
                     }
+                    $(
+                        if archive.descriptor.kind == <$partner as CharacterCallbacks>::descriptor().kind {
+                            return Self::new(construct::<$partner>(archive, resources, map, raw, saved));
+                        }
+                    )?
                 )*
                 unreachable!("validated character descriptor {:?}", archive.descriptor.kind)
             }
@@ -103,6 +131,7 @@ scene_characters! {
     "Luigi" => Luigi(ft_luigi::init::Luigi),
     "Pichu" => Pichu(ft_pichu::init::Pichu),
     "Ganondorf" => Ganondorf(ft_ganon::init::Ganondorf),
+    "IceClimbers" => IceClimbers(ft_iceclimbers::init::Popo) partner(ft_iceclimbers::init::Nana),
 }
 
 fn construct<C: CharacterCallbacks>(
@@ -122,6 +151,18 @@ fn construct<C: CharacterCallbacks>(
         crate::initial_state::import_fighter(archive, resources, character.into_state(), map, raw);
     saved.restore(&mut fighter, raw);
     fighter
+}
+
+/// The fighter-list index of player `player`'s own fighter (x221F_b4
+/// clear), `player` counting players in port order.
+pub(crate) fn player_fighter_index(fighters: &[SceneFighter], player: usize) -> usize {
+    fighters
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| !f.0.player.secondary)
+        .nth(player)
+        .map(|(index, _)| index)
+        .expect("one fighter per player")
 }
 
 impl Snapshot for SceneFighter {

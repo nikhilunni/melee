@@ -13,6 +13,7 @@ pub mod capture_yoshi;
 pub mod clank;
 pub mod color_overlay;
 pub mod commands;
+pub mod cpu;
 pub mod damage;
 mod damage_song;
 pub mod dash;
@@ -70,6 +71,7 @@ use crate::{
     input::FighterInput,
     physics::FighterPhysics,
 };
+pub use cpu::CpuState;
 use hsd_anim::jobj::JObjTree;
 use hsd_types::{Vec2, Vec3};
 use melee_types::{FighterKind, PlayerKind};
@@ -127,6 +129,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const SPECIAL_ROWS: &'static [MotionRow] = &[];
     /// ftData special-row move IDs, indexed from action 341.
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &[];
+    /// MotionState.x9_b0 of the special rows, indexed from action 341 (read
+    /// only for a partner fighter; see `state::partner_sync`).
+    const SPECIAL_PARTNER_SYNC: &'static [bool] = &[];
 
     fn special_rows() -> &'static [MotionRow] {
         Self::SPECIAL_ROWS
@@ -555,27 +560,20 @@ pub struct Capabilities {
     pub can_walljump: bool,
     /// ftData special callback presence, S/Hi/N/Lw.
     pub specials: [bool; 4],
-}
-
-/// CpuFighter's recorded fields. Human slots still initialize this block.
-#[derive(Clone, Debug)]
-pub struct CpuState {
-    /// buttons, +1A88.
-    pub buttons: u32,
-    /// lstick.x/y, +1A8C/+1A8D.
-    pub stick: [i8; 2],
-    /// xC, +1A94; not PlayerKind.
-    pub mode: i32,
-    /// level, +1A98.
-    pub level: i32,
-    /// x18, +1AA0.
-    pub behavior: i32,
-    /// x7C, +1B04; frozen for human slots.
-    pub reaction_timer: i32,
-    /// CpuFighter.x34 (+1ABC): delay before choosing another attack.
-    pub attack_delay: i32,
-    /// cpu.x55C/x560/x564/x568 (+1FE4..1FF0), current hurtbox extents.
-    pub hurtbox_extents: [f32; 4],
+    /// fp->x40, which OnLoad sets (the Ice Climbers only): the spawn and
+    /// revival offset along the facing (ftCommon_800804EC).
+    pub spawn_offset: f32,
+    /// dmg.armor0 as every reset leaves it: zero (fighter.c:292), then the
+    /// kind's OnDeath (Nana, Bowser, Giga Bowser).
+    pub armor: f32,
+    /// x2222_b5: this fighter's player has a partner fighter that goes when
+    /// it does (Popo; ftCo_800BFD9C).
+    pub leads_partner: bool,
+    /// x2222_b4: healing items are never picked up (Nana; ftpickupitem.c:47).
+    pub refuses_healing_items: bool,
+    /// ftCo_800A101C's FTKIND_NANA arm: the CPU follows the player's own
+    /// fighter (CpuFighter.xC 6).
+    pub cpu_partner: bool,
 }
 
 /// Unsupported interactions are represented explicitly, never inferred from

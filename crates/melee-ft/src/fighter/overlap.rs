@@ -16,6 +16,8 @@ impl FighterCore {
             linked: self.combat.grab.is_some(),
             ignore_others: self.status.ignore_fighter_nudge,
             hitlag: self.in_hitlag(),
+            player: self.player.id,
+            secondary: self.player.secondary,
         }
     }
 }

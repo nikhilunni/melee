@@ -11,7 +11,7 @@ use melee_ft::fighter::RetailTrig;
 
 /// ftLib_800864A8 / 800866DC: vote by the current camera-target bone,
 /// with zero on the positive side. The controller performs a tie RNG draw.
-fn fighter_sides(fighters: &mut [SceneFighter; 2]) -> i32 {
+fn fighter_sides(fighters: &mut [SceneFighter]) -> i32 {
     fighters
         .iter_mut()
         .map(|fighter| {

@@ -156,11 +156,24 @@ fn fox_spawn_native() {
     }
 }
 
+fn setup(mode: i32, level: i32) -> melee_ft::fighter::cpu::CpuSetup {
+    melee_ft::fighter::cpu::CpuSetup {
+        mode,
+        level,
+        partner: false,
+        position: hsd_types::Vec3::ZERO,
+        gravity: 0.0,
+        jump_velocity: 0.0,
+        air_jump_multiplier: 0.0,
+        floor_below: None,
+    }
+}
+
 #[test]
 fn cpu_init_is_distinct_from_player_control() {
     for (mode, behavior) in [(1, 12), (25, 12), (3, 1), (15, 0), (4, 1)] {
         let mut rng = HsdRng::new(0x12345678);
-        let cpu = CpuState::initialize(mode, 1, &mut rng);
+        let cpu = CpuState::initialize(&setup(mode, 1), &mut rng);
         assert_eq!(cpu.behavior, behavior);
         assert_eq!(cpu.reaction_timer, 7);
         // Draws at 0x800A123C and 0x800B9718. The old one-draw

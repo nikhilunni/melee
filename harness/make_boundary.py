@@ -41,10 +41,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+import data_root  # noqa: E402
 import dolphin_config  # noqa: E402
 from record import dolphin_flags  # noqa: E402
 
-ISO = HERE / "roms/GALE01.iso"
+ISO = data_root.ROMS / "GALE01.iso"
 BOUNDARIES = HERE / "boundaries.toml"
 BACKUP = Path.home() / "melee-data/roms"
 SCRIPT = HERE / "dolphin/boundary_script.py"
@@ -171,8 +172,8 @@ def main(argv: list[str] | None = None) -> None:
     if not 2 <= len(a.players) <= 4:
         sys.exit("a boundary has 2 to 4 players")
     name = a.name or default_name(a.stage, a.players, a.stocks)
-    sav = HERE / "roms" / f"{name}.sav"
-    scenario, cold = HERE / "scenarios" / f"{name}.toml", HERE / "scenarios" / f"{name}_cold.toml"
+    sav = data_root.ROMS / f"{name}.sav"
+    scenario, cold = data_root.SCENARIOS / f"{name}.toml", data_root.SCENARIOS / f"{name}_cold.toml"
     existing = [p for p in (sav, Path(str(sav) + ".json"), scenario, cold) if p.exists()]
     if existing:
         sys.exit(f"refusing to overwrite: {', '.join(str(p) for p in existing)}")
