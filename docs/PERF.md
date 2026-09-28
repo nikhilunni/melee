@@ -6,6 +6,22 @@ Ratchet note (2026-09-28): the user raised the size baseline after feature growt
 
 Ratchet note (2026-09-28, wave C): the user raised the size baseline again after 20 characters and their item crates landed: `REVIEWED_SIZE` = 6,444,304 stripped / 5,865,472 text bytes, fixed ceiling +5% (6,766,519). Time and duplicate-label ceilings are unchanged.
 
+Profile study (2026-09-28, after wave C): release now uses `codegen-units = 1` and `.cargo/config.toml` adds `-C force-unwind-tables=no` (async unwind tables' epilogue CFI defeated compact unwind on aarch64 macOS: 8,849 DWARF FDEs, 676 KB `__eh_frame`; panics, `catch_unwind` and backtraces are unaffected). `panic = "abort"` is not an option: melee-lib and `melee-sim replay` name `unimplemented!` faults with `catch_unwind`. Measured on the stripped `melee-sim` (Criterion minimum of 6-9 interleaved runs; clean build of the binary on a shared 12-core machine):
+
+| Profile | Stripped | __TEXT | ticks_600 | load | Clean build | Rebuild after melee-ft edit | `test --release --workspace --no-run` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| previous default (16 CGUs, no LTO) | 6,444,304 | 5,865,472 | 19.6 ms | 176 ms | 17 s | 19 s | 84-108 s |
+| no async unwind tables | 6,048,120 | 5,472,256 | 19.5 ms | 176 ms | 28 s | 12 s | - |
+| codegen-units=1 | 5,596,392 | 5,062,656 | 19.4 ms | 174 ms | 32 s | 21 s | - |
+| **codegen-units=1, no async unwind (adopted)** | 5,266,280 | 4,734,976 | 19.4 ms | 174 ms | 40 s | - | 83 s |
+| lto=thin | 6,699,256 | 6,160,384 | 19.3 ms | 180 ms | 29 s | 17 s | - |
+| lto=fat | 5,423,176 | 5,095,424 | 18.7 ms | 181 ms | 59 s | - | - |
+| lto=fat, codegen-units=1, no async unwind | 4,892,984 | 4,587,520 | 18.2 ms | 174 ms | 62 s | 50 s | 327 s |
+| codegen-units=1, opt-level="s" | 5,222,632 | 4,456,448 | 24.2 ms | 195 ms | 23 s | - | - |
+| lto=fat, codegen-units=1, opt-level="s" | 4,001,304 | 3,719,168 | 22.6 ms | 184 ms | 52 s | - | - |
+
+`debug = 0` leaves the stripped size unchanged. Fat LTO's 7% tick gain costs ~50 s on every release rebuild (even a melee-sim-only edit) and 4x the release test build, so it is not the default; use `--config 'profile.release.lto="fat"'` for long headless runs. The same study moved two load-path functions to `&dyn ScenarioSource` (-118 KB) and gave `c_enum!` an out-of-line `Debug` (-49 KB): 5,098,904 stripped bytes in all, -21%. `REVIEWED_SIZE` is left for the user to lower.
+
 
 Run `tools/perf-gate.sh` separately from `cargo gate`, on an otherwise idle
 machine. It builds the native release CLI, strips a copy, runs `size` and
