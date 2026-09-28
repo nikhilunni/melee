@@ -1,0 +1,25 @@
+# BF-TRANSITION directed witness: Marth vs Fox on Battlefield from the start
+# boundary, nobody pressing anything, long enough for grBattle_BG_Callback2
+# (0x8021A3BC) to run two full background swap cycles: the map-3 transition
+# animation, the first swap away from map 1 (outgoing/incoming color
+# overlays, grBattle_80219D84 creating the new background and its particle
+# keys), Ground_801C4A08 retiring the faded map, the redrawn timer, and a
+# second swap away from a background created mid-match.
+name = "bf_transition_cycle_marth_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_bf_marth_fox4.sav"
+frames = 11000
+seed = 1
+stage = "Battlefield"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -219,25 +219,23 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
         .unwrap_or([0; 3]);
     let scripts = public(archive, "yakumono_param")?;
     let mut material_script_offsets = [0; 4];
+    // grLast's four fades; grBattle_YakumonoParam's incoming/outgoing overlays.
+    let script_count = match kind {
+        GrKind::Last => 4,
+        GrKind::Battle => 2,
+        _ => 0,
+    };
     for (i, offset) in material_script_offsets
         .iter_mut()
         .enumerate()
-        .take(match kind {
-            GrKind::Last => 4,
-            GrKind::Battle => 2,
-            _ => 0,
-        })
+        .take(script_count)
     {
         *offset = required_link(archive, scripts + i as u32 * 4)?;
     }
-    let material_scripts = if kind == GrKind::Last {
-        material_script_offsets
-            .iter()
-            .map(|&offset| hsd_archive::desc::color_animation::read(archive, offset))
-            .collect::<Result<_, _>>()?
-    } else {
-        Vec::new()
-    };
+    let material_scripts = material_script_offsets[..script_count]
+        .iter()
+        .map(|&offset| hsd_archive::desc::color_animation::read(archive, offset))
+        .collect::<Result<_, _>>()?;
     Ok(StageDesc {
         material_scripts,
         kind,

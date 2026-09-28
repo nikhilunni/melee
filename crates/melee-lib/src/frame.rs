@@ -1014,6 +1014,14 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::Battlefield(_)) {
+                        crate::scene_stage::battle::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                            world,
+                            &mut self.stage_objects,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
                             state,
@@ -1458,7 +1466,10 @@ impl Simulation {
                         address: match phase {
                             0 => 0x801C1CD0,
                             1 => 0x801C1D38,
-                            _ => melee_gr::last::procs::map_callback(map),
+                            _ => match runtime.state.stage {
+                                SceneStage::Battlefield(_) => melee_gr::battle::map_callback(map),
+                                _ => melee_gr::last::procs::map_callback(map),
+                            },
                         },
                     },
                 }

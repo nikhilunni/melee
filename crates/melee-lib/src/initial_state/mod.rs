@@ -334,7 +334,6 @@ impl InitialState {
             &saved,
             &assets,
             match_start,
-            scenario.frames(),
             &mut particles,
             &metadata,
         )?;

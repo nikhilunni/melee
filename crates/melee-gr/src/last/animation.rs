@@ -141,6 +141,62 @@ impl BackgroundAnimation {
         });
         result.unwrap_or(false)
     }
+    /// `grAnime_801C83D0(gobj, 0, 7)` (0x801C83D0): `HSD_ForeachAnim` over
+    /// every animation type from the archive root stops at the first AObj
+    /// (JObjForeachAnim order: joint, then its DObjs' own, material and
+    /// texture AObjs, then children) and tests `AOBJ_NO_ANIM`. No AObj reads
+    /// as not ended. The loaded stage models carry no RObj or shape AObjs.
+    pub fn first_animation_ended(&self) -> bool {
+        self.first_aobj(self.root)
+            .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0)
+    }
+    fn first_aobj(&self, joint: JObjId) -> Option<&hsd_anim::aobj::AObj> {
+        let node = self.tree.get(joint);
+        if let Some(aobj) = &node.aobj {
+            return Some(aobj);
+        }
+        for object in &node.dobj {
+            if let Some(aobj) = &object.aobj {
+                return Some(aobj);
+            }
+            if let Some(material) = &object.mobj {
+                if let Some(aobj) = &material.aobj {
+                    return Some(aobj);
+                }
+                if let Some(aobj) = material.textures.iter().find_map(|t| t.animation.as_ref()) {
+                    return Some(aobj);
+                }
+            }
+        }
+        if node.flags & hsd_anim::jobj::JOBJ_INSTANCE != 0 {
+            return None;
+        }
+        let mut child = self.tree.child(joint);
+        while let Some(id) = child {
+            if let Some(aobj) = self.first_aobj(id) {
+                return Some(aobj);
+            }
+            child = self.tree.next(id);
+        }
+        None
+    }
+    /// The Ground GObj's JObj: the map-scale wrapper when present.
+    fn gobj_joint(&self) -> JObjId {
+        self.tree.parent(self.root).unwrap_or(self.root)
+    }
+    /// `HSD_JObjGetFlags(gobj jobj) & JOBJ_HIDDEN`.
+    pub fn hidden(&self) -> bool {
+        self.tree.flags(self.gobj_joint()) & hsd_anim::jobj::JOBJ_HIDDEN != 0
+    }
+    /// `HSD_JObjSetFlagsAll` / `HSD_JObjClearFlagsAll(gobj jobj, JOBJ_HIDDEN)`.
+    pub fn set_hidden(&mut self, hidden: bool) {
+        let joint = self.gobj_joint();
+        if hidden {
+            self.tree.set_flags_all(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        } else {
+            self.tree.clear_flags_all(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        }
+    }
     /// `Ground_GetStageGObj` (0x801C14D0), ground.c:889-908: map-scale
     /// wrapper above the archive root. Matrix products use audited HSD kernels.
     pub fn set_map_scale(&mut self, scale: f32) {
@@ -302,5 +358,20 @@ impl BackgroundAnimation {
         }
         self.requests.clear();
         self.tree.events.clear();
+    }
+    /// `Ground_GetStageGObj` then `grAnime_801C8138(gobj, map, 0)` on the
+    /// fresh model, as `load_model` builds it: the new JObjs' matrix caches
+    /// are the loaded ones until a scheduler update refreshes them.
+    pub fn recreate(
+        &mut self,
+        archive: &Archive,
+        model: &crate::desc::ModelDesc,
+    ) -> crate::desc::ReadResult<()> {
+        self.reset_for_creation();
+        if let Some(animation) = model.animations.first() {
+            self.attach_subtree(archive, 0, animation, model.animation_loops[0])?;
+        }
+        self.play_materials(0, 0, self.joints.len());
+        Ok(())
     }
 }

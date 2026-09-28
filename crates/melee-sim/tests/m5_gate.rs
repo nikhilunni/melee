@@ -1037,6 +1037,15 @@ fn matrix_witnesses_match_retail() {
     }
 }
 
+/// Battlefield's background swaps (grBattle_BG_Callback2, 0x8021A3BC) run
+/// three full cycles from the start boundary: transition animation, color
+/// overlays, mid-match background creation with its particle keys, and the
+/// faded map's retirement while its generators keep emitting.
+#[test]
+fn battlefield_background_swap_cycles_match_retail() {
+    combat_gate_ticks("bf_transition_cycle_marth_fox4", 11000);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {

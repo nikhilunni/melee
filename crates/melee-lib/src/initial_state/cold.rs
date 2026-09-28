@@ -205,8 +205,8 @@ fn initialize_stage(
             let mut stage = Battlefield::initialize(rng);
             stage.lights = melee_gr::battle::lights::load(&assets.stage, &assets.stage_desc)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-            // grBattle_OnInit creates 0,3,1,6. Map 3 has no animated
-            // model; grAnime_801C8138 immediately evaluates the others.
+            // grBattle_OnInit creates 0,3,1,6. Map 3 waits hidden without
+            // animation; grAnime_801C8138 immediately evaluates the others.
             for id in [0, 1, 6] {
                 let mut animation = BackgroundAnimation::load_model(
                     &assets.stage,
@@ -226,6 +226,7 @@ fn initialize_stage(
                 }
                 stage_animations.insert(id, animation);
             }
+            crate::scene_stage::battle::load_reserved(assets, &mut stage_animations)?;
             SceneStage::Battlefield(stage)
         }
         GrKind::Story => {

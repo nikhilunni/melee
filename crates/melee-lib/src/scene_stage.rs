@@ -1,4 +1,5 @@
 //! Composition root for stage-specific resources and callbacks.
+pub(crate) mod battle;
 pub(crate) mod last;
 pub(crate) mod pupupu;
 use anyhow::Result;
@@ -96,13 +97,9 @@ impl SceneStage {
                 2 => return Ok(stage.tick_puff(rng)),
                 _ => unreachable!("Story callback map"),
             },
-            Self::Battlefield(stage) => match map {
-                3 => stage.tick(),
-                // Empty callbacks; map 6 updates the static collision transform
-                // and the empty quake list, guarded at restoration.
-                0 | 1 | 6 => {}
-                _ => unimplemented!("grbattle.c:165-170: demo/event background"),
-            },
+            Self::Battlefield(_) => {
+                unreachable!("Battlefield callbacks require animation state")
+            }
         }
         Ok(false)
     }

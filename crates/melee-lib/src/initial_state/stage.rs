@@ -87,12 +87,14 @@ use melee_gr::last::animation::BackgroundAnimation;
 use std::collections::BTreeMap;
 
 /// Stage attachment namespace below Effects::FIRST_EFFECT_JOINT. Preserve FD's
-/// existing map-4 identities; other maps occupy disjoint ranges.
+/// existing map-4 identities; other maps occupy disjoint ranges (map 0 after
+/// map 9, so it cannot alias map 4: Battlefield's map-0 matrices must never
+/// refresh generators still bound to a retired map 4).
 pub(crate) fn joint_id(map: u8, joint: usize) -> usize {
-    if map == 4 {
-        joint
-    } else {
-        usize::from(map) * 100 + joint
+    match map {
+        4 => joint,
+        0 => 10 * 100 + joint,
+        _ => usize::from(map) * 100 + joint,
     }
 }
 type Animations = BTreeMap<u8, BackgroundAnimation>;
@@ -101,7 +103,6 @@ pub(super) fn restore_scene(
     saved: &SavedPose,
     assets: &Assets,
     match_start: bool,
-    frames: u64,
     particles: &mut ParticleSystem,
     metadata: &serde_json::Value,
 ) -> Result<(SceneStage, Animations)> {
@@ -123,7 +124,7 @@ pub(super) fn restore_scene(
             Ok((SceneStage::FinalDestination(Box::new(stage)), animations))
         }
         melee_types::GrKind::Battle => {
-            restore_battlefield(saved, assets, frames, particles, metadata)
+            restore_battlefield(saved, assets, particles, metadata)
         }
         melee_types::GrKind::Story => restore_story(saved, assets),
         melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
@@ -164,7 +165,6 @@ fn restore_fd_clocks(saved: &SavedPose, animations: &mut Animations) {
 fn restore_battlefield(
     saved: &SavedPose,
     assets: &Assets,
-    frames: u64,
     particles: &mut ParticleSystem,
     metadata: &serde_json::Value,
 ) -> Result<(SceneStage, Animations)> {
@@ -201,10 +201,6 @@ fn restore_battlefield(
                     "Battlefield transition boundary unsupported"
                 );
                 let timer = word(raw, 0xD0) as i32;
-                ensure!(
-                    i64::from(timer) >= frames as i64,
-                    "Battlefield transition outside imported interval"
-                );
                 controller = Some(Battlefield {
                     phase: BackgroundPhase::Waiting,
                     timer,
@@ -248,6 +244,9 @@ fn restore_battlefield(
         maps == [0, 3, 1, 6],
         "unsupported Battlefield map order: {maps:?}"
     );
+    // A waiting controller before its first swap: map 3 is hidden and
+    // unanimated, and maps 2 and 4 do not exist yet.
+    crate::scene_stage::battle::load_reserved(assets, &mut animations)?;
     for (runtime, captured) in particles
         .generators
         .iter_mut()
