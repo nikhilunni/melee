@@ -183,3 +183,93 @@ stage = "Battlefield"
 players = ["Marth", "Falco"]
 stocks = 4
 seed = 2704735648
+
+[[boundary]]
+name = "start_fd_marth_peach4"
+cold = "start_fd_marth_peach4_cold"
+savestate = "harness/roms/start_fd_marth_peach4.sav"
+stage = "FinalDestination"
+players = ["Marth", "Peach"]
+stocks = 4
+seed = 3320397644
+
+[[boundary]]
+name = "start_dl_captainfalcon_jigglypuff4"
+cold = "start_dl_captainfalcon_jigglypuff4_cold"
+savestate = "harness/roms/start_dl_captainfalcon_jigglypuff4.sav"
+stage = "DreamLand"
+players = ["CaptainFalcon", "Jigglypuff"]
+stocks = 4
+seed = 1354140354
+
+[[boundary]]
+name = "start_ys_peach_yoshi4"
+cold = "start_ys_peach_yoshi4_cold"
+savestate = "harness/roms/start_ys_peach_yoshi4.sav"
+stage = "YoshisStory"
+players = ["Peach", "Yoshi"]
+stocks = 4
+seed = 2520918699
+
+[[boundary]]
+name = "start_fod_pikachu_mario4"
+cold = "start_fod_pikachu_mario4_cold"
+savestate = "harness/roms/start_fod_pikachu_mario4.sav"
+stage = "FountainOfDreams"
+players = ["Pikachu", "Mario"]
+stocks = 4
+seed = 1354140354
+
+[[boundary]]
+name = "start_ps_marth_jigglypuff4"
+cold = "start_ps_marth_jigglypuff4_cold"
+savestate = "harness/roms/start_ps_marth_jigglypuff4.sav"
+stage = "PokemonStadium"
+players = ["Marth", "Jigglypuff"]
+stocks = 4
+seed = 806421495
+
+[[boundary]]
+name = "start_fd_falco_captainfalcon4"
+cold = "start_fd_falco_captainfalcon4_cold"
+savestate = "harness/roms/start_fd_falco_captainfalcon4.sav"
+stage = "FinalDestination"
+players = ["Falco", "CaptainFalcon"]
+stocks = 4
+seed = 1506894920
+
+[[boundary]]
+name = "start_bf_yoshi_pikachu4"
+cold = "start_bf_yoshi_pikachu4_cold"
+savestate = "harness/roms/start_bf_yoshi_pikachu4.sav"
+stage = "Battlefield"
+players = ["Yoshi", "Pikachu"]
+stocks = 4
+seed = 806421495
+
+[[boundary]]
+name = "start_dl_mario_falco4"
+cold = "start_dl_mario_falco4_cold"
+savestate = "harness/roms/start_dl_mario_falco4.sav"
+stage = "DreamLand"
+players = ["Mario", "Falco"]
+stocks = 4
+seed = 15085278
+
+[[boundary]]
+name = "start_fd_peach_falco4"
+cold = "start_fd_peach_falco4_cold"
+savestate = "harness/roms/start_fd_peach_falco4.sav"
+stage = "FinalDestination"
+players = ["Peach", "Falco"]
+stocks = 4
+seed = 4114656791
+
+[[boundary]]
+name = "start_bf_falco_marth4"
+cold = "start_bf_falco_marth4_cold"
+savestate = "harness/roms/start_bf_falco_marth4.sav"
+stage = "Battlefield"
+players = ["Falco", "Marth"]
+stocks = 4
+seed = 3258945434
