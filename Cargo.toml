@@ -93,6 +93,13 @@ clap = { version = "4", features = ["derive"] }
 # and keep debug and release float behaviour identical.
 [profile.release]
 debug = 1
+# One codegen unit per crate: -13% stripped size (inline and drop-glue copies
+# are no longer repeated in every unit), tick time unchanged, incremental
+# rebuilds a few seconds slower (docs/PERF.md, 2026-09-28 profile study).
+# LTO is left off: fat LTO saves a further 7% tick time but makes every
+# release test binary 4x slower to build. Floats are unaffected
+# (tools/check-release-math.sh and a full scenario sweep).
+codegen-units = 1
 
 # Dev builds: optimise dependencies once, keep our own crates fast to compile.
 [profile.dev.package."*"]
