@@ -29,6 +29,9 @@ melee_it::item_kinds! {
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
         PikachuThunder: it_pikachu::ThunderBolt,
+        PichuTJoltGround: it_pikachu::ThunderJoltBall<it_pikachu::Pichu>,
+        PichuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::Pichu>,
+        PichuThunder: it_pikachu::ThunderBolt<it_pikachu::Pichu>,
         MarioFire: it_mariofire::MarioFire,
         MarioCape: it_mariocape::MarioCape,
         DrMarioVitamin: it_drmariopill::DrMarioPill,
@@ -214,15 +217,39 @@ impl Resources {
             kinds.push((ItemKind::PeachTurnip, turnip));
             visual_archives.push((ItemKind::PeachTurnip, std::sync::Arc::clone(&a)));
         }
-        // ftPk_Init_OnLoad: ftData.x48_items[0] is Thunder's bolt, [1] the
-        // Thunder Jolt ball, [2] the crawler it rides (whose joint 6 the
-        // ball reads).
-        if let Some(character) = characters
-            .iter()
-            .find(|c| c.descriptor.data_file == "PlPk.dat")
-        {
+        // ftPk_Init_OnLoad and ftPc_Init_OnLoad: ftData.x48_items[0] is
+        // Thunder's bolt, [1] the Thunder Jolt ball, [2] the crawler it
+        // rides (whose joint 6 the ball reads); each file its own kinds.
+        for (file, symbol, [ball_kind, crawler_kind, bolt_kind]) in [
+            (
+                "PlPk.dat",
+                "ftDataPikachu",
+                [
+                    ItemKind::PikachuTJoltGround,
+                    ItemKind::PikachuTJoltAir,
+                    ItemKind::PikachuThunder,
+                ],
+            ),
+            (
+                "PlPc.dat",
+                "ftDataPichu",
+                [
+                    ItemKind::PichuTJoltGround,
+                    ItemKind::PichuTJoltAir,
+                    ItemKind::PichuThunder,
+                ],
+            ),
+        ] {
+            let Some(character) = characters
+                .iter()
+                .find(|c| c.descriptor.data_file == file)
+            else {
+                continue;
+            };
             let a = std::sync::Arc::clone(&character.data);
-            let root = a.public("ftDataPikachu").context("Pikachu fighter data")?;
+            let root = a
+                .public(symbol)
+                .with_context(|| format!("{symbol} fighter data"))?;
             let ball = ItemAssets::from_fighter_states(
                 &a,
                 root,
@@ -230,8 +257,8 @@ impl Resources {
                 &it_pikachu::jolt::BALL_ARTICLE_STATES,
                 4,
             )?;
-            kinds.push((ItemKind::PikachuTJoltGround, ball));
-            visual_archives.push((ItemKind::PikachuTJoltGround, std::sync::Arc::clone(&a)));
+            kinds.push((ball_kind, ball));
+            visual_archives.push((ball_kind, std::sync::Arc::clone(&a)));
             let mut crawler = ItemAssets::from_fighter_states(
                 &a,
                 root,
@@ -242,8 +269,8 @@ impl Resources {
             crawler
                 .read_pose(&a)
                 .map_err(|e| anyhow::anyhow!("Thunder Jolt crawler pose: {e}"))?;
-            kinds.push((ItemKind::PikachuTJoltAir, crawler));
-            visual_archives.push((ItemKind::PikachuTJoltAir, std::sync::Arc::clone(&a)));
+            kinds.push((crawler_kind, crawler));
+            visual_archives.push((crawler_kind, std::sync::Arc::clone(&a)));
             let bolt = ItemAssets::from_fighter_states(
                 &a,
                 root,
@@ -251,8 +278,8 @@ impl Resources {
                 &it_pikachu::thunder::ARTICLE_STATES,
                 3,
             )?;
-            kinds.push((ItemKind::PikachuThunder, bolt));
-            visual_archives.push((ItemKind::PikachuThunder, std::sync::Arc::clone(&a)));
+            kinds.push((bolt_kind, bolt));
+            visual_archives.push((bolt_kind, std::sync::Arc::clone(&a)));
         }
         // ftMr_Init_OnLoad: ftData.x48_items[0] is the fireball.
         if let Some(character) = characters

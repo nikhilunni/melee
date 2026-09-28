@@ -16,8 +16,10 @@ use melee_it::{
 use melee_lb::trigf::atan2f;
 use melee_types::ItemKind;
 
-pub struct ThunderJoltBall;
-pub struct ThunderJoltCrawler;
+/// The ball, for the owner `O`'s kind.
+pub struct ThunderJoltBall<O = crate::Pikachu>(std::marker::PhantomData<O>);
+/// The crawler, for the owner `O`'s kind.
+pub struct ThunderJoltCrawler<O = crate::Pikachu>(std::marker::PhantomData<O>);
 
 /// it_803F7190's anim_id column: flying, then riding the crawler.
 pub const BALL_ARTICLE_STATES: [i32; 2] = [0, 1];
@@ -100,8 +102,8 @@ static BALL_STATES: [ItemStateRow; 2] = [
     },
 ];
 
-impl ItemLogic for ThunderJoltBall {
-    const KIND: ItemKind = ItemKind::PikachuTJoltGround;
+impl<O: crate::Owner> ItemLogic for ThunderJoltBall<O> {
+    const KIND: ItemKind = O::BALL;
     const STATES: &'static [ItemStateRow] = &BALL_STATES;
     const PARTNER_BONE: Option<usize> = Some(RIDE_JOINT);
     /// it_2725_Logic106_Destroyed: it_802B43B0 on the crawler.
@@ -335,8 +337,8 @@ static CRAWLER_STATES: [ItemStateRow; 1] = [ItemStateRow {
     collision: never_lands,
 }];
 
-impl ItemLogic for ThunderJoltCrawler {
-    const KIND: ItemKind = ItemKind::PikachuTJoltAir;
+impl<O: crate::Owner> ItemLogic for ThunderJoltCrawler<O> {
+    const KIND: ItemKind = O::CRAWLER;
     const STATES: &'static [ItemStateRow] = &CRAWLER_STATES;
     fn pickup_possible(_item: &ItemCore) -> bool {
         false

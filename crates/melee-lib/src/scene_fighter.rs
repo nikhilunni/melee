@@ -101,6 +101,7 @@ scene_characters! {
     "Mario" => Mario(ft_mario::init::Mario),
     "DrMario" => DrMario(ft_drmario::init::DrMario),
     "Luigi" => Luigi(ft_luigi::init::Luigi),
+    "Pichu" => Pichu(ft_pichu::init::Pichu),
 }
 
 fn construct<C: CharacterCallbacks>(

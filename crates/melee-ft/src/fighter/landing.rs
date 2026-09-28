@@ -256,6 +256,42 @@ impl Fighter {
             .or_else(|| self.core.common_scratch_word())
     }
 
+    /// Another object's write of the second motion scratch word (mv+4)
+    /// while a common state owns it (ftPk_SpecialLw_SetState_Unk0 from a
+    /// Thunder bolt's end). Only states whose word is a retained value the
+    /// state itself never reads are modelled; others fail closed.
+    pub fn overwrite_common_scratch_word(&mut self, word: f32) {
+        match &mut self.core.state_data {
+            MotionData::Aerial {
+                retained_drop_timer,
+            }
+            | MotionData::Pass {
+                retained_drop_timer,
+            }
+            | MotionData::JumpAerial {
+                retained_drop_timer,
+            }
+            | MotionData::Landing {
+                retained_drop_timer,
+                ..
+            } => *retained_drop_timer = word,
+            MotionData::Smash { retained_word }
+            | MotionData::Tilt { retained_word }
+            | MotionData::Catch { retained_word }
+            | MotionData::DownTilt { retained_word, .. }
+            | MotionData::DashAttack { retained_word, .. }
+            | MotionData::ItemGet { retained_word, .. }
+            | MotionData::Down { retained_word, .. }
+            | MotionData::Jab(super::attack::JabState { retained_word, .. }) => {
+                *retained_word = Some(word)
+            }
+            _ => unimplemented!(
+                "mv+4 written from outside during motion {:?}",
+                self.core.motion_state.action
+            ),
+        }
+    }
+
     /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
     /// Direct SquatWait entry inherits it as the inactive platform-drop timer
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).

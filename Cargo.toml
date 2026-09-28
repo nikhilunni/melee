@@ -50,6 +50,7 @@ members = [
     "crates/ft-pikachu-family",
     "crates/ft-pikachu",
     "crates/ft-mario-family",
+    "crates/ft-pichu",
     "crates/ft-mario",
     "crates/ft-drmario",
     "crates/ft-luigi",

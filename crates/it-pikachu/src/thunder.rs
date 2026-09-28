@@ -6,12 +6,13 @@ use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets, state_change::ANIM_UPDATE, state_change::HIT_PRESERVE, ArticleReport,
     ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent, ItemEventContext,
-    ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, LinkMessage, LinkRequest,
-    LinkTarget, ThunderState,
+    ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, LinkMessage, LinkRequest, LinkTarget,
+    ThunderState,
 };
 use melee_types::ItemKind;
 
-pub struct ThunderBolt;
+/// One bolt, for the owner `O`'s kind.
+pub struct ThunderBolt<O = crate::Pikachu>(std::marker::PhantomData<O>);
 
 /// it_803F70C8's anim_id column: waiting (no animation), falling, struck.
 pub const ARTICLE_STATES: [i32; 3] = [-1, 0, 0];
@@ -89,8 +90,8 @@ static STATES: [ItemStateRow; 3] = [
     },
 ];
 
-impl ItemLogic for ThunderBolt {
-    const KIND: ItemKind = ItemKind::PikachuThunder;
+impl<O: crate::Owner> ItemLogic for ThunderBolt<O> {
+    const KIND: ItemKind = O::THUNDER;
     const STATES: &'static [ItemStateRow] = &STATES;
     fn pickup_possible(_item: &ItemCore) -> bool {
         false

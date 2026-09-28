@@ -381,11 +381,16 @@ pub fn lead_gone<C: PikachuFamily>(f: &mut Fighter) {
     }
     let action = f.motion_state.action;
     let in_thunder = (S::SpecialLwStart as u16..=S::SpecialAirLwEnd as u16).contains(&action.0);
-    if !in_thunder {
+    if in_thunder {
+        thunder::<C>(f).state = LEAD_GONE;
+    } else if action.0 < S::SpecialN as u16 {
+        // mv.pk.specialhi.x4 = 3 lands in whatever the common state keeps
+        // at mv+4 (an int, read back as the float word).
+        f.overwrite_common_scratch_word(f32::from_bits(LEAD_GONE as u32));
+    } else {
         unimplemented!(
-            "ftPk_SpecialLw_SetState_Unk0: mv+4 written during motion {:?}",
+            "ftPk_SpecialLw_SetState_Unk0: mv+4 written during special {:?}",
             action
         );
     }
-    thunder::<C>(f).state = LEAD_GONE;
 }

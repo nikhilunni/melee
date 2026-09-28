@@ -45,6 +45,7 @@ ft-peach = { path = "../ft-peach" }
 ft-yoshi = { path = "../ft-yoshi" }
 ft-purin = { path = "../ft-purin" }
 ft-pikachu = { path = "../ft-pikachu" }
+ft-pichu = { path = "../ft-pichu" }
 ft-mario = { path = "../ft-mario" }
 ft-drmario = { path = "../ft-drmario" }
 ft-luigi = { path = "../ft-luigi" }

@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 217] = [
+const MATRIX_WITNESSES: [(&str, usize); 241] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1195,6 +1195,34 @@ const MATRIX_WITNESSES: [(&str, usize); 217] = [
     // and in the air.
     ("pikachu_thunder_fd_fox4", 360),
     ("pikachu_thunder_air_fd_fox4", 400),
+    // PICHU: Pikachu's witnesses replayed by Pichu. PlPc.dat's scripts
+    // hurt Pichu through ftAction_80072BF4 (self-damage: 1% per jolt,
+    // Skull Bash and zip, 2% forward smash, 3% Thunder); the articles are
+    // the It_Kind_Pichu_* rows with PlPc.dat's own article data.
+    ("pichu_jab_fd_fox4", 300),
+    ("pichu_fsmash_fd_fox4", 240),
+    ("pichu_skullbash_fd_fox4", 300),
+    ("pichu_skullbash_charge_fd_fox4", 400),
+    ("pichu_skullbash_tilt_fd_fox4", 360),
+    ("pichu_skullbash_air_fd_fox4", 400),
+    ("pichu_sb_hit_fd_fox4", 420),
+    ("pichu_quick_fd_fox4", 360),
+    ("pichu_quick_up_fd_fox4", 360),
+    ("pichu_quick_none_fd_fox4", 360),
+    ("pichu_quick_late_fd_fox4", 360),
+    ("pichu_quick_air_fd_fox4", 400),
+    ("pichu_qa_right_up_fd_fox4", 360),
+    ("pichu_qa_diag_down_fd_fox4", 360),
+    ("pichu_qa_left_edge_fd_fox4", 420),
+    ("pichu_qa_air_left_up_fd_fox4", 420),
+    ("pichu_qa_air_down_fd_fox4", 420),
+    ("pichu_qa_hit_fd_fox4", 360),
+    ("pichu_qa_right_same_fd_fox4", 360),
+    ("pichu_jolt_fd_fox4", 420),
+    ("pichu_jolt_air_fd_fox4", 420),
+    ("pichu_jolt2_fd_fox4", 480),
+    ("pichu_thunder_fd_fox4", 360),
+    ("pichu_thunder_air_fd_fox4", 400),
     // Mario Tornado mashed from the ground (row 350 stays grounded) and from a jump
     // (the rise spent, a second Tornado, landing into 349). A grounded tap never lifts
     // 349 off: 975 search candidates (entry 106..130, one tap 2..40 later), none.
@@ -2304,7 +2332,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 260] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 263] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2618,6 +2646,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 260] = [
     // the CaptureDamage entry's Fighter_ChangeMotionState clears kb_applied.
     ("corpus_v3_fd_pikachu_fox4_e1502cb40_p1", 6001),
     ("corpus_v3_fd_pikachu_fox4_e75fb4a9a_p0", 5192),
+    // PICHU from its start boundary (Pikachu's specials, PlPc.dat's data and
+    // self-damage scripts). A Thunder bolt ending while Pichu is in Landing
+    // writes 3 into the common state's mv+4 (ftPk_SpecialLw_SetState_Unk0).
+    ("corpus_v3_fd_pichu_fox4_e2af099ca_p1", 860),
+    ("corpus_v3_fd_pichu_fox4_ef89b3e70_p0", 4406),
+    ("corpus_v3_fd_pichu_fox4_e4213e6a5_p0", 5321),
     // Mario's Fireball (ftMr_SpecialN, it_8029B6F8): the item's DPtcl trail
     // (1002) before the hand flash (efAlt 0x47A), bounces (efAlt 0x47B);
     // forward smash flame 0x411; landing flash 0x423 (ftCo_8009F834 block_67).

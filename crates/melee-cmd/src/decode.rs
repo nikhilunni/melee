@@ -39,7 +39,10 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             continuation,
         },
         6 => Command::Return,
-        7 => Command::Goto(target.ok_or("null command goto")?),
+        // Command_07 (lbcommand.c:71-75) stores the target even when null,
+        // and a null script pointer stops the script as Command_00 does
+        // (PlPc.dat's scripts end some loops this way).
+        7 => target.map_or(Command::End, Command::Goto),
         8 => Command::WaitAnimationLoop,
         // ftAction_80071D40: signed 7-bit model index, signed 19-bit selection.
         31 => Command::ModelSelection {

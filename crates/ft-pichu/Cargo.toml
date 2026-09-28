@@ -1,0 +1,17 @@
+[package]
+name = "ft-pichu"
+description = "Pichu character data and callbacks (ftPichu)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+ft-pikachu-family = { path = "../ft-pikachu-family" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }
