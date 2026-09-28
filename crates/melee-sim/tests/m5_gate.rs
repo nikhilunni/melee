@@ -1253,6 +1253,19 @@ fn pokemon_stadium_transformations_match_retail() {
     combat_gate_ticks("stage_ps_grass_fox_marth4", 7500);
 }
 
+/// Pokemon Stadium's jumbotron close-up ends when the player's camera bone
+/// leaves the main CObj as last rendered (grStadium_801D32D0): a throw's
+/// graphics 0x514 shakes it with a Medium quake (efAsync kind 8 ->
+/// Camera_RequestQuake), and a tick without a display pass keeps the
+/// previous tick's CObj. Explorer matches cut before the first form read,
+/// whose disc latency varies between recordings (docs/PORT_NOTES/POKEMON_STADIUM.md).
+#[test]
+fn pokemon_stadium_close_up_follows_the_rendered_camera() {
+    combat_gate_ticks("ps_match_screen_e9943b4ab_p0", 4100);
+    combat_gate_ticks("ps_match_screen_ef89b3e70_p2", 4100);
+    combat_gate_ticks("ps_match_screen_edb2b114a_p1", 4100);
+}
+
 /// Fox dashes into a wall on the risen rock form: ftCo_8009EDA4 enters
 /// StopWall (ftCo_8009EE30), which returns to Wait at its animation's end.
 #[test]

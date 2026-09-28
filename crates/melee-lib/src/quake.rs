@@ -139,3 +139,14 @@ impl Quakes {
         }
     }
 }
+
+/// efAsync_Dispatch's kind 8 (efasync.c:1365-1367): a fighter's graphics
+/// command 0x513-0x515 (ftCo_09F7.c:263-274) reaches Camera_RequestQuake
+/// when its queue flushes. Called after each fighter proc, in request order.
+pub(crate) fn request_effect_quakes(state: &mut crate::initial_state::InitialState) {
+    let (quakes, camera) = (&mut state.quakes, &mut state.camera);
+    state.effects.drain_camera_quakes(|value, _epicenter| {
+        let kind = QuakeKind::from_value(value).expect("efAsync camera shake kind");
+        quakes.request(camera, kind);
+    });
+}

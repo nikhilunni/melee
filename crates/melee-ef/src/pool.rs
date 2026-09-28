@@ -155,8 +155,8 @@ impl Effects {
             self.models.release(effect);
         }
     }
-    /// Pending camera requests, in call order. Camera rendering owns consumption;
-    /// the headless update discards any remaining requests at link 15.
+    /// Pending efAsync kind-8 camera requests (CmQuakeKind, epicenter), in
+    /// dispatch order; the scene forwards them to Camera_RequestQuake.
     pub fn drain_camera_quakes(&mut self, mut quake: impl FnMut(u16, Vec3)) {
         while !self.camera_quakes.is_empty() {
             let (kind, position) = self.camera_quakes.remove(0);

@@ -88,6 +88,7 @@ impl InitialState {
                 .expect("validated cold music rule"),
         ));
         let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
+        let rendered_camera = camera.render_camera(&assets.stage_camera);
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             stock_displays: super::stock::create(
@@ -132,6 +133,7 @@ impl InitialState {
             pending_emission: None,
             effects,
             camera,
+            rendered_camera,
             quakes,
         })
     }

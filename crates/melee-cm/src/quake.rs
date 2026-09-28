@@ -23,6 +23,18 @@ pub enum QuakeKind {
 }
 
 impl QuakeKind {
+    /// A CmQuakeKind value as callers pass it (efAsync kind 8 carries it
+    /// as its effect id); `None` for QuakeKind_None and out of range.
+    pub fn from_value(value: u16) -> Option<Self> {
+        match value {
+            1 => Some(Self::Loop),
+            2 => Some(Self::Small),
+            3 => Some(Self::Medium),
+            4 => Some(Self::Large),
+            _ => None,
+        }
+    }
+
     /// The `quake_model_set` animation index grLib_801C9CEC plays.
     pub fn animation_index(self) -> usize {
         self as usize - 1

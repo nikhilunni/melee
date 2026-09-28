@@ -35,11 +35,17 @@ AppSRT), then the mode machine (`grStadium_801D2344/2528/2A60`). The
 Versus scene drives it: countdown start (fn_8016B7B4, mode 10 or 13 in
 Sudden Death), countdown end (Ground_801C0FB8's deferred callbacks, then
 mode 11), GO's end (mode 1). The close-up mode's framing
-(`grStadium_801D32D0`) projects the fighter's camera bone with the rendered
-camera. The screen's camera subject (fn_801D11E4) is the newest in the
-camera's list and is active during announcements. Not hooked: mode 9
-(gm_8016B8D4, a player out of stocks) and mode 12 (match end); both draw
-nothing and the Ground procs freeze at the match's end.
+(`grStadium_801D32D0`) projects the fighter's camera bone with the main
+CObj as the last display pass left it (`InitialState::rendered_camera`, set
+in `render_cameras`): a tick without a display pass (the recorded `ps_frame`
+did not move) sees the previous tick's camera, quake translation included.
+Fighter graphics 0x513-0x515 (ftCo_09F7.c:263-274, efAsync kind 8) request
+Small/Medium/Large quakes that shake that CObj; the scene forwards them to
+Camera_RequestQuake after each fighter proc. The screen's camera subject
+(fn_801D11E4) is the newest in the camera's list and is active during
+announcements. Not hooked: mode 9 (gm_8016B8D4, a player out of stocks) and
+mode 12 (match end); both draw nothing and the Ground procs freeze at the
+match's end.
 
 ## Transformation (map 2)
 
@@ -80,7 +86,15 @@ is `unimplemented!` in `grStadium_801D4548`, and a saved boundary after a
 read is refused. Modelling it needs the emulator's disc timing (seek from the
 last read's end, transfer by size and disc position) or the completion as a
 recorded external input. Explorer cases (6000 ticks from the boundary) only
-reach the first transformation, which the table covers.
+reach the first transformation, but even that read is not a constant. Five
+Fox/Marth explorer matches (PS-MATCH, 2026-09-28,
+`corpus_v3_ps_fox_marth4_{e9943b4ab_p0,ef89b3e70_p2,edb2b114a_p1,e89a89d0e_p2,e75fb4a9a_p1}`)
+read GrPs4.dat (rock) in 22 or 23 polls and GrPs3.dat (water) in 22, against
+the table's 21 and 23. Re-recording the same inputs reproduces the display
+clock exactly, but neither the display phase nor the recorded `vi_frame`
+predicts the count. All five are exact until the first sparkle (ticks
+4106-4108); the three that first exposed the close-up framing are registered
+as 4100-tick `ps_match_screen_*` witnesses.
 
 ## Witnesses
 

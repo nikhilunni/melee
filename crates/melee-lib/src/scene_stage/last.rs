@@ -224,7 +224,10 @@ pub(crate) fn run_proc(
                     state.particles.expire_generator(id);
                 }
             }
-            StageAction::Quake => state.effects.request_camera_quake(1, Vec3::ZERO),
+            // grlast.c:642,645: Camera_RequestQuake(QuakeKind_Loop) from the stage proc.
+            StageAction::Quake => state
+                .quakes
+                .request(&mut state.camera, melee_cm::QuakeKind::Loop),
         }
     }
     Ok(())

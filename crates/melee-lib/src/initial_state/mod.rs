@@ -79,6 +79,10 @@ pub struct InitialState {
     pub(crate) resume: scheduler_resume::SchedulerResume,
     /// game_camera and the screen-shake models it drives.
     pub(crate) camera: melee_cm::GameCamera,
+    /// The main CObj as the last display pass left it (fn_800301D0 ->
+    /// Camera_8002A4AC). Retail skips passes, so gameplay reads of the CObj
+    /// (grStadium_801D32D0) can see the camera of an earlier tick.
+    pub(crate) rendered_camera: hsd_anim::cobj::PerspectiveCamera,
     pub(crate) quakes: crate::quake::Quakes,
 }
 /// The first record of a captured trace, plain or compressed as the source reads it.
@@ -407,6 +411,8 @@ impl InitialState {
                 .unwrap()
                 + 1,
         );
+        // The boundary's CObj is taken as its camera's latest render.
+        let rendered_camera = camera.render_camera(&assets.stage_camera);
         let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
@@ -444,6 +450,7 @@ impl InitialState {
             stage_animations,
             effects,
             camera,
+            rendered_camera,
             quakes,
         })
     }

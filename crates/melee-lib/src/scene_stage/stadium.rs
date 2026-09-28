@@ -151,8 +151,7 @@ fn run_screen(state: &mut InitialState, draws: &mut DrawLog) -> Result<()> {
     };
     let mut players = Players {
         fighters: &state.fighters,
-        camera: &state.camera,
-        stage_camera: &state.assets.stage_camera,
+        camera: &state.rendered_camera,
     };
     stage
         .screen
@@ -215,8 +214,7 @@ pub(crate) fn show(state: &mut InitialState, mode: ScreenMode) {
     };
     let mut players = Players {
         fighters: &state.fighters,
-        camera: &state.camera,
-        stage_camera: &state.assets.stage_camera,
+        camera: &state.rendered_camera,
     };
     stage
         .screen
@@ -225,8 +223,8 @@ pub(crate) fn show(state: &mut InitialState, mode: ScreenMode) {
 
 struct Players<'a> {
     fighters: &'a [SceneFighter; 2],
-    camera: &'a melee_cm::GameCamera,
-    stage_camera: &'a melee_cm::StageCamera,
+    /// The main CObj as last rendered.
+    camera: &'a hsd_anim::cobj::PerspectiveCamera,
 }
 /// `grStadium_801D32D0`'s close-up box around the projected point.
 const CLOSE_UP_HALF_WIDTH: f32 = 62.0;
@@ -257,8 +255,8 @@ impl ScreenPlayers for Players<'_> {
     fn framed(&mut self, slot: i16) -> bool {
         let fighter = self.fighter(slot).expect("existing player");
         let bone = with_fighter!(fighter, |f| f.camera.bone_position);
-        let camera = self.camera.render_camera(self.stage_camera);
-        let point = melee_lb::vector::world_to_screen(&camera, bone);
+        let camera = self.camera;
+        let point = melee_lb::vector::world_to_screen(camera, bone);
         let viewport = camera.viewport;
         let left = point.x - CLOSE_UP_HALF_WIDTH;
         let clipped_x = left < viewport.xmin || CLOSE_UP_WIDTH + left > viewport.xmax;

@@ -120,10 +120,6 @@ pub enum EffectTiming {
 impl Effects {
     /// efAlt_Spawn(0x48E), efLib_Create_Attach_Pos(0xBBD): Fox table row 5.
     /// Loading is initialization-only; all 64 synchronous model slots are warm.
-    /// Camera_RequestQuake: retained headless camera-output request.
-    pub fn request_camera_quake(&mut self, kind: u16, position: Vec3) {
-        self.camera_quakes.push((kind, position));
-    }
     pub fn spawn_blaster_muzzle<T: InverseTrig>(
         &mut self,
         owner: usize,
@@ -944,8 +940,8 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        // Camera requests have no simulation/RNG output. Bound their lifetime
-        // to the owning frame; a renderer may drain them before this update.
+        // The scene drains camera requests after each fighter proc
+        // (`drain_camera_quakes`); bound any other owner's to its frame.
         while self.camera_quakes.pop().is_some() {}
         for (index, active) in self.fighter_joints.iter_mut().enumerate() {
             if !*active {

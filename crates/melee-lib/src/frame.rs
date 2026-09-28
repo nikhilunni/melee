@@ -945,6 +945,7 @@ impl Runtime {
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {
                     state.quakes.request(&mut state.camera, kind);
                 }
+                crate::quake::request_effect_quakes(state);
                 if let Some(link) = state.fighters[player].0.released_link.take() {
                     let partner = match link {
                         melee_ft::fighter::grab::GrabLink::Holding { victim, .. } => victim,
@@ -1867,6 +1868,7 @@ fn render_cameras(state: &mut InitialState) {
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
     let camera = state.camera.render_camera(&state.assets.stage_camera);
+    state.rendered_camera = camera;
     // Camera_800310B8: cm_804D6464's viewing matrix, inverted for the screen KO.
     let copy_view = state
         .camera
