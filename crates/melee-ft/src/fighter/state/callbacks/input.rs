@@ -226,7 +226,7 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         true,
         |phase| {
             let enabled = match &fighter.core.state_data {
-                MotionData::Jump(jump) => jump.physics_started,
+                MotionData::Jump(jump) => jump.physics_started != 0,
                 MotionData::JumpAerial { .. } => {
                     phase == crate::fighter::FloatInputPhase::BeforeAerialJump
                         || fighter.core.commands.variables[0] != 0

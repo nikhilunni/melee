@@ -84,7 +84,7 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
                 panic!("jump scratch missing")
             };
             assert_eq!(jump.short_hop, release);
-            assert!(!jump.physics_started);
+            assert_eq!(jump.physics_started, 0);
             let attrs = &fixture.assets.attributes;
             let launch_speed = if release {
                 attrs.jumping.hop_v_initial_velocity

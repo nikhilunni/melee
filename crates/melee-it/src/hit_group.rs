@@ -80,13 +80,20 @@ impl ItemPool {
             .find(|(member, slot, hit)| {
                 (*member, *slot) != (index, hitbox) && hit.descriptor.group == box_group
             })
-            .map(|(_, _, hit)| (hit.victims.clone(), hit.phantom_victims.clone()));
-        let (victims, phantom) = source.unwrap_or_default();
-        let hit = self.items[index].hitboxes[hitbox]
-            .as_mut()
-            .expect("live hitbox");
+            .map(|(member, slot, hit)| {
+                (
+                    hit.victims.clone(),
+                    hit.phantom_victims.clone(),
+                    self.items[member].reflection_history[slot].clone(),
+                )
+            });
+        let (victims, phantom, timers) = source.unwrap_or_default();
+        let item = &mut self.items[index];
+        let hit = item.hitboxes[hitbox].as_mut().expect("live hitbox");
         hit.victims = victims;
         hit.phantom_victims = phantom;
+        // lbColl_CopyHitCapsule copies each victim's rehit timer too.
+        item.reflection_history[hitbox] = timers;
     }
 
     /// Mark a group member's histories before a detection call; `None` for
@@ -123,17 +130,28 @@ impl ItemPool {
             let victims = hit.victims.clone();
             let first_new = mark.victims[hitbox];
             let phantom = hit.phantom_victims.clone();
+            // A victim the source recorded in a timed mode (it carries a
+            // rehit timer) is timed on every member, each capsule with its
+            // own x40_b4 (lbColl_80008688).
+            let timed = self.items[source].reflection_history[hitbox].clone();
             for (index, member) in self.items.iter_mut().enumerate() {
                 if index == source || member.hit_group != mark.group {
                     continue;
                 }
-                for other in member.hitboxes.iter_mut().flatten() {
+                for (slot, other) in member.hitboxes.iter_mut().enumerate() {
+                    let Some(other) = other else { continue };
                     if other.descriptor.group != box_group {
                         continue;
                     }
                     for &victim in victims.iter().skip(first_new) {
                         if !other.victims.contains(&victim) {
                             other.victims.push(victim);
+                            if timed.iter().any(|entry| entry.victim == victim) {
+                                member.reflection_history[slot].push(crate::RehitVictim {
+                                    victim,
+                                    remaining: member.hit_flags[slot].rehit_rate,
+                                });
+                            }
                         }
                     }
                     for victim in phantom.iter() {

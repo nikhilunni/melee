@@ -16,7 +16,23 @@ pub struct RehitVictim {
     pub remaining: u8,
 }
 impl ItemCore {
+    /// it_8026FA2C with ftColl_80077C60's mode for a hurtbox contact of
+    /// hitbox `id`: 5 (a rehit timer) when its x41_b5 is set, else 0.
+    pub fn record_fighter_victim(&mut self, id: usize, group: u8, victim: u32) {
+        if self.hit_flags[id].damage_without_hitlag {
+            self.record_timed_victim(group, victim);
+        } else {
+            melee_coll::detection::record_victim(&mut self.hitboxes, group, victim);
+        }
+    }
+    /// ftColl_80077464's mode 7 for a reflector.
     pub fn record_reflector(&mut self, group: u8, victim: u32) {
+        self.record_timed_victim(group, victim);
+    }
+    /// lbColl_80008688 in a timed mode (2, 4, 5, 7, 8) on every live hitbox
+    /// of `group`: the victim, with that capsule's rehit timer (x40_b4),
+    /// which Item_80269B60 counts down before forgetting the victim.
+    pub fn record_timed_victim(&mut self, group: u8, victim: u32) {
         for (id, slot) in self.hitboxes.iter_mut().enumerate() {
             let Some(hit) = slot else { continue };
             if hit.descriptor.group != group {

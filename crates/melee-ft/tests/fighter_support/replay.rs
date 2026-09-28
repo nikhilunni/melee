@@ -731,7 +731,7 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
         }
         (MotionData::Jump(jump), S::JumpF | S::JumpB) => {
             assert_eq!(u32::from(jump.short_hop), word(bytes, 0x2340));
-            assert_eq!(u32::from(jump.physics_started), word(bytes, 0x2344));
+            assert_eq!(jump.physics_started, word(bytes, 0x2344));
             check_float("jump multiplier", jump.multiplier, 0x2348);
         }
         (MotionData::Dash(dash), S::Dash) => {

@@ -2497,11 +2497,7 @@ impl Fighter {
             // ftColl_80077C60 (ftcoll.c:1158): the victim's damage scale.
             descriptor.damage *= self.received_damage_scale();
             if self.status.revival_invincibility != 0 {
-                melee_coll::detection::record_victim(
-                    &mut item.hitboxes,
-                    descriptor.group,
-                    self.spawn_number,
-                );
+                item.record_fighter_victim(id, descriptor.group, self.spawn_number);
                 self.effects
                     .push(melee_ef::request::EffectRequest::ShieldSpark {
                         position: contact.position,
@@ -2534,11 +2530,7 @@ impl Fighter {
                 damage: descriptor.damage,
                 effect_damage: raw_damage,
             });
-            melee_coll::detection::record_victim(
-                &mut item.hitboxes,
-                descriptor.group,
-                self.spawn_number,
-            );
+            item.record_fighter_victim(id, descriptor.group, self.spawn_number);
             return Some(ItemHurtContact {
                 damage: descriptor.damage,
                 logged_damage: true,

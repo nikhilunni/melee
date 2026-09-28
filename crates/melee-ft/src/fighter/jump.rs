@@ -35,7 +35,9 @@ pub struct KneeBendState {
 #[derive(Clone, Debug)]
 pub struct JumpState {
     pub short_hop: bool,
-    pub physics_started: bool,
+    /// mv.co.jump.x4: the C flag word (0 until physics starts, then 1;
+    /// Thunder's ftPk_SpecialLw_SetState_Unk0 may store 3).
+    pub physics_started: u32,
     pub multiplier: f32,
 }
 impl Fighter {
@@ -118,7 +120,7 @@ impl Fighter {
         self.core.input.vertical.tilt = 0xFE;
         self.core.state_data = MotionData::Jump(JumpState {
             short_hop,
-            physics_started: false,
+            physics_started: 0,
             multiplier,
         });
         Ok(())
@@ -334,8 +336,8 @@ impl FighterCore {
             CommonMotionState::JumpF | CommonMotionState::JumpB
         );
         if let MotionData::Jump(jump) = &mut self.state_data {
-            if jumping && !jump.physics_started {
-                jump.physics_started = true;
+            if jumping && jump.physics_started == 0 {
+                jump.physics_started = 1;
                 return;
             }
         }

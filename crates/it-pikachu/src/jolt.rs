@@ -408,10 +408,43 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltCrawler<O> {
     fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
         end_crawler(item, ctx.assets)
     }
-    fn reflected(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!("it_2725_Logic107_Reflected: the crawler turned at joint 6's pose")
+    /// it_2725_Logic107_Reflected (802B46C8): the crawler moves to its
+    /// joint 6 and turns round; its surface angle is the root's (negated
+    /// facing left) plus pi less joint 4's, in double (802B4790..98), and
+    /// wraps; the model faces it, the normal is its sine and cosine, and
+    /// the crawl restarts (Item_80268E5C, no extra step).
+    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        let pose = ctx.assets.pose.as_ref().expect("Thunder Jolt crawler pose");
+        let root = melee_it::pose::RootSrt {
+            translate: item.root_translation,
+            rotate: item.rotation,
+            scale: item.model_scale,
+        };
+        let (state, steps) = (item.article_state, item.pose_steps);
+        item.position = pose.bone_position(state, steps, RIDE_JOINT, root);
+        item.facing = -item.facing;
+        let root_angle = if item.facing == 1.0 {
+            item.rotation.x
+        } else {
+            -item.rotation.x
+        };
+        let joint_angle = pose.local(state, steps, TURN_JOINT).rotate.x;
+        let angle = wrap_angle((f64::from(root_angle) + (PI - f64::from(joint_angle))) as f32);
+        item.rotation.x = angle;
+        item.rotation.y = (HALF_PI * f64::from(item.facing)) as f32;
+        item.root_translation = item.position;
+        let signed = if item.facing == 1.0 { angle } else { -angle };
+        let state = jolt(item);
+        state.normal = Vec3::new(sinf(signed), cosf(signed), 0.0);
+        state.frames = 0;
+        item.change_motion_with(0, CRAWLER_ARTICLE_STATES[0], ANIM_UPDATE, ctx.assets);
+        false
     }
 }
+
+/// The crawler joint whose X rotation a reflection turns about
+/// (xBBC_dynamicBoneTable->bones[4]).
+const TURN_JOINT: usize = 4;
 
 /// HSD_JObjSetRotationX from the normal: atan2f(x, y), negated facing
 /// left.

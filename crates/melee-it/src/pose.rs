@@ -193,6 +193,15 @@ impl ItemPose {
         matrix
     }
 
+    /// `bone`'s local transform `steps` animation steps into article state
+    /// `state` (HSD_JObjGetRotationX and friends read these).
+    pub fn local(&self, state: usize, steps: u32, bone: usize) -> &LocalSrt {
+        let samples = self.states[state]
+            .as_ref()
+            .expect("item pose: article state without a joint animation");
+        &samples[(steps.max(1) as usize - 1).min(samples.len() - 1)][bone]
+    }
+
     /// lb_8000B1CC(bones[bone], NULL, &pos): the joint's world translation.
     pub fn bone_position(&self, state: usize, steps: u32, bone: usize, root: RootSrt) -> Vec3 {
         let m = self.bone_matrix(state, steps, bone, root);

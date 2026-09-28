@@ -177,7 +177,7 @@ impl FighterCore {
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CaptureJump(jump) => jump.retained_drop_timer,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
-            MotionData::Jump(jump) => f32::from_bits(u32::from(jump.physics_started)),
+            MotionData::Jump(jump) => f32::from_bits(jump.physics_started),
             MotionData::Aerial {
                 retained_drop_timer,
             }
@@ -258,10 +258,18 @@ impl Fighter {
 
     /// Another object's write of the second motion scratch word (mv+4)
     /// while a common state owns it (ftPk_SpecialLw_SetState_Unk0 from a
-    /// Thunder bolt's end). Only states whose word is a retained value the
-    /// state itself never reads are modelled; others fail closed.
+    /// Thunder bolt's end). The state then runs on with that word: Jump's
+    /// flag (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's
+    /// slippery velocity (ftCo_Run.c:84) and Squat's drop timer
+    /// (ftCo_Squat.c:82-85) read it as their own. Walk's word is its base
+    /// motion id (ftwalkcommon.c:115, 137), whose switch then reads an
+    /// uninitialised rate, so it and unmodelled states fail closed.
     pub fn overwrite_common_scratch_word(&mut self, word: f32) {
         match &mut self.core.state_data {
+            MotionData::Jump(jump) => jump.physics_started = word.to_bits(),
+            MotionData::Fall(fall) => fall.blend = word,
+            MotionData::Run(run) => run.slippery_animation_velocity = word,
+            MotionData::Squat(squat) => squat.platform_drop_timer = word,
             MotionData::Aerial {
                 retained_drop_timer,
             }

@@ -2332,7 +2332,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 263] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 274] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2652,6 +2652,23 @@ const CORPUS_V3_MATCHES: [(&str, usize); 263] = [
     ("corpus_v3_fd_pichu_fox4_e2af099ca_p1", 860),
     ("corpus_v3_fd_pichu_fox4_ef89b3e70_p0", 4406),
     ("corpus_v3_fd_pichu_fox4_e4213e6a5_p0", 5321),
+    // PICHU: a Thunder bolt's end writes 3 into mv+4 of Run, Squat,
+    // JumpF and JumpB (ftPk_SpecialLw_SetState_Unk0), which they read as
+    // their own word; Thunder's bolts re-hit Fox once their rehit timer
+    // (x40_b4, 8 ticks for Pichu) runs out (ftColl_80077C60 mode 5).
+    ("corpus_v3_fd_pichu_fox4_e83c73abe_p0", 652),
+    ("corpus_v3_fd_pichu_fox4_e633c44d1_p1", 308),
+    ("corpus_v3_fd_pichu_fox4_e6e4bdd56_p0", 468),
+    ("corpus_v3_fd_pichu_fox4_e7be527d7_p0", 3295),
+    ("corpus_v3_fd_pichu_fox4_eca3cc46f_p1", 799),
+    ("corpus_v3_fd_pichu_fox4_e79162ccc_p2", 1961),
+    ("corpus_v3_fd_pichu_fox4_eb91a3d7f_p2", 2309),
+    // PICHU: a reflected Thunder Jolt crawler turns at its joint 6
+    // (it_2725_Logic107_Reflected); two clean samples.
+    ("corpus_v3_fd_pichu_fox4_e1005f1f4_p2", 136),
+    ("corpus_v3_fd_pichu_fox4_eb6a96fbd_p1", 612),
+    ("corpus_v3_fd_pichu_fox4_e936421d6_p0", 1202),
+    ("corpus_v3_fd_pichu_fox4_e173083b8_p1", 2972),
     // Mario's Fireball (ftMr_SpecialN, it_8029B6F8): the item's DPtcl trail
     // (1002) before the hand flash (efAlt 0x47A), bounces (efAlt 0x47B);
     // forward smash flame 0x411; landing flash 0x423 (ftCo_8009F834 block_67).
