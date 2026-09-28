@@ -1,24 +1,16 @@
-# AGENTS.md (read by Codex)
+# AGENTS.md
 
-This repository's rules live in `CLAUDE.md`. Read it in full before doing
-anything, then read `TRACKER.md`. Every section of `CLAUDE.md` applies to you:
-exactness rules, code style ("write for humans"), build-speed rules, porting
-workflow, and the hard boundaries (never modify `third_party/melee-decomp`,
-never commit game data, never commit at all unless your task says so).
-Never delete, move or overwrite `harness/roms/`, `harness/traces/` or
-`~/melee-data/` (see "Hard boundaries" in `CLAUDE.md`); add files to git only by
-explicit path.
+Any agent working here follows `CLAUDE.md` in full: read it, then `TRACKER.md`.
+It covers the verification workflow, exactness and style rules, and the hard
+boundaries (never touch `harness/roms/`, `harness/traces/`, `~/melee-data/` or
+`third_party/melee-decomp`; add files to git by explicit path only).
 
-When you are handed a task, the acceptance criteria are mechanical and are
-stated in the task: named tests that must pass under `cargo gate`, plus
-`cargo clippy --workspace --all-targets -- -D warnings`. Do not weaken, skip,
-or loosen a test merely to make it pass. If a bit-exact test fails, immediately
-trace the delta against retail assembly and the captured oracle, fix the faulty
-implementation or test, and continue without requesting confirmation. A test
-correction must preserve valid coverage and document the evidence, including
-field ownership and initialization boundaries. Never replace captured expected
-values with simulator output or change expectations without independent retail
-evidence. Rerun the affected checks and required gates before committing.
+A delegated task states its scope and mechanical acceptance criteria (named
+tests or gates). Never weaken, skip or loosen a test to make it pass, and never
+replace retail expectations with simulator output. When a bit-exact check
+fails, trace the difference against the retail asm and recorded traces
+(`melee-sim triage` first) and fix the implementation. Commit only when your
+task says to, on your own branch.
 
-Finish with a short report: what you changed (file list), what tests you ran
-and their results, and anything you could not do.
+Finish with a short report: what changed (files), what you ran and the
+results, and what you could not do.

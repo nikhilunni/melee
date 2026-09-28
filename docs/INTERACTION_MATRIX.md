@@ -1,16 +1,11 @@
-# Fox–Marth on Final Destination: interaction matrix (2026-09-27)
+# Fox–Marth on Final Destination: interaction matrix
 
-Draft of the exit criterion in `MATCHUP_COMPLETENESS.md` ("Exit criteria
-before breadth"): reachable motion-state transitions and branches for Fox and
-Marth on FD, each linked to the gated retail scenarios that witness it, with
-missing coverage visible. It complements `COVERAGE_AUDIT.md` (explicit port
-boundaries) by looking at what the retail recordings actually exercise.
-
-**Review status.** Drafted by a read-only research agent from the retail
-traces and checked by the coordinating session at the family level (the
-table structure, the MISSING list against COVERAGE_AUDIT and the port's
-boundaries). Rows marked **(by name)** still rest on scenario names or
-comments rather than trace evidence. Regenerate the raw tables with
+The reviewed interaction matrix required by `MATCHUP_COMPLETENESS.md`: every
+reachable motion-state transition and branch for Fox and Marth on FD, linked
+to the gated retail scenarios that witness it, or marked n/a with the evidence.
+No row is open (2026-09-28). It complements `COVERAGE_AUDIT.md` (explicit port
+boundaries) by showing what the retail recordings actually exercise.
+Regenerate the raw tables with
 `cd harness && uv run python interaction_matrix.py <out-dir>`.
 
 ## How it was built
@@ -20,10 +15,8 @@ comments rather than trace evidence. Regenerate the raw tables with
   with a local `harness/traces/<name>.tick.expected.jsonl`, the script read
   `pN.kind` / `pN.motion_id` at each `frame_end` over the gated window only
   (the scenario's `frames`, which the gate asserts). It kept only fighters of
-  kind 1 (Fox) and 18 (Marth). That gave 474 scenarios, 2,666 distinct
-  (character, from, to) transitions and 351 (character, state) pairs
-  (530, 2,810 and 369 on the 2026-09-27 evening re-run; 594, 2,913 and 398
-  on the night re-run).
+  kind 1 (Fox) and 18 (Marth). The last run read 594 scenarios: 2,913
+  distinct (character, from, to) transitions and 398 (character, state) pairs.
   Script: `harness/interaction_matrix.py`, which writes `transitions.tsv`
   (every pair and every directed witness) and `visits.tsv`.
 - **Some transitions cannot show up.** Sampling at `frame_end` merges
@@ -67,7 +60,7 @@ rows (`ft-fox-family`, `ft-mars`).
 | Fox | Attack13 | n/a: Fox's third jab is the rapid jab (Attack100*, witnessed) |
 | Fox | AttackS3HiS, AttackS3LwS | Witnessed: `ftilt_angled_fd_fox` |
 | Both | AppealSL | n/a: `enter_common_taunt` needs `left_taunt_available`, which neither character has |
-| Both | DeadUpFallHitCameraFlat | n/a on FD (status, 2026-09-27) |
+| Both | DeadUpFallHitCameraFlat | n/a: needs `x34_scale.z` != 1, which only Flat Zone or Game & Watch sets (`fighter.c:824-828`) |
 | Both | Pass | n/a: FD has no platforms |
 | Marth | AttackS3Hi/HiS/Lw/LwS | n/a: Marth's forward tilt is not angled. `ftiltup_fd_marth` and `ftiltdown_fd_marth` enter AttackS3S |
 | Marth | Attack13, Attack100* | n/a: Marth has a two-hit jab |
@@ -84,9 +77,7 @@ rows (`ft-fox-family`, `ft-mars`).
 Several states are entered only in the corpus: Marth DamageLw3, DownWaitD,
 DownStandD, DownBackD, SpecialS3Lw and AirS2Hi/AirS3Hi/AirS3Lw/AirS4S, PassiveCeil and
 FlyReflectCeil; Fox MissFoot, FlyReflectWall, PassiveWall and DownDamageD.
-They are exact, but no targeted scenario guards them. (Night re-run: Marth
-DamageFlyHi, DamageLw2, DownStandU, DownBackU, the techs, SpecialS2Hi, S4Hi
-and AirS3S, and Fox EscapeB and CaptureDamageHi now have directed witnesses.)
+They are exact, but no targeted scenario guards them.
 
 Motion-row coverage is not enough, so the families below list the
 transitions.
@@ -288,7 +279,7 @@ Retail: `ftMs_SpecialN_Enter`, `ftMs_SpecialS_Enter`, `ftMs_SpecialHi_Enter`,
 | Counter catching an item (laser, Illusion ghost, Fire Fox) | ftColl_80077688 | (by name) `corpus_v3_s0_e6117d326_p2` (laser), `corpus_v2_s0_e1_p1` (ghost), `corpus_v3_s0_e1cda1301_p0` (Fire Fox, stale powershield branch) |
 | Counter volume dropped on a motion change (grabbed or hit out of the stance) | fighter.c:1049 | (by name) `corpus_v3_s1_e9943b4ab_p0` |
 | Counter catch without the minimum hitlag after landing | shield_unk0 | (by name) `corpus_v3_s0_e5f386e5e_p0` |
-| Lw / LwHit leaving the ground | ftMs_SpecialLw_Coll | n/a: a grounded Counter stops at the ledge (status, 2026-09-27) |
+| Lw / LwHit leaving the ground | ftMs_SpecialLw_Coll | n/a: a grounded Counter stops at the ledge |
 
 ## 6. Shield and dodges
 
@@ -364,7 +355,7 @@ Retail: `ftCo_Catch_CheckInput`, `ftCo_Catch_Anim`, `ftCo_CatchWait_IASA`,
 | Light third-party hit on the captured member | ftCo_8008EC90 (grab_damage.rs `unimplemented!`) | n/a (COVERAGE_AUDIT): the only third-party hitboxes are items; a Bob-omb hits for 25, not under PlCo +3C0's 6, and a captor's laser flies away from its victim | same |
 | Only the victim launched (non-item) / armoured members | ftCo_800DE2F0 | Victim only: `sudden_death_releasecaptor_bomb_fd_marth`; non-item and armoured: n/a (COVERAGE_AUDIT: no third-party fighter hitboxes in a 1v1; armoured members fail closed) | same |
 | Captured damage outside low capture or throw | grab_escape.rs `unimplemented!` | n/a (COVERAGE_AUDIT): it needs a captor hit outside the ported pummel/throw states or a light third-party hit | same |
-| Grab pair losing its floor | ftCo_800DC920 (collision.rs `unimplemented!`) | n/a on FD (status, 2026-09-27) | same |
+| Grab pair losing its floor | ftCo_800DC920 (collision.rs `unimplemented!`) | n/a on FD: the grabber's collision (mpColl_8004B2DC) clamps to the floor end and fails only on an inactive line or a wall across the check ray, neither on FD; the held victim going over the edge is ported (Hi capture states) | same |
 | Fox-article hits during capture | fighter.c capture branch (damage.rs `unimplemented!`) | n/a (COVERAGE_AUDIT): a laser flies away from the victim Fox holds and meets Marth before any grab | same |
 
 ## 8. Damage, tumble, down, tech
@@ -396,7 +387,7 @@ Retail: `ftCo_Damage_IASA`, `ftCo_Damage_CheckAirMotion`, `ftCo_DamageFall_IASA`
 | DownWait hit -> DownDamageU/D | ftCo_DownDamage_* | U `downdamage_up_fd_marth`; D corpus:1 (by name `corpus_v2_s0_effffffff_p2`, `corpus_v3_s0_e0fe4dd03_p1`) | U `downdamage_up_victim_fd_marth`; D corpus:4 |
 | DownDamage keeping facing / hitstun air physics | ftCo_8008DCE0 | (by name) `corpus_v2_s0_e49_p2`, `corpus_v3_s0_e0fe4dd03_p1` | same |
 | DownReflect wall bounce, DownDamage wall tech/bounce | ftCo_800C7CA0, ftCo_800C1D38 (port `unimplemented!` for DownReflect) | DownReflect: n/a on FD (COVERAGE_AUDIT: the wall-hug flag comes only from the ECB side-point sweep, a grounded ECB's side points sit above y = 0 and every FD wall is at or below it). Airborne DownDamage into a wall: tech `passivewall_downdamage_victim_fd_marth`. The bounce (ftCo_800C17CC) is not reachable in practice on FD: it needs |kb.x| > PlCo +1B0 (1.0) toward a hugged wall, but DownDamage's sub-7% hits at 155% still gave |kb.x| <= 0.71, and FD's walls run down and inward from the ledge, so a hit from the stage side pushes the victim away from them. `melee-sim search` found no bounce in 652k candidates (Fox aerials, jabs and tilts on a prone Marth at the ledge, with DI); the bounce helper itself is witnessed from tumbling (FlyReflectWall) | same |
-| DownSpot | ftCo_DownSpot_Enter | n/a on FD (status, 2026-09-27) | same |
+| DownSpot | ftCo_DownSpot_Enter | n/a: its only entry is the stamina-mode KO path (`ft_0C8C.c`), which needs the HP rule | same |
 | Tech in place (Passive) | ftCo_Passive_* | `match2_fd_foxmarth` | `tech_inplace_victim_fd_marth` |
 | Tech roll (PassiveStandB / F) | ftCo_PassiveStand_* | B `tech_fd_marth`; F corpus:6 | `tech_rollb_victim_fd_marth`, `tech_rollf_victim_fd_marth` |
 | Wall tech (PassiveWall) | ftCo_PassiveWall_* | corpus:1 | `passivewall_victim_fd_marth` (L at 334; L at 330 bounces instead) |
@@ -484,7 +475,7 @@ Retail: Fox laser (`it-foxlaser`), shield/reflect paths in `melee-coll` and
 | ReboundStop -> Rebound -> Wait | `clank_jab_s74_f122_fd_foxmarth` (both characters) |
 | Phantom contacts beside a real hit; simultaneous hit logs | (by name) `corpus_v2_s0_e2a_p1` |
 | A per-bone hurt state reaches only the bone's first capsule | (by name) `corpus_v2_s1_e49_p2` |
-| Fighter hitbox against a script-invincible hurtbox (not revival) | n/a (status, 2026-09-27): Fox and Marth author only Intangible; the reachable case, the thrower's 8 frames at throw start, is ported. damage.rs `unimplemented!` "invincible contact" stays fail-closed |
+| Fighter hitbox against a script-invincible hurtbox (not revival) | n/a: Fox and Marth author only Intangible; the reachable case, the thrower's 8 frames at throw start, is ported. damage.rs `unimplemented!` "invincible contact" stays fail-closed |
 | Fire Fox charge and travel hits | `firefox_charge_hit_fd_marth`, `firefox_travel_hit_fd_marth` |
 | Illusion hits and passes through | `illusion_fd_fox` |
 
@@ -501,11 +492,11 @@ gm_80167320 (final stock).
 | DamageFly* -> DeadLeft / DeadRight (side) | DeadRight `damage_fly_roll_t125_fd_fox_candidate` +10; DeadLeft `sudden_death_releasecaptor_bomb_fd_marth` | DeadLeft `sudden_death_throw_bomb_fd_marth` +23; DeadRight `sudden_death_dashintofox_bomb_fd_marth` |
 | DamageFlyTop -> DeadUpStar (star KO) | `topko_usmash_fd_fox`, `topko_usmash_long_fd_fox` | `sudden_death_launchhold_bomb_fd_marth` +15 |
 | DeadUpFall -> DeadUpFallHitCamera (screen KO) | `sudden_death_bombchain_fd_marth` | `sudden_death_pummelcaptor_bomb_fd_marth` +1; ordinary-percent screen KO (by name) `corpus_v2_s0_e80000000_p1_screenko` |
-| DeadUpFallHitCameraFlat | n/a on FD (status, 2026-09-27) | same |
+| DeadUpFallHitCameraFlat | n/a: needs `x34_scale.z` != 1, which only Flat Zone or Game & Watch sets (`fighter.c:824-828`) | same |
 | Dead* -> Rebirth -> RebirthWait -> Fall (stick tap or timeout) | `ko_fd_marth`, `rebirth_timeout_fd_fox` +2 | `rebirth_timeout_fd_marth`, `ledge_timeout_fd_marth` +2 |
 | Rebirth -> Fall directly (no wait) | `match_fd_foxmarth` | `human_smoke_fd_marth` +1 |
 | RebirthWait -> EscapeAir / aerial / JumpAerialF | `rebirth_shield_a_fd_fox`, `rebirth_analog_shield_a_fd_fox`, `rebirth_held_shield_a_fd_fox`, `match_fd_foxmarth` | JumpAerialF `match2_fd_foxmarth`; aerials, air dodge and specials corpus only |
-| Revival-platform floor contact | collision.rs `unimplemented!` (ftCoD5A30) | n/a on FD (status, 2026-09-27) |
+| Revival-platform floor contact | collision.rs `unimplemented!` (ftCoD5A30) | n/a on FD: RebirthWait holds a fixed target at y = 45 and moves only toward it, so the platform never reaches FD's floor (y = 0) |
 | Revival invincibility flash ownership | (by name) `corpus_v2_s0_e80000000_p1_screenko` | same |
 | Blaster put away on death | (by name) `corpus_v2_s1_e2a_p1` | n/a |
 | Stock loss, last-stock pause, GAME | `match_fd_marth_scripted`, `ko_fd_marth` (by name) | same |
@@ -518,175 +509,14 @@ gm_80167320 (final stock).
 
 ---
 
-## MISSING reachable transitions, ranked by how likely they are in play
+## Residual limits
 
-**Status, 2026-09-27 (evening).** Witnessed since the draft: Fox's four slow
-ledge options at 300% (`sudden_death_ledge{climb,roll,attack,jump}_fd_fox`),
-Furafura's exits, DownDamageU (`downdamage_up_fd_marth`), the Reflector's
-loop walking off (`reflector_loop_walkoff_fd_fox`), Marth crouch-cancelling
-(`crouchcancel_victim_fd_marth`), Marth's techs (`tech_{inplace,rollb,rollf}_victim_fd_marth`)
-and getups (`getup_{stand,rollf,rollb,attack}_fd_marth`), Dancing Blade's up
-branch, an aerial Dancing Blade and Shield Breaker charge landing
-(`marth_special_branches_fd_marth`), the Bob-omb interactions (laser,
-Reflector, shield, Counter, forward smash, Illusion, Fox's aerial catch and
-throw), mature-shield exits, jump-cancelled grab and up smash, dash grab,
-boost grab and crouch interrupts (`shield_exits_fd_marth`,
-`tech_interrupts_fd_marth`, `squat_interrupts_fd_marth`), and a same-tick
-final-stock KO pair. Resolved as unreachable on FD: script Invincible
-hurtboxes (Fox and Marth author only Intangible; the reachable case, the
-thrower's 8 frames at throw start, is now ported), DeadUpFallHitCameraFlat,
-DownSpot, a grab pair losing its floor, revival-platform floor contact, and
-a grounded Counter losing support (it stops at the ledge). Later the
-same day: Fox's level-1 reactions (`damage_level1_dancingblade_fd_marth`,
-`damage_air1_dancingblade_fd_marth`: N1, Hi1, Lw1, Air1), Fox's angled
-forward tilts (`ftilt_angled_fd_fox`), DamageFall exits
-(`damagefall_{jump,upb}_fd_fox`), captured-high throw and pummel/CaptureCut
-(`capture_hi_edge_{throwb,pummel}_fd_marth`), the Reflector's Turn, End and
-Hit rows leaving the ground (`reflector_{turn,end}_walkoff_fd_fox`,
-`sudden_death_reflecthit_walkoff_fd_marth`), a decisive timeout
-(`timeout_decisive_fd_marth`) and a shield broken by decay inside the Guard
-proc (`shieldbreak_hold_fd_marth`; the burst queues behind ShieldBreakFly's
-script graphics). Marth as the victim is witnessed too: dizzy
-until it wears off and hit while dizzy (`furafura_{expire,hit}_victim_fd_marth`),
-and DamageHi1/Lw1 from Fox's jab 1 on his head capsule while crouched and his
-legs while taunting (`damage_level1_victim_fd_marth`). Still open from that batch: only Fox's
-other shield-break orientation (research: it needs a different landing
-height; not reachable on FD). The rest of the list below is still open.
-
-**Night, 2026-09-27.** 64 more directed scenarios (commits `3a3a432`,
-`ab68079`; 594 gated scenarios on the re-run) witness: Marth's Ottotto
-entries and teeter options (`ottotto_marth_{run,runbrake,attackdash}_fd_marth`),
-slow ledge climb and roll (`sudden_death_ledge{climb,roll}_fd_marth`),
-AirNEnd1, AirS4Hi/Lw and AirLwHit -> Fall (`marth_airn_end1_fd_marth`,
-`marth_air_dancingblade4_fd_marth`, `counter_air_fall_fd_marth`), Marth as the
-victim of DownDamageU, CaptureDamageHi, a powershielded tilt, an
-ordinary-percent fly roll, DI/SDI and a wall tech
-(`downdamage_up_victim_fd_marth`, `capture_hi_edge_pummel_victim_fd_marth`,
-`powershield_ftilt_victim_fd_marth`, `damage_fly_roll_victim_fd_marth`,
-`di_sdi_upin_fsmash_victim_fd_marth`, `passivewall_victim_fd_marth`), Fox's
-air Cut -> Fall (`capture_hi_edge_cut_fall_fd_fox`), left-side wall jumps,
-Fire Fox into both walls and along the floor, the ground blaster pushed off
-the edge, an aerial Reflector reflect, two impacts on one shield, the
-FallSpecial catch window, all six remaining air throws for both characters,
-and almost every Fox held-item branch. Newly n/a on FD (research pass): Fox's
-other shield-break orientation and any break at the edge, a laser plus a melee
-hit on one shield, a ground Dancing Blade leaving the ground, repeated wall
-jumps (search evidence), ceiling-triggered ledge and wall-jump exits,
-relaxed jump entry and FallSpecial with jumps left. Still open: Fox's
-blaster, Illusion and Fire Fox while holding a Bob-omb (the blaster is being
-fixed), Fox holding one on the ledge, Fox's run-shield and Turn throws and
-dying while holding, Marth catching a thrown Bob-omb and throwing from a
-roll, Fire Fox AirHi -> Hi, a thrown Marth teching the wall, an airborne
-DownDamage into a wall, Fox's shield taking two impacts, and pause.
-
-These are the rows above with no gated retail witness, whose reachability
-in the Fox–Marth FD scope is shown or plausible. The ranking weighs how
-often a real match reaches the branch against how cheaply a directed
-Dolphin scenario could witness it.
-
-1. ~~Furafura exits~~: witnessed for Fox (`furafura_expire_fd_marth`,
-   `furafura_hit_fd_marth`) and Marth (`furafura_{expire,hit}_victim_fd_marth`),
-   2026-09-27.
-2. ~~Fighter hitbox against a script-invincible hurtbox~~: n/a, Fox and
-   Marth author only Intangible (status above). It is a port
-   `unimplemented!` (damage.rs:1662). If any Fox or Marth startup (Dolphin
-   Slash, the ledge getups, the getup attacks) is authored Invincible rather
-   than Intangible, a routine out-of-shield up-B trade reaches it. Resolve the
-   reachability first.
-3. ~~Slow ledge options (100% or more)~~: Fox has all four at 300%
-   (`sudden_death_ledge{climb,roll,attack,jump}_fd_fox`); Marth has ClimbSlow,
-   EscapeSlow and JumpSlow at 300% (`sudden_death_ledge{climb,roll}_fd_marth`,
-   `sudden_death_ledgejump_bomb_fd_marth`) and a corpus AttackSlow.
-4. ~~Weak damage states: DamageHi1 (both), DamageLw1/DamageAir1 (Fox)~~:
-   witnessed (`damage_level1_dancingblade_fd_marth`,
-   `damage_air1_dancingblade_fd_marth`, `damage_level1_victim_fd_marth`);
-   Marth's DamageAir1 is corpus only.
-5. **Fox holding Bob-ombs in Sudden Death.** Now directed: pickup, every
-   throw (ground, tilt, C-stick, dash, roll, Z, all eight air directions),
-   the hold states, catching a thrown Bob-omb, the Reflector held, hit,
-   knocked loose, grabbed and thrown while holding (section 10). Still open:
-   the blaster while holding (`sudden_death_specialhold_bomb_fd_fox`, being
-   fixed: the held-item hand pose during SpecialN), Illusion and Fire Fox
-   with an item, holding on the ledge (not reached before the fuse ends),
-   run-shield and Turn throws, and dying while holding.
-6. **DownDamageD in general.** ~~DownDamageU~~: Fox `downdamage_up_fd_marth`,
-   Marth `downdamage_up_victim_fd_marth`. Face-down is corpus only.
-7. ~~Shield break in the other orientation and at the edge~~: n/a on FD
-   (the flight is vertical with a fixed airtime; see section 6). Marth's
-   DownU/StandU are witnessed (`shieldbreak_hold_fd_marth`).
-8. ~~Ground blaster leaving the ground~~: `laser_loop_pushoff_fd_fox`.
-   ~~Reflector ground rows walking off~~: all four witnessed.
-9. ~~Light third-party hit on a captured fighter, and Fox-article hits
-   during capture~~: n/a. Judged unreachable (COVERAGE_AUDIT): a laser flies away
-   from Fox faster than either fighter closes, so it meets Marth before any
-   grab and cannot come back (Marth deflects, never reflects), and it cannot
-   hit its owner; Bob-omb hits are not light. The other grab-pair launch
-   branches are ported and witnessed (`sudden_death_releasecaptor_bomb_fd_marth`,
-   `sudden_death_pummelcaptor_bomb_fd_marth`).
-10. **Simultaneous shield impacts on Fox's shield, and a phantom plus a
-    shield impact in one frame.** Two impacts on Marth's shield are witnessed
-    (`sudden_death_shieldlaserbomb_fd_marth`: a laser and a Bob-omb blast);
-    a laser plus a melee hit is n/a (section 11).
-11. ~~Marth as the DI/SDI victim~~: (by name) `di_sdi_upin_fsmash_victim_fd_marth`.
-12. ~~Marth wall tech~~: `passivewall_victim_fd_marth`. Fox's PassiveWall
-    and forward tech roll are corpus only.
-13. ~~The fourth aerial Dancing Blade hit Up/Down; aerial full-charge Shield
-    Breaker~~: `marth_air_dancingblade4_fd_marth`, `marth_airn_end1_fd_marth`.
-    Ground Dancing Blade leaving the ground: n/a on FD (section 5).
-14. ~~Counter's AirLwHit ending in the air~~: `counter_air_fall_fd_marth`.
-15. **Fire Fox travel landing without a rebound (AirHi -> Hi).** ~~Travel
-    into FD's side wall~~: `firefox_wall_{ledge,notch}_fd_fox`; shallow floor
-    contact: `firefox_shallow_floor_fd_fox`.
-16. ~~Marth CaptureDamageHi; Fox's air Cut -> Fall~~:
-    `capture_hi_edge_pummel_victim_fd_marth`, `capture_hi_edge_cut_fall_fd_fox`.
-17. **Item cross-interactions in Sudden Death:** Marth catching a thrown
-    Bob-omb. ~~Fox catching one, the six remaining air throws, an aerial
-    Reflector reflecting one~~: `sudden_death_catchthrown_bomb_fd_fox`,
-    `sudden_death_airthrow*_bomb_fd_{fox,marth}`, `sudden_death_airreflect_bomb_fd_fox`.
-18. ~~A decisive timeout and a simultaneous last-stock KO~~:
-    `timeout_decisive_fd_marth`, `sudden_death_ledgejump_bomb_fd_marth`.
-19. **Dash -> Squat (corpus only).** ~~Run/RunBrake/AttackDash -> Ottotto;
-    OttottoWait -> attacks (Marth)~~: `ottotto_marth_{run,runbrake,attackdash}_fd_marth`.
-20. ~~Open, reachable in principle~~ (2026-09-28): the DownDamage wall tech
-    and a thrown Marth's wall tech are witnessed; the DownDamage wall bounce
-    and Fox holding a Bob-omb on the ledge are not reachable in practice
-    (`melee-sim search`, 652k and 5k candidates); pause is out of scope (not
-    modelled); the Reflector and Dancing Blade scratch-word guards were never
-    reached in 259k searched predecessor sequences. (Resolved as n/a: relaxed or C-stick jump entry, FallSpecial with jumps
-    left, grounded DownReflect, StopWall, the airborne ftCo_Damage_IASA
-    catch-all, inert hitboxes, the invincible contact,
-    DeadUpFallHitCameraFlat, DownSpot, a grab pair losing its floor and
-    revival-platform floor contact.)
-
-### High-frequency branches witnessed only by the corpus
-
-These are exact but have no directed regression. A corpus change or reseed
-would silently drop them, so each deserves a short directed scenario:
-
-- Exits from a mature shield (Guard -> EscapeN/F/B, KneeBend, Catch;
-  GuardOn -> the same; GuardOff -> KneeBend/EscapeN), for both characters.
-  Directed witnesses exist only from the GuardReflect startup.
-- Fox's back roll (EscapeB). Marth's is witnessed only while holding a
-  Bob-omb.
-- Fox's jump-cancel grab and jump-cancel up smash; Dash -> KneeBend,
-  Dash -> CatchDash, Run -> KneeBend, Turn -> KneeBend/Catch/smash.
-- Standing Illusion (Wait -> SpecialSStart), and Illusion landing mid-dash
-  (AirS -> S).
-- Boost grab (AttackDash -> CatchDash), for both characters.
-- SquatWait interrupts (jab, jump, dash, forward smash, up smash, shield).
-- DamageFall -> double jump, special or air dodge after tumble hitstun.
-- Marth's getup options from DownWait, and face-down stand and back rolls.
-- Dancing Blade's up branch (S1 -> S2Hi) and every aerial-to-ground
-  Dancing Blade landing; Shield Breaker charge landing (AirNLoop -> NLoop).
-- Captured-high throws (CaptureWaitHi -> Thrown*).
-- Fire Fox and Illusion ledge catches (AirHi, HiFall, AirSEnd -> CliffCatch).
-
-## Next steps for review
-
-1. Settle each "Investigate" row with the decomp and retail asm. Record
-   whether it is reachable, then move it into MISSING or n/a.
-2. Confirm the "(by name)" rows with a field-level trace query: L-cancel
-   flags, powershield frame, DI angle, C-stick source, item catch.
-3. Re-run `harness/interaction_matrix.py` after each recording packet, so this matrix
-   is regenerated rather than hand-maintained. Consider promoting it into
-   `harness/` as a coverage report that the gate prints.
+- Rows marked **(by name)** rest on scenario names or headers, not trace
+  evidence: the motion id cannot show L-cancels, powershield timing, DI/SDI,
+  short versus full hop, C-stick versus main stick or catches that keep the
+  motion. A field-level trace query would confirm them.
+- Some transitions are exact only in corpus traces (for example Dash ->
+  Squat, Fox's PassiveWall and forward tech roll); a reseeded corpus would
+  drop them, so a directed witness is cheap insurance.
+- Regenerate the raw tables after each recording batch rather than editing
+  them by hand.
