@@ -2054,20 +2054,6 @@ impl Simulation {
         if let Some(error) = &runtime.error {
             anyhow::bail!("{error:#}");
         }
-        if std::env::var_os("PSDBG").is_some() && (4725..4731).contains(&runtime.frame) {
-            let f = &runtime.state.fighters[0].0;
-            let c = &f.collision.data;
-            eprintln!(
-                "DBG {} env {:#x} floor {} {:?} rw {} pos {:?} motion {:?}",
-                runtime.frame,
-                c.env_flags,
-                c.floor.index,
-                c.floor.normal,
-                c.right_facing_wall.index,
-                f.physics.position,
-                f.motion_state.id
-            );
-        }
         runtime.frame += 1;
         Ok(())
     }
