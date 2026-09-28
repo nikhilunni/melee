@@ -51,7 +51,8 @@ impl Fighter {
         if self.core.status.disabled {
             return;
         }
-        if self.core.begin_physics_phase() {
+        let physics = self.core.begin_physics_phase();
+        if physics {
             (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
         }
         self.core.apply_combo_push(&assets.combo);
@@ -61,6 +62,13 @@ impl Fighter {
                 super::damage::HitlagCallbacks::Guard => self.core.guard_hitlag_input(),
                 super::damage::HitlagCallbacks::None => {}
             }
+        }
+        if !physics {
+            // fighter.c:2380-2390 (0x8006BE48): a grounded fighter rides a
+            // moving floor (mpGetSpeed) even in hitlag, where the state's
+            // physics (which applies it otherwise) is skipped; the wind
+            // offset is zero there.
+            self.core.ride_floor_in_hitlag(map);
         }
         self.core.invalidate_collision_positions();
     }
@@ -630,6 +638,15 @@ impl FighterCore {
         );
         self.joystick_count += u64::from(effects.joystick_count_increments);
         effects.run_input_callback && !self.in_hitlag()
+    }
+    /// Fighter_procUpdate 0x8006BE48 for a fighter whose physics hitlag
+    /// skipped: the moving-floor offset (mpGetSpeed) at the current position.
+    fn ride_floor_in_hitlag(&mut self, map: &CollMap) {
+        if self.physics.ground_or_air != melee_types::GroundOrAir::Ground {
+            return;
+        }
+        let speed = map.line_speed(self.collision.data.floor.index, &self.physics.position);
+        crate::physics::integrate::integrate_environment(&mut self.physics, speed, Wind::CALM);
     }
     fn begin_physics_phase(&mut self) -> bool {
         if self.status.disabled {
