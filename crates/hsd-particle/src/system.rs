@@ -424,6 +424,12 @@ impl ParticleSystem {
         self.park_cursor_at_tail();
         self.release_external_transforms();
     }
+    /// hsd_8039D688 (0x8039D688) over a joint no generator follows: it walks
+    /// the whole list anyway, so only the insertion cursor moves (to the
+    /// tail, or null when the list is empty).
+    pub fn walk_unowned_joint(&mut self) {
+        self.park_cursor_at_tail();
+    }
     /// hsd_8039D4DC / hsd_8039D688 leave the insertion cursor (hsd_804D78F8)
     /// on the last generator they walked past: the list's tail.
     fn park_cursor_at_tail(&mut self) {

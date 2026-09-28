@@ -71,8 +71,12 @@ impl Effects {
     }
 
     /// Item_8026A8EC: the item's JObj goes, and with it the generators on it.
+    /// efLib_DestroyAll (eflib.c:280-282) walks the item's JObj tree with
+    /// hsd_8039D688 even when no generator follows it, which still parks the
+    /// generator insertion cursor at the list's tail.
     pub fn expire_item_joint(&mut self, item: u32, particles: &mut ParticleSystem) {
         if !self.item_joints.contains(&item) {
+            particles.walk_unowned_joint();
             return;
         }
         let joint = item_joint(item);

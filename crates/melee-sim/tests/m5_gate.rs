@@ -2181,7 +2181,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 127] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 128] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2400,6 +2400,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 127] = [
     ("corpus_v3_dl_fox_marth4_e75fb4a9a_p0", 6001),
     // Yoshi's Story: whole Fox-Marth matches whose smashes tilt the body on
     // the side slopes (ft_80089B08's body tilt; formerly unported).
+    // A Shy Guy's removal walks the generator list (efLib_DestroyAll ->
+    // hsd_8039D688) before Fox's dust, so the dust inserts after the head.
+    ("slope_ys_e75fb4a9a_p1", 1670),
     ("slope_ys_e1502cb40_p0", 2026),
     ("slope_ys_e75fb4a9a_p2", 2131),
     ("slope_ys_ec3145eb3_p2", 2184),
