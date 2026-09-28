@@ -27,8 +27,8 @@ do not keep a session log here.
    Marth exactly (boundaries, long witnesses, explorer matches): Final
    Destination, Battlefield, Dream Land, Yoshi's Story, Fountain of Dreams,
    Pokémon Stadium. Every registered character has its specials ported:
-   Fox, Falco, Marth, Captain Falcon, Peach, Yoshi, Jigglypuff (a kind without
-   ported specials fails closed on B). Registered boundaries: FD/BF/DL/YS/FoD/PS
+   Fox, Falco, Marth, Captain Falcon, Peach, Yoshi, Jigglypuff, Pikachu (a
+   kind without ported specials fails closed on B). Registered boundaries: FD/BF/DL/YS/FoD/PS
    Fox-Marth, and each other character vs Fox on FD. Open:
    - **User decision: Pokémon Stadium transformations depend on emulated
      disc read latency**, which varies between recordings even for a match's
@@ -38,7 +38,7 @@ do not keep a session log here.
      the first transformation. Options: model Dolphin's disc timing, or take
      the read-completion tick from the recording as an input.
      docs/PORT_NOTES/POKEMON_STADIUM.md.
-   - In flight: Mario (stub crate) and Pikachu bring-ups.
+   - In flight: Mario bring-up (stub crate).
 2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
    build the batch runner that aggregates first divergences, using `triage`.
    Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
@@ -57,9 +57,10 @@ agent each (`CLAUDE.md` "Agents").
 ## Status by area
 
 **Characters** (`crates/ft-<name>`): Fox and Marth complete for the matchup.
-Falco, Captain Falcon, Peach, Yoshi and Jigglypuff have every special ported
-and pass their start boundaries and explorer batches except the named
-in-flight faults. Mario is a stub; all other kinds are unregistered. Mario's crate is a stub and not registered in
+Falco, Captain Falcon, Peach, Yoshi, Jigglypuff and Pikachu (with
+`ft-pikachu-family` for Pichu) have every special ported and pass their start
+boundaries and explorer batches. Mario is in flight; all other kinds are
+unregistered. Mario's crate is a stub and not registered in
 `scene_characters!` (his recorded scenes fail to load). All others unstarted.
 
 **Stages**: Final Destination complete. Battlefield, Dream Land, Yoshi's Story
