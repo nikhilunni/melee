@@ -84,6 +84,15 @@ macro_rules! scene_characters {
             }
             /// Scenario `kind` strings accepted by `Scenario::validate`.
             pub(crate) const NAMES: &'static [&'static str] = &[$( $name ),*];
+            /// The kind's `CharacterCallbacks::ONLOAD_ITEM_JOINT`.
+            pub(crate) fn onload_item_joint_for(kind: melee_types::FighterKind) -> Option<u32> {
+                $(
+                    if kind == <$ty as CharacterCallbacks>::descriptor().kind {
+                        return <$ty as CharacterCallbacks>::ONLOAD_ITEM_JOINT;
+                    }
+                )*
+                None
+            }
             pub(crate) fn descriptor_for(name: &str) -> Option<&'static CharacterDescriptor> {
                 match name {
                     $( $name => Some(<$ty as CharacterCallbacks>::descriptor()), )*
@@ -146,6 +155,8 @@ scene_characters! {
     "Pichu" => Pichu(ft_pichu::init::Pichu),
     "Ganondorf" => Ganondorf(ft_ganon::init::Ganondorf),
     "IceClimbers" => IceClimbers(ft_iceclimbers::init::Popo) partner(ft_iceclimbers::init::Nana),
+    "Link" => Link(ft_link::init::Link),
+    "YoungLink" => YoungLink(ft_younglink::init::YoungLink),
     "Samus" => Samus(ft_samus::init::Samus),
     "Sheik" => Sheik(ft_seak::init::Sheik) partner(ft_zelda::init::Zelda),
     "Zelda" => Zelda(ft_zelda::init::Zelda) partner(ft_seak::init::Sheik),

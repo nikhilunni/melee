@@ -104,10 +104,14 @@ impl Assets {
                 .iter()
                 .map(|c| archive(c.file))
                 .collect::<Result<_>>()?;
+            let graft = crate::scene_fighter::SceneFighter::onload_item_joint_for(descriptor.kind)
+                .map(|item| onload_graft(&data, &common, descriptor, item))
+                .transpose()?;
             characters.push(CharacterArchive {
                 descriptor,
                 data,
                 costumes,
+                graft,
             });
             fighters.push(resources);
         }
@@ -238,15 +242,49 @@ pub struct CharacterArchive {
     pub descriptor: &'static CharacterDescriptor,
     pub data: std::sync::Arc<Archive>,
     costumes: Vec<Archive>,
+    /// ftParts_800753D4 in the kind's OnLoad: the ftData item joint and
+    /// the conditional part it fills.
+    graft: Option<(hsd_archive::desc::JObjDesc, melee_ft::desc::ConditionalPart)>,
+}
+
+/// The joint `ftData.x48_items[item]` and `Fighter_804D6540[kind]`'s first
+/// entry (ftLk_Init_OnLoad: `ftParts_800753D4(fp, Fighter_804D6540[kind]->x0,
+/// item_list[6])`).
+fn onload_graft(
+    data: &Archive,
+    common: &Archive,
+    descriptor: &CharacterDescriptor,
+    item: u32,
+) -> Result<(hsd_archive::desc::JObjDesc, melee_ft::desc::ConditionalPart)> {
+    let root = data
+        .public(descriptor.data_symbol)
+        .with_context(|| format!("{} missing", descriptor.data_symbol))?;
+    let items = data.reader().u32(root + 0x48)?;
+    let joint = data.reader().u32(items + item * 4)?;
+    let joint = hsd_archive::desc::JObjDesc::read(data, joint)?;
+    let placement = *melee_ft::desc::read_conditional_parts(common, descriptor.kind)
+        .map_err(|e| anyhow::anyhow!("{e}"))?
+        .first()
+        .context("OnLoad graft without a conditional part")?;
+    Ok((joint, placement))
 }
 impl CharacterArchive {
     pub(crate) fn costume(&self, costume: u8) -> &Archive {
         &self.costumes[usize::from(costume)]
     }
-    pub(crate) fn model(&self, costume: u8) -> (JObjTree, JObjId) {
+    /// The costume's joint description with OnLoad's grafted joint.
+    pub(crate) fn model_desc(&self, costume: u8) -> hsd_archive::desc::JObjDesc {
         let archive = &self.costumes[usize::from(costume)];
         let symbol = self.descriptor.costumes[usize::from(costume)].joint_symbol;
-        load_joint_tree(archive, &read_public_jobj(archive, symbol).unwrap()).unwrap()
+        let mut desc = read_public_jobj(archive, symbol).unwrap();
+        if let Some((joint, placement)) = &self.graft {
+            melee_ft::desc::graft_conditional_joint(&mut desc, joint, *placement);
+        }
+        desc
+    }
+    pub(crate) fn model(&self, costume: u8) -> (JObjTree, JObjId) {
+        let archive = &self.costumes[usize::from(costume)];
+        load_joint_tree(archive, &self.model_desc(costume)).unwrap()
     }
 }
 

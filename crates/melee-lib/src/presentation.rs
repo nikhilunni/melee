@@ -178,11 +178,7 @@ impl Presentation {
             let character = &assets.characters[slot];
             let costume = game.engine.state().fighters[slot].0.player.costume;
             let archive = character.costume(costume);
-            let desc = hsd_archive::desc::read_public_jobj(
-                archive,
-                character.descriptor.costumes[usize::from(costume)].joint_symbol,
-            )
-            .map_err(error)?;
+            let desc = character.model_desc(costume);
             let tree = &game.engine.state().fighters[slot].0.skeleton;
             result.add_model(archive, &desc, tree, ModelSource::Fighter(slot))?;
         }

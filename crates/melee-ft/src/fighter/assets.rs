@@ -163,6 +163,9 @@ pub struct FighterAssets {
     pub attributes: FighterAttributes,
     pub bones: FighterBones,
     pub parts: PartTable,
+    /// Fighter_804D6540[kind]: parts the costume leaves empty
+    /// (ftParts_8007506C masks, in table order).
+    pub conditional_parts: Vec<crate::desc::ConditionalPart>,
     pub common: CommonFighterData,
     pub input: InputCommonData,
     pub shield_health: f32,
@@ -448,6 +451,7 @@ impl FighterAssets {
             attributes: read_fighter_attributes(data, root)?,
             bones: read_fighter_bones(data, root, descriptor.part_animation_count)?,
             parts: read_part_table(common, descriptor.kind, descriptor.part_count)?,
+            conditional_parts: crate::desc::read_conditional_parts(common, descriptor.kind)?,
             common: read_common_data(common)?,
             input: InputCommonData::read(common)?,
             entry: super::entry::EntryParameters {

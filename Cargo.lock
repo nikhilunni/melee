@@ -505,6 +505,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-link"
+version = "0.0.1"
+dependencies = [
+ "ft-link-family",
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-link-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ef",
+ "melee-ft",
+ "melee-mp",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-luigi"
 version = "0.0.1"
 dependencies = [
@@ -710,6 +736,19 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-younglink"
+version = "0.0.1"
+dependencies = [
+ "ft-link-family",
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
  "melee-test-support",
  "melee-types",
 ]
@@ -1362,6 +1401,7 @@ dependencies = [
  "ft-fox-family",
  "ft-ganon",
  "ft-iceclimbers",
+ "ft-link",
  "ft-luigi",
  "ft-mario",
  "ft-mars",
@@ -1372,6 +1412,7 @@ dependencies = [
  "ft-samus",
  "ft-seak",
  "ft-yoshi",
+ "ft-younglink",
  "ft-zelda",
  "gekko-math",
  "hsd-anim",

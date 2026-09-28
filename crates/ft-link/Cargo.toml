@@ -1,0 +1,17 @@
+[package]
+name = "ft-link"
+description = "Link character data and callbacks (ftLink)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+ft-link-family = { path = "../ft-link-family" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

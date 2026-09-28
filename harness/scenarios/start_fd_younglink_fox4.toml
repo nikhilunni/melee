@@ -1,0 +1,21 @@
+# YoungLink vs Fox on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fd_younglink_fox4"
+savestate = "harness/roms/start_fd_younglink_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "YoungLink"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

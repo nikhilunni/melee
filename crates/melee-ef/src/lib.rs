@@ -403,6 +403,68 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttachedPair {
+                id: id @ (0x4BB | 0x4BC),
+                bones,
+            } = request
+            {
+                // efsync.c:86-103: Spin Attack's swirl.
+                // efLib_Create_Attach_Scale_FacingDir 0x1770 (air: 0x1771) on
+                // TransN, then efLib_Create_AttachChild_Scale 0x1772 (0x1773)
+                // on the sword joint, chained to the first.
+                // TODO(orientation): AttachChild's lb_8000C290 orientation
+                // constraint is not applied; it turns the second model with
+                // the joint (drawn pose and particle positions only).
+                let offset = u32::from(id - 0x4BB);
+                let mut pair = [0x1770 + offset, 0x1772 + offset].map(|model| {
+                    let mut effect = self.acquire(model, particles);
+                    effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                    self.next_joint += effect.tree.len();
+                    effect
+                });
+                for (index, (effect, bone)) in pair.iter_mut().zip(bones).enumerate() {
+                    effect.owner = Some(ModelOwner::Fighter(player));
+                    effect.hitlag_pause = HitlagPause::Active;
+                    effect.attachment = Some(player);
+                    effect.attachment_bone = Some(bone);
+                    effect.scale_attachment = false;
+                    // HSD_JObjGetScale of the fighter root, broadcast from Y.
+                    let mut scale = fighter.effect_scale();
+                    scale.x = scale.y;
+                    scale.z = scale.y;
+                    effect.tree.set_scale(effect.root, &scale);
+                    if index == 0 {
+                        // efLib_Cb_SetRotY_FromFighterDir: an f64 +-M_PI_2, rounded.
+                        effect.facing_rotation = Some(if fighter.effect_facing() < 0.0 {
+                            -std::f64::consts::FRAC_PI_2 as f32
+                        } else {
+                            std::f64::consts::FRAC_PI_2 as f32
+                        });
+                    }
+                    let matrix = fighter.effect_matrix(Some(bone));
+                    effect.tree.set_translate(
+                        effect.root,
+                        &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                    );
+                }
+                // efSync_Spawn drains efLib_AnimQueue newest first.
+                for effect in pair.iter_mut().rev() {
+                    effect.animate_banks::<T>(
+                        resources::Banks {
+                            common: bank,
+                            characters: &self.character_banks,
+                        },
+                        particles,
+                        rng,
+                        &mut self.draws,
+                        &mut self.events,
+                    )?;
+                }
+                for effect in pair {
+                    self.instances.push(effect);
+                }
+                continue;
+            }
+            if let EffectRequest::SyncAttachedPair {
                 id: id @ (0x48F | 0x50B),
                 bones,
             } = request

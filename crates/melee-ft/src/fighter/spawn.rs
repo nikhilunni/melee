@@ -1066,6 +1066,15 @@ impl FighterCore {
         let mut physics = FighterPhysics::standing(position, player.facing);
         physics.percent = player.damage;
         let mut animation = FighterAnimation::new(&skeleton, root);
+        // ftParts_8007506C: each conditional part's mask bit. A part OnLoad
+        // grafted (ftParts_800753D4) is also flags_b2; the costume model
+        // numbers its own joints around it.
+        for (bit, conditional) in assets.conditional_parts.iter().enumerate() {
+            if let Some(part) = animation.parts.get_mut(usize::from(conditional.part)) {
+                part.motion_mask = 1 << bit;
+                part.flags.0 |= PartFlags::CONDITIONAL;
+            }
+        }
         // lbanim.h FigaTree::nodes is s8: reserve the full per-joint domain
         // once for this FighterPartsTable-sized skeleton.
         skeleton.reserve_animation_tracks(i8::MAX as usize);

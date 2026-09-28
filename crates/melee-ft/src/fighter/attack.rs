@@ -116,7 +116,10 @@ impl Fighter {
                 || (predicate == P::TiltSide
                     && self.core.input.current.held.intersects(Buttons::SHIELD));
             if !throws {
-                unimplemented!("a tilt with a non-throwable held item of kind {}", held.use_kind);
+                unimplemented!(
+                    "a tilt with a non-throwable held item of kind {}",
+                    held.use_kind
+                );
             }
             let state = match predicate {
                 P::TiltSide => S::LightThrowF,
@@ -423,10 +426,11 @@ impl Fighter {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
+        // ftCo_800CECE8: the script's combo window and a fresh A press.
         if self.core.commands.variables[0] != 0
             && self.core.input.pressed.intersects(crate::input::Buttons::A)
         {
-            unimplemented!("ftCo_800CECE8: Link's second forward smash");
+            return self.enter_forward_smash_combo(assets);
         }
         if self.core.commands.allow_interrupt {
             let transition = crate::input::iasa_with_predicates(
@@ -437,6 +441,20 @@ impl Fighter {
             );
             self.apply_ground_transition(assets, transition)?;
         }
+        Ok(())
+    }
+    /// ftCo_800CED30 (800CED30): the second forward smash, entered at frame
+    /// zero without motion flags, then ftAnim_8006EBA4. The smash rows
+    /// write no mv field, so mv+4 stays the first hit's.
+    fn enter_forward_smash_combo(&mut self, assets: &FighterAssets) -> Result<()> {
+        let Some(state) = self.character.table().forward_smash_combo else {
+            unimplemented!("ftCo_800CED30: don't have smash42 motion!!!");
+        };
+        let retained_word = self.inherited_scratch_word();
+        self.core.commands.allow_interrupt = false;
+        self.change_motion_state_with_flags(state, assets, super::MotionEntryFlags(0), 0.0, 1.0)?;
+        self.step_animation(assets);
+        self.core.state_data = MotionData::Smash { retained_word };
         Ok(())
     }
     /// ftCo_Attack11_IASA (8008ACD8), checkAttack12 (8008AF0C).

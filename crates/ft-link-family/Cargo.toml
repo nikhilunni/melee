@@ -1,0 +1,15 @@
+[package]
+name = "ft-link-family"
+description = "Link/Young Link shared states and specials (ftLink, used by ftCLink)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+melee-ef = { path = "../melee-ef" }
+melee-mp = { path = "../melee-mp" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }

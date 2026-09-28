@@ -264,6 +264,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// such as Luigi's ftLg_SpecialS_SetVars), run once the entering IASA
     /// returns (`Fighter::finish_input`): nothing in between draws.
     const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
+    /// ftCo_800CED30 (800CED30): the kind's smash42 row (ftLk_MS_AttackS42
+    /// for Link and Young Link); any other kind asserts "don't have smash42
+    /// motion!!!".
+    const FORWARD_SMASH_COMBO: Option<ActionId> = None;
     /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
     fn forward_smash_variant(&self) -> ForwardSmashVariant {
         if Self::descriptor().common_behavior.forward_smash_entry {
@@ -319,6 +323,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn third_jab_state(&self) -> melee_types::CommonMotionState {
         melee_types::CommonMotionState::Attack13
     }
+    /// ftParts_800753D4 in OnLoad (ftLk_Init_OnLoad, ftCl_Init_OnLoad): the
+    /// ftData.x48_items entry whose joint fills the kind's first
+    /// Fighter_804D6540 conditional part (`desc::graft_conditional_joint`).
+    const ONLOAD_ITEM_JOINT: Option<u32> = None;
     /// The character's on-disc resources (`ft<Char>_Init_*` strings, part and
     /// animation counts). The scene loads archives through this.
     fn descriptor() -> &'static assets::CharacterDescriptor

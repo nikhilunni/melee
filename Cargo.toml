@@ -64,6 +64,9 @@ members = [
     "crates/it-samus",
     "crates/ft-seak",
     "crates/ft-zelda",
+    "crates/ft-link-family",
+    "crates/ft-link",
+    "crates/ft-younglink",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

@@ -27,6 +27,11 @@ pub fn update(
             );
             grafted.position
         }
+        // ftAction_80071708 installs fp->parts[bone].joint unchecked; the
+        // parts pool holds MAX_FT_PARTS bones, and those past the kind's
+        // parts_num hold no joint unless an article's model fills one (Link's
+        // and Young Link's Catch box names bone 139).
+        _ if hit.descriptor.bone >= animation.parts.len() => offset,
         _ => part_position(tree, animation, hit.descriptor.bone, offset),
     };
     hit.update_position(position);

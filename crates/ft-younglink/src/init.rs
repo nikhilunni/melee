@@ -1,0 +1,146 @@
+//! Young Link load/reset hooks, ft/kinds/ftCLink/ftclink.c.
+use crate::attributes::{read_young_link_attributes, LinkAttributes};
+use ft_link_family::{FamilyState, LinkFamily, Specials};
+use melee_ft::fighter::{
+    assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
+    Capabilities, CharacterCallbacks, Fighter, MotionRow, PlayerSlot,
+};
+use melee_types::FighterKind;
+
+#[derive(Clone, Debug)]
+pub struct YoungLink {
+    pub attributes: LinkAttributes,
+    /// ftCl_Init_OnDeath resets model groups 0, 1 and 2 to selection 0.
+    pub model_groups: [i32; 3],
+    /// ftLk_FighterVars, mv.lk and the callbacks the states install.
+    pub specials: Specials,
+}
+impl YoungLink {
+    pub fn new(attributes: LinkAttributes) -> Self {
+        Self {
+            attributes,
+            model_groups: [0; 3],
+            specials: Specials::default(),
+        }
+    }
+}
+impl LinkFamily for YoungLink {
+    fn attributes(&self) -> &LinkAttributes {
+        &self.attributes
+    }
+    const SPIN_TIP_PART: melee_types::FtPart = melee_types::FtPart::L3rdNa;
+    fn specials(&mut self) -> &mut Specials {
+        &mut self.specials
+    }
+    fn specials_ref(&self) -> &Specials {
+        &self.specials
+    }
+}
+
+static SPECIAL_ROWS: [MotionRow; FamilyState::COUNT] = ft_link_family::rows::<YoungLink>();
+pub static TABLE: melee_ft::fighter::CharacterTable =
+    melee_ft::fighter::CharacterTable::new::<YoungLink>();
+
+impl CharacterCallbacks for YoungLink {
+    fn table() -> &'static melee_ft::fighter::CharacterTable {
+        &TABLE
+    }
+    /// ftCl_Init_OnKnockbackEnter (Fighter_OnKnockbackEnter(gobj, 1)).
+    const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) =
+        |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    /// ftCl_Init_OnKnockbackExit (Fighter_OnKnockbackExit(gobj, 1)).
+    const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
+        |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
+    /// ftParts_800753D4(fp, Fighter_804D6540[kind]->x0, item_list[6]): the
+    /// shield bone (part 68 for Link, 72 for Young Link).
+    const ONLOAD_ITEM_JOINT: Option<u32> = Some(6);
+    /// ftCo_800CED30: ftLk_MS_AttackS42.
+    const FORWARD_SMASH_COMBO: Option<melee_ft::fighter::ActionId> =
+        Some(FamilyState::AttackS42.action());
+    const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
+        &ft_link_family::special_moves();
+
+    /// ftData_SpecialN/S/Hi/Lw and the aerial tables.
+    fn enter_special(
+        f: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        ft_link_family::enter_special::<Self>(f, slot, airborne, assets);
+    }
+    /// Fighter_8006C80C: the state's one-shot accessory4.
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        ft_link_family::accessory::<Self>(f, assets);
+    }
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = ft_link_family::retained_scratch_word::<Self>;
+    fn kind(&self) -> FighterKind {
+        FighterKind::CLink
+    }
+    fn descriptor() -> &'static CharacterDescriptor {
+        &DESCRIPTOR
+    }
+    fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
+        Ok(Self::new(read_young_link_attributes(data)?))
+    }
+    /// ftCl_Init_OnLoad (80148CE4): can_walljump, PUSH_ATTRS
+    /// (ftLk_Init_OnLoadForCLink) and six item registrations (Link's five
+    /// and the milk; it_8026B3F8); ftdata.c supplies all four specials.
+    fn on_load(&mut self, capabilities: &mut Capabilities) {
+        capabilities.can_walljump = true;
+        capabilities.specials = [true; 4];
+    }
+    /// The down aerial's hit end frame OnLoad reads from animation 72.
+    fn on_resources_loaded(&mut self, assets: &FighterAssets, _player: &PlayerSlot) {
+        self.attributes = self
+            .attributes
+            .clone()
+            .with_down_air_end(ft_link_family::down_air_frames(assets));
+    }
+    /// ftCl_Init_OnDeath (80148C64): ftParts_80074A4C(gobj, 0..2, 0) and
+    /// the FighterVars reset.
+    fn on_reset(&mut self) {
+        self.model_groups = [0; 3];
+        self.specials = Specials::default();
+    }
+}
+
+/// ftCl_Init_* strings; ftData_Table_Unk0[20] has 314 animation rows
+/// (ftCo_SM_Count plus ftLk_SM_SelfCount).
+pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
+    kind: FighterKind::CLink,
+    common_behavior: melee_ft::fighter::assets::CommonBehavior::for_kind(FighterKind::CLink),
+    data_file: "PlCl.dat",
+    data_symbol: "ftDataClink",
+    animation_file: "PlClAJ.dat",
+    animation_count: 314,
+    part_count: 54,
+    part_animation_count: 3,
+    additional_part_animations: &[],
+    costumes: &[
+        CostumeDescriptor {
+            file: "PlClNr.dat",
+            joint_symbol: "PlyClink5K_Share_joint",
+        },
+        CostumeDescriptor {
+            file: "PlClRe.dat",
+            joint_symbol: "PlyClink5KRe_Share_joint",
+        },
+        CostumeDescriptor {
+            file: "PlClBu.dat",
+            joint_symbol: "PlyClink5KBu_Share_joint",
+        },
+        CostumeDescriptor {
+            file: "PlClWh.dat",
+            joint_symbol: "PlyClink5KWh_Share_joint",
+        },
+        CostumeDescriptor {
+            file: "PlClBk.dat",
+            joint_symbol: "PlyClink5KBk_Share_joint",
+        },
+    ],
+};

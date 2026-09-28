@@ -126,6 +126,122 @@ impl AnimationSource {
     }
 }
 
+/// One `Fighter_804D6540_x0_t` (fighter.h:178-186): a part the costume
+/// model leaves empty (ftParts_8007506C), which OnLoad or a copy ability
+/// fills by grafting a joint (ftParts_800753D4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConditionalPart {
+    /// +0: the empty part the grafted joint becomes.
+    pub part: u8,
+    /// +1: the part it attaches to.
+    pub parent: u8,
+    /// +2: ftParts_80075304's insertion type.
+    pub insertion: u8,
+    /// +3: the joint's pre-order index in the source tree, 0xFF for its root.
+    pub source_index: u8,
+}
+
+/// `Fighter_804D6540[kind]` (ftLoadCommonData +0x14): the kind's
+/// conditional parts, in table order.
+pub fn read_conditional_parts(
+    archive: &Archive,
+    kind: FighterKind,
+) -> Result<Vec<ConditionalPart>> {
+    if i32::from(kind) >= FighterKind::MAX {
+        return Err(invalid("fighter kind", "not a playable data-table index"));
+    }
+    let root = public(archive, "ftLoadCommonData")?;
+    let tables = required(archive, root, 5 * 4, "Fighter_804D6540")?;
+    let Some(table) = archive.link(tables + i32::from(kind) as u32 * 4)? else {
+        return Ok(Vec::new());
+    };
+    let count = archive.reader().u32(table + 4)?;
+    if count == 0 {
+        return Ok(Vec::new());
+    }
+    let entries = required(archive, table, 0, "conditional parts")?;
+    (0..count)
+        .map(|i| {
+            let r = block(archive, entries + i * 4, 4)?;
+            Ok(ConditionalPart {
+                part: r.u8(0)?,
+                parent: r.u8(1)?,
+                insertion: r.u8(2)?,
+                source_index: r.u8(3)?,
+            })
+        })
+        .collect()
+}
+
+/// ftParts_800753D4 (800753D4) at load time, on the costume's joint
+/// description: `joint` (its root only: the copy's next and child are
+/// cleared) becomes part `placement.part`. The costume's own joints skip
+/// that part number (ftParts_8007506C), so grafting before the model is
+/// built gives every joint its retail part index in pre-order.
+pub fn graft_conditional_joint(
+    model: &mut hsd_archive::desc::JObjDesc,
+    joint: &hsd_archive::desc::JObjDesc,
+    placement: ConditionalPart,
+) {
+    if placement.source_index != INVALID_PART {
+        unimplemented!("ftParts_800753D4: a joint below its source tree's root");
+    }
+    if placement.insertion != 0 {
+        unimplemented!("ftParts_80075304: insertion type {}", placement.insertion);
+    }
+    if placement.parent >= placement.part {
+        unimplemented!("ftParts_800753D4: a parent numbered after its conditional part");
+    }
+    let mut graft = joint.clone();
+    graft.child = None;
+    graft.next = None;
+    let mut index = 0;
+    let parent = nth_joint(model, usize::from(placement.parent), &mut index)
+        .expect("conditional part's parent outside the costume model");
+    if parent.is_instance() {
+        unimplemented!("ftParts_80075304: an instanced parent");
+    }
+    // Type 0: the graft becomes the parent's child and takes its child
+    // chain. Retail repoints only the first child's parent, so a chain
+    // with siblings would keep them under the old parent.
+    if parent
+        .child
+        .as_ref()
+        .is_some_and(|child| child.next.is_some())
+    {
+        unimplemented!("ftParts_80075304: type 0 over a child with siblings");
+    }
+    graft.child = parent.child.take();
+    parent.child = Some(Box::new(graft));
+}
+
+/// The joint at pre-order `target` (ftParts_80074060's walk: an instanced
+/// joint's children are not visited).
+fn nth_joint<'a>(
+    joint: &'a mut hsd_archive::desc::JObjDesc,
+    target: usize,
+    index: &mut usize,
+) -> Option<&'a mut hsd_archive::desc::JObjDesc> {
+    let mut current = Some(joint);
+    while let Some(joint) = current {
+        if *index == target {
+            return Some(joint);
+        }
+        *index += 1;
+        let instance = joint.is_instance();
+        let (child, next) = (&mut joint.child, &mut joint.next);
+        if !instance {
+            if let Some(child) = child.as_deref_mut() {
+                if let Some(found) = nth_joint(child, target, index) {
+                    return Some(found);
+                }
+            }
+        }
+        current = next.as_deref_mut();
+    }
+    None
+}
+
 /// `ftData_x44_t`, ft/types.h:584-595, sizeof 0x1C. Six signed bone
 /// indices at +0,+2,+4,+6,+8,+A; center and ledge dimensions at +C..+18.
 /// These are unscaled data. ft_081B.c:53-61 applies *player* scale later.

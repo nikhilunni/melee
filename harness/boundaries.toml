@@ -354,3 +354,21 @@ stage = "FinalDestination"
 players = ["Zelda", "Fox"]
 stocks = 4
 seed = 3958977570
+
+[[boundary]]
+name = "start_fd_link_fox4"
+cold = "start_fd_link_fox4_cold"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+stage = "FinalDestination"
+players = ["Link", "Fox"]
+stocks = 4
+seed = 1420932829
+
+[[boundary]]
+name = "start_fd_younglink_fox4"
+cold = "start_fd_younglink_fox4_cold"
+savestate = "harness/roms/start_fd_younglink_fox4.sav"
+stage = "FinalDestination"
+players = ["YoungLink", "Fox"]
+stocks = 4
+seed = 3155090647
