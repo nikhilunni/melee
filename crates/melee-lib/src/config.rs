@@ -35,6 +35,7 @@ pub enum Character {
     Yoshi,
     Jigglypuff,
     Pikachu,
+    Mario,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -47,6 +48,7 @@ impl Character {
             Self::Yoshi => "Yoshi",
             Self::Jigglypuff => "Jigglypuff",
             Self::Pikachu => "Pikachu",
+            Self::Mario => "Mario",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -63,6 +65,7 @@ impl Character {
             melee_types::FighterKind::Yoshi => Self::Yoshi,
             melee_types::FighterKind::Purin => Self::Jigglypuff,
             melee_types::FighterKind::Pikachu => Self::Pikachu,
+            melee_types::FighterKind::Mario => Self::Mario,
             _ => unreachable!("unregistered match character"),
         }
     }

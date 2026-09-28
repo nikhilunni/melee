@@ -233,25 +233,27 @@ impl ReflectorAttributes {
             gravity_delay: r.s32(0xA4)?,
             momentum_preserve_x: r.f32(0xA8)?,
             fall_accel: r.f32(0xAC)?,
-            reflection: ReflectionAttributes::read(r)?,
+            reflection: ReflectionAttributes::read_at(r, 0xB0)?,
         })
     }
 }
 
 impl ReflectionAttributes {
-    fn read(r: Reader<'_>) -> Result<Self> {
+    /// A ReflectDesc at `base` in a character's special attributes (Fox's
+    /// +0xB0, Mario's cape +0x60).
+    pub fn read_at(r: Reader<'_>, base: u32) -> Result<Self> {
         Ok(Self {
-            joint: r.u32(0xB0)?,
-            max_damage: r.s32(0xB4)?,
+            joint: r.u32(base)?,
+            max_damage: r.s32(base + 0x4)?,
             offset: Vec3 {
-                x: r.f32(0xB8)?,
-                y: r.f32(0xBC)?,
-                z: r.f32(0xC0)?,
+                x: r.f32(base + 0x8)?,
+                y: r.f32(base + 0xC)?,
+                z: r.f32(base + 0x10)?,
             },
-            size: r.f32(0xC4)?,
-            damage_multiplier: r.f32(0xC8)?,
-            speed_multiplier: r.f32(0xCC)?,
-            skip_ownership_change: r.u8(0xD0)?,
+            size: r.f32(base + 0x14)?,
+            damage_multiplier: r.f32(base + 0x18)?,
+            speed_multiplier: r.f32(base + 0x1C)?,
+            skip_ownership_change: r.u8(base + 0x20)?,
         })
     }
 }

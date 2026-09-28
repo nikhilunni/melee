@@ -444,7 +444,10 @@ name = "ft-mario"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-archive",
+ "hsd-types",
  "melee-ft",
+ "melee-test-support",
  "melee-types",
 ]
 

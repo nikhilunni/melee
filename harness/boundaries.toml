@@ -165,3 +165,12 @@ stage = "FinalDestination"
 players = ["Pikachu", "Fox"]
 stocks = 4
 seed = 3648816516
+
+[[boundary]]
+name = "start_fd_mario_fox4"
+cold = "start_fd_mario_fox4_cold"
+savestate = "harness/roms/start_fd_mario_fox4.sav"
+stage = "FinalDestination"
+players = ["Mario", "Fox"]
+stocks = 4
+seed = 1048549139

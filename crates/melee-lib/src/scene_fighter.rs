@@ -97,6 +97,7 @@ scene_characters! {
     "Marth" => Marth(ft_mars::init::Marth),
     "Falco" => Falco(ft_falco::init::Falco),
     "CaptainFalcon" => CaptainFalcon(ft_captain::init::CaptainFalcon),
+    "Mario" => Mario(ft_mario::init::Mario),
 }
 
 fn construct<C: CharacterCallbacks>(
