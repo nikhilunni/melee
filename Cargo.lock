@@ -505,6 +505,7 @@ dependencies = [
  "melee-coll",
  "melee-ef",
  "melee-ft",
+ "melee-it",
  "melee-lb",
  "melee-mp",
  "melee-types",
@@ -780,6 +781,18 @@ dependencies = [
  "gekko-math",
  "hsd-types",
  "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-pikachu"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
  "melee-types",
 ]
 
@@ -1095,6 +1108,7 @@ dependencies = [
  "it-foxlaser",
  "it-heiho",
  "it-peach",
+ "it-pikachu",
  "it-yoshieggthrow",
  "it-yoshistar",
  "melee-cm",

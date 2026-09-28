@@ -7,6 +7,8 @@ pub struct ItemAnimationContext<'a> {
     pub holder: Option<crate::ItemHolder<'a>>,
     pub map: &'a mut melee_mp::CollMap,
     pub assets: &'a ItemAssets,
+    /// The item's partner as it stands (see [`crate::PartnerView`]).
+    pub partner: Option<crate::PartnerView>,
 }
 pub struct ItemPhysicsContext<'a> {
     pub owner: Option<&'a ItemOwner>,
@@ -84,6 +86,17 @@ pub trait ItemLogic {
         _rng: &mut gekko_math::HsdRng,
     ) {
     }
+    /// The spawner's set-up that queries the map once Item_80268B18
+    /// returns (itPikachuThunderJolt_Spawn's it_8026E9A4), after
+    /// [`Self::launched`].
+    fn spawned_with_map(
+        _item: &mut ItemCore,
+        _assets: &ItemAssets,
+        _common: &crate::desc::ItemCommonData,
+        _spawn: &crate::SpawnItem,
+        _map: &mut melee_mp::CollMap,
+    ) {
+    }
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
     fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
@@ -122,6 +135,20 @@ pub trait ItemLogic {
     fn control(_item: &mut ItemCore, _control: ItemControl, _assets: &ItemAssets) {
         unimplemented!("item control for this kind")
     }
+    /// The partner's joint the animation callback reads (its dynamic bone
+    /// index), if any.
+    const PARTNER_BONE: Option<usize> = None;
+    /// The Destroyed callback clears the partner's pointer back (as
+    /// it_2725_Logic106_Destroyed's it_802B43B0 does).
+    const UNLINKS_PARTNER_ON_DESTROY: bool = false;
+    /// A linked item's request arrived; true destroys the receiver.
+    fn link_received(
+        _item: &mut ItemCore,
+        message: crate::LinkMessage,
+        _assets: &ItemAssets,
+    ) -> bool {
+        unimplemented!("linked item message {message:?} for this kind")
+    }
     const LOGIC: ItemLogicRow = ItemLogicRow {
         states: Self::STATES,
         held_part: Self::HELD_PART,
@@ -130,6 +157,7 @@ pub trait ItemLogic {
         model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
         launched: Self::launched,
+        spawned_with_map: Self::spawned_with_map,
         pickup_possible: Self::pickup_possible,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -145,6 +173,9 @@ pub trait ItemLogic {
         hit_shield: Self::hit_shield,
         owner_removed: Self::owner_removed,
         control: Self::control,
+        partner_bone: Self::PARTNER_BONE,
+        unlinks_partner_on_destroy: Self::UNLINKS_PARTNER_ON_DESTROY,
+        link_received: Self::link_received,
     };
 }
 #[derive(Clone, Copy)]
@@ -162,6 +193,13 @@ pub struct ItemLogicRow {
         &crate::SpawnItem,
         &mut gekko_math::HsdRng,
     ),
+    pub spawned_with_map: fn(
+        &mut ItemCore,
+        &ItemAssets,
+        &crate::desc::ItemCommonData,
+        &crate::SpawnItem,
+        &mut melee_mp::CollMap,
+    ),
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
@@ -177,6 +215,9 @@ pub struct ItemLogicRow {
     pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub owner_removed: fn(&mut ItemCore, u8),
     pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
+    pub partner_bone: Option<usize>,
+    pub unlinks_partner_on_destroy: bool,
+    pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
 }
 pub trait ItemDispatch {
     fn logic(kind: ItemKind) -> &'static ItemLogicRow;

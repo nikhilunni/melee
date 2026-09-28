@@ -315,6 +315,9 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::DestroyEffects => {
+                        state.effects.expire_item_joint(item.id, &mut state.particles);
+                    }
                     melee_it::ItemEvent::SlashSpark { position } => {
                         state.effects.spawn_item_slash_spark::<RetailTrig>(
                             position,
@@ -436,6 +439,73 @@ impl Runtime {
         Ok(())
     }
 
+    /// Requests between linked articles made during this proc, in request
+    /// order (see [`melee_it::LinkRequest`]).
+    fn deliver_item_links(&mut self, s_link: u8, world: &mut World) -> Result<()> {
+        use crate::scene_items::SceneItems;
+        use melee_it::{ItemDispatch, LinkMessage, LinkTarget};
+        let state = &mut self.state;
+        loop {
+            let pending = state
+                .items
+                .iter()
+                .find(|item| !item.link_requests.is_empty())
+                .map(|item| item.id);
+            let Some(sender) = pending else {
+                break;
+            };
+            let request = state.items.get_mut(sender).unwrap().link_requests.remove(0);
+            let target = match request.target {
+                LinkTarget::Item(target) => target,
+                LinkTarget::Spawn(mut spawn) => {
+                    // it_8027B0C4: the parent fighter's current attack.
+                    let owner = spawn.owner.expect("linked article spawned without an owner");
+                    let (index, fighter) = state
+                        .fighters
+                        .iter()
+                        .enumerate()
+                        .find(|(_, f)| f.player.id == owner)
+                        .expect("linked article owner");
+                    spawn.stale_source = fighter.combat.stale.attack();
+                    let stale_multiplier = fighter
+                        .combat
+                        .stale
+                        .multiplier(&state.assets.fighters[index].stale_weights);
+                    let id = crate::scene_items::request(
+                        &mut state.items,
+                        &state.assets.items,
+                        &mut state.map,
+                        world,
+                        &mut self.item_objects,
+                        melee_it::ItemRequest::Spawn(spawn),
+                        crate::scene_items::RequestOwner {
+                            slot: Some(owner),
+                            held_item: None,
+                            after_hitbox_refresh: s_link > 11,
+                            stale_multiplier,
+                        },
+                        &mut state.rng,
+                    )
+                    .unwrap_or_else(|| unimplemented!("it_802B4224: Item_80268B18 found no room"));
+                    state.items.get_mut(id).unwrap().partner = Some(sender);
+                    state.items.get_mut(sender).unwrap().partner = Some(id);
+                    id
+                }
+            };
+            let Some(item) = state.items.get_mut(target) else {
+                continue;
+            };
+            if request.message == LinkMessage::Unlinked {
+                item.partner = None;
+                continue;
+            }
+            let assets = state.assets.items.get(item.kind);
+            let receive = SceneItems::logic(item.kind).link_received;
+            item.destroyed |= receive(item, request.message, assets);
+        }
+        Ok(())
+    }
+
     fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
         use crate::scene_items::SceneItems;
         let state = &mut self.state;
@@ -496,6 +566,8 @@ impl Runtime {
                 if let Some(index) = holder_index {
                     grab_pairs::constrain(state, index);
                 }
+                let partner =
+                    crate::scene_items::partner_view(&state.items, &state.assets.items, id);
                 let holder = match (holder_index, held_part) {
                     (Some(index), Some(part)) => Some(
                         state.fighters[index]
@@ -511,6 +583,7 @@ impl Runtime {
                     owner.as_ref(),
                     holder,
                     &mut state.map,
+                    partner,
                 );
                 // Item_8026A848 -> ftCommon_8007E6DC: the hand lets go.
                 let released = state.items.get_mut(id).is_none_or(|item| !item.held);
@@ -575,7 +648,7 @@ impl Runtime {
             }
             11 => {
                 let item = state.items.get_mut(id).unwrap();
-                item.update_hitboxes();
+                item.update_hitboxes(state.assets.items.get(kind));
                 item.decay_reflection_history();
             }
             14 => {
@@ -1397,6 +1470,8 @@ impl Runtime {
                 }
             });
         }
+        self.deliver_item_links(row.s_link, world)?;
+        let state = &mut self.state;
         // A new article's own efSync_Spawn (it_802BE2E8, it_802BD248's
         // it_80272C08) belongs to its spawner's proc.
         if state.items.iter().any(|item| {

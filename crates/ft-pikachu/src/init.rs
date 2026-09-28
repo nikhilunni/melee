@@ -27,6 +27,7 @@ impl Pikachu {
 }
 impl PikachuFamily for Pikachu {
     const QUICK_ATTACK_TRAIL: bool = true;
+    const JOLT_SOUND: u32 = ft_pikachu_family::special_n::PIKACHU_JOLT_SOUND;
     fn attributes(&self) -> &PikachuAttributes {
         &self.attributes
     }

@@ -166,6 +166,9 @@ pub struct ItemAssets {
     /// The joint whose animation moves the kind (itUpdateVelocityFromBone),
     /// sampled by [`Self::read_bone_motion`].
     pub bone_motion: Option<crate::bone_motion::BoneMotion>,
+    /// Every joint's locals per animation step, sampled by
+    /// [`Self::read_pose`] for kinds that read a joint below the root.
+    pub pose: Option<crate::pose::ItemPose>,
     /// Special attribute words that point at an integer (itHeiho x0), read
     /// through by [`Self::from_stage_item`]: the integer at each.
     pub special_pointees: Vec<i32>,
@@ -357,6 +360,7 @@ impl ItemAssets {
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
             attachment_translation,
             bone_motion: None,
+            pose: None,
             special_pointees: Vec::new(),
         })
     }
@@ -400,6 +404,14 @@ impl ItemAssets {
 
     /// Samples dynamic bone `bone`'s animation in every article state for
     /// itUpdateVelocityFromBone.
+    /// Sample [`Self::pose`] from the article's model and joint animations.
+    pub fn read_pose(
+        &mut self,
+        archive: &Archive,
+    ) -> std::result::Result<(), hsd_anim::load::LoadError> {
+        self.pose = Some(crate::pose::ItemPose::read(archive, &self.visual)?);
+        Ok(())
+    }
     pub fn read_bone_motion(
         &mut self,
         archive: &Archive,

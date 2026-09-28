@@ -9,11 +9,30 @@ fn item_joint(item: u32) -> usize {
     FIRST_ITEM_JOINT + item as usize
 }
 
-/// efSync_Spawn rows whose generators follow the item's root JObj.
-fn item_generators(id: u16) -> Result<&'static [u32]> {
+/// An efSync_Spawn row whose generators follow the item's root JObj.
+struct ItemGenerators {
+    /// The particle bank (0 common, else a character's).
+    bank: u8,
+    kinds: &'static [u32],
+    /// efLib_CreateGenerator_Attach_AddAppSRT; otherwise a bare
+    /// hsd_8039EFAC on the JObj.
+    add_appsrt: bool,
+}
+fn item_generators(id: u16) -> Result<ItemGenerators> {
     Ok(match id {
         // efsync.c:436-441: Toad's spores, the second only after the first.
-        0x4D3 => &[0x172, 0x173],
+        0x4D3 => ItemGenerators {
+            bank: 0,
+            kinds: &[0x172, 0x173],
+            add_appsrt: true,
+        },
+        // efsync.c:104-106: the Thunder Jolt ball's trail,
+        // hsd_8039EFAC(0, 7, 0x1B58, jobj).
+        0x4BD => ItemGenerators {
+            bank: 7,
+            kinds: &[0x1B58],
+            add_appsrt: false,
+        },
         _ => anyhow::bail!("efSync_Spawn {id:#x} on an item JObj"),
     })
 }
@@ -32,17 +51,25 @@ impl Effects {
         rng: &mut HsdRng,
     ) -> Result<()> {
         let joint = item_joint(item);
-        for &kind in item_generators(id)? {
-            let mut spawn = SpawnRequest::new(0, kind, 0);
+        let row = item_generators(id)?;
+        let bank = if row.bank == 0 {
+            bank
+        } else {
+            resources::character_bank(&self.character_banks, row.bank.into())?
+        };
+        for &kind in row.kinds {
+            let mut spawn = SpawnRequest::new(row.bank, kind, 0);
             spawn.joint = Some((joint, matrix));
             self.events.spawn(&spawn, false, false);
             let Some(generator) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
             else {
                 break;
             };
-            self.events.flags(joint, 0x600, 0x800);
-            let generator = particles.generator_mut(generator).unwrap();
-            generator.flags = (generator.flags & !0x600) | 0x800;
+            if row.add_appsrt {
+                self.events.flags(joint, 0x600, 0x800);
+                let generator = particles.generator_mut(generator).unwrap();
+                generator.flags = (generator.flags & !0x600) | 0x800;
+            }
             if !self.item_joints.contains(&item) {
                 self.item_joints.push(item);
             }

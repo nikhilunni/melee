@@ -4,6 +4,7 @@
 pub mod attributes;
 mod common;
 pub mod special_hi;
+pub mod special_n;
 pub mod special_s;
 
 use attributes::PikachuAttributes;
@@ -19,6 +20,8 @@ pub trait PikachuFamily: CharacterCallbacks {
     /// ftPk_SpecialHiStart1_Anim: every kind but Pichu spawns effect 1012
     /// along the zip.
     const QUICK_ATTACK_TRAIL: bool;
+    /// ftPk_SpecialN_Anim's ft_PlaySFX id for the jolt.
+    const JOLT_SOUND: u32;
     fn attributes(&self) -> &PikachuAttributes;
     fn specials(&mut self) -> &mut Specials;
     fn specials_ref(&self) -> &Specials;
@@ -181,14 +184,20 @@ pub(crate) const fn row(
     }
 }
 
-/// ftPk_Init_MotionStateTable (ftpikachu.c:19-282). Thunder Jolt and
-/// Thunder stay unported rows.
+/// ftPk_Init_MotionStateTable (ftpikachu.c:19-282). Thunder stays
+/// unported rows.
 pub const fn rows<C: PikachuFamily>() -> [MotionRow; FamilyState::COUNT] {
     let mut rows = [melee_ft::fighter::state::unimplemented_row(); FamilyState::COUNT];
     let mut i = 0;
     while i < FamilyState::COUNT {
         rows[i].action = ALL[i].action();
         rows[i].animation = ALL[i].animation();
+        i += 1;
+    }
+    let neutral = special_n::rows::<C>();
+    i = 0;
+    while i < neutral.len() {
+        rows[(neutral[i].action.0 - FamilyState::SpecialN as u16) as usize] = neutral[i];
         i += 1;
     }
     let side = special_s::rows::<C>();
@@ -236,9 +245,7 @@ pub fn enter_special<C: PikachuFamily>(
     match slot {
         SpecialSlot::Side => special_s::enter::<C>(f, airborne, assets),
         SpecialSlot::Up => special_hi::enter::<C>(f, airborne, assets),
-        SpecialSlot::Neutral => unimplemented!(
-            "ftPk_SpecialN_Enter / ftPk_SpecialAirN_Enter (airborne: {airborne}): Thunder Jolt"
-        ),
+        SpecialSlot::Neutral => special_n::enter::<C>(f, airborne, assets),
         SpecialSlot::Down => unimplemented!(
             "ftPk_SpecialLw_Enter / ftPk_SpecialAirLw_Enter (airborne: {airborne}): Thunder"
         ),

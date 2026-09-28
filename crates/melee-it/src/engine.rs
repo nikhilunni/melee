@@ -58,6 +58,9 @@ pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, jobj): generators that follow the item's own
     /// root JObj (Toad's spores, 0x4D3).
     OwnEffect { id: u16 },
+    /// efLib_DestroyAll(gobj) on a living item: the generators on its JObj
+    /// go (the Thunder Jolt ball's trail).
+    DestroyEffects,
     /// ItemSwitch -> it_8027327C -> it_802787B4 (802787B4): the kind's
     /// destroy effect at the item's root, through it_80278800's zero-range
     /// offset spread (three HSD_Randf draws). `root` is the JObj translation
@@ -115,7 +118,28 @@ pub enum ItemScratch {
     Bomb(BombState),
     Heiho(HeihoState),
     Turnip(TurnipState),
+    Jolt(JoltState),
     None,
+}
+/// Item.xDD4_itemVar.pikachujoltground and .pikachujoltair
+/// (itpikachutjoltground.c / itpikachutjoltair.c): the Thunder Jolt ball
+/// and the crawler it rides along a surface.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JoltState {
+    /// Ball xDD4: the flight's angle.
+    pub angle: f32,
+    /// Ball xDE8: the position before this frame's move, the ray's start.
+    pub previous_position: Vec3,
+    /// Ball xDF4, crawler xDE8: the surface's normal (the crawler's
+    /// rotation follows it).
+    pub normal: Vec3,
+    /// Ball xE00: the normal before the last contact.
+    pub previous_normal: Vec3,
+    /// Ball xDE4: frames since the last contact; crawler xDF4: frames on
+    /// the current surface.
+    pub frames: i32,
+    /// Ball xDE0: its trail generator (efSync 0x4BD) still plays.
+    pub trail: bool,
 }
 /// Item.xDD4_itemVar.heiho (itheiho.c): a Yoshi's Story Shy Guy.
 #[derive(Clone, Debug)]
@@ -329,6 +353,15 @@ pub struct ItemCore {
     /// xDCC b3 (Item_80268B18 sets it): Item_802696CC removes the item past
     /// the blast zones. A Shy Guy clears it until it has been on screen.
     pub blast_zone_checked: bool,
+    /// The other item this one points at (see [`crate::LinkRequest`]).
+    pub partner: Option<u32>,
+    /// Requests for linked items, delivered once the proc returns.
+    pub link_requests: melee_types::fixed::FixedVec<crate::LinkRequest, 4>,
+    /// HSD_JObjAnimAll steps since the article state's animation began
+    /// (Item_80268D34's HSD_JObjReqAnimAll), for [`crate::pose::ItemPose`].
+    pub pose_steps: u32,
+    /// The article state the motion plays (its ItemStateTable anim_id).
+    pub article_state: usize,
 }
 /// lb_8000B804: the model root's authored rotation.
 pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
@@ -426,6 +459,7 @@ impl ItemCore {
     }
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
         self.motion = motion;
+        self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
         self.script = ScriptState::default();
         if assets
@@ -506,6 +540,14 @@ impl ItemCore {
             self.script = ScriptState::default();
             return;
         }
+        self.article_state = article_state as usize;
+        // Item_80268D34's HSD_JObjReqAnimAll(0) with ANIM_UPDATE, then the
+        // HSD_JObjAnimAll every state change takes.
+        self.pose_steps = if flags & state_change::ANIM_UPDATE != 0 {
+            1
+        } else {
+            self.pose_steps + 1
+        };
         if flags & (state_change::ANIM_UPDATE | state_change::CMD_UPDATE) != 0 {
             self.script = ScriptState::default();
             if assets
@@ -542,28 +584,43 @@ impl ItemCore {
         }
     }
     /// it_8027137C / it_8027129C: refresh world capsules at item s-link 11.
-    pub fn update_hitboxes(&mut self) {
+    pub fn update_hitboxes(&mut self, assets: &ItemAssets) {
         for id in 0..self.hitboxes.len() {
-            self.update_hitbox(id);
+            self.update_hitbox(id, assets);
+        }
+    }
+    /// The model root's transform as the kind code set it.
+    pub fn root_srt(&self) -> crate::pose::RootSrt {
+        crate::pose::RootSrt {
+            translate: self.position,
+            rotate: self.rotation,
+            scale: self.model_scale,
         }
     }
     /// it_8027129C (8027129C): one capsule's position from its bone.
-    fn update_hitbox(&mut self, id: usize) {
+    fn update_hitbox(&mut self, id: usize, assets: &ItemAssets) {
+        let root = self.root_srt();
+        let (state, steps) = (self.article_state, self.pose_steps);
         let Some(hit) = &mut self.hitboxes[id] else {
             return;
         };
-        assert_eq!(
-            hit.descriptor.bone, 0,
-            "item non-root hitbox bone is not ported"
-        );
-        let mut matrix = hsd_types::Mtx::default();
-        hsd_anim::mtx::hsd_mtx_srt(
-            &mut matrix,
-            &self.model_scale,
-            &self.rotation,
-            &self.position,
-            None,
-        );
+        let matrix = if hit.descriptor.bone == 0 {
+            let mut matrix = hsd_types::Mtx::default();
+            hsd_anim::mtx::hsd_mtx_srt(
+                &mut matrix,
+                &self.model_scale,
+                &self.rotation,
+                &self.position,
+                None,
+            );
+            matrix
+        } else {
+            let pose = assets
+                .pose
+                .as_ref()
+                .expect("item non-root hitbox bone without a sampled pose");
+            pose.bone_matrix(state, steps, hit.descriptor.bone, root)
+        };
         let mut position = Vec3::ZERO;
         hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
         hit.update_position(position);
@@ -615,6 +672,7 @@ impl ItemCore {
         if assets.model != 0 {
             self.animation_frame += self.animation_rate;
         }
+        self.pose_steps += 1;
         self.advance_script(assets);
     }
     /// Item_802799E4: shared command timing, item-owned application.
@@ -666,7 +724,7 @@ impl ItemCore {
                     // it_802790C0: created after link 11's refresh, the
                     // capsule is placed at once.
                     if self.past_hitbox_refresh {
-                        self.update_hitbox(*id);
+                        self.update_hitbox(*id, assets);
                     }
                 }
                 Command::SetHitboxDamage { id, damage } => {
@@ -679,7 +737,7 @@ impl ItemCore {
                     self.hitboxes[*id] = None;
                     self.reflection_history[*id].clear();
                     // it_80272560 updates every surviving capsule immediately.
-                    self.update_hitboxes();
+                    self.update_hitboxes(assets);
                 }
                 Command::ClearHitboxes => {
                     self.hitboxes.fill(None);
@@ -868,6 +926,10 @@ impl ItemPool {
             queued_events: Default::default(),
             events: Default::default(),
             blast_zone_checked: true,
+            partner: None,
+            link_requests: Default::default(),
+            pose_steps: 0,
+            article_state: 0,
         };
         // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
         item.update_spin(self.common.spawn_spin_degrees);
@@ -1023,6 +1085,7 @@ impl ItemPool {
         owner: Option<&ItemOwner>,
         holder: Option<crate::ItemHolder<'_>>,
         map: &mut melee_mp::CollMap,
+        partner: Option<crate::PartnerView>,
     ) {
         let Some(item) = self.get_mut(id) else {
             return;
@@ -1038,6 +1101,7 @@ impl ItemPool {
                     holder,
                     map,
                     assets,
+                    partner,
                 },
             );
             if ended && !item.destroyed {
@@ -1150,6 +1214,11 @@ impl ItemPool {
             if self.items[index].destroyed {
                 let mut item = self.items.remove(index);
                 (D::logic(item.kind).destroyed)(&mut item);
+                if D::logic(item.kind).unlinks_partner_on_destroy {
+                    if let Some(partner) = item.partner.and_then(|id| self.get_mut(id)) {
+                        partner.partner = None;
+                    }
+                }
             } else {
                 index += 1;
             }
@@ -1244,6 +1313,7 @@ mod tests {
             grab_range: hsd_types::Vec2::ZERO,
             attachment_translation: Vec3::ZERO,
             bone_motion: None,
+            pose: None,
             special_pointees: Vec::new(),
         }
     }

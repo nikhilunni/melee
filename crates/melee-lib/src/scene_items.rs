@@ -26,6 +26,8 @@ melee_it::item_kinds! {
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
         Heiho: it_heiho::Heiho,
+        PikachuTJoltGround: it_pikachu::ThunderJoltBall,
+        PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
     }
 }
 
@@ -197,6 +199,36 @@ impl Resources {
             kinds.push((ItemKind::PeachTurnip, turnip));
             visual_archives.push((ItemKind::PeachTurnip, std::sync::Arc::clone(&a)));
         }
+        // ftPk_Init_OnLoad: ftData.x48_items[1] is the Thunder Jolt ball,
+        // [2] the crawler it rides (whose joint 6 the ball reads).
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlPk.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataPikachu").context("Pikachu fighter data")?;
+            let ball = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_pikachu::BALL_ARTICLE_INDEX,
+                &it_pikachu::jolt::BALL_ARTICLE_STATES,
+                4,
+            )?;
+            kinds.push((ItemKind::PikachuTJoltGround, ball));
+            visual_archives.push((ItemKind::PikachuTJoltGround, std::sync::Arc::clone(&a)));
+            let mut crawler = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_pikachu::CRAWLER_ARTICLE_INDEX,
+                &it_pikachu::jolt::CRAWLER_ARTICLE_STATES,
+                0,
+            )?;
+            crawler
+                .read_pose(&a)
+                .map_err(|e| anyhow::anyhow!("Thunder Jolt crawler pose: {e}"))?;
+            kinds.push((ItemKind::PikachuTJoltAir, crawler));
+            visual_archives.push((ItemKind::PikachuTJoltAir, std::sync::Arc::clone(&a)));
+        }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
             stage,
@@ -229,6 +261,40 @@ impl Resources {
             .expect("registered item assets")
             .1
     }
+}
+
+/// What `id`'s animation callback sees of its partner: the partner's own
+/// link and, for a kind that reads one, the partner's joint in world space
+/// (lb_8000B1CC on xBBC_dynamicBoneTable->bones[i], under the root the
+/// partner's collision proc last placed).
+pub fn partner_view(
+    pool: &ItemPool,
+    resources: &Resources,
+    id: u32,
+) -> Option<melee_it::PartnerView> {
+    let item = pool.iter().find(|item| item.id == id)?;
+    let partner = pool.iter().find(|p| Some(p.id) == item.partner)?;
+    let bone_position = SceneItems::logic(item.kind).partner_bone.map(|bone| {
+        let pose = resources
+            .get(partner.kind)
+            .pose
+            .as_ref()
+            .expect("partner joint without a sampled pose");
+        pose.bone_position(
+            partner.article_state,
+            partner.pose_steps,
+            bone,
+            melee_it::pose::RootSrt {
+                translate: partner.root_translation,
+                rotate: partner.rotation,
+                scale: partner.model_scale,
+            },
+        )
+    });
+    Some(melee_it::PartnerView {
+        partner: partner.partner,
+        bone_position,
+    })
 }
 
 pub const TAG_BASE: usize = 1 << 16;
@@ -319,6 +385,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
             return None;
@@ -347,6 +414,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
             thrown.end_hold(center, attack, map, assets);
@@ -405,6 +473,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
             dropped.end_hold(center, attack, map, assets);
@@ -435,6 +504,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
             dropped.end_hold(center, attack, map, assets);
@@ -460,6 +530,13 @@ pub fn request(
             &spawn,
             rng,
         );
+        (SceneItems::logic(spawn.kind).spawned_with_map)(
+            pool.get_mut(id).unwrap(),
+            assets,
+            &common,
+            &spawn,
+            map,
+        );
         if let ItemRequest::SpawnInHand { part, .. } = request {
             // Item_8026AB54: it_802742F4's attachment, then the kind's
             // pickup callback.
@@ -480,6 +557,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
         }
@@ -492,6 +570,7 @@ pub fn request(
                     holder: None,
                     map,
                     assets,
+                    partner: None,
                 },
             );
         }
