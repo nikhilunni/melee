@@ -104,7 +104,7 @@ impl InitialState {
     }
 }
 /// The first record of a captured trace, plain or compressed as the source reads it.
-fn first_json(scenario: &impl crate::diagnostics::ScenarioSource, path: &Path) -> Result<Json> {
+fn first_json(scenario: &dyn crate::diagnostics::ScenarioSource, path: &Path) -> Result<Json> {
     let line = scenario
         .open_trace(path)
         .with_context(|| format!("opening {}", path.display()))?
@@ -115,7 +115,7 @@ fn first_json(scenario: &impl crate::diagnostics::ScenarioSource, path: &Path) -
 }
 impl InitialState {
     pub fn from_savestate_traces(
-        scenario: &impl crate::diagnostics::ScenarioSource,
+        scenario: &dyn crate::diagnostics::ScenarioSource,
     ) -> Result<Self> {
         let setup = scenario.setup()?;
         ensure!(

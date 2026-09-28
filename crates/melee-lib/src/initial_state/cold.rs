@@ -27,7 +27,7 @@ const ENTRY_STAGGER_FRAMES: i32 = 5;
 impl InitialState {
     /// fn_8016E730 (gm_16AE.c): Ground creation, Player/Fighter creation,
     /// then the pre-music boundary. Only owned DAT resources are read.
-    pub fn from_parameters(source: &impl crate::diagnostics::ScenarioSource) -> Result<Self> {
+    pub fn from_parameters(source: &dyn crate::diagnostics::ScenarioSource) -> Result<Self> {
         ensure!(
             source.is_cold(),
             "cold construction requires savestate omitted"

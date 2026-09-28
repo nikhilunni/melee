@@ -24,7 +24,7 @@ pub fn asset_fingerprint(assets: &crate::GameAssets) -> u64 {
 }
 /// Import a captured oracle boundary. Unlike Match::new, the first step may
 /// complete a partial tick. Tick numbering intentionally matches the fixture.
-pub fn import_match(source: &impl ScenarioSource) -> anyhow::Result<crate::Match> {
+pub fn import_match(source: &dyn ScenarioSource) -> anyhow::Result<crate::Match> {
     let setup = source.setup()?;
     let state = if source.is_cold() {
         InitialState::from_parameters(source)?
