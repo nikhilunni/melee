@@ -1,0 +1,29 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+# The savestate (and its sidecar seed 239131442) was captured inside Fox's
+# Fighter_Create (ftAnim_8006FE48 -> GetMemoryEntry, PC 80381D8C), before
+# Fighter_UnkProcessDeath: Fox's two CPU setup draws, ftCo_800A101C (reaction
+# timer 6) and ftCo_800B9704 (attack delay), were still to come. The
+# post-creation seed is 239131442 after those two draws; the ledger's
+# frame-0 end seed 819713295 is that plus the music draw.
+name = "start_fd_jigglypuff_fox4_cold"
+expected = "start_fd_jigglypuff_fox4"
+frames = 600
+seed = 3199439676
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"

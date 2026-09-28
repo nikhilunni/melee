@@ -5,6 +5,13 @@ use anyhow::{ensure, Result};
 use gekko_math::HsdRng;
 use melee_ft::fighter::{PlayerSlot, SpawnContext, SpawnCounter};
 
+/// GetMemoryEntry (80381D58, class.c:79) just past its `idx >= 0` assert.
+const GET_MEMORY_ENTRY_AFTER_ASSERT: u32 = 0x8038_1D8C;
+/// Fighter_Create return addresses of the supported unfinished calls, both
+/// before Fighter_UnkProcessDeath (bl at 800692E0): HSD_JObjLoadJoint (bl at
+/// 80068F88) and ftAnim_8006FE48 (bl at 80069020).
+const CREATE_RETURNS_BEFORE_DEATH: [u32; 2] = [0x8006_8F8C, 0x8006_9024];
+
 /// Fighter_Create (80068E98) loads its costume before resetting gameplay
 /// state and drawing the two CPU values. Rebuild that uninitialised fighter
 /// through the same constructor as cold setup, using saved StaticPlayer data.
@@ -19,10 +26,15 @@ pub(super) fn fighter(
     // HSD_MObjAlloc, or HSD_MemAlloc just after OSAllocFromHeap (8037F210),
     // during Fighter_UnkUpdateCostumeJoint_800686E4. The latter comes from
     // HSD_SListAlloc in loadEnvelopeDesc (PObj skinning envelopes), under
-    // lbRefract_PObjLoad -> HSD_DObjLoadDesc -> JObjLoad.
-    // Both precede Fighter_UnkProcessDeath and its CPU RNG initialization.
+    // lbRefract_PObjLoad -> HSD_DObjLoadDesc -> JObjLoad. Or GetMemoryEntry
+    // just past its idx assert (80381D8C), hsdAllocMemPiece's size-class
+    // lookup, while ftAnim_8006FE48 builds the animation skeleton
+    // (ftParts_8007482C). All are HSD heap work inside Fighter_Create, before
+    // Fighter_UnkProcessDeath, its spawn number and its CPU RNG draws.
     ensure!(
-        (0x8036_3CA4..0x8036_3D00).contains(&pc) || pc == 0x8037_F210,
+        (0x8036_3CA4..0x8036_3D00).contains(&pc)
+            || pc == 0x8037_F210
+            || pc == GET_MEMORY_ENTRY_AFTER_ASSERT,
         "unsupported unfinished fighter creation PC {pc:08X}"
     );
     if pc == 0x8037_F210 {
@@ -38,8 +50,7 @@ pub(super) fn fighter(
     for _ in 0..MAX_SETUP_STACK_FRAMES {
         let frame = saved.bytes(stack, 8);
         let caller = word(frame, 4);
-        // Return from HSD_JObjLoadJoint, before Fighter_UnkProcessDeath.
-        in_create |= caller == 0x8006_8F8C;
+        in_create |= CREATE_RETURNS_BEFORE_DEATH.contains(&caller);
         if in_create {
             break;
         }
@@ -48,7 +59,10 @@ pub(super) fn fighter(
             break;
         }
     }
-    ensure!(in_create, "costume allocation is not inside Fighter_Create");
+    ensure!(
+        in_create,
+        "unfinished allocation is not inside Fighter_Create"
+    );
     // pl/player.h StaticPlayer; Player_Get* assembly confirms stride 0xE90.
     let raw = saved.bytes(0x8045_3080 + slot as u32 * 0xE90, 0xB0);
     ensure!(
