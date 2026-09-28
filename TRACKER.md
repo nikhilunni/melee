@@ -78,7 +78,7 @@ agent each (`CLAUDE.md` "Agents").
 ## Status by area
 
 **Characters** (`crates/ft-<name>`): Fox and Marth complete for the matchup.
-21 of 26 kinds are registered: Fox, Falco, Marth, Roy, Captain Falcon,
+20 of 26 characters are registered: Fox, Falco, Marth, Roy, Captain Falcon,
 Ganondorf, Peach, Yoshi, Jigglypuff, Pikachu, Pichu, Mario, Dr. Mario,
 Luigi, Samus, Sheik, Zelda, Ice Climbers (Popo and Nana), Link, Young Link,
 each with its start boundary and explorer batches; specials complete except
