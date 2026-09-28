@@ -37,7 +37,9 @@ members = [
     # Layer 3: one crate per character. Depend on melee-ft, never on each other.
     "crates/ft-fox",
     "crates/ft-fox-family",
+    "crates/ft-mars-family",
     "crates/ft-mars",
+    "crates/ft-emblem",
     "crates/ft-falco",
     "crates/ft-captain",
     "crates/ft-peach",

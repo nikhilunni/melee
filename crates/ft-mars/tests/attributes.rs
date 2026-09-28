@@ -62,14 +62,14 @@ fn disc_attributes_and_character_resets() {
     marth.on_load(&mut capabilities);
     assert!(!capabilities.can_walljump);
     assert_eq!(capabilities.specials, [true; 4]);
-    marth.side_special_boost_used = true;
+    marth.specials.side_special_boost_used = true;
     marth.model_groups = [1, 2];
     marth.on_landing(false);
-    assert!(!marth.side_special_boost_used);
+    assert!(!marth.specials.side_special_boost_used);
     assert_eq!(marth.model_groups, [1, 2]);
-    marth.side_special_boost_used = true;
+    marth.specials.side_special_boost_used = true;
     marth.on_reset();
-    assert!(!marth.side_special_boost_used);
+    assert!(!marth.specials.side_special_boost_used);
     assert_eq!(marth.model_groups, [0; 2]);
 }
 

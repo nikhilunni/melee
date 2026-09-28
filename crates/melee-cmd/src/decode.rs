@@ -131,6 +131,7 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             pan: ((word >> 10) & 255) as u8,
         }),
         50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
+        51 => Command::SelfDamage(((word << 6) as i32) >> 6),
         49 => Command::SwordTrail {
             duration: ((word << 7) as i32) >> 7,
             reverse: word & (1 << 25) != 0,

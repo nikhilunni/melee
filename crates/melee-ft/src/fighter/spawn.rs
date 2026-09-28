@@ -1537,6 +1537,7 @@ impl FighterCore {
                 assets,
                 hand,
             );
+            self.apply_script_damage();
         }
         self.apply_dynamic_commands(assets);
         // Fighter_ChangeMotionState, fighter.c:1363-1368: leaving root motion

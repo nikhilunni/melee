@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 193] = [
+const MATRIX_WITNESSES: [(&str, usize); 205] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1208,6 +1208,24 @@ const MATRIX_WITNESSES: [(&str, usize); 193] = [
     ("mario_cape_turn_shield_fd_fox4", 300),
     ("mario_cape_reflect_laser_fd_fox4", 300),
     ("mario_fireball_shine_fd_fox4", 300),
+    // ROY: Marth's specials with Roy's data (ft-mars-family). Flare Blade
+    // tapped, aerial, into Fox uncharged and charged a level, and held to
+    // full charge (the 0x40F explosion and the opcode-51 10% recoil);
+    // Double-Edge Dance grounded and aerial; Blazer; Counter whiffed, and
+    // catching Fox's jab and laser on the ground and a laser in the air,
+    // where only Roy's retaliation rewrites its hitbox damage.
+    ("roy_flareblade_fd_fox4", 420),
+    ("roy_flareblade_air_fd_fox4", 420),
+    ("roy_flareblade_hit_fd_fox4", 231),
+    ("roy_flareblade_charged_hit_fd_fox4", 300),
+    ("roy_flareblade_full_fd_fox4", 620),
+    ("roy_dancingblade_fd_fox4", 420),
+    ("roy_dancingblade_air_fd_fox4", 420),
+    ("roy_blazer_fd_fox4", 420),
+    ("roy_counter_fd_fox4", 300),
+    ("roy_counter_hit_fd_fox4", 241),
+    ("roy_counter_laser_fd_fox4", 225),
+    ("roy_aircounter_laser_fd_fox4", 225),
 ];
 
 #[test]
@@ -2269,7 +2287,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 215] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 227] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2644,6 +2662,20 @@ const CORPUS_V3_MATCHES: [(&str, usize); 215] = [
     ("corpus_v3_ps_fox_marth4_ee133b82f_p0", 5491),
     ("corpus_v3_ps_fox_marth4_ecdf8887e_p1", 5085),
     ("corpus_v3_ps_fox_marth4_e2b9e1400_p2", 4222),
+    // ROY: exact samples of a 128-seed batch (seeds after 64) from
+    // start_fd_roy_fox4 (no faults in 384 cases); particle sites exact.
+    ("corpus_v3_fd_roy_fox4_e9a8e5048_p0", 6001),
+    ("corpus_v3_fd_roy_fox4_ef17f3433_p2", 4045),
+    ("corpus_v3_fd_roy_fox4_e721bca4f_p1", 6001),
+    ("corpus_v3_fd_roy_fox4_ebf1d3d3e_p0", 4460),
+    ("corpus_v3_fd_roy_fox4_e4f8edfa8_p2", 5837),
+    ("corpus_v3_fd_roy_fox4_e3b84663f_p1", 4673),
+    ("corpus_v3_fd_roy_fox4_e67c8e917_p0", 3367),
+    ("corpus_v3_fd_roy_fox4_e7af4edc6_p2", 4187),
+    ("corpus_v3_fd_roy_fox4_ebd36234b_p1", 6001),
+    ("corpus_v3_fd_roy_fox4_ed5076307_p0", 6001),
+    ("corpus_v3_fd_roy_fox4_ea33f1478_p2", 6001),
+    ("corpus_v3_fd_roy_fox4_e6aa92c64_p1", 4286),
 ];
 
 #[test]

@@ -1,62 +1,46 @@
 //! Marth load/reset hooks, ft/kinds/ftMars/ftmars.c.
 use crate::attributes::MarsAttributes;
 use melee_ft::fighter::{Capabilities, CharacterCallbacks};
+use ft_mars_family::{MarsFamily, Specials};
 use melee_types::FighterKind;
 
 #[derive(Clone, Debug)]
 pub struct Marth {
     pub attributes: MarsAttributes,
-    pub special_n: crate::special_n::SpecialN,
-    pub special_side: crate::special_s::SpecialSide,
-    pub special_lw: crate::special_lw::SpecialLw,
-    pub special_hi: crate::special_hi::SpecialHi,
-    /// Fighter +222C, ftmarsspecials.c:56-60: once-per-airtime vertical boost.
-    pub side_special_boost_used: bool,
+    /// mv.ms, +222C and the retained mv+4 word of the shared specials.
+    pub specials: Specials,
     /// ftMs_Init_OnDeath resets model groups 0 and 1.
     pub model_groups: [i32; 2],
-    /// mv+4 in every Marth special. ftMars_MotionVars has only an x0 word
-    /// (types.h), so no special writes mv+4: it keeps the word the state
-    /// before the special left (`None` when the port does not model it), and
-    /// a landing from a special inherits it (ftCo_Landing.c:41-50).
-    pub retained_scratch_word: Option<f32>,
 }
 impl Marth {
     pub fn new(attributes: MarsAttributes) -> Self {
         Self {
-            retained_scratch_word: None,
             attributes,
-            special_hi: Default::default(),
-            special_lw: Default::default(),
-            special_side: Default::default(),
-            special_n: Default::default(),
-            side_special_boost_used: false,
+            specials: Specials::default(),
             model_groups: [0; 2],
         }
     }
 }
+impl MarsFamily for Marth {
+    const RELEASE_EFFECTS: [u16; 2] = [0x4F2, 0x4F3];
+    const CHARGE_COLOR_ANIMATION: u8 = 99;
+    const COUNTER_EFFECT: u16 = 0x4F1;
+    const COUNTER_SETS_HIT_DAMAGE: bool = false;
+    fn attributes(&self) -> &MarsAttributes {
+        &self.attributes
+    }
+    fn specials(&mut self) -> &mut Specials {
+        &mut self.specials
+    }
+    fn specials_ref(&self) -> &Specials {
+        &self.specials
+    }
+}
+
+static SPECIAL_ROWS: [melee_ft::fighter::MotionRow; ft_mars_family::SPECIAL_COUNT] =
+    ft_mars_family::rows::<Marth>();
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
-
-/// Marth's special actions, SpecialNStart (341) through SpecialAirLwHit (372).
-const SPECIALS: std::ops::RangeInclusive<u16> = 341..=372;
-
-/// Called by each special's entry before it changes motion state: capture
-/// the mv+4 word the current state leaves behind. From one special into
-/// another the word is already the retained one, so it carries through.
-pub fn retain_scratch_word(f: &mut melee_ft::fighter::Fighter) {
-    let word = f.inherited_scratch_word();
-    f.character.get_mut::<Marth>().retained_scratch_word = word;
-}
-
-/// mv+4 while a Marth special is current (see `Marth::retained_scratch_word`).
-fn special_scratch_word(marth: &Marth, action: melee_ft::fighter::ActionId) -> Option<f32> {
-    if !SPECIALS.contains(&action.0) {
-        return None;
-    }
-    Some(marth.retained_scratch_word.unwrap_or_else(|| {
-        unimplemented!("ftMars specials: mv+4 inherited from an unmodelled scratch word")
-    }))
-}
 
 impl CharacterCallbacks for Marth {
     const KNOCKBACK_ENTER: fn(
@@ -72,20 +56,15 @@ impl CharacterCallbacks for Marth {
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
-        &crate::special_moves();
-    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
+        &ft_mars_family::special_moves();
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
     fn enter_special(
         f: &mut melee_ft::fighter::Fighter,
         slot: melee_ft::fighter::SpecialSlot,
         air: bool,
         a: &melee_ft::fighter::assets::FighterAssets,
     ) {
-        match slot {
-            melee_ft::fighter::SpecialSlot::Neutral => crate::special_n::enter(f, air, a),
-            melee_ft::fighter::SpecialSlot::Side => crate::special_s::enter(f, air, a),
-            melee_ft::fighter::SpecialSlot::Up => crate::special_hi::enter(f, air, a),
-            melee_ft::fighter::SpecialSlot::Down => crate::special_lw::enter(f, air, a),
-        }
+        ft_mars_family::enter_special::<Self>(f, slot, air, a);
     }
 
     fn accessory(
@@ -93,20 +72,20 @@ impl CharacterCallbacks for Marth {
         a: &melee_ft::fighter::assets::FighterAssets,
         _rng: &mut gekko_math::HsdRng,
     ) {
-        crate::special_n::accessory(f, a);
+        ft_mars_family::special_n::accessory::<Self>(f, a);
     }
     const RETAINED_SCRATCH_WORD: fn(
         &melee_ft::fighter::CharacterState,
         melee_ft::fighter::ActionId,
-    ) -> Option<f32> = |state, action| special_scratch_word(state.get::<Self>(), action);
+    ) -> Option<f32> = ft_mars_family::retained_scratch_word::<Self>;
     const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
-        Some(crate::special_lw::contact);
+        Some(ft_mars_family::special_lw::contact::<Self>);
     const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
-        Some(crate::special_lw::process_hit);
+        Some(ft_mars_family::special_lw::process_hit::<Self>);
     /// No special reads fp->item_gobj; a held item stays in hand.
     const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =
-        Some(crate::special_lw::item_contact);
+        Some(ft_mars_family::special_lw::item_contact::<Self>);
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -125,7 +104,7 @@ impl CharacterCallbacks for Marth {
     }
     /// Marth +222C: side-special boost already spent (ftmars.c reset state).
     fn restore_saved(&mut self, raw: &[u8]) {
-        self.side_special_boost_used =
+        self.specials.side_special_boost_used =
             u32::from_be_bytes(raw[0x222C..0x2230].try_into().unwrap()) != 0;
     }
     /// ftMs_Init_OnLoad (801364AC): PUSH_ATTRS only; no item registrations
@@ -136,16 +115,12 @@ impl CharacterCallbacks for Marth {
     }
     /// ftMs_Init_OnDeath (80136258): two model groups and Fighter +222C.
     fn on_reset(&mut self) {
-        self.special_hi = Default::default();
-        self.special_lw = Default::default();
-        self.special_side = Default::default();
-        self.special_n = Default::default();
+        self.specials.reset();
         self.model_groups = [0; 2];
-        self.side_special_boost_used = false;
     }
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:64-67.
     fn on_landing(&mut self, _allow_interrupt: bool) {
-        self.side_special_boost_used = false;
+        self.specials.side_special_boost_used = false;
     }
     /// ftCo_800923B4 (800923B4), ftCo_800939B4 (800939B4),
     /// ftCo_Guard.c:342-346,924-928: select the sword model after shield setup.

@@ -1,24 +1,16 @@
 [package]
-name = "ft-mars"
-description = "Marth character data and callbacks (ftMars)"
+name = "ft-emblem"
+description = "Roy character data and callbacks (ftEmblem)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
 ft-mars-family = { path = "../ft-mars-family" }
-melee-lb = { path = "../melee-lb" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
-hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
-
 gekko-math = { path = "../gekko-math" }
-
-melee-cmd = { path = "../melee-cmd" }
-melee-coll = { path = "../melee-coll" }
-melee-it = { path = "../melee-it" }
-melee-ef = { path = "../melee-ef" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }

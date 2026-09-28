@@ -1,5 +1,5 @@
 //! Dolphin Slash, ftmarsspecialhi.c (80138208..801389CC).
-use crate::init::Marth;
+use crate::MarsFamily;
 use melee_ft::{
     anim::WaitChoice,
     fighter::{
@@ -16,7 +16,7 @@ pub struct SpecialHi {
     /// Fighter +6BC lstick_angle, shared retail field used only by this move here.
     pub angle: f32,
 }
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarsFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.variables[..3].fill(0);
     f.commands.grab_release = false;
     f.commands.throw_reverse = false;
@@ -24,29 +24,28 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
         f.physics.self_velocity.y = 0.0;
         f.physics.self_velocity.x *= f
             .character
-            .get::<Marth>()
-            .attributes
+            .get::<C>().attributes()
             .dolphin_slash
             .startup_momentum_multiplier;
     }
-    f.character.get_mut::<Marth>().special_hi = SpecialHi::default();
-    crate::init::retain_scratch_word(f);
+    f.character.get_mut::<C>().specials().special_hi = SpecialHi::default();
+    crate::retain_scratch_word::<C>(f);
     f.change_motion_state(melee_ft::fighter::ActionId(if air { 368 } else { 367 }), a)
         .expect("Dolphin Slash assets");
     f.step_animation(a);
 }
-pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn anim<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
-        let a = &f.character.get::<Marth>().attributes.dolphin_slash;
+        let a = &f.character.get::<C>().attributes().dolphin_slash;
         let (mobility, lag) = (a.freefall_mobility, a.landing_lag);
         f.enter_special_fall(p.assets, false, true, false, mobility, lag)?;
     }
     Ok(None)
 }
-pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
+pub fn input<C: MarsFamily>(f: &mut Fighter, _: InputPhase<'_>) {
     let x = f.input.current.stick.x;
-    let a = &f.character.get::<Marth>().attributes.dolphin_slash;
+    let a = &f.character.get::<C>().attributes().dolphin_slash;
     let (threshold, maximum, reverse) = (
         a.angle_stick_threshold,
         a.maximum_angle,
@@ -60,7 +59,7 @@ pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
         if x > 0.0 {
             angle = -angle;
         }
-        let scratch = &mut f.character.get_mut::<Marth>().special_hi;
+        let scratch = &mut f.character.get_mut::<C>().specials().special_hi;
         if angle.abs() > scratch.angle.abs() {
             scratch.angle = angle;
         }
@@ -72,12 +71,12 @@ pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
         f.skeleton.set_rotation_y(root, rotation);
     }
 }
-pub fn physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn physics<C: MarsFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         callbacks::physics::jab(f, p);
         return;
     }
-    let a = &f.character.get::<Marth>().attributes.dolphin_slash;
+    let a = &f.character.get::<C>().attributes().dolphin_slash;
     let (gravity, terminal, mobility, multiplier) = (
         a.fall_acceleration,
         a.terminal_velocity,
@@ -100,7 +99,7 @@ pub fn physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
             .expect("Dolphin Slash TransN")
             .primary_history
             .offset;
-        let angle = f.character.get::<Marth>().special_hi.angle;
+        let angle = f.character.get::<C>().specials_ref().special_hi.angle;
         let cosine = gekko_math::msl::cosf(angle);
         let sine = gekko_math::msl::sinf(angle);
         let horizontal = offset.z * f.physics.facing;
@@ -135,7 +134,7 @@ pub fn physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     }
     f.core.finish_air_update(p.assets, p.wind);
 }
-pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn collision<C: MarsFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         return callbacks::collision::escape(f, p);
     }
@@ -179,8 +178,7 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     ) {
         let lag = f
             .character
-            .get::<Marth>()
-            .attributes
+            .get::<C>().attributes()
             .dolphin_slash
             .landing_lag;
         f.enter_special_landing(p.assets.expect("Dolphin landing assets"), false, lag)?;

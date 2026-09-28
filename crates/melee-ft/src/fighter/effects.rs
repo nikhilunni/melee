@@ -162,6 +162,7 @@ impl super::FighterCore {
                         | 0x405
                         | 0x41D
                         | 0x40E
+                        | 0x40F
                         | 0x411
                         | 0x3F1
                         | 0x3F2

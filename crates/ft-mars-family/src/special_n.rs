@@ -1,5 +1,5 @@
 //! Shield Breaker, ftmarsspecialn.c (80136800..8013741C).
-use crate::init::Marth;
+use crate::MarsFamily;
 use melee_ft::{
     anim::WaitChoice,
     fighter::{
@@ -63,11 +63,10 @@ fn gust(f: &mut Fighter, a: &FighterAssets, gust: Gust) {
         });
 }
 
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarsFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     let divisor = f
         .character
-        .get::<Marth>()
-        .attributes
+        .get::<C>().attributes()
         .shield_breaker
         .momentum_divisor;
     if air {
@@ -79,13 +78,13 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
         f.physics.ground_velocity /= divisor;
     }
     f.commands.variables[0] = 0;
-    f.character.get_mut::<Marth>().special_n = Default::default();
-    crate::init::retain_scratch_word(f);
+    f.character.get_mut::<C>().specials().special_n = Default::default();
+    crate::retain_scratch_word::<C>(f);
     f.change_motion_state(ActionId(if air { 345 } else { 341 }), a)
         .expect("Shield Breaker assets");
     f.step_animation(a);
 }
-pub fn start(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn start<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(
@@ -101,33 +100,32 @@ pub fn start(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice
         f.commands
             .color_animations
             .push(melee_cmd::ColorAnimationRequest {
-                id: 99,
+                id: C::CHARGE_COLOR_ANIMATION,
                 duration: 0,
             });
     }
     Ok(None)
 }
-pub fn hold(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn hold<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     let maximum = f
         .character
-        .get::<Marth>()
-        .attributes
+        .get::<C>().attributes()
         .shield_breaker
         .maximum_charge_levels
         * 30;
     // doLoopAnim: every 30 charge ticks a small gust leaves the hips.
-    if f.character.get::<Marth>().special_n.charge_ticks % 30 == 0 {
+    if f.character.get::<C>().specials_ref().special_n.charge_ticks % 30 == 0 {
         gust(f, p.assets, CHARGE_GUST);
     }
-    let s = &mut f.character.get_mut::<Marth>().special_n;
+    let s = &mut f.character.get_mut::<C>().specials().special_n;
     s.charge_ticks += 1;
     if s.charge_ticks > maximum {
-        release(f, true, p.assets)?;
+        release::<C>(f, true, p.assets)?;
     }
     Ok(None)
 }
-fn release(f: &mut Fighter, full: bool, a: &FighterAssets) -> Result<()> {
+fn release<C: MarsFamily>(f: &mut Fighter, full: bool, a: &FighterAssets) -> Result<()> {
     let base = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
         347
     } else {
@@ -135,30 +133,23 @@ fn release(f: &mut Fighter, full: bool, a: &FighterAssets) -> Result<()> {
     };
     f.change_motion_state_at(ActionId(base + u16::from(full)), a, 1.0)?;
     f.commands.variables[0] = u32::from(full);
-    f.character.get_mut::<Marth>().special_n.pending_effect = true;
+    f.character.get_mut::<C>().specials().special_n.pending_effect = true;
     f.arm_accessory4();
     Ok(())
 }
-pub fn input(f: &mut Fighter, p: InputPhase<'_>) {
+pub fn input<C: MarsFamily>(f: &mut Fighter, p: InputPhase<'_>) {
     if !f.input.current.held.intersects(Buttons::B) {
-        release(f, false, p.assets).expect("Shield Breaker release");
+        release::<C>(f, false, p.assets).expect("Shield Breaker release");
     }
 }
-pub fn end(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn end<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if f.commands.variables[0] == 0 {
-        let m = f.character.get::<Marth>();
-        let a = &m.attributes.shield_breaker;
-        let damage = (a.base_damage + m.special_n.charge_ticks / 30 * a.damage_per_level) as f32;
-        // ftColl_8007ABD0: integer knockback damage precedes staling
-        // (ft_80089228 on the charged damage).
-        let staled = f.commands.stale_damage(damage);
-        for hit in f.commands.hitboxes.iter_mut().flatten() {
-            if hit.phase == melee_coll::hitbox::CapsulePhase::Enabled {
-                hit.knockback_damage = gekko_math::msl::fctiwz(damage) as u32;
-                hit.descriptor.damage = staled;
-            }
-        }
+        let m = f.character.get::<C>();
+        let a = &m.attributes().shield_breaker;
+        let charge_ticks = m.specials_ref().special_n.charge_ticks;
+        let damage = a.base_damage + charge_ticks / 30 * a.damage_per_level;
+        crate::set_enabled_hit_damage(f, damage as u32);
     }
     // inlineA0 (80136F94): the release's gust on animation frame 9.
     if f.animation.frame == RELEASE_GUST_FRAME {
@@ -174,12 +165,11 @@ pub fn end(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>>
     }
     Ok(None)
 }
-pub fn startup_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn startup_physics<C: MarsFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     f.physics.ground_acceleration = friction::friction_acceleration(
         f.physics.ground_velocity,
         f.character
-            .get::<Marth>()
-            .attributes
+            .get::<C>().attributes()
             .shield_breaker
             .friction,
     );
@@ -225,13 +215,14 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     }
     Ok(())
 }
-pub fn accessory(f: &mut Fighter, _: &FighterAssets) {
-    let pending = std::mem::take(&mut f.character.get_mut::<Marth>().special_n.pending_effect);
+pub fn accessory<C: MarsFamily>(f: &mut Fighter, _: &FighterAssets) {
+    let pending = std::mem::take(&mut f.character.get_mut::<C>().specials().special_n.pending_effect);
     if f.run_accessory4(pending) {
+        let [ground, air] = C::RELEASE_EFFECTS;
         let id = if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
-            0x4F3
+            air
         } else {
-            0x4F2
+            ground
         };
         f.effects
             .push(melee_ef::request::EffectRequest::SyncAttached { id, bone: 0 });
@@ -240,12 +231,11 @@ pub fn accessory(f: &mut Fighter, _: &FighterAssets) {
 }
 
 /// ftMs_SpecialAirNStart_Phys / Loop_Phys / End_Phys: gravity and friction.
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: MarsFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     use melee_ft::physics::{airborne, integrate};
     let friction = if f.motion_state.action.0 == 345 {
         f.character
-            .get::<Marth>()
-            .attributes
+            .get::<C>().attributes()
             .shield_breaker
             .friction
     } else {

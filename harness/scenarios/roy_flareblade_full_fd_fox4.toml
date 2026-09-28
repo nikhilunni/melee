@@ -1,0 +1,23 @@
+# ROY directed witness: Flare Blade held to full charge (SpecialNEnd1, the 0x511 flash and the recoil).
+name = "roy_flareblade_full_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_roy_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 520, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Roy"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

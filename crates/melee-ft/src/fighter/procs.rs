@@ -303,6 +303,7 @@ impl FighterCore {
             assets,
             hand,
         );
+        self.apply_script_damage();
         for state in std::mem::take(&mut self.commands.airborne_changes) {
             match state {
                 melee_cmd::AirborneMode::Ground => self.land(),

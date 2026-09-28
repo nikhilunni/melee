@@ -193,7 +193,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 21] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 22] = [
     // efasync.c:353-355: efLib_CreateGenerator(0x19) at the point (it_80272AC4,
     // an item meeting the floor: Thunder's lead bolt).
     DustSpawn {
@@ -308,6 +308,13 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 21] = [
     DustSpawn {
         request: 0x40E,
         particle: 0x43,
+        directional: false,
+    },
+    // efasync.c:375-377: efLib_CreateGenerator(0xE3) at the offset position
+    // (Roy's fully charged Flare Blade explosion script).
+    DustSpawn {
+        request: 0x40F,
+        particle: 0xE3,
         directional: false,
     },
     // efalt.c:35-37: efAlt_Spawn 0x479, Mario's bank-1 generator 0x3F2 at a

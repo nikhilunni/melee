@@ -395,6 +395,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-emblem"
+version = "0.0.1"
+dependencies = [
+ "ft-mars-family",
+ "gekko-math",
+ "hsd-archive",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-falco"
 version = "0.0.1"
 dependencies = [
@@ -459,6 +471,7 @@ dependencies = [
 name = "ft-mars"
 version = "0.0.1"
 dependencies = [
+ "ft-mars-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -469,6 +482,22 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-mars-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-cmd",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
  "melee-types",
 ]
 
@@ -1112,6 +1141,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ft-captain",
+ "ft-emblem",
  "ft-falco",
  "ft-fox",
  "ft-fox-family",

@@ -36,6 +36,7 @@ hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 ft-fox = { path = "../ft-fox" }
 ft-mars = { path = "../ft-mars" }
+ft-emblem = { path = "../ft-emblem" }
 ft-falco = { path = "../ft-falco" }
 ft-captain = { path = "../ft-captain" }
 ft-peach = { path = "../ft-peach" }

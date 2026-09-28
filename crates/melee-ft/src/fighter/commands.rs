@@ -102,6 +102,9 @@ pub struct CommandState {
     pub sword_trail: Option<(i32, bool)>,
     /// Ordered ftCo_8009E318 requests, consumed immediately after commands.
     pub dynamic_toggles: FixedVec<usize, COMMAND_REQUEST_CAPACITY>,
+    /// Ordered Fighter_TakeDamage_8006CC7C amounts (opcode 51), consumed
+    /// immediately after commands.
+    pub self_damage: FixedVec<f32, COMMAND_REQUEST_CAPACITY>,
     pub color_animations: FixedVec<ColorAnimationRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
     /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
@@ -227,6 +230,12 @@ impl CommandState {
                     self.throw_accessory = true;
                 }
                 Command::MoveCue => self.move_cue = true,
+                // ftAction_80072BF4; seeking skips the word (ftAction_80072C5C).
+                Command::SelfDamage(amount) => {
+                    if !seeking {
+                        self.self_damage.push(*amount as f32);
+                    }
+                }
                 Command::SmashSound => {
                     if !seeking {
                         self.smash_sound_requests += 1;

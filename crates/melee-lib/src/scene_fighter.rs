@@ -95,6 +95,7 @@ scene_characters! {
     "Jigglypuff" => Jigglypuff(ft_purin::init::Jigglypuff),
     "Pikachu" => Pikachu(ft_pikachu::init::Pikachu),
     "Marth" => Marth(ft_mars::init::Marth),
+    "Roy" => Roy(ft_emblem::init::Roy),
     "Falco" => Falco(ft_falco::init::Falco),
     "CaptainFalcon" => CaptainFalcon(ft_captain::init::CaptainFalcon),
     "Mario" => Mario(ft_mario::init::Mario),

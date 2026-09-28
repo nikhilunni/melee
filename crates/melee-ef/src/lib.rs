@@ -444,7 +444,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4D6 | 0x4F2..=0x4F3),
+                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4D6 | 0x4F2..=0x4F3 | 0x511..=0x512),
                 bone,
             } = request
             {
@@ -457,12 +457,18 @@ impl Effects {
                     // efsync.c:305-308: efLib_Create_Attach_Scale(0x2AF8).
                     0x4D6 => 0x2AF8,
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
+                    // efsync.c:645-652: Roy's Flare Blade release.
+                    0x511..=0x512 => 0xBF68 + u32::from(id - 0x511),
                     _ => unreachable!(),
                 };
                 // efLib_Create_Attach_Scale, and a root rotation Y from the
-                // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3).
-                let scaled = matches!(id, 0x488..=0x48A | 0x492..=0x493 | 0x4D6 | 0x4F2..=0x4F3);
-                let faces = matches!(id, 0x492..=0x493 | 0x4F2..=0x4F3);
+                // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3,
+                // 0x511/0x512).
+                let scaled = matches!(
+                    id,
+                    0x488..=0x48A | 0x492..=0x493 | 0x4D6 | 0x4F2..=0x4F3 | 0x511..=0x512
+                );
+                let faces = matches!(id, 0x492..=0x493 | 0x4F2..=0x4F3 | 0x511..=0x512);
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
@@ -505,15 +511,16 @@ impl Effects {
             }
             // S3: efAlt_Spawn 0x48D -> efLib_CreateGenerator_AppSRT_SetFacingDir.
             if let EffectRequest::SyncAttached {
-                id: id @ (0x48D | 0x4F1),
+                id: id @ (0x48D | 0x4F1 | 0x510),
                 bone,
             } = request
             {
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
-                let (bank_id, kind) = if id == 0x48D {
-                    (3, 0xBC0)
-                } else {
-                    (16, 0x3E80)
+                // efsync.c:447-449, 642-644: Marth's and Roy's Counter flash.
+                let (bank_id, kind) = match id {
+                    0x48D => (3, 0xBC0),
+                    0x4F1 => (16, 0x3E80),
+                    _ => (49, 0xBF68),
                 };
                 let mut spawn = SpawnRequest::new(bank_id, kind, 0);
                 spawn.joint = Some((joint_id, fighter.effect_matrix(Some(bone))));

@@ -1,5 +1,5 @@
 //! Counter, ftmarsspeciallw.c (801389CC..80139344).
-use crate::init::Marth;
+use crate::MarsFamily;
 use melee_coll::defense::AbsorbDescriptor;
 use melee_ft::{
     anim::WaitChoice,
@@ -20,50 +20,53 @@ pub struct SpecialLw {
     /// Fighter +19A4 and specialn_facing_dir: strongest pending shield contact.
     pub pending: Option<(i32, f32)>,
 }
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarsFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     if air {
         // retail 80138A60: fdivs before zeroing vertical speed.
         f.physics.self_velocity.x /= f
             .character
-            .get::<Marth>()
-            .attributes
+            .get::<C>().attributes()
             .counter
             .momentum_divisor;
     }
     f.physics.self_velocity.y = 0.0;
-    crate::init::retain_scratch_word(f);
+    crate::retain_scratch_word::<C>(f);
     f.change_motion_state(ActionId(if air { 371 } else { 369 }), a)
         .expect("Counter assets");
     f.step_animation(a);
     f.commands.variables[1] = 0;
-    f.character.get_mut::<Marth>().special_lw = Default::default();
+    f.character.get_mut::<C>().specials().special_lw = Default::default();
 }
-pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn anim<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     match f.commands.variables[1] {
         1 => {
             f.commands.variables[1] = 2;
-            let m = f.character.get_mut::<Marth>();
-            let v = &m.attributes.counter_volume;
-            m.special_lw.volume = Some(AbsorbDescriptor {
-                bone: v.bone as usize,
-                offset: v.offset,
-                radius: v.radius,
-            });
-            m.special_lw.collision_multiplier = m.attributes.counter.collision_multiplier;
+            let m = f.character.get_mut::<C>();
+            let volume = counter_descriptor(m.attributes());
+            let multiplier = m.attributes().counter.collision_multiplier;
+            let counter = &mut m.specials().special_lw;
+            counter.volume = Some(volume);
+            counter.collision_multiplier = multiplier;
         }
-        0 => f.character.get_mut::<Marth>().special_lw.volume = None,
+        0 => f.character.get_mut::<C>().specials().special_lw.volume = None,
         _ => {}
     }
     if !f.animation.frames_remaining(&f.skeleton) {
-        f.character.get_mut::<Marth>().special_lw.volume = None;
+        f.character.get_mut::<C>().specials().special_lw.volume = None;
         finish(f, p.assets)?;
     }
     Ok(None)
 }
-pub fn hit_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+/// ftMs_SpecialLwHit_Anim / SpecialAirLwHit_Anim.
+pub fn hit_anim<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
-    // ftMs_SpecialLwHit_Anim: only Roy scales its hitboxes; Marth uses script damage.
+    // Roy's retaliation carries the countered damage (mv.ms.speciallw.x0)
+    // on every enabled hitbox; Marth's keeps its script damage.
+    let damage = f.character.get::<C>().specials_ref().special_lw.damage;
+    if damage > 0 && C::COUNTER_SETS_HIT_DAMAGE {
+        crate::set_enabled_hit_damage(f, damage as u32);
+    }
     if !f.animation.frames_remaining(&f.skeleton) {
         finish(f, p.assets)?;
     }
@@ -86,10 +89,10 @@ fn finish(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
 /// ftMs_SpecialAirLw_Phys (80138C5C) and Hit_Phys (80138FE8):
 /// custom gravity/friction during the stance; ft_80084EEC during retaliation.
 /// Neither accepts aerial steering or fast fall.
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: MarsFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     use melee_ft::physics::{airborne, integrate};
     let (gravity, terminal, friction) = if f.motion_state.action.0 == 371 {
-        let a = &f.character.get::<Marth>().attributes.counter;
+        let a = &f.character.get::<C>().attributes().counter;
         (a.fall_acceleration, a.terminal_velocity, a.air_friction)
     } else {
         let a = &f.attributes.air;
@@ -112,7 +115,7 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 
 /// ftMs_SpecialLw*_Coll (80138CC0/80139008): stance uses the escape
 /// floor probe; retaliation uses the ordinary ground-action probe.
-pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn collision<C: MarsFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     use melee_ft::collision::ground::{map_escape, map_ground_action, WaitGroundResult};
     let stance = f.motion_state.action.0 == 369;
     let probe = if stance {
@@ -134,7 +137,7 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     ) {
         // ftCommon_8007D5D4: preserve the double jump when walking off a ledge.
         f.leave_ground();
-        transition(
+        transition::<C>(
             f,
             p.assets.expect("Counter collision assets"),
             if stance { 371 } else { 372 },
@@ -145,7 +148,7 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
 }
 
 /// ftMs_SpecialAirLw*_Coll (80138CFC/80139044): land without restarting.
-pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: MarsFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     use melee_ft::collision::air;
     let stance = f.motion_state.action.0 == 371;
     let c = &mut f.core;
@@ -163,7 +166,7 @@ pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         c.animation.root,
     ) {
         f.land();
-        transition(
+        transition::<C>(
             f,
             p.assets.expect("Counter landing assets"),
             if stance { 369 } else { 370 },
@@ -175,7 +178,7 @@ pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
 
 /// ftMs_SpecialLw_80138D38/80138DD0/80139080/801390E0:
 /// flags 0x0C4C508C preserve hit status/hitboxes; hit variant also keeps graphics.
-fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> Result<()> {
+fn transition<C: MarsFamily>(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> Result<()> {
     f.change_ground_air_motion(
         ActionId(state),
         a,
@@ -190,19 +193,26 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
     // transition re-installs the volume (ftColl_8007B1B8) but not them, so a
     // Counter that changed ground/air sets no minimum hitlag.
     f.character
-        .get_mut::<Marth>()
+        .get_mut::<C>()
+        .specials()
         .special_lw
         .collision_multiplier = 0.0;
     if stance && f.commands.variables[1] == 2 {
-        let m = f.character.get_mut::<Marth>();
-        let v = &m.attributes.counter_volume;
-        m.special_lw.volume = Some(AbsorbDescriptor {
-            bone: v.bone as usize,
-            offset: v.offset,
-            radius: v.radius,
-        });
+        let m = f.character.get_mut::<C>();
+        let volume = counter_descriptor(m.attributes());
+        m.specials().special_lw.volume = Some(volume);
     }
     Ok(())
+}
+
+/// ftColl_8007B1B8's volume: attribute +0x64 as an AbsorbDesc.
+fn counter_descriptor(attributes: &crate::attributes::MarsAttributes) -> AbsorbDescriptor {
+    let v = &attributes.counter_volume;
+    AbsorbDescriptor {
+        bone: v.bone as usize,
+        offset: v.offset,
+        radius: v.radius,
+    }
 }
 
 /// The Counter's shield volume where its bone holds it this frame
@@ -212,12 +222,12 @@ fn transition(f: &mut Fighter, a: &FighterAssets, state: u16, stance: bool) -> R
 /// `x221B_b0` on every motion change, and only the two stance rows set it
 /// again, so a volume left in the scratch outside them (Marth grabbed or hit
 /// out of the stance) is stale.
-fn counter_volume(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseVolume> {
+fn counter_volume<C: MarsFamily>(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseVolume> {
     if !matches!(f.motion_state.action.0, 369 | 371) {
-        f.character.get_mut::<Marth>().special_lw.volume = None;
+        f.character.get_mut::<C>().specials().special_lw.volume = None;
         return None;
     }
-    let volume = f.character.get::<Marth>().special_lw.volume.as_ref()?;
+    let volume = f.character.get::<C>().specials_ref().special_lw.volume.as_ref()?;
     let (bone, offset, radius) = (volume.bone, volume.offset, volume.radius);
     let c = &mut f.core;
     let position =
@@ -263,27 +273,27 @@ fn counter_contact(
 
 /// ftColl_8007925C's shield step against the Counter, then ftColl_80077688:
 /// an item's hit is caught like a fighter's, keeping the strongest contact.
-pub fn item_contact(
+pub fn item_contact<C: MarsFamily>(
     f: &mut Fighter,
     item: &mut melee_it::ItemCore,
     id: usize,
     assets: &FighterAssets,
 ) -> bool {
-    let Some(volume) = counter_volume(f) else {
+    let Some(volume) = counter_volume::<C>(f) else {
         return false;
     };
     let hit = item.hitboxes[id].clone().expect("eligible item hit");
     let Some(contact) = counter_contact(f, &volume, &hit, item.scale) else {
         return false;
     };
-    let own_hitlag = f.character.get::<Marth>().special_lw.collision_multiplier;
+    let own_hitlag = f.character.get::<C>().specials_ref().special_lw.collision_multiplier;
     let damage = f.record_item_volume_hit(item, id, contact, &volume, own_hitlag, assets);
     let facing = if f.physics.position.x > item.position.x {
         -1.0
     } else {
         1.0
     };
-    let scratch = &mut f.character.get_mut::<Marth>().special_lw;
+    let scratch = &mut f.character.get_mut::<C>().specials().special_lw;
     if scratch.pending.is_none_or(|(old, _)| damage > old) {
         scratch.pending = Some((damage, facing));
     }
@@ -295,8 +305,8 @@ pub fn item_contact(
 }
 
 /// ftColl_8007B1B8 / lbColl_80007BCC, before ordinary hurt-capsule tests.
-pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: usize) -> bool {
-    let Some(volume) = counter_volume(f) else {
+pub fn contact<C: MarsFamily>(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: usize) -> bool {
+    let Some(volume) = counter_volume::<C>(f) else {
         return false;
     };
     let hit = attacker.commands.hitboxes[id]
@@ -313,7 +323,7 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
     } else {
         1.0
     };
-    let scratch = &mut f.character.get_mut::<Marth>().special_lw;
+    let scratch = &mut f.character.get_mut::<C>().specials().special_lw;
     if scratch.pending.is_none_or(|(old, _)| damage > old) {
         scratch.pending = Some((damage, facing));
     }
@@ -329,20 +339,19 @@ pub fn contact(f: &mut Fighter, attacker: &mut Fighter, _: &FighterAssets, id: u
     true
 }
 /// ftMs_SpecialLw_80139140, called by Fighter_ProcessHit after pair detection.
-pub fn process_hit(f: &mut Fighter, a: &FighterAssets) {
-    let Some((damage, facing)) = f.character.get_mut::<Marth>().special_lw.pending.take() else {
+pub fn process_hit<C: MarsFamily>(f: &mut Fighter, a: &FighterAssets) {
+    let Some((damage, facing)) = f.character.get_mut::<C>().specials().special_lw.pending.take() else {
         return;
     };
     f.physics.facing = facing;
     let multiplier = f
         .character
-        .get::<Marth>()
-        .attributes
+        .get::<C>().attributes()
         .counter
         .damage_multiplier;
-    f.character.get_mut::<Marth>().special_lw.damage =
+    f.character.get_mut::<C>().specials().special_lw.damage =
         gekko_math::msl::fctiwz(damage as f32 * multiplier);
-    f.character.get_mut::<Marth>().special_lw.volume = None;
+    f.character.get_mut::<C>().specials().special_lw.volume = None;
     let hip = a
         .parts
         .joint(melee_types::FtPart::HipN)
@@ -379,7 +388,10 @@ pub fn process_hit(f: &mut Fighter, a: &FighterAssets) {
         .joint(melee_types::FtPart::RShoulderN)
         .expect("Counter shoulder") as usize;
     f.effects
-        .push(melee_ef::request::EffectRequest::SyncAttached { id: 0x4F1, bone });
+        .push(melee_ef::request::EffectRequest::SyncAttached {
+            id: C::COUNTER_EFFECT,
+            bone,
+        });
     f.effect_state.destroy_on_state_change = true;
     f.combat.dealt_damage = damage;
 }

@@ -99,10 +99,11 @@ pub struct SwordTrailAttributes {
     /// +0x90/+0x94, SwordAttrs +18/+1C; ftafterimage.c:445-446.
     pub endpoints: [f32; 2],
 }
-pub fn read_mars_attributes(archive: &Archive) -> Result<MarsAttributes> {
-    let root = archive.public("ftDataMars").ok_or_else(|| {
+/// PUSH_ATTRS source: `data_symbol`'s ext_attr (ftDataMars, ftDataEmblem).
+pub fn read(archive: &Archive, data_symbol: &str) -> Result<MarsAttributes> {
+    let root = archive.public(data_symbol).ok_or_else(|| {
         FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
-            name: "ftDataMars".into(),
+            name: data_symbol.into(),
         })
     })?;
     MarsAttributes::read(archive, special_attributes_offset(archive, root)?)

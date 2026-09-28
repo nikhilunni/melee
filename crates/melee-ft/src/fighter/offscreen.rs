@@ -48,6 +48,14 @@ impl FighterCore {
         }
     }
 
+    /// The subaction self-damage (ftAction_80072BF4) the last command step
+    /// ran, in script order.
+    pub(super) fn apply_script_damage(&mut self) {
+        for amount in std::mem::take(&mut self.commands.self_damage) {
+            self.take_percent_damage(amount);
+        }
+    }
+
     /// Fighter_TakeDamage_8006CC7C (0x8006CC7C): add percent, capped at 999.
     /// Metal and stamina bookkeeping (x2226_b4, metal_health, x2034/x2038,
     /// ftCo_800C8C84) belong to modes the port does not reach.

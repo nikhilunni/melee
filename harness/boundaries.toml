@@ -273,3 +273,11 @@ stage = "Battlefield"
 players = ["Falco", "Marth"]
 stocks = 4
 seed = 3258945434
+
+name = "start_fd_roy_fox4"
+cold = "start_fd_roy_fox4_cold"
+savestate = "harness/roms/start_fd_roy_fox4.sav"
+stage = "FinalDestination"
+players = ["Roy", "Fox"]
+stocks = 4
+seed = 3227408113

@@ -1,0 +1,28 @@
+# ROY directed witness: Roy jumps and his aerial Counter catches a Fox laser (SpecialAirLwHit, the damage rewrite in the air).
+# melee-sim search: reached [p0.motion_id == 372] at ticks [145].
+name = "roy_aircounter_laser_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_roy_fox4.sav"
+frames = 225
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 117, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 118, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 1, buttons = {  }, raw = {  } },
+  { frame = 127, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 128, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Roy"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

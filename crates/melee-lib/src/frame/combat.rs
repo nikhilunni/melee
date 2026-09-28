@@ -434,7 +434,7 @@ fn replay_scratch_until(name: &str, ticks: usize) {
                         "Counter ECB lock at {tick}"
                     );
                     if (369..=372).contains(&f.motion_state.action.0) {
-                        let counter = &f.character.get::<ft_mars::init::Marth>().special_lw;
+                        let counter = &f.character.get::<ft_mars::init::Marth>().specials.special_lw;
                         assert_eq!(
                             counter.damage as u32,
                             word(&bytes, 0x2340),

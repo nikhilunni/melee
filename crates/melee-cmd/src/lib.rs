@@ -16,6 +16,9 @@ pub enum Command {
     SetAirborne(AirborneMode),
     WindEffect(WindEffect),
     SmashSound,
+    /// ftAction_80072BF4 (opcode 51): Fighter_TakeDamage_8006CC7C with the
+    /// signed 26-bit amount, e.g. Roy's fully charged Flare Blade recoil.
+    SelfDamage(i32),
     ThrowAccessory,
     /// ftAction_80071908: throw_flags_b1, a one-shot cue the current motion's
     /// callbacks read and clear (Falcon Punch's effect spawn and removal).
