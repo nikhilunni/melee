@@ -2,7 +2,13 @@
 # no fast-math, nothing that could change FMA contraction or rounding.
 [build]
 # Split debuginfo keeps link times down on macOS; harmless elsewhere.
-rustflags = ["-C", "split-debuginfo=unpacked"]
+# `force-unwind-tables=no` drops *asynchronous* unwind tables only: functions
+# that can unwind keep synchronous tables, so panics, `catch_unwind` and
+# backtraces work as before. On aarch64 macOS the asynchronous tables'
+# epilogue CFI defeats compact unwind and forces a DWARF FDE for nearly every
+# function (-400 KiB of __eh_frame in the release melee-sim). Only prologue
+# and epilogue scheduling can change; float operations cannot.
+rustflags = ["-C", "split-debuginfo=unpacked", "-C", "force-unwind-tables=no"]
 
 [alias]
 # Full oracle gate. Add integration scenarios here as milestones land.
