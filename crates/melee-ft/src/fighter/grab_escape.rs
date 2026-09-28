@@ -227,8 +227,6 @@ pub(super) fn capture_damage(
     f.core.physics.percent += hit.percent_damage;
     f.core.input.pressed = Buttons::default();
     f.core.input.released = Buttons::default();
-    // ftCo_Damage_CalcKnockback has already run: kb_applied is modified.
-    let knockback = f.core.modified_knockback(hit.knockback, assets);
     // ftCo_8008EC90 inlineB2, 8008ECD4..ED84: thrown states keep their
     // borrowed animation, pose and link while sharing the captor hitlag.
     if thrown {
@@ -236,6 +234,8 @@ pub(super) fn capture_damage(
         // with dmg.kb_applied set; a knockback-free captor hit (Falcon Dive's
         // catch hitbox on CaptureCaptain) takes damage without the flash.
         if hit.knockback != 0.0 {
+            // ftCo_Damage_CalcKnockback has already run: kb_applied is modified.
+            let knockback = f.core.modified_knockback(hit.knockback, assets);
             f.core.unlaunched_damage_flash(knockback, hit, assets);
         }
         return Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1));
@@ -252,8 +252,10 @@ pub(super) fn capture_damage(
     };
     capture.fast_remaining = 0.0;
     f.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-    // inlineB2: ftCo_8008DA4C after the capture-damage entry.
-    f.core.unlaunched_damage_flash(knockback, hit, assets);
+    // inlineB2: ftCo_8008DA4C after the capture-damage entry. The entry's
+    // Fighter_ChangeMotionState (fighter.c:1043) has cleared dmg.kb_applied,
+    // so the flash always takes reaction level 0 (electric: colanim 15).
+    f.core.unlaunched_damage_flash(0.0, hit, assets);
     Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1))
 }
 
