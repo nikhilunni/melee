@@ -314,6 +314,10 @@ impl Effects {
                         particles.expire_joint(joint);
                     }
                 }
+                // eflib.c:280-282: the fighter's own tree is walked with
+                // hsd_8039D688 whether or not a generator follows it, which
+                // leaves the insertion cursor at the list's tail.
+                particles.walk_unowned_joint();
                 continue;
             }
             // S3: efAlt 48B/48C use efLib_Create_Attach, with no scale inheritance.
