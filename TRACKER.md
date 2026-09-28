@@ -30,11 +30,15 @@ do not keep a session log here.
    Fox, Falco, Marth, Captain Falcon, Peach, Yoshi, Jigglypuff (a kind without
    ported specials fails closed on B). Registered boundaries: FD/BF/DL/YS/FoD/PS
    Fox-Marth, and each other character vs Fox on FD. Open:
-   - Pokémon Stadium's second transformation depends on emulated disc read
-     latency (fails closed; user decision: model the timing or record the
-     read completion as an input), docs/PORT_NOTES/POKEMON_STADIUM.md.
-   - In flight: StopWall (running into a wall), scratch words inherited from
-     unmodelled states, a 1-ulp throw-damage rounding (Jigglypuff ThrowF).
+   - **User decision: Pokémon Stadium transformations depend on emulated
+     disc read latency**, which varies between recordings even for a match's
+     first form read (21-23 polls for the same file). The port uses a
+     measured table for the first read (exact on the registered witnesses)
+     and fails closed on later reads; explorer matches are exact only up to
+     the first transformation. Options: model Dolphin's disc timing, or take
+     the read-completion tick from the recording as an input.
+     docs/PORT_NOTES/POKEMON_STADIUM.md.
+   - In flight: Mario (stub crate) and Pikachu bring-ups.
 2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
    build the batch runner that aggregates first divergences, using `triage`.
    Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
