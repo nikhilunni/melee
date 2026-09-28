@@ -153,13 +153,28 @@ impl super::FighterCore {
             }
             if matches!(
                 id,
-                0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422 | 0x487 | 0x4D1 | 0x4FE | 0x500 | 0x501
+                0x402
+                    | 0x403
+                    | 0x412
+                    | 0x413
+                    | 0x414
+                    | 0x422
+                    | 0x487
+                    | 0x4D1
+                    | 0x4FE
+                    | 0x4FF
+                    | 0x500
+                    | 0x501
                     | 0x502
             ) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
                 // efsync.c:500-521: 0x500 and 0x501 ignore the joint they
                 // are given and follow parts[1].
-                let bone = if matches!(id, 0x500 | 0x501) { SPARKLE_PART } else { bone };
+                let bone = if matches!(id, 0x4FF..=0x501) {
+                    SPARKLE_PART
+                } else {
+                    bone
+                };
                 self.effects
                     .push_graphics(EffectRequest::Attached { id, bone });
                 continue;

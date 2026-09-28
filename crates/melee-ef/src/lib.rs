@@ -676,7 +676,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::Attached {
-                id: id @ (0x4C0 | 0x4FE | 0x500 | 0x501),
+                id: id @ (0x4C0 | 0x4FE..=0x501),
                 bone,
             } = request
             {
@@ -693,20 +693,16 @@ impl Effects {
                 let model = match id {
                     0x4C0 => 0x1B58,
                     0x4FE => 0x426C,
-                    0x500 => 0x426D,
+                    // efsync.c:500-503: 0x4FF shares 0x500's row.
+                    0x4FF | 0x500 => 0x426D,
                     _ => 0x426E,
                 };
-                // 0x500 / 0x501 attach to parts[1] whatever joint the script
-                // named.
-                let (bone, resolved_matrix) = if matches!(id, 0x500 | 0x501) {
-                    (1, None)
-                } else {
-                    (bone, resolved_matrix)
-                };
                 let mut effect = self.acquire(model, particles);
-                if matches!(id, 0x500 | 0x501) {
+                if matches!(id, 0x4FF..=0x501) {
                     let scale = fighter.effect_scale().y;
-                    effect.tree.set_scale(effect.root, &Vec3::new(scale, scale, scale));
+                    effect
+                        .tree
+                        .set_scale(effect.root, &Vec3::new(scale, scale, scale));
                 }
                 if id == 0x501 {
                     let rotation = if fighter.effect_facing() < 0.0 {
