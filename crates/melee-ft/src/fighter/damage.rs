@@ -1944,6 +1944,8 @@ impl FighterCore {
     /// A throw release (ftCo_800DDDE4) only adds its damage to
     /// x1838_percentTemp (ftColl_80076640); the victim's ProcessHit applies it
     /// later, so this launch's fly-roll check still reads the old percent.
+    /// Other hits the victim takes the same frame add to that sum (and read it
+    /// for knockback) before ProcessHit applies it in one addition.
     fn prepare_damage_reaction(
         &mut self,
         hit: &ReceivedHit,
@@ -2043,7 +2045,13 @@ impl FighterCore {
             state = S::DamageFlyRoll;
         }
         if percent_pending {
-            self.physics.percent += hit.percent_damage;
+            // ftColl_80076640 (called by ftCo_800DDDE4 before this launch):
+            // x1838_percentTemp += damage, x183C_applied = max(its count).
+            self.combat.frame_damage += hit.percent_damage;
+            self.combat.frame_max_damage = self
+                .combat
+                .frame_max_damage
+                .max(super::hit_log::damage_count(hit.percent_damage));
         }
         // Retail block_36 overrides the motion only after the fly-roll draw.
         if let Some(forced_motion) = forced_motion {
