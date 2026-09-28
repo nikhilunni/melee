@@ -20,9 +20,9 @@ trusted: nothing merges with a known divergence.
 | `crates/hsd-types`, `melee-types` | Leaf type crates: vectors, enums, ids. No logic. |
 | `crates/hsd-archive` | `.dat` parsing. The only crate that knows on-disc layout. |
 | `crates/hsd-gobj`, `hsd-anim`, `hsd-particle` | HSD engine: scheduler, scene graph and animation, particles. |
-| `crates/melee-{lb,mp,gr,ft,it,ef,cm,cpu,if,cmd,coll}` | Melee subsystems, one crate each, mirroring decomp directories (`cmd`: subaction decoding; `coll`: hit/hurt capsules and damage math). |
-| `crates/ft-<name>`, `ft-fox-family` | One crate per character; kinds that share retail code share a family crate. |
-| `crates/it-<kind>` | Item kinds (Fox laser and Illusion, Bob-omb). |
+| `crates/melee-{lb,mp,gr,ft,it,ef,cm,cpu,if,cmd,coll}` | Melee subsystems, one crate each, mirroring decomp directories (`cmd`: subaction decoding; `coll`: hit/hurt capsules and damage math; `cpu`: CPU behaviour, so far Nana's follow AI). |
+| `crates/ft-<name>`, `ft-*-family` | One crate per character (20 registered); kinds that share retail code share a family crate (`fox`: Fox/Falco, `mars`: Marth/Roy, `mario`: Mario/Dr. Mario, `pikachu`: Pikachu/Pichu, `captain`: Falcon/Ganondorf, `link`: Link/Young Link). |
+| `crates/it-<kind>` | Item and article kinds (projectiles, thrown items, stage items such as Shy Guys). |
 | `crates/melee-lib` | Match composition and the curated create/step/inspect/clone API. |
 | `crates/melee-sim` | Oracle tooling binary: `gate`, `triage`, `dry-run`, `search`, `particle-sites`, `particles-diff`, `bones-diff`, `replay`. |
 | `crates/melee-replay` | Recording format and the corpus explorer (`--example explore`). |
@@ -56,6 +56,7 @@ cd harness && uv run python record_many.py scenarios/a.toml ... [--jobs 8]   # r
 cd harness && uv run python record.py scenarios/<name>.toml [--bones N]      # one scene, or human play
 cd harness && uv run python explore_batch.py <out> <n> <skip> [--boundary NAME ...] [--sudden-death] [--samples K]
 cd harness && uv run python make_boundary.py --stage <Stage> --players <P1> <P2>   # new retail start boundary
+tools/agent-merge/pick.sh <commit>                    # merge a worktree agent's commit (tools/agent-merge/README.md)
 cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>
 cd harness && uv run python asm.py <symbol> --fused                          # retail asm (docs/ASM.md)
 ```
@@ -121,8 +122,14 @@ Codex. Use them for bounded work, with at most two building at once:
   cherry-picks, gates and commits.
 
 A worktree never symlinks or copies `harness/roms` or `harness/traces`: an
-agent reads the main checkout's data in place. Check `git show --stat` before
-merging; it must not list game data or decomp paths.
+agent reads the main checkout's data in place (`MELEE_DATA_ROOT` for changed
+harness scripts). Brief every worktree agent with `docs/AGENT_BRIEF.md` plus
+its task; agents rebase onto `main` before reporting. Merge with
+`tools/agent-merge/pick.sh` (it refuses game data and decomp paths), gate the
+agent's scenarios and a cross-section after each merge, `m5_gate` every few
+merges, and a full checkpoint to close a wave. Remove finished agents'
+worktrees (`git worktree remove`) when a wave is merged: each keeps a full
+build directory.
 
 ## Sources of truth, in order
 
