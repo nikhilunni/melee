@@ -194,13 +194,25 @@ impl FighterCore {
             MotionData::Fall(fall) => fall.blend,
             // mv.co.guard.x4: the shield's smoothed tilt magnitude.
             MotionData::Guard(guard) => guard.tilt_magnitude,
-            // A roll writes only mv.co.escape.x0; out of Guard the union
-            // still holds the shield's tilt at x4.
-            MotionData::Escape(super::escape::EscapeState {
-                retained_guard: Some(guard),
-                ..
-            }) => guard.tilt_magnitude,
+            // A roll writes only mv.co.escape.x0 (ftCo_80099314); x4 is the
+            // predecessor's word, the shield's tilt out of Guard.
+            MotionData::Escape(escape) => escape.retained_word?,
             MotionData::FallSpecial(fall) => fall.animation.blend,
+            // mv.co.common.x4.x: the spawn height (ftCo_800C61B0), kept
+            // through EntryStart/EntryEnd and into Wait.
+            MotionData::Entry(entry) => entry.origin_y,
+            // mv.co.rebound.anim_speed (ftCo_80099D9C).
+            MotionData::Rebound(rebound) => rebound.animation_rate,
+            // mv.co.cliff.x4: CliffWait's countdown (ftCo_8009A804), which
+            // the climb, roll, attack and jump states leave in place.
+            // CliffCatch writes only the ledge id and keeps an unmodelled word.
+            MotionData::Cliff(cliff)
+                if self.motion_state.id != melee_types::CommonMotionState::CliffCatch =>
+            {
+                cliff.wait_frames
+            }
+            // mv.co.attack100.x4: the A-edge latch (ftCo_800D6B00 clears it).
+            MotionData::RapidJab(rapid) => f32::from_bits(u32::from(rapid.edge_pressed)),
             MotionData::Parasol(parasol) => parasol.retained_word?,
             // The +2344 words of the ground states (ftCommon types.h): an
             // int or enum is its bit pattern, as for Jump above.
@@ -219,7 +231,11 @@ impl FighterCore {
             MotionData::Smash { retained_word }
             | MotionData::Tilt { retained_word }
             | MotionData::Catch { retained_word }
-            | MotionData::DownTilt { retained_word, .. } => (*retained_word)?,
+            | MotionData::DownTilt { retained_word, .. }
+            | MotionData::DashAttack { retained_word, .. }
+            | MotionData::ItemGet { retained_word, .. }
+            | MotionData::Down { retained_word, .. }
+            | MotionData::Jab(super::attack::JabState { retained_word, .. }) => (*retained_word)?,
             // mv.co.kneebend.jump_input: ftCo_JumpInput (LStick 1, CStick 2, XY 3).
             MotionData::KneeBend(knee_bend) => f32::from_bits(match knee_bend.input {
                 super::jump::JumpInput::Stick => 1,

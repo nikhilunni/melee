@@ -515,12 +515,14 @@ impl Fighter {
     /// throw flags, enter the state and play its first frame.
     fn enter_item_get(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         self.core.commands.take_throw_flag_b3();
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
-        // mv.co.itemget.x0; take_dmg_cb = ftpickupitem_80094DF8 only
+        // mv.co.itemget.x0 only; take_dmg_cb = ftpickupitem_80094DF8 only
         // concerns consumables.
         self.core.state_data = MotionData::ItemGet {
             heavy: state == S::HeavyGet,
+            retained_word,
         };
         Ok(())
     }
@@ -528,7 +530,7 @@ impl Fighter {
     /// ftpickupitem_Anim (80094A14): the script's throw flag closes the
     /// hand on the nearest item; the animation ends in Wait.
     pub(super) fn item_get_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::ItemGet { heavy } = self.core.state_data else {
+        let MotionData::ItemGet { heavy, .. } = self.core.state_data else {
             panic!("item get scratch")
         };
         if self.core.commands.take_throw_flag_b3() {

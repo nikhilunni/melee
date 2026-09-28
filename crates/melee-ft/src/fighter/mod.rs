@@ -874,8 +874,12 @@ pub enum MotionData {
     Smash {
         retained_word: Option<f32>,
     },
+    /// DownBound, DownWait and the states out of them (mv.co.downwait.x0).
     Down {
         wait_remaining: f32,
+        /// mv+4: the predecessor's word with its top byte cleared by
+        /// ftCo_80097D40 (`None` where the port does not model it).
+        retained_word: Option<f32>,
     },
     /// Catch, CatchDash and the holding states. ftCo_800D8C54 writes only
     /// mv.co.catch.x0 (+2340), so mv+4 is the predecessor's word (`None`
@@ -886,6 +890,8 @@ pub enum MotionData {
     /// mv.co.itemget: LightGet (false) or HeavyGet (true).
     ItemGet {
         heavy: bool,
+        /// mv+4 as the predecessor left it (`None` where not modelled).
+        retained_word: Option<f32>,
     },
     ItemThrow(item_throw::ItemThrowState),
     Capture(grab_escape::CaptureState),
@@ -912,6 +918,8 @@ pub enum MotionData {
     /// cancels the dash attack into a dash grab.
     DashAttack {
         grab_window: i32,
+        /// mv+4 as the predecessor left it (`None` where not modelled).
+        retained_word: Option<f32>,
     },
     Aerial {
         retained_drop_timer: f32,

@@ -17,6 +17,9 @@ use melee_types::CommonMotionState as S;
 pub struct JabState {
     pub followup_pressed: bool,
     pub rapid_edges: i32,
+    /// The jabs write only mv.co.attack1.x0 (ftCo_Attack1.c:126, 194), so
+    /// mv+4 is the predecessor's word (`None` where the port does not model it).
+    pub retained_word: Option<f32>,
 }
 impl Fighter {
     /// Grounded attack priority; checkAttack11 (8008ABC0), AttackHi3 doEnter (8008BA38).
@@ -138,6 +141,7 @@ impl Fighter {
         }
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(S::Attack11.into(), assets)?;
         self.step_animation(assets);
         self.core.jab_countdown = self.core.attributes.combat.jab_2_input_window;
@@ -146,6 +150,7 @@ impl Fighter {
         self.core.state_data = MotionData::Jab(JabState {
             followup_pressed: false,
             rapid_edges: 0,
+            retained_word,
         });
         Ok(())
     }
@@ -184,6 +189,7 @@ impl Fighter {
             MotionData::Jab(jab) => jab.rapid_edges,
             _ => 0,
         };
+        let retained_word = self.inherited_scratch_word();
         self.core.commands.jab_followup = false;
         self.change_motion_state(state.into(), assets)?;
         if state == S::Attack12 {
@@ -193,6 +199,7 @@ impl Fighter {
         self.core.state_data = MotionData::Jab(JabState {
             followup_pressed: false,
             rapid_edges: edges,
+            retained_word,
         });
         Ok(())
     }
@@ -242,7 +249,10 @@ impl Fighter {
                 retained_word,
             },
             // doEnter (8008B4D4): the dash-grab window starts closed.
-            S::AttackDash => MotionData::DashAttack { grab_window: 0 },
+            S::AttackDash => MotionData::DashAttack {
+                grab_window: 0,
+                retained_word,
+            },
             _ => MotionData::Tilt { retained_word },
         };
         Ok(())
@@ -251,9 +261,10 @@ impl Fighter {
     /// ftCo_AttackDash_SetMv0 (8008B570): open the dash-grab window (PlCo +68).
     pub(super) fn enter_dash_attack(&mut self, assets: &FighterAssets) -> Result<()> {
         self.enter_simple_attack(S::AttackDash, assets)?;
-        self.core.state_data = MotionData::DashAttack {
-            grab_window: gekko_math::msl::fctiwz(assets.running.shield_grab_delay),
+        let MotionData::DashAttack { grab_window, .. } = &mut self.core.state_data else {
+            unreachable!("enter_simple_attack(AttackDash) installs DashAttack")
         };
+        *grab_window = gekko_math::msl::fctiwz(assets.running.shield_grab_delay);
         Ok(())
     }
     /// ftCo_AttackDash_IASA (8008B5C4) -> ftCo_800D8AE0 (800D8AE0): holding
@@ -271,7 +282,7 @@ impl Fighter {
             .current
             .held
             .intersects(crate::input::Buttons::SHIELD);
-        let MotionData::DashAttack { grab_window } = &mut self.core.state_data else {
+        let MotionData::DashAttack { grab_window, .. } = &mut self.core.state_data else {
             panic!("dash attack scratch")
         };
         if shield && *grab_window != 0 {

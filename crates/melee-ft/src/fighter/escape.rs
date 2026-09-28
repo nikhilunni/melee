@@ -16,6 +16,11 @@ pub struct EscapeState {
     pub interrupt_frames: i32,
     /// facing_dir1, retained when the subaction reverses facing_dir.
     pub entry_facing: f32,
+    /// mv+4 as the predecessor left it: ftCo_80099314 writes only
+    /// mv.co.escape.x0 (Samus's ftCo_80099390 also clears x4 and has its
+    /// own entry). Out of Guard this is the shield's smoothed tilt
+    /// (`None` where the port does not model the predecessor's word).
+    pub retained_word: Option<f32>,
 }
 impl Fighter {
     /// ftCo_80099314 / ftCo_800998EC (0x80099314 / 0x800998EC).
@@ -25,6 +30,7 @@ impl Fighter {
         } else {
             None
         };
+        let retained_word = self.inherited_scratch_word();
         if state == S::EscapeN {
             (self.character.table().escape_variant)(self, assets, false)?;
         }
@@ -36,6 +42,7 @@ impl Fighter {
             retained_guard,
             interrupt_frames: assets.shield.roll_interrupt_frames,
             entry_facing: self.core.physics.facing,
+            retained_word,
         });
         if state != S::EscapeN {
             (self.character.table().escape_variant)(self, assets, true)?;

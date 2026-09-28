@@ -147,9 +147,16 @@ impl Fighter {
         } else {
             S::DownBoundD
         };
+        // ftCo_80097D40 (the only port entry) stores a zero byte at +2344
+        // after ftCo_8009794C (retail 80097D70 stb): mv+4 keeps the
+        // predecessor's low three bytes.
+        let retained_word = self
+            .inherited_scratch_word()
+            .map(|word| f32::from_bits(word.to_bits() & 0x00FF_FFFF));
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Down {
             wait_remaining: 0.0,
+            retained_word,
         };
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         self.core.input.buttons.attack = 255;
@@ -198,6 +205,8 @@ impl Fighter {
                 if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
                     self.land();
                 }
+                // ftCo_80097AF4 writes only mv.co.downwait.x0.
+                let retained_word = self.inherited_scratch_word();
                 self.change_motion_state(
                     (if self.core.motion_state.id == S::DownBoundU {
                         S::DownWaitU
@@ -209,12 +218,13 @@ impl Fighter {
                 )?;
                 self.core.state_data = MotionData::Down {
                     wait_remaining: assets.damage.down_wait_frames,
+                    retained_word,
                 };
                 self.step_animation(assets);
                 self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
             }
         } else {
-            let MotionData::Down { wait_remaining } = &mut self.core.state_data else {
+            let MotionData::Down { wait_remaining, .. } = &mut self.core.state_data else {
                 panic!("down scratch");
             };
             *wait_remaining -= 1.0;
@@ -285,9 +295,12 @@ impl Fighter {
         // ftCo_80097F38: SkipModel | SkipMatAnim | SkipNametagVis |
         // KeepColAnimPartHitStatus, then ftAnim_8006EBA4.
         let state = if up { S::DownWaitU } else { S::DownWaitD };
+        // ftCo_80097F38 writes only mv.co.downwait.x0; x4 is DownDamage's.
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Down {
             wait_remaining: remaining,
+            retained_word,
         };
         self.step_animation(assets);
         self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
