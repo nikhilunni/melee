@@ -1253,6 +1253,13 @@ fn pokemon_stadium_transformations_match_retail() {
     combat_gate_ticks("stage_ps_grass_fox_marth4", 7500);
 }
 
+/// Fox dashes into a wall on the risen rock form: ftCo_8009EDA4 enters
+/// StopWall (ftCo_8009EE30), which returns to Wait at its animation's end.
+#[test]
+fn stop_wall_on_pokemon_stadium_rock_form_matches_retail() {
+    combat_gate_ticks("stopwall_ps_fox_dash_rock", 4800);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {

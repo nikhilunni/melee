@@ -12,6 +12,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         rows[index].id = S::ALL[index + 1]; // ALL begins with the -1 None sentinel.
         index += 1;
     }
+    // ftData_MotionStateList[249]: ftCo_SM_StopWall (213).
+    rows[S::StopWall as usize] = MotionRow {
+        action: ActionId(249),
+        id: S::StopWall,
+        animation: 213,
+        anim: crate::fighter::stop_wall::animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::stop_wall::physics,
+        collision: crate::fighter::stop_wall::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftData_MotionStateList[250]: ftCo_SM_StopCeil (214).
     rows[S::StopCeil as usize] = MotionRow {
         action: ActionId(250),

@@ -86,6 +86,33 @@ pub fn collide_wait(
     }
 }
 
+/// `ft_800843FC` (0x800843FC, ft_081B.c:1100-1127): StopWall's ground pass.
+/// Wait's teetering collision without the nudge branch, through
+/// mpColl_8004B5C4 (ECB load 9).
+pub fn collide_stop_wall(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    pose: &EcbPose,
+    stick_x: f32,
+) -> WaitGroundResult {
+    assert_eq!(state.ground_or_air, GroundOrAir::Ground);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    cd.lstick_x = stick_x;
+    melee_mp::set_facing_dir(cd, if state.facing > 0.0 { 1 } else { -1 });
+    let supported = map.ground_collide_teeter_ecb9(cd, Some(&|i| pose.position(i)));
+    state.position = cd.cur_pos;
+    if supported {
+        WaitGroundResult::Supported
+    } else if cd.env_flags as u32 & collide::EDGE != 0 && !environment.teeter_disabled {
+        WaitGroundResult::EnterTeeter
+    } else {
+        WaitGroundResult::EnterFall
+    }
+}
+
 /// `ft_800827A0`: ground collision that stops at the floor's edge without the
 /// Ottotto test (ftCo_Ottotto_Coll / ftCo_OttottoWait_Coll). `false` means the
 /// fighter lost the floor and the caller enters Fall.

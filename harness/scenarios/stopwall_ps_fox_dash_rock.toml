@@ -1,0 +1,28 @@
+# STOPWALL witness: from the start_ps_fox_marth4 boundary both fighters idle
+# as in stage_ps_idle_fox_marth4 until the rock form has risen and carried
+# Fox onto it. At tick 4600 Fox (p1) holds the stick left: he turns, dashes
+# into a wall hugged on his facing side faster than his walk_max_vel, and
+# ftCo_8009EDA4 enters StopWall (ftCo_8009EE30: TransN offset from the ECB
+# side, ft_800843FC, ftCommon_8007E2FC). When the animation ends he returns
+# to Wait (ft_8008A2BC) and walks on while the stick is held.
+name = "stopwall_ps_fox_dash_rock"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 4800
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 4600, port = 0, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 4750, port = 0, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

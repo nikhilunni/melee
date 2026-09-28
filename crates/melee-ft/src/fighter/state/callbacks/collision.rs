@@ -52,17 +52,8 @@ fn finish_ground(
         WaitGroundResult::Supported => {
             if running {
                 // ft_800844EC -> ftCo_8009EDA4 (ftCo_StopWall.c:16-30).
-                let wall = if fighter.core.physics.facing < 0.0 {
-                    melee_types::mp::collide::RIGHT_WALL_HUG
-                } else {
-                    melee_types::mp::collide::LEFT_WALL_HUG
-                };
-                if fighter.core.collision.data.env_flags as u32 & wall != 0
-                    && gekko_math::msl::fabsf(fighter.core.physics.ground_velocity)
-                        > fighter.core.attributes.walking.walk_max_vel
-                {
-                    unimplemented!("ftCo_StopWall.c:25-26: running wall impact -> StopWall");
-                }
+                let assets = assets.expect("StopWall entry needs proc_map_with_assets");
+                fighter.try_stop_at_wall(assets, map)?;
             }
         }
         WaitGroundResult::EnterFall => {

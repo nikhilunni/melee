@@ -55,6 +55,7 @@ pub mod parasol;
 pub mod passive_ceil;
 mod stage_wind;
 pub mod stop_ceil;
+pub mod stop_wall;
 pub mod teeter;
 pub mod turn;
 pub mod turn_run;

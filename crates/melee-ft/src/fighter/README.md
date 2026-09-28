@@ -305,7 +305,7 @@ See [M4_DASH.md](M4_DASH.md) for validation, affected files and limitations.
 | Run check / Enter / Enter_Full / Anim / IASA / Phys / Coll | 800CA5F0 / 800CA6F4 / 800CA71C / 800CA77C / 800CA830 / 800CA95C / 800CAA2C | `run.rs`; ordinary zero-phase entry |
 | RunBrake CheckInput / Enter / Anim / IASA / Phys / Coll | 800CABC4 / 800CAC18 / 800CAC9C / 800CADB0 / 800CAE18 / 800CAE60 | `run.rs`, shared Wait collision |
 | ftCommon_800804A0 / ftCommon_8007C98C / ftCommon_ApplyGroundMovement | 800804A0 / 8007C98C / 8007CB74 | initial secondary acceleration, target clamp and projection |
-| ft_8008A2BC / ft_800844EC / ftCo_8009EDA4 | 8008A2BC / 800844EC / 8009EDA4 | Wait return, ordinary ground support and explicit StopWall boundary |
+| ft_8008A2BC / ft_800844EC / ftCo_8009EDA4 | 8008A2BC / 800844EC / 8009EDA4 | Wait return, ordinary ground support and StopWall entry (stop_wall.rs) |
 | ftAction_80071028 / ftAction_80071820 | 80071028 / 80071820 | five-word GFX decode and command variables |
 | ftCo_8009F834 / ftCommon_8007DB24 | 8009F834 / 8007DB24 | randomized offsets, typed rotating bone cursor and effect destruction flag |
 | ft_80089B08 | 80089B08 | RunBrake body tilt on long flat floors |
@@ -315,7 +315,7 @@ shared ground acceleration/clamp. Run tapers acceleration and scales animation
 rate by ground velocity. RunBrake retains its two command-variable controls,
 maximum duration and pause/release logic. Turn can now enter a dash with its
 initial attack/escape window disabled. Combat/item/shield/jump-cancel,
-short/sloping body tilt and StopWall entries remain explicit boundaries. No
+short/sloping body tilt remain explicit boundaries. No
 new `ftCo_0A01.c` helper is called by these item-free human paths.
 
 Dash needs the existing TransN extraction code wired into fighter construction;
