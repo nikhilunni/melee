@@ -252,6 +252,25 @@ pub struct IllusionOwner {
     pub rotations: [f32; 4],
 }
 
+/// A blast an item's accessory offers its owner (it_802B5478): the owner
+/// tests its hurt capsules against hitbox 0 (ftSs_Init_80128A1C) and may
+/// take the launch (ftSs_Init_80128944).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OwnerBlast {
+    pub owner: u8,
+    /// Hitbox 0's x58 and x4C as they stand (a new capsule is not placed
+    /// before item link 11, so these can be the cleared slot's).
+    pub previous: hsd_types::Vec3,
+    pub position: hsd_types::Vec3,
+    /// lbColl_80008248's radius: hitbox 0's scale, times the item's unless
+    /// the hitbox ignores scale (x43_b1).
+    pub contact_radius: f32,
+    /// Hitbox 0's stored scale, the launch's horizontal range.
+    pub range: f32,
+    /// The item's x, the launch's centre.
+    pub x: f32,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct ItemOwner {
     pub illusion: Option<IllusionOwner>,

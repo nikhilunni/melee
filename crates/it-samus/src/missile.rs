@@ -432,8 +432,7 @@ fn super_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
         return;
     }
     let a = Attributes(&ctx.assets.special_attributes);
-    item.velocity.x =
-        gekko_math::fma::fmadds(a.super_acceleration(), item.facing, item.velocity.x);
+    item.velocity.x = gekko_math::fma::fmadds(a.super_acceleration(), item.facing, item.velocity.x);
     let speed = if item.velocity.x < 0.0 {
         -item.velocity.x
     } else {
@@ -441,7 +440,11 @@ fn super_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     };
     let maximum = a.super_maximum();
     if speed > maximum {
-        item.velocity.x = if item.facing == 1.0 { maximum } else { -maximum };
+        item.velocity.x = if item.facing == 1.0 {
+            maximum
+        } else {
+            -maximum
+        };
     }
 }
 

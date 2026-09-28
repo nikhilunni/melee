@@ -312,6 +312,84 @@ impl ItemCore {
         true
     }
 
+    /// it_8026E248 (8026E248) without its callback: it_8026DAA8's pass and
+    /// bits; any contact bounces (it_80276FC4), and a floor then brings the
+    /// item to rest once it has slowed (it_8026DE98, it_8026DC24,
+    /// it_8026DD5C). True when retail calls the callback.
+    pub fn bounce_to_rest(&mut self, map: &mut melee_mp::CollMap, assets: &ItemAssets) -> bool {
+        let bits = self.air_contact_bits(map);
+        if bits & 0xF == 0 {
+            return false;
+        }
+        self.bounce_off_surfaces(bits, map, assets);
+        if bits & 1 == 0 {
+            return false;
+        }
+        // it_8026DE98 -> it_8026DDFC: a first landing of a thrown item may
+        // break it (xD54_throwNum); fighter articles are never thrown.
+        self.land_count += 1;
+        self.settle(assets) && self.come_to_rest(assets)
+    }
+
+    /// it_8026DC24 (8026DC24): a first landing sets the landing spin and the
+    /// grounded box; near-zero speeds are zero; true (and no velocity) once
+    /// both axes are within ItemAttr x5C, or when the kind keeps no bounce
+    /// speed (x58 zero). xDCD b4 is never set for the ported kinds.
+    fn settle(&mut self, assets: &ItemAssets) -> bool {
+        if self.land_count <= 1 {
+            self.update_spin(assets.landing_spin_degrees);
+            self.restore_collision_box(assets);
+        }
+        use gekko_math::msl::fabsf;
+        if fabsf(self.velocity.x) <= 0.00001 {
+            self.velocity.x = 0.0;
+        }
+        if fabsf(self.velocity.y) <= 0.00001 {
+            self.velocity.y = 0.0;
+        }
+        let slow = fabsf(self.velocity.x) <= assets.rest_speed
+            && fabsf(self.velocity.y) <= assets.rest_speed;
+        if slow || assets.bounce_scale == 0.0 {
+            // itResetVelocity.
+            self.velocity = hsd_types::Vec3::ZERO;
+            return true;
+        }
+        false
+    }
+
+    /// it_8026DD5C (8026DD5C): the landing count resets and the item is
+    /// grounded; unless it slides (it_80277040) its spin stops
+    /// (it_80274740). it_80276CEC's stored normal only feeds the slide.
+    fn come_to_rest(&mut self, assets: &ItemAssets) -> bool {
+        self.land_count = 0;
+        self.land_on_floor();
+        if self.slides(assets) {
+            unimplemented!("it_8026DD5C: a landed item sliding (entered_air)");
+        }
+        self.spin_speed = 0.0;
+        match self.rotation_axis {
+            0 => self.rotation.z = 0.0,
+            1 => self.rotation.x = 0.0,
+            _ => self.rotation.y = 0.0,
+        }
+        true
+    }
+
+    /// it_80277040 (80277040): whether the item slides down its floor. A
+    /// kind without a slide speed (x50) never does; neither does anything
+    /// on a floor flatter than ItCo +C0, which covers every ported stage's
+    /// floors.
+    fn slides(&mut self, assets: &ItemAssets) -> bool {
+        if gekko_math::msl::fabsf(assets.slide_speed) < 0.00001 {
+            return false;
+        }
+        let normal = self.collision.as_ref().expect("item map collision").floor.normal;
+        if normal.x != 0.0 {
+            unimplemented!("it_80277040: an item's slide on a sloped floor");
+        }
+        false
+    }
+
     /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's
     /// velocity; unless the contact is a repeat, the bounce plays the kind's
     /// sound, sparks and scales the hitboxes' damage by ItemAttr x58.

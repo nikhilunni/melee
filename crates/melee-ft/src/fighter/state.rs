@@ -7,6 +7,8 @@ pub use phase::{
     AnimFn, AnimationPhase, CameraFn, CameraPhase, CollisionFn, CollisionPhase, InputFn,
     InputPhase, PhysicsFn, PhysicsPhase,
 };
+mod motion_flags;
+pub use motion_flags::{class_nibble, COMMON_MOTION_FLAGS};
 mod names;
 mod partner_sync;
 mod row;

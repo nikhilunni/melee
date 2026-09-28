@@ -97,6 +97,7 @@ pub struct CharacterTable {
     pub special_parasol: fn(&CharacterState) -> Option<parasol::SpecialParasol>,
     pub set_parasol_animation: fn(&mut Fighter, usize, f32),
     pub article_destroyed: fn(&mut Fighter, melee_types::ItemKind),
+    pub owner_blast: fn(&mut Fighter, &melee_it::OwnerBlast, &assets::FighterAssets),
     pub landing_articles: fn(&mut Fighter, bool),
     pub wait_articles: fn(&mut Fighter),
     pub cape_turn_blocked: fn(&mut Fighter) -> bool,
@@ -187,6 +188,7 @@ impl CharacterTable {
             special_parasol: |state| state.get::<C>().special_parasol(),
             set_parasol_animation: C::SET_PARASOL_ANIMATION,
             article_destroyed: C::ARTICLE_DESTROYED,
+            owner_blast: C::OWNER_BLAST,
             landing_articles: C::LANDING_ARTICLES,
             wait_articles: C::WAIT_ARTICLES,
             cape_turn_blocked: C::CAPE_TURN_BLOCKED,
@@ -398,6 +400,13 @@ pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize
     unimplemented!("ftCommon_8007E83C({index}, {frames}): Parasol item animation")
 }
 pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
+pub(super) fn unsupported_owner_blast(
+    fighter: &mut Fighter,
+    _blast: &melee_it::OwnerBlast,
+    _assets: &assets::FighterAssets,
+) {
+    unimplemented!("{:?}: an article's blast offered to its owner", fighter.character.kind())
+}
 pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
 pub(super) fn no_wait_articles(_fighter: &mut Fighter) {}
 pub(super) fn cape_turn_allowed(_fighter: &mut Fighter) -> bool {

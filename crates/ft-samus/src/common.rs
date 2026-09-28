@@ -334,11 +334,7 @@ pub fn part(part: melee_types::FtPart) -> usize {
 /// before the change, ahead of the new script's frame-0 effects and colour
 /// step. Resolving those graphics commands now (their offset draws are the
 /// proc's next RNG work) lets the change seal them with the outgoing pose.
-pub fn seal_graphics(
-    f: &mut Fighter,
-    assets: &FighterAssets,
-    rng: &mut gekko_math::HsdRng,
-) {
+pub fn seal_graphics(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
     if !f.core.commands.graphics.is_empty() {
         f.core.resolve_graphics_commands(assets, rng);
     }

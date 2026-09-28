@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 286] = [
+const MATRIX_WITNESSES: [(&str, usize); 302] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1334,6 +1334,27 @@ const MATRIX_WITNESSES: [(&str, usize); 286] = [
     ("samus_charge_roll_fd_fox4", 300),
     ("samus_charge_hit_fd_fox4", 214),
     ("samus_charge_shine_fd_fox4", 398),
+    // Bomb (ftsamusspeciallw1.c, itsamusbomb.c) and the bomb jump
+    // (ftsamusspeciallw0.c): drops from Wait, the air and SquatWait, the
+    // bounce to rest, Fox's hit, launches from Wait, the ball and off-centre
+    // (landing in 341), the late start from the ball model, and no launch
+    // while charging or dodging.
+    ("samus_bomb_ground_fd_fox4", 300),
+    ("samus_bomb_air_fd_fox4", 300),
+    ("samus_bomb_chain_fd_fox4", 360),
+    ("samus_bomb_double_fd_fox4", 320),
+    ("samus_bomb_edge_fd_fox4", 320),
+    ("samus_bomb_fox_fd_fox4", 300),
+    ("samus_bomb_crouch_fd_fox4", 300),
+    ("samus_bomb_side4_fd_fox4", 320),
+    ("samus_bomb_side6_fd_fox4", 320),
+    ("samus_bomb_side8_fd_fox4", 320),
+    ("samus_bomb_side10_fd_fox4", 320),
+    ("samus_bomb_charging_fd_fox4", 300),
+    ("samus_bomb_dodge_fd_fox4", 300),
+    ("samus_bomb_walk_fd_fox4", 300),
+    ("samus_bomb_roll_fd_fox4", 320),
+    ("samus_bomb_squat_fd_fox4", 300),
 ];
 
 #[test]

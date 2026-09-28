@@ -50,13 +50,7 @@ pub const fn rows() -> [MotionRow; 4] {
             common::ground_friction,
             walk_off_collision,
         ),
-        common::row(
-            AIR,
-            air_anim,
-            common::no_input,
-            air_physics,
-            air_collision,
-        ),
+        common::row(AIR, air_anim, common::no_input, air_physics, air_collision),
         common::row(
             AIR_SMASH,
             air_anim,
@@ -113,13 +107,22 @@ pub fn fire(f: &mut Fighter) {
     };
     let offset = attributes(f).spawn_offset_x;
     let c = &mut f.core;
-    let mut position =
-        melee_ft::fighter::caches::part_position(&mut c.skeleton, &c.animation, CANNON_PART, Vec3::ZERO);
+    let mut position = melee_ft::fighter::caches::part_position(
+        &mut c.skeleton,
+        &c.animation,
+        CANNON_PART,
+        Vec3::ZERO,
+    );
     position.x = gekko_math::fma::fmadds(offset, c.physics.facing, position.x);
     let smash = matches!(c.motion_state.action, GROUND_SMASH | AIR_SMASH);
     // it_802B62D0: prev_pos is the point on the stage plane; pos is
     // it_8026BB68's ECB midpoint (ftLib_80086990: fadds, fmuls, fadds).
-    let mut spawn = SpawnItem::ray(ItemKind::SamusMissile, c.player.id, position, c.physics.facing);
+    let mut spawn = SpawnItem::ray(
+        ItemKind::SamusMissile,
+        c.player.id,
+        position,
+        c.physics.facing,
+    );
     let midpoint = 0.5 * (c.collision.data.ecb.top.y + c.collision.data.ecb.bottom.y);
     spawn.position = Vec3::new(
         c.physics.position.x + 0.0,
@@ -131,10 +134,11 @@ pub fn fire(f: &mut Fighter) {
     // ftSs_SpecialS_8012A168: the flash once per state (x2219_b0), and
     // Fighter_SetEffectHitlagCallbacks.
     if !c.effect_state.destroy_on_state_change {
-        c.effects_after_items.push(EffectRequest::PositionalGenerator {
-            id: FIRE_FLASH,
-            position,
-        });
+        c.effects_after_items
+            .push(EffectRequest::PositionalGenerator {
+                id: FIRE_FLASH,
+                position,
+            });
         c.effect_state.destroy_on_state_change = true;
     }
     c.effect_state.hitlag_callbacks = true;

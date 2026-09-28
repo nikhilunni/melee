@@ -104,7 +104,11 @@ impl ItemLogic for SamusCharge {
         _rng: &mut gekko_math::HsdRng,
     ) {
         item.command_variables = [0; 4];
-        set_lifetime(item, Attributes(&assets.special_attributes).lifetime(), common.half_life_scale);
+        set_lifetime(
+            item,
+            Attributes(&assets.special_attributes).lifetime(),
+            common.half_life_scale,
+        );
         item.scratch = ItemScratch::ChargeShot(ChargeShotState {
             original_owner: item.owner,
             ..Default::default()
@@ -206,17 +210,20 @@ impl ItemLogic for SamusCharge {
     }
     /// it_802B5EDC (802B5EDC), installed at the launch: a full shot
     /// sparkles every third frame.
-    fn accessory(item: &mut ItemCore, _owner: Option<&ItemOwner>, _assets: &ItemAssets) {
+    fn accessory(item: &mut ItemCore, _owner: Option<&ItemOwner>, _assets: &ItemAssets) -> Option<OwnerBlast> {
         let state = shot_mut(item);
         if !state.launched {
-            return;
+            return None;
         }
         let sparkle = state.level == state.full && state.sparkle == 0;
         state.sparkle = (state.sparkle + 1) % 3;
         if sparkle {
-            item.events.push(ItemEvent::OwnEffect { id: FULL_SPARKLE_A });
-            item.events.push(ItemEvent::OwnEffect { id: FULL_SPARKLE_B });
+            item.events
+                .push(ItemEvent::OwnEffect { id: FULL_SPARKLE_A });
+            item.events
+                .push(ItemEvent::OwnEffect { id: FULL_SPARKLE_B });
         }
+        None
     }
     /// itSamusChargeshot_Logic108_DmgDealt.
     fn damage_dealt(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
@@ -278,7 +285,12 @@ fn set_lifetime(item: &mut ItemCore, frames: f32, half_life_scale: f32) {
 
 /// it_802B5CBC (802B5CBC): the lifetime again, the hand glow goes, the
 /// level clamped to 0..7 picks the flight state, and the accessory begins.
-fn take_flight_state(item: &mut ItemCore, lifetime: f32, half_life_scale: f32, assets: &ItemAssets) {
+fn take_flight_state(
+    item: &mut ItemCore,
+    lifetime: f32,
+    half_life_scale: f32,
+    assets: &ItemAssets,
+) {
     set_lifetime(item, lifetime, half_life_scale);
     item.events.push(ItemEvent::DestroyEffects);
     let state = shot_mut(item);
@@ -340,7 +352,11 @@ fn flight_physics(item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
 fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     use melee_types::mp::collide;
     item.air_pass(ctx.map);
-    let env = item.collision.as_ref().expect("item map collision").env_flags as u32;
+    let env = item
+        .collision
+        .as_ref()
+        .expect("item map collision")
+        .env_flags as u32;
     let mut hit = false;
     if item.velocity.y > 0.0 {
         hit |= env & collide::CEILING_MASK != 0;

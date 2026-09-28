@@ -55,8 +55,20 @@ pub struct ChargeShot {
 
 pub const fn rows() -> [MotionRow; 6] {
     [
-        common::row(START, start_anim, common::no_input, common::ground_friction, start_collision),
-        common::row(HOLD, hold_anim, hold_input, common::ground_friction, hold_collision),
+        common::row(
+            START,
+            start_anim,
+            common::no_input,
+            common::ground_friction,
+            start_collision,
+        ),
+        common::row(
+            HOLD,
+            hold_anim,
+            hold_input,
+            common::ground_friction,
+            hold_collision,
+        ),
         common::row(
             CANCEL,
             cancel_anim,
@@ -64,7 +76,13 @@ pub const fn rows() -> [MotionRow; 6] {
             common::ground_friction,
             cancel_collision,
         ),
-        common::row(FIRE, fire_anim, common::no_input, common::ground_friction, fire_collision),
+        common::row(
+            FIRE,
+            fire_anim,
+            common::no_input,
+            common::ground_friction,
+            fire_collision,
+        ),
         common::row(
             AIR_START,
             air_start_anim,
@@ -138,12 +156,21 @@ fn form_shot(f: &mut Fighter) {
     }
     f.commands.variables[0] = 0;
     let c = &mut f.core;
-    let mut position =
-        melee_ft::fighter::caches::part_position(&mut c.skeleton, &c.animation, HAND_PART, HAND_OFFSET);
+    let mut position = melee_ft::fighter::caches::part_position(
+        &mut c.skeleton,
+        &c.animation,
+        HAND_PART,
+        HAND_OFFSET,
+    );
     position.z = 0.0;
     // it_802B55C8: prev_pos on the stage plane, pos it_8026BB68's ECB
     // midpoint (ftLib_80086990: fadds, fmuls, fadds), x44_flag.b0.
-    let mut spawn = SpawnItem::ray(ItemKind::SamusCharge, c.player.id, position, c.physics.facing);
+    let mut spawn = SpawnItem::ray(
+        ItemKind::SamusCharge,
+        c.player.id,
+        position,
+        c.physics.facing,
+    );
     let midpoint = 0.5 * (c.collision.data.ecb.top.y + c.collision.data.ecb.bottom.y);
     spawn.position = Vec3::new(
         c.physics.position.x + 0.0,
@@ -170,8 +197,12 @@ fn fire_shot(f: &mut Fighter, assets: &FighterAssets) {
     }
     f.commands.variables[1] = 2;
     let c = &mut f.core;
-    let mut position =
-        melee_ft::fighter::caches::part_position(&mut c.skeleton, &c.animation, MUZZLE_PART, Vec3::ZERO);
+    let mut position = melee_ft::fighter::caches::part_position(
+        &mut c.skeleton,
+        &c.animation,
+        MUZZLE_PART,
+        Vec3::ZERO,
+    );
     position.z = 0.0;
     let angle = if c.physics.facing == 1.0 {
         0.0
@@ -204,7 +235,8 @@ fn fire_shot(f: &mut Fighter, assets: &FighterAssets) {
         kind: ItemKind::SamusCharge,
         launch,
     });
-    if f.motion_state.action == AIR_FIRE || f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+    if f.motion_state.action == AIR_FIRE || f.physics.ground_or_air == melee_types::GroundOrAir::Air
+    {
         // ftSamus_801293BC_inner: separate fmuls, level first.
         let recoil = attributes(f).recoil_per_level;
         f.physics.self_velocity.x = f.physics.facing * (recoil * level as f32);
@@ -280,7 +312,8 @@ fn hold_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice
         let level = f.character.get::<Samus>().charge_level + 1;
         set_charge_level(f, level);
         if level as f32 >= full {
-            f.core.install_color_overlay_now(FULL_CHARGE_COLOR, p.assets);
+            f.core
+                .install_color_overlay_now(FULL_CHARGE_COLOR, p.assets);
             set_charge_level(f, gekko_math::msl::fctiwz(full));
             common::seal_graphics(f, p.assets, p.rng);
             change(f, CANCEL, MotionEntryFlags(0), 0.0, 1.0, p.assets)?;
@@ -349,7 +382,8 @@ fn air_fire_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCh
 /// shot; otherwise B fires and a shield press cancels.
 fn hold_input(f: &mut Fighter, p: InputPhase<'_>) {
     if let Some(roll) = f.core.roll_input(p.assets) {
-        f.enter_escape(p.assets, roll).expect("roll out of the charge");
+        f.enter_escape(p.assets, roll)
+            .expect("roll out of the charge");
         drop_shot(f);
         return;
     }

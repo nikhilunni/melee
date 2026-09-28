@@ -1,0 +1,26 @@
+# SAMUS: a blast meets Samus balled in the second Bomb (model 0 = 2: late start x0).
+# SAMUS directed witness: a grounded Bomb, then a second one dropped while the first is about to blow
+name = "samus_bomb_double_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 320
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 154, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 156, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

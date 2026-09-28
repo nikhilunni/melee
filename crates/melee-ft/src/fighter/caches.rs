@@ -163,6 +163,39 @@ impl melee_coll::detection::Collider for super::FighterCore {
 }
 
 impl super::FighterCore {
+    /// lbColl_80008248 (80008248) over every hurt capsule in table order,
+    /// whatever its state: whether a swept hit capsule from `previous` to
+    /// `position` with `radius` touches the fighter (the broad phase
+    /// widened by 3 * the fighter's scale).
+    pub fn hurt_capsules_touched(
+        &mut self,
+        previous: hsd_types::Vec3,
+        position: hsd_types::Vec3,
+        radius: f32,
+    ) -> bool {
+        use melee_coll::detection::Collider;
+        if self.player.scale != 1.0 {
+            unimplemented!("lbColl_80008248: a scaled fighter's hurt matrix (ftCommon_8007F804)");
+        }
+        (0..self.hurt_count()).any(|index| {
+            let (hurt, matrix) = self.sample_hurt(index);
+            melee_coll::geometry::capsule_contact(
+                melee_coll::geometry::Capsule {
+                    start: previous,
+                    end: position,
+                    radius,
+                },
+                melee_coll::geometry::Capsule {
+                    start: hurt.positions[0],
+                    end: hurt.positions[1],
+                    radius: hurt.radius,
+                },
+                &matrix,
+                3.0 * self.player.scale,
+            )
+            .is_some()
+        })
+    }
     /// ftColl_8007B0C0 (8007B0C0): every hurt capsule takes `status`.
     pub fn set_hurt_capsules(&mut self, status: melee_types::combat::HurtStatus) {
         self.commands.capsule_status = status;

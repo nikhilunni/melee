@@ -192,6 +192,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// An article this fighter owns was destroyed (the kind's Destroyed
     /// logic callback reaching back to its owner).
     const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = character::no_article;
+    /// An owned article's accessory offers this fighter its blast (Samus's
+    /// bomb, it_802B5478).
+    const OWNER_BLAST: fn(&mut Fighter, &melee_it::OwnerBlast, &assets::FighterAssets) =
+        character::unsupported_owner_blast;
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
@@ -747,6 +751,10 @@ impl Fighter {
     /// A destroyed article's Destroyed callback reaching this owner.
     pub fn article_destroyed(&mut self, kind: melee_types::ItemKind) {
         (self.character.table().article_destroyed)(self, kind)
+    }
+    /// An owned article's blast reaching this owner (its accessory).
+    pub fn owner_blast(&mut self, blast: &melee_it::OwnerBlast, assets: &assets::FighterAssets) {
+        (self.character.table().owner_blast)(self, blast, assets)
     }
     pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         (self.character.table().item_owner)(self, assets)

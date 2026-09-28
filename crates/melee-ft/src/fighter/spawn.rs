@@ -17,6 +17,8 @@ struct MotionChange<'a> {
     ground_air: bool,
     /// Ft_MF_SkipModelPartVis (bit22), also part of ftCommon_GroundAirColl_MF.
     skip_model_part_visibility: bool,
+    /// Ft_MF_SkipModel (bit4): the model selections survive (fighter.c:979).
+    skip_model: bool,
     update_commands: bool,
     preserve_name_tag: bool,
     skip_animation: bool,
@@ -46,6 +48,7 @@ impl MotionEntryFlags {
     pub const KEEP_GFX: Self = Self(1 << 1);
     pub const KEEP_COL_ANIM_HIT_STATUS: Self = Self(1 << 2);
     pub const SKIP_HIT: Self = Self(1 << 3);
+    pub const SKIP_MODEL: Self = Self(1 << 4);
     pub const SKIP_ANIM_VEL: Self = Self(1 << 5);
     pub const SKIP_MAT_ANIM: Self = Self(1 << 7);
     pub const SKIP_THROW_EXCEPTION: Self = Self(1 << 8);
@@ -776,6 +779,7 @@ impl Fighter {
                 rate,
                 ground_air: item,
                 skip_model_part_visibility: flags.contains(F::SKIP_MODEL_PART_VIS),
+                skip_model: flags.contains(F::SKIP_MODEL),
                 update_commands: flags.contains(F::UPDATE_CMD),
                 preserve_name_tag: flags.contains(F::SKIP_NAMETAG_VIS),
                 skip_animation: flags.contains(F::SKIP_ANIM),
@@ -1207,6 +1211,13 @@ impl FighterCore {
         self.status.special_grab = None;
         // fighter.c:1063: fp->invisible.
         self.effect_state.invisible = false;
+        // fighter.c:979-981: without Ft_MF_SkipModel the selections return
+        // to x5F4_arr[i].prev (ftParts_80074A8C). The port keeps no
+        // ftParts_80074A4C defaults: its one reader (Samus's bomb jump,
+        // idx == 2) sees -1 and 0 alike.
+        if !change.skip_model {
+            self.commands.model_selections = Default::default();
+        }
         // fighter.c:1093-1095: without Ft_MF_SkipModelPartVis the articles
         // show again (x221E_b4).
         if !change.skip_model_part_visibility {

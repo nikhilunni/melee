@@ -106,8 +106,9 @@ pub struct CommandState {
     /// immediately after commands.
     pub self_damage: FixedVec<f32, COMMAND_REQUEST_CAPACITY>,
     pub color_animations: FixedVec<ColorAnimationRequest, COMMAND_REQUEST_CAPACITY>,
-    /// ftAction_80071D40 -> ftParts_80074B0C: retained DObj group selection.
-    /// DObj visibility is renderer output, like texture_frames; it changes no SRT.
+    /// ftAction_80071D40 -> ftParts_80074B0C: the DObj group selections
+    /// (x5F4_arr[i].idx). DObj visibility is renderer output, like
+    /// texture_frames; it changes no SRT, but a character may read it.
     pub model_selections: ModelSelections,
     pub hurt_status: melee_types::combat::HurtStatus,
     pub allow_interrupt: bool,

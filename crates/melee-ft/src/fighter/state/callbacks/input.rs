@@ -38,6 +38,35 @@ pub fn appeal(fighter: &mut Fighter, phase: InputPhase<'_>) {
         .expect("taunt IASA");
 }
 
+/// ftCo_Wait_IASA's head (8008A4D4), specials through ftCo_80099794's roll,
+/// as a character's grounded state lists it (ftSs_SpecialLw_IASA).
+pub fn standing_attacks(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    use crate::input::WaitPredicate as P;
+    let context = fighter.core.wait_context();
+    let transition = fighter.first_ground_transition(
+        phase.assets,
+        &context,
+        &[
+            P::SpecialSide,
+            P::SpecialUp,
+            P::SpecialNeutral,
+            P::SpecialDown,
+            P::Grab,
+            P::SmashSide,
+            P::SmashUp,
+            P::SmashDown,
+            P::TiltSide,
+            P::TiltUp,
+            P::TiltDown,
+            P::Jab,
+            P::Escape,
+        ],
+    );
+    fighter
+        .apply_ground_transition(phase.assets, transition)
+        .expect("standing attack IASA");
+}
+
 pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).

@@ -155,6 +155,14 @@ pub struct ItemAssets {
     pub bounce_scale: f32,
     /// ItemAttr x80 (Item.xD84, it_8027321C): the bounce sound.
     pub bounce_sound: u32,
+    /// ItemAttr x5C (it_8026DC24): a landing at or below this speed on both
+    /// axes comes to rest.
+    pub rest_speed: f32,
+    /// ItemAttr x50 (it_80277040): the slope slide's speed; zero never slides.
+    pub slide_speed: f32,
+    /// ItCo common data +74 (it_8026DC24): the spin degrees a first landing
+    /// sets.
+    pub landing_spin_degrees: f32,
     /// ItemAttr x64 (destroy_gfx): the effect when an animation callback
     /// ends the item (ItemSwitch, destroy_type 0).
     pub destroy_effect: Option<u16>,
@@ -233,7 +241,8 @@ impl ItemAssets {
     }
 
     /// The ItCo common data (it_804D6D28) an article reads once it leaves
-    /// the hand or explodes: +F8 (it_8027518C), +68 and +E8 (it_80275BC8).
+    /// the hand or explodes: +F8 (it_8027518C), +68 and +E8 (it_80275BC8),
+    /// and +74 (it_8026DC24).
     pub fn read_common_release(
         &mut self,
         archive: &Archive,
@@ -244,6 +253,7 @@ impl ItemAssets {
         self.explosion_lifetime = r.f32(common + 0xF8)?;
         self.fall_spin_degrees = r.f32(common + 0x68)?;
         self.release_box_scale = r.f32(common + 0xE8)?;
+        self.landing_spin_degrees = r.f32(common + 0x74)?;
         Ok(())
     }
 
@@ -361,6 +371,9 @@ impl ItemAssets {
             throw_speed_multiplier: r.f32(common + 4)?,
             bounce_scale: r.f32(common + 0x58)?,
             bounce_sound: r.u32(common + 0x80)?,
+            rest_speed: r.f32(common + 0x5C)?,
+            slide_speed: r.f32(common + 0x50)?,
+            landing_spin_degrees: 0.0,
             destroy_effect: u16::try_from(r.s32(common + 0x64)?).ok(),
             event_destroy_effect: u16::try_from(r.s32(common + 0x68)?).ok(),
             grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
@@ -604,6 +617,11 @@ fn read_block(
             12 => Command::SetHitboxDamage {
                 id: ((word >> 23) & 7) as usize,
                 damage: (word & 8191) as f32,
+            },
+            // it_802795EC: three-bit id, 23-bit size times 0.003906f.
+            13 => Command::SetHitboxRadius {
+                id: ((word >> 23) & 7) as usize,
+                radius: 0.003906 * (word & 0x007f_ffff) as f32,
             },
             14 => Command::ClearHitbox((word & 0x03ff_ffff) as usize),
             15 => Command::ClearHitboxes,

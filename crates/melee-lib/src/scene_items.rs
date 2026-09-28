@@ -40,6 +40,7 @@ melee_it::item_kinds! {
         LuigiFire: it_luigifire::LuigiFire,
         SamusMissile: it_samus::SamusMissile,
         SamusCharge: it_samus::SamusCharge,
+        SamusBomb: it_samus::SamusBomb,
     }
 }
 
@@ -433,7 +434,20 @@ impl Resources {
                 it_samus::charge::SPECIAL_ATTRIBUTES,
             )?;
             kinds.push((ItemKind::SamusCharge, charge));
-            visual_archives.push((ItemKind::SamusCharge, a));
+            visual_archives.push((ItemKind::SamusCharge, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[0]: the bomb, whose blast takes the common
+            // explosion lifetime (it_8027518C) and whose landing reads
+            // ItCo +74 (it_8026DC24).
+            let mut bomb = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_samus::bomb::ARTICLE_INDEX,
+                &it_samus::bomb::ARTICLE_STATES,
+                it_samus::bomb::SPECIAL_ATTRIBUTES,
+            )?;
+            bomb.read_common_release(&common_archive, public)?;
+            kinds.push((ItemKind::SamusBomb, bomb));
+            visual_archives.push((ItemKind::SamusBomb, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -1028,6 +1042,18 @@ pub fn owner_index(
     fighters
         .iter()
         .position(|f| f.player.id == owner && f.player.secondary == secondary)
+}
+
+/// An item accessory's blast reaching its owner at once (it_802B5478 ->
+/// ftSs_Init_80128A1C), before the next item's procs.
+pub fn owner_blast(state: &mut crate::initial_state::InitialState, blast: &melee_it::OwnerBlast) {
+    for (index, fighter) in state.fighters.iter_mut().enumerate() {
+        crate::scene_fighter::with_fighter!(fighter, |f| {
+            if f.player.id == blast.owner && !f.player.secondary {
+                f.owner_blast(blast, &state.assets.fighters[index]);
+            }
+        });
+    }
 }
 
 /// Item_8026A8EC's kind callback reaching the owning fighter: the article

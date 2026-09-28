@@ -1,10 +1,10 @@
 //! Samus load/reset hooks, ft/kinds/ftSamus/ftsamus.c.
 use crate::attributes::{read_samus_attributes, SamusAttributes};
+use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
     Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
-use melee_ef::request::EffectRequest;
 use melee_types::FighterKind;
 
 #[derive(Clone, Debug)]
@@ -43,6 +43,8 @@ pub enum Accessory {
     None,
     /// ftSs_SpecialS_8012A074: the missile on the script's throw flag.
     Missile,
+    /// ftSs_SpecialLw_8012ADF0: the bomb on the script's throw flag.
+    Bomb,
 }
 impl Samus {
     pub fn new(attributes: SamusAttributes) -> Self {
@@ -106,9 +108,7 @@ impl CharacterCallbacks for Samus {
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
-            _ => unimplemented!(
-                "ftData_Special{slot:?}[Samus] (airborne: {airborne}): character special entry"
-            ),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
         }
     }
     /// Fighter_8006C80C: the special's accessory4 while installed.
@@ -118,6 +118,7 @@ impl CharacterCallbacks for Samus {
         }
         match f.character.get::<Samus>().accessory {
             Accessory::Missile => crate::special_s::fire(f),
+            Accessory::Bomb => crate::special_lw::drop_bomb(f),
             Accessory::None => {}
         }
     }
@@ -147,6 +148,9 @@ impl CharacterCallbacks for Samus {
             crate::special_n::let_go(f);
         }
     };
+    /// it_802B5478: a bomb's blast offered to Samus.
+    const OWNER_BLAST: fn(&mut Fighter, &melee_it::OwnerBlast, &FighterAssets) =
+        crate::special_lw::take_blast;
     /// ftCommon_8007DB58: take_dmg_cb (ftSs_Init_80128428) when installed.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(damage_callback);
     /// ftCo_800D331C: death2_cb, the same callback.

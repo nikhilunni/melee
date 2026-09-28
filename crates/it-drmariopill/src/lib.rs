@@ -169,14 +169,19 @@ impl ItemLogic for DrMarioPill {
     /// itDrMarioPill_802C061C, the taunt pill's on_accessory: it sits at
     /// its owner's position (the JObj's Y rotation, M_PI_2 * facing, and
     /// Z rotation are the model's alone).
-    fn accessory(item: &mut ItemCore, owner: Option<&ItemOwner>, _assets: &ItemAssets) {
+    fn accessory(
+        item: &mut ItemCore,
+        owner: Option<&ItemOwner>,
+        _assets: &ItemAssets,
+    ) -> Option<OwnerBlast> {
         if item.motion != TAUNT {
-            return;
+            return None;
         }
         if let Some(owner) = owner {
             item.position = owner.position;
             item.root_translation = owner.position;
         }
+        None
     }
     /// Only the taunt pill that let go of its owner itself (ftDr_Init_801498A0
     /// in itDrMarioPill_Motion2_Anim) reaches the owner.

@@ -22,6 +22,23 @@ impl Fighter {
         Ok(())
     }
 
+    /// ftCo_800D638C (800D638C): SquatWait from outside Squat, keeping the
+    /// nametag (Ft_MF_SkipNametagVis), with no pending drop.
+    pub fn enter_squat_wait(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.held_item.is_some() {
+            unimplemented!("ftCo_SquatWait_Enter_inline: SquatWaitItem with a held item");
+        }
+        self.change_motion_state_with_flags(
+            CommonMotionState::SquatWait.into(),
+            assets,
+            super::MotionEntryFlags::SKIP_NAMETAG_VIS,
+            0.0,
+            1.0,
+        )?;
+        self.core.state_data = MotionData::Squat(SquatState::default());
+        Ok(())
+    }
+
     /// ftCo_Squat_Anim (0x800D607C), ftCo_800D638C (0x800D638C),
     /// ftCo_SquatRv_Anim (0x800D6658). Hold entry preserves the nametag timer.
     pub(super) fn squat_animation(&mut self, assets: &FighterAssets) -> Result<()> {

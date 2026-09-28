@@ -150,7 +150,14 @@ pub trait ItemLogic {
     }
     /// Item_80269A9C (item link 9): the item's on_accessory callback, which
     /// hitlag skips.
-    fn accessory(_item: &mut ItemCore, _owner: Option<&ItemOwner>, _assets: &ItemAssets) {}
+    /// A blast the item offers its owner reaches it at once.
+    fn accessory(
+        _item: &mut ItemCore,
+        _owner: Option<&ItemOwner>,
+        _assets: &ItemAssets,
+    ) -> Option<crate::OwnerBlast> {
+        None
+    }
     fn owner_removed(item: &mut ItemCore, owner: u8) {
         if item.owner == Some(owner) {
             item.owner = None;
@@ -272,7 +279,7 @@ pub struct ItemLogicRow {
     pub absorbed: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub shield_bounced: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
-    pub accessory: fn(&mut ItemCore, Option<&ItemOwner>, &ItemAssets),
+    pub accessory: fn(&mut ItemCore, Option<&ItemOwner>, &ItemAssets) -> Option<crate::OwnerBlast>,
     pub owner_removed: fn(&mut ItemCore, u8),
     pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
     pub partner_bone: Option<usize>,

@@ -1087,7 +1087,7 @@ impl Fighter {
     /// entry: stop the action and override-voice sound handles, then run the
     /// character's take-damage hook (Fox and Falco put the Blaster away).
     /// No supported character has a death1 hook.
-    pub(super) fn interrupt_actions(&mut self) {
+    pub fn interrupt_actions(&mut self) {
         for channel in [
             super::commands::SoundChannel::StopAction,
             super::commands::SoundChannel::StopOverrideVoice,

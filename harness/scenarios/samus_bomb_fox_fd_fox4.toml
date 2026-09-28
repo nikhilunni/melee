@@ -1,0 +1,26 @@
+# SAMUS: Fox dashes into the falling bomb: its hit explodes it and the blast launches Samus.
+# SAMUS directed witness: a grounded Bomb that Fox dashes into
+name = "samus_bomb_fox_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 175, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

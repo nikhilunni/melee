@@ -141,7 +141,17 @@ pub enum ItemScratch {
     ClimbersIce(ClimbersIceState),
     Missile(MissileState),
     ChargeShot(ChargeShotState),
+    SamusBomb(SamusBombState),
     None,
+}
+/// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SamusBombState {
+    /// x4: the fighter the blast can launch; a reflection or the owner's
+    /// removal clears it.
+    pub owner: Option<u8>,
+    /// x0: the blast has yet to test its owner (it_802B5478).
+    pub blast_pending: bool,
 }
 /// Item.xDD4_itemVar.samuschargeshot (itsamuschargeshot.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -467,6 +477,12 @@ pub struct ItemCore {
     pub pose_steps: u32,
     /// The article state the motion plays (its ItemStateTable anim_id).
     pub article_state: usize,
+    /// xD50_landNum: floor contacts since the item last came to rest.
+    pub land_count: u32,
+    /// Each hitbox slot's last placed positions (HitCapsule x58 and x4C:
+    /// previous, current), which a cleared slot keeps in retail until a
+    /// new capsule there is first placed.
+    pub hitbox_trace: [(Vec3, Vec3); 4],
 }
 /// lb_8000B804: the model root's authored rotation.
 pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
@@ -732,6 +748,7 @@ impl ItemCore {
         let mut position = Vec3::ZERO;
         hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
         hit.update_position(position);
+        self.hitbox_trace[id] = (hit.previous_position, hit.position);
     }
     /// Item_8026A8EC (item.c:1991-1995): efLib_DestroyAll, then ItemSwitch's
     /// destroy effect unless suppressed or the item is still in its owner's
@@ -868,6 +885,14 @@ impl ItemCore {
                     if let Some(hit) = &mut self.hitboxes[*id] {
                         hit.knockback_damage = gekko_math::msl::fctiwz(*damage) as u32;
                         hit.descriptor.damage = hit.knockback_damage as f32 * self.stale_multiplier;
+                    }
+                }
+                Command::SetHitboxRadius { id, radius } => {
+                    // it_802795EC: x3C keeps the size, then it_80275594(1 /
+                    // scl) on a live capsule.
+                    self.hitbox_size = *radius;
+                    if let Some(hit) = &mut self.hitboxes[*id] {
+                        hit.descriptor.radius = *radius * (1.0 / self.scale);
                     }
                 }
                 Command::ClearHitbox(id) => {
@@ -1085,6 +1110,8 @@ impl ItemPool {
             link_requests: Default::default(),
             pose_steps: 0,
             article_state: 0,
+            land_count: 0,
+            hitbox_trace: Default::default(),
         };
         // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
         item.update_spin(self.common.spawn_spin_degrees);
@@ -1486,6 +1513,9 @@ mod tests {
             throw_speed_multiplier: 1.0,
             bounce_scale: 1.0,
             bounce_sound: 0,
+            rest_speed: 0.0,
+            slide_speed: 0.0,
+            landing_spin_degrees: 0.0,
             destroy_effect: None,
             event_destroy_effect: None,
             grab_offset: hsd_types::Vec2::ZERO,

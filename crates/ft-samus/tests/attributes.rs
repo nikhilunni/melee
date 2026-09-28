@@ -16,7 +16,10 @@ fn relocated_attributes_keep_floats_integers_the_ball_box_and_beam_timelines() {
     word(&mut data, 0x78, 2.0_f32.to_bits());
     word(&mut data, 0x84, 8.0_f32.to_bits());
     word(&mut data, 0x98, 5.0_f32.to_bits());
-    for (i, value) in [7, 17, 75, 93, 7, 17, 40, 64, 1, 7, 40, 58].iter().enumerate() {
+    for (i, value) in [7, 17, 75, 93, 7, 17, 40, 64, 1, 7, 40, 58]
+        .iter()
+        .enumerate()
+    {
         word(&mut data, 0x9C + 4 * i, *value);
     }
     word(&mut data, 0xD0, (-3_i32) as u32);
@@ -74,6 +77,9 @@ fn restore_then_death_resets_the_fighter_vars_but_keeps_the_charge_effect_flag()
     assert!(samus.charge_effects && samus.screw_effect);
     samus.model_group = 1;
     samus.on_reset();
-    assert_eq!((samus.charge_level, samus.missiles_fired, samus.model_group), (0, 0, 0));
+    assert_eq!(
+        (samus.charge_level, samus.missiles_fired, samus.model_group),
+        (0, 0, 0)
+    );
     assert!(samus.charge_effects && !samus.screw_effect);
 }
