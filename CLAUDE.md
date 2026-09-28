@@ -79,6 +79,7 @@ cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>
 cargo run -q --release -p melee-sim -- dry-run <new.toml> --state-from <recorded.toml> --out o.jsonl  # search tick-clock inputs in the port
 cargo run -q --release -p melee-sim -- search <base.toml> --state-from <recorded.toml> --spec <spec.toml> [--out new.toml --name n]  # branch-and-clone input search (spec format: crates/melee-sim/src/search.rs)
 cargo run -q --release -p melee-replay --example explore -- harness/roms/files <out> <n> <skip> [sudden-death]  # corpus explorer
+cd harness && uv run python explore_batch.py <out> <n> <skip> [--sudden-death] [--samples K]  # explore, bridge faults, record in parallel, gate, triage
 ```
 
 ## The gates, in one command each
