@@ -37,6 +37,9 @@ pub struct ItemCommonData {
     pub launch: crate::hurt::ItemLaunch,
     /// +58 / +5C / +60: itColl_BounceOffVictim's rebound.
     pub victim_bounce: VictimBounce,
+    /// +14C..+158: a framed item's camera extents (item.c foobar3):
+    /// left, right, top and bottom reach.
+    pub camera_extents: [f32; 4],
 }
 
 /// itColl_BounceOffVictim (80272DB0): an item rebounding off what it hit.
@@ -99,6 +102,12 @@ impl ItemCommonData {
                 vertical_scale: r.f32(base + 0x5C)?,
                 vertical_pop: r.f32(base + 0x60)?,
             },
+            camera_extents: [
+                r.f32(base + 0x14C)?,
+                r.f32(base + 0x150)?,
+                r.f32(base + 0x154)?,
+                r.f32(base + 0x158)?,
+            ],
         })
     }
 }
@@ -630,39 +639,23 @@ fn read_block(
                 radius: 0.003906 * (word & 0x007f_ffff) as f32,
             },
             14 => Command::ClearHitbox((word & 0x03ff_ffff) as usize),
-            // it_8027978C: a sound. Sub-operations 0..2 (Item_8026AE84 /
-            // 8026AF0C / 8026AFA0) take the id in the next word and pan and
-            // volume in the low bytes of the one after; 10 and 11 stop the
-            // item's sounds and skip one word; any other skips none.
-            16 => {
-                let sub = ((word >> 18) & 0xFF) as u8;
-                let (id, pan, volume) = match sub {
-                    0..=2 => {
-                        let id = r.u32(offset + 4)?;
-                        let levels = r.u32(offset + 8)?;
-                        offset += 8;
-                        (id, (levels >> 8) as u8, levels as u8)
-                    }
-                    10 | 11 => {
-                        offset += 4;
-                        (0, 0, 0)
-                    }
-                    _ => (0, 0, 0),
-                };
-                Command::FootstepSound {
-                    behavior: sub,
-                    id,
-                    volume,
-                    pan,
-                    terrain: false,
-                    alt_foot: false,
-                }
-            }
             15 => Command::ClearHitboxes,
             17..=19 => Command::SetVariable {
                 index: (op - 17) as usize,
                 value: word & 0x03ff_ffff,
             },
+            // it_8027978C (8027978C): an item sound; its sub-opcode (bits
+            // 18..25) 0..2 take the id and pan/volume words, 10 and 11 one
+            // unused word, every other one none.
+            16 => {
+                let sub = (word >> 18) & 0xFF;
+                let id = if sub <= 2 { r.u32(offset + 4)? } else { 0 };
+                if sub <= 2 || sub == 10 || sub == 11 {
+                    offset += 4;
+                }
+                offset += 4;
+                Command::ItemSound { sub: sub as u8, id }
+            }
             // it_80279888 -> it_80273598: rumble on the owner's controller.
             21 => Command::Rumble {
                 all_players: false,

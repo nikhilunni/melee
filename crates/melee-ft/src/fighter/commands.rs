@@ -231,6 +231,7 @@ impl CommandState {
                 | Command::Call { .. }
                 | Command::Return
                 | Command::Unported(_) => unreachable!("interpreter consumes control flow"),
+                Command::ItemSound { .. } => unreachable!("item scripts only"),
                 Command::ThrowAccessory => {
                     self.throw_accessory = true;
                 }

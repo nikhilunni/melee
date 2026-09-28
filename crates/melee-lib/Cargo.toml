@@ -14,6 +14,7 @@ it-peach = { path = "../it-peach" }
 it-pikachu = { path = "../it-pikachu" }
 it-heiho = { path = "../it-heiho" }
 it-seak = { path = "../it-seak" }
+it-zelda = { path = "../it-zelda" }
 it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 it-mariofire = { path = "../it-mariofire" }

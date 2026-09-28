@@ -327,6 +327,7 @@ impl Runtime {
                             id,
                             item.id,
                             matrix,
+                            item.model_scale.y,
                             &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
@@ -535,11 +536,13 @@ impl Runtime {
     }
 
     /// Requests between linked articles made during this proc, in request
-    /// order (see [`melee_it::LinkRequest`]).
-    fn deliver_item_links(&mut self, s_link: u8, world: &mut World) -> Result<()> {
+    /// order (see [`melee_it::LinkRequest`]). Returns an article that spawned
+    /// another from the proc that ended it (Din's Fire's explosion).
+    fn deliver_item_links(&mut self, s_link: u8, world: &mut World) -> Result<Option<u32>> {
         use crate::scene_items::SceneItems;
         use melee_it::{ItemDispatch, LinkMessage, LinkTarget};
         let state = &mut self.state;
+        let mut ended_spawner = None;
         loop {
             let pending = state
                 .items
@@ -588,7 +591,11 @@ impl Runtime {
                     )
                     .unwrap_or_else(|| unimplemented!("it_802B4224: Item_80268B18 found no room"));
                     state.items.get_mut(id).unwrap().partner = Some(sender);
-                    state.items.get_mut(sender).unwrap().partner = Some(id);
+                    let spawner = state.items.get_mut(sender).unwrap();
+                    spawner.partner = Some(id);
+                    if spawner.destroyed {
+                        ended_spawner = Some(sender);
+                    }
                     id
                 }
             };
@@ -599,11 +606,14 @@ impl Runtime {
                 item.partner = None;
                 continue;
             }
+            if request.message == LinkMessage::Spawned {
+                continue;
+            }
             let assets = state.assets.items.get(item.kind);
             let receive = SceneItems::logic(item.kind).link_received;
             item.destroyed |= receive(item, request.message, assets);
         }
-        Ok(())
+        Ok(ended_spawner)
     }
 
     fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
@@ -726,6 +736,12 @@ impl Runtime {
             }
             9 => {
                 let item = state.items.get_mut(id).unwrap();
+                // Item_80269A9C: a framed item's camera subject follows it.
+                let position = item.position;
+                if let Some(subject) = item.camera.as_mut() {
+                    subject.position = position;
+                    subject.bone_position = position;
+                }
                 // Item_80269A9C: hitlag skips the accessory callback.
                 let in_hitlag = item.in_hitlag;
                 let logic = <SceneItems as melee_it::ItemDispatch>::logic(kind);
@@ -942,19 +958,22 @@ impl Runtime {
                 }
             }
             Callback::Camera => {
-                // cm_804D6468 runs newest first: the fighters' subjects in
-                // reverse creation order; a stage subject created at the
-                // stage's start is newer still.
+                // cm_804D6468 runs newest first: the framed items' subjects
+                // (item.c foobar3), newest first; a stage subject created at
+                // the stage's start; then the fighters' subjects in reverse
+                // creation order.
                 let stage_subject = match &mut state.stage {
                     SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
                     _ => None,
                 };
+                let items = state.items.iter_mut().rev().filter_map(|i| i.camera.as_mut());
                 let fighters = state.fighters.iter_mut().rev().map(|f| &mut f.0.camera);
                 let camera = &mut state.camera;
                 let stage_camera = &state.assets.stage_camera;
-                with_subjects(stage_subject.into_iter().chain(fighters), |subjects| {
-                    camera.update_standard(subjects, stage_camera)
-                });
+                with_subjects(
+                    items.chain(stage_subject).chain(fighters),
+                    |subjects| camera.update_standard(subjects, stage_camera),
+                );
                 state.quakes.retire_loop(&state.camera);
                 let unzoomed = state.camera.zoom() == 1.0;
                 for fighter in &mut state.fighters {
@@ -1745,7 +1764,7 @@ impl Runtime {
                 }
             });
         }
-        self.deliver_item_links(row.s_link, world)?;
+        let ended_spawner = self.deliver_item_links(row.s_link, world)?;
         let state = &mut self.state;
         // A new article's own efSync_Spawn (it_802BE2E8, it_802BD248's
         // it_80272C08) belongs to its spawner's proc, as does an article
@@ -1764,6 +1783,12 @@ impl Runtime {
             self.drain_item_events(false)?;
         }
         let state = &mut self.state;
+        // The spawner's own end (Item_8026A8EC's efLib_DestroyAll) follows
+        // the article its proc created: the walk leaves the generator
+        // insertion cursor at the list's tail, past the new generators.
+        if let Some(spawner) = ended_spawner {
+            state.effects.expire_item_joint(spawner, &mut state.particles);
+        }
         // Effects a proc spawned after the items it created (their creation
         // particles came first).
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
@@ -2244,7 +2269,7 @@ pub(crate) fn with_subjects<'a, R>(
     let first: [Option<&'a mut melee_cm::Subject>; 10] = std::array::from_fn(|_| subjects.next());
     assert!(
         subjects.next().is_none(),
-        "more camera subjects than players"
+        "more than ten camera subjects"
     );
     match first {
         [None, ..] => f(&mut []),
@@ -2253,7 +2278,19 @@ pub(crate) fn with_subjects<'a, R>(
         [Some(a), Some(b), Some(c), None, ..] => f(&mut [a, b, c]),
         [Some(a), Some(b), Some(c), Some(d), None, ..] => f(&mut [a, b, c, d]),
         [Some(a), Some(b), Some(c), Some(d), Some(e), None, ..] => f(&mut [a, b, c, d, e]),
-        _ => unimplemented!("more than five camera subjects"),
+        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), None, ..] => {
+            f(&mut [a, b, c, d, e, g])
+        }
+        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), None, ..] => {
+            f(&mut [a, b, c, d, e, g, h])
+        }
+        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), Some(i), None, ..] => {
+            f(&mut [a, b, c, d, e, g, h, i])
+        }
+        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), Some(i), Some(j), None] => {
+            f(&mut [a, b, c, d, e, g, h, i, j])
+        }
+        _ => unimplemented!("more than nine camera subjects"),
     }
 }
 fn article_bone_matrix(

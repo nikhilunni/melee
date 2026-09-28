@@ -15,4 +15,5 @@ hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 melee-cmd = { path = "../melee-cmd" }
 melee-coll = { path = "../melee-coll" }
+melee-cm = { path = "../melee-cm" }
 hsd-anim = { path = "../hsd-anim" }

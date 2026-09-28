@@ -246,6 +246,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             articles_fired: 0,
             charge: None,
             holds_needles: false,
+            stick: hsd_types::Vec2::new(
+                fighter.input.current.stick.x,
+                fighter.input.current.stick.y,
+            ),
+            steering_article: false,
+            detonating_article: false,
         }
     }
 

@@ -148,6 +148,12 @@ pub fn joint_position(f: &mut Fighter, joint: usize) -> hsd_types::Vec3 {
     )
 }
 
+/// ftCommon_GroundAirColl_MF: SkipMatAnim, SkipColAnim, UpdateCmd,
+/// SkipItemVis, Unk19, SkipModelPartVis, SkipModelFlags, Unk27.
+pub const GROUND_AIR_COLL_BASE_FLAGS: MotionEntryFlags = MotionEntryFlags(
+    1 << 7 | 1 << 12 | 1 << 14 | 1 << 18 | 1 << 19 | 1 << 22 | 1 << 26 | 1 << 27,
+);
+
 /// ftCommon_GroundAirColl_MF (SkipMatAnim, SkipColAnim, UpdateCmd,
 /// SkipItemVis, Unk19, SkipModelPartVis, SkipModelFlags, Unk27) with
 /// KeepGfx, KeepColAnimHitStatus and SkipHit: the specials' ground/air

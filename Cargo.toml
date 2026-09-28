@@ -30,6 +30,7 @@ members = [
     "crates/it-pikachu",
     "crates/it-heiho",
     "crates/it-seak",
+    "crates/it-zelda",
     "crates/melee-ft",
     "crates/melee-cmd",
     "crates/melee-coll",

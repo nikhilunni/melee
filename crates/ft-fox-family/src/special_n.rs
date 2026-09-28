@@ -355,6 +355,9 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
         motion: action,
         articles_fired: 0,
         charge: None,
+        stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+        steering_article: false,
+        detonating_article: false,
     }
 }
 

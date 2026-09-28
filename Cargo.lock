@@ -1070,6 +1070,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-zelda"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1317,6 +1327,7 @@ dependencies = [
  "hsd-archive",
  "hsd-gobj",
  "hsd-types",
+ "melee-cm",
  "melee-cmd",
  "melee-coll",
  "melee-lb",
@@ -1383,6 +1394,7 @@ dependencies = [
  "it-seak",
  "it-yoshieggthrow",
  "it-yoshistar",
+ "it-zelda",
  "melee-cm",
  "melee-cmd",
  "melee-coll",

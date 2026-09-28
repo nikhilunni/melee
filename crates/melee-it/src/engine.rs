@@ -146,6 +146,7 @@ pub enum ItemScratch {
     Missile(MissileState),
     ChargeShot(ChargeShotState),
     SamusBomb(SamusBombState),
+    DinFire(DinFireState),
     None,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
@@ -212,6 +213,29 @@ pub struct NeedleState {
     /// xDF8 / xDFC: that line's angle now and the frame before.
     pub line_angle: f32,
     pub previous_line_angle: f32,
+}
+/// Item.xDD4_itemVar.zeldadinfire (itzeldadinfire.c) and
+/// .zeldadinfireexplode: Zelda's Din's Fire and its explosion.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DinFireState {
+    /// xDD8 (the fire) / xDD4 (the explosion): the charge, one per frame
+    /// of flight up to the attribute.
+    pub charge: f32,
+    /// xDDC: a reflection took the fire out of its creator's hands.
+    pub reflected: bool,
+    /// xDE0: the creator, who steers and detonates it while it owns it
+    /// (it_802C3D44 clears it).
+    pub creator: Option<u8>,
+    /// xDE8: the steering's angle offset.
+    pub angle_offset: f32,
+    /// xDEC: the flight's base angle (0 facing right, pi facing left).
+    pub base_angle: f32,
+    /// xDF0: the flight's speed.
+    pub speed: f32,
+    /// xDF4 (the fire) / xDE0 (the explosion): its generators are live.
+    pub effects: bool,
+    /// The explosion's xDD8: the hitbox's authored size, once read.
+    pub hitbox_size: f32,
 }
 /// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
 /// Pikachu's Thunder chain; the partner is the next bolt (x34).
@@ -501,6 +525,10 @@ pub struct ItemCore {
     pub blast_zone_checked: bool,
     /// The other item this one points at (see [`crate::LinkRequest`]).
     pub partner: Option<u32>,
+    /// x520_cameraBox: the camera's subject for an item it frames (item.c
+    /// foobar3), placed at the item each accessory proc (Item_80269A9C) and
+    /// unlinked when the item goes (Item_80267454).
+    pub camera: Option<melee_cm::Subject>,
     /// Requests for linked items, delivered once the proc returns.
     pub link_requests: melee_types::fixed::FixedVec<crate::LinkRequest, 4>,
     /// HSD_JObjAnimAll steps since the article state's animation began
@@ -950,11 +978,11 @@ impl ItemCore {
                 }
                 // it_8027990C: controller rumble only.
                 Command::Rumble { .. } => {}
-                // it_8027978C: sub-operations 0..2 play the sound; the
-                // others stop the item's sounds, which nothing simulated
-                // hears.
-                Command::FootstepSound { behavior, id, .. } => {
-                    if *behavior <= 2 {
+                // it_8027978C: sub-operations 0..2 play the sound
+                // (Item_8026AE84 / AF0C / AFA0); 10 and 11 stop the item's
+                // sounds (Item_8026B034 / B074), which nothing simulated hears.
+                Command::ItemSound { sub, id } => {
+                    if *sub <= 2 {
                         self.sound_requests.push(*id);
                     }
                 }
@@ -1018,6 +1046,25 @@ impl ItemPool {
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
+    /// item.c foobar3 (Camera_80029044): kind 1 an Active subject, any
+    /// other nonzero kind an Auto one, aiming at the common extents.
+    fn camera_subject(&self, kind: u8) -> Option<melee_cm::Subject> {
+        if kind == 0 {
+            return None;
+        }
+        let mut subject = melee_cm::Subject::new(if kind == 1 {
+            melee_cm::SubjectState::Active
+        } else {
+            melee_cm::SubjectState::Auto
+        });
+        let [left, right, top, bottom] = self.common.camera_extents;
+        let target = &mut subject.target_extents;
+        target.left = left;
+        target.right = right;
+        target.top = top;
+        target.bottom = bottom;
+        Some(subject)
+    }
     /// Item_80268B18 -> Item_8026862C. Equal p-link priority appends in spawn order.
     pub fn spawn<D: ItemDispatch>(&mut self, spawn: SpawnItem, assets: &ItemAssets) -> Option<u32> {
         self.spawn_with_stale::<D>(spawn, assets, 1.0)
@@ -1028,10 +1075,6 @@ impl ItemPool {
         assets: &ItemAssets,
         stale_multiplier: f32,
     ) -> Option<u32> {
-        assert_eq!(
-            assets.camera_kind, 0,
-            "item.c foobar3: items that the camera frames are not ported"
-        );
         if let Some(limit) = self.common.hold_limits[usize::from(spawn.hold_kind)] {
             if self
                 .items
@@ -1153,6 +1196,7 @@ impl ItemPool {
             events: Default::default(),
             blast_zone_checked: true,
             partner: None,
+            camera: self.camera_subject(assets.camera_kind),
             link_requests: Default::default(),
             pose_steps: 0,
             article_state: 0,
@@ -1609,6 +1653,7 @@ mod tests {
             knockback: Default::default(),
             launch: Default::default(),
             victim_bounce: Default::default(),
+            camera_extents: [0.0; 4],
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -1642,6 +1687,7 @@ mod tests {
             knockback: Default::default(),
             launch: Default::default(),
             victim_bounce: Default::default(),
+            camera_extents: [0.0; 4],
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

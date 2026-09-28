@@ -1,0 +1,30 @@
+# SHEIKZELDA directed witness: Zelda jumps (X at 120) and uses Din's Fire in
+# the air (side-B at 126), steering it up, releasing at 170; she falls
+# special and lands.
+name = "sheikzelda_zd_din_air_fd_zelda"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_zelda_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 145, port = 0, buttons = {  }, raw = { button = 512, stickY = 80 } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

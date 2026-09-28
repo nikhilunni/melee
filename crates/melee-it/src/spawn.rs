@@ -86,6 +86,9 @@ pub enum ItemControl {
     /// Item_80268E5C(item, state, ITEM_ANIM_UPDATE) from the owner's proc
     /// (Samus's grapple beam, which its owner drives).
     Motion(u16),
+    /// it_802C3D44: the owner lets its article fly on without it (Zelda
+    /// hit or dying with Din's Fire out).
+    Orphan,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
@@ -296,6 +299,14 @@ pub struct ItemOwner {
     /// ftSk_SpecialS_80111F70): the needle item in her hand lives while
     /// she keeps it.
     pub holds_needles: bool,
+    /// fp->input.lstick[0] (ftLib_800865D8).
+    pub stick: hsd_types::Vec2,
+    /// The owner steers the article it keeps (Zelda in Din's Fire's loop
+    /// with her fire out, ftZd_SpecialLw_8013B540).
+    pub steering_article: bool,
+    /// The owner's script detonates the article it keeps (Zelda's
+    /// cmd_vars[1] in Din's Fire's end, ftZd_SpecialLw_8013B574).
+    pub detonating_article: bool,
 }
 
 /// A fighter an article may lock on to (ftLib_80086368's candidates): its

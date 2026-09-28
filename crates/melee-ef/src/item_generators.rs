@@ -44,6 +44,9 @@ struct ItemGenerators {
     /// efLib_CreateGenerator_Attach_AddAppSRT; otherwise a bare
     /// hsd_8039EFAC on the JObj.
     add_appsrt: bool,
+    /// efLib_CreateGenerator_Attach_Scale: the AppSRT also takes the item
+    /// JObj's Y scale, uniformly.
+    scaled: bool,
 }
 fn item_generators(id: u16) -> Result<ItemGenerators> {
     Ok(match id {
@@ -52,6 +55,7 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             bank: 0,
             kinds: &[0x172, 0x173],
             add_appsrt: true,
+            scaled: false,
         },
         // efsync.c:104-106: the Thunder Jolt ball's trail,
         // hsd_8039EFAC(0, 7, 0x1B58, jobj).
@@ -59,6 +63,19 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             bank: 7,
             kinds: &[0x1B58],
             add_appsrt: false,
+            scaled: false,
+        },
+        // efsync.c:485-493: efLib_CreateGenerator_Attach_Scale(0x6E / 0x1C8
+        // / 0x166): Din's Fire flying, bursting, and its explosion.
+        0x4F8..=0x4FA => ItemGenerators {
+            bank: 0,
+            kinds: match id {
+                0x4F8 => &[0x6E],
+                0x4F9 => &[0x1C8],
+                _ => &[0x166],
+            },
+            add_appsrt: true,
+            scaled: true,
         },
         // efalt.c:92-97: Samus's missile trails, hsd_8039EFAC(0, 2, 0x7DB /
         // 0x7DE, jobj) on the missile model's grandchild.
@@ -68,26 +85,31 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             bank: 2,
             kinds: &[0x7D4],
             add_appsrt: false,
+            scaled: false,
         },
         0x480 => ItemGenerators {
             bank: 2,
             kinds: &[0x7D2],
             add_appsrt: false,
+            scaled: false,
         },
         0x481 => ItemGenerators {
             bank: 2,
             kinds: &[0x7D3],
             add_appsrt: false,
+            scaled: false,
         },
         0x484 => ItemGenerators {
             bank: 2,
             kinds: &[0x7DB],
             add_appsrt: false,
+            scaled: false,
         },
         0x485 => ItemGenerators {
             bank: 2,
             kinds: &[0x7DE],
             add_appsrt: false,
+            scaled: false,
         },
         _ => anyhow::bail!("efSync_Spawn {id:#x} on an item JObj"),
     })
@@ -96,12 +118,15 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
 impl Effects {
     /// efSync_Spawn(`id`, item, jobj): each generator is
     /// efLib_CreateGenerator_Attach_AddAppSRT (eflib.c:770-789) on the item's
-    /// root, with PSAPPSRT_UNK_B9/B10 cleared and B11 set.
+    /// root, with PSAPPSRT_UNK_B9/B10 cleared and B11 set. `scale` is the
+    /// JObj's Y scale, for the Attach_Scale rows.
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_item_generators<T: InverseTrig>(
         &mut self,
         id: u16,
         item: u32,
         matrix: Mtx,
+        scale: f32,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
@@ -116,6 +141,12 @@ impl Effects {
         for &kind in row.kinds {
             let mut spawn = SpawnRequest::new(row.bank, kind, 0);
             spawn.joint = Some((joint, matrix));
+            if row.scaled {
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    scale: Vec3::new(scale, scale, scale),
+                    ..Default::default()
+                });
+            }
             self.events.spawn(&spawn, false, false);
             let Some(generator) =
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?

@@ -46,6 +46,8 @@ melee_it::item_kinds! {
         SeakNeedleThrow: it_seak::SeakNeedleThrow,
         SeakNeedleHeld: it_seak::SeakNeedleHeld,
         SeakChain: it_seak::SeakChain,
+        ZeldaDinFire: it_zelda::DinFire,
+        ZeldaDinFireExplode: it_zelda::DinFireExplode,
     }
 }
 
@@ -515,6 +517,35 @@ impl Resources {
             )?;
             kinds.push((ItemKind::SeakChain, chain));
             visual_archives.push((ItemKind::SeakChain, std::sync::Arc::clone(&a)));
+        }
+        // ftZd_Init_OnLoad: ftData.x48_items[0] is Din's Fire, [1] its
+        // explosion; they load with Sheik too.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlZd.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataZelda").context("Zelda fighter data")?;
+            for (kind, index, states, attributes) in [
+                (
+                    ItemKind::ZeldaDinFire,
+                    it_zelda::din_fire::ARTICLE_INDEX,
+                    &it_zelda::din_fire::ARTICLE_STATES[..],
+                    it_zelda::din_fire::SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::ZeldaDinFireExplode,
+                    it_zelda::explode::ARTICLE_INDEX,
+                    &it_zelda::explode::ARTICLE_STATES[..],
+                    it_zelda::explode::SPECIAL_ATTRIBUTES,
+                ),
+            ] {
+                kinds.push((
+                    kind,
+                    ItemAssets::from_fighter_states(&a, root, index, states, attributes)?,
+                ));
+                visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            }
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

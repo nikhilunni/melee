@@ -6,6 +6,7 @@ pub mod init;
 pub mod special_hi;
 pub mod special_lw;
 pub mod special_n;
+pub mod special_s;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -45,6 +46,25 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
             n::air_collision,
         ),
     );
+    use melee_ft::fighter::state::InputFn;
+    use special_s as s;
+    let dins_fire: [(ActionId, AnimFn, InputFn, PhysicsFn, CollisionFn); 6] = [
+        (s::GROUND_START, s::start_anim, common::no_input, s::start_ground_physics, s::ground_collision),
+        (s::GROUND_LOOP, s::loop_anim, s::loop_input, callbacks::physics::guard_on, s::ground_collision),
+        (s::GROUND_END, s::end_anim, common::no_input, callbacks::physics::guard_on, s::ground_collision),
+        (s::AIR_START, s::start_anim, common::no_input, s::air_physics, s::air_collision),
+        (s::AIR_LOOP, s::loop_anim, s::loop_input, s::air_physics, s::air_collision),
+        (s::AIR_END, s::end_anim, common::no_input, s::air_physics, s::air_collision),
+    ];
+    let mut i = 0;
+    while i < dins_fire.len() {
+        let (action, anim, input, physics, collision) = dins_fire[i];
+        place(
+            &mut rows,
+            common::row(action, s::ANIMATIONS[i], anim, input, physics, collision),
+        );
+        i += 1;
+    }
     use special_hi as hi;
     let farores_wind: [(ActionId, AnimFn, PhysicsFn, CollisionFn); 6] = [
         (

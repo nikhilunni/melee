@@ -390,7 +390,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 9] = [
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-// 418: a model effect of Zelda's (her up-air), the default path.
+// 418: Din's Fire's cast (model 0x426C) and Zelda's up-air.
 // 427: Nayru's Love's crystal (model 0x4268).
 pub(super) static PARTICLE_KINDS: [i32; 33] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,

@@ -129,6 +129,9 @@ pub enum Command {
         items: bool,
         enabled: bool,
     },
+    /// Item script opcode 16 (it_8027978C): play (sub-opcodes 0..2) or
+    /// stop (10, 11) an item sound. Item scripts only.
+    ItemSound { sub: u8, id: u32 },
     /// An ftAction opcode the port does not decode yet. Its length is unknown,
     /// so decoding stops here; reaching it at run time is `unimplemented!`.
     Unported(u32),

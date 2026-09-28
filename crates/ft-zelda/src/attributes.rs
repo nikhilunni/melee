@@ -39,20 +39,26 @@ pub struct NayrusLoveAttributes {
 /// Din's Fire (ftzeldaspecials.c).
 #[derive(Clone, Debug, PartialEq)]
 pub struct DinsFireAttributes {
-    /// +0x10..+0x1C: the motion scratch the entry copies (charge and
-    /// steering counters).
-    // TODO(meaning): named when Din's Fire is ported.
-    pub scratch: [i32; 4],
+    /// +0x10 / +0x14: loop frames that must pass (both counters) before a
+    /// loop with no fire out ends.
+    // TODO(meaning): retail keeps two identical counters; why is unknown.
+    pub loop_frames: i32,
+    pub second_loop_frames: i32,
+    /// +0x18: aerial frames before gravity applies.
+    pub air_hang_frames: i32,
+    /// +0x1C: loop frames before a released B ends it.
+    pub release_lock_frames: i32,
     /// +0x20: the fireball's spawn offset ahead of Zelda's hand.
     pub spawn_offset_x: f32,
     /// +0x24: the fireball's spawn height offset.
     pub spawn_offset_y: f32,
     /// +0x28.
-    // TODO(meaning): named when Din's Fire is ported.
+    // TODO(meaning): no consumer in the pinned C.
     pub unknown_28: i32,
-    /// +0x2C.
-    pub unknown_2c: f32,
+    /// +0x2C: aerial gravity after the hang.
+    pub air_gravity: f32,
     /// +0x30.
+    // TODO(meaning): no consumer in the pinned C.
     pub unknown_30: i32,
     /// +0x34: aerial landing lag; zero lands in Fall.
     pub landing_lag: f32,
@@ -128,11 +134,14 @@ impl ZeldaAttributes {
                 air_gravity: r.f32(0x0C)?,
             },
             dins_fire: DinsFireAttributes {
-                scratch: [r.s32(0x10)?, r.s32(0x14)?, r.s32(0x18)?, r.s32(0x1C)?],
+                loop_frames: r.s32(0x10)?,
+                second_loop_frames: r.s32(0x14)?,
+                air_hang_frames: r.s32(0x18)?,
+                release_lock_frames: r.s32(0x1C)?,
                 spawn_offset_x: r.f32(0x20)?,
                 spawn_offset_y: r.f32(0x24)?,
                 unknown_28: r.s32(0x28)?,
-                unknown_2c: r.f32(0x2C)?,
+                air_gravity: r.f32(0x2C)?,
                 unknown_30: r.s32(0x30)?,
                 landing_lag: r.f32(0x34)?,
             },

@@ -233,6 +233,19 @@ impl ItemCore {
         floor
     }
 
+    /// it_8026DA08 (8026DA08): an airborne pass (mpColl_800471F8) that
+    /// never lands; a touched floor's line becomes xC30. Returns the
+    /// collision's environment flags.
+    pub fn airborne_contacts(&mut self, map: &mut melee_mp::CollMap) -> u32 {
+        let mut collision = self.refresh_collision();
+        let floor = map.air_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.floor_line_from(&collision, floor);
+        let env = collision.env_flags as u32;
+        self.collision = Some(collision);
+        env
+    }
+
     /// it_8026E414 (8026E414) without its callbacks: an airborne pass
     /// (mpColl_800471F8), then the wall and ceiling bits. A landing restores
     /// the grounded ECB box (it_80275DFC) and grounds the item (it_802762B0).

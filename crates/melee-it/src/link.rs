@@ -25,6 +25,9 @@ pub enum LinkMessage {
         delay: i32,
         velocity: Vec3,
     },
+    /// Nothing beyond the spawn itself: its setup rode in the SpawnItem
+    /// (Din's Fire's explosion, it_802C4580).
+    Spawned,
 }
 
 /// Whom a request is for.

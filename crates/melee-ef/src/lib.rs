@@ -622,7 +622,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x4BE | 0x4BF | 0x4FC | 0x4FD),
+                id: id @ (0x4BE | 0x4BF | 0x4FB | 0x4FC | 0x4FD),
                 bone,
             } = request
             {
@@ -635,13 +635,20 @@ impl Effects {
                 let (bank_id, kind) = match id {
                     0x4BE => (7, 0x1B5C),
                     0x4BF => (7, 0x1B5D),
+                    // efsync.c:494-496: Din's Fire's hand flash,
+                    // hsd_8039EFAC(0, 0, 0x71, jobj).
+                    0x4FB => (0, 0x71),
                     0x4FC => (17, 0x426D),
                     _ => (17, 0x4271),
                 };
                 let mut spawn = SpawnRequest::new(bank_id, kind, 0);
                 spawn.joint = Some((joint_id, matrix));
                 self.events.spawn(&spawn, false, false);
-                let character = resources::character_bank(&self.character_banks, bank_id.into())?;
+                let character = if bank_id == 0 {
+                    bank
+                } else {
+                    resources::character_bank(&self.character_banks, bank_id.into())?
+                };
                 spawn_particle::<T>(particles, character, spawn, rng, &mut self.draws)?;
                 if id == 0x4BF {
                     let mut spawn = SpawnRequest::new(0, 0x5F, 0);

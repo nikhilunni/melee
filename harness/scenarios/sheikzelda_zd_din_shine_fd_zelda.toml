@@ -1,0 +1,30 @@
+# SHEIKZELDA directed witness: Zelda's Din's Fire (side-B at tick 120, held)
+# flies through Fox's shine (the flying fire has no hitbox) and bursts
+# at the end of its life.
+name = "sheikzelda_zd_din_shine_fd_zelda"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_zelda_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 240, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 1, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 160, port = 1, buttons = {  }, raw = {  } },
+  { frame = 180, port = 1, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 183, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

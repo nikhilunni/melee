@@ -38,6 +38,8 @@ pub struct Zelda {
     pub farores_wind: crate::special_hi::FaroresWind,
     /// Nayru's Love's hang and reflector.
     pub nayrus_love: crate::special_n::NayrusLove,
+    /// Din's Fire's counters and Zelda's hold on the fire.
+    pub dins_fire: crate::special_s::DinsFire,
 }
 impl Zelda {
     pub fn new(attributes: ZeldaAttributes) -> Self {
@@ -47,6 +49,7 @@ impl Zelda {
             accessory: Accessory::None,
             farores_wind: Default::default(),
             nayrus_love: Default::default(),
+            dins_fire: Default::default(),
         }
     }
 }
@@ -83,9 +86,7 @@ impl CharacterCallbacks for Zelda {
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
-            _ => unimplemented!(
-                "ftData_Special{slot:?}[Zelda] (airborne: {airborne}): character special entry"
-            ),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
         }
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
@@ -141,6 +142,44 @@ impl CharacterCallbacks for Zelda {
     /// ftZd_Init_OnDeath (801392E8): ftParts_80074A4C(gobj, 0, 0), (1, 0).
     fn on_reset(&mut self) {
         self.model_groups = [0; 2];
+        self.dins_fire.fire_out = false;
+    }
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go (Din's Fire's take_dmg_cb and death2_cb).
+    fn on_motion_change(&mut self) {
+        self.dins_fire.damage_callbacks = false;
+    }
+    /// ftCommon_8007DB58: take_dmg_cb, ftZd_Init_801393AC while Din's
+    /// Fire installed it.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_s::damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special_s::damage_callback);
+    /// itZeldaDinFire_Logic65_Destroyed: the fire lets Zelda go
+    /// (ftZd_SpecialLw_8013B5C4) while it is hers.
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::ZeldaDinFire {
+            crate::special_s::fire_gone(f);
+        }
+    };
+    /// The common owner view plus what Din's Fire reads of Zelda.
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        let mut owner = melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+            steering_article: false,
+            detonating_article: false,
+            holds_needles: false,
+            articles_fired: 0,
+            charge: None,
+        };
+        crate::special_s::item_owner(f, &mut owner);
+        owner
     }
 }
 

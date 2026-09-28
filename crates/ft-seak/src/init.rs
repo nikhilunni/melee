@@ -151,6 +151,9 @@ impl CharacterCallbacks for Sheik {
             holds_needles: f.character.get::<Sheik>().holding_needles,
             articles_fired: 0,
             charge: None,
+            stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+            steering_article: false,
+            detonating_article: false,
         }
     }
     /// The chain's links are Sheik's: its on_accessory is her work.

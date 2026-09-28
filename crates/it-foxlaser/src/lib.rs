@@ -286,7 +286,8 @@ macro_rules! blaster {
                     | ItemControl::ParasolOpen(_)
                     | ItemControl::OwnerHitlag(_)
                     | ItemControl::Strike
-                    | ItemControl::Motion(_) => {
+                    | ItemControl::Motion(_)
+                    | ItemControl::Orphan => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }
