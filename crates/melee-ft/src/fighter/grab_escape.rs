@@ -451,7 +451,7 @@ pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
         return;
     }
     let assets = phase.assets;
-    if f.input.pressed.intersects(Buttons::B) {
+    if f.air_special_pressed(assets) {
         f.enter_buffered_special(assets, true);
         return;
     }

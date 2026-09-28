@@ -212,6 +212,8 @@ pub struct DamageParameters {
     pub down_damage_limit: i32,
     pub crouch_hitlag_scale: f32,
     pub electric_hitlag_scale: f32,
+    /// PlCo +128: the share of a third party's damage a captured fighter
+    /// takes (ftColl_80076ED8 inlineB3; items, ftColl_80077C60).
     pub captured_item_damage_scale: f32,
     pub thrown_hitbox_minimum_speed: f32,
     pub floor_bounce_angle: f32,
@@ -473,11 +475,19 @@ pub fn detect_hit(
     attacker: &mut Fighter,
     assets: &FighterAssets,
     incoming_after_receiver: bool,
+    attacker_thrower_player: Option<u8>,
 ) {
     if victim.core.status.disabled
         || attacker.core.status.disabled
         || attacker.core.commands.thrown_by == Some(victim.core.spawn_number)
     {
+        return;
+    }
+    // ftcoll.c:1664-1676: a thrown attacker hits anyone but its grabber's
+    // player (grabber_unk1, ftColl_8007B8CC); any other attacker hits only
+    // other players, so Popo and Nana never hit each other.
+    let excluded_player = attacker_thrower_player.unwrap_or(attacker.core.player.id);
+    if victim.core.player.id == excluded_player {
         return;
     }
     let mut clank_mask = super::clank::candidates(&victim.core, &attacker.core);
@@ -1250,8 +1260,8 @@ impl Fighter {
         // ftPe_8011BA54 / ftPe_8011BAD8 (retail 80090828..8009091C).
         let vertical_velocity = self.core.physics.self_velocity.y;
         // ftCo_80095328, then ftCo_800D7100, after the special check.
-        if !self.core.input.pressed.intersects(crate::input::Buttons::B)
-            && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets))
+        let special = self.air_special_pressed(assets);
+        if !special && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets))
         {
             return Ok(());
         }
@@ -1261,6 +1271,7 @@ impl Fighter {
         let transition = super::fall::iasa_with_jump(
             &self.core.input,
             &assets.input,
+            special,
             jump,
             // DamageFly delegates to DamageFall (80090828), whose
             // input chain omits ordinary Fall's air-dodge check.
@@ -1867,13 +1878,16 @@ fn detect_eligible_hit(
             unimplemented!("ftcoll.c:658-662: invincible contact");
         }
         let descriptor = desc.clone();
-        if let Some(super::grab::GrabLink::Captured { captor }) = victim.combat.grab {
-            if captor != attacker.spawn_number {
-                unimplemented!("ftCo_8008EC90: third-party hit on a captured fighter");
-            }
+        // ftColl_80076ED8 inlineB3: a captured fighter takes PlCo +128 of a
+        // third party's damage (fmuls); ftCo_8008EC90
+        // (grab_damage::resolve_linked_hit) decides the reaction later. Then
+        // the victim's damage scale (fmuls).
+        let mut damage = descriptor.damage;
+        if matches!(victim.combat.grab, Some(super::grab::GrabLink::Captured { captor }) if captor != attacker.spawn_number)
+        {
+            damage *= assets.damage.captured_item_damage_scale;
         }
-        // ftColl_80076ED8 inlineB3: the victim's damage scale (fmuls).
-        let damage = descriptor.damage * victim.received_damage_scale();
+        let damage = damage * victim.received_damage_scale();
         // ftColl_80076ED8's ordinary branch: log the hit for ftColl_8007AB48,
         // whose knockback and effects wait until every contact is logged.
         victim.combat.log_hit(LoggedHit {

@@ -743,11 +743,12 @@ impl Fighter {
         let held = self.core.input.current.held;
         let stick = self.core.input.current.stick;
         // ftCo_800D7100 after the special check: LR + A catches an item.
-        if !pressed.intersects(Buttons::B) && self.try_aerial_item_catch(assets) {
+        let special = self.air_special_pressed(assets);
+        if !special && self.try_aerial_item_catch(assets) {
             return Ok(());
         }
         // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
-        let priority = if pressed.intersects(Buttons::B) {
+        let priority = if special {
             // ftCo_SpecialAir_CheckInput
             self.enter_buffered_special(assets, true);
             true

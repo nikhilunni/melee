@@ -6,11 +6,29 @@ impl Fighter {
     /// ftCo_SpecialAir_CheckInput (8009665C) as a character IASA's first check:
     /// a B press enters the stick's aerial special.
     pub fn try_air_special(&mut self, assets: &FighterAssets) -> bool {
-        if !self.core.input.pressed.intersects(crate::input::Buttons::B) {
+        if !self.air_special_pressed(assets) {
             return false;
         }
         self.enter_buffered_special(assets, true);
         true
+    }
+
+    /// ftCo_SpecialAir_CheckInput's gate: B pressed, and the stick's aerial
+    /// special exists (ftData_SpecialAirHi/Lw/S/N[kind] != NULL; Nana has
+    /// none for Hi and S). Without one the IASA goes on to its other checks.
+    pub fn air_special_pressed(&self, assets: &FighterAssets) -> bool {
+        if !self.core.input.pressed.intersects(crate::input::Buttons::B) {
+            return false;
+        }
+        let slot = air_special_slot(self.core.input.current.stick, &assets.input);
+        // Fighter capabilities list S/Hi/N/Lw.
+        let index = match slot {
+            SpecialSlot::Side => 0,
+            SpecialSlot::Up => 1,
+            SpecialSlot::Neutral => 2,
+            SpecialSlot::Down => 3,
+        };
+        self.core.capabilities.specials[index]
     }
 
     /// ftCo_SpecialS_CheckInput / ftCo_Attack100_CheckInput / ftCo_800D6824 /

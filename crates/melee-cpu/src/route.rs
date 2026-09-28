@@ -25,7 +25,7 @@ pub fn stage_route(_fp: &mut Fighter, scene: &mut Scene) {
     }
 }
 
-/// ftCo_800A2718 (0x800A2718): whether the island is unsafe: a grounded
+/// ftCo_800A2718 (0x800A2718): whether the island is unsafe: an armed
 /// Bob-omb or shell sits on it, or the stage marks it (Yoshi's Story's
 /// Shy Guy platforms, Brinstar's acid, Onett's cars).
 pub fn island_unsafe(scene: &mut Scene, island: Option<usize>) -> bool {
@@ -34,7 +34,7 @@ pub fn island_unsafe(scene: &mut Scene, island: Option<usize>) -> bool {
     };
     for item in scene.items {
         use melee_types::ItemKind as K;
-        if !item.grounded || !matches!(item.kind, K::BombHei | K::GShell | K::RShell) {
+        if !item.hitbox_active || !matches!(item.kind, K::BombHei | K::GShell | K::RShell) {
             continue;
         }
         if scene.map.island_of_line(item.floor_line) == Some(island) {

@@ -29,6 +29,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::HOLD => crate::hold::hold(fp, scene, rng),
         B::ARRIVED => crate::arrived::arrived(fp, scene),
         B::CAPTURED => crate::captured::mash(fp, rng),
+        B::TUMBLE => crate::tumble::steer(fp),
         behavior @ (2..=19) => {
             unimplemented!("ftCo_800B2790: behaviour {behavior}")
         }

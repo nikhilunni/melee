@@ -256,6 +256,10 @@ pub struct ItemCore {
     pub id: u32,
     pub kind: ItemKind,
     pub owner: Option<u8>,
+    /// The owner is its player's second fighter (x221F_b4: the Ice
+    /// Climbers' Nana). Retail names the owner by its fighter GObj; the
+    /// player slot and this flag together do the same.
+    pub owner_secondary: bool,
     pub stale_source: Option<melee_types::combat::AttackInstance>,
     /// Current owner factor used only when authoring/re-authoring a hitbox.
     pub stale_multiplier: f32,
@@ -919,6 +923,7 @@ impl ItemPool {
             id,
             kind: spawn.kind,
             owner: spawn.owner,
+            owner_secondary: false,
             stale_source: spawn.stale_source,
             stale_multiplier,
             pending_reflection: None,

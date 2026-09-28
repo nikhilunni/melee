@@ -15,10 +15,22 @@ pub struct ItemView {
     pub position: Vec3,
     /// Item_IsGrabbable.
     pub grabbable: bool,
-    /// it_8026C1B4 (it_80275870): the item rests on the ground.
-    pub grounded: bool,
+    /// it_8026C1B4 (it_80275870): one of its four hitboxes is active.
+    pub hitbox_active: bool,
     /// x378_itemColl.floor.index.
     pub floor_line: i32,
+}
+
+impl ItemView {
+    /// A placeholder for fixed arrays of views.
+    pub const NONE: Self = Self {
+        id: 0,
+        kind: melee_types::ItemKind::Capsule,
+        position: Vec3::ZERO,
+        grabbable: false,
+        hitbox_active: false,
+        floor_line: -1,
+    };
 }
 
 /// The scene around a thinking CPU.

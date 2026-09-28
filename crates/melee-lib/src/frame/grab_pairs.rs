@@ -23,7 +23,9 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
     let mut nearest = None;
     let mut distance = f32::MAX;
     for other in 0..state.fighters.len() {
-        if other == player {
+        // ftLib_80086FD4: never the grabber's own player (Popo and Nana).
+        let same_player = state.fighters[other].player.id == state.fighters[player].player.id;
+        if other == player || same_player {
             continue;
         }
         let (attacker, victim) = pair(&mut state.fighters, player, other);
@@ -43,7 +45,7 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
         let rank = state
             .fighters
             .iter()
-            .filter(|f| with_fighter!(f, |f| f.player.stocks > stocks))
+            .filter(|f| with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks))
             .count() as u8;
         let (attacker, victim) = pair(&mut state.fighters, player, other);
         with_fighter!(attacker, |a| with_fighter!(victim, |v| grab::capture_pair(

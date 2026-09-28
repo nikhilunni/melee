@@ -25,6 +25,7 @@ mod route;
 pub mod script;
 mod select;
 mod targets;
+mod tumble;
 mod world;
 
 pub use world::{distance, ItemView, Scene};

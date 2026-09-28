@@ -262,7 +262,8 @@ pub fn iasa(
         && (input.pressed.intersects(crate::input::Buttons::XY)
             || (input.current.stick.y >= common.thresholds.tap_jump_threshold
                 && i32::from(input.vertical.tilt) < common.thresholds.tap_jump_window));
-    iasa_with_jump(input, common, jump, allow_air_dodge, check_float)
+    let special = input.pressed.intersects(crate::input::Buttons::B);
+    iasa_with_jump(input, common, special, jump, allow_air_dodge, check_float)
 }
 
 /// The multijump path changes only the jump predicate; aerial action priority
@@ -270,12 +271,14 @@ pub fn iasa(
 pub(super) fn iasa_with_jump(
     input: &crate::input::FighterInput,
     common: &crate::input::InputCommonData,
+    // ftCo_SpecialAir_CheckInput succeeds (Fighter::air_special_pressed).
+    special: bool,
     jump: bool,
     allow_air_dodge: bool,
     mut check_float: impl FnMut(super::FloatInputPhase) -> bool,
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
-    if input.pressed.intersects(Buttons::B) {
+    if special {
         return T::AirSpecial;
     }
     if allow_air_dodge && input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {

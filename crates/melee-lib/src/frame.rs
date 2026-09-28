@@ -544,6 +544,7 @@ impl Runtime {
                         melee_it::ItemRequest::Spawn(spawn),
                         crate::scene_items::RequestOwner {
                             slot: Some(owner),
+                            secondary: fighter.player.secondary,
                             held_item: None,
                             after_hitbox_refresh: s_link > 11,
                             stale_multiplier,
@@ -958,7 +959,9 @@ impl Runtime {
                     let rank = state
                         .fighters
                         .iter()
-                        .filter(|f| with_fighter!(f, |f| f.player.stocks > stocks))
+                        .filter(|f| {
+                            with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks)
+                        })
                         .count() as u8;
                     with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
@@ -977,6 +980,17 @@ impl Runtime {
                         if player == other {
                             continue;
                         }
+                        // grabber_unk1: the player of the fighter throwing `other`.
+                        let thrower_player =
+                            state.fighters[other].commands.thrown_by.map(|spawn| {
+                                state
+                                    .fighters
+                                    .iter()
+                                    .find(|f| f.spawn_number == spawn)
+                                    .expect("the thrower")
+                                    .player
+                                    .id
+                            });
                         let (victim, attacker) = if player < other {
                             let (left, right) = state.fighters.split_at_mut(other);
                             (&mut left[player], &mut right[0])
@@ -990,6 +1004,7 @@ impl Runtime {
                                 a,
                                 &assets.fighters[player],
                                 player < other,
+                                thrower_player,
                             )
                         }));
                     }
@@ -1598,6 +1613,7 @@ impl Runtime {
                         request,
                         crate::scene_items::RequestOwner {
                             slot: Some(f.player.id),
+                            secondary: f.player.secondary,
                             held_item: owner.as_ref(),
                             after_hitbox_refresh: row.s_link > 11,
                             stale_multiplier: f

@@ -2359,7 +2359,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 318] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 323] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2876,6 +2876,14 @@ const CORPUS_V3_MATCHES: [(&str, usize); 318] = [
     ("corpus_v3_fd_peach_falco4_e6cc80d32_p2", 6001),
     ("corpus_v3_dl_captainfalcon_jigglypuff4_e6cc80d32_p2", 6001),
     ("corpus_v3_dl_mario_falco4_e6cc80d32_p0", 6001),
+    // ICECLIMBERS: Popo and Nana never hit or grab each other (ftLib_80086FD4,
+    // ftcoll.c:1664-1676); a thrown fighter's hit on its thrower's partner;
+    // Nana's CPU follow through smashes, grabs and hits.
+    ("corpus_v3_fd_iceclimbers_fox4_e005a4f43_p0", 207),
+    ("corpus_v3_fd_iceclimbers_fox4_e005a4f43_p2", 105),
+    ("corpus_v3_fd_iceclimbers_fox4_e09db17e3_p0", 237),
+    ("corpus_v3_fd_iceclimbers_fox4_e50f475b4_p1", 88),
+    ("corpus_v3_fd_iceclimbers_fox4_ecdf8887e_p2", 239),
 ];
 
 #[test]

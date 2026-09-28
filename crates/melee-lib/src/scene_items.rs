@@ -487,6 +487,9 @@ pub fn prepare_scheduler(world: &mut World) {
 pub struct RequestOwner<'a> {
     /// The requesting fighter; stage requests (the Bob-omb rain) have none.
     pub slot: Option<u8>,
+    /// The requesting fighter is its player's second (Nana), whose
+    /// articles are its own.
+    pub secondary: bool,
     pub held_item: Option<&'a melee_it::ItemOwner>,
     /// The requesting proc runs past item link 11 (HSD_GObj_804D7838's
     /// s_link > 11): hitboxes a new item's script creates are placed at once
@@ -728,6 +731,7 @@ pub fn request(
     let assets = resources.get(spawn.kind);
     if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
         let item = pool.get_mut(id).unwrap();
+        item.owner_secondary = owner.secondary && spawn.owner == owner.slot;
         item.initialize_collision(spawn, assets, map);
         item.past_hitbox_refresh = owner.after_hitbox_refresh;
         if let Some((angle, speed, motion)) = ray {
@@ -834,6 +838,7 @@ fn request_one_of_chain(
         ItemRequest::Spawn(spawn),
         RequestOwner {
             slot: owner.slot,
+            secondary: owner.secondary,
             held_item: owner.held_item,
             after_hitbox_refresh: owner.after_hitbox_refresh,
             stale_multiplier: owner.stale_multiplier,
@@ -899,6 +904,7 @@ pub fn spawn_rain_bomb(
         ItemRequest::Spawn(it_bombhei::rain_spawn(position, facing)),
         RequestOwner {
             slot: None,
+            secondary: false,
             held_item: None,
             after_hitbox_refresh: false,
             stale_multiplier: 1.0,
@@ -958,6 +964,7 @@ pub fn spawn_shy_guy(
         ItemRequest::Spawn(it_heiho::spawn(spawn.position, facing)),
         RequestOwner {
             slot: None,
+            secondary: false,
             held_item: None,
             after_hitbox_refresh: false,
             stale_multiplier: 1.0,
