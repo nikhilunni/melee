@@ -68,10 +68,17 @@ announcement):
 | GrPs3.dat | water | 23 | stage_ps_water_fox_marth4 |
 | GrPs4.dat | rock | 21 | stage_ps_idle_fox_marth4 |
 
-All four were measured at the first transformation (tick 3781). The
-latency is the emulator's disc timing, which could differ later in a match
-(disc head position, music streaming); a divergence of a few ticks at an
-announcement is the first suspect.
+All four were measured at the first transformation (tick 3781), where the
+reads are 10-12 ticks slower than their size alone suggests (a long seek
+from wherever match setup left the head). A later read differs:
+`stage_ps_second_fox_marth4` (11000 ticks, idle) chooses fire at tick 10102
+after the rock form, and GrPs1.dat arrives after 12 polls instead of 23,
+consistent with a short seek from GrPs4.dat. With 12 polls the whole scene
+gates exactly, so the read time is the only gap; the scenario stays
+unregistered. Modelling it needs the emulator's disc timing (seek from the
+last read's end, transfer by size and disc position) or the completion as a
+recorded external input. Explorer cases (6000 ticks from the boundary) only
+reach the first transformation, which the table covers.
 
 ## Witnesses
 
@@ -81,5 +88,17 @@ walk at tick 130 steers the first choice (found with `melee-sim dry-run`).
 
 ## Not ported
 
+- The read latency of any form archive other than the match's first read
+  (above).
 - Presentation of the forms (the renderer skips absent models).
 - Saved boundaries mid-transformation or in a transformed form.
+- Screen modes 9 (a player out of stocks, gm_8016B8D4) and 12 (match end).
+
+## Next boundaries (explorer)
+
+A 16-seed port-only explorer run from `start_ps_fox_marth4` faults in
+fighter code the other stages never reached:
+- `ft_0899.c:109-232` (ft_80089B08's body tilt on a sloped or short floor
+  segment): standing on the base arena before any transformation (tick 955).
+- `ft_081B.c:1258-1296` (ft_80084A80's footstep sound/effect by floor
+  material): the forms' non-default floor materials, near tick 4300.

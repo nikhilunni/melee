@@ -135,8 +135,11 @@ const PIT_LINES: [i32; 2] = super::procs::PIT_LINES;
 /// Polls of `grStadium_801D42B8` until the DVD callback of each form
 /// archive's read (lbFile_80016580, fn_801D4220) has run, counting the
 /// successful one; indexed by `Form::archive`. Retail's latency is the
-/// emulated disc's: these are measured from retail recordings (the poll
-/// that succeeds is the tick before the announcement), not derived.
+/// emulated disc's, which the port does not model: these are measured from
+/// retail recordings as the first read of a match from start_ps_fox_marth4
+/// (the poll that succeeds is the tick before the announcement). A later
+/// read is faster when the previous one left the head nearby (GrPs1.dat
+/// after GrPs4.dat: 12 polls, stage_ps_second_fox_marth4).
 const LOAD_POLLS: [Option<u32>; 4] = [Some(23), Some(18), Some(23), Some(21)];
 
 #[derive(Clone, Debug, PartialEq)]
