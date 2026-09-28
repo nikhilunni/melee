@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_ys_peach_yoshi4_cold"
+expected = "start_ys_peach_yoshi4"
+frames = 600
+seed = 2520918699
+stage = "YoshisStory"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Yoshi"
+costume = 0
+stocks = 4
+controller = "idle"
