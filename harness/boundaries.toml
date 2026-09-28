@@ -327,3 +327,12 @@ stage = "FinalDestination"
 players = ["IceClimbers", "Fox"]
 stocks = 4
 seed = 605098153
+
+[[boundary]]
+name = "start_fd_samus_fox4"
+cold = "start_fd_samus_fox4_cold"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+stage = "FinalDestination"
+players = ["Samus", "Fox"]
+stocks = 4
+seed = 915204971

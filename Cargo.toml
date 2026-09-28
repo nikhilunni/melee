@@ -58,6 +58,7 @@ members = [
     "crates/ft-luigi",
     "crates/ft-iceclimbers",
     "crates/it-climbersice",
+    "crates/ft-samus",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

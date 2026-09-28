@@ -16,7 +16,7 @@ pub struct Config {
     pub(crate) sudden_death: bool,
 }
 
-const CHARACTERS: [(Character, &str); 15] = [
+const CHARACTERS: [(Character, &str); 16] = [
     (Character::Fox, "Fox"),
     (Character::Marth, "Marth"),
     (Character::Falco, "Falco"),
@@ -32,6 +32,7 @@ const CHARACTERS: [(Character, &str); 15] = [
     (Character::Pichu, "Pichu"),
     (Character::Ganondorf, "Ganondorf"),
     (Character::IceClimbers, "IceClimbers"),
+    (Character::Samus, "Samus"),
 ];
 const STAGES: [(Stage, &str); 6] = [
     (Stage::FinalDestination, "FinalDestination"),

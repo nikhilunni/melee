@@ -132,6 +132,7 @@ scene_characters! {
     "Pichu" => Pichu(ft_pichu::init::Pichu),
     "Ganondorf" => Ganondorf(ft_ganon::init::Ganondorf),
     "IceClimbers" => IceClimbers(ft_iceclimbers::init::Popo) partner(ft_iceclimbers::init::Nana),
+    "Samus" => Samus(ft_samus::init::Samus),
 }
 
 fn construct<C: CharacterCallbacks>(
