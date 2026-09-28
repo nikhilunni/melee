@@ -145,7 +145,9 @@ pub const REQUEST_CAPACITY: usize = 64;
 pub(crate) struct QueuedEffect {
     pub request: EffectRequest,
     pub matrix: Option<Mtx>,
-    after_graphics: bool,
+    /// Graphics commands retail queued before this request that the port
+    /// has not resolved yet; they are inserted ahead of it.
+    graphics_ahead: u8,
 }
 impl QueuedEffect {
     fn immediate(&self) -> bool {
@@ -168,29 +170,49 @@ impl EffectQueue {
         let index = self
             .entries
             .iter()
-            .position(|e| e.after_graphics)
+            .position(|e| e.graphics_ahead > 0)
             .unwrap_or(self.entries.len());
         self.entries.insert(
             index,
             QueuedEffect {
                 request,
                 matrix: None,
-                after_graphics: false,
+                graphics_ahead: 0,
             },
         );
     }
-    /// An entry callback runs after its motion script, whose graphics await the
-    /// proc's RNG boundary. Keep this request behind those graphics when resolved.
-    pub fn push_after_graphics(&mut self, request: EffectRequest) {
+    /// A request an entry callback pushes after its motion change ran the new
+    /// script's frame-0 commands and a color program step. efAsync_Spawn
+    /// (800679B0) queues in call order, but the port resolves those
+    /// `pending_graphics` commands later, at the proc's RNG boundary: they are
+    /// inserted ahead of this request, while graphics issued after it (the
+    /// proc's own color step, ftCo_800C0408) stay behind it.
+    pub fn push_after_graphics(&mut self, request: EffectRequest, pending_graphics: usize) {
+        assert!(
+            self.entries.len() < REQUEST_CAPACITY,
+            "effect storage capacity {REQUEST_CAPACITY} exhausted"
+        );
         self.entries.push(QueuedEffect {
             request,
             matrix: None,
-            after_graphics: true,
+            graphics_ahead: u8::try_from(pending_graphics).expect("pending graphics count"),
         });
+    }
+    /// One resolved graphics command, in issue order: it goes ahead of the
+    /// requests pushed after it was issued.
+    pub fn push_graphics(&mut self, request: EffectRequest) {
+        self.push(request);
+        self.skip_graphics();
+    }
+    /// A graphics command that resolved to no request (an invisible fighter's).
+    pub fn skip_graphics(&mut self) {
+        for entry in self.entries.iter_mut() {
+            entry.graphics_ahead = entry.graphics_ahead.saturating_sub(1);
+        }
     }
     pub fn finish_graphics(&mut self) {
         for entry in self.entries.iter_mut() {
-            entry.after_graphics = false;
+            entry.graphics_ahead = 0;
         }
     }
     pub fn pop(&mut self) -> Option<EffectRequest> {

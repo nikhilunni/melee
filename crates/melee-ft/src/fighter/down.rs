@@ -129,8 +129,9 @@ impl Fighter {
                 });
         }
         self.core
-            .effects
-            .push_after_graphics(melee_ef::request::EffectRequest::CaptureFlash { bone: 0 });
+            .push_effect_after_issued_graphics(melee_ef::request::EffectRequest::CaptureFlash {
+                bone: 0,
+            });
         Ok(true)
     }
     /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN.

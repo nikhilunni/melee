@@ -34,8 +34,10 @@ impl Fighter {
         // ftCo_SpawnEf (efAsync kind 0, 1051) follows ftAnim_8006EBA4, so the
         // request sits behind the ShieldBreakFly script's queued graphics.
         self.core
-            .effects
-            .push_after_graphics(melee_ef::request::EffectRequest::ShieldBreak { bone, scale });
+            .push_effect_after_issued_graphics(melee_ef::request::EffectRequest::ShieldBreak {
+                bone,
+                scale,
+            });
         self.core.shield_sound(130);
         self.core.shield_rumble(24);
         self.core.commands.hurt_status = HurtStatus::Intangible;

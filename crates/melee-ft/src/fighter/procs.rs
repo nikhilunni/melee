@@ -607,7 +607,7 @@ impl FighterCore {
             }
             let normal = self.collision.data.floor.normal;
             self.effects
-                .push(melee_ef::request::EffectRequest::Landing {
+                .push_graphics(melee_ef::request::EffectRequest::Landing {
                     id,
                     offset,
                     floor_angle: melee_lb::trigf::atan2f(-normal.x, normal.y),

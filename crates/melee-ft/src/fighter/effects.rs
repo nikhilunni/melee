@@ -44,6 +44,14 @@ pub struct FighterEffects {
     pub invisible: bool,
 }
 impl super::FighterCore {
+    /// efAsync_Spawn from an entry callback, after its motion change: the
+    /// graphics and landing effects already issued (the new script's frame-0
+    /// commands, ftCo_800C0408's step in Fighter_ChangeMotionState) were
+    /// queued first in retail; those issued later in the proc come after.
+    pub fn push_effect_after_issued_graphics(&mut self, request: EffectRequest) {
+        let issued = self.commands.graphics.len() + self.commands.landing_effects.len();
+        self.effects.push_after_graphics(request, issued);
+    }
     /// Install a one-shot accessory4 after this entry's motion change.
     pub fn arm_accessory4(&mut self) {
         self.accessory4_armed = true;
@@ -72,6 +80,7 @@ impl super::FighterCore {
             index += 1;
             let command = self.commands.graphics.remove(0);
             if self.effect_state.invisible {
+                self.effects.skip_graphics();
                 continue;
             }
             self.effect_state.destroy_on_state_change |= command.destroy_on_state_change;
@@ -103,7 +112,7 @@ impl super::FighterCore {
                 } else {
                     0.0
                 };
-                self.effects.push(EffectRequest::Graphics {
+                self.effects.push_graphics(EffectRequest::Graphics {
                     id,
                     bone,
                     offset: hsd_types::Vec3::ZERO,
@@ -114,7 +123,7 @@ impl super::FighterCore {
             }
             if id == 0x429 {
                 // ftCo_09F7.c:142-150: dizzy stars use character effect scale.
-                self.effects.push(EffectRequest::DizzyStars {
+                self.effects.push_graphics(EffectRequest::DizzyStars {
                     bone,
                     scale: self.attributes.size.unknown_168,
                 });
@@ -123,7 +132,7 @@ impl super::FighterCore {
             if id == 0x446 {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.
-                self.effects.push(EffectRequest::FollowingGenerator {
+                self.effects.push_graphics(EffectRequest::FollowingGenerator {
                     id,
                     bone,
                     offset: command.offset,
@@ -132,7 +141,7 @@ impl super::FighterCore {
             }
             if matches!(id, 0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
-                self.effects.push(EffectRequest::Attached { id, bone });
+                self.effects.push_graphics(EffectRequest::Attached { id, bone });
                 continue;
             }
             if !(id < 0x250
@@ -190,7 +199,7 @@ impl super::FighterCore {
             } else {
                 0.0
             };
-            self.effects.push(EffectRequest::Graphics {
+            self.effects.push_graphics(EffectRequest::Graphics {
                 id,
                 bone,
                 offset,

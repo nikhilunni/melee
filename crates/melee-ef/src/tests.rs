@@ -102,6 +102,26 @@ fn outgoing_pose_batches_preserve_order_without_allocating() {
 }
 
 #[test]
+fn entry_request_follows_only_the_graphics_issued_before_it() {
+    // Deferred flushes pop newest first; the queue holds issue order.
+    let flash = EffectRequest::CaptureFlash { bone: 71 };
+    let graphic = |bone| EffectRequest::Attached { id: 0x412, bone };
+    let cases: [(usize, &[EffectRequest]); 3] = [
+        (0, &[flash, graphic(1), graphic(2)]),
+        (1, &[graphic(1), flash, graphic(2)]),
+        (2, &[graphic(1), graphic(2), flash]),
+    ];
+    for (issued_before, expected) in cases {
+        let mut queue = request::EffectQueue::default();
+        queue.push_after_graphics(flash, issued_before);
+        queue.push_graphics(graphic(1));
+        queue.push_graphics(graphic(2));
+        queue.finish_graphics();
+        assert!(queue.iter().eq(expected.iter()), "{issued_before} issued before");
+    }
+}
+
+#[test]
 #[should_panic(expected = "effect storage capacity 64 exhausted")]
 fn request_overflow_is_explicit() {
     let mut queue = request::EffectQueue::default();
