@@ -31,7 +31,7 @@ pub struct CharacterTable {
     pub hurtbox_detect: Option<fn(&mut Fighter, &assets::FighterAssets, damage::InertTouch)>,
     pub item_muzzle: fn(&mut Fighter, &assets::FighterAssets) -> Option<(Vec3, f32)>,
     pub item_owner: fn(&mut Fighter, &assets::FighterAssets) -> melee_it::ItemOwner,
-    pub forward_smash_variant: fn(&CharacterState),
+    pub forward_smash_variant: fn(&CharacterState) -> ForwardSmashVariant,
     pub forward_smash: Option<super::RngEntry>,
     pub catch_variant: fn(&mut CharacterState),
     pub mouth_capture_scale: fn(&CharacterState) -> Option<f32>,
@@ -46,7 +46,7 @@ pub struct CharacterTable {
     pub reflect_hit: Option<super::reflection::CharacterResponse>,
     pub process_defense_hit: Option<DefenseHit>,
     pub item_defense_contact: Option<ItemDefenseContact>,
-    pub jab_variant: fn(&CharacterState),
+    pub jab_variant: fn(&CharacterState) -> JabVariant,
     pub third_jab_state: fn(&CharacterState) -> melee_types::CommonMotionState,
     pub restore_saved: fn(&mut CharacterState, &[u8]),
     pub on_load: fn(&mut CharacterState, &mut Capabilities),
@@ -261,7 +261,7 @@ impl CharacterState {
         // SAFETY: same type/layout invariant as get, with exclusive ownership.
         unsafe { &mut *self.payload.0.as_mut_ptr().cast::<C>() }
     }
-    pub fn forward_smash_variant(&self) {
+    pub fn forward_smash_variant(&self) -> ForwardSmashVariant {
         (self.table.forward_smash_variant)(self)
     }
     pub fn catch_variant(&mut self) {
@@ -273,7 +273,7 @@ impl CharacterState {
     pub fn mouth_capture_scale(&self) -> Option<f32> {
         (self.table.mouth_capture_scale)(self)
     }
-    pub fn jab_variant(&self) {
+    pub fn jab_variant(&self) -> JabVariant {
         (self.table.jab_variant)(self)
     }
     pub fn third_jab_state(&self) -> melee_types::CommonMotionState {

@@ -212,10 +212,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// so it runs once the IASA returns (`Fighter::finish_input`).
     const FORWARD_SMASH: Option<RngEntry> = None;
     /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
-    fn forward_smash_variant(&self) {
+    fn forward_smash_variant(&self) -> ForwardSmashVariant {
         if Self::descriptor().common_behavior.forward_smash_entry {
             unimplemented!("ftCo_AttackS4: character entry hook");
         }
+        ForwardSmashVariant::Standard
     }
     /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
     /// character-specific capture variants override this boundary.
@@ -253,11 +254,13 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
     const ITEM_DEFENSE_CONTACT: Option<ItemDefenseContact> = None;
 
-    /// ftCo_Attack1.c:89-110, decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
-    fn jab_variant(&self) {
+    /// ftCo_Attack1.c:89-110 and 202-213: decideAttack11, getMotionFlags
+    /// (8008AB84 / 8008ABC0) and doAttack12's kind switch.
+    fn jab_variant(&self) -> JabVariant {
         if Self::descriptor().common_behavior.jab_entry {
             unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook");
         }
+        JabVariant::Standard
     }
     /// ftCo_Attack1 doAttack13 (8008B194): Marth restarts Attack11.
     fn third_jab_state(&self) -> melee_types::CommonMotionState {
@@ -480,6 +483,26 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         Self: Sized,
     {
     }
+}
+
+/// decideFighter's arms (ftCo_AttackS4.c:145-166) that enter through doEnter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForwardSmashVariant {
+    /// The default arm: doEnter only.
+    Standard,
+    /// Pikachu and Pichu: doEnter, then Fighter_SetEffectHitlagCallbacks.
+    EffectHitlagCallbacks,
+}
+
+/// ftCo_Attack1.c's per-kind jab arms.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JabVariant {
+    /// checkAttack11 with Ft_MF_None; the combo continues into Attack12.
+    Standard,
+    /// Pikachu and Pichu: getMotionFlags installs onPkPc21EC (a new attack
+    /// instance inside the state change) with Ft_MF_SkipAttackCount, and
+    /// doAttack12 restarts Attack11 through doAttack12Rapid.
+    Repeating,
 }
 
 /// Float predicates run on either side of the ordinary aerial-jump check.

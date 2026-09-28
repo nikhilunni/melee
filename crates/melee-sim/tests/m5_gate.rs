@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 165] = [
+const MATRIX_WITNESSES: [(&str, usize); 180] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1165,6 +1165,26 @@ const MATRIX_WITNESSES: [(&str, usize); 165] = [
     ("puff_rollout_whiff_fd_fox4", 316),
     ("puff_rollout_air_fd_fox4", 360),
     ("puff_pound_shield_fd_fox4", 272),
+    // Pikachu against Fox: the repeating jab (a new attack instance per
+    // restart), the forward smash's hitlag callbacks and model effect, Skull
+    // Bash tapped, charged in full, aerial, and into Fox; Quick Attack's
+    // zips along the floor and through the air, second zips (ground to air,
+    // air to ground, off the ledge), no second zip, and the stickless zip.
+    ("pikachu_jab_fd_fox4", 300),
+    ("pikachu_fsmash_fd_fox4", 240),
+    ("pikachu_skullbash_fd_fox4", 300),
+    ("pikachu_skullbash_charge_fd_fox4", 400),
+    ("pikachu_skullbash_air_fd_fox4", 400),
+    ("pikachu_sb_hit_fd_fox4", 420),
+    ("pikachu_quick_up_fd_fox4", 360),
+    ("pikachu_quick_none_fd_fox4", 360),
+    ("pikachu_qa_right_up_fd_fox4", 360),
+    ("pikachu_qa_diag_down_fd_fox4", 360),
+    ("pikachu_qa_left_edge_fd_fox4", 420),
+    ("pikachu_qa_air_left_up_fd_fox4", 420),
+    ("pikachu_qa_air_down_fd_fox4", 420),
+    ("pikachu_qa_hit_fd_fox4", 360),
+    ("pikachu_qa_right_same_fd_fox4", 360),
 ];
 
 #[test]

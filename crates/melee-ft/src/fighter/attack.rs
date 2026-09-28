@@ -135,9 +135,16 @@ impl Fighter {
     }
     /// checkAttack11 (8008ABC0), also used by a looping jab combo.
     fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {
-        self.character.jab_variant();
+        let variant = self.character.jab_variant();
         if self.try_item_pickup(assets)? {
             return Ok(());
+        }
+        if variant == super::JabVariant::Repeating {
+            // getMotionFlags installs onPkPc21EC, which this very state change
+            // runs before the frame-zero script: ft_800892A0's new attack
+            // instance (ft_80089824 and Ft_MF_SkipAttackCount only touch
+            // statistics).
+            self.core.combat.stale.new_instance();
         }
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
@@ -170,7 +177,11 @@ impl Fighter {
     /// Attack11 through doAttack12Rapid -> checkAttack11).
     fn continue_jab_combo(&mut self, last: S, assets: &FighterAssets) -> Result<()> {
         let state = if last == S::Attack11 {
-            S::Attack12
+            // doAttack12: Pikachu and Pichu restart through doAttack12Rapid.
+            match self.character.jab_variant() {
+                super::JabVariant::Standard => S::Attack12,
+                super::JabVariant::Repeating => S::Attack11,
+            }
         } else {
             self.character.third_jab_state()
         };

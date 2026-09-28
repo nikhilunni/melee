@@ -514,6 +514,30 @@ impl Effects {
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
+            if let EffectRequest::SyncAttached {
+                id: id @ (0x4BE | 0x4BF),
+                bone,
+            } = request
+            {
+                // efsync.c:107-114: hsd_8039EFAC(0, 7, 0x1B5C / 0x1B5D, jobj),
+                // and for 0x4BF also the common bank's 0x5F on the same joint.
+                let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                let matrix = fighter.effect_matrix(Some(bone));
+                let kind = if id == 0x4BE { 0x1B5C } else { 0x1B5D };
+                let mut spawn = SpawnRequest::new(7, kind, 0);
+                spawn.joint = Some((joint_id, matrix));
+                self.events.spawn(&spawn, false, false);
+                let character = resources::character_bank(&self.character_banks, 7)?;
+                spawn_particle::<T>(particles, character, spawn, rng, &mut self.draws)?;
+                if id == 0x4BF {
+                    let mut spawn = SpawnRequest::new(0, 0x5F, 0);
+                    spawn.joint = Some((joint_id, matrix));
+                    self.events.spawn(&spawn, false, false);
+                    spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                }
+                self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+                continue;
+            }
             if let EffectRequest::Attached { id, bone } = request {
                 // efasync.c:282-287: kind 0, hsd_8039EFAC on the live bone.
                 let kind = ATTACHED_SPAWNS
@@ -582,6 +606,17 @@ impl Effects {
                 });
                 self.events.spawn(&spawn, false, false);
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
+            if let EffectRequest::PositionalGenerator { id, position } = request {
+                self.spawn_dust_generator::<T>(
+                    id,
+                    position,
+                    fighter.effect_facing(),
+                    bank,
+                    particles,
+                    rng,
+                )?;
                 continue;
             }
             if let EffectRequest::PowershieldSpark { position } = request {
@@ -754,12 +789,34 @@ impl Effects {
             };
             if let EffectRequest::Shield { bone, .. }
             | EffectRequest::Graphics {
-                id: 0x423 | 0x424,
+                id: 0x423 | 0x424 | 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5,
                 bone,
                 ..
             } = request
             {
                 effect.attachment_bone = Some(bone);
+            }
+            let scaled_facing = matches!(
+                request,
+                EffectRequest::Graphics { id, .. } if scaled_facing_graphics(id)
+            );
+            if scaled_facing {
+                // efLib_Create_Attach_Scale_FacingDir (eflib.c:606-628): the
+                // fighter root's Y scale on all axes, no scale inheritance,
+                // and efLib_Cb_SetRotY_FromFighterDir as the update callback
+                // (an f64 +-M_PI_2, rounded). The fighter owns it for
+                // efLib_PauseAll.
+                let mut scale = fighter.effect_scale();
+                scale.x = scale.y;
+                scale.z = scale.y;
+                effect.tree.set_scale(effect.root, &scale);
+                effect.scale_attachment = false;
+                effect.hitlag_pause = HitlagPause::Active;
+                effect.facing_rotation = Some(if fighter.effect_facing() < 0.0 {
+                    -std::f64::consts::FRAC_PI_2 as f32
+                } else {
+                    std::f64::consts::FRAC_PI_2 as f32
+                });
             }
             let bone = if let EffectRequest::CaptureFlash { bone }
             | EffectRequest::Graphics { bone, .. }
@@ -773,6 +830,7 @@ impl Effects {
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
                 EffectRequest::OwnedRotation { .. }
+                | EffectRequest::PositionalGenerator { .. }
                 | EffectRequest::EggShell { .. }
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
@@ -869,7 +927,8 @@ impl Effects {
                     if !matches!(
                         id,
                         0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x41D | 0x423 | 0x424
-                    ) {
+                    ) && !scaled_facing_graphics(id)
+                    {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {
@@ -902,7 +961,22 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            if scaled_facing {
+                // efSync_Spawn's efLib_AnimQueue drain (efsync.c:654-660);
+                // the model's particles come from its character bank.
+                effect.animate_banks::<T>(
+                    resources::Banks {
+                        common: bank,
+                        characters: &self.character_banks,
+                    },
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                )?;
+            } else {
+                effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+            }
             self.instances.push(effect);
         }
         Ok(())
@@ -1255,9 +1329,20 @@ impl Effect {
                                     ..Default::default()
                                 });
                         }
+                        if hi == 0x127 {
+                            // efLib_SpawnParticleEffect (8005D174), eflib.c:891-900:
+                            // attached, with the root's rot.y and scale.
+                            let root = self.tree.get(self.root);
+                            request.application_transform =
+                                Some(hsd_particle::generator::ApplicationTransform {
+                                    rotation: Vec3::new(0.0, root.rotate.y, 0.0),
+                                    scale: root.scale,
+                                    ..Default::default()
+                                });
+                        }
                         sink.spawn(&request, false, false);
                         let id = spawn_particle::<T>(particles, bank, request, rng, draws)?;
-                        if matches!(hi, 2 | 6 | 306 | 307) {
+                        if matches!(hi, 2 | 6 | 0x127 | 306 | 307) {
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
                                 sink.flags(self.joint_base + jobj.0, 0x600, 0x800);

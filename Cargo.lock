@@ -486,11 +486,27 @@ dependencies = [
 name = "ft-pikachu"
 version = "0.0.1"
 dependencies = [
+ "ft-pikachu-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
  "melee-ft",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-pikachu-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-lb",
+ "melee-mp",
  "melee-types",
 ]
 

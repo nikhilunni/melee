@@ -104,7 +104,8 @@ impl super::FighterCore {
                 _ => bone,
             };
             let id = command.id;
-            if matches!(id, 0x423 | 0x424) {
+            // ftCo_09F7.c block_67: efAsync kind 3 with the floor angle.
+            if matches!(id, 0x423 | 0x424 | 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5) {
                 let normal = self.collision.data.floor.normal;
                 let floor_angle = if self.physics.ground_or_air == melee_types::GroundOrAir::Ground
                 {

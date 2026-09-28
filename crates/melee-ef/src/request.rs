@@ -56,6 +56,12 @@ pub enum EffectRequest {
         id: u16,
         position: Vec3,
     },
+    /// efSync_Spawn(id, gobj, &pos) for an efAsync generator row: the
+    /// efLib_CreateGenerator at a world point (1012, Quick Attack's trail).
+    PositionalGenerator {
+        id: u16,
+        position: Vec3,
+    },
     /// efSync_Spawn(id, gobj, &pos, &facing, &angle) for a Graphics model
     /// row (0x3FF: Yoshi's rolling dust): a fixed world point, turned to the
     /// facing (efAsync_SetEffectFacingDir) and rotated about Z.
@@ -333,6 +339,7 @@ impl EffectRequest {
                 | Self::SyncAttachedPair { .. }
                 | Self::SurfaceRebound { .. }
                 | Self::PositionalGraphics { .. }
+                | Self::PositionalGenerator { .. }
                 | Self::PositionalModel { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }

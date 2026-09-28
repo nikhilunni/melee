@@ -139,10 +139,12 @@ pub struct ThunderAttributes {
     pub bolt_item: u32,
 }
 
-pub fn read_pikachu_attributes(archive: &Archive) -> Result<PikachuAttributes> {
-    let root = archive.public("ftDataPikachu").ok_or_else(|| {
+/// ftData.ext_attr of the fighter data at public symbol `data_symbol`
+/// (`ftDataPikachu`, or `ftDataPichu` through ftPk_Init_OnLoadForPichu).
+pub fn read(archive: &Archive, data_symbol: &str) -> Result<PikachuAttributes> {
+    let root = archive.public(data_symbol).ok_or_else(|| {
         FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
-            name: "ftDataPikachu".into(),
+            name: data_symbol.into(),
         })
     })?;
     PikachuAttributes::read(archive, special_attributes_offset(archive, root)?)

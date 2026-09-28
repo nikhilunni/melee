@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 20] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 24] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -148,7 +148,37 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 20] = [
         model: 0xE,
         attached: true,
     },
+    // efsync.c:118-163: Pikachu's script models (efAsync kind 3 with the
+    // floor angle), efLib_Create_Attach_Scale_FacingDir then rotation Z.
+    ModelSpawn {
+        request: 0x4C1,
+        source: ModelSource::Graphics,
+        model: 0x1B59,
+        attached: true,
+    },
+    ModelSpawn {
+        request: 0x4C2,
+        source: ModelSource::Graphics,
+        model: 0x1B5A,
+        attached: true,
+    },
+    ModelSpawn {
+        request: 0x4C4,
+        source: ModelSource::Graphics,
+        model: 0x1B5B,
+        attached: true,
+    },
+    ModelSpawn {
+        request: 0x4C5,
+        source: ModelSource::Graphics,
+        model: 0x1B5C,
+        attached: true,
+    },
 ];
+/// efSync's efLib_Create_Attach_Scale_FacingDir rows among `MODEL_SPAWNS`.
+pub(super) const fn scaled_facing_graphics(request: u16) -> bool {
+    matches!(request, 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5)
+}
 pub(super) static WARP_SPAWN: ModelSpawn = ModelSpawn {
     request: 0x43E,
     source: ModelSource::Entry,
@@ -299,7 +329,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 8] = [
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 29] = [
+pub(super) static PARTICLE_KINDS: [i32; 30] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
-    374, 375, 376, 377, 445, 448, 449, 272,
+    374, 375, 376, 377, 445, 448, 449, 272, 295,
 ];

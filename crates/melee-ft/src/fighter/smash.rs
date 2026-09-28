@@ -66,7 +66,7 @@ impl Fighter {
             self.core.pending_forward_smash = true;
             return Ok(());
         }
-        self.character.forward_smash_variant();
+        let variant = self.character.forward_smash_variant();
         // ftCo_GetLStickAngle/GetCStickAngle (8007D964/8007D99C).
         let angle = melee_lb::trigf::atan2f(stick.y, stick.x.abs());
         let [high, high_mid, low_mid, low] = assets.attacks.smash_angles;
@@ -93,6 +93,10 @@ impl Fighter {
         self.step_animation(assets);
         self.core.state_data = MotionData::Smash { retained_word };
         self.core.status.interaction = super::Interaction::Attack;
+        if variant == super::ForwardSmashVariant::EffectHitlagCallbacks {
+            // decideFighter: Fighter_SetEffectHitlagCallbacks after doEnter.
+            self.core.effect_state.hitlag_callbacks = true;
+        }
         Ok(())
     }
 }

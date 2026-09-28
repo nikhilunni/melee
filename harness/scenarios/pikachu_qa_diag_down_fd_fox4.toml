@@ -1,0 +1,25 @@
+# PIKACHU directed witness: Quick Attack up-right, then down-right back to the floor.
+name = "pikachu_qa_diag_down_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_pikachu_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickY = 80 } },
+  { frame = 121, port = 0, buttons = {  }, raw = { stickX = 56, stickY = 56 } },
+  { frame = 139, port = 0, buttons = {  }, raw = { stickX = 56, stickY = -56 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Pikachu"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
