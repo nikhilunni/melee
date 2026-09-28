@@ -1,71 +1,136 @@
 """Motion transitions witnessed by the gated retail traces (docs/INTERACTION_MATRIX.md).
 
-For every FD scenario named in the m4/m5 gates with a local tick trace, read
-each Fox/Marth motion id at frame_end over the gated window and write
-transitions.tsv (character, from, to, directed count, corpus count,
-directed witnesses) and visits.tsv (states entered) to the output directory.
-Same-tick motion changes merge; branches that keep the motion id are invisible.
+    cd harness && uv run python interaction_matrix.py <out-dir> [--stage FinalDestination]
+                                                      [--characters Fox Marth]
 
-    cd harness && uv run python interaction_matrix.py <out-dir>
+For every scenario on `--stage` named in the m4/m5 gates with a local tick
+trace, read each fighter's motion id at frame_end over the gated window and
+write transitions.tsv (character, from, to, directed count, corpus count,
+directed witnesses) and visits.tsv (states entered) to the output directory,
+for the fighters of `--characters` (the port's names). Same-tick motion changes
+merge; branches that keep the motion id are invisible.
+
+Common states are named from melee-types' motion_state.rs, special states
+(id >= 341) from the decomp's per-character enum (`ftMs_MS_SpecialNStart =
+ftCo_MS_Count, ...` in ft/kinds/ft<Kind>/), prefixed with its short name.
 """
-import json, re, os, sys, collections, tomllib
+from __future__ import annotations
+
+import argparse
+import collections
+import json
+import re
+import tomllib
+from pathlib import Path
+
+import sys
+
 import trace_io
-R=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-S=sys.argv[1] if len(sys.argv)>1 else '.'
-os.makedirs(S, exist_ok=True)
-# names
-src=open(R+'/crates/melee-types/src/motion_state.rs').read()
-common={}
-for m in re.finditer(r'^\s+([A-Z][A-Za-z0-9_]+) = (-?\d+)',src,re.M):
-    common.setdefault(int(m.group(2)),m.group(1))
-fox="SpecialNStart SpecialNLoop SpecialNEnd SpecialAirNStart SpecialAirNLoop SpecialAirNEnd SpecialSStart SpecialS SpecialSEnd SpecialAirSStart SpecialAirS SpecialAirSEnd SpecialHiHold SpecialHiHoldAir SpecialHi SpecialAirHi SpecialHiLanding SpecialHiFall SpecialHiBound SpecialLwStart SpecialLwLoop SpecialLwHit SpecialLwEnd SpecialLwTurn SpecialAirLwStart SpecialAirLwLoop SpecialAirLwHit SpecialAirLwEnd SpecialAirLwTurn".split()
-mar="SpecialNStart SpecialNLoop SpecialNEnd0 SpecialNEnd1 SpecialAirNStart SpecialAirNLoop SpecialAirNEnd0 SpecialAirNEnd1 SpecialS1 SpecialS2Hi SpecialS2Lw SpecialS3Hi SpecialS3S SpecialS3Lw SpecialS4Hi SpecialS4S SpecialS4Lw SpecialAirS1 SpecialAirS2Hi SpecialAirS2Lw SpecialAirS3Hi SpecialAirS3S SpecialAirS3Lw SpecialAirS4Hi SpecialAirS4S SpecialAirS4Lw SpecialHi SpecialAirHi SpecialLw SpecialLwHit SpecialAirLw SpecialAirLwHit".split()
-KIND={1:'Fox',18:'Marth'}
-def name(k,m):
-    if m>=341:
-        t=fox if k==1 else mar
-        i=m-341
-        return ('Fx.' if k==1 else 'Ms.')+(t[i] if i<len(t) else str(m))
-    return common.get(m,str(m))
-gated=set()
-for f in ['m5_gate.rs','m4_gate.rs']:
-    gated|=set(re.findall(r'"([a-z0-9_]+)"',open(R+'/crates/melee-sim/tests/'+f).read()))
-scen={}
-for n in sorted(gated):
-    p=R+'/harness/scenarios/'+n+'.toml'
-    t=R+'/harness/traces/'+n+'.tick.expected.jsonl'
-    if re.search(r"_(bf|dl|ys|fod)(_|$)",n) or n=="platform_bf_fox": continue
-    if os.path.exists(p) and trace_io.exists(t):
-        scen[n]=(tomllib.load(open(p,'rb')).get('frames'),t)
-trans=collections.defaultdict(lambda: collections.OrderedDict())
-visit=collections.defaultdict(set)
-missing=[]
-for n,(frames,t) in scen.items():
-    prev={}
-    corpus=n.startswith('corpus')
-    for i,l in enumerate(trace_io.open_text(t)):
-        if frames and i>=frames: break
-        st=json.loads(l)['state']
-        for p in range(4):
-            k=st.get(f'p{p}.kind'); m=st.get(f'p{p}.motion_id')
-            if not k or not m: continue
-            k=k['v']; m=m['v']
-            if k not in KIND: continue
-            key=(k,p)
-            visit[(k,m)].add(n)
-            if key in prev and prev[key]!=m:
-                trans[(k,prev[key],m)][n]=True
-            prev[key]=m
-out=open(S+'/transitions.tsv','w')
-for (k,a,b),ns in sorted(trans.items()):
-    names=list(ns)
-    d=[x for x in names if not x.startswith('corpus')]
-    c=[x for x in names if x.startswith('corpus')]
-    out.write(f"{KIND[k]}\t{name(k,a)}\t{name(k,b)}\t{len(d)}\t{len(c)}\t{','.join(d)}\n")
-out.close()
-out=open(S+'/visits.tsv','w')
-for (k,m),ns in sorted(visit.items()):
-    d=[x for x in ns if not x.startswith('corpus')]
-    out.write(f"{KIND[k]}\t{m}\t{name(k,m)}\t{len(d)}\t{len(ns)-len(d)}\t{','.join(sorted(d)[:4])}\n")
-out.close()
-print(len(scen),'scenarios;',len(trans),'transitions;',len(visit),'states')
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "harness/dolphin"))
+from remote_proto import FIGHTER_KIND_NAMES  # noqa: E402  retail FighterKind names, index == kind
+
+KINDS_DIR = ROOT / "third_party/melee-decomp/src/melee/ft/kinds"
+FIRST_SPECIAL = 341   # ftCo_MS_Count
+# The port's character names where they differ from the retail kind names.
+RETAIL_NAMES = {"CaptainFalcon": "Captain", "DonkeyKong": "Donkey", "GameAndWatch": "GameWatch",
+                "Bowser": "Koopa", "Marth": "Mars", "IceClimbers": "Popo", "Jigglypuff": "Purin",
+                "YoungLink": "CLink", "Roy": "Emblem", "Ganondorf": "Ganon", "Sheik": "Seak"}
+# Kinds whose special states are another kind's enum (ftfalco.c:25).
+SHARED_STATES = {"Falco": "Fox"}
+PLAYABLE = FIGHTER_KIND_NAMES[:FIGHTER_KIND_NAMES.index("Emblem") + 1]
+CHARACTERS = sorted({next((port for port, retail in RETAIL_NAMES.items() if retail == k), k)
+                     for k in PLAYABLE if k != "Nana"})
+
+
+def common_names(path: Path) -> dict[int, str]:
+    names: dict[int, str] = {}
+    for m in re.finditer(r"^\s+([A-Z][A-Za-z0-9_]+) = (-?\d+)", path.read_text(), re.M):
+        names.setdefault(int(m.group(2)), m.group(1))
+    return names
+
+
+def special_names(retail: str) -> tuple[str, dict[int, str]]:
+    """(short prefix, id -> name) from the decomp's motion-state enum for a kind."""
+    retail = SHARED_STATES.get(retail, retail)
+    for path in sorted((KINDS_DIR / f"ft{retail}").glob("*.[ch]")):
+        m = re.search(r"\b(ft\w+?)_MS_(\w+) = ftCo_MS_Count,(.*?)\}", path.read_text(), re.S)
+        if m:
+            prefix = m.group(1)
+            rest = [n for n in re.findall(rf"\b{prefix}_MS_(\w+)\s*,", m.group(3)) if not n.endswith("Count")]
+            return prefix.removeprefix("ft"), {FIRST_SPECIAL + i: n for i, n in enumerate([m.group(2), *rest])}
+    return retail, {}
+
+
+def gated_scenarios(stage: str) -> dict[str, tuple[int | None, Path]]:
+    gated: set[str] = set()
+    for test in ("m5_gate.rs", "m4_gate.rs"):
+        gated |= set(re.findall(r'"([a-z0-9_]+)"', (ROOT / "crates/melee-sim/tests" / test).read_text()))
+    out = {}
+    for name in sorted(gated):
+        scenario = ROOT / "harness/scenarios" / f"{name}.toml"
+        trace = ROOT / "harness/traces" / f"{name}.tick.expected.jsonl"
+        if not scenario.exists() or not trace_io.exists(trace):
+            continue
+        data = tomllib.loads(scenario.read_text())
+        if data.get("stage", "FinalDestination") == stage:
+            out[name] = (data.get("frames"), trace)
+    return out
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("out", type=Path)
+    ap.add_argument("--stage", default="FinalDestination")
+    ap.add_argument("--characters", nargs="+", default=["Fox", "Marth"], choices=CHARACTERS)
+    a = ap.parse_args(argv)
+    a.out.mkdir(parents=True, exist_ok=True)
+    common = common_names(ROOT / "crates/melee-types/src/motion_state.rs")
+    retail = {c: RETAIL_NAMES.get(c, c) for c in a.characters}
+    kinds = {FIGHTER_KIND_NAMES.index(retail[c]): c for c in a.characters}
+    specials = {k: special_names(retail[c]) for k, c in kinds.items()}
+
+    def name(kind: int, motion: int) -> str:
+        if motion >= FIRST_SPECIAL:
+            prefix, names = specials[kind]
+            return f"{prefix}.{names.get(motion, motion)}"
+        return common.get(motion, str(motion))
+
+    scenarios = gated_scenarios(a.stage)
+    trans: dict[tuple, dict[str, bool]] = collections.defaultdict(dict)
+    visit: dict[tuple, set[str]] = collections.defaultdict(set)
+    for n, (frames, trace) in scenarios.items():
+        prev: dict[tuple, int] = {}
+        for i, line in enumerate(trace_io.open_text(trace)):
+            if frames and i >= frames:
+                break
+            state = json.loads(line)["state"]
+            for p in range(4):
+                k, m = state.get(f"p{p}.kind"), state.get(f"p{p}.motion_id")
+                if not k or not m or k["v"] not in kinds:
+                    continue
+                k, m = k["v"], m["v"]
+                visit[(k, m)].add(n)
+                if (k, p) in prev and prev[(k, p)] != m:
+                    trans[(k, prev[(k, p)], m)][n] = True
+                prev[(k, p)] = m
+
+    def split(names) -> tuple[list[str], list[str]]:
+        return [x for x in names if not x.startswith("corpus")], [x for x in names if x.startswith("corpus")]
+
+    with (a.out / "transitions.tsv").open("w") as out:
+        for (k, src, dst), ns in sorted(trans.items()):
+            directed, corpus = split(ns)
+            out.write(f"{kinds[k]}\t{name(k, src)}\t{name(k, dst)}\t{len(directed)}\t{len(corpus)}\t"
+                      f"{','.join(directed)}\n")
+    with (a.out / "visits.tsv").open("w") as out:
+        for (k, m), ns in sorted(visit.items()):
+            directed, corpus = split(ns)
+            out.write(f"{kinds[k]}\t{m}\t{name(k, m)}\t{len(directed)}\t{len(corpus)}\t"
+                      f"{','.join(sorted(directed)[:4])}\n")
+    print(len(scenarios), "scenarios;", len(trans), "transitions;", len(visit), "states")
+
+
+if __name__ == "__main__":
+    main()
