@@ -595,7 +595,8 @@ Selection (`harness/dolphin_config.py`):
 |---|---|
 | Scripted scenes, replays of human pad logs, ledgers, particles, bones | headless (default) |
 | Live human play (`record.py` on a scene with `controller = "human"`) | windowed, automatically |
-| Menu driving and savestate creation (`dolphin/drive.py`, screenshots) | windowed |
+| Match-start boundaries (`make_boundary.py`) | headless |
+| Interactive menu driving (`dolphin/drive.py`, screenshots) | windowed |
 | `DOLPHIN_GUI=1` | windowed everywhere |
 | `DOLPHIN_BIN=<path>` | that executable |
 | `DOLPHIN_AUDIO=1` | keep host audio (muted by default; it cannot affect game state) |
@@ -603,6 +604,25 @@ Selection (`harness/dolphin_config.py`):
 Headless capture validates the deterministic simulation oracle only. It does
 not validate native rendering or replace graphics smoke tests. Always run
 recordings serially.
+
+### Match-start boundaries in one command (2026-09-27)
+
+    cd harness && uv run python make_boundary.py --stage Battlefield --players Marth Fox [--stocks 4]
+
+boots the disc in headless Dolphin (private user folder, unlimited speed) and
+runs `dolphin/boundary_script.py`, which reads the game's own state every
+frame instead of timing inputs or reading screenshots: it pulses Start until
+the scene machine (`0x80479D30`) reaches the main menu, applies the RAM-only
+save-data pokes below (plus items off), walks the main menu by its hovered
+item (`mn_804A04F0`), places each port's CSS hand over the character's icon
+(bounds from the CSS icon table) and presses A with that port's controller,
+then sets the stage screen's `force_stage_id` (the field retail's random and
+ordered stage rules use). It saves at the first frame with an initialised
+roster, the `save-when-fighters` predicate. The tool then writes
+`<name>.toml` and `<name>_cold.toml`, records, gates, and registers the
+boundary in `boundaries.toml` when the port matches (about 30 s in all; the
+menus take 4 s). A layout the port does not yet reproduce stays unregistered
+with its savestate and traces in place.
 
 ### Corpus bridge: any port recording as a retail oracle (2026-09-26)
 
@@ -614,10 +634,10 @@ Dolphin when its match starts from a registered boundary:
     uv run python replay_to_scenario.py <recording.json> --name <scenario> --verify
 
 - `harness/boundaries.toml` lists match-start savestates whose cold
-  construction the port reproduces exactly (`start_fd_fox4`, `start_fd_marth4`,
-  both 600 ticks and 107 initial-scene fields, `cold_tests.rs`). The recording
-  must use the boundary's stage, players, stocks and seed. Add a boundary per
-  new stage/character layout (or extra seeds) the same way.
+  construction the port reproduces exactly (initial scene, particles and 600
+  gated ticks, `registered_boundaries_cold_600` in `cold_tests.rs`). The
+  recording must use the boundary's stage, players, stocks and seed. Add one
+  per stage and character layout with `make_boundary.py` (below).
 - Scenarios use `input_clock = "tick"`: step frames count tick records and
   carry raw PADStatus values. `HSD_PadRenewMasterStatus` dequeues one raw poll
   per tick and repeats the last status when the queue is empty, so VI-frame

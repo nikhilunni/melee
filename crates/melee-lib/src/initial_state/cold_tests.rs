@@ -149,15 +149,27 @@ fn start_fd_marth_cold_600() {
 fn start_fd_falco_cold_600() {
     verify("start_fd_falco");
 }
-/// Four-stock Fox/Marth boundaries behind `harness/boundaries.toml`: corpus
-/// recordings built on them replay in Dolphin (`replay_to_scenario.py`).
+/// Every match-start boundary in `harness/boundaries.toml` (the explorer's
+/// starting points; `make_boundary.py` registers new ones). Sudden Death's
+/// boundary starts mid-mode and is gated in `m5_gate`.
 #[test]
-fn start_fd_fox4_cold_600() {
-    verify("start_fd_fox4");
-}
-#[test]
-fn start_fd_marth4_cold_600() {
-    verify("start_fd_marth4");
+fn registered_boundaries_cold_600() {
+    #[derive(serde::Deserialize)]
+    struct Registry {
+        boundary: Vec<Boundary>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Boundary {
+        name: String,
+        #[serde(default)]
+        sudden_death: bool,
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join("harness/boundaries.toml")).unwrap();
+    let registry: Registry = toml::from_str(&text).unwrap();
+    for boundary in registry.boundary.iter().filter(|b| !b.sudden_death) {
+        verify(&boundary.name);
+    }
 }
 #[test]
 fn start_bf_fox_cold_600() {

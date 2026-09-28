@@ -1018,6 +1018,7 @@ dependencies = [
  "melee-types",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]
@@ -1053,6 +1054,7 @@ dependencies = [
  "melee-test-support",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

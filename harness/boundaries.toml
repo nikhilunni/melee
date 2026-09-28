@@ -1,11 +1,14 @@
 # Retail match-start boundaries that the port's cold construction reproduces
-# exactly (`melee-sim gate harness/scenarios/<cold>.toml`: 600 ticks, 0
-# divergences). A port recording made with the same stage, players, stocks
-# and seed can be replayed in Dolphin from `savestate` by replay_to_scenario.py.
+# exactly: the explorer's starting points (`--boundary <name>`). A recording
+# made with the same stage, players, stocks and seed replays in Dolphin from
+# `savestate` through replay_to_scenario.py. Every non-Sudden-Death entry is
+# checked by melee-lib's `registered_boundaries_cold_600` (initial scene,
+# particles, 600 gated ticks).
 #
-# To add one: create the savestate with dolphin/drive.py (save-when-fighters at
-# match start, docs/DOLPHIN_RUN.md), record `<name>.toml` with record.py, add a
-# `<name>_cold.toml` scenario with the sidecar seed, gate it, then list it here.
+# To add one: `cd harness && uv run python make_boundary.py --stage <Stage>
+# --players <P1> <P2> [--stocks N]`. It drives the menus in headless Dolphin,
+# saves roms/<name>.sav, writes <name>.toml and <name>_cold.toml, records,
+# gates, and appends the entry here when the port matches.
 
 [[boundary]]
 name = "start_fd_fox4"
@@ -36,3 +39,39 @@ players = ["Marth", "Fox"]
 stocks = 1
 sudden_death = true
 seed = 4258399878
+
+[[boundary]]
+name = "start_bf_fox_marth4"
+cold = "start_bf_fox_marth4_cold"
+savestate = "harness/roms/start_bf_fox_marth4.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2830168320
+
+[[boundary]]
+name = "start_bf_marth_fox4"
+cold = "start_bf_marth_fox4_cold"
+savestate = "harness/roms/start_bf_marth_fox4.sav"
+stage = "Battlefield"
+players = ["Marth", "Fox"]
+stocks = 4
+seed = 3183162807
+
+[[boundary]]
+name = "start_fd_falco_fox4"
+cold = "start_fd_falco_fox4_cold"
+savestate = "harness/roms/start_fd_falco_fox4.sav"
+stage = "FinalDestination"
+players = ["Falco", "Fox"]
+stocks = 4
+seed = 1566050261
+
+[[boundary]]
+name = "start_fd_fox_falco4"
+cold = "start_fd_fox_falco4_cold"
+savestate = "harness/roms/start_fd_fox_falco4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Falco"]
+stocks = 4
+seed = 1646358439
