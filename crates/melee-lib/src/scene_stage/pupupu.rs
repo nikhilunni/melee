@@ -37,7 +37,12 @@ fn fighter_sides(fighters: &mut [SceneFighter; 2]) -> i32 {
         .sum()
 }
 
-pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -> Result<()> {
+pub(crate) fn run_proc(
+    state: &mut InitialState,
+    map: u8,
+    draws: &mut DrawLog,
+    forces: &mut melee_lb::radial_force::RadialForces,
+) -> Result<()> {
     let SceneStage::Pupupu(stage) = &mut state.stage else {
         unreachable!()
     };
@@ -51,12 +56,26 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8, draws: &mut DrawLog) -
             } else {
                 0
             };
-            stage.tick_whispy(ended, sides, &mut state.rng)
+            let animation = stage.tick_whispy(ended, sides, &mut state.rng);
+            // grOldPupupu_802113E0: while the wind blows, Camera_RequestQuake
+            // (Loop), then every tenth tick a dynamics gust (lb_80011A50).
+            if stage.wind != 0 {
+                state
+                    .quakes
+                    .request(&mut state.camera, melee_cm::QuakeKind::Loop);
+            }
+            if let Some(gust) = stage.dynamics_gust() {
+                forces.insert_directional(gust);
+            }
+            animation
         }
         1 => stage.take_secondary_animation(),
         6 => stage.cloud_animation(),
         8 => {
-            stage.tick_background();
+            // The Bronto Burt models carry no particle keys and their procs
+            // only delete them, so the flyby's placement is presentation.
+            let scale = state.assets.stage_desc.parameters.map_scale;
+            let _flyby = stage.tick_background(scale, &mut state.rng);
             None
         }
         _ => None,

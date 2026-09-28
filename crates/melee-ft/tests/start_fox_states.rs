@@ -3,12 +3,12 @@
 mod fighter_support;
 use fighter_support::*;
 use gekko_math::rng::HsdRng;
-use hsd_types::Vec3;
 use melee_diff::{first_divergence, Record, RecordSink};
 use melee_ft::{
     fighter::{interleaved_order, FighterProc},
     input::PadSample,
 };
+use melee_gr::wind::Wind;
 use melee_types::snapshot::{PrefixSink, Snapshot};
 
 #[test]
@@ -78,7 +78,7 @@ fn start_fox_state_callbacks_600() {
                     }
                     FighterProc::CpuGate => f.proc_cpu_gate(),
                     FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
-                    FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO),
+                    FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Wind::CALM),
                     FighterProc::Map => {
                         f.ledge_holders.offer(std::iter::empty());
                         f.proc_map_with_assets(&fixture.assets, &mut fixture.map)

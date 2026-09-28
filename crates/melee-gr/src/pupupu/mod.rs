@@ -1,7 +1,10 @@
 //! Dream Land N64, gr/groldpupupu.c (NTSC 1.02).
+pub mod flyby;
 pub mod procs;
+use crate::wind::{Gust, Wind};
 use gekko_math::HsdRng;
 use hsd_types::Vec3;
+use melee_lb::radial_force::DirectionalGust;
 
 // Animation tables grOp_804D48C8/D0/D8, indexed by left/right facing.
 const BLINK_ANIMATIONS: [usize; 2] = [4, 0];
@@ -10,6 +13,10 @@ const TURN_ANIMATIONS: [usize; 2] = [2, 3];
 // grOldPupupu_802113E0: wind is enabled strictly between these timer values.
 const WIND_START: i32 = 45;
 const WIND_END: i32 = 320;
+// grOldPupupu_802113E0: a dynamics gust every this many wind ticks.
+const GUST_INTERVAL: i32 = 10;
+const GUST_FRAMES: i32 = 15;
+const GUST_STRENGTH: f32 = 0.5;
 
 #[derive(Clone, Debug)]
 pub struct Parameters {
@@ -181,33 +188,46 @@ impl Pupupu {
     pub fn cloud_animation(&self) -> Option<usize> {
         (self.phase == Phase::Blowing && self.entering).then_some(usize::from(!self.facing_right))
     }
-    /// fn_802112F4 / grOldPupupu_8021128C: strict world-position bounds.
-    pub fn wind_at(&self, position: Vec3) -> Vec3 {
-        let (bounds, speed) = match self.wind {
+    /// grOldPupupu_802113E0's blowing tail: every tenth counter value of the
+    /// wind interval also pushes dynamic bones (lb_80011A50, 0x80011A50) in
+    /// the same rectangle for 15 pool ticks, strength 0.5, no decay.
+    /// Valid right after `tick_whispy`, like `wind`.
+    pub fn dynamics_gust(&self) -> Option<DirectionalGust> {
+        if self.wind == 0 || self.timer % GUST_INTERVAL != 0 {
+            return None;
+        }
+        let p = &self.parameters;
+        // grOp_803E67E4 by facing; the rectangle is (x10, x14, x18, x1C).
+        let (direction, [left, right]) = if self.facing_right {
+            (Vec3::new(1.0, 0.0, 0.0), p.right_bounds)
+        } else {
+            (
+                Vec3::new(-1.0, 0.0, 0.0),
+                [p.left_bounds[1], p.left_bounds[0]],
+            )
+        };
+        Some(DirectionalGust {
+            direction,
+            frames: GUST_FRAMES,
+            strength: GUST_STRENGTH,
+            decay: 0.0,
+            phase_step: 0.0,
+            rectangle: [left, p.vertical_bounds[0], right, p.vertical_bounds[1]],
+        })
+    }
+    /// fn_802112F4 (0x802112F4): the gust this tick's Whispy state selects
+    /// (+0xDC: 1 blows left, 2 blows right).
+    pub fn wind(&self) -> Wind {
+        let (x_bounds, speed) = match self.wind {
             1 => (self.parameters.left_bounds, -self.parameters.wind_speed),
             2 => (self.parameters.right_bounds, self.parameters.wind_speed),
-            _ => return Vec3::ZERO,
+            _ => return Wind::CALM,
         };
-        let inside = |value: f32, [a, b]: [f32; 2]| {
-            if a < b {
-                a < value && value < b
-            } else {
-                b < value && value < a
-            }
-        };
-        if inside(position.x, bounds) && inside(position.y, self.parameters.vertical_bounds) {
-            Vec3::new(speed, 0.0, 0.0)
-        } else {
-            Vec3::ZERO
-        }
-    }
-    /// grOldPupupu_80210D10: signed post-decrement before scenery creation.
-    pub fn tick_background(&mut self) {
-        let old = self.background_timer;
-        self.background_timer = old.wrapping_sub(1);
-        if old < 0 {
-            unimplemented!("groldpupupu.c:360-453: camera-relative background flyby creation");
-        }
+        Wind::gust(Gust {
+            velocity: Vec3::new(speed, 0.0, 0.0),
+            x_bounds,
+            y_bounds: self.parameters.vertical_bounds,
+        })
     }
 }
 /// Retail range helper preserves equal/reversed endpoints and draw suppression.
@@ -257,10 +277,10 @@ mod tests {
         stage.timer = 44;
         let mut rng = HsdRng::new(9);
         stage.tick_whispy(false, 0, &mut rng);
-        assert_eq!(stage.wind_at(Vec3::new(-46.6, 30.1, 0.0)), Vec3::ZERO);
+        assert_eq!(stage.wind().at(Vec3::new(-46.6, 30.1, 0.0)), Vec3::ZERO);
         stage.tick_whispy(false, 0, &mut rng);
         assert_eq!(
-            stage.wind_at(Vec3::new(-46.6, 30.1, 0.0)).x.to_bits(),
+            stage.wind().at(Vec3::new(-46.6, 30.1, 0.0)).x.to_bits(),
             (-0.2_f32).to_bits()
         );
         for p in [
@@ -268,7 +288,7 @@ mod tests {
             Vec3::new(-18.0, 30.1, 0.0),
             Vec3::new(-46.6, 40.0, 0.0),
         ] {
-            assert_eq!(stage.wind_at(p), Vec3::ZERO);
+            assert_eq!(stage.wind().at(p), Vec3::ZERO);
         }
         stage.timer = 319;
         stage.tick_whispy(false, 0, &mut rng);

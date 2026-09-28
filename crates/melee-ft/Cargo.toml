@@ -19,10 +19,10 @@ hsd-anim = { path = "../hsd-anim" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 hsd-types = { path = "../hsd-types" }
+melee-gr = { path = "../melee-gr" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }
-melee-gr = { path = "../melee-gr" }
 serde_json.workspace = true
 melee-diff = { path = "../melee-diff" }
 ft-fox = { path = "../ft-fox" }

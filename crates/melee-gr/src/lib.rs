@@ -8,5 +8,6 @@ pub mod last;
 pub mod music;
 
 pub mod story;
+pub mod wind;
 
 pub mod pupupu;

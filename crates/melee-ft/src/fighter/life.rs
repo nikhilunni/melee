@@ -7,6 +7,7 @@ use super::{
 use gekko_math::{fma::fmsubs, HsdRng};
 use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
+use melee_gr::wind::Wind;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
 #[derive(Clone, Copy, Debug)]
@@ -582,7 +583,7 @@ impl Fighter {
     /// Fighter_procUpdate's tail then integrates the world position as usual.
     /// The hitlag-slowdown gate (x2222_b6, ftAnim_80070FD0) is not reachable
     /// in a Vs match.
-    pub(crate) fn screen_ko_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+    pub(crate) fn screen_ko_physics(&mut self, assets: &FighterAssets, wind: Wind) {
         let parameters = assets.life.screen_ko;
         let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
             panic!("screen KO scratch");
@@ -975,7 +976,7 @@ impl FighterCore {
         }
     }
     /// Rebirth_Phys (800D535C) / RebirthWait_Phys (800D58F4).
-    pub(super) fn revival_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+    pub(super) fn revival_physics(&mut self, assets: &FighterAssets, wind: Wind) {
         let (remaining, target) = match self.state_data {
             MotionData::Life(
                 LifeState::Revival { remaining, target }
@@ -992,7 +993,7 @@ impl FighterCore {
     }
     /// Fighter_procUpdate's tail for a state without its own physics: knockback
     /// decay, then the velocity and environment integration.
-    pub(super) fn free_flight_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+    pub(super) fn free_flight_physics(&mut self, assets: &FighterAssets, wind: Wind) {
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.physics);
         crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);

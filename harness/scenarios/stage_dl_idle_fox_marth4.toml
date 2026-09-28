@@ -1,0 +1,23 @@
+# STAGE-DL witness: Fox (p1) and Marth (p2) idle on Dream Land from the
+# start_dl_fox_marth4 boundary for 5000 ticks. Whispy Woods runs several
+# blink/turn/blow cycles (wind pushes whoever stands in the gust rectangle)
+# and the background flyby timer (grOldPupupu_80210D10) expires near tick
+# 3700, spawning Bronto Burts from the camera edge.
+name = "stage_dl_idle_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_fox_marth4.sav"
+frames = 5000
+seed = 1
+stage = "DreamLand"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

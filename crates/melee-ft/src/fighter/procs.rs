@@ -6,6 +6,7 @@ use crate::{
     input::{input_source, run_cpu_input_proc, update_input, InputContext, PadSample},
 };
 use gekko_math::rng::HsdRng;
+use melee_gr::wind::Wind;
 use melee_mp::CollMap;
 
 impl Fighter {
@@ -43,7 +44,7 @@ impl Fighter {
     }
 
     /// Fighter_procUpdate (0x8006B82C), s_link 4, fighter.c:2150-2438.
-    pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Vec3) {
+    pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Wind) {
         if self.core.status.disabled {
             return;
         }
@@ -152,8 +153,11 @@ impl Fighter {
         self.core.update_dynamic_colliders();
         self.solve_dynamics(Some(map), &[]);
     }
+    /// Fighter_8006D9AC with the scene's force-field pool; Marth and Roy
+    /// respond to its wind state first (ftCo_8009E614).
     pub fn proc_dynamics_with_forces(
         &mut self,
+        assets: &FighterAssets,
         map: &mut CollMap,
         forces: &[melee_lb::dynamics::ForceField],
     ) {
@@ -162,6 +166,7 @@ impl Fighter {
         }
         self.core.status.require_supported();
         self.core.update_dynamic_colliders();
+        self.core.respond_to_stage_wind(assets);
         self.solve_dynamics(Some(map), forces);
     }
     fn solve_dynamics(

@@ -100,7 +100,12 @@ fn evaluate(input: &[f32; 36]) -> Vec<u32> {
         } else {
             None
         },
-        vector(&input[23..]),
+        // A gust covering the whole plane adds the harness's wind vector.
+        melee_gr::wind::Wind::gust(melee_gr::wind::Gust {
+            velocity: vector(&input[23..]),
+            x_bounds: [f32::NEG_INFINITY, f32::INFINITY],
+            y_bounds: [f32::NEG_INFINITY, f32::INFINITY],
+        }),
     );
     out.push(state.ground_velocity.to_bits());
     push_vec(&mut out, state.self_velocity);

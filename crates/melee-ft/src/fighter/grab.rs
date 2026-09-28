@@ -5,6 +5,7 @@ use super::{
     Fighter, MotionData,
 };
 use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 use melee_types::CommonMotionState as S;
 
 impl Fighter {
@@ -78,7 +79,7 @@ impl FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         // ftCo_Catch_Phys's friction: a separate multiplier product.
         let friction = assets.grab_friction_multiplier * self.attributes.ground.ground_friction;
@@ -92,7 +93,7 @@ impl FighterCore {
         friction: f32,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         if self
             .animation
@@ -135,7 +136,7 @@ impl FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         use crate::physics::{
             friction::friction_acceleration,

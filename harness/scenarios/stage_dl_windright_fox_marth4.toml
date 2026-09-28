@@ -1,0 +1,28 @@
+# STAGE-DL witness: from the start_dl_fox_marth4 boundary Fox (p1) walks
+# right on the main platform and Marth (p2) walks off the left platform to
+# the right half, then both idle. Every fighter votes right
+# (ftLib_800864A8), so Whispy Woods turns right and blows fighters in the
+# right gust rectangle toward the right edge (fn_802112F4 case 2).
+name = "stage_dl_windright_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_fox_marth4.sav"
+frames = 2400
+seed = 1
+stage = "DreamLand"
+
+inputs = [
+  { frame = 130, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 150, port = 0, buttons = {} },
+  { frame = 130, port = 1, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 200, port = 1, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

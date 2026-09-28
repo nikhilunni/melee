@@ -4,6 +4,7 @@ use super::{
 };
 use crate::desc::{common::CommonFighterData, FighterAttributes};
 use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 use melee_mp::CollMap;
 use melee_types::{mp::CollData, GroundOrAir};
 
@@ -94,7 +95,7 @@ pub fn step_wait(
     collision: &CollData,
     params: &GroundedParameters,
     map: &CollMap,
-    wind: Vec3,
+    wind: Wind,
 ) {
     let terrain = map.floor_speed_scale(collision);
     let normal = collision.floor.normal;
@@ -108,7 +109,7 @@ pub fn finish_ground_update(
     collision: &CollData,
     params: &GroundedParameters,
     map: &CollMap,
-    wind: Vec3,
+    wind: Wind,
 ) {
     let terrain = map.floor_speed_scale(collision);
     let normal = collision.floor.normal;

@@ -1142,6 +1142,16 @@ fn battlefield_background_swap_cycles_match_retail() {
     combat_gate_ticks("bf_transition_cycle_marth_fox4", 11000);
 }
 
+/// Dream Land from the Fox/Marth start boundary: Whispy Woods' blink, turn
+/// and blow cycles (grOldPupupu_802113E0) with the tie vote, left and right
+/// gusts pushing fighters (fn_802112F4), and the Bronto Burt flyby's draws
+/// when the background timer expires (grOldPupupu_80210D10).
+#[test]
+fn dream_land_wind_and_flyby_match_retail() {
+    combat_gate_ticks("stage_dl_idle_fox_marth4", 5000);
+    combat_gate_ticks("stage_dl_windright_fox_marth4", 2400);
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {
@@ -2092,7 +2102,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 107] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 109] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2301,6 +2311,11 @@ const CORPUS_V3_MATCHES: [(&str, usize); 107] = [
     ("corpus_v3_fd_captainfalcon_fox4_e45a17231_p0", 6001),
     ("corpus_v3_fd_captainfalcon_fox4_e188c0a9b_p0", 4464),
     ("corpus_v3_fd_captainfalcon_fox4_e1a1346bb_p0", 4432),
+    // Dream Land: Whispy's gust samples each fighter after its velocity
+    // (ftColl_GetWindOffsetVec), and its dynamics gusts (lb_80011A50) swing
+    // Fox's tail hurtbox and switch Marth's cape to the solver.
+    ("corpus_v3_dl_fox_marth4_edb2b114a_p2", 2534),
+    ("corpus_v3_dl_fox_marth4_e75fb4a9a_p0", 6001),
 ];
 
 #[test]

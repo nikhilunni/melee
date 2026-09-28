@@ -2,12 +2,12 @@
 mod fighter_support;
 use fighter_support::*;
 use gekko_math::rng::HsdRng;
-use hsd_types::Vec3;
 use melee_diff::{first_divergence, Record, RecordSink};
 use melee_ft::{
     fighter::{interleaved_order, FighterProc},
     input::PadSample,
 };
+use melee_gr::wind::Wind;
 use melee_types::snapshot::{PrefixSink, Snapshot};
 
 #[test]
@@ -111,7 +111,7 @@ fn idle_fox_600() {
                     }
                     FighterProc::CpuGate => f.proc_cpu_gate(),
                     FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
-                    FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO),
+                    FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Wind::CALM),
                     FighterProc::Map => f.proc_map(&mut fixture.map),
                     FighterProc::Pose => f.proc_pose(&fixture.map),
                     FighterProc::Accessories => f.proc_accessories(),

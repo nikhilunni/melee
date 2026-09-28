@@ -21,6 +21,10 @@ impl MotionFlags {
     pub const ROOT_MOTION: u32 = 0x8000_0000;
     pub const LOOP: u32 = 0x4000_0000;
     pub const ACCUMULATE_LOOPS: u32 = 0x2000_0000;
+    /// x594_b3: the motion disables dynamic bones.
+    pub const DYNAMICS_OFF: u32 = 0x1000_0000;
+    /// x594_b4: the motion's dynamics starts come from the ftData table.
+    pub const DYNAMICS_TABLE: u32 = 0x0800_0000;
     pub const SECOND_ROOT: u32 = 0x0400_0000;
     pub const ATTRIBUTE_SCALE: u32 = 0x0200_0000;
     pub fn contains(self, flag: u32) -> bool {

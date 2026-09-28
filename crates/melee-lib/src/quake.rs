@@ -28,7 +28,7 @@ struct Instance {
 pub(crate) struct Quakes {
     instances: Vec<Instance>,
     /// Indices into `instances`, in retail gobj order.
-    playing: melee_types::fixed::FixedVec<usize, { 3 * INSTANCES_PER_KIND }>,
+    playing: melee_types::fixed::FixedVec<usize, { 3 * INSTANCES_PER_KIND + 1 }>,
 }
 
 impl Quakes {
@@ -40,6 +40,28 @@ impl Quakes {
             return Ok(Self::default());
         };
         let mut instances = Vec::new();
+        // Camera_RequestQuake keeps at most one Loop model (quake_gobj);
+        // grLib_801C9CEC sets AOBJ_LOOP on all of its animations.
+        {
+            let animation = model
+                .animations
+                .get(QuakeKind::Loop.animation_index())
+                .context("quake_model_set loop animation")?;
+            let (mut tree, root) = load_joint_tree(archive, &model.joint)?;
+            attach_anim_joint(&mut tree, root, animation, archive)?;
+            let mut joints = Vec::new();
+            tree.walk_tree(root, &mut |joint, _| joints.push(joint));
+            for joint in joints {
+                if let Some(aobj) = &mut tree.get_mut(joint).aobj {
+                    aobj.flags |= hsd_anim::aobj::AOBJ_LOOP;
+                }
+            }
+            instances.push(Instance {
+                kind: QuakeKind::Loop,
+                tree,
+                root,
+            });
+        }
         for kind in ONE_SHOT_KINDS {
             let animation = model
                 .animations
@@ -59,10 +81,6 @@ impl Quakes {
 
     /// Camera_RequestQuake (0x80030E44 area) and grLib_801C9CEC.
     pub(crate) fn request(&mut self, camera: &mut GameCamera, kind: QuakeKind) {
-        assert!(
-            kind != QuakeKind::Loop,
-            "grLib_801C9BC8: looping quakes are not ported"
-        );
         if !camera.quake.request(kind) || self.instances.is_empty() {
             return;
         }
@@ -80,8 +98,25 @@ impl Quakes {
         self.playing.insert(at, index);
     }
 
+    /// Camera_UpdateQuakes (in the camera proc) deletes the Loop model once
+    /// its countdown ends; `GameCamera::update_standard` cleared `looping`.
+    pub(crate) fn retire_loop(&mut self, camera: &GameCamera) {
+        if camera.quake.looping {
+            return;
+        }
+        let instances = &self.instances;
+        let slot = self
+            .playing
+            .iter()
+            .position(|&i| instances[i].kind == QuakeKind::Loop);
+        if let Some(slot) = slot {
+            self.playing.remove(slot);
+        }
+    }
+
     /// grLib_801C9C40 (s_link 1) for every playing quake, in gobj order:
     /// animate, publish the root translation, and end with the animation.
+    /// The Loop model runs grLib_801C9BC8 instead, which never ends itself.
     pub(crate) fn animate(&mut self, camera: &mut GameCamera) {
         let instances = &mut self.instances;
         let mut slot = 0;
@@ -91,10 +126,11 @@ impl Quakes {
             instance.tree.anim_all::<RetailTrig>(instance.root);
             let joint = instance.tree.get(instance.root);
             camera.quake.offset = hsd_types::Vec2::new(joint.translate.x, joint.translate.y);
-            let finished = joint
-                .aobj
-                .as_ref()
-                .is_none_or(|aobj| aobj.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0);
+            let finished = instance.kind != QuakeKind::Loop
+                && joint
+                    .aobj
+                    .as_ref()
+                    .is_none_or(|aobj| aobj.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0);
             if finished {
                 self.playing.remove(slot);
             } else {

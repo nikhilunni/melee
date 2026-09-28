@@ -1,6 +1,5 @@
 use super::*;
 use gekko_math::rng::HsdRng;
-use hsd_types::Vec3;
 use melee_diff::{first_divergence, Record, RecordSink};
 use melee_ft::{
     fighter::{interleaved_order, FighterProc},
@@ -246,7 +245,7 @@ fn replay_config(
                             &recorded_pad(&trace[tick], usize::from(f.player.id)),
                         ),
                         FighterProc::Update => {
-                            f.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO)
+                            f.proc_update(&fixture.assets, &fixture.map, melee_gr::wind::Wind::CALM)
                         }
                         // Landing dust draws with the graphics resolved below.
                         // Replays are single-fighter: no other ledge holder.

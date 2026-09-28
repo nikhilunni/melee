@@ -678,6 +678,7 @@ impl Runtime {
                 state
                     .camera
                     .update_standard(&mut subjects, &state.assets.stage_camera);
+                state.quakes.retire_loop(&state.camera);
                 let unzoomed = state.camera.zoom() == 1.0;
                 for fighter in &mut state.fighters {
                     fighter.0.offscreen.camera_unzoomed = unzoomed;
@@ -831,9 +832,11 @@ impl Runtime {
                         );
                         Ok(())
                     } else {
+                        // Each fighter samples the device after integrating
+                        // its velocity (ftColl_GetWindOffsetVec).
                         let wind = match &state.stage {
-                            SceneStage::Pupupu(stage) => stage.wind_at(f.physics.position),
-                            _ => Vec3::ZERO,
+                            SceneStage::Pupupu(stage) => stage.wind(),
+                            _ => melee_gr::wind::Wind::CALM,
                         };
                         dispatch_fighter(
                             f,
@@ -1076,10 +1079,16 @@ impl Runtime {
                         }
                         animation.update_collision(&mut state.map, bindings);
                     }
-                    // lb_800115F4 (radial dynamics fields' decay and expiry) ends
-                    // grLast_8021AAB0 and grBattle_GObj6_Callback2 (0x8021A174).
-                    if address == 0x8021_AAB0 || address == 0x8021_A174 {
+                    // lb_800115F4 (dynamics fields' decay and expiry) ends
+                    // grLast_8021AAB0 and grBattle_GObj6_Callback2 (0x8021A174),
+                    // and is all of grOldPupupu_80210BC0.
+                    if address == 0x8021_AAB0 || address == 0x8021_A174 || address == 0x8021_0BC0 {
                         self.radial_forces.tick();
+                        // lb_80011ABC reads the state this tick left.
+                        let wind = self.radial_forces.wind_state();
+                        for fighter in &mut state.fighters {
+                            crate::scene_fighter::with_fighter!(fighter, |f| f.stage_wind = wind);
+                        }
                     }
                     if continuation == Continuation::GroundCollision {
                         // grLast's controller already advanced; finish only its collision tail.
@@ -1106,6 +1115,7 @@ impl Runtime {
                             state,
                             map_id,
                             &mut self.particle_draws,
+                            &mut self.radial_forces,
                         )?;
                     } else if state.stage.run_stage_proc(map_id, &mut state.rng)? {
                         // grLib_801C97DC (0x801C97DC): detached puff at the
@@ -1726,7 +1736,7 @@ fn dispatch_fighter(
     particles: &mut hsd_particle::system::ParticleSystem,
     rng: &mut gekko_math::HsdRng,
     radial_forces: &mut melee_lb::radial_force::RadialForces,
-    wind: Vec3,
+    wind: melee_gr::wind::Wind,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
     let was_in_hitlag = f.in_hitlag();
@@ -1786,7 +1796,7 @@ fn dispatch_fighter(
         FighterProc::Grab => f.proc_grab(),
         FighterProc::HitDetection => f.proc_hit_detection(),
         FighterProc::ProcessHit => f.proc_process_hit(assets, rng),
-        FighterProc::Dynamics => f.proc_dynamics_with_forces(map, radial_forces.fields()),
+        FighterProc::Dynamics => f.proc_dynamics_with_forces(assets, map, radial_forces.fields()),
         FighterProc::Camera => f.proc_camera_with_map(assets, &scene_assets.stage_camera, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
     }

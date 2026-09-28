@@ -6,7 +6,7 @@ use crate::fighter::{
     Fighter,
 };
 use gekko_math::rng::HsdRng;
-use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 use melee_mp::CollMap;
 
 /// Fighter_8006A360 (8006A360), s_link 1: playback and animation callbacks.
@@ -22,7 +22,7 @@ pub struct InputPhase<'a> {
 pub struct PhysicsPhase<'a> {
     pub assets: &'a FighterAssets,
     pub map: &'a CollMap,
-    pub wind: Vec3,
+    pub wind: Wind,
 }
 /// Fighter_procMap (8006C27C), s_link 6: optional assets preserve the existing
 /// grounded map-only API. Landing-effect RNG work remains in the scheduler.

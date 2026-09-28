@@ -5,6 +5,7 @@ use super::{
     Fighter, MotionData,
 };
 use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 use melee_types::{CommonMotionState as S, FtPart};
 
 impl super::FighterCore {
@@ -397,7 +398,7 @@ impl FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         use crate::physics::{
             friction::{friction_acceleration, wait_friction},

@@ -1127,6 +1127,7 @@ impl FighterCore {
             commands: commands::CommandState::default(),
             ground_pose: GroundPoseFlags::default(),
             dynamics_first_bone: vec![0x100; assets.bones.dynamics_roots.len()],
+            stage_wind: Default::default(),
             player_position: position,
             player_facing: player.facing,
             joystick_count: 0,
@@ -1311,8 +1312,16 @@ impl FighterCore {
         let animation_id = row.animation;
         self.motion_state = row;
         if animation_id >= 0 {
+            // ftCo_8009E7B4 (ftdynamics.c:617-625): while the stage wind
+            // blows, Marth and Roy leave every dynamic bone to the solver.
+            let windy = super::assets::CommonBehavior::for_kind(assets.kind).stage_wind_dynamics
+                && self.stage_wind.code() > 0;
             for (i, set) in self.dynamics.iter_mut().enumerate() {
-                let first = assets.dynamics_motion_starts[&animation_id][i];
+                let first = if windy {
+                    0
+                } else {
+                    assets.dynamics_motion_starts[&animation_id].starts[i]
+                };
                 let dynamic = first != 0x100;
                 self.dynamics_first_bone[i] = first;
                 crate::dynamics::select(

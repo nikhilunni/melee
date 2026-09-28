@@ -281,7 +281,13 @@ fn idle_ground_fields_600() {
             // s_link 3: idle input, independently covered by T9.
             // s_link 4: physics/integration, in fighter-list order.
             for (_, _, motion, collision) in &mut fighters {
-                step_wait(motion, &collision.data, &params, &map, Vec3::ZERO);
+                step_wait(
+                    motion,
+                    &collision.data,
+                    &params,
+                    &map,
+                    melee_gr::wind::Wind::CALM,
+                );
             }
             // s_link 6: collision and both root translation writes.
             for (tree, animation, motion, collision) in &mut fighters {

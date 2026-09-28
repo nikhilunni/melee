@@ -2,6 +2,7 @@
 use super::FighterPhysics;
 use gekko_math::fma::fmadds;
 use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct VelocityBlend {
@@ -60,10 +61,14 @@ pub fn integrate_velocity(state: &mut FighterPhysics) {
 }
 
 /// `Fighter_procUpdate` 0x8006BE48..BE7C: moving floor, then wind.
+/// ftColl_GetWindOffsetVec (0x8007B924) samples the wind device at the
+/// post-velocity position, before the moving-floor offset is added. Retail
+/// also skips it for a buried fighter (x2224_b4, set only by ftCo_Bury).
 // Keep this concrete integration body in melee-ft. Rust's cross-crate
 // inlining heuristic otherwise emits another copy in each special family.
 #[inline(never)]
-pub fn integrate_environment(state: &mut FighterPhysics, floor_speed: Option<Vec3>, wind: Vec3) {
+pub fn integrate_environment(state: &mut FighterPhysics, floor_speed: Option<Vec3>, wind: Wind) {
+    let wind = wind.at(state.position);
     if let Some(speed) = floor_speed {
         state.position = add(state.position, speed);
     }

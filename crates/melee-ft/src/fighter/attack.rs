@@ -8,6 +8,7 @@ use super::{
     Fighter, MotionData,
 };
 use crate::input::{pad::Buttons, WaitContext, WaitPredicate as P, WaitTransition as T};
+use melee_gr::wind::Wind;
 use melee_types::CommonMotionState as S;
 
 /// mv.co.attack1: the combo input was pressed (x0) and the rapid-jab A
@@ -502,7 +503,7 @@ impl FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: hsd_types::Vec3,
+        wind: Wind,
     ) {
         if self
             .animation
@@ -533,7 +534,7 @@ impl FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: hsd_types::Vec3,
+        wind: Wind,
     ) {
         use crate::physics::grounded::{self, GroundedParameters};
         let params = GroundedParameters::from_attributes(&self.attributes, &assets.common);

@@ -31,7 +31,6 @@ fn jump_fox_state_callbacks() {
 fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
     use fighter_support::{harness, json_lines, raw, Fixture};
     use gekko_math::HsdRng;
-    use hsd_types::Vec3;
     use melee_ft::{
         fighter::MotionData,
         input::{Buttons, PadSample, Stick},
@@ -76,7 +75,7 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
                         &held
                     },
                 );
-                fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
+                fighter.proc_update(&fixture.assets, &fixture.map, melee_gr::wind::Wind::CALM);
             }
             assert_eq!(fighter.motion_state.id, S::JumpF);
             let MotionData::Jump(jump) = &fighter.state_data else {
@@ -94,13 +93,13 @@ fn holding_jump_full_hops_and_release_then_repress_stays_a_short_hop() {
                 fighter.physics.self_velocity.y.to_bits(),
                 launch_speed.to_bits()
             );
-            fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
+            fighter.proc_update(&fixture.assets, &fixture.map, melee_gr::wind::Wind::CALM);
             assert_eq!(
                 fighter.physics.self_velocity.y.to_bits(),
                 launch_speed.to_bits(),
                 "first Jump Phys skips gravity"
             );
-            fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
+            fighter.proc_update(&fixture.assets, &fixture.map, melee_gr::wind::Wind::CALM);
             assert_eq!(
                 fighter.physics.self_velocity.y.to_bits(),
                 (launch_speed - attrs.air.gravity).to_bits()
@@ -145,7 +144,6 @@ fn ledge_fox_state_callbacks() {
 fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
     use fighter_support::{harness, json_lines, raw, replay::recorded_pad, Fixture};
     use gekko_math::HsdRng;
-    use hsd_types::Vec3;
     use melee_types::CommonMotionState as S;
     let path = harness().join("traces/ledge_fd_fox.tick.raw.jsonl");
     let pads = harness().join("traces/ledge_fd_fox.tick.expected.jsonl");
@@ -178,7 +176,7 @@ fn ledge_grab_respects_cooldown_down_input_and_disable_flag() {
             if tick == catch_tick {
                 fighter.status.ledge_cooldown = cooldown;
             }
-            fighter.proc_update(&fixture.assets, &fixture.map, Vec3::ZERO);
+            fighter.proc_update(&fixture.assets, &fixture.map, melee_gr::wind::Wind::CALM);
             if tick == catch_tick {
                 fighter.status.ledge_grab_disabled = disabled;
                 if down {

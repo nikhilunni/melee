@@ -59,6 +59,9 @@ pub struct CommonBehavior {
     /// ftCo_8008A7A8 (ftwaitanim.c:67): Fox and Mewtwo keep choosing idle
     /// animations while holding an item; everyone else replays the current one.
     pub idle_variants_while_holding: bool,
+    /// ftCo_8009E614 / ftCo_8009E7B4 (ftdynamics.c:555-583, 617-625): Marth
+    /// and Roy hand every dynamic bone to the solver while stage wind blows.
+    pub stage_wind_dynamics: bool,
     /// ftData_OnItemPickupExt / OnItemDropExt: the x8B0 hand-pose slots the
     /// kind's Fighter_OnItemPickup call names. None: not ported.
     pub item_hand: Option<ItemHandSlots>,
@@ -113,6 +116,7 @@ impl CommonBehavior {
             morph_ball_roll: matches!(kind, FighterKind::Samus),
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
+            stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),
             item_hand: match kind {
                 FighterKind::Mars | FighterKind::Emblem => {
                     Some(ItemHandSlots { pose: 0, shown: 1 })
@@ -188,7 +192,7 @@ pub struct FighterAssets {
     pub medium_voices: Vec<u32>,
     pub heavy_voices: Vec<u32>,
     pub dynamics: Vec<crate::dynamics::DynamicSetDescriptor>,
-    pub dynamics_motion_starts: BTreeMap<i32, Vec<u32>>,
+    pub dynamics_motion_starts: BTreeMap<i32, crate::dynamics::MotionDynamics>,
     pub dynamic_colliders: Vec<super::caches::DynamicCollider>,
     pub motions: BTreeMap<i32, Motion>,
     pub rotating_effect_bones: [usize; 5],

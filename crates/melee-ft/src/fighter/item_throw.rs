@@ -11,6 +11,7 @@ use super::{
 };
 use gekko_math::{fma::fmadds, msl::fabsf};
 use hsd_types::Vec3;
+use melee_gr::wind::Wind;
 use melee_types::CommonMotionState as S;
 
 /// Fighter_804D6550 (PlCo pData[1]), one row per throw state from
@@ -443,7 +444,7 @@ impl super::FighterCore {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         let [multiplier, frames, scale] = assets.dash_throw_friction;
         let friction = multiplier * self.attributes.ground.ground_friction;

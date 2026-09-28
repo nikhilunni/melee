@@ -52,6 +52,7 @@ pub mod squat;
 pub mod state;
 pub mod parasol;
 pub mod passive_ceil;
+mod stage_wind;
 pub mod stop_ceil;
 pub mod teeter;
 pub mod turn;
@@ -731,6 +732,9 @@ pub struct FighterCore {
     pub dynamics_use_floor_plane: bool,
     /// dynamic_bone_sets[].bone_id (+2F0, stride 0x18); 0x100 disables solving.
     pub dynamics_first_bone: Vec<u32>,
+    /// lb_80011ABC as of the last dynamics-field pool tick (lb_800115F4),
+    /// published by the scene.
+    pub stage_wind: melee_lb::radial_force::WindState,
     /// Player_80032828 / Player_SetFacingDirectionConditional mirror.
     pub player_position: Vec3,
     pub player_facing: f32,

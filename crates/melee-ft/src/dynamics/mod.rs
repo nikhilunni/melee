@@ -99,6 +99,16 @@ pub fn select(
     }
 }
 
+/// How a motion hands its dynamic bones to the solver: the animation flag
+/// bits `x594_b3`/`x594_b4` and, for the table form, its row.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MotionDynamics {
+    /// Per set, the first solver-driven bone; 0x100 disables solving.
+    pub starts: Vec<u32>,
+    /// `x594_b4` with a non-null row in the ftData +2C table (x10).
+    pub table_row: bool,
+}
+
 /// ftCo_8009E7B4 (8009E7B4), ftdynamics.c:639-697. The apparent
 /// FigaTree pointers in x10 are actually integer chain-start indices.
 /// Motion blend metadata byte 1 selects the row; 0x100 disables solving.
@@ -106,7 +116,7 @@ pub fn read_motion_starts(
     archive: &Archive,
     root: u32,
     motion_count: u32,
-) -> Result<std::collections::BTreeMap<i32, Vec<u32>>, Box<dyn std::error::Error>> {
+) -> Result<std::collections::BTreeMap<i32, MotionDynamics>, Box<dyn std::error::Error>> {
     let mut result = std::collections::BTreeMap::new();
     let Some(dynamics) = archive.link(root + 0x2C)? else {
         return Ok(result);
@@ -120,6 +130,7 @@ pub fn read_motion_starts(
     let blends = archive.link(root + 0x10)?.ok_or("missing blend metadata")?;
     for motion in 0..motion_count {
         let flags = archive.reader().u32(motions + motion * 0x18 + 0x10)?;
+        let mut table_row = false;
         let starts = if flags & 0x0800_0000 != 0 {
             let slot = u32::from(archive.reader().u8(blends + motion * 2 + 1)?);
             let row = table
@@ -127,6 +138,7 @@ pub fn read_motion_starts(
                 .transpose()?
                 .flatten();
             if let Some(row) = row {
+                table_row = true;
                 (0..count)
                     .map(|i| archive.reader().u32(row + i * 4))
                     .collect::<Result<Vec<_>, _>>()?
@@ -136,7 +148,7 @@ pub fn read_motion_starts(
         } else {
             vec![if flags & 0x1000_0000 != 0 { 0x100 } else { 0 }; count as usize]
         };
-        result.insert(motion as i32, starts);
+        result.insert(motion as i32, MotionDynamics { starts, table_row });
     }
     Ok(result)
 }

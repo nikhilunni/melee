@@ -12,6 +12,7 @@ use hsd_archive::Archive;
 use hsd_types::Vec3;
 use melee_coll::damage_log::{DamageLog, HitSource, LoggedHit};
 use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
+use melee_gr::wind::Wind;
 use melee_types::combat::HitboxDescriptor;
 use melee_types::{CommonMotionState as S, GroundOrAir};
 
@@ -572,7 +573,7 @@ impl Fighter {
         &mut self,
         assets: &FighterAssets,
         map: &melee_mp::CollMap,
-        wind: Vec3,
+        wind: Wind,
     ) {
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             use crate::physics::grounded::{self, GroundedParameters};
@@ -1233,7 +1234,7 @@ impl Fighter {
     }
     /// ftCo_DamageFall_Phys -> ft_80084DB0: fastfall, gravity, drift;
     /// Fighter_procUpdate subsequently decays knockback and integrates.
-    pub(super) fn damage_fall_physics(&mut self, assets: &FighterAssets, wind: Vec3) {
+    pub(super) fn damage_fall_physics(&mut self, assets: &FighterAssets, wind: Wind) {
         self.airborne_physics(assets);
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.core.physics);
@@ -1556,7 +1557,7 @@ impl FighterCore {
     /// Fighter_procUpdate's airborne tail (8006B82C): residual knockback
     /// decays after every state's physics callback, then velocity and the
     /// environment integrate. Airborne callbacks finish through this.
-    pub fn finish_air_update(&mut self, assets: &FighterAssets, wind: Vec3) {
+    pub fn finish_air_update(&mut self, assets: &FighterAssets, wind: Wind) {
         if self.physics.ground_or_air == GroundOrAir::Air {
             self.decay_air_knockback(assets);
         }
