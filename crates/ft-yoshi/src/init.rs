@@ -199,6 +199,13 @@ impl CharacterCallbacks for Yoshi {
     fn enter_guard_off(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         Some(crate::shield::off(fighter, assets))
     }
+    fn enter_shield_stun(
+        fighter: &mut Fighter,
+        impact: &melee_ft::fighter::shield::ShieldImpact,
+        assets: &FighterAssets,
+    ) -> Option<FighterResult<()>> {
+        Some(crate::shield::stun(fighter, impact, assets))
+    }
     fn escape_variant(
         fighter: &mut Fighter,
         assets: &FighterAssets,

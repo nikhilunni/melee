@@ -115,6 +115,11 @@ pub struct FighterAnimation {
     /// `co_attrs.model_scaling` (Fighter+0x19C).
     pub model_scale: f32,
     pub root: JObjId,
+    /// What `ftAnim_8006F3DC` returns for a motion without any eligible
+    /// AObj (its row authors no animation, ftData_80085CD8 x590 NULL): it
+    /// returns f1 unwritten, i.e. whatever the preceding ftAnim_8006E7B8
+    /// walk left there. Set by the owner of such an entry; None panics.
+    pub unanimated_frame: Option<f32>,
     rest_pose: std::sync::Arc<JObjTree>,
 }
 
@@ -165,6 +170,7 @@ impl FighterAnimation {
             translation_joint: None,
             model_scale: 1.0,
             root,
+            unanimated_frame: None,
             rest_pose: std::sync::Arc::new(tree.clone()),
         }
     }
@@ -559,9 +565,13 @@ impl FighterAnimation {
             }
         }
         let frame = if self.blend_duration == 0.0 {
-            self.current_aobj(tree)
-                .expect("active motion has no eligible AObj")
-                .curr_frame
+            match self.current_aobj(tree) {
+                Some(aobj) => aobj.curr_frame,
+                // ftAnim_8006F3DC falls off its loop without writing f1.
+                None => self
+                    .unanimated_frame
+                    .expect("active motion has no eligible AObj"),
+            }
         } else {
             // lbGetJObjCurrFrame returns zero for a tree without an AObj.
             self.current_aobj(tree).map_or(0.0, |a| a.curr_frame)

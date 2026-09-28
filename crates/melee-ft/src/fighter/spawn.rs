@@ -1393,6 +1393,12 @@ impl FighterCore {
                 self.animation.flags = source.flags;
                 animated = false;
             }
+        } else if let Some(&(flags, _)) = assets.unanimated.get(&animation_id) {
+            // The fighter's own row without animation data (Yoshi's egg
+            // shield stun): x590 NULL, as for a borrowed unanimated row.
+            self.animation.motion_id = animation_id;
+            self.animation.flags = flags;
+            animated = false;
         } else {
             let motion = &assets.motions[&animation_id];
             self.animation.set_animation_remapped(
@@ -1452,7 +1458,10 @@ impl FighterCore {
         // fighter.c:1245-1250: a borrowed motion reads the thrower's table
         // (the victim may author no animation of its own for this id).
         let blend_frames = source.map_or_else(
-            || assets.motions[&animation_id].blend_frames,
+            || match assets.motions.get(&animation_id) {
+                Some(motion) => motion.blend_frames,
+                None => assets.unanimated[&animation_id].1,
+            },
             |source| source.blend_frames,
         );
         if exit_joint != 0 && blend_frames != 0.0 {

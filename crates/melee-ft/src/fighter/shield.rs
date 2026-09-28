@@ -182,17 +182,32 @@ impl ShieldState {
     }
 }
 impl Fighter {
-    /// ftCo_80092E50 -> ftCo_80092F2C (80092F2C): shield stun and defender pushback.
+    /// ftCo_80092E50 (80092E50): the kind's shield-stun entry (ftCo_80092F2C,
+    /// or a character's, such as Yoshi's ftYs_Shield_8012C600), then hitlag.
     fn take_shield_hit(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
-        self.character.guard_variant(&mut self.core.commands);
-        self.change_motion_state(S::GuardSetOff.into(), assets)?;
-        // ftCo_80092F2C: shield SDI/ASDI callbacks; x670 = -2 (254).
+        if impact.element == melee_types::HitElement::Cape {
+            unimplemented!("ftCo_80092E50: cape shield response");
+        }
+        if let Some(result) = (self.character.table().enter_shield_stun)(self, &impact, assets) {
+            result?;
+        } else {
+            self.enter_guard_set_off(&impact, assets)?;
+        }
+        // Both entries install the shield SDI/ASDI callbacks; x670 = -2 (254).
         self.core.combat.hitlag_callbacks = super::damage::HitlagCallbacks::Guard;
         self.core.input.horizontal.tilt = 254;
         self.core.shield.influence = assets.damage.influence;
+        self.core.begin_shield_hitlag(&impact, assets);
+        Ok(())
+    }
+    /// ftCo_80092F2C (80092F2C): GuardSetOff, shield stun and defender pushback.
+    fn enter_guard_set_off(&mut self, impact: &ShieldImpact, assets: &FighterAssets) -> Result<()> {
+        self.character.guard_variant(&mut self.core.commands);
+        self.change_motion_state(S::GuardSetOff.into(), assets)?;
         // Fighter_ChangeMotionState already stepped the color programs
         // (fighter.c:1346), including a powershield flash requested at contact.
-        self.core.apply_shield_impact(impact, assets)
+        self.core.apply_shield_impact(impact, assets);
+        Ok(())
     }
     /// ftCo_80091A4C / ftCo_800924C0 / ftCo_80093A50,
     /// retail 80091A4C / 800924C0 / 80093A50.
@@ -300,10 +315,7 @@ impl Fighter {
             return Ok(());
         }
         self.drain_shield(assets);
-        if self.core.status.shield_health < 0.0 {
-            self.core.status.shield_health = 0.0;
-            self.enter_shield_break(assets)?;
-            self.core.shield_sound(129);
+        if self.break_drained_shield(assets)? {
             return Ok(());
         }
         if state != S::Guard && self.guard().elapsed >= assets.motions[&37].animation.frames {
@@ -316,6 +328,17 @@ impl Fighter {
             };
             self.update_guard_pose(assets, blend)
         }
+    }
+    /// ftCo_800925A4 (800925A4) after the drain: exhausted health breaks
+    /// the shield (ftCo_80098B20) with sound 129. True when it broke.
+    pub fn break_drained_shield(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if self.core.status.shield_health >= 0.0 {
+            return Ok(false);
+        }
+        self.core.status.shield_health = 0.0;
+        self.enter_shield_break(assets)?;
+        self.core.shield_sound(129);
+        Ok(true)
     }
     /// ftCo_8009388C (8009388C): retain owned graphics and guard scratch,
     /// replace the collision volumes, and restart only reflection windows.
@@ -710,7 +733,7 @@ impl FighterCore {
         false
     }
     /// ftCo_80092F2C (80092F2C): shield stun and push after motion entry.
-    fn apply_shield_impact(&mut self, impact: ShieldImpact, assets: &FighterAssets) -> Result<()> {
+    fn apply_shield_impact(&mut self, impact: &ShieldImpact, assets: &FighterAssets) {
         self.input.horizontal.tilt = 254;
         if !self.shield.powershield_window {
             self.queue_shield_effect(0x419);
@@ -732,9 +755,6 @@ impl FighterCore {
             (0.1 + assets.motions[&40].animation.frames) / frames,
             false,
         );
-        if impact.element == melee_types::HitElement::Cape {
-            unimplemented!("ftCo_80092E50: cape shield response");
-        }
         let mut push = frames * p.pushback_multiplier;
         if !self.shield.powershield_window {
             push *= p.ordinary_pushback_multiplier;
@@ -743,6 +763,10 @@ impl FighterCore {
         self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
         self.install_shield();
         self.update_shield_size(assets);
+    }
+    /// Fighter_ProcessHit_8006D1EC's shield hit: hitlag for the damage,
+    /// with shield SDI while it lasts.
+    fn begin_shield_hitlag(&mut self, impact: &ShieldImpact, assets: &FighterAssets) {
         self.combat.hitlag_remaining = assets.damage.hitlag(impact.damage);
         self.shield.allow_sdi = self.combat.hitlag_remaining > 0.0;
         self.status.interaction = if self.shield.allow_sdi {
@@ -750,7 +774,6 @@ impl FighterCore {
         } else {
             super::Interaction::Shield
         };
-        Ok(())
     }
 }
 

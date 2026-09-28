@@ -1,11 +1,12 @@
 //! Egg shield callbacks, ftYoshi/ftyoshiguard.c and ftCommon/ftCo_Escape.c.
 use crate::init::Yoshi;
+use gekko_math::fma::fmadds;
 use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     assets::{FighterAssets, Result},
     commands::{FootstepSound, SoundChannel},
-    shield::{GuardState, ReflectHitCallback, ReflectVolume, ShieldVolume},
+    shield::{GuardState, ReflectHitCallback, ReflectVolume, ShieldImpact, ShieldVolume},
     Fighter, MotionData,
 };
 use melee_ft::input::Buttons;
@@ -164,10 +165,48 @@ pub fn off(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     leave_egg(fighter, assets);
     Ok(())
 }
+/// ftYs_Shield_8012C600 (8012C600), ftCo_80092E50's Yoshi branch: the
+/// GuardDamage row (344) without an animation of its own, the egg model and
+/// capsule, and a pushback without the powershield factor or maximum.
+pub fn stun(fighter: &mut Fighter, impact: &ShieldImpact, assets: &FighterAssets) -> Result<()> {
+    // Yoshi authors no animation 40, so ftAnim_8006F3DC finds no AObj and
+    // returns f1 as ftAnim_8006E7B8 left it: the end frame of the last egg
+    // MObj AObj interpreted (HSD_AObjInterpretAnim 803642C0), all of which
+    // share the one end frame (ftYs_Init_8012B6E8).
+    let yoshi = fighter.character.get::<Yoshi>();
+    fighter.animation.unanimated_frame = Some(yoshi.attributes.shield_material_frames);
+    fighter.change_motion_state(S::GuardSetOff.into(), assets)?;
+    if !fighter.shield.powershield_window {
+        model(fighter, 1);
+    }
+    egg_body(fighter);
+    let p = &assets.shield;
+    // retail 8012C728..8012C73C: fsubs, fsubs, fmuls, fmadds (no lightshield
+    // interpolation, unlike ftCo_80092F2C).
+    let frames = fmadds(
+        p.stun_multiplier,
+        impact.damage as f32 * (1.0 - fighter.shield.lightshield),
+        p.stun_base,
+    );
+    // Cape hits (ftCo_80092E50's x19B0 == 10) never reach here.
+    let push = frames * p.pushback_multiplier;
+    fighter.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };
+    fighter.install_shield();
+    size(fighter);
+    Ok(())
+}
 pub fn animate(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = fighter.motion_state.id;
     if state == S::GuardSetOff {
-        unimplemented!("ftYs_Shield_8012C600: egg shield damage");
+        // ftYs_GuardDamage_Anim (8012C7A4): no shield size update.
+        fighter.update_reflect_windows();
+        if !fighter.animation.frames_remaining(&fighter.skeleton) {
+            if fighter.guard().released {
+                return off(fighter, assets);
+            }
+            return hold(fighter, assets);
+        }
+        return Ok(());
     }
     if state == S::GuardReflect {
         fighter.update_reflect_windows();
@@ -183,6 +222,12 @@ pub fn animate(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         fighter.guard().released = true;
     }
     fighter.drain_shield(assets);
+    if fighter.break_drained_shield(assets)? {
+        // ftYs_GuardOn_0/GuardHold/GuardOn_1_Anim: the break, then the
+        // egg bursts (spawnEffect, ftyoshiguard.c:100-117).
+        leave_egg(fighter, assets);
+        return Ok(());
+    }
     if state != S::Guard && !fighter.animation.frames_remaining(&fighter.skeleton) {
         return hold(fighter, assets);
     }
@@ -200,7 +245,8 @@ pub fn animate(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
 pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = fighter.motion_state.id;
     if state == S::GuardSetOff {
-        unimplemented!("ftyoshiguard.c:273-320: egg shield damage");
+        // ftYs_GuardDamage_IASA (8012C80C) is empty.
+        return Ok(());
     }
     if state == S::GuardOn
         && fighter.guard().elapsed < assets.input.powershield_window as f32

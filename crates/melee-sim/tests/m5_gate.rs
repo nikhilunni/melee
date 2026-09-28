@@ -939,7 +939,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 143] = [
+const MATRIX_WITNESSES: [(&str, usize); 147] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1124,6 +1124,15 @@ const MATRIX_WITNESSES: [(&str, usize); 143] = [
     ("falcon_specials_dive_catch_run48", 300),
     ("falcon_specials_dive_catch_run51", 300),
     ("falcon_specials_dive_catch_run54", 300),
+    // Yoshi's egg shield damage (344, ftYs_Shield_8012C600, an unanimated
+    // row whose frame is ftAnim_8006F3DC's leftover f1): out of the hold into
+    // a drain break (ftCo_800925A4 then the shell burst), out of an analog
+    // and a powershield startup released during the stun (343), and a hit
+    // that breaks the drained egg (ftCo_80098B20).
+    ("yoshi_hold_egg_shield_hit", 360),
+    ("yoshi_shield_release_stun", 232),
+    ("yoshi_shield_powershield_stun", 232),
+    ("yoshi_shield_hit_break", 399),
 ];
 
 #[test]
@@ -2102,7 +2111,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 109] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 110] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2262,6 +2271,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 109] = [
     // one that returns to Wait before the double-jump armor case.
     ("corpus_v3_fd_yoshi_fox4_ec3145eb3_p1", 93),
     ("yoshi_armor_fd_fox4_ef89b3e70_p2", 187),
+    // Fox hits Yoshi's egg shield: Yoshi's own shield damage row (344,
+    // ftYs_Shield_8012C600 via ftCo_80092E50's kind branch).
+    ("corpus_v3_fd_yoshi_fox4_e00f160ee_p1", 185),
     // Dolphin Slash falls through Battlefield's top platform with the stick
     // held down (ftCo_80096CC8 against PlCo +25C).
     ("corpus_v3_bf_marth_fox4_ee133b82f_p0", 3139),

@@ -161,7 +161,7 @@ pub fn enter_throw(
             }
         }
         None => {
-            let (flags, blend_frames) = aa.unanimated_thrown[&throw.victim_motion];
+            let (flags, blend_frames) = aa.unanimated[&throw.victim_motion];
             ThrowSource {
                 assets: aa,
                 animation: None,

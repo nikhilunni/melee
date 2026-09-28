@@ -237,11 +237,15 @@ pub struct FighterAssets {
     pub idle_variants_while_holding: bool,
     pub magnifier: super::offscreen::MagnifierDamage,
     pub command_entries: BTreeMap<i32, usize>,
-    /// Thrown-victim rows (ftCo_800DD4B0) this fighter authors no animation
-    /// for: their flags and blend byte, which a thrown victim still takes.
-    pub unanimated_thrown: BTreeMap<i32, (crate::anim::MotionFlags, f32)>,
+    /// Rows this fighter authors no animation for (ftData_80085CD8 leaves
+    /// x590 NULL) that are still entered: thrown-victim rows (ftCo_800DD4B0)
+    /// and Yoshi's egg shield stun (ftYs_Shield_8012C600). Their flags and
+    /// blend byte still apply.
+    pub unanimated: BTreeMap<i32, (crate::anim::MotionFlags, f32)>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
 }
+/// ftCo_SM_GuardDamage: the shield-stun animation of ftCo_MS_GuardSetOff.
+const GUARD_DAMAGE_ANIMATION: i32 = 40;
 impl FighterAssets {
     /// Fighter_LoadCommonData (0x80067ABC) / ftData_80085CD8:
     /// Shared Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
@@ -268,18 +272,23 @@ impl FighterAssets {
         // row with authored animation data carries its script and animation.
         let script_ids = authored_motions(&table);
         // ftData_80085CD8 with x590 NULL: a thrower's unanimated thrown-victim
-        // row still supplies the victim's flags and script.
-        let mut unanimated_thrown = BTreeMap::new();
-        for throw in super::grab_throw::THROWS {
-            let id = throw.victim_motion as u32;
+        // row, or an unanimated shield stun (Yoshi's egg), still supplies
+        // its flags and script.
+        let mut unanimated = BTreeMap::new();
+        let entered_unanimated = super::grab_throw::THROWS
+            .iter()
+            .map(|throw| throw.victim_motion)
+            .chain([GUARD_DAMAGE_ANIMATION]);
+        for motion in entered_unanimated {
+            let id = motion as u32;
             if !script_ids.contains(&id) {
-                unanimated_thrown.insert(
-                    throw.victim_motion,
+                unanimated.insert(
+                    motion,
                     crate::desc::playback::read_motion_header(data, root, &table, id as usize)?,
                 );
             }
         }
-        let unanimated_ids = unanimated_thrown.keys().map(|&id| id as u32);
+        let unanimated_ids = unanimated.keys().map(|&id| id as u32);
         for id in script_ids.iter().copied().chain(unanimated_ids) {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
@@ -651,7 +660,7 @@ impl FighterAssets {
                 .into_iter()
                 .map(|(id, offset)| (id, indices[&offset]))
                 .collect(),
-            unanimated_thrown,
+            unanimated,
             part_animations,
         })
     }

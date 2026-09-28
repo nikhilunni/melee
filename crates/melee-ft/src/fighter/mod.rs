@@ -445,6 +445,18 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     {
         None
     }
+    /// ftCo_80092E50's fp->kind branch: the character's shield-stun entry
+    /// in place of ftCo_80092F2C; None selects the shared GuardSetOff.
+    fn enter_shield_stun(
+        _fighter: &mut Fighter,
+        _impact: &shield::ShieldImpact,
+        _assets: &assets::FighterAssets,
+    ) -> Option<assets::Result<()>>
+    where
+        Self: Sized,
+    {
+        None
+    }
     /// ftCo_Escape.c: character setup after motion entry, and completion.
     fn escape_finished(
         _fighter: &mut Fighter,
