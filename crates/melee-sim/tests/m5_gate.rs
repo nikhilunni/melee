@@ -937,7 +937,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 61] = [
+const MATRIX_WITNESSES: [(&str, usize); 62] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -999,6 +999,7 @@ const MATRIX_WITNESSES: [(&str, usize); 61] = [
     ("sudden_death_rollthrow_bomb_fd_marth", 1305),
     ("sudden_death_runshieldthrow_bomb_fd_fox", 1300),
     ("sudden_death_turnthrow_bomb_fd_fox", 1285),
+    ("bf_revival_marth_fox4_platform", 480),
 ];
 
 #[test]
@@ -1958,7 +1959,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 50] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 51] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2060,6 +2061,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 50] = [
     // omitted: every authored motion row now loads (ftData_80085CD8).
     ("corpus_v3_fd_falco_fox4_e9943b4ab_p2", 88),
     ("corpus_v3_fd_captainfalcon_fox4_e9943b4ab_p2", 88),
+    // A Battlefield revival at the player's own marker (stage_info.unk8C.b4).
+    ("corpus_v3_bf_marth_fox4_e9943b4ab_p0", 255),
 ];
 
 #[test]

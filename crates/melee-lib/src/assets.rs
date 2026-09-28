@@ -113,7 +113,12 @@ impl Assets {
                 marker(6).or_else(|_| marker(4))?,
                 marker(7).or_else(|_| marker(4))?,
             ],
-            player_revival_markers: stage_desc.kind == melee_types::GrKind::Last,
+            // stage_info.unk8C.b4: set by grlast.c:233 and grbattle.c:147,
+            // cleared by grstory.c:77 and groldpupupu.c:145.
+            player_revival_markers: matches!(
+                stage_desc.kind,
+                melee_types::GrKind::Last | melee_types::GrKind::Battle
+            ),
         };
         let stage_camera = stage_camera(&stage_desc, marker(0x94)?, camera, [low, high])?;
         // Ground_801C2D24 fails for a marker the stage binds no joint to.

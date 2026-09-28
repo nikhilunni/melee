@@ -17,9 +17,46 @@ pub struct Arena {
     pub bottom: f32,
     pub camera_top: f32,
     pub revival_positions: [Vec3; 4],
-    /// grLast stage initialization (801DFF18): stage_info.unk8C.b4.
+    /// stage_info.unk8C.b4, set by the stage's initialization (grLast,
+    /// grBattle): each player revives at its own marker.
     pub player_revival_markers: bool,
 }
+
+/// lbl_8046B6A0.FighterMatchInfo has six entries.
+pub const REVIVAL_OFFSET_SLOTS: usize = 6;
+/// fn_80167638's table (lbl_803B7A44): each shared slot's x offset from
+/// marker 4, in units of [`REVIVAL_OFFSET_SPACING`].
+const REVIVAL_OFFSET_STEPS: [f32; REVIVAL_OFFSET_SLOTS] = [0.0, 1.0, -1.0, 2.0, 0.0, 0.0];
+/// fn_80167638 (80167738): the distance between adjacent revival points.
+const REVIVAL_OFFSET_SPACING: f32 = 16.0;
+/// fn_80167638 (8016779C): frames a slot stays taken after a revival.
+const REVIVAL_OFFSET_HOLD: u8 = 0x90;
+
+/// FighterMatchInfo[0..6].x8 (lbl_8046B6A0 + 0x40, stride 0xE): revival
+/// offset slots shared by every player on a stage without per-player revival
+/// markers. Slots are taken in allocation order, not by player.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RevivalOffsets {
+    pub timers: [u8; REVIVAL_OFFSET_SLOTS],
+}
+impl RevivalOffsets {
+    /// fn_80167638's shared-marker branch: take the first free slot (slot 0
+    /// when every slot is taken) and return its x offset. x9 (the reviving
+    /// character) is written too but never read.
+    pub fn allocate(&mut self) -> f32 {
+        let slot = self.timers.iter().position(|&t| t == 0).unwrap_or(0);
+        self.timers[slot] = REVIVAL_OFFSET_HOLD;
+        // retail 0x8016777C: fmuls.
+        REVIVAL_OFFSET_SPACING * REVIVAL_OFFSET_STEPS[slot]
+    }
+    /// fn_8016758C (8016758C): once per match frame, from the scene's OnFrame.
+    pub fn tick(&mut self) {
+        for timer in &mut self.timers {
+            *timer = timer.saturating_sub(1);
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum LifeState {
     /// DeadDown / DeadLeft / DeadRight (and a star KO once it vanishes): the x40
@@ -186,23 +223,42 @@ enum Side {
     Right,
 }
 impl Fighter {
-    /// gm_8016719C -> Player_80032070 -> Fighter_UnkProcessDeath (80068354).
+    /// fn_8016719C -> Player_80032070 -> Fighter_UnkProcessDeath (80068354).
     pub fn reset_for_revival(
         &mut self,
         assets: &FighterAssets,
         arena: &Arena,
+        offsets: &mut RevivalOffsets,
         context: super::SpawnContext<'_>,
     ) -> Result<()> {
-        if !arena.player_revival_markers {
-            unimplemented!("gm_80167638: shared revival marker offset allocation");
-        }
-        let target = arena.revival_positions[usize::from(self.core.player.id)];
-        self.core.player.position = Vec3::new(target.x, arena.camera_top, 0.0);
+        // fn_80167638: stage_info.unk8C.b4 gives each player its own marker
+        // (4 + slot); otherwise players share marker 4, spaced by a timed slot.
+        let (marker, offset) = if arena.player_revival_markers {
+            (arena.revival_positions[usize::from(self.core.player.id)], 0.0)
+        } else {
+            (arena.revival_positions[0], offsets.allocate())
+        };
+        // retail 0x80167240: fadds. Player_SetSpawnPlatformPos keeps the marker's y.
+        let platform = Vec3::new(marker.x + offset, marker.y, 0.0);
+        self.core.player.position = Vec3::new(platform.x, arena.camera_top, 0.0);
         self.core.player.facing = if self.core.player.position.x >= 0.0 {
             -1.0
         } else {
             1.0
         };
+        // Every ported stage sets stage_info.unk8C.b5, so fn_8016719C skips
+        // Player_80032FA4 and the fighter's marker index stays -1 (player.c:1954):
+        // ftCo_800D4FF4 aims at the spawn platform position once, at entry.
+        // retail 0x800D5050: fmadds with ftCommon_800804EC (x40 is +0; separate fmuls).
+        let target = Vec3::new(
+            gekko_math::fma::fmadds(
+                self.core.player.facing,
+                0.0 * self.core.player.scale,
+                platform.x,
+            ),
+            platform.y,
+            0.0,
+        );
         self.core.player.damage = 0.0;
         self.core.reset_life(assets, context.map);
         self.install_motion_row(super::state::COMMON[S::Wait as usize]);
@@ -926,8 +982,8 @@ impl FighterCore {
             ) => (remaining, target),
             _ => panic!("revival physics scratch"),
         };
-        // This scene's static marker has zero player offset. The retail FMA
-        // at 800D53BC / 800D5954 is the moving-marker offset path.
+        // The marker index is -1 (see reset_for_revival), so retail skips the
+        // per-frame marker re-aim (800D53BC / 800D5954) and keeps x4 from entry.
         let inv = 1.0 / remaining as f32;
         self.physics.self_velocity.x = (target.x - self.physics.position.x) * inv;
         self.physics.self_velocity.y = (target.y - self.physics.position.y) * inv;
@@ -939,5 +995,29 @@ impl FighterCore {
         self.decay_air_knockback(assets);
         crate::physics::integrate::integrate_velocity(&mut self.physics);
         crate::physics::integrate::integrate_environment(&mut self.physics, None, wind);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RevivalOffsets;
+
+    #[test]
+    fn shared_revival_slots_fill_in_order_and_wrap_to_slot_zero() {
+        let mut offsets = RevivalOffsets::default();
+        let taken: Vec<f32> = (0..7).map(|_| offsets.allocate()).collect();
+        assert_eq!(taken, [0.0, 16.0, -16.0, 32.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn shared_revival_slot_frees_after_144_frame_ticks() {
+        let mut offsets = RevivalOffsets::default();
+        offsets.allocate();
+        for _ in 0..143 {
+            offsets.tick();
+        }
+        assert_eq!(offsets.allocate(), 16.0, "slot 0 still held");
+        offsets.tick();
+        assert_eq!(offsets.allocate(), 0.0, "slot 0 free after 144 ticks");
     }
 }

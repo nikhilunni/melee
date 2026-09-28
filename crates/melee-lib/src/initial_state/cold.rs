@@ -111,6 +111,7 @@ impl InitialState {
                 ..Default::default()
             },
             bomb_rain: Default::default(),
+            revival_offsets: Default::default(),
             assets,
             map,
             stage,

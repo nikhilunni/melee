@@ -73,6 +73,8 @@ pub struct InitialState {
     pub(crate) go_banner: Option<crate::banner::Banner>,
     pub(crate) clock: crate::match_clock::MatchClock,
     pub(crate) bomb_rain: melee_gr::bomb_rain::BombRain,
+    /// FighterMatchInfo[].x8, fn_80167638 / fn_8016758C.
+    pub(crate) revival_offsets: melee_ft::fighter::life::RevivalOffsets,
     pub(crate) resume: scheduler_resume::SchedulerResume,
     /// game_camera and the screen-shake models it drives.
     pub(crate) camera: melee_cm::GameCamera,
@@ -415,6 +417,7 @@ impl InitialState {
             )?),
             clock,
             bomb_rain,
+            revival_offsets: scene_flow::restore_revival_offsets(&saved),
             pending_music,
             selected_music: None,
             assets,

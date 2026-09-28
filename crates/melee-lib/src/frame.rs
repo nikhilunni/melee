@@ -835,6 +835,7 @@ impl Runtime {
                             f.reset_for_revival(
                                 &state.assets.fighters[player],
                                 &state.assets.arena,
+                                &mut state.revival_offsets,
                                 melee_ft::fighter::SpawnContext {
                                     map: &mut state.map,
                                     stage_camera: &state.assets.stage_camera,
@@ -1425,6 +1426,9 @@ impl Simulation {
             || runtime.state.fighters.iter().any(|fighter| {
                 crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
             });
+        // fn_8016CFE0 -> fn_8016758C, every scene frame. Only the count of
+        // ticks between two revivals matters, not their place in the frame.
+        runtime.state.revival_offsets.tick();
         // gm_Scene_Vs_OnFrame -> fn_8016CD98, only while no outcome is decided.
         if !runtime.match_finished {
             runtime.state.clock.advance();

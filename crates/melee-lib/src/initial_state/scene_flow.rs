@@ -54,6 +54,24 @@ pub(super) fn restore_clock(saved: &super::SavedPose) -> Result<(MatchClock, Bom
     Ok((clock, rain))
 }
 
+/// FighterMatchInfo[i].x8 (lbl_8046B6A0 + 0x38 + i * 0xE + 8): the shared
+/// revival offset slot timers.
+pub(super) fn restore_revival_offsets(
+    saved: &super::SavedPose,
+) -> melee_ft::fighter::life::RevivalOffsets {
+    const MATCH_INFO: u32 = 0x38;
+    const MATCH_INFO_STRIDE: u32 = 0xE;
+    const OFFSET_TIMER: u32 = 8;
+    melee_ft::fighter::life::RevivalOffsets {
+        timers: std::array::from_fn(|slot| {
+            saved.bytes(
+                MATCH_DATA + MATCH_INFO + slot as u32 * MATCH_INFO_STRIDE + OFFSET_TIMER,
+                1,
+            )[0]
+        }),
+    }
+}
+
 /// The one banner whose GObj is live: its kind and GObj.
 fn running_banner(saved: &super::SavedPose) -> Result<Option<(BannerKind, u32)>> {
     let mut running = None;

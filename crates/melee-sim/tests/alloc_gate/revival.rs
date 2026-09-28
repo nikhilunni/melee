@@ -75,6 +75,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
         let result = fighter.reset_for_revival(
             resources,
             &assets.arena,
+            &mut Default::default(),
             SpawnContext {
                 map: &mut map,
                 stage_camera: &assets.stage_camera,
