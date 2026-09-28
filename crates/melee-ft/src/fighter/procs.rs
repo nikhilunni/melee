@@ -2,7 +2,7 @@ use super::assets::{FighterAssets, Result};
 use super::*;
 use crate::{
     anim::WaitChoice,
-    collision::pose::FlatGroundPose,
+    collision::pose::GroundPose,
     input::{input_source, run_cpu_input_proc, update_input, InputContext, PadSample},
 };
 use gekko_math::rng::HsdRng;
@@ -474,11 +474,11 @@ impl FighterCore {
         );
     }
     /// Fighter_8006C5F4 (0x8006C5F4), s_link 7, fighter.c:2518-2525.
-    pub fn proc_pose(&mut self, map: &CollMap) {
+    pub fn proc_pose(&mut self, assets: &FighterAssets, map: &CollMap) {
         if self.status.disabled {
             return;
         }
-        let pose = FlatGroundPose {
+        let pose = GroundPose {
             bones: self
                 .bones
                 .ground_pose
@@ -486,16 +486,15 @@ impl FighterCore {
                 .expect("character ground pose"),
             player_scale: self.player.scale,
             flags: self.ground_pose,
+            max_tilt_degrees: assets.common.ground_pose_max_angle_degrees,
         };
-        if let Err(path) = pose.update(
+        pose.update(
             &self.physics,
             &self.collision,
             map,
             &mut self.skeleton,
             self.animation.root,
-        ) {
-            unimplemented!("ft_0899.c:109-232: {path:?}");
-        }
+        );
     }
     /// Fighter_CallAcessoryCallbacks_8006C624 (0x8006C624), s_link 8.
     /// Reset and Wait entry leave accessory1/2/3 NULL (fighter.c:456,1373).

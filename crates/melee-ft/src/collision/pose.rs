@@ -1,5 +1,5 @@
-//! s_link 7 ground pose: floor targets, two-joint leg IK and foot alignment.
-//! Non-flat body tilt remains an explicit unsupported result.
+//! s_link 7 ground pose: floor targets, two-joint leg IK, foot alignment
+//! and the body's tilt to the floor's slope.
 use super::{ecb::world_position, ground::EnvironmentCollision};
 use crate::{desc::bones::GroundPoseBones, physics::FighterPhysics};
 use gekko_math::{fma::fmadds, msl::sqrtf};
@@ -7,7 +7,10 @@ use hsd_anim::jobj::{JObjId, JObjTree};
 use hsd_types::Vec3;
 use melee_lb::ik::{normalize, TwoJointIk};
 use melee_mp::CollMap;
-use melee_types::GroundOrAir;
+use melee_types::{mp::line_kind, GroundOrAir};
+
+/// No neighbouring line (`-1`).
+const NO_LINE: i32 = -1;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct GroundPoseFlags(pub u8);
@@ -17,19 +20,16 @@ impl GroundPoseFlags {
     pub const BODY_TILT: u8 = 4;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UnsupportedGroundPose {
-    BodyTilt,
-}
-
-pub struct FlatGroundPose<'a> {
+pub struct GroundPose<'a> {
     pub bones: &'a GroundPoseBones,
     /// Fighter.x34_scale.y, +0x38; distinct from model scale.
     pub player_scale: f32,
     pub flags: GroundPoseFlags,
+    /// p_ftCommonData->x804: the body tilt's limit in degrees.
+    pub max_tilt_degrees: f32,
 }
 
-impl FlatGroundPose<'_> {
+impl GroundPose<'_> {
     /// `Fighter_8006C5F4` -> `ft_80089B08` (0x80089B08), ft_0899.c:73-236.
     /// Solved matrices survive raw local-rotation restoration, as in retail.
     /// `flags` is the decoded three-bit `x221C_u16_y` (+221C, bits 6..8).
@@ -40,11 +40,11 @@ impl FlatGroundPose<'_> {
         map: &CollMap,
         tree: &mut JObjTree,
         root: JObjId,
-    ) -> Result<(), UnsupportedGroundPose> {
+    ) {
         let bones = self.bones;
         let flags = self.flags;
         if state.ground_or_air != GroundOrAir::Ground {
-            return Ok(());
+            return;
         }
         for (mask, leg) in [
             (GroundPoseFlags::RIGHT_LEG, bones.right_leg),
@@ -94,22 +94,70 @@ impl FlatGroundPose<'_> {
             }
         }
         if flags.0 & GroundPoseFlags::BODY_TILT != 0 {
-            // ft_80089B08 (0x80089B08), ft_0899.c:180-233. Long flat floors
-            // skip the short-segment neighbor adjustment; the clamp keeps zero.
-            let normal = environment.data.floor.normal;
-            let end = map.line_get_v1_pos(environment.data.floor.index);
-            let start = map.line_get_v0_pos(environment.data.floor.index);
-            let dx = end.x - start.x;
-            let dy = end.y - start.y;
-            // retail 0x8008A028 fmadds, then the standard three-step sqrtf.
-            let length = sqrtf(fmadds(dx, dx, dy * dy));
-            if normal.x != 0.0 || normal.y <= 0.0 || length < 5.0 {
-                return Err(UnsupportedGroundPose::BodyTilt);
-            }
-            let angle = state.facing * melee_lb::trigf::atan2f(normal.x, normal.y);
+            let angle = body_tilt(
+                map,
+                environment.data.floor.index,
+                environment.data.floor.normal,
+                state.facing,
+                self.max_tilt_degrees,
+            );
+            // ftPartSetRotX(fp, 0, angle): part 0 is the Euler root.
             tree.set_rotation_x(root, angle);
         }
-        Ok(())
+    }
+}
+
+/// ft_80089B08 (0x80089B08), ft_0899.c:180-232: the body's pitch to match the
+/// floor. On a floor segment shorter than five units the neighbours' slopes
+/// decide instead, when they differ from this floor's by over ten degrees.
+/// That short-segment branch is transcribed from the asm but unwitnessed:
+/// 180 explorer matches on Yoshi's Story, Battlefield and Dream Land never
+/// tilted on a floor under five units long.
+fn body_tilt(map: &CollMap, floor: i32, normal: Vec3, facing: f32, max_degrees: f32) -> f32 {
+    // Retail @325: segments shorter than this defer to their neighbours.
+    const SHORT_SEGMENT: f32 = 5.0;
+    // Retail @327: ten degrees; a smaller neighbour disagreement is ignored.
+    const NEIGHBOUR_THRESHOLD: f32 = 0.17453292;
+    // Retail @328: degrees to radians.
+    const DEGREES_TO_RADIANS: f32 = 0.017453292;
+    let mut angle = facing * melee_lb::trigf::atan2f(normal.x, normal.y);
+    let end = map.line_get_v1_pos(floor);
+    let start = map.line_get_v0_pos(floor);
+    let dy = end.y - start.y;
+    let dx = end.x - start.x;
+    // retail 0x8008A028 fmadds, then the inline three-step sqrtf (only for a
+    // positive square; zero stays zero).
+    let length = sqrtf(fmadds(dx, dx, dy * dy));
+    if length < SHORT_SEGMENT {
+        let neighbour_slope = |line: i32| {
+            if line != NO_LINE && map.line_get_kind(line) & line_kind::FLOOR != 0 {
+                let n = map.line_get_normal(line);
+                Some(melee_lb::trigf::atan2f(n.x, n.y))
+            } else {
+                None
+            }
+        };
+        let mut neighbours = 0.0;
+        if let Some(next) = neighbour_slope(map.line_next(floor)) {
+            // retail 0x8008A0D0: fmuls.
+            neighbours = facing * next;
+        }
+        if let Some(prev) = neighbour_slope(map.line_prev(floor)) {
+            // retail 0x8008A118/1C: fmadds, then fmuls by 0.5.
+            neighbours = 0.5 * fmadds(facing, prev, neighbours);
+        }
+        if (neighbours - angle).abs() > NEIGHBOUR_THRESHOLD {
+            angle = neighbours;
+        }
+    }
+    // retail 0x8008A15C: fmuls.
+    let max_angle = DEGREES_TO_RADIANS * max_degrees;
+    if angle > max_angle {
+        max_angle
+    } else if angle < -max_angle {
+        -max_angle
+    } else {
+        angle
     }
 }
 

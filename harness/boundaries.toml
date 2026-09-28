@@ -129,6 +129,8 @@ stage = "DreamLand"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 1783163052
+
+[[boundary]]
 name = "start_ys_fox_marth4"
 cold = "start_ys_fox_marth4_cold"
 savestate = "harness/roms/start_ys_fox_marth4.sav"

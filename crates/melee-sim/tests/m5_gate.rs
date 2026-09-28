@@ -96,6 +96,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("sudden_death_")
         || name.starts_with("yoshi_upb_")
         || name.starts_with("peach2_")
+        || name.starts_with("slope_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -1172,6 +1173,34 @@ fn yoshis_story_shy_guys_match_retail() {
     combat_gate_ticks("stage_ys_shyguy_marth", 620);
 }
 
+/// The ground pose's body tilt (ft_80089B08, ft_0899.c:180-232) on Yoshi's
+/// Story's side slopes: Fox's and Marth's smashes pitch the root joint to the
+/// floor (0.2054 rad, either facing); standing, walking, crouching and
+/// landing there do not. The tilt shows only in the joints, so the retail
+/// bone dumps are compared too.
+#[test]
+fn slope_body_tilt_matches_retail_bones() {
+    for (name, ticks) in [
+        ("slope_ys_walk_fox_marth", 400),
+        ("slope_ys_smash_fox_marth", 680),
+    ] {
+        if combat_gate_ticks(name, ticks).is_none() {
+            continue;
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        if !melee_test_support::require_files([
+            scenario.trace_path("bones.jsonl"),
+            scenario.trace_path("bones.raw.jsonl"),
+        ]) {
+            continue;
+        }
+        let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
+        assert!(report.is_empty(), "{name}: {report:#?}");
+    }
+}
+
 /// Marth dizzy after a decay break until Furafura wears off (831).
 #[test]
 fn furafura_expire_victim_fd_marth_900_ticks_and_ordered_particle_draws() {
@@ -2122,7 +2151,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 110] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 116] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2339,6 +2368,14 @@ const CORPUS_V3_MATCHES: [(&str, usize); 110] = [
     // Fox's tail hurtbox and switch Marth's cape to the solver.
     ("corpus_v3_dl_fox_marth4_edb2b114a_p2", 2534),
     ("corpus_v3_dl_fox_marth4_e75fb4a9a_p0", 6001),
+    // Yoshi's Story: whole Fox-Marth matches whose smashes tilt the body on
+    // the side slopes (ft_80089B08's body tilt; formerly unported).
+    ("slope_ys_e75fb4a9a_p1", 1670),
+    ("slope_ys_e1502cb40_p0", 2026),
+    ("slope_ys_e75fb4a9a_p2", 2131),
+    ("slope_ys_ec3145eb3_p2", 2184),
+    ("slope_ys_ec13743d5_p0", 2526),
+    ("slope_ys_e9943b4ab_p0", 2658),
 ];
 
 #[test]

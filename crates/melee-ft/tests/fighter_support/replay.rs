@@ -254,7 +254,7 @@ fn replay_config(
                             f.proc_map_with_assets(&fixture.assets, &mut fixture.map)
                                 .unwrap()
                         }
-                        FighterProc::Pose => f.proc_pose(&fixture.map),
+                        FighterProc::Pose => f.proc_pose(&fixture.assets, &fixture.map),
                         FighterProc::Accessories => f.proc_accessories(),
                         FighterProc::HitboxPositions => f.proc_hitbox_positions(),
                         FighterProc::Grab => f.proc_grab(),

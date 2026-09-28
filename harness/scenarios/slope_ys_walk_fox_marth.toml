@@ -1,0 +1,44 @@
+# SLOPE witness: Yoshi's Story's side slopes without body tilt. Fox and Marth walk out on the side
+# platforms (140-165), crouch through them at 200 and land on the slopes (Fox at -51.8, Marth at
+# 46.8), stand, walk inward (260-280), crouch (300-330) and walk back out (340-355). Retail never sets
+# the ground pose's tilt bit (x221C bit 2, ft_80089B08) in Wait, Walk, Squat or Landing: the root's
+# rotation x stays 0 on the slope (bones match with --bones 400), so only attack subactions tilt the
+# body (slope_ys_smash_fox_marth).
+name = "slope_ys_walk_fox_marth"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_fox_marth4.sav"
+frames = 400
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 140, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 140, port = 1, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 165, port = 0, buttons = {  }, raw = {  } },
+  { frame = 165, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickX = 30 } },
+  { frame = 260, port = 1, buttons = {  }, raw = { stickX = -30 } },
+  { frame = 280, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 300, port = 1, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 1, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickX = -30 } },
+  { frame = 340, port = 1, buttons = {  }, raw = { stickX = 30 } },
+  { frame = 355, port = 0, buttons = {  }, raw = {  } },
+  { frame = 355, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

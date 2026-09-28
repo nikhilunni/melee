@@ -9,7 +9,7 @@ use melee_ft::{
     collision::{
         ecb,
         ground::{map_wait, EnvironmentCollision, WaitGroundResult},
-        pose::{FlatGroundPose, GroundPoseFlags},
+        pose::{GroundPose, GroundPoseFlags},
     },
     desc::{
         common::read_common_data,
@@ -299,13 +299,13 @@ fn idle_ground_fields_600() {
             }
             // s_link 7: flat ground pose/IK gate, after ALL collision procs.
             for (tree, animation, motion, collision) in &mut fighters {
-                FlatGroundPose {
+                GroundPose {
                     bones: bones.ground_pose.as_ref().unwrap(),
                     player_scale: 1.0,
                     flags: GroundPoseFlags(GroundPoseFlags::LEFT_LEG),
+                    max_tilt_degrees: 0.0,
                 }
-                .update(motion, collision, &map, tree, animation.root)
-                .unwrap();
+                .update(motion, collision, &map, tree, animation.root);
             }
         }
         for (player, (tree, animation, motion, collision)) in fighters.iter().enumerate() {

@@ -113,7 +113,7 @@ fn idle_fox_600() {
                     FighterProc::Input => f.proc_input(&fixture.assets, &PadSample::default()),
                     FighterProc::Update => f.proc_update(&fixture.assets, &fixture.map, Wind::CALM),
                     FighterProc::Map => f.proc_map(&mut fixture.map),
-                    FighterProc::Pose => f.proc_pose(&fixture.map),
+                    FighterProc::Pose => f.proc_pose(&fixture.assets, &fixture.map),
                     FighterProc::Accessories => f.proc_accessories(),
                     FighterProc::HitboxPositions => f.proc_hitbox_positions(),
                     FighterProc::Grab => f.proc_grab(),

@@ -1841,7 +1841,7 @@ fn dispatch_fighter(
             f.proc_map_with_assets(assets, map)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
-        FighterProc::Pose => f.proc_pose(map),
+        FighterProc::Pose => f.proc_pose(assets, map),
         FighterProc::Accessories => f.proc_accessories(),
         FighterProc::HitboxPositions => {
             effects.flush::<melee_ft::fighter::RetailTrig>(

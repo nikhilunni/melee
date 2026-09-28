@@ -1,0 +1,59 @@
+# SLOPE witness: the ground pose's body tilt (ft_80089B08, ft_0899.c:180-232) on Yoshi's Story's
+# side slopes (floor normal x = +/-0.204, tilt 0.2054 rad, inside the 20-degree x804 clamp). Fox and
+# Marth drop through the side platforms at 200 and land on the slopes (Fox at -51.8, Marth at 46.8).
+# Retail sets the tilt bit (x221C bit 2) only from attack subactions: Marth's forward smashes (260,
+# 320, 380) and down smash (440), Fox's down smashes (440 at -56 and 560 at -43.8, after a short-hop
+# dair landing), and Marth's turn-around forward smash (600) with facing -1, tilting -0.2054. Fox's
+# forward smash slides it to the stage edge (-56) without tilting. Recorded with --bones 680: the tilt
+# shows only in the joints (bones-diff), not in the tick keys.
+name = "slope_ys_smash_fox_marth"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_fox_marth4.sav"
+frames = 680
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 140, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 140, port = 1, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 165, port = 0, buttons = {  }, raw = {  } },
+  { frame = 165, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickY = -80 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 256, stickX = -80 } },
+  { frame = 260, port = 1, buttons = {  }, raw = { button = 256, stickX = 80 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { button = 256, stickX = -80, stickY = -35 } },
+  { frame = 320, port = 1, buttons = {  }, raw = { button = 256, stickX = 80, stickY = -35 } },
+  { frame = 322, port = 0, buttons = {  }, raw = {  } },
+  { frame = 322, port = 1, buttons = {  }, raw = {  } },
+  { frame = 380, port = 0, buttons = {  }, raw = { button = 256, stickX = -80, stickY = 35 } },
+  { frame = 380, port = 1, buttons = {  }, raw = { button = 256, stickX = 80, stickY = 35 } },
+  { frame = 382, port = 0, buttons = {  }, raw = {  } },
+  { frame = 382, port = 1, buttons = {  }, raw = {  } },
+  { frame = 440, port = 0, buttons = {  }, raw = { button = 256, stickY = -80 } },
+  { frame = 440, port = 1, buttons = {  }, raw = { button = 256, stickY = -80 } },
+  { frame = 442, port = 0, buttons = {  }, raw = {  } },
+  { frame = 442, port = 1, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { button = 2048, stickX = 50 } },
+  { frame = 501, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 507, port = 0, buttons = {  }, raw = { button = 256, stickY = -80 } },
+  { frame = 509, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 530, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 256, stickY = -80 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 1, buttons = {  }, raw = { button = 256, stickX = -80 } },
+  { frame = 602, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"
