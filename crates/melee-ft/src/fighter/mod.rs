@@ -25,6 +25,7 @@ pub mod grab_escape;
 pub mod grab_throw;
 mod hit_log;
 pub mod hitbox;
+pub mod hitlag_link;
 pub mod item_hits;
 pub mod item_pickup;
 pub mod item_throw;

@@ -15,7 +15,7 @@ impl FighterCore {
             eligible: !self.status.disabled && self.physics.ground_or_air == GroundOrAir::Ground,
             linked: self.combat.grab.is_some(),
             ignore_others: self.status.ignore_fighter_nudge,
-            hitlag: self.combat.hitlag_remaining > 0.0,
+            hitlag: self.in_hitlag(),
         }
     }
 }

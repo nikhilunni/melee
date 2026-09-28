@@ -132,7 +132,7 @@ impl Fighter {
     /// Wait x594_b3 selects ftCo_8009CB40(..., false, NULL), setting bone_id
     /// to 0x100 (ftdynamics.c:55); lb_8001044C returns at lb_00F9.c:447.
     pub fn proc_dynamics(&mut self) {
-        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
+        if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
         self.core.status.require_supported();
@@ -141,7 +141,7 @@ impl Fighter {
     }
     /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
     pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
-        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
+        if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
         self.core.status.require_supported();
@@ -153,7 +153,7 @@ impl Fighter {
         map: &mut CollMap,
         forces: &[melee_lb::dynamics::ForceField],
     ) {
-        if self.core.status.disabled || self.core.combat.hitlag_remaining > 0.0 {
+        if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
         self.core.status.require_supported();
@@ -243,8 +243,8 @@ impl FighterCore {
         self.status.require_supported();
         match self.status.interaction {
             super::Interaction::Hitlag => assert!(
-                self.combat.hitlag_remaining > 0.0,
-                "hitlag requires an active countdown"
+                self.in_hitlag(),
+                "hitlag requires x2219_b5 (a countdown or a partner hold)"
             ),
             super::Interaction::Damage => assert!(
                 matches!(self.state_data, super::MotionData::Damage(_)),
@@ -255,6 +255,7 @@ impl FighterCore {
             }
             _ => {}
         }
+        self.release_separated_hold();
         self.tick_hitlag();
         // ft_800819A8 (0x800819A8), ft_0819.c:32-46: three fadds.
         let cd = &self.collision.data;
@@ -522,7 +523,7 @@ impl FighterCore {
         }
         self.apply_magnifier_damage(&assets.magnifier);
         // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.
-        if self.combat.hitlag_remaining > 0.0 {
+        if self.in_hitlag() {
             return false;
         }
         if self.status.name_tag_timer > 1 && !self.status.input_frozen {
@@ -541,6 +542,7 @@ impl FighterCore {
             return false;
         }
         self.status.require_supported();
+        let hitlag = self.in_hitlag();
         let effects = update_input(
             &mut self.input,
             input_source(self.player.control, self.cpu.mode),
@@ -548,19 +550,19 @@ impl FighterCore {
             &assets.input,
             InputContext {
                 save_and_clear: self.status.input_frozen,
-                hitlag: self.combat.hitlag_remaining > 0.0,
+                hitlag,
                 ..InputContext::default()
             },
         );
         self.joystick_count += u64::from(effects.joystick_count_increments);
-        effects.run_input_callback && self.combat.hitlag_remaining == 0.0
+        effects.run_input_callback && !self.in_hitlag()
     }
     fn begin_physics_phase(&mut self) -> bool {
         if self.status.disabled {
             return false;
         }
         self.status.require_supported();
-        if self.combat.hitlag_remaining > 0.0 {
+        if self.in_hitlag() {
             return false;
         }
         if self.status.ledge_cooldown != 0 {

@@ -27,6 +27,8 @@ pub struct CombatState {
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
+    /// x2219_b7 and a freeze held past the countdown (hitlag_link).
+    pub hitlag_link: super::hitlag_link::HitlagLink,
     /// ftcoll.c dmg_log0: ordinary hits logged against this fighter during
     /// its hit detection (ftColl_80078C70), resolved by ftColl_8007AB48.
     pub hit_log: DamageLog,
@@ -54,6 +56,10 @@ pub struct CombatState {
     pub pending_credit: Option<u32>,
     /// ftColl_8007A06C: the selected hit came from this captured fighter's captor.
     pub pending_from_captor: bool,
+    /// ftCo_8008EC90 inlineB1 for a captured fighter whose hit came from
+    /// someone other than its captor but dealt under PlCo +3C0 this frame:
+    /// the hit is taken as capture damage (set by `resolve_linked_hit`).
+    pub light_capture_hit: bool,
     /// x1828: the grab partner's ftCo_8008EC90 order for this ProcessHit.
     pub pair_order: Option<super::grab_damage::PairHitOrder>,
     /// The captor (spawn number) that ftCo_800DE2F0 launches once this
@@ -384,6 +390,19 @@ impl DamageParameters {
         // retail 8008D8AC: fmadds, then separately rounded degree conversion.
         (DEG_TO_RAD * fmadds(self.sakurai_ground_angle, fraction, 1.0))
             .min(DEG_TO_RAD * self.sakurai_ground_angle)
+    }
+    /// ftCommon_CalcHitlag (8007DA74) in full, before any caller's clamps:
+    /// 8007DAA8 fmadds and an integer conversion, 8007DACC fmuls by the
+    /// vibration multiplier (x1960) and another integer conversion, then for
+    /// a crouching fighter (Squat, SquatWait) 8007DAF8 fmuls and fctiwz.
+    pub fn frozen_frames(&self, damage: i32, multiplier: f32, crouching: bool) -> f32 {
+        let base = fctiwz(fmadds(damage as f32, self.hitlag_scale, self.hitlag_base)) as f32;
+        let hitlag = fctiwz(base * multiplier) as f32;
+        if crouching {
+            fctiwz(hitlag * self.crouch_hitlag_scale) as f32
+        } else {
+            hitlag
+        }
     }
     /// ftCommon_CalcHitlag (8007DA74), 8007DAA8 fmadds then fctiwz.
     pub fn hitlag(&self, damage: i32) -> f32 {
@@ -817,6 +836,7 @@ impl Fighter {
         }
         // fighter.c:3019: x1828 is consumed by this ProcessHit.
         let pair_order = self.core.combat.pair_order.take();
+        let light_capture_hit = std::mem::take(&mut self.core.combat.light_capture_hit);
         if let Some(hit) = self.core.combat.pending.take() {
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
             if hit.descriptor.element == melee_types::HitElement::Electric {
@@ -827,8 +847,10 @@ impl Fighter {
                 self.core.combat.pending_from_captor = false;
                 self.launch_by_pair_order(hit, assets, rng)?;
                 hit_damage = self.core.combat.frame_max_damage;
-            } else if std::mem::take(&mut self.core.combat.pending_from_captor) {
-                // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
+            } else if std::mem::take(&mut self.core.combat.pending_from_captor) || light_capture_hit
+            {
+                // ftCo_8008EC90: the captor's hit, or any light hit (inlineB1),
+                // preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
             } else if self.core.modified_knockback(hit.knockback, assets) == 0.0 {
                 // ftCo_8008EC90 (8008ECB0): armor left no knockback.
@@ -899,18 +921,9 @@ impl Fighter {
             self.core.play_queued_damage_sounds(assets, rng);
         }
         if hit_damage != 0 {
-            // ftCommon_CalcHitlag: 8007DAA8 fmadds, integer conversion, then
-            // 8007DACC fmuls and another integer conversion before crouch scaling.
-            let base = fctiwz(fmadds(
-                hit_damage as f32,
-                assets.damage.hitlag_scale,
-                assets.damage.hitlag_base,
-            )) as f32;
-            let mut hitlag = fctiwz(base * hitlag_multiplier) as f32;
-            if crouching {
-                // ftCommon_CalcHitlag, 8007DAF8 fmuls then fctiwz.
-                hitlag = fctiwz(hitlag * assets.damage.crouch_hitlag_scale) as f32;
-            }
+            let hitlag = assets
+                .damage
+                .frozen_frames(hit_damage, hitlag_multiplier, crouching);
             self.core.combat.hitlag_remaining = hitlag
                 .max(self.core.combat.minimum_hitlag)
                 .min(assets.damage.maximum_hitlag);
@@ -1593,24 +1606,37 @@ impl FighterCore {
     /// Fighter_8006A1BC (8006A1BC): expire before animation and input.
     pub(super) fn tick_hitlag(&mut self) {
         if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining) {
-            if self.combat.hitlag_callbacks == HitlagCallbacks::Damage {
-                self.exit_damage_hitlag();
-                self.status.interaction = Interaction::Damage;
-            } else if matches!(self.state_data, MotionData::Guard(_)) {
+            if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
-                if self.combat.hitlag_callbacks == HitlagCallbacks::Guard {
-                    self.exit_guard_hitlag();
-                }
-                self.status.interaction = Interaction::Shield;
-            } else if self.combat.grab.is_some() {
-                // Pummel freezes both members of the pair without damage-state scratch.
-                self.status.interaction = Interaction::Idle;
-            } else if self.in_attack_state() {
-                self.status.interaction = Interaction::Attack;
-            } else {
-                // An attacker's hitlag can outlast its attack (Illusion's end).
-                self.status.interaction = Interaction::Idle;
             }
+            // fighter.c:1421: x2219_b7 skips Fighter_8006D10C; the grab
+            // partner's hitlag end releases this fighter (hitlag_link).
+            if self.combat.hitlag_link.held {
+                self.combat.hitlag_link.frozen = true;
+                return;
+            }
+            self.end_hitlag();
+        }
+    }
+    /// Fighter_8006D10C (8006D10C): post_hitlag_cb and x2219_b5 = 0.
+    pub(super) fn end_hitlag(&mut self) {
+        self.combat.hitlag_link.frozen = false;
+        if self.combat.hitlag_callbacks == HitlagCallbacks::Damage {
+            self.exit_damage_hitlag();
+            self.status.interaction = Interaction::Damage;
+        } else if matches!(self.state_data, MotionData::Guard(_)) {
+            if self.combat.hitlag_callbacks == HitlagCallbacks::Guard {
+                self.exit_guard_hitlag();
+            }
+            self.status.interaction = Interaction::Shield;
+        } else if self.combat.grab.is_some() {
+            // Pummel freezes both members of the pair without damage-state scratch.
+            self.status.interaction = Interaction::Idle;
+        } else if self.in_attack_state() {
+            self.status.interaction = Interaction::Attack;
+        } else {
+            // An attacker's hitlag can outlast its attack (Illusion's end).
+            self.status.interaction = Interaction::Idle;
         }
     }
 }
@@ -2387,7 +2413,7 @@ impl FighterCore {
     /// ftCo_Damage_CalcKnockback (8008D930): the victim's state scales the
     /// computed knockback (separate fmuls), then armor subtracts from it and
     /// PlCo +104 floors it.
-    fn modified_knockback(&self, mut knockback: f32, assets: &FighterAssets) -> f32 {
+    pub(super) fn modified_knockback(&self, mut knockback: f32, assets: &FighterAssets) -> f32 {
         if knockback == 0.0 {
             return knockback;
         }
@@ -2426,6 +2452,40 @@ impl FighterCore {
         knockback
     }
 
+    /// ftCo_8008EC90 inlineB2's ftCo_8008DA4C and ftCo_800C0408: a hit taken
+    /// without a launch flashes the color animation for the element at the
+    /// reaction level of ftCo_8008D8E8(kb_applied * PlCo +154) (fmuls), when
+    /// this frame dealt damage (x1838_percentTemp).
+    pub(super) fn unlaunched_damage_flash(
+        &mut self,
+        knockback: f32,
+        hit: &ReceivedHit,
+        assets: &FighterAssets,
+    ) {
+        if hit.percent_damage == 0.0 {
+            return;
+        }
+        let scaled = knockback * assets.damage.hitstun_scale;
+        let level = assets
+            .damage
+            .reaction_thresholds
+            .iter()
+            .position(|&t| scaled < t)
+            .unwrap_or(3) as u8;
+        let id = match hit.descriptor.element {
+            melee_types::HitElement::Fire => 11 + level,
+            melee_types::HitElement::Electric => 15 + level,
+            melee_types::HitElement::Ice => 31 + level,
+            melee_types::HitElement::Dark => 35 + level,
+            _ => DAMAGE_FLASH,
+        };
+        // ftCo_8008DA4C -> ftCo_800BFFD0; an installed program runs now
+        // (ftCo_800C0408), not at the next color step.
+        if self.install_color_overlay_now(id, assets) {
+            self.advance_color_overlay(assets);
+        }
+    }
+
     /// ftCo_8008EC90 inlineB2 (ftCo_Damage.c:795-811) after
     /// Fighter_UnkTakeDamage_8006CC30: the hit's damage and flash without a
     /// reaction; the motion continues into hitlag.
@@ -2433,28 +2493,8 @@ impl FighterCore {
         // ftCo_800C8D00 returns at once without x2224_b3 (no supported mode).
         // The capture states (0xE0/0xE1, 0xE3/0xE4) are unarmored.
         self.physics.percent += hit.percent_damage;
-        if hit.percent_damage != 0.0 {
-            // ftCo_8008D8E8(kb_applied * PlCo +154) with kb_applied == 0.
-            let scaled = 0.0 * assets.damage.hitstun_scale;
-            let level = assets
-                .damage
-                .reaction_thresholds
-                .iter()
-                .position(|&t| scaled < t)
-                .unwrap_or(3) as u8;
-            let id = match hit.descriptor.element {
-                melee_types::HitElement::Fire => 11 + level,
-                melee_types::HitElement::Electric => 15 + level,
-                melee_types::HitElement::Ice => 31 + level,
-                melee_types::HitElement::Dark => 35 + level,
-                _ => DAMAGE_FLASH,
-            };
-            // ftCo_8008DA4C -> ftCo_800BFFD0; an installed program runs now
-            // (ftCo_800C0408), not at the next color step.
-            if self.install_color_overlay_now(id, assets) {
-                self.advance_color_overlay(assets);
-            }
-        }
+        // kb_applied is zero here: armor absorbed all of it.
+        self.unlaunched_damage_flash(0.0, hit, assets);
         // ftCommon_800804FC: grounded victims only; armor ends on landing.
         assert!(
             self.physics.ground_or_air == GroundOrAir::Air,

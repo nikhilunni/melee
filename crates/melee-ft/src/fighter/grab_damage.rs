@@ -26,12 +26,12 @@ pub fn resolve_linked_hit(
     partner_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
     rng: &mut gekko_math::HsdRng,
-) -> Result<()> {
+) -> Result<bool> {
     let Some(hit) = &fighter.combat.pending else {
-        return Ok(());
+        return Ok(false);
     };
     if hit.knockback == 0.0 || fighter.combat.pair_order.is_some() || fighter.status.disabled {
-        return Ok(());
+        return Ok(false);
     }
     // ftCo_8008E984 / inlineB0: armour (x221A_b3 with x18A8) is unported.
     assert!(
@@ -51,7 +51,7 @@ pub fn resolve_linked_hit(
                 launch_by_captor(partner, fighter, partner_assets, fighter_assets, rng)?;
                 release_pair(fighter, partner, partner_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
-                return Ok(());
+                return Ok(false);
             }
             // inlineB1: the captured fighter's hit came from its captor
             // (x221C_b0) or dealt under PlCo +3C0 this frame.
@@ -69,10 +69,14 @@ pub fn resolve_linked_hit(
             // inlineB1: from the captor (x221C_b0) or dealt under PlCo +3C0.
             if fighter.combat.pending_from_captor || fighter.combat.frame_damage < LIGHT_HIT_DAMAGE
             {
-                if !fighter.combat.pending_from_captor {
-                    unimplemented!("ftCo_8008EC90: a light third-party hit on the captured member");
+                if partner_launched {
+                    // ftCo_8008EC90 (8008ED9C..): the captor's own launch
+                    // (inlineB0 pair order 3, or ftCo_800DE854) is unported.
+                    unimplemented!(
+                        "ftCo_8008EC90: a light hit on a captured member whose captor is launched"
+                    );
                 }
-                return Ok(());
+                return Ok(keep_capture_on_light_hit(fighter, partner, partner_assets));
             }
             if !partner_launched {
                 // ftCo_800DCE34(captor, gobj) and this fighter's launch; then
@@ -80,7 +84,7 @@ pub fn resolve_linked_hit(
                 release_pair(partner, fighter, fighter_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
                 fighter.combat.release_captor = Some(partner.spawn_number);
-                return Ok(());
+                return Ok(false);
             }
             // ftCo_800DCE34(captor, gobj), then this fighter's launch; the
             // captor follows x1828 = 1.
@@ -90,7 +94,7 @@ pub fn resolve_linked_hit(
         }
         None => {}
     }
-    Ok(())
+    Ok(false)
 }
 
 /// ftCo_800DCFD4 (800DCFD4): the captured fighter leaves the ground and is
@@ -209,6 +213,60 @@ pub fn launch_released_captor(
     // ftCo_8008E908(gobj, 0.0).
     captor.begin_damage_reaction(hit, None, None, None, assets, rng)?;
     Ok(())
+}
+
+/// ftCo_8008EC90's light branch for a captured fighter (inlineB1: the hit came
+/// from its captor or dealt under PlCo +3C0) whose captor has no knockback of
+/// its own: the grab holds and the captor freezes for the same hit. Returns
+/// whether the captured fighter's effects pause now: retail runs the captor's
+/// pre_hitlag_cb (efLib_PauseAll) on the captured fighter's gobj, not its own.
+fn keep_capture_on_light_hit(
+    captured: &mut Fighter,
+    captor: &mut Fighter,
+    captor_assets: &FighterAssets,
+) -> bool {
+    let mut pause_captured_effects = false;
+    // dmg.x183C_applied: the captor's hitlag is ftCommon_CalcHitlag on the
+    // captured fighter's damage, the captor's motion and its x1960, with none
+    // of Fighter_ProcessHit's clamps.
+    let damage = captured.combat.frame_max_damage;
+    if damage != 0 {
+        // x1960 is PlCo +1A4 only while an electric hit is pending on the
+        // captor (ftColl_8007A06C); its own ProcessHit resets it.
+        let electric = matches!(
+            &captor.combat.pending,
+            Some(hit) if hit.descriptor.element == melee_types::HitElement::Electric
+        );
+        let multiplier = if electric {
+            captor_assets.damage.electric_hitlag_scale
+        } else {
+            1.0
+        };
+        let crouching = matches!(
+            captor.motion_state.id,
+            melee_types::CommonMotionState::Squat | melee_types::CommonMotionState::SquatWait
+        );
+        let was_frozen = captor.in_hitlag();
+        captor.core.combat.hitlag_remaining = captor_assets
+            .damage
+            .frozen_frames(damage, multiplier, crouching);
+        // allow_sdi (x221A_b2) follows the countdown in the port. x2219_b5
+        // is set only when clear, after the captor's pre_hitlag_cb, which
+        // runs on the captured fighter's gobj (8008F050..8008F074).
+        if !was_frozen {
+            if captor.combat.hitlag_remaining == 0.0 {
+                captor.core.combat.hitlag_link.frozen = true;
+            }
+            captor.core.status.interaction = super::Interaction::Hitlag;
+            pause_captured_effects = captor.effect_state.hitlag_callbacks;
+        } else if captor.combat.hitlag_remaining > 0.0 {
+            captor.core.status.interaction = super::Interaction::Hitlag;
+        }
+    }
+    // fp->input.pressed_buttons = released_buttons = 0 and inlineB2 follow in
+    // the captured fighter's own ProcessHit (grab_escape::capture_damage).
+    captured.combat.light_capture_hit = !captured.combat.pending_from_captor;
+    pause_captured_effects
 }
 
 /// lbColl_80008D30 copies the record's integer damage to unk_count.

@@ -63,7 +63,7 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
     // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during
     // hitlag. It still runs for a capture pinned in the captor's mouth.
     if with_fighter!(&state.fighters[player], |f| f.status.disabled
-        || f.combat.hitlag_remaining > 0.0
+        || f.in_hitlag()
         || matches!(
             f.motion_state.id,
             melee_types::CommonMotionState::ThrownF
@@ -294,7 +294,7 @@ pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()>
 pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
     let victim = with_fighter!(&state.fighters[player], |f| {
         if f.status.disabled
-            || f.combat.hitlag_remaining > 0.0
+            || f.in_hitlag()
             || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch { .. })
         {
             None
@@ -345,7 +345,7 @@ pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> 
         .position(|f| with_fighter!(f, |f| f.spawn_number == partner))
         .expect("live grab partner");
     let (fighter, partner) = pair(&mut state.fighters, player, other);
-    with_fighter!(fighter, |f| with_fighter!(partner, |p| {
+    let pause_effects = with_fighter!(fighter, |f| with_fighter!(partner, |p| {
         melee_ft::fighter::grab_damage::resolve_linked_hit(
             f,
             p,
@@ -355,7 +355,13 @@ pub(super) fn linked_hit(state: &mut InitialState, player: usize) -> Result<()> 
             &mut state.rng,
         )
     }))
-    .map_err(|e| anyhow::anyhow!(e.to_string()))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    if pause_effects {
+        // ftCo_8008EC90: the captor's pre_hitlag_cb (efLib_PauseAll) runs on
+        // this captured fighter's gobj.
+        state.effects.set_owner_hitlag(player, true);
+    }
+    Ok(())
 }
 
 /// ftCo_8008EC90's tail for a launched captured fighter whose captor was not
@@ -380,4 +386,68 @@ pub(super) fn release_captor(state: &mut InitialState, player: usize) -> Result<
         )
     })
     .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// x2219_b5 for `player` (melee_ft::fighter::hitlag_link).
+pub(super) fn in_hitlag(state: &InitialState, player: usize) -> bool {
+    with_fighter!(&state.fighters[player], |f| f.in_hitlag())
+}
+
+/// The other member of `player`'s grab pair (x1A5C), by fighter index.
+fn grab_partner(state: &InitialState, player: usize) -> Option<usize> {
+    let partner = match with_fighter!(&state.fighters[player], |f| f.combat.grab)? {
+        GrabLink::Holding { victim, .. } => victim,
+        GrabLink::Captured { captor } => captor,
+    };
+    state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == partner))
+}
+
+/// Fighter_ProcessHit's Fighter_UnkRecursiveFunc_8006D044: when `player`
+/// started hitlag during its ProcessHit (x2219_b5 was clear), its grab
+/// partner is held in hitlag with it.
+pub(super) fn hold_partner_hitlag(
+    state: &mut InitialState,
+    player: usize,
+    was_in_hitlag: bool,
+) -> Result<()> {
+    if was_in_hitlag || !in_hitlag(state, player) {
+        return Ok(());
+    }
+    let Some(other) = grab_partner(state, player) else {
+        return Ok(());
+    };
+    let (fighter, partner) = pair(&mut state.fighters, player, other);
+    let pause = with_fighter!(fighter, |f| with_fighter!(partner, |p| {
+        melee_ft::fighter::hitlag_link::hold_partner(f, p)
+    }));
+    if pause {
+        state.effects.set_owner_hitlag(other, true);
+    }
+    Ok(())
+}
+
+/// Fighter_8006A1BC -> Fighter_8006D10C: when `player`'s hitlag ended in its
+/// status proc, a grab partner it holds is released.
+pub(super) fn release_partner_hitlag(
+    state: &mut InitialState,
+    player: usize,
+    was_in_hitlag: bool,
+) -> Result<()> {
+    if !was_in_hitlag || in_hitlag(state, player) {
+        return Ok(());
+    }
+    let Some(other) = grab_partner(state, player) else {
+        return Ok(());
+    };
+    let (fighter, partner) = pair(&mut state.fighters, player, other);
+    let resume = with_fighter!(fighter, |f| with_fighter!(partner, |p| {
+        melee_ft::fighter::hitlag_link::release_partner(f, p)
+    }));
+    if resume {
+        state.effects.set_owner_hitlag(other, false);
+    }
+    Ok(())
 }

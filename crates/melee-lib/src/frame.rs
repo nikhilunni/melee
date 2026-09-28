@@ -699,6 +699,8 @@ impl Runtime {
                         .pickup_candidates
                         .offer(candidates));
                 }
+                // x2219_b5 before this proc, for the grab-pair hitlag link.
+                let was_in_hitlag = grab_pairs::in_hitlag(state, player);
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::linked_hit(state, player)?;
                 }
@@ -811,6 +813,10 @@ impl Runtime {
                 }
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::release_captor(state, player)?;
+                    grab_pairs::hold_partner_hitlag(state, player, was_in_hitlag)?;
+                }
+                if proc == FighterProc::Status {
+                    grab_pairs::release_partner_hitlag(state, player, was_in_hitlag)?;
                 }
                 if proc == FighterProc::Map {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
@@ -887,7 +893,7 @@ impl Runtime {
                         f.update_revival_platform();
                         // Fighter_CallAcessoryCallbacks_8006C624: hitlag
                         // (x2219_b5) runs accessory3 instead of accessory1.
-                        if f.combat.thrown_pose.is_some() && f.combat.hitlag_remaining == 0.0 {
+                        if f.combat.thrown_pose.is_some() && !f.in_hitlag() {
                             f.thrown_accessory(&state.assets.fighters[player]);
                         }
                     });
@@ -1628,7 +1634,7 @@ fn dispatch_fighter(
     wind: Vec3,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
-    let was_in_hitlag = f.combat.hitlag_remaining > 0.0;
+    let was_in_hitlag = f.in_hitlag();
     let had_effect_callbacks = f.effect_state.hitlag_callbacks;
     match proc {
         FighterProc::Status => f.proc_status(),
@@ -1665,7 +1671,7 @@ fn dispatch_fighter(
             )?;
             // Fighter_8006C80C: accessory4 runs after efAsync_QueueFlush.
             if !f.status.disabled
-                && f.combat.hitlag_remaining == 0.0
+                && !f.in_hitlag()
                 && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
                 && !f.item_throw_accessory(assets)
             {
@@ -1682,16 +1688,12 @@ fn dispatch_fighter(
     }
     // Fighter_8006D044/8006D10C invoke the installed callbacks on transitions,
     // not every frozen frame. New models created later are not retroactively paused.
-    if proc == FighterProc::Status
-        && was_in_hitlag
-        && f.combat.hitlag_remaining == 0.0
-        && had_effect_callbacks
-    {
+    if proc == FighterProc::Status && was_in_hitlag && !f.in_hitlag() && had_effect_callbacks {
         effects.set_owner_hitlag(player, false);
     }
     if proc == FighterProc::ProcessHit
         && !was_in_hitlag
-        && f.combat.hitlag_remaining > 0.0
+        && f.in_hitlag()
         && f.effect_state.hitlag_callbacks
     {
         effects.set_owner_hitlag(player, true);
