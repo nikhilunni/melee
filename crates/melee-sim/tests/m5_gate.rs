@@ -1996,7 +1996,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 65] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 66] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2127,6 +2127,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 65] = [
     ("corpus_v3_fd_captainfalcon_fox4_e75fb4a9a_p1", 92),
     // A Reflector held into a platform that the f32 +0x468 window keeps on the platform.
     ("corpus_v3_bf_marth_fox4_e19f8579b_p2", 150),
+    // A 3376-tick Battlefield match through a background swap and revivals.
+    ("corpus_v3_bf_marth_fox4_e573e2d95_p0", 3376),
 ];
 
 #[test]
