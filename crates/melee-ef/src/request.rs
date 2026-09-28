@@ -12,6 +12,12 @@ pub enum EffectRequest {
         model: u32,
         rotation: Vec3,
     },
+    /// The owner's state an owned model's post-animation callback reads
+    /// for its root Z rotation (efLib_Cb_ftMr_SpecialLw's floor tilt).
+    OwnedRotationZ {
+        model: u32,
+        rotation: f32,
+    },
     // S6: ftColl_80076CBC, efSync_Spawn(27) at the physical powershield contact.
     PowershieldSpark {
         position: Vec3,
@@ -334,6 +340,7 @@ impl EffectRequest {
         matches!(
             self,
             Self::OwnedRotation { .. }
+                | Self::OwnedRotationZ { .. }
                 | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
                 | Self::SyncAttachedPair { .. }

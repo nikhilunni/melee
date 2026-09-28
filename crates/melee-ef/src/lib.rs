@@ -83,6 +83,9 @@ struct Effect {
     attachment_bone: Option<usize>,
     scale_attachment: bool,
     callback_rotation: Option<Vec3>,
+    /// efLib_Cb_ftMr_SpecialLw (eflib.c:1279): root rotation Z from the
+    /// owner's floor after each update's animation.
+    callback_rotation_z: Option<f32>,
     /// efLib_Cb_SetRotY_FromFighterDir (eflib.c:1142): root rotation Y set
     /// after each update's animation, never at creation.
     facing_rotation: Option<f32>,
@@ -322,6 +325,14 @@ impl Effects {
                 continue;
             }
             // S3: efAlt 48B/48C use efLib_Create_Attach, with no scale inheritance.
+            if let EffectRequest::OwnedRotationZ { model, rotation } = request {
+                for effect in self.instances.iter_mut().filter(|effect| {
+                    effect.owner == Some(ModelOwner::Fighter(player)) && effect.descriptor == model
+                }) {
+                    effect.callback_rotation_z = Some(rotation);
+                }
+                continue;
+            }
             if let EffectRequest::OwnedRotation { model, rotation } = request {
                 for effect in self.instances.iter_mut().filter(|effect| {
                     effect.owner == Some(ModelOwner::Fighter(player)) && effect.descriptor == model
@@ -420,6 +431,10 @@ impl Effects {
                 for effect in pair {
                     self.instances.push(effect);
                 }
+                continue;
+            }
+            if let EffectRequest::SyncAttached { id: 0x47C, bone } = request {
+                self.spawn_tornado::<T>(player, bone, fighter, bank, particles, rng)?;
                 continue;
             }
             if let EffectRequest::SyncAttached { id: 0x47A, bone } = request {
@@ -886,6 +901,7 @@ impl Effects {
             match request {
                 EffectRequest::OwnedRotation { .. }
                 | EffectRequest::PositionalGenerator { .. }
+                | EffectRequest::OwnedRotationZ { .. }
                 | EffectRequest::EggShell { .. }
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
@@ -1148,12 +1164,16 @@ impl Effects {
                 );
             }
             if effect.callback_rotation.is_some()
+                || effect.callback_rotation_z.is_some()
                 || effect.facing_rotation.is_some()
                 || effect.follow_bone.is_some()
             {
                 if let Some(rotation) = effect.callback_rotation {
                     effect.tree.set_rotation_y(effect.root, rotation.y);
                     effect.tree.set_rotation_z(effect.root, rotation.z);
+                }
+                if let Some(rotation) = effect.callback_rotation_z {
+                    effect.tree.set_rotation_z(effect.root, rotation);
                 }
                 if let Some(rotation) = effect.facing_rotation {
                     effect.tree.set_rotation_y(effect.root, rotation);
@@ -1257,6 +1277,7 @@ impl Effect {
             attachment_bone: None,
             scale_attachment: true,
             callback_rotation: None,
+            callback_rotation_z: None,
             facing_rotation: None,
             follow_bone: None,
             hitlag_pause: HitlagPause::Ignore,

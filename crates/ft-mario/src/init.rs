@@ -36,6 +36,8 @@ pub struct Mario {
     pub accessory: Accessory,
     /// Super Jump Punch's steering (Fighter +6BC).
     pub super_jump_punch: crate::special_hi::SuperJumpPunch,
+    /// Mario Tornado's motion scratch and callbacks.
+    pub tornado: crate::special_lw::Tornado,
 }
 impl Mario {
     pub fn new(attributes: MarioAttributes) -> Self {
@@ -48,6 +50,7 @@ impl Mario {
             cape_boosted: false,
             accessory: Accessory::None,
             super_jump_punch: Default::default(),
+            tornado: Default::default(),
         }
     }
 }
@@ -80,10 +83,21 @@ impl CharacterCallbacks for Mario {
         match slot {
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
             _ => unimplemented!(
                 "ftData_Special{slot:?}[Mario] (airborne: {airborne}): character special entry"
             ),
         }
+    }
+    /// ftCommon_8007DB58: take_dmg_cb, the Tornado's updateRot.
+    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(crate::special_lw::clear_tilt);
+    /// ftCo_800D331C: death2_cb, the Tornado's updateRot.
+    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(crate::special_lw::clear_tilt);
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.tornado.callbacks = false;
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.

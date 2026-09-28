@@ -6,6 +6,8 @@ const HAND_FIRE_MODEL: u32 = 0x3E8;
 /// hsd_8039EFAC(0, 1, 0x3E9, jobj): the flash's generator on the hand.
 const HAND_FIRE_GENERATOR: u32 = 0x3E9;
 const MARIO_BANK: u8 = 1;
+/// efAlt_Spawn 0x47C: the Tornado's model.
+const TORNADO_MODEL: u32 = 0x3E9;
 
 impl Effects {
     /// efAlt_Spawn 0x47A (efalt.c:38-57), from ftMr_SpecialN_ItemFireSpawn:
@@ -50,6 +52,51 @@ impl Effects {
         let bank = resources::character_bank(&self.character_banks, i32::from(MARIO_BANK))?;
         spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
         self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+        effect.animate_banks::<T>(
+            resources::Banks {
+                common: common_bank,
+                characters: &self.character_banks,
+            },
+            particles,
+            rng,
+            &mut self.draws,
+            &mut self.events,
+        )?;
+        self.instances.push(effect);
+        Ok(())
+    }
+
+    /// efAlt_Spawn 0x47C (efalt.c:61-66), from the Tornado's setGfx:
+    /// efLib_Create_Attach_Scale(0x3E9) on the fighter's root with the
+    /// efLib_Cb_ftMr_SpecialLw update (its tilt arrives as OwnedRotationZ;
+    /// its child's JOBJ_HIDDEN toggle is display only).
+    pub(super) fn spawn_tornado<T: InverseTrig>(
+        &mut self,
+        player: usize,
+        bone: usize,
+        fighter: &mut impl EffectOwner,
+        common_bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut effect = self.acquire(TORNADO_MODEL, particles);
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        effect.owner = Some(ModelOwner::Fighter(player));
+        effect.hitlag_pause = HitlagPause::Active;
+        effect.attachment = Some(player);
+        effect.attachment_bone = Some(bone);
+        effect.scale_attachment = false;
+        // efLib_Create_Attach_Scale: the fighter root's Y scale, broadcast.
+        let mut scale = fighter.effect_scale();
+        scale.x = scale.y;
+        scale.z = scale.y;
+        effect.tree.set_scale(effect.root, &scale);
+        let matrix = fighter.effect_matrix(Some(bone));
+        effect.tree.set_translate(
+            effect.root,
+            &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+        );
         effect.animate_banks::<T>(
             resources::Banks {
                 common: common_bank,
