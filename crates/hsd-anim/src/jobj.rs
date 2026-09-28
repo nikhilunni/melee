@@ -225,6 +225,9 @@ pub struct JObj {
     /// `id`: in the C the `HSD_Joint*` the node was loaded from, used as
     /// the id-table key. Free for the caller here.
     pub id: u32,
+    /// Memo of `rotate`'s sines and cosines for `HSD_JObjMakeMatrix`; not
+    /// game state (see [`mtx::EulerTrigCache`]).
+    pub trig: mtx::EulerTrigCache,
 }
 
 impl JObj {
@@ -247,6 +250,7 @@ impl JObj {
             spline: None,
             path_reference: None,
             id: 0,
+            trig: mtx::EulerTrigCache::default(),
         }
     }
 
@@ -1077,7 +1081,14 @@ impl JObjTree {
             );
         } else {
             let euler = Vec3::new(node.rotate.x, node.rotate.y, node.rotate.z);
-            mtx::hsd_mtx_srt(&mut node.mtx, &node.scale, &euler, &node.translate, scl);
+            mtx::hsd_mtx_srt_cached(
+                &mut node.mtx,
+                &node.scale,
+                &euler,
+                &node.translate,
+                scl,
+                &mut node.trig,
+            );
         }
 
         if let Some(p) = parent {

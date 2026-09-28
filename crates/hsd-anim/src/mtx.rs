@@ -833,12 +833,78 @@ pub fn hsd_mtx_quat(arg0: &mut Mtx, arg1: &Quaternion) {
 /// When `vec4` is `Some`, its reciprocals are formed in `f64`
 /// (`f32 temp1 = 1.0 / vec4->x`) and rounded once, as the C does.
 pub fn hsd_mtx_srt(m: &mut Mtx, vec1: &Vec3, vec2: &Vec3, vec3: &Vec3, vec4: Option<&Vec3>) {
-    let sin_x = sinf(vec2.x);
-    let cos_x = cosf(vec2.x);
-    let sin_y = sinf(vec2.y);
-    let cos_y = cosf(vec2.y);
-    let sin_z = sinf(vec2.z);
-    let cos_z = cosf(vec2.z);
+    let trig = EulerTrig {
+        sin: [sinf(vec2.x), sinf(vec2.y), sinf(vec2.z)],
+        cos: [cosf(vec2.x), cosf(vec2.y), cosf(vec2.z)],
+    };
+    srt_from_trig(m, vec1, &trig, vec3, vec4);
+}
+
+/// [`hsd_mtx_srt`] with the rotation's sines and cosines taken from `cache`,
+/// which recomputes only the axes whose angle bit pattern changed since its
+/// last use. `sinf` and `cosf` are pure, so the matrix is bit-identical.
+pub fn hsd_mtx_srt_cached(
+    m: &mut Mtx,
+    vec1: &Vec3,
+    vec2: &Vec3,
+    vec3: &Vec3,
+    vec4: Option<&Vec3>,
+    cache: &mut EulerTrigCache,
+) {
+    let trig = cache.get(vec2);
+    srt_from_trig(m, vec1, &trig, vec3, vec4);
+}
+
+/// The sines and cosines of an Euler rotation, per axis `[x, y, z]`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EulerTrig {
+    pub sin: [f32; 3],
+    pub cos: [f32; 3],
+}
+
+/// A memo of the last Euler rotation's [`EulerTrig`], keyed by each angle's
+/// bit pattern. Derived data, not game state: two caches always compare
+/// equal, and a fresh or stale cache only costs a recomputation.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EulerTrigCache {
+    /// The angles' bit patterns; `None` until first use.
+    angles: Option<[u32; 3]>,
+    trig: EulerTrig,
+}
+
+impl PartialEq for EulerTrigCache {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl EulerTrigCache {
+    /// The sines and cosines of `rotation`, recomputing changed axes only.
+    #[inline]
+    pub fn get(&mut self, rotation: &Vec3) -> EulerTrig {
+        let bits = [
+            rotation.x.to_bits(),
+            rotation.y.to_bits(),
+            rotation.z.to_bits(),
+        ];
+        let known = self.angles.unwrap_or([!bits[0], !bits[1], !bits[2]]);
+        for axis in 0..3 {
+            if known[axis] != bits[axis] {
+                let angle = f32::from_bits(bits[axis]);
+                self.trig.sin[axis] = sinf(angle);
+                self.trig.cos[axis] = cosf(angle);
+            }
+        }
+        self.angles = Some(bits);
+        self.trig
+    }
+}
+
+/// The body of `HSD_MtxSRT` after its six `sinf`/`cosf` calls.
+#[inline(always)]
+fn srt_from_trig(m: &mut Mtx, vec1: &Vec3, trig: &EulerTrig, vec3: &Vec3, vec4: Option<&Vec3>) {
+    let [sin_x, sin_y, sin_z] = trig.sin;
+    let [cos_x, cos_y, cos_z] = trig.cos;
 
     let mut vec1x = vec1.x;
     let mut vec1x_1 = vec1x;
@@ -964,6 +1030,40 @@ mod tests {
             for (j, (x, y)) in ra.iter().zip(rb.iter()).enumerate() {
                 assert!(approx(*x, *y, tol), "[{i}][{j}]: {x} vs {y}\n{a:?}\n{b:?}");
             }
+        }
+    }
+
+    #[test]
+    fn cached_srt_matches_uncached_bit_for_bit() {
+        let mut cache = EulerTrigCache::default();
+        let scale = Vec3::new(1.0, 0.5, 2.0);
+        let translate = Vec3::new(3.0, -4.0, 5.0);
+        let parent = Vec3::new(0.75, 1.5, 1.25);
+        let rotations = [
+            (0.0, 0.0, 0.0),
+            (-0.0, 0.0, -0.0),
+            (1.2, -0.3, 2.9),
+            (1.2, -0.3, 2.9),
+            (1.2, 0.7, 2.9),
+            (f32::NAN, 1e30, -3.5),
+            (-1.5707964, 3.1415927, 0.000_1),
+        ];
+        for (k, &(x, y, z)) in rotations.iter().enumerate() {
+            let rotation = Vec3::new(x, y, z);
+            let parent_scale = (k % 2 == 1).then_some(&parent);
+            let mut want = Mtx::ZERO;
+            let mut got = Mtx::ZERO;
+            hsd_mtx_srt(&mut want, &scale, &rotation, &translate, parent_scale);
+            hsd_mtx_srt_cached(
+                &mut got,
+                &scale,
+                &rotation,
+                &translate,
+                parent_scale,
+                &mut cache,
+            );
+            let bits = |m: &Mtx| m.0.map(|row| row.map(f32::to_bits));
+            assert_eq!(bits(&got), bits(&want), "rotation {k}");
         }
     }
 
