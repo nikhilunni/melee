@@ -46,11 +46,13 @@ pub fn transfer(
     if src.core.held_item.is_some() {
         unimplemented!("ftCommon_8007EFC8: transforming with a held item (ftcommon.c:1360-1365)");
     }
-    // Player_SwapTransformedStates and the x221F_b4 swap belong to the
-    // scene (which fighter is the player's second Fighter_Create).
+    // ftcommon.c:1249-1252: the forms swap x221F_b4, so the one in play is
+    // the player's own fighter (Player_SwapTransformedStates follows it).
     // Fighter_UnkInitReset_80067C98 reads the Player's coordinates, facing
     // and damage, which mirror the form in play.
+    let dst_secondary = dst.core.player.secondary;
     dst.core.player = src.core.player.clone();
+    src.core.player.secondary = dst_secondary;
     dst.core.player.position = src.core.player_position;
     dst.core.player.facing = src.core.player_facing;
     dst.core.player.damage = src.core.physics.percent;

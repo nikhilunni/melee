@@ -54,14 +54,6 @@ pub(super) fn perform(state: &mut InitialState, index: usize) -> Result<bool> {
                 &mut state.rng,
             ))?;
     }
-    // Player_SwapTransformedStates.
-    let player = state
-        .fighters
-        .iter()
-        .filter(|f| !f.0.player.secondary)
-        .position(|f| f.0.player.id == slot)
-        .expect("the player's own fighter");
-    state.transformed[player] = !state.transformed[player];
     Ok(true)
 }
 

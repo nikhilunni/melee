@@ -156,4 +156,4 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 /// PlCo ftPartsTable[FTKIND_ZELDA]: semantic parts.
 const PART_COUNT: u32 = 54;
 /// ftData.x1C part-animation groups.
-const PART_ANIMATION_COUNT: usize = 2;
+const PART_ANIMATION_COUNT: usize = 3;

@@ -52,7 +52,6 @@ pub mod shield;
 mod shield_break;
 mod sleep;
 pub mod smash;
-pub mod transform;
 mod snapshot;
 mod spawn;
 pub mod squat;
@@ -61,6 +60,7 @@ pub mod state;
 pub mod stop_ceil;
 pub mod stop_wall;
 pub mod teeter;
+pub mod transform;
 pub mod turn;
 pub mod turn_run;
 pub mod walk;
@@ -198,6 +198,17 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// bomb, it_802B5478).
     const OWNER_BLAST: fn(&mut Fighter, &melee_it::OwnerBlast, &assets::FighterAssets) =
         character::unsupported_owner_blast;
+    /// The on_accessory of an article whose kind leaves it to its owner
+    /// (melee_it::ItemLogic::OWNER_ACCESSORY), at item link 9: the owner's
+    /// work on it, returning the article's new motion state if it changes.
+    const ARTICLE_ACCESSORY: fn(
+        &mut Fighter,
+        &assets::FighterAssets,
+        &mut melee_mp::CollMap,
+    ) -> Option<u16> = character::no_article_accessory;
+    /// The rest of an article's post-hitlag callback
+    /// (`effect_state.article_hitlag`), after the article thaws.
+    const ARTICLE_HITLAG_END: fn(&mut Fighter) = character::no_article_hitlag_end;
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
@@ -234,6 +245,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             motion: fighter.motion_state.action.0,
             articles_fired: 0,
             charge: None,
+            holds_needles: false,
         }
     }
 
@@ -788,6 +800,18 @@ impl Fighter {
     /// An owned article's blast reaching this owner (its accessory).
     pub fn owner_blast(&mut self, blast: &melee_it::OwnerBlast, assets: &assets::FighterAssets) {
         (self.character.table().owner_blast)(self, blast, assets)
+    }
+    /// An owner-driven article's on_accessory (`ARTICLE_ACCESSORY`).
+    pub fn article_accessory(
+        &mut self,
+        assets: &assets::FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Option<u16> {
+        (self.character.table().article_accessory)(self, assets, map)
+    }
+    /// The installed article post-hitlag callback's own work.
+    pub fn article_hitlag_end(&mut self) {
+        (self.character.table().article_hitlag_end)(self)
     }
     pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         (self.character.table().item_owner)(self, assets)

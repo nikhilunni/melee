@@ -43,6 +43,9 @@ melee_it::item_kinds! {
         SamusBomb: it_samus::SamusBomb,
         SamusGBeam: it_samus::SamusGrapple,
         SeakVanish: it_seak::SeakVanish,
+        SeakNeedleThrow: it_seak::SeakNeedleThrow,
+        SeakNeedleHeld: it_seak::SeakNeedleHeld,
+        SeakChain: it_seak::SeakChain,
     }
 }
 
@@ -479,6 +482,39 @@ impl Resources {
             )?;
             kinds.push((ItemKind::SeakVanish, smoke));
             visual_archives.push((ItemKind::SeakVanish, std::sync::Arc::clone(&a)));
+            // [0]: a thrown needle; [1]: the bundle in her hand.
+            let mut thrown = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_seak::needle::THROWN_ARTICLE_INDEX,
+                &it_seak::needle::THROWN_ARTICLE_STATES,
+                it_seak::needle::THROWN_SPECIAL_ATTRIBUTES,
+            )?;
+            // The needle's hitbox rides its model's child joint.
+            thrown
+                .read_pose(&a)
+                .map_err(|e| anyhow::anyhow!("needle pose: {e}"))?;
+            kinds.push((ItemKind::SeakNeedleThrow, thrown));
+            visual_archives.push((ItemKind::SeakNeedleThrow, std::sync::Arc::clone(&a)));
+            let held = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_seak::needle::HELD_ARTICLE_INDEX,
+                &it_seak::needle::HELD_ARTICLE_STATES,
+                0,
+            )?;
+            kinds.push((ItemKind::SeakNeedleHeld, held));
+            visual_archives.push((ItemKind::SeakNeedleHeld, std::sync::Arc::clone(&a)));
+            // [3]: the chain's handle (its links are Sheik's).
+            let chain = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_seak::chain::ARTICLE_INDEX,
+                &it_seak::chain::ARTICLE_STATES,
+                0,
+            )?;
+            kinds.push((ItemKind::SeakChain, chain));
+            visual_archives.push((ItemKind::SeakChain, std::sync::Arc::clone(&a)));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -878,7 +914,8 @@ pub fn request(
             pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, &cell);
             *rng = cell.get();
             let contact = pool.stage_contact(id, map);
-            pool.collide::<SceneItems>(id, None, contact, map, bounds, assets);
+            pool.collide::<SceneItems>(id, None, contact, map, bounds, assets, Some(&cell));
+            *rng = cell.get();
             if let Some(item) = pool.get_mut(id) {
                 item.blast_zone_checked = true;
             }

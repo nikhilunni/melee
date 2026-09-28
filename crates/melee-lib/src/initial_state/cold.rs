@@ -128,7 +128,6 @@ impl InitialState {
             stage,
             particles,
             stage_animations,
-            transformed: [false; 2],
             fighters,
             rng,
             pending_music,

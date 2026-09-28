@@ -681,8 +681,12 @@ name = "ft-seak"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
  "hsd-archive",
  "hsd-types",
+ "it-seak",
+ "melee-cmd",
+ "melee-coll",
  "melee-ef",
  "melee-ft",
  "melee-it",
@@ -1040,6 +1044,7 @@ dependencies = [
  "gekko-math",
  "hsd-types",
  "melee-it",
+ "melee-lb",
  "melee-types",
 ]
 

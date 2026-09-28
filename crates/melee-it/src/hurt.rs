@@ -114,10 +114,32 @@ impl ItemCore {
             .hurtboxes
             .iter()
             .map(|hurtbox| {
-                assert_eq!(
-                    hurtbox.bone, 0,
-                    "it_8027163C: an item hurt capsule on a dynamic bone"
-                );
+                if hurtbox.bone != 0 {
+                    // A capsule on a joint below the root (Sheik's needle):
+                    // lb_8000B1CC through that joint's world matrix.
+                    let pose = assets
+                        .pose
+                        .as_ref()
+                        .expect("it_8027163C: an item hurt capsule on a dynamic bone");
+                    let joint = pose.bone_matrix_turned(
+                        self.article_state,
+                        self.pose_steps,
+                        hurtbox.bone as usize,
+                        self.root_srt(),
+                        self.child_rotation_x.map(|x| (crate::engine::CHILD_JOINT, x)),
+                    );
+                    let through = |offset: Vec3| {
+                        let mut out = Vec3::ZERO;
+                        hsd_anim::mtx::mtx_mult_vec(&joint, &offset, &mut out);
+                        out
+                    };
+                    return HurtCapsule {
+                        start: through(hurtbox.offsets[0]),
+                        end: through(hurtbox.offsets[1]),
+                        radius: hurtbox.radius,
+                        matrix: joint,
+                    };
+                }
                 HurtCapsule {
                     start: place(hurtbox.offsets[0]),
                     end: place(hurtbox.offsets[1]),
@@ -171,7 +193,12 @@ impl ItemCore {
                 velocity_x,
             } => (
                 owner,
-                hit_direction(self.position.x, position.x, velocity_x, constants.still_speed),
+                hit_direction(
+                    self.position.x,
+                    position.x,
+                    velocity_x,
+                    constants.still_speed,
+                ),
             ),
         };
         self.hit_by = hit_by;

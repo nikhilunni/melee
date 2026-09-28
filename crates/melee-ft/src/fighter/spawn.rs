@@ -1288,6 +1288,11 @@ impl FighterCore {
         self.commands.stale_multiplier =
             move_id.map(|_| self.combat.stale.multiplier(&assets.stale_weights));
         if !change.preserve.hit_status {
+            // fighter.c:966-969: a whole-body status returns to normal
+            // through ftColl_8007B62C(gobj, 0), colour animation included.
+            if self.commands.hurt_status != melee_types::combat::HurtStatus::Normal {
+                self.set_body_hurt_status(melee_types::combat::HurtStatus::Normal);
+            }
             self.commands.hurt_status = melee_types::combat::HurtStatus::Normal;
             self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
         }

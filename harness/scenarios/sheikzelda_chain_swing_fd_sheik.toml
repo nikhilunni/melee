@@ -1,0 +1,33 @@
+# SHEIKZELDA directed witness: Sheik's Chain swung (side-B at 120,
+# B held to 220) with the stick flicked around; released at 220.
+name = "sheikzelda_chain_swing_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 320
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 166, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 172, port = 0, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 184, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 512, stickX = 127, stickY = 127 } },
+  { frame = 196, port = 0, buttons = {  }, raw = { button = 512, stickX = -127, stickY = -127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 220, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

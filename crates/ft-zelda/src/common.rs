@@ -86,20 +86,6 @@ pub fn grounded(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
     ) == ground::WaitGroundResult::Supported
 }
 
-/// ft_800827A0 (800827A0): ground collision that stops at the floor's
-/// edge; false off the floor.
-pub fn stays_on_edge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
-    let c = &mut f.core;
-    ground::map_escape(
-        &mut c.physics,
-        &mut c.collision,
-        p.map,
-        &mut c.skeleton,
-        c.animation.root,
-        c.input.current.stick.x,
-    ) == ground::WaitGroundResult::Supported
-}
-
 /// ft_80081D0C (80081D0C): ordinary airborne collision; true on landing.
 pub fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
     let c = &mut f.core;

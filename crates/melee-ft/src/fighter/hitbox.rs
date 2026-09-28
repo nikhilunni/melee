@@ -15,7 +15,9 @@ pub fn update(
         let inverse = 1.0 / scale;
         offset = Vec3::new(offset.x * inverse, offset.y * inverse, offset.z * inverse);
     }
+    // lb_8000B1CC with a NULL jobj returns the offset itself.
     let position = match grafted {
+        _ if hit.world => offset,
         Some(grafted) if grafted.part == hit.descriptor.bone => {
             // lb_8000B1CC on the article's model: only its translation is
             // kept, which a zero offset reads alone.

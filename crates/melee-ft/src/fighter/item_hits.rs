@@ -12,11 +12,13 @@ use melee_types::{fixed::FixedVec, GroundOrAir, HitElement};
 
 impl Fighter {
     /// it_802703E8 for this fighter: each hitbox in ID order tests the item's
-    /// hurt capsules in order and the first contact lands.
+    /// hurt capsules in order and the first contact lands. `owner_spawn` is
+    /// the spawn number of the fighter owning the item, if any.
     pub fn strike_item(
         &mut self,
         item: &mut ItemCore,
         capsules: &HurtCapsules,
+        owner_spawn: Option<u32>,
     ) -> FixedVec<ItemHit, 4> {
         let mut hits = FixedVec::default();
         if capsules.is_empty() {
@@ -26,12 +28,15 @@ impl Fighter {
         if item.owner == Some(self.player.id) && !item.hurt_by_owner {
             return hits;
         }
-        // x1064_thrownHitbox.owner: a thrown fighter's hits count as its
-        // thrower's; only unowned items are supported here.
-        assert!(
-            self.commands.thrown_by.is_none() || item.owner.is_none(),
-            "it_802703E8: a thrown fighter against an owned item"
-        );
+        // itcoll.c:419-424: a fighter thrown by the item's owner hits it only
+        // once the owner let it go (xDCE b0). The team check (itcoll.c:425-
+        // 433) needs team mode.
+        if self.commands.thrown_by.is_some()
+            && self.commands.thrown_by == owner_spawn
+            && !item.hurt_by_owner
+        {
+            return hits;
+        }
         let victim = item.hitbox_victim();
         for id in 0..self.commands.hitboxes.len() {
             let Some(hit) = &self.commands.hitboxes[id] else {

@@ -635,8 +635,7 @@ impl Effects {
                 let mut spawn = SpawnRequest::new(bank_id, kind, 0);
                 spawn.joint = Some((joint_id, matrix));
                 self.events.spawn(&spawn, false, false);
-                let character =
-                    resources::character_bank(&self.character_banks, bank_id.into())?;
+                let character = resources::character_bank(&self.character_banks, bank_id.into())?;
                 spawn_particle::<T>(particles, character, spawn, rng, &mut self.draws)?;
                 if id == 0x4BF {
                     let mut spawn = SpawnRequest::new(0, 0x5F, 0);
@@ -652,11 +651,24 @@ impl Effects {
                 self.spawn_jump_thruster::<T>(player, (bone, matrix), fighter, bank, particles, rng)?;
                 continue;
             }
-            if let EffectRequest::Attached { id: 0x4C0, bone } = request {
-                // efAsync kind 0 -> efSync_Spawn 0x4C0 (efsync.c:115-117):
-                // efLib_Create_Attach(0x1B58) on the live joint, no scale
-                // inheritance; the fighter owns it for efLib_PauseAll.
-                let mut effect = self.acquire(0x1B58, particles);
+            if let EffectRequest::Attached {
+                id: id @ (0x4C0 | 0x4FE | 0x500),
+                bone,
+            } = request
+            {
+                // efAsync kind 0 -> efSync_Spawn 0x4C0 (efsync.c:115-117) or
+                // 0x4FE (efsync.c:497-499): efLib_Create_Attach(0x1B58 /
+                // 0x426C) on the live joint, no scale inheritance; the
+                // fighter owns it for efLib_PauseAll. 0x500 (efsync.c:500-503)
+                // is efLib_Create_Attach_Scale(0x426D) on parts[1] whatever
+                // joint the script named.
+                let (model, bone, scaled) = match id {
+                    0x4C0 => (0x1B58, bone, false),
+                    0x4FE => (0x426C, bone, false),
+                    _ => (0x426D, 1, true),
+                };
+                let resolved_matrix = if scaled { None } else { resolved_matrix };
+                let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
                 effect.owner = Some(ModelOwner::Fighter(player));
@@ -664,6 +676,13 @@ impl Effects {
                 effect.attachment = Some(player);
                 effect.attachment_bone = Some(bone);
                 effect.scale_attachment = false;
+                if scaled {
+                    // efLib_Create_Attach_Scale: the fighter root supplies uniform scale.
+                    let mut scale = fighter.effect_scale();
+                    scale.x = scale.y;
+                    scale.z = scale.y;
+                    effect.tree.set_scale(effect.root, &scale);
+                }
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
                 effect.tree.set_translate(
                     effect.root,

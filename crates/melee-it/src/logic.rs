@@ -25,6 +25,10 @@ pub struct ItemCollisionContext<'a> {
     pub map: &'a mut melee_mp::CollMap,
     pub assets: &'a ItemAssets,
     pub bounds: &'a crate::ItemBounds,
+    /// HSD_Randi for callbacks that draw (Sheik's needles meeting a floor).
+    pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
+    /// it_804D6D28 +4C: it_80275158's half-life scale.
+    pub half_life_scale: f32,
 }
 #[derive(Clone, Copy)]
 pub struct ItemEventContext<'a> {
@@ -39,6 +43,8 @@ pub struct ItemEventContext<'a> {
     pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
     /// it_804D6D28 +58..+60, for itColl_BounceOffVictim.
     pub victim_bounce: crate::desc::VictimBounce,
+    /// it_804D6D28 +4C: it_80275158's half-life scale.
+    pub half_life_scale: f32,
 }
 impl<'a> ItemEventContext<'a> {
     pub fn new(assets: &'a ItemAssets, common: &crate::desc::ItemCommonData) -> Self {
@@ -50,6 +56,7 @@ impl<'a> ItemEventContext<'a> {
             launch: common.launch,
             rng: None,
             victim_bounce: common.victim_bounce,
+            half_life_scale: common.half_life_scale,
         }
     }
 }
@@ -191,6 +198,10 @@ pub trait ItemLogic {
     fn notifies_owner(_item: &ItemCore) -> bool {
         true
     }
+    /// The kind's on_accessory (Item_80269A9C, item link 9) is its owner's
+    /// work: the scene runs the owner's ARTICLE_ACCESSORY hook in its place
+    /// (Sheik's chain, whose links are the owner's).
+    const OWNER_ACCESSORY: bool = false;
     /// A linked item's request arrived; true destroys the receiver.
     fn link_received(
         _item: &mut ItemCore,
@@ -233,6 +244,7 @@ pub trait ItemLogic {
         effect_joint_matrix: Self::effect_joint_matrix,
         notifies_owner: Self::notifies_owner,
         link_received: Self::link_received,
+        owner_accessory: Self::OWNER_ACCESSORY,
     };
 }
 #[derive(Clone, Copy)]
@@ -288,6 +300,7 @@ pub struct ItemLogicRow {
     pub effect_joint_matrix: fn(&ItemCore, &ItemAssets, hsd_types::Mtx) -> hsd_types::Mtx,
     pub notifies_owner: fn(&ItemCore) -> bool,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
+    pub owner_accessory: bool,
 }
 pub trait ItemDispatch {
     fn logic(kind: ItemKind) -> &'static ItemLogicRow;

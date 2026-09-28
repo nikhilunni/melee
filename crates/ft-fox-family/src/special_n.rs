@@ -337,6 +337,7 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) {
 pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
     let action = f.motion_state.action.0;
     melee_it::ItemOwner {
+        holds_needles: false,
         illusion: None,
         position: f.physics.position,
         facing: f.physics.facing,

@@ -234,9 +234,7 @@ impl FighterCore {
             MotionData::Squat(squat) => squat.platform_drop_timer,
             MotionData::Turn(turn) => turn.facing_after,
             // mv.co.walk.msid: ftCo_Walk_Enter passes the base walk state.
-            MotionData::Walk(_) => {
-                f32::from_bits(melee_types::CommonMotionState::WalkSlow as u32)
-            }
+            MotionData::Walk(_) => f32::from_bits(melee_types::CommonMotionState::WalkSlow as u32),
             MotionData::Dash(dash) => f32::from_bits(u32::from(dash.early_interrupts)),
             MotionData::Run(run) => run.slippery_animation_velocity,
             MotionData::RunBrake(brake) => brake.remaining_frames,

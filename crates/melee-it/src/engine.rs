@@ -117,6 +117,9 @@ pub enum ItemEvent {
     },
 }
 
+/// The model root's first child in depth-first order, the joint
+/// `ItemCore::child_rotation_x` turns.
+pub const CHILD_JOINT: usize = 1;
 /// Item_StateChangeFlags (it/forward.h) that Item_80268E5C consults.
 pub mod state_change {
     pub const ANIM_UPDATE: u32 = 1 << 1;
@@ -130,6 +133,7 @@ pub mod state_change {
 
 #[derive(Clone, Debug)]
 pub enum ItemScratch {
+    Needle(NeedleState),
     Afterimage(AfterimageState),
     Ray(RayState),
     Held(HeldState),
@@ -185,6 +189,29 @@ pub struct MissileState {
     pub launch_count: i32,
     /// x8: the homing turn, the model child's X rotation.
     pub turn: f32,
+}
+/// Item.xDD4_itemVar.seakneedlethrown (itseakneedlethrown.c): a thrown or
+/// dropped needle of Sheik's.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct NeedleState {
+    /// xDD4: the spin added to the needle's model each frame after a bounce
+    /// or a drop.
+    pub spin: f32,
+    /// xDD8: the bounce's or drop's horizontal velocity.
+    pub drift: f32,
+    /// xDDC: its fall's terminal velocity.
+    pub terminal_velocity: f32,
+    /// xDE0: its gravity.
+    pub gravity: f32,
+    /// xDE4: the position before this frame's move, the ray's start.
+    pub previous_position: Vec3,
+    /// xDF0: the pitch a stuck needle keeps.
+    pub pitch: f32,
+    /// xDF4: the line it stuck in (-1 before one).
+    pub line: i32,
+    /// xDF8 / xDFC: that line's angle now and the frame before.
+    pub line_angle: f32,
+    pub previous_line_angle: f32,
 }
 /// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
 /// Pikachu's Thunder chain; the partner is the next bolt (x34).
@@ -416,6 +443,10 @@ pub struct ItemCore {
     /// Item.x3C: the size of the last hitbox a script command made, before
     /// it_80275594 divides the capsule by the scale.
     pub hitbox_size: f32,
+    /// HSD_JObjSetRotationX / AddRotationX on the model root's first child
+    /// (depth-first joint 1), for kinds whose code turns that joint (Sheik's
+    /// needles); None leaves the joint to its animation.
+    pub child_rotation_x: Option<f32>,
     /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
     /// nor leaves the blast zones.
     pub held: bool,
@@ -743,7 +774,13 @@ impl ItemCore {
                 .pose
                 .as_ref()
                 .expect("item non-root hitbox bone without a sampled pose");
-            pose.bone_matrix(state, steps, hit.descriptor.bone, root)
+            pose.bone_matrix_turned(
+                state,
+                steps,
+                hit.descriptor.bone,
+                root,
+                self.child_rotation_x.map(|x| (CHILD_JOINT, x)),
+            )
         };
         let mut position = Vec3::ZERO;
         hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
@@ -913,6 +950,14 @@ impl ItemCore {
                 }
                 // it_8027990C: controller rumble only.
                 Command::Rumble { .. } => {}
+                // it_8027978C: sub-operations 0..2 play the sound; the
+                // others stop the item's sounds, which nothing simulated
+                // hears.
+                Command::FootstepSound { behavior, id, .. } => {
+                    if *behavior <= 2 {
+                        self.sound_requests.push(*id);
+                    }
+                }
                 _ => unimplemented!("item command {command:?}"),
             }
         }
@@ -1078,6 +1123,7 @@ impl ItemPool {
             grab_offset: assets.grab_offset,
             grab_range: assets.grab_range,
             hitbox_size: 0.0,
+            child_rotation_x: None,
             root_translation: if spawn.initial_collision {
                 spawn.previous_position
             } else {
@@ -1172,22 +1218,31 @@ impl ItemPool {
                 if item.hitlag_enabled {
                     item.hitlag_damage = item.pending_shield_damage;
                 }
-                item.destroyed |=
-                    (D::logic(item.kind).hit_shield)(item, &ItemEventContext::new(assets, &common));
+                let context = ItemEventContext {
+                    rng: Some(rng),
+                    ..ItemEventContext::new(assets, &common)
+                };
+                item.destroyed |= (D::logic(item.kind).hit_shield)(item, &context);
             }
         } else if item.pending_clank_damage != 0 {
             // OnClankThink: the clank damage becomes the hitlag damage.
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_clank_damage;
             }
-            item.destroyed |=
-                (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets, &common));
+            let context = ItemEventContext {
+                rng: Some(rng),
+                ..ItemEventContext::new(assets, &common)
+            };
+            item.destroyed |= (D::logic(item.kind).clanked)(item, &context);
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_damage_dealt;
             }
-            item.destroyed |=
-                (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::new(assets, &common));
+            let context = ItemEventContext {
+                rng: Some(rng),
+                ..ItemEventContext::new(assets, &common)
+            };
+            item.destroyed |= (D::logic(item.kind).damage_dealt)(item, &context);
         } else if let Some(reflection) = item.pending_reflection {
             item.reflect::<D>(reflection, reflected_stale, cap, assets, &common);
         }
@@ -1377,7 +1432,9 @@ impl ItemPool {
         map: &mut melee_mp::CollMap,
         bounds: &ItemBounds,
         assets: &ItemAssets,
+        rng: Option<&core::cell::Cell<gekko_math::HsdRng>>,
     ) {
+        let half_life_scale = self.common.half_life_scale;
         let Some(item) = self.get_mut(id) else {
             return;
         };
@@ -1390,6 +1447,8 @@ impl ItemPool {
                 map,
                 assets,
                 bounds,
+                rng,
+                half_life_scale,
             },
         );
         if alive && item.destroyed {

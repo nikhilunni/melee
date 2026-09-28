@@ -312,8 +312,11 @@ impl ItemAssets {
             state_array,
             article_state_count as usize,
         )?;
-        let attachment_translation =
-            attachment_translation(&visual.model, r.u32(model_desc + 4)?, visual.attachment_bone);
+        let attachment_translation = attachment_translation(
+            &visual.model,
+            r.u32(model_desc + 4)?,
+            visual.attachment_bone,
+        );
         let hurtbones = r.u32(article + 8)?;
         let hurtboxes = if hurtbones == 0 {
             Vec::new()
@@ -486,7 +489,10 @@ fn attachment_translation(
     } else {
         let mut joint = model;
         for _ in 0..index {
-            joint = joint.child.as_deref().expect("it_80272CC0: attachment child");
+            joint = joint
+                .child
+                .as_deref()
+                .expect("it_80272CC0: attachment child");
         }
         joint
     };
@@ -624,6 +630,34 @@ fn read_block(
                 radius: 0.003906 * (word & 0x007f_ffff) as f32,
             },
             14 => Command::ClearHitbox((word & 0x03ff_ffff) as usize),
+            // it_8027978C: a sound. Sub-operations 0..2 (Item_8026AE84 /
+            // 8026AF0C / 8026AFA0) take the id in the next word and pan and
+            // volume in the low bytes of the one after; 10 and 11 stop the
+            // item's sounds and skip one word; any other skips none.
+            16 => {
+                let sub = ((word >> 18) & 0xFF) as u8;
+                let (id, pan, volume) = match sub {
+                    0..=2 => {
+                        let id = r.u32(offset + 4)?;
+                        let levels = r.u32(offset + 8)?;
+                        offset += 8;
+                        (id, (levels >> 8) as u8, levels as u8)
+                    }
+                    10 | 11 => {
+                        offset += 4;
+                        (0, 0, 0)
+                    }
+                    _ => (0, 0, 0),
+                };
+                Command::FootstepSound {
+                    behavior: sub,
+                    id,
+                    volume,
+                    pan,
+                    terrain: false,
+                    alt_foot: false,
+                }
+            }
             15 => Command::ClearHitboxes,
             17..=19 => Command::SetVariable {
                 index: (op - 17) as usize,
@@ -702,8 +736,10 @@ fn decode_hitbox(w: [u32; 6]) -> HitboxDescriptor {
         base_knockback: (w[4] >> 23) as u16,
         element: melee_types::HitElement::try_from(((w[4] >> 18) & 31) as i32)
             .expect("item element"),
-        hit_ground: true,
-        hit_air: true,
+        // it_create_hitbox_4: x40_b3 (bit 1) hits grounded fighters, x40_b2
+        // (bit 0) airborne ones (ftColl_8007925C).
+        hit_ground: w[4] & (1 << 1) != 0,
+        hit_air: w[4] & 1 != 0,
         ignore_scale: false,
         clank: w[4] & (1 << 17) != 0,
         rebound: false,

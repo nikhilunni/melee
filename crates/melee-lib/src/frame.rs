@@ -712,6 +712,7 @@ impl Runtime {
             }
             5 => {
                 let contact = state.items.stage_contact(id, &mut state.map);
+                let rng = std::cell::Cell::new(state.rng);
                 state.items.collide::<SceneItems>(
                     id,
                     owner.as_ref(),
@@ -719,12 +720,38 @@ impl Runtime {
                     &mut state.map,
                     &item_bounds(&state.assets),
                     state.assets.items.get(kind),
+                    Some(&rng),
                 );
+                state.rng = rng.get();
             }
             9 => {
                 let item = state.items.get_mut(id).unwrap();
                 // Item_80269A9C: hitlag skips the accessory callback.
                 let in_hitlag = item.in_hitlag;
+                let logic = <SceneItems as melee_it::ItemDispatch>::logic(kind);
+                if logic.owner_accessory && !in_hitlag && !item.frozen {
+                    // The kind's on_accessory is its owner's work.
+                    let index = crate::scene_items::owner_index(
+                        &state.fighters,
+                        item.owner,
+                        item.owner_secondary,
+                    );
+                    if let Some(index) = index {
+                        let motion = crate::scene_fighter::with_fighter!(
+                            &mut state.fighters[index],
+                            |f| f.article_accessory(&state.assets.fighters[index], &mut state.map)
+                        );
+                        if let Some(motion) = motion {
+                            let item = state.items.get_mut(id).unwrap();
+                            (logic.control)(
+                                item,
+                                melee_it::ItemControl::Motion(motion),
+                                state.assets.items.get(kind),
+                            );
+                        }
+                    }
+                }
+                let item = state.items.get_mut(id).unwrap();
                 let blast = if in_hitlag {
                     None
                 } else {
@@ -801,10 +828,13 @@ impl Runtime {
         let mut log = melee_it::hurt::ItemHitLog::default();
         // it_802703E8 returns at once without hurt capsules; it_802706D0
         // still meets other items' hitboxes with this item's.
+        let owner_spawn =
+            crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary)
+                .map(|index| state.fighters[index].spawn_number);
         if !capsules.is_empty() {
             for fighter in state.fighters.iter_mut() {
                 let hits = crate::scene_fighter::with_fighter!(fighter, |f| {
-                    f.strike_item(item, &capsules)
+                    f.strike_item(item, &capsules, owner_spawn)
                 });
                 for hit in hits {
                     log.push(hit);
@@ -2492,6 +2522,9 @@ fn dispatch_fighter(
             kind,
             control: melee_it::ItemControl::OwnerHitlag(frozen),
         });
+        if !frozen {
+            f.article_hitlag_end();
+        }
     }
     // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
     // operands; queue lifetime is owned by the scene's ground controller.

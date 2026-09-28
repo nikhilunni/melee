@@ -152,6 +152,7 @@ impl CharacterCallbacks for Samus {
                     crate::special_n::full_charge(f),
                 )
             }),
+            holds_needles: false,
         }
     }
     /// it_2725_Logic108_Destroyed: a shot that never left the hand lets

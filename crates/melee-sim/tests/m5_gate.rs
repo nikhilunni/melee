@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 323] = [
+const MATRIX_WITNESSES: [(&str, usize); 331] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1382,6 +1382,14 @@ const MATRIX_WITNESSES: [(&str, usize); 323] = [
     ("sheikzelda_transform_air_fd_sheik", 360),
     ("sheikzelda_transform_twice_fd_zelda", 480),
     ("sheikzelda_vanish_fd_sheik", 300),
+    ("sheikzelda_needles_fd_sheik", 300),
+    ("sheikzelda_needles_tap_fd_sheik", 240),
+    ("sheikzelda_needles_air_fd_sheik", 300),
+    ("sheikzelda_chain_fd_sheik", 300),
+    ("sheikzelda_chain_hit_fd_sheik", 380),
+    ("sheikzelda_chain_swing_fd_sheik", 320),
+    ("sheikzelda_chain_air_fd_sheik", 300),
+    ("sheikzelda_chain_tap_fd_sheik", 240),
 ];
 
 #[test]
@@ -2443,7 +2451,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 335] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 340] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2984,6 +2992,15 @@ const CORPUS_V3_MATCHES: [(&str, usize); 335] = [
     ("corpus_v3_fd_iceclimbers_fox4_ec3145eb3_p2", 98),
     ("corpus_v3_fd_iceclimbers_fox4_ecdf8887e_p0", 118),
     ("corpus_v3_fd_iceclimbers_fox4_edb2b114a_p2", 92),
+    // Sheik vs Fox: a thrown fighter against an owned item (it_802703E8),
+    // Vanish's landing flash (efAsync 0x3FA), the smash charge's colour
+    // program (ftColl_8007B62C on a body status), Zelda's up-air particle
+    // 418, and the explorer's clean samples.
+    ("corpus_v3_fd_sheik_fox4_ef89b3e70_p1", 492),
+    ("corpus_v3_fd_sheik_fox4_ee62c6106_p1", 3311),
+    ("corpus_v3_fd_sheik_fox4_e26ea92b1_p2", 1452),
+    ("corpus_v3_fd_sheik_fox4_e1b05b110_p1", 1660),
+    ("corpus_v3_fd_sheik_fox4_e121faf54_p0", 232),
 ];
 
 #[test]

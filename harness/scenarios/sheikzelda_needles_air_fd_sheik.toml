@@ -1,0 +1,26 @@
+# SHEIKZELDA directed witness: Sheik jumps (X at tick 120) and throws needles
+# in the air (B at tick 126), landing.
+name = "sheikzelda_needles_air_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

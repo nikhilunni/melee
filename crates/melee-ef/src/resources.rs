@@ -92,14 +92,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 14] = [
         models: 2,
     },
     // Zelda's and Sheik's shared file (ftData_UnkBytePerCharacter 17):
-    // particles only so far, e.g. the transformation's generators 0x426D /
-    // 0x4271 (efSync 0x4FC / 0x4FD). Its model rows (0x4268.. for efSync
-    // 0x4F4..0x501) are sparse and load when a ported move needs them.
+    // models 0x4268..0x4271 (efSync 0x4F4..0x501; row 7 has none) and
+    // generators such as the transformation's 0x426D / 0x4271 (efSync
+    // 0x4FC / 0x4FD).
     CharacterEffectFile {
         bank: 17,
         file: "EfZdData.dat",
         table: "effZeldaDataTable",
-        models: 0,
+        models: 10,
     },
     // Luigi (efAsync_DatEntries[18]): model 0x4650, the fireball's hand
     // flash (efSync 0x507), and 0x4651, the Cyclone's (efSync 0x509).
@@ -233,7 +233,17 @@ pub(super) fn character(
         },
         _ => anyhow::bail!("{symbol}: particle commands without textures"),
     };
-    let models = (0..file.models)
+    // A row without a model (EF_EffectDesc.model NULL) names no model id;
+    // effZeldaDataTable has one.
+    let row_model = |index: u32| archive.link(table + 8 + index * 20 + 4);
+    let mut rows = Vec::new();
+    for index in 0..file.models {
+        if row_model(index)?.is_some() {
+            rows.push(index);
+        }
+    }
+    let models = rows
+        .into_iter()
         .map(|index| {
             Effect::load_table(
                 archive,

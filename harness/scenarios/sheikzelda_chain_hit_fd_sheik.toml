@@ -1,0 +1,34 @@
+# SHEIKZELDA directed witness: Sheik dashes toward Fox (ticks 120-160),
+# stops, throws the chain (side-B at 205) and holds B to tick 290
+# while the stick swings it into Fox.
+name = "sheikzelda_chain_hit_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 380
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 160, port = 0, buttons = {  }, raw = {  } },
+  { frame = 205, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 209, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 245, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 251, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 257, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 263, port = 0, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 269, port = 0, buttons = {  }, raw = { button = 512, stickX = 127, stickY = 127 } },
+  { frame = 275, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 290, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

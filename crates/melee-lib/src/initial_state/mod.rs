@@ -61,9 +61,6 @@ pub struct InitialState {
     /// Every fighter GObj in fighter-list order (`Setup::roster`); a
     /// player's partner (Nana) follows its main fighter.
     pub(crate) fighters: Vec<SceneFighter>,
-    /// StaticPlayer.transformed[0]: player `p`'s fighter in play is its
-    /// second Fighter_Create (Sheik beside Zelda, or back).
-    pub(crate) transformed: [bool; 2],
     pub(crate) map: melee_mp::CollMap,
     pub(crate) stage: crate::scene_stage::SceneStage,
     pub(crate) particles: ParticleSystem,
@@ -95,23 +92,11 @@ pub struct InitialState {
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
-/// A savestate's StaticPlayer.transformed[0]: the player's own fighter
-/// sleeps (ftCo_MS_Sleep) while its transformation partner plays.
-pub(crate) fn transformed_players(fighters: &[SceneFighter]) -> [bool; 2] {
-    std::array::from_fn(|player| {
-        let index = crate::scene_fighter::player_fighter_index(fighters, player);
-        let own = &fighters[index].0;
-        crate::scene_fighter::transforms(own.kind)
-            && own.motion_state.id == melee_types::CommonMotionState::Sleep
-    })
-}
 impl InitialState {
     /// The fighter-list index of player `player`'s own fighter (x221F_b4
     /// clear), `player` counting players in port order.
     pub(crate) fn player_fighter_index(&self, player: usize) -> usize {
-        let index = crate::scene_fighter::player_fighter_index(&self.fighters, player);
-        // Player_GetEntity: player_entity[transformed[0]].
-        index + usize::from(self.transformed[player])
+        crate::scene_fighter::player_fighter_index(&self.fighters, player)
     }
     /// Player_GetEntity: player `player`'s own fighter.
     pub(crate) fn player_fighter(&self, player: usize) -> &SceneFighter {
@@ -501,7 +486,6 @@ impl InitialState {
             pending_music,
             selected_music: None,
             assets,
-            transformed: transformed_players(&fighters),
             fighters,
             map,
             stage,

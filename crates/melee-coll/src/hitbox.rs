@@ -29,6 +29,9 @@ pub struct HitCapsule {
     pub hits_fighters: bool,
     /// x42_b7: may hit items; as `hits_fighters`.
     pub hits_items: bool,
+    /// jobj NULL (ftColl_8007B8A8): `descriptor.offset` is a world point,
+    /// not an offset on a bone. A spawn command points it at a bone again.
+    pub world: bool,
 }
 /// HitCapsule.victims_2 / x45 (lb/types.h:72,80): twelve slots filled in
 /// order, then overwritten round-robin from `next_overwrite`.
@@ -69,6 +72,7 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
             // ftAction_8007121C (ftaction.c:345-346), on every spawn.
             hit.hits_fighters = true;
             hit.hits_items = true;
+            hit.world = false;
             return;
         }
     }
@@ -83,6 +87,7 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
         phantom_victims,
         hits_fighters: true,
         hits_items: true,
+        world: false,
     });
 }
 /// Copy the first active group member's histories in capsule-table order
@@ -103,6 +108,11 @@ fn group_history(
 }
 
 impl HitCapsule {
+    /// lbColl_80008440 (80008440): both victim histories empty.
+    pub fn clear_victims(&mut self) {
+        self.victims.clear();
+        self.phantom_victims = PhantomVictims::default();
+    }
     /// ftColl_8007AD18 (8007AD18): first position starts a degenerate sweep.
     pub fn update_position(&mut self, position: Vec3) {
         self.previous_position = if self.phase == CapsulePhase::Enabled {

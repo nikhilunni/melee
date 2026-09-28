@@ -21,6 +21,7 @@ const EGG_BREAK_SOUND: u32 = 280088;
 /// body states 2 (intangible) and 0 (normal).
 const INTANGIBLE_FLASH: u8 = 2;
 const NORMAL_BODY_FLASH: u8 = 1;
+const INVINCIBLE_BODY_FLASH: u8 = 3;
 /// ftColl_8007B760: the intangibility flash.
 const INTANGIBILITY_FLASH: u8 = 9;
 
@@ -167,12 +168,16 @@ impl FighterCore {
     /// ftColl_8007B62C (8007B62C): the whole body's hurt status (x1988) and
     /// the colour animation each status installs (1, 3 and 2).
     pub fn set_body_hurt_status(&mut self, status: HurtStatus) {
-        let flash = match status {
-            HurtStatus::Normal => NORMAL_BODY_FLASH,
-            HurtStatus::Invincible => 3,
-            HurtStatus::Intangible => INTANGIBLE_FLASH,
-        };
-        set_body_status(self, status, flash);
+        set_body_status(self, status, body_status_color(status));
+    }
+}
+
+/// ftColl_8007B62C's colour animation for each whole-body status.
+pub(crate) fn body_status_color(status: HurtStatus) -> u8 {
+    match status {
+        HurtStatus::Normal => NORMAL_BODY_FLASH,
+        HurtStatus::Invincible => INVINCIBLE_BODY_FLASH,
+        HurtStatus::Intangible => INTANGIBLE_FLASH,
     }
 }
 

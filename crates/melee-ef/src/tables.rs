@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 24] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 25] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -109,6 +109,14 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 24] = [
         model: 0x18,
         attached: false,
     },
+    // The same efAsync 0x3FA row reached by a landing command (Sheik's
+    // Vanish landing): ftAction_80072E4C -> ftCo_8009F834.
+    ModelSpawn {
+        request: 0x3FA,
+        source: ModelSource::Landing,
+        model: 0x15,
+        attached: false,
+    },
     ModelSpawn {
         request: 0x406,
         source: ModelSource::Graphics,
@@ -193,7 +201,14 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 25] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 26] = [
+    // efsync.c:532-534: efLib_CreateGenerator(0x6A) at the point (Sheik's
+    // needle throw).
+    DustSpawn {
+        request: 0x503,
+        particle: 0x6A,
+        directional: false,
+    },
     // efasync.c:353-355: efLib_CreateGenerator(0x19) at the point (it_80272AC4,
     // an item meeting the floor: Thunder's lead bolt).
     DustSpawn {
@@ -356,7 +371,7 @@ pub(super) static POSITIONAL_MODELS: [(u16, u32); 2] = [
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 8] = [
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 9] = [
     (0x402, 0x59),
     (0x403, 0x5E),
     (0x412, 0x13),
@@ -368,12 +383,15 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 8] = [
     (0x4D4, 0x11E),
     // efsync.c:430-432: the vegetable pull's script effect, hsd_8039EFAC.
     (0x4D1, 0x64),
+    // efsync.c:516-518: hsd_8039EFAC(0, 0, 0x1A6, jobj), a Sheik script's.
+    (0x502, 0x1A6),
 ];
 // eflib.c:761-768: efLib_CreateGenerator_Attach clears PSAPPSRT_UNK_B10
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 31] = [
+// 418: a model effect of Zelda's (her up-air), the default path.
+pub(super) static PARTICLE_KINDS: [i32; 32] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
-    374, 375, 376, 377, 445, 448, 449, 272, 295, 531,
+    374, 375, 376, 377, 445, 448, 449, 272, 295, 531, 418,
 ];

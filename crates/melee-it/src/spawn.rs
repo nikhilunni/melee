@@ -292,6 +292,10 @@ pub struct ItemOwner {
     /// ftSs_SpecialLw_80129100: while the owner holds a charging article
     /// (u.ss.x222C), its charge level and full level (fctiwz of x18).
     pub charge: Option<(i32, i32)>,
+    /// Sheik's held needles (ftSeak_FighterVars x4, read through
+    /// ftSk_SpecialS_80111F70): the needle item in her hand lives while
+    /// she keeps it.
+    pub holds_needles: bool,
 }
 
 /// A fighter an article may lock on to (ftLib_80086368's candidates): its

@@ -21,6 +21,8 @@ pub enum Accessory {
     VanishDisappear,
     /// fn_80113038: Vanish's reappearance puff.
     VanishReappear,
+    /// shootNeedles: a needle on each of the throw's pending frames.
+    ThrowNeedles,
 }
 
 #[derive(Clone, Debug)]
@@ -30,21 +32,46 @@ pub struct Sheik {
     pub model_groups: [i32; 2],
     /// ftSeak_FighterVars +222C: needles charged (0..=6).
     pub needles: i32,
+    /// ftSeak_FighterVars +2230: the needle bundle in her hand (its item
+    /// pointer is set).
+    pub holding_needles: bool,
+    /// take_dmg_cb / death2_cb = ftSk_Init_80110198 (drop the needles,
+    /// destroy the chain), installed by the specials.
+    pub damage_callbacks: bool,
+    /// Needle Storm's motion scratch.
+    pub needle_charge: crate::special_n::NeedleCharge,
     /// Fighter accessory4_cb while a special owns it.
     pub accessory: Accessory,
     /// Vanish's motion scratch.
     pub vanish: crate::special_hi::Vanish,
+    /// The chain: its scratch, Sheik's pointer and the article's links.
+    pub special_side: crate::special_s::SpecialSide,
 }
 impl Sheik {
-    pub fn new(attributes: SeakAttributes) -> Self {
+    pub fn new(attributes: SeakAttributes, special_side: crate::special_s::SpecialSide) -> Self {
         Self {
+            special_side,
             attributes,
             model_groups: MODEL_GROUPS_RESET,
             needles: 0,
+            holding_needles: false,
+            damage_callbacks: false,
+            needle_charge: Default::default(),
             accessory: Accessory::None,
             vanish: Default::default(),
         }
     }
+}
+
+/// ftSk_Init_80110198 (80110198): drop the needles (ftSk_SpecialN_80111FBC),
+/// then the chain (ftSk_SpecialS_CheckAndDestroyChain), while installed.
+fn damage_callback(f: &mut Fighter) {
+    if !f.character.get::<Sheik>().damage_callbacks {
+        return;
+    }
+    crate::special_n::drop_needles(f);
+    // ftSk_SpecialS_CheckAndDestroyChain.
+    crate::special_s::destroy_chain(f);
 }
 
 /// ftSk_Init_OnDeath (80110044): ftParts_80074A4C(gobj, 0, 0) and (1, -1).
@@ -80,14 +107,13 @@ impl CharacterCallbacks for Sheik {
         match slot {
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
-            _ => unimplemented!(
-                "ftData_Special{slot:?}[Seak] (airborne: {airborne}): character special entry"
-            ),
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
         }
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
-    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
         if !f.core.accessory4_armed {
             return;
         }
@@ -97,9 +123,55 @@ impl CharacterCallbacks for Sheik {
             Accessory::TransformArrival => crate::special_lw::sparkle(f, true),
             Accessory::VanishDisappear => crate::special_hi::disappear(f),
             Accessory::VanishReappear => crate::special_hi::reappear(f),
+            Accessory::ThrowNeedles => crate::special_n::throw_needle(f, rng),
             Accessory::None => {}
         }
     }
+    /// ftCommon_8007DB58: take_dmg_cb = ftSk_Init_80110198 while a special
+    /// installed it.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(damage_callback);
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.damage_callbacks = false;
+    }
+    /// The needle bundle reads whether Sheik still holds it
+    /// (ftSk_SpecialS_80111F70).
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            holds_needles: f.character.get::<Sheik>().holding_needles,
+            articles_fired: 0,
+            charge: None,
+        }
+    }
+    /// The chain's links are Sheik's: its on_accessory is her work.
+    const ARTICLE_ACCESSORY: fn(
+        &mut Fighter,
+        &FighterAssets,
+        &mut melee_mp::CollMap,
+    ) -> Option<u16> = crate::special_s::chain_accessory;
+    /// ftSk_SpecialS_ChainSomething's grace after the chain thaws.
+    const ARTICLE_HITLAG_END: fn(&mut Fighter) = crate::special_s::hitlag_end;
+    /// itSeakChain_Logic54_EvtUnk / inlineA0: the chain went without
+    /// Sheik's own removal (she left the chain's motions).
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::SeakChain {
+            crate::special_s::chain_gone(f);
+        }
+    };
+    /// x2222_b2: every chain entry sets it (ftSk_SpecialS_80110F70,
+    /// 80111830, 80111DF8, ...); the ground/air changes keep it (Unk19).
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool =
+        |f| (349..=354).contains(&f.motion_state.action.0);
     /// ftSk_SpecialLw_80114758: Sheik arrives from Zelda's transformation.
     const TRANSFORMATION_ARRIVAL: fn(
         &mut Fighter,
@@ -113,7 +185,10 @@ impl CharacterCallbacks for Sheik {
         &DESCRIPTOR
     }
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
-        Ok(Self::new(read_seak_attributes(data)?))
+        Ok(Self::new(
+            read_seak_attributes(data)?,
+            crate::special_s::SpecialSide::read(data)?,
+        ))
     }
     /// ftSeak_FighterVars +222C..+2237: a saved needle charge, held needle
     /// or chain is not modelled yet.
@@ -133,6 +208,7 @@ impl CharacterCallbacks for Sheik {
     /// ftSk_Init_OnDeath (80110044).
     fn on_reset(&mut self) {
         self.needles = 0;
+        self.holding_needles = false;
         self.model_groups = MODEL_GROUPS_RESET;
     }
 }

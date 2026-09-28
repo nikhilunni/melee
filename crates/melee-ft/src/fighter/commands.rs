@@ -390,7 +390,15 @@ impl CommandState {
                 Command::ParasolAnimation { index, frames } => {
                     self.parasol_animations.push((*index, *frames))
                 }
-                Command::HurtStatus(status) => self.hurt_status = *status,
+                Command::HurtStatus(status) => {
+                    // ftAction_80071A14 -> ftColl_8007B62C: the status
+                    // and its colour animation.
+                    self.hurt_status = *status;
+                    self.color_animations.push(ColorAnimationRequest {
+                        id: super::capture_yoshi::body_status_color(*status),
+                        duration: 0,
+                    });
+                }
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::Graphics(command) => {
                     if let Some(facing) = issuing_facing {
