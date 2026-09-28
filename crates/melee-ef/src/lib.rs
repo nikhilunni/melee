@@ -346,15 +346,17 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::AttachedParameter {
-                id: 0x490,
+                id: id @ (0x490 | 0x50C),
                 bone,
                 parameter,
             } = request
             {
-                // efAlt_Spawn 0x490 (efalt.c:163-170): efLib_Create_Attach
-                // 0xFA2 (no scale), params.z = the angle, and the update
-                // callback efLib_Cb_SetRotYZ_FromParamZ_FighterDir.
-                let mut effect = self.acquire(0xFA2, particles);
+                // efAlt_Spawn 0x490 (efalt.c:163-170) and efSync_Spawn 0x50C
+                // (efsync.c:603-610): efLib_Create_Attach 0xFA2 / 0x4A3A (no
+                // scale), params.z = the angle, and the update callback
+                // efLib_Cb_SetRotYZ_FromParamZ_FighterDir.
+                let model = if id == 0x490 { 0xFA2 } else { 0x4A3A };
+                let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
                 effect.owner = Some(ModelOwner::Fighter(player));
@@ -386,10 +388,20 @@ impl Effects {
                 self.instances.push(effect);
                 continue;
             }
-            if let EffectRequest::SyncAttachedPair { id: 0x48F, bones } = request {
-                // efAlt_Spawn 0x48F (efalt.c:153-161): two
-                // efLib_Create_Attach_Scale_FacingDir models, 0xFA0 then 0xFA1.
-                let mut pair = [0xFA0, 0xFA1].map(|model| {
+            if let EffectRequest::SyncAttachedPair {
+                id: id @ (0x48F | 0x50B),
+                bones,
+            } = request
+            {
+                // efAlt_Spawn 0x48F (efalt.c:153-161) and efSync_Spawn 0x50B
+                // (efsync.c:594-602): two efLib_Create_Attach_Scale_FacingDir
+                // models, 0xFA0 then 0xFA1 / 0x4A38 then 0x4A39.
+                let models = if id == 0x48F {
+                    [0xFA0, 0xFA1]
+                } else {
+                    [0x4A38, 0x4A39]
+                };
+                let mut pair = models.map(|model| {
                     let mut effect = self.acquire(model, particles);
                     effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                     self.next_joint += effect.tree.len();
@@ -464,7 +476,13 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4D6 | 0x4F2..=0x4F3 | 0x511..=0x512),
+                id:
+                    id @ (0x488..=0x48C
+                    | 0x491..=0x493
+                    | 0x4D6
+                    | 0x4F2..=0x4F3
+                    | 0x50D..=0x50F
+                    | 0x511..=0x512),
                 bone,
             } = request
             {
@@ -474,6 +492,10 @@ impl Effects {
                     0x491 => 0xFA4,
                     0x492 => 0xFA3,
                     0x493 => 0xFA5,
+                    // efsync.c:611-640: Gerudo Dragon's start and lunge models.
+                    0x50D => 0x4A3B,
+                    0x50E => 0x4A3C,
+                    0x50F => 0x4A3D,
                     // efsync.c:305-308: efLib_Create_Attach_Scale(0x2AF8).
                     0x4D6 => 0x2AF8,
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
@@ -483,12 +505,20 @@ impl Effects {
                 };
                 // efLib_Create_Attach_Scale, and a root rotation Y from the
                 // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3,
-                // 0x511/0x512).
+                // efSync 0x50E/0x50F, 0x511/0x512).
                 let scaled = matches!(
                     id,
-                    0x488..=0x48A | 0x492..=0x493 | 0x4D6 | 0x4F2..=0x4F3 | 0x511..=0x512
+                    0x488..=0x48A
+                        | 0x492..=0x493
+                        | 0x4D6
+                        | 0x4F2..=0x4F3
+                        | 0x50E..=0x50F
+                        | 0x511..=0x512
                 );
-                let faces = matches!(id, 0x492..=0x493 | 0x4F2..=0x4F3 | 0x511..=0x512);
+                let faces = matches!(
+                    id,
+                    0x492..=0x493 | 0x4F2..=0x4F3 | 0x50E..=0x50F | 0x511..=0x512
+                );
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
@@ -750,6 +780,7 @@ impl Effects {
                 let generator = match element {
                     melee_types::HitElement::Electric => Some(0x3E9),
                     melee_types::HitElement::Fire => Some(0x3EA),
+                    melee_types::HitElement::Dark => Some(0x416),
                     // efSync_Spawn 0x479: efAlt while Mario's bank is loaded,
                     // else efsync.c:67-69's 0x506 (Luigi's bank).
                     melee_types::HitElement::Coin => Some(if self.loaded_banks & (1 << 1) != 0 {
@@ -1464,6 +1495,17 @@ impl Effect {
                                     ..Default::default()
                                 });
                         }
+                        if matches!(hi, 0x4A38..=0x4A3A) {
+                            // efLib_SpawnParticleEffect (8005D174), eflib.c:866-878:
+                            // Ganondorf's punch and kick particles, attached with
+                            // the root's rot.y.
+                            let root = self.tree.get(self.root);
+                            request.application_transform =
+                                Some(hsd_particle::generator::ApplicationTransform {
+                                    rotation: Vec3::new(0.0, root.rotate.y, 0.0),
+                                    ..Default::default()
+                                });
+                        }
                         if hi == 0x127 {
                             // efLib_SpawnParticleEffect (8005D174), eflib.c:891-900:
                             // attached, with the root's rot.y and scale.
@@ -1477,7 +1519,7 @@ impl Effect {
                         }
                         sink.spawn(&request, false, false);
                         let id = spawn_particle::<T>(particles, bank, request, rng, draws)?;
-                        if matches!(hi, 2 | 6 | 0x127 | 306 | 307) {
+                        if matches!(hi, 2 | 6 | 0x127 | 306 | 307 | 0x4A38..=0x4A3A) {
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
                                 sink.flags(self.joint_base + jobj.0, 0x600, 0x800);

@@ -1,0 +1,29 @@
+# GANON: grounded Wizard's Foot after a dash hits Fox; each hit slows the kick
+# (deal_dmg_cb ftCa_SpecialHi_800E400C), then the ending (358).
+# Ganondorf vs Fox on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+# melee-sim search: reached [p0.motion_id == 357; p1.percent > 0; p0.motion_id == 358] at ticks [246, 279, 292].
+name = "ganon_downb_hit"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 392
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 246, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 248, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -18,14 +18,18 @@ use melee_ft::{
 };
 use melee_types::{CommonMotionState, GroundOrAir};
 
-use crate::init::CaptainFalcon;
 use crate::special_hi::{self, CATCH, THROW};
+use crate::CaptainFamily;
 
 /// ftCommon_8007E2D0(fp, 2, ...): Falcon Dive's grab type (x1A68).
 pub const GRAB_TYPE: GrabExclusions = GrabExclusions(2);
 
-fn attributes(f: &Fighter) -> &crate::attributes::FalconDiveAttributes {
-    &f.character.get::<CaptainFalcon>().attributes.falcon_dive
+fn attributes<C: CaptainFamily>(f: &Fighter) -> &crate::attributes::FalconDiveAttributes {
+    &crate::attributes::<C>(f).falcon_dive
+}
+
+fn dive<C: CaptainFamily>(f: &mut Fighter) -> &mut special_hi::FalconDive {
+    &mut crate::family::<C>(f).specials().dive
 }
 
 /// Falcon hangs from the victim (x221B_b7) while the attachment holds.
@@ -77,11 +81,14 @@ pub fn follow_victim(f: &mut Fighter) {
 
 /// ftCa_SpecialHiCatch_Anim: at the end, doCatchAnim: the throw, then the
 /// release (ftCo_800DE2A8, ftCo_800DE7C0) the scene runs on the pair.
-pub fn catch_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn catch_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.commands.variables[0] = 0;
-        let dive = &mut f.character.get_mut::<CaptainFalcon>().falcon_dive;
+        let dive = dive::<C>(f);
         dive.throw_drift = false;
         dive.velocity = hsd_types::Vec2::new(0.0, 0.0);
         // Ft_MF_Unk19 | Ft_MF_KeepGfx.
@@ -116,7 +123,10 @@ pub fn catch_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()>
 /// ftCa_SpecialHiThrow0_Anim: Fall at the end; every tick spends the jumps
 /// and locks the ECB (ftCommon_8007D60C); the script's cmd_vars[0] starts
 /// the drift.
-pub fn throw_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn throw_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(CommonMotionState::Fall.into(), p.assets)?;
@@ -124,22 +134,19 @@ pub fn throw_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitC
     f.leave_ground_with_spent_jumps();
     if f.commands.variables[0] != 0 {
         f.commands.variables[0] = 0;
-        f.character
-            .get_mut::<CaptainFalcon>()
-            .falcon_dive
-            .throw_drift = true;
+        dive::<C>(f).throw_drift = true;
     }
     Ok(None)
 }
 
 /// ftCa_SpecialHiThrow0_Phys (800E5288): the dive's drift with the catch
 /// gravity on the carried vertical velocity; no fused sites.
-pub fn throw_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    if f.character.get::<CaptainFalcon>().falcon_dive.throw_drift {
-        special_hi::drift(f, p.assets);
-        let gravity = attributes(f).catch_gravity;
+pub fn throw_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    if dive::<C>(f).throw_drift {
+        special_hi::drift::<C>(f, p.assets);
+        let gravity = attributes::<C>(f).catch_gravity;
         let terminal = f.attributes.air.terminal_velocity;
-        let carried = f.character.get::<CaptainFalcon>().falcon_dive.velocity.y;
+        let carried = dive::<C>(f).velocity.y;
         // 800E52D4: fsubs.
         let own = f.physics.self_velocity.y - carried;
         // ftCommon_Fall.
@@ -148,11 +155,7 @@ pub fn throw_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
             f.physics.self_velocity.y = -terminal;
         }
         let vertical = f.physics.self_velocity.y - own;
-        f.character
-            .get_mut::<CaptainFalcon>()
-            .falcon_dive
-            .velocity
-            .y = vertical;
+        dive::<C>(f).velocity.y = vertical;
     } else {
         special_hi::root_motion_air(f);
     }
@@ -160,7 +163,7 @@ pub fn throw_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 }
 
 /// ftCa_SpecialHiThrow0_Coll: landing enters LandingFallSpecial.
-pub fn throw_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn throw_collision<C: CaptainFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     let c = &mut f.core;
     air::begin_map(
         &c.physics,
@@ -175,7 +178,7 @@ pub fn throw_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         &mut c.skeleton,
         c.animation.root,
     ) {
-        let lag = attributes(f).landing_lag;
+        let lag = attributes::<C>(f).landing_lag;
         f.enter_special_landing(p.assets.expect("Falcon Dive landing assets"), false, lag)?;
     }
     Ok(())

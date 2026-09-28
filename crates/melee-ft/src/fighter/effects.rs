@@ -157,6 +157,7 @@ impl super::FighterCore {
                     id,
                     0x404
                         | 0x3E9
+                        | 0x416
                         | 0x3EF
                         | 0x3F0
                         | 0x405

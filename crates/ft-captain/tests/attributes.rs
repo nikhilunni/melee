@@ -50,12 +50,12 @@ fn load_restore_and_death_reset_effect_flags_without_altering_attributes() {
     word(&mut raw, 0x222C, 1);
     word(&mut raw, 0x2230, 2);
     falcon.restore_saved(&raw);
-    assert!(falcon.raptor_boost_start_effect_active);
-    assert!(falcon.raptor_boost_lunge_effect_active);
+    assert!(falcon.specials.start_effect_active);
+    assert!(falcon.specials.lunge_effect_active);
     falcon.model_group = 3;
     falcon.on_reset();
-    assert!(!falcon.raptor_boost_start_effect_active);
-    assert!(!falcon.raptor_boost_lunge_effect_active);
+    assert!(!falcon.specials.start_effect_active);
+    assert!(!falcon.specials.lunge_effect_active);
     assert_eq!(falcon.model_group, 0);
     assert_eq!(falcon.attributes, attrs);
 }

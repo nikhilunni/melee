@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 241] = [
+const MATRIX_WITNESSES: [(&str, usize); 262] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1271,6 +1271,33 @@ const MATRIX_WITNESSES: [(&str, usize); 241] = [
     ("drmario_tornado_ground_fd_fox4", 300),
     ("drmario_tornado_air_fd_fox4", 300),
     ("drmario_taunt_fd_fox4", 400),
+    // GANON: the start boundary and its cold construction; the taunt's TopN gust
+    // and doubled ftCo_800DEBD0; Captain Falcon's specials with Ganondorf's kind
+    // arms (ft-captain-family): Warlock Punch (efSync 0x50B, the wind-up gusts,
+    // aerial lunges off stage), Gerudo Dragon (0x50D..0x50F, misses and inert
+    // detections into the lunge), Dark Dive (reversal, grounded and aerial
+    // catches) and Wizard's Foot (0x50C; hits, landings, 361 and off stage).
+    ("start_fd_ganondorf_fox4", 600),
+    ("start_fd_ganondorf_fox4_cold", 600),
+    ("taunt_start_fd_ganondorf_fox4", 600),
+    ("ganon_punch_ground", 360),
+    ("ganon_punch_hit", 441),
+    ("ganon_punch_air_up", 560),
+    ("ganon_punch_air_down", 560),
+    ("ganon_sideb_miss", 320),
+    ("ganon_sideb_hit", 380),
+    ("ganon_sideb_air_miss", 360),
+    ("ganon_sideb_airhit", 390),
+    ("ganon_upb_ground", 320),
+    ("ganon_upb_air", 360),
+    ("ganon_upb_catch", 429),
+    ("ganon_upb_aircatch", 431),
+    ("ganon_downb_ground", 300),
+    ("ganon_downb_hit", 392),
+    ("ganon_downb_air", 300),
+    ("ganon_downb_airhit", 403),
+    ("ganon_downb_air_high", 360),
+    ("ganon_downb_offstage", 560),
 ];
 
 #[test]
@@ -2332,7 +2359,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 304] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 318] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2544,6 +2571,22 @@ const CORPUS_V3_MATCHES: [(&str, usize); 304] = [
     ("corpus_v3_fd_captainfalcon_fox4_e45a17231_p0", 6001),
     ("corpus_v3_fd_captainfalcon_fox4_e188c0a9b_p0", 4464),
     ("corpus_v3_fd_captainfalcon_fox4_e1a1346bb_p0", 4432),
+    // Clean explorer samples: whole Ganondorf-Fox matches, the Dark hit
+    // spark (hit_effect_ids[HitElement_Dark], generator 0x196) and every special.
+    ("corpus_v3_fd_ganondorf_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_ganondorf_fox4_e1502cb40_p0", 2812),
+    ("corpus_v3_fd_ganondorf_fox4_e573e2d95_p0", 3834),
+    ("corpus_v3_fd_ganondorf_fox4_edafcfddf_p0", 4314),
+    ("corpus_v3_fd_ganondorf_fox4_ee133b82f_p0", 4394),
+    ("corpus_v3_fd_ganondorf_fox4_ee62c6106_p0", 6001),
+    ("corpus_v3_fd_ganondorf_fox4_e0fcf0c70_p0", 6001),
+    ("corpus_v3_fd_ganondorf_fox4_ee98155f3_p0", 4896),
+    ("corpus_v3_fd_ganondorf_fox4_e0ac13e8e_p2", 6001),
+    ("corpus_v3_fd_ganondorf_fox4_eb4935276_p0", 2576),
+    ("corpus_v3_fd_ganondorf_fox4_e3ef41ca4_p2", 5248),
+    ("corpus_v3_fd_ganondorf_fox4_e46703f61_p0", 5249),
+    ("corpus_v3_fd_ganondorf_fox4_e0d368f02_p1", 3754),
+    ("corpus_v3_fd_ganondorf_fox4_e255c070a_p1", 6001),
     // Dream Land: Whispy's gust samples each fighter after its velocity
     // (ftColl_GetWindOffsetVec), and its dynamics gusts (lb_80011A50) swing
     // Fox's tail hurtbox and switch Marth's cape to the solver.

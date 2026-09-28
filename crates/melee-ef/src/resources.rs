@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 10] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 11] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -82,6 +82,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 10] = [
         file: "EfLgData.dat",
         table: "effLuigiDataTable",
         models: 2,
+    },
+    // Models 0x4A38..0x4A3D (efSync 0x50B..0x50F): Warlock Punch, Wizard's
+    // Foot and Gerudo Dragon.
+    CharacterEffectFile {
+        bank: 19,
+        file: "EfGnData.dat",
+        table: "effGanonDataTable",
+        models: 6,
     },
     // Models 0xBF68..0xBF69 (efSync 0x510..0x512, efsync.c:642-652): Roy's
     // Counter flash and Flare Blade release.

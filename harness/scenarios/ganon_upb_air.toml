@@ -1,0 +1,28 @@
+# Aerial Dark Dive (354) reversed with the stick once cmd_vars[0] opens
+# the window.
+# From the start_fd_ganondorf_fox4 boundary (Ganondorf at -60 facing right,
+# Fox idle at +60 on Final Destination); tick-clock inputs from the savestate.
+name = "ganon_upb_air"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 360
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 201, port = 0, buttons = {  }, raw = {  } },
+  { frame = 212, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 214, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 224, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -15,7 +15,7 @@ use melee_ft::{
 };
 use melee_types::GroundOrAir;
 
-use crate::init::CaptainFalcon;
+use crate::{CaptainFamily, Specials};
 
 /// ftCa_MS_SpecialHi (353) .. ftCa_MS_SpecialHiThrow (356).
 pub const GROUND: ActionId = ActionId(353);
@@ -36,27 +36,27 @@ pub struct FalconDive {
     pub velocity: hsd_types::Vec2,
 }
 
-fn dive(f: &mut Fighter) -> &mut FalconDive {
-    &mut f.character.get_mut::<CaptainFalcon>().falcon_dive
+fn dive<C: CaptainFamily>(f: &mut Fighter) -> &mut FalconDive {
+    &mut crate::family::<C>(f).specials().dive
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::FalconDiveAttributes {
-    &f.character.get::<CaptainFalcon>().attributes.falcon_dive
+fn attributes<C: CaptainFamily>(f: &Fighter) -> &crate::attributes::FalconDiveAttributes {
+    &crate::attributes::<C>(f).falcon_dive
 }
 
 /// The retained second scratch word (mv+4, velocity.x) in Falcon Dive.
-pub fn retained_scratch_word(falcon: &CaptainFalcon, action: ActionId) -> Option<f32> {
+pub fn retained_scratch_word(specials: &Specials, action: ActionId) -> Option<f32> {
     (GROUND.0..=THROW.0)
         .contains(&action.0)
-        .then_some(falcon.falcon_dive.velocity.x)
+        .then_some(specials.dive.velocity.x)
 }
 
 /// ftCa_SpecialLw_800E49FC, installed as x21EC: Fighter_ChangeMotionState
 /// runs it before the frame-zero commands. No motion change resets the
 /// command variables, so running it just before the change is equivalent.
-fn begin(f: &mut Fighter) {
+fn begin<C: CaptainFamily>(f: &mut Fighter) {
     let (counter, command) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (a.initial_air_counter, a.initial_command_value)
     };
     f.physics.jumps_used = f.attributes.jumping.max_jumps as u8;
@@ -68,7 +68,7 @@ fn begin(f: &mut Fighter) {
     );
     f.commands.variables[0] = 0;
     f.commands.variables[1] = gekko_math::msl::fctiwz(command) as u32;
-    *dive(f) = FalconDive {
+    *dive::<C>(f) = FalconDive {
         // 800E4A28: sth of the s32.
         counter: counter as u16,
         ..Default::default()
@@ -76,8 +76,8 @@ fn begin(f: &mut Fighter) {
 }
 
 /// ftCa_SpecialHi_Enter (800E4A78) / ftCa_SpecialAirHi_Enter (800E4D0C).
-pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
-    begin(f);
+pub fn enter<C: CaptainFamily>(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
+    begin::<C>(f);
     f.change_motion_state(if airborne { AIR } else { GROUND }, a)
         .expect("Falcon Dive assets");
     // ftCommon_8007E2D0(fp, 2, grab_cb, NULL, grabbed_cb): the catch.
@@ -87,11 +87,14 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
 }
 
 /// ftCa_SpecialHi_Anim / ftCa_SpecialAirHi_Anim: FallSpecial at the end.
-pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         let (mobility, lag) = {
-            let a = attributes(f);
+            let a = attributes::<C>(f);
             (a.freefall_mobility, a.landing_lag)
         };
         f.enter_special_fall(p.assets, true, true, false, mobility, lag)?;
@@ -101,15 +104,15 @@ pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>
 
 /// ftCa_SpecialHi_IASA / ftCa_SpecialAirHi_IASA: when the script sets
 /// cmd_vars[0], open the window and let a firm stick turn the dive.
-pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
+pub fn input<C: CaptainFamily>(f: &mut Fighter, _: InputPhase<'_>) {
     if f.commands.variables[0] == 0 {
         return;
     }
     f.commands.variables[0] = 0;
-    dive(f).window_open = true;
+    dive::<C>(f).window_open = true;
     let stick = f.input.current.stick.x;
     let magnitude = if stick < 0.0 { -stick } else { stick };
-    if magnitude > attributes(f).reverse_stick_threshold {
+    if magnitude > attributes::<C>(f).reverse_stick_threshold {
         // ftCommon_UpdateFacing, then ftPartSetRotY(fp, 0, M_PI_2 * facing).
         f.physics.facing = if stick >= 0.0 { 1.0 } else { -1.0 };
         let rotation = (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32;
@@ -120,12 +123,12 @@ pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
 
 /// ftCa_SpecialHi_Phys (800E4BF8), the drift both rises share; no fused
 /// sites. Retains its own velocity across ticks and adds TransN's.
-pub fn drift(f: &mut Fighter, a: &FighterAssets) {
+pub fn drift<C: CaptainFamily>(f: &mut Fighter, a: &FighterAssets) {
     let (air_multiplier, speed_multiplier) = {
-        let d = attributes(f);
+        let d = attributes::<C>(f);
         (d.air_acceleration_multiplier, d.horizontal_speed_multiplier)
     };
-    let carried = dive(f).velocity;
+    let carried = dive::<C>(f).velocity;
     f.physics.self_velocity = hsd_types::Vec3::new(carried.x, carried.y, 0.0);
     let air = &f.core.attributes.air;
     // 800E4C48: fmuls.
@@ -152,7 +155,7 @@ pub fn drift(f: &mut Fighter, a: &FighterAssets) {
         physics.animation_velocity.x + physics.self_velocity.x,
         physics.animation_velocity.y + physics.self_velocity.y,
     );
-    dive(f).velocity = velocity;
+    dive::<C>(f).velocity = velocity;
     root_motion_air(f);
     f.physics.animation_velocity.x = 0.0;
     f.physics.animation_velocity.y = 0.0;
@@ -221,8 +224,8 @@ pub(crate) fn finish_update(f: &mut Fighter, p: &PhysicsPhase<'_>) {
 }
 
 /// ftCa_SpecialHi_Phys / ftCa_SpecialAirHi_Phys.
-pub fn physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    drift(f, p.assets);
+pub fn physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    drift::<C>(f, p.assets);
     finish_update(f, &p);
 }
 
@@ -261,7 +264,7 @@ fn land_or_ledge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
 }
 
 /// ftCa_SpecialHi_Coll / ftCa_SpecialAirHi_Coll (800E4B60).
-pub fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn collision<C: CaptainFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         let c = &mut f.core;
         if ground::map_ground_action(
@@ -284,10 +287,10 @@ pub fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
         &mut c.skeleton,
         c.animation.root,
     );
-    let window_open = dive(f).window_open;
+    let window_open = dive::<C>(f).window_open;
     if land_or_ledge(f, &mut p) {
         if window_open {
-            let lag = attributes(f).landing_lag;
+            let lag = attributes::<C>(f).landing_lag;
             f.enter_special_landing(p.assets.expect("Falcon Dive landing assets"), false, lag)?;
         } else {
             stay_airborne(f, &mut p);

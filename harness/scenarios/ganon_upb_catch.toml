@@ -1,0 +1,29 @@
+# GANON: Dark Dive from the ground after a dash catches Fox (ftCa_SpecialLw_800E5128,
+# CaptureCaptain): the catch (355), the throw (356) and LandingFallSpecial.
+# Ganondorf vs Fox on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+# melee-sim search: reached [p0.motion_id == 356] at ticks [309].
+name = "ganon_upb_catch"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 429
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 273, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 275, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

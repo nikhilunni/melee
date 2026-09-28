@@ -1,6 +1,6 @@
 //! ftCaptain_DatAttrs, ft/kinds/ftCaptain/types.h; ftData.ext_attr (+4).
 //! OnLoad/LoadSpecialAttrs copy 0x8C bytes without scaling. Ganondorf shares
-//! the layout through OnLoadForGanon; his behavior is outside this crate.
+//! the layout through ftCa_Init_OnLoadForGanon and ftCa_Init_LoadSpecialAttrs.
 use hsd_archive::{Archive, Reader};
 use melee_ft::desc::{special_attributes_offset, FighterDescError};
 type Result<T> = std::result::Result<T, FighterDescError>;
@@ -89,10 +89,12 @@ pub struct FalconKickAttributes {
     pub air_landing_traction_multiplier: f32,
 }
 
-pub fn read_captain_attributes(archive: &Archive) -> Result<CaptainAttributes> {
-    let root = archive.public("ftDataCaptain").ok_or_else(|| {
+/// PUSH_ATTRS(fp, ftCaptain_DatAttrs) from the fighter data `symbol`
+/// (`ftDataCaptain`, `ftDataGanon`).
+pub fn read(archive: &Archive, symbol: &str) -> Result<CaptainAttributes> {
+    let root = archive.public(symbol).ok_or_else(|| {
         FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
-            name: "ftDataCaptain".into(),
+            name: symbol.into(),
         })
     })?;
     CaptainAttributes::read(archive, special_attributes_offset(archive, root)?)

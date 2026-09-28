@@ -193,7 +193,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 23] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 24] = [
     // efasync.c:353-355: efLib_CreateGenerator(0x19) at the point (it_80272AC4,
     // an item meeting the floor: Thunder's lead bolt).
     DustSpawn {
@@ -231,6 +231,13 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 23] = [
     DustSpawn {
         request: 0x3EA,
         particle: 0x14,
+        directional: false,
+    },
+    // efasync.c:403-405: the Dark hit spark (hit_effect_ids[HitElement_Dark],
+    // Ganondorf's attacks), efLib_CreateGenerator 0x196 at the contact.
+    DustSpawn {
+        request: 0x416,
+        particle: 0x196,
         directional: false,
     },
     // S9: efasync.c 0x42D, the star-KO twinkle (efLib_CreateGenerator 0x121 at cur_pos).

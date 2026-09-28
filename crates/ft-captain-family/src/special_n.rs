@@ -17,16 +17,11 @@ use melee_ft::{
 };
 use melee_types::CommonMotionState;
 
-use crate::init::CaptainFalcon;
+use crate::CaptainFamily;
 
 /// ftCa_MS_SpecialN (347) and ftCa_MS_SpecialAirN (348).
 pub const GROUND: ActionId = ActionId(347);
 pub const AIR: ActionId = ActionId(348);
-
-/// efSync_Spawn(1167, gobj, parts[FtPart_TopN], parts[57]) in doPhys: the
-/// punch's two models (efAlt 0x48F) attach to these fighter joints.
-const PUNCH_EFFECT: u16 = 1167;
-const PUNCH_EFFECT_BONES: [usize; 2] = [0, 57];
 
 /// `MTXDegToRad(1)` as MWCC rounds it (retail @274, 800E2ED0).
 const DEGREES_TO_RADIANS: f32 = 0.017453292;
@@ -57,21 +52,60 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
 
 /// ftCa_SpecialN_Anim (800E2C80): the wind effect is Ganondorf's only;
 /// Wait at the animation's end (ft_8008A2BC).
-pub fn ground_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn ground_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
+    wind::<C>(f);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(CommonMotionState::Wait.into(), p.assets)?;
     }
     Ok(None)
 }
 
-/// ftCa_SpecialAirN_Anim (800E2D5C): Fall at the animation's end.
-pub fn air_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+/// ftCa_SpecialAirN_Anim (800E2D5C): the same wind; Fall at the
+/// animation's end.
+pub fn air_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
+    wind::<C>(f);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(CommonMotionState::Fall.into(), p.assets)?;
     }
     Ok(None)
+}
+
+/// ftCaptain_SpecialN_CreateWindEffect (inlined at 800E2C9C): Ganondorf's
+/// wind-up pushes dynamics chains from his position on odd frames,
+/// lb_800119DC(&cur_pos, 2, s, s, 0.0): strength 2.0 on frames 16..=50
+/// and 4.0 on 51..=68 (@256, @258; @257 is the 0.0 phase step).
+fn wind<C: CaptainFamily>(f: &mut Fighter) {
+    if !C::EFFECTS.punch_wind {
+        return;
+    }
+    // 800E2CA4: fctiwz of cur_anim_frame.
+    let frame = gekko_math::msl::fctiwz(f.animation.frame);
+    if frame & 1 == 0 {
+        return;
+    }
+    let strength = match frame {
+        16..=50 => 2.0,
+        51..=68 => 4.0,
+        _ => return,
+    };
+    let center = f.physics.position;
+    f.commands
+        .radial_impulses
+        .push(melee_lb::radial_force::RadialImpulse {
+            center,
+            frames: 2,
+            strength,
+            decay: strength,
+            phase_step: 0.0,
+        });
 }
 
 /// ftCa_SpecialN_IASA (800E2E38) is empty.
@@ -79,12 +113,12 @@ pub fn ground_input(_: &mut Fighter, _: InputPhase<'_>) {}
 
 /// ftCa_SpecialAirN_IASA (800E2E3C): once cmd_vars[0] is set, launch along
 /// the stick's vertical angle. No fused sites (asm --fused is empty).
-pub fn air_input(f: &mut Fighter, _: InputPhase<'_>) {
+pub fn air_input<C: CaptainFamily>(f: &mut Fighter, _: InputPhase<'_>) {
     if f.commands.variables[0] == 0 {
         return;
     }
     f.commands.variables[0] = 0;
-    let punch = &f.character.get::<CaptainFalcon>().attributes.falcon_punch;
+    let punch = &crate::attributes::<C>(f).falcon_punch;
     let angle = lunge_angle(f.input.current.stick.y, punch);
     let speed = punch.aerial_speed;
     f.physics.self_velocity.y = speed * gekko_math::msl::sinf(angle);
@@ -115,14 +149,14 @@ fn lunge_angle(stick_y: f32, punch: &crate::attributes::FalconPunchAttributes) -
 /// doPhys (inlined in both Phys callbacks): the script's cue spawns the
 /// punch models the first time (x2219_b0 unset) and removes every owned
 /// effect the second (ftCommon_8007DB24).
-fn punch_effect(f: &mut Fighter) {
+fn punch_effect<C: CaptainFamily>(f: &mut Fighter) {
     if !f.commands.take_move_cue() {
         return;
     }
     if !f.effect_state.destroy_on_state_change {
         f.effects.push(EffectRequest::SyncAttachedPair {
-            id: PUNCH_EFFECT,
-            bones: PUNCH_EFFECT_BONES,
+            id: C::EFFECTS.punch,
+            bones: C::EFFECTS.punch_bones,
         });
         f.effect_state.destroy_on_state_change = true;
     } else {
@@ -132,16 +166,16 @@ fn punch_effect(f: &mut Fighter) {
 }
 
 /// ftCa_SpecialN_Phys (800E2F2C): doPhys, then ft_80084FA8's root motion.
-pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    punch_effect(f);
+pub fn ground_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    punch_effect::<C>(f);
     callbacks::physics::jab(f, p);
 }
 
 /// ftCa_SpecialAirN_Phys (800E3018): doPhys, then the phase cmd_vars[1]
 /// selects: ft_80084EEC before the lunge, a velocity decay during it,
 /// ft_80084DB0 after it.
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    punch_effect(f);
+pub fn air_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    punch_effect::<C>(f);
     match f.commands.variables[1] {
         0 => {
             // ft_80084EEC: gravity and air friction, no stick input.
@@ -154,12 +188,7 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         }
         1 => {
             // 800E3120..3C: separate fmuls, y before x.
-            let multiplier = f
-                .character
-                .get::<CaptainFalcon>()
-                .attributes
-                .falcon_punch
-                .momentum_multiplier;
+            let multiplier = crate::attributes::<C>(f).falcon_punch.momentum_multiplier;
             f.physics.self_velocity.y *= multiplier;
             f.physics.self_velocity.x *= multiplier;
         }

@@ -1,0 +1,26 @@
+# Warlock Punch on the ground, whiffing (ftCa_SpecialN, 347): efSync 1291
+# (0x50B, models 0x4A38/0x4A39 on TopN and joint 78) and the wind-up's odd-frame
+# gusts (ftCaptain_SpecialN_CreateWindEffect, lb_800119DC); Wait at the end.
+# From the start_fd_ganondorf_fox4 boundary (Ganondorf at -60 facing right,
+# Fox idle at +60 on Final Destination); tick-clock inputs from the savestate.
+name = "ganon_punch_ground"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 360
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

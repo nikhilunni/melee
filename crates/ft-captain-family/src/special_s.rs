@@ -19,21 +19,13 @@ use melee_types::{
     CommonMotionState, FtPart, ItemKind,
 };
 
-use crate::init::CaptainFalcon;
+use crate::{CaptainFamily, Specials};
 
 /// ftCa_MS_SpecialSStart (349) .. ftCa_MS_SpecialAirS (352).
 pub const GROUND_START: ActionId = ActionId(349);
 pub const GROUND: ActionId = ActionId(350);
 pub const AIR_START: ActionId = ActionId(351);
 pub const AIR: ActionId = ActionId(352);
-
-/// efSync_Spawn(1169, gobj, HeadN): the startup's attached model (efAlt
-/// 0x491, model 0xFA4).
-const START_EFFECT: u16 = 1169;
-/// efSync_Spawn(1170 / 1171, gobj, TransN, &facing_dir): the lunge's scaled
-/// models (efAlt 0x492 / 0x493, 0xFA3 / 0xFA5) turned to the facing.
-const GROUND_LUNGE_EFFECT: u16 = 1170;
-const AIR_LUNGE_EFFECT: u16 = 1171;
 
 /// transition_flags (ftcaptainspecials.c:121-124): KeepGfx | SkipMatAnim |
 /// UpdateCmd | SkipColAnim | SkipItemVis | Unk19 | SkipModelPartVis |
@@ -56,26 +48,26 @@ fn is_raptor_boost(action: ActionId) -> bool {
     (GROUND_START.0..=AIR.0).contains(&action.0)
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::RaptorBoostAttributes {
-    &f.character.get::<CaptainFalcon>().attributes.raptor_boost
+fn attributes<C: CaptainFamily>(f: &Fighter) -> &crate::attributes::RaptorBoostAttributes {
+    &crate::attributes::<C>(f).raptor_boost
 }
 
-fn captain(f: &mut Fighter) -> &mut CaptainFalcon {
-    f.character.get_mut::<CaptainFalcon>()
+fn specials<C: CaptainFamily>(f: &mut Fighter) -> &mut Specials {
+    crate::family::<C>(f).specials()
 }
 
 /// The retained second scratch word while a Raptor Boost state is current.
-pub fn retained_scratch_word(falcon: &CaptainFalcon, action: ActionId) -> Option<f32> {
+pub fn retained_scratch_word(specials: &Specials, action: ActionId) -> Option<f32> {
     if !is_raptor_boost(action) {
         return None;
     }
-    Some(falcon.raptor_boost.inherited_word.unwrap_or_else(|| {
+    Some(specials.boost.inherited_word.unwrap_or_else(|| {
         unimplemented!("ftCa_SpecialS: mv+4 inherited from an unmodelled scratch word")
     }))
 }
 
 /// ftCa_SpecialS_Enter (800E3530) / ftCa_SpecialAirS_Enter (800E3688).
-pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
+pub fn enter<C: CaptainFamily>(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
     let inherited_word = f.inherited_scratch_word();
     f.commands.variables[..4].fill(0);
     if !airborne {
@@ -87,20 +79,25 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
     // setCallbacks: take_dmg_cb and death2_cb are `remove_effects`, keyed
     // on the motion; ftAnim_8006EBA4.
     f.step_animation(a);
-    let head = usize::from(a.parts.joint(FtPart::HeadN).expect("HeadN"));
+    let effects = C::EFFECTS;
+    let part = usize::from(
+        a.parts
+            .joint(effects.boost_start_part)
+            .expect("startup part"),
+    );
     f.effects.push(EffectRequest::SyncAttached {
-        id: START_EFFECT,
-        bone: head,
+        id: effects.boost_start,
+        bone: part,
     });
-    let falcon = captain(f);
-    falcon.raptor_boost_start_effect_active = true;
-    falcon.raptor_boost_lunge_effect_active = false;
-    falcon.raptor_boost.inherited_word = inherited_word;
+    let scratch = specials::<C>(f);
+    scratch.start_effect_active = true;
+    scratch.lunge_effect_active = false;
+    scratch.boost.inherited_word = inherited_word;
     // Fighter_SetEffectHitlagCallbacks; hurtbox_detect_cb is `detect`.
     f.effect_state.hitlag_callbacks = true;
     f.physics.self_velocity = hsd_types::Vec3::ZERO;
     if airborne {
-        captain(f).raptor_boost.vertical_velocity = 0.0;
+        specials::<C>(f).boost.vertical_velocity = 0.0;
         f.leave_ground_with_spent_jumps();
     } else {
         f.physics.ground_velocity = 0.0;
@@ -109,20 +106,24 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
 
 /// ftCa_SpecialS_RemoveGFX (800E3278), the take_dmg_cb and death2_cb of
 /// every Raptor Boost state (ftCa_Init_800E28C8).
-pub fn remove_effects(f: &mut Fighter) {
+pub fn remove_effects<C: CaptainFamily>(f: &mut Fighter) {
     if !is_raptor_boost(f.motion_state.action) {
         return;
     }
     f.effects.push(EffectRequest::DestroyOwned);
-    let falcon = captain(f);
-    falcon.raptor_boost_lunge_effect_active = false;
-    falcon.raptor_boost_start_effect_active = false;
+    let scratch = specials::<C>(f);
+    scratch.lunge_effect_active = false;
+    scratch.start_effect_active = false;
 }
 
 /// ftCa_SpecialS_OnDetect (800E3780): with the script's window open, an
 /// inert touch on a fighter, or on an item of the kinds below, starts the
 /// lunge from frame zero.
-pub fn detect(f: &mut Fighter, a: &FighterAssets, touch: melee_ft::fighter::damage::InertTouch) {
+pub fn detect<C: CaptainFamily>(
+    f: &mut Fighter,
+    a: &FighterAssets,
+    touch: melee_ft::fighter::damage::InertTouch,
+) {
     use melee_ft::fighter::damage::InertTarget;
     if f.commands.variables[0] == 0 {
         return;
@@ -133,7 +134,7 @@ pub fn detect(f: &mut Fighter, a: &FighterAssets, touch: melee_ft::fighter::dama
         }
     }
     let result = match f.motion_state.action {
-        GROUND_START => detect_on_ground(f, a),
+        GROUND_START => detect_on_ground::<C>(f, a),
         AIR_START => detect_in_air(f, a),
         _ => return,
     };
@@ -152,8 +153,8 @@ fn lunges_at_item(kind: ItemKind) -> bool {
 }
 
 /// onDetectGround: land, enter 350, keep only horizontal speed, scaled.
-fn detect_on_ground(f: &mut Fighter, a: &FighterAssets) -> Result<()> {
-    let multiplier = attributes(f).ground_hit_speed_multiplier;
+fn detect_on_ground<C: CaptainFamily>(f: &mut Fighter, a: &FighterAssets) -> Result<()> {
+    let multiplier = attributes::<C>(f).ground_hit_speed_multiplier;
     f.land();
     f.change_motion_state_with_flags(GROUND, a, LUNGE_FLAGS, 0.0, 1.0)?;
     f.physics.self_velocity.y = 0.0;
@@ -180,21 +181,24 @@ pub fn ground_start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Optio
 }
 
 /// The lunge's model, spawned on its first animation tick.
-fn lunge_effect(f: &mut Fighter, a: &FighterAssets, id: u16) {
-    if captain(f).raptor_boost_lunge_effect_active {
+fn lunge_effect<C: CaptainFamily>(f: &mut Fighter, a: &FighterAssets, id: u16) {
+    if specials::<C>(f).lunge_effect_active {
         return;
     }
     let trans = usize::from(a.parts.joint(FtPart::TransN).expect("TransN"));
     f.effects
         .push(EffectRequest::SyncAttached { id, bone: trans });
-    captain(f).raptor_boost_lunge_effect_active = true;
+    specials::<C>(f).lunge_effect_active = true;
     f.effect_state.hitlag_callbacks = true;
 }
 
 /// ftCa_SpecialS_Anim (800E393C).
-pub fn ground_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn ground_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
-    lunge_effect(f, p.assets, GROUND_LUNGE_EFFECT);
+    lunge_effect::<C>(f, p.assets, C::EFFECTS.ground_lunge);
     if !f.animation.frames_remaining(&f.skeleton) {
         f.change_motion_state(CommonMotionState::Wait.into(), p.assets)?;
     }
@@ -217,21 +221,27 @@ fn fall(f: &mut Fighter, a: &FighterAssets, lag: f32, clamp: bool) -> Result<()>
 }
 
 /// ftCa_SpecialAirSStart_Anim (800E3A2C).
-pub fn air_start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn air_start_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
-        let lag = attributes(f).miss_landing_lag;
+        let lag = attributes::<C>(f).miss_landing_lag;
         fall(f, p.assets, lag, false)?;
     }
     Ok(None)
 }
 
 /// ftCa_SpecialAirS_Anim (800E3AA4).
-pub fn air_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn air_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
-    lunge_effect(f, p.assets, AIR_LUNGE_EFFECT);
+    lunge_effect::<C>(f, p.assets, C::EFFECTS.air_lunge);
     if !f.animation.frames_remaining(&f.skeleton) {
-        let lag = attributes(f).hit_landing_lag;
+        let lag = attributes::<C>(f).hit_landing_lag;
         fall(f, p.assets, lag, false)?;
     }
     Ok(None)
@@ -252,12 +262,12 @@ fn root_motion_air(f: &mut Fighter) {
 
 /// The aerial boost's own gravity: separate fsubs, clamped to the terminal
 /// velocity, replacing the vertical velocity.
-fn boost_gravity(f: &mut Fighter) {
+fn boost_gravity<C: CaptainFamily>(f: &mut Fighter) {
     let (gravity, terminal) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (a.gravity, a.terminal_velocity)
     };
-    let boost = &mut captain(f).raptor_boost;
+    let boost = &mut specials::<C>(f).boost;
     boost.vertical_velocity -= gravity;
     if boost.vertical_velocity < -terminal {
         boost.vertical_velocity = -terminal;
@@ -268,18 +278,18 @@ fn boost_gravity(f: &mut Fighter) {
 
 /// ftCa_SpecialAirSStart_Phys (800E3B6C): gravity once the script sets
 /// cmd_vars[1].
-pub fn air_start_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_start_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     root_motion_air(f);
     if f.commands.variables[1] == 1 {
-        boost_gravity(f);
+        boost_gravity::<C>(f);
     }
     f.core.finish_air_update(p.assets, p.wind);
 }
 
 /// ftCa_SpecialAirS_Phys (800E3BD8).
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     root_motion_air(f);
-    boost_gravity(f);
+    boost_gravity::<C>(f);
     f.core.finish_air_update(p.assets, p.wind);
 }
 
@@ -299,7 +309,10 @@ fn ground_supported(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
 /// ftCa_SpecialSStart_Coll (800E3C3C): before the script's cmd_vars[2] the
 /// startup stops at the floor's edge (ft_80084104); after it, leaving the
 /// floor falls, and once cmd_vars[0] is set a wall ahead ends the boost.
-pub fn ground_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn ground_start_collision<C: CaptainFamily>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     let a = p.assets.expect("Raptor Boost collision assets");
     if f.commands.variables[2] == 0 {
         let c = &mut f.core;
@@ -318,7 +331,7 @@ pub fn ground_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Res
     }
     if !ground_supported(f, &mut p) {
         f.effects.push(EffectRequest::DestroyOwned);
-        let lag = attributes(f).miss_landing_lag;
+        let lag = attributes::<C>(f).miss_landing_lag;
         return fall(f, a, lag, true);
     }
     if f.commands.variables[0] == 1 {
@@ -335,11 +348,14 @@ pub fn ground_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Res
 }
 
 /// ftCa_SpecialS_Coll (800E3D6C): leaving the floor mid-lunge falls.
-pub fn ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn ground_collision<C: CaptainFamily>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     if !ground_supported(f, &mut p) {
         let a = p.assets.expect("Raptor Boost collision assets");
         f.effects.push(EffectRequest::DestroyOwned);
-        let lag = attributes(f).hit_landing_lag;
+        let lag = attributes::<C>(f).hit_landing_lag;
         return fall(f, a, lag, true);
     }
     Ok(())
@@ -364,21 +380,24 @@ fn air_landed(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
 }
 
 /// ftCa_SpecialAirSStart_Coll (800E3DF4).
-pub fn air_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_start_collision<C: CaptainFamily>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     if air_landed(f, &mut p) {
         f.effects.push(EffectRequest::DestroyOwned);
-        let lag = attributes(f).miss_landing_lag;
+        let lag = attributes::<C>(f).miss_landing_lag;
         f.enter_special_landing(p.assets.expect("Raptor Boost landing assets"), false, lag)?;
     }
     Ok(())
 }
 
 /// ftCa_SpecialAirS_Coll (800E3E50): the lunge keeps its speed on landing.
-pub fn air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: CaptainFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if air_landed(f, &mut p) {
         f.physics.ground_velocity = f.physics.self_velocity.x;
         f.effects.push(EffectRequest::DestroyOwned);
-        let lag = attributes(f).hit_landing_lag;
+        let lag = attributes::<C>(f).hit_landing_lag;
         f.enter_special_landing(p.assets.expect("Raptor Boost landing assets"), false, lag)?;
     }
     Ok(())

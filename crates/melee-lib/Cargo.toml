@@ -49,6 +49,7 @@ ft-pichu = { path = "../ft-pichu" }
 ft-mario = { path = "../ft-mario" }
 ft-drmario = { path = "../ft-drmario" }
 ft-luigi = { path = "../ft-luigi" }
+ft-ganon = { path = "../ft-ganon" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

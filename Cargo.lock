@@ -383,6 +383,18 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 name = "ft-captain"
 version = "0.0.1"
 dependencies = [
+ "ft-captain-family",
+ "gekko-math",
+ "hsd-archive",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-captain-family"
+version = "0.0.1"
+dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -390,7 +402,6 @@ dependencies = [
  "melee-ft",
  "melee-lb",
  "melee-mp",
- "melee-test-support",
  "melee-types",
 ]
 
@@ -463,6 +474,20 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-mp",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-ganon"
+version = "0.0.1"
+dependencies = [
+ "ft-captain-family",
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-lb",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -1220,6 +1245,7 @@ dependencies = [
  "ft-falco",
  "ft-fox",
  "ft-fox-family",
+ "ft-ganon",
  "ft-luigi",
  "ft-mario",
  "ft-mars",

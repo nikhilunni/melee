@@ -1,0 +1,30 @@
+# Aerial Wizard's Foot off the stage's right edge: 359 then 361 falling
+# past the blast zone.
+# From the start_fd_ganondorf_fox4 boundary (Ganondorf at -60 facing right,
+# Fox idle at +60 on Final Destination); tick-clock inputs from the savestate.
+name = "ganon_downb_offstage"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 560
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 301, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 318, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 319, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 332, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

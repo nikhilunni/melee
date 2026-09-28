@@ -21,7 +21,7 @@ use melee_types::{
     CommonMotionState, FtPart, GroundOrAir,
 };
 
-use crate::init::CaptainFalcon;
+use crate::CaptainFamily;
 
 /// ftCa_MS_SpecialLw (357) .. ftCa_MS_SpecialHiThrow1 (363).
 pub const GROUND: ActionId = ActionId(357);
@@ -31,10 +31,6 @@ pub const AIR_LANDING: ActionId = ActionId(360);
 pub const AIR_END: ActionId = ActionId(361);
 pub const GROUND_END_AIR: ActionId = ActionId(362);
 pub const REBOUND: ActionId = ActionId(363);
-
-/// efAsync_Spawn(gobj, &fp->x60C, 3, 0x490, foot, &angle): the kick's flame
-/// (efAlt 0x490, model 0xFA2 rotated by the angle each update).
-const FLAME_EFFECT: u16 = 0x490;
 
 /// `MTXDegToRad(1)` as MWCC rounds it (ftCa_SpecialHi_804D9224).
 const DEGREES_TO_RADIANS: f32 = 0.017453292;
@@ -56,12 +52,12 @@ impl Default for FalconKick {
     }
 }
 
-fn kick(f: &mut Fighter) -> &mut FalconKick {
-    &mut f.character.get_mut::<CaptainFalcon>().falcon_kick
+fn kick<C: CaptainFamily>(f: &mut Fighter) -> &mut FalconKick {
+    &mut crate::family::<C>(f).specials().kick
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::FalconKickAttributes {
-    &f.character.get::<CaptainFalcon>().attributes.falcon_kick
+fn attributes<C: CaptainFamily>(f: &Fighter) -> &crate::attributes::FalconKickAttributes {
+    &crate::attributes::<C>(f).falcon_kick
 }
 
 /// cmd_vars[0..3] and the throw flags, cleared before every kick change.
@@ -71,10 +67,10 @@ fn reset_script_flags(f: &mut Fighter) {
 }
 
 /// ftCa_SpecialLw_Enter (800E4038) / ftCa_SpecialAirLw_Enter (800E40D4).
-pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
+pub fn enter<C: CaptainFamily>(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
     reset_script_flags(f);
     if !airborne {
-        *kick(f) = FalconKick::default();
+        *kick::<C>(f) = FalconKick::default();
     }
     f.change_motion_state(if airborne { AIR } else { GROUND }, a)
         .expect("Falcon Kick assets");
@@ -87,15 +83,18 @@ pub fn enter(f: &mut Fighter, airborne: bool, a: &FighterAssets) {
 
 /// ftCa_SpecialHi_800E400C, the grounded kick's deal_dmg_cb: each damaging
 /// hit up to the limit slows the kick further.
-pub fn deal_damage(f: &mut Fighter, _: &melee_ft::fighter::assets::FighterAssets) {
+pub fn deal_damage<C: CaptainFamily>(
+    f: &mut Fighter,
+    _: &melee_ft::fighter::assets::FighterAssets,
+) {
     if f.motion_state.action != GROUND {
         return;
     }
     let (limit, multiplier) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (a.hit_slowdown_counter_limit, a.on_hit_speed_multiplier)
     };
-    let scratch = kick(f);
+    let scratch = kick::<C>(f);
     if i32::from(scratch.hits) <= limit {
         scratch.hits += 1;
         scratch.friction *= multiplier;
@@ -104,12 +103,15 @@ pub fn deal_damage(f: &mut Fighter, _: &melee_ft::fighter::assets::FighterAssets
 
 /// ftCa_SpecialLw_Anim (800E4174): at the end, the grounded ending (at the
 /// attribute rate) or, off the ground, the airborne one.
-pub fn ground_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn ground_anim<C: CaptainFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         reset_script_flags(f);
         if f.physics.ground_or_air == GroundOrAir::Ground {
-            let rate = attributes(f).ground_ending_animation_rate;
+            let rate = attributes::<C>(f).ground_ending_animation_rate;
             // ftCommon_8007D7FC on the grounded fighter.
             f.land();
             f.change_motion_state_with_rate(GROUND_END, p.assets, 0.0, rate)?;
@@ -237,8 +239,8 @@ fn fall_without_drift(f: &mut Fighter) {
 }
 
 /// ftCa_Special_Inline_Friction: separate fmuls, x then y.
-fn apply_kick_friction(f: &mut Fighter) {
-    let friction = kick(f).friction;
+fn apply_kick_friction<C: CaptainFamily>(f: &mut Fighter) {
+    let friction = kick::<C>(f).friction;
     f.physics.self_velocity.x *= friction;
     f.physics.self_velocity.y *= friction;
 }
@@ -260,7 +262,7 @@ fn finish_update(f: &mut Fighter, p: &PhysicsPhase<'_>) {
 
 /// ftCa_SpecialHi_800E3EAC (800E3EAC): the script's cue lights the flame on
 /// the kicking foot the first time and removes owned effects the second.
-fn flame(f: &mut Fighter, a: &FighterAssets) {
+fn flame<C: CaptainFamily>(f: &mut Fighter, a: &FighterAssets) {
     if !f.commands.take_move_cue() {
         return;
     }
@@ -275,13 +277,13 @@ fn flame(f: &mut Fighter, a: &FighterAssets) {
         // 800E3F14: fmuls.
         AIR => (
             FtPart::LFootJA,
-            DEGREES_TO_RADIANS * attributes(f).flame_angle_degrees,
+            DEGREES_TO_RADIANS * attributes::<C>(f).flame_angle_degrees,
         ),
         other => unreachable!("Falcon Kick flame in {other:?}"),
     };
     let bone = usize::from(a.parts.joint(part).expect("Falcon Kick foot"));
     f.effects.push(EffectRequest::AttachedParameter {
-        id: FLAME_EFFECT,
+        id: C::EFFECTS.kick_flame,
         bone,
         parameter: angle,
     });
@@ -289,7 +291,7 @@ fn flame(f: &mut Fighter, a: &FighterAssets) {
 }
 
 /// ftCa_SpecialLw_Phys (800E43C0).
-pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn ground_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         lean_with_floor(f);
         root_motion_ground(f, &p);
@@ -297,20 +299,20 @@ pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         stand_upright(f);
         root_motion_air(f);
     }
-    apply_kick_friction(f);
-    flame(f, p.assets);
+    apply_kick_friction::<C>(f);
+    flame::<C>(f, p.assets);
     finish_update(f, &p);
 }
 
 /// ftCa_SpecialLwEnd_Phys (800E4460): after the script's cmd_vars[2] the
 /// ending brakes on its own traction, before it on ft_80084F3C.
-pub fn ground_end_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn ground_end_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         lean_with_floor(f);
         if f.commands.variables[2] != 0 {
             // 800E44A8: fmuls.
             let friction =
-                attributes(f).ground_traction_multiplier * f.attributes.ground.ground_friction;
+                attributes::<C>(f).ground_traction_multiplier * f.attributes.ground.ground_friction;
             f.physics.ground_acceleration =
                 friction_acceleration(f.physics.ground_velocity, friction);
             apply_ground_movement(f, &p);
@@ -321,7 +323,7 @@ pub fn ground_end_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         stand_upright(f);
         fall_without_drift(f);
     }
-    apply_kick_friction(f);
+    apply_kick_friction::<C>(f);
     finish_update(f, &p);
 }
 
@@ -351,19 +353,19 @@ pub fn ground_end_air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 }
 
 /// ftCa_SpecialAirLw_Phys (800E45B8).
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     root_motion_air(f);
-    flame(f, p.assets);
+    flame::<C>(f, p.assets);
     finish_update(f, &p);
 }
 
 /// ftCa_SpecialAirLwEnd_Phys (800E45F4): the landing brakes on its own
 /// traction after the script's cmd_vars[2], on ft_80084F3C before it.
-pub fn landing_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn landing_physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.commands.variables[2] != 0 {
         // 800E4624: fmuls.
-        let friction =
-            attributes(f).air_landing_traction_multiplier * f.attributes.ground.ground_friction;
+        let friction = attributes::<C>(f).air_landing_traction_multiplier
+            * f.attributes.ground.ground_friction;
         f.physics.ground_acceleration = friction_acceleration(f.physics.ground_velocity, friction);
         apply_ground_movement(f, &p);
     } else {
@@ -469,10 +471,10 @@ pub fn end_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
 
 /// doColl (ftCa_SpecialAirLw_Coll / ftCa_SpecialAirLwEndAir_Coll): landing
 /// enters 360 at the landing rate.
-pub fn air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: CaptainFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if air_landed(f, &mut p) {
         reset_script_flags(f);
-        let rate = attributes(f).landing_animation_rate;
+        let rate = attributes::<C>(f).landing_animation_rate;
         f.land();
         f.change_motion_state_with_rate(
             AIR_LANDING,

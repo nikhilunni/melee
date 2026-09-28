@@ -1,0 +1,25 @@
+# Wizard's Foot on the ground, whiffing (ftCa_SpecialLw, 357): efAsync
+# kind 3 id 0x50C on RFootJA (model 0x4A3A); the ending (358) to Wait.
+# From the start_fd_ganondorf_fox4 boundary (Ganondorf at -60 facing right,
+# Fox idle at +60 on Final Destination); tick-clock inputs from the savestate.
+name = "ganon_downb_ground"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+frames = 300
+input_clock = "tick"
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

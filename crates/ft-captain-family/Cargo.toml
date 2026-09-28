@@ -1,16 +1,16 @@
 [package]
-name = "ft-captain"
-description = "Captain Falcon character data and callbacks (ftCaptain)"
+name = "ft-captain-family"
+description = "Captain Falcon/Ganondorf shared specials (ftCaptain, used by ftGanon)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-ft-captain-family = { path = "../ft-captain-family" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
-
-[dev-dependencies]
-melee-test-support = { path = "../melee-test-support" }
+melee-ef = { path = "../melee-ef" }
+melee-lb = { path = "../melee-lb" }
+hsd-types = { path = "../hsd-types" }
+melee-mp = { path = "../melee-mp" }

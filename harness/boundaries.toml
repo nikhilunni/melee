@@ -309,3 +309,12 @@ stage = "FinalDestination"
 players = ["Pichu", "Fox"]
 stocks = 4
 seed = 3558153937
+
+[[boundary]]
+name = "start_fd_ganondorf_fox4"
+cold = "start_fd_ganondorf_fox4_cold"
+savestate = "harness/roms/start_fd_ganondorf_fox4.sav"
+stage = "FinalDestination"
+players = ["Ganondorf", "Fox"]
+stocks = 4
+seed = 2009794032
