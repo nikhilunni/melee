@@ -213,10 +213,16 @@ impl super::FighterCore {
         );
         let enabled = melee_types::combat::HurtStatus::Normal;
         let overrides = &mut self.commands.capsule_overrides;
-        let existing = overrides.iter().position(|entry| entry.0 == bone);
-        match existing {
-            Some(index) => overrides.iter_mut().nth(index).expect("override").1 = enabled,
-            None => overrides.push((bone, enabled)),
+        let mut existing = false;
+        for entry in overrides.iter_mut() {
+            if entry.0 == bone {
+                entry.1 = enabled;
+                existing = true;
+                break;
+            }
+        }
+        if !existing {
+            overrides.push((bone, enabled));
         }
         self.hurtboxes_replaced = true;
     }

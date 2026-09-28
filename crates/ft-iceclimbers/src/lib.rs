@@ -17,18 +17,18 @@ const FIRST_ACTION: u16 = 341;
 
 /// ftPp_Init_MotionStateTable (ftpopo.c), shared by Nana. A row not yet
 /// ported fails closed with its retail index.
-pub const fn special_rows<C: climber::Climber>() -> [MotionRow; SPECIAL_ROW_COUNT] {
+pub const SPECIAL_ROWS: [MotionRow; SPECIAL_ROW_COUNT] = {
     let mut rows = [state::unimplemented_row(); SPECIAL_ROW_COUNT];
     let mut i = 0;
     while i < SPECIAL_ROW_COUNT {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
-    let ice_shot = special_n::rows::<C>();
+    let ice_shot = special_n::ROWS;
     rows[0] = ice_shot[0];
     rows[1] = ice_shot[1];
     rows
-}
+};
 
 /// ftPp_Init_MotionStateTable's x9_b0 (bit 23 of the packed word): the
 /// neutral, side and down specials (0x803CD2D0, read from the DOL).

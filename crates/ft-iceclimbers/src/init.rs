@@ -2,7 +2,7 @@
 use crate::attributes::{self, IceClimberAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
-    Capabilities, CharacterCallbacks, Fighter, MotionRow,
+    Capabilities, CharacterCallbacks, CharacterForm, CharacterState, Fighter, MotionRow,
 };
 use melee_types::FighterKind;
 
@@ -51,161 +51,169 @@ impl ClimberVars {
     }
 }
 
-/// Popo, the climber the player controls.
+/// Which climber a fighter is. Retail runs both on one code path
+/// (ftNn_Init_MotionStateTable repeats Popo's); only load, reset and a few
+/// voice clips look at the kind.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Climber {
+    /// FTKIND_POPO, the climber the player controls.
+    Popo,
+    /// FTKIND_NANA, the partner fighter (x221F_b4) whose inputs melee-cpu
+    /// supplies.
+    Nana,
+}
+
+/// Either climber's payload: one type, so the shared hooks and specials
+/// compile once; `POPO_TABLE` and `NANA_TABLE` differ only in descriptor.
 #[derive(Clone, Debug)]
-pub struct Popo {
+pub struct IceClimber {
+    pub climber: Climber,
     pub attributes: IceClimberAttributes,
     pub vars: ClimberVars,
 }
 
-/// Nana, the partner fighter (x221F_b4) whose inputs melee-cpu supplies.
-#[derive(Clone, Debug)]
-pub struct Nana {
-    pub attributes: IceClimberAttributes,
-    pub vars: ClimberVars,
+/// Nana's form: her own archive and descriptor, Popo's payload type.
+pub struct Nana;
+
+impl CharacterForm for Nana {
+    type Character = IceClimber;
+    fn form_descriptor() -> &'static CharacterDescriptor {
+        &NANA_DESCRIPTOR
+    }
+    fn read_form(
+        data: &hsd_archive::Archive,
+    ) -> Result<IceClimber, melee_ft::desc::FighterDescError> {
+        IceClimber::read(data, Climber::Nana)
+    }
+}
+
+impl IceClimber {
+    fn read(
+        data: &hsd_archive::Archive,
+        climber: Climber,
+    ) -> Result<Self, melee_ft::desc::FighterDescError> {
+        let descriptor = match climber {
+            Climber::Popo => &POPO_DESCRIPTOR,
+            Climber::Nana => &NANA_DESCRIPTOR,
+        };
+        Ok(Self {
+            climber,
+            attributes: attributes::read(data, descriptor.data_symbol)?,
+            vars: ClimberVars::default(),
+        })
+    }
 }
 
 pub static POPO_TABLE: melee_ft::fighter::CharacterTable =
-    melee_ft::fighter::CharacterTable::new::<Popo>();
+    melee_ft::fighter::CharacterTable::new::<IceClimber>();
 pub static NANA_TABLE: melee_ft::fighter::CharacterTable =
-    melee_ft::fighter::CharacterTable::new::<Nana>();
+    melee_ft::fighter::CharacterTable::new::<IceClimber>().with_descriptor(nana_descriptor);
 
-/// The hooks both climbers share; `Popo` and `Nana` differ only in load
-/// and reset.
-macro_rules! climber_callbacks {
-    () => {
-        /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
-        const ENTER_TAUNT: fn(
-            &mut Fighter,
-            &FighterAssets,
-        ) -> melee_ft::fighter::assets::Result<()> = Fighter::enter_common_taunt;
-        const SPECIAL_ROWS: &'static [MotionRow] = &crate::special_rows::<Self>();
-        const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
-            &crate::SPECIAL_MOVES;
-        const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
-        /// ftPp_Init_OnKnockbackEnter: Fighter_OnKnockbackEnter(gobj, 1).
-        const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) =
-            |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
-        /// ftPp_Init_OnKnockbackExit: Fighter_OnKnockbackExit(gobj, 1).
-        const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
-            |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
-        fn from_archive(
-            data: &hsd_archive::Archive,
-        ) -> Result<Self, melee_ft::desc::FighterDescError> {
-            Ok(Self {
-                attributes: attributes::read(data, Self::descriptor().data_symbol)?,
-                vars: ClimberVars::default(),
-            })
-        }
-        fn restore_saved(&mut self, raw: &[u8]) {
-            self.vars.restore(raw);
-        }
-        /// ftCo_Landing_Enter, ftCo_Landing.c:69-71: FTKIND_POPO/NANA.
-        fn on_landing(&mut self, _allow_interrupt: bool) {
-            self.vars.air_ice_shot_used = false;
-        }
-        /// Fighter_ChangeMotionState, fighter.c:1376-1389: death2_cb and
-        /// take_dmg_cb go.
-        fn on_motion_change(&mut self) {
-            self.vars.ice_callbacks = false;
-        }
-        /// ftCommon_8007DB58: take_dmg_cb, ftPp_Init_8011F060.
-        const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles::<Self>);
-        /// ftCo_800D331C: death2_cb, ftPp_Init_8011F060.
-        const DEATH: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles::<Self>);
-        /// Fighter_8006C80C: the special's accessory4, installed until the next
-        /// motion change.
-        fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
-            if !f.core.accessory4_armed {
-                return;
-            }
-            match crate::climber::vars::<Self>(f).accessory {
-                crate::climber::Accessory::IceShot => {
-                    crate::special_n::accessory::<Self>(f, assets)
-                }
-                crate::climber::Accessory::None => {}
-            }
-        }
-        /// ftData_SpecialN/S/Hi/Lw[kind] and their aerial tables.
-        fn enter_special(
-            f: &mut Fighter,
-            slot: melee_ft::fighter::SpecialSlot,
-            airborne: bool,
-            assets: &FighterAssets,
-        ) {
-            crate::special::enter::<Self>(f, slot, airborne, assets);
-        }
-    };
+fn nana_descriptor() -> &'static CharacterDescriptor {
+    &NANA_DESCRIPTOR
 }
 
-impl crate::climber::Climber for Popo {
-    const LEADER: bool = true;
-    fn vars(&mut self) -> &mut ClimberVars {
-        &mut self.vars
-    }
-    fn attributes(&self) -> &IceClimberAttributes {
-        &self.attributes
-    }
-}
-
-impl crate::climber::Climber for Nana {
-    const LEADER: bool = false;
-    fn vars(&mut self) -> &mut ClimberVars {
-        &mut self.vars
-    }
-    fn attributes(&self) -> &IceClimberAttributes {
-        &self.attributes
-    }
-}
-
-impl CharacterCallbacks for Popo {
+impl CharacterCallbacks for IceClimber {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &POPO_TABLE
     }
-    climber_callbacks!();
-    fn kind(&self) -> FighterKind {
-        FighterKind::Popo
+    /// Nana runs Popo's hooks under her own descriptor. Kept out of line so
+    /// scene composition calls this crate's one copy.
+    #[inline(never)]
+    fn into_state(self) -> CharacterState {
+        let nana = self.climber == Climber::Nana;
+        let mut state = CharacterState::new(self);
+        if nana {
+            state.use_table(&NANA_TABLE);
+        }
+        state
     }
+    fn kind(&self) -> FighterKind {
+        match self.climber {
+            Climber::Popo => FighterKind::Popo,
+            Climber::Nana => FighterKind::Nana,
+        }
+    }
+    /// Popo's: the player's own climber. Nana's form is `Nana`.
     fn descriptor() -> &'static CharacterDescriptor {
         &POPO_DESCRIPTOR
+    }
+    fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
+        Self::read(data, Climber::Popo)
+    }
+    /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
+    const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
+        Fighter::enter_common_taunt;
+    const SPECIAL_ROWS: &'static [MotionRow] = &crate::SPECIAL_ROWS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
+    /// ftPp_Init_OnKnockbackEnter: Fighter_OnKnockbackEnter(gobj, 1).
+    const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) =
+        |fighter, _assets| fighter.set_knockback_texture_frames(3.0);
+    /// ftPp_Init_OnKnockbackExit: Fighter_OnKnockbackExit(gobj, 1).
+    const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
+        |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
+    fn restore_saved(&mut self, raw: &[u8]) {
+        self.vars.restore(raw);
+    }
+    /// ftCo_Landing_Enter, ftCo_Landing.c:69-71: FTKIND_POPO/NANA.
+    fn on_landing(&mut self, _allow_interrupt: bool) {
+        self.vars.air_ice_shot_used = false;
+    }
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: death2_cb and
+    /// take_dmg_cb go.
+    fn on_motion_change(&mut self) {
+        self.vars.ice_callbacks = false;
+    }
+    /// ftCommon_8007DB58: take_dmg_cb, ftPp_Init_8011F060.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles);
+    /// ftCo_800D331C: death2_cb, ftPp_Init_8011F060.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles);
+    /// Fighter_8006C80C: the special's accessory4, installed until the next
+    /// motion change.
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match crate::climber::vars(f).accessory {
+            crate::climber::Accessory::IceShot => crate::special_n::accessory(f, assets),
+            crate::climber::Accessory::None => {}
+        }
+    }
+    /// ftData_SpecialN/S/Hi/Lw[kind] and their aerial tables.
+    fn enter_special(
+        f: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        crate::special::enter(f, slot, airborne, assets);
     }
     /// ftPp_Init_OnLoad (8011EF14): x2222_b5, PUSH_ATTRS, x40 = attributes
     /// +0; the three item registrations (it_8026B3F8) belong to the item
     /// scene. ftdata.c supplies every special.
-    fn on_load(&mut self, capabilities: &mut Capabilities) {
-        capabilities.leads_partner = true;
-        capabilities.spawn_offset = self.attributes.leader_spawn_offset;
-        capabilities.specials = [true; 4];
-    }
-    /// ftPp_Init_OnDeath (8011EFE8).
-    fn on_reset(&mut self) {
-        self.vars.reset();
-    }
-}
-
-impl CharacterCallbacks for Nana {
-    fn table() -> &'static melee_ft::fighter::CharacterTable {
-        &NANA_TABLE
-    }
-    climber_callbacks!();
-    fn kind(&self) -> FighterKind {
-        FighterKind::Nana
-    }
-    fn descriptor() -> &'static CharacterDescriptor {
-        &NANA_DESCRIPTOR
-    }
+    ///
     /// ftNn_Init_OnLoad (80122EB4): x2222_b4, PUSH_ATTRS (through
     /// ftPp_Init_OnLoadForNana), x40 = attributes +C4. ftData_SpecialS and
     /// ftData_SpecialHi (and their aerial tables) are NULL for Nana.
     fn on_load(&mut self, capabilities: &mut Capabilities) {
-        capabilities.refuses_healing_items = true;
-        capabilities.cpu_partner = true;
-        capabilities.spawn_offset = self.attributes.partner_spawn_offset;
-        capabilities.armor = self.attributes.partner_armor;
-        capabilities.specials = [false, false, true, true];
+        match self.climber {
+            Climber::Popo => {
+                capabilities.leads_partner = true;
+                capabilities.spawn_offset = self.attributes.leader_spawn_offset;
+                capabilities.specials = [true; 4];
+            }
+            Climber::Nana => {
+                capabilities.refuses_healing_items = true;
+                capabilities.cpu_partner = true;
+                capabilities.spawn_offset = self.attributes.partner_spawn_offset;
+                capabilities.armor = self.attributes.partner_armor;
+                capabilities.specials = [false, false, true, true];
+            }
+        }
     }
-    /// ftNn_Init_OnDeath (80122F28): dmg.armor0 = attributes +C8 (see
-    /// `on_load`), then the shared reset.
+    /// ftPp_Init_OnDeath (8011EFE8); ftNn_Init_OnDeath (80122F28):
+    /// dmg.armor0 = attributes +C8 (see `on_load`), then the shared reset.
     fn on_reset(&mut self) {
         self.vars.reset();
     }

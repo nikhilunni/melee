@@ -4,7 +4,9 @@ use hsd_types::Vec3;
 use melee_ft::fighter::assets::{
     CharacterDescriptor, CostumeDescriptor, FighterAssets, Result as FighterResult,
 };
-use melee_ft::fighter::{AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, PlayerSlot};
+use melee_ft::fighter::{
+    AerialJumpStyle, Capabilities, CharacterCallbacks, CharacterState, Fighter, PlayerSlot,
+};
 use melee_types::{FighterKind, ItemKind};
 #[derive(Clone, Debug)]
 pub struct Yoshi {
@@ -114,9 +116,8 @@ impl CharacterCallbacks for Yoshi {
         FighterKind::Yoshi
     }
     /// ftYs_Init_8012BAC0 (8012BAC0): attribute +0x120.
-    fn mouth_capture_scale(&self) -> Option<f32> {
-        Some(self.attributes.captured_hurtbox_scale)
-    }
+    const MOUTH_CAPTURE_SCALE: fn(&CharacterState) -> Option<f32> =
+        |state| Some(state.get::<Self>().attributes.captured_hurtbox_scale);
     /// ftCo_800DE3FC's FTKIND_YOSHI arm (ftCo_Thrown.c:33) is the shared
     /// mouth-hold path; ftCo_800DD398 has no Yoshi arm.
     fn throw_variant(&self) {}
@@ -227,13 +228,12 @@ impl CharacterCallbacks for Yoshi {
     fn enter_guard_off(fighter: &mut Fighter, assets: &FighterAssets) -> Option<FighterResult<()>> {
         Some(crate::shield::off(fighter, assets))
     }
-    fn enter_shield_stun(
-        fighter: &mut Fighter,
-        impact: &melee_ft::fighter::shield::ShieldImpact,
-        assets: &FighterAssets,
-    ) -> Option<FighterResult<()>> {
-        Some(crate::shield::stun(fighter, impact, assets))
-    }
+    const ENTER_SHIELD_STUN: fn(
+        &mut Fighter,
+        &melee_ft::fighter::shield::ShieldImpact,
+        &FighterAssets,
+    ) -> Option<FighterResult<()>> =
+        |fighter, impact, assets| Some(crate::shield::stun(fighter, impact, assets));
     fn escape_variant(
         fighter: &mut Fighter,
         assets: &FighterAssets,

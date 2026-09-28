@@ -179,11 +179,7 @@ impl CharacterCallbacks for Peach {
         crate::articles::destroyed;
     /// hurtbox_detect_cb = doAirEnd0 in the Peach Bomber jump.
     const HURTBOX_DETECT: Option<
-        fn(
-            &mut melee_ft::fighter::Fighter,
-            &FighterAssets,
-            melee_ft::fighter::damage::InertTouch,
-        ),
+        fn(&mut melee_ft::fighter::Fighter, &FighterAssets, melee_ft::fighter::damage::InertTouch),
     > = Some(crate::special_s::inert_contact);
     const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
         Some(crate::special_n::contact);
@@ -259,9 +255,10 @@ impl CharacterCallbacks for Peach {
     /// ftCo_Landing.c:56-57: ftPe_8011D598 when the landing is interruptible.
     const LANDING_ARTICLES: fn(&mut melee_ft::fighter::Fighter, bool) = crate::articles::landing;
     const WAIT_ARTICLES: fn(&mut melee_ft::fighter::Fighter) = crate::articles::wait;
-    fn special_parasol(&self) -> Option<melee_ft::fighter::parasol::SpecialParasol> {
-        crate::articles::special_parasol(self)
-    }
+    const SPECIAL_PARASOL: fn(
+        &melee_ft::fighter::CharacterState,
+    ) -> Option<melee_ft::fighter::parasol::SpecialParasol> =
+        |state| crate::articles::special_parasol(state.get::<Self>());
     const SET_PARASOL_ANIMATION: fn(&mut melee_ft::fighter::Fighter, usize, f32) =
         crate::articles::set_parasol_animation;
     /// take_dmg_cb = ftPe_Init_OnDeath2 while armed.

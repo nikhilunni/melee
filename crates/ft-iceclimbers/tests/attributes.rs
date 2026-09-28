@@ -1,7 +1,7 @@
 mod support;
 use ft_iceclimbers::{
     attributes::{read, IceClimberAttributes},
-    init::{ClimberVars, Nana, Popo},
+    init::{Climber, ClimberVars, IceClimber},
 };
 use melee_ft::fighter::{Capabilities, CharacterCallbacks};
 use melee_types::FighterKind;
@@ -33,7 +33,8 @@ fn relocated_attributes_name_the_spawn_offsets_and_nanas_armor() {
 
 #[test]
 fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
-    let mut popo = Popo {
+    let mut popo = IceClimber {
+        climber: Climber::Popo,
         attributes: attributes(),
         vars: ClimberVars::default(),
     };
@@ -45,7 +46,8 @@ fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
     assert_eq!(capabilities.armor, 0.0);
     assert_eq!(capabilities.specials, [true; 4]);
 
-    let mut nana = Nana {
+    let mut nana = IceClimber {
+        climber: Climber::Nana,
         attributes: attributes(),
         vars: ClimberVars::default(),
     };
@@ -61,7 +63,8 @@ fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
 
 #[test]
 fn landing_and_death_clear_the_climber_vars() {
-    let mut popo = Popo {
+    let mut popo = IceClimber {
+        climber: Climber::Popo,
         attributes: attributes(),
         vars: ClimberVars::default(),
     };

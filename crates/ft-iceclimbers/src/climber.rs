@@ -1,22 +1,22 @@
 //! What Popo and Nana share: the special code (ftPp_*) runs on either
 //! climber's fighter, reading its own ftPopo_FighterVars and attributes.
-use crate::{attributes::IceClimberAttributes, init::ClimberVars};
-use melee_ft::fighter::{assets::FighterAssets, CharacterCallbacks, Fighter, MotionRow};
+use crate::{
+    attributes::IceClimberAttributes,
+    init::{Climber, ClimberVars, IceClimber},
+};
+use melee_ft::fighter::{assets::FighterAssets, Fighter, MotionRow};
 
-/// A climber's payload, as the shared specials see it.
-pub trait Climber: CharacterCallbacks + Sized + 'static {
-    /// FTKIND_POPO (the leader) rather than FTKIND_NANA.
-    const LEADER: bool;
-    fn vars(&mut self) -> &mut ClimberVars;
-    fn attributes(&self) -> &IceClimberAttributes;
+pub fn vars(f: &mut Fighter) -> &mut ClimberVars {
+    &mut f.character.get_mut::<IceClimber>().vars
 }
 
-pub fn vars<C: Climber>(f: &mut Fighter) -> &mut ClimberVars {
-    f.character.get_mut::<C>().vars()
+pub fn attributes(f: &Fighter) -> &IceClimberAttributes {
+    &f.character.get::<IceClimber>().attributes
 }
 
-pub fn attributes<C: Climber>(f: &Fighter) -> &IceClimberAttributes {
-    f.character.get::<C>().attributes()
+/// Which climber `f` is (FTKIND_POPO or FTKIND_NANA).
+pub fn climber(f: &Fighter) -> Climber {
+    f.character.get::<IceClimber>().climber
 }
 
 /// The accessory4 callback a special installed; a motion change removes

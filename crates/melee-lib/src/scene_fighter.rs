@@ -8,7 +8,7 @@ use crate::assets::CharacterArchive;
 use crate::initial_state::{CollMap, SavedPose};
 use hsd_types::Mtx;
 use melee_ft::fighter::{
-    assets::CharacterDescriptor, assets::FighterAssets, CharacterCallbacks, Fighter,
+    assets::CharacterDescriptor, assets::FighterAssets, CharacterCallbacks, CharacterForm, Fighter,
 };
 use melee_types::snapshot::{Snapshot, SnapshotSink};
 use std::mem::ManuallyDrop;
@@ -72,8 +72,8 @@ macro_rules! scene_characters {
                         return Ok(character.into_state());
                     }
                     $(
-                        if archive.descriptor.kind == <$partner as CharacterCallbacks>::descriptor().kind {
-                            let mut character = <$partner as CharacterCallbacks>::from_archive(&archive.data)
+                        if archive.descriptor.kind == <$partner as CharacterForm>::form_descriptor().kind {
+                            let mut character = <$partner as CharacterForm>::read_form(&archive.data)
                                 .map_err(|e| anyhow::anyhow!("{e}"))?;
                             character.on_costume_loaded(archive.costume(costume), costume).map_err(|e| anyhow::anyhow!("{e}"))?;
                             return Ok(character.into_state());
@@ -107,7 +107,7 @@ macro_rules! scene_characters {
                 $(
                     $(
                         if descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                            return Some(<$partner as CharacterCallbacks>::descriptor());
+                            return Some(<$partner as CharacterForm>::form_descriptor());
                         }
                     )?
                 )*
@@ -125,11 +125,11 @@ macro_rules! scene_characters {
             ) -> Self {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                        return Self::new(construct::<$ty>(archive, resources, map, raw, saved));
+                        return Self::new(construct(<$ty as CharacterCallbacks>::from_archive(&archive.data), archive, resources, map, raw, saved));
                     }
                     $(
-                        if archive.descriptor.kind == <$partner as CharacterCallbacks>::descriptor().kind {
-                            return Self::new(construct::<$partner>(archive, resources, map, raw, saved));
+                        if archive.descriptor.kind == <$partner as CharacterForm>::form_descriptor().kind {
+                            return Self::new(construct(<$partner as CharacterForm>::read_form(&archive.data), archive, resources, map, raw, saved));
                         }
                     )?
                 )*
@@ -154,7 +154,7 @@ scene_characters! {
     "Luigi" => Luigi(ft_luigi::init::Luigi),
     "Pichu" => Pichu(ft_pichu::init::Pichu),
     "Ganondorf" => Ganondorf(ft_ganon::init::Ganondorf),
-    "IceClimbers" => IceClimbers(ft_iceclimbers::init::Popo) partner(ft_iceclimbers::init::Nana),
+    "IceClimbers" => IceClimbers(ft_iceclimbers::init::IceClimber) partner(ft_iceclimbers::init::Nana),
     "Link" => Link(ft_link::init::Link),
     "YoungLink" => YoungLink(ft_younglink::init::YoungLink),
     "Samus" => Samus(ft_samus::init::Samus),
@@ -172,15 +172,17 @@ pub(crate) fn transforms(kind: melee_types::FighterKind) -> bool {
     )
 }
 
+/// `character`: the form's `from_archive`, read where the form is concrete.
 fn construct<C: CharacterCallbacks>(
+    character: Result<C, melee_ft::desc::FighterDescError>,
     archive: &CharacterArchive,
     resources: &FighterAssets,
     map: &CollMap,
     raw: &[u8],
     saved: &SavedPose,
 ) -> Fighter {
-    let mut character = C::from_archive(&archive.data)
-        .unwrap_or_else(|e| panic!("{:?} character data: {e}", archive.descriptor.kind));
+    let mut character =
+        character.unwrap_or_else(|e| panic!("{:?} character data: {e}", archive.descriptor.kind));
     character
         .on_costume_loaded(archive.costume(raw[0x619]), raw[0x619])
         .expect("character costume data");
@@ -238,15 +240,13 @@ impl std::ops::DerefMut for SceneFighter {
     }
 }
 
-// Keep destruction of the opaque match's fighter graph in its owning crate.
-// Otherwise downstream drop glue repeats this entire graph in each consumer.
+// Keep destruction of the fighter graph in melee-ft (`Fighter::destroy`).
+// Otherwise each crate that drops a fighter repeats this entire graph's glue.
 impl Drop for SceneFighter {
     #[inline(never)]
     fn drop(&mut self) {
-        // SAFETY: new/Clone initialize the sole owner; it is never taken out,
-        // and ManuallyDrop suppresses the automatic second drop of this field.
-        unsafe {
-            ManuallyDrop::drop(&mut self.0);
-        }
+        // SAFETY: new/Clone initialize the sole owner; it is taken out only
+        // here, and ManuallyDrop suppresses the automatic second drop.
+        unsafe { ManuallyDrop::take(&mut self.0) }.destroy();
     }
 }

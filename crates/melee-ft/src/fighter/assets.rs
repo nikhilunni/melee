@@ -262,6 +262,31 @@ pub struct AnimationFallback<'a> {
     pub data: &'a Archive,
     pub aj: &'a [u8],
 }
+/// A scene's loaded fighter resources, one per fighter GObj. Destroyed in
+/// this crate: otherwise every consumer's drop glue repeats the whole
+/// resource graph.
+#[derive(Default)]
+pub struct FighterAssetSet(std::mem::ManuallyDrop<Vec<FighterAssets>>);
+impl FighterAssetSet {
+    pub fn push(&mut self, assets: FighterAssets) {
+        self.0.push(assets);
+    }
+}
+impl std::ops::Deref for FighterAssetSet {
+    type Target = [FighterAssets];
+    fn deref(&self) -> &[FighterAssets] {
+        &self.0
+    }
+}
+impl Drop for FighterAssetSet {
+    #[inline(never)]
+    fn drop(&mut self) {
+        // SAFETY: the vector is never taken out; this is its only
+        // destruction path, and ManuallyDrop stops a second one.
+        unsafe { std::mem::ManuallyDrop::drop(&mut self.0) }
+    }
+}
+
 impl FighterAssets {
     /// Fighter_LoadCommonData (0x80067ABC) / ftData_80085CD8:
     /// Shared Wait, Fall, Landing and EntryStart resources, caller-owned archives and AJ bytes.
@@ -315,12 +340,14 @@ impl FighterAssets {
                 Ok((fallback, root, table))
             })
             .transpose()?;
-        let borrowed_ids: Vec<u32> = fallback.as_ref().map_or(Vec::new(), |(_, _, table)| {
-            authored_motions(table)
-                .into_iter()
-                .filter(|id| !own_ids.contains(id) && (*id as usize) < table.entries.len())
-                .collect()
-        });
+        let mut borrowed_ids: Vec<u32> = Vec::new();
+        if let Some((_, _, table)) = &fallback {
+            borrowed_ids.extend(
+                authored_motions(table)
+                    .into_iter()
+                    .filter(|id| !own_ids.contains(id) && (*id as usize) < table.entries.len()),
+            );
+        }
         let mut script_ids = own_ids.clone();
         script_ids.extend(borrowed_ids.iter().copied());
         script_ids.sort_unstable();

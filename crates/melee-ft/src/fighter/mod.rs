@@ -187,10 +187,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
     const DEATH: Option<fn(&mut Fighter)> = None;
     /// The character's own parasol while it hangs on fp->item_gobj
-    /// (ftGetParasolStatus, ftCo_ItemParasolGetFallMotionId).
-    fn special_parasol(&self) -> Option<parasol::SpecialParasol> {
-        None
-    }
+    /// (ftGetParasolStatus, ftCo_ItemParasolGetFallMotionId). A table
+    /// constant rather than a default method, so characters without one
+    /// share one concrete default.
+    const SPECIAL_PARASOL: fn(&CharacterState) -> Option<parasol::SpecialParasol> =
+        character::no_special_parasol;
     /// ftCommon_8007E83C (8007E83C): parasol animation `index` over
     /// `frames` (zero: at the fighter's rate).
     const SET_PARASOL_ANIMATION: fn(&mut Fighter, usize, f32) =
@@ -302,10 +303,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn catch_variant(&mut self) {}
     /// ftYs_Init_8012BAC0: a captor that holds its victim in its mouth (the
     /// FTKIND_YOSHI arms of ftCo_CaptureWait.c and ftCo_Thrown.c:33) returns
-    /// the scale of the victim's single stand-in hurt capsule.
-    fn mouth_capture_scale(&self) -> Option<f32> {
-        None
-    }
+    /// the scale of the victim's single stand-in hurt capsule. A table
+    /// constant, so characters without one share one concrete default.
+    const MOUTH_CAPTURE_SCALE: fn(&CharacterState) -> Option<f32> =
+        character::no_mouth_capture;
     /// ftCo_Throw.c:145-157,346-353: special capture and Fox laser callbacks.
     fn throw_variant(&self) {
         if Self::descriptor().common_behavior.throw_callback {
@@ -560,17 +561,13 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         None
     }
     /// ftCo_80092E50's fp->kind branch: the character's shield-stun entry
-    /// in place of ftCo_80092F2C; None selects the shared GuardSetOff.
-    fn enter_shield_stun(
-        _fighter: &mut Fighter,
-        _impact: &shield::ShieldImpact,
-        _assets: &assets::FighterAssets,
-    ) -> Option<assets::Result<()>>
-    where
-        Self: Sized,
-    {
-        None
-    }
+    /// in place of ftCo_80092F2C; None selects the shared GuardSetOff. A
+    /// table constant, so characters without one share one concrete default.
+    const ENTER_SHIELD_STUN: fn(
+        &mut Fighter,
+        &shield::ShieldImpact,
+        &assets::FighterAssets,
+    ) -> Option<assets::Result<()>> = character::common_shield_stun;
     /// ftCo_Escape.c: character setup after motion entry, and completion.
     fn escape_finished(
         _fighter: &mut Fighter,
@@ -585,6 +582,30 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     where
         Self: Sized,
     {
+    }
+}
+
+/// One fighter kind as a scene builds it: the archives it loads and the
+/// typed payload it runs. Every character type is its own form; a kind that
+/// shares another kind's payload type (Nana, with Popo: one code path in
+/// retail) is a form of its own, so the shared hooks compile once.
+pub trait CharacterForm {
+    type Character: CharacterCallbacks;
+    fn form_descriptor() -> &'static assets::CharacterDescriptor;
+    fn read_form(
+        data: &hsd_archive::Archive,
+    ) -> Result<Self::Character, crate::desc::FighterDescError>;
+}
+// Forwarders: inlined so each form adds no instantiation of its own.
+impl<C: CharacterCallbacks> CharacterForm for C {
+    type Character = C;
+    #[inline(always)]
+    fn form_descriptor() -> &'static assets::CharacterDescriptor {
+        <C as CharacterCallbacks>::descriptor()
+    }
+    #[inline(always)]
+    fn read_form(data: &hsd_archive::Archive) -> Result<C, crate::desc::FighterDescError> {
+        <C as CharacterCallbacks>::from_archive(data)
     }
 }
 
@@ -823,6 +844,10 @@ impl std::ops::DerefMut for Fighter {
     }
 }
 impl Fighter {
+    /// Destroy a boxed fighter in this crate, so a scene that owns fighters
+    /// does not repeat the fighter graph's drop glue.
+    #[inline(never)]
+    pub fn destroy(self: Box<Self>) {}
     pub fn character_accessory(
         &mut self,
         assets: &assets::FighterAssets,

@@ -149,7 +149,7 @@ impl CharacterTable {
             forward_smash_combo: C::FORWARD_SMASH_COMBO,
             motion_flags: C::MOTION_FLAGS,
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
-            mouth_capture_scale: |state| state.get::<C>().mouth_capture_scale(),
+            mouth_capture_scale: C::MOUTH_CAPTURE_SCALE,
             throw_variant: |state| state.get::<C>().throw_variant(),
             knockback_enter: C::KNOCKBACK_ENTER,
             knockback_exit: C::KNOCKBACK_EXIT,
@@ -208,10 +208,10 @@ impl CharacterTable {
             input_shield: C::input_shield,
             enter_guard_hold: C::enter_guard_hold,
             enter_guard_off: C::enter_guard_off,
-            enter_shield_stun: C::enter_shield_stun,
+            enter_shield_stun: C::ENTER_SHIELD_STUN,
             escape_finished: C::escape_finished,
             escape_animated: C::escape_animated,
-            special_parasol: |state| state.get::<C>().special_parasol(),
+            special_parasol: C::SPECIAL_PARASOL,
             set_parasol_animation: C::SET_PARASOL_ANIMATION,
             article_destroyed: C::ARTICLE_DESTROYED,
             owner_blast: C::OWNER_BLAST,
@@ -224,6 +224,14 @@ impl CharacterTable {
             cape_turn_end: C::CAPE_TURN_END,
             transformation_arrival: C::TRANSFORMATION_ARRIVAL,
         }
+    }
+    /// The table of a second kind that runs the same payload type and hooks
+    /// under its own descriptor (Nana with Popo's).
+    pub const fn with_descriptor(
+        self,
+        descriptor: fn() -> &'static assets::CharacterDescriptor,
+    ) -> Self {
+        Self { descriptor, ..self }
     }
 }
 
@@ -296,6 +304,16 @@ impl CharacterState {
     }
     pub fn table(&self) -> &'static CharacterTable {
         self.table
+    }
+    /// Run this payload under the table of a second kind that shares its type
+    /// (Nana under Popo's hooks, `CharacterTable::with_descriptor`).
+    pub fn use_table(&mut self, table: &'static CharacterTable) {
+        assert_eq!(
+            (table.type_id)(),
+            self.type_id,
+            "character payload/table mismatch"
+        );
+        self.table = table;
     }
     pub fn kind(&self) -> FighterKind {
         (self.table.kind)(self)
@@ -429,7 +447,8 @@ mod tests;
 
 // Concrete defaults belong to the shared library, not each character's generic
 // table construction. Prevent automatic cross-crate inlining from cloning the
-// no-op body into every table owner.
+// no-op body into every table owner (they are only reached through the table's
+// fn pointers, so no call site loses an inline).
 #[inline(never)]
 pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
 /// ftCommon_8007E83C without a special parasol: retail asserts
@@ -437,13 +456,17 @@ pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAsse
 pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize, frames: f32) {
     unimplemented!("ftCommon_8007E83C({index}, {frames}): Parasol item animation")
 }
+#[inline(never)]
 pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
 pub(super) fn unsupported_owner_blast(
     fighter: &mut Fighter,
     _blast: &melee_it::OwnerBlast,
     _assets: &assets::FighterAssets,
 ) {
-    unimplemented!("{:?}: an article's blast offered to its owner", fighter.character.kind())
+    unimplemented!(
+        "{:?}: an article's blast offered to its owner",
+        fighter.character.kind()
+    )
 }
 pub(super) fn no_article_accessory(
     fighter: &mut Fighter,
@@ -452,6 +475,7 @@ pub(super) fn no_article_accessory(
 ) -> Option<u16> {
     unimplemented!("{:?} owns no owner-driven article", fighter.core.kind)
 }
+#[inline(never)]
 pub(super) fn no_article_hitlag_end(_fighter: &mut Fighter) {}
 pub(super) fn unsupported_article_request(
     fighter: &mut Fighter,
@@ -464,8 +488,11 @@ pub(super) fn unsupported_article_request(
         fighter.core.kind
     );
 }
+#[inline(never)]
 pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
+#[inline(never)]
 pub(super) fn no_wait_articles(_fighter: &mut Fighter) {}
+#[inline(never)]
 pub(super) fn cape_turn_allowed(_fighter: &mut Fighter) -> bool {
     false
 }
@@ -480,6 +507,25 @@ pub(super) fn catch_frame(
     frame: f32,
 ) -> f32 {
     frame
+}
+
+#[inline(never)]
+pub(super) fn no_special_parasol(_state: &CharacterState) -> Option<parasol::SpecialParasol> {
+    None
+}
+
+#[inline(never)]
+pub(super) fn no_mouth_capture(_state: &CharacterState) -> Option<f32> {
+    None
+}
+
+#[inline(never)]
+pub(super) fn common_shield_stun(
+    _fighter: &mut Fighter,
+    _impact: &super::shield::ShieldImpact,
+    _assets: &assets::FighterAssets,
+) -> Option<assets::Result<()>> {
+    None
 }
 
 #[inline(never)]

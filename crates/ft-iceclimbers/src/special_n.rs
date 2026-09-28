@@ -4,7 +4,10 @@
 //! (it_802C1590) and cmd_vars[0] = 2 to launch it (it_802C16F8); accessory4
 //! (ftPp_SpecialN_8011F500) carries both out. Leaving the ground or landing
 //! first breaks a block still held.
-use crate::climber::{self, attributes, vars, Accessory, Climber};
+use crate::{
+    climber::{self, attributes, vars, Accessory},
+    init::Climber,
+};
 use hsd_types::Vec3;
 use melee_ft::{
     anim::WaitChoice,
@@ -38,34 +41,32 @@ const MAKE: u32 = 1;
 const LAUNCH: u32 = 2;
 
 /// ftPp_Init_MotionStateTable rows 341 and 342.
-pub const fn rows<C: Climber>() -> [MotionRow; 2] {
-    [
-        climber::row(
-            GROUND.0,
-            anim::<false>,
-            climber::no_input,
-            callbacks::physics::guard_on,
-            ground_collision::<C>,
-        ),
-        climber::row(
-            AIR.0,
-            anim::<true>,
-            climber::no_input,
-            callbacks::physics::air_friction,
-            air_collision::<C>,
-        ),
-    ]
-}
+pub const ROWS: [MotionRow; 2] = [
+    climber::row(
+        GROUND.0,
+        anim::<false>,
+        climber::no_input,
+        callbacks::physics::guard_on,
+        ground_collision,
+    ),
+    climber::row(
+        AIR.0,
+        anim::<true>,
+        climber::no_input,
+        callbacks::physics::air_friction,
+        air_collision,
+    ),
+];
 
 /// ftPp_SpecialN_Enter (8011F2A4) / ftPp_SpecialAirN_Enter (8011F318). A
 /// first aerial Ice Shot lifts the climber (attribute x4) until it lands.
-pub fn enter<C: Climber>(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
+pub fn enter(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
     f.commands.clear_throw_flags();
     f.commands.variables[0] = 0;
-    vars::<C>(f).ice = false;
+    vars(f).ice = false;
     if airborne {
-        let lift = attributes::<C>(f).air_lift;
-        let v = vars::<C>(f);
+        let lift = attributes(f).air_lift;
+        let v = vars(f);
         if !v.air_ice_shot_used {
             v.air_ice_shot_used = true;
             v.ice_drop = 0.0;
@@ -79,21 +80,18 @@ pub fn enter<C: Climber>(f: &mut Fighter, airborne: bool, assets: &FighterAssets
         .expect("Ice Shot assets");
     // ftAnim_8006EBA4.
     f.step_animation(assets);
-    install_accessory::<C>(f);
+    install_accessory(f);
 }
 
 /// accessory4_cb = ftPp_SpecialN_8011F500.
-fn install_accessory<C: Climber>(f: &mut Fighter) {
-    vars::<C>(f).accessory = Accessory::IceShot;
+fn install_accessory(f: &mut Fighter) {
+    vars(f).accessory = Accessory::IceShot;
     f.core.arm_accessory4();
 }
 
 /// ftPp_SpecialN_Anim (8011F3CC) / ftPp_SpecialAirN_Anim (8011F408): Wait
 /// or Fall at the animation's end.
-fn anim<const AIR: bool>(
-    f: &mut Fighter,
-    p: AnimationPhase<'_>,
-) -> Result<Option<WaitChoice>> {
+fn anim<const AIR: bool>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         climber::finish(f, p.assets, AIR)?;
@@ -103,11 +101,11 @@ fn anim<const AIR: bool>(
 
 /// ftPp_SpecialN_Coll (8011F48C): off the floor, a held block breaks and the
 /// climber falls.
-fn ground_collision<C: Climber>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+fn ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if climber::stays_grounded(f, &mut p) {
         return Ok(());
     }
-    break_held_ice::<C>(f);
+    break_held_ice(f);
     let assets = p.assets.expect("Ice Shot collision assets");
     f.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)
 }
@@ -115,15 +113,15 @@ fn ground_collision<C: Climber>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> R
 /// ftPp_SpecialAirN_Coll (8011F4E4): on landing a held block breaks, the
 /// aerial lift is spent again and LandingFallSpecial runs attribute x8's
 /// lag.
-fn air_collision<C: Climber>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+fn air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if !climber::lands(f, &mut p) {
         return Ok(());
     }
-    break_held_ice::<C>(f);
-    let v = vars::<C>(f);
+    break_held_ice(f);
+    let v = vars(f);
     v.air_ice_shot_used = false;
     v.ice_drop = 0.0;
-    let lag = attributes::<C>(f).ice_shot_landing_lag;
+    let lag = attributes(f).ice_shot_landing_lag;
     let assets = p.assets.expect("Ice Shot landing assets");
     f.enter_special_landing(assets, false, lag)
 }
@@ -131,17 +129,17 @@ fn air_collision<C: Climber>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Resu
 /// ftPp_Init_8011F190 (8011F190): a held block breaks (it_802C17DC), and
 /// the climber lets go of it (ftPp_Init_8011F16C: x222C, death2_cb and
 /// take_dmg_cb cleared).
-pub fn break_held_ice<C: Climber>(f: &mut Fighter) {
-    if !vars::<C>(f).ice {
+pub fn break_held_ice(f: &mut Fighter) {
+    if !vars(f).ice {
         return;
     }
     request_ice(f, ItemControl::Remove);
-    release_ice::<C>(f);
+    release_ice(f);
 }
 
 /// ftPp_Init_8011F16C (8011F16C) for the block the climber holds.
-pub fn release_ice<C: Climber>(f: &mut Fighter) {
-    let v = vars::<C>(f);
+pub fn release_ice(f: &mut Fighter) {
+    let v = vars(f);
     v.ice = false;
     v.ice_callbacks = false;
 }
@@ -155,11 +153,11 @@ fn request_ice(f: &mut Fighter, control: ItemControl) {
 }
 
 /// ftPp_SpecialN_8011F500 (8011F500): the script's two commands.
-pub fn accessory<C: Climber>(f: &mut Fighter, assets: &FighterAssets) {
+pub fn accessory(f: &mut Fighter, assets: &FighterAssets) {
     let command = f.commands.variables[0];
     match command {
-        MAKE => make_ice::<C>(f, assets),
-        LAUNCH if vars::<C>(f).ice => launch_ice::<C>(f),
+        MAKE => make_ice(f, assets),
+        LAUNCH if vars(f).ice => launch_ice(f),
         _ => {}
     }
 }
@@ -167,13 +165,13 @@ pub fn accessory<C: Climber>(f: &mut Fighter, assets: &FighterAssets) {
 /// The block at TopN, attribute xC along the facing (retail 8011F568:
 /// fmadds) and x10 plus x2250 above it (two fadds), from it_802C1590;
 /// its sound; death2_cb and take_dmg_cb become ftPp_Init_8011F060.
-fn make_ice<C: Climber>(f: &mut Fighter, assets: &FighterAssets) {
+fn make_ice(f: &mut Fighter, assets: &FighterAssets) {
     let bone = usize::from(assets.parts.joint(FtPart::TopN).expect("TopN part"));
     let (reach, height) = {
-        let a = attributes::<C>(f);
+        let a = attributes(f);
         (a.ice_reach, a.ice_height)
     };
-    let extra_height = vars::<C>(f).ice_drop;
+    let extra_height = vars(f).ice_drop;
     let c = &mut f.core;
     // lb_8000B1CC(parts[0].joint, NULL, &pos).
     let mut position =
@@ -196,7 +194,7 @@ fn make_ice<C: Climber>(f: &mut Fighter, assets: &FighterAssets) {
     );
     c.item_requests.push(ItemRequest::Spawn(spawn));
     climber::play_sound(f, MAKE_SOUND);
-    let v = vars::<C>(f);
+    let v = vars(f);
     v.ice = true;
     v.ice_callbacks = true;
     f.commands.variables[0] = 0;
@@ -204,17 +202,16 @@ fn make_ice<C: Climber>(f: &mut Fighter, assets: &FighterAssets) {
 
 /// cmd_vars[0] == 2 with a block: it_802C16F8, the launch voice and sound,
 /// and the climber lets go of it (inlineA0).
-fn launch_ice<C: Climber>(f: &mut Fighter) {
+fn launch_ice(f: &mut Fighter) {
     request_ice(f, ItemControl::Fire);
     f.commands.variables[0] = 0;
     climber::play_voice(
         f,
-        if C::LEADER {
-            LEADER_VOICE
-        } else {
-            PARTNER_VOICE
+        match climber::climber(f) {
+            Climber::Popo => LEADER_VOICE,
+            Climber::Nana => PARTNER_VOICE,
         },
     );
     climber::play_sound(f, LAUNCH_SOUND);
-    release_ice::<C>(f);
+    release_ice(f);
 }
