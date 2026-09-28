@@ -455,6 +455,19 @@ dependencies = [
 name = "ft-mario"
 version = "0.0.1"
 dependencies = [
+ "ft-mario-family",
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-mario-family"
+version = "0.0.1"
+dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -463,7 +476,6 @@ dependencies = [
  "melee-ft",
  "melee-it",
  "melee-lb",
- "melee-test-support",
  "melee-types",
 ]
 

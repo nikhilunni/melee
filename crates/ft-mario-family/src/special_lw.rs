@@ -4,7 +4,7 @@
 //! B once the script opens cmd_vars[2] rises. cmd_vars[0] starts the
 //! horizontal slowdown, cmd_vars[1] spends the aerial rise
 //! (x2234_tornadoCharge) and cmd_vars[3] tilts the model to the floor.
-use crate::{common, init::Mario};
+use crate::{common, MarioFamily};
 use melee_ef::request::EffectRequest;
 use melee_ft::{
     anim::WaitChoice,
@@ -61,12 +61,12 @@ pub struct Tornado {
     pub callbacks: bool,
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::TornadoAttributes {
-    &f.character.get::<Mario>().attributes.tornado
+fn attributes<C: MarioFamily>(f: &Fighter) -> &crate::attributes::TornadoAttributes {
+    &crate::attributes::<C>(f).tornado
 }
 
-fn tornado(f: &mut Fighter) -> &mut Tornado {
-    &mut f.character.get_mut::<Mario>().tornado
+fn tornado<C: MarioFamily>(f: &mut Fighter) -> &mut Tornado {
+    &mut crate::specials::<C>(f).tornado
 }
 
 /// Both hitlag callbacks pause and resume the fighter's effects.
@@ -78,22 +78,22 @@ fn install_hitlag_callbacks(f: &mut Fighter) {
 /// the aerial row either way, the start's fall speed (less the tap rise
 /// unless an aerial rise was spent; 800E20E0: fsubs), the horizontal clamp,
 /// doStartMotion.
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarioFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.variables[2] = 0;
     f.change_motion_state(AIR, a).expect("Tornado assets");
     // ftAnim_8006EBA4.
     f.step_animation(a);
     let (vel_y, tap, momentum, unknown) = {
-        let t = attributes(f);
+        let t = attributes::<C>(f);
         (t.vel_y, t.tap_y_vel_max, t.air_momentum_x, t.unknown)
     };
-    let charged = air && f.character.get::<Mario>().tornado_charged;
+    let charged = air && crate::specials_ref::<C>(f).tornado_charged;
     f.physics.self_velocity.y = vel_y - if charged { 0.0 } else { tap };
     clamp_self_velocity_x(f, momentum);
     // doStartMotion.
     f.commands.variables[0] = 0;
     f.commands.variables[1] = 0;
-    *tornado(f) = Tornado {
+    *tornado::<C>(f) = Tornado {
         slowdown: 0.0,
         unused_counter: unknown.wrapping_add(1),
         on_floor: false,
@@ -120,18 +120,18 @@ fn clamp_self_velocity_x(f: &mut Fighter, maximum: f32) {
 
 /// updateRot (the take-damage and death2 callback): the root's X rotation
 /// back to zero.
-pub fn clear_tilt(f: &mut Fighter) {
-    if std::mem::take(&mut tornado(f).callbacks) {
+pub fn clear_tilt<C: MarioFamily>(f: &mut Fighter) {
+    if std::mem::take(&mut tornado::<C>(f).callbacks) {
         let root = f.animation.root;
         f.skeleton.set_rotation_x(root, 0.0);
     }
 }
 
 /// ftMr_SpecialLw_Anim (800E22BC): Wait at the end.
-pub fn ground_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn ground_anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
-        tornado(f).callbacks = false;
+        tornado::<C>(f).callbacks = false;
         common::finish(f, p.assets, false)?;
     }
     Ok(None)
@@ -139,15 +139,15 @@ pub fn ground_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<Wait
 
 /// ftMr_SpecialAirLw_Anim (800E2308): cmd_vars[1] spends the aerial rise;
 /// at the end, Fall with no landing lag, else FallSpecial.
-pub fn air_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn air_anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if f.commands.variables[1] != 0 {
         f.commands.variables[1] = 0;
-        f.character.get_mut::<Mario>().tornado_charged = true;
+        crate::specials::<C>(f).tornado_charged = true;
     }
     if !f.animation.frames_remaining(&f.skeleton) {
-        tornado(f).callbacks = false;
-        let lag = attributes(f).landing_lag;
+        tornado::<C>(f).callbacks = false;
+        let lag = attributes::<C>(f).landing_lag;
         if lag == 0 {
             common::finish(f, p.assets, true)?;
         } else {
@@ -163,11 +163,11 @@ pub fn input(_: &mut Fighter, _: InputPhase<'_>) {}
 
 /// The horizontal speed cap, less the slowdown once cmd_vars[0] started it
 /// (800E2420: fsubs, 800E2430: fadds), never below zero.
-fn speed_cap(f: &mut Fighter, base: f32) -> f32 {
+fn speed_cap<C: MarioFamily>(f: &mut Fighter, base: f32) -> f32 {
     let mut cap = base;
     if f.commands.variables[0] != 0 {
-        let friction = attributes(f).friction_end;
-        let t = tornado(f);
+        let friction = attributes::<C>(f).friction_end;
+        let t = tornado::<C>(f);
         t.slowdown -= friction;
         cap += t.slowdown;
         if cap < 0.0 {
@@ -194,10 +194,10 @@ fn finish_update(f: &mut Fighter, p: &PhysicsPhase<'_>) {
 
 /// doPhys (800E2464..): leave the ground into the aerial row at this
 /// frame, clamped to the tap's fall and horizontal speeds.
-fn rise(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+fn rise<C: MarioFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.commands.variables[2] = 0;
     let (tap_gravity, momentum) = {
-        let t = attributes(f);
+        let t = attributes::<C>(f);
         (t.tap_gravity, t.air_momentum_x)
     };
     common::ground_to_air(f, AIR, assets, GROUND_AIR_FLAGS)?;
@@ -213,12 +213,12 @@ fn rise(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
 /// ftMr_SpecialLw_Phys (800E23E8): the stick drives the ground speed
 /// toward the cap (ftCommon_8007CADC), then ApplyGroundMovement; a B tap
 /// once cmd_vars[2] opens lifts off (800E247C: fadds).
-pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn ground_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     let (momentum, multiplier, tap) = {
-        let t = attributes(f);
+        let t = attributes::<C>(f);
         (t.momentum_x, t.momentum_x_mul, t.tap_y_vel_max)
     };
-    let cap = speed_cap(f, momentum);
+    let cap = speed_cap::<C>(f, momentum);
     let stick = f.input.current.stick.x;
     let physics = &mut f.core.physics;
     physics.ground_acceleration =
@@ -228,7 +228,7 @@ pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     grounded::apply_ground_movement(&mut f.core.physics, normal, terrain);
     if f.commands.variables[2] != 0 && f.input.pressed.intersects(Buttons::B) {
         f.physics.self_velocity.y += tap;
-        rise(f, p.assets).expect("Tornado rise");
+        rise::<C>(f, p.assets).expect("Tornado rise");
     }
     finish_update(f, &p);
 }
@@ -255,9 +255,9 @@ fn accelerate_toward(velocity: f32, acceleration: f32, target: f32) -> f32 {
 /// ftMr_SpecialAirLw_Phys (800E2510): a B tap rises (ftCommon_Ascend)
 /// while the aerial rise is unspent, then ordinary gravity and the stick's
 /// drift toward the cap (ftCommon_8007D3A8, threshold 0).
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     let (tap, tap_gravity, momentum, multiplier) = {
-        let t = attributes(f);
+        let t = attributes::<C>(f);
         (
             t.tap_y_vel_max,
             t.tap_gravity,
@@ -265,7 +265,7 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
             t.air_momentum_x_mul,
         )
     };
-    let charged = f.character.get::<Mario>().tornado_charged;
+    let charged = crate::specials_ref::<C>(f).tornado_charged;
     if !charged && f.commands.variables[2] != 0 && f.input.pressed.intersects(Buttons::B) {
         // ftCommon_Ascend(fp, tap_y_vel_max, tap_grav).
         let v = &mut f.physics.self_velocity.y;
@@ -280,7 +280,7 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         air.gravity,
         air.terminal_velocity,
     );
-    let cap = speed_cap(f, momentum);
+    let cap = speed_cap::<C>(f, momentum);
     let stick = f.input.current.stick.x;
     // ftCommon_8007D3A8(fp, 0, mul, cap): |stick| >= 0 always holds.
     f.physics.animation_velocity.x =
@@ -291,8 +291,8 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 /// doColl: with cmd_vars[3] set and the floor touched, the root tilts to
 /// the floor (facing * atan2f(n.x, n.y)); otherwise it stands upright.
 /// efLib_Cb_ftMr_SpecialLw tilts the model to the same floor.
-fn tilt(f: &mut Fighter) {
-    let tilted = f.commands.variables[3] != 0 && tornado(f).on_floor;
+fn tilt<C: MarioFamily>(f: &mut Fighter) {
+    let tilted = f.commands.variables[3] != 0 && tornado::<C>(f).on_floor;
     let normal = f.collision.data.floor.normal;
     let angle = if tilted {
         f.physics.facing * melee_lb::trigf::atan2f(normal.x, normal.y)
@@ -314,7 +314,7 @@ fn tilt(f: &mut Fighter) {
 
 /// ftMr_SpecialLw_Coll (800E27D0): ft_80082888 with the Tornado box; off
 /// the floor, doPhys.
-pub fn ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn ground_collision<C: MarioFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     let c = &mut f.core;
     air::begin_map(
         &c.physics,
@@ -332,18 +332,18 @@ pub fn ground_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         false,
     );
     if supported {
-        tornado(f).on_floor = true;
+        tornado::<C>(f).on_floor = true;
     } else {
-        rise(f, p.assets.expect("Tornado collision assets"))?;
-        tornado(f).on_floor = false;
+        rise::<C>(f, p.assets.expect("Tornado collision assets"))?;
+        tornado::<C>(f).on_floor = false;
     }
-    tilt(f);
+    tilt::<C>(f);
     Ok(())
 }
 
 /// ftMr_SpecialAirLw_Coll (800E2A38): ft_800824A0 with the Tornado box; a
 /// landing continues on the ground (doAirCollIfUnk).
-pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: MarioFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     let c = &mut f.core;
     air::begin_map(
         &c.physics,
@@ -360,23 +360,23 @@ pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         TORNADO_BOX,
     );
     if landed {
-        land(f, p.assets.expect("Tornado landing assets"))?;
-        tornado(f).on_floor = true;
+        land::<C>(f, p.assets.expect("Tornado landing assets"))?;
+        tornado::<C>(f).on_floor = true;
     } else {
-        tornado(f).on_floor = false;
+        tornado::<C>(f).on_floor = false;
     }
-    tilt(f);
+    tilt::<C>(f);
     Ok(())
 }
 
 /// doAirCollIfUnk: land into the grounded row at this frame, the rise
 /// spent flag cleared and the ground speed clamped.
-fn land(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+fn land<C: MarioFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.commands.variables[2] = 0;
-    let momentum = attributes(f).momentum_x;
+    let momentum = attributes::<C>(f).momentum_x;
     f.land();
     f.physics.self_velocity.y = 0.0;
-    f.character.get_mut::<Mario>().tornado_charged = false;
+    crate::specials::<C>(f).tornado_charged = false;
     let frame = f.animation.frame;
     f.change_motion_state_with_flags(GROUND, assets, GROUND_AIR_FLAGS, frame, 1.0)?;
     // ftCommon_ClampGrVel.

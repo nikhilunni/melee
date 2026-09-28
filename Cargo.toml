@@ -47,6 +47,7 @@ members = [
     "crates/ft-purin",
     "crates/ft-pikachu-family",
     "crates/ft-pikachu",
+    "crates/ft-mario-family",
     "crates/ft-mario",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",

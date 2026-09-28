@@ -62,14 +62,14 @@ fn restore_then_death_and_landing_reset_the_fighter_vars() {
     word(&mut raw, 0x2234, 1);
     word(&mut raw, 0x2238, 1);
     mario.restore_saved(&raw);
-    assert_eq!((mario.vitamin_current, mario.vitamin_previous), (3, 5));
-    assert!(mario.tornado_charged && mario.cape_boosted);
+    assert_eq!((mario.specials.vitamin_current, mario.specials.vitamin_previous), (3, 5));
+    assert!(mario.specials.tornado_charged && mario.specials.cape_boosted);
     mario.on_landing(false);
-    assert!(!mario.tornado_charged && !mario.cape_boosted);
+    assert!(!mario.specials.tornado_charged && !mario.specials.cape_boosted);
     mario.restore_saved(&raw);
     mario.model_group = 2;
     mario.on_reset();
-    assert_eq!((mario.vitamin_current, mario.vitamin_previous), (9, 9));
-    assert!(!mario.tornado_charged && !mario.cape_boosted);
+    assert_eq!((mario.specials.vitamin_current, mario.specials.vitamin_previous), (9, 9));
+    assert!(!mario.specials.tornado_charged && !mario.specials.cape_boosted);
     assert_eq!(mario.model_group, 0);
 }

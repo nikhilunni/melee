@@ -1,12 +1,9 @@
-//! Fireball, ftmariospecialn.c (800E0DA8..800E1248).
+//! Fireball and Megavitamin, ftmariospecialn.c (800E0DA8..800E1248).
 //!
 //! The script raises throw_flags_b0 on the throw frame; accessory4
-//! (ftMr_SpecialN_ItemFireSpawn) then spawns the fireball at Mario's left
-//! hand with its flash. cmd_vars[0] opens the interrupt window.
-use crate::{
-    common,
-    init::{Accessory, Mario},
-};
+//! (ftMr_SpecialN_ItemFireSpawn) then spawns the kind's projectile at the
+//! left hand. cmd_vars[0] opens the interrupt window.
+use crate::{common, specials, Accessory, MarioFamily};
 use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
 use melee_ft::{
@@ -32,33 +29,49 @@ const GROUND_AIR_FLAGS: MotionEntryFlags =
     MotionEntryFlags(MotionEntryFlags::SKIP_COL_ANIM.0 | MotionEntryFlags::UPDATE_CMD.0);
 
 /// ftMr_SpecialN_Enter (800E0DA8) / ftMr_SpecialAirN_Enter (800E1040).
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarioFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.variables[0] = 0;
     f.commands.clear_throw_flags();
     f.change_motion_state(if air { AIR } else { GROUND }, a)
         .expect("Fireball assets");
     // ftAnim_8006EBA4.
     f.step_animation(a);
-    install_accessory(f);
+    install_accessory::<C>(f);
 }
 
 /// accessory4_cb = ftMr_SpecialN_ItemFireSpawn, after each motion change.
-fn install_accessory(f: &mut Fighter) {
-    f.character.get_mut::<Mario>().accessory = Accessory::Fireball;
+fn install_accessory<C: MarioFamily>(f: &mut Fighter) {
+    specials::<C>(f).accessory = Accessory::NeutralProjectile;
     f.core.arm_accessory4();
 }
 
 /// ftMr_SpecialN_ItemFireSpawn (800E0EE0): on the script's throw flag, the
-/// fireball (it_8029B6F8) at the left hand, then its flash.
-pub fn spawn_fireball(f: &mut Fighter, assets: &FighterAssets) {
+/// kind's projectile at the left hand (lb_8000B1CC(parts[L1stNb].joint)).
+pub fn item_spawn<C: MarioFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) {
     if !std::mem::take(&mut f.commands.throw_accessory) {
         return;
     }
     let bone = usize::from(assets.parts.joint(FtPart::L1stNb).expect("L1stNb part"));
     let c = &mut f.core;
-    // lb_8000B1CC(parts[L1stNb].joint, NULL, &coords).
     let hand =
         melee_ft::fighter::caches::part_position(&mut c.skeleton, &c.animation, bone, Vec3::ZERO);
+    C::NEUTRAL_PROJECTILE(f, assets, rng, hand, bone);
+}
+
+/// The FTKIND_MARIO branch: the fireball (it_8029B6F8), then its flash
+/// (efSync_Spawn(1146, gobj, hand, &facing_dir)).
+pub fn spawn_fireball(
+    f: &mut Fighter,
+    _assets: &FighterAssets,
+    _rng: &mut gekko_math::HsdRng,
+    hand: Vec3,
+    bone: usize,
+) {
+    let c = &mut f.core;
     // it_8029B6F8: prev_pos is the hand on the stage plane; pos is
     // it_8026BB68's ECB midpoint (ftLib_80086990, retail 800869AC..BC:
     // fadds, fmuls, fadds).
@@ -114,24 +127,24 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 
 /// ftMr_SpecialN_Coll (800E0EA4): off the edge, ftMr_SpecialN_GroundToAir
 /// (800E1178) continues in the air.
-pub fn ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn ground_collision<C: MarioFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::stays_grounded(f, &mut p) {
         return Ok(());
     }
     let assets = p.assets.expect("Fireball collision assets");
     common::ground_to_air(f, AIR, assets, GROUND_AIR_FLAGS)?;
-    install_accessory(f);
+    install_accessory::<C>(f);
     Ok(())
 }
 
 /// ftMr_SpecialAirN_Coll (800E113C): landing continues on the ground
 /// (ftMr_SpecialAirN_AirToGround, 800E11E0).
-pub fn air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: MarioFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if !common::lands(f, &mut p) {
         return Ok(());
     }
     let assets = p.assets.expect("Fireball landing assets");
     common::air_to_ground(f, GROUND, assets, GROUND_AIR_FLAGS)?;
-    install_accessory(f);
+    install_accessory::<C>(f);
     Ok(())
 }

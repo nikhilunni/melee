@@ -3,7 +3,7 @@
 //! The script lifts Mario off the ground (SetAirborne) and rises him on his
 //! animation's TransN, turned by the stick angle the IASA collects until
 //! cmd_vars[0] closes it. The animation's end falls special.
-use crate::init::Mario;
+use crate::MarioFamily;
 use melee_ft::{
     anim::WaitChoice,
     collision::{air, ecb::EcbPose},
@@ -30,33 +30,33 @@ pub struct SuperJumpPunch {
     pub angle: f32,
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::SuperJumpPunchAttributes {
-    &f.character.get::<Mario>().attributes.super_jump_punch
+fn attributes<C: MarioFamily>(f: &Fighter) -> &crate::attributes::SuperJumpPunchAttributes {
+    &crate::attributes::<C>(f).super_jump_punch
 }
 
 /// ftMr_SpecialHi_Enter (800E1A54) / ftMr_SpecialAirHi_Enter (800E1AB0).
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarioFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.variables[0] = 0;
     f.commands.clear_throw_flags();
     if air {
         f.physics.self_velocity.y = 0.0;
         // 800E1AE0: fmuls.
-        f.physics.self_velocity.x *= attributes(f).vel_x;
+        f.physics.self_velocity.x *= attributes::<C>(f).vel_x;
     }
     f.change_motion_state(if air { AIR } else { GROUND }, a)
         .expect("Super Jump Punch assets");
-    f.character.get_mut::<Mario>().super_jump_punch = SuperJumpPunch::default();
+    crate::specials::<C>(f).super_jump_punch = SuperJumpPunch::default();
     // ftAnim_8006EBA4.
     f.step_animation(a);
 }
 
 /// ftMr_SpecialHi_Anim (800E1B24) / ftMr_SpecialAirHi_Anim: ftCo_80096900
 /// (gobj, 0, 1, 0, freefall mobility, landing lag) at the end.
-pub fn anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         let (mobility, lag) = {
-            let a = attributes(f);
+            let a = attributes::<C>(f);
             (a.freefall_mobility, a.landing_lag)
         };
         f.enter_special_fall(p.assets, false, true, false, mobility, lag)?;
@@ -82,16 +82,16 @@ fn stick_angle(x: f32, range: f32, angle_diff: f32) -> f32 {
 /// ftMr_SpecialHi_IASA (800E1BE4) / ftMr_SpecialAirHi_IASA: collect the
 /// widest steering angle while cmd_vars[0] is clear; on throw_flags_b3 a
 /// firm stick turns Mario around.
-pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
+pub fn input<C: MarioFamily>(f: &mut Fighter, _: InputPhase<'_>) {
     let x = f.input.current.stick.x;
     let magnitude = if x < 0.0 { -x } else { x };
     let (range, angle_diff, reverse) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (a.momentum_stick_range, a.angle_diff, a.reverse_stick_range)
     };
     if f.commands.variables[0] == 0 && magnitude > range {
         let angle = stick_angle(x, range, angle_diff);
-        let scratch = &mut f.character.get_mut::<Mario>().super_jump_punch;
+        let scratch = &mut crate::specials::<C>(f).super_jump_punch;
         let current = if scratch.angle < 0.0 {
             -scratch.angle
         } else {
@@ -114,7 +114,7 @@ pub fn input(f: &mut Fighter, _: InputPhase<'_>) {
 
 /// ft_80085154 (80085154): TransN turned by the steering angle
 /// (80085198: fmsubs, 8008519C: fmadds).
-fn steered_root_motion(f: &mut Fighter) {
+fn steered_root_motion<C: MarioFamily>(f: &mut Fighter) {
     let offset = f
         .animation
         .root_motion
@@ -122,7 +122,7 @@ fn steered_root_motion(f: &mut Fighter) {
         .expect("Super Jump Punch TransN")
         .primary_history
         .offset;
-    let angle = f.character.get::<Mario>().super_jump_punch.angle;
+    let angle = crate::specials_ref::<C>(f).super_jump_punch.angle;
     let cosine = gekko_math::msl::cosf(angle);
     let sine = gekko_math::msl::sinf(angle);
     let horizontal = offset.z * f.physics.facing;
@@ -147,11 +147,11 @@ fn finish_update(f: &mut Fighter, p: &PhysicsPhase<'_>) {
 
 /// ftMr_SpecialHi_Phys (800E1E74): ft_80085154 once the script lifted him,
 /// ft_80084FA8's root motion before.
-pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn ground_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         return callbacks::physics::jab(f, p);
     }
-    steered_root_motion(f);
+    steered_root_motion::<C>(f);
     finish_update(f, &p);
 }
 
@@ -159,13 +159,13 @@ pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 /// once cmd_vars[0] is set (three fmuls, x, y, z); before it, gravity
 /// (ftCommon_Fall with PlCo terminal velocity) and ftCommon_8007CF58's
 /// friction.
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     let (gravity, multiplier) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (a.gravity, a.vel_mul)
     };
     if f.commands.variables[0] != 0 {
-        steered_root_motion(f);
+        steered_root_motion::<C>(f);
         let v = &mut f.physics.self_velocity;
         v.x *= multiplier;
         v.y *= multiplier;
@@ -208,7 +208,7 @@ fn stay_airborne(f: &mut Fighter, p: &mut CollisionPhase<'_>) {
 /// ft_80084104; in the air, never landing while rising, then ft_800831CC
 /// with ftCo_80096CC8's floor filter, the special landing
 /// (ftMr_SpecialHi_CheckLanding), wall jump and ledge.
-pub fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn collision<C: MarioFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         return callbacks::collision::escape(f, p);
     }
@@ -235,7 +235,7 @@ pub fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
         c.input.current.stick.y,
         drop_threshold,
     ) {
-        let lag = attributes(f).landing_lag;
+        let lag = attributes::<C>(f).landing_lag;
         f.enter_special_landing(assets, false, lag)?;
     } else if !f.try_wall_jump(assets, p.map)? {
         f.try_grab_ledge(assets, p.map)?;

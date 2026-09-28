@@ -86,10 +86,17 @@ pub struct TornadoAttributes {
     pub landing_lag: i32,
 }
 
+/// Mario's attributes (ftDataMario).
 pub fn read_mario_attributes(archive: &Archive) -> Result<MarioAttributes> {
-    let root = archive.public("ftDataMario").ok_or_else(|| {
+    read_attributes(archive, "ftDataMario")
+}
+
+/// The shared layout under the ftData root `symbol` (ftDataMario or
+/// ftDataDrmario).
+pub fn read_attributes(archive: &Archive, symbol: &str) -> Result<MarioAttributes> {
+    let root = archive.public(symbol).ok_or_else(|| {
         FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
-            name: "ftDataMario".into(),
+            name: symbol.into(),
         })
     })?;
     MarioAttributes::read(archive, special_attributes_offset(archive, root)?)

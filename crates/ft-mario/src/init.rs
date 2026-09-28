@@ -1,135 +1,100 @@
 //! Mario load/reset hooks, ft/kinds/ftMario/ftmario.c.
-use crate::attributes::{read_mario_attributes, MarioAttributes};
+use ft_mario_family::{
+    attributes::{read_mario_attributes, MarioAttributes},
+    MarioFamily, Specials,
+};
 use melee_ft::fighter::{
-    assets::{CharacterDescriptor, CostumeDescriptor},
-    Capabilities, CharacterCallbacks,
+    assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets, Result as AssetResult},
+    Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
 use melee_types::FighterKind;
 
-/// ftMario_FighterVars (ftMario/types.h): Dr. Mario's vitamin colours share
-/// the block, so Mario keeps them at their OnDeath value.
+/// ftMr_Init_OnDeath resets the Megavitamin colours to this (no colour).
 const VITAMIN_RESET: i32 = 9;
-
-/// The accessory4 callback a special installed; a motion change removes it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Accessory {
-    #[default]
-    None,
-    /// ftMr_SpecialN_ItemFireSpawn: the fireball on the script's throw flag.
-    Fireball,
-    /// ftMr_SpecialS_CreateCape: the cape, once per swing.
-    CreateCape,
-}
 
 #[derive(Clone, Debug)]
 pub struct Mario {
     pub attributes: MarioAttributes,
     /// ftMr_Init_OnDeath resets model group 0 to selection 0.
     pub model_group: i32,
-    /// Fighter +222C, x222C_vitaminCurr (Dr. Mario's current pill colour).
-    pub vitamin_current: i32,
-    /// Fighter +2230, x2230_vitaminPrev.
-    pub vitamin_previous: i32,
-    /// Fighter +2234, x2234_tornadoCharge: an aerial Tornado already rose.
-    pub tornado_charged: bool,
-    /// Fighter +2238, x2238_isCapeBoost: an aerial cape already boosted.
-    pub cape_boosted: bool,
-    /// Fighter accessory4_cb while a special owns it.
-    pub accessory: Accessory,
-    /// Super Jump Punch's steering (Fighter +6BC).
-    pub super_jump_punch: crate::special_hi::SuperJumpPunch,
-    /// Mario Tornado's motion scratch and callbacks.
-    pub tornado: crate::special_lw::Tornado,
-    /// The cape and the swing's reflector.
-    pub cape: crate::special_s::Cape,
+    /// ftMario_FighterVars and the specials' scratch.
+    pub specials: Specials,
 }
 impl Mario {
     pub fn new(attributes: MarioAttributes) -> Self {
         Self {
             attributes,
             model_group: 0,
-            vitamin_current: VITAMIN_RESET,
-            vitamin_previous: VITAMIN_RESET,
-            tornado_charged: false,
-            cape_boosted: false,
-            accessory: Accessory::None,
-            super_jump_punch: Default::default(),
-            tornado: Default::default(),
-            cape: Default::default(),
+            specials: Specials {
+                vitamin_current: VITAMIN_RESET,
+                vitamin_previous: VITAMIN_RESET,
+                ..Specials::default()
+            },
         }
     }
 }
 
-static SPECIAL_ROWS: [melee_ft::fighter::MotionRow; crate::SPECIAL_ROW_COUNT] =
-    crate::special_rows();
+/// ftMr_Init_MotionStateTable: AppealSR/AppealSL (341/342) are Dr. Mario's
+/// taunt rows with no callbacks; Mario never enters them.
+static SPECIAL_ROWS: [MotionRow; ft_mario_family::SPECIAL_ROW_COUNT] =
+    ft_mario_family::rows::<Mario>([melee_ft::fighter::state::unimplemented_row(); 2]);
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Mario>();
+
+impl MarioFamily for Mario {
+    const NEUTRAL_PROJECTILE: fn(
+        &mut Fighter,
+        &FighterAssets,
+        &mut gekko_math::HsdRng,
+        hsd_types::Vec3,
+        usize,
+    ) = ft_mario_family::special_n::spawn_fireball;
+    fn attributes(&self) -> &MarioAttributes {
+        &self.attributes
+    }
+    fn specials(&mut self) -> &mut Specials {
+        &mut self.specials
+    }
+    fn specials_ref(&self) -> &Specials {
+        &self.specials
+    }
+}
 
 impl CharacterCallbacks for Mario {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
-    /// Rows 341/342 (ftMr_MS_AppealSR/L) are Dr. Mario's and unused here.
-    const ENTER_TAUNT: fn(
-        &mut melee_ft::fighter::Fighter,
-        &melee_ft::fighter::assets::FighterAssets,
-    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
-    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
-    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> AssetResult<()> =
+        Fighter::enter_common_taunt;
+    const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
+        &ft_mario_family::SPECIAL_MOVES;
     /// ftData_SpecialN/S/Hi/Lw[Mario] and the aerial tables.
-    fn enter_special(
-        f: &mut melee_ft::fighter::Fighter,
-        slot: melee_ft::fighter::SpecialSlot,
-        airborne: bool,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-    ) {
-        use melee_ft::fighter::SpecialSlot;
-        match slot {
-            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
-            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
-            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
-            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
-        }
+    fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
+        ft_mario_family::enter_special::<Self>(f, slot, airborne, assets);
     }
     /// ftCommon_8007DB58: take_dmg_cb, the Tornado's updateRot or the
     /// cape's ftMr_Init_OnTakeDamage (one installed at a time).
-    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(damage_callback);
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> =
+        Some(ft_mario_family::damage_callback::<Self>);
     /// ftCo_800D331C: death2_cb, the same pair.
-    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(damage_callback);
-    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
-    /// callbacks go.
+    const DEATH: Option<fn(&mut Fighter)> = Some(ft_mario_family::damage_callback::<Self>);
     fn on_motion_change(&mut self) {
-        self.tornado.callbacks = false;
-        self.cape.damage_callbacks = false;
+        self.specials.on_motion_change();
     }
     /// itMarioCape_Logic41_Destroyed: the cape resets its owner.
-    const ARTICLE_DESTROYED: fn(&mut melee_ft::fighter::Fighter, melee_types::ItemKind) =
-        |f, kind| {
-            if kind == melee_types::ItemKind::MarioCape {
-                crate::special_s::reset(f);
-            }
-        };
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
+        ft_mario_family::special_s::article_destroyed::<Self>;
     /// The cape's reflector (ftColl_CreateReflectHit, no hit callback).
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
-        Some(crate::special_s::reflector_contact);
+        Some(ft_mario_family::special_s::reflector_contact::<Self>);
     const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
-        Some(crate::special_s::reflect_hit);
+        Some(ft_mario_family::special_s::reflect_hit);
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
-    fn accessory(
-        f: &mut melee_ft::fighter::Fighter,
-        assets: &melee_ft::fighter::assets::FighterAssets,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        if !f.core.accessory4_armed {
-            return;
-        }
-        match f.character.get::<Mario>().accessory {
-            Accessory::Fireball => crate::special_n::spawn_fireball(f, assets),
-            Accessory::CreateCape => crate::special_s::create_cape(f, assets),
-            Accessory::None => {}
-        }
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
+        ft_mario_family::accessory::<Self>(f, assets, rng);
     }
 
     fn kind(&self) -> FighterKind {
@@ -144,13 +109,9 @@ impl CharacterCallbacks for Mario {
     /// ftMario_FighterVars +222C..+223B. The cape GObj (+223C) and +2240
     /// are not modelled; a save with either set fails closed.
     fn restore_saved(&mut self, raw: &[u8]) {
-        let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
-        self.vitamin_current = word(0x222C) as i32;
-        self.vitamin_previous = word(0x2230) as i32;
-        self.tornado_charged = word(0x2234) != 0;
-        self.cape_boosted = word(0x2238) != 0;
-        if word(0x223C) != 0 || word(0x2240) != 0 {
-            unimplemented!("ftMario_FighterVars: a saved cape GObj (+223C/+2240)");
+        self.specials.restore_saved(raw);
+        if u32::from_be_bytes(raw[0x2240..0x2244].try_into().unwrap()) != 0 {
+            unimplemented!("ftMario_FighterVars: a saved +2240");
         }
     }
     /// ftMr_Init_OnLoad (800E0960): can_walljump and PUSH_ATTRS. The fire
@@ -163,15 +124,15 @@ impl CharacterCallbacks for Mario {
     /// FighterVars reset.
     fn on_reset(&mut self) {
         self.model_group = 0;
-        self.vitamin_current = VITAMIN_RESET;
-        self.vitamin_previous = VITAMIN_RESET;
-        self.tornado_charged = false;
-        self.cape_boosted = false;
+        let s = &mut self.specials;
+        s.vitamin_current = VITAMIN_RESET;
+        s.vitamin_previous = VITAMIN_RESET;
+        s.tornado_charged = false;
+        s.cape_boosted = false;
     }
     /// ftCo_Landing_Enter, ftCo_Landing.c:49-52.
     fn on_landing(&mut self, _allow_interrupt: bool) {
-        self.tornado_charged = false;
-        self.cape_boosted = false;
+        self.specials.on_landing();
     }
 }
 
@@ -211,10 +172,3 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
-
-/// take_dmg_cb / death2_cb: whichever of the Tornado's and the cape's
-/// callbacks the current motion installed.
-fn damage_callback(f: &mut melee_ft::fighter::Fighter) {
-    crate::special_lw::clear_tilt(f);
-    crate::special_s::remove_cape(f);
-}

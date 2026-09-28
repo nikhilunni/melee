@@ -6,7 +6,7 @@
 //! (ftColl_CreateReflectHit with ftMario_DatAttrs.cape_reflection).
 use crate::{
     common,
-    init::{Accessory, Mario},
+    Accessory, MarioFamily,
 };
 use hsd_types::Vec3;
 use melee_coll::defense::ReflectDescriptor;
@@ -61,19 +61,19 @@ pub struct Cape {
     pub reflector: Option<ReflectDescriptor>,
 }
 
-fn attributes(f: &Fighter) -> &crate::attributes::CapeAttributes {
-    &f.character.get::<Mario>().attributes.cape
+fn attributes<C: MarioFamily>(f: &Fighter) -> &crate::attributes::CapeAttributes {
+    &crate::attributes::<C>(f).cape
 }
 
-fn cape(f: &mut Fighter) -> &mut Cape {
-    &mut f.character.get_mut::<Mario>().cape
+fn cape<C: MarioFamily>(f: &mut Fighter) -> &mut Cape {
+    &mut crate::specials::<C>(f).cape
 }
 
 /// ftMr_SpecialS_Enter (800E1450) / ftMr_SpecialAirS_Enter (800E14C8,
 /// 800E14F8: fdivs), then changeAction.
-pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
+pub fn enter<C: MarioFamily>(f: &mut Fighter, air: bool, a: &FighterAssets) {
     if air {
-        f.physics.self_velocity.x /= attributes(f).horizontal_velocity_decay;
+        f.physics.self_velocity.x /= attributes::<C>(f).horizontal_velocity_decay;
     } else {
         f.physics.self_velocity.y = 0.0;
     }
@@ -84,30 +84,30 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.commands.variables[2] = 0;
     f.commands.variables[1] = 0;
     f.commands.variables[0] = 0;
-    cape(f).reflecting = false;
-    install_accessory(f);
+    cape::<C>(f).reflecting = false;
+    install_accessory::<C>(f);
 }
 
 /// accessory4_cb = ftMr_SpecialS_CreateCape.
-fn install_accessory(f: &mut Fighter) {
-    f.character.get_mut::<Mario>().accessory = Accessory::CreateCape;
+fn install_accessory<C: MarioFamily>(f: &mut Fighter) {
+    crate::specials::<C>(f).accessory = Accessory::CreateCape;
     f.core.arm_accessory4();
 }
 
 /// setCallbacks: with a cape, take-damage and death2 remove it; the hitlag
 /// pair freezes it (it_802B26C0 / it_802B26E0).
-fn install_callbacks(f: &mut Fighter) {
-    let c = cape(f);
+fn install_callbacks<C: MarioFamily>(f: &mut Fighter) {
+    let c = cape::<C>(f);
     if c.present {
         c.damage_callbacks = true;
     }
-    f.effect_state.article_hitlag = Some(ItemKind::MarioCape);
+    f.effect_state.article_hitlag = Some(attributes::<C>(f).cape_kind);
 }
 
 /// ftMr_SpecialS_CreateCape (800E1248): once per swing (cmd_vars[2]), the
 /// cape at the right thumb (it_802B2560: Item_InitSpawn, then
 /// Item_AttachToParent at that part); the accessory then uninstalls.
-pub fn create_cape(f: &mut Fighter, assets: &FighterAssets) {
+pub fn create_cape<C: MarioFamily>(f: &mut Fighter, assets: &FighterAssets) {
     if f.commands.variables[2] != 0 {
         return;
     }
@@ -120,7 +120,7 @@ pub fn create_cape(f: &mut Fighter, assets: &FighterAssets) {
         usize::from(part),
         Vec3::ZERO,
     );
-    let kind = attributes(f).cape_kind;
+    let kind = attributes::<C>(f).cape_kind;
     let c = &mut f.core;
     let spawn = SpawnItem::attached(kind, c.player.id, hand, c.physics.facing);
     c.item_requests.push(ItemRequest::SpawnInHand {
@@ -128,50 +128,57 @@ pub fn create_cape(f: &mut Fighter, assets: &FighterAssets) {
         part,
         hold: false,
     });
-    cape(f).present = true;
-    install_callbacks(f);
+    cape::<C>(f).present = true;
+    install_callbacks::<C>(f);
     // accessory4_cb = NULL.
-    f.character.get_mut::<Mario>().accessory = Accessory::None;
+    crate::specials::<C>(f).accessory = Accessory::None;
     f.core.accessory4_armed = false;
 }
 
 /// ftMr_SpecialS_Reset (800E132C): the cape unfreezes and lets go of
 /// Mario, taking the damage callbacks with it.
-pub fn reset(f: &mut Fighter) {
-    if cape(f).present {
-        exit_hitlag(f);
+pub fn reset<C: MarioFamily>(f: &mut Fighter) {
+    if cape::<C>(f).present {
+        exit_hitlag::<C>(f);
     }
-    let c = cape(f);
+    let c = cape::<C>(f);
     c.present = false;
     c.damage_callbacks = false;
 }
 
+/// itMarioCape_Logic41_Destroyed: the cape (or sheet) resets its owner.
+pub fn article_destroyed<C: MarioFamily>(f: &mut Fighter, kind: ItemKind) {
+    if kind == attributes::<C>(f).cape_kind {
+        reset::<C>(f);
+    }
+}
+
 /// ftMr_SpecialS_ExitHitlag (800E13F8) on a live cape.
-fn exit_hitlag(f: &mut Fighter) {
+fn exit_hitlag<C: MarioFamily>(f: &mut Fighter) {
     let owner = f.player.id;
     f.core.item_requests.push(ItemRequest::Control {
         owner,
-        kind: ItemKind::MarioCape,
+        kind: attributes::<C>(f).cape_kind,
         control: ItemControl::OwnerHitlag(false),
     });
 }
 
 /// ftMr_Init_OnTakeDamage -> ftMr_SpecialS_RemoveCape (800E1368): the take
 /// damage and death2 callbacks while a cape is out.
-pub fn remove_cape(f: &mut Fighter) {
-    if !cape(f).damage_callbacks {
+pub fn remove_cape<C: MarioFamily>(f: &mut Fighter) {
+    if !cape::<C>(f).damage_callbacks {
         return;
     }
-    if cape(f).present {
+    if cape::<C>(f).present {
         // it_802B2674: the cape resets its owner and is destroyed.
-        reset(f);
+        reset::<C>(f);
         let owner = f.player.id;
         f.core.item_requests.push(ItemRequest::Control {
             owner,
-            kind: ItemKind::MarioCape,
+            kind: attributes::<C>(f).cape_kind,
             control: ItemControl::Remove,
         });
-        reset(f);
+        reset::<C>(f);
     }
 }
 
@@ -213,17 +220,17 @@ fn gust(f: &mut Fighter, assets: &FighterAssets, (strength, decay): (f32, f32)) 
 /// reflect: cmd_vars[1] raises the reflector (ftColl_CreateReflectHit with
 /// no hit callback) and lowers it (fp->reflecting = false); then
 /// ftColl_8007AEF8 lets its position update.
-fn reflect(f: &mut Fighter) {
+fn reflect<C: MarioFamily>(f: &mut Fighter) {
     let raised = f.commands.variables[1];
-    let reflecting = cape(f).reflecting;
+    let reflecting = cape::<C>(f).reflecting;
     if raised == 1 && !reflecting {
-        let descriptor = descriptor(&f.character.get::<Mario>().attributes.cape_reflection);
-        let c = cape(f);
+        let descriptor = descriptor(&crate::attributes::<C>(f).cape_reflection);
+        let c = cape::<C>(f);
         c.reflecting = true;
         c.reflector = Some(descriptor);
         f.combat.reflector_enabled = true;
     } else if raised == 0 && reflecting {
-        cape(f).reflecting = false;
+        cape::<C>(f).reflecting = false;
         f.combat.reflector_enabled = false;
     }
     f.shield.reflect.volume.position_cached = false;
@@ -243,7 +250,7 @@ fn descriptor(a: &melee_ft::desc::fox_attributes::ReflectionAttributes) -> Refle
 }
 
 /// The live reflector's contact (ftColl_80077464's reflect volume).
-pub fn reflector_contact(
+pub fn reflector_contact<C: MarioFamily>(
     f: &mut Fighter,
     hit: &melee_coll::hitbox::HitCapsule,
     scale: f32,
@@ -251,7 +258,7 @@ pub fn reflector_contact(
     if !f.combat.reflector_enabled {
         return None;
     }
-    let descriptor = cape(f).reflector?;
+    let descriptor = cape::<C>(f).reflector?;
     f.core
         .reflector_contact(hit, scale, &descriptor)
         .then_some(descriptor)
@@ -264,21 +271,21 @@ pub fn reflect_hit(_: &mut Fighter, _: f32, _: &FighterAssets) -> Result<()> {
 
 /// ftMr_SpecialS_Phys (800E15D0): the gust once cmd_vars[0] reaches 1,
 /// ft_80084F3C's friction, then the reflector.
-pub fn ground_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn ground_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.commands.variables[0] == 1 {
         f.commands.variables[0] = 2;
         gust(f, p.assets, GROUND_GUST);
     }
     callbacks::physics::guard_on(f, p);
-    reflect(f);
+    reflect::<C>(f);
 }
 
 /// ftMr_SpecialAirS_Phys (800E16E0): the first aerial cape since landing
 /// rises (x2238_isCapeBoost), a later one stops; its own gravity from then
 /// on; the cape's air friction; the reflector.
-pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
+pub fn air_physics<C: MarioFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
     let (boost, gravity, terminal, air_friction) = {
-        let a = attributes(f);
+        let a = attributes::<C>(f);
         (
             a.vertical_boost,
             a.gravity,
@@ -289,7 +296,7 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     if f.commands.variables[0] >= 1 {
         if f.commands.variables[0] == 1 {
             f.commands.variables[0] = 2;
-            let mario = f.character.get_mut::<Mario>();
+            let mario = crate::specials::<C>(f);
             let boosted = std::mem::replace(&mut mario.cape_boosted, true);
             f.physics.self_velocity.y = if boosted { 0.0 } else { boost };
             gust(f, p.assets, AIR_GUST);
@@ -306,22 +313,22 @@ pub fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     f.physics.animation_velocity.x =
         friction::air_friction_acceleration(f.physics.self_velocity.x, air_friction);
     f.core.finish_air_update(p.assets, p.wind);
-    reflect(f);
+    reflect::<C>(f);
 }
 
 /// collUpdateVars: the reflector stays up across the change, the callbacks
 /// and the cape's accessory are installed again.
-fn after_ground_air_change(f: &mut Fighter) {
-    if cape(f).reflecting {
+fn after_ground_air_change<C: MarioFamily>(f: &mut Fighter) {
+    if cape::<C>(f).reflecting {
         f.combat.reflector_enabled = true;
     }
-    install_callbacks(f);
-    install_accessory(f);
+    install_callbacks::<C>(f);
+    install_accessory::<C>(f);
 }
 
 /// ftMr_SpecialS_Coll (800E1840): ft_800827A0 stops at the edge; losing
 /// the floor continues in the air (ftMr_SpecialS_GroundToAir, 800E18B8).
-pub fn ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn ground_collision<C: MarioFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::stays_on_edge(f, &mut p) {
         return Ok(());
     }
@@ -330,19 +337,19 @@ pub fn ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()
     if f.commands.variables[0] == 1 {
         f.commands.variables[0] = 2;
     }
-    after_ground_air_change(f);
+    after_ground_air_change::<C>(f);
     Ok(())
 }
 
 /// ftMr_SpecialAirS_Coll (800E187C): landing continues on the ground
 /// (ftMr_SpecialAirS_AirToGround, 800E198C), the boost spent flag cleared.
-pub fn air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub fn air_collision<C: MarioFamily>(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if !common::lands(f, &mut p) {
         return Ok(());
     }
-    f.character.get_mut::<Mario>().cape_boosted = false;
+    crate::specials::<C>(f).cape_boosted = false;
     let assets = p.assets.expect("Cape landing assets");
     common::air_to_ground(f, GROUND, assets, GROUND_AIR_FLAGS)?;
-    after_ground_air_change(f);
+    after_ground_air_change::<C>(f);
     Ok(())
 }
