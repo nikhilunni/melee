@@ -1,0 +1,28 @@
+# Directed retail taunt witness (ftCo_800DEA28 default arm, ftCo_800DEBD0):
+# Jigglypuff taunts facing right, turns with a light left tilt, then taunts facing
+# left (AppealSL when the character authors one, else AppealSR).
+name = "taunt_start_fd_jigglypuff_fox4"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+input_clock = "tick"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = { StickX = -0.31478515625000003 }, raw = { stickX = -40 } },
+  { frame = 333, port = 0, buttons = {  }, raw = {  } },
+  { frame = 370, port = 0, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 372, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
