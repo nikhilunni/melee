@@ -33,6 +33,8 @@ impl Fighter {
         let retained_word = self.inherited_scratch_word();
         if state == S::EscapeN {
             (self.character.table().escape_variant)(self, assets, false)?;
+        } else if let Some(prepare) = self.character.table().prepare_roll {
+            prepare(self);
         }
         self.core.commands.grab_release = false;
         self.change_motion_state(state.into(), assets)?;
@@ -50,7 +52,7 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_Escape_Anim / ftCo_EscapeN_Anim (0x800994D8 / 0x800999D8).
-    pub(super) fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn escape_animation(&mut self, assets: &FighterAssets) -> Result<()> {
         if self.core.motion_state.id != S::EscapeN
             && std::mem::take(&mut self.core.commands.grab_release)
         {

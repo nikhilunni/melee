@@ -359,6 +359,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
 
     /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
     fn guard_variant(&self, _commands: &mut commands::CommandState) {}
+    /// ftCo_800992A8's kind arm before ftCo_80099314's motion change for a
+    /// roll (Samus's ftCo_80099390 clears cmd_vars[0] and mv+4 first).
+    const PREPARE_ROLL: Option<fn(&mut Fighter)> = None;
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
     fn escape_variant(
         _fighter: &mut Fighter,

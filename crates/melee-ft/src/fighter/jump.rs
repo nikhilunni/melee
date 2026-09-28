@@ -308,6 +308,12 @@ impl FighterCore {
     pub fn root_motion_aerial_physics(&mut self, assets: &FighterAssets) {
         self.airborne_physics(assets, true);
     }
+    /// ft_80084DB0 (80084DB0) for a character row: CheckFallFast, gravity
+    /// or the fast-fall speed, and the ordinary drift, without
+    /// Fighter_procUpdate's tail.
+    pub fn fall_physics(&mut self, assets: &FighterAssets) {
+        self.airborne_physics(assets, false);
+    }
     /// ftCo_Jump_Phys_Inner (800CB438): calculation after jump-style selection.
     fn airborne_physics(&mut self, assets: &FighterAssets, animation_driven: bool) {
         if animation_driven {

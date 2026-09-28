@@ -124,7 +124,7 @@ impl Fighter {
 }
 impl FighterCore {
     /// ftCo_800DEF38 (800DEF38): charging advances before the state's Anim.
-    pub(super) fn advance_smash_charge(&mut self, assets: &FighterAssets) {
+    pub fn advance_smash_charge(&mut self, assets: &FighterAssets) {
         let Some(charge) = &mut self.commands.smash_charge else {
             return;
         };

@@ -9,6 +9,7 @@ mod egg_shell;
 pub mod fixture_spawns;
 mod item_generators;
 mod mario;
+mod samus;
 mod pool;
 mod resources;
 mod visual;
@@ -464,6 +465,10 @@ impl Effects {
                 self.spawn_tornado::<T>(model, player, bone, fighter, bank, particles, rng)?;
                 continue;
             }
+            if let EffectRequest::SyncAttached { id: 0x482, bone } = request {
+                self.spawn_screw_attack::<T>(player, bone, fighter, bank, particles, rng)?;
+                continue;
+            }
             if let EffectRequest::SyncAttached {
                 id: id @ (0x47A | 0x507),
                 bone,
@@ -632,6 +637,11 @@ impl Effects {
                     spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 }
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+                continue;
+            }
+            if let EffectRequest::Attached { id: 0x487, bone } = request {
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                self.spawn_jump_thruster::<T>(player, (bone, matrix), fighter, bank, particles, rng)?;
                 continue;
             }
             if let EffectRequest::Attached { id: 0x4C0, bone } = request {

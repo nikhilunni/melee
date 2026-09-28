@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 261] = [
+const MATRIX_WITNESSES: [(&str, usize); 270] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1297,6 +1297,20 @@ const MATRIX_WITNESSES: [(&str, usize); 261] = [
     ("ganon_downb_airhit", 403),
     ("ganon_downb_air_high", 360),
     ("ganon_downb_offstage", 560),
+    // SAMUS: explorer cases from start_fd_samus_fox4 extended by neutral
+    // ticks past their first unported boundary; headers say what retail does.
+    // The morph-ball roll (ftCo_80099390) and the jump thruster (efAlt 0x487).
+    ("samus_x_e1502cb40_p2", 335),
+    ("samus_x_edafcfddf_p2", 351),
+    ("samus_x_e726cfdde_p1", 335),
+    ("samus_x_ec13743d5_p2", 332),
+    ("samus_x_e50814092_p2", 409),
+    // Screw Attack (ftSs_SpecialHi): grounded take-off, aerial, a KO in
+    // special fall and a hit through ftSs_Init_80128428.
+    ("samus_x_e3e74affa_p2", 337),
+    ("samus_x_e573e2d95_p2", 345),
+    ("samus_x_e00f31913_p2", 364),
+    ("samus_x_e3e74affa_p1", 486),
 ];
 
 #[test]

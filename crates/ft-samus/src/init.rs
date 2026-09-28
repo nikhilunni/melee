@@ -2,8 +2,9 @@
 use crate::attributes::{read_samus_attributes, SamusAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
-    Capabilities, CharacterCallbacks, Fighter, MotionRow,
+    Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
+use melee_ef::request::EffectRequest;
 use melee_types::FighterKind;
 
 #[derive(Clone, Debug)]
@@ -19,6 +20,14 @@ pub struct Samus {
     pub missiles_fired: u32,
     /// Fighter +2244, x2244: the Screw Attack's effect is alive.
     pub screw_effect: bool,
+    /// The morph ball's capsule is installed (mv.co.escape.x4 during a
+    /// roll, mv.ss.unk2/unk6.x0 in the bomb rows).
+    pub ball: bool,
+    /// take_dmg_cb / death2_cb = ftSs_Init_80128428, installed by a
+    /// special until the next motion change.
+    pub damage_callbacks: bool,
+    /// Screw Attack's motion scratch.
+    pub screw_attack: crate::special_hi::ScrewAttack,
 }
 impl Samus {
     pub fn new(attributes: SamusAttributes) -> Self {
@@ -29,8 +38,38 @@ impl Samus {
             charge_effects: false,
             missiles_fired: 0,
             screw_effect: false,
+            ball: false,
+            damage_callbacks: false,
+            screw_attack: Default::default(),
         }
     }
+}
+
+/// ftSamus_updateDamageDeathCBs (ftSamus/inlines.h): take_dmg_cb and
+/// death2_cb = ftSs_Init_80128428 until the next motion change.
+pub fn install_damage_callbacks(f: &mut Fighter) {
+    f.character.get_mut::<Samus>().damage_callbacks = true;
+}
+
+/// ftSs_Init_80128428 (80128428): the charge shot and its effects go and
+/// the kept charge resets (ftSs_SpecialN_80129258), every effect goes with
+/// the Screw Attack's flag (ftSs_SpecialS_8012A640), and so does the
+/// grapple beam (ftCo_800D9C98).
+fn damage_callback(f: &mut Fighter) {
+    if !f.character.get::<Samus>().damage_callbacks {
+        return;
+    }
+    let samus = f.character.get_mut::<Samus>();
+    // ftSamus_UnkAndDestroyAllEF: no charge shot item is modelled yet.
+    let charge_effects = std::mem::take(&mut samus.charge_effects);
+    samus.charge_level = 0;
+    samus.screw_effect = false;
+    if charge_effects {
+        f.effects.push(EffectRequest::DestroyOwned);
+    }
+    f.effects.push(EffectRequest::DestroyOwned);
+    // ftCo_800D9C98 clears take_dmg_cb and death2_cb.
+    f.character.get_mut::<Samus>().damage_callbacks = false;
 }
 
 static SPECIAL_ROWS: [MotionRow; crate::SPECIAL_ROW_COUNT] = crate::special_rows();
@@ -46,10 +85,41 @@ impl CharacterCallbacks for Samus {
         Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftData_SpecialN/S/Hi/Lw[Samus] and the aerial tables.
+    fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
+        match slot {
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            _ => unimplemented!(
+                "ftData_Special{slot:?}[Samus] (airborne: {airborne}): character special entry"
+            ),
+        }
+    }
+    /// ftCommon_8007DB58: take_dmg_cb (ftSs_Init_80128428) when installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(damage_callback);
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.damage_callbacks = false;
+    }
     /// ftCo_Catch.c:26-136 (fn_800D952C, fn_800D9558, fn_800D9930): the
     /// grapple beam replaces the body grab.
     fn catch_variant(&mut self) {
         unimplemented!("ftCo_Catch.c:125: Samus grapple beam (fn_800D9558)");
+    }
+
+    /// ftCo_800992A8's FTKIND_SAMUS arm: ftCo_80099390.
+    const PREPARE_ROLL: Option<fn(&mut Fighter)> = Some(crate::escape::prepare_roll);
+    fn escape_variant(
+        f: &mut Fighter,
+        _assets: &FighterAssets,
+        rolling: bool,
+    ) -> melee_ft::fighter::assets::Result<()> {
+        if rolling {
+            crate::escape::roll_entered(f);
+        }
+        Ok(())
     }
 
     fn kind(&self) -> FighterKind {
