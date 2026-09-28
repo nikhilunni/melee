@@ -51,7 +51,8 @@ pub(crate) fn load_reserved(
 
 /// A Battlefield map's gobj proc (s_link 4). Only map 3's controller acts:
 /// maps 0, 1, 2 and 4 have empty callbacks; map 6 updates the static
-/// collision transform and the empty quake list, guarded at restoration.
+/// collision transform and ticks the radial dynamics fields (lb_800115F4,
+/// in the scene dispatch).
 pub(crate) fn run_proc(
     state: &mut InitialState,
     map: u8,

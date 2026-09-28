@@ -999,7 +999,9 @@ impl Runtime {
                         }
                         animation.update_collision(&mut state.map, bindings);
                     }
-                    if address == 0x8021_AAB0 {
+                    // lb_800115F4 (radial dynamics fields' decay and expiry) ends
+                    // grLast_8021AAB0 and grBattle_GObj6_Callback2 (0x8021A174).
+                    if address == 0x8021_AAB0 || address == 0x8021_A174 {
                         self.radial_forces.tick();
                     }
                     if continuation == Continuation::GroundCollision {

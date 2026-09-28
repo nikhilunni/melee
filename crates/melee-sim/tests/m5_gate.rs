@@ -1996,7 +1996,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 67] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 68] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2133,6 +2133,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 67] = [
     // LandingFallSpecial inherits mv+4 through Catch and the special (neither
     // writes it; ftCo_800D8C54, ftMars_MotionVars).
     ("corpus_v3_bf_marth_fox4_e3e74affa_p1", 425),
+    // Battlefield's map 6 proc ticks the Shield Breaker gust (lb_800115F4), so
+    // Fox's tail hangs into Marth's grab a few frames into a jump.
+    ("corpus_v3_bf_marth_fox4_e75fb4a9a_p0", 3376),
 ];
 
 #[test]
