@@ -3,3 +3,4 @@ pub mod attributes;
 pub mod init;
 mod material;
 mod shield;
+pub mod special_hi;

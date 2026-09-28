@@ -108,6 +108,38 @@ pub enum ItemRequest {
     Destroy {
         item: u32,
     },
+    /// Item_80268B18 then Item_8026AB54: `spawn` is created and taken at
+    /// once into its owner's hand at `part`, a fp->parts index
+    /// (it_802B2A10, Yoshi's Egg Throw egg).
+    SpawnInHand {
+        spawn: SpawnItem,
+        part: u8,
+    },
+    /// The owner sends its held article of `kind` out of the hand
+    /// (it_802B28C8, the Egg Throw): see [`Launch`].
+    Launch {
+        owner: u8,
+        kind: ItemKind,
+        launch: Launch,
+    },
+}
+
+/// A held article's launch, sampled from its holder when the holder asks.
+#[derive(Clone, Copy, Debug)]
+pub struct Launch {
+    /// The release velocity it_8027429C receives.
+    pub velocity: Vec3,
+    /// Added to the released position afterwards.
+    pub offset: Vec3,
+    /// it_80274658's spin, in degrees per frame.
+    pub spin_degrees: f32,
+    /// The world matrix of the holder's hand joint (it_80273B50 transforms
+    /// the article's attachment offset by it), the holder's body centre
+    /// (ftLib_80086990), current attack and its stale multiplier (it_8027B070).
+    pub hand: hsd_types::Mtx,
+    pub center: Vec3,
+    pub attack: Option<melee_types::combat::AttackInstance>,
+    pub attack_stale: f32,
 }
 
 /// The holding fighter, lent to a held item's callbacks. A held item

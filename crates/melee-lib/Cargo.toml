@@ -9,6 +9,7 @@ license.workspace = true
 ft-fox-family = { path = "../ft-fox-family" }
 it-foxillusion = { path = "../it-foxillusion" }
 it-bombhei = { path = "../it-bombhei" }
+it-yoshieggthrow = { path = "../it-yoshieggthrow" }
 it-foxlaser = { path = "../it-foxlaser" }
 melee-coll = { path = "../melee-coll" }
 melee-cmd = { path = "../melee-cmd" }

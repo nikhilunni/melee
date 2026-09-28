@@ -494,6 +494,8 @@ dependencies = [
  "melee-coll",
  "melee-ef",
  "melee-ft",
+ "melee-it",
+ "melee-mp",
  "melee-test-support",
  "melee-types",
 ]
@@ -713,6 +715,17 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "it-yoshieggthrow"
+version = "0.0.1"
+dependencies = [
+ "hsd-anim",
+ "hsd-types",
+ "melee-it",
+ "melee-mp",
  "melee-types",
 ]
 
@@ -1004,6 +1017,7 @@ dependencies = [
  "it-bombhei",
  "it-foxillusion",
  "it-foxlaser",
+ "it-yoshieggthrow",
  "melee-cm",
  "melee-cmd",
  "melee-coll",

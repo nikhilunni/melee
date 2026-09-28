@@ -10,6 +10,8 @@ melee-coll = { path = "../melee-coll" }
 melee-ef = { path = "../melee-ef" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-mp = { path = "../melee-mp" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }

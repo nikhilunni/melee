@@ -18,6 +18,7 @@ melee_it::item_kinds! {
         FoxBlaster: it_foxlaser::FoxBlaster,
         FalcoBlaster: it_foxlaser::FalcoBlaster,
         BombHei: it_bombhei::BombHei,
+        YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
     }
 }
 
@@ -113,6 +114,22 @@ impl Resources {
             visual_archives.push((blaster, std::sync::Arc::clone(&a)));
             visual_archives.push((laser, a));
         }
+        // ftYs_Init_OnLoad registers the Egg Throw egg as ftData.x48_items[0].
+        let yoshi = match characters.iter().find(|c| c.descriptor.data_file == "PlYs.dat") {
+            Some(character) => std::sync::Arc::clone(&character.data),
+            None => std::sync::Arc::new(archive("PlYs.dat")?),
+        };
+        let root = yoshi.public("ftDataYoshi").context("Yoshi fighter data")?;
+        let mut egg = ItemAssets::from_fighter_states(
+            &yoshi,
+            root,
+            it_yoshieggthrow::ARTICLE_INDEX,
+            &it_yoshieggthrow::ARTICLE_STATES,
+            it_yoshieggthrow::SPECIAL_ATTRIBUTES,
+        )?;
+        egg.read_common_release(&common_archive, public)?;
+        kinds.push((ItemKind::YoshiEggThrow, egg));
+        visual_archives.push((ItemKind::YoshiEggThrow, yoshi));
         Ok(Self {
             common,
             kinds,
@@ -254,6 +271,25 @@ pub fn request(
             pool.destroy::<SceneItems>(item);
             return;
         }
+        ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
+        ItemRequest::Launch {
+            owner: slot,
+            kind,
+            launch,
+        } => {
+            assert_eq!(
+                kind,
+                ItemKind::YoshiEggThrow,
+                "held article launch for {kind:?}"
+            );
+            let half_life_scale = pool.common().half_life_scale;
+            let item = pool
+                .iter_mut()
+                .find(|item| item.owner == Some(slot) && item.kind == kind && item.held)
+                .expect("launched article in its owner's hand");
+            it_yoshieggthrow::launch(item, &launch, half_life_scale, map, resources.get(kind));
+            return;
+        }
         ItemRequest::Drop {
             item,
             position,
@@ -290,6 +326,29 @@ pub fn request(
             .initialize_collision(spawn, assets, map);
         if let Some((angle, speed, motion)) = ray {
             it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
+        }
+        if let ItemRequest::SpawnInHand { part, .. } = request {
+            // Item_8026AB54: it_802742F4's attachment, then the kind's
+            // pickup callback.
+            let lifetime = pool.common().lifetime;
+            let half_life_scale = pool.common().half_life_scale;
+            let item = pool.get_mut(id).unwrap();
+            item.attach_to_holder(
+                owner.slot.expect("held by a fighter"),
+                part,
+                assets,
+                lifetime,
+                half_life_scale,
+            );
+            (SceneItems::logic(spawn.kind).picked_up)(
+                item,
+                &mut ItemAnimationContext {
+                    owner: None,
+                    holder: None,
+                    map,
+                    assets,
+                },
+            );
         }
         if let Some(owner) = held_owner {
             // Item_8026AB54 invokes the kind's pickup callback after attachment.

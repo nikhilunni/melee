@@ -568,23 +568,8 @@ fn lit_fall_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -
 /// Item_ApplyFallingPhysics: it_80272860's gravity, then it_80274658 with
 /// the common falling spin.
 fn fall_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
-    fall(
-        item,
-        ctx.assets.fall_acceleration,
-        ctx.assets.fall_speed_limit,
-    );
+    item.fall(ctx.assets.fall_acceleration, ctx.assets.fall_speed_limit);
     item.update_spin(ctx.assets.fall_spin_degrees);
-}
-
-/// it_80272860 (80272860): accelerate while below the limit or while the
-/// velocity still points against gravity. There is no clamp at the limit.
-fn fall(item: &mut ItemCore, acceleration: f32, limit: f32) {
-    let gravity_sign = if acceleration < 0.0 { -1 } else { 1 };
-    let speed = item.velocity.y;
-    let velocity_sign = if speed < 0.0 { -1 } else { 1 };
-    if velocity_sign == gravity_sign || fabsf(speed) < limit {
-        item.velocity.y -= acceleration;
-    }
 }
 
 /// itBombhei_UnkMotion6_Coll (80280010): remember the fall velocity, then

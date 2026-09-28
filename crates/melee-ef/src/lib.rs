@@ -768,7 +768,10 @@ impl Effects {
                             },
                         );
                     }
-                    effect.tree.set_rotation_z(effect.root, floor_angle);
+                    // efasync.c:192-197: 0x3F5 takes the facing, no Z rotation.
+                    if id != 0x3F5 {
+                        effect.tree.set_rotation_z(effect.root, floor_angle);
+                    }
                 }
                 // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
                 EffectRequest::EntryWarp { scale, .. } => {
@@ -1050,7 +1053,7 @@ impl Effect {
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
     ) -> Result<()> {
-        const NO_CHARACTER_BANKS: resources::CharacterBanks = [None, None, None];
+        const NO_CHARACTER_BANKS: resources::CharacterBanks = [None, None, None, None];
         let banks = resources::Banks {
             common: bank,
             characters: &NO_CHARACTER_BANKS,

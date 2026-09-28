@@ -338,6 +338,17 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::RootEffect { id, parameter } => {
+                        // lb_8000B1CC(jobj, NULL): the root's world translation.
+                        state.effects.spawn_item_root::<RetailTrig>(
+                            id,
+                            item.position,
+                            parameter,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Quake {
                         kind,
                         joint,
@@ -1114,6 +1125,7 @@ impl Runtime {
                     match &mut request {
                         melee_it::ItemRequest::Spawn(spawn)
                         | melee_it::ItemRequest::SpawnHeld(spawn)
+                        | melee_it::ItemRequest::SpawnInHand { spawn, .. }
                         | melee_it::ItemRequest::SpawnLaser { spawn, .. } => {
                             spawn.stale_source = f.combat.stale.attack()
                         }
@@ -1121,7 +1133,8 @@ impl Runtime {
                         | melee_it::ItemRequest::PickUp { .. }
                         | melee_it::ItemRequest::Throw { .. }
                         | melee_it::ItemRequest::Drop { .. }
-                        | melee_it::ItemRequest::Destroy { .. } => {}
+                        | melee_it::ItemRequest::Destroy { .. }
+                        | melee_it::ItemRequest::Launch { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
                         .then(|| f.item_owner(&state.assets.fighters[slot]));

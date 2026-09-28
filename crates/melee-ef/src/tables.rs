@@ -16,7 +16,14 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 17] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 18] = [
+    // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
+    ModelSpawn {
+        request: 0x3F5,
+        source: ModelSource::Graphics,
+        model: 0x10,
+        attached: false,
+    },
     // S6: color-overlay landing dust, same efAsync row as the landing opcode.
     ModelSpawn {
         request: 0x404,
@@ -242,7 +249,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 7] = [
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 27] = [
-    2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 374,
-    375, 376, 377, 445, 448, 449,
+pub(super) static PARTICLE_KINDS: [i32; 28] = [
+    2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
+    374, 375, 376, 377, 445, 448, 449,
 ];

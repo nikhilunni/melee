@@ -64,6 +64,10 @@ pub enum ItemEvent {
     /// efAsync kind 2: an effect at a joint offset, dispatched from the
     /// item's queue (it_80278800's default path).
     JointEffect { id: u16, joint: usize, offset: Vec3 },
+    /// efAsync kinds 1 (EF_SPAWN_POS) and 4 (EF_SPAWN_POS_PARAM) on the
+    /// model root: effect `id` at the root's world translation when the
+    /// request is processed, with kind 4's float parameter.
+    RootEffect { id: u16, parameter: Option<f32> },
     /// lb_800119DC: a radial gust.
     Gust {
         center: Vec3,
@@ -275,6 +279,28 @@ impl ItemCore {
         }
         // No supported kind has an entered_hitlag callback.
         self.in_hitlag = true;
+    }
+    /// efAsync_Spawn on the item's queue (xBC0): below s_link 9 the request
+    /// waits for the item's link 9 flush (Item_80269A9C); the event
+    /// callbacks run past it (`past_hitbox_refresh`) and dispatch at once.
+    /// efAsync_Spawn links a queued request at the head, so the flush
+    /// (efAsync_QueueFlush) processes the latest request first.
+    pub fn spawn_async(&mut self, event: ItemEvent) {
+        if self.past_hitbox_refresh {
+            self.events.push(event);
+        } else {
+            self.queued_events.insert(0, event);
+        }
+    }
+    /// it_80272860 (80272860): accelerate while below `limit` or while the
+    /// velocity still points against gravity. There is no clamp at the limit.
+    pub fn fall(&mut self, acceleration: f32, limit: f32) {
+        let gravity_sign = if acceleration < 0.0 { -1 } else { 1 };
+        let speed = self.velocity.y;
+        let velocity_sign = if speed < 0.0 { -1 } else { 1 };
+        if velocity_sign == gravity_sign || gekko_math::msl::fabsf(speed) < limit {
+            self.velocity.y -= acceleration;
+        }
     }
     /// How fighter hitboxes list this item among their victims. Retail
     /// stores gobj pointers; fighters are keyed by spawn number, items by
@@ -1037,6 +1063,7 @@ mod tests {
             bounce_sound: 0,
             grab_offset: hsd_types::Vec2::ZERO,
             grab_range: hsd_types::Vec2::ZERO,
+            attachment_translation: Vec3::ZERO,
         }
     }
     #[test]

@@ -23,6 +23,8 @@ pub struct Yoshi {
     pub shield_maximum_health: f32,
     /// Aerial-jump turning countdown (mv.co.jumpaerial.x0).
     pub jump_turn_remaining: i32,
+    /// Egg Throw scratch (mv.ys.specialhi).
+    pub special_hi: crate::special_hi::SpecialHi,
 }
 impl Yoshi {
     pub fn new(attributes: YoshiAttributes) -> Self {
@@ -37,6 +39,7 @@ impl Yoshi {
             egg_material_indices: Vec::new(),
             frozen_materials: Vec::new(),
             shield_maximum_health: 0.0,
+            special_hi: Default::default(),
         }
     }
 }
@@ -53,6 +56,14 @@ impl CharacterCallbacks for Yoshi {
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &SPECIAL_MOVES;
+    /// ftYs_Init_8012BA8C: take_dmg_cb while the egg is in Yoshi's hand.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_hi::drop_egg);
+    /// ftYs_Init_8012BA8C is also death2_cb then.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special_hi::drop_egg);
+    fn accessory(fighter: &mut Fighter, assets: &FighterAssets) {
+        crate::special_hi::accessory(fighter, assets);
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Yoshi
@@ -117,15 +128,31 @@ impl CharacterCallbacks for Yoshi {
             _ => state.into(),
         }
     }
-    /// ftData_SpecialN/S/Hi/Lw[Yoshi] (ftyoshispecial*.c) are unported; name
-    /// the entry instead of silently staying in the current motion.
+    /// ftData_SpecialHi[Yoshi]: the Egg Throw. SpecialN/S/Lw
+    /// (ftyoshispecialn.c, ftyoshispecials.c, ftyoshispeciallw.c) are
+    /// unported; name the entry instead of silently staying in the motion.
     fn enter_special(
-        _fighter: &mut Fighter,
+        fighter: &mut Fighter,
         slot: melee_ft::fighter::SpecialSlot,
         airborne: bool,
-        _assets: &FighterAssets,
+        assets: &FighterAssets,
     ) {
-        unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})");
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
+            // ftYs_SpecialN_Enter / ftYs_SpecialAirN_Enter (ftyoshispecialn.c).
+            SpecialSlot::Neutral => {
+                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
+            }
+            // ftYs_SpecialS_Enter / ftYs_SpecialAirS_Enter (ftyoshispecials.c).
+            SpecialSlot::Side => {
+                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
+            }
+            // ftYs_SpecialLw_Enter / ftYs_SpecialAirLw_Enter (ftyoshispeciallw.c).
+            SpecialSlot::Down => {
+                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
+            }
+        }
     }
     fn animated_shield(&self) -> bool {
         true
@@ -249,8 +276,41 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     ],
 };
 
+/// ftYs_Init_MotionStateTable[0..25]: egg shield states (actions
+/// 341..345), then the unported SpecialN/SpecialS rows (346..363), then the
+/// Egg Throw (364, 365). SpecialLw (366..368) stays out of the table.
+const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 25] = {
+    use melee_ft::fighter::{state, ActionId};
+    let mut rows = [state::unimplemented_row(); 25];
+    let mut i = 0;
+    while i < rows.len() {
+        rows[i].action = ActionId(341 + i as u16);
+        i += 1;
+    }
+    let guard = GUARD_ROWS;
+    i = 0;
+    while i < guard.len() {
+        rows[i] = guard[i];
+        i += 1;
+    }
+    let egg_throw = crate::special_hi::rows();
+    rows[23] = egg_throw[0];
+    rows[24] = egg_throw[1];
+    rows
+};
+
+/// ftYs_Init_MotionStateTable's FtMoveId column: FtMoveId_SpecialHi on the
+/// Egg Throw rows; the shield rows carry none.
+const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; 25] = {
+    use melee_types::combat::StaleMove;
+    let mut moves = [None; 25];
+    moves[23] = Some(StaleMove::SpecialUp);
+    moves[24] = Some(StaleMove::SpecialUp);
+    moves
+};
+
 /// ftYs_Init_MotionStateTable[0..5]: egg shield states, actions 341..345.
-const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 5] = {
+const GUARD_ROWS: [melee_ft::fighter::MotionRow; 5] = {
     use melee_ft::fighter::{ActionId, MotionRow};
     use melee_types::CommonMotionState as S;
     [

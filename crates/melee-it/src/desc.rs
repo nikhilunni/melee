@@ -131,6 +131,10 @@ pub struct ItemAssets {
     /// ItemAttr x30 / x38: the pickup box offset and half extents.
     pub grab_offset: hsd_types::Vec2,
     pub grab_range: hsd_types::Vec2,
+    /// it_80272C90: the authored translation of the model's attachment
+    /// bone (ItemModelDesc x8), which it_80273B50 undoes when a character
+    /// article (hold kind 8) leaves the hand.
+    pub attachment_translation: hsd_types::Vec3,
 }
 impl ItemAssets {
     /// ftData.x48_items -> Article, loaded once before any item exists. A
@@ -148,6 +152,37 @@ impl ItemAssets {
         Self::from_article(archive, article, &rows, 10)
     }
 
+    /// ftData.x48_items[item_index] for an article whose motion states do
+    /// not map one to one onto article states: `article_states` is the
+    /// kind's ItemStateTable anim_id column, as for [`Self::from_common`].
+    pub fn from_fighter_states(
+        archive: &Archive,
+        fighter_data: u32,
+        item_index: u32,
+        article_states: &[i32],
+        special_attributes: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let r = archive.reader();
+        let items = r.u32(fighter_data + 0x48)?;
+        let article = r.u32(items + item_index * 4)?;
+        Self::from_article(archive, article, article_states, special_attributes)
+    }
+
+    /// The ItCo common data (it_804D6D28) an article reads once it leaves
+    /// the hand or explodes: +F8 (it_8027518C), +68 and +E8 (it_80275BC8).
+    pub fn read_common_release(
+        &mut self,
+        archive: &Archive,
+        public: u32,
+    ) -> hsd_archive::desc::Result<()> {
+        let r = archive.reader();
+        let common = r.u32(public)?;
+        self.explosion_lifetime = r.f32(common + 0xF8)?;
+        self.fall_spin_degrees = r.f32(common + 0x68)?;
+        self.release_box_scale = r.f32(common + 0xE8)?;
+        Ok(())
+    }
+
     /// it_804D6D24 (itPublicData +4)[kind]: a common item's Article in ItCo.
     /// `article_states` is the kind's ItemStateTable anim_id column: the
     /// article state each motion state plays, or -1 for none.
@@ -162,9 +197,7 @@ impl ItemAssets {
         let articles = r.u32(public + 4)?;
         let article = r.u32(articles + kind as u32 * 4)?;
         let mut assets = Self::from_article(archive, article, article_states, special_attributes)?;
-        assets.explosion_lifetime = r.f32(r.u32(public)? + 0xF8)?;
-        assets.fall_spin_degrees = r.f32(r.u32(public)? + 0x68)?;
-        assets.release_box_scale = r.f32(r.u32(public)? + 0xE8)?;
+        assets.read_common_release(archive, public)?;
         Ok(assets)
     }
 
@@ -205,6 +238,8 @@ impl ItemAssets {
             state_array,
             article_state_count as usize,
         )?;
+        let attachment_translation =
+            attachment_translation(&visual.model, r.u32(model_desc + 4)?, visual.attachment_bone);
         let hurtbones = r.u32(article + 8)?;
         let hurtboxes = if hurtbones == 0 {
             Vec::new()
@@ -263,8 +298,43 @@ impl ItemAssets {
             bounce_sound: r.u32(common + 0x80)?,
             grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
+            attachment_translation,
         })
     }
+}
+
+/// it_80272CC0 (80272CC0) on a freshly loaded model: with a bone table
+/// (ItemModelDesc x4 != 0) the index counts joints depth first, as the
+/// table was filled; without one it walks first children from the root.
+fn attachment_translation(
+    model: &hsd_archive::desc::JObjDesc,
+    bone_count: u32,
+    index: usize,
+) -> hsd_types::Vec3 {
+    fn depth_first<'a>(
+        joint: &'a hsd_archive::desc::JObjDesc,
+        out: &mut Vec<&'a hsd_archive::desc::JObjDesc>,
+    ) {
+        out.push(joint);
+        if let Some(child) = &joint.child {
+            depth_first(child, out);
+        }
+        if let Some(next) = &joint.next {
+            depth_first(next, out);
+        }
+    }
+    let joint = if bone_count != 0 {
+        let mut order = Vec::new();
+        depth_first(model, &mut order);
+        order[index]
+    } else {
+        let mut joint = model;
+        for _ in 0..index {
+            joint = joint.child.as_deref().expect("it_80272CC0: attachment child");
+        }
+        joint
+    };
+    hsd_types::Vec3::new(joint.position.x, joint.position.y, joint.position.z)
 }
 
 /// ItHurtBoneDesc (it/types.h:177): a capsule on bone `bone` (0 is the
@@ -385,6 +455,12 @@ fn read_block(
             17..=19 => Command::SetVariable {
                 index: (op - 17) as usize,
                 value: word & 0x03ff_ffff,
+            },
+            // it_80279888 -> it_80273598: rumble on the owner's controller.
+            21 => Command::Rumble {
+                all_players: false,
+                id: ((word >> 16) & 0x3FF) as u16,
+                duration: word as u16,
             },
             // it_8027990C -> ftLib_80086DC4: rumble on every fighter's controller.
             23 => Command::Rumble {

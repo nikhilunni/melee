@@ -141,9 +141,9 @@ impl Assets {
         for (i, slot) in drop_markers.spawns.iter_mut().enumerate() {
             *slot = bound_marker(i as i16)?;
         }
-        let [fox_effects, captain_effects, mars_effects] =
+        let [fox_effects, captain_effects, yoshi_effects, mars_effects] =
             melee_ef::CHARACTER_EFFECT_FILES.map(|file| archive(file.file));
-        let character_effects = [fox_effects?, captain_effects?, mars_effects?];
+        let character_effects = [fox_effects?, captain_effects?, yoshi_effects?, mars_effects?];
         let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?;
         let interface = archive("IfAll.usd")?;
         let items = crate::scene_items::Resources::load(&read, &characters)?;
@@ -153,8 +153,8 @@ impl Assets {
         Ok(Self {
             fingerprint: fingerprint.into_inner().finish(),
             visual_effect_archives: {
-                let [fox, captain, mars] = character_effects;
-                [effects, fox, captain, mars]
+                let [fox, captain, yoshi, mars] = character_effects;
+                [effects, fox, captain, yoshi, mars]
             },
             effect_resources,
             interface,

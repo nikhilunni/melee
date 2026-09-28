@@ -94,6 +94,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("laser_reflect_")
         || name.starts_with("corpus_")
         || name.starts_with("sudden_death_")
+        || name.starts_with("yoshi_upb_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -937,7 +938,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 83] = [
+const MATRIX_WITNESSES: [(&str, usize); 85] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1028,6 +1029,11 @@ const MATRIX_WITNESSES: [(&str, usize); 83] = [
     ("falcon_airpunch_down_fd_falcon", 260),
     ("falcon_airpunch_offstage_up_fd_falcon", 200),
     ("falcon_airpunch_offstage_down_fd_falcon", 200),
+    // Egg Throw (ftyoshispecialhi.c): grounded, charged, the egg's flight
+    // hitbox bursts on Fox; aerial, aimed back, landing in SpecialAirHi
+    // after the throw (fn_8012E44C) and the egg bursting on the floor.
+    ("yoshi_upb_ground_fd_fox4", 360),
+    ("yoshi_upb_air_fd_fox4", 360),
 ];
 
 #[test]
@@ -1996,7 +2002,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 69] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 71] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2138,6 +2144,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 69] = [
     ("corpus_v3_bf_marth_fox4_e75fb4a9a_p0", 3376),
     // A 4072-tick Battlefield match (Fox P1), exact end to end.
     ("corpus_v3_bf_fox_marth4_ee133b82f_p0", 4072),
+    // Yoshi's Egg Throw entry, aerial and grounded (ftYs_SpecialHi_Enter).
+    ("corpus_v3_fd_yoshi_fox4_ec13743d5_p0", 126),
+    ("corpus_v3_fd_yoshi_fox4_e3e74affa_p2", 97),
 ];
 
 #[test]

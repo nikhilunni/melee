@@ -1,0 +1,13 @@
+[package]
+name = "it-yoshieggthrow"
+description = "Yoshi's Egg Throw egg (It_Kind_Yoshi_EggThrow, ityoshieggthrow.c)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-it = { path = "../melee-it" }
+melee-mp = { path = "../melee-mp" }
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
+hsd-anim = { path = "../hsd-anim" }

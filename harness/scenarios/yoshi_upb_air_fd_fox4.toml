@@ -1,0 +1,27 @@
+# Directed witness: Yoshi's aerial Egg Throw (ftYs_SpecialAirHi_Enter).
+# Yoshi short-hops, presses up-B just after takeoff with the stick held back
+# (left) so the throw angle bends away (ftYs_SpecialS_8012DF8C), and lands
+# during SpecialAirHi (fn_8012E44C keeps the motion on the ground).
+name = "yoshi_upb_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 112, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 113, port = 0, buttons = {  }, raw = {  } },
+  { frame = 119, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 120, port = 0, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 3] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 4] = [
     CharacterEffectFile {
         bank: 3,
         file: "EfFxData.dat",
@@ -31,6 +31,13 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 3] = [
         file: "EfCaData.dat",
         table: "effCaptainDataTable",
         models: 6,
+    },
+    // Particles only: the Egg Throw burst's generator 0x2328 (efsync.c:225).
+    CharacterEffectFile {
+        bank: 9,
+        file: "EfYsData.dat",
+        table: "effYoshiDataTable",
+        models: 0,
     },
     CharacterEffectFile {
         bank: 16,
