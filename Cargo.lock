@@ -491,10 +491,12 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-cm",
  "melee-coll",
  "melee-ef",
  "melee-ft",
  "melee-it",
+ "melee-lb",
  "melee-mp",
  "melee-test-support",
  "melee-types",
@@ -726,6 +728,15 @@ dependencies = [
  "hsd-types",
  "melee-it",
  "melee-mp",
+ "melee-types",
+]
+
+[[package]]
+name = "it-yoshistar"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "melee-it",
  "melee-types",
 ]
 
@@ -1018,6 +1029,7 @@ dependencies = [
  "it-foxillusion",
  "it-foxlaser",
  "it-yoshieggthrow",
+ "it-yoshistar",
  "melee-cm",
  "melee-cmd",
  "melee-coll",

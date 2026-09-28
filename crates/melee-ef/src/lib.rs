@@ -634,11 +634,13 @@ impl Effects {
                     ..
                 } => (8, None),
                 EffectRequest::Graphics { id, .. }
+                | EffectRequest::PositionalGraphics { id, .. }
                 | EffectRequest::Shield { id, .. }
                 | EffectRequest::EntryWarp { id, .. }
                 | EffectRequest::Landing { id, .. } => {
                     let source = match request {
-                        EffectRequest::Graphics { .. } => ModelSource::Graphics,
+                        EffectRequest::Graphics { .. }
+                        | EffectRequest::PositionalGraphics { .. } => ModelSource::Graphics,
                         EffectRequest::Shield { .. } => ModelSource::Shield,
                         EffectRequest::Landing { .. } => ModelSource::Landing,
                         EffectRequest::EntryWarp { .. } => ModelSource::Entry,
@@ -711,6 +713,25 @@ impl Effects {
                     position = origin;
                     effect.tree.set_rotation_z(effect.root, angle);
                 }
+                EffectRequest::PositionalGraphics {
+                    position: origin,
+                    facing,
+                    angle,
+                    ..
+                } => {
+                    // efAsync_Dispatch 0x3FF: model 5 at the point, then
+                    // efAsync_SetEffectFacingDir and the rotation Z.
+                    position = origin;
+                    effect.tree.set_rotation_y(
+                        effect.root,
+                        if facing < 0.0 {
+                            -std::f32::consts::FRAC_PI_2
+                        } else {
+                            std::f32::consts::FRAC_PI_2
+                        },
+                    );
+                    effect.tree.set_rotation_z(effect.root, angle);
+                }
                 EffectRequest::Death {
                     position: origin,
                     angle,
@@ -758,7 +779,10 @@ impl Effects {
                     ..
                 } => {
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    if !matches!(id, 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x423 | 0x424) {
+                    if !matches!(
+                        id,
+                        0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x423 | 0x424
+                    ) {
                         effect.tree.set_rotation_y(
                             effect.root,
                             if facing < 0.0 {

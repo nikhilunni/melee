@@ -172,6 +172,32 @@ pub fn map_ground_action(
     }
 }
 
+/// ft_80082888 (80082888) / ft_80082978 (80082978): a grounded pass with a
+/// fixed box (mpColl_8004B21C), or one that stops at the floor's edge
+/// (mpColl_8004B3F0). The caller has run `begin_map`.
+pub fn collide_box(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    ecb: melee_types::mp::FtCollisionBox,
+    stop_at_edge: bool,
+) -> bool {
+    let ecb = super::air::facing_box(ecb, state.facing);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let supported = if stop_at_edge {
+        map.ground_collide_stop_at_edge_box(cd, &ecb)
+    } else {
+        map.ground_collide_box(cd, &ecb)
+    };
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    supported
+}
+
 /// ft_80084104 -> ft_800827A0 (0x800827A0): escape stops at the floor edge.
 pub fn map_escape(
     state: &mut FighterPhysics,

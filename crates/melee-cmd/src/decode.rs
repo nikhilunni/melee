@@ -87,6 +87,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             id: ((word >> 23) & 7) as usize,
             damage: (word & 0x007f_ffff) as f32,
         },
+        // ftAction_80071708: idx:24, type:1, value:1 below the opcode.
+        14 => Command::HitboxTargets {
+            id: ((word >> 2) & 0x00ff_ffff) as usize,
+            items: word & 2 != 0,
+            enabled: word & 1 != 0,
+        },
         15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
         16 => Command::ClearHitboxes,
         27 => Command::HurtCapsuleStatus {

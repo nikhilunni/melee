@@ -1,0 +1,28 @@
+# YOSHI-SIDEDOWN directed witness: Yoshi runs at Fox and uses the grounded
+# Yoshi Bomb (ftYs_SpecialLw_Enter) beside him: hop, descent, landing hit and stars.
+name = "yoshi_sidedown_bomb_ground"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 101, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 172, port = 0, buttons = { StickX = 0.3150390625 }, raw = { stickX = 40 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 196, port = 0, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

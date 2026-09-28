@@ -316,8 +316,8 @@ pub fn stop_camera(_fighter: &mut Fighter, _phase: super::state::CameraPhase<'_>
 
 /// ftColl_8007925C's per-item clank mask (ftColl_804D6560): this fighter's
 /// hitboxes that may clank with `item`, in hit-ID order. Returns the mask and
-/// whether any entry is set. (x221B_b5, x43_b2 and a cleared x42_b5 belong
-/// to states and commands the port does not reach.)
+/// whether any entry is set. (x221B_b5 and x43_b2 belong to states and
+/// commands the port does not reach.)
 pub(super) fn item_candidates(
     fighter: &FighterCore,
     item: &melee_it::ItemCore,
@@ -330,7 +330,9 @@ pub(super) fn item_candidates(
             continue;
         };
         let desc = &hit.descriptor;
-        *slot = desc.element != HitElement::Catch
+        // ftcoll.c:2066: x42_b5 gates this mask too.
+        *slot = hit.hits_fighters
+            && desc.element != HitElement::Catch
             && (if grounded {
                 desc.hit_ground
             } else {

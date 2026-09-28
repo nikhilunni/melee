@@ -23,6 +23,10 @@ pub struct CombatState {
     /// Fighter.x408: the primary color animation (damage tints, burning,
     /// powershield flash); see `color_overlay`.
     pub color_overlay: super::color_overlay::ColorOverlaySlot,
+    /// Fighter.x488: the secondary color animation, cleared by motion
+    /// changes without Ft_MF_SkipColAnim (ftCo_800C0134). The smash charge's
+    /// program runs separately in `charge_overlay`.
+    pub secondary_color_overlay: super::color_overlay::ColorOverlaySlot,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,
@@ -625,16 +629,8 @@ impl Fighter {
                 .joint(melee_types::FtPart::XRotN)
                 .expect("XRotN"),
         );
-        let joint = self.animation.parts[bone].joint;
-        // ftPartSetRotX (8007592C): quaternion main joints redirect to
-        // FighterBone.x4_jobj2, whose rotation must be Euler.
-        let core = &mut self.core;
-        let tree = if core.skeleton.get(joint).flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0 {
-            &mut core.animation.blend_tree
-        } else {
-            &mut core.skeleton
-        };
-        tree.set_rotation_x(joint, angle);
+        self.core
+            .set_part_rotation(bone, super::part_rotation::Axis::X, angle);
     }
 
     /// ftCo_Damage_Coll (8008FB64), ft_80081DD4 (80081DD4).
@@ -797,6 +793,7 @@ impl Fighter {
     ) -> Result<()> {
         let crouching = matches!(self.core.motion_state.id, S::Squat | S::SquatWait);
         let mut hit_damage = std::mem::take(&mut self.core.combat.dealt_damage);
+        let dealt_damage = hit_damage;
         let clank = self.core.combat.clank;
         self.core.combat.clank.damage = 0;
         self.core.combat.clank.duration = 0.0;
@@ -913,6 +910,19 @@ impl Fighter {
             hit_damage = clank.damage;
             if clank.duration != 0.0 && self.core.combat.grab.is_none() {
                 self.enter_rebound(assets, clank)?;
+            }
+        }
+        // fighter.c:2927-2931: dmg.x1914 (damage this fighter's hit dealt)
+        // runs deal_dmg_cb when nothing received, no shield impact and no
+        // clank came first.
+        if !received_knockback
+            && !phantom_hitlag
+            && self.core.shield.impact.is_none()
+            && clank.damage == 0
+            && dealt_damage != 0
+        {
+            if let Some(deal_damage) = self.character.table().deal_damage {
+                deal_damage(self);
             }
         }
         if !received_knockback

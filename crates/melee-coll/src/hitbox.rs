@@ -24,6 +24,11 @@ pub struct HitCapsule {
     /// HitCapsule.victims_2 (+D4): fighters this hitbox already touched in
     /// the phantom range, so it does not phantom them again.
     pub phantom_victims: PhantomVictims,
+    /// x42_b5: may hit (and clank with) fighters. Set by every spawn
+    /// command; ftAction_80071708 (opcode 14) can clear it.
+    pub hits_fighters: bool,
+    /// x42_b7: may hit items; as `hits_fighters`.
+    pub hits_items: bool,
 }
 /// HitCapsule.victims_2 / x45 (lb/types.h:72,80): twelve slots filled in
 /// order, then overwritten round-robin from `next_overwrite`.
@@ -57,6 +62,9 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
         if hit.descriptor.group == descriptor.group {
             hit.knockback_damage = gekko_math::msl::fctiwz(descriptor.damage) as u32;
             hit.descriptor = descriptor.clone();
+            // ftAction_8007121C (ftaction.c:345-346), on every spawn.
+            hit.hits_fighters = true;
+            hit.hits_items = true;
             return;
         }
     }
@@ -69,6 +77,8 @@ pub fn spawn(boxes: &mut [Option<HitCapsule>], id: usize, descriptor: &HitboxDes
         previous_position: Vec3::ZERO,
         victims,
         phantom_victims,
+        hits_fighters: true,
+        hits_items: true,
     });
 }
 /// Copy the first active group member's histories in capsule-table order

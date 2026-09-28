@@ -107,12 +107,6 @@ impl ColorOverlayTable {
             }
         }
     }
-    /// Whether a program affects gameplay (effects draw RNG, sounds queue).
-    fn has_gameplay_commands(&self, id: u8) -> bool {
-        self.program(id)
-            .iter()
-            .any(|c| matches!(c, OverlayCommand::Graphics(_) | OverlayCommand::Sound(_)))
-    }
 }
 
 /// Fighter.x408, the primary ColorOverlay slot.
@@ -145,30 +139,18 @@ impl FighterCore {
         assets: &super::assets::FighterAssets,
     ) -> bool {
         self.install_requested_color_overlays(assets);
-        let installed = self.install_color_overlay(id, 0, &assets.color_overlays);
-        installed.unwrap_or_else(|| {
-            unimplemented!("ftCo_800BFFD0: result of secondary color slot program {id}")
-        })
+        self.install_color_overlay(id, 0, &assets.color_overlays)
     }
 
-    /// ftCo_800BFFD0: install `id` unless the slot holds a higher priority.
-    /// Returns whether the primary slot took it; None for the unmodelled
-    /// secondary slot.
-    fn install_color_overlay(
-        &mut self,
-        id: u8,
-        duration: u32,
-        table: &ColorOverlayTable,
-    ) -> Option<bool> {
-        if table.entry(id).secondary {
-            // The secondary slot (x488) is not modelled; its programs are
-            // tint-only in the supported roster, which keeps this RNG-neutral.
-            if table.has_gameplay_commands(id) {
-                unimplemented!("ftCo_800BFFD0: secondary color slot program {id} with effects");
-            }
-            return None;
-        }
-        let slot = &mut self.combat.color_overlay;
+    /// ftCo_800BFFD0: install `id` in its slot (x408, or x488 for the
+    /// table's secondary entries) unless the slot holds a higher priority.
+    /// Returns whether the slot took it.
+    fn install_color_overlay(&mut self, id: u8, duration: u32, table: &ColorOverlayTable) -> bool {
+        let slot = if table.entry(id).secondary {
+            &mut self.combat.secondary_color_overlay
+        } else {
+            &mut self.combat.color_overlay
+        };
         let installed = table.priority(slot.id) <= table.priority(id);
         if installed {
             *slot = ColorOverlaySlot {
@@ -178,7 +160,28 @@ impl FighterCore {
                 flash_expired: slot.flash_expired,
             };
         }
-        Some(installed)
+        installed
+    }
+
+    /// ftCo_800C0134 (800C0134) on a motion change without Ft_MF_SkipColAnim:
+    /// lb_80014498 on the secondary slot. Retail installs script requests as
+    /// they run, so this motion's queued secondary requests went too. No
+    /// supported kind has ftData_UnkMotionStates4, and the Hammer states
+    /// (ftCo_800C53E4) are out of scope.
+    pub(super) fn clear_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
+        self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+        let queued = &mut self.commands.color_animations;
+        let mut i = 0;
+        while i < queued.len() {
+            if table
+                .entry(queued.iter().nth(i).expect("queued request").id)
+                .secondary
+            {
+                queued.remove(i);
+            } else {
+                i += 1;
+            }
+        }
     }
 
     /// ftCo_800C0408's primary-slot loop: run the program; when it ends or its
@@ -212,6 +215,26 @@ impl FighterCore {
                 break;
             }
             self.clear_color_overlay(table);
+        }
+        // ftCo_800C0408: the secondary slot runs after the primary; with the
+        // primary busy, ft_800BFF70 skips its effects and sounds.
+        let emit = self.combat.color_overlay.id == 0;
+        while self.combat.secondary_color_overlay.id != 0 {
+            let slot = &mut self.combat.secondary_color_overlay;
+            let ended = slot.program.step(
+                emit,
+                table.program(slot.id),
+                &mut self.commands.graphics,
+                &mut self.commands.footstep_sounds,
+            );
+            let expired = !ended && slot.frames_left != 0 && {
+                slot.frames_left -= 1;
+                slot.frames_left == 0
+            };
+            if !ended && !expired {
+                break;
+            }
+            self.combat.secondary_color_overlay = ColorOverlaySlot::default();
         }
         self.advance_charge_color(assets);
     }

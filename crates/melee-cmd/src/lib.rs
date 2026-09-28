@@ -105,6 +105,13 @@ pub enum Command {
         indices: Vec<usize>,
         frame: f32,
     },
+    /// ftAction_80071708 (opcode 14): hitbox `id` may (not) hit fighters
+    /// (HitCapsule.x42_b5) or items (x42_b7).
+    HitboxTargets {
+        id: usize,
+        items: bool,
+        enabled: bool,
+    },
     /// An ftAction opcode the port does not decode yet. Its length is unknown,
     /// so decoding stops here; reaching it at run time is `unimplemented!`.
     Unported(u32),

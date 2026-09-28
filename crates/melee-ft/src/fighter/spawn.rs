@@ -29,6 +29,35 @@ struct MotionChange<'a> {
     keep_hitstun: bool,
     /// ftCo_Fall_Enter_YoshiEgg: Fall without ftCo_Fall_Enter's drift clamp.
     unclamped_fall: bool,
+    /// Ft_MF_SkipColAnim (bit12): the secondary color slot (x488) survives.
+    keep_secondary_color: bool,
+}
+
+/// Fighter_ChangeMotionState's `flags` argument; bit names from ft/forward.h.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MotionEntryFlags(pub u32);
+impl MotionEntryFlags {
+    pub const KEEP_FAST_FALL: Self = Self(1 << 0);
+    pub const KEEP_GFX: Self = Self(1 << 1);
+    pub const KEEP_COL_ANIM_HIT_STATUS: Self = Self(1 << 2);
+    pub const SKIP_HIT: Self = Self(1 << 3);
+    pub const SKIP_ANIM_VEL: Self = Self(1 << 5);
+    pub const SKIP_MAT_ANIM: Self = Self(1 << 7);
+    pub const SKIP_THROW_EXCEPTION: Self = Self(1 << 8);
+    pub const SKIP_COL_ANIM: Self = Self(1 << 12);
+    pub const KEEP_ACCESSORY: Self = Self(1 << 13);
+    pub const UPDATE_CMD: Self = Self(1 << 14);
+    pub const SKIP_NAMETAG_VIS: Self = Self(1 << 15);
+    pub const KEEP_COL_ANIM_PART_HIT_STATUS: Self = Self(1 << 16);
+    pub const KEEP_SWORD_TRAIL: Self = Self(1 << 17);
+    pub const SKIP_ITEM_VIS: Self = Self(1 << 18);
+    pub const FREEZE_STATE: Self = Self(1 << 21);
+    pub const SKIP_MODEL_PART_VIS: Self = Self(1 << 22);
+    pub const SKIP_HITSTUN: Self = Self(1 << 28);
+    pub const SKIP_ANIM: Self = Self(1 << 29);
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
 }
 
 /// Retail motion-entry flags retained across a ground/air counterpart change.
@@ -476,6 +505,7 @@ impl Fighter {
             MotionChange {
                 rate: 1.0,
                 preserve_material_animation: true,
+                keep_secondary_color: true,
                 preserve: MotionPreservation {
                     hit_status: true,
                     ..Default::default()
@@ -495,6 +525,7 @@ impl Fighter {
                 start: 0.0,
                 rate: 1.0,
                 blend_frames: Some(0.0),
+                keep_secondary_color: true,
                 preserve: MotionPreservation {
                     effects: true,
                     ..Default::default()
@@ -531,7 +562,7 @@ impl Fighter {
         state: ActionId,
         assets: &FighterAssets,
         start: f32,
-        _color: MotionColorPolicy,
+        color: MotionColorPolicy,
     ) -> Result<()> {
         self.change_motion_state_with_options(
             state,
@@ -539,6 +570,7 @@ impl Fighter {
             MotionChange {
                 start,
                 rate: 1.0,
+                keep_secondary_color: matches!(color, MotionColorPolicy::Preserve),
                 update_commands: true,
                 ..Default::default()
             },
@@ -658,8 +690,69 @@ impl Fighter {
                 start: self.animation.frame,
                 rate: 1.0,
                 ground_air: true,
+                update_commands: true,
                 preserve_material_animation: true,
+                keep_secondary_color: true,
                 preserve,
+                ..Default::default()
+            },
+        )
+    }
+
+    /// Fighter_ChangeMotionState (0x800693AC) with a retail `flags` word,
+    /// start frame and rate, for character entries whose flag combinations
+    /// have no named helper. Bits without a simulated consumer (model,
+    /// sound, rumble and statistics owners) are accepted; bits whose
+    /// consumer the port does not model name themselves.
+    pub fn change_motion_state_with_flags(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        flags: MotionEntryFlags,
+        start: f32,
+        rate: f32,
+    ) -> Result<()> {
+        use MotionEntryFlags as F;
+        for (flag, line) in [
+            (F::SKIP_THROW_EXCEPTION, "fighter.c:962"),
+            (F::KEEP_ACCESSORY, "fighter.c:1113"),
+            (F::KEEP_COL_ANIM_PART_HIT_STATUS, "fighter.c:1007"),
+            (F::KEEP_SWORD_TRAIL, "fighter.c:1152"),
+            (F::FREEZE_STATE, "fighter.c:1239"),
+        ] {
+            if flags.contains(flag) {
+                unimplemented!("Fighter_ChangeMotionState flags {:#X}: {line}", flags.0);
+            }
+        }
+        // fighter.c:1087-1099: the port keeps item and article visibility
+        // together, as ftCommon_GroundAirColl_MF sets both bits.
+        let item = flags.contains(F::SKIP_ITEM_VIS);
+        if item != flags.contains(F::SKIP_MODEL_PART_VIS) {
+            unimplemented!(
+                "Fighter_ChangeMotionState flags {:#X}: fighter.c:1087-1095",
+                flags.0
+            );
+        }
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate,
+                ground_air: item,
+                update_commands: flags.contains(F::UPDATE_CMD),
+                preserve_name_tag: flags.contains(F::SKIP_NAMETAG_VIS),
+                skip_animation: flags.contains(F::SKIP_ANIM),
+                preserve_material_animation: flags.contains(F::SKIP_MAT_ANIM),
+                skip_animation_velocity: flags.contains(F::SKIP_ANIM_VEL),
+                keep_hitstun: flags.contains(F::SKIP_HITSTUN),
+                keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
+                preserve: MotionPreservation {
+                    hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
+                    hitboxes: flags.contains(F::SKIP_HIT),
+                    effects: flags.contains(F::KEEP_GFX),
+                    fast_fall: flags.contains(F::KEEP_FAST_FALL),
+                },
                 ..Default::default()
             },
         )
@@ -699,7 +792,9 @@ impl Fighter {
                 start: self.animation.frame,
                 rate,
                 ground_air: true,
+                update_commands: true,
                 preserve_material_animation: true,
+                keep_secondary_color: true,
                 ..Default::default()
             },
         )
@@ -1053,7 +1148,7 @@ impl FighterCore {
         // fighter.c:1063: every entry shows the fighter again.
         self.effect_state.invisible = false;
         self.catch_window = 0; // fighter.c:1072
-        // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
+                               // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.status.ledge_timed_out = false;
             self.item_catch_locked = false;
@@ -1093,6 +1188,10 @@ impl FighterCore {
             )
         {
             self.physics.fast_fall = false;
+        }
+        // fighter.c:1105-1107: ftCo_800C0134 unless Ft_MF_SkipColAnim.
+        if !change.keep_secondary_color {
+            self.clear_secondary_color_overlay(&assets.color_overlays);
         }
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
         // ordinary motion entry clears it (fighter.c:1155-1157).
@@ -1336,7 +1435,7 @@ impl FighterCore {
                 }
             }
         }
-        if change.ground_air || change.update_commands {
+        if change.update_commands {
             // fighter.c:1295, before ftAction_8007349C decrements by speed.
             self.commands.timer = -start;
             self.commands.advance_control(&self.animation, assets);

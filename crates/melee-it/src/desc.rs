@@ -98,6 +98,8 @@ pub struct ItemAssets {
     /// it stops accelerating at (it_80272860).
     pub fall_acceleration: f32,
     pub fall_speed_limit: f32,
+    /// ItemAttr x18: a spawned article's vertical launch speed (it_802B322C).
+    pub launch_vertical_velocity: f32,
     /// ItemAttr x1_1 (Item.xDC8 x17 at creation): the ECB rotation axis.
     pub rotation_axis: u8,
     /// ItCo common data +F8 (it_8027518C): an explosion's lifetime. Zero
@@ -285,6 +287,7 @@ impl ItemAssets {
             camera_kind: (r.u8(common + 1)? >> 1) & 3,
             fall_acceleration: r.f32(common + 0x10)?,
             fall_speed_limit: r.f32(common + 0x14)?,
+            launch_vertical_velocity: r.f32(common + 0x18)?,
             rotation_axis: r.u8(common + 1)? >> 6,
             explosion_lifetime: 0.0,
             spin_rate: r.f32(common + 0xC)?,

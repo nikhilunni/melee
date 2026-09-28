@@ -16,12 +16,20 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 18] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 19] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
         source: ModelSource::Graphics,
         model: 0x10,
+        attached: false,
+    },
+    // efasync.c:199-204: 0x3F6, model 0x11 at a point, no orientation
+    // (Yoshi's egg breaking on the ground).
+    ModelSpawn {
+        request: 0x3F6,
+        source: ModelSource::Graphics,
+        model: 0x11,
         attached: false,
     },
     // S6: color-overlay landing dust, same efAsync row as the landing opcode.
@@ -147,7 +155,14 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 16] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 17] = [
+    // efasync.c:381-383: an article's vanishing puff (it_80272BA4),
+    // efLib_CreateGenerator 0x4B.
+    DustSpawn {
+        request: 0x411,
+        particle: 0x4B,
+        directional: false,
+    },
     // efasync.c 0x410 (80063... efLib_CreateGenerator 0x22A): an item's
     // explosion (it_80272C08).
     DustSpawn {
@@ -255,7 +270,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 7] = [
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 28] = [
+pub(super) static PARTICLE_KINDS: [i32; 29] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
-    374, 375, 376, 377, 445, 448, 449,
+    374, 375, 376, 377, 445, 448, 449, 272,
 ];

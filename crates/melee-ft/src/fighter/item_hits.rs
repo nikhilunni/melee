@@ -35,10 +35,11 @@ impl Fighter {
                 continue;
             };
             let desc = &hit.descriptor;
-            // x42_b7 (hits items) is set on every hitbox ftAction creates and
-            // ftAction_80071708 never runs for the supported scripts.
+            // it_802703E8: x42_b7 (hits items), cleared only by
+            // ftAction_80071708.
             let grounded = item.ground_or_air == GroundOrAir::Ground;
-            if desc.element == HitElement::Catch
+            if !hit.hits_items
+                || desc.element == HitElement::Catch
                 || !((desc.hit_air && !grounded) || (desc.hit_ground && grounded))
                 || hit.victims.contains(&victim)
                 || item.hurt_intangible

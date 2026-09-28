@@ -1048,6 +1048,7 @@ mod tests {
             camera_kind: 0,
             fall_acceleration: 0.0,
             fall_speed_limit: 0.0,
+            launch_vertical_velocity: 0.0,
             rotation_axis: 0,
             explosion_lifetime: 0.0,
             spin_rate: 0.0,

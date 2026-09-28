@@ -25,6 +25,8 @@ pub struct CharacterTable {
     pub accessory: fn(&mut Fighter, &assets::FighterAssets),
     pub special_grab: SpecialGrab,
     pub take_damage: Option<fn(&mut Fighter)>,
+    /// Fighter.deal_dmg_cb: Fighter_ProcessHit's damage-dealt branch.
+    pub deal_damage: Option<fn(&mut Fighter)>,
     pub death: Option<fn(&mut Fighter)>,
     pub item_muzzle: fn(&mut Fighter, &assets::FighterAssets) -> Option<(Vec3, f32)>,
     pub item_owner: fn(&mut Fighter, &assets::FighterAssets) -> melee_it::ItemOwner,
@@ -95,6 +97,7 @@ impl CharacterTable {
             accessory: C::accessory,
             special_grab: C::SPECIAL_GRAB,
             take_damage: C::TAKE_DAMAGE,
+            deal_damage: C::DEAL_DAMAGE,
             death: C::DEATH,
             item_muzzle: C::item_muzzle,
             item_owner: C::item_owner,

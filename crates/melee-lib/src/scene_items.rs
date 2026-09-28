@@ -19,6 +19,7 @@ melee_it::item_kinds! {
         FalcoBlaster: it_foxlaser::FalcoBlaster,
         BombHei: it_bombhei::BombHei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
+        YoshiStar: it_yoshistar::YoshiStar,
     }
 }
 
@@ -129,6 +130,9 @@ impl Resources {
         )?;
         egg.read_common_release(&common_archive, public)?;
         kinds.push((ItemKind::YoshiEggThrow, egg));
+        // ftData.x48_items[1]: the Yoshi Bomb's star, one state.
+        kinds.push((ItemKind::YoshiStar, ItemAssets::from_fighter(&yoshi, root, 1, 1)?));
+        visual_archives.push((ItemKind::YoshiStar, std::sync::Arc::clone(&yoshi)));
         visual_archives.push((ItemKind::YoshiEggThrow, yoshi));
         Ok(Self {
             common,

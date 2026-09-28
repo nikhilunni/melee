@@ -81,14 +81,14 @@ pub struct EggRollAttributes {
     pub landing_speed: f32,
     /// +0x68, ftYoshi/types.h; ftyoshispecials.c.
     pub smash_speed_multiplier: f32,
-    /// +0x6C, ftYoshi/types.h; ftyoshispecials.c.
-    pub start_damage_behavior: f32,
-    /// +0x70, ftYoshi/types.h; ftyoshispecials.c.
+    /// +0x6C (specials_start_gravity): the hop and aerial roll's gravity.
+    pub start_gravity: f32,
+    /// +0x70 (specials_start_terminal_vel).
     pub start_terminal_velocity: f32,
     /// +0x74, ftYoshi/types.h; ftyoshispecials.c.
     pub ground_acceleration: f32,
-    /// +0x78, ftYoshi/types.h; ftyoshispecials.c.
-    pub ground_stick_acceleration: f32,
+    /// +0x78: slowing toward the target speed on the ground.
+    pub ground_deceleration: f32,
     /// +0x7C, ftYoshi/types.h; ftyoshispecials.c.
     pub ground_target_speed: f32,
     /// +0x80, ftYoshi/types.h; ftyoshispecials.c.
@@ -111,34 +111,34 @@ pub struct EggRollAttributes {
     pub rotation_speed: f32,
     /// +0xA4, ftYoshi/types.h; ftyoshispecials.c.
     pub effect_interval: i32,
-    /// +0xA8, ftYoshi/types.h; ftyoshispecials.c.
-    pub wall_bounce_threshold: f32,
-    /// +0xAC, ftYoshi/types.h; ftyoshispecials.c.
-    pub wall_wobble_parameter: f32,
+    /// +0xA8: above this ground speed the turn ignores floor edges.
+    pub edge_ignore_speed: f32,
+    /// +0xAC: horizontal speed kept (reversed) off a wall.
+    pub wall_bounce_multiplier: f32,
     /// +0xB0, ftYoshi/types.h; ftyoshispecials.c.
     pub wall_bounce_vertical_speed: f32,
-    /// +0xB4, ftYoshi/types.h; ftyoshispecials.c.
-    pub floor_wobble_parameter: f32,
+    /// +0xB4: vertical speed kept off the floor.
+    pub floor_bounce_multiplier: f32,
     /// +0xB8, ftYoshi/types.h; ftyoshispecials.c.
     pub minimum_bounce_speed: f32,
     /// +0xBC, ftYoshi/types.h; ftyoshispecials.c.
     pub landing_stick_multiplier: f32,
-    /// +0xC0, ftYoshi/types.h; ftyoshispecials.c.
-    pub animation_speed_offset: f32,
-    /// +0xC4, ftYoshi/types.h; ftyoshispecials.c.
-    pub animation_speed_multiplier: f32,
+    /// +0xC0: hitbox damage at zero speed, before the multiplier.
+    pub damage_base: f32,
+    /// +0xC4: hitbox damage per unit of (base + speed).
+    pub damage_multiplier: f32,
     /// +0xC8, ftYoshi/types.h; ftyoshispecials.c.
     pub unknown_animation_parameter: f32,
-    /// +0xCC, ftYoshi/types.h; ftyoshispecials.c.
-    pub reversal_acceleration: f32,
+    /// +0xCC: speed lost when the roll's hit lands (fn_8012EFF4).
+    pub hit_deceleration: f32,
     /// +0xD0, ftYoshi/types.h; ftyoshispecials.c.
     pub end_horizontal_multiplier: f32,
     /// +0xD4, ftYoshi/types.h; ftyoshispecials.c.
     pub end_vertical_multiplier: f32,
     /// +0xD8, ftYoshi/types.h; ftyoshispecials.c.
     pub rolling_rotation_multiplier: f32,
-    /// +0xDC, ftYoshi/types.h; ftyoshispecials.c.
-    pub minimum_effect_speed: i32,
+    /// +0xDC: frames between hit group toggles (re-hit window).
+    pub group_toggle_frames: i32,
     /// +0xE0, ftYoshi/types.h; ftyoshispecials.c.
     pub air_steer_multiplier: f32,
     /// +0xE4, ftYoshi/types.h; ftyoshispecials.c.
@@ -218,10 +218,10 @@ impl YoshiAttributes {
                 start_rotation_speed: r.f32(0x60)?,
                 landing_speed: r.f32(0x64)?,
                 smash_speed_multiplier: r.f32(0x68)?,
-                start_damage_behavior: r.f32(0x6C)?,
+                start_gravity: r.f32(0x6C)?,
                 start_terminal_velocity: r.f32(0x70)?,
                 ground_acceleration: r.f32(0x74)?,
-                ground_stick_acceleration: r.f32(0x78)?,
+                ground_deceleration: r.f32(0x78)?,
                 ground_target_speed: r.f32(0x7C)?,
                 ground_maximum_speed: r.f32(0x80)?,
                 air_acceleration: r.f32(0x84)?,
@@ -233,20 +233,20 @@ impl YoshiAttributes {
                 steer_threshold: r.f32(0x9C)?,
                 rotation_speed: r.f32(0xA0)?,
                 effect_interval: r.s32(0xA4)?,
-                wall_bounce_threshold: r.f32(0xA8)?,
-                wall_wobble_parameter: r.f32(0xAC)?,
+                edge_ignore_speed: r.f32(0xA8)?,
+                wall_bounce_multiplier: r.f32(0xAC)?,
                 wall_bounce_vertical_speed: r.f32(0xB0)?,
-                floor_wobble_parameter: r.f32(0xB4)?,
+                floor_bounce_multiplier: r.f32(0xB4)?,
                 minimum_bounce_speed: r.f32(0xB8)?,
                 landing_stick_multiplier: r.f32(0xBC)?,
-                animation_speed_offset: r.f32(0xC0)?,
-                animation_speed_multiplier: r.f32(0xC4)?,
+                damage_base: r.f32(0xC0)?,
+                damage_multiplier: r.f32(0xC4)?,
                 unknown_animation_parameter: r.f32(0xC8)?,
-                reversal_acceleration: r.f32(0xCC)?,
+                hit_deceleration: r.f32(0xCC)?,
                 end_horizontal_multiplier: r.f32(0xD0)?,
                 end_vertical_multiplier: r.f32(0xD4)?,
                 rolling_rotation_multiplier: r.f32(0xD8)?,
-                minimum_effect_speed: r.s32(0xDC)?,
+                group_toggle_frames: r.s32(0xDC)?,
                 air_steer_multiplier: r.f32(0xE0)?,
                 maximum_tilt: r.f32(0xE4)?,
                 landing_lag: r.f32(0xE8)?,

@@ -84,13 +84,9 @@ pub fn collide_entry(
     state: &mut FighterPhysics,
     environment: &mut EnvironmentCollision,
     map: &mut CollMap,
-    mut ecb: FtCollisionBox,
+    ecb: FtCollisionBox,
 ) -> bool {
-    if state.facing < 0.0 {
-        let left = ecb.left.x;
-        ecb.left.x = -ecb.right.x;
-        ecb.right.x = -left;
-    }
+    let ecb = facing_box(ecb, state.facing);
     let cd = &mut environment.data;
     cd.last_pos = cd.cur_pos;
     cd.cur_pos = state.position;
@@ -100,6 +96,36 @@ pub fn collide_entry(
         map.ground_collide_box(cd, &ecb)
     };
     state.position = cd.cur_pos;
+    landed
+}
+
+/// ft_80082838 (80082838): a fixed box mirrored for a left-facing fighter.
+pub fn facing_box(mut ecb: FtCollisionBox, facing: f32) -> FtCollisionBox {
+    if facing < 0.0 {
+        let left = ecb.left.x;
+        ecb.left.x = -ecb.right.x;
+        ecb.right.x = -left;
+    }
+    ecb
+}
+
+/// ft_800824A0 (800824A0): an airborne pass with a fixed box
+/// (mpColl_8004730C). The item landing (ft_80081A00) is not modelled.
+pub fn collide_box(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    ecb: FtCollisionBox,
+) -> bool {
+    let ecb = facing_box(ecb, state.facing);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    let landed = map.air_collide_box(cd, &ecb);
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
     landed
 }
 

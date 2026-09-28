@@ -21,6 +21,7 @@ members = [
     "crates/it-foxillusion",
     "crates/it-bombhei",
     "crates/it-yoshieggthrow",
+    "crates/it-yoshistar",
     "crates/melee-ft",
     "crates/melee-cmd",
     "crates/melee-coll",

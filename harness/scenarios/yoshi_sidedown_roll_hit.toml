@@ -1,0 +1,27 @@
+# YOSHI-SIDEDOWN directed witness: grounded Egg Roll into Fox (the roll's hit and
+# fn_8012EFF4), off the right edge (362); B breaks the egg in the air (363),
+# then FallSpecial offstage and a bottom KO with the roll's death callback.
+name = "yoshi_sidedown_roll_hit"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 102, port = 0, buttons = { B = true, StickX = 0.64224609375 }, raw = { button = 512, stickX = 80 } },
+  { frame = 103, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 205, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 206, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

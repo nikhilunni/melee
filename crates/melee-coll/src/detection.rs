@@ -59,7 +59,11 @@ impl PairCursor {
             let Some(hit) = &hits[id] else {
                 continue;
             };
-            if hit.victims.contains(&victim) || hit.descriptor.element == HitElement::Catch {
+            // ftcoll.c:1737: x42_b5 gates hits and clanks on fighters.
+            if !hit.hits_fighters
+                || hit.victims.contains(&victim)
+                || hit.descriptor.element == HitElement::Catch
+            {
                 continue;
             }
             let desc = &hit.descriptor;

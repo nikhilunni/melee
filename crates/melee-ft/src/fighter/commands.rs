@@ -258,6 +258,18 @@ impl CommandState {
                             .knockback_damage = knockback_damage;
                     }
                 }
+                Command::HitboxTargets { id, items, enabled } => {
+                    // ftAction_80071774 skips the record when seeking.
+                    if !seeking {
+                        if let Some(hit) = &mut self.hitboxes[*id] {
+                            if *items {
+                                hit.hits_items = *enabled;
+                            } else {
+                                hit.hits_fighters = *enabled;
+                            }
+                        }
+                    }
+                }
                 Command::ClearHitbox(id) => {
                     if !seeking {
                         self.hitboxes[*id] = None;

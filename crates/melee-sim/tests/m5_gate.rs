@@ -938,7 +938,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 93] = [
+const MATRIX_WITNESSES: [(&str, usize); 98] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1048,6 +1048,15 @@ const MATRIX_WITNESSES: [(&str, usize); 93] = [
     ("yoshi_neutralb_egg_air2_fd_fox4", 500),
     ("yoshi_neutralb_egg_air3_fd_fox4", 500),
     ("yoshi_neutralb_whiff_air_fd_fox4", 200),
+    // Yoshi Bomb (ftyoshispeciallw.c): grounded and aerial, the descent's hit
+    // and the landing stars (it_802B2FC8) hitting Fox.
+    ("yoshi_sidedown_bomb_ground", 300),
+    ("yoshi_sidedown_bomb_air", 300),
+    // Egg Roll (ftyoshispecials.c): hop, aerial and ground loops, turn, the
+    // roll's hit on Fox (fn_8012EFF4), ground and aerial breaks, KO rolling.
+    ("yoshi_sidedown_roll_ground", 300),
+    ("yoshi_sidedown_roll_hit", 300),
+    ("yoshi_sidedown_roll_air", 300),
 ];
 
 #[test]
@@ -2016,7 +2025,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 81] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 84] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2185,6 +2194,11 @@ const CORPUS_V3_MATCHES: [(&str, usize); 81] = [
     // Long wave5 samples, exact end to end (FD Fox P1 5415 ticks; BF Fox P1 3623).
     ("corpus_v3_s0_ee98155f3_p0", 5415),
     ("corpus_v3_bf_fox_marth4_efd4a7dd2_p2", 3623),
+    // Yoshi's side and down specials: the Egg Roll hop and the Yoshi Bomb's
+    // grounded and aerial starts.
+    ("corpus_v3_fd_yoshi_fox4_eeda0d0fc_p0", 88),
+    ("corpus_v3_fd_yoshi_fox4_ec3145eb3_p0", 120),
+    ("corpus_v3_fd_yoshi_fox4_e7ff378da_p0", 96),
 ];
 
 #[test]

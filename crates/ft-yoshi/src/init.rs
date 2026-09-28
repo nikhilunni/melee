@@ -25,6 +25,12 @@ pub struct Yoshi {
     pub jump_turn_remaining: i32,
     /// Egg Throw scratch (mv.ys.specialhi).
     pub special_hi: crate::special_hi::SpecialHi,
+    /// accessory4_cb = fn_8012E644: the Yoshi Bomb landing's stars.
+    pub stars_pending: bool,
+    /// fp->mv.ys.specials: the Egg Roll scratch.
+    pub egg_roll: crate::special_s::EggRoll,
+    /// The Egg Roll callbacks and the motion that installed them.
+    pub egg_roll_hooks: Option<(melee_ft::fighter::ActionId, crate::special_s::Hooks)>,
 }
 impl Yoshi {
     pub fn new(attributes: YoshiAttributes) -> Self {
@@ -35,6 +41,9 @@ impl Yoshi {
             registered_items: Vec::new(),
             model_group: 0,
             jump_turn_remaining: 0,
+            stars_pending: false,
+            egg_roll: Default::default(),
+            egg_roll_hooks: None,
             shield_material_frame: 0.0,
             egg_material_indices: Vec::new(),
             frozen_materials: Vec::new(),
@@ -56,13 +65,19 @@ impl CharacterCallbacks for Yoshi {
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
-    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &SPECIAL_MOVES;
-    /// ftYs_Init_8012BA8C: take_dmg_cb while the egg is in Yoshi's hand.
-    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_hi::drop_egg);
-    /// ftYs_Init_8012BA8C is also death2_cb then.
-    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special_hi::drop_egg);
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::rows::moves();
+    /// Fighter.take_dmg_cb: ftYs_Init_8012BA8C while the Egg Throw's egg is
+    /// in hand, fn_8012EDE8 in the Egg Roll; at most one is installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(take_damage);
+    /// fn_8012EFF4, installed by the Egg Roll states.
+    const DEAL_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_s::hit_dealt);
+    /// Fighter.death2_cb: ftYs_Init_8012BA8C (Egg Throw) or fn_8012EC7C (Egg Roll).
+    const DEATH: Option<fn(&mut Fighter)> = Some(death);
+    /// The Egg Throw's egg (fn_8012E110) and the Yoshi Bomb landing's stars
+    /// (fn_8012E644); each runs only in its own motion.
     fn accessory(fighter: &mut Fighter, assets: &FighterAssets) {
         crate::special_hi::accessory(fighter, assets);
+        crate::special_lw::spawn_stars(fighter, assets);
     }
     const CATCH_PULL_START: fn(&mut Fighter, &FighterAssets, f32) -> f32 =
         crate::catch::catch_pull_start;
@@ -138,9 +153,8 @@ impl CharacterCallbacks for Yoshi {
         }
     }
     const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_n::grab;
-    /// ftData_SpecialN/Hi[Yoshi]: Egg Lay and the Egg Throw. SpecialS/Lw
-    /// (ftyoshispecials.c, ftyoshispeciallw.c) are unported; name the entry
-    /// instead of silently staying in the motion.
+    /// ftData_SpecialN/S/Hi/Lw[Yoshi]: Egg Lay, Egg Roll, Egg Throw and
+    /// Yoshi Bomb.
     fn enter_special(
         fighter: &mut Fighter,
         slot: melee_ft::fighter::SpecialSlot,
@@ -151,14 +165,8 @@ impl CharacterCallbacks for Yoshi {
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
             SpecialSlot::Neutral => crate::special_n::enter(fighter, airborne, assets),
-            // ftYs_SpecialS_Enter / ftYs_SpecialAirS_Enter (ftyoshispecials.c).
-            SpecialSlot::Side => {
-                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
-            }
-            // ftYs_SpecialLw_Enter / ftYs_SpecialAirLw_Enter (ftyoshispeciallw.c).
-            SpecialSlot::Down => {
-                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
-            }
+            SpecialSlot::Side => crate::special_s::enter(fighter, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(fighter, airborne, assets),
         }
     }
     fn animated_shield(&self) -> bool {
@@ -283,74 +291,17 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     ],
 };
 
-/// ftYs_Init_MotionStateTable[0..25]: egg shield states (actions
-/// 341..345), Egg Lay (346..355), the unported SpecialS rows (356..363),
-/// then the Egg Throw (364, 365). SpecialLw (366..368) stays out of the table.
-const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 25] = {
-    use melee_ft::fighter::{state, ActionId};
-    let mut rows = [state::unimplemented_row(); 25];
-    let mut i = 0;
-    while i < rows.len() {
-        rows[i].action = ActionId(341 + i as u16);
-        i += 1;
-    }
-    let guard = GUARD_ROWS;
-    i = 0;
-    while i < guard.len() {
-        rows[i] = guard[i];
-        i += 1;
-    }
-    let egg_lay = crate::special_n::rows();
-    i = 0;
-    while i < egg_lay.len() {
-        rows[crate::special_n::FIRST_ROW + i] = egg_lay[i];
-        i += 1;
-    }
-    let egg_throw = crate::special_hi::rows();
-    rows[23] = egg_throw[0];
-    rows[24] = egg_throw[1];
-    rows
-};
+/// ftYs_Init_MotionStateTable[0..28], contiguous from ftCo_MS_Count (341).
+static CHARACTER_ROWS: [melee_ft::fighter::MotionRow; crate::rows::COUNT] = crate::rows::rows();
 
-/// ftYs_Init_MotionStateTable's FtMoveId column: FtMoveId_SpecialN on Egg
-/// Lay, FtMoveId_SpecialHi on the Egg Throw rows; the shield rows carry none.
-const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; 25] = {
-    use melee_types::combat::StaleMove;
-    let mut moves = [None; 25];
-    let mut i = crate::special_n::FIRST_ROW;
-    while i < crate::special_n::FIRST_ROW + 10 {
-        moves[i] = Some(StaleMove::SpecialNeutral);
-        i += 1;
-    }
-    moves[23] = Some(StaleMove::SpecialUp);
-    moves[24] = Some(StaleMove::SpecialUp);
-    moves
-};
+/// Fighter.take_dmg_cb for whichever special installed one.
+fn take_damage(fighter: &mut Fighter) {
+    crate::special_hi::drop_egg(fighter);
+    crate::special_s::damage_taken(fighter);
+}
 
-/// ftYs_Init_MotionStateTable[0..5]: egg shield states, actions 341..345.
-const GUARD_ROWS: [melee_ft::fighter::MotionRow; 5] = {
-    use melee_ft::fighter::{ActionId, MotionRow};
-    use melee_types::CommonMotionState as S;
-    [
-        MotionRow {
-            action: ActionId(341),
-            ..melee_ft::fighter::state::COMMON[S::GuardOn as usize]
-        },
-        MotionRow {
-            action: ActionId(342),
-            ..melee_ft::fighter::state::COMMON[S::Guard as usize]
-        },
-        MotionRow {
-            action: ActionId(343),
-            ..melee_ft::fighter::state::COMMON[S::GuardOff as usize]
-        },
-        MotionRow {
-            action: ActionId(344),
-            ..melee_ft::fighter::state::COMMON[S::GuardSetOff as usize]
-        },
-        MotionRow {
-            action: ActionId(345),
-            ..melee_ft::fighter::state::COMMON[S::GuardReflect as usize]
-        },
-    ]
-};
+/// Fighter.death2_cb for whichever special installed one.
+fn death(fighter: &mut Fighter) {
+    crate::special_hi::drop_egg(fighter);
+    crate::special_s::death(fighter);
+}

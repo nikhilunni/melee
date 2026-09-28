@@ -49,6 +49,15 @@ pub enum EffectRequest {
         position: Vec3,
         angle: f32,
     },
+    /// efSync_Spawn(id, gobj, &pos, &facing, &angle) for a Graphics model
+    /// row (0x3FF: Yoshi's rolling dust): a fixed world point, turned to the
+    /// facing (efAsync_SetEffectFacingDir) and rotated about Z.
+    PositionalGraphics {
+        id: u16,
+        position: Vec3,
+        facing: f32,
+        angle: f32,
+    },
     DamageTrail {
         trajectory: f32,
     },
@@ -287,6 +296,7 @@ impl EffectRequest {
                 | Self::SyncAttached { .. }
                 | Self::SyncAttachedPair { .. }
                 | Self::SurfaceRebound { .. }
+                | Self::PositionalGraphics { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

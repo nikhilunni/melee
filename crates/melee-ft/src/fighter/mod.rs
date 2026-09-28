@@ -37,6 +37,7 @@ pub mod life;
 pub mod multi_jump;
 pub mod offscreen;
 pub mod overlap;
+pub mod part_rotation;
 mod pass;
 mod procs;
 pub mod reflection;
@@ -66,7 +67,9 @@ use crate::{
 use hsd_anim::jobj::JObjTree;
 use hsd_types::{Vec2, Vec3};
 use melee_types::{FighterKind, PlayerKind};
-pub use spawn::{MotionColorPolicy, MotionPreservation, PlayerSlot, SpawnContext, SpawnCounter};
+pub use spawn::{
+    MotionColorPolicy, MotionEntryFlags, MotionPreservation, PlayerSlot, SpawnContext, SpawnCounter,
+};
 pub use state::{
     common_table, interleaved_order, ActionId, FighterProc, MotionRow, MotionState, SpecialSlot,
     COMMON_COUNT,
@@ -137,6 +140,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
+    /// Fighter.deal_dmg_cb (fighter.c:2929): Fighter_ProcessHit when this
+    /// fighter's hit landed and nothing it received took precedence. The hook
+    /// decides whether the current motion installed the callback.
+    const DEAL_DAMAGE: Option<fn(&mut Fighter)> = None;
     /// Whether every special row was audited to leave a held light item in
     /// hand (no item branch in the character's special code); a special
     /// entered while holding one otherwise fails closed.
