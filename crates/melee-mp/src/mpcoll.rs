@@ -148,9 +148,9 @@ const fn footstep(sound: i32, keeps_sound: bool) -> TerrainFootstep {
     }
 }
 /// The shared per-material rows (mpLib_803BD3D8..803BDBC0, mplib.c:92-235)
-/// every stage the port loads uses; Fountain of Dreams' water row differs
-/// only in its effects ([`terrain_effects`]). Pokemon Stadium, Icicle
-/// Mountain and the Shrine route swap in other rows with effects.
+/// every stage the port loads uses; Fountain of Dreams' and Pokemon
+/// Stadium's water rows differ only in their effects ([`terrain_effects`]).
+/// Icicle Mountain and the Shrine route swap in other rows with effects.
 pub const TERRAIN_FOOTSTEPS: [TerrainFootstep; 20] = [
     footstep(-1, false),
     footstep(0x161, true),
@@ -202,12 +202,23 @@ const IZUMI_WATER_EFFECTS: TerrainEffects = TerrainEffects {
     bound: Some(0x753B),
 };
 
+/// Pokemon Stadium's material 10 (the water form's water): its list
+/// (mpLib_803BE118) swaps mpLib_803BD748 for mpLib_803BD850, whose rows add
+/// stage-bank splashes 30026 (footsteps) and 30009 (landings).
+const STADIUM_WATER: usize = 10;
+const STADIUM_WATER_EFFECTS: TerrainEffects = TerrainEffects {
+    footstep: Some(0x754A),
+    landing: Some(0x7539),
+    bound: None,
+};
+
 /// `mpLib_80056A54` / `mpLib_80056AC4` / `mpLib_80056B34` (mplib.c:5168-5208):
 /// the effects of a line's material on `stage`. No other row of the stages
 /// the port loads has one.
 pub fn terrain_effects(stage: GrKind, flags: u32) -> TerrainEffects {
     match (stage, terrain_material(flags)) {
         (GrKind::Izumi, IZUMI_WATER) => IZUMI_WATER_EFFECTS,
+        (GrKind::PStadium, STADIUM_WATER) => STADIUM_WATER_EFFECTS,
         _ => TerrainEffects::default(),
     }
 }
