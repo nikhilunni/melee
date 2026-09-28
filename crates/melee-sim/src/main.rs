@@ -45,6 +45,10 @@ enum Command {
     },
     /// Run and compare every key against the scenario's canonical tick trace.
     Gate { scenario: PathBuf },
+    /// Gate a scenario and, at its first divergence, report every differing
+    /// key, the motion history, items, RNG writers, particle call sites and
+    /// generators, and bones where those captures exist.
+    Triage { scenario: PathBuf },
     /// Search tick-clock input edits (a TOML spec, see search.rs) for ones
     /// that reach a goal in the port, branching by cloning the match.
     Search {
@@ -286,6 +290,11 @@ fn main() -> anyhow::Result<()> {
                 println!("wrote {}", out.display());
             }
             anyhow::ensure!(!found.is_empty(), "no candidate reached the goal");
+            Ok(())
+        }
+        Command::Triage { scenario } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            print!("{}", melee_sim::triage::triage(&scenario)?);
             Ok(())
         }
         Command::Gate { scenario } => {

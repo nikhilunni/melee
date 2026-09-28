@@ -69,6 +69,7 @@ cd harness && uv sync && uv run python -m pytest -q
 cd harness && uv run python gen_schema.py --check
 cd harness && uv run python symbols.py <symbol...>      # retail addresses
 cargo run -p melee-diff -- expected.jsonl actual.jsonl
+cargo run -q --release -p melee-sim -- triage harness/scenarios/<name>.toml   # first divergence: all keys, motions, items, RNG, particles, bones
 cargo run -p slp --bin slp-dump -- replay.slp --trace out.jsonl
 # Dolphin oracle: headless, silent, Null video by default (docs/DOLPHIN_RUN.md)
 tools/build-headless-dolphin.sh                                   # once, and after any fork rebuild

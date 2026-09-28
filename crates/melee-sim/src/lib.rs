@@ -17,5 +17,6 @@ pub mod scenario;
 pub mod search;
 pub mod trace;
 pub mod trace_items;
+pub mod triage;
 
 pub mod scene_stage;

@@ -286,6 +286,24 @@ pub fn particle_site_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec
 /// particle dump (`<name>.particles.jsonl`), for ticks `from..=to`, apart
 /// from the AppSRT display caches.
 pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Vec<String>> {
+    particle_state_diff_with(
+        scenario,
+        from,
+        to,
+        std::env::var_os("MELEE_PARTICLE_ALL").is_some(),
+        std::env::var_os("MELEE_PARTICLE_LISTS").is_some(),
+    )
+}
+
+/// [`particle_state_diff`] with its two detail switches explicit: every
+/// differing key at a differing tick, and both generator lists.
+pub fn particle_state_diff_with(
+    scenario: &Scenario,
+    from: u64,
+    to: u64,
+    all: bool,
+    lists: bool,
+) -> Result<Vec<String>> {
     let path = scenario.trace_path("particles.jsonl");
     let expected = read_trace(melee_trace_io::open(&path)?)?;
     // The dump's per-tick VI frames live in its metadata sidecar.
@@ -310,7 +328,7 @@ pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Ve
                 record.frame,
                 actual.state.get(key)
             ));
-            if std::env::var_os("MELEE_PARTICLE_ALL").is_some() {
+            if all {
                 for (key, value) in record.state.iter() {
                     if actual.state.get(key) != Some(value) {
                         report.push(format!(
@@ -320,14 +338,19 @@ pub fn particle_state_diff(scenario: &Scenario, from: u64, to: u64) -> Result<Ve
                     }
                 }
             }
-            if std::env::var_os("MELEE_PARTICLE_LISTS").is_some() {
+            if lists {
                 let list = |state: &std::collections::BTreeMap<String, melee_diff::Value>| {
                     (0..64)
                         .map_while(|i| {
                             let kind =
                                 state.get(&format!("particles.generator[{i}].program_kind"))?;
                             let id = state.get(&format!("particles.generator[{i}].id"));
-                            Some(format!("{kind:?}/{id:?}"))
+                            let plain = |v: &melee_diff::Value| match v {
+                                melee_diff::Value::UInt(n) => n.to_string(),
+                                melee_diff::Value::Int(n) => n.to_string(),
+                                other => format!("{other:?}"),
+                            };
+                            Some(format!("{}/{}", plain(kind), id.map_or("-".into(), plain)))
                         })
                         .collect::<Vec<_>>()
                         .join(" ")
