@@ -1046,7 +1046,7 @@ mod tests {
             (1.2, -0.3, 2.9),
             (1.2, 0.7, 2.9),
             (f32::NAN, 1e30, -3.5),
-            (-1.5707964, 3.1415927, 0.000_1),
+            (-std::f32::consts::FRAC_PI_2, std::f32::consts::PI, 0.000_1),
         ];
         for (k, &(x, y, z)) in rotations.iter().enumerate() {
             let rotation = Vec3::new(x, y, z);
