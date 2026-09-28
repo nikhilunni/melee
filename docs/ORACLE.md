@@ -25,6 +25,34 @@ scenario.toml ──> melee-sim ────────────────
   intra-frame phases so a divergence is localised to a subsystem on the
   first run.
 
+## External events
+
+Pads are not the only input. A few things the game logic reads come from the
+platform and no game state predicts them; they are inputs, recorded like
+pads, never compared as state. Today there is one: the completion of Pokémon
+Stadium's asynchronous form-archive read, which `grStadium_801D42B8` polls
+once per tick (its latency is the disc's, in Dolphin the emulated DVD
+timing, and varies between recordings of the same match).
+
+- **Retail.** On Pokémon Stadium the tick tracer adds `stage_io` to each
+  record (map 2's read-pending bit and controller phase at the tick's end);
+  `decode.py` turns it into `events.stage_read_completed` per tick: true on
+  the tick whose poll found the read complete (the phase leaves 1).
+  Other stages' traces carry neither field.
+- **Port.** `melee_lib::ExternalEvents` is passed per tick beside the pads
+  (`Match::step_with_events`; `Match::step` uses the defaults), and
+  `Match::consumed_events` reports each poll's outcome. `StageRead::Default`
+  is the port's documented latency policy (a fixed poll per form archive,
+  measured from retail's first reads); `Completed`/`InFlight` replay a
+  recording; `Unrecorded` fails the tick if the stage polls.
+- **Oracle.** `melee-sim gate`/`triage`/`particles-diff` replay each tick's
+  recorded event from the expected trace, as they replay `inputs`; a trace
+  without `events` is `Unrecorded`, so a stage that polls fails closed
+  instead of guessing. Dry runs and Slippi replays use the defaults.
+- **Recordings.** `melee-replay` stores the polls the port consumed
+  (`stage_reads`, optional), so a replay of an explorer or app recording
+  reproduces it exactly even if the default policy changes.
+
 ## Golden function tests
 
 For the last mile, break on entry and exit of a target function in Dolphin,

@@ -16,11 +16,13 @@ use melee_sim::{scenario, trace};
 
 mod config;
 mod error;
+mod events;
 mod game;
 mod input;
 mod observation;
 pub use config::{Character, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage};
 pub use error::{StartError, StateError, StepError};
+pub use events::{ConsumedEvents, ExternalEvents, StageRead};
 pub use game::{GameAssets, Match, MatchOutcome, MatchStatus, Tick};
 pub use input::{Buttons, ControllerState, Inputs, Stick};
 pub use observation::{

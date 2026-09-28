@@ -227,6 +227,10 @@ struct Runtime {
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
     pads: [PadSample; 4],
+    /// This tick's external events: inputs like the pads, never state.
+    external: crate::ExternalEvents,
+    /// What the last tick consumed from `external`.
+    consumed: crate::ConsumedEvents,
     frame: u64,
     error: Option<std::sync::Arc<str>>,
     /// Diagnostic only: values observed around procs, never gameplay inputs.
@@ -248,6 +252,8 @@ impl Clone for Runtime {
             stage_objects: self.stage_objects,
             state: self.state.clone(),
             pads: self.pads,
+            external: self.external,
+            consumed: self.consumed,
             frame: self.frame,
             error: self.error.clone(),
             rng_writers: hsd_types::storage::clone_vec(&self.rng_writers),
@@ -510,7 +516,9 @@ impl Runtime {
                 LinkTarget::Item(target) => target,
                 LinkTarget::Spawn(mut spawn) => {
                     // it_8027B0C4: the parent fighter's current attack.
-                    let owner = spawn.owner.expect("linked article spawned without an owner");
+                    let owner = spawn
+                        .owner
+                        .expect("linked article spawned without an owner");
                     let (index, fighter) = state
                         .fighters
                         .iter()
@@ -918,7 +926,8 @@ impl Runtime {
                         crate::scene_items::owner_report(&state.items, &state.assets.items, slot);
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
-                        .owned_article = report);
+                        .owned_article =
+                        report);
                 }
                 // ftpickupitem_800942A0 runs from input and animation callbacks.
                 let offers_items = matches!(proc, FighterProc::Input | FighterProc::Animation);
@@ -1372,6 +1381,8 @@ impl Runtime {
                             &mut self.radial_forces,
                             world,
                             &mut self.stage_objects,
+                            &self.external,
+                            &mut self.consumed,
                         )?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
@@ -1723,6 +1734,14 @@ impl Simulation {
     pub fn set_inputs(&mut self, pads: [PadSample; 4]) {
         self.runtime.pads = pads;
     }
+    /// The next tick's external events (held until replaced).
+    pub fn set_external_events(&mut self, events: crate::ExternalEvents) {
+        self.runtime.external = events;
+    }
+    /// What the last tick consumed from its external events.
+    pub fn consumed_events(&self) -> crate::ConsumedEvents {
+        self.runtime.consumed
+    }
     /// Whether a display pass (particleSort) precedes the next tick.
     pub fn set_display_pass(&mut self, rendered: bool) {
         self.runtime.display_pass = rendered;
@@ -1852,6 +1871,8 @@ impl Simulation {
             match_finished: false,
             display_pass: true,
             pads,
+            external: Default::default(),
+            consumed: Default::default(),
             frame: 0,
             error: None,
             // At most one writer per registered proc, plus match-start music.
@@ -1907,6 +1928,7 @@ impl Simulation {
                 fighter.0.commands.rumble_requests.clear();
             }
             runtime.state.effects.events.begin_tick(frame);
+            runtime.consumed = Default::default();
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
             runtime.state.effects.direct_draws.clear();
@@ -2001,6 +2023,20 @@ impl Simulation {
         let runtime = self.runtime.as_mut();
         if let Some(error) = &runtime.error {
             anyhow::bail!("{error:#}");
+        }
+        if std::env::var_os("PSDBG").is_some() && (4725..4731).contains(&runtime.frame) {
+            let f = &runtime.state.fighters[0].0;
+            let c = &f.collision.data;
+            eprintln!(
+                "DBG {} env {:#x} floor {} {:?} rw {} pos {:?} motion {:?}",
+                runtime.frame,
+                c.env_flags,
+                c.floor.index,
+                c.floor.normal,
+                c.right_facing_wall.index,
+                f.physics.position,
+                f.motion_state.id
+            );
         }
         runtime.frame += 1;
         Ok(())

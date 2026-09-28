@@ -418,12 +418,8 @@ fn restore_stadium(
                         controller.form == Form::Base,
                         "Pokemon Stadium saved transformed form unsupported"
                     );
-                    // xD0: a form archive already read; the next read's
-                    // latency would be unmodelled (see POKEMON_STADIUM.md).
-                    ensure!(
-                        word(raw, 0xD0) == 0,
-                        "Pokemon Stadium boundary after a form archive read unsupported"
-                    );
+                    // xD0 may hold the last form's archive; the next form's
+                    // choice releases it before anything reads it.
                 }
                 _ => {}
             }
@@ -441,7 +437,8 @@ fn restore_stadium(
 /// A CmSubject (cm/types.h) that is not a fighter's.
 fn saved_subject(raw: &[u8]) -> Result<melee_cm::Subject> {
     use melee_cm::{Extents, SubjectState};
-    let vec = |at: usize| hsd_types::Vec3::new(float(raw, at), float(raw, at + 4), float(raw, at + 8));
+    let vec =
+        |at: usize| hsd_types::Vec3::new(float(raw, at), float(raw, at + 4), float(raw, at + 8));
     let extents = |at: usize| Extents {
         left: float(raw, at),
         right: float(raw, at + 4),

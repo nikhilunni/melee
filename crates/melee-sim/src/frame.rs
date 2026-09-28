@@ -22,12 +22,16 @@ impl Simulation {
     }
     pub fn tick_without_snapshot(&mut self) -> anyhow::Result<()> {
         self.engine
+            .set_external_events(self.pads.events(self.engine.frame()));
+        self.engine
             .set_inputs(self.pads.samples(self.engine.frame()));
         self.engine
             .set_display_pass(self.pads.display_pass(self.engine.frame()));
         self.engine.tick_without_snapshot()
     }
     pub fn tick(&mut self) -> anyhow::Result<melee_diff::Record> {
+        self.engine
+            .set_external_events(self.pads.events(self.engine.frame()));
         self.engine
             .set_inputs(self.pads.samples(self.engine.frame()));
         self.engine

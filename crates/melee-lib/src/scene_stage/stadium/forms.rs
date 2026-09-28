@@ -99,6 +99,9 @@ pub(super) struct Engine<'a> {
     pub objects: &'a mut [Option<hsd_gobj::GObjId>],
     /// The controller's registered archive this tick.
     pub archive: Option<Form>,
+    /// This tick's external read completion, and where its use is noted.
+    pub stage_read: crate::StageRead,
+    pub consumed: &'a mut crate::ConsumedEvents,
     pub error: Option<anyhow::Error>,
 }
 impl Engine<'_> {
@@ -117,6 +120,24 @@ impl Engine<'_> {
 impl StadiumEngine for Engine<'_> {
     fn rng(&mut self) -> &mut HsdRng {
         &mut self.state.rng
+    }
+    fn read_completed(&mut self, form: Form, poll: u32) -> bool {
+        let completed = match self.stage_read {
+            crate::StageRead::Default => {
+                melee_gr::stadium::transform::default_read_completed(form, poll)
+            }
+            crate::StageRead::Completed => true,
+            crate::StageRead::InFlight => false,
+            crate::StageRead::Unrecorded => {
+                self.error.get_or_insert(anyhow::anyhow!(
+                    "grStadium_801D42B8: the recording lacks the form archive read's \
+                     completion (re-record with the stage_io tick tracer)"
+                ));
+                false
+            }
+        };
+        self.consumed.stage_read = Some(completed);
+        completed
     }
     fn announce(&mut self, mode: ScreenMode) {
         super::show(self.state, mode);

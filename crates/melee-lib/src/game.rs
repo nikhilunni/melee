@@ -175,7 +175,18 @@ impl Match {
 
     /// Advance exactly one tick. A terminal tick succeeds; subsequent calls
     /// reject the request. Invalid samples are checked before any mutation.
+    /// External events take the port's default policies
+    /// ([`ExternalEvents::default`]).
     pub fn step(&mut self, inputs: &Inputs) -> Result<(), StepError> {
+        self.step_with_events(inputs, &ExternalEvents::default())
+    }
+    /// [`Self::step`] with this tick's external events, as a recording
+    /// observed them (see [`ExternalEvents`]).
+    pub fn step_with_events(
+        &mut self,
+        inputs: &Inputs,
+        events: &ExternalEvents,
+    ) -> Result<(), StepError> {
         match self.status() {
             MatchStatus::Faulted => return Err(StepError::Faulted),
             MatchStatus::Finished(_) => return Err(StepError::Finished),
@@ -189,6 +200,7 @@ impl Match {
             *pad = pad.with_stick_directions();
         }
         self.engine.set_inputs(pads);
+        self.engine.set_external_events(*events);
         let result = catch_unwind(AssertUnwindSafe(|| self.engine.tick_without_snapshot()));
         let error = match result {
             Ok(Ok(())) => return Ok(()),
@@ -197,6 +209,12 @@ impl Match {
         };
         self.engine.poison(&error);
         Err(StepError::Simulation(error))
+    }
+    /// What the last step consumed from its external events (the outcome
+    /// of each poll, whichever policy decided it). A recorder stores these
+    /// to replay the match exactly.
+    pub fn consumed_events(&self) -> ConsumedEvents {
+        self.engine.consumed_events()
     }
     pub fn tick(&self) -> Tick {
         Tick(self.engine.frame())

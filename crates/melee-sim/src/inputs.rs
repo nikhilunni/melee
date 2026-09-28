@@ -8,6 +8,7 @@
 //! state: nothing here is compared by the gate.
 use anyhow::{bail, Context, Result};
 use melee_ft::input::{Buttons, PadSample, Stick};
+use melee_lib::{ExternalEvents, StageRead};
 use serde_json::Value as Json;
 use std::{io::BufRead, path::Path};
 
@@ -21,6 +22,9 @@ pub struct PadScript {
     /// psFrameNum at each tick's end, when the tracer recorded it: one step
     /// per particle display pass.
     display_clock: Vec<Option<u64>>,
+    /// Each tick's external events. Empty: the port's default policies
+    /// (schedules and Slippi replays); a retail trace fills every tick.
+    events: Vec<ExternalEvents>,
 }
 
 impl PadScript {
@@ -82,6 +86,7 @@ impl PadScript {
         Self {
             ticks: vec![[PadSample::default(); PORTS]; ticks],
             display_clock: vec![None; ticks],
+            events: Vec::new(),
         }
     }
 
@@ -94,6 +99,7 @@ impl PadScript {
             melee_trace_io::open(path).with_context(|| format!("opening {}", path.display()))?;
         let mut ticks = Vec::new();
         let mut display_clock = Vec::new();
+        let mut events = Vec::new();
         for (index, line) in reader.lines().enumerate() {
             let line = line?;
             if line.trim().is_empty() {
@@ -112,10 +118,15 @@ impl PadScript {
             };
             ticks.push(pads);
             display_clock.push(display_clock_of(&record));
+            events.push(
+                recorded_events(&record)
+                    .with_context(|| format!("{}: record {index} events", path.display()))?,
+            );
         }
         Ok(Self {
             ticks,
             display_clock,
+            events,
         })
     }
 
@@ -180,6 +191,21 @@ impl PadScript {
         }
     }
 
+    /// The external events of tick `tick`: the recorded ones for a retail
+    /// trace, the port's defaults otherwise.
+    pub fn events(&self, tick: u64) -> ExternalEvents {
+        if self.events.is_empty() {
+            return ExternalEvents::default();
+        }
+        usize::try_from(tick)
+            .ok()
+            .and_then(|t| self.events.get(t))
+            .copied()
+            .unwrap_or(ExternalEvents {
+                stage_read: StageRead::Unrecorded,
+            })
+    }
+
     /// True if any tick has a non-neutral pad on any port.
     pub fn has_input(&self) -> bool {
         self.ticks
@@ -187,6 +213,28 @@ impl PadScript {
             .flatten()
             .any(|pad| *pad != PadSample::default())
     }
+}
+
+/// A retail tick's external events (`events` in the decoded trace,
+/// harness/decode.py). A trace without them recorded no stage reads: a
+/// replay fails closed if the stage polls one.
+fn recorded_events(record: &Json) -> Result<ExternalEvents> {
+    let Some(events) = record.get("events") else {
+        return Ok(ExternalEvents {
+            stage_read: StageRead::Unrecorded,
+        });
+    };
+    let completed = events
+        .get("stage_read_completed")
+        .and_then(Json::as_bool)
+        .context("stage_read_completed")?;
+    Ok(ExternalEvents {
+        stage_read: if completed {
+            StageRead::Completed
+        } else {
+            StageRead::InFlight
+        },
+    })
 }
 
 /// psFrameNum (psdisp.c:1857), recorded by the tick tracer since

@@ -85,6 +85,12 @@ impl Phase {
 /// What the controller asks of the engine, in C order.
 pub trait StadiumEngine {
     fn rng(&mut self) -> &mut HsdRng;
+    /// `grStadium_801D42B8` (0x801D42B8): whether `form`'s archive read
+    /// (lbFile_80016580) has completed by this poll, the `poll`-th of the
+    /// read (from 1). Retail knows through the DVD callback fn_801D4220,
+    /// which clears map 2's xC4_b1; the port takes it as an external event
+    /// (`ExternalEvents` in melee-lib) or from [`default_read_completed`].
+    fn read_completed(&mut self, form: Form, poll: u32) -> bool;
     /// grStadium_801D2528 on map 1 with `mode`.
     fn announce(&mut self, mode: ScreenMode);
     /// The standing form's xC4_b1 (the water form drops its windmill).
@@ -132,16 +138,25 @@ const LAST_LEG: usize = 8;
 /// Lines disabled while the base form stands (see procs::PIT_LINES).
 const PIT_LINES: [i32; 2] = super::procs::PIT_LINES;
 
-/// Polls of `grStadium_801D42B8` until the DVD callback of each form
-/// archive's read (lbFile_80016580, fn_801D4220) has run, counting the
-/// successful one; indexed by `Form::archive`. Retail's latency is the
-/// emulated disc's, which the port does not model: these are measured from
-/// retail recordings as the first read of a match from start_ps_fox_marth4
-/// (the poll that succeeds is the tick before the announcement). A later
-/// read is faster when the previous one left the head nearby (GrPs1.dat
-/// after GrPs4.dat: 12 polls, stage_ps_second_fox_marth4), so a later read
-/// fails closed rather than diverge.
-const FIRST_READ_POLLS: [u32; 4] = [23, 18, 23, 21];
+/// The default read-latency policy: the poll of `grStadium_801D42B8` that
+/// finds each form archive's read complete (counting from 1), indexed by
+/// `Form::archive` (GrPs1-4.dat: fire, grass, water, rock).
+///
+/// Retail's latency is the disc's (in Dolphin, its emulated DVD timing), so
+/// no game state predicts it. These are the polls measured for each file's
+/// first read of a match from start_ps_fox_marth4 (the poll that succeeds is
+/// the tick before the announcement). Recordings vary: 21-23 polls for the
+/// same first read, 12 for GrPs1.dat right after GrPs4.dat. A standalone run
+/// (explorer, native app) uses this table for every read, a plausible sample
+/// rather than a prediction; replaying a recording takes the recorded
+/// completion instead. A fixed table keeps the policy free of hidden state:
+/// no second random stream to seed, clone or record.
+pub const DEFAULT_READ_POLLS: [u32; 4] = [23, 18, 23, 21];
+
+/// The default policy for `StadiumEngine::read_completed`.
+pub fn default_read_completed(form: Form, poll: u32) -> bool {
+    poll >= DEFAULT_READ_POLLS[form.archive().expect("a form's archive")]
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transformation {
@@ -163,14 +178,11 @@ pub struct Transformation {
     pub rising: Option<Form>,
     /// xD4: the sparkle path's length, summed on first use.
     pub sparkle_path: f32,
-    /// Map 2's xC4_b1 as polls left: the form archive's read in flight.
-    pub load_polls_left: u32,
+    /// Polls of the form archive's read in flight made so far.
+    pub read_polls: u32,
     /// xD0: the registered form archive (grDatFiles_801C6478), until the
     /// next form is chosen (grAnime_801C65B0).
     pub archive: Option<Form>,
-    /// A form archive has been read this match (only the first read's
-    /// latency is modelled).
-    pub read_once: bool,
 }
 
 impl Transformation {
@@ -186,9 +198,8 @@ impl Transformation {
             standing: Form::Base,
             rising: None,
             sparkle_path: 0.0,
-            load_polls_left: 0,
+            read_polls: 0,
             archive: None,
-            read_once: false,
         }
     }
 
@@ -200,8 +211,8 @@ impl Transformation {
             Phase::Loading => {
                 // grStadium_801D42B8: once the callback cleared xC4_b1,
                 // grDatFiles_801C6478 registers the archive.
-                self.load_polls_left -= 1;
-                if self.load_polls_left == 0 {
+                self.read_polls += 1;
+                if engine.read_completed(self.form, self.read_polls) {
                     self.archive = Some(self.form);
                     self.phase = Phase::Announcing;
                 }
@@ -279,15 +290,7 @@ impl Transformation {
         }
         // grAnime_801C65B0(xD0), then lbFile_80016580 on datfiles[form].
         self.archive = None;
-        if self.read_once {
-            unimplemented!(
-                "grStadium_801D4548: form archive read after the first (disc read latency \
-                 unmodelled; see docs/PORT_NOTES/POKEMON_STADIUM.md)"
-            );
-        }
-        self.read_once = true;
-        let file = next.archive().expect("a form's archive");
-        self.load_polls_left = FIRST_READ_POLLS[file];
+        self.read_polls = 0;
         self.phase = Phase::Loading;
     }
 

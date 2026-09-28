@@ -64,6 +64,7 @@ pub(crate) fn initialize_collision(
 }
 
 /// A map's gobj proc (s_link 4). Map 0 has none.
+#[allow(clippy::too_many_arguments)] // Borrow each runtime subsystem independently.
 pub(crate) fn run_proc(
     state: &mut InitialState,
     map: u8,
@@ -71,6 +72,8 @@ pub(crate) fn run_proc(
     radial_forces: &mut melee_lb::radial_force::RadialForces,
     world: &mut hsd_gobj::TaggedWorld,
     objects: &mut [Option<hsd_gobj::GObjId>],
+    external: &crate::ExternalEvents,
+    consumed: &mut crate::ConsumedEvents,
 ) -> Result<()> {
     let archive = match &state.stage {
         SceneStage::Stadium(stage) => stage.transformation.archive,
@@ -81,7 +84,7 @@ pub(crate) fn run_proc(
         2 => {
             // grStadium_801D1520: the controller once released, then
             // lb_800115F4 and Ground_801C2FE0 (map 2 binds no joint).
-            run_controller(state, draws, world, objects)?;
+            run_controller(state, draws, world, objects, external, consumed)?;
             radial_forces.tick();
             let wind = radial_forces.wind_state();
             for fighter in &mut state.fighters {
@@ -108,6 +111,8 @@ fn run_controller(
     draws: &mut DrawLog,
     world: &mut hsd_gobj::TaggedWorld,
     objects: &mut [Option<hsd_gobj::GObjId>],
+    external: &crate::ExternalEvents,
+    consumed: &mut crate::ConsumedEvents,
 ) -> Result<()> {
     let SceneStage::Stadium(stage) = &state.stage else {
         unreachable!()
@@ -123,6 +128,8 @@ fn run_controller(
         draws,
         world,
         objects,
+        stage_read: external.stage_read,
+        consumed,
         error: None,
     };
     transformation.tick(&parameters, &mut engine);
