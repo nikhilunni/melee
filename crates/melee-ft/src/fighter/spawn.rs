@@ -898,6 +898,7 @@ impl FighterCore {
             jab_countdown: 0.0,
             last_jab: None,
             hurtboxes: assets.hurtboxes.clone(),
+            hurtboxes_replaced: false,
             dynamic_colliders: assets.dynamic_colliders.clone(),
             thrown_hitbox: assets.thrown_hitbox.clone(),
             grab_handicap: 9, // gm default handicap, before any saved-player override.
@@ -971,6 +972,10 @@ impl FighterCore {
             self.commands.capsule_status = melee_types::combat::HurtStatus::Normal;
         }
         self.commands.capsule_overrides.clear();
+        // fighter.c:975: whatever the flags, a replaced capsule table returns.
+        if self.hurtboxes_replaced {
+            self.restore_hurt_capsules(assets);
+        }
         // fighter.c:1377: no supported entry passes Ft_MF_KeepAccessory.
         self.accessory4_armed = false;
         // fighter.c:1101-1102: entries without Ft_MF_KeepFastFall clear it.

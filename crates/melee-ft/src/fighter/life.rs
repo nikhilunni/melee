@@ -900,6 +900,7 @@ impl FighterCore {
         self.previous_collision_bounds = Vec3::ZERO;
         self.offscreen.magnified_ticks = 0;
         self.hurtboxes.clone_from_slice(&assets.hurtboxes);
+        self.hurtboxes_replaced = false; // fighter.c:269
         self.dynamic_colliders
             .clone_from_slice(&assets.dynamic_colliders);
         self.thrown_hitbox.clone_from(&assets.thrown_hitbox);

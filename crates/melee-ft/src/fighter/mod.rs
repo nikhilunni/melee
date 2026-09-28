@@ -176,8 +176,6 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
     const ITEM_DEFENSE_CONTACT: Option<ItemDefenseContact> = None;
 
-    /// Explicit boundary for a character-owned hurt-capsule layout.
-    fn check_hurtbox_interaction(&self) {}
     /// ftCo_Attack1.c:89-110, decideAttack11 / getMotionFlags (8008AB84 / 8008ABC0).
     fn jab_variant(&self) {
         if Self::descriptor().common_behavior.jab_entry {
@@ -680,6 +678,9 @@ pub struct FighterCore {
     /// unk_msid: the jab a combo continues from (Attack11 or Attack12).
     pub last_jab: Option<melee_types::CommonMotionState>,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,
+    /// x221A_b6: a capsule was overwritten by ftColl_HurtboxInit; the next
+    /// motion change restores the data table (ftColl_8007B4E0).
+    pub hurtboxes_replaced: bool,
     pub dynamic_colliders: Vec<caches::DynamicCollider>,
     /// x1064_thrownHitbox: its pose advances even without a throw.
     pub thrown_hitbox: caches::ThrownHitbox,

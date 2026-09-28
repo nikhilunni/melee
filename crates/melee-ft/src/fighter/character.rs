@@ -39,7 +39,6 @@ pub struct CharacterTable {
     pub reflect_hit: Option<super::reflection::CharacterResponse>,
     pub process_defense_hit: Option<DefenseHit>,
     pub item_defense_contact: Option<ItemDefenseContact>,
-    pub check_hurtbox_interaction: fn(&CharacterState),
     pub jab_variant: fn(&CharacterState),
     pub third_jab_state: fn(&CharacterState) -> melee_types::CommonMotionState,
     pub restore_saved: fn(&mut CharacterState, &[u8]),
@@ -106,7 +105,6 @@ impl CharacterTable {
             reflect_hit: C::REFLECT_HIT,
             process_defense_hit: C::PROCESS_DEFENSE_HIT,
             item_defense_contact: C::ITEM_DEFENSE_CONTACT,
-            check_hurtbox_interaction: |state| state.get::<C>().check_hurtbox_interaction(),
             jab_variant: |state| state.get::<C>().jab_variant(),
             third_jab_state: |state| state.get::<C>().third_jab_state(),
             restore_saved: |state, raw_fighter| state.get_mut::<C>().restore_saved(raw_fighter),
@@ -240,9 +238,6 @@ impl CharacterState {
     }
     pub fn throw_variant(&self) {
         (self.table.throw_variant)(self)
-    }
-    pub fn check_hurtbox_interaction(&self) {
-        (self.table.check_hurtbox_interaction)(self)
     }
     pub fn jab_variant(&self) {
         (self.table.jab_variant)(self)

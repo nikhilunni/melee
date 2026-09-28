@@ -21,8 +21,6 @@ pub struct Yoshi {
     pub frozen_materials: Vec<usize>,
     pub shield_material_frame: f32,
     pub shield_maximum_health: f32,
-    pub egg_body: bool,
-    pub egg_hurtbox: Option<melee_coll::hurtbox::HurtCapsule>,
     /// Aerial-jump turning countdown (mv.co.jumpaerial.x0).
     pub jump_turn_remaining: i32,
 }
@@ -39,8 +37,6 @@ impl Yoshi {
             egg_material_indices: Vec::new(),
             frozen_materials: Vec::new(),
             shield_maximum_health: 0.0,
-            egg_body: false,
-            egg_hurtbox: None,
         }
     }
 }
@@ -116,10 +112,15 @@ impl CharacterCallbacks for Yoshi {
             _ => state.into(),
         }
     }
-    fn check_hurtbox_interaction(&self) {
-        if self.egg_body {
-            unimplemented!("ftyoshiguard.c:31-48: combat against the egg hurt capsule");
-        }
+    /// ftData_SpecialN/S/Hi/Lw[Yoshi] (ftyoshispecial*.c) are unported; name
+    /// the entry instead of silently staying in the current motion.
+    fn enter_special(
+        _fighter: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        _assets: &FighterAssets,
+    ) {
+        unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})");
     }
     fn animated_shield(&self) -> bool {
         true

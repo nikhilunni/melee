@@ -432,7 +432,6 @@ pub fn detect_hit(
                 continue;
             }
         }
-        victim.character.check_hurtbox_interaction();
         detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id);
     }
 }
@@ -831,7 +830,13 @@ impl Fighter {
             } else if std::mem::take(&mut self.core.combat.pending_from_captor) {
                 // ftCo_8008EC90: the captor's hit preserves the grab and shares hitlag.
                 hit_damage = super::grab_escape::capture_damage(self, &hit, assets)?;
-            } else if hit.knockback != 0.0 {
+            } else if self.core.modified_knockback(hit.knockback, assets) == 0.0 {
+                // ftCo_8008EC90 (8008ECB0): armor left no knockback.
+                if hit.knockback != 0.0 {
+                    self.core.absorb_hit(&hit, assets);
+                    hit_damage = self.core.combat.frame_max_damage;
+                }
+            } else {
                 // ftCo_8009F0F0 -> ftCo_8009F184: a light hit on a prone fighter
                 // keeps its facing (ftCo_8008DCE0's argument is fp->facing_dir,
                 // applied after the knockback used the hit's direction)
@@ -1625,9 +1630,6 @@ fn detect_eligible_hit(
         .as_ref()
         .expect("eligible hitbox");
     let desc = &hit.descriptor;
-    if victim.combat.armor != 0.0 {
-        unimplemented!("ftColl_80079AB0: double-jump armor damage response");
-    }
     if victim.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
         || victim.status.ledge_intangibility != 0
     {
@@ -2411,12 +2413,55 @@ impl FighterCore {
         if self.player.scale != 1.0 {
             unimplemented!("ftCo_CalcYScaledKnockback: model-scaled victim");
         }
-        // Retail subtracts max(armor0, armor1), plus PlCo +6F0 when metal:
-        // zero here, as detection rejects armored victims and no supported
-        // mode makes a fighter metal.
+        // 8008D9E0..8008DA18: max(armor0, armor1) by fcmpo, plus PlCo +6F0
+        // when metal (no supported mode makes a fighter metal), then fsubs.
+        // armor0 (Bowser, Giga Bowser, Nana) is zero for the supported roster.
+        const ARMOR0: f32 = 0.0;
+        let armor = if ARMOR0 > self.combat.armor {
+            ARMOR0
+        } else {
+            self.combat.armor
+        };
+        knockback -= armor;
         if knockback < parameters.minimum_knockback {
             knockback = parameters.minimum_knockback;
         }
         knockback
+    }
+
+    /// ftCo_8008EC90 inlineB2 (ftCo_Damage.c:795-811) after
+    /// Fighter_UnkTakeDamage_8006CC30: the hit's damage and flash without a
+    /// reaction; the motion continues into hitlag.
+    fn absorb_hit(&mut self, hit: &ReceivedHit, assets: &FighterAssets) {
+        // ftCo_800C8D00 returns at once without x2224_b3 (no supported mode).
+        // The capture states (0xE0/0xE1, 0xE3/0xE4) are unarmored.
+        self.physics.percent += hit.percent_damage;
+        if hit.percent_damage != 0.0 {
+            // ftCo_8008D8E8(kb_applied * PlCo +154) with kb_applied == 0.
+            let scaled = 0.0 * assets.damage.hitstun_scale;
+            let level = assets
+                .damage
+                .reaction_thresholds
+                .iter()
+                .position(|&t| scaled < t)
+                .unwrap_or(3) as u8;
+            let id = match hit.descriptor.element {
+                melee_types::HitElement::Fire => 11 + level,
+                melee_types::HitElement::Electric => 15 + level,
+                melee_types::HitElement::Ice => 31 + level,
+                melee_types::HitElement::Dark => 35 + level,
+                _ => DAMAGE_FLASH,
+            };
+            // ftCo_8008DA4C -> ftCo_800BFFD0; an installed program runs now
+            // (ftCo_800C0408), not at the next color step.
+            if self.install_color_overlay_now(id, assets) {
+                self.advance_color_overlay(assets);
+            }
+        }
+        // ftCommon_800804FC: grounded victims only; armor ends on landing.
+        assert!(
+            self.physics.ground_or_air == GroundOrAir::Air,
+            "ftCommon_800804FC: a grounded armored hit"
+        );
     }
 }

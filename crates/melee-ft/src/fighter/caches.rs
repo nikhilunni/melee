@@ -161,3 +161,36 @@ impl melee_coll::detection::Collider for super::FighterCore {
         self.player.scale
     }
 }
+
+impl super::FighterCore {
+    /// ftColl_8007B0C0 (8007B0C0): every hurt capsule takes `status`.
+    pub fn set_hurt_capsules(&mut self, status: melee_types::combat::HurtStatus) {
+        self.commands.capsule_status = status;
+        self.commands.capsule_overrides.clear();
+    }
+    /// ftColl_HurtboxInit (8007B5AC): overwrite one capsule, enabled, until
+    /// the next motion change restores the table.
+    pub fn replace_hurt_capsule(&mut self, index: usize, capsule: HurtCapsule) {
+        let bone = capsule.bone;
+        self.hurtboxes[index] = capsule;
+        // Per-capsule states are keyed by the first capsule on a bone.
+        assert!(
+            self.hurtboxes.iter().position(|h| h.bone == bone) == Some(index),
+            "ftColl_HurtboxInit: an earlier capsule shares the bone"
+        );
+        let enabled = melee_types::combat::HurtStatus::Normal;
+        let overrides = &mut self.commands.capsule_overrides;
+        let existing = overrides.iter().position(|entry| entry.0 == bone);
+        match existing {
+            Some(index) => overrides.iter_mut().nth(index).expect("override").1 = enabled,
+            None => overrides.push((bone, enabled)),
+        }
+        self.hurtboxes_replaced = true;
+    }
+    /// ftColl_8007B4E0 (8007B4E0): the data table's capsules, all enabled.
+    pub(super) fn restore_hurt_capsules(&mut self, assets: &super::assets::FighterAssets) {
+        self.hurtboxes.clone_from_slice(&assets.hurtboxes);
+        self.set_hurt_capsules(melee_types::combat::HurtStatus::Normal);
+        self.hurtboxes_replaced = false;
+    }
+}

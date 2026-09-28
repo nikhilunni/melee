@@ -9,7 +9,7 @@ use melee_types::CommonMotionState as S;
 
 impl Fighter {
     /// ftCo_800D8C54 (800D8C54): Catch begins at frame zero without an immediate step.
-    pub(super) fn enter_catch(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_catch(&mut self, assets: &FighterAssets) -> Result<()> {
         self.enter_catch_motion(S::Catch, assets)
     }
 

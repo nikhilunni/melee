@@ -39,19 +39,24 @@ fn size(fighter: &mut Fighter) {
         .skeleton
         .set_scale(joint, &Vec3::new(size, size, size));
 }
-/// ftYs_Init_8012BDA0: intangible body and one normal, grabbable egg capsule.
+/// ftYs_Init_8012BDA0 (8012BDA0): the body's capsules intangible and capsule
+/// 0 replaced by one enabled, grabbable egg capsule on the shield bone.
 fn egg_body(fighter: &mut Fighter) {
-    fighter.character.get_mut::<Yoshi>().egg_body = true;
-    fighter.character.get_mut::<Yoshi>().egg_hurtbox = Some(melee_coll::hurtbox::HurtCapsule {
-        height: melee_coll::hurtbox::HurtHeight::Middle,
-        grabbable: true,
-        bone: usize::from(fighter.bones.model.shield),
-        offsets: [Vec3::ZERO; 2],
-        radius: 1.0,
-        positions: [Vec3::ZERO; 2],
-        cached: false,
-    });
-    fighter.commands.hurt_status = HurtStatus::Intangible;
+    fighter.core.set_hurt_capsules(HurtStatus::Intangible);
+    let bone = usize::from(fighter.bones.model.shield);
+    fighter.core.replace_hurt_capsule(
+        0,
+        melee_coll::hurtbox::HurtCapsule {
+            height: melee_coll::hurtbox::HurtHeight::Middle,
+            grabbable: true,
+            bone,
+            // ftYs_Unk1_803B75C0: both ends at the bone origin.
+            offsets: [Vec3::ZERO; 2],
+            radius: 1.0,
+            positions: [Vec3::ZERO; 2],
+            cached: false,
+        },
+    );
 }
 fn model(fighter: &mut Fighter, variant: i32) {
     fighter.character.get_mut::<Yoshi>().model_group = variant;
@@ -60,9 +65,8 @@ fn model(fighter: &mut Fighter, variant: i32) {
 /// ftYs_Init_8012BE3C (8012BE3C): restore the body and burst twelve shell pieces.
 pub fn leave_egg(fighter: &mut Fighter, assets: &FighterAssets) {
     model(fighter, 0);
-    fighter.character.get_mut::<Yoshi>().egg_body = false;
-    fighter.character.get_mut::<Yoshi>().egg_hurtbox = None;
-    fighter.commands.hurt_status = HurtStatus::Normal;
+    // The replaced capsule 0 stays until the next motion change.
+    fighter.core.set_hurt_capsules(HurtStatus::Normal);
     let bone = usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"));
     fighter.core.effects.push(EffectRequest::EggShell {
         bone,
@@ -98,10 +102,8 @@ pub fn enter(fighter: &mut Fighter, assets: &FighterAssets, reflect: bool) -> Re
         },
         ..Default::default()
     });
-    fighter.character.get_mut::<Yoshi>().egg_body = false;
-    fighter.character.get_mut::<Yoshi>().egg_hurtbox = None;
     // HurtCapsule_Disabled throughout the startup animation.
-    fighter.commands.hurt_status = HurtStatus::Intangible;
+    fighter.core.set_hurt_capsules(HurtStatus::Invincible);
     if reflect {
         fighter.input.shoulder.tilt = 0xFE;
         fighter.shield.fresh_powershield = true;
@@ -223,7 +225,9 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     if fighter.input.pressed.intersects(Buttons::A)
         && fighter.input.current.held.intersects(Buttons::SHIELD)
     {
-        unimplemented!("ftyoshiguard.c:141,207: grab out of egg shield");
+        // ftCo_Catch_CheckInput (800D8990) -> ftCo_800D8C54: the motion
+        // change restores the capsules; no shell burst.
+        return fighter.enter_catch(assets);
     }
     if fighter.collision.data.floor.flags & 0x100 != 0
         && fighter.input.current.stick.y <= -assets.movement.platform_drop_threshold

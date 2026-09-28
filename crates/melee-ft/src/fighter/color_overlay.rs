@@ -137,18 +137,40 @@ impl FighterCore {
         }
     }
 
+    /// ftCo_800BFFD0 called directly, returning whether `id` was installed.
+    /// Requests queued earlier were installed earlier in retail, so they go first.
+    pub(super) fn install_color_overlay_now(
+        &mut self,
+        id: u8,
+        assets: &super::assets::FighterAssets,
+    ) -> bool {
+        self.install_requested_color_overlays(assets);
+        let installed = self.install_color_overlay(id, 0, &assets.color_overlays);
+        installed.unwrap_or_else(|| {
+            unimplemented!("ftCo_800BFFD0: result of secondary color slot program {id}")
+        })
+    }
+
     /// ftCo_800BFFD0: install `id` unless the slot holds a higher priority.
-    fn install_color_overlay(&mut self, id: u8, duration: u32, table: &ColorOverlayTable) {
+    /// Returns whether the primary slot took it; None for the unmodelled
+    /// secondary slot.
+    fn install_color_overlay(
+        &mut self,
+        id: u8,
+        duration: u32,
+        table: &ColorOverlayTable,
+    ) -> Option<bool> {
         if table.entry(id).secondary {
             // The secondary slot (x488) is not modelled; its programs are
             // tint-only in the supported roster, which keeps this RNG-neutral.
             if table.has_gameplay_commands(id) {
                 unimplemented!("ftCo_800BFFD0: secondary color slot program {id} with effects");
             }
-            return;
+            return None;
         }
         let slot = &mut self.combat.color_overlay;
-        if table.priority(slot.id) <= table.priority(id) {
+        let installed = table.priority(slot.id) <= table.priority(id);
+        if installed {
             *slot = ColorOverlaySlot {
                 id,
                 program: ChargeOverlay::default(),
@@ -156,6 +178,7 @@ impl FighterCore {
                 flash_expired: slot.flash_expired,
             };
         }
+        Some(installed)
     }
 
     /// ftCo_800C0408's primary-slot loop: run the program; when it ends or its
