@@ -80,13 +80,18 @@ fn stadium(state: &mut InitialState) -> &mut melee_gr::stadium::Stadium {
 
 /// `Ground_801C2FE0` (0x801C2FE0): the stage joints bound to the map, then
 /// the archive's own bindings not already updated this call.
+/// Runs every tick, so it borrows the bindings in place rather than
+/// collecting them as [`bindings`] does.
 pub(super) fn update_collision(state: &mut InitialState, archive: Option<Form>, map: u8) {
-    let (stage, own) = bindings(state, archive, map);
+    let own = model_source(&state.assets, archive, map)
+        .map_or(&[][..], |(_, model)| model.joint_mappings.as_slice());
     let animation = state.stage_animations.get_mut(&map).expect("live map");
-    animation.update_collision(&mut state.map, &stage);
+    for binding in procs::stage_joints(map) {
+        animation.update_collision(&mut state.map, std::slice::from_ref(binding));
+    }
     for binding in own {
-        if !stage.iter().any(|s| s.joint_index == binding.joint_index) {
-            animation.update_collision(&mut state.map, &[binding]);
+        if !procs::stage_joints(map).any(|s| s.joint_index == binding.joint_index) {
+            animation.update_collision(&mut state.map, std::slice::from_ref(binding));
         }
     }
 }
