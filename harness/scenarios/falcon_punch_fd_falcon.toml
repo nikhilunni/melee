@@ -1,0 +1,27 @@
+# FALCON: grounded Falcon Punch to completion (ftCa_SpecialN, action 347).
+# Frame 1 of the script spawns the punch models (efSync 1167 -> efAlt 0x48F,
+# 0xFA0/0xFA1), frame 10 the trailing generator (efAsync 0x446), frame 61
+# removes the models (ftCommon_8007DB24); Wait at the animation's end.
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_punch_fd_falcon"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 180
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { B = true } },
+  { frame = 33, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -74,6 +74,9 @@ pub struct CommandState {
     pub throw_reverse: bool,
     /// Fighter throw_flags_b0, consumed by character throw article callbacks.
     pub throw_accessory: bool,
+    /// Fighter throw_flags_b1 (ftAction_80071908), consumed by character
+    /// motion callbacks through `take_move_cue`.
+    pub move_cue: bool,
     pub throw_hitboxes: [Option<melee_types::combat::ThrowHitbox>; 2],
     /// HitCapsule.unk_count is captured before the stale multiplier.
     pub throw_damage_counts: [u32; 2],
@@ -210,6 +213,7 @@ impl CommandState {
                 Command::ThrowAccessory => {
                     self.throw_accessory = true;
                 }
+                Command::MoveCue => self.move_cue = true,
                 Command::SmashSound => {
                     if !seeking {
                         self.smash_sound_requests += 1;
@@ -611,6 +615,18 @@ impl ModelSelections {
 }
 
 impl CommandState {
+    /// `fp->throw_flags = 0`: every throw flag bit at once.
+    pub fn clear_throw_flags(&mut self) {
+        self.throw_accessory = false;
+        self.move_cue = false;
+        self.throw_reverse = false;
+        self.grab_release = false;
+        self.rapid_jab_loop_end = false;
+    }
+    /// throw_flags_b1, read and cleared.
+    pub fn take_move_cue(&mut self) -> bool {
+        std::mem::take(&mut self.move_cue)
+    }
     /// throw_flags_b3, read and cleared (ftCheckThrowB3). The port tracks the
     /// one retail bit as two consumers' latches; both clear together.
     pub fn take_throw_flag_b3(&mut self) -> bool {

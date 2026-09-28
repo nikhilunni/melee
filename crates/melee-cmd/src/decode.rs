@@ -54,6 +54,7 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         18 => Command::SmashSound,
         35 => Command::HeldItemVisibility(word & 0x03ff_ffff != 0),
         24 => Command::ThrowAccessory,
+        21 => Command::MoveCue,
         19 => Command::SetVariable {
             index: ((word >> 24) & 3) as usize,
             value: word & 0xFFFFFF,

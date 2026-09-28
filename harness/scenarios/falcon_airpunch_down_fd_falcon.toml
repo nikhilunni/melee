@@ -1,0 +1,30 @@
+# FALCON: aerial Falcon Punch from a short hop with the stick held down, so
+# the punch lands before its end (ftCa_SpecialAirN_Coll -> AirToGround into
+# action 347, which keeps the models).
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_airpunch_down_fd_falcon"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 31, buttons = {} },
+  { frame = 36, buttons = { B = true } },
+  { frame = 39, buttons = {} },
+  { frame = 50, buttons = { StickY = -0.8 } },
+  { frame = 140, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

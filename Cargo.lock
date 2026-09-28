@@ -383,7 +383,9 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 name = "ft-captain"
 version = "0.0.1"
 dependencies = [
+ "gekko-math",
  "hsd-archive",
+ "melee-ef",
  "melee-ft",
  "melee-test-support",
  "melee-types",

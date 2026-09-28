@@ -9,6 +9,8 @@ license.workspace = true
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }
+melee-ef = { path = "../melee-ef" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }

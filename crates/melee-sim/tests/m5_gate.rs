@@ -937,7 +937,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 76] = [
+const MATRIX_WITNESSES: [(&str, usize); 81] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1018,6 +1018,13 @@ const MATRIX_WITNESSES: [(&str, usize); 76] = [
     ("peach_float_fair_release", 300),
     ("peach_float_dair_cstick", 320),
     ("peach_float_bair_uair", 420),
+    // Falcon Punch: grounded to Wait; aerial landing mid-punch; aerial
+    // lunges aimed up and down off stage (efAlt 0x48F, efAsync 0x446).
+    ("falcon_punch_fd_falcon", 180),
+    ("falcon_airpunch_up_fd_falcon", 240),
+    ("falcon_airpunch_down_fd_falcon", 260),
+    ("falcon_airpunch_offstage_up_fd_falcon", 200),
+    ("falcon_airpunch_offstage_down_fd_falcon", 200),
 ];
 
 #[test]
@@ -1977,7 +1984,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 62] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 63] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2101,6 +2108,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 62] = [
     // Exact on arrival after the wave-A merges (animation loader, taunt, float).
     ("corpus_v3_fd_falco_fox4_e0dee256e_p2", 86),
     ("corpus_v3_fd_peach_fox4_e3e74affa_p1", 110),
+    // Captain Falcon's Falcon Punch out of Landing (ftCa_SpecialN_Enter).
+    ("corpus_v3_fd_captainfalcon_fox4_e75fb4a9a_p1", 92),
 ];
 
 #[test]

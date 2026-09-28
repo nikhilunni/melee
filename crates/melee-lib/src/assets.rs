@@ -21,7 +21,8 @@ pub struct Assets {
     pub drop_markers: melee_gr::bomb_rain::DropMarkers,
     pub(crate) fighters: ManuallyDrop<[FighterAssets; 2]>,
     pub stage: Archive,
-    pub(crate) visual_effect_archives: [Archive; 3],
+    /// EfCoData.dat, then melee_ef::CHARACTER_EFFECT_FILES in order.
+    pub(crate) visual_effect_archives: [Archive; 1 + melee_ef::CHARACTER_EFFECT_FILES.len()],
     pub stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     pub stage_desc: melee_gr::desc::StageDesc,
     pub particle_bank: ParticleBank,
@@ -140,9 +141,10 @@ impl Assets {
         for (i, slot) in drop_markers.spawns.iter_mut().enumerate() {
             *slot = bound_marker(i as i16)?;
         }
-        let fox_effects = archive("EfFxData.dat")?;
-        let mars_effects = archive("EfMsData.dat")?;
-        let effect_resources = melee_ef::Resources::load(&effects, &fox_effects, &mars_effects)?;
+        let [fox_effects, captain_effects, mars_effects] =
+            melee_ef::CHARACTER_EFFECT_FILES.map(|file| archive(file.file));
+        let character_effects = [fox_effects?, captain_effects?, mars_effects?];
+        let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?;
         let interface = archive("IfAll.usd")?;
         let items = crate::scene_items::Resources::load(&read, &characters)?;
         let fighters = fighters.try_into().ok().expect("two character resources");
@@ -150,7 +152,10 @@ impl Assets {
         // Finish all fallible work before installing manually dropped ownership.
         Ok(Self {
             fingerprint: fingerprint.into_inner().finish(),
-            visual_effect_archives: [effects, fox_effects, mars_effects],
+            visual_effect_archives: {
+                let [fox, captain, mars] = character_effects;
+                [effects, fox, captain, mars]
+            },
             effect_resources,
             interface,
             items,

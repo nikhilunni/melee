@@ -11,8 +11,8 @@ pub const INSTANCE_CAPACITY: usize = ASYNC_CAPACITY + SYNC_CAPACITY;
 // Either descriptor class can occupy all 64 slots in its own pool.
 const SLOTS_PER_MODEL: usize = 64;
 // Common descriptors reached by the supported efAsync/efSync dispatch rows.
-static MODEL_IDS: [u32; 23] = [
-    0x14, 0x15, 1, 0x16, 0x17, 2, 3, 4, 5, 8, 9, 10, 0xB, 0xC, 0xD, 0xE, 0xF, 0x12, 0x13, 0x18,
+static MODEL_IDS: [u32; 24] = [
+    0, 0x14, 0x15, 1, 0x16, 0x17, 2, 3, 4, 5, 8, 9, 10, 0xB, 0xC, 0xD, 0xE, 0xF, 0x12, 0x13, 0x18,
     0x19, 0x1E, 0x1F,
 ];
 const WARP_MODEL: u32 = 0x24;
@@ -81,8 +81,7 @@ impl Effects {
     /// Allocate independent animation slots from shared immutable definitions.
     pub fn from_resources(resources: &Resources) -> Self {
         let mut effects = Self::from_models(ModelPool::from_definitions(&resources.models));
-        effects.fox_bank = Some(resources.fox_bank.clone());
-        effects.mars_bank = Some(resources.mars_bank.clone());
+        effects.character_banks = resources.character_banks.clone();
         effects
     }
     fn from_models(models: ModelPool) -> Self {
@@ -93,8 +92,7 @@ impl Effects {
             direct_draws: Default::default(),
             instances: Default::default(),
             models,
-            fox_bank: None,
-            mars_bank: None,
+            character_banks: Default::default(),
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
         }
@@ -175,6 +173,8 @@ impl Effect {
         self.attachment_bone = None;
         self.scale_attachment = true;
         self.callback_rotation = None;
+        self.facing_rotation = None;
+        self.follow_bone = None;
         self.hitlag_pause = initial.hitlag_pause;
         self.joint_base = 0;
         self.tree.events.clear();
@@ -205,5 +205,5 @@ impl Effect {
 /// Supported sync-load rows: shields/entry (efasync.c:407,429,453,751)
 /// and egg shells (efsync.c:84,228-292). All other modeled rows use async load.
 fn is_sync(descriptor: u32) -> bool {
-    matches!(descriptor, 0xB | 0xC | 0xD | 0xE | 0x1E | 0x1F | 0x24 | 0xBB8..=0xBBD | 0x3E80..=0x3E81)
+    matches!(descriptor, 0xB | 0xC | 0xD | 0xE | 0x1E | 0x1F | 0x24 | 0xBB8..=0xBBD | 0xFA0..=0xFA1 | 0x3E80..=0x3E81)
 }

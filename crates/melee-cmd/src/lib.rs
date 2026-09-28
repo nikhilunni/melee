@@ -17,6 +17,9 @@ pub enum Command {
     WindEffect(WindEffect),
     SmashSound,
     ThrowAccessory,
+    /// ftAction_80071908: throw_flags_b1, a one-shot cue the current motion's
+    /// callbacks read and clear (Falcon Punch's effect spawn and removal).
+    MoveCue,
     GrabRelease,
     ThrowReverse,
     SetThrowHitbox {

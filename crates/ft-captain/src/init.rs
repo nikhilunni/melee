@@ -28,6 +28,23 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<CaptainFalcon>();
 
 impl CharacterCallbacks for CaptainFalcon {
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
+        &crate::special_moves();
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &crate::special_rows();
+    fn enter_special(
+        f: &mut melee_ft::fighter::Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        air: bool,
+        a: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, air, a),
+            SpecialSlot::Side => unimplemented!("ftCa_SpecialS_Enter / ftCa_SpecialAirS_Enter"),
+            SpecialSlot::Up => unimplemented!("ftCa_SpecialHi_Enter / ftCa_SpecialAirHi_Enter"),
+            SpecialSlot::Down => unimplemented!("ftCa_SpecialLw_Enter / ftCa_SpecialAirLw_Enter"),
+        }
+    }
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

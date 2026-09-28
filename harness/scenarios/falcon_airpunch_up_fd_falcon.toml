@@ -1,0 +1,31 @@
+# FALCON: aerial Falcon Punch (ftCa_SpecialAirN, action 348) from a full hop,
+# stick held up through the lunge so cmd_vars[0] aims it upward
+# (ftCa_SpecialAirN_IASA), then the cmd_vars[1] physics phases and the
+# landing, possibly mid-punch (AirToGround into 347).
+# From the idle_fd_falcon savestate (P1 Captain Falcon and P2 Fox in Wait at
+# +-60 on Final Destination, P1 facing right). Input frames are VI callbacks
+# counted from the savestate load.
+name = "falcon_airpunch_up_fd_falcon"
+savestate = "harness/roms/idle_fd_falcon.sav"
+frames = 240
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 30, buttons = { X = true } },
+  { frame = 34, buttons = {} },
+  { frame = 42, buttons = { B = true } },
+  { frame = 45, buttons = {} },
+  { frame = 60, buttons = { StickY = 0.8 } },
+  { frame = 150, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

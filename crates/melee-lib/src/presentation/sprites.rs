@@ -61,11 +61,14 @@ impl Sprites {
             .public("map_texg")
             .ok_or_else(|| error("stage particle texture bank missing"))?;
         result.add_bank(30, &assets.stage, stage)?;
-        for (bank, archive, symbol) in [
-            (0, &assets.visual_effect_archives[0], "effCommonDataTable"),
-            (3, &assets.visual_effect_archives[1], "effFoxDataTable"),
-            (16, &assets.visual_effect_archives[2], "effMarsDataTable"),
-        ] {
+        let characters = melee_ef::CHARACTER_EFFECT_FILES
+            .iter()
+            .zip(&assets.visual_effect_archives[1..])
+            .map(|(file, archive)| (file.bank, archive, file.table));
+        for (bank, archive, symbol) in
+            std::iter::once((0, &assets.visual_effect_archives[0], "effCommonDataTable"))
+                .chain(characters)
+        {
             let table = archive
                 .public(symbol)
                 .ok_or_else(|| error("effect table missing"))?;

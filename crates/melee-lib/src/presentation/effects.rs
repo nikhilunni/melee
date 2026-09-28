@@ -14,12 +14,15 @@ pub(super) struct Effects {
     active: usize,
 }
 pub(super) fn archive(assets: &crate::assets::Assets, bank: u8) -> &Archive {
-    &assets.visual_effect_archives[match bank {
-        0 => 0,
-        3 => 1,
-        16 => 2,
-        _ => unreachable!("registered effect bank"),
-    }]
+    let index = if bank == 0 {
+        0
+    } else {
+        1 + melee_ef::CHARACTER_EFFECT_FILES
+            .iter()
+            .position(|file| file.bank == bank)
+            .expect("registered effect bank")
+    };
+    &assets.visual_effect_archives[index]
 }
 impl Effects {
     pub fn new(scene: &Presentation) -> Self {

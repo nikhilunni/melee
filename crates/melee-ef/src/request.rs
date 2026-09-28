@@ -31,6 +31,12 @@ pub enum EffectRequest {
         id: u16,
         bone: usize,
     },
+    /// efSync_Spawn(id, gobj, jobj, jobj): a synchronous pair of attached
+    /// models, one per fighter joint (efAlt 0x48F, Falcon Punch).
+    SyncAttachedPair {
+        id: u16,
+        bones: [usize; 2],
+    },
     /// ftColl_80078538: severity-dependent draw after the primary hit spark.
     /// ftYs_Init_8012BE3C, efSync_Spawn 0x4CF: positional shell burst.
     EggShell {
@@ -91,6 +97,14 @@ pub enum EffectRequest {
     Attached {
         id: u16,
         bone: usize,
+    },
+    /// efAsync kind 7 (EF_SPAWN_ATTACH_OFFSET), efAsync_Dispatch 0x446:
+    /// efLib_CreateGenerator_AppSRT_SetPos. An empty model follows the bone
+    /// at a world-axis offset and carries one AppSRT generator.
+    FollowingGenerator {
+        id: u16,
+        bone: usize,
+        offset: Vec3,
     },
     /// efAsync kinds 2/5/6 retain the bone and local offset until s_link 9.
     Graphics {
@@ -271,6 +285,7 @@ impl EffectRequest {
             Self::OwnedRotation { .. }
                 | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
+                | Self::SyncAttachedPair { .. }
                 | Self::SurfaceRebound { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
@@ -289,6 +304,7 @@ impl EffectRequest {
             | Self::CaptureFlash { bone }
             | Self::Attached { bone, .. }
             | Self::SyncAttached { bone, .. }
+            | Self::FollowingGenerator { bone, .. }
             | Self::Graphics { bone, .. } => Some(bone),
             _ => None,
         }
