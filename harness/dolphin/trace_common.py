@@ -42,6 +42,36 @@ PAD_GAME_ADDR = symbols.addr("HSD_PadGameStatus")
 PAD_STATUS_SIZE = 0x44
 PAD_PORTS = 4
 
+# External (platform) events the game logic observes, recorded like pads.
+# gr/types.h StageInfo: grkind +0x88, map_gobjs[64] +0x180; Ground* is the
+# GObj's user_data (+0x2C). Pokemon Stadium's map 2 (grStadium_GroundVars):
+# xC4 bit 1 (mask 0x40) is set while the form archive's DVD read is in
+# flight (grpstadium.c:2095, cleared by the callback fn_801D4220); xDC is
+# the controller phase (1 while grStadium_801D42B8 polls the read).
+STAGE_INFO_ADDR = symbols.addr("stage_info")
+STAGE_INFO_GRKIND = 0x88
+STAGE_INFO_MAP_GOBJS = 0x180
+GR_KIND_PSTADIUM = 0x10
+STADIUM_CONTROLLER_MAP = 2
+STADIUM_FLAGS = 0xC4
+STADIUM_READ_PENDING = 0x40
+STADIUM_PHASE = 0xDC
+
+
+def read_stage_io(mem=None) -> dict | None:
+    """Pokemon Stadium's form-archive read state at this tick's end, or None
+    on other stages (their records carry no `stage_io`)."""
+    mem = memory if mem is None else mem
+    if mem.read_u32(STAGE_INFO_ADDR + STAGE_INFO_GRKIND) != GR_KIND_PSTADIUM:
+        return None
+    gobj = mem.read_u32(STAGE_INFO_ADDR + STAGE_INFO_MAP_GOBJS + 4 * STADIUM_CONTROLLER_MAP)
+    ground = mem.read_u32(gobj + GOBJ_USER_DATA_OFF) if gobj else 0
+    if not ground:
+        return None
+    phase = mem.read_u32(ground + STADIUM_PHASE) >> 16
+    return {"stadium_read_pending": bool(mem.read_u8(ground + STADIUM_FLAGS) & STADIUM_READ_PENDING),
+            "stadium_phase": phase - 0x10000 if phase & 0x8000 else phase}
+
 
 def fighter_bases(mem=None) -> list[int]:
     """Walk HSD_GObj_Entities->fighters and return Fighter* for each."""

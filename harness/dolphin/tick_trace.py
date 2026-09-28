@@ -31,7 +31,7 @@ from pathlib import Path
 
 HERE = Path(globals().get("__file__") or sys._getframe().f_code.co_filename).resolve().parent
 sys.path.insert(0, str(HERE))
-from trace_common import Tracer, event, read_items, run  # noqa: E402
+from trace_common import Tracer, event, read_items, read_stage_io, run  # noqa: E402
 from item_kinds import ITEM_KIND_NAMES  # noqa: E402
 import remote_proto  # noqa: E402
 import symbols  # noqa: E402
@@ -88,6 +88,9 @@ class TickTracer(Tracer):
                     "kind": kind, "kind_name": ITEM_KIND_NAMES.get(kind, "?"),
                     "owner": owners.get(owner), "bytes": raw.hex(),
                 })
+        stage_io = read_stage_io(mem)
+        if stage_io is not None:
+            record["stage_io"] = stage_io
         return record
 
     def __init__(self, *args, **kwargs):

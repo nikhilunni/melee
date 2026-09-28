@@ -143,8 +143,26 @@ def decode_pads(blob: bytes) -> dict:
     return out
 
 
+# grStadium_GroundVars::xDC: the controller polls the form read in phase 1.
+STADIUM_LOADING = 1
+
+
+def decode_events(stage_io: dict, previous: dict | None) -> dict:
+    """External events the tick's game logic consumed (inputs, not state).
+
+    `stage_read_completed`: grStadium_801D42B8's poll this tick found the
+    form archive read complete. The controller polls exactly once per tick
+    in phase 1 and leaves it on success, so a tick that starts in phase 1
+    and ends elsewhere is the tick whose poll succeeded; every other tick is
+    false (no poll, or the read still in flight).
+    """
+    was_loading = previous is not None and previous["stadium_phase"] == STADIUM_LOADING
+    return {"stage_read_completed": was_loading and stage_io["stadium_phase"] != STADIUM_LOADING}
+
+
 def main(inp: Path, out: Path) -> None:
     fighter = yaml.safe_load((HERE / "schema" / "fighter.yaml").read_text())
+    previous_io = None
     with trace_io.open_text(inp) as fi, out.open("w") as fo:
         for line in fi:
             if not line.strip():
@@ -159,6 +177,9 @@ def main(inp: Path, out: Path) -> None:
                     record[key] = d[key]
             if "pad_game" in d:
                 record["inputs"] = decode_pads(bytes.fromhex(d["pad_game"]))
+            if "stage_io" in d:
+                record["events"] = decode_events(d["stage_io"], previous_io)
+                previous_io = d["stage_io"]
             if "items" in d:
                 record["items"] = [
                     {**item, "state": decode_item(bytes.fromhex(item["bytes"]))}

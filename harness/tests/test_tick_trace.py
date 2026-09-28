@@ -324,3 +324,22 @@ def test_non_finite_floats_keep_bits_and_encode_as_json():
         value = _val("f32", struct.pack(">I", bits))
         assert value == {"t": "f32", "v": {"bits": bits, "approx": 0.0}}
         json.dumps(value, allow_nan=False)
+
+
+def test_stadium_read_state_is_recorded_and_decoded_as_a_poll_event():
+    mem = build_two_fighter_world()
+    assert trace_common.read_stage_io(mem) is None  # not Pokemon Stadium
+    info = trace_common.STAGE_INFO_ADDR
+    gobj, ground = 0x80460000, 0x80461000
+    mem.write_u32(info + trace_common.STAGE_INFO_GRKIND, trace_common.GR_KIND_PSTADIUM)
+    mem.write_u32(info + trace_common.STAGE_INFO_MAP_GOBJS + 8, gobj)
+    mem.write_u32(gobj + trace_common.GOBJ_USER_DATA_OFF, ground)
+    mem.write_u32(ground + trace_common.STADIUM_FLAGS, 0xC0000000)
+    mem.write_u32(ground + trace_common.STADIUM_PHASE, 0x00010005)
+    assert trace_common.read_stage_io(mem) == {"stadium_read_pending": True, "stadium_phase": 1}
+    events, previous = [], None
+    for phase in [0, 1, 1, 2, 3]:
+        io = {"stadium_read_pending": phase == 1, "stadium_phase": phase}
+        events.append(decode.decode_events(io, previous)["stage_read_completed"])
+        previous = io
+    assert events == [False, False, False, True, False]
