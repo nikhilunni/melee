@@ -92,7 +92,7 @@ pub const fn rows<C: FoxFamily>() -> [MotionRow; 10] {
             S::SpecialLwStart,
             313,
             start::<C>,
-            start_input,
+            start_input::<C>,
             callbacks::physics::guard_on,
             ground_collision::<C>,
         ),
@@ -371,13 +371,45 @@ fn turn<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
     Ok(None)
 }
 
-fn start_input(f: &mut Fighter, p: InputPhase<'_>) {
+/// ftFx_SpecialLwStart_IASA (800E87AC) and the tail of ftFx_SpecialLwLoop_IASA:
+/// ftFx_SpecialLw{Start,Loop}_CheckPass (800E87D4 / static).
+fn start_input<C: FoxFamily>(f: &mut Fighter, p: InputPhase<'_>) {
+    // ftCo_80099F1C (0x80099F1C): tapped down while standing on a platform.
     if f.input.current.stick.y <= -p.assets.movement.platform_drop_threshold
         && f32::from(f.input.vertical.tilt) < p.assets.movement.platform_drop_window
         && f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0
     {
-        unimplemented!("ftFx_SpecialLwStart_CheckPass: preserved platform-drop transition");
+        pass::<C>(f, p.assets).expect("Reflector platform drop");
     }
+}
+/// ftFx_SpecialLwStart_Pass (800E881C) / ftFx_SpecialLwLoop_Pass (800E8BEC):
+/// ftCo_8009A184 into the aerial counterpart at the current frame with
+/// ftFx_MF_SpecialLw_Coll (retail 800E8820: 0x0C4C5082), then
+/// ftFx_SpecialLw_CreateReflectHit. Start creates the bubble as well.
+fn pass<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    let state = if f.motion_state.action.0 == S::SpecialLwStart as u16 {
+        S::SpecialAirLwStart
+    } else {
+        S::SpecialAirLwLoop
+    };
+    // ftCo_8009A184 (0x8009A184), ftCo_Pass.c:73-83.
+    f.leave_ground();
+    let maximum = f.attributes.air.air_drift_max;
+    f.physics.self_velocity.x = f.physics.self_velocity.x.clamp(-maximum, maximum);
+    f.physics.self_velocity.y = assets.movement.platform_drop_velocity;
+    f.change_ground_air_motion(
+        state.into(),
+        assets,
+        MotionPreservation {
+            effects: true,
+            ..Default::default()
+        },
+    )?;
+    // Fighter_ChangeMotionState cleared any skip; skip the platform now.
+    melee_mp::update_floor_skip(&mut f.collision.data);
+    f.input.vertical.tilt = 0xFE;
+    create_bubble::<C>(f);
+    Ok(())
 }
 fn loop_input<C: FoxFamily>(f: &mut Fighter, p: InputPhase<'_>) {
     let context = WaitContext {
@@ -395,7 +427,7 @@ fn loop_input<C: FoxFamily>(f: &mut Fighter, p: InputPhase<'_>) {
             f.character.get_mut::<C>().special_lw().reflector = None;
             f.enter_knee_bend(p.assets).expect("Reflector jump cancel");
         } else {
-            start_input(f, p);
+            start_input::<C>(f, p);
         }
     } else if f
         .try_aerial_jump(p.assets)

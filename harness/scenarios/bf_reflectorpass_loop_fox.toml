@@ -1,0 +1,50 @@
+# BF-REFLECTORPASS witness: Fox (p1) on the Battlefield top platform
+# starts Reflector with down+B, recentres the stick holding B, then taps
+# down during SpecialLwLoop: ftFx_SpecialLwLoop_IASA -> Loop_CheckPass
+# drops through into SpecialAirLwLoop (ftCo_8009A184, 800E8BEC).
+name = "bf_reflectorpass_loop_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_bf_marth_fox4.sav"
+frames = 230
+seed = 1
+stage = "Battlefield"
+inputs = [
+  { frame = 1, port = 0, buttons = { L = true, StickY = -0.64388671875, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickY = -80, triggerL = 140 } },
+  { frame = 1, port = 1, buttons = { CStickX = 0.44009765624999997, CStickY = -0.44173828125000003 }, raw = { substickX = 56, substickY = -56 } },
+  { frame = 2, port = 0, buttons = { B = true, StickX = 0.44009765624999997, StickY = -0.44173828125000003 }, raw = { button = 512, stickX = 56, stickY = -56 } },
+  { frame = 4, port = 1, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 5, port = 0, buttons = { B = true, StickX = 0.64224609375 }, raw = { button = 512, stickX = 80 } },
+  { frame = 9, port = 1, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 39, port = 0, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 42, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 43, port = 1, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 45, port = 0, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 51, port = 1, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 54, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 62, port = 1, buttons = { B = true, StickX = -0.44173828125000003, StickY = -0.44173828125000003 }, raw = { button = 512, stickX = -56, stickY = -56 } },
+  { frame = 67, port = 1, buttons = { L = true, StickY = 0.64224609375, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickY = 80, triggerL = 140 } },
+  { frame = 80, port = 1, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 92, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 105, port = 0, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 113, port = 0, buttons = { L = true, StickX = -0.44173828125000003, StickY = -0.44173828125000003, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickX = -56, stickY = -56, triggerL = 140 } },
+  { frame = 114, port = 1, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 118, port = 0, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 129, port = 0, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+  { frame = 130, port = 0, buttons = { B = true, StickX = -0.44173828125000003, StickY = 0.44009765624999997 }, raw = { button = 512, stickX = -56, stickY = 56 } },
+  { frame = 131, port = 0, buttons = { L = true, StickX = 0.44009765624999997, StickY = 0.44009765624999997, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickX = 56, stickY = 56, triggerL = 140 } },
+  { frame = 134, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 140, port = 1, buttons = {} },
+  { frame = 148, port = 1, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+  { frame = 149, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 165, port = 1, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
