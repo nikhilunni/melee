@@ -1977,7 +1977,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 60] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 62] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2098,6 +2098,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 60] = [
     ("corpus_v3_fd_peach_fox4_e00f31913_p2", 125),
     // Peach's subaction effect 0x3F4 (ftCo_09F7.c block_70, generator 0x48).
     ("corpus_v3_fd_peach_fox4_edb2b114a_p2", 137),
+    // Exact on arrival after the wave-A merges (animation loader, taunt, float).
+    ("corpus_v3_fd_falco_fox4_e0dee256e_p2", 86),
+    ("corpus_v3_fd_peach_fox4_e3e74affa_p1", 110),
 ];
 
 #[test]
