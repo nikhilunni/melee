@@ -381,6 +381,8 @@ pub fn request(
         // and set up before the next spawns.
         let mut first = None;
         let mut previous: Option<u32> = None;
+        // it_802B1DF8: one Item_8026AE60 id makes the chain one hit group.
+        let hit_group = pool.allocate_hit_group();
         for index in 0..count {
             let member = request_one_of_chain(
                 pool,
@@ -396,6 +398,7 @@ pub fn request(
                 pool.get_mut(previous).unwrap().partner = Some(member);
             }
             if let Some(member) = member {
+                pool.join_hit_group(member, hit_group);
                 let item = pool.get_mut(member).unwrap();
                 let receive = SceneItems::logic(item.kind).link_received;
                 let message = melee_it::LinkMessage::Chain {

@@ -666,6 +666,8 @@ impl Runtime {
             12 | 16 => {}
             _ => unreachable!(),
         }
+        // it_8026FCF8: hitboxes this proc's scripts started in a hit group.
+        self.state.items.resolve_group_histories();
         Ok(())
     }
     /// Item_80269C5C (item link 13): it_802703E8 lands fighter hitboxes on
@@ -921,15 +923,23 @@ impl Runtime {
                             )
                         }));
                     }
-                    let (common, items) = state.items.common_and_iter_mut();
-                    for item in items {
+                    state.items.resolve_group_histories();
+                    for index in 0..state.items.len() {
+                        let (common, item) = state.items.common_and_item_mut(index);
                         let owner = state
                             .fighters
                             .iter()
                             .position(|f| Some(f.player.id) == item.owner);
+                        let mark = melee_it::ItemPool::group_victim_mark(item);
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
                             f.detect_item_hit(item, &assets.fighters[player], common)
                         });
+                        let item_id = item.id;
+                        if let Some(mark) = &mark {
+                            // it_8026FAC4 / it_8026FC00: the group shares it.
+                            state.items.share_group_victims(item_id, mark);
+                        }
+                        let item = state.items.common_and_item_mut(index).1;
                         if let Some(contact) = hit {
                             if contact.logged_damage {
                                 if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
@@ -2723,10 +2733,15 @@ fn item_hits_by_items(
         .hitbox_victim();
     for landing in landings.iter() {
         let hitter = items.get_mut(landing.hitter).expect("hitting item");
+        let mark = melee_it::ItemPool::group_victim_mark(hitter);
         let hit = hitter.hitboxes[landing.hit].clone().expect("landing hit");
         let desc = &hit.descriptor;
         // it_8026FAC4 -> it_8026FA2C: the hit's group remembers the victim.
         melee_coll::detection::record_victim(&mut hitter.hitboxes, desc.group, tag);
+        if let Some(mark) = &mark {
+            items.share_group_victims(landing.hitter, mark);
+        }
+        let hitter = items.get_mut(landing.hitter).expect("hitting item");
         let damage = gekko_math::msl::fctiwz(desc.damage);
         hitter.pending_damage_dealt = damage;
         let source = melee_it::hurt::ItemHitSource::Item {

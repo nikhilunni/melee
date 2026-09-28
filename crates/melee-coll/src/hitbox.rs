@@ -42,6 +42,10 @@ impl PhantomVictims {
     pub fn contains(&self, victim: u32) -> bool {
         self.slots.contains(&Some(victim))
     }
+    /// The recorded victims in slot order.
+    pub fn iter(&self) -> impl Iterator<Item = u32> + '_ {
+        self.slots.iter().flatten().copied()
+    }
     /// lbColl_80008820 with type 0 (no rehit timer): add a new victim.
     pub fn record(&mut self, victim: u32) {
         if self.contains(victim) {

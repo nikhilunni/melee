@@ -248,6 +248,12 @@ pub struct ItemCore {
     pub pending_reflection: Option<PendingReflection>,
     pub reflection_direction: f32,
     pub reflection_history: [melee_types::fixed::FixedVec<RehitVictim, 12>; 4],
+    /// xAC4_ignoreItemID: members of one hit group share victim histories
+    /// (see `hit_group`); 0 for none.
+    pub hit_group: u32,
+    /// Hitboxes (bits) a script started in a hit group, awaiting
+    /// it_8026FCF8's copy of the group's history.
+    pub(crate) group_history_pending: u8,
     pub hold_kind: u8,
     pub position: Vec3,
     pub previous_position: Vec3,
@@ -707,10 +713,15 @@ impl ItemCore {
         while let Some(command) = self.script.next(script, 1.0) {
             match command {
                 Command::SpawnHitbox { id, descriptor } => {
-                    if self.hitboxes[*id]
+                    let starts = self.hitboxes[*id]
                         .as_ref()
-                        .is_none_or(|h| h.descriptor.group != descriptor.group)
-                    {
+                        .is_none_or(|h| h.descriptor.group != descriptor.group);
+                    // it_802790C0 -> it_8026FCF8: a group member's new hitbox
+                    // takes the group's history once the pool can see it.
+                    if starts && self.hit_group != 0 {
+                        self.group_history_pending |= 1 << *id;
+                    }
+                    if starts {
                         self.reflection_history[*id] = self
                             .hitboxes
                             .iter()
@@ -784,9 +795,11 @@ pub struct ItemPool {
     // Reserve the complete pool on the heap at initialization. Inline storage
     // would copy hundreds of KiB through constructors on small test stacks.
     // spawn checks ITEM_CAPACITY before push, so this buffer never grows.
-    items: Vec<ItemCore>,
+    pub(crate) items: Vec<ItemCore>,
     common: ItemCommonData,
     next_id: u32,
+    /// it_804D6D14: Item_8026AE60's hit group counter.
+    pub(crate) next_hit_group: u32,
 }
 impl ItemPool {
     pub fn new(common: ItemCommonData) -> Self {
@@ -794,6 +807,7 @@ impl ItemPool {
             items: Vec::with_capacity(ITEM_CAPACITY),
             common,
             next_id: 0,
+            next_hit_group: 1,
         }
     }
     /// it_804D6D28: ItCo's common item data.
@@ -817,6 +831,10 @@ impl ItemPool {
     }
     pub fn len(&self) -> usize {
         self.items.len()
+    }
+    /// The common data beside the item at `index` in list order.
+    pub fn common_and_item_mut(&mut self, index: usize) -> (&ItemCommonData, &mut ItemCore) {
+        (&self.common, &mut self.items[index])
     }
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
@@ -862,6 +880,8 @@ impl ItemPool {
             pending_reflection: None,
             reflection_direction: 0.0,
             reflection_history: Default::default(),
+            hit_group: 0,
+            group_history_pending: 0,
             hold_kind: spawn.hold_kind,
             position: if spawn.initial_collision {
                 spawn.previous_position
@@ -1291,6 +1311,7 @@ impl Clone for ItemPool {
             items: hsd_types::storage::clone_vec(&self.items),
             common: self.common.clone(),
             next_id: self.next_id,
+            next_hit_group: self.next_hit_group,
         }
     }
 }

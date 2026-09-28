@@ -2,6 +2,8 @@
 pub mod bone_motion;
 pub mod desc;
 mod engine;
+mod hit_group;
+pub use hit_group::GroupVictimMark;
 mod reflection;
 pub use reflection::*;
 pub mod hurt;
