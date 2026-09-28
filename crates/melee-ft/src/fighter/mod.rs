@@ -127,13 +127,19 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         Self::SPECIAL_ROWS
     }
 
+    /// ftData_SpecialN/S/Hi/Lw[kind] (and the Air tables): a kind that has
+    /// not ported its specials fails closed so the explorer names it,
+    /// rather than ignoring the B press.
     fn enter_special(
-        _fighter: &mut Fighter,
-        _slot: SpecialSlot,
-        _airborne: bool,
+        fighter: &mut Fighter,
+        slot: SpecialSlot,
+        airborne: bool,
         _assets: &assets::FighterAssets,
     ) {
-        // retail: ftData_SpecialN[kind] etc.
+        unimplemented!(
+            "ftData_Special{slot:?}[{:?}] (airborne: {airborne}): character special entry",
+            fighter.core.kind
+        );
     }
 
     /// Fighter_UnkProcessGrab (8006CA5C) for a special armed by
