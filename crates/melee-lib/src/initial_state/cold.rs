@@ -55,6 +55,9 @@ impl InitialState {
             initialize_stage(&assets, &mut rng, &mut particles, &mut map)?;
         // Fountain of Dreams binds its collision joints during creation.
         let archive_bindings = !matches!(stage, SceneStage::Izumi(_));
+        if matches!(stage, SceneStage::Stadium(_)) {
+            crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
+        }
         for (&id, animation) in stage_animations.iter_mut().filter(|_| archive_bindings) {
             let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
             animation.update_collision(&mut map, bindings);
@@ -135,17 +138,18 @@ impl InitialState {
 }
 
 /// Inverse of the odd HSD LCG multiplier, modulo 2^32.
-/// The setup's fixed RNG interval: grLast's four draws (Battle/Story: one;
-/// Dream Land: two), then two CPU draws per slot.
+/// The setup's fixed RNG interval: grLast's four draws (Battle/Story/
+/// Pokemon Stadium: one; Dream Land: two), then two CPU draws per slot.
 fn setup_draws(stage: GrKind, players: usize) -> Result<usize> {
     let stage_draws = match stage {
         GrKind::Last => 4,
-        GrKind::Battle | GrKind::Story => 1,
+        GrKind::Battle | GrKind::Story | GrKind::PStadium => 1,
         GrKind::OldPupupu => 2,
         // grIzumi_801CC358's first step draws each platform's wait.
         GrKind::Izumi => 2,
         _ => anyhow::bail!(
-            "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land and Fountain of Dreams"
+            "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land, Fountain of Dreams \
+             and Pokemon Stadium"
         ),
     };
     Ok(stage_draws + CPU_SETUP_DRAWS_PER_PLAYER * players)
@@ -303,6 +307,13 @@ fn initialize_stage(
                 crate::scene_stage::izumi::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
+        }
+        GrKind::PStadium => {
+            let parameters = melee_gr::desc::read_stadium_parameters(&assets.stage)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let stage = melee_gr::stadium::Stadium::initialize(parameters, rng);
+            stage_animations = crate::scene_stage::stadium::load_models(assets)?;
+            SceneStage::Stadium(Box::new(stage))
         }
         _ => unreachable!(),
     };

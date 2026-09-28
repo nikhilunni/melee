@@ -230,16 +230,7 @@ impl Pupupu {
         })
     }
 }
-/// Retail range helper preserves equal/reversed endpoints and draw suppression.
-pub fn range(rng: &mut HsdRng, [a, b]: [i32; 2]) -> i32 {
-    if a == b {
-        a
-    } else if a < b {
-        a + rng.randi(b - a)
-    } else {
-        b + rng.randi(a - b)
-    }
-}
+pub use crate::rand::range;
 
 #[cfg(test)]
 mod tests {

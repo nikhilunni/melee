@@ -648,6 +648,22 @@ impl Runtime {
                 self.drain_item_events(phase == 9)?;
             }
             Callback::Banner => {
+                // if_802F73C4: the element's start callback runs on its first
+                // step (x12.x2), before the animation.
+                if let Some(kind) = state.banner.as_mut().and_then(|b| b.announce()) {
+                    match kind {
+                        // fn_8016B7B4(idx): Ground_801C1154 is empty.
+                        BannerKind::Countdown => crate::scene_stage::stadium::show(
+                            state,
+                            melee_gr::stadium::ScreenMode::CountdownStart,
+                        ),
+                        BannerKind::SuddenDeathCountdown => crate::scene_stage::stadium::show(
+                            state,
+                            melee_gr::stadium::ScreenMode::SuddenDeathStart,
+                        ),
+                        BannerKind::Go => {}
+                    }
+                }
                 let finished = state.banner.as_mut().is_some_and(|banner| banner.tick());
                 if finished {
                     match state.banner.as_ref().unwrap().kind {
@@ -670,6 +686,14 @@ impl Runtime {
                                     world.add_tagged_proc(object, s_link, index);
                                 }
                             }
+                            if let SceneStage::Stadium(stage) = &mut state.stage {
+                                stage.start();
+                            }
+                            // grStadium_801D4040.
+                            crate::scene_stage::stadium::show(
+                                state,
+                                melee_gr::stadium::ScreenMode::CountdownEnd,
+                            );
                             // ifStatus_802F6EA4(4, ..., fn_8016B784): GO.
                             // Its GObj joins this s_link 0 pass after the
                             // countdown's, so it takes its first step now.
@@ -682,6 +706,11 @@ impl Runtime {
                             // fn_8016B784: the HUD, and with it the match clock.
                             state.clock.hud_enabled = true;
                             state.banner = None;
+                            // grStadium_801D4150.
+                            crate::scene_stage::stadium::show(
+                                state,
+                                melee_gr::stadium::ScreenMode::MatchInfo,
+                            );
                         }
                     }
                 }
@@ -1165,6 +1194,13 @@ impl Runtime {
                         )?;
                     } else if matches!(state.stage, SceneStage::Izumi(_)) {
                         crate::scene_stage::izumi::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::Stadium(_)) {
+                        crate::scene_stage::stadium::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                            &mut self.radial_forces,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
                             state,
@@ -1387,7 +1423,9 @@ impl Runtime {
         for item in state.items.iter().filter(|item| item.destroyed) {
             crate::scene_items::article_destroyed(&mut state.fighters, item);
             // Item_8026A8EC frees the JObj its generators follow.
-            state.effects.expire_item_joint(item.id, &mut state.particles);
+            state
+                .effects
+                .expire_item_joint(item.id, &mut state.particles);
         }
         crate::scene_items::cleanup(&mut state.items, world, &mut self.item_objects);
         self.particle_draws.0.append(&mut state.effects.draws.0);

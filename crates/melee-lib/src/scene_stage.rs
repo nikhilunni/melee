@@ -3,6 +3,7 @@ pub(crate) mod battle;
 pub(crate) mod izumi;
 pub(crate) mod last;
 pub(crate) mod pupupu;
+pub(crate) mod stadium;
 use anyhow::Result;
 use gekko_math::HsdRng;
 use hsd_archive::Archive;
@@ -71,6 +72,12 @@ pub const FOUNTAIN_OF_DREAMS: StageDescriptor = StageDescriptor {
     music_id: 2,
     read: melee_gr::desc::read_izumi,
 };
+pub const POKEMON_STADIUM: StageDescriptor = StageDescriptor {
+    name: "PokemonStadium",
+    file: "GrPs.dat",
+    music_id: 3,
+    read: melee_gr::desc::read_stadium,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -78,6 +85,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &YOSHIS_STORY,
         &DREAM_LAND,
         &FOUNTAIN_OF_DREAMS,
+        &POKEMON_STADIUM,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -89,6 +97,7 @@ pub enum SceneStage {
     Story(melee_gr::story::Story),
     Pupupu(melee_gr::pupupu::Pupupu),
     Izumi(melee_gr::izumi::Izumi),
+    Stadium(Box<melee_gr::stadium::Stadium>),
 }
 impl SceneStage {
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -98,6 +107,7 @@ impl SceneStage {
             Self::Story(s) => s.proc_table(),
             Self::Pupupu(s) => s.proc_table(),
             Self::Izumi(s) => s.proc_table(),
+            Self::Stadium(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -111,6 +121,7 @@ impl SceneStage {
         match self {
             Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),
             Self::Izumi(_) => unreachable!("Fountain of Dreams callbacks require animation state"),
+            Self::Stadium(_) => unreachable!("Pokemon Stadium callbacks require animation state"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

@@ -58,13 +58,15 @@ struct StageEdges {
     sudden_death_x: f32,
 }
 fn stage_edges(stage: Stage) -> StageEdges {
-    // Ledge x: FD 85.57, BF 68.40, YS 56.00, DL 77.27, FoD 63.35 (the stages' ledge lines).
+    // Ledge x: FD 85.57, BF 68.40, YS 56.00, DL 77.27, FoD 63.35, PS 87.75
+    // (the stages' ledge lines).
     let (offstage_x, sudden_death_x) = match stage {
         Stage::FinalDestination => (80.0, 55.0),
         Stage::Battlefield => (63.0, 38.0),
         Stage::YoshisStory => (51.0, 26.0),
         Stage::DreamLand => (72.0, 47.0),
         Stage::FountainOfDreams => (58.0, 33.0),
+        Stage::PokemonStadium => (82.0, 57.0),
     };
     StageEdges {
         offstage_x,

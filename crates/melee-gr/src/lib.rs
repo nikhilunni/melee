@@ -7,6 +7,8 @@ pub mod ground;
 pub mod izumi;
 pub mod last;
 pub mod music;
+pub mod rand;
+pub mod stadium;
 
 pub mod story;
 pub mod wind;

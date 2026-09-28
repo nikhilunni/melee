@@ -97,6 +97,30 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.previous_pattern", &stage.previous_pattern);
             sink.field("stage.spawn_count", &stage.spawn_count);
         }
+        SceneStage::Stadium(stage) => {
+            let screen = &stage.screen;
+            sink.field("stage.screen.mode", &(screen.mode as u8));
+            sink.field(
+                "stage.screen.previous",
+                &screen.previous.map_or(-1, |m| m as i32),
+            );
+            sink.field("stage.screen.timer", &screen.timer);
+            sink.field("stage.screen.focus", &screen.focus);
+            sink.field("stage.screen.cycles", &screen.cycles);
+            sink.field(
+                "stage.screen.subject",
+                &screen.subject_active.map_or(-1, i32::from),
+            );
+            let controller = &stage.transformation;
+            sink.field("stage.waiting_for_start", &controller.waiting_for_start);
+            sink.field("stage.phase", &(controller.phase as u8));
+            sink.field("stage.timer", &controller.timer);
+            sink.field("stage.form", &controller.form.map());
+            sink.field(
+                "stage.previous",
+                &controller.previous.map_or(-1, |f| i32::from(f.map())),
+            );
+        }
     }
     sink.field("scheduler.resume_s_link", &state.resume.s_link);
     output.finish()

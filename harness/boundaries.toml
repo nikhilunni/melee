@@ -147,3 +147,12 @@ stage = "FountainOfDreams"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 594180171
+
+[[boundary]]
+name = "start_ps_fox_marth4"
+cold = "start_ps_fox_marth4_cold"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+stage = "PokemonStadium"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 866544100

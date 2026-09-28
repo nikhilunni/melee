@@ -85,6 +85,7 @@ impl Match {
             "YoshisStory" => Stage::YoshisStory,
             "DreamLand" => Stage::DreamLand,
             "FountainOfDreams" => Stage::FountainOfDreams,
+            "PokemonStadium" => Stage::PokemonStadium,
             _ => unreachable!("validated imported stage"),
         };
         let players = std::array::from_fn(|i| {

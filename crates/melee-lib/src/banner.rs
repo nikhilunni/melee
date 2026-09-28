@@ -24,6 +24,8 @@ pub(crate) enum BannerKind {
 #[derive(Clone)]
 pub(crate) struct Banner {
     pub(crate) kind: BannerKind,
+    /// x12.x2: the start callback has run.
+    announced: bool,
     tree: JObjTree,
     root: JObjId,
 }
@@ -66,6 +68,7 @@ impl Banner {
         flags: u32,
     ) -> Result<Self> {
         let mut banner = Self::load_model(archive, kind)?;
+        banner.announced = true;
         banner.tree.req_anim_all(banner.root, frame);
         let ids: Vec<_> = banner.tree.ids().collect();
         for id in ids {
@@ -85,7 +88,17 @@ impl Banner {
         )?;
         let (mut tree, root) = load_joint_tree(archive, &joint)?;
         attach_anim_joint(&mut tree, root, &animation, archive)?;
-        Ok(Self { kind, tree, root })
+        Ok(Self {
+            kind,
+            announced: false,
+            tree,
+            root,
+        })
+    }
+
+    /// `if_802F73C4`'s first step: the kind whose start callback runs now.
+    pub(crate) fn announce(&mut self) -> Option<BannerKind> {
+        (!std::mem::replace(&mut self.announced, true)).then_some(self.kind)
     }
 
     /// if_802F73C4 (s_link 0, p_link 14): animate, then lb_8000B09C.

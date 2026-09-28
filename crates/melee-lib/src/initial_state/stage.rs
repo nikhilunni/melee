@@ -123,12 +123,11 @@ pub(super) fn restore_scene(
             }
             Ok((SceneStage::FinalDestination(Box::new(stage)), animations))
         }
-        melee_types::GrKind::Battle => {
-            restore_battlefield(saved, assets, particles, metadata)
-        }
+        melee_types::GrKind::Battle => restore_battlefield(saved, assets, particles, metadata),
         melee_types::GrKind::Story => restore_story(saved, assets),
         melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
         melee_types::GrKind::Izumi => super::stage_izumi::restore(saved, assets, particles),
+        melee_types::GrKind::PStadium => restore_stadium(saved, assets, particles),
         _ => unreachable!("registered stage descriptor"),
     }
 }
@@ -347,6 +346,89 @@ fn restore_story(saved: &SavedPose, assets: &Assets) -> Result<(SceneStage, Anim
     }
     ensure!(maps == [0, 1, 3, 2], "Story map order {maps:?}");
     Ok((SceneStage::Story(controller), animations))
+}
+
+/// Pokemon Stadium's screen (`grStadium_Display`) and controller
+/// (`grStadium_GroundVars`) at a saved boundary in the base form.
+fn restore_stadium(
+    saved: &SavedPose,
+    assets: &Assets,
+    particles: &ParticleSystem,
+) -> Result<(SceneStage, Animations)> {
+    use melee_gr::stadium::{transform::Phase, Form, ScreenMode, Stadium};
+    ensure!(
+        particles.generators.is_empty() && particles.particles.iter().all(Vec::is_empty),
+        "Pokemon Stadium initial particle population requires attachment restoration"
+    );
+    ensure!(
+        word(saved.bytes(0x804D63B0, 4), 0) == 0,
+        "lb_800115F4: dynamic quake list unsupported"
+    );
+    let parameters = melee_gr::desc::read_stadium_parameters(&assets.stage)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let mut stage = Stadium::initialize(parameters, &mut HsdRng::new(0));
+    let half = |raw: &[u8], at: usize| i16::from_be_bytes([raw[at], raw[at + 1]]);
+    let mut maps = Vec::new();
+    let entities = word(saved.bytes(0x804D782C, 4), 0);
+    let mut gobj = word(saved.bytes(entities + 20, 4), 0);
+    while gobj != 0 {
+        ensure!(maps.len() <= 4, "cyclic Pokemon Stadium map list");
+        let object = saved.bytes(gobj, 0x30);
+        let ground = word(object, 0x2C);
+        if ground != 0 {
+            let raw = saved.bytes(ground, 0x108);
+            let map = word(raw, 0x14) as u8;
+            maps.push(map);
+            match map {
+                1 => {
+                    let screen = &mut stage.screen;
+                    screen.timer = word(raw, 0xE0) as i32;
+                    screen.mode = ScreenMode::try_from(half(raw, 0xE4))
+                        .map_err(|m| anyhow::anyhow!("screen mode {m}"))?;
+                    screen.previous = match half(raw, 0xEA) {
+                        -1 => None,
+                        m => Some(
+                            ScreenMode::try_from(m)
+                                .map_err(|m| anyhow::anyhow!("screen mode {m}"))?,
+                        ),
+                    };
+                    screen.focus = half(raw, 0xEE);
+                    screen.cycles = half(raw, 0xF2);
+                    let subject = word(raw, 0xF4);
+                    screen.subject_active =
+                        (subject != 0).then(|| word(saved.bytes(subject + 8, 4), 0) == 0);
+                }
+                2 => {
+                    let controller = &mut stage.transformation;
+                    let flags = word(raw, 0xC4);
+                    controller.waiting_for_start = flags & (1 << 31) != 0;
+                    ensure!(
+                        flags & (1 << 30) == 0,
+                        "Pokemon Stadium form load in flight"
+                    );
+                    controller.timer = word(raw, 0xD8) as i32;
+                    controller.phase = Phase::from_saved(half(raw, 0xDC))
+                        .ok_or_else(|| anyhow::anyhow!("Pokemon Stadium transformation phase"))?;
+                    controller.form = Form::from_map(half(raw, 0xDE))
+                        .ok_or_else(|| anyhow::anyhow!("Pokemon Stadium form"))?;
+                    controller.previous = Form::from_map(half(raw, 0xE0));
+                    controller.before_previous = Form::from_map(half(raw, 0xE2));
+                    ensure!(
+                        controller.form == Form::Base,
+                        "Pokemon Stadium saved transformed form unsupported"
+                    );
+                }
+                _ => {}
+            }
+        }
+        gobj = word(object, 8);
+    }
+    ensure!(
+        maps == melee_gr::stadium::procs::MAP_ORDER,
+        "Pokemon Stadium map order {maps:?}"
+    );
+    let animations = crate::scene_stage::stadium::load_models(assets)?;
+    Ok((SceneStage::Stadium(Box::new(stage)), animations))
 }
 
 /// Dream Land Ground owners and already-evaluated JObj frames at the saved boundary.

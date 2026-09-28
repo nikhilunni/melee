@@ -56,6 +56,9 @@ pub struct GroundParam {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModelDesc {
+    /// False for a null map_head entry: the map's model lives in another
+    /// archive (Pokemon Stadium's forms), and every other field is empty.
+    pub present: bool,
     pub joint: JObjDesc,
     pub animations: Vec<AnimJoint>,
     pub animation_loops: Vec<bool>,
@@ -178,6 +181,48 @@ pub fn read_story_parameters(archive: &Archive) -> ReadResult<crate::story::Para
         heights,
     })
 }
+/// grPs_StageData / grDatFiles_801C6038: GrPs.dat; map 2's callback row
+/// carries the environment flags.
+pub fn read_stadium(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::PStadium, 2)
+}
+/// A form archive (GrPs1-4.dat) that grStadium_801D4548 loads mid-match
+/// (grDatFiles_801C6478 reads only its map_head).
+pub fn read_stadium_form(archive: &Archive) -> ReadResult<Vec<ModelDesc>> {
+    let header = public(archive, "map_head")?;
+    let reader = archive.reader();
+    let count = count(&reader, header + 12)?;
+    let base = array(archive, header + 8, count, MODEL_SIZE)?;
+    (0..count)
+        .map(|i| read_model(archive, base + i as u32 * MODEL_SIZE))
+        .collect()
+}
+/// `grPStadium_YakumonoParam` (grpstadium.c:41-65).
+pub fn read_stadium_parameters(archive: &Archive) -> ReadResult<crate::stadium::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let pair = |at: u32| -> ReadResult<[i32; 2]> { Ok([r.s32(p + at)?, r.s32(p + at + 4)?]) };
+    Ok(crate::stadium::Parameters {
+        base_frames: pair(0)?,
+        form_frames: pair(8)?,
+        announce_delay: r.s32(p + 0x10)?,
+        sink_frames: r.s32(p + 0x14)?,
+        sunk_frames: r.s32(p + 0x18)?,
+        info_frames: r.s32(p + 0x20)?,
+        defeat_frames: r.s32(p + 0x24)?,
+        announce_frames: r.s32(p + 0x28)?,
+        standings_frames: r.s32(p + 0x2C)?,
+        player_camera_frames: pair(0x30)?,
+        stage_camera_frames: pair(0x38)?,
+        mode_weights: crate::stadium::ModeWeights {
+            player_camera: r.s16(p + 0x48)?,
+            match_info: r.s16(p + 0x4A)?,
+            stage_camera: r.s16(p + 0x4C)?,
+            picture: r.s16(p + 0x4E)?,
+        },
+        standings_interval: r.s16(p + 0x50)?,
+    })
+}
 /// grOp_StageData / grDatFiles_801C6038: GrOp.dat, environment map 5.
 pub fn read_pupupu(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::OldPupupu, 5)
@@ -279,6 +324,21 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
 
 fn read_model(archive: &Archive, offset: u32) -> ReadResult<ModelDesc> {
     let reader = archive.reader();
+    // An unused entry holds an unrelocated -1 joint pointer, which the
+    // loader leaves null (grDatFiles_801C6330 skips such archives).
+    if archive.link(offset)?.is_none() && reader.u32(offset)? == u32::MAX {
+        return Ok(ModelDesc {
+            present: false,
+            joint: JObjDesc::default(),
+            animations: Vec::new(),
+            animation_loops: Vec::new(),
+            joint_mappings: Vec::new(),
+            material_animation_offsets: Vec::new(),
+            shape_animation_offsets: Vec::new(),
+            light_list_offset: None,
+            fog_offset: None,
+        });
+    }
     let joint = JObjDesc::read(archive, required_link(archive, offset)?)?;
     let animation_offsets = pointer_list(archive, offset + 4)?;
     let animations = animation_offsets
@@ -305,6 +365,7 @@ fn read_model(archive: &Archive, offset: u32) -> ReadResult<ModelDesc> {
         })
         .collect::<ReadResult<Vec<_>>>()?;
     Ok(ModelDesc {
+        present: true,
         joint,
         animations,
         animation_loops,
@@ -332,7 +393,7 @@ fn read_position_bindings(
         let joint = required_link(archive, p)?;
         let model_id = models
             .iter()
-            .position(|m| m.joint.offset == joint)
+            .position(|m| m.present && m.joint.offset == joint)
             .ok_or_else(|| error("unbound position model"))?;
         let pairs = count(&r, p + 8)?;
         let pair_base = array(archive, p + 4, pairs, 4)?;

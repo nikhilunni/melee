@@ -107,6 +107,12 @@ impl InitialState {
         )?);
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
+        if assets.stage_desc.kind == melee_types::GrKind::PStadium {
+            // grStadium_OnInit's collision edits precede fighter creation;
+            // restore_scene validates that the boundary is in the base form.
+            let mut models = crate::scene_stage::stadium::load_models(&assets)?;
+            crate::scene_stage::stadium::initialize_collision(&mut map, &mut models);
+        }
         // Only the first line is read. Later rows (including all rng_draws)
         // never enter simulation, even transiently.
         let boundary = first_json(scenario, &scenario.trace_path("tick.raw.jsonl"))?;

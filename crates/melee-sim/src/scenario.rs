@@ -116,8 +116,10 @@ impl Scenario {
                         | "YoshisStory"
                         | "DreamLand"
                         | "FountainOfDreams"
+                        | "PokemonStadium"
                 ),
-                "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land and Fountain of Dreams"
+                "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land, Fountain of \
+                 Dreams and Pokemon Stadium"
             );
             ensure!(
                 self.all_characters_unlocked.is_some(),

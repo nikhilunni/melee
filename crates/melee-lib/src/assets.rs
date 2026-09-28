@@ -99,15 +99,20 @@ impl Assets {
         let marker = |index| stage_position(&stage, &stage_desc, index);
         let low = marker(0x97)?;
         let high = marker(0x98)?;
-        let camera = [marker(0x95)?, marker(0x96)?];
-        let centre = marker(0x94)?;
+        let camera_range = camera_range(&stage_desc, |index| {
+            let bound = stage_desc
+                .position_bindings
+                .iter()
+                .any(|b| b.stage_position == index);
+            bound.then(|| marker(index)).transpose()
+        })?;
         let arena = melee_ft::fighter::life::Arena {
             left: low.x.min(high.x),
             right: low.x.max(high.x),
             top: low.y.max(high.y),
             bottom: low.y.min(high.y),
             // Ground_801C39C0 subtracts the camera centre before Stage adds it back.
-            camera_top: (camera[0].y.max(camera[1].y) - centre.y) + centre.y,
+            camera_top: camera_range.bounds.top + camera_range.offset.y,
             revival_positions: [
                 marker(4)?,
                 marker(5).or_else(|_| marker(4))?,
@@ -121,7 +126,7 @@ impl Assets {
                 melee_types::GrKind::Last | melee_types::GrKind::Battle
             ),
         };
-        let stage_camera = stage_camera(&stage_desc, marker(0x94)?, camera, [low, high])?;
+        let stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
         // Ground_801C2D24 fails for a marker the stage binds no joint to.
         let bound_marker = |index: i16| -> Result<Option<hsd_types::Vec3>> {
             if stage_desc
@@ -207,10 +212,67 @@ impl CharacterArchive {
 /// Ground_801C0800, Ground_801C39C0 and Ground_801C3BB4: the stage's camera
 /// description from grGroundParam and the camera (0x94..0x96) and blast
 /// zone (0x97, 0x98) markers, all relative to the camera centre.
+/// `Ground_801C39C0` (0x801C39C0): the camera bounds relative to the camera
+/// centre (marker 0x94) and that centre, or the default "dummy CamRange"
+/// when a marker is missing (Pokemon Stadium binds no 0x94).
+struct CameraRange {
+    bounds: melee_cm::Rect,
+    offset: hsd_types::Vec3,
+}
+fn camera_range(
+    stage: &melee_gr::desc::StageDesc,
+    marker: impl Fn(i16) -> Result<Option<hsd_types::Vec3>>,
+) -> Result<CameraRange> {
+    use melee_types::GrKind;
+    let (Some(a), Some(b), Some(centre)) = (marker(0x95)?, marker(0x96)?, marker(0x94)?) else {
+        anyhow::ensure!(
+            !matches!(
+                stage.kind,
+                GrKind::Castle
+                    | GrKind::Corneria
+                    | GrKind::Unk26
+                    | GrKind::Inishie2
+                    | GrKind::RCruise
+                    | GrKind::Yorster
+                    | GrKind::MuteCity
+            ),
+            "ground.c:2183-2238: stage-specific dummy CamRange"
+        );
+        // ground.c:2175-2181.
+        return Ok(CameraRange {
+            bounds: melee_cm::Rect {
+                left: -170.0,
+                right: 170.0,
+                top: 120.0,
+                bottom: -60.0,
+            },
+            offset: hsd_types::Vec3::ZERO,
+        });
+    };
+    let (left, right) = if a.x < b.x {
+        (a.x - centre.x, b.x - centre.x)
+    } else {
+        (b.x - centre.x, a.x - centre.x)
+    };
+    let (bottom, top) = if a.y < b.y {
+        (a.y - centre.y, b.y - centre.y)
+    } else {
+        (b.y - centre.y, a.y - centre.y)
+    };
+    Ok(CameraRange {
+        bounds: melee_cm::Rect {
+            left,
+            right,
+            top,
+            bottom,
+        },
+        offset: centre,
+    })
+}
+
 fn stage_camera(
     stage: &melee_gr::desc::StageDesc,
-    centre: hsd_types::Vec3,
-    camera: [hsd_types::Vec3; 2],
+    range: &CameraRange,
     blast: [hsd_types::Vec3; 2],
 ) -> Result<melee_cm::StageCamera> {
     use melee_types::GrKind;
@@ -226,17 +288,7 @@ fn stage_camera(
         ),
         "Camera_8002AF68: the stage's lowest eye height is not ported"
     );
-    let [a, b] = camera;
-    let (left, right) = if a.x < b.x {
-        (a.x - centre.x, b.x - centre.x)
-    } else {
-        (b.x - centre.x, a.x - centre.x)
-    };
-    let (bottom, top) = if a.y < b.y {
-        (a.y - centre.y, b.y - centre.y)
-    } else {
-        (b.y - centre.y, a.y - centre.y)
-    };
+    let centre = range.offset;
     let [a, b] = blast;
     let (blast_left, blast_right) = if a.x < b.x {
         (a.x - centre.x, b.x - centre.x)
@@ -250,12 +302,7 @@ fn stage_camera(
     };
     let p = &stage.parameters.camera;
     Ok(melee_cm::StageCamera {
-        bounds: melee_cm::Rect {
-            left,
-            right,
-            top,
-            bottom,
-        },
+        bounds: range.bounds,
         offset_x: centre.x,
         offset_y: centre.y,
         fov: p.fov,
