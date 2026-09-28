@@ -814,6 +814,30 @@ impl Runtime {
                 item.decay_reflection_history();
             }
             14 => {
+                // ftLib_800866DC of the reflector, as a reflected callback
+                // reads it inside this proc (it_802A20E8).
+                let reflector = state
+                    .items
+                    .get_mut(id)
+                    .and_then(|item| item.pending_reflection)
+                    .map(|pending| pending.owner);
+                if let Some(reflector) = reflector {
+                    if let Some(index) = state.fighters.iter().position(|fighter| {
+                        crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == reflector)
+                    }) {
+                        let position =
+                            crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+                                .core
+                                .camera_bone_position());
+                        if let Some(pending) = state
+                            .items
+                            .get_mut(id)
+                            .and_then(|item| item.pending_reflection.as_mut())
+                        {
+                            pending.reflector_position = position;
+                        }
+                    }
+                }
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
@@ -826,6 +850,15 @@ impl Runtime {
             13 => self.detect_item_hurts(id),
             12 | 16 => {}
             _ => unreachable!(),
+        }
+        // An article's call into a fighter from inside its proc.
+        let request = self
+            .state
+            .items
+            .get_mut(id)
+            .and_then(|item| item.owner_request.take());
+        if let Some((slot, request)) = request {
+            deliver_owner_request(&mut self.state, id, kind, slot, request);
         }
         // it_8026FCF8: hitboxes this proc's scripts started in a hit group.
         self.state.items.resolve_group_histories();
@@ -2255,6 +2288,50 @@ impl Simulation {
 
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.
 const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
+
+/// An article's request of its owner from inside its physics proc
+/// (retail calls the fighter there): the owner reacts, then for a catch the
+/// article hangs from the owner's part again (Item_8026AB54: attach, then
+/// the kind's pickup callback).
+fn deliver_owner_request(
+    state: &mut InitialState,
+    id: u32,
+    kind: melee_types::ItemKind,
+    slot: u8,
+    request: melee_it::OwnerRequest,
+) {
+    use crate::scene_items::SceneItems;
+    use melee_it::ItemDispatch;
+    let Some(index) = state
+        .fighters
+        .iter()
+        .position(|fighter| crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == slot))
+    else {
+        return;
+    };
+    let part = crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+        .article_request(&state.assets.fighters[index], kind, request));
+    match (request, part) {
+        (melee_it::OwnerRequest::Catch, None) | (melee_it::OwnerRequest::Released, _) => {}
+        (melee_it::OwnerRequest::Catch, Some(part)) => {
+            let lifetime = state.items.common().lifetime;
+            let half_life_scale = state.items.common().half_life_scale;
+            let assets = state.assets.items.get(kind);
+            let item = state.items.get_mut(id).expect("caught article");
+            item.attach_to_holder(slot, part, assets, lifetime, half_life_scale);
+            (SceneItems::logic(kind).picked_up)(
+                item,
+                &mut melee_it::ItemAnimationContext {
+                    owner: None,
+                    holder: None,
+                    map: &mut state.map,
+                    assets,
+                    partner: None,
+                },
+            );
+        }
+    }
+}
 
 /// A posed article's bone matrix, its attach bone constrained to its
 /// holder's part as the holder stands now.

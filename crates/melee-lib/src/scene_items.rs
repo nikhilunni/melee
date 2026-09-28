@@ -48,6 +48,8 @@ melee_it::item_kinds! {
         SeakChain: it_seak::SeakChain,
         ZeldaDinFire: it_zelda::DinFire,
         ZeldaDinFireExplode: it_zelda::DinFireExplode,
+        LinkBoomerang: it_link::LinkBoomerang,
+        CLinkBoomerang: it_link::YoungLinkBoomerang,
     }
 }
 
@@ -546,6 +548,27 @@ impl Resources {
                 ));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
+        }
+        // ftLk_Init_OnLoad / ftCl_Init_OnLoad: ftData.x48_items[1] is the
+        // boomerang.
+        for (file, symbol, kind) in [
+            ("PlLk.dat", "ftDataLink", ItemKind::LinkBoomerang),
+            ("PlCl.dat", "ftDataClink", ItemKind::CLinkBoomerang),
+        ] {
+            let Some(character) = characters.iter().find(|c| c.descriptor.data_file == file) else {
+                continue;
+            };
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public(symbol).context("Link fighter data")?;
+            let boomerang = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_link::boomerang::ARTICLE_INDEX,
+                &it_link::boomerang::ARTICLE_STATES,
+                it_link::boomerang::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((kind, boomerang));
+            visual_archives.push((kind, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

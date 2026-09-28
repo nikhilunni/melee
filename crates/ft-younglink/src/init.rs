@@ -60,6 +60,7 @@ impl CharacterCallbacks for YoungLink {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_link_family::special_moves();
+    const MOTION_FLAGS: &'static [u32] = &ft_link_family::motion_flags(true);
 
     /// ftData_SpecialN/S/Hi/Lw and the aerial tables.
     fn enter_special(
@@ -78,6 +79,31 @@ impl CharacterCallbacks for YoungLink {
         &melee_ft::fighter::CharacterState,
         melee_ft::fighter::ActionId,
     ) -> Option<f32> = ft_link_family::retained_scratch_word::<Self>;
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(ft_link_family::take_damage::<Self>);
+    const DEATH: Option<fn(&mut Fighter)> = Some(ft_link_family::death::<Self>);
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
+        ft_link_family::article_destroyed::<Self>;
+    const ARTICLE_REQUEST: fn(
+        &mut Fighter,
+        &FighterAssets,
+        melee_types::ItemKind,
+        melee_it::OwnerRequest,
+    ) -> Option<u8> = ft_link_family::article_request::<Self>;
+    fn item_owner(f: &mut Fighter, assets: &FighterAssets) -> melee_it::ItemOwner {
+        ft_link_family::item_owner::<Self>(f, assets)
+    }
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389.
+    fn on_motion_change(&mut self) {
+        ft_link_family::motion_changed(&mut self.specials);
+    }
+    /// ftCo_800C3B10 / ftCo_800C3BE8: the aerial hookshot.
+    const AIR_TETHER: Option<fn(&mut Fighter, &FighterAssets) -> bool> =
+        Some(ft_link_family::air_tether::<Self>);
+    /// ftCo_Catch.c / ftCo_0D8E.c:43-173: the standing and dash grabs throw
+    /// the hookshot.
+    fn catch_variant(&mut self) {
+        ft_link_family::catch_variant();
+    }
     fn kind(&self) -> FighterKind {
         FighterKind::CLink
     }

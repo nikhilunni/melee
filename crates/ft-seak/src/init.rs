@@ -154,6 +154,9 @@ impl CharacterCallbacks for Sheik {
             stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
             steering_article: false,
             detonating_article: false,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
         }
     }
     /// The chain's links are Sheik's: its on_accessory is her work.

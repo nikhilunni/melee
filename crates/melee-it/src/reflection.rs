@@ -9,6 +9,9 @@ pub struct PendingReflection {
     pub preserve_owner: bool,
     /// DCC.b2; this does not suppress ownership transfer for lasers.
     pub exclude_master_ball_ownership: bool,
+    /// ftLib_800866DC of the reflector (its camera bone, offset), which a
+    /// kind's reflected callback may aim from (it_802A20E8).
+    pub reflector_position: hsd_types::Vec3,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct RehitVictim {
@@ -140,6 +143,7 @@ impl ItemCore {
         let context = ItemEventContext {
             reflected_facing: pending.facing,
             reflected_speed: pending.speed_multiplier,
+            reflector_position: pending.reflector_position,
             ..ItemEventContext::new(assets, common)
         };
         self.destroyed |= (D::logic(self.kind).reflected)(self, &context);

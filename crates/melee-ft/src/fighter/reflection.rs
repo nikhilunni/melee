@@ -98,6 +98,9 @@ impl FighterCore {
                 speed_multiplier: settings.speed_multiplier,
                 exclude_master_ball_ownership: settings.exclude_master_ball_ownership,
                 preserve_owner: false,
+                // Filled when the item's event proc runs (the reflector's
+                // pose then, after its own ProcessHit).
+                reflector_position: hsd_types::Vec3::ZERO,
             });
             item.reflection_direction = facing;
             self.combat.reflection = Some(Pending {

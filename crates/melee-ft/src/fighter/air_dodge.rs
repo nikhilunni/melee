@@ -1,5 +1,6 @@
 //! Air dodge, ftCommon/ftCo_EscapeAir.c. The script controls hurt status and
-//! the switch from multiplicative decay to ordinary aerial physics.
+//! the switch from multiplicative decay to ordinary aerial physics; and the
+//! aerial tether test the airborne IASAs share (ftCo_AirCatch.c).
 use super::{
     assets::{FighterAssets, Result},
     Fighter, MotionData,

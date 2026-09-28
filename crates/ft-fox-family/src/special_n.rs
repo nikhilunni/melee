@@ -358,6 +358,9 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
         stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
         steering_article: false,
         detonating_article: false,
+        motion_flags: f.motion_flags(),
+        in_hitlag: f.core.in_hitlag(),
+        anchor: f.physics.position,
     }
 }
 

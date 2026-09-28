@@ -229,6 +229,8 @@ fn fire_shot(f: &mut Fighter, assets: &FighterAssets) {
             full_charge: full,
             facing: f.physics.facing,
         }),
+        angle: 0.0,
+        long_lifetime: false,
     };
     f.core.item_requests.push(ItemRequest::Launch {
         owner: f.player.id,

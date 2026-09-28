@@ -46,6 +46,13 @@ pub fn mirror(v: Vec3, n: Vec3) -> Vec3 {
     let reflect = -2.0 * fmadds(n.x, v.x, n.y * v.y);
     Vec3::new(fmadds(n.x, reflect, v.x), fmadds(n.y, reflect, v.y), v.z)
 }
+/// lbVector_CosAngle (0x8000DCA8): the XY lengths through the inline MSL
+/// sqrtf (squares summed unfused), their product, and the XY dot (retail
+/// 8000DD9C: fmadds, X product outer), divided once.
+pub fn cos_angle(a: Vec3, b: Vec3) -> f32 {
+    let lengths = sqrtf(a.x * a.x + a.y * a.y) * sqrtf(b.x * b.x + b.y * b.y);
+    fmadds(a.x, b.x, a.y * b.y) / lengths
+}
 /// lbVector_Angle (0x8000D620): lengths remain unfused; dot is fused.
 pub fn angle(a: Vec3, b: Vec3) -> f32 {
     let lengths = length(a) * length(b);

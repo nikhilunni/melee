@@ -3,6 +3,20 @@ use crate::fighter::{assets::FighterAssets, Fighter, SpecialSlot};
 use crate::input::{WaitContext, WaitPredicate, WaitTransition};
 
 impl Fighter {
+    /// Fighter.x2070 (ft_800895E0): the current motion row's x4_flags, when
+    /// the port knows the row's column (a character table supplies its own).
+    pub fn motion_flags(&self) -> Option<u32> {
+        let action = usize::from(self.core.motion_state.action.0);
+        if action < super::COMMON_COUNT {
+            return Some(super::COMMON_MOTION_FLAGS[action]);
+        }
+        self.character
+            .table()
+            .motion_flags
+            .get(action - super::COMMON_COUNT)
+            .copied()
+    }
+
     /// ftCo_SpecialAir_CheckInput (8009665C) as a character IASA's first check:
     /// a B press enters the stick's aerial special.
     pub fn try_air_special(&mut self, assets: &FighterAssets) -> bool {

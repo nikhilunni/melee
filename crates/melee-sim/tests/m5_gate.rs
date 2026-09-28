@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 346] = [
+const MATRIX_WITNESSES: [(&str, usize); 353] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1413,6 +1413,17 @@ const MATRIX_WITNESSES: [(&str, usize); 346] = [
     // swirl models (efSync 0x4BB/0x4BC) and special fall and landing.
     ("links_spin_ground_fd_fox4", 420),
     ("links_spin_air_fd_fox4", 420),
+    // LINKS: the boomerang thrown on the ground and in the air, glancing off the
+    // floor, striking Fox, shielded, reflected by Fox's down special
+    // (it_802A20E8), homing back and caught (SpecialS2 / SpecialAirS2, the catch
+    // interrupted by a jump); Young Link's boomerang and Spin Attack.
+    ("links_boomerang_fd_fox4", 600),
+    ("links_boomerang_air_fd_fox4", 600),
+    ("links_boomerang_shield_fd_fox4", 480),
+    ("links_boomerang_reflect_fd_fox4", 480),
+    ("links_yl_boomerang_fd_fox4", 600),
+    ("links_yl_spin_ground_fd_fox4", 420),
+    ("links_yl_spin_air_fd_fox4", 420),
 ];
 
 #[test]

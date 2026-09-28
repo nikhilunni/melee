@@ -35,6 +35,8 @@ pub struct ItemEventContext<'a> {
     pub reflected_facing: f32,
     /// xC70: the reflector's speed multiplier (ReflectAttr x1A38).
     pub reflected_speed: f32,
+    /// The reflector's ftLib_800866DC position (see PendingReflection).
+    pub reflector_position: hsd_types::Vec3,
     pub shield_normal: hsd_types::Vec3,
     pub assets: &'a ItemAssets,
     /// p_ftCommonData's launch constants (it_8027B798).
@@ -51,6 +53,7 @@ impl<'a> ItemEventContext<'a> {
         Self {
             reflected_facing: 0.0,
             reflected_speed: 1.0,
+            reflector_position: hsd_types::Vec3::ZERO,
             shield_normal: hsd_types::Vec3::ZERO,
             assets,
             launch: common.launch,

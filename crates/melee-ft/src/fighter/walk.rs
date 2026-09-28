@@ -117,6 +117,40 @@ impl Fighter {
         Ok(())
     }
 
+    /// A character IASA's own ordered subset of Wait's checks (such as
+    /// ftLk_SpecialS2_IASA's checkBoomerangSomething), run whatever the
+    /// script's interrupt flag: true when one entered its state.
+    pub fn try_ground_checks(
+        &mut self,
+        assets: &FighterAssets,
+        predicates: &[crate::input::WaitPredicate],
+    ) -> Result<bool> {
+        let context = self.core.wait_context();
+        let transition = crate::input::iasa_with_predicates(
+            predicates,
+            &self.core.input,
+            &assets.input,
+            &context,
+        );
+        if matches!(transition, T::None | T::Hold) {
+            return Ok(false);
+        }
+        self.apply_ground_transition(assets, transition)?;
+        Ok(true)
+    }
+    /// ftCo_SpecialAir_CheckInput, then ftCo_800CB870 (the aerial jump):
+    /// true when either entered its state.
+    pub fn try_air_special_or_jump(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if self.try_air_special(assets) {
+            return Ok(true);
+        }
+        if self.aerial_jump_requested(assets) {
+            self.enter_aerial_jump(assets)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
     /// ftCo_Wait_IASA (0x8008A4D4) movement entry bodies, also used by
     /// the new states at their own ordered predicate call sites.
     pub(super) fn apply_ground_transition(

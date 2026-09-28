@@ -1,0 +1,7 @@
+//! Link's and Young Link's articles (ftData.x48_items of PlLk.dat and
+//! PlCl.dat): [0] the bomb, [1] the boomerang, [2] the hookshot, [3] the
+//! arrow, [4] the bow (and Young Link's [5] milk). Ported: the boomerang.
+pub mod boomerang;
+
+pub type LinkBoomerang = boomerang::Boomerang<false>;
+pub type YoungLinkBoomerang = boomerang::Boomerang<true>;

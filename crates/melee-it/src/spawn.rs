@@ -201,6 +201,10 @@ pub struct Launch {
     pub center: Vec3,
     pub attack: Option<melee_types::combat::AttackInstance>,
     pub attack_stale: f32,
+    /// it_802A0534's flight angle (radians) and lifetime choice (the smash
+    /// throw's longer one).
+    pub angle: f32,
+    pub long_lifetime: bool,
     /// A release that also aims the article (Samus's charge shot,
     /// it_802B56E4), if any.
     pub aim: Option<Aim>,
@@ -288,6 +292,16 @@ pub struct ItemOwner {
     /// fp->motion_id, read by articles whose lifetime follows the owner's
     /// motion (ftPe_SpecialN_IsActive, ftPe_SpecialHi_NotActive).
     pub motion: u16,
+    /// Fighter.x2070 (the motion row's x4_flags), whose x2071 nibble an
+    /// article may test (ftLk_SpecialS_Is2071b0_1to13); None for a
+    /// character row whose column the port does not carry.
+    pub motion_flags: Option<u32>,
+    /// x2219_b5: the owner is in hitlag.
+    pub in_hitlag: bool,
+    /// The point a returning article homes on
+    /// (ftLk_SpecialHi_GetPosWithAdjustedY: cur_pos raised by an attribute);
+    /// the position for other kinds.
+    pub anchor: Vec3,
     /// The owner's count of articles it has fired, which its articles
     /// compare with the count at their own launch (Samus's missiles read
     /// u.ss.x2238 through ftSs_SpecialS_8012A068). Zero for other kinds.

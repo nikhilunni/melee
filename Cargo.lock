@@ -513,6 +513,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
  "melee-types",
 ]
@@ -526,6 +527,8 @@ dependencies = [
  "hsd-types",
  "melee-ef",
  "melee-ft",
+ "melee-it",
+ "melee-lb",
  "melee-mp",
  "melee-types",
 ]
@@ -749,6 +752,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
  "melee-types",
 ]
@@ -1013,6 +1017,19 @@ dependencies = [
  "gekko-math",
  "hsd-types",
  "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-link"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-anim",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
  "melee-types",
 ]
 
@@ -1426,6 +1443,7 @@ dependencies = [
  "it-foxillusion",
  "it-foxlaser",
  "it-heiho",
+ "it-link",
  "it-luigifire",
  "it-mariocape",
  "it-mariofire",

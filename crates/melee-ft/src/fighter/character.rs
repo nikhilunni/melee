@@ -38,6 +38,7 @@ pub struct CharacterTable {
     pub forward_smash: Option<super::RngEntry>,
     pub input_rng: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
     pub forward_smash_combo: Option<ActionId>,
+    pub motion_flags: &'static [u32],
     pub catch_variant: fn(&mut CharacterState),
     pub mouth_capture_scale: fn(&CharacterState) -> Option<f32>,
     pub throw_variant: fn(&CharacterState),
@@ -106,6 +107,12 @@ pub struct CharacterTable {
     pub article_accessory:
         fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap) -> Option<u16>,
     pub article_hitlag_end: fn(&mut Fighter),
+    pub article_request: fn(
+        &mut Fighter,
+        &assets::FighterAssets,
+        melee_types::ItemKind,
+        melee_it::OwnerRequest,
+    ) -> Option<u8>,
     pub landing_articles: fn(&mut Fighter, bool),
     pub wait_articles: fn(&mut Fighter),
     pub cape_turn_blocked: fn(&mut Fighter) -> bool,
@@ -138,6 +145,7 @@ impl CharacterTable {
             forward_smash: C::FORWARD_SMASH,
             input_rng: C::INPUT_RNG,
             forward_smash_combo: C::FORWARD_SMASH_COMBO,
+            motion_flags: C::MOTION_FLAGS,
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
             mouth_capture_scale: |state| state.get::<C>().mouth_capture_scale(),
             throw_variant: |state| state.get::<C>().throw_variant(),
@@ -205,6 +213,7 @@ impl CharacterTable {
             owner_blast: C::OWNER_BLAST,
             article_accessory: C::ARTICLE_ACCESSORY,
             article_hitlag_end: C::ARTICLE_HITLAG_END,
+            article_request: C::ARTICLE_REQUEST,
             landing_articles: C::LANDING_ARTICLES,
             wait_articles: C::WAIT_ARTICLES,
             cape_turn_blocked: C::CAPE_TURN_BLOCKED,
@@ -440,6 +449,17 @@ pub(super) fn no_article_accessory(
     unimplemented!("{:?} owns no owner-driven article", fighter.core.kind)
 }
 pub(super) fn no_article_hitlag_end(_fighter: &mut Fighter) {}
+pub(super) fn unsupported_article_request(
+    fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+    kind: melee_types::ItemKind,
+    request: melee_it::OwnerRequest,
+) -> Option<u8> {
+    unimplemented!(
+        "{:?}'s {kind:?} asked {request:?} of its owner",
+        fighter.core.kind
+    );
+}
 pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
 pub(super) fn no_wait_articles(_fighter: &mut Fighter) {}
 pub(super) fn cape_turn_allowed(_fighter: &mut Fighter) -> bool {

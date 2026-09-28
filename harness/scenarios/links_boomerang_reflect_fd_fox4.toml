@@ -1,0 +1,30 @@
+# LINKS directed witness: Fox reflects the boomerang with his down special
+# (it_802A20E8): it flies back away from Fox at the reflector's speed, Link
+# lets go of it (RemoveBoomerang0) and throws again before it expires.
+name = "links_boomerang_reflect_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickX = 90 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 172, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 174, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 200, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 512, stickX = 90 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

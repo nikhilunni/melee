@@ -46,6 +46,19 @@ pub struct LinkRequest {
     pub message: LinkMessage,
 }
 
+/// What an article's proc asks of its owner, delivered once the proc
+/// returns (retail calls into the fighter from inside it).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnerRequest {
+    /// The returning boomerang reached its thrower, who catches it
+    /// (ftLk_SpecialS2_Enter); the article then hangs from the part the
+    /// owner names (Item_8026AB54).
+    Catch,
+    /// The article no longer belongs to its thrower (a reflected boomerang:
+    /// ftLk_SpecialS_RemoveBoomerang0).
+    Released,
+}
+
 /// The partner as a reader sees it during its own proc.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PartnerView {

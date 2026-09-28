@@ -156,6 +156,9 @@ impl CharacterCallbacks for Samus {
             stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
             steering_article: false,
             detonating_article: false,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
         }
     }
     /// it_2725_Logic108_Destroyed: a shot that never left the hand lets

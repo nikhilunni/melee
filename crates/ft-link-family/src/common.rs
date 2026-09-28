@@ -34,6 +34,48 @@ pub(crate) fn change(
     f.change_motion_state_with_flags(state, assets, MotionEntryFlags(flags), start, 1.0)
 }
 
+/// ftCommon_GroundToAirStateChange: leave the ground (ftCommon_8007D5D4),
+/// then the aerial counterpart at the current frame.
+pub(crate) fn ground_to_air(
+    f: &mut Fighter,
+    state: ActionId,
+    assets: &FighterAssets,
+) -> Result<()> {
+    f.leave_ground();
+    let frame = f.animation.frame;
+    change(f, state, flags::GROUND_AIR, frame, assets)
+}
+
+/// ftCommon_AirToGroundStateChange: land (ftCommon_8007D7FC), then the
+/// grounded counterpart at the current frame.
+pub(crate) fn air_to_ground(
+    f: &mut Fighter,
+    state: ActionId,
+    assets: &FighterAssets,
+) -> Result<()> {
+    f.land();
+    let frame = f.animation.frame;
+    change(f, state, flags::GROUND_AIR, frame, assets)
+}
+
+/// ft_80081D0C (80081D0C): ordinary airborne collision; true on landing.
+pub(crate) fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    air::collide_air_dodge(
+        &mut c.physics,
+        &mut c.collision,
+        p.map,
+        &mut c.skeleton,
+        c.animation.root,
+    )
+}
+
 /// ft_8008A2BC (Wait) on the ground, ftCo_Fall_Enter in the air.
 pub(crate) fn finish(f: &mut Fighter, air: bool, assets: &FighterAssets) -> Result<()> {
     let state = if air {

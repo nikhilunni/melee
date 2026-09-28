@@ -1,0 +1,30 @@
+# LINKS directed witness: Link throws the boomerang forward on the ground
+# (ftLk_MS_SpecialS1 350); it slows, turns back, homes and Link catches it
+# (SpecialS2 351); then a smash throw angled up, which strikes Fox on the
+# way (it_802A1F08 sends it back), and an empty-handed throw while it is out.
+name = "links_boomerang_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickX = 90 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 512, stickX = 127, stickY = 60 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { button = 512, stickX = 90 } },
+  { frame = 342, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -59,6 +59,7 @@ it-samus = { path = "../it-samus" }
 ft-seak = { path = "../ft-seak" }
 ft-zelda = { path = "../ft-zelda" }
 ft-link = { path = "../ft-link" }
+it-link = { path = "../it-link" }
 ft-younglink = { path = "../ft-younglink" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }

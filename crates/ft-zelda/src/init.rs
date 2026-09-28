@@ -177,6 +177,9 @@ impl CharacterCallbacks for Zelda {
             holds_needles: false,
             articles_fired: 0,
             charge: None,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
         };
         crate::special_s::item_owner(f, &mut owner);
         owner

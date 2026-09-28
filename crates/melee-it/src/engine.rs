@@ -147,6 +147,7 @@ pub enum ItemScratch {
     ChargeShot(ChargeShotState),
     SamusBomb(SamusBombState),
     DinFire(DinFireState),
+    Boomerang(BoomerangState),
     None,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
@@ -236,6 +237,35 @@ pub struct DinFireState {
     pub effects: bool,
     /// The explosion's xDD8: the hitbox's authored size, once read.
     pub hitbox_size: f32,
+}
+/// Item.xDD4_itemVar.linkboomerang (itlinkboomerang.c). The trail models'
+/// pose history (xDD8..xDDC, xDF0, xEB0, xF90) is drawing only.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BoomerangState {
+    /// xF98: the fighter that threw it; cleared when that owner goes.
+    pub thrower: Option<u8>,
+    /// xDEC == FTKIND_LINK: the flight sound's kind.
+    pub thrown_by_link: bool,
+    /// xDE8: a reflector sent it back; it no longer steers.
+    pub reflected: bool,
+    /// xF70: frames before the next trail model starts.
+    pub trail_timer: f32,
+    /// xF74: the flight angle (radians).
+    pub angle: f32,
+    /// xF78: the angle turned for the facing (the model's root rotation Z).
+    pub facing_angle: f32,
+    /// xF7C: -sin of the attribute angle; a surface met straighter than
+    /// this sends it back instead of glancing off.
+    pub glance_limit: f32,
+    /// xF80: frames the return still homes on the thrower.
+    pub homing_frames: f32,
+    /// xF84: the most the return turns per frame.
+    pub turn_limit: f32,
+    /// xF88 / xDE4: the return's model spin and its frames (drawing).
+    pub spin_step: f32,
+    pub spin_frames: i32,
+    /// xF8C: frames to the next flight sound.
+    pub sound_timer: f32,
 }
 /// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
 /// Pikachu's Thunder chain; the partner is the next bolt (x34).
@@ -531,6 +561,9 @@ pub struct ItemCore {
     pub camera: Option<melee_cm::Subject>,
     /// Requests for linked items, delivered once the proc returns.
     pub link_requests: melee_types::fixed::FixedVec<crate::LinkRequest, 4>,
+    /// A request for a fighter (the owner, or the thrower a reflector took
+    /// the article from), delivered once the proc returns.
+    pub owner_request: Option<(u8, crate::OwnerRequest)>,
     /// HSD_JObjAnimAll steps since the article state's animation began
     /// (Item_80268D34's HSD_JObjReqAnimAll), for [`crate::pose::ItemPose`].
     pub pose_steps: u32,
@@ -1198,6 +1231,7 @@ impl ItemPool {
             partner: None,
             camera: self.camera_subject(assets.camera_kind),
             link_requests: Default::default(),
+            owner_request: None,
             pose_steps: 0,
             article_state: 0,
             land_count: 0,

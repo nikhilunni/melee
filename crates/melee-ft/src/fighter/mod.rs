@@ -129,6 +129,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.
     const SPECIAL_ROWS: &'static [MotionRow] = &[];
+    /// The character table's x4_flags column (Fighter.x2070 on entry),
+    /// indexed from action 341; empty until a caller reads it.
+    const MOTION_FLAGS: &'static [u32] = &[];
     /// ftData special-row move IDs, indexed from action 341.
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &[];
     /// MotionState.x9_b0 of the special rows, indexed from action 341 (read
@@ -209,6 +212,15 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// The rest of an article's post-hitlag callback
     /// (`effect_state.article_hitlag`), after the article thaws.
     const ARTICLE_HITLAG_END: fn(&mut Fighter) = character::no_article_hitlag_end;
+    /// An article this fighter owns asked something of it from its proc
+    /// (the returning boomerang's catch, ftLk_SpecialS2_Enter). Returns the
+    /// part a caught article hangs from.
+    const ARTICLE_REQUEST: fn(
+        &mut Fighter,
+        &assets::FighterAssets,
+        melee_types::ItemKind,
+        melee_it::OwnerRequest,
+    ) -> Option<u8> = character::unsupported_article_request;
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
     /// character puts away on landing, after `on_landing`.
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
@@ -252,6 +264,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             ),
             steering_article: false,
             detonating_article: false,
+            motion_flags: fighter.motion_flags(),
+            in_hitlag: fighter.core.in_hitlag(),
+            anchor: fighter.physics.position,
         }
     }
 
@@ -666,7 +681,7 @@ pub struct GraftedPart {
 pub struct Status {
     pub wall_jump: wall_jump::WallJump,
     /// used_tether (+2228 bit 6): ftCo_800C3B10 already tethered this
-    /// airtime; a grounded motion change clears it.
+    /// airtime; a grounded motion change or death clears it.
     pub used_tether: bool,
     /// x221F_b3 (+221F mask 10).
     pub disabled: bool,
@@ -826,6 +841,15 @@ impl Fighter {
     /// The installed article post-hitlag callback's own work.
     pub fn article_hitlag_end(&mut self) {
         (self.character.table().article_hitlag_end)(self)
+    }
+    /// An owned article's request from its proc (`ARTICLE_REQUEST`).
+    pub fn article_request(
+        &mut self,
+        assets: &assets::FighterAssets,
+        kind: melee_types::ItemKind,
+        request: melee_it::OwnerRequest,
+    ) -> Option<u8> {
+        (self.character.table().article_request)(self, assets, kind, request)
     }
     pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         (self.character.table().item_owner)(self, assets)

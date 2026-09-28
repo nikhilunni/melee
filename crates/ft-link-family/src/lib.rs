@@ -6,6 +6,7 @@ mod attack_s42;
 pub mod attributes;
 mod common;
 pub mod special_hi;
+pub mod special_s;
 
 use attributes::LinkAttributes;
 use melee_ft::fighter::{
@@ -33,6 +34,10 @@ pub struct FighterVars {
     pub used_boomerang: bool,
     /// +2230: the boomerang throw was a smash input (on21EC).
     pub smash_boomerang: bool,
+    /// +2234 != NULL: the boomerang exists.
+    pub boomerang_out: bool,
+    /// The boomerang hangs in the hand (its state 0, it_8029FDBC).
+    pub boomerang_in_hand: bool,
 }
 
 /// Fighter state the family owns: ftLk_FighterVars, mv.lk and the one-shot
@@ -45,6 +50,9 @@ pub struct Specials {
     /// mv+4 as the state before a special left it (no ftLk special but the
     /// bow writes it).
     pub retained_word: Option<f32>,
+    /// take_dmg_cb / death2_cb = ftLk_800EAF58 for this motion: the articles
+    /// go when the fighter is hit.
+    pub removal_armed: bool,
 }
 
 /// accessory4_cb while a family state owns it.
@@ -54,6 +62,9 @@ pub enum Accessory {
     None,
     /// Spin Attack's onAccessory4 (800EBA4C).
     SpinSwirl,
+    /// The boomerang throw's onAccessory4 (800EC210), every frame while
+    /// installed.
+    BoomerangThrow,
 }
 
 /// ftLk_MS_* (ftLink/forward.h): the family's motion states, contiguous
@@ -135,6 +146,12 @@ pub const fn rows<C: LinkFamily>() -> [MotionRow; FamilyState::COUNT] {
         i += 1;
     }
     rows[FamilyState::AttackS42.index()] = attack_s42::ROW;
+    let boomerang = special_s::rows::<C>();
+    let mut i = 0;
+    while i < boomerang.len() {
+        rows[FamilyState::SpecialS1.index() + i] = boomerang[i];
+        i += 1;
+    }
     let spin = special_hi::rows::<C>();
     rows[FamilyState::SpecialHi.index()] = spin[0];
     rows[FamilyState::SpecialAirHi.index()] = spin[1];
@@ -162,6 +179,36 @@ pub const fn special_moves() -> [Option<melee_types::combat::StaleMove>; FamilyS
     moves
 }
 
+/// ftLk_Init_MotionStateTable's x4_flags column (ftLk_MF_*, ftLink/forward.h),
+/// which Fighter.x2070 takes on entry. Young Link's side taunts are
+/// ftCl_MF_Zair (0x71) where Link's rows are empty.
+pub const fn motion_flags(young: bool) -> [u32; FamilyState::COUNT] {
+    let taunt = if young { 0x71 } else { 0 };
+    [
+        0x0024_0009, // AttackS42
+        taunt,
+        taunt,
+        0x0034_0111, // SpecialNStart
+        0x003C_0111, // SpecialNLoop
+        0x0034_0111, // SpecialNEnd
+        0x0034_0511, // SpecialAirNStart
+        0x003C_0511, // SpecialAirNLoop
+        0x0034_0511, // SpecialAirNEnd
+        0x0034_0112, // SpecialS1
+        0x0034_0112, // SpecialS2
+        0x0034_0112, // SpecialS1Empty
+        0x0034_0512, // SpecialAirS1
+        0x0034_0512, // SpecialAirS2
+        0x0034_0512, // SpecialAirS1Empty
+        0x0034_0213, // SpecialHi
+        0x0034_0213, // SpecialAirHi
+        0x0034_0014, // SpecialLw
+        0x0034_0414, // SpecialAirLw
+        0x0020_0000, // AirCatch
+        0x00C0_0000, // AirCatchHit
+    ]
+}
+
 /// ftData_SpecialN/S/Hi/Lw[kind] and the aerial tables.
 pub fn enter_special<C: LinkFamily>(
     f: &mut Fighter,
@@ -174,10 +221,102 @@ pub fn enter_special<C: LinkFamily>(
     f.character.get_mut::<C>().specials().retained_word = retained;
     match slot {
         SpecialSlot::Up => special_hi::enter::<C>(f, airborne, assets),
+        SpecialSlot::Side => special_s::enter::<C>(f, airborne, assets),
         _ => unimplemented!(
             "ftData_Special{slot:?}[{:?}] (airborne: {airborne}): character special entry",
             f.core.kind
         ),
+    }
+}
+
+/// ftCo_800C3B10's Link/Young Link arm once the common tests passed:
+/// ftCo_800C3BE8 enters ftLk_MS_AirCatch in the air (on the ground it
+/// only spends the tether), which throws the hookshot.
+pub fn air_tether<C: LinkFamily>(f: &mut Fighter, _assets: &FighterAssets) -> bool {
+    if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        unimplemented!("ftCo_800C3BE8: ftLk_MS_AirCatch and the hookshot (itlinkhookshot.c)");
+    }
+    true
+}
+
+/// The standing and dash grabs (ftCo_0D8E.c fn_800D8EC8 / fn_800D9228)
+/// throw the hookshot article and grab through it.
+pub fn catch_variant() {
+    unimplemented!("ftCo_0D8E.c:43-173: the Links' hookshot grab (itlinkhookshot.c)");
+}
+
+/// ftLk_800EAF58 (800EAF58), take_dmg_cb and death2_cb while armed: the
+/// boomerang goes (the hookshot, arrow, bow and milk are not ported).
+pub fn take_damage<C: LinkFamily>(f: &mut Fighter) {
+    if f.character.get::<C>().specials_ref().removal_armed {
+        special_s::remove_boomerang::<C>(f);
+    }
+}
+
+/// ftCo_800D331C's death callbacks: death2_cb (ftLk_800EAF58, while armed)
+/// and death3_cb (ftLk_800EAF38, installed with the boomerang and never
+/// removed): the boomerang goes either way.
+pub fn death<C: LinkFamily>(f: &mut Fighter) {
+    special_s::remove_boomerang::<C>(f);
+}
+
+/// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+/// callbacks go.
+pub fn motion_changed(specials: &mut Specials) {
+    specials.removal_armed = false;
+}
+
+/// An owned article reached back (it_802A07B4 / Logic18_Destroyed's
+/// ftLk_SpecialS_RemoveBoomerang0).
+pub fn article_destroyed<C: LinkFamily>(f: &mut Fighter, kind: melee_types::ItemKind) {
+    use melee_types::ItemKind as K;
+    if matches!(kind, K::LinkBoomerang | K::CLinkBoomerang) {
+        special_s::forget_boomerang::<C>(f);
+    }
+}
+
+/// An owned article's request (the boomerang's catch).
+pub fn article_request<C: LinkFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    kind: melee_types::ItemKind,
+    request: melee_it::OwnerRequest,
+) -> Option<u8> {
+    use melee_types::ItemKind as K;
+    match (kind, request) {
+        (K::LinkBoomerang | K::CLinkBoomerang, melee_it::OwnerRequest::Catch) => {
+            special_s::catch::<C>(f, assets)
+        }
+        (K::LinkBoomerang | K::CLinkBoomerang, melee_it::OwnerRequest::Released) => {
+            special_s::forget_boomerang::<C>(f);
+            None
+        }
+        _ => unimplemented!("{kind:?} asked {request:?} of a Link"),
+    }
+}
+
+/// What the Links' articles read of their owner: the boomerang homes on
+/// ftLk_SpecialHi_GetPosWithAdjustedY (cur_pos raised by x28, fadds).
+pub fn item_owner<C: LinkFamily>(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+    let height = f.character.get::<C>().attributes().hookshot_height;
+    let position = f.physics.position;
+    melee_it::ItemOwner {
+        illusion: None,
+        position,
+        facing: f.physics.facing,
+        hold_position: position,
+        blaster_action: 9,
+        remove_blaster: true,
+        motion: f.motion_state.action.0,
+        motion_flags: f.motion_flags(),
+        in_hitlag: f.core.in_hitlag(),
+        anchor: hsd_types::Vec3::new(position.x, position.y + height, position.z),
+        articles_fired: 0,
+        charge: None,
+        holds_needles: false,
+        stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+        steering_article: false,
+        detonating_article: false,
     }
 }
 
@@ -190,13 +329,19 @@ pub(crate) fn arm_accessory<C: LinkFamily>(f: &mut Fighter, accessory: Accessory
 /// Fighter_8006C80C: the state's one-shot accessory4.
 pub fn accessory<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
     let pending = f.character.get::<C>().specials_ref().accessory;
+    if pending == Accessory::BoomerangThrow {
+        if f.core.accessory4_armed {
+            special_s::throw_accessory::<C>(f, assets);
+        }
+        return;
+    }
     if !f.run_accessory4(pending != Accessory::None) {
         return;
     }
     f.character.get_mut::<C>().specials().accessory = Accessory::None;
     match pending {
         Accessory::SpinSwirl => special_hi::swirl::<C>(f, assets),
-        Accessory::None => unreachable!(),
+        Accessory::None | Accessory::BoomerangThrow => unreachable!(),
     }
 }
 
