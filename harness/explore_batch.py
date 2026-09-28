@@ -35,6 +35,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+import data_root  # noqa: E402
 import trace_io  # noqa: E402
 
 CASE = re.compile(r"^(?P<case>v3(?:sd)?-(?P<tag>\S+?)-explore(?P<seed>[0-9a-f]+)-profile(?P<profile>\d)): "
@@ -97,7 +98,7 @@ def main(argv: list[str] | None = None) -> None:
     log = out / "explore.log"
     with log.open("w") as f:
         # Exit status 1 only means "faults found"; the log says which.
-        subprocess.run([str(explore), str(HERE / "roms/files"), str(recordings), str(a.count), str(a.skip),
+        subprocess.run([str(explore), str(data_root.ROMS / "files"), str(recordings), str(a.count), str(a.skip),
                         *(["sudden-death"] if a.sudden_death else []),
                         *[arg for name in a.boundary for arg in ("--boundary", name)]],
                        cwd=ROOT, stdout=f, stderr=subprocess.STDOUT)
@@ -115,7 +116,7 @@ def main(argv: list[str] | None = None) -> None:
     bridged: list[tuple[str, str, str]] = []  # (scenario, case, why)
     for m, why in [(m, "fault") for m in faults] + [(m, "sample") for m in samples]:
         name = scenario_name(m.group("case"))
-        path = HERE / "scenarios" / f"{name}.toml"
+        path = data_root.SCENARIOS / f"{name}.toml"
         if not path.exists():
             r = run([sys.executable, str(HERE / "replay_to_scenario.py"),
                      str(recordings / f"{m.group('case')}.json"), "--name", name], cwd=HERE)
@@ -130,13 +131,13 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"== recording {len(bridged)} scenarios ({a.jobs} jobs)", flush=True)
     rec = run([sys.executable, str(HERE / "record_many.py"),
-               *[str(HERE / "scenarios" / f"{n}.toml") for n, _, _ in bridged], "--jobs", str(a.jobs)], cwd=HERE)
+               *[str(data_root.SCENARIOS / f"{n}.toml") for n, _, _ in bridged], "--jobs", str(a.jobs)], cwd=HERE)
     print(rec.stdout.strip().splitlines()[-1] if rec.stdout.strip() else rec.stderr[-300:], flush=True)
 
     results = []
     for name, case, why in bridged:
-        scenario = HERE / "scenarios" / f"{name}.toml"
-        expected = HERE / "traces" / f"{name}.tick.expected.jsonl"
+        scenario = data_root.SCENARIOS / f"{name}.toml"
+        expected = data_root.TRACES / f"{name}.tick.expected.jsonl"
         if not trace_io.exists(expected):
             results.append((name, case, why, "not recorded", None))
             continue

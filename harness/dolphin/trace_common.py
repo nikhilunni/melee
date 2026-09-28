@@ -17,11 +17,13 @@ def script_dir(g: dict) -> Path:
 
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE.parent))  # harness/  -> symbols
 sys.path.insert(0, str(HERE))         # harness/dolphin -> walk
+import data_root  # noqa: E402
 import symbols  # noqa: E402
 import walk  # noqa: E402
+
+REPO = data_root.ROOT  # scenario savestate paths are relative to the data root
 
 try:
     from dolphin import controller, event, memory, savestate  # type: ignore

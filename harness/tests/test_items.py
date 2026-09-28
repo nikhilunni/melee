@@ -267,6 +267,7 @@ def test_record_runner_decode_validate_path_without_dolphin(tmp_path, monkeypatc
     monkeypatch.setattr(recorder, "HERE", harness)
     monkeypatch.setattr(recorder, "ROOT", tmp_path)
     monkeypatch.setattr(run_scenario, "HARNESS", harness)
+    monkeypatch.setattr(recorder.data_root, "TRACES", harness / "traces")
     scenario = tmp_path / "laser.toml"
     scenario.write_text('name = "laser"\nframes = 4\nsavestate = "idle.sav"\n'
                         'inputs = [{ frame = 1, buttons = { B = true } }]\n')

@@ -37,7 +37,9 @@ import decode  # noqa: E402
 import dolphin_config  # noqa: E402
 import trace_io  # noqa: E402
 
-ISO = HARNESS / "roms" / "GALE01.iso"
+import data_root  # noqa: E402
+
+ISO = data_root.ROMS / "GALE01.iso"
 
 
 SI_GC_CONTROLLER, SI_NONE = 6, 0   # SerialInterface::SIDevices
@@ -102,7 +104,7 @@ def stop_pid(pid: int) -> None:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scenario", type=Path)
-    ap.add_argument("--out", type=Path, default=HARNESS / "traces", help="output directory")
+    ap.add_argument("--out", type=Path, default=data_root.TRACES, help="output directory")
     ap.add_argument("--speed", type=float, default=0.0, help="Dolphin EmulationSpeed; 0 = unlimited")
     ap.add_argument("--background-input", action="store_true", help="keyboard input without window focus")
     ap.add_argument("--video", default=None, help="video backend, e.g. Null")

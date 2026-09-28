@@ -25,6 +25,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import data_root  # noqa: E402
 import dolphin_config  # noqa: E402
 
 # Measured 2026-09-27 on 12 cores: eight 1,300-tick Sudden Death scenes took
@@ -34,7 +35,7 @@ DEFAULT_JOBS = 8
 
 def record_one(scenario: Path, extra: list[str]) -> tuple[Path, int, float]:
     name = tomllib.loads(scenario.read_text())["name"]
-    log = HERE / "traces" / f"{name}.record.log"
+    log = data_root.TRACES / f"{name}.record.log"
     t0 = time.monotonic()
     with dolphin_config.isolated_user_dir() as user_dir, log.open("wb") as out:
         env = {**os.environ, "DOLPHIN_USER_DIR": str(user_dir)}
@@ -61,7 +62,7 @@ def main(argv: list[str] | None = None) -> None:
         fighters = tomllib.loads(p.read_text()).get("fighters", [])
         if any(f.get("controller") == "human" for f in fighters):
             sys.exit(f"{p.name}: human ports need the windowed app; use record.py")
-    (HERE / "traces").mkdir(exist_ok=True)
+    data_root.TRACES.mkdir(exist_ok=True)
 
     t0 = time.monotonic()
     failures = []

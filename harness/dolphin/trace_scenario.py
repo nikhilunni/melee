@@ -13,7 +13,7 @@ from pathlib import Path
 HERE = Path(globals().get("__file__") or sys._getframe().f_code.co_filename).resolve().parent
 sys.path.insert(0, str(HERE))
 from trace_common import (  # noqa: E402,F401
-    ENTITIES_ADDR, FIGHTER_SIZE, GOBJ_USER_DATA_OFF, REPO, SEED_ADDR,
+    ENTITIES_ADDR, FIGHTER_SIZE, GOBJ_USER_DATA_OFF, REPO, SEED_ADDR, data_root,
     Tracer, event, fighter_bases, memory, read_sidecar, resolve_savestate,
     run, script_dir,
 )

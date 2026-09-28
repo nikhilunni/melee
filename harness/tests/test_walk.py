@@ -176,7 +176,8 @@ def test_script_dir_without_dunder_file():
     # code object still knows its filename, and the caller here is this test.
     assert trace_scenario.script_dir({}) == Path(__file__).resolve().parent
     assert trace_scenario.HERE == here
-    assert trace_scenario.REPO == here.parent.parent
+    assert trace_scenario.REPO == trace_scenario.data_root.ROOT
+    assert trace_scenario.data_root.CODE_ROOT == here.parent.parent
 
 
 def test_savestate_path_resolves_against_repo_root(tmp_path: Path):

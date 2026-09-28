@@ -25,13 +25,14 @@ import time
 import tomllib
 from pathlib import Path
 
+import data_root
 import dolphin_config
 import pads_to_inputs
 import trace_io
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
-ISO = HERE / "roms/GALE01.iso"
+ROOT = data_root.ROOT  # scenario savestate paths are relative to it
+ISO = data_root.ROMS / "GALE01.iso"
 IDLE_SITES = {"hsd_8039EE24+0xDC", "hsd_8039DAD4+0x10A0", "hsd_8039DAD4+0x10F8",
               "hsd_8039930C+0x1D7C", "hsd_8039930C+0x1DE8", "hsd_8039930C+0x1E54",
               "hsd_8039930C+0x1EC0", "ftCo_8008A7A8+0x114"}
@@ -114,7 +115,7 @@ def main(argv: list[str] | None = None) -> None:
     name = scenario["name"]
     frames = scenario["frames"]
     savestate = ROOT / scenario["savestate"]
-    traces = HERE / "traces"
+    traces = data_root.TRACES
     traces.mkdir(exist_ok=True)
 
     human_ports = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
@@ -126,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
     outputs = [traces / f"{name}.tick.{kind}.jsonl" for kind in ("raw", "expected")]
     if human_ports:
         tick_cmd += ["--speed", "1", "--background-input"]
-        keypad = Path(os.environ.setdefault("MELEE_KEYPAD", str(HERE / "roms" / ".remote" / "keypad.json")))
+        keypad = Path(os.environ.setdefault("MELEE_KEYPAD", str(data_root.ROMS / ".remote" / "keypad.json")))
         if not keypad.exists():
             sys.exit(f"start the terminal gamepad first (another terminal): cd {HERE} && uv run python keypad.py")
         print(f"== {name}: HUMAN tick trace ({frames} ticks at speed 1; ports {human_ports} on the real "

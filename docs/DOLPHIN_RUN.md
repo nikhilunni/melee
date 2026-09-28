@@ -24,6 +24,13 @@ permits an early return with the same diagnostic; libtest reports that opted-out
 test as passed, so this mode is not oracle evidence. `tools/merge-check.sh`
 rejects the variable whenever it is set, including empty or `0` values.
 
+A git worktree has no `harness/roms` or `harness/traces` (never symlink or
+copy them). To record with a worktree's own harness scripts (a changed
+tracer, say), set `MELEE_DATA_ROOT` to the main checkout: `harness/data_root.py`
+then reads the disc, savestates and decomp there and writes traces and
+bridged scenarios there, in place, e.g.
+`cd harness && MELEE_DATA_ROOT=$HOME/Projects/melee uv run python record_many.py $HOME/Projects/melee/harness/scenarios/<name>.toml`.
+
 For testing this policy, `MELEE_TEST_DATA_ROOT` replaces `harness/` in the
 shared test preflight only: it expects `roms/` and `traces/` beneath that root.
 It does not change scenario loading, production paths or later asset reads,

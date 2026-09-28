@@ -5,8 +5,10 @@ import argparse
 from pathlib import Path
 import re
 
+import data_root
+
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE.parent / "third_party/melee-decomp/src/melee/it/forward.h"
+SOURCE = data_root.DECOMP / "src/melee/it/forward.h"
 OUTPUT = HERE / "item_kinds.py"
 
 

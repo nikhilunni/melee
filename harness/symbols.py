@@ -9,8 +9,9 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SYMBOLS = ROOT / "third_party" / "melee-decomp" / "config" / "GALE01" / "symbols.txt"
+from data_root import DECOMP  # noqa: E402
+
+SYMBOLS = DECOMP / "config" / "GALE01" / "symbols.txt"
 _LINE = re.compile(r"^(\w+)\s*=\s*\.(\w+):0x([0-9A-Fa-f]+);\s*//\s*(.*)$")
 
 
