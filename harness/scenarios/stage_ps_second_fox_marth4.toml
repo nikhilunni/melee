@@ -1,0 +1,27 @@
+# STAGE-PS witness: Fox (p1) and Marth (p2) idle on Pokemon Stadium from the
+# start_ps_fox_marth4 boundary for 11000 ticks. As stage_ps_idle_fox_marth4
+# the rock form rises (GrPs4.dat read: 21 polls of grStadium_801D42B8) and
+# the base returns; the next base duration expires at tick 10102 and the
+# fire form is chosen. Its GrPs1.dat read completes after only 12 polls,
+# against 23 when fire is the first read of a match (stage_ps_fire_fox_marth4):
+# the emulated disc's latency depends on where the previous read left the
+# head. The trace records each poll's outcome (stage_io, decoded as
+# events.stage_read_completed), which the port replays as an external event.
+name = "stage_ps_second_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 11000
+seed = 1
+stage = "PokemonStadium"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

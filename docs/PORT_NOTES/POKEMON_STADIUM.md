@@ -62,10 +62,18 @@ destruction released a map, and `Ground_801C2FE0` per proc.
 
 `lbFile_80016580` reads the form archive asynchronously; the controller
 polls `grStadium_801D42B8` until the callback (fn_801D4220) clears map 2's
-xC4_b1. The port cannot derive the emulated disc's latency, so
-`LOAD_POLLS` holds the polls measured from retail recordings (the choice's
-`Randi(4)` at 0x801D4640, then the first sparkle 303 ticks after the
-announcement):
+xC4_b1. No game state predicts when (it is the disc's, in Dolphin the
+emulated DVD timing), so the port takes the poll's outcome as an external
+event (docs/ORACLE.md, "External events"): the tick tracer records map 2's
+read state (`stage_io`), `decode.py` marks the tick whose poll succeeded
+(`events.stage_read_completed`), and the gate replays it; a trace without
+it fails closed at the first poll. Standalone runs (explorer, native app,
+dry runs) use the default policy `DEFAULT_READ_POLLS`, the polls measured for
+each file's first read of a match (the choice's `Randi(4)` at 0x801D4640,
+then the first sparkle 303 ticks after the announcement), for every read.
+It is a plausible sample of retail's timing, not a prediction; a fixed table
+keeps it free of hidden state (a seeded draw from the measured range would
+need its own stream in every clone and recording):
 
 | Archive | Form | Polls | Witness |
 |---|---|---|---|
@@ -76,45 +84,45 @@ announcement):
 
 All four were measured at the first transformation (tick 3781), where the
 reads are 10-12 ticks slower than their size alone suggests (a long seek
-from wherever match setup left the head). A later read differs:
-`stage_ps_second_fox_marth4` (11000 ticks, idle) chooses fire at tick 10102
-after the rock form, and GrPs1.dat arrives after 12 polls instead of 23,
-consistent with a short seek from GrPs4.dat. With 12 polls the whole scene
-gates exactly, so the read time is the only gap; the scenario stays
-unregistered. The port fails closed: any form read after the match's first
-is `unimplemented!` in `grStadium_801D4548`, and a saved boundary after a
-read is refused. Modelling it needs the emulator's disc timing (seek from the
-last read's end, transfer by size and disc position) or the completion as a
-recorded external input. Explorer cases (6000 ticks from the boundary) only
-reach the first transformation, but even that read is not a constant. Five
-Fox/Marth explorer matches (PS-MATCH, 2026-09-28,
-`corpus_v3_ps_fox_marth4_{e9943b4ab_p0,ef89b3e70_p2,edb2b114a_p1,e89a89d0e_p2,e75fb4a9a_p1}`)
-read GrPs4.dat (rock) in 22 or 23 polls and GrPs3.dat (water) in 22, against
-the table's 21 and 23. Re-recording the same inputs reproduces the display
-clock exactly, but neither the display phase nor the recorded `vi_frame`
-predicts the count. All five are exact until the first sparkle (ticks
-4106-4108); the three that first exposed the close-up framing are registered
-as 4100-tick `ps_match_screen_*` witnesses.
+from wherever match setup left the head). Recordings vary even there: five
+Fox/Marth explorer matches read GrPs4.dat (rock) in 22 or 23 polls and
+GrPs3.dat (water) in 22. A later read is faster: `stage_ps_second_fox_marth4`
+(11000 ticks, idle) chooses fire at tick 10102 after the rock form, and
+GrPs1.dat arrives after 12 polls. With the recorded completion all of them
+gate exactly and are registered (m5_gate). Modelling the timing instead would
+need Dolphin's disc emulation (seek from the last read's end, transfer by
+size and position, the streamed music).
 
 ## Witnesses
 
 `stage_ps_{idle,fire,water,grass}_fox_marth4` (7200-7500 ticks): each form
 rises under idle fighters and the base returns; particles exact. A short
 walk at tick 130 steers the first choice (found with `melee-sim dry-run`).
+`stage_ps_second_fox_marth4` (11000 ticks) adds a second read; particles
+exact. The five explorer matches
+`corpus_v3_ps_fox_marth4_{e9943b4ab_p0,ef89b3e70_p2,edb2b114a_p1,e89a89d0e_p2,e75fb4a9a_p1}`
+gate exactly over their full length (CORPUS_V3_MATCHES) after three fixes
+they exposed: a grounded fighter in hitlag still rides a moving floor
+(Fighter_procUpdate's mpGetSpeed, fighter.c:2380-2390; the water form's
+windmill), the water form's material-10 splashes (mpLib_803BE118 swaps in
+mpLib_803BD850: footstep 30026, landing 30009), and ftCo_8009A134 reading the
+floor line's flags from the map (a dynamic platform's bit is not in the
+flags cached at contact; Fire Fox on the rock form).
 
 ## Not ported
 
-- The read latency of any form archive other than the match's first read
-  (above; fails closed).
+- A model of the read latency: standalone runs use the default policy.
 - Presentation of the forms (the renderer skips absent models).
 - Saved boundaries mid-transformation or in a transformed form.
 - Screen modes 9 (a player out of stocks, gm_8016B8D4) and 12 (match end).
 
 ## Next boundaries (explorer)
 
-Before rebasing onto ca66006, a 16-seed port-only run from
-`start_ps_fox_marth4` faulted in body tilt (ft_0899.c:109-232) and
-floor-material footsteps (ft_081B.c:1258-1296); main has both now. After the
-rebase a 5-seed run (15 cases) finishes or plays out 10 cases and faults 5
-in `ftCo_StopWall.c:25-26` (a running fighter hitting a wall enters
-StopWall), between ticks 4431 and 5856: the forms' walls.
+With the recorded read completion, a 10-seed batch (seeds after 20, 30
+cases) from `start_ps_fox_marth4` finishes or plays out every case without a
+fault, and its three bridged samples
+(`corpus_v3_ps_fox_marth4_{ee133b82f_p0,ecdf8887e_p1,e2b9e1400_p2}`) gate
+exactly through the first transformation. `particles-diff` still finds
+particle-position differences (no RNG or generator difference) in several
+Pokémon Stadium corpus matches, as it does in registered Final Destination
+ones; the gates do not compare particles.

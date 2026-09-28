@@ -1294,14 +1294,17 @@ fn pokemon_stadium_transformations_match_retail() {
     combat_gate_ticks("stage_ps_fire_fox_marth4", 7500);
     combat_gate_ticks("stage_ps_water_fox_marth4", 7500);
     combat_gate_ticks("stage_ps_grass_fox_marth4", 7500);
+    // A second form read, faster than any first read (12 polls): replayed
+    // from the trace's recorded read completion (docs/ORACLE.md).
+    combat_gate_ticks("stage_ps_second_fox_marth4", 11000);
 }
 
 /// Pokemon Stadium's jumbotron close-up ends when the player's camera bone
 /// leaves the main CObj as last rendered (grStadium_801D32D0): a throw's
 /// graphics 0x514 shakes it with a Medium quake (efAsync kind 8 ->
 /// Camera_RequestQuake), and a tick without a display pass keeps the
-/// previous tick's CObj. Explorer matches cut before the first form read,
-/// whose disc latency varies between recordings (docs/PORT_NOTES/POKEMON_STADIUM.md).
+/// previous tick's CObj. The form reads' completion ticks come from the
+/// traces (docs/PORT_NOTES/POKEMON_STADIUM.md).
 #[test]
 fn pokemon_stadium_close_up_follows_the_rendered_camera() {
     combat_gate_ticks("ps_match_screen_e9943b4ab_p0", 4100);
@@ -2266,7 +2269,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 207] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 215] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2625,6 +2628,22 @@ const CORPUS_V3_MATCHES: [(&str, usize); 207] = [
     ("corpus_v3_fd_mario_fox4_e005a4f43_p0", 2785),
     ("corpus_v3_fd_mario_fox4_e7ff378da_p0", 4594),
     ("corpus_v3_fd_mario_fox4_e0dee256e_p0", 6001),
+    // STAGE-PS: full Pokemon Stadium explorer matches with the form reads'
+    // completion replayed from the trace (22 or 23 polls; the default
+    // policy says 21 for rock, 23 for water); moving floors in hitlag
+    // (Fighter_procUpdate's mpGetSpeed), the water form's splashes
+    // (mpLib_803BD850) and Fire Fox skipping the rock form's dynamic
+    // platform (mpColl_IsOnPlatform reads the line).
+    ("corpus_v3_ps_fox_marth4_e75fb4a9a_p1", 6001),
+    ("corpus_v3_ps_fox_marth4_e89a89d0e_p2", 6001),
+    ("corpus_v3_ps_fox_marth4_e9943b4ab_p0", 6001),
+    ("corpus_v3_ps_fox_marth4_edb2b114a_p1", 5572),
+    ("corpus_v3_ps_fox_marth4_ef89b3e70_p2", 6001),
+    // STAGE-PS: exact samples of a 10-seed batch (seeds after 20) from
+    // start_ps_fox_marth4, through the first transformation.
+    ("corpus_v3_ps_fox_marth4_ee133b82f_p0", 5491),
+    ("corpus_v3_ps_fox_marth4_ecdf8887e_p1", 5085),
+    ("corpus_v3_ps_fox_marth4_e2b9e1400_p2", 4222),
 ];
 
 #[test]
