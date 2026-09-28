@@ -84,6 +84,8 @@ pub struct CombatState {
     pub has_recorded_hit: bool,
     pub stale: super::attack::stale::StaleHistory,
     pub combo: super::attack::combo::ComboState,
+    /// Egg Lay's swallow, for the scene to apply to the captured fighter.
+    pub capture_requests: super::capture_yoshi::CaptureRequests,
 }
 /// ftColl_8007A06C's DmgResult for the phantom log (Fighter.dmg.x1870..x1898).
 #[derive(Clone, Debug)]
@@ -838,6 +840,13 @@ impl Fighter {
         let pair_order = self.core.combat.pair_order.take();
         let light_capture_hit = std::mem::take(&mut self.core.combat.light_capture_hit);
         if let Some(hit) = self.core.combat.pending.take() {
+            match self.core.motion_state.id {
+                // take_dmg_2_cb = ftCo_800BC3D0 (x1828 = 4) with the egg's
+                // dmg.x182c_behavior.
+                S::YoshiEgg => unimplemented!("ftCo_YoshiEgg.c:196-205: a hit on Yoshi's egg"),
+                S::CaptureYoshi => unimplemented!("ftCo_8008EC90: a hit on Egg Lay's catch"),
+                _ => {}
+            }
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
             if hit.descriptor.element == melee_types::HitElement::Electric {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;

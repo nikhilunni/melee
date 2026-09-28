@@ -137,9 +137,10 @@ impl CharacterCallbacks for Yoshi {
             _ => state.into(),
         }
     }
-    /// ftData_SpecialHi[Yoshi]: the Egg Throw. SpecialN/S/Lw
-    /// (ftyoshispecialn.c, ftyoshispecials.c, ftyoshispeciallw.c) are
-    /// unported; name the entry instead of silently staying in the motion.
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_n::grab;
+    /// ftData_SpecialN/Hi[Yoshi]: Egg Lay and the Egg Throw. SpecialS/Lw
+    /// (ftyoshispecials.c, ftyoshispeciallw.c) are unported; name the entry
+    /// instead of silently staying in the motion.
     fn enter_special(
         fighter: &mut Fighter,
         slot: melee_ft::fighter::SpecialSlot,
@@ -149,10 +150,7 @@ impl CharacterCallbacks for Yoshi {
         use melee_ft::fighter::SpecialSlot;
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
-            // ftYs_SpecialN_Enter / ftYs_SpecialAirN_Enter (ftyoshispecialn.c).
-            SpecialSlot::Neutral => {
-                unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
-            }
+            SpecialSlot::Neutral => crate::special_n::enter(fighter, airborne, assets),
             // ftYs_SpecialS_Enter / ftYs_SpecialAirS_Enter (ftyoshispecials.c).
             SpecialSlot::Side => {
                 unimplemented!("ftYs special entry: {slot:?} (airborne: {airborne})")
@@ -286,8 +284,8 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 };
 
 /// ftYs_Init_MotionStateTable[0..25]: egg shield states (actions
-/// 341..345), then the unported SpecialN/SpecialS rows (346..363), then the
-/// Egg Throw (364, 365). SpecialLw (366..368) stays out of the table.
+/// 341..345), Egg Lay (346..355), the unported SpecialS rows (356..363),
+/// then the Egg Throw (364, 365). SpecialLw (366..368) stays out of the table.
 const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 25] = {
     use melee_ft::fighter::{state, ActionId};
     let mut rows = [state::unimplemented_row(); 25];
@@ -302,17 +300,28 @@ const CHARACTER_ROWS: [melee_ft::fighter::MotionRow; 25] = {
         rows[i] = guard[i];
         i += 1;
     }
+    let egg_lay = crate::special_n::rows();
+    i = 0;
+    while i < egg_lay.len() {
+        rows[crate::special_n::FIRST_ROW + i] = egg_lay[i];
+        i += 1;
+    }
     let egg_throw = crate::special_hi::rows();
     rows[23] = egg_throw[0];
     rows[24] = egg_throw[1];
     rows
 };
 
-/// ftYs_Init_MotionStateTable's FtMoveId column: FtMoveId_SpecialHi on the
-/// Egg Throw rows; the shield rows carry none.
+/// ftYs_Init_MotionStateTable's FtMoveId column: FtMoveId_SpecialN on Egg
+/// Lay, FtMoveId_SpecialHi on the Egg Throw rows; the shield rows carry none.
 const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; 25] = {
     use melee_types::combat::StaleMove;
     let mut moves = [None; 25];
+    let mut i = crate::special_n::FIRST_ROW;
+    while i < crate::special_n::FIRST_ROW + 10 {
+        moves[i] = Some(StaleMove::SpecialNeutral);
+        i += 1;
+    }
     moves[23] = Some(StaleMove::SpecialUp);
     moves[24] = Some(StaleMove::SpecialUp);
     moves

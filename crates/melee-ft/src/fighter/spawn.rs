@@ -27,6 +27,8 @@ struct MotionChange<'a> {
     skip_animation_velocity: bool,
     /// Ft_MF_SkipHitStun (bit28): hitstun ownership survives the entry.
     keep_hitstun: bool,
+    /// ftCo_Fall_Enter_YoshiEgg: Fall without ftCo_Fall_Enter's drift clamp.
+    unclamped_fall: bool,
 }
 
 /// Retail motion-entry flags retained across a ground/air counterpart change.
@@ -333,6 +335,83 @@ impl Fighter {
                 ..Default::default()
             },
         )
+    }
+
+    /// Fighter_ChangeMotionState with Ft_MF_KeepGfx (owned effects survive)
+    /// and, when `keep_material`, Ft_MF_SkipMatAnim; SkipModel/SkipColAnim
+    /// have no further port owner. Egg Lay's tongue and swallow entries.
+    pub fn change_motion_state_keeping_graphics(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        start: f32,
+        keep_material: bool,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate: 1.0,
+                preserve_material_animation: keep_material,
+                preserve: MotionPreservation {
+                    effects: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+    }
+
+    /// ftCo_800BBED4's Fighter_ChangeMotionState(YoshiEgg, Ft_MF_Unk06, 0,
+    /// 1, 0, yoshi): the egg plays Yoshi's animation and script, remapped
+    /// like a thrown fighter's, with Yoshi as the throw owner.
+    pub(super) fn enter_borrowed_egg_motion(
+        &mut self,
+        yoshi: u32,
+        assets: &FighterAssets,
+        yoshi_assets: &FighterAssets,
+    ) -> Result<()> {
+        let motion = &yoshi_assets.motions[&super::capture_yoshi::EGG_MOTION];
+        let remap = motion.remap.as_ref().expect("prepared egg skeleton");
+        let source = super::grab_throw::ThrowSource {
+            assets: yoshi_assets,
+            animation: Some((
+                motion,
+                crate::anim::attach::MotionRemapView {
+                    source: &remap.source,
+                    destination: &assets.parts,
+                    source_masks: &remap.source_masks,
+                },
+            )),
+            flags: motion.flags,
+            blend_frames: motion.blend_frames,
+        };
+        self.commands.thrown_by = Some(yoshi);
+        self.change_motion_state_with_source(
+            CommonMotionState::YoshiEgg.into(),
+            assets,
+            0.0,
+            1.0,
+            Some(source),
+        )
+    }
+
+    /// ftCo_Fall_Enter_YoshiEgg (800CC830): Fall with Ft_MF_Unk06 and blend
+    /// -1 (none), without ftCo_Fall_Enter's drift clamp or kept fast fall.
+    pub(super) fn enter_fall_from_egg(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_motion_state_with_options(
+            CommonMotionState::Fall.into(),
+            assets,
+            MotionChange {
+                rate: 1.0,
+                blend_frames: Some(0.0),
+                unclamped_fall: true,
+                ..Default::default()
+            },
+        )?;
+        self.physics.fast_fall = false;
+        Ok(())
     }
 
     /// Fighter_ChangeMotionState with Ft_MF_SkipAnimVel: a mid-animation
@@ -980,6 +1059,9 @@ impl FighterCore {
             self.item_catch_locked = false;
         }
         self.status.grab_exclusions = ledge::GrabExclusions::NONE;
+        self.status.special_grab = None;
+        // fighter.c:1063: fp->invisible.
+        self.effect_state.invisible = false;
         if !change.ground_air {
             self.commands.articles_visible = true;
             self.commands.fighter_hidden = false;
@@ -1297,8 +1379,10 @@ impl FighterCore {
             self.state_data = MotionData::Fall(super::fall::FallState::new(
                 super::fall::FallFamily::Ordinary,
             ));
-            let max = self.attributes.air.air_drift_max;
-            self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-max, max);
+            if !change.unclamped_fall {
+                let max = self.attributes.air.air_drift_max;
+                self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-max, max);
+            }
         }
         if state == CommonMotionState::FallAerial {
             // ftCo_FallAerial_Enter (800CCDA8): no drift clamp or ground conversion.

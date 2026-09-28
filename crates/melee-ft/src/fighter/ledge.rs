@@ -486,7 +486,7 @@ impl Fighter {
 }
 impl FighterCore {
     /// ftCommon_8007E2FC (8007E2FC): clear every movement source.
-    pub(super) fn clear_movement(&mut self) {
+    pub fn clear_movement(&mut self) {
         self.physics.ground_acceleration = 0.0;
         self.physics.secondary_ground_acceleration = 0.0;
         self.physics.animation_velocity = Vec3::ZERO;

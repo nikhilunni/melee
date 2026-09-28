@@ -1,0 +1,30 @@
+# Directed witness: Yoshi's grounded Egg Lay on a standing Fox. Both dash in,
+# Yoshi presses B at 170: the tongue (ftCommon_8007E2D0 category 4) catches
+# Fox at 186 (SpecialN1_0 347 / CaptureYoshi 276, pinned to Yoshi's TransN2),
+# the swallow starts at 189 (SpecialN2_0 349), and at 214 ftCo_800DE2CC
+# releases Fox as a YoshiEgg (277) with 7% and no hitlag; the egg grows
+# (ftCo_800BBCC0), lands at 236 and is still closed at the end.
+name = "yoshi_neutralb_egg_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 112, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 112, port = 1, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 132, port = 1, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

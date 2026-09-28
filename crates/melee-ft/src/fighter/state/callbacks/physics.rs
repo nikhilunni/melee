@@ -158,6 +158,21 @@ pub fn escape_air(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.finish_air_update(assets, wind);
 }
 
+/// ft_80084EEC (80084EEC): gravity and air friction, no drift input.
+pub fn air_friction(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    use crate::physics::airborne;
+    let core = &mut fighter.core;
+    let air = &core.attributes.air;
+    core.physics.self_velocity.y = airborne::gravity(
+        core.physics.self_velocity.y,
+        air.gravity,
+        air.terminal_velocity,
+    );
+    core.physics.animation_velocity.x =
+        airborne::drift_acceleration(core.physics.self_velocity.x, 0.0, 0.0, air);
+    core.finish_air_update(phase.assets, phase.wind);
+}
+
 /// ftData_MotionStateList: ftCo_MS_Pass (244).
 pub fn pass(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_pass(phase)

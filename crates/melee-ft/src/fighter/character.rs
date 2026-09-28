@@ -23,6 +23,7 @@ pub struct CharacterTable {
     pub special_moves: &'static [Option<melee_types::combat::StaleMove>],
     pub enter_special: fn(&mut Fighter, SpecialSlot, bool, &assets::FighterAssets),
     pub accessory: fn(&mut Fighter, &assets::FighterAssets),
+    pub special_grab: SpecialGrab,
     pub take_damage: Option<fn(&mut Fighter)>,
     pub death: Option<fn(&mut Fighter)>,
     pub item_muzzle: fn(&mut Fighter, &assets::FighterAssets) -> Option<(Vec3, f32)>,
@@ -92,6 +93,7 @@ impl CharacterTable {
             enter_aerial: C::ENTER_AERIAL,
             enter_special: C::enter_special,
             accessory: C::accessory,
+            special_grab: C::SPECIAL_GRAB,
             take_damage: C::TAKE_DAMAGE,
             death: C::DEATH,
             item_muzzle: C::item_muzzle,
@@ -369,6 +371,15 @@ pub(super) fn unsupported_float(
     _assets: &assets::FighterAssets,
 ) -> assets::Result<()> {
     unreachable!("float entry for a character whose float predicate never matches");
+}
+
+pub(super) fn unsupported_special_grab(
+    _captor: &mut Fighter,
+    _victim: &mut Fighter,
+    _captor_assets: &assets::FighterAssets,
+    _victim_assets: &assets::FighterAssets,
+) -> assets::Result<()> {
+    unimplemented!("fighter.c:2602-2603: special grab_cb / grabbed_cb");
 }
 
 pub(super) fn unsupported_taunt(

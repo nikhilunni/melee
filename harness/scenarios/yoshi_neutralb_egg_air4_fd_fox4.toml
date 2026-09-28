@@ -1,0 +1,33 @@
+# Directed witness: the aerial Egg Lay. Yoshi short hops at 170 and presses B
+# at 177 (SpecialAirN1_0 351); Fox short hops into the tongue at 178 and is
+# caught at 193 (SpecialAirN1_1 352 / CaptureYoshi). The swallow starts in the
+# air (354), Yoshi lands during it (349 at 214), and the egg laid at 221 runs
+# its full timer: it breaks at 420 into Fall, lands and returns to Wait.
+name = "yoshi_neutralb_egg_air4_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 500
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 112, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 112, port = 1, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 132, port = 1, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 171, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 1, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 179, port = 1, buttons = {  }, raw = {  } },
+  { frame = 177, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 179, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

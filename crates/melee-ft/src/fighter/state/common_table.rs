@@ -1825,6 +1825,31 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 253,
         ..rows[S::CaptureDamageLw as usize]
     };
+    // ftCo_MS_CaptureYoshi = 276 (ftCo_SM_CapturePulledLw): every callback
+    // empty; Yoshi's TransN2 carries the fighter (ftCo_800DB464).
+    rows[S::CaptureYoshi as usize] = MotionRow {
+        action: ActionId(276),
+        id: S::CaptureYoshi,
+        animation: 254,
+        anim: callbacks::animation::capture,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::capture,
+        collision: callbacks::collision::thrown,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_YoshiEgg = 277 (ftCo_SM_YoshiEgg, Yoshi's animation).
+    rows[S::YoshiEgg as usize] = MotionRow {
+        action: ActionId(277),
+        id: S::YoshiEgg,
+        animation: crate::fighter::capture_yoshi::EGG_MOTION,
+        anim: crate::fighter::capture_yoshi::egg_animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::capture_yoshi::egg_physics,
+        collision: crate::fighter::capture_yoshi::egg_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_FlyReflectWall = 247 (ftCo_SM_WallDamage).
     rows[S::FlyReflectWall as usize] = MotionRow {
         action: ActionId(247),

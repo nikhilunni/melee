@@ -899,6 +899,7 @@ impl Runtime {
                     });
                 }
                 if proc == FighterProc::Animation {
+                    grab_pairs::swallow(state, player)?;
                     grab_pairs::escape(state, player)?;
                     grab_pairs::sync_wait(state, player)?;
                     grab_pairs::release(state, player)?;
@@ -1674,6 +1675,7 @@ fn dispatch_fighter(
                 && !f.in_hitlag()
                 && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
                 && !f.item_throw_accessory(assets)
+                && !f.core.egg_accessory()
             {
                 f.character_accessory(assets);
             }

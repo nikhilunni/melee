@@ -33,6 +33,13 @@ pub fn resolve_linked_hit(
     if hit.knockback == 0.0 || fighter.combat.pair_order.is_some() || fighter.status.disabled {
         return Ok(false);
     }
+    if [&fighter.motion_state, &partner.motion_state]
+        .iter()
+        .any(|state| state.id == melee_types::CommonMotionState::CaptureYoshi)
+    {
+        // Yoshi's tongue leaves x221B_b5 clear on both members.
+        unimplemented!("ftCo_8008EC90: a launch through Egg Lay's catch");
+    }
     // ftCo_8008E984 / inlineB0: armour (x221A_b3 with x18A8) is unported.
     assert!(
         fighter.combat.armor == 0.0,

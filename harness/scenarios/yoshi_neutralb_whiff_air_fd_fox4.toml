@@ -1,0 +1,25 @@
+# Directed witness: an aerial Egg Lay far from Fox. Yoshi full hops at 112
+# and presses B at 121 (SpecialAirN1_0 351), falls at its end (Fall 29) and
+# lands at 174.
+name = "yoshi_neutralb_whiff_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 112, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 118, port = 0, buttons = {  }, raw = {  } },
+  { frame = 121, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

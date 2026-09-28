@@ -5,3 +5,4 @@ pub mod init;
 mod material;
 mod shield;
 pub mod special_hi;
+pub mod special_n;

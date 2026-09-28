@@ -171,11 +171,19 @@ pub enum GrabLink {
 /// The scene chooses the strictly nearest candidate in fighter-list order.
 pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32> {
     use melee_types::{GroundOrAir, HitElement};
+    // x221E_b6 / x1A68: Catch arms category 1 (ftCo_Catch.c:115); a
+    // character special arms its own.
+    let category = if matches!(attacker.motion_state.id, S::Catch | S::CatchDash) {
+        1
+    } else if let Some(category) = attacker.status.special_grab {
+        category.0
+    } else {
+        return None;
+    };
     if attacker.status.disabled
-        || !matches!(attacker.motion_state.id, S::Catch | S::CatchDash)
         || victim.status.disabled
         || victim.combat.grab.is_some()
-        || victim.status.grab_exclusions.0 & 1 != 0
+        || victim.status.grab_exclusions.0 & category != 0
         || victim.status.ledge_intangibility != 0
         || victim.status.revival_invincibility != 0
         || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal
@@ -212,6 +220,10 @@ pub fn capture_pair(
     map: &mut melee_mp::CollMap,
     victim_rank: u8,
 ) -> Result<()> {
+    if !matches!(attacker.motion_state.id, S::Catch | S::CatchDash) {
+        let special_grab = attacker.character.table().special_grab;
+        return special_grab(attacker, victim, attacker_assets, victim_assets);
+    }
     attacker.character.catch_variant();
     attacker.core.physics.ground_velocity = 0.0;
     let frame = attacker.core.animation.frame;

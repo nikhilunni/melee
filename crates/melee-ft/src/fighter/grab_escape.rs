@@ -137,30 +137,13 @@ impl CaptureState {
     /// ftCommon_GrabMash (8007DC08): one button decrement and one stick decrement.
     /// Neutral retains each axis's last non-neutral direction.
     fn mash(&mut self, input: &FighterInput, p: &Parameters) -> bool {
-        let buttons = input
-            .pressed
-            .intersects(Buttons::A | Buttons::B | Buttons::XY | Buttons::SHIELD);
-        if buttons {
-            self.timer -= p.mash_decrement;
-        }
-        let previous = self.stick_directions;
-        for (direction, value) in self
-            .stick_directions
-            .iter_mut()
-            .zip([input.current.stick.x, input.current.stick.y])
-        {
-            if value < -p.stick_threshold {
-                *direction = -1;
-            }
-            if value > p.stick_threshold {
-                *direction = 1;
-            }
-        }
-        let stick = previous != self.stick_directions;
-        if stick {
-            self.timer -= p.mash_decrement;
-        }
-        buttons || stick
+        super::capture_yoshi::grab_mash(
+            &mut self.timer,
+            &mut self.stick_directions,
+            input,
+            p.stick_threshold,
+            p.mash_decrement,
+        )
     }
 }
 

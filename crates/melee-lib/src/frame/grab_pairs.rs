@@ -61,7 +61,8 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
 
 pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
     // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during
-    // hitlag. It still runs for a capture pinned in the captor's mouth.
+    // hitlag. It still runs for a capture pinned in the captor's mouth, not
+    // for Egg Lay's catch (ftCo_CaptureYoshi_Phys is empty).
     if with_fighter!(&state.fighters[player], |f| f.status.disabled
         || f.in_hitlag()
         || matches!(
@@ -70,6 +71,7 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownB
                 | melee_types::CommonMotionState::ThrownHi
                 | melee_types::CommonMotionState::ThrownLw
+                | melee_types::CommonMotionState::CaptureYoshi
         ))
     {
         return Ok(());
@@ -450,4 +452,44 @@ pub(super) fn release_partner_hitlag(
         state.effects.set_owner_hitlag(other, false);
     }
     Ok(())
+}
+
+/// ftYs_SpecialN2_0_Anim's inlineA1 acts on the swallowed fighter within
+/// Yoshi's animation callback: hide it (ftCo_800BBC88), then lay it as an
+/// egg (ftCo_800DE2CC, ftCo_800BBED4).
+pub(super) fn swallow(state: &mut InitialState, player: usize) -> Result<()> {
+    use melee_ft::fighter::capture_yoshi;
+    let requests = with_fighter!(&mut state.fighters[player], |f| std::mem::take(
+        &mut f.combat.capture_requests
+    ));
+    if requests == capture_yoshi::CaptureRequests::default() {
+        return Ok(());
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Holding { victim, .. }) = link else {
+        panic!("swallow without victim");
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
+        .expect("live swallowed fighter");
+    let (yoshi, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(yoshi, |y| with_fighter!(victim, |v| {
+        if requests.hide {
+            capture_yoshi::hide_captured(&mut v.core);
+        }
+        match requests.lay_egg {
+            Some(parameters) => capture_yoshi::lay_egg(
+                v,
+                y,
+                &state.assets.fighters[other],
+                &state.assets.fighters[player],
+                &mut state.map,
+                parameters,
+            ),
+            None => Ok(()),
+        }
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
 }

@@ -292,7 +292,7 @@ pub fn release_throw(
 ) -> Result<()> {
     // ftCo_800DE7C0's integer argument is a motion override (90), not an angle.
     let forced_motion = (attacker.motion_state.id == S::ThrowLw).then_some(S::DamageFlyTop);
-    let hit = prepare_throw_release(&mut victim.core, &mut attacker.core, va, aa, map);
+    let hit = release_captured(&mut victim.core, &mut attacker.core, va, aa, map, true);
     // fn_800DE798 restores the owner inside motion entry, before initial
     // damage-animation commands can create throw-owner-only hitboxes.
     victim.begin_damage_reaction(
@@ -313,14 +313,17 @@ pub fn release_throw(
     Ok(())
 }
 
-/// ftCo_800DDDE4 / ftCo_800DE7C0: release geometry and damage data,
-/// before the victim's character-aware motion entry.
-fn prepare_throw_release(
+/// ftCo_800DDDE4 (800DDDE4): release geometry and damage data, before the
+/// victim's character-aware motion entry. `offset` is its third argument:
+/// ftCo_800DE2A8 (throws) places the victim's root at the captor's TransN2
+/// plus the capture offset (x1A70), ftCo_800DE2CC (Egg Lay) at TransN2.
+pub(super) fn release_captured(
     victim: &mut FighterCore,
     attacker: &mut FighterCore,
     va: &FighterAssets,
     aa: &FighterAssets,
     map: &mut melee_mp::CollMap,
+    offset: bool,
 ) -> melee_coll::damage::ReceivedHit {
     attacker.commands.grab_release = false;
     let hit = attacker.commands.throw_hitboxes[0]
@@ -344,15 +347,17 @@ fn prepare_throw_release(
         usize::from(aa.parts.joint(FtPart::TransN2).expect("throw TransN2")),
         Vec3::ZERO,
     );
-    let offset = victim.combat.capture_geometry.root_offset;
-    // retail 800DE084/800DE098: fmadds, separate scale of local Z first.
-    position.x = gekko_math::fma::fmadds(
-        victim.physics.facing,
-        offset.z * victim.player.scale,
-        position.x,
-    );
-    position.y = gekko_math::fma::fmadds(offset.y, victim.player.scale, position.y);
-    position.z = 0.0;
+    if offset {
+        let offset = victim.combat.capture_geometry.root_offset;
+        // retail 800DE084/800DE098: fmadds, separate scale of local Z first.
+        position.x = gekko_math::fma::fmadds(
+            victim.physics.facing,
+            offset.z * victim.player.scale,
+            position.x,
+        );
+        position.y = gekko_math::fma::fmadds(offset.y, victim.player.scale, position.y);
+        position.z = 0.0;
+    }
     let pose = victim.combat.thrown_pose.take().expect("throw pose");
     let xrot =
         victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;

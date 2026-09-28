@@ -938,7 +938,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 86] = [
+const MATRIX_WITNESSES: [(&str, usize); 93] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1037,6 +1037,17 @@ const MATRIX_WITNESSES: [(&str, usize); 86] = [
     // Falco's down-throw lasers: light non-captor hits keep the grab, and
     // Fox's hitlag holds Falco frozen past its own (x1A5C / x2219_b7).
     ("captured_hit_falco_dthrow_laser_fd", 330),
+    // Yoshi's Egg Lay (ftyoshispecialn.c): the tongue's special grab
+    // (category 4), CaptureYoshi on TransN2, the swallow's release
+    // (ftCo_800DE2CC) into YoshiEgg, its growth, mash and timer escapes;
+    // aerial catches and misses.
+    ("yoshi_neutralb_egg_fd_fox4", 400),
+    ("yoshi_neutralb_egg_mash_fd_fox4", 400),
+    ("yoshi_neutralb_egg_air4_fd_fox4", 500),
+    ("yoshi_neutralb_egg_air_fd_fox4", 500),
+    ("yoshi_neutralb_egg_air2_fd_fox4", 500),
+    ("yoshi_neutralb_egg_air3_fd_fox4", 500),
+    ("yoshi_neutralb_whiff_air_fd_fox4", 200),
 ];
 
 #[test]
@@ -2005,7 +2016,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 75] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 77] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2161,6 +2172,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 75] = [
     // Falco's down-throw laser hits the thrown Fox: a light non-captor hit
     // keeps the grab and freezes the captor (ftCo_8008EC90 inlineB1/B2).
     ("corpus_v3_fd_fox_falco4_ec3145eb3_p0", 238),
+    // Yoshi's grounded Egg Lay entry (ftYs_SpecialN_Enter), and a whiffed
+    // one that returns to Wait before the double-jump armor case.
+    ("corpus_v3_fd_yoshi_fox4_ec3145eb3_p1", 93),
+    ("yoshi_armor_fd_fox4_ef89b3e70_p2", 187),
 ];
 
 #[test]

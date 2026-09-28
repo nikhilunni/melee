@@ -7,6 +7,7 @@ pub mod air_dodge;
 pub mod assets;
 pub mod attack;
 pub mod caches;
+pub mod capture_yoshi;
 pub mod clank;
 pub mod color_overlay;
 pub mod commands;
@@ -73,6 +74,13 @@ pub use state::{
 
 /// Per-candidate character defense callback, before ordinary hurtbox contact.
 pub type DefenseContact = fn(&mut Fighter, &mut Fighter, &assets::FighterAssets, usize) -> bool;
+/// A special's grab callbacks: (captor, victim, captor assets, victim assets).
+pub type SpecialGrab = fn(
+    &mut Fighter,
+    &mut Fighter,
+    &assets::FighterAssets,
+    &assets::FighterAssets,
+) -> assets::Result<()>;
 /// Deferred character defense reaction at Fighter_ProcessHit.
 pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
 /// A character shield volume against item hitbox `id` (ftColl_8007925C's
@@ -119,6 +127,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     ) {
         // retail: ftData_SpecialN[kind] etc.
     }
+
+    /// Fighter_UnkProcessGrab (8006CA5C) for a special armed by
+    /// ftCommon_8007E2D0: the character's grab_cb on `captor`, then the
+    /// grabbed_cb it installed on `victim` (a common capture entry).
+    const SPECIAL_GRAB: SpecialGrab = character::unsupported_special_grab;
 
     /// Fighter_8006C80C: character-owned accessory4, after the deferred effect flush.
     fn accessory(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
@@ -510,6 +523,10 @@ pub struct Status {
     pub on_ledge: bool,
     /// x1A6A, ftCommon_8007E2F4: excluded grab categories.
     pub grab_exclusions: ledge::GrabExclusions,
+    /// x221E_b6 and x1A68 for a character special's grab (ftCommon_8007E2D0
+    /// outside Catch): the grab category its catch hitboxes take. Every
+    /// motion change disarms it (fighter.c:1068).
+    pub special_grab: Option<ledge::GrabExclusions>,
     /// x1990: timed intangibility, independent of subaction hurt status.
     pub ledge_intangibility: i32,
     /// Fighter +1994: revival protection allows contact sparks but no damage.
@@ -540,6 +557,7 @@ impl Status {
             ledge_grab_disabled: false,
             on_ledge: false,
             grab_exclusions: ledge::GrabExclusions::NONE,
+            special_grab: None,
             ledge_intangibility: 0,
             revival_invincibility: 0,
             sword_trail: -1,
@@ -781,6 +799,7 @@ pub enum MotionData {
     },
     ItemThrow(item_throw::ItemThrowState),
     Capture(grab_escape::CaptureState),
+    YoshiEgg(capture_yoshi::YoshiEggState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]
     None,

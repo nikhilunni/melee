@@ -461,8 +461,13 @@ impl FighterAssets {
                     .collect::<Result<_>>()?;
                 // Borrowed throw motions own their prepared maps through the existing
                 // MotionRemap storage, keeping resource destruction in the same owners.
-                for throw in super::grab_throw::THROWS {
-                    if let Some(motion) = motions.get_mut(&throw.victim_motion) {
+                // Yoshi's egg (ftCo_SM_YoshiEgg) is borrowed the same way.
+                let borrowed = super::grab_throw::THROWS
+                    .iter()
+                    .map(|throw| throw.victim_motion)
+                    .chain([super::capture_yoshi::EGG_MOTION]);
+                for borrowed in borrowed {
+                    if let Some(motion) = motions.get_mut(&borrowed) {
                         let source = crate::desc::bones::AnimationSource::read(
                             common,
                             motion.flags.source_skeleton(),
