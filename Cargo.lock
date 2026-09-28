@@ -499,6 +499,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
  "melee-types",
 ]
@@ -865,6 +866,15 @@ version = "0.0.1"
 dependencies = [
  "gekko-math",
  "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-climbersice"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
  "melee-it",
  "melee-types",
 ]
@@ -1277,6 +1287,7 @@ dependencies = [
  "hsd-particle",
  "hsd-types",
  "it-bombhei",
+ "it-climbersice",
  "it-drmariopill",
  "it-foxillusion",
  "it-foxlaser",

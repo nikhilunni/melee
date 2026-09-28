@@ -131,7 +131,9 @@ impl ItemCore {
         common: &crate::desc::ItemCommonData,
     ) {
         if !pending.preserve_owner {
+            // No reflector is a player's second fighter.
             self.owner = Some(pending.owner);
+            self.owner_secondary = false;
         }
         self.stale_multiplier = stale;
         // The original attack/instance (stale_source) survives this transfer.

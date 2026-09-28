@@ -7,10 +7,16 @@ use melee_ft::fighter::{
 use melee_types::FighterKind;
 
 /// ftPopo_FighterVars (+222C..+2253), which both climbers carry. OnDeath
-/// clears every field (ftPp_Init_OnDeath, ftNn_Init_OnDeath); the item
-/// GObjs they hold arrive with the specials.
+/// clears every field (ftPp_Init_OnDeath, ftNn_Init_OnDeath).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ClimberVars {
+    /// +222C: the ice block the Ice Shot holds until it launches it.
+    pub ice: bool,
+    /// death2_cb and take_dmg_cb are ftPp_Init_8011F060 (installed with the
+    /// ice block, removed by a motion change or its release).
+    pub ice_callbacks: bool,
+    /// accessory4_cb.
+    pub accessory: crate::climber::Accessory,
     /// ftParts_80074A4C(gobj, 0 | 1, 0): model groups 0 and 1.
     pub model_groups: [i32; 2],
     /// +2234: x2234.
@@ -19,12 +25,12 @@ pub struct ClimberVars {
     /// +2230 bit 0.
     // TODO(meaning): written by the specials.
     pub x2230_b0: bool,
-    /// +224C: cleared by ftCo_Landing_Enter too (ftCo_Landing.c:71).
-    // TODO(meaning): written by the specials.
-    pub x224c: u32,
-    /// +2250.
-    // TODO(meaning): written by the specials.
-    pub x2250: f32,
+    /// +224C: an aerial Ice Shot lifted the climber since it last landed
+    /// (cleared by ftCo_Landing_Enter too, ftCo_Landing.c:71).
+    pub air_ice_shot_used: bool,
+    /// +2250: how far below the usual height a repeated aerial Ice Shot
+    /// makes its block.
+    pub ice_drop: f32,
 }
 impl ClimberVars {
     /// ftPp_Init_OnDeath / ftNn_Init_OnDeath: the shared reset.
@@ -40,8 +46,8 @@ impl ClimberVars {
         }
         self.x2230_b0 = raw[0x2230] & 0x80 != 0;
         self.x2234 = word(0x2234);
-        self.x224c = word(0x224C);
-        self.x2250 = f32::from_bits(word(0x2250));
+        self.air_ice_shot_used = word(0x224C) != 0;
+        self.ice_drop = f32::from_bits(word(0x2250));
     }
 }
 
@@ -59,7 +65,6 @@ pub struct Nana {
     pub vars: ClimberVars,
 }
 
-static SPECIAL_ROWS: [MotionRow; crate::SPECIAL_ROW_COUNT] = crate::special_rows();
 pub static POPO_TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Popo>();
 pub static NANA_TABLE: melee_ft::fighter::CharacterTable =
@@ -74,7 +79,7 @@ macro_rules! climber_callbacks {
             &mut Fighter,
             &FighterAssets,
         ) -> melee_ft::fighter::assets::Result<()> = Fighter::enter_common_taunt;
-        const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+        const SPECIAL_ROWS: &'static [MotionRow] = &crate::special_rows::<Self>();
         const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
             &crate::SPECIAL_MOVES;
         const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
@@ -97,9 +102,60 @@ macro_rules! climber_callbacks {
         }
         /// ftCo_Landing_Enter, ftCo_Landing.c:69-71: FTKIND_POPO/NANA.
         fn on_landing(&mut self, _allow_interrupt: bool) {
-            self.vars.x224c = 0;
+            self.vars.air_ice_shot_used = false;
+        }
+        /// Fighter_ChangeMotionState, fighter.c:1376-1389: death2_cb and
+        /// take_dmg_cb go.
+        fn on_motion_change(&mut self) {
+            self.vars.ice_callbacks = false;
+        }
+        /// ftCommon_8007DB58: take_dmg_cb, ftPp_Init_8011F060.
+        const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles::<Self>);
+        /// ftCo_800D331C: death2_cb, ftPp_Init_8011F060.
+        const DEATH: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles::<Self>);
+        /// Fighter_8006C80C: the special's accessory4, installed until the next
+        /// motion change.
+        fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+            if !f.core.accessory4_armed {
+                return;
+            }
+            match crate::climber::vars::<Self>(f).accessory {
+                crate::climber::Accessory::IceShot => {
+                    crate::special_n::accessory::<Self>(f, assets)
+                }
+                crate::climber::Accessory::None => {}
+            }
+        }
+        /// ftData_SpecialN/S/Hi/Lw[kind] and their aerial tables.
+        fn enter_special(
+            f: &mut Fighter,
+            slot: melee_ft::fighter::SpecialSlot,
+            airborne: bool,
+            assets: &FighterAssets,
+        ) {
+            crate::special::enter::<Self>(f, slot, airborne, assets);
         }
     };
+}
+
+impl crate::climber::Climber for Popo {
+    const LEADER: bool = true;
+    fn vars(&mut self) -> &mut ClimberVars {
+        &mut self.vars
+    }
+    fn attributes(&self) -> &IceClimberAttributes {
+        &self.attributes
+    }
+}
+
+impl crate::climber::Climber for Nana {
+    const LEADER: bool = false;
+    fn vars(&mut self) -> &mut ClimberVars {
+        &mut self.vars
+    }
+    fn attributes(&self) -> &IceClimberAttributes {
+        &self.attributes
+    }
 }
 
 impl CharacterCallbacks for Popo {

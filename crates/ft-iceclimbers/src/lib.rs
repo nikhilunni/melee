@@ -4,7 +4,10 @@
 //! (ftNn_Init_MotionStateTable repeats ftPp_Init_MotionStateTable). Common
 //! states live in melee-ft; Nana's follow logic lives in melee-cpu.
 pub mod attributes;
+pub mod climber;
 pub mod init;
+pub mod special;
+pub mod special_n;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -12,15 +15,18 @@ use melee_ft::fighter::{state, ActionId, MotionRow};
 pub const SPECIAL_ROW_COUNT: usize = 26;
 const FIRST_ACTION: u16 = 341;
 
-/// ftPp_Init_MotionStateTable (ftpopo.c), shared by Nana. No special is
-/// ported yet: every row fails closed with its retail index.
-pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
+/// ftPp_Init_MotionStateTable (ftpopo.c), shared by Nana. A row not yet
+/// ported fails closed with its retail index.
+pub const fn special_rows<C: climber::Climber>() -> [MotionRow; SPECIAL_ROW_COUNT] {
     let mut rows = [state::unimplemented_row(); SPECIAL_ROW_COUNT];
     let mut i = 0;
     while i < SPECIAL_ROW_COUNT {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    let ice_shot = special_n::rows::<C>();
+    rows[0] = ice_shot[0];
+    rows[1] = ice_shot[1];
     rows
 }
 

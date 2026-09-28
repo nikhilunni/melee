@@ -77,12 +77,13 @@ fn landing_and_death_clear_the_climber_vars() {
             model_groups: [0; 2],
             x2234: 3,
             x2230_b0: true,
-            x224c: 7,
-            x2250: 2.5,
+            air_ice_shot_used: true,
+            ice_drop: 2.5,
+            ..ClimberVars::default()
         }
     );
     popo.on_landing(true);
-    assert_eq!(popo.vars.x224c, 0);
+    assert!(!popo.vars.air_ice_shot_used);
     popo.on_reset();
     assert_eq!(popo.vars, ClimberVars::default());
 }

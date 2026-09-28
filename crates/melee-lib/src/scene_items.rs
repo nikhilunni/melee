@@ -33,6 +33,7 @@ melee_it::item_kinds! {
         PichuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::Pichu>,
         PichuThunder: it_pikachu::ThunderBolt<it_pikachu::Pichu>,
         MarioFire: it_mariofire::MarioFire,
+        IceClimberIce: it_climbersice::ClimbersIce,
         MarioCape: it_mariocape::MarioCape,
         DrMarioVitamin: it_drmariopill::DrMarioPill,
         DrMarioSheet: it_mariocape::DrMarioSheet,
@@ -376,6 +377,29 @@ impl Resources {
             kinds.push((ItemKind::LuigiFire, fire));
             visual_archives.push((ItemKind::LuigiFire, a));
         }
+        // ftPp_Init_OnLoad's it_8026B3F8: Popo's ice block, which Nana's
+        // Ice Shot makes too.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlPp.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataPopo").context("Popo fighter data")?;
+            let mut ice = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_climbersice::ARTICLE_INDEX,
+                &it_climbersice::ARTICLE_STATES,
+                it_climbersice::SPECIAL_ATTRIBUTES,
+            )?;
+            // Item_ApplyFallingPhysics reads the common falling spin.
+            ice.fall_spin_degrees = common.fall_spin_degrees;
+            // The generators follow the model root's child.
+            ice.read_pose(&a)
+                .map_err(|e| anyhow::anyhow!("ice block pose: {e}"))?;
+            kinds.push((ItemKind::IceClimberIce, ice));
+            visual_archives.push((ItemKind::IceClimberIce, a));
+        }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
             stage,
@@ -411,15 +435,21 @@ impl Resources {
     }
 }
 
-/// The article `owner` tracks, if any (its kind's owner_report).
+/// The article `owner` (its `secondary` fighter for Nana) tracks, if any
+/// (its kind's owner_report).
 pub fn owner_report(
     pool: &ItemPool,
     resources: &Resources,
     owner: u8,
+    secondary: bool,
 ) -> Option<melee_it::ArticleReport> {
     pool.iter()
-        .filter(|item| item.owner == Some(owner) && !item.destroyed)
-        .find_map(|item| (SceneItems::logic(item.kind).owner_report)(item, resources.get(item.kind)))
+        .filter(|item| {
+            item.owner == Some(owner) && item.owner_secondary == secondary && !item.destroyed
+        })
+        .find_map(|item| {
+            (SceneItems::logic(item.kind).owner_report)(item, resources.get(item.kind))
+        })
 }
 
 /// What `id`'s animation callback sees of its partner: the partner's own
@@ -495,6 +525,9 @@ pub struct RequestOwner<'a> {
     /// s_link > 11): hitboxes a new item's script creates are placed at once
     /// (it_802790C0).
     pub after_hitbox_refresh: bool,
+    /// The requesting proc runs at s_link 9 or later: efAsync_Spawn
+    /// (efasync.c:1458) dispatches a request at once rather than queue it.
+    pub efasync_immediate: bool,
     pub stale_multiplier: f32,
     /// The stage limits item procs read (it_802750F8's immediate procs);
     /// the stage's own spawners never run them.
@@ -527,16 +560,8 @@ pub fn request(
         // it_802B1DF8: one Item_8026AE60 id makes the chain one hit group.
         let hit_group = pool.allocate_hit_group();
         for index in 0..count {
-            let member = request_one_of_chain(
-                pool,
-                resources,
-                map,
-                world,
-                objects,
-                spawn,
-                &owner,
-                rng,
-            );
+            let member =
+                request_one_of_chain(pool, resources, map, world, objects, spawn, &owner, rng);
             if let (Some(previous), Some(member)) = (previous, member) {
                 pool.get_mut(previous).unwrap().partner = Some(member);
             }
@@ -570,7 +595,15 @@ pub fn request(
             kind,
             control,
         } => {
-            pool.control::<SceneItems>(owner, kind, control, resources.get(kind));
+            let secondary = owner_context.secondary && owner_context.slot == Some(owner);
+            pool.control_owned::<SceneItems>(
+                owner,
+                secondary,
+                kind,
+                control,
+                resources.get(kind),
+                owner_context.efasync_immediate,
+            );
             return None;
         }
         ItemRequest::PickUp { item, part } => {
@@ -586,6 +619,7 @@ pub fn request(
                 lifetime,
                 half_life_scale,
             );
+            held.owner_secondary = owner.secondary;
             (SceneItems::logic(held.kind).picked_up)(
                 held,
                 &mut ItemAnimationContext {
@@ -658,7 +692,12 @@ pub fn request(
             let half_life_scale = pool.common().half_life_scale;
             let item = pool
                 .iter_mut()
-                .find(|item| item.owner == Some(slot) && item.kind == kind && item.held)
+                .find(|item| {
+                    item.owner == Some(slot)
+                        && item.owner_secondary == owner_context.secondary
+                        && item.kind == kind
+                        && item.held
+                })
                 .expect("launched article in its owner's hand");
             it_yoshieggthrow::launch(item, &launch, half_life_scale, map, resources.get(kind));
             return None;
@@ -677,9 +716,11 @@ pub fn request(
             let offset = hsd_types::Vec3::new(-t.x, -t.y, -t.z);
             let mut position = hsd_types::Vec3::ZERO;
             hsd_anim::mtx::mtx_mult_vec(&hold, &offset, &mut position);
-            let dropped = pool
-                .iter_mut()
-                .find(|i| i.owner == Some(owner) && i.kind == kind)?;
+            let dropped = pool.iter_mut().find(|i| {
+                i.owner == Some(owner)
+                    && i.owner_secondary == owner_context.secondary
+                    && i.kind == kind
+            })?;
             dropped.throw_speed = 1.0;
             dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
             (SceneItems::logic(kind).dropped)(
@@ -841,6 +882,7 @@ fn request_one_of_chain(
             secondary: owner.secondary,
             held_item: owner.held_item,
             after_hitbox_refresh: owner.after_hitbox_refresh,
+            efasync_immediate: owner.efasync_immediate,
             stale_multiplier: owner.stale_multiplier,
             bounds: owner.bounds,
         },
@@ -907,6 +949,7 @@ pub fn spawn_rain_bomb(
             secondary: false,
             held_item: None,
             after_hitbox_refresh: false,
+            efasync_immediate: false,
             stale_multiplier: 1.0,
             bounds: None,
         },
@@ -917,6 +960,45 @@ pub fn spawn_rain_bomb(
         let item = pool.iter_mut().last().expect("spawned Bob-omb");
         it_bombhei::light(item, resources.get(ItemKind::BombHei), lifetime);
     }
+}
+
+/// The world matrix of a free item's model bone: its sampled pose under the
+/// item's own root, in the rest pose while its motion plays no article
+/// state; a melting ice block's child takes its scale (it_80272F7C).
+pub fn free_item_bone_matrix(
+    resources: &Resources,
+    item: &melee_it::ItemCore,
+    bone: usize,
+) -> hsd_types::Mtx {
+    let pose = resources
+        .get(item.kind)
+        .pose
+        .as_ref()
+        .expect("an item bone without a sampled pose");
+    let root = item.root_srt();
+    let animated = SceneItems::logic(item.kind).states[usize::from(item.motion)].animation_id >= 0;
+    if animated {
+        return pose.bone_matrix(item.article_state, item.pose_steps, bone, root);
+    }
+    let scale = match &item.scratch {
+        melee_it::ItemScratch::ClimbersIce(ice) => Some((1, ice.scale)),
+        _ => None,
+    };
+    pose.rest_bone_matrix(bone, root, scale)
+}
+
+/// The fighter-list index of the fighter owning an item: its player
+/// `owner`, and its second fighter when `secondary` (retail keeps the
+/// owner's GObj).
+pub fn owner_index(
+    fighters: &[crate::scene_fighter::SceneFighter],
+    owner: Option<u8>,
+    secondary: bool,
+) -> Option<usize> {
+    let owner = owner?;
+    fighters
+        .iter()
+        .position(|f| f.player.id == owner && f.player.secondary == secondary)
 }
 
 /// Item_8026A8EC's kind callback reaching the owning fighter: the article
@@ -933,7 +1015,7 @@ pub fn article_destroyed(
     }
     for fighter in fighters.iter_mut() {
         crate::scene_fighter::with_fighter!(fighter, |f| {
-            if f.player.id == owner {
+            if f.player.id == owner && f.player.secondary == item.owner_secondary {
                 f.article_destroyed(item.kind);
             }
         });
@@ -967,6 +1049,7 @@ pub fn spawn_shy_guy(
             secondary: false,
             held_item: None,
             after_hitbox_refresh: false,
+            efasync_immediate: false,
             stale_multiplier: 1.0,
             bounds: None,
         },

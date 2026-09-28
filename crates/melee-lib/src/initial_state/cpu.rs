@@ -43,6 +43,16 @@ pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32]) -> CpuState {
         }
         None
     };
+    let attack_list = |array: usize, len: usize| {
+        let mut list = melee_ft::fighter::cpu::AttackList {
+            len: byte(len),
+            ..Default::default()
+        };
+        for (k, script) in list.scripts.iter_mut().enumerate() {
+            *script = i(array + 4 * k);
+        }
+        list
+    };
     let ring_base = base + (CPU + 0xFC) as u32;
     let ring_index = |offset: usize| -> usize {
         let pointer = w(offset);
@@ -118,8 +128,8 @@ pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32]) -> CpuState {
         x94: i(0x94),
         spawn_position: Vec3::new(f(0x98), f(0x9C), f(0xA0)),
         xa4: i(0xA4),
-        defend_queue_len: byte(0xC8),
-        attack_queue_len: byte(0xEC),
+        allowed_attacks: attack_list(0xA8, 0xC8),
+        excluded_attacks: attack_list(0xCC, 0xEC),
         xf8_b0: bit(0xF8, 0x80),
         xf8_b12: (byte(0xF8) >> 5) & 3,
         xf8_b34: (byte(0xF8) >> 3) & 3,

@@ -362,11 +362,32 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::ChildEffect { id, facing } => {
+                        // HSD_JObjGetChild(root): the model's second joint.
+                        const CHILD: usize = 1;
+                        let matrix = crate::scene_items::free_item_bone_matrix(
+                            &state.assets.items,
+                            item,
+                            CHILD,
+                        );
+                        state
+                            .effects
+                            .spawn_item_bone_generator_facing::<RetailTrig>(
+                                id,
+                                item.id,
+                                CHILD,
+                                matrix,
+                                facing,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )?;
+                    }
                     melee_it::ItemEvent::BoneGenerator { id, bone } => {
                         let matrix = article_bone_matrix(
                             &mut state.fighters,
                             &mut state.article_poses,
                             &state.assets.items.article_skeletons,
+                            &state.assets.items,
                             item,
                             bone,
                             self.frame,
@@ -524,12 +545,11 @@ impl Runtime {
                     let owner = spawn
                         .owner
                         .expect("linked article spawned without an owner");
-                    let (index, fighter) = state
-                        .fighters
-                        .iter()
-                        .enumerate()
-                        .find(|(_, f)| f.player.id == owner)
-                        .expect("linked article owner");
+                    let secondary = state.items.get_mut(sender).unwrap().owner_secondary;
+                    let index =
+                        crate::scene_items::owner_index(&state.fighters, Some(owner), secondary)
+                            .expect("linked article owner");
+                    let fighter = &state.fighters[index];
                     spawn.stale_source = fighter.combat.stale.attack();
                     let stale_multiplier = fighter
                         .combat
@@ -547,6 +567,7 @@ impl Runtime {
                             secondary: fighter.player.secondary,
                             held_item: None,
                             after_hitbox_refresh: s_link > 11,
+                            efasync_immediate: s_link >= 9,
                             stale_multiplier,
                             // An article's own spawn runs no procs at spawn.
                             bounds: None,
@@ -581,19 +602,20 @@ impl Runtime {
         };
         let kind = item.kind;
         let owner_slot = item.owner;
+        let owner_secondary = item.owner_secondary;
         let attack = item.stale_source;
-        let reflected_owner = item.pending_reflection.and_then(|p| {
+        let reflected_owner = item.pending_reflection.map(|p| {
             if p.preserve_owner {
-                item.owner
+                (item.owner, owner_secondary)
             } else {
-                Some(p.owner)
+                (Some(p.owner), false)
             }
         });
-        let stale_for = |slot| {
-            state
-                .fighters
-                .iter()
-                .position(|f| Some(f.player.id) == slot)
+        let stale_for = |owner: Option<(Option<u8>, bool)>| {
+            owner
+                .and_then(|(slot, secondary)| {
+                    crate::scene_items::owner_index(&state.fighters, slot, secondary)
+                })
                 .map_or(1.0, |i| {
                     state.fighters[i].combat.stale.multiplier_for(
                         attack.map(|a| a.move_id),
@@ -601,13 +623,12 @@ impl Runtime {
                     )
                 })
         };
-        let current_stale = stale_for(owner_slot);
+        let current_stale = stale_for(Some((owner_slot, owner_secondary)));
         let reflected_stale = stale_for(reflected_owner);
         item.stale_multiplier = current_stale;
         let owner = owner_slot.and_then(|slot| {
-            let index = state.fighters.iter().position(|fighter| {
-                crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == slot)
-            })?;
+            let index =
+                crate::scene_items::owner_index(&state.fighters, Some(slot), owner_secondary)?;
             Some(crate::scene_fighter::with_fighter!(
                 &mut state.fighters[index],
                 |f| f.item_owner(&state.assets.fighters[index])
@@ -928,11 +949,13 @@ impl Runtime {
                         .offer(holders));
                 }
                 if proc == FighterProc::Animation {
-                    let slot = crate::scene_fighter::with_fighter!(&state.fighters[player], |f| f
-                        .player
-                        .id);
-                    let report =
-                        crate::scene_items::owner_report(&state.items, &state.assets.items, slot);
+                    let slot = &state.fighters[player].player;
+                    let report = crate::scene_items::owner_report(
+                        &state.items,
+                        &state.assets.items,
+                        slot.id,
+                        slot.secondary,
+                    );
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
                         .owned_article =
@@ -1011,10 +1034,11 @@ impl Runtime {
                     state.items.resolve_group_histories();
                     for index in 0..state.items.len() {
                         let (common, item) = state.items.common_and_item_mut(index);
-                        let owner = state
-                            .fighters
-                            .iter()
-                            .position(|f| Some(f.player.id) == item.owner);
+                        let owner = crate::scene_items::owner_index(
+                            &state.fighters,
+                            item.owner,
+                            item.owner_secondary,
+                        );
                         let mark = melee_it::ItemPool::group_victim_mark(item);
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
                             f.detect_item_hit(item, &assets.fighters[player], common)
@@ -1524,13 +1548,15 @@ impl Runtime {
                     };
                     let followed = state.effects.followed_item_bones().count();
                     let Some(item) = state.items.iter().find(|i| i.id == id) else {
-                        index += 1;
+                        // The item is gone: nothing reads its bones.
+                        state.effects.forget_item_bone(id, bone);
                         continue;
                     };
                     let matrix = article_bone_matrix(
                         &mut state.fighters,
                         &mut state.article_poses,
                         &state.assets.items.article_skeletons,
+                        &state.assets.items,
                         item,
                         bone,
                         self.frame,
@@ -1616,6 +1642,7 @@ impl Runtime {
                             secondary: f.player.secondary,
                             held_item: owner.as_ref(),
                             after_hitbox_refresh: row.s_link > 11,
+                            efasync_immediate: row.s_link >= 9,
                             stale_multiplier: f
                                 .combat
                                 .stale
@@ -1691,10 +1718,13 @@ impl Runtime {
         for item in state.items.iter_mut() {
             while !item.sound_requests.is_empty() {
                 let id = item.sound_requests.remove(0);
-                if let Some(fighter) = state.fighters.iter_mut().find(|fighter| {
-                    crate::scene_fighter::with_fighter!(fighter, |f| Some(f.player.id)
-                        == item.owner)
-                }) {
+                if let Some(fighter) = crate::scene_items::owner_index(
+                    &state.fighters,
+                    item.owner,
+                    item.owner_secondary,
+                )
+                .map(|index| &mut state.fighters[index])
+                {
                     crate::scene_fighter::with_fighter!(fighter, |f| {
                         f.commands.footstep_sounds.push(
                             melee_ft::fighter::commands::FootstepSound {
@@ -2160,15 +2190,17 @@ fn article_bone_matrix(
     fighters: &mut [crate::scene_fighter::SceneFighter],
     poses: &mut crate::article_pose::ArticlePoses,
     templates: &[crate::article_pose::ArticleSkeleton],
+    resources: &crate::scene_items::Resources,
     item: &melee_it::ItemCore,
     bone: usize,
     tick: u64,
 ) -> hsd_types::Mtx {
-    let holder = item.owner.expect("a posed article's holder");
-    let fighter = fighters
-        .iter_mut()
-        .find(|f| f.player.id == holder)
+    if !crate::article_pose::ArticlePoses::poses_kind(templates, item.kind) {
+        return crate::scene_items::free_item_bone_matrix(resources, item, bone);
+    }
+    let holder = crate::scene_items::owner_index(fighters, item.owner, item.owner_secondary)
         .expect("a posed article's holder fighter");
+    let fighter = &mut fighters[holder];
     let part = usize::from(item.holder_part);
     let hand = fighter.bone_matrix(Some(part));
     let orientation = fighter.orientation_target(part);
@@ -2185,12 +2217,10 @@ fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
         {
             continue;
         }
-        let holder = item.owner.expect("checked above");
-        let fighter = state
-            .fighters
-            .iter_mut()
-            .find(|f| f.player.id == holder)
-            .expect("a posed article's holder fighter");
+        let holder =
+            crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary)
+                .expect("a posed article's holder fighter");
+        let fighter = &mut state.fighters[holder];
         let part = usize::from(item.holder_part);
         let hand = fighter.bone_matrix(Some(part));
         let orientation = fighter.orientation_target(part);
@@ -3033,7 +3063,8 @@ fn item_hits_by_items(
         // Items sharing an owner (or both unowned) pass each other unless
         // the hitter reaches kindred items (xDCD b7) or the victim was
         // dropped or thrown (xDCE b2). Teams are off.
-        let kindred = victim.owner == other.owner;
+        let kindred =
+            victim.owner == other.owner && victim.owner_secondary == other.owner_secondary;
         if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
             continue;
         }

@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 11] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 12] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -61,6 +61,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 11] = [
         file: "EfPrData.dat",
         table: "effPurinDataTable",
         models: 1,
+    },
+    // Particles only: the ice block's generators 0x36B0..0x36B7
+    // (efsync.c:414-425).
+    CharacterEffectFile {
+        bank: 14,
+        file: "EfIcData.dat",
+        table: "effIceclimberDataTable",
+        models: 0,
     },
     // Model 0x3A98 (efSync 0x4D2): the vegetable pull.
     CharacterEffectFile {

@@ -1261,8 +1261,7 @@ impl Fighter {
         let vertical_velocity = self.core.physics.self_velocity.y;
         // ftCo_80095328, then ftCo_800D7100, after the special check.
         let special = self.air_special_pressed(assets);
-        if !special && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets))
-        {
+        if !special && (self.try_air_item_throw(assets)? || self.try_aerial_item_catch(assets)) {
             return Ok(());
         }
         // ftCo_800CB870: a multijumper's later jumps take held X/Y

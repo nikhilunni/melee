@@ -18,13 +18,20 @@ fn item_bone_joint(item: u32, bone: usize) -> usize {
     FIRST_ITEM_BONE_JOINT + item as usize * ITEM_BONE_STRIDE + bone
 }
 
-/// efAlt rows that attach one generator to a joint (hsd_8039EFAC(0, bank,
-/// generator, jobj)).
-fn bone_generator(id: u16) -> Result<(u8, u32)> {
+/// efAlt/efSync rows that attach one generator to a joint (hsd_8039EFAC(0,
+/// bank, generator, jobj)), and whether the row is
+/// efLib_CreateGenerator_AppSRT_SetFacingDir (an AppSRT turned to the
+/// facing passed with the request).
+fn bone_generator(id: u16) -> Result<(u8, u32, bool)> {
     Ok(match id {
         // efalt.c:68-73: the sparkles along Mario's cape.
-        0x47D => (1, 0x3F0),
-        0x47E => (1, 0x3F1),
+        0x47D => (1, 0x3F0, false),
+        0x47E => (1, 0x3F1, false),
+        // efsync.c:414-422: the Ice Climbers' ice block, made (0x4E9),
+        // launched (0x4EA) and sliding (0x4EB).
+        0x4E9 => (14, 0x36B0, false),
+        0x4EA => (14, 0x36B1, false),
+        0x4EB => (14, 0x36B6, true),
         _ => anyhow::bail!("efAsync kind 0 {id:#x} on an item bone"),
     })
 }
@@ -140,16 +147,57 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let (bank, generator) = bone_generator(id)?;
+        self.spawn_item_bone_generator_facing::<T>(id, item, bone, matrix, None, particles, rng)
+    }
+
+    /// [`Self::spawn_item_bone_generator`] with the facing an
+    /// EF_SPAWN_ATTACH_PARAM request carries; an AppSRT row
+    /// (efLib_CreateGenerator_AppSRT_SetFacingDir, eflib.c:822-835) turns
+    /// its AppSRT a quarter turn toward it.
+    #[allow(clippy::too_many_arguments)] // The item, its bone and the particle state stay separate.
+    pub fn spawn_item_bone_generator_facing<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        bone: usize,
+        matrix: Mtx,
+        facing: Option<f32>,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let (bank, generator, facing_appsrt) = bone_generator(id)?;
         let joint = item_bone_joint(item, bone);
         let mut spawn = SpawnRequest::new(bank, generator, 0);
         spawn.joint = Some((joint, matrix));
+        if facing_appsrt {
+            let facing = facing.expect("an AppSRT facing row without a facing");
+            spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                rotation: Vec3::new(
+                    0.0,
+                    if facing < 0.0 {
+                        -std::f32::consts::FRAC_PI_2
+                    } else {
+                        std::f32::consts::FRAC_PI_2
+                    },
+                    0.0,
+                ),
+                ..Default::default()
+            });
+        }
         self.events.spawn(&spawn, false, false);
         let particle_bank = resources::character_bank(&self.character_banks, i32::from(bank))?;
-        if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some()
-            && !self.item_bones.contains(&(item, bone as u8))
-        {
-            self.item_bones.push((item, bone as u8));
+        let spawned = spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?;
+        if let Some(generator) = spawned {
+            if facing_appsrt {
+                // eflib_create_generator_add_appsrt: PSAPPSRT_UNK_B9/B10
+                // cleared, B11 set.
+                self.events.flags(joint, 0x600, 0x800);
+                let generator = particles.generator_mut(generator).unwrap();
+                generator.flags = (generator.flags & !0x600) | 0x800;
+            }
+            if !self.item_bones.contains(&(item, bone as u8)) {
+                self.item_bones.push((item, bone as u8));
+            }
         }
         Ok(())
     }
@@ -182,7 +230,7 @@ impl Effects {
         particles.update_joint(joint, matrix);
     }
 
-    fn forget_item_bone(&mut self, item: u32, bone: usize) {
+    pub fn forget_item_bone(&mut self, item: u32, bone: usize) {
         let index = self
             .item_bones
             .iter()
@@ -219,12 +267,19 @@ impl Effects {
     /// its particles (hsd_8039D3AC) still reads the JObj, which lives until
     /// the frame's end, so the item stays followed until [`Self::forget_item`].
     pub fn expire_item_joint(&mut self, item: u32, particles: &mut ParticleSystem) {
-        // The walk reaches the model's bones too.
-        loop {
-            let Some(index) = self.item_bones.iter().position(|&(i, _)| i == item) else {
-                break;
-            };
-            let (_, bone) = self.item_bones.remove(index);
+        // The walk reaches the model's bones too. A kept generator goes on
+        // reading its bone while the item lives (the Ice Climbers' ice
+        // falling off an edge), so the bone stays followed until nothing
+        // is attached or the item is gone.
+        let mut bones = [0u8; 64];
+        let mut count = 0;
+        for &(i, bone) in self.item_bones.iter() {
+            if i == item {
+                bones[count] = bone;
+                count += 1;
+            }
+        }
+        for &bone in &bones[..count] {
             let joint = item_bone_joint(item, usize::from(bone));
             self.events.expire_joint(joint);
             particles.expire_joint(joint);

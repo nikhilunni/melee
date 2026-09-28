@@ -32,6 +32,12 @@ pub struct ItemPose {
     /// The root's flags (the root's transform is the item's).
     pub root_flags: u32,
     pub states: Vec<Option<Vec<Vec<LocalSrt>>>>,
+    /// Every joint's locals in the model's rest pose, which a motion state
+    /// without an article state keeps.
+    pub rest: Vec<LocalSrt>,
+    /// Article states whose animation loops, sampled for `LOOP_SAMPLES`
+    /// steps only.
+    pub looping: Vec<usize>,
 }
 
 /// The item's root transform: HSD_JObjSetTranslate / Rotation / Scale on
@@ -57,8 +63,9 @@ impl hsd_anim::mtx::InverseTrig for RetailTrig {
     }
 }
 
-/// Longest animation the sampler plays before giving up on a loop.
-const MAXIMUM_STEPS: usize = 4096;
+/// Steps sampled of an animation that loops (the Ice Climbers' spinning
+/// ice block): ten seconds.
+const LOOP_SAMPLES: usize = 600;
 
 impl ItemPose {
     /// Plays every article state's joint animation from frame zero until it
@@ -78,7 +85,20 @@ impl ItemPose {
             })
             .collect();
         let root_flags = tree.get(root).flags;
+        let rest = joints
+            .iter()
+            .map(|&joint| {
+                let joint = tree.get(joint);
+                LocalSrt {
+                    flags: joint.flags,
+                    rotate: joint.rotate,
+                    scale: joint.scale,
+                    translate: joint.translate,
+                }
+            })
+            .collect();
         let mut states = Vec::with_capacity(visual.states.len());
+        let mut looping = Vec::new();
         for state in &visual.states {
             let Some(anim) = &state.joint else {
                 states.push(None);
@@ -108,7 +128,12 @@ impl ItemPose {
                 if !running {
                     break;
                 }
-                assert!(steps.len() < MAXIMUM_STEPS, "looping item joint animation");
+                if steps.len() == LOOP_SAMPLES {
+                    // A looping animation never stops: its first steps
+                    // serve until the item has played it longer.
+                    looping.push(states.len());
+                    break;
+                }
             }
             states.push(Some(steps));
         }
@@ -116,6 +141,8 @@ impl ItemPose {
             parents,
             root_flags,
             states,
+            rest,
+            looping,
         })
     }
 
@@ -128,8 +155,36 @@ impl ItemPose {
         let samples = self.states[state]
             .as_ref()
             .expect("item pose: article state without a joint animation");
+        assert!(
+            !self.looping.contains(&state) || (steps as usize) <= samples.len(),
+            "item pose: a looping animation played past its samples"
+        );
         let index = (steps.max(1) as usize - 1).min(samples.len() - 1);
-        let locals = &samples[index];
+        self.matrix_from_locals(&samples[index], bone, root)
+    }
+
+    /// `bone`'s world matrix in the rest pose, with `scale` replacing one
+    /// joint's scale (it_80272F7C on that joint).
+    pub fn rest_bone_matrix(&self, bone: usize, root: RootSrt, scale: Option<(usize, f32)>) -> Mtx {
+        let mut locals = [LocalSrt {
+            flags: 0,
+            rotate: Quaternion::default(),
+            scale: Vec3::ZERO,
+            translate: Vec3::ZERO,
+        }; 16];
+        assert!(
+            self.rest.len() <= locals.len(),
+            "item pose: too many joints"
+        );
+        locals[..self.rest.len()].copy_from_slice(&self.rest);
+        if let Some((joint, s)) = scale {
+            locals[joint].scale = Vec3::new(s, s, s);
+        }
+        self.matrix_from_locals(&locals[..self.rest.len()], bone, root)
+    }
+
+    /// HSD_JObjMakeMatrix down the path from the root to `bone`.
+    fn matrix_from_locals(&self, locals: &[LocalSrt], bone: usize, root: RootSrt) -> Mtx {
         // The path from the root down to `bone`.
         let mut path = [0usize; 16];
         let mut depth = 0;

@@ -44,7 +44,7 @@ pub fn arrived(fp: &mut Fighter, scene: &mut Scene) {
         fp.core.cpu.xf8_b5 = false;
         return;
     }
-    if !facing_target(fp, scene) {
+    if !crate::attack::facing_target(fp, scene) {
         crate::behave::turn_around(fp);
         return;
     }
@@ -53,18 +53,4 @@ pub fn arrived(fp: &mut Fighter, scene: &mut Scene) {
         unimplemented!("ftCo_800ACD5C: {:?}'s neutral-special charge", fp.core.kind);
     }
     script::finish_with_neutral_stick(&mut fp.core.cpu);
-}
-
-/// ftCo_800A2C08 (0x800A2C08): no target, the target within 1.0 in x, or
-/// the fighter faces it (fsubs; fmuls, a double compare with >=).
-fn facing_target(fp: &Fighter, scene: &Scene) -> bool {
-    let Some(target) = fp.core.cpu.target.map(|index| scene.fighter(index)) else {
-        return true;
-    };
-    let dx = target.core.physics.position.x - fp.core.physics.position.x;
-    let distance = if dx < 0.0 { -dx } else { dx };
-    if distance < 1.0 {
-        return true;
-    }
-    f64::from(dx * fp.core.physics.facing) >= 0.0
 }

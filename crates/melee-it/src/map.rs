@@ -638,6 +638,57 @@ impl ItemCore {
             gekko_math::fma::fmadds(self.velocity.y, bounce.vertical_scale, bounce.vertical_pop);
     }
 
+    /// it_80272980 (80272980): unless the item is all but still (|vel.x| <
+    /// 0.00001) with a facing, it faces along its horizontal velocity; the
+    /// collision takes the facing (mpCollSetFacingDir).
+    pub fn face_velocity(&mut self) {
+        let speed = gekko_math::msl::fabsf(self.velocity.x);
+        // NaN counts as moving, as fcmpo with bge would.
+        let still = speed.partial_cmp(&0.00001) == Some(core::cmp::Ordering::Less);
+        if !still || self.facing == 0.0 {
+            self.facing = if self.velocity.x >= 0.0 { 1.0 } else { -1.0 };
+        }
+        let facing = if self.facing == -1.0 { -1 } else { 1 };
+        if let Some(collision) = &mut self.collision {
+            melee_mp::set_facing_dir(collision, facing);
+        }
+    }
+
+    /// it_8027770C (8027770C): off a wall the item moves into (a left wall,
+    /// then a right one, whose line becomes xC30), the velocity mirrors in
+    /// the wall's normal; any wall scales it by ItemAttr x58. Retail
+    /// 802777A8..C0: fmuls, then two fmadds for the dot product.
+    pub fn bounce_off_wall(&mut self, assets: &ItemAssets) -> bool {
+        let collision = self.collision.as_ref().expect("item map collision");
+        let env = collision.env_flags as u32;
+        let mut normal = None;
+        if env & collide::LEFT_WALL_MASK != 0 {
+            self.floor_line = collision.left_facing_wall.index;
+            normal = Some(collision.left_facing_wall.normal);
+        }
+        if env & collide::RIGHT_WALL_MASK != 0 {
+            self.floor_line = collision.right_facing_wall.index;
+            normal = Some(collision.right_facing_wall.normal);
+        }
+        let Some(normal) = normal else {
+            return false;
+        };
+        let v = self.velocity;
+        let dot = gekko_math::fma::fmadds(
+            v.z,
+            normal.z,
+            gekko_math::fma::fmadds(v.x, normal.x, v.y * normal.y),
+        );
+        if dot < 0.0 {
+            self.velocity = melee_lb::vector::mirror(self.velocity, normal);
+        }
+        let scale = assets.bounce_scale;
+        self.velocity.x *= scale;
+        self.velocity.y *= scale;
+        self.velocity.z *= scale;
+        true
+    }
+
     /// it_802762BC (802762BC).
     pub fn enter_air(&mut self) {
         self.ground_or_air = GroundOrAir::Air;

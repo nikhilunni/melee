@@ -370,3 +370,16 @@ pub fn arrived(fp: &mut Fighter, scene: &mut Scene, margin: f32) -> bool {
     }
     false
 }
+
+/// ftCo_800A3134 (0x800A3134): 1 bouncing off the floor (DownBoundD/U),
+/// 2 lying on it (DownWaitD/U), else 0.
+pub(crate) fn downed(fp: &Fighter) -> u8 {
+    let m = fp.core.motion_state.action.0;
+    if m == S::DownBoundD as u16 || m == S::DownBoundU as u16 {
+        1
+    } else if m == S::DownWaitD as u16 || m == S::DownWaitU as u16 {
+        2
+    } else {
+        0
+    }
+}

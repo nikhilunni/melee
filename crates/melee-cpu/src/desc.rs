@@ -28,6 +28,21 @@ pub struct AttackEntry {
     pub level: i32,
 }
 
+impl AttackEntry {
+    /// A placeholder for fixed arrays of entries.
+    pub const NONE: Self = Self {
+        script: 0,
+        frames: 0,
+        front: 0.0,
+        back: 0.0,
+        low: 0.0,
+        high: 0.0,
+        weight: 0.0,
+        period: 0,
+        level: 0,
+    };
+}
+
 /// `struct Fighter_804D64FC_t`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CpuData {

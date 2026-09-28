@@ -8,6 +8,28 @@ use hsd_types::{Vec2, Vec3};
 pub const PARTNER_MODE: i32 = 6;
 /// Fighter_x1A88_xFC_t entries in the partner's input ring.
 pub const FOLLOW_ENTRIES: usize = 30;
+/// Up to eight attack scripts (CpuFighter xA8/xC8, xCC/xEC).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AttackList {
+    pub scripts: [i32; 8],
+    pub len: u8,
+}
+impl AttackList {
+    /// `if (len < 8) { array[len] = script; len++; }`.
+    pub fn push(&mut self, script: i32) {
+        if self.len < 8 {
+            self.scripts[usize::from(self.len)] = script;
+            self.len += 1;
+        }
+    }
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
+    pub fn as_slice(&self) -> &[i32] {
+        &self.scripts[..usize::from(self.len)]
+    }
+}
+
 /// ftCo_800A101C: the write cursor starts this far ahead of the read cursor,
 /// the delay with which Nana replays her player's inputs.
 pub const FOLLOW_DELAY: usize = 5;
@@ -125,9 +147,11 @@ pub struct CpuState {
     /// x98: the position at reset.
     pub spawn_position: Vec3,
     pub xa4: i32,
-    /// xC8/xEC: the defend and attack move queue counts.
-    pub defend_queue_len: u8,
-    pub attack_queue_len: u8,
+    /// xA8/xC8: the only attack scripts the attack choice may take this
+    /// time (none: any).
+    pub allowed_attacks: AttackList,
+    /// xCC/xEC: attack scripts the attack choice skips this time.
+    pub excluded_attacks: AttackList,
     /// xF8 bit 0.
     pub xf8_b0: bool,
     /// xF8 bits 1-2.
@@ -316,8 +340,8 @@ impl CpuState {
             x94: 0,
             spawn_position: setup.position,
             xa4: 0,
-            defend_queue_len: 0,
-            attack_queue_len: 0,
+            allowed_attacks: AttackList::default(),
+            excluded_attacks: AttackList::default(),
             xf8_b0: false,
             xf8_b12: 0,
             xf8_b34: 0,

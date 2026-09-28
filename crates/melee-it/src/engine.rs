@@ -58,6 +58,10 @@ pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, jobj): generators that follow the item's own
     /// root JObj (Toad's spores, 0x4D3).
     OwnEffect { id: u16 },
+    /// efAsync kinds 0 (EF_SPAWN_ATTACH) and 3 (EF_SPAWN_ATTACH_PARAM,
+    /// the item's facing) on the model root's child (HSD_JObjGetChild):
+    /// efSync's generators that follow that joint (the Ice Climbers' ice).
+    ChildEffect { id: u16, facing: Option<f32> },
     /// efLib_DestroyAll(gobj): the generators on the item's JObj go, from
     /// the kind's own code (the Thunder Jolt ball's trail) or from
     /// Item_8026A8EC before ItemSwitch's destroy effect (item.c:1991).
@@ -134,6 +138,7 @@ pub enum ItemScratch {
     Turnip(TurnipState),
     Jolt(JoltState),
     Thunder(ThunderState),
+    ClimbersIce(ClimbersIceState),
     None,
 }
 /// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
@@ -159,6 +164,18 @@ pub struct ThunderState {
     pub reached: Vec3,
 }
 /// Item.xDD4_itemVar.pikachujoltground and .pikachujoltair
+/// Item.xDD4_itemVar.climbersice (itclimbersice.c): an ice block.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ClimbersIceState {
+    /// x4: the model child's scale, which shrinks once the block melts.
+    pub scale: f32,
+    /// x8_b0: launched (it_802C16F8). Before that the block is its owner's
+    /// fp->u.pp.x222C.
+    pub launched: bool,
+    /// ItCo's half-life scale, which it_80275158 reads at the launch.
+    pub half_life_scale: f32,
+}
+
 /// (itpikachutjoltground.c / itpikachutjoltair.c): the Thunder Jolt ball
 /// and the crawler it rides along a surface.
 #[derive(Clone, Copy, Debug, Default)]
@@ -399,6 +416,9 @@ pub struct ItemCore {
     pub hit_by: Option<u8>,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
+    /// A fighter proc at s_link 9 or later drives this item (an owner's
+    /// accessory4): efAsync_Spawn dispatches at once (efasync.c:1458).
+    pub efasync_immediate: bool,
     pub events: melee_types::fixed::FixedVec<ItemEvent, 8>,
     /// xDCC b3 (Item_80268B18 sets it): Item_802696CC removes the item past
     /// the blast zones. A Shy Guy clears it until it has been on screen.
@@ -446,7 +466,7 @@ impl ItemCore {
     /// efAsync_Spawn links a queued request at the head, so the flush
     /// (efAsync_QueueFlush) processes the latest request first.
     pub fn spawn_async(&mut self, event: ItemEvent) {
-        if self.past_hitbox_refresh {
+        if self.past_hitbox_refresh || self.efasync_immediate {
             self.events.push(event);
         } else {
             self.queued_events.insert(0, event);
@@ -1017,6 +1037,7 @@ impl ItemPool {
             hit_direction: 0.0,
             hit_by: None,
             queued_events: Default::default(),
+            efasync_immediate: false,
             events: Default::default(),
             blast_zone_checked: true,
             partner: None,
@@ -1164,12 +1185,28 @@ impl ItemPool {
         control: ItemControl,
         assets: &ItemAssets,
     ) {
+        self.control_owned::<D>(owner, false, kind, control, assets, false);
+    }
+    /// [`Self::control`] for the articles of one fighter of the player
+    /// (`secondary`: its Nana). `immediate`: the requesting proc runs at
+    /// s_link 9 or later, where efAsync_Spawn dispatches at once.
+    pub fn control_owned<D: ItemDispatch>(
+        &mut self,
+        owner: u8,
+        secondary: bool,
+        kind: ItemKind,
+        control: ItemControl,
+        assets: &ItemAssets,
+        immediate: bool,
+    ) {
         for item in self
             .items
             .iter_mut()
-            .filter(|i| i.owner == Some(owner) && i.kind == kind)
+            .filter(|i| i.owner == Some(owner) && i.owner_secondary == secondary && i.kind == kind)
         {
+            item.efasync_immediate = immediate;
             (D::logic(kind).control)(item, control, assets);
+            item.efasync_immediate = false;
         }
     }
     pub fn animate<D: ItemDispatch>(

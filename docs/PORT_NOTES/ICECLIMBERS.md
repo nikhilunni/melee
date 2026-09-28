@@ -1,0 +1,52 @@
+# Ice Climbers bring-up
+
+## Two fighters for one player
+
+Player_80031AD0 creates Popo, then Nana (plAllocInfo.b0 → x221F_b4). The
+fighter list, procs and trace keys run Popo, Nana, then the other players
+(`p0`, `p1`, `p2`). The roster (`Setup::roster`) expands a character into
+its fighters (`SceneFighter::partner_for`); the savestate import, cold
+start, frame registrations, camera, interface and presentation all walk the
+roster, and per-player views use the player's own fighter
+(`player_fighter_index`).
+
+Nana is a CPU in a human slot (Player_8003248C: PdPmdat z == 0). The
+CpuGate proc (Fighter_8006ABA0) runs `melee_cpu::think` (ftCo_800B3900) for
+her. Her animation table only authors rows 313..320; ftData_80085FD4 plays
+Popo's figatree for the rest (`AnimationFallback`).
+
+Shared rules for a player's two fighters:
+- overlap pushes (ftCommon_8007E0E4/8007DD7C/8007DFD0): same-player skip,
+  Nana never pushes, Nana's depth step (PlCo +45C/+460);
+- hits and grabs (ftLib_80086FD4, ftcoll.c:1664-1676): never each other; a
+  thrown fighter hits anyone but its grabber's player;
+- a captured fighter takes PlCo +128 of a third party's damage
+  (ftColl_80076ED8 inlineB3);
+- stock standings count players only;
+- items remember whether the owner is the player's second fighter
+  (`owner_secondary`), so each climber's ice block is its own.
+
+## Nana's CPU (melee-cpu)
+
+Ported: upkeep (800B33B0), mode 6's partner decision (800B101C, 800B0760
+seek, 800B0918 record, 800B0AF4 replay), behaviours 0/1 (idle, walk), 2
+(attack: 800B658C, 800B8A9C, 800B4AB0 with its sqrtf-for-t² quirk), 9 (hold,
+800B683C), 10 (arrived, 800ACD5C), 16 (mash, 800AC30C), 18 (steer,
+800AC5A0), the script interpreter (800B3E04), PlCo pData[22], item views,
+mpIsland.
+
+`ftCo_800ADE48`'s tumble branch tests an uninitialised r31 (800AE270); from
+its only reached caller, ftCo_800B0760, r31 holds fp+0x1A88, so the switch
+always happens.
+
+Unported (fail closed): ranged attacks (800B9CBC), edge guarding
+(800B732C), off-island movement (800AB224 tail), recovery (800A96B8),
+Belay recovery (800A8DE4), KO totals (gm_8016C75C), stage routes.
+
+## Specials
+
+Ice Shot (ftPp_SpecialN, it_802C1590/it_802C16F8, `it-climbersice`) is
+exact on both climbers, grounded and aerial, including its generators
+(bank 14, efsync 0x4E9..0x4EB on the block's child joint). efAsync_Spawn
+from an owner's accessory4 (s_link 9) dispatches at once (efasync.c:1458).
+Squall Hammer, Belay and Blizzard remain unported.
