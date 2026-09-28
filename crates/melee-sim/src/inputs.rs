@@ -155,18 +155,23 @@ impl PadScript {
 
     /// Take display passes from another capture of the same inputs (the RNG
     /// ledger or particle dump run): each Dolphin run has its own VI timing,
-    /// and particle order follows the run being compared.
+    /// and particle order follows the run being compared. A capture that
+    /// recorded no display clock (ledgers before `ps_frame`) keeps the
+    /// script's own.
     pub fn with_display_from(mut self, path: &Path) -> Result<Self> {
         let reader =
             melee_trace_io::open(path).with_context(|| format!("opening {}", path.display()))?;
-        self.display_clock.clear();
+        let mut clock = Vec::new();
         for line in reader.lines() {
             let line = line?;
             if line.trim().is_empty() {
                 continue;
             }
             let record: Json = serde_json::from_str(&line)?;
-            self.display_clock.push(display_clock_of(&record));
+            clock.push(display_clock_of(&record));
+        }
+        if clock.iter().any(Option::is_some) {
+            self.display_clock = clock;
         }
         Ok(self)
     }

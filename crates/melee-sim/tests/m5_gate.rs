@@ -122,9 +122,15 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
             49
         }
     );
+    // The ledger run's own display clock, as `melee-sim particle-sites`
+    // reads it: each Dolphin run renders on its own ticks (host timing), and
+    // the particle order the ledger's draws follow is re-sorted only then.
     let mut simulation = Simulation::with_inputs(
         InitialState::from_savestate_traces(&scenario).unwrap(),
-        trace::pad_script(&scenario).unwrap(),
+        trace::pad_script(&scenario)
+            .unwrap()
+            .with_display_from(&ledger_path)
+            .unwrap(),
     );
     let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
     assert_eq!(ledger.lines().count(), ticks);
@@ -941,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 343] = [
+const MATRIX_WITNESSES: [(&str, usize); 344] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1316,6 +1322,7 @@ const MATRIX_WITNESSES: [(&str, usize); 343] = [
     ("samus_x_e9943b4ab_p0", 349),
     ("samus_x_e573e2d95_p0", 352),
     ("samus_missile_homing_fd_fox4", 260),
+    ("samus_missile_super_fd_fox4", 300),
     ("samus_missile_air_fd_fox4", 300),
     ("samus_missile_super_air_fd_fox4", 300),
     ("samus_missile_shine_fd_fox4", 300),
