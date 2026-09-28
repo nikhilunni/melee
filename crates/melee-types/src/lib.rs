@@ -44,7 +44,7 @@ macro_rules! c_enum {
     ) => {
         $(#[$meta])*
         #[repr($repr)]
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash)]
         $vis enum $name {
             $(
                 $(#[$vmeta])*
@@ -55,6 +55,18 @@ macro_rules! c_enum {
         impl $name {
             /// Every variant, in header declaration order.
             pub const ALL: &'static [$name] = &[ $( $name::$variant, )* ];
+        }
+
+        // Hand-written rather than derived: the derived body is a one-call
+        // match that rustc copies into every crate formatting the enum (six
+        // 4.7 KB copies for `ItemKind`). Output is identical to the derive.
+        impl core::fmt::Debug for $name {
+            #[inline(never)]
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str(match self {
+                    $( $name::$variant => stringify!($variant), )*
+                })
+            }
         }
 
         impl From<$name> for $repr {
