@@ -857,7 +857,7 @@ impl FighterCore {
             player.scale,
             self.attributes.size.weight,
         );
-        self.collision = super::EnvironmentCollision::new(collision);
+        self.collision = super::EnvironmentCollision::new(collision, map.grkind());
         self.state_data = MotionData::None;
         // Fighter_UnkInitReset retains the costume geometry computed once by
         // Fighter_UnkUpdateVecFromBones_8006876C, including across stock losses.

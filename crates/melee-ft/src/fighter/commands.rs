@@ -132,7 +132,16 @@ pub struct CommandState {
     pub footstep_sounds: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80072CD8 (0x80072CD8) requests this step, before the floor's
     /// terrain decides which sounds they make (see `resolve_terrain_footsteps`).
-    pub terrain_footsteps: FixedVec<FootstepSound, COMMAND_REQUEST_CAPACITY>,
+    pub terrain_footsteps: FixedVec<TerrainStep, COMMAND_REQUEST_CAPACITY>,
+}
+/// An ftAction_80072CD8 request: its sound, the foot its terrain effect uses,
+/// and the number of graphics commands queued before it (both reach
+/// ftCo_8009F834 in script order).
+#[derive(Clone, Debug)]
+pub struct TerrainStep {
+    pub sound: FootstepSound,
+    pub alt_foot: bool,
+    pub graphics_before: usize,
 }
 impl CommandState {
     /// ft_80089228 (80089228): stale a hitbox's damage for the current move.
@@ -395,6 +404,7 @@ impl CommandState {
                     volume,
                     pan,
                     terrain,
+                    alt_foot,
                 } => {
                     if !seeking {
                         let channel = match behavior {
@@ -416,7 +426,11 @@ impl CommandState {
                             pan: *pan,
                         };
                         if *terrain {
-                            self.terrain_footsteps.push(sound);
+                            self.terrain_footsteps.push(TerrainStep {
+                                sound,
+                                alt_foot: *alt_foot,
+                                graphics_before: self.graphics.len(),
+                            });
                         } else {
                             self.footstep_sounds.push(sound);
                         }

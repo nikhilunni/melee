@@ -93,6 +93,9 @@ pub enum Command {
         volume: u8,
         pan: u8,
         terrain: bool,
+        /// `footstep_fx_0.use_alt_bone` (lb/types.h:881): the terrain effect
+        /// goes to the second foot.
+        alt_foot: bool,
     },
     Wait(f32),
     AtFrame(f32),

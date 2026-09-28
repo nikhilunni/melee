@@ -60,6 +60,7 @@ impl Fighter {
         };
         self.change_shield_break_recovery(state, assets)?;
         let normal = self.core.collision.data.floor.normal;
+        let effect = self.core.bound_effect();
         // ftCo_800978D4: async kind 4, then ftCo_800976A4's landing dust.
         self.core
             .effects
@@ -74,7 +75,7 @@ impl Fighter {
             .commands
             .graphics
             .push(melee_types::combat::GraphicsCommand {
-                id: 0x407,
+                id: effect,
                 bone: 0,
                 common_bone: false,
                 item_bone: false,

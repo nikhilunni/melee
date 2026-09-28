@@ -49,7 +49,11 @@ impl SchedulerResume {
         }
         Continuation::Invoke
     }
-    pub(super) fn restore(saved: &SavedPose, match_start: bool) -> Result<Self> {
+    pub(super) fn restore(
+        saved: &SavedPose,
+        match_start: bool,
+        stage: melee_types::GrKind,
+    ) -> Result<Self> {
         // gobj.c:19-21,101-115: link, current proc, next proc. The list-head
         // array is INDIRECT through 804D7840 (gobj.c:17,103), not 804D7834.
         let current = word(saved.bytes(0x804D_7838, 4), 0);
@@ -82,9 +86,9 @@ impl SchedulerResume {
             word(saved.bytes(0x804C_E3E4, 4), 0) == 0,
             "pending scheduler mutation unsupported"
         );
-        let completed = saved_prefix(saved, link, current)?;
+        let completed = saved_prefix(saved, link, current, stage)?;
         let owner = word(raw, 0x10);
-        let key = key(saved, raw)?;
+        let key = key(saved, raw, stage)?;
         let action = continuation(saved, link, key, owner)?;
         Ok(Self {
             s_link: link as u8,
@@ -93,7 +97,12 @@ impl SchedulerResume {
         })
     }
 }
-fn saved_prefix(saved: &SavedPose, link: u32, current: u32) -> Result<Vec<ProcKey>> {
+fn saved_prefix(
+    saved: &SavedPose,
+    link: u32,
+    current: u32,
+    stage: melee_types::GrKind,
+) -> Result<Vec<ProcKey>> {
     let heads = word(saved.bytes(0x804D_7840, 4), 0);
     let mut pointer = word(saved.bytes(heads + link * 4, 4), 0);
     let mut previous = 0;
@@ -111,7 +120,7 @@ fn saved_prefix(saved: &SavedPose, link: u32, current: u32) -> Result<Vec<ProcKe
         if pointer == current {
             found = true;
         } else if !found {
-            completed.push(key(saved, proc)?);
+            completed.push(key(saved, proc, stage)?);
         }
         previous = pointer;
         pointer = word(proc, 4);
@@ -251,11 +260,18 @@ fn callback_boundary(pc: u32, callback: u32) -> Option<Continuation> {
     }
 }
 
-fn key(saved: &SavedPose, proc: &[u8]) -> Result<ProcKey> {
+fn key(saved: &SavedPose, proc: &[u8], stage: melee_types::GrKind) -> Result<ProcKey> {
     let owner = saved.bytes(word(proc, 0x10), 0x30);
     let p_link = owner[2];
     let user = word(owner, 0x2C);
     let object = match p_link {
+        5 if user != 0 && stage == melee_types::GrKind::Izumi => {
+            // Fountain of Dreams' star (map -1) and its two map-4 platforms,
+            // told apart by their collision joint (gp+C8).
+            let map = word(saved.bytes(user + 0x14, 4), 0) as i32;
+            let joint = i16::from_be_bytes(saved.bytes(user + 0xC8, 2).try_into().unwrap());
+            melee_gr::izumi::procs::saved_key(map, joint).context("map id")?
+        }
         5 if user != 0 => u8::try_from(word(saved.bytes(user + 0x14, 4), 0)).context("map id")?,
         8 => saved.bytes(user + 12, 1)[0],
         15 if word(proc, 0x14) == 0x802F_9410 => saved.bytes(user, 1)[0],
@@ -378,17 +394,24 @@ mod tests {
     #[test]
     fn saved_list_checks_both_directions_and_current_membership() {
         let valid = memory(0x8000_0300, 0x8000_0200);
-        assert_eq!(saved_prefix(&valid, 1, 0x8000_0300).unwrap(), [fighter(0)]);
-        assert!(saved_prefix(&valid, 1, 0x8000_0600)
-            .unwrap_err()
-            .to_string()
-            .contains("absent"));
+        assert_eq!(
+            saved_prefix(&valid, 1, 0x8000_0300, melee_types::GrKind::Last).unwrap(),
+            [fighter(0)]
+        );
+        assert!(
+            saved_prefix(&valid, 1, 0x8000_0600, melee_types::GrKind::Last)
+                .unwrap_err()
+                .to_string()
+                .contains("absent")
+        );
         let broken = memory(0x8000_0300, 0);
-        assert!(saved_prefix(&broken, 1, 0x8000_0300)
-            .unwrap_err()
-            .to_string()
-            .contains("inconsistent"));
+        assert!(
+            saved_prefix(&broken, 1, 0x8000_0300, melee_types::GrKind::Last)
+                .unwrap_err()
+                .to_string()
+                .contains("inconsistent")
+        );
         let cycle = memory(0x8000_0200, 0);
-        assert!(saved_prefix(&cycle, 1, 0x8000_0200).is_err());
+        assert!(saved_prefix(&cycle, 1, 0x8000_0200, melee_types::GrKind::Last).is_err());
     }
 }

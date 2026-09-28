@@ -1,0 +1,22 @@
+# STAGE-FOD witness: Fox (p1) and Marth (p2) idle on Fountain of Dreams from
+# the start_fod_fox_marth4 boundary for 6000 ticks. Both start on the side
+# platforms (grIzumi_801CC358), which wait 600-1080 frames, then step up or
+# down, submerge or wait again; the fighters ride them.
+name = "stage_fod_idle_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_fod_fox_marth4.sav"
+frames = 6000
+seed = 1
+stage = "FountainOfDreams"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

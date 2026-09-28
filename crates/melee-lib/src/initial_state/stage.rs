@@ -128,6 +128,7 @@ pub(super) fn restore_scene(
         }
         melee_types::GrKind::Story => restore_story(saved, assets),
         melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
+        melee_types::GrKind::Izumi => super::stage_izumi::restore(saved, assets, particles),
         _ => unreachable!("registered stage descriptor"),
     }
 }
@@ -261,7 +262,7 @@ fn restore_battlefield(
     }
     Ok((SceneStage::Battlefield(controller.unwrap()), animations))
 }
-fn saved_joints(saved: &SavedPose, pointer: u32, joints: &mut Vec<u32>) {
+pub(super) fn saved_joints(saved: &SavedPose, pointer: u32, joints: &mut Vec<u32>) {
     if pointer == 0 {
         return;
     }

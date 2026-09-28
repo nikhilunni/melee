@@ -167,11 +167,12 @@ impl Fighter {
                 floor_angle,
             });
         // ftCo_800976A4 -> ftCo_8009F834: three draws, even for zero ranges.
+        let effect = self.core.bound_effect();
         self.core
             .commands
             .graphics
             .push(melee_types::combat::GraphicsCommand {
-                id: 0x407,
+                id: effect,
                 bone: 0,
                 common_bone: false,
                 item_bone: false,
@@ -432,5 +433,16 @@ impl FighterCore {
             integrate::integrate_velocity(&mut self.physics);
             integrate::integrate_environment(&mut self.physics, None, wind);
         }
+    }
+}
+
+impl super::FighterCore {
+    /// ftCo_800976A4 (0x800976A4)'s effect: 0x407 unless the floor's terrain
+    /// replaces it (ft_80084C74).
+    pub(super) fn bound_effect(&self) -> u16 {
+        self.collision
+            .floor_terrain_effects(self.physics.ground_or_air)
+            .bound
+            .map_or(0x407, |effect| effect as u16)
     }
 }

@@ -26,6 +26,7 @@ use melee_types::mp::{
     coll_data_x130, collide, line_flag, line_kind, CollData, EcbSourceKind, EcbSourceParams,
     FtCollisionBox, FtEcb, MpLibGroundEnum, SurfaceData, NO_ID,
 };
+use melee_types::GrKind;
 
 use crate::map::{CollMap, F32_MAX};
 use crate::query::LineFilter;
@@ -147,8 +148,9 @@ const fn footstep(sound: i32, keeps_sound: bool) -> TerrainFootstep {
     }
 }
 /// The shared per-material rows (mpLib_803BD3D8..803BDBC0, mplib.c:92-235)
-/// every stage the port loads uses. Fountain of Dreams, Pokemon Stadium,
-/// Icicle Mountain and the Shrine route swap in rows with effects.
+/// every stage the port loads uses; Fountain of Dreams' water row differs
+/// only in its effects ([`terrain_effects`]). Pokemon Stadium, Icicle
+/// Mountain and the Shrine route swap in other rows with effects.
 pub const TERRAIN_FOOTSTEPS: [TerrainFootstep; 20] = [
     footstep(-1, false),
     footstep(0x161, true),
@@ -173,14 +175,51 @@ pub const TERRAIN_FOOTSTEPS: [TerrainFootstep; 20] = [
 ];
 
 /// `mpLib_80056A1C` / `mpLib_80056A54` (mplib.c:5160-5174): the footstep
-/// row of a line's material byte.
-pub fn terrain_footstep(flags: u32) -> TerrainFootstep {
+/// row of a line's material byte on `stage` (`stage_info.grkind`).
+pub fn terrain_footstep(stage: GrKind, flags: u32) -> TerrainFootstep {
+    TerrainFootstep {
+        effect: terrain_effects(stage, flags).footstep,
+        ..TERRAIN_FOOTSTEPS[terrain_material(flags)]
+    }
+}
+
+/// A terrain row's effect ids (ftCo_8009F834): `x14[1]` for footsteps
+/// (ft_80084BFC), `x30[1]` for landings (ft_80084C38, ftAction_80072E4C)
+/// and `x4C[1]` for down-bounds (ft_80084C74, ftCo_800976A4).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TerrainEffects {
+    pub footstep: Option<u32>,
+    pub landing: Option<u32>,
+    pub bound: Option<u32>,
+}
+/// Fountain of Dreams' material 10, the fountain's water: its list
+/// (mpLib_803BDFD8) swaps mpLib_803BD748 for mpLib_803BD7A0, whose rows
+/// add stage-bank splashes 30007, 30008 and 30011.
+const IZUMI_WATER: usize = 10;
+const IZUMI_WATER_EFFECTS: TerrainEffects = TerrainEffects {
+    footstep: Some(0x7537),
+    landing: Some(0x7538),
+    bound: Some(0x753B),
+};
+
+/// `mpLib_80056A54` / `mpLib_80056AC4` / `mpLib_80056B34` (mplib.c:5168-5208):
+/// the effects of a line's material on `stage`. No other row of the stages
+/// the port loads has one.
+pub fn terrain_effects(stage: GrKind, flags: u32) -> TerrainEffects {
+    match (stage, terrain_material(flags)) {
+        (GrKind::Izumi, IZUMI_WATER) => IZUMI_WATER_EFFECTS,
+        _ => TerrainEffects::default(),
+    }
+}
+
+/// `(u8) flags`, the index the terrain tables take; retail has no bound check.
+fn terrain_material(flags: u32) -> usize {
     let idx = (flags & line_flag::MATERIAL_MASK) as usize;
     assert!(
         idx < TERRAIN_FOOTSTEPS.len(),
         "mpLib_80056A1C: material {idx} out of table"
     );
-    TERRAIN_FOOTSTEPS[idx]
+    idx
 }
 
 // ---------------------------------------------------------------------------

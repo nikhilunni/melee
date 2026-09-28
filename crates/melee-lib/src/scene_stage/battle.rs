@@ -58,7 +58,7 @@ pub(crate) fn run_proc(
     map: u8,
     draws: &mut DrawLog,
     world: &mut hsd_gobj::TaggedWorld,
-    objects: &mut [Option<hsd_gobj::GObjId>; 10],
+    objects: &mut crate::scene_stage::StageObjects,
 ) -> Result<()> {
     match map {
         TRANSITION_MAP => {}
@@ -145,7 +145,7 @@ fn create_background(
     map: u8,
     draws: &mut DrawLog,
     world: &mut hsd_gobj::TaggedWorld,
-    objects: &mut [Option<hsd_gobj::GObjId>; 10],
+    objects: &mut crate::scene_stage::StageObjects,
 ) -> Result<()> {
     let object = world.create(3, 5, 0);
     for (index, link) in [1, 4, 4].into_iter().enumerate() {

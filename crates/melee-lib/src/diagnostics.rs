@@ -6,7 +6,7 @@ pub use crate::frame::{LocalSrt, Simulation};
 pub use crate::initial_state::InitialState;
 pub use crate::scene_stage::{
     descriptor as stage_descriptor, StageDescriptor, BATTLEFIELD, DREAM_LAND, FINAL_DESTINATION,
-    YOSHIS_STORY,
+    FOUNTAIN_OF_DREAMS, YOSHIS_STORY,
 };
 pub use crate::setup::{PlayerSetup, Setup};
 use std::path::{Path, PathBuf};

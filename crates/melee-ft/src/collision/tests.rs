@@ -113,7 +113,7 @@ fn wait_collision_distinguishes_support_teeter_fall_and_backward_nudge() {
             flags: line_flag::LEDGE,
             normal: map.line_get_normal(0),
         };
-        let mut environment = EnvironmentCollision::new(cd);
+        let mut environment = EnvironmentCollision::new(cd, map.grkind());
         motion.position.x = 90.0;
         motion.player_nudge.x = nudge;
         let actual = map_wait(
@@ -147,7 +147,7 @@ fn map_snaps_from_perturbed_height_and_unlocks_ecb() {
         normal: map.line_get_normal(0),
     };
     cd.x130_flags |= coll_data_x130::LOCKED;
-    let mut environment = EnvironmentCollision::new(cd);
+    let mut environment = EnvironmentCollision::new(cd, map.grkind());
     environment.lock_frames = 1;
     environment.collision_flag = true;
     assert_eq!(

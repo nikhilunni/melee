@@ -300,11 +300,18 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
             .unwrap()
             .images
             .clone();
-        assert!(
-            generator.appsrt_id.is_none(),
-            "AppSRT execution unsupported"
-        );
         generators.push(generator);
+    }
+    let transforms = restore_appsrts(record);
+    // Runtime AppSRT identity is the id of the generator that allocated it
+    // (ParticleSystem::insert_generator); the dump's is first-encounter order.
+    let mut owners = vec![None; transforms.len()];
+    for generator in &mut generators {
+        if let Some(index) = generator.appsrt_id {
+            let owner = *owners[index].get_or_insert(generator.id);
+            generator.appsrt_id = Some(owner);
+            generator.application_transform = Some(std::sync::Arc::clone(&transforms[index]));
+        }
     }
     let particles = std::array::from_fn(|link| {
         let prefix = format!("particles.link[{link}]");
@@ -330,7 +337,13 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
                     .unwrap()
                     .images
                     .clone();
-                assert!(particle.appsrt_id.is_none(), "AppSRT execution unsupported");
+                if let Some(index) = particle.appsrt_id {
+                    particle.appsrt_id = Some(owners[index].expect(
+                        "AppSRT held only by particles: its generator identity is not imported",
+                    ));
+                    particle.application_transform =
+                        Some(std::sync::Arc::clone(&transforms[index]));
+                }
                 particle
             })
             .collect()
@@ -358,6 +371,51 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
         ),
     );
     system
+}
+
+/// `particles.appsrt[i]`, as appsrt_fields writes them.
+fn restore_appsrts(
+    record: &Record,
+) -> Vec<std::sync::Arc<hsd_particle::appsrt::ApplicationTransform>> {
+    use hsd_types::{Mtx, Vec3};
+    (0..)
+        .map_while(|index| {
+            let prefix = format!("particles.appsrt[{index}]");
+            record.state.get(&format!("{prefix}.id"))?;
+            let float = |name: String| f32::decode(&record.state[&format!("{prefix}.{name}")]);
+            let array = |name: &str, i: usize| float(format!("{name}[{i}]"));
+            let vec3 = |name: &str| Vec3::new(array(name, 0), array(name, 1), array(name, 2));
+            let mut model_view_matrix = Mtx([[0.0; 4]; 3]);
+            model_view_matrix.0[0][0] = float("scale_x".into());
+            model_view_matrix.0[0][1] = float("scale_y".into());
+            let mut axis_scale = [0.0; 2];
+            for i in 0..12 {
+                let value = array("unknown_float", i);
+                if i < 10 {
+                    model_view_matrix.0[(i + 2) / 4][(i + 2) % 4] = value;
+                } else {
+                    axis_scale[i - 10] = value;
+                }
+            }
+            Some(std::sync::Arc::new(
+                hsd_particle::appsrt::ApplicationTransform {
+                    translation: vec3("translation"),
+                    rotation: vec3("rotation"),
+                    rotation_w: array("rotation", 3),
+                    scale: vec3("scale"),
+                    status: i32::from(uint(record, &format!("{prefix}.status")) as u8),
+                    frame_number: uint(record, &format!("{prefix}.frame_count")) as u8,
+                    model_matrix: Mtx(std::array::from_fn(|r| {
+                        std::array::from_fn(|c| array("matrix", r * 4 + c))
+                    })),
+                    model_view_matrix,
+                    axis_scale,
+                    family_id: uint(record, &format!("{prefix}.id")) as u16,
+                    camera_facing: uint(record, &format!("{prefix}.unknown_byte")) as u8,
+                },
+            ))
+        })
+        .collect()
 }
 
 fn appsrt_fields(

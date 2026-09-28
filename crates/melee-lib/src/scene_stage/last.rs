@@ -44,7 +44,7 @@ pub(crate) fn run_proc(
     map: u8,
     draws: &mut DrawLog,
     world: &mut hsd_gobj::TaggedWorld,
-    objects: &mut [Option<hsd_gobj::GObjId>; 10],
+    objects: &mut crate::scene_stage::StageObjects,
 ) -> Result<()> {
     let status = AnimationStatus {
         layer_animation_stopped: std::array::from_fn(|index| {

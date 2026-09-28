@@ -138,3 +138,12 @@ stage = "YoshisStory"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2983548084
+
+[[boundary]]
+name = "start_fod_fox_marth4"
+cold = "start_fod_fox_marth4_cold"
+savestate = "harness/roms/start_fod_fox_marth4.sav"
+stage = "FountainOfDreams"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 594180171

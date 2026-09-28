@@ -27,15 +27,31 @@ pub struct EnvironmentCollision {
     pub collision_flag: bool,
     /// `x2228_b2`, Fighter +0x2228 mask 0x20, suppresses Ottotto.
     pub teeter_disabled: bool,
+    /// `stage_info.grkind`: the terrain tables' stage.
+    pub stage: melee_types::GrKind,
 }
 impl EnvironmentCollision {
-    pub fn new(data: CollData) -> Self {
+    pub fn new(data: CollData, stage: melee_types::GrKind) -> Self {
         Self {
             data,
             lock_frames: 0,
             collision_flag: false,
             teeter_disabled: false,
+            stage,
         }
+    }
+    /// `ft_80084A80` (0x80084A80)'s guard: the floor line's `lo_flags` while
+    /// grounded on one. `floor.flags` holds `mpLineGetFlags` from the last
+    /// floor probe.
+    pub fn floor_terrain_flags(&self, ground_or_air: GroundOrAir) -> Option<u32> {
+        (ground_or_air == GroundOrAir::Ground && self.data.floor.index != -1)
+            .then_some(self.data.floor.flags)
+    }
+    /// The floor's terrain effects (ft_80084A80), none in the air.
+    pub fn floor_terrain_effects(&self, ground_or_air: GroundOrAir) -> melee_mp::TerrainEffects {
+        self.floor_terrain_flags(ground_or_air)
+            .map(|flags| melee_mp::terrain_effects(self.stage, flags))
+            .unwrap_or_default()
     }
 }
 

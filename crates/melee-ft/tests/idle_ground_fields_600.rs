@@ -222,7 +222,7 @@ fn idle_ground_fields_600() {
                 tree,
                 animation,
                 motion,
-                EnvironmentCollision::new(collision),
+                EnvironmentCollision::new(collision, melee_types::GrKind::Last),
             )
         })
         .collect();

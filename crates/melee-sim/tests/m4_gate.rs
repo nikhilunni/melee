@@ -1169,6 +1169,20 @@ fn dream_land_idle_particle_rng_order() {
 fn dream_land_start_particle_rng_order() {
     particle_rng_sites_with_ledger("start_dl_fox", 600, "ledger600");
 }
+#[test]
+fn idle_fod_fox_600() {
+    movement_gate_ticks("idle_fod_fox", 600);
+}
+#[test]
+fn start_fod_fox_600() {
+    movement_gate_ticks("start_fod_fox", 600);
+}
+#[test]
+fn fountain_of_dreams_particle_rng_order() {
+    particle_rng_sites_with_ledger("idle_fod_fox", 600, "ledger600");
+    particle_rng_sites_with_ledger("start_fod_fox", 600, "ledger600");
+    particle_rng_sites_with_ledger("start_fod_fox_marth4", 600, "ledger600");
+}
 
 #[test]
 fn idle_fd_puff_600() {

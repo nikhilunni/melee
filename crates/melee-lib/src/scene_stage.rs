@@ -1,5 +1,6 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
+pub(crate) mod izumi;
 pub(crate) mod last;
 pub(crate) mod pupupu;
 use anyhow::Result;
@@ -28,6 +29,10 @@ pub(crate) fn publish_joint_matrices(
         }
     }
 }
+
+/// Live Ground GObjs by scheduler key: map ids, plus Fountain of Dreams'
+/// star and second platform (melee_gr::izumi::procs).
+pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
 
 pub struct StageDescriptor {
     pub name: &'static str,
@@ -59,10 +64,23 @@ pub const DREAM_LAND: StageDescriptor = StageDescriptor {
     music_id: 28,
     read: melee_gr::desc::read_pupupu,
 };
+/// grIz_StageData (0x803E0E5C): GrIz.dat; StageParam row 2 (StKind).
+pub const FOUNTAIN_OF_DREAMS: StageDescriptor = StageDescriptor {
+    name: "FountainOfDreams",
+    file: "GrIz.dat",
+    music_id: 2,
+    read: melee_gr::desc::read_izumi,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
-    [&FINAL_DESTINATION, &BATTLEFIELD, &YOSHIS_STORY, &DREAM_LAND]
-        .into_iter()
-        .find(|d| d.name == name)
+    [
+        &FINAL_DESTINATION,
+        &BATTLEFIELD,
+        &YOSHIS_STORY,
+        &DREAM_LAND,
+        &FOUNTAIN_OF_DREAMS,
+    ]
+    .into_iter()
+    .find(|d| d.name == name)
 }
 #[derive(Clone)]
 pub enum SceneStage {
@@ -70,6 +88,7 @@ pub enum SceneStage {
     Battlefield(Battlefield),
     Story(melee_gr::story::Story),
     Pupupu(melee_gr::pupupu::Pupupu),
+    Izumi(melee_gr::izumi::Izumi),
 }
 impl SceneStage {
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -78,6 +97,7 @@ impl SceneStage {
             Self::Battlefield(s) => s.proc_table(),
             Self::Story(s) => s.proc_table(),
             Self::Pupupu(s) => s.proc_table(),
+            Self::Izumi(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -90,6 +110,7 @@ impl SceneStage {
     pub fn run_stage_proc(&mut self, map: u8, rng: &mut HsdRng) -> Result<bool> {
         match self {
             Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),
+            Self::Izumi(_) => unreachable!("Fountain of Dreams callbacks require animation state"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

@@ -111,9 +111,13 @@ impl Scenario {
             ensure!(
                 matches!(
                     self.stage.as_str(),
-                    "FinalDestination" | "Battlefield" | "YoshisStory" | "DreamLand"
+                    "FinalDestination"
+                        | "Battlefield"
+                        | "YoshisStory"
+                        | "DreamLand"
+                        | "FountainOfDreams"
                 ),
-                "cold setup supports FD, Battlefield and Yoshi's Story"
+                "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land and Fountain of Dreams"
             );
             ensure!(
                 self.all_characters_unlocked.is_some(),

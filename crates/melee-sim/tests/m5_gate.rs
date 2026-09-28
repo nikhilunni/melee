@@ -1162,6 +1162,14 @@ fn dream_land_wind_and_flyby_match_retail() {
     combat_gate_ticks("stage_dl_windright_fox_marth4", 2400);
 }
 
+/// Fountain of Dreams from the Fox/Marth start boundary: both fighters ride
+/// the side platforms (grIzumi_801CC358) through waits, random steps up and
+/// down, a submerge below the stage and the resurfacing to the rest height.
+#[test]
+fn fountain_of_dreams_platforms_match_retail() {
+    combat_gate_ticks("stage_fod_idle_fox_marth4", 6000);
+}
+
 /// Yoshi's Story's Shy Guys (itheiho.c) from the Fox/Marth start boundary:
 /// a Fire Fox knocks one spinning away (state 2) and Fox then walks the
 /// stage's terrain; a light nair stuns one and it flees (states 3 and 4);
@@ -2151,7 +2159,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 115] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 121] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2375,6 +2383,15 @@ const CORPUS_V3_MATCHES: [(&str, usize); 115] = [
     ("slope_ys_ec3145eb3_p2", 2184),
     ("slope_ys_ec13743d5_p0", 2526),
     ("slope_ys_e9943b4ab_p0", 2658),
+    // Fountain of Dreams: whole Fox-Marth matches on the moving platforms
+    // (grIzumi_801CC358) and the fountain's water, whose terrain row splashes
+    // stage-bank effects on footsteps, landings and bounds (mpLib_803BD7A0).
+    ("corpus_v3_fod_fox_marth4_e9943b4ab_p0", 2067),
+    ("corpus_v3_fod_fox_marth4_e75fb4a9a_p2", 2659),
+    ("corpus_v3_fod_fox_marth4_edb2b114a_p0", 2778),
+    ("corpus_v3_fod_fox_marth4_e9943b4ab_p1", 3045),
+    ("corpus_v3_fod_fox_marth4_e89a89d0e_p0", 3205),
+    ("corpus_v3_fod_fox_marth4_ef89b3e70_p0", 3715),
 ];
 
 #[test]

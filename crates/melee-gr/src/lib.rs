@@ -4,6 +4,7 @@ pub mod battle;
 pub mod bomb_rain;
 pub mod desc;
 pub mod ground;
+pub mod izumi;
 pub mod last;
 pub mod music;
 

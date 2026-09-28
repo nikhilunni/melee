@@ -17,6 +17,7 @@ mod scene_flow;
 pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
+mod stage_izumi;
 mod stock;
 use hsd_types::Vec3;
 fn word(raw: &[u8], offset: usize) -> u32 {
@@ -154,7 +155,11 @@ impl InitialState {
             word(&bytes[1], 0x10) == word(&bytes[0], 0x10),
             "fighters must share the imported Wait/Entry boundary"
         );
-        let resume = scheduler_resume::SchedulerResume::restore(&saved, match_start)?;
+        let resume = scheduler_resume::SchedulerResume::restore(
+            &saved,
+            match_start,
+            assets.stage_desc.kind,
+        )?;
         let partial_emission = resume
             .current
             .is_some_and(|(_, action)| action == scheduler_resume::Continuation::ParticleEmission);
@@ -184,6 +189,9 @@ impl InitialState {
                         && matches!(word(raw, 0x10), 14 | 322)),
                 "unsupported saved fighter boundary"
             );
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Izumi {
+            stage_izumi::restore_collision(&saved, &mut map)?;
         }
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
         let mut fighters: [SceneFighter; 2] = (0..2)

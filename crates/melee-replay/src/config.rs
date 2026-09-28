@@ -25,11 +25,12 @@ const CHARACTERS: [(Character, &str); 7] = [
     (Character::Yoshi, "Yoshi"),
     (Character::Jigglypuff, "Jigglypuff"),
 ];
-const STAGES: [(Stage, &str); 4] = [
+const STAGES: [(Stage, &str); 5] = [
     (Stage::FinalDestination, "FinalDestination"),
     (Stage::Battlefield, "Battlefield"),
     (Stage::YoshisStory, "YoshisStory"),
     (Stage::DreamLand, "DreamLand"),
+    (Stage::FountainOfDreams, "FountainOfDreams"),
 ];
 impl From<&MatchConfig> for Config {
     fn from(config: &MatchConfig) -> Self {

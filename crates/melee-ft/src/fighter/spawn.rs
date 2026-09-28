@@ -1098,7 +1098,7 @@ impl FighterCore {
             physics,
             animation,
             input: FighterInput::default(),
-            collision: EnvironmentCollision::new(data),
+            collision: EnvironmentCollision::new(data, map.grkind()),
             attributes: assets.attributes.clone(),
             bones: assets.bones.clone(),
             skeleton,

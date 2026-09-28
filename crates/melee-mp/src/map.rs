@@ -77,6 +77,8 @@ pub struct CollMap {
     /// material override consulted by `mpCollEnd`. `None` behaves as a stage
     /// with no dynamic attributes (returns 0).
     pub dynamic_attr_hook: Option<crate::mpcoll::DynamicAttrHook>,
+    /// `stage_info.grkind`, which selects the terrain tables.
+    pub(crate) grkind: GrKind,
 }
 
 /// `F32_MAX`
@@ -216,6 +218,7 @@ impl CollMap {
             coll_804d64ac: 0,
             coll: Default::default(),
             dynamic_attr_hook: None,
+            grkind,
         };
         // mpIsland_8005A728(): deferred (see `island_update`).
         map.uncheck_bounding();
@@ -225,6 +228,11 @@ impl CollMap {
     // -----------------------------------------------------------------------
     // Accessors (mpLib_8004D164, mpGetGroundCollVtx/Line/Joint)
     // -----------------------------------------------------------------------
+
+    /// `stage_info.grkind` of the loaded stage.
+    pub fn grkind(&self) -> GrKind {
+        self.grkind
+    }
 
     /// `mpLib_8004D164` (retail `0x8004D164`): the loaded archive data.
     pub fn data(&self) -> &MapCollData {
@@ -786,6 +794,15 @@ impl CollMap {
         let v = &mut self.vtx[vtx_id as usize];
         v.pos.x = x;
         v.pos.y = y;
+    }
+
+    /// A vertex's previous position (`x10`/`x14`) as a saved boundary holds
+    /// it. Boundary import only: retail writes these in `mpLib_80055E9C`
+    /// and `mpLib_80057424`.
+    pub fn vtx_restore_prev_pos(&mut self, vtx_id: i32, x: f32, y: f32) {
+        let v = &mut self.vtx[vtx_id as usize];
+        v.x10 = x;
+        v.x14 = y;
     }
 
     /// `mpLineSetPos` (retail `0x80056710`).

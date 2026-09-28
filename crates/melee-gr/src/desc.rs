@@ -196,6 +196,34 @@ pub fn read_pupupu_parameters(archive: &Archive) -> ReadResult<crate::pupupu::Pa
         blink_delay: [r.f32(p + 44)? as i32, r.f32(p + 48)? as i32],
     })
 }
+/// grIz_StageData / grDatFiles_801C6038: GrIz.dat. grIz_StageCallbacks[3]
+/// carries flags 0xC0000000, so map 3 selects the lights and fog.
+pub fn read_izumi(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Izumi, 3)
+}
+/// `grIzumi_YakumonoParam` (grizumi.c:40-62), read through
+/// Ground_GetYakumonoParam by grIzumi_801CBB88 (0x801CBB88).
+pub fn read_izumi_parameters(archive: &Archive) -> ReadResult<crate::izumi::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |offset: u32| r.f32(p + offset);
+    Ok(crate::izumi::Parameters {
+        initial_heights: [f(0x0)?, f(0x8)?],
+        rest_height: f(0xC)?,
+        step: [f(0x18)?, f(0x1C)?],
+        highest_target: f(0x20)?,
+        lowest_target: f(0x24)?,
+        rise_speed: f(0x28)?,
+        sink_speed: f(0x2C)?,
+        sink_chance_below_rest: f(0x30)?,
+        rise_chance_above_rest: f(0x34)?,
+        wait_frames: [f(0x3C)?, f(0x38)?],
+        submerge_weight: f(0x40)?,
+        stay_weight: f(0x44)?,
+        step_weight: f(0x48)?,
+        submerged_frames: [f(0x50)?, f(0x4C)?],
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();

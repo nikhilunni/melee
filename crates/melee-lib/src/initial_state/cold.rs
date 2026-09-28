@@ -51,8 +51,11 @@ impl InitialState {
             setup_draws(assets.stage_desc.kind, scenario.fighters.len())?,
         ));
         let mut particles = ParticleSystem::default();
-        let (stage, mut stage_animations) = initialize_stage(&assets, &mut rng, &mut particles)?;
-        for (&id, animation) in &mut stage_animations {
+        let (stage, mut stage_animations) =
+            initialize_stage(&assets, &mut rng, &mut particles, &mut map)?;
+        // Fountain of Dreams binds its collision joints during creation.
+        let archive_bindings = !matches!(stage, SceneStage::Izumi(_));
+        for (&id, animation) in stage_animations.iter_mut().filter(|_| archive_bindings) {
             let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
             animation.update_collision(&mut map, bindings);
             for binding in bindings {
@@ -139,7 +142,11 @@ fn setup_draws(stage: GrKind, players: usize) -> Result<usize> {
         GrKind::Last => 4,
         GrKind::Battle | GrKind::Story => 1,
         GrKind::OldPupupu => 2,
-        _ => anyhow::bail!("cold setup supports FD, Battlefield, Yoshi's Story and Dream Land"),
+        // grIzumi_801CC358's first step draws each platform's wait.
+        GrKind::Izumi => 2,
+        _ => anyhow::bail!(
+            "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land and Fountain of Dreams"
+        ),
     };
     Ok(stage_draws + CPU_SETUP_DRAWS_PER_PLAYER * players)
 }
@@ -192,6 +199,7 @@ fn initialize_stage(
     assets: &Assets,
     rng: &mut HsdRng,
     particles: &mut ParticleSystem,
+    map: &mut melee_mp::CollMap,
 ) -> Result<(SceneStage, BTreeMap<u8, BackgroundAnimation>)> {
     let mut stage_animations = BTreeMap::new();
     let stage = match assets.stage_desc.kind {
@@ -289,6 +297,12 @@ fn initialize_stage(
                 stage_animations.insert(id, animation);
             }
             SceneStage::Pupupu(stage)
+        }
+        GrKind::Izumi => {
+            let (stage, animations) =
+                crate::scene_stage::izumi::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
         }
         _ => unreachable!(),
     };

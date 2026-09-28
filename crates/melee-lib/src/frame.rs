@@ -223,7 +223,7 @@ struct Runtime {
     /// Registration rows (index, p_link, s_link) whose GObjs
     /// Ground_801C0FB8 creates at stage start.
     stage_start_rows: Vec<(usize, u8, u8)>,
-    stage_objects: [Option<hsd_gobj::GObjId>; 10],
+    stage_objects: crate::scene_stage::StageObjects,
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
     pads: [PadSample; 4],
@@ -950,6 +950,7 @@ impl Runtime {
                                     member,
                                     &mut f.core,
                                     &state.assets.common_particle_bank,
+                                    &state.assets.particle_bank,
                                     &mut state.particles,
                                     &mut state.rng,
                                 )
@@ -1126,12 +1127,14 @@ impl Runtime {
                         animation.update_collision(&mut state.map, bindings);
                     }
                     // lb_800115F4 (dynamics fields' decay and expiry) ends
-                    // grLast_8021AAB0, grBattle_GObj6_Callback2 (0x8021A174) and
-                    // grStory_801E3334, and is all of grOldPupupu_80210BC0.
+                    // grLast_8021AAB0, grBattle_GObj6_Callback2 (0x8021A174),
+                    // grStory_801E3334 and grIzumi_801CC0D4, and is all of
+                    // grOldPupupu_80210BC0.
                     if address == 0x8021_AAB0
                         || address == 0x8021_A174
                         || address == 0x8021_0BC0
                         || address == STORY_SHY_GUY_PROC
+                        || address == 0x801C_C0D4
                     {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
@@ -1160,6 +1163,8 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::Izumi(_)) {
+                        crate::scene_stage::izumi::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
                             state,
@@ -1849,6 +1854,7 @@ fn dispatch_fighter(
                 player,
                 &mut f.core,
                 &scene_assets.common_particle_bank,
+                &scene_assets.particle_bank,
                 particles,
                 rng,
             )?;
@@ -1937,6 +1943,7 @@ fn dispatch_fighter(
             player,
             &mut f.core,
             &scene_assets.common_particle_bank,
+            &scene_assets.particle_bank,
             particles,
             rng,
         )?;
@@ -1949,6 +1956,7 @@ fn dispatch_fighter(
                 player,
                 &mut f.core,
                 &scene_assets.common_particle_bank,
+                &scene_assets.particle_bank,
                 particles,
                 rng,
             )?;
@@ -1965,6 +1973,7 @@ fn dispatch_fighter(
                 player,
                 &mut f.core,
                 &scene_assets.common_particle_bank,
+                &scene_assets.particle_bank,
                 particles,
                 rng,
             )?;
@@ -1976,6 +1985,7 @@ fn dispatch_fighter(
         player,
         &mut f.core,
         &scene_assets.common_particle_bank,
+        &scene_assets.particle_bank,
         particles,
         rng,
     )?;

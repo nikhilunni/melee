@@ -71,6 +71,7 @@ pub enum Stage {
     Battlefield,
     YoshisStory,
     DreamLand,
+    FountainOfDreams,
 }
 impl Stage {
     pub(crate) fn descriptor(self) -> &'static crate::scene_stage::StageDescriptor {
@@ -80,6 +81,7 @@ impl Stage {
             Self::Battlefield => &BATTLEFIELD,
             Self::YoshisStory => &YOSHIS_STORY,
             Self::DreamLand => &DREAM_LAND,
+            Self::FountainOfDreams => &FOUNTAIN_OF_DREAMS,
         }
     }
 }

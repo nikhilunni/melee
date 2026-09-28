@@ -76,6 +76,21 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.background_timer", &stage.background_timer);
             // xDC (wind) is inactive heap storage until the first map-7 proc.
         }
+        SceneStage::Izumi(stage) => {
+            for (side, platform) in stage.platforms.iter().enumerate() {
+                let name = format!("stage.platform[{side}]");
+                let mut prefix = PrefixSink::new(sink, &name);
+                let sink: &mut dyn SnapshotSink = &mut prefix;
+                sink.field("phase", &(platform.phase as u8));
+                sink.field("timer", &i32::from(platform.timer));
+                sink.field("collision_joint", &i32::from(platform.collision_joint));
+                sink.field("height", &platform.height);
+                sink.field("target", &platform.target);
+                sink.field("full_height", &platform.full_height);
+                sink.field("rest_height", &platform.rest_height);
+                sink.field("origin_y", &platform.origin_y);
+            }
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -208,6 +223,7 @@ fn cold_run_reads_only_dat_assets() {
         "start_bf_fox",
         "start_ys_fox",
         "start_dl_fox",
+        "start_fod_fox_marth4",
     ] {
         let mut scenario =
             Scenario::load(&root.join(format!("harness/scenarios/{name}_cold.toml"))).unwrap();

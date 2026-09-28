@@ -48,6 +48,8 @@ const FIGHTER_JOINT_STRIDE: usize = 256;
 const DRAW_CAPACITY: usize = 4096;
 // Stage joint identities occupy the low range; effects own monotonic IDs.
 pub const FIRST_EFFECT_JOINT: usize = 1 << 16;
+/// Particle bank of the stage's own programs (`id / 1000`).
+const STAGE_BANK: u16 = 30;
 
 #[derive(Clone)]
 pub struct Effects {
@@ -220,7 +222,9 @@ impl Effects {
         matrices
     }
     /// efAsync_QueueProcessDeferred (efasync.c:1321-1381), drained by
-    /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557).
+    /// Fighter_8006C80C at s_link 9 (fighter.c:2552-2557). `stage_bank` holds
+    /// the stage's own programs (ids 30000-30999, bank 30), which terrain
+    /// footsteps and landings request.
     #[allow(clippy::too_many_arguments)] // Fighter, effect assets and particle runtime stay in their own layers.
     pub fn flush<T: InverseTrig>(
         &mut self,
@@ -228,9 +232,18 @@ impl Effects {
         player: usize,
         fighter: &mut impl EffectOwner,
         bank: &ParticleBank,
+        stage_bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
+        // efLib_CreateGenerator picks the bank from the id (id / 1000).
+        let bank_of = |id: u16| {
+            if id / 1000 == STAGE_BANK {
+                stage_bank
+            } else {
+                bank
+            }
+        };
         // Most procs queue nothing; skip moving an empty fixed-capacity batch.
         if fighter.effect_queue().is_empty() {
             return Ok(());
@@ -621,12 +634,17 @@ impl Effects {
                 )?;
                 continue;
             }
-            if let EffectRequest::Landing {
-                id: id @ (0x407 | 0x42D),
-                offset,
-                ..
-            } = request
-            {
+            // ftCo_8009F834: landing dust and a terrain's stage-bank splash
+            // (ids 30000-30999) are positional generators.
+            let positional_landing = match request {
+                EffectRequest::Landing { id, offset, .. }
+                    if matches!(id, 0x407 | 0x42D) || id / 1000 == STAGE_BANK =>
+                {
+                    Some((id, offset))
+                }
+                _ => None,
+            };
+            if let Some((id, offset)) = positional_landing {
                 let mut position = Vec3::ZERO;
                 mtx_mult_vec(
                     &resolved_matrix.unwrap_or(fighter.effect_matrix(None)),
@@ -637,7 +655,7 @@ impl Effects {
                     id,
                     position,
                     fighter.effect_facing(),
-                    bank,
+                    bank_of(id),
                     particles,
                     rng,
                 )?;
@@ -665,7 +683,14 @@ impl Effects {
                         // efAsync kind 8 -> Camera_RequestQuake(2/3/4), no particle spawn.
                         self.camera_quakes.push((id - 0x511, position));
                     } else {
-                        self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)?;
+                        self.spawn_dust_generator::<T>(
+                            id,
+                            position,
+                            facing,
+                            bank_of(id),
+                            particles,
+                            rng,
+                        )?;
                     }
                     continue;
                 }

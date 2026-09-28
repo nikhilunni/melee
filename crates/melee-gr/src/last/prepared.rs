@@ -119,6 +119,45 @@ impl BackgroundAnimation {
     pub fn set_joint_scale(&mut self, bone: usize, scale: hsd_types::Vec3) {
         self.tree.set_scale(self.joints[bone], &scale);
     }
+    pub fn joint_scale(&self, bone: usize) -> hsd_types::Vec3 {
+        self.tree.scale(self.joints[bone])
+    }
+    /// `HSD_JObjGetTranslation` of a model bone.
+    pub fn joint_translation(&self, bone: usize) -> hsd_types::Vec3 {
+        self.tree.translation(self.joints[bone])
+    }
+    /// `HSD_JObjSetTranslate` of a model bone.
+    pub fn set_joint_translate(&mut self, bone: usize, translate: hsd_types::Vec3) {
+        self.tree.set_translate(self.joints[bone], &translate);
+    }
+    /// `HSD_JObjSetTranslateY` of a model bone.
+    pub fn set_joint_translate_y(&mut self, bone: usize, y: f32) {
+        self.tree.set_translate_y(self.joints[bone], y);
+    }
+    /// `HSD_JObjGetFlags(bone) & JOBJ_HIDDEN`.
+    pub fn joint_hidden(&self, bone: usize) -> bool {
+        self.tree.flags(self.joints[bone]) & hsd_anim::jobj::JOBJ_HIDDEN != 0
+    }
+    /// `HSD_JObjSetFlagsAll` / `HSD_JObjClearFlagsAll(bone, JOBJ_HIDDEN)`.
+    pub fn set_joint_hidden(&mut self, bone: usize, hidden: bool) {
+        let joint = self.joints[bone];
+        if hidden {
+            self.tree.set_flags_all(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        } else {
+            self.tree
+                .clear_flags_all(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        }
+    }
+    /// `HSD_JObjSetTranslate` on the Ground GObj's JObj (the map-scale wrapper).
+    pub fn set_gobj_translate(&mut self, translate: hsd_types::Vec3) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_translate(joint, &translate);
+    }
+    /// `HSD_JObjGetTranslation` of the Ground GObj's JObj.
+    pub fn gobj_translation(&self) -> hsd_types::Vec3 {
+        self.tree
+            .translation(self.tree.parent(self.root).unwrap_or(self.root))
+    }
     pub fn joint_count(&self) -> usize {
         self.joints.len()
     }

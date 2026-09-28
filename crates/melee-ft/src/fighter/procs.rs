@@ -335,24 +335,52 @@ impl FighterCore {
     /// ftAction_80071B50, whose ft_PlaySFX draws a pitch for footstep
     /// sounds. The scene resolves the step's requests after the proc, as it
     /// does random sounds (a script step mixing both is not ordered).
+    ///
+    /// A terrain effect (ftaction.c:1164-1177) is ftCo_8009F834 at a foot
+    /// with zero offset and range; it joins the graphics commands at the
+    /// footstep's place in the script.
     pub fn resolve_terrain_footsteps(&mut self, rng: &mut HsdRng) {
-        let floor = &self.collision.data.floor;
-        let terrain = (self.physics.ground_or_air == melee_types::GroundOrAir::Ground
-            && floor.index != -1)
-            .then(|| melee_mp::terrain_footstep(floor.flags));
+        let terrain = self
+            .collision
+            .floor_terrain_flags(self.physics.ground_or_air)
+            .map(|flags| melee_mp::terrain_footstep(self.collision.stage, flags));
+        let mut inserted = 0;
         for step in std::mem::take(&mut self.commands.terrain_footsteps) {
             let Some(terrain) = terrain else {
-                self.play_command_sound(step, rng);
+                self.play_command_sound(step.sound, rng);
                 continue;
             };
             if let Some(id) = terrain.sound {
-                self.play_command_sound(super::commands::FootstepSound { id, ..step.clone() }, rng);
+                let sound = super::commands::FootstepSound {
+                    id,
+                    ..step.sound.clone()
+                };
+                self.play_command_sound(sound, rng);
             }
             if let Some(effect) = terrain.effect {
-                unimplemented!("ftAction_80072CD8: terrain footstep effect {effect:#x}");
+                let feet = &self.bones.model;
+                let foot = if step.alt_foot {
+                    feet.right_foot
+                } else {
+                    feet.left_foot
+                };
+                self.commands.graphics.insert(
+                    step.graphics_before + inserted,
+                    melee_types::combat::GraphicsCommand {
+                        id: effect as u16,
+                        bone: usize::from(foot),
+                        common_bone: false,
+                        item_bone: false,
+                        destroy_on_state_change: false,
+                        parameter: 0.0,
+                        offset: hsd_types::Vec3::ZERO,
+                        range: hsd_types::Vec3::ZERO,
+                    },
+                );
+                inserted += 1;
             }
             if terrain.keeps_sound {
-                self.play_command_sound(step, rng);
+                self.play_command_sound(step.sound, rng);
             }
         }
     }
@@ -629,8 +657,13 @@ impl FighterCore {
     }
     /// ftAction_80072E4C -> ftCo_8009F834 for the landing effects queued
     /// before graphics command `before` (all of them with `usize::MAX`).
+    /// The floor's terrain may replace the command's effect (ft_80084C38).
     pub(super) fn resolve_landing_effects(&mut self, rng: &mut HsdRng, before: usize) -> usize {
         let mut draws = 0;
+        let terrain = self
+            .collision
+            .floor_terrain_effects(self.physics.ground_or_air)
+            .landing;
         loop {
             let Some(&(id, position)) = self.commands.landing_effects.iter().next() else {
                 break;
@@ -639,6 +672,7 @@ impl FighterCore {
                 break;
             }
             self.commands.landing_effects.remove(0);
+            let id = terrain.map_or(id, |effect| effect as u16);
             // ftCo_8009F834 block_70. Even a zero range consumes three draws.
             let mut offset = Vec3::ZERO;
             for component in [&mut offset.x, &mut offset.y, &mut offset.z] {
