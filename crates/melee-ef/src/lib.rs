@@ -538,6 +538,36 @@ impl Effects {
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
+            if let EffectRequest::Attached { id: 0x4C0, bone } = request {
+                // efAsync kind 0 -> efSync_Spawn 0x4C0 (efsync.c:115-117):
+                // efLib_Create_Attach(0x1B58) on the live joint, no scale
+                // inheritance; the fighter owns it for efLib_PauseAll.
+                let mut effect = self.acquire(0x1B58, particles);
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.hitlag_pause = HitlagPause::Active;
+                effect.attachment = Some(player);
+                effect.attachment_bone = Some(bone);
+                effect.scale_attachment = false;
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+                effect.animate_banks::<T>(
+                    resources::Banks {
+                        common: bank,
+                        characters: &self.character_banks,
+                    },
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                )?;
+                self.instances.push(effect);
+                continue;
+            }
             if let EffectRequest::Attached { id, bone } = request {
                 // efasync.c:282-287: kind 0, hsd_8039EFAC on the live bone.
                 let kind = ATTACHED_SPAWNS
@@ -601,6 +631,19 @@ impl Effects {
                 spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
                     translation: Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                     scale: Vec3::new(scale, scale, scale),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
+            if let EffectRequest::PositionalGenerator { id: 0x4C3, position } = request {
+                // efsync.c:136-144: efLib_CreateGenerator_AddAppSRT(0x24C)
+                // with the point as the AppSRT's translation (Thunder's cloud).
+                let mut spawn = SpawnRequest::new(0, 0x24C, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: position,
                     status: 1,
                     ..Default::default()
                 });

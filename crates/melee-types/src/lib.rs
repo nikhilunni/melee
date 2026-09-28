@@ -299,3 +299,5 @@ pub use hit::HitElement;
 
 pub mod combat;
 pub mod fixed;
+
+pub mod motion_property;

@@ -28,6 +28,7 @@ melee_it::item_kinds! {
         Heiho: it_heiho::Heiho,
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
+        PikachuThunder: it_pikachu::ThunderBolt,
     }
 }
 
@@ -199,8 +200,9 @@ impl Resources {
             kinds.push((ItemKind::PeachTurnip, turnip));
             visual_archives.push((ItemKind::PeachTurnip, std::sync::Arc::clone(&a)));
         }
-        // ftPk_Init_OnLoad: ftData.x48_items[1] is the Thunder Jolt ball,
-        // [2] the crawler it rides (whose joint 6 the ball reads).
+        // ftPk_Init_OnLoad: ftData.x48_items[0] is Thunder's bolt, [1] the
+        // Thunder Jolt ball, [2] the crawler it rides (whose joint 6 the
+        // ball reads).
         if let Some(character) = characters
             .iter()
             .find(|c| c.descriptor.data_file == "PlPk.dat")
@@ -228,6 +230,15 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Thunder Jolt crawler pose: {e}"))?;
             kinds.push((ItemKind::PikachuTJoltAir, crawler));
             visual_archives.push((ItemKind::PikachuTJoltAir, std::sync::Arc::clone(&a)));
+            let bolt = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_pikachu::THUNDER_ARTICLE_INDEX,
+                &it_pikachu::thunder::ARTICLE_STATES,
+                3,
+            )?;
+            kinds.push((ItemKind::PikachuThunder, bolt));
+            visual_archives.push((ItemKind::PikachuThunder, std::sync::Arc::clone(&a)));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -261,6 +272,17 @@ impl Resources {
             .expect("registered item assets")
             .1
     }
+}
+
+/// The article `owner` tracks, if any (its kind's owner_report).
+pub fn owner_report(
+    pool: &ItemPool,
+    resources: &Resources,
+    owner: u8,
+) -> Option<melee_it::ArticleReport> {
+    pool.iter()
+        .filter(|item| item.owner == Some(owner) && !item.destroyed)
+        .find_map(|item| (SceneItems::logic(item.kind).owner_report)(item, resources.get(item.kind)))
 }
 
 /// What `id`'s animation callback sees of its partner: the partner's own
@@ -348,6 +370,46 @@ pub fn request(
     rng: &mut gekko_math::HsdRng,
 ) -> Option<u32> {
     let owner_context = &owner;
+    if let ItemRequest::SpawnChain {
+        spawn,
+        count,
+        delay,
+        velocity,
+    } = request
+    {
+        // it_802B1DF8: each member is spawned, linked from the one before
+        // and set up before the next spawns.
+        let mut first = None;
+        let mut previous: Option<u32> = None;
+        for index in 0..count {
+            let member = request_one_of_chain(
+                pool,
+                resources,
+                map,
+                world,
+                objects,
+                spawn,
+                &owner,
+                rng,
+            );
+            if let (Some(previous), Some(member)) = (previous, member) {
+                pool.get_mut(previous).unwrap().partner = Some(member);
+            }
+            if let Some(member) = member {
+                let item = pool.get_mut(member).unwrap();
+                let receive = SceneItems::logic(item.kind).link_received;
+                let message = melee_it::LinkMessage::Chain {
+                    index,
+                    delay: index * delay,
+                    velocity,
+                };
+                item.destroyed |= receive(item, message, resources.get(spawn.kind));
+            }
+            first = first.or(member);
+            previous = member;
+        }
+        return first;
+    }
     let (spawn, ray, held_owner) = match request {
         ItemRequest::Spawn(spawn) => (spawn, None, None),
         ItemRequest::SpawnHeld(spawn) => (spawn, None, owner.held_item),
@@ -429,6 +491,7 @@ pub fn request(
             return None;
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
+        ItemRequest::SpawnChain { .. } => unreachable!("handled above"),
         ItemRequest::Launch {
             owner: slot,
             kind,
@@ -585,6 +648,36 @@ pub fn request(
     None
 }
 
+/// One member of an [`ItemRequest::SpawnChain`], spawned as an ordinary
+/// request for the same owner.
+#[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
+fn request_one_of_chain(
+    pool: &mut ItemPool,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    spawn: melee_it::SpawnItem,
+    owner: &RequestOwner<'_>,
+    rng: &mut gekko_math::HsdRng,
+) -> Option<u32> {
+    request(
+        pool,
+        resources,
+        map,
+        world,
+        objects,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: owner.slot,
+            held_item: owner.held_item,
+            after_hitbox_refresh: owner.after_hitbox_refresh,
+            stale_multiplier: owner.stale_multiplier,
+        },
+        rng,
+    )
+}
+
 /// ftLib_800864A8 (800864A8) with no excluded fighter: face toward where more
 /// fighters stand, by the sign of each camera bone's x relative to
 /// `position`; a tie is a coin flip (HSD_Randi(2)).
@@ -663,6 +756,9 @@ pub fn article_destroyed(
     let Some(owner) = item.owner else {
         return;
     };
+    if !(SceneItems::logic(item.kind).notifies_owner)(item) {
+        return;
+    }
     for fighter in fighters.iter_mut() {
         crate::scene_fighter::with_fighter!(fighter, |f| {
             if f.player.id == owner {

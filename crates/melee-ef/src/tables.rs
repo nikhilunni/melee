@@ -193,7 +193,14 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 19] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 20] = [
+    // efasync.c:353-355: efLib_CreateGenerator(0x19) at the point (it_80272AC4,
+    // an item meeting the floor: Thunder's lead bolt).
+    DustSpawn {
+        request: 0x40C,
+        particle: 0x19,
+        directional: false,
+    },
     // efasync.c:381-383: an article's vanishing puff (it_80272BA4),
     // efLib_CreateGenerator 0x4B.
     DustSpawn {
@@ -329,7 +336,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 8] = [
 // after hsd_8039EFAC; the other attached rows keep it.
 pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
-pub(super) static PARTICLE_KINDS: [i32; 30] = [
+pub(super) static PARTICLE_KINDS: [i32; 31] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
-    374, 375, 376, 377, 445, 448, 449, 272, 295,
+    374, 375, 376, 377, 445, 448, 449, 272, 295, 531,
 ];

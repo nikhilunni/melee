@@ -284,8 +284,9 @@ macro_rules! blaster {
                     ItemControl::Counter
                     | ItemControl::ParasolOpening(_)
                     | ItemControl::ParasolOpen(_)
-                    | ItemControl::OwnerHitlag(_) => {
-                        unreachable!("Peach article control sent to a blaster")
+                    | ItemControl::OwnerHitlag(_)
+                    | ItemControl::Strike => {
+                        unreachable!("another kind's article control sent to a blaster")
                     }
                 }
             }

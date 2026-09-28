@@ -609,6 +609,7 @@ impl Runtime {
                 let contact = state.items.stage_contact(id, &mut state.map);
                 state.items.collide::<SceneItems>(
                     id,
+                    owner.as_ref(),
                     contact,
                     &mut state.map,
                     &item_bounds(&state.assets),
@@ -853,6 +854,16 @@ impl Runtime {
                         .core
                         .ledge_holders
                         .offer(holders));
+                }
+                if proc == FighterProc::Animation {
+                    let slot = crate::scene_fighter::with_fighter!(&state.fighters[player], |f| f
+                        .player
+                        .id);
+                    let report =
+                        crate::scene_items::owner_report(&state.items, &state.assets.items, slot);
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .owned_article = report);
                 }
                 // ftpickupitem_800942A0 runs from input and animation callbacks.
                 let offers_items = matches!(proc, FighterProc::Input | FighterProc::Animation);
@@ -1409,6 +1420,7 @@ impl Runtime {
                         melee_it::ItemRequest::Spawn(spawn)
                         | melee_it::ItemRequest::SpawnHeld(spawn)
                         | melee_it::ItemRequest::SpawnInHand { spawn, .. }
+                        | melee_it::ItemRequest::SpawnChain { spawn, .. }
                         | melee_it::ItemRequest::SpawnLaser { spawn, .. } => {
                             spawn.stale_source = f.combat.stale.attack()
                         }

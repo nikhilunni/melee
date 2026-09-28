@@ -81,6 +81,8 @@ pub enum ItemControl {
     ParasolOpen(f32),
     /// it_8026B724 / it_8026B73C: the owner's pre/post-hitlag callbacks.
     OwnerHitlag(bool),
+    /// it_802B1FC8: the owner struck by its lead Thunder bolt.
+    Strike,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
@@ -131,6 +133,15 @@ pub enum ItemRequest {
     /// Item_8026A8EC: `item` is destroyed at once (a holder's death).
     Destroy {
         item: u32,
+    },
+    /// it_802B1DF8: `count` copies of `spawn` in list order, each linked
+    /// to the next (its partner), set up by a [`crate::LinkMessage::Chain`]
+    /// with its index, `index * delay` and `velocity`.
+    SpawnChain {
+        spawn: SpawnItem,
+        count: i32,
+        delay: i32,
+        velocity: Vec3,
     },
     /// Item_80268B18 then Item_8026AB54: `spawn` is created and taken at
     /// once into its owner's hand at `part`, a fp->parts index

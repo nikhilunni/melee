@@ -258,7 +258,9 @@ fn flying_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
     jolt(item).previous_normal = normal;
     // it_802B4224: Item_InitSpawnOnPlane at the contact for the owner.
     let owner = item.owner.expect("Thunder Jolt owner");
-    let spawn = SpawnItem::attached(ItemKind::PikachuTJoltAir, owner, position, facing);
+    // The crawler is the ball's kind plus one (ip2->kind + 1).
+    let crawler = ItemKind::try_from(i32::from(item.kind) + 1).expect("crawler kind");
+    let spawn = SpawnItem::attached(crawler, owner, position, facing);
     item.link_requests.push(LinkRequest {
         target: LinkTarget::Spawn(spawn),
         message: LinkMessage::Settle { position, normal },

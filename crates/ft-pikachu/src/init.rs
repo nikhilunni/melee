@@ -75,6 +75,16 @@ impl CharacterCallbacks for Pikachu {
             ft_pikachu_family::special_s::deal_damage::<Self>(f, assets);
         }
     });
+    /// take_dmg_cb = ftPk_SpecialLw_SetState_Unk1 while Thunder's loop
+    /// installed it.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> =
+        Some(ft_pikachu_family::special_lw::take_damage::<Self>);
+    /// it_2725_Logic39_Destroyed: the lead bolt's end.
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::PikachuThunder {
+            ft_pikachu_family::special_lw::lead_gone::<Self>(f);
+        }
+    };
     const RETAINED_SCRATCH_WORD: fn(&CharacterState, ActionId) -> Option<f32> =
         ft_pikachu_family::retained_scratch_word::<Self>;
     /// ftCo_Attack1.c getMotionFlags and doAttack12: FTKIND_PIKACHU arms.

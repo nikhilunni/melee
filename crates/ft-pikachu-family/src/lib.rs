@@ -4,6 +4,7 @@
 pub mod attributes;
 mod common;
 pub mod special_hi;
+pub mod special_lw;
 pub mod special_n;
 pub mod special_s;
 
@@ -145,6 +146,7 @@ pub struct Specials {
     /// mv.pk.unk3.x0: Skull Bash's charge frames.
     pub skull_bash_charge: i32,
     pub quick_attack: special_hi::QuickAttack,
+    pub thunder: special_lw::Thunder,
     /// The one-shot accessory4 a special armed.
     pub accessory: Accessory,
     /// mv+4 as the state before the special left it; Thunder Jolt and
@@ -161,6 +163,9 @@ pub enum Accessory {
     ChargeSparks,
     /// ftPk_SpecialN_SpawnEffect1: Skull Bash's launch sparks (1215).
     LaunchSparks,
+    /// ftPk_SpecialLw_SpawnEffect: Thunder's call, run every frame while
+    /// installed (it never removes itself).
+    ThunderCloud,
 }
 
 /// A family motion row.
@@ -184,8 +189,7 @@ pub(crate) const fn row(
     }
 }
 
-/// ftPk_Init_MotionStateTable (ftpikachu.c:19-282). Thunder stays
-/// unported rows.
+/// ftPk_Init_MotionStateTable (ftpikachu.c:19-282).
 pub const fn rows<C: PikachuFamily>() -> [MotionRow; FamilyState::COUNT] {
     let mut rows = [melee_ft::fighter::state::unimplemented_row(); FamilyState::COUNT];
     let mut i = 0;
@@ -204,6 +208,12 @@ pub const fn rows<C: PikachuFamily>() -> [MotionRow; FamilyState::COUNT] {
     i = 0;
     while i < side.len() {
         rows[(side[i].action.0 - FamilyState::SpecialN as u16) as usize] = side[i];
+        i += 1;
+    }
+    let down = special_lw::rows::<C>();
+    i = 0;
+    while i < down.len() {
+        rows[(down[i].action.0 - FamilyState::SpecialN as u16) as usize] = down[i];
         i += 1;
     }
     let up = special_hi::rows::<C>();
@@ -246,15 +256,19 @@ pub fn enter_special<C: PikachuFamily>(
         SpecialSlot::Side => special_s::enter::<C>(f, airborne, assets),
         SpecialSlot::Up => special_hi::enter::<C>(f, airborne, assets),
         SpecialSlot::Neutral => special_n::enter::<C>(f, airborne, assets),
-        SpecialSlot::Down => unimplemented!(
-            "ftPk_SpecialLw_Enter / ftPk_SpecialAirLw_Enter (airborne: {airborne}): Thunder"
-        ),
+        SpecialSlot::Down => special_lw::enter::<C>(f, airborne, assets),
     }
 }
 
 /// Fighter_8006C80C: the special's one-shot accessory4.
 pub fn accessory<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) {
     let pending = f.character.get::<C>().specials_ref().accessory;
+    if pending == Accessory::ThunderCloud {
+        if f.core.accessory4_armed {
+            special_lw::call_bolts::<C>(f);
+        }
+        return;
+    }
     if !f.run_accessory4(pending != Accessory::None) {
         return;
     }
@@ -263,7 +277,7 @@ pub fn accessory<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) {
         Accessory::ChargeSparks | Accessory::LaunchSparks => {
             special_s::sparks(f, assets, pending == Accessory::LaunchSparks)
         }
-        Accessory::None => unreachable!(),
+        Accessory::None | Accessory::ThunderCloud => unreachable!(),
     }
 }
 
@@ -289,9 +303,7 @@ pub fn retained_scratch_word<C: PikachuFamily>(
         | S::SpecialAirLwStart
         | S::SpecialAirLwLoop0
         | S::SpecialAirLwLoop1
-        | S::SpecialAirLwEnd => {
-            unimplemented!("ftPk_SpecialLw: mv.pk.speciallw.x4 as the retained scratch word")
-        }
+        | S::SpecialAirLwEnd => Some(specials.thunder.state),
         _ => None,
     };
     if let Some(frames) = zip {

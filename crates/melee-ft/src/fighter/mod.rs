@@ -809,6 +809,9 @@ pub struct FighterCore {
     pub article_in_hand: Option<item_pickup::ArticleInHand>,
     /// The grabbable items the scene offered to the running proc.
     pub pickup_candidates: item_pickup::PickupCandidates,
+    /// The article this fighter tracks, as the scene sampled it before the
+    /// animation proc (see [`melee_it::ArticleReport`]).
+    pub owned_article: Option<melee_it::ArticleReport>,
     /// ft_80082E3C's view of the other fighters on ledges, offered to Map.
     pub ledge_holders: ledge::LedgeHolders,
     /// The held fighter's position, offered to the accessory proc of a

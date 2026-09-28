@@ -1,0 +1,25 @@
+# PIKACHU directed witness: Pikachu jumps and calls Thunder in the air.
+name = "pikachu_thunder_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_pikachu_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 126, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Pikachu"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -18,6 +18,7 @@ pub struct ItemPhysicsContext<'a> {
     pub rng: &'a core::cell::Cell<gekko_math::HsdRng>,
 }
 pub struct ItemCollisionContext<'a> {
+    pub owner: Option<&'a ItemOwner>,
     pub stage_contact: bool,
     pub map: &'a mut melee_mp::CollMap,
     pub assets: &'a ItemAssets,
@@ -141,6 +142,15 @@ pub trait ItemLogic {
     /// The Destroyed callback clears the partner's pointer back (as
     /// it_2725_Logic106_Destroyed's it_802B43B0 does).
     const UNLINKS_PARTNER_ON_DESTROY: bool = false;
+    /// What the owner reads of this article, if it is the one tracked.
+    fn owner_report(_item: &ItemCore, _assets: &ItemAssets) -> Option<crate::ArticleReport> {
+        None
+    }
+    /// Whether the owner hears of this article's end (its ARTICLE_DESTROYED
+    /// hook); a chain notifies only through its lead.
+    fn notifies_owner(_item: &ItemCore) -> bool {
+        true
+    }
     /// A linked item's request arrived; true destroys the receiver.
     fn link_received(
         _item: &mut ItemCore,
@@ -175,6 +185,8 @@ pub trait ItemLogic {
         control: Self::control,
         partner_bone: Self::PARTNER_BONE,
         unlinks_partner_on_destroy: Self::UNLINKS_PARTNER_ON_DESTROY,
+        owner_report: Self::owner_report,
+        notifies_owner: Self::notifies_owner,
         link_received: Self::link_received,
     };
 }
@@ -217,6 +229,8 @@ pub struct ItemLogicRow {
     pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
     pub partner_bone: Option<usize>,
     pub unlinks_partner_on_destroy: bool,
+    pub owner_report: fn(&ItemCore, &ItemAssets) -> Option<crate::ArticleReport>,
+    pub notifies_owner: fn(&ItemCore) -> bool,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
 }
 pub trait ItemDispatch {

@@ -119,7 +119,30 @@ pub enum ItemScratch {
     Heiho(HeihoState),
     Turnip(TurnipState),
     Jolt(JoltState),
+    Thunder(ThunderState),
     None,
+}
+/// Item.xDD4_itemVar.pikachuthunder (itpikachuthunder.c): one bolt of
+/// Pikachu's Thunder chain; the partner is the next bolt (x34).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ThunderState {
+    /// x0: the bolt's place in the chain; the lead is 0.
+    pub index: i32,
+    /// x4: the bolt struck (its lead reached it, or it met the floor).
+    pub struck: bool,
+    /// x8: frames before it starts falling.
+    pub delay: i32,
+    /// xC / x10: the bolt's length before and after this frame's shrink.
+    pub length: f32,
+    pub next_length: f32,
+    /// x14: the struck bolt's lifetime.
+    pub strike_frames: f32,
+    /// x18: its model's y scale.
+    pub scale: f32,
+    /// x1C: the fall's velocity.
+    pub velocity: Vec3,
+    /// x28: where the bolt before it stopped.
+    pub reached: Vec3,
 }
 /// Item.xDD4_itemVar.pikachujoltground and .pikachujoltair
 /// (itpikachutjoltground.c / itpikachutjoltair.c): the Thunder Jolt ball
@@ -1166,9 +1189,11 @@ impl ItemPool {
         )
         .is_some()
     }
+    #[allow(clippy::too_many_arguments)] // Owner, map and bounds stay separate.
     pub fn collide<D: ItemDispatch>(
         &mut self,
         id: u32,
+        owner: Option<&ItemOwner>,
         stage_contact: bool,
         map: &mut melee_mp::CollMap,
         bounds: &ItemBounds,
@@ -1181,6 +1206,7 @@ impl ItemPool {
         item.destroyed |= (D::logic(item.kind).states[item.motion as usize].collision)(
             item,
             &mut ItemCollisionContext {
+                owner,
                 stage_contact,
                 map,
                 assets,

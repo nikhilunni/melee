@@ -18,6 +18,13 @@ pub enum LinkMessage {
     /// The position the sender stopped at (it_802B22B8's update of the
     /// next bolt link).
     Reached { position: Vec3 },
+    /// A chain member's place, from the spawner's loop (it_802B1DF8):
+    /// its index, its delay and the velocity it will fall at.
+    Chain {
+        index: i32,
+        delay: i32,
+        velocity: Vec3,
+    },
 }
 
 /// Whom a request is for.
@@ -44,4 +51,14 @@ pub struct PartnerView {
     /// The reader's `PARTNER_BONE` of the partner's model, in world space
     /// (lb_8000B1CC on xBBC_dynamicBoneTable->bones[i]).
     pub bone_position: Option<Vec3>,
+}
+
+/// An owner's view of its tracked article, sampled before the owner's
+/// animation proc (Pikachu's Thunder reads its lead bolt: it_802B1FE8's
+/// point and it_802B1DEC's flag).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ArticleReport {
+    pub point: Vec3,
+    /// The article already struck (it_802B1DEC).
+    pub struck: bool,
 }

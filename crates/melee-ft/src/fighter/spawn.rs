@@ -1141,6 +1141,7 @@ impl FighterCore {
             pending_forward_smash: false,
             article_in_hand: None,
             pickup_candidates: Default::default(),
+            owned_article: None,
             partner_position: None,
             ledge_holders: Default::default(),
             accessory4_armed: false,
