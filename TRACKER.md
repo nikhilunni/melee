@@ -43,15 +43,23 @@ do not keep a session log here.
    - Particle positions (not compared by the gate) drift by small amounts in
      some long explorer matches on several stages (e.g. 6 of 8 PS matches,
      corpus_v3_fd_mario_fox4_e9943b4ab_p0); RNG order and generators match.
-   - **Wave C (2026-09-28), paused by the user after this tranche.**
-     Merged: Roy (ft-mars-family), Dr. Mario (ft-mario-family), Luigi,
-     Pichu (ft-pikachu-family), ten cross-matchup boundaries. Still on agent
-     branches (worktree-agent-*), to review and merge: Ganondorf, Link and
-     Young Link, Sheik/Zelda, Samus, Ice Climbers, cross-matchup fixes,
-     particles. Open from Pichu: a bolt ending during Walk (fail-closed), a
-     Fox laser overlap 0.00938 vs retail's full hit on Pichu
-     (corpus_v3_fd_pichu_fox4_e68e14c22_p1). Merge tooling:
-     target/agent-scratch/pick.sh (not in git).
+   - **Wave C (2026-09-28) complete; paused by the user.** Merged: Roy
+     (ft-mars-family), Dr. Mario (ft-mario-family), Luigi, Pichu
+     (ft-pikachu-family), Ganondorf (ft-captain-family), Ice Climbers (one
+     player, two fighters; Nana's CPU follow in melee-cpu), Samus, Sheik and
+     Zelda (transformation on the two-fighter model), Link and Young Link
+     (ft-link-family), ten cross-matchup boundaries with their fixes, and
+     particle-exact corpus fixes. Open, each failing closed or unregistered:
+     wall/ledge tether (Samus, Link: AirCatchHit), Ice Climbers' Squall
+     Hammer / Belay / Blizzard and Nana's death rules, Peach's rare pulls
+     (Beam Sword, Bob-omb), Yoshi's delayed egg powershield, a Pichu bolt
+     ending in Walk, a Fox laser glancing Pichu (e68e14c22_p1), Peach's down
+     throw on Marth (extra hitlag frame), Mario's cape vs Falco's blaster,
+     Samus's up throw (samus_grab_throwu), two Ganondorf cases (floor snap in
+     mpColl_800477E0; Dark Dive throw effect order), Sheik crash after
+     transform (e255c070a_p0), Yoshi turnaround forward-smash dust positions.
+   - **User decision pending: perf size baseline.** The release binary is
+     ~5.6 MB against the 5.2 MB ceiling in docs/PERF.md (new characters).
 2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
    build the batch runner that aggregates first divergences, using `triage`.
    Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
@@ -70,10 +78,12 @@ agent each (`CLAUDE.md` "Agents").
 ## Status by area
 
 **Characters** (`crates/ft-<name>`): Fox and Marth complete for the matchup.
-Falco, Captain Falcon, Peach, Yoshi, Jigglypuff and Pikachu (with
-`ft-pikachu-family` for Pichu) have every special ported and pass their start
-boundaries and explorer batches, as does Mario (fireball, cape and cape
-turnaround, Super Jump Punch, Tornado). All other kinds are unregistered. Mario's crate is a stub and not registered in
+21 of 26 kinds are registered: Fox, Falco, Marth, Roy, Captain Falcon,
+Ganondorf, Peach, Yoshi, Jigglypuff, Pikachu, Pichu, Mario, Dr. Mario,
+Luigi, Samus, Sheik, Zelda, Ice Climbers (Popo and Nana), Link, Young Link,
+each with its start boundary and explorer batches; specials complete except
+the open items above. Unregistered: Kirby, Ness, Mewtwo, Mr. Game & Watch,
+Donkey Kong, Bowser. Mario's crate is a stub and not registered in
 `scene_characters!` (his recorded scenes fail to load). All others unstarted.
 
 **Stages**: Final Destination complete. Battlefield, Dream Land, Yoshi's Story
