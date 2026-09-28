@@ -17,6 +17,14 @@ pub enum Accessory {
     TransformHandOver,
     /// ftZd_SpecialLw_8013AE30: the arrival sparkle.
     TransformArrival,
+    /// ftZd_SpecialN_8013A830: Nayru's Love's crystal on the ground.
+    NayrusLoveCrystal,
+    /// ftZd_SpecialN_8013A8AC: the crystal in the air.
+    NayrusLoveAirCrystal,
+    /// ftZd_SpecialHi_801396AC: Farore's Wind's wind model.
+    FaroresWindStart,
+    /// ftZd_SpecialHi_8013979C: Farore's Wind's reappearance puff.
+    FaroresWindReappear,
 }
 
 #[derive(Clone, Debug)]
@@ -26,6 +34,10 @@ pub struct Zelda {
     pub model_groups: [i32; 2],
     /// Fighter accessory4_cb while a special owns it.
     pub accessory: Accessory,
+    /// Farore's Wind's motion scratch.
+    pub farores_wind: crate::special_hi::FaroresWind,
+    /// Nayru's Love's hang and reflector.
+    pub nayrus_love: crate::special_n::NayrusLove,
 }
 impl Zelda {
     pub fn new(attributes: ZeldaAttributes) -> Self {
@@ -33,6 +45,8 @@ impl Zelda {
             attributes,
             model_groups: [0; 2],
             accessory: Accessory::None,
+            farores_wind: Default::default(),
+            nayrus_love: Default::default(),
         }
     }
 }
@@ -67,6 +81,8 @@ impl CharacterCallbacks for Zelda {
         use melee_ft::fighter::SpecialSlot;
         match slot {
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             _ => unimplemented!(
                 "ftData_Special{slot:?}[Zelda] (airborne: {airborne}): character special entry"
             ),
@@ -82,9 +98,19 @@ impl CharacterCallbacks for Zelda {
             Accessory::TransformStart => crate::special_lw::sparkle(f, false),
             Accessory::TransformHandOver => crate::special_lw::hand_over(f),
             Accessory::TransformArrival => crate::special_lw::sparkle(f, true),
+            Accessory::FaroresWindStart => crate::special_hi::wind(f),
+            Accessory::NayrusLoveCrystal => crate::special_n::crystal(f, false),
+            Accessory::NayrusLoveAirCrystal => crate::special_n::crystal(f, true),
+            Accessory::FaroresWindReappear => crate::special_hi::reappear(f),
             Accessory::None => {}
         }
     }
+    /// Nayru's Love's reflector (ftColl_CreateReflectHit, an empty hit
+    /// callback).
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
+        Some(crate::special_n::reflector_contact);
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(crate::special_n::reflect_hit);
     /// ftZd_SpecialLw_8013B4D8: Zelda arrives from Sheik's transformation.
     const TRANSFORMATION_ARRIVAL: fn(
         &mut Fighter,

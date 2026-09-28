@@ -92,9 +92,9 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 14] = [
         models: 2,
     },
     // Zelda's and Sheik's shared file (ftData_UnkBytePerCharacter 17):
-    // models 0x4268..0x4271 (efSync 0x4F4..0x501; row 7 has none) and
-    // generators such as the transformation's 0x426D / 0x4271 (efSync
-    // 0x4FC / 0x4FD).
+    // its particles (e.g. the transformation's generators 0x426D / 0x4271,
+    // efSync 0x4FC / 0x4FD) and models 0x4268..0x4271 (efSync 0x4F4..0x501);
+    // a row without a model is skipped.
     CharacterEffectFile {
         bank: 17,
         file: "EfZdData.dat",

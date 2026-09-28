@@ -71,9 +71,8 @@ pub struct FaroresWindAttributes {
     pub air_start_terminal_velocity: f32,
     /// +0x48: frames spent travelling while invisible.
     pub travel_frames: i32,
-    /// +0x4C.
-    // TODO(meaning): named when Farore's Wind is ported.
-    pub unknown_4c: f32,
+    /// +0x4C: travel frames before a platform can stop the aerial travel.
+    pub platform_frames: f32,
     /// +0x50: stick magnitude below which Zelda travels straight up.
     pub stick_threshold: f32,
     /// +0x54: travel speed added per unit of stick magnitude.
@@ -143,7 +142,7 @@ impl ZeldaAttributes {
                 air_start_gravity: r.f32(0x40)?,
                 air_start_terminal_velocity: r.f32(0x44)?,
                 travel_frames: r.s32(0x48)?,
-                unknown_4c: r.f32(0x4C)?,
+                platform_frames: r.f32(0x4C)?,
                 stick_threshold: r.f32(0x50)?,
                 speed_per_stick: r.f32(0x54)?,
                 base_speed: r.f32(0x58)?,

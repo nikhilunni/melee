@@ -487,7 +487,7 @@ impl Effects {
                     id @ (0x488..=0x48C
                     | 0x491..=0x493
                     | 0x4D6
-                    | 0x4F2..=0x4F3
+                    | 0x4F2..=0x4F7
                     | 0x50D..=0x50F
                     | 0x511..=0x512),
                 bone,
@@ -508,6 +508,12 @@ impl Effects {
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     // efsync.c:645-652: Roy's Flare Blade release.
                     0x511..=0x512 => 0xBF68 + u32::from(id - 0x511),
+                    // efsync.c:458-484: Zelda's models 0x4268..0x426B.
+                    // 0x4F4/0x4F5 (efLib_Create_AttachChild, Nayru's Love)
+                    // also take the fighter root's scale and the joint's
+                    // orientation (lb_8000C290), which only moves the model;
+                    // 0x4F6/0x4F7 (efLib_Create_Attach_Scale, Farore's Wind).
+                    0x4F4..=0x4F7 => 0x4268 + u32::from(id - 0x4F4),
                     _ => unreachable!(),
                 };
                 // efLib_Create_Attach_Scale, and a root rotation Y from the
@@ -518,7 +524,7 @@ impl Effects {
                     0x488..=0x48A
                         | 0x492..=0x493
                         | 0x4D6
-                        | 0x4F2..=0x4F3
+                        | 0x4F2..=0x4F7
                         | 0x50E..=0x50F
                         | 0x511..=0x512
                 );

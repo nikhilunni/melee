@@ -3,7 +3,9 @@
 pub mod attributes;
 mod common;
 pub mod init;
+pub mod special_hi;
 pub mod special_lw;
+pub mod special_n;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -17,6 +19,85 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     let mut i = 0;
     while i < SPECIAL_ROW_COUNT {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
+        i += 1;
+    }
+    use melee_ft::fighter::state::{callbacks, AnimFn, CollisionFn, PhysicsFn};
+    use special_n as n;
+    place(
+        &mut rows,
+        common::row(
+            n::GROUND,
+            n::ANIMATIONS[0],
+            n::anim,
+            common::no_input,
+            n::ground_physics,
+            n::ground_collision,
+        ),
+    );
+    place(
+        &mut rows,
+        common::row(
+            n::AIR,
+            n::ANIMATIONS[1],
+            n::anim,
+            common::no_input,
+            n::air_physics,
+            n::air_collision,
+        ),
+    );
+    use special_hi as hi;
+    let farores_wind: [(ActionId, AnimFn, PhysicsFn, CollisionFn); 6] = [
+        (
+            hi::GROUND_START,
+            hi::start_anim,
+            callbacks::physics::guard_on,
+            hi::start_ground_collision,
+        ),
+        (
+            hi::GROUND_TRAVEL,
+            hi::travel_anim,
+            hi::travel_ground_physics,
+            hi::travel_ground_collision,
+        ),
+        (
+            hi::GROUND_END,
+            hi::end_anim,
+            hi::end_ground_physics,
+            hi::end_ground_collision,
+        ),
+        (
+            hi::AIR_START,
+            hi::start_anim,
+            hi::start_air_physics,
+            hi::start_air_collision,
+        ),
+        (
+            hi::AIR_TRAVEL,
+            hi::travel_anim,
+            hi::travel_air_physics,
+            hi::travel_air_collision,
+        ),
+        (
+            hi::AIR_END,
+            hi::end_air_anim,
+            hi::end_air_physics,
+            hi::end_air_collision,
+        ),
+    ];
+    let mut i = 0;
+    while i < farores_wind.len() {
+        let (action, anim, physics, collision) = farores_wind[i];
+        place(
+            &mut rows,
+            common::row(
+                action,
+                hi::ANIMATIONS[i],
+                anim,
+                common::no_input,
+                physics,
+                collision,
+            ),
+        );
         i += 1;
     }
     use special_lw as lw;

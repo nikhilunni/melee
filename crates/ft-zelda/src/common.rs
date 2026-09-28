@@ -86,6 +86,20 @@ pub fn grounded(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
     ) == ground::WaitGroundResult::Supported
 }
 
+/// ft_800827A0 (800827A0): ground collision that stops at the floor's
+/// edge; false off the floor.
+pub fn stays_on_edge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
+    let c = &mut f.core;
+    ground::map_escape(
+        &mut c.physics,
+        &mut c.collision,
+        p.map,
+        &mut c.skeleton,
+        c.animation.root,
+        c.input.current.stick.x,
+    ) == ground::WaitGroundResult::Supported
+}
+
 /// ft_80081D0C (80081D0C): ordinary airborne collision; true on landing.
 pub fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
     let c = &mut f.core;
@@ -132,4 +146,51 @@ pub fn joint_position(f: &mut Fighter, joint: usize) -> hsd_types::Vec3 {
         joint,
         hsd_types::Vec3::ZERO,
     )
+}
+
+/// ftCommon_GroundAirColl_MF (SkipMatAnim, SkipColAnim, UpdateCmd,
+/// SkipItemVis, Unk19, SkipModelPartVis, SkipModelFlags, Unk27) with
+/// KeepGfx, KeepColAnimHitStatus and SkipHit: the specials' ground/air
+/// counterparts (ftZd_MF_SpecialLw_Coll and the Farore's Wind transitions).
+pub const GROUND_AIR_COLLISION_FLAGS: MotionEntryFlags = MotionEntryFlags(
+    1 << 1
+        | 1 << 2
+        | 1 << 3
+        | 1 << 7
+        | 1 << 12
+        | 1 << 14
+        | 1 << 18
+        | 1 << 19
+        | 1 << 22
+        | 1 << 26
+        | 1 << 27,
+);
+
+/// ftCommon_ApplyGroundMovement (8007CB74), then Fighter_procUpdate's
+/// grounded tail.
+pub fn move_on_ground(f: &mut Fighter, p: &PhysicsPhase<'_>) {
+    use melee_ft::physics::grounded;
+    let core = &mut f.core;
+    grounded::apply_ground_movement(
+        &mut core.physics,
+        core.collision.data.floor.normal,
+        p.map.floor_speed_scale(&core.collision.data),
+    );
+    grounded::finish_ground_update(
+        &mut core.physics,
+        &core.collision.data,
+        &grounded::GroundedParameters::from_attributes(&core.attributes, &p.assets.common),
+        p.map,
+        p.wind,
+    );
+}
+
+/// ftCommon_ClampSelfVelX (8007D440).
+pub fn clamp_self_velocity_x(f: &mut Fighter, maximum: f32) {
+    let velocity = f.physics.self_velocity.x;
+    if velocity < -maximum {
+        f.physics.self_velocity.x = -maximum;
+    } else if velocity > maximum {
+        f.physics.self_velocity.x = maximum;
+    }
 }

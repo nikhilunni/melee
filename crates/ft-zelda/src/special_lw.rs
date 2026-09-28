@@ -48,19 +48,7 @@ const GUST_PHASE_STEP: f32 = std::f32::consts::FRAC_PI_3;
 /// ftZd_MF_SpecialLw_Coll: ftCommon_GroundAirColl_MF (SkipMatAnim,
 /// SkipColAnim, UpdateCmd, SkipItemVis, Unk19, SkipModelPartVis,
 /// SkipModelFlags, Unk27) with KeepGfx, KeepColAnimHitStatus and SkipHit.
-const GROUND_AIR_FLAGS: MotionEntryFlags = MotionEntryFlags(
-    1 << 1
-        | 1 << 2
-        | 1 << 3
-        | 1 << 7
-        | 1 << 12
-        | 1 << 14
-        | 1 << 18
-        | 1 << 19
-        | 1 << 22
-        | 1 << 26
-        | 1 << 27,
-);
+const GROUND_AIR_FLAGS: MotionEntryFlags = common::GROUND_AIR_COLLISION_FLAGS;
 
 fn attributes(f: &Fighter) -> &crate::attributes::TransformAttributes {
     &f.character.get::<Zelda>().attributes.transform
