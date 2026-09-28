@@ -17,11 +17,11 @@ fn fixture_matched_frame_counts_never_decrease() {
     // a setup/parser regression cannot masquerade as a successful zero floor.
     let cases = [
         ("ics.slp", "FinalDestination", "Cpu control", 0),
-        ("joystick_udlr.slp", "FinalDestination", "Ganondorf", 0),
+        ("joystick_udlr.slp", "FinalDestination", "Cpu control", 0),
         ("netplay.slp", "FountainOfDreams", "cold stage", 0),
         ("v0.1.slp", "DreamLand", "cold stage", 0),
         ("v3.12.slp", "PokemonStadium", "cold stage", 0),
-        ("v3.13.slp", "FinalDestination", "Pichu", 0),
+        ("v3.13.slp", "FinalDestination", "requires singles stock mode", 0),
         ("v3.16.slp", "YoshisStory", "Online", 0),
         ("v3.18.slp", "FountainOfDreams", "cold stage", 0),
     ];
