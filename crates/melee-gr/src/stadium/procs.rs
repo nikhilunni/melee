@@ -40,6 +40,21 @@ pub const STITCHED_AT_INIT: (i32, i32) = (6, 4);
 /// transformation enables while the arena is sunk (TODO(meaning)).
 pub const PIT_LINES: [i32; 2] = [0x55, 0x6F];
 
+/// A map's gobj proc (grPs_StageCallbacks[map].gobj_proc).
+pub fn map_callback(map: u8) -> u32 {
+    match map {
+        1 => SCREEN_CALLBACK,
+        2 => CONTROLLER_CALLBACK,
+        3 => 0x801D_19D8,
+        4 => 0x801D_16DC,
+        5 => BASE_CALLBACK,
+        6 => 0x801D_17E8,
+        7 | 8 => 0x801D_1E18,
+        9 => 0x801D_1B48,
+        _ => unreachable!("Pokemon Stadium map {map} has no gobj proc"),
+    }
+}
+
 /// The stage's joints bound to `map`'s descendants.
 pub fn stage_joints(map: u8) -> impl Iterator<Item = &'static JointMapping> {
     STAGE_JOINTS

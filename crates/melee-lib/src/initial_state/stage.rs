@@ -395,8 +395,9 @@ fn restore_stadium(
                     screen.focus = half(raw, 0xEE);
                     screen.cycles = half(raw, 0xF2);
                     let subject = word(raw, 0xF4);
-                    screen.subject_active =
-                        (subject != 0).then(|| word(saved.bytes(subject + 8, 4), 0) == 0);
+                    screen.subject = (subject != 0)
+                        .then(|| saved_subject(saved.bytes(subject, 0x54)))
+                        .transpose()?;
                 }
                 2 => {
                     let controller = &mut stage.transformation;
@@ -429,6 +430,35 @@ fn restore_stadium(
     );
     let animations = crate::scene_stage::stadium::load_models(assets)?;
     Ok((SceneStage::Stadium(Box::new(stage)), animations))
+}
+
+/// A CmSubject (cm/types.h) that is not a fighter's.
+fn saved_subject(raw: &[u8]) -> Result<melee_cm::Subject> {
+    use melee_cm::{Extents, SubjectState};
+    let vec = |at: usize| hsd_types::Vec3::new(float(raw, at), float(raw, at + 4), float(raw, at + 8));
+    let extents = |at: usize| Extents {
+        left: float(raw, at),
+        right: float(raw, at + 4),
+        top: float(raw, at + 8),
+        bottom: float(raw, at + 12),
+        radius: float(raw, at + 16),
+    };
+    let mut subject = melee_cm::Subject::new(match word(raw, 8) {
+        0 => SubjectState::Active,
+        1 => SubjectState::Inactive,
+        2 => SubjectState::Auto,
+        state => anyhow::bail!("camera subject state {state}"),
+    });
+    subject.on_ledge = raw[0xC] & 0x80 != 0;
+    subject.force_inactive = raw[0xC] & 0x40 != 0;
+    subject.was_framed = raw[0xC] & 0x20 != 0;
+    subject.state_timer = i16::from_be_bytes([raw[0xE], raw[0xF]]);
+    subject.position = vec(0x10);
+    subject.bone_position = vec(0x1C);
+    subject.facing = float(raw, 0x28);
+    subject.extents = extents(0x2C);
+    subject.target_extents = extents(0x40);
+    Ok(subject)
 }
 
 /// Dream Land Ground owners and already-evaluated JObj frames at the saved boundary.

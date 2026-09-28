@@ -990,6 +990,7 @@ dependencies = [
  "hsd-anim",
  "hsd-archive",
  "hsd-types",
+ "melee-cm",
  "melee-lb",
  "melee-mp",
  "melee-test-support",

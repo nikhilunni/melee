@@ -6,7 +6,7 @@ pub mod screen;
 pub mod transform;
 
 pub use screen::{Screen, ScreenMode, ScreenPlayers};
-pub use transform::{Form, Transformation};
+pub use transform::{Form, StadiumEngine, Transformation};
 
 use gekko_math::HsdRng;
 
@@ -70,7 +70,18 @@ pub struct Stadium {
     pub parameters: Parameters,
     pub screen: Screen,
     pub transformation: Transformation,
+    /// Per map: a form Ground's xC4_b0 (settled: the water form adds its
+    /// windmill) and xC4_b1 (about to sink: it drops the windmill).
+    pub settled: [bool; MAP_COUNT],
+    pub sinking: [bool; MAP_COUNT],
+    /// Per map: the particle generator a form created (xC8).
+    pub generators: [Option<usize>; MAP_COUNT],
+    /// Ground_804D6950: a destroyed map's collision joints were released,
+    /// so recreating it lists them again (Ground_801C3214).
+    pub released: [bool; MAP_COUNT],
 }
+/// grPs_StageCallbacks' rows.
+pub const MAP_COUNT: usize = 10;
 
 impl Stadium {
     /// `grStadium_OnInit` (0x801D10F8 for maps 0, 1, 2): the screen blanks
@@ -82,15 +93,19 @@ impl Stadium {
             parameters,
             screen,
             transformation,
+            settled: [false; MAP_COUNT],
+            sinking: [false; MAP_COUNT],
+            generators: [None; MAP_COUNT],
+            released: [false; MAP_COUNT],
         }
     }
 
     /// `Ground_801C0FB8` (0x801C0FB8) at the countdown's end runs the
     /// deferred callbacks newest first: fn_801D13C8 releases the controller,
     /// fn_801D11E4 creates the screen's (inactive) camera subject.
-    pub fn start(&mut self) {
+    pub fn start(&mut self, map_scale: f32) {
         self.transformation.waiting_for_start = false;
-        self.screen.subject_active = Some(false);
+        self.screen.create_subject(map_scale);
     }
 
     /// `grStadium_801D1E20` (0x801D1E20): the audience flash, before

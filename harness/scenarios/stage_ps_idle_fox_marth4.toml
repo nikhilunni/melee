@@ -1,0 +1,25 @@
+# STAGE-PS witness: Fox (p1) and Marth (p2) idle on Pokemon Stadium from the
+# start_ps_fox_marth4 boundary for 7200 ticks. The controller
+# (grStadium_801D4548) counts down the first base-form duration (drawn in
+# [3600, 3800) at Ground creation), loads a form archive, announces it on
+# the screen, sinks the base arena and raises the form; after the form's
+# duration ([1200, 1800)) the base arena returns the same way. The screen
+# cycles its modes (grStadium_801D2A60) throughout.
+name = "stage_ps_idle_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 7200
+seed = 1
+stage = "PokemonStadium"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

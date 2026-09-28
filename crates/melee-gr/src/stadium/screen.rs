@@ -96,10 +96,16 @@ pub struct Screen {
     pub focus: i16,
     /// xF2: modes chosen since the last standings.
     pub cycles: i16,
-    /// xF4's state: `None` until Ground_801C0FB8 creates the subject
-    /// (fn_801D11E4), then whether it is active.
-    pub subject_active: Option<bool>,
+    /// xF4: the camera subject Ground_801C0FB8's deferred fn_801D11E4
+    /// creates; the camera frames the screen while it is active.
+    pub subject: Option<melee_cm::Subject>,
 }
+
+/// fn_801D11E4 (0x801D11E4): the subject sits at the screen's height with
+/// its reach, both under map scale.
+const SUBJECT_HEIGHT: f32 = 30.0;
+const SUBJECT_HALF_WIDTH: f32 = 25.0;
+const SUBJECT_HALF_HEIGHT: f32 = 10.0;
 
 impl Screen {
     /// `grStadium_801D2278` (0x801D2278): mode 1 is written directly, then
@@ -111,7 +117,7 @@ impl Screen {
             timer: 0,
             focus: NO_FOCUS,
             cycles: 0,
-            subject_active: None,
+            subject: None,
         };
         screen.set_mode(ScreenMode::Blank, 0, parameters, rng, &mut NoPlayers);
         screen
@@ -149,8 +155,12 @@ impl Screen {
                 subject = Some(true);
             }
         }
-        if let (Some(active), Some(state)) = (subject, self.subject_active.as_mut()) {
-            *state = active;
+        if let (Some(active), Some(state)) = (subject, self.subject.as_mut()) {
+            state.state = if active {
+                melee_cm::SubjectState::Active
+            } else {
+                melee_cm::SubjectState::Inactive
+            };
         }
         if timer != 0 {
             self.timer = timer;
@@ -178,6 +188,19 @@ impl Screen {
             }
             self.focus += 1;
         }
+    }
+
+    /// fn_801D11E4 (0x801D11E4): Camera_80029020 links a fresh (active)
+    /// subject, which is at once made inactive and placed. Five fmuls.
+    pub fn create_subject(&mut self, scale: f32) {
+        let mut subject = melee_cm::Subject::new(melee_cm::SubjectState::Active);
+        subject.state = melee_cm::SubjectState::Inactive;
+        subject.position = hsd_types::Vec3::new(0.0, SUBJECT_HEIGHT * scale, 0.0);
+        subject.target_extents.left = -SUBJECT_HALF_WIDTH * scale;
+        subject.target_extents.right = SUBJECT_HALF_WIDTH * scale;
+        subject.target_extents.top = SUBJECT_HALF_HEIGHT * scale;
+        subject.target_extents.bottom = -SUBJECT_HALF_HEIGHT * scale;
+        self.subject = Some(subject);
     }
 
     /// Post-decrement test shared by the timed modes: a timer of zero still

@@ -28,6 +28,14 @@ pub struct Assets {
     pub particle_bank: ParticleBank,
     pub common_particle_bank: ParticleBank,
     pub characters: [CharacterArchive; 2],
+    /// Pokemon Stadium's form archives (grpstadium.c `datfiles`), read
+    /// mid-match by the transformation; indexed by `Form::archive`.
+    pub stage_forms: Vec<FormArchive>,
+}
+/// One archive of maps loaded after the stage's own (grDatFiles_801C6478).
+pub struct FormArchive {
+    pub archive: Archive,
+    pub models: Vec<melee_gr::desc::ModelDesc>,
 }
 impl Assets {
     pub fn fighters(&self) -> &[FighterAssets; 2] {
@@ -85,6 +93,19 @@ impl Assets {
         let stage = archive(stage_descriptor.file)?;
         let stage_desc = (stage_descriptor.read)(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
         let particle_bank = ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?;
+        let stage_forms = if stage_desc.kind == melee_types::GrKind::PStadium {
+            ["GrPs1.dat", "GrPs2.dat", "GrPs3.dat", "GrPs4.dat"]
+                .into_iter()
+                .map(|name| -> Result<FormArchive> {
+                    let archive = archive(name)?;
+                    let models = melee_gr::desc::read_stadium_form(&archive)
+                        .map_err(|e| anyhow::anyhow!("{name}: {e}"))?;
+                    Ok(FormArchive { archive, models })
+                })
+                .collect::<Result<_>>()?
+        } else {
+            Vec::new()
+        };
         let effects = archive("EfCoData.dat")?;
         // efAsync_LoadSync (efasync.c:1287-1316): command/texture pointers.
         let table = effects
@@ -189,6 +210,7 @@ impl Assets {
             particle_bank,
             common_particle_bank,
             characters,
+            stage_forms,
         })
     }
 }

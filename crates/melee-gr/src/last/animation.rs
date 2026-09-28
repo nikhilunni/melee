@@ -197,6 +197,50 @@ impl BackgroundAnimation {
             self.tree.clear_flags_all(joint, hsd_anim::jobj::JOBJ_HIDDEN);
         }
     }
+    /// `HSD_JObjGetScaleY(gobj jobj)`.
+    pub fn wrapper_scale_y(&self) -> f32 {
+        self.tree.scale_y(self.gobj_joint())
+    }
+    /// `HSD_JObjSetScaleY(gobj jobj, y)`.
+    pub fn set_wrapper_scale_y(&mut self, y: f32) {
+        let joint = self.gobj_joint();
+        self.tree.set_scale_y(joint, y);
+    }
+    /// `HSD_JObjSetTranslateY(gobj jobj, y)`.
+    pub fn set_wrapper_translate_y(&mut self, y: f32) {
+        let joint = self.gobj_joint();
+        self.tree.set_translate_y(joint, y);
+    }
+    /// `HSD_JObjSetFlagsAll(gobj jobj, flags)`.
+    pub fn set_wrapper_flags_all(&mut self, flags: u32) {
+        let joint = self.gobj_joint();
+        self.tree.set_flags_all(joint, flags);
+    }
+    /// `HSD_JObjAddRotationZ` on a descendant (Ground_801C3FA4 index).
+    pub fn add_rotation_z(&mut self, bone: usize, delta: f32) {
+        let joint = self.joints[bone];
+        let z = self.tree.rotation_z(joint);
+        self.tree.set_rotation_z(joint, z + delta);
+    }
+    /// The descendant indices of `bone`'s subtree in HSD_JObjWalkTree order
+    /// (the bone first, instances not entered).
+    pub fn subtree(&self, bone: usize) -> Vec<usize> {
+        let mut result = Vec::new();
+        self.tree.walk_tree(self.joints[bone], &mut |joint, _| {
+            result.push(self.joints.iter().position(|&j| j == joint).unwrap());
+        });
+        result
+    }
+    /// `grAnime_801C7A04(gobj, 0, 7, 0.0)` (0x801C7A04): every joint
+    /// animation of the model stops advancing. Material and shape clocks
+    /// only affect drawing.
+    pub fn freeze(&mut self) {
+        for &joint in &self.joints {
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                aobj.framerate = 0.0;
+            }
+        }
+    }
     /// `Ground_GetStageGObj` (0x801C14D0), ground.c:889-908: map-scale
     /// wrapper above the archive root. Matrix products use audited HSD kernels.
     pub fn set_map_scale(&mut self, scale: f32) {

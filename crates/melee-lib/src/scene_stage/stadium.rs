@@ -1,5 +1,6 @@
 //! Pokemon Stadium composition: the stage-owned screen and transformation
 //! controller, with the particles, collision and fighters they touch.
+mod forms;
 use crate::{
     assets::Assets,
     initial_state::InitialState,
@@ -68,43 +69,72 @@ pub(crate) fn run_proc(
     map: u8,
     draws: &mut DrawLog,
     radial_forces: &mut melee_lb::radial_force::RadialForces,
+    world: &mut hsd_gobj::TaggedWorld,
+    objects: &mut [Option<hsd_gobj::GObjId>],
 ) -> Result<()> {
+    let archive = match &state.stage {
+        SceneStage::Stadium(stage) => stage.transformation.archive,
+        _ => unreachable!(),
+    };
     match map {
-        1 => run_screen(state, draws),
+        1 => run_screen(state, draws)?,
         2 => {
             // grStadium_801D1520: the controller once released, then
             // lb_800115F4 and Ground_801C2FE0 (map 2 binds no joint).
-            let SceneStage::Stadium(stage) = &mut state.stage else {
-                unreachable!()
-            };
-            if !stage.transformation.waiting_for_start {
-                stage.transformation.tick();
-            }
+            run_controller(state, draws, world, objects)?;
             radial_forces.tick();
             let wind = radial_forces.wind_state();
             for fighter in &mut state.fighters {
                 with_fighter!(fighter, |f| f.stage_wind = wind);
             }
-            Ok(())
         }
-        5 => {
-            // grStadium_801D1604: Ground_801C2FE0.
-            update_form_collision(state, map);
-            Ok(())
+        // grStadium_801D19D8 / 801D16DC / 801D1604 / 801D17E8.
+        3..=6 => forms::update_collision(state, archive, map),
+        // grStadium_801D1E18: empty.
+        7 | 8 => {}
+        9 => {
+            forms::run_water(state, archive);
+            forms::publish_forms(state);
         }
         _ => unreachable!("Pokemon Stadium map {map} has no gobj proc"),
     }
+    Ok(())
 }
 
-/// `Ground_801C2FE0` (0x801C2FE0): each stage joint bound to the map
-/// follows its JObj.
-fn update_form_collision(state: &mut InitialState, map: u8) {
-    let bindings: Vec<_> = procs::stage_joints(map).cloned().collect();
-    state
-        .stage_animations
-        .get_mut(&map)
-        .expect("live form model")
-        .update_collision(&mut state.map, &bindings);
+/// `grStadium_801D4548` on a copy of the controller, so the engine can
+/// reach the rest of the scene; the copy is written back.
+fn run_controller(
+    state: &mut InitialState,
+    draws: &mut DrawLog,
+    world: &mut hsd_gobj::TaggedWorld,
+    objects: &mut [Option<hsd_gobj::GObjId>],
+) -> Result<()> {
+    let SceneStage::Stadium(stage) = &state.stage else {
+        unreachable!()
+    };
+    if stage.transformation.waiting_for_start {
+        return Ok(());
+    }
+    let mut transformation = stage.transformation.clone();
+    let parameters = stage.parameters.clone();
+    let mut engine = forms::Engine {
+        archive: transformation.archive,
+        state: &mut *state,
+        draws,
+        world,
+        objects,
+        error: None,
+    };
+    transformation.tick(&parameters, &mut engine);
+    if let Some(error) = engine.error {
+        return Err(error);
+    }
+    let SceneStage::Stadium(stage) = &mut state.stage else {
+        unreachable!()
+    };
+    stage.transformation = transformation;
+    forms::publish_forms(state);
+    Ok(())
 }
 
 /// `grStadium_801D1390` (0x801D1390): the audience flash, then the screen.
@@ -121,6 +151,8 @@ fn run_screen(state: &mut InitialState, draws: &mut DrawLog) -> Result<()> {
     };
     let mut players = Players {
         fighters: &state.fighters,
+        camera: &state.camera,
+        stage_camera: &state.assets.stage_camera,
     };
     stage
         .screen
@@ -183,6 +215,8 @@ pub(crate) fn show(state: &mut InitialState, mode: ScreenMode) {
     };
     let mut players = Players {
         fighters: &state.fighters,
+        camera: &state.camera,
+        stage_camera: &state.assets.stage_camera,
     };
     stage
         .screen
@@ -191,7 +225,14 @@ pub(crate) fn show(state: &mut InitialState, mode: ScreenMode) {
 
 struct Players<'a> {
     fighters: &'a [SceneFighter; 2],
+    camera: &'a melee_cm::GameCamera,
+    stage_camera: &'a melee_cm::StageCamera,
 }
+/// `grStadium_801D32D0`'s close-up box around the projected point.
+const CLOSE_UP_HALF_WIDTH: f32 = 62.0;
+const CLOSE_UP_WIDTH: f32 = 124.0;
+const CLOSE_UP_HALF_HEIGHT: f32 = 40.0;
+const CLOSE_UP_HEIGHT: f32 = 80.0;
 impl Players<'_> {
     /// `Player_GetEntity(slot)`.
     fn fighter(&self, slot: i16) -> Option<&SceneFighter> {
@@ -208,7 +249,21 @@ impl ScreenPlayers for Players<'_> {
         let fighter = self.fighter(slot).expect("existing player");
         with_fighter!(fighter, |f| f.status.disabled)
     }
-    fn framed(&mut self, _slot: i16) -> bool {
-        unimplemented!("grpstadium.c:1381-1434: grStadium_801D32D0 close-up framing")
+    /// `grStadium_801D32D0` (0x801D32D0): project the player's camera
+    /// bone (ftLib_80086B90) with the main CObj's viewing matrix, as last
+    /// rendered (lbVector_WorldToScreen with d = 0), and require the
+    /// close-up box inside the viewport. 801D335C/801D33A8 fsubs,
+    /// 801D3388/801D33D4 fadds; no fused arithmetic.
+    fn framed(&mut self, slot: i16) -> bool {
+        let fighter = self.fighter(slot).expect("existing player");
+        let bone = with_fighter!(fighter, |f| f.camera.bone_position);
+        let camera = self.camera.render_camera(self.stage_camera);
+        let point = melee_lb::vector::world_to_screen(&camera, bone);
+        let viewport = camera.viewport;
+        let left = point.x - CLOSE_UP_HALF_WIDTH;
+        let clipped_x = left < viewport.xmin || CLOSE_UP_WIDTH + left > viewport.xmax;
+        let top = point.y - CLOSE_UP_HALF_HEIGHT;
+        let clipped_y = top < viewport.ymin || CLOSE_UP_HEIGHT + top > viewport.ymax;
+        !(clipped_x || clipped_y)
     }
 }

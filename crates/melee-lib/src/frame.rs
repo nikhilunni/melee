@@ -687,7 +687,7 @@ impl Runtime {
                                 }
                             }
                             if let SceneStage::Stadium(stage) = &mut state.stage {
-                                stage.start();
+                                stage.start(state.assets.stage_desc.parameters.map_scale);
                             }
                             // grStadium_801D4040.
                             crate::scene_stage::stadium::show(
@@ -717,11 +717,23 @@ impl Runtime {
             }
             Callback::Camera => {
                 let [a, b] = &mut state.fighters;
-                // cm_804D6468 runs newest first: player 2's subject, then player 1's.
-                let mut subjects = [&mut b.0.camera, &mut a.0.camera];
-                state
-                    .camera
-                    .update_standard(&mut subjects, &state.assets.stage_camera);
+                // cm_804D6468 runs newest first: player 2's subject, then player
+                // 1's; a stage subject created at the stage's start is newer.
+                let stage_subject = match &mut state.stage {
+                    SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
+                    _ => None,
+                };
+                if let Some(screen) = stage_subject {
+                    let mut subjects = [screen, &mut b.0.camera, &mut a.0.camera];
+                    state
+                        .camera
+                        .update_standard(&mut subjects, &state.assets.stage_camera);
+                } else {
+                    let mut subjects = [&mut b.0.camera, &mut a.0.camera];
+                    state
+                        .camera
+                        .update_standard(&mut subjects, &state.assets.stage_camera);
+                }
                 state.quakes.retire_loop(&state.camera);
                 let unzoomed = state.camera.zoom() == 1.0;
                 for fighter in &mut state.fighters {
@@ -1200,6 +1212,8 @@ impl Runtime {
                             map_id,
                             &mut self.particle_draws,
                             &mut self.radial_forces,
+                            world,
+                            &mut self.stage_objects,
                         )?;
                     } else if matches!(state.stage, SceneStage::Pupupu(_)) {
                         crate::scene_stage::pupupu::run_proc(
@@ -1721,6 +1735,9 @@ impl Simulation {
                             1 => 0x801C1D38,
                             _ => match runtime.state.stage {
                                 SceneStage::Battlefield(_) => melee_gr::battle::map_callback(map),
+                                SceneStage::Stadium(_) => {
+                                    melee_gr::stadium::procs::map_callback(map)
+                                }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },

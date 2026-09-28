@@ -109,7 +109,7 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.screen.cycles", &screen.cycles);
             sink.field(
                 "stage.screen.subject",
-                &screen.subject_active.map_or(-1, i32::from),
+                &screen.subject.as_ref().map_or(-1, |s| s.state as i32),
             );
             let controller = &stage.transformation;
             sink.field("stage.waiting_for_start", &controller.waiting_for_start);
