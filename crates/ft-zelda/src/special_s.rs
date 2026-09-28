@@ -6,10 +6,7 @@
 //! the loop (itZeldadinfire reads her stick); releasing B after the
 //! attribute's frames, or the loop's frames running out with no fire,
 //! ends in 345 / 348, whose script detonates it (cmd_vars[1]).
-use crate::{
-    common,
-    init::Zelda,
-};
+use crate::{common, init::Zelda};
 use melee_ef::request::EffectRequest;
 use melee_ft::{
     anim::WaitChoice,
@@ -133,10 +130,12 @@ fn spawn_fire(f: &mut Fighter) {
     let s = scratch(f);
     s.fire_out = true;
     s.damage_callbacks = true;
-    f.core.effects_after_items.push(EffectRequest::SyncAttached {
-        id: HAND_FLASH,
-        bone: FLASH_JOINT,
-    });
+    f.core
+        .effects_after_items
+        .push(EffectRequest::SyncAttached {
+            id: HAND_FLASH,
+            bone: FLASH_JOINT,
+        });
 }
 
 /// ftZd_SpecialSStart_Anim (8013B780) / ftZd_SpecialAirSStart_Anim

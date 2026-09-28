@@ -74,6 +74,13 @@ pub struct Effects {
     /// Item model bones generators follow, as (item, bone).
     item_bones: FixedVec<(u32, u8), 64>,
 }
+/// efsync.c:504-521 (efSync 0x501): the model's life and the bone its
+/// efLib_Cb_LifetimeEndSpawn generator uses (fp->parts[85]).
+const SPARKLE_BURST_FRAMES: u16 = 6;
+const SPARKLE_BURST_BONE: usize = 85;
+/// efLib_Cb_LifetimeEndSpawn's generator and the life it then leaves.
+const LIFETIME_END_GENERATOR: u32 = 0x1AB;
+const LIFETIME_END_FRAMES: u16 = 0x27;
 #[derive(Clone)]
 struct Effect {
     visual: Arc<desc::effect_visual::EffectVisual>,
@@ -100,6 +107,10 @@ struct Effect {
     /// animation, the root sits at (player, bone)'s world position plus a
     /// world-axis offset.
     follow_bone: Option<(usize, usize, Vec3)>,
+    /// efLib_Cb_LifetimeEndSpawn (eflib.c:1219): with one frame of life
+    /// left, the common generator 0x1AB on this bone of the attached
+    /// fighter, and 0x27 more frames.
+    lifetime_end_spawn: Option<usize>,
     hitlag_pause: HitlagPause,
     joint_base: usize,
     paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
@@ -665,23 +676,49 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::Attached {
-                id: id @ (0x4C0 | 0x4FE | 0x500),
+                id: id @ (0x4C0 | 0x4FE | 0x500 | 0x501),
                 bone,
             } = request
             {
-                // efAsync kind 0 -> efSync_Spawn 0x4C0 (efsync.c:115-117) or
-                // 0x4FE (efsync.c:497-499): efLib_Create_Attach(0x1B58 /
-                // 0x426C) on the live joint, no scale inheritance; the
-                // fighter owns it for efLib_PauseAll. 0x500 (efsync.c:500-503)
-                // is efLib_Create_Attach_Scale(0x426D) on parts[1] whatever
-                // joint the script named.
-                let (model, bone, scaled) = match id {
-                    0x4C0 => (0x1B58, bone, false),
-                    0x4FE => (0x426C, bone, false),
-                    _ => (0x426D, 1, true),
+                // efAsync kind 0 -> efSync_Spawn 0x4C0 (efsync.c:115-117) /
+                // 0x4FE (efsync.c:497-499, Din's Fire's cast):
+                // efLib_Create_Attach(0x1B58 / 0x426C) on the live joint, no
+                // scale inheritance; the fighter owns it for efLib_PauseAll.
+                // 0x500 (efsync.c:500-503, Zelda's sparkle) is
+                // efLib_Create_Attach_Scale(0x426D): the fighter root's Y
+                // scale, uniformly.
+                // 0x501 (efsync.c:504-521) is 0x426E the same way, turned to
+                // the fighter's facing, alive 6 frames, then
+                // efLib_Cb_LifetimeEndSpawn on parts[85].
+                let model = match id {
+                    0x4C0 => 0x1B58,
+                    0x4FE => 0x426C,
+                    0x500 => 0x426D,
+                    _ => 0x426E,
                 };
-                let resolved_matrix = if scaled { None } else { resolved_matrix };
+                // 0x500 / 0x501 attach to parts[1] whatever joint the script
+                // named.
+                let (bone, resolved_matrix) = if matches!(id, 0x500 | 0x501) {
+                    (1, None)
+                } else {
+                    (bone, resolved_matrix)
+                };
                 let mut effect = self.acquire(model, particles);
+                if matches!(id, 0x500 | 0x501) {
+                    let scale = fighter.effect_scale().y;
+                    effect.tree.set_scale(effect.root, &Vec3::new(scale, scale, scale));
+                }
+                if id == 0x501 {
+                    let rotation = if fighter.effect_facing() < 0.0 {
+                        -std::f32::consts::FRAC_PI_2
+                    } else {
+                        std::f32::consts::FRAC_PI_2
+                    };
+                    effect.tree.set_rotation_y(effect.root, rotation);
+                    effect.lifetime = SPARKLE_BURST_FRAMES;
+                    effect.indefinite = false;
+                    effect.lifetime_end_spawn = Some(SPARKLE_BURST_BONE);
+                }
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
                 effect.owner = Some(ModelOwner::Fighter(player));
@@ -689,13 +726,6 @@ impl Effects {
                 effect.attachment = Some(player);
                 effect.attachment_bone = Some(bone);
                 effect.scale_attachment = false;
-                if scaled {
-                    // efLib_Create_Attach_Scale: the fighter root supplies uniform scale.
-                    let mut scale = fighter.effect_scale();
-                    scale.x = scale.y;
-                    scale.z = scale.y;
-                    effect.tree.set_scale(effect.root, &scale);
-                }
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
                 effect.tree.set_translate(
                     effect.root,
@@ -938,6 +968,21 @@ impl Effects {
                     if matches!(id, 0x513..=0x515) {
                         // efAsync kind 8 -> Camera_RequestQuake(2/3/4), no particle spawn.
                         self.camera_quakes.push((id - 0x511, position));
+                    } else if id == 0x40D {
+                        // efasync.c:356-370: efLib_CreateGenerator_AddAppSRT(0x19),
+                        // the point as the AppSRT's translation and the
+                        // fighter root's Y scale as its uniform scale.
+                        let scale = fighter.effect_scale().y;
+                        let mut spawn = SpawnRequest::new(0, 0x19, 0);
+                        spawn.application_transform =
+                            Some(hsd_particle::generator::ApplicationTransform {
+                                translation: position,
+                                scale: Vec3::new(scale, scale, scale),
+                                status: 1,
+                                ..Default::default()
+                            });
+                        self.events.spawn(&spawn, false, false);
+                        spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                     } else {
                         self.spawn_dust_generator::<T>(
                             id,
@@ -1357,6 +1402,19 @@ impl Effects {
                     particles.update_joint(effect.joint_base + joint.0, matrix);
                 }
             }
+            if let (Some(bone), Some(player)) = (effect.lifetime_end_spawn, effect.attachment) {
+                if effect.lifetime == 1 {
+                    // hsd_8039EFAC(0, 0, 0x1AB, attach_jobj).
+                    let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                    let mut spawn = SpawnRequest::new(0, LIFETIME_END_GENERATOR, 0);
+                    spawn.joint = Some((joint_id, bone_matrix(player, Some(bone))));
+                    self.events.spawn(&spawn, false, false);
+                    spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                    self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+                    effect.lifetime_end_spawn = None;
+                    effect.lifetime = LIFETIME_END_FRAMES;
+                }
+            }
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -1450,6 +1508,7 @@ impl Effect {
             callback_rotation_z: None,
             facing_rotation: None,
             follow_bone: None,
+            lifetime_end_spawn: None,
             hitlag_pause: HitlagPause::Ignore,
             attachment: None,
             owner: None,

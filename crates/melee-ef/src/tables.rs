@@ -54,6 +54,14 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 25] = [
         model: 0x15,
         attached: false,
     },
+    // The same row from a landing-effect command (ftAction_80072E4C ->
+    // ftCo_8009F834 block_70, efAsync kind 2 at the root).
+    ModelSpawn {
+        request: 0x3FA,
+        source: ModelSource::Landing,
+        model: 0x15,
+        attached: false,
+    },
     ModelSpawn {
         request: 0x3FB,
         source: ModelSource::Graphics,
@@ -107,14 +115,6 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 25] = [
         request: 0x404,
         source: ModelSource::Landing,
         model: 0x18,
-        attached: false,
-    },
-    // The same efAsync 0x3FA row reached by a landing command (Sheik's
-    // Vanish landing): ftAction_80072E4C -> ftCo_8009F834.
-    ModelSpawn {
-        request: 0x3FA,
-        source: ModelSource::Landing,
-        model: 0x15,
         attached: false,
     },
     ModelSpawn {
@@ -383,7 +383,7 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 9] = [
     (0x4D4, 0x11E),
     // efsync.c:430-432: the vegetable pull's script effect, hsd_8039EFAC.
     (0x4D1, 0x64),
-    // efsync.c:516-518: hsd_8039EFAC(0, 0, 0x1A6, jobj), a Sheik script's.
+    // efsync.c:523-525: Zelda's script sparkle, hsd_8039EFAC(0, 0, 0x1A6).
     (0x502, 0x1A6),
 ];
 // eflib.c:761-768: efLib_CreateGenerator_Attach clears PSAPPSRT_UNK_B10

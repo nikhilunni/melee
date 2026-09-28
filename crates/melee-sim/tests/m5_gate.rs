@@ -2464,7 +2464,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 340] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 348] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3014,6 +3014,17 @@ const CORPUS_V3_MATCHES: [(&str, usize); 340] = [
     ("corpus_v3_fd_sheik_fox4_e26ea92b1_p2", 1452),
     ("corpus_v3_fd_sheik_fox4_e1b05b110_p1", 1660),
     ("corpus_v3_fd_sheik_fox4_e121faf54_p0", 232),
+    // ZELDA: explorer samples from start_fd_zelda_fox4: her script
+    // sparkles (efSync 0x500-0x502), 0x40D and the empty 0x43A animlist
+    // id, and Farore's Wind's end returning the body flash.
+    ("corpus_v3_fd_zelda_fox4_e0dee256e_p1", 1780),
+    ("corpus_v3_fd_zelda_fox4_ee62c6106_p0", 1855),
+    ("corpus_v3_fd_zelda_fox4_e50814092_p2", 4070),
+    ("corpus_v3_fd_zelda_fox4_edafcfddf_p2", 4299),
+    ("corpus_v3_fd_zelda_fox4_e9943b4ab_p1", 5637),
+    ("corpus_v3_fd_zelda_fox4_e89a89d0e_p2", 3118),
+    ("corpus_v3_fd_zelda_fox4_e9943b4ab_p2", 2102),
+    ("corpus_v3_fd_zelda_fox4_e005a4f43_p1", 5823),
 ];
 
 #[test]

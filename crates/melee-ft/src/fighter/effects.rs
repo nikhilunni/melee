@@ -5,6 +5,12 @@ const ROTATING_EFFECT_BONE: usize = 0x8D;
 const TRANSLATION_EFFECT_BONE: usize = 0x8E;
 use melee_ef::request::{EffectOwner, EffectQueue, EffectRequest};
 
+/// fp->parts[1], the joint efSync 0x500 follows (Zelda's sparkle).
+const SPARKLE_PART: usize = 1;
+/// An animlist id ftCo_8009F834 has no row for (block_70's default: "no
+/// effect from animlist"); Zelda's scripts name it.
+const NO_EFFECT: u16 = 0x43A;
+
 impl EffectOwner for super::FighterCore {
     fn effect_queue(&mut self) -> &mut EffectQueue {
         &mut self.effects
@@ -147,9 +153,13 @@ impl super::FighterCore {
             }
             if matches!(
                 id,
-                0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422 | 0x487 | 0x4D1 | 0x4FE | 0x500 | 0x502
+                0x402 | 0x403 | 0x412 | 0x413 | 0x414 | 0x422 | 0x487 | 0x4D1 | 0x4FE | 0x500 | 0x501
+                    | 0x502
             ) {
                 // ftCo_09F7.c:115-133: kind 0, before randomized branches.
+                // efsync.c:500-521: 0x500 and 0x501 ignore the joint they
+                // are given and follow parts[1].
+                let bone = if matches!(id, 0x500 | 0x501) { SPARKLE_PART } else { bone };
                 self.effects
                     .push_graphics(EffectRequest::Attached { id, bone });
                 continue;
@@ -193,6 +203,8 @@ impl super::FighterCore {
                         | 0x400
                         | 0x401
                         | 0x402
+                        | 0x40D
+                        | NO_EFFECT
                 ))
             {
                 unimplemented!("ftCo_09F7.c:115-311: graphics dispatch {id:#x}");
@@ -216,6 +228,11 @@ impl super::FighterCore {
             } else {
                 0.0
             };
+            if id == NO_EFFECT {
+                // ftCo_09F7.c:306-309: block_70's default, an OSReport
+                // after the three draws.
+                continue;
+            }
             self.effects.push_graphics(EffectRequest::Graphics {
                 id,
                 bone,

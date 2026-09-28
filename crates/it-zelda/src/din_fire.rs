@@ -294,12 +294,8 @@ fn burst_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
         let owner = item.owner.expect("the creator");
         let mut position = item.position;
         position.z = 0.0;
-        let mut spawn = SpawnItem::attached(
-            ItemKind::ZeldaDinFireExplode,
-            owner,
-            position,
-            item.facing,
-        );
+        let mut spawn =
+            SpawnItem::attached(ItemKind::ZeldaDinFireExplode, owner, position, item.facing);
         spawn.spawn_argument = crate::explode::charge_argument(state(item).charge);
         item.link_requests.push(LinkRequest {
             target: LinkTarget::Spawn(spawn),
