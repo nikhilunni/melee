@@ -842,7 +842,7 @@ impl Fighter {
 }
 impl FighterCore {
     /// Fighter_UnkInitReset (80067C98): retain loaded resources and reset live state.
-    fn reset_life(&mut self, assets: &FighterAssets, map: &melee_mp::CollMap) {
+    pub(super) fn reset_life(&mut self, assets: &FighterAssets, map: &melee_mp::CollMap) {
         let player = &self.player;
         // Same audited coordinate calculation as initial preparation (80067CE8).
         let offset = self.capabilities.spawn_offset * player.scale;

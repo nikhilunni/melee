@@ -1156,6 +1156,12 @@ impl Runtime {
                         }
                     })?;
                 }
+                // Fighter_8006C80C's accessory4 may hand the player to its
+                // partner, whose own s_link 9 proc still runs this tick when
+                // it follows in the fighter list.
+                if proc == FighterProc::HitboxPositions {
+                    transformation::perform(state, player)?;
+                }
                 if offers_items {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
@@ -2912,6 +2918,7 @@ mod puff_state;
 mod yoshi_bones;
 
 mod grab_pairs;
+mod transformation;
 #[cfg(test)]
 mod yoshi_state;
 

@@ -336,3 +336,21 @@ stage = "FinalDestination"
 players = ["Samus", "Fox"]
 stocks = 4
 seed = 915204971
+
+[[boundary]]
+name = "start_fd_sheik_fox4"
+cold = "start_fd_sheik_fox4_cold"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+stage = "FinalDestination"
+players = ["Sheik", "Fox"]
+stocks = 4
+seed = 4228767398
+
+[[boundary]]
+name = "start_fd_zelda_fox4"
+cold = "start_fd_zelda_fox4_cold"
+savestate = "harness/roms/start_fd_zelda_fox4.sav"
+stage = "FinalDestination"
+players = ["Zelda", "Fox"]
+stocks = 4
+seed = 3958977570

@@ -44,6 +44,11 @@ pub enum Character {
     /// Popo, with Nana as the player's partner fighter.
     IceClimbers,
     Samus,
+    /// Sheik at match start (Zelda's CSS icon with A held while the match
+    /// loads); Zelda is loaded beside her as the transformation partner.
+    Sheik,
+    /// Zelda, with Sheik loaded beside her as the transformation partner.
+    Zelda,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -64,6 +69,8 @@ impl Character {
             Self::Ganondorf => "Ganondorf",
             Self::IceClimbers => "IceClimbers",
             Self::Samus => "Samus",
+            Self::Sheik => "Sheik",
+            Self::Zelda => "Zelda",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -88,6 +95,8 @@ impl Character {
             melee_types::FighterKind::Ganon => Self::Ganondorf,
             melee_types::FighterKind::Popo => Self::IceClimbers,
             melee_types::FighterKind::Samus => Self::Samus,
+            melee_types::FighterKind::Seak => Self::Sheik,
+            melee_types::FighterKind::Zelda => Self::Zelda,
             _ => unreachable!("unregistered match character"),
         }
     }

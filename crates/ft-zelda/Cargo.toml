@@ -1,0 +1,20 @@
+[package]
+name = "ft-zelda"
+description = "Fighter: Zelda (decomp src/melee/ft/kinds/ftZelda)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+melee-ef = { path = "../melee-ef" }
+melee-lb = { path = "../melee-lb" }
+melee-it = { path = "../melee-it" }
+melee-mp = { path = "../melee-mp" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

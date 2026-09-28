@@ -33,6 +33,8 @@ const CHARACTERS: [(Character, &str); 16] = [
     (Character::Ganondorf, "Ganondorf"),
     (Character::IceClimbers, "IceClimbers"),
     (Character::Samus, "Samus"),
+    (Character::Sheik, "Sheik"),
+    (Character::Zelda, "Zelda"),
 ];
 const STAGES: [(Stage, &str); 6] = [
     (Stage::FinalDestination, "FinalDestination"),

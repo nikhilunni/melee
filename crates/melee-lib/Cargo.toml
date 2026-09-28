@@ -13,6 +13,7 @@ it-yoshieggthrow = { path = "../it-yoshieggthrow" }
 it-peach = { path = "../it-peach" }
 it-pikachu = { path = "../it-pikachu" }
 it-heiho = { path = "../it-heiho" }
+it-seak = { path = "../it-seak" }
 it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 it-mariofire = { path = "../it-mariofire" }
@@ -54,6 +55,8 @@ ft-ganon = { path = "../ft-ganon" }
 ft-iceclimbers = { path = "../ft-iceclimbers" }
 ft-samus = { path = "../ft-samus" }
 it-samus = { path = "../it-samus" }
+ft-seak = { path = "../ft-seak" }
+ft-zelda = { path = "../ft-zelda" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

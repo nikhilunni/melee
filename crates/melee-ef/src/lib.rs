@@ -616,19 +616,27 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x4BE | 0x4BF),
+                id: id @ (0x4BE | 0x4BF | 0x4FC | 0x4FD),
                 bone,
             } = request
             {
                 // efsync.c:107-114: hsd_8039EFAC(0, 7, 0x1B5C / 0x1B5D, jobj),
                 // and for 0x4BF also the common bank's 0x5F on the same joint.
+                // efsync.c:526-531: hsd_8039EFAC(0, 0x11, 0x426D / 0x4271,
+                // jobj), the transformation's start and finish.
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
                 let matrix = fighter.effect_matrix(Some(bone));
-                let kind = if id == 0x4BE { 0x1B5C } else { 0x1B5D };
-                let mut spawn = SpawnRequest::new(7, kind, 0);
+                let (bank_id, kind) = match id {
+                    0x4BE => (7, 0x1B5C),
+                    0x4BF => (7, 0x1B5D),
+                    0x4FC => (17, 0x426D),
+                    _ => (17, 0x4271),
+                };
+                let mut spawn = SpawnRequest::new(bank_id, kind, 0);
                 spawn.joint = Some((joint_id, matrix));
                 self.events.spawn(&spawn, false, false);
-                let character = resources::character_bank(&self.character_banks, 7)?;
+                let character =
+                    resources::character_bank(&self.character_banks, bank_id.into())?;
                 spawn_particle::<T>(particles, character, spawn, rng, &mut self.draws)?;
                 if id == 0x4BF {
                     let mut spawn = SpawnRequest::new(0, 0x5F, 0);
@@ -754,6 +762,28 @@ impl Effects {
                 let mut spawn = SpawnRequest::new(0, 0x24C, 0);
                 spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
                     translation: position,
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
+            if let EffectRequest::PositionalGenerator {
+                id: id @ (0x504 | 0x505),
+                position,
+            } = request
+            {
+                // efsync.c:534-559: efLib_CreateGenerator_AddAppSRT(0x6D /
+                // 0x79), the point as the AppSRT's translation and the
+                // fighter root's Y scale as its uniform scale (Vanish's
+                // disappearance and reappearance).
+                let scale = fighter.effect_scale().y;
+                let kind = if id == 0x504 { 0x6D } else { 0x79 };
+                let mut spawn = SpawnRequest::new(0, kind, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: position,
+                    scale: Vec3::new(scale, scale, scale),
                     status: 1,
                     ..Default::default()
                 });

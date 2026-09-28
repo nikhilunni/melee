@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 13] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 14] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -90,6 +90,16 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 13] = [
         file: "EfMsData.dat",
         table: "effMarsDataTable",
         models: 2,
+    },
+    // Zelda's and Sheik's shared file (ftData_UnkBytePerCharacter 17):
+    // particles only so far, e.g. the transformation's generators 0x426D /
+    // 0x4271 (efSync 0x4FC / 0x4FD). Its model rows (0x4268.. for efSync
+    // 0x4F4..0x501) are sparse and load when a ported move needs them.
+    CharacterEffectFile {
+        bank: 17,
+        file: "EfZdData.dat",
+        table: "effZeldaDataTable",
+        models: 0,
     },
     // Luigi (efAsync_DatEntries[18]): model 0x4650, the fireball's hand
     // flash (efSync 0x507), and 0x4651, the Cyclone's (efSync 0x509).

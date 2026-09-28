@@ -677,6 +677,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-seak"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-yoshi"
 version = "0.0.1"
 dependencies = [
@@ -685,6 +701,22 @@ dependencies = [
  "hsd-types",
  "melee-cm",
  "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-zelda"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
  "melee-ef",
  "melee-ft",
  "melee-it",
@@ -1002,6 +1034,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-seak"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-yoshieggthrow"
 version = "0.0.1"
 dependencies = [
@@ -1311,7 +1353,9 @@ dependencies = [
  "ft-pikachu",
  "ft-purin",
  "ft-samus",
+ "ft-seak",
  "ft-yoshi",
+ "ft-zelda",
  "gekko-math",
  "hsd-anim",
  "hsd-archive",
@@ -1330,6 +1374,7 @@ dependencies = [
  "it-peach",
  "it-pikachu",
  "it-samus",
+ "it-seak",
  "it-yoshieggthrow",
  "it-yoshistar",
  "melee-cm",

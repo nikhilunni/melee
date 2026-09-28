@@ -42,6 +42,7 @@ melee_it::item_kinds! {
         SamusCharge: it_samus::SamusCharge,
         SamusBomb: it_samus::SamusBomb,
         SamusGBeam: it_samus::SamusGrapple,
+        SeakVanish: it_seak::SeakVanish,
     }
 }
 
@@ -460,6 +461,24 @@ impl Resources {
             )?;
             kinds.push((ItemKind::SamusGBeam, grapple));
             visual_archives.push((ItemKind::SamusGBeam, a));
+        }
+        // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
+        // articles load with Zelda too: both forms come to every match.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlSk.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataSeak").context("Sheik fighter data")?;
+            let smoke = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_seak::vanish::ARTICLE_INDEX,
+                &it_seak::vanish::ARTICLE_STATES,
+                0,
+            )?;
+            kinds.push((ItemKind::SeakVanish, smoke));
+            visual_archives.push((ItemKind::SeakVanish, std::sync::Arc::clone(&a)));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

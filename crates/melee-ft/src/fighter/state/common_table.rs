@@ -126,6 +126,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 1,
         ..rows[S::DeadUpFall as usize]
     };
+    // ftCo_MS_Sleep = 11; ftData_MotionStateList[11]: ftCo_SM_None.
+    rows[S::Sleep as usize] = MotionRow {
+        action: ActionId(11),
+        id: S::Sleep,
+        animation: -1,
+        anim: crate::fighter::sleep::animation,
+        iasa: crate::fighter::sleep::input,
+        physics: crate::fighter::sleep::physics,
+        collision: crate::fighter::sleep::collision,
+        camera: crate::fighter::sleep::camera,
+        implemented: true,
+    };
     // ftCo_MS_Rebirth = 12; ftData_MotionStateList[12].
     rows[S::Rebirth as usize] = MotionRow {
         action: ActionId(12),

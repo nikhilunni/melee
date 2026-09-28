@@ -128,6 +128,7 @@ impl InitialState {
             stage,
             particles,
             stage_animations,
+            transformed: [false; 2],
             fighters,
             rng,
             pending_music,
@@ -378,18 +379,31 @@ fn create_players(
             cpu_mode: 4,
             cpu_level: 1,
         };
+        let context = SpawnContext {
+            map: &mut *map,
+            stage_camera: &assets.stage_camera,
+            rng: &mut *rng,
+            counter: &mut counter,
+        };
+        let transformation_partner =
+            entry.secondary && crate::scene_fighter::transforms(entry.descriptor.kind);
+        if transformation_partner {
+            // A transforming character's other form sleeps (ftCo_800BFD04).
+            fighters.push(SceneFighter::partner_from_parameters(
+                &assets.characters[index],
+                &assets.fighters[index],
+                player,
+                context,
+            )?);
+            continue;
+        }
         // fn_8016D8AC: increment by five for each entering Player slot.
         fighters.push(SceneFighter::from_parameters(
             &assets.characters[index],
             &assets.fighters[index],
             player,
             ENTRY_STAGGER_FRAMES * (p as i32 + 1),
-            SpawnContext {
-                map: &mut *map,
-                stage_camera: &assets.stage_camera,
-                rng: &mut *rng,
-                counter: &mut counter,
-            },
+            context,
         )?);
         if entry.secondary {
             // ftCo_800A101C's FTKIND_NANA loop reads the player's own

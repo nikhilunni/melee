@@ -2,6 +2,10 @@
 
     cd harness && uv run python make_boundary.py --stage Battlefield --players Fox Marth [--stocks 4]
                                                  [--name start_bf_fox_marth4] [--no-register]
+                                                 [--transform PORT ...]
+
+Sheik is a player name too: the port picks Zelda on the CSS and holds A while
+the match loads (--transform on that port), as a person does.
 
 A boundary (boundaries.toml) is a retail savestate at a match's first
 initialised frame whose cold construction the port reproduces exactly; the
@@ -60,14 +64,20 @@ STAGES = {
     "PokemonStadium": (0x03, "ps"),
 }
 # Scenario character name (the port's spelling, melee-lib scene_characters!)
-# -> CSS CharacterKind (ft/forward.h). Sheik is chosen in-match from Zelda.
+# -> CSS CharacterKind (ft/forward.h). Sheik is Zelda's CSS icon with A held
+# while the match loads (TRANSFORMED).
 CHARACTERS = {
     "CaptainFalcon": 0x00, "DonkeyKong": 0x01, "Fox": 0x02, "GameAndWatch": 0x03, "Kirby": 0x04,
     "Bowser": 0x05, "Link": 0x06, "Luigi": 0x07, "Mario": 0x08, "Marth": 0x09,
     "Mewtwo": 0x0A, "Ness": 0x0B, "Peach": 0x0C, "Pikachu": 0x0D, "IceClimbers": 0x0E,
     "Jigglypuff": 0x0F, "Samus": 0x10, "Yoshi": 0x11, "Zelda": 0x12, "Falco": 0x14,
     "YoungLink": 0x15, "DrMario": 0x16, "Roy": 0x17, "Pichu": 0x18, "Ganondorf": 0x19,
+    "Sheik": 0x12,
 }
+# fn_8016D8AC (gm_16AE.c:1573-1583): a human port holding A when the match
+# loads swaps CKIND_ZELDA for CKIND_SEAK (and back). The scenario names the
+# character the player starts as; the CSS pick is the other form.
+TRANSFORMED = {"Sheik": "Zelda"}
 TIMEOUT = 300.0
 
 
@@ -76,6 +86,10 @@ def default_name(stage: str, players: list[str], stocks: int) -> str:
 
 
 def start_scenario(name: str, stage: str, players: list[str], stocks: int) -> str:
+    transformed = "".join(
+        f"# {p} is {TRANSFORMED[p]}'s CSS icon with A held on port {i + 1} while the match loads\n"
+        f"# (fn_8016D8AC); {TRANSFORMED[p]} sleeps beside {p} as the transformation partner.\n"
+        for i, p in enumerate(players) if p in TRANSFORMED)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {i}\nkind = "{kind}"\ncontroller = "{"scripted" if i == 0 else "idle"}"\n'
         for i, kind in enumerate(players))
@@ -83,7 +97,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int) -> st
 # made by make_boundary.py (headless, RAM-only save-data pokes: characters and
 # Battlefield/FD unlocked, stock rules, items off; the memory card is a
 # discarded copy). Every fighter in Entry at the first initialised frame.
-name = "{name}"
+{transformed}name = "{name}"
 savestate = "harness/roms/{name}.sav"
 frames = 600
 seed = 1
@@ -119,7 +133,8 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
             f'stocks = {stocks}\nseed = {seed}\n')
 
 
-def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float) -> dict:
+def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
+                   transform: list[int] | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
@@ -128,7 +143,8 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
             dolphin_config.isolated_user_dir() as user_dir:
         config = Path(scratch) / "config.json"
         config.write_text(json.dumps({"savestate": str(sav), "stkind": stkind,
-                                      "players": players, "stocks": stocks}))
+                                      "players": players, "stocks": stocks,
+                                      "transform": transform or []}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
         env = {**os.environ, "MELEE_BOUNDARY_CONFIG": str(config)}
@@ -167,8 +183,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--stocks", type=int, default=4)
     ap.add_argument("--name", help="default: start_<stage>_<p1>_<p2><stocks>")
     ap.add_argument("--no-register", action="store_true", help="record and gate, but leave boundaries.toml alone")
+    ap.add_argument("--transform", type=int, nargs="*", default=[],
+                    help="ports that hold A while the match loads (Zelda <-> Sheik); implied for Sheik")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
+    transform = sorted(set(a.transform) | {i for i, p in enumerate(a.players) if p in TRANSFORMED})
     if not 2 <= len(a.players) <= 4:
         sys.exit("a boundary has 2 to 4 players")
     name = a.name or default_name(a.stage, a.players, a.stocks)
@@ -183,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"== {name}: driving the menus", flush=True)
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
-                             a.stocks, a.timeout)
+                             a.stocks, a.timeout, transform)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]

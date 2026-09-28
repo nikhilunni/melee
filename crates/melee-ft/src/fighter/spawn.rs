@@ -99,6 +99,17 @@ pub struct PlayerSlot {
     pub cpu_level: i32,
 }
 
+/// Fighter_Create's first motion (fighter.c:914-930).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum FirstMotion {
+    /// ftCommon_8007D92C: Wait on a floor, Fall otherwise.
+    Ordinary,
+    /// Player's entry flag: Entry after `delay` frames (ftCo_800C61B0).
+    Entry(i32),
+    /// A transformation partner (ftCo_800BFD04).
+    Sleep,
+}
+
 /// Fighter_NewSpawn_80068E40: wrapping counter never produces zero after wrap.
 #[derive(Debug, Clone)]
 pub struct SpawnCounter(pub u32);
@@ -133,7 +144,38 @@ impl Fighter {
         root: JObjId,
         context: SpawnContext<'_>,
     ) -> Result<Self> {
-        Self::create(player, character, assets, skeleton, root, context, None)
+        Self::create(
+            player,
+            character,
+            assets,
+            skeleton,
+            root,
+            context,
+            FirstMotion::Ordinary,
+        )
+    }
+
+    /// Fighter_Create for Player_80031AD0's second fighter with
+    /// `has_transformation` (fighter.c:918-919): after reset, the other form
+    /// of a transforming character sleeps (ftCo_800BFD04) instead of
+    /// choosing Wait, Fall or Entry.
+    pub fn spawn_asleep(
+        player: PlayerSlot,
+        character: CharacterState,
+        assets: &FighterAssets,
+        skeleton: JObjTree,
+        root: JObjId,
+        context: SpawnContext<'_>,
+    ) -> Result<Self> {
+        Self::create(
+            player,
+            character,
+            assets,
+            skeleton,
+            root,
+            context,
+            FirstMotion::Sleep,
+        )
     }
 
     /// Fighter_Create (80069324..8006933C): Player's entry flag selects
@@ -154,7 +196,7 @@ impl Fighter {
             skeleton,
             root,
             context,
-            Some(delay),
+            FirstMotion::Entry(delay),
         )
     }
 
@@ -165,11 +207,11 @@ impl Fighter {
         skeleton: JObjTree,
         root: JObjId,
         context: SpawnContext<'_>,
-        entry_delay: Option<i32>,
+        first: FirstMotion,
     ) -> Result<Self> {
         let initial_scale = skeleton.scale(root);
         let mut fighter = Self::prepare(player, character, assets, skeleton, root, context.map);
-        fighter.initialize_spawn(assets, context, entry_delay, initial_scale)?;
+        fighter.initialize_spawn(assets, context, first, initial_scale)?;
         Ok(fighter)
     }
 
@@ -178,7 +220,7 @@ impl Fighter {
         &mut self,
         assets: &FighterAssets,
         context: SpawnContext<'_>,
-        entry_delay: Option<i32>,
+        first: FirstMotion,
         initial_scale: Vec3,
     ) -> Result<()> {
         // Fighter_Create (80069018): initialize chains once, before the shared
@@ -195,24 +237,28 @@ impl Fighter {
         self.core.dynamics_first_bone.fill(0);
         let root = self.core.animation.root;
         let supported = self.reset_spawn_services(assets, context, initial_scale);
-        if let Some(delay) = entry_delay {
-            // Fighter_ChangeMotionState sets TopN's facing rotation even
-            // for SM_None. The ordinary animation-entry path does this itself.
-            self.core.skeleton.set_rotation_y(
-                root,
-                (std::f64::consts::FRAC_PI_2 * f64::from(self.core.physics.facing)) as f32,
-            );
-            self.enter_match(delay, assets)?;
-        } else {
-            self.change_motion_state(
-                (if supported {
-                    CommonMotionState::Wait
-                } else {
-                    CommonMotionState::Fall
-                })
-                .into(),
-                assets,
-            )?;
+        match first {
+            FirstMotion::Entry(delay) => {
+                // Fighter_ChangeMotionState sets TopN's facing rotation even
+                // for SM_None. The ordinary animation-entry path does this itself.
+                self.core.skeleton.set_rotation_y(
+                    root,
+                    (std::f64::consts::FRAC_PI_2 * f64::from(self.core.physics.facing)) as f32,
+                );
+                self.enter_match(delay, assets)?;
+            }
+            FirstMotion::Sleep => self.enter_sleep(assets)?,
+            FirstMotion::Ordinary => {
+                self.change_motion_state(
+                    (if supported {
+                        CommonMotionState::Wait
+                    } else {
+                        CommonMotionState::Fall
+                    })
+                    .into(),
+                    assets,
+                )?;
+            }
         }
         // ftLib_800867E8 at the end of Fighter_Create: clear input and freeze
         // sampling until match setup calls ftLib_8008688C.
@@ -1134,6 +1180,7 @@ impl FighterCore {
             grafted_part: None,
             holds_by_graft: false,
             tether_article: false,
+            transformation_requested: false,
             parasol: Default::default(),
             pending_forward_smash: false,
             article_in_hand: None,
@@ -1204,6 +1251,9 @@ impl FighterCore {
             self.combat.combo.grace = assets.combo.grace_frames;
         }
         self.status.on_ledge = false;
+        // fighter.c:1038: every entry re-enables the procs (x221F_b3), so a
+        // transformation partner wakes when its arrival motion starts.
+        self.status.disabled = false;
         // fighter.c:1063: every entry shows the fighter again.
         self.effect_state.invisible = false;
         self.catch_window = 0; // fighter.c:1072

@@ -106,6 +106,7 @@ pub struct CharacterTable {
     pub wait_articles: fn(&mut Fighter),
     pub cape_turn_blocked: fn(&mut Fighter) -> bool,
     pub cape_turn_end: fn(&mut Fighter),
+    pub transformation_arrival: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
 }
 impl CharacterTable {
     pub const fn new<C: CharacterCallbacks>() -> Self {
@@ -201,8 +202,17 @@ impl CharacterTable {
             wait_articles: C::WAIT_ARTICLES,
             cape_turn_blocked: C::CAPE_TURN_BLOCKED,
             cape_turn_end: C::CAPE_TURN_END,
+            transformation_arrival: C::TRANSFORMATION_ARRIVAL,
         }
     }
+}
+
+/// A kind without a second form never takes over from one.
+pub(super) fn no_transformation(
+    fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+) -> assets::Result<()> {
+    unimplemented!("ftCommon_8007EFC8: {:?} has no transformation", fighter.core.kind)
 }
 
 /// Owns exactly one typed character value without allocating or exposing raw bytes.

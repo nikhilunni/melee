@@ -44,6 +44,20 @@ macro_rules! scene_characters {
                     player, character, resources, skeleton, root, context, delay,
                 ).map_err(|e| anyhow::anyhow!("{e}"))?))
             }
+            /// Player_80031AD0's second Fighter_Create: a transforming
+            /// character's other form, asleep beside the one in play.
+            pub(crate) fn partner_from_parameters(
+                archive: &CharacterArchive,
+                resources: &FighterAssets,
+                player: melee_ft::fighter::PlayerSlot,
+                context: melee_ft::fighter::SpawnContext<'_>,
+            ) -> anyhow::Result<Self> {
+                let character = Self::character_for_costume(archive, player.costume)?;
+                let (skeleton, root) = archive.model(player.costume);
+                Ok(Self::new(Fighter::spawn_asleep(
+                    player, character, resources, skeleton, root, context,
+                ).map_err(|e| anyhow::anyhow!("{e}"))?))
+            }
             // Keep the concrete Fighter result outside the roster expansion.
             // At opt-level 0 each expanded result otherwise occupies stack space.
             fn character_for_costume(
@@ -133,6 +147,18 @@ scene_characters! {
     "Ganondorf" => Ganondorf(ft_ganon::init::Ganondorf),
     "IceClimbers" => IceClimbers(ft_iceclimbers::init::Popo) partner(ft_iceclimbers::init::Nana),
     "Samus" => Samus(ft_samus::init::Samus),
+    "Sheik" => Sheik(ft_seak::init::Sheik) partner(ft_zelda::init::Zelda),
+    "Zelda" => Zelda(ft_zelda::init::Zelda) partner(ft_seak::init::Sheik),
+}
+
+/// ftMapping_list's `has_transformation` (pl/player.c:62-63): a partner of
+/// these kinds is the player's other form, created asleep beside the one in
+/// play. Only Zelda and Sheik transform.
+pub(crate) fn transforms(kind: melee_types::FighterKind) -> bool {
+    matches!(
+        kind,
+        melee_types::FighterKind::Zelda | melee_types::FighterKind::Seak
+    )
 }
 
 fn construct<C: CharacterCallbacks>(

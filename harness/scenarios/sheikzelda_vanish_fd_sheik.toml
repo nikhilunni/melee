@@ -1,0 +1,26 @@
+# SHEIKZELDA directed witness: Sheik's Vanish from the ground (up-B at tick
+# 120), travelling up-forward.
+name = "sheikzelda_vanish_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickY = 80 } },
+  { frame = 124, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 50, stickY = 60 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

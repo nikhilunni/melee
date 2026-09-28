@@ -29,6 +29,7 @@ members = [
     "crates/it-peach",
     "crates/it-pikachu",
     "crates/it-heiho",
+    "crates/it-seak",
     "crates/melee-ft",
     "crates/melee-cmd",
     "crates/melee-coll",
@@ -60,6 +61,8 @@ members = [
     "crates/it-climbersice",
     "crates/ft-samus",
     "crates/it-samus",
+    "crates/ft-seak",
+    "crates/ft-zelda",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

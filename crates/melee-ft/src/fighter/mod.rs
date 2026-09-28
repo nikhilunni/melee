@@ -50,7 +50,9 @@ pub mod reflection;
 pub mod run;
 pub mod shield;
 mod shield_break;
+mod sleep;
 pub mod smash;
+pub mod transform;
 mod snapshot;
 mod spawn;
 pub mod squat;
@@ -207,6 +209,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_800C37A0's fp->x21F8 when the state installed
     /// `CapeTurnEnd::Character` (Yoshi's and Jigglypuff's rolls).
     const CAPE_TURN_END: fn(&mut Fighter) = character::no_cape_turn_end;
+    /// ftCommon_8007EFC8's last step, the callback the form in play passes:
+    /// this form's arrival once it takes over (ftZd_SpecialLw_8013B4D8,
+    /// ftSk_SpecialLw_80114758). Only transforming characters have one.
+    const TRANSFORMATION_ARRIVAL: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+        character::no_transformation;
     /// Fighter_ProcessHit's hurtbox_detect_cb (fighter.c:2950-2954): an
     /// inert hitbox of this fighter touched another fighter (`unk_gobj`
     /// and x221C_b5). Per-motion in retail, like DEAL_DAMAGE.
@@ -867,6 +874,9 @@ pub struct FighterCore {
     /// Link/Young Link u.lk.xC or Samus u.ss.x223C != NULL: a tether
     /// article is out, so a grab is refused (fn_800D8E94, fn_800D952C).
     pub tether_article: bool,
+    /// The accessory4 of a transforming form's ended transformation motion
+    /// asked the scene to swap in its partner (ftCommon_8007EFC8).
+    pub transformation_requested: bool,
     /// x2221_b4..b7 and x2104: the parasol's open timer.
     pub parasol: parasol::ParasolTimer,
     /// A character forward smash chosen this IASA, entered by

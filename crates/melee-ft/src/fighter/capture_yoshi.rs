@@ -163,6 +163,19 @@ pub fn hide_captured(victim: &mut FighterCore) {
     set_body_status(victim, HurtStatus::Intangible, INTANGIBLE_FLASH);
 }
 
+impl FighterCore {
+    /// ftColl_8007B62C (8007B62C): the whole body's hurt status (x1988) and
+    /// the colour animation each status installs (1, 3 and 2).
+    pub fn set_body_hurt_status(&mut self, status: HurtStatus) {
+        let flash = match status {
+            HurtStatus::Normal => NORMAL_BODY_FLASH,
+            HurtStatus::Invincible => 3,
+            HurtStatus::Intangible => INTANGIBLE_FLASH,
+        };
+        set_body_status(self, status, flash);
+    }
+}
+
 /// ftColl_8007B62C: x1988 and its colour animation.
 fn set_body_status(fighter: &mut FighterCore, status: HurtStatus, flash: u8) {
     fighter.commands.hurt_status = status;

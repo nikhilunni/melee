@@ -188,6 +188,14 @@ pub(crate) fn import(
             },
         });
     }
+    if word(raw, 0x10) == melee_types::CommonMotionState::Sleep as u32 {
+        // A transformation partner (ftCo_800BFD04): hidden, every proc
+        // suppressed (x221F_b3, +221F mask 10); its camera subject comes
+        // back inactive with the others.
+        f.install_motion_row(f.row(melee_types::CommonMotionState::Sleep.into()));
+        f.core.effect_state.invisible = true;
+        f.core.status.disabled = raw[0x221F] & 0x10 != 0;
+    }
 
     f
 }

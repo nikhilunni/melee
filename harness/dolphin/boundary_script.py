@@ -4,9 +4,13 @@ Launched by harness/make_boundary.py (headless, unlimited speed). The config is
 a JSON file named by MELEE_BOUNDARY_CONFIG:
 
     {"savestate": "/abs/roms/<name>.sav", "stkind": 32, "stocks": 4,
-     "players": [2, 9], "time_limit_minutes": 0}
+     "players": [2, 9], "time_limit_minutes": 0, "transform": [0]}
 
 `players` are CSS character kinds (ft/forward.h CharacterKind), one per port.
+`transform` (optional) lists ports that hold A from the stage screen until
+the fighters exist: fn_8016D8AC (gm_16AE.c:1573-1583) reads that port's
+HSD_PadCopyStatus when the match loads and swaps a human Zelda for Sheik
+(or back), as a player holding A does on retail.
 
 Every frame `BoundaryDriver.step` reads the game's own scene state and decides
 the inputs, so no step depends on timing or screenshots:
@@ -25,7 +29,9 @@ the inputs, so no step depends on timing or screenshots:
            match on that stage on the next frame;
   match    save the state at the first frame where every fighter exists and
            is in Entry (a stricter `save-when-fighters`), write the sidecar
-           and `<savestate>.done`, then park.
+           and `<savestate>.done`, then park. A transforming character's
+           second form (Player_80031AD0's second Fighter_Create) exists too,
+           asleep (ftCo_800BFD04, ftCo_MS_Sleep); it is not a player.
 
 Failures write `<savestate>.err`. Nothing outside the savestate path is written;
 the memory card belongs to the private Dolphin user folder the caller made.
@@ -102,6 +108,7 @@ CKIND_ICE_CLIMBERS = 0x0E
 def fighter_count(players: list[int]) -> int:
     """Fighter GObjs a match creates for these CSS kinds (Nana is her own)."""
     return sum(2 if kind == CKIND_ICE_CLIMBERS else 1 for kind in players)
+MS_SLEEP = 11    # ftCo_MS_Sleep: a transforming character's inactive form
 
 PULSE_PERIOD = 40   # menus ignore input for ~40 frames after a transition
 PRESS_FRAMES = 3
@@ -180,6 +187,9 @@ class BoundaryDriver:
         inputs = self.phase_inputs(*self.scene())
         for port, pad in self.press_due().items():
             inputs.setdefault(port, {}).update(pad)
+        if self.phase == "match":
+            for port in self.config.get("transform", []):
+                inputs.setdefault(port, {})["A"] = True
         return inputs
 
     def phase_inputs(self, mode: int, state: int) -> dict:
@@ -206,7 +216,8 @@ class BoundaryDriver:
             # Every fighter created and in Entry: a fighter still inside
             # Fighter_Create reads as motion 0 at the origin, before its CPU
             # setup draws, and would leave the seed short of post-creation.
-            fighters = self.read_fighters()
+            # A transforming character's other form sleeps and makes no entry.
+            fighters = [f for f in self.read_fighters() if f["motion_id"] != MS_SLEEP]
             if len(fighters) == fighter_count(self.config["players"]) and all(
                     f["motion_id"] == MS_ENTRY for f in fighters):
                 self.save(self.config["savestate"])
