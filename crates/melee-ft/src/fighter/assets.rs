@@ -515,7 +515,7 @@ impl FighterAssets {
                 slippery_animation_multiplier: common.reader().f32(common_data + 0x440)?,
                 squat_release_threshold: common.reader().f32(common_data + 0x94)?,
                 platform_drop_threshold: common.reader().f32(common_data + 0x464)?,
-                platform_drop_window: common.reader().s32(common_data + 0x468)?,
+                platform_drop_window: common.reader().f32(common_data + 0x468)?,
                 platform_drop_delay: common.reader().f32(common_data + 0x470)?,
                 platform_drop_velocity: common.reader().f32(common_data + 0x46C)?,
             },

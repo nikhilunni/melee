@@ -24,10 +24,9 @@ impl Fighter {
     /// then skip the supporting line. Fighter_ChangeMotionState clears that
     /// skip on the next transition (fighter.c:1080), including Fall or Landing.
     pub(super) fn enter_pass(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::Squat(squat) = &self.core.state_data else {
-            panic!("Pass entry requires crouch scratch");
-        };
-        let retained_drop_timer = squat.platform_drop_timer;
+        // Pass writes no scratch: the union keeps the source's second word
+        // (SquatWait's drop timer, Guard's smoothed tilt magnitude).
+        let retained_drop_timer = self.retained_drop_timer();
         self.leave_ground();
         let maximum = self.core.attributes.air.air_drift_max;
         self.core.physics.self_velocity.x =

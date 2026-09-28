@@ -373,7 +373,7 @@ fn turn<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
 
 fn start_input(f: &mut Fighter, p: InputPhase<'_>) {
     if f.input.current.stick.y <= -p.assets.movement.platform_drop_threshold
-        && i32::from(f.input.vertical.tilt) < p.assets.movement.platform_drop_window
+        && f32::from(f.input.vertical.tilt) < p.assets.movement.platform_drop_window
         && f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0
     {
         unimplemented!("ftFx_SpecialLwStart_CheckPass: preserved platform-drop transition");

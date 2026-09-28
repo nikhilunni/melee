@@ -227,7 +227,7 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     }
     if fighter.collision.data.floor.flags & 0x100 != 0
         && fighter.input.current.stick.y <= -assets.movement.platform_drop_threshold
-        && i32::from(fighter.input.vertical.tilt) < assets.movement.platform_drop_window
+        && f32::from(fighter.input.vertical.tilt) < assets.movement.platform_drop_window
     {
         unimplemented!("ftyoshiguard.c:142,207: egg shield platform drop");
     }

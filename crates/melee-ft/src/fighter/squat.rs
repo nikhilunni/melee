@@ -97,7 +97,7 @@ impl Fighter {
         };
         if !squat.platform_drop_pending
             && self.core.input.current.stick.y <= -assets.movement.platform_drop_threshold
-            && i32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
+            && f32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
             && on_platform
         {
             squat.platform_drop_pending = true;

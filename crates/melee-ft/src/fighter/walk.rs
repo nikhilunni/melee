@@ -225,7 +225,7 @@ mod tests {
             slippery_animation_multiplier: 0.0,
             squat_release_threshold: 0.0,
             platform_drop_threshold: 0.0,
-            platform_drop_window: 0,
+            platform_drop_window: 0.0,
             platform_drop_delay: 0.0,
             platform_drop_velocity: 0.0,
         };

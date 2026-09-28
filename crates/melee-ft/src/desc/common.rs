@@ -115,8 +115,10 @@ pub struct MovementParameters {
     /// +94: SquatRv release threshold.
     pub squat_release_threshold: f32,
     /// +464/+468/+470: platform-drop stick threshold, input age and delay.
+    /// +468 is a float: ftCo_80099F1C compares the u8 tilt age as a float
+    /// (retail 0x80099F58 lfs, 0x80099F68 fcmpo).
     pub platform_drop_threshold: f32,
-    pub platform_drop_window: i32,
+    pub platform_drop_window: f32,
     pub platform_drop_delay: f32,
     /// +46C: initial downward velocity on entering Pass.
     pub platform_drop_velocity: f32,

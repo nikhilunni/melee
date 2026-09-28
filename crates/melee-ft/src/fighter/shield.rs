@@ -10,6 +10,7 @@ use gekko_math::{
     msl::{fabsf, fctiwz, sqrtf},
 };
 use hsd_types::Vec3;
+use melee_types::mp::line_flag;
 use melee_types::CommonMotionState as S;
 use melee_types::GroundOrAir;
 
@@ -449,12 +450,14 @@ impl Fighter {
         if state == S::GuardOff {
             return Ok(());
         }
-        // ftCo_Pass.c:18-37: platform check is false on FD's solid floor.
-        if self.core.collision.data.floor.flags & 0x100 != 0
+        // ftCo_8009A080 (0x8009A080): with the shield held, a fresh stick
+        // tap down on a platform (ftCo_80099F1C) drops through it.
+        if self.core.input.current.held.intersects(Buttons::SHIELD)
             && self.core.input.current.stick.y <= -assets.movement.platform_drop_threshold
-            && i32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
+            && f32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
+            && self.core.collision.data.floor.flags & line_flag::PLATFORM != 0
         {
-            unimplemented!("ftCo_Pass.c:56-60: shield platform drop");
+            return self.enter_pass(assets);
         }
         Ok(())
     }
