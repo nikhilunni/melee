@@ -19,7 +19,15 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 7] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 8] = [
+    // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
+    // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
+    CharacterEffectFile {
+        bank: 1,
+        file: "EfMrData.dat",
+        table: "effMarioDataTable",
+        models: 2,
+    },
     CharacterEffectFile {
         bank: 3,
         file: "EfFxData.dat",

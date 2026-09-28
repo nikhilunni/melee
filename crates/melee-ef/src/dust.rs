@@ -102,6 +102,12 @@ impl Effects {
             0xFF | 0x7918 | 0xFC | 0xF7 => 1,
             _ => 0,
         };
+        // A character's generator id names its bank (efAlt rows).
+        let bank = if resources::is_character_bank((kind / 1000) as u8) {
+            resources::character_bank(&self.character_banks, (kind / 1000) as i32)?
+        } else {
+            bank
+        };
         let mut request = SpawnRequest::new((kind / 1000) as u8, kind, link);
         if directional {
             // efLib_CreateGenerator_Translate_FacingDir: generator position stays

@@ -299,6 +299,13 @@ impl ItemCore {
         self.scale_hitbox_damage(assets.bounce_scale);
     }
 
+    /// it_8027781C (8027781C) on its own, after the caller's map pass: true
+    /// when the item touched a surface it was moving into (Mario's fireball
+    /// bouncing along the floor).
+    pub fn bounce_velocity(&mut self, map: &melee_mp::CollMap, assets: &ItemAssets) -> bool {
+        self.reflect_velocity(map, assets)
+    }
+
     /// it_8027781C (8027781C): the velocity mirrored off every touched
     /// surface it points into, summed, normalized and given back the old XY
     /// speed times ItemAttr x58. Moving lines' speeds become x64.

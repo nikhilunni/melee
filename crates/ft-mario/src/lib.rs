@@ -1,6 +1,9 @@
 //! Mario: ft/kinds/ftMario. Common states live in melee-ft.
 pub mod attributes;
+mod common;
 pub mod init;
+pub mod special_hi;
+pub mod special_n;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -17,7 +20,51 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    place(
+        &mut rows,
+        common::row(
+            special_n::GROUND,
+            special_n::anim,
+            special_n::ground_input,
+            special_n::ground_physics,
+            special_n::ground_collision,
+        ),
+    );
+    place(
+        &mut rows,
+        common::row(
+            special_n::AIR,
+            special_n::anim,
+            special_n::air_input,
+            special_n::air_physics,
+            special_n::air_collision,
+        ),
+    );
+    place(
+        &mut rows,
+        common::row(
+            special_hi::GROUND,
+            special_hi::anim,
+            special_hi::input,
+            special_hi::ground_physics,
+            special_hi::collision,
+        ),
+    );
+    place(
+        &mut rows,
+        common::row(
+            special_hi::AIR,
+            special_hi::anim,
+            special_hi::input,
+            special_hi::air_physics,
+            special_hi::collision,
+        ),
+    );
     rows
+}
+
+const fn place(rows: &mut [MotionRow; SPECIAL_ROW_COUNT], row: MotionRow) {
+    rows[(row.action.0 - FIRST_ACTION) as usize] = row;
 }
 
 /// ftMr_Init_MotionStateTable move IDs: the taunt rows are

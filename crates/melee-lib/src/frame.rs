@@ -318,6 +318,24 @@ impl Runtime {
                     melee_it::ItemEvent::DestroyEffects => {
                         state.effects.expire_item_joint(item.id, &mut state.particles);
                     }
+                    melee_it::ItemEvent::JointParticle {
+                        bank,
+                        id,
+                        position,
+                        rotation,
+                        scale,
+                    } => {
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(&mut matrix, &scale, &rotation, &position, None);
+                        state.effects.spawn_item_particle::<RetailTrig>(
+                            bank,
+                            id,
+                            item.id,
+                            matrix,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::SlashSpark { position } => {
                         state.effects.spawn_item_slash_spark::<RetailTrig>(
                             position,
@@ -483,6 +501,8 @@ impl Runtime {
                             held_item: None,
                             after_hitbox_refresh: s_link > 11,
                             stale_multiplier,
+                            // An article's own spawn runs no procs at spawn.
+                            bounds: None,
                         },
                         &mut state.rng,
                     )
@@ -1463,6 +1483,7 @@ impl Runtime {
                                 .combat
                                 .stale
                                 .multiplier(&state.assets.fighters[slot].stale_weights),
+                            bounds: Some(&item_bounds(&state.assets)),
                         },
                         &mut state.rng,
                     );
@@ -1500,14 +1521,35 @@ impl Runtime {
             item.events.iter().any(|e| {
                 matches!(
                     e,
-                    melee_it::ItemEvent::OwnEffect { .. } | melee_it::ItemEvent::Effect { .. }
+                    melee_it::ItemEvent::OwnEffect { .. }
+                        | melee_it::ItemEvent::Effect { .. }
+                        | melee_it::ItemEvent::JointParticle { .. }
                 )
             })
-        })
-        {
+        }) {
             self.drain_item_events(false)?;
         }
         let state = &mut self.state;
+        // Effects a proc spawned after the items it created (their creation
+        // particles came first).
+        for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                if !f.core.effects_after_items.is_empty() {
+                    for request in std::mem::take(&mut f.core.effects_after_items) {
+                        f.core.effects.push(request);
+                    }
+                    state.effects.flush::<RetailTrig>(
+                        melee_ef::EffectTiming::Immediate,
+                        slot,
+                        &mut f.core,
+                        &state.assets.common_particle_bank,
+                        &state.assets.particle_bank,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?;
+                }
+            });
+        }
         // Item SFX use the same headless request sink as ft_PlaySFX.
         for item in state.items.iter_mut() {
             while !item.sound_requests.is_empty() {

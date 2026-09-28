@@ -7,6 +7,7 @@
 mod dust;
 mod egg_shell;
 mod item_generators;
+mod mario;
 pub mod fixture_spawns;
 mod pool;
 mod resources;
@@ -421,6 +422,10 @@ impl Effects {
                 }
                 continue;
             }
+            if let EffectRequest::SyncAttached { id: 0x47A, bone } = request {
+                self.spawn_hand_fire::<T>(player, bone, fighter, bank, particles, rng)?;
+                continue;
+            }
             if let EffectRequest::SyncAttached {
                 id: id @ (0x488..=0x48C | 0x491..=0x493 | 0x4D6 | 0x4F2..=0x4F3),
                 bone,
@@ -686,6 +691,9 @@ impl Effects {
                 let generator = match element {
                     melee_types::HitElement::Electric => Some(0x3E9),
                     melee_types::HitElement::Fire => Some(0x3EA),
+                    // efSync_Spawn 0x479: efAlt while Mario's bank is loaded
+                    // (efsync.c's 0x506 fallback otherwise).
+                    melee_types::HitElement::Coin => Some(0x479),
                     _ => None,
                 };
                 if let Some(generator) = generator {
@@ -814,7 +822,7 @@ impl Effects {
                         .iter()
                         .chain(std::iter::once(&WARP_SPAWN))
                         .find(|row| row.request == id && row.source == source)
-                        .context("unsupported model effect")?;
+                        .with_context(|| format!("unsupported model effect {id:#x}"))?;
                     (row.model, row.attached.then_some(player))
                 }
                 _ => anyhow::bail!("unsupported fighter effect {request:?}"),

@@ -29,6 +29,7 @@ melee_it::item_kinds! {
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
         PikachuThunder: it_pikachu::ThunderBolt,
+        MarioFire: it_mariofire::MarioFire,
     }
 }
 
@@ -129,7 +130,10 @@ impl Resources {
             visual_archives.push((laser, a));
         }
         // ftYs_Init_OnLoad registers the Egg Throw egg as ftData.x48_items[0].
-        let yoshi = match characters.iter().find(|c| c.descriptor.data_file == "PlYs.dat") {
+        let yoshi = match characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlYs.dat")
+        {
             Some(character) => std::sync::Arc::clone(&character.data),
             None => std::sync::Arc::new(archive("PlYs.dat")?),
         };
@@ -144,7 +148,10 @@ impl Resources {
         egg.read_common_release(&common_archive, public)?;
         kinds.push((ItemKind::YoshiEggThrow, egg));
         // ftData.x48_items[1]: the Yoshi Bomb's star, one state.
-        kinds.push((ItemKind::YoshiStar, ItemAssets::from_fighter(&yoshi, root, 1, 1)?));
+        kinds.push((
+            ItemKind::YoshiStar,
+            ItemAssets::from_fighter(&yoshi, root, 1, 1)?,
+        ));
         visual_archives.push((ItemKind::YoshiStar, std::sync::Arc::clone(&yoshi)));
         visual_archives.push((ItemKind::YoshiEggThrow, yoshi));
         // ftPe_Init_OnLoad: ftData.x48_items[0] is Peach Bomber's blast,
@@ -239,6 +246,28 @@ impl Resources {
             )?;
             kinds.push((ItemKind::PikachuThunder, bolt));
             visual_archives.push((ItemKind::PikachuThunder, std::sync::Arc::clone(&a)));
+        }
+        // ftMr_Init_OnLoad: ftData.x48_items[0] is the fireball.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlMr.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataMario").context("Mario fighter data")?;
+            let mut fire = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_mariofire::ARTICLE_INDEX,
+                &it_mariofire::ARTICLE_STATES,
+                it_mariofire::SPECIAL_ATTRIBUTES,
+            )?;
+            // Item_ApplyFallingPhysics reads the common falling spin.
+            fire.fall_spin_degrees = common.fall_spin_degrees;
+            // The fireball's joint animation carries its trail (DPtcl 1/1002).
+            fire.read_particle_tracks(&a)
+                .map_err(|e| anyhow::anyhow!("fireball particle track: {e}"))?;
+            kinds.push((ItemKind::MarioFire, fire));
+            visual_archives.push((ItemKind::MarioFire, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
@@ -356,6 +385,9 @@ pub struct RequestOwner<'a> {
     /// (it_802790C0).
     pub after_hitbox_refresh: bool,
     pub stale_multiplier: f32,
+    /// The stage limits item procs read (it_802750F8's immediate procs);
+    /// the stage's own spawners never run them.
+    pub bounds: Option<&'a melee_it::ItemBounds>,
 }
 
 #[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
@@ -603,6 +635,20 @@ pub fn request(
             &spawn,
             map,
         );
+        if SceneItems::logic(spawn.kind).procs_at_spawn {
+            let bounds = owner.bounds.expect("it_802750F8 from a fighter's spawn");
+            // it_802750F8: physics and collision now, without Item_802696CC's
+            // blast-zone test (xDCC b3 cleared, then set again).
+            pool.get_mut(id).unwrap().blast_zone_checked = false;
+            let cell = std::cell::Cell::new(*rng);
+            pool.physics::<SceneItems>(id, None, bounds, assets, &cell);
+            *rng = cell.get();
+            let contact = pool.stage_contact(id, map);
+            pool.collide::<SceneItems>(id, None, contact, map, bounds, assets);
+            if let Some(item) = pool.get_mut(id) {
+                item.blast_zone_checked = true;
+            }
+        }
         if let ItemRequest::SpawnInHand { part, .. } = request {
             // Item_8026AB54: it_802742F4's attachment, then the kind's
             // pickup callback.
@@ -676,6 +722,7 @@ fn request_one_of_chain(
             held_item: owner.held_item,
             after_hitbox_refresh: owner.after_hitbox_refresh,
             stale_multiplier: owner.stale_multiplier,
+            bounds: owner.bounds,
         },
         rng,
     )
@@ -740,6 +787,7 @@ pub fn spawn_rain_bomb(
             held_item: None,
             after_hitbox_refresh: false,
             stale_multiplier: 1.0,
+            bounds: None,
         },
         rng,
     );
@@ -798,6 +846,7 @@ pub fn spawn_shy_guy(
             held_item: None,
             after_hitbox_refresh: false,
             stale_multiplier: 1.0,
+            bounds: None,
         },
         rng,
     );

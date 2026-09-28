@@ -61,7 +61,8 @@ impl Effects {
             let mut spawn = SpawnRequest::new(row.bank, kind, 0);
             spawn.joint = Some((joint, matrix));
             self.events.spawn(&spawn, false, false);
-            let Some(generator) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
+            let Some(generator) =
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?
             else {
                 break;
             };
@@ -73,6 +74,36 @@ impl Effects {
             if !self.item_joints.contains(&item) {
                 self.item_joints.push(item);
             }
+        }
+        Ok(())
+    }
+
+    /// efLib_Cb_DPtcl from an item's joint animation: efLib_SpawnParticleEffect
+    /// (eflib.c:857-990) with a generator id outside its special cases takes
+    /// hsd_8039EFAC(0, bank, id, jobj), a generator that follows the item's
+    /// root with no AppSRT (Mario's fireball trail, 1002).
+    pub fn spawn_item_particle<T: InverseTrig>(
+        &mut self,
+        bank: u8,
+        id: u32,
+        item: u32,
+        matrix: Mtx,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        anyhow::ensure!(
+            resources::is_character_bank(bank) && id / 1000 == u32::from(bank),
+            "item joint particle {bank}/{id} outside the default hsd_8039EFAC path"
+        );
+        let joint = item_joint(item);
+        let mut spawn = SpawnRequest::new(bank, id, 0);
+        spawn.joint = Some((joint, matrix));
+        self.events.spawn(&spawn, false, false);
+        let particle_bank = resources::character_bank(&self.character_banks, i32::from(bank))?;
+        if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some()
+            && !self.item_joints.contains(&item)
+        {
+            self.item_joints.push(item);
         }
         Ok(())
     }

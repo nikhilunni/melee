@@ -446,7 +446,9 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-ef",
  "melee-ft",
+ "melee-it",
  "melee-test-support",
  "melee-types",
 ]
@@ -773,6 +775,15 @@ version = "0.0.1"
 dependencies = [
  "gekko-math",
  "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-mariofire"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
  "melee-it",
  "melee-types",
 ]
@@ -1110,6 +1121,7 @@ dependencies = [
  "it-foxillusion",
  "it-foxlaser",
  "it-heiho",
+ "it-mariofire",
  "it-peach",
  "it-pikachu",
  "it-yoshieggthrow",

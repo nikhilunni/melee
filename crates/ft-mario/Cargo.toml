@@ -8,6 +8,8 @@ license.workspace = true
 [dependencies]
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
+melee-ef = { path = "../melee-ef" }
+melee-it = { path = "../melee-it" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }

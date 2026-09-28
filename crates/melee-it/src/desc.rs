@@ -169,6 +169,9 @@ pub struct ItemAssets {
     /// Every joint's locals per animation step, sampled by
     /// [`Self::read_pose`] for kinds that read a joint below the root.
     pub pose: Option<crate::pose::ItemPose>,
+    /// The DPtcl keys of each article state's joint animation, sampled by
+    /// [`Self::read_particle_tracks`] for kinds whose model carries them.
+    pub particle_tracks: Option<crate::particle_track::ParticleTracks>,
     /// Special attribute words that point at an integer (itHeiho x0), read
     /// through by [`Self::from_stage_item`]: the integer at each.
     pub special_pointees: Vec<i32>,
@@ -361,6 +364,7 @@ impl ItemAssets {
             attachment_translation,
             bone_motion: None,
             pose: None,
+            particle_tracks: None,
             special_pointees: Vec::new(),
         })
     }
@@ -400,6 +404,18 @@ impl ItemAssets {
             return Ok(Some(assets));
         }
         unreachable!()
+    }
+
+    /// Samples every article state's joint animation for its DPtcl keys.
+    pub fn read_particle_tracks(
+        &mut self,
+        archive: &Archive,
+    ) -> std::result::Result<(), hsd_anim::load::LoadError> {
+        self.particle_tracks = Some(crate::particle_track::ParticleTracks::read(
+            archive,
+            &self.visual,
+        )?);
+        Ok(())
     }
 
     /// Samples dynamic bone `bone`'s animation in every article state for

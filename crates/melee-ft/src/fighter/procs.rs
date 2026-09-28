@@ -673,6 +673,27 @@ impl FighterCore {
             }
             self.commands.landing_effects.remove(0);
             let id = terrain.map_or(id, |effect| effect as u16);
+            if matches!(id, 0x423 | 0x424) {
+                // ftCo_8009F834 block_12 -> block_67: no offset draws; the
+                // floor's angle on the ground, efAsync kind 3 on
+                // parts[FtPart_TopN], the root joint (Mario's landing flash).
+                let normal = self.collision.data.floor.normal;
+                let floor_angle = if self.physics.ground_or_air == melee_types::GroundOrAir::Ground
+                {
+                    melee_lb::trigf::atan2f(-normal.x, normal.y)
+                } else {
+                    0.0
+                };
+                self.effects
+                    .push_graphics(melee_ef::request::EffectRequest::Graphics {
+                        id,
+                        bone: 0,
+                        offset: Vec3::ZERO,
+                        facing: self.physics.facing,
+                        floor_angle,
+                    });
+                continue;
+            }
             // ftCo_8009F834 block_70. Even a zero range consumes three draws.
             let mut offset = Vec3::ZERO;
             for component in [&mut offset.x, &mut offset.y, &mut offset.z] {

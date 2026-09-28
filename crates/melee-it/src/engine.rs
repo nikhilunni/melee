@@ -89,6 +89,16 @@ pub enum ItemEvent {
     /// model root: effect `id` at the root's world translation when the
     /// request is processed, with kind 4's float parameter.
     RootEffect { id: u16, parameter: Option<f32> },
+    /// efLib_Cb_DPtcl from the item's joint animation: generator `id` of
+    /// `bank` attached to the model root, whose transform at the AnimAll
+    /// step is given.
+    JointParticle {
+        bank: u8,
+        id: u32,
+        position: Vec3,
+        rotation: Vec3,
+        scale: Vec3,
+    },
     /// lb_800119DC: a radial gust.
     Gust {
         center: Vec3,
@@ -577,6 +587,7 @@ impl ItemCore {
         } else {
             self.pose_steps + 1
         };
+        self.emit_particle_keys(assets, self.position);
         if flags & (state_change::ANIM_UPDATE | state_change::CMD_UPDATE) != 0 {
             self.script = ScriptState::default();
             if assets
@@ -701,8 +712,28 @@ impl ItemCore {
         if assets.model != 0 {
             self.animation_frame += self.animation_rate;
         }
+        // Item_802694CC's HSD_JObjAnimAll, on the JObj the collision proc
+        // last placed.
         self.pose_steps += 1;
+        self.emit_particle_keys(assets, self.root_translation);
         self.advance_script(assets);
+    }
+    /// The DPtcl keys the AnimAll step just taken fires (efLib_Cb_DPtcl);
+    /// `pose_steps` counts it, so its index is one less.
+    fn emit_particle_keys(&mut self, assets: &ItemAssets, position: Vec3) {
+        let Some(tracks) = &assets.particle_tracks else {
+            return;
+        };
+        let step = u16::try_from(self.pose_steps - 1).expect("particle track step");
+        for key in tracks.keys(self.article_state, step) {
+            self.events.push(ItemEvent::JointParticle {
+                bank: key.bank as u8,
+                id: key.id as u32,
+                position,
+                rotation: self.rotation,
+                scale: self.model_scale,
+            });
+        }
     }
     /// Item_802799E4: shared command timing, item-owned application.
     fn advance_script(&mut self, assets: &ItemAssets) {
@@ -1041,7 +1072,8 @@ impl ItemPool {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_clank_damage;
             }
-            item.destroyed |= (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets, &common));
+            item.destroyed |=
+                (D::logic(item.kind).clanked)(item, &ItemEventContext::new(assets, &common));
         } else if item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0 {
             if item.hitlag_enabled {
                 item.hitlag_damage = item.pending_damage_dealt;
@@ -1361,6 +1393,7 @@ mod tests {
             attachment_translation: Vec3::ZERO,
             bone_motion: None,
             pose: None,
+            particle_tracks: None,
             special_pointees: Vec::new(),
         }
     }

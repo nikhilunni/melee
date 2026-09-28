@@ -76,6 +76,10 @@ pub trait ItemLogic {
     fn pickup_possible(_item: &ItemCore) -> bool {
         true
     }
+    /// it_802750F8 (802750F8): the spawner runs the new item's physics
+    /// (Item_802697D4) and collision (Item_80269978) procs once at once,
+    /// with the blast-zone check (xDCC b3) off (it_8029B6F8).
+    const PROCS_AT_SPAWN: bool = false;
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     /// The spawning code's own set-up once Item_80268B18 returns (e.g.
     /// it_802BE2E8 for Toad's spores), which may draw from the RNG.
@@ -169,6 +173,7 @@ pub trait ItemLogic {
         launched: Self::launched,
         spawned_with_map: Self::spawned_with_map,
         pickup_possible: Self::pickup_possible,
+        procs_at_spawn: Self::PROCS_AT_SPAWN,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
         dropped: Self::dropped,
@@ -213,6 +218,7 @@ pub struct ItemLogicRow {
         &mut melee_mp::CollMap,
     ),
     pub pickup_possible: fn(&ItemCore) -> bool,
+    pub procs_at_spawn: bool,
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),

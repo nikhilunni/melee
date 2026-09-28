@@ -1,0 +1,11 @@
+[package]
+name = "it-mariofire"
+description = "Mario's fireball item (itmariofireball.c)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }
+gekko-math = { path = "../gekko-math" }

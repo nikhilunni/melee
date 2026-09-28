@@ -10,6 +10,15 @@ use melee_types::FighterKind;
 /// the block, so Mario keeps them at their OnDeath value.
 const VITAMIN_RESET: i32 = 9;
 
+/// The accessory4 callback a special installed; a motion change removes it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// ftMr_SpecialN_ItemFireSpawn: the fireball on the script's throw flag.
+    Fireball,
+}
+
 #[derive(Clone, Debug)]
 pub struct Mario {
     pub attributes: MarioAttributes,
@@ -23,6 +32,10 @@ pub struct Mario {
     pub tornado_charged: bool,
     /// Fighter +2238, x2238_isCapeBoost: an aerial cape already boosted.
     pub cape_boosted: bool,
+    /// Fighter accessory4_cb while a special owns it.
+    pub accessory: Accessory,
+    /// Super Jump Punch's steering (Fighter +6BC).
+    pub super_jump_punch: crate::special_hi::SuperJumpPunch,
 }
 impl Mario {
     pub fn new(attributes: MarioAttributes) -> Self {
@@ -33,6 +46,8 @@ impl Mario {
             vitamin_previous: VITAMIN_RESET,
             tornado_charged: false,
             cape_boosted: false,
+            accessory: Accessory::None,
+            super_jump_punch: Default::default(),
         }
     }
 }
@@ -54,6 +69,37 @@ impl CharacterCallbacks for Mario {
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftData_SpecialN/S/Hi/Lw[Mario] and the aerial tables.
+    fn enter_special(
+        f: &mut melee_ft::fighter::Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            _ => unimplemented!(
+                "ftData_Special{slot:?}[Mario] (airborne: {airborne}): character special entry"
+            ),
+        }
+    }
+    /// Fighter_8006C80C: the special's accessory4, installed until the next
+    /// motion change.
+    fn accessory(
+        f: &mut melee_ft::fighter::Fighter,
+        assets: &melee_ft::fighter::assets::FighterAssets,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<Mario>().accessory {
+            Accessory::Fireball => crate::special_n::spawn_fireball(f, assets),
+            Accessory::None => {}
+        }
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Mario

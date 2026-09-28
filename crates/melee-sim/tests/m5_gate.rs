@@ -2253,7 +2253,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 172] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 190] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2567,6 +2567,29 @@ const CORPUS_V3_MATCHES: [(&str, usize); 172] = [
     // the CaptureDamage entry's Fighter_ChangeMotionState clears kb_applied.
     ("corpus_v3_fd_pikachu_fox4_e1502cb40_p1", 6001),
     ("corpus_v3_fd_pikachu_fox4_e75fb4a9a_p0", 5192),
+    // Mario's Fireball (ftMr_SpecialN, it_8029B6F8): the item's DPtcl trail
+    // (1002) before the hand flash (efAlt 0x47A), bounces (efAlt 0x47B);
+    // forward smash flame 0x411; landing flash 0x423 (ftCo_8009F834 block_67).
+    ("corpus_v3_fd_mario_fox4_e75fb4a9a_p1", 296),
+    ("corpus_v3_fd_mario_fox4_edb2b114a_p1", 671),
+    ("corpus_v3_fd_mario_fox4_e00f31913_p1", 893),
+    ("corpus_v3_fd_mario_fox4_ef89b3e70_p2", 855),
+    ("corpus_v3_fd_mario_fox4_e9943b4ab_p2", 212),
+    ("corpus_v3_fd_mario_fox4_e19f8579b_p0", 1292),
+    ("corpus_v3_fd_mario_fox4_e19f8579b_p1", 837),
+    ("corpus_v3_fd_mario_fox4_ef89b3e70_p1", 2241),
+    ("corpus_v3_fd_mario_fox4_e89a89d0e_p2", 2033),
+    // Super Jump Punch (ftMr_SpecialHi): ft_80085154's steered rise, coin hits
+    // (hit_effect_ids[HitElement_Coin] = efAlt 0x479, generator 1010).
+    ("corpus_v3_fd_mario_fox4_e00f31913_p2", 470),
+    ("corpus_v3_fd_mario_fox4_ec13743d5_p0", 1222),
+    ("corpus_v3_fd_mario_fox4_e89a89d0e_p0", 692),
+    ("corpus_v3_fd_mario_fox4_edb2b114a_p0", 552),
+    ("corpus_v3_fd_mario_fox4_e726cfdde_p2", 558),
+    ("corpus_v3_fd_mario_fox4_e1502cb40_p2", 915),
+    ("corpus_v3_fd_mario_fox4_e9943b4ab_p1", 3970),
+    ("corpus_v3_fd_mario_fox4_e19f8579b_p2", 2646),
+    ("corpus_v3_fd_mario_fox4_e726cfdde_p1", 829),
 ];
 
 #[test]

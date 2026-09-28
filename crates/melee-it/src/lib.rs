@@ -11,6 +11,7 @@ mod link;
 pub use link::*;
 mod logic;
 mod map;
+pub mod particle_track;
 pub use map::AirContact;
 pub mod pose;
 mod spawn;

@@ -55,10 +55,14 @@ impl Effects {
     }
 }
 
-/// efSync_Spawn 0x4CE (efsync.c:225): efLib_CreateGenerator(0x2328), a
-/// Yoshi bank-9 generator at a world position.
-const EGG_SPARKLE_REQUEST: u16 = 0x4CE;
-const EGG_SPARKLE_GENERATOR: u32 = 0x2328;
+/// Requests whose dispatch is efLib_CreateGenerator(generator, &pos): a
+/// character-bank generator at a world position.
+const ROOT_GENERATORS: [(u16, u32); 2] = [
+    // efSync_Spawn 0x4CE (efsync.c:225): Yoshi's egg sparkle.
+    (0x4CE, 0x2328),
+    // efAlt_Spawn 0x47B (efalt.c:58-60): Mario's fireball bounce.
+    (0x47B, 0x3EB),
+];
 /// efSync_Spawn 0x4CF (efsync.c:228): the shell burst.
 const EGG_SHELL_REQUEST: u16 = 0x4CF;
 
@@ -66,8 +70,8 @@ impl Effects {
     /// efAsync_QueueProcessDeferred, EF_SPAWN_POS (kind 1) and
     /// EF_SPAWN_POS_PARAM (kind 4) on an item's model root: the request's
     /// effect at the root's world translation (lb_8000B1CC(jobj, NULL)),
-    /// with kind 4's float parameter. Only the Egg Throw burst's two
-    /// requests (it_802B2C38) are ported.
+    /// with kind 4's float parameter. The Egg Throw burst's two requests
+    /// (it_802B2C38) and the fireball's bounce (8029B9F4) are ported.
     pub fn spawn_item_root<T: InverseTrig>(
         &mut self,
         id: u16,
@@ -77,23 +81,21 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        match (id, parameter) {
-            (EGG_SPARKLE_REQUEST, None) => {
-                let mut request = SpawnRequest::new(
-                    (EGG_SPARKLE_GENERATOR / 1000) as u8,
-                    EGG_SPARKLE_GENERATOR,
-                    0,
-                );
+        let generator = ROOT_GENERATORS
+            .iter()
+            .find(|&&(request, _)| request == id)
+            .map(|&(_, generator)| generator);
+        match (id, parameter, generator) {
+            (_, None, Some(generator)) => {
+                let mut request = SpawnRequest::new((generator / 1000) as u8, generator, 0);
                 request.position = [position.x, position.y, position.z];
-                let bank = resources::character_bank(
-                    &self.character_banks,
-                    (EGG_SPARKLE_GENERATOR / 1000) as i32,
-                )?;
+                let bank =
+                    resources::character_bank(&self.character_banks, (generator / 1000) as i32)?;
                 self.events.spawn(&request, false, false);
                 spawn_particle::<T>(particles, bank, request, rng, &mut self.draws)?;
                 Ok(())
             }
-            (EGG_SHELL_REQUEST, Some(scale)) => {
+            (EGG_SHELL_REQUEST, Some(scale), None) => {
                 let mut matrix = Mtx::default();
                 matrix.0[0][3] = position.x;
                 matrix.0[1][3] = position.y;
