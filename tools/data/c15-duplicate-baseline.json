@@ -31,14 +31,26 @@
     },
     "duplicate_labels": {
       "ft-captain": 1,
+      "ft-drmario": 1,
+      "ft-emblem": 1,
       "ft-falco": 1,
       "ft-fox": 1,
       "ft-fox-family": 0,
-      "ft-mario": 0,
+      "ft-ganon": 1,
+      "ft-iceclimbers": 1,
+      "ft-link": 1,
+      "ft-luigi": 1,
+      "ft-mario": 1,
       "ft-mars": 1,
       "ft-peach": 1,
+      "ft-pichu": 1,
+      "ft-pikachu": 1,
       "ft-purin": 1,
+      "ft-samus": 1,
+      "ft-seak": 1,
       "ft-yoshi": 1,
+      "ft-younglink": 1,
+      "ft-zelda": 1,
       "melee-ft": 20,
       "melee-sim": 7
     },
@@ -57,7 +69,8 @@
     }
   },
   "notes": [
-    "2026-09-10 S3: cross-crate 99 -> 100: melee_ft::physics::airborne::drift_acceleration, a 20-line leaf that rustc auto-inlines into ft-mars (Dolphin Slash drift); a cross-crate inline of a concrete leaf, not a per-character instantiation."
+    "2026-09-10 S3: cross-crate 99 -> 100: melee_ft::physics::airborne::drift_acceleration, a 20-line leaf that rustc auto-inlines into ft-mars (Dolphin Slash drift); a cross-crate inline of a concrete leaf, not a per-character instantiation.",
+    "2026-09-28 wave C (user-approved): per-crate duplicate labels 0 -> 1 for the character crates added since C15 (ft-drmario, ft-emblem, ft-ganon, ft-iceclimbers, ft-link, ft-luigi, ft-mario, ft-pichu, ft-pikachu, ft-samus, ft-seak, ft-younglink, ft-zelda): `melee_ft::fighter::character::CharacterTable::new::{{closure}}`, the table's per-hook closures, which share one label; every C15 character crate was accepted at 1 for the same label. Naming them would add one cross-crate label per hook instead."
   ],
   "revision": "4bb9f072f7794c8663c4a02e5c1dbb30a8c9e96a",
   "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)"
