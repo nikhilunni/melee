@@ -174,3 +174,12 @@ stage = "FinalDestination"
 players = ["Mario", "Fox"]
 stocks = 4
 seed = 1048549139
+
+[[boundary]]
+name = "start_bf_marth_falco4"
+cold = "start_bf_marth_falco4_cold"
+savestate = "harness/roms/start_bf_marth_falco4.sav"
+stage = "Battlefield"
+players = ["Marth", "Falco"]
+stocks = 4
+seed = 2704735648

@@ -15,7 +15,8 @@ Dolphin. This command makes one with no human steps:
 2. Writes scenarios/<name>.toml (the retail start scene, 600 ticks) and
    scenarios/<name>_cold.toml (the same match built from parameters: stage,
    characters, costumes, stocks and the sidecar seed).
-3. Records <name> with record.py (--ledger-suffix ledger600, as for every
+3. Records <name> with record_many.py (a private Dolphin user folder, so
+   several make_boundary runs can proceed at once; --ledger-suffix ledger600, as for every
    start scene) and gates <name>_cold with melee-sim.
 4. When the gate passes, appends the boundary to boundaries.toml (and copies
    the savestate to ~/melee-data/roms when that backup exists). A failing gate
@@ -191,7 +192,10 @@ def main(argv: list[str] | None = None) -> None:
     scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes))
     print(f"== recording {scenario.name}", flush=True)
-    subprocess.run([sys.executable, str(HERE / "record.py"), str(scenario), "--ledger-suffix", "ledger600"],
+    # record_many gives the run a private Dolphin user folder, so parallel
+    # make_boundary runs (one per agent) never share config or card writes.
+    subprocess.run([sys.executable, str(HERE / "record_many.py"), str(scenario), "--jobs", "1",
+                    "--", "--ledger-suffix", "ledger600"],
                    cwd=HERE, check=True, stdout=subprocess.DEVNULL)
     print(f"== gating {cold.name}", flush=True)
     gate = subprocess.run(["cargo", "run", "-q", "--release", "-p", "melee-sim", "--", "gate", str(cold)],
