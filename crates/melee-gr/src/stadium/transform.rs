@@ -139,8 +139,9 @@ const PIT_LINES: [i32; 2] = super::procs::PIT_LINES;
 /// retail recordings as the first read of a match from start_ps_fox_marth4
 /// (the poll that succeeds is the tick before the announcement). A later
 /// read is faster when the previous one left the head nearby (GrPs1.dat
-/// after GrPs4.dat: 12 polls, stage_ps_second_fox_marth4).
-const LOAD_POLLS: [Option<u32>; 4] = [Some(23), Some(18), Some(23), Some(21)];
+/// after GrPs4.dat: 12 polls, stage_ps_second_fox_marth4), so a later read
+/// fails closed rather than diverge.
+const FIRST_READ_POLLS: [u32; 4] = [23, 18, 23, 21];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transformation {
@@ -167,6 +168,9 @@ pub struct Transformation {
     /// xD0: the registered form archive (grDatFiles_801C6478), until the
     /// next form is chosen (grAnime_801C65B0).
     pub archive: Option<Form>,
+    /// A form archive has been read this match (only the first read's
+    /// latency is modelled).
+    pub read_once: bool,
 }
 
 impl Transformation {
@@ -184,6 +188,7 @@ impl Transformation {
             sparkle_path: 0.0,
             load_polls_left: 0,
             archive: None,
+            read_once: false,
         }
     }
 
@@ -274,13 +279,15 @@ impl Transformation {
         }
         // grAnime_801C65B0(xD0), then lbFile_80016580 on datfiles[form].
         self.archive = None;
-        let file = next.archive().expect("a form's archive");
-        self.load_polls_left = LOAD_POLLS[file].unwrap_or_else(|| {
+        if self.read_once {
             unimplemented!(
-                "grpstadium.c:2096: DVD read latency of GrPs{}.dat",
-                file + 1
-            )
-        });
+                "grStadium_801D4548: form archive read after the first (disc read latency \
+                 unmodelled; see docs/PORT_NOTES/POKEMON_STADIUM.md)"
+            );
+        }
+        self.read_once = true;
+        let file = next.archive().expect("a form's archive");
+        self.load_polls_left = FIRST_READ_POLLS[file];
         self.phase = Phase::Loading;
     }
 

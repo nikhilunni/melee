@@ -75,7 +75,9 @@ from wherever match setup left the head). A later read differs:
 after the rock form, and GrPs1.dat arrives after 12 polls instead of 23,
 consistent with a short seek from GrPs4.dat. With 12 polls the whole scene
 gates exactly, so the read time is the only gap; the scenario stays
-unregistered. Modelling it needs the emulator's disc timing (seek from the
+unregistered. The port fails closed: any form read after the match's first
+is `unimplemented!` in `grStadium_801D4548`, and a saved boundary after a
+read is refused. Modelling it needs the emulator's disc timing (seek from the
 last read's end, transfer by size and disc position) or the completion as a
 recorded external input. Explorer cases (6000 ticks from the boundary) only
 reach the first transformation, which the table covers.
@@ -89,16 +91,16 @@ walk at tick 130 steers the first choice (found with `melee-sim dry-run`).
 ## Not ported
 
 - The read latency of any form archive other than the match's first read
-  (above).
+  (above; fails closed).
 - Presentation of the forms (the renderer skips absent models).
 - Saved boundaries mid-transformation or in a transformed form.
 - Screen modes 9 (a player out of stocks, gm_8016B8D4) and 12 (match end).
 
 ## Next boundaries (explorer)
 
-A 16-seed port-only explorer run from `start_ps_fox_marth4` faults in
-fighter code the other stages never reached:
-- `ft_0899.c:109-232` (ft_80089B08's body tilt on a sloped or short floor
-  segment): standing on the base arena before any transformation (tick 955).
-- `ft_081B.c:1258-1296` (ft_80084A80's footstep sound/effect by floor
-  material): the forms' non-default floor materials, near tick 4300.
+Before rebasing onto ca66006, a 16-seed port-only run from
+`start_ps_fox_marth4` faulted in body tilt (ft_0899.c:109-232) and
+floor-material footsteps (ft_081B.c:1258-1296); main has both now. After the
+rebase a 5-seed run (15 cases) finishes or plays out 10 cases and faults 5
+in `ftCo_StopWall.c:25-26` (a running fighter hitting a wall enters
+StopWall), between ticks 4431 and 5856: the forms' walls.

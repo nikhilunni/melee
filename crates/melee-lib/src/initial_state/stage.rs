@@ -418,6 +418,12 @@ fn restore_stadium(
                         controller.form == Form::Base,
                         "Pokemon Stadium saved transformed form unsupported"
                     );
+                    // xD0: a form archive already read; the next read's
+                    // latency would be unmodelled (see POKEMON_STADIUM.md).
+                    ensure!(
+                        word(raw, 0xD0) == 0,
+                        "Pokemon Stadium boundary after a form archive read unsupported"
+                    );
                 }
                 _ => {}
             }
