@@ -73,9 +73,16 @@ do not keep a session log here.
    some long explorer matches (e.g. 6 of 8 PS matches, mario e9943b4ab_p0)
    and in some Mario/Falcon throw effects (±0.09, facing). Plan: add a
    per-tick particle digest to the gate, then fix what it finds.
-5. [!] **Perf size baseline: user decision.** The release binary is about
-   5.6 MB against the 5.2 MB ceiling in `docs/PERF.md`; the growth comes
-   from the new characters.
+5. [ ] **Perf duplicate-label census.** The size baseline was raised after
+   wave C (user, 2026-09-28). The perf gate still fails its zero-tolerance
+   duplicate-label check:
+   - ft-iceclimbers: 35 labels (Popo and Nana instantiations);
+   - one label in each new character crate;
+   - melee-ft: 22 against 20;
+   - across crates: 118 against 100.
+
+   Either de-duplicate the labels or have the user re-baseline the census.
+   Throughput is 30,188 ticks/s (last pass 32,438).
 
 For a new matchup or stage, reuse the Fox-Marth approach:
 - an exit-criteria table like `docs/MATCHUP_COMPLETENESS.md`;
@@ -153,6 +160,6 @@ None.
 | 2026-09-09 | Motion-state tables, static character tables, family crates, concrete core and shell, no per-tick allocation (architecture rules in `CLAUDE.md`). |
 | 2026-09-26 | Record with headless Dolphin by default; windowed only for human play and menu driving. |
 | 2026-09-26 | The explorer corpus starts from registered retail boundaries, so every case is replayable in Dolphin. |
-| 2026-09-28 | Subagents allowed on Opus 5.5 only, at most two building at once; no Codex. |
-| 2026-09-28 | Perf size baseline raised to 4,956,208 stripped bytes (user). |
+| 2026-09-28 | Subagents allowed on Opus 5.5 only, run widely in parallel; no Codex. |
+| 2026-09-28 | Perf size baseline raised to 6,444,304 stripped bytes after wave C (user). |
 | 2026-09-28 | Asynchronous disc reads that affect gameplay (Pokémon Stadium's forms) are external inputs, recorded from retail and replayed like pads; standalone runs use a documented default. |

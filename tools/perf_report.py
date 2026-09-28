@@ -79,9 +79,9 @@ def compare_duplicates(current, previous, reviewed=None):
 # larger of the last PASS block and this reviewed floor until a PASS block is
 # recorded after the review date; from then on the ordinary ratchet applies.
 # The fixed ceiling is the floor plus 5%.
-REVIEWED_SIZE = {"stripped_bytes": 4_956_208, "text_bytes": 4_554_752}
-REVIEWED_SIZE_DATE = "2026-09-28"
-C15_STRIPPED_LIMIT = 5_204_018
+REVIEWED_SIZE = {"stripped_bytes": 6_444_304, "text_bytes": 5_865_472}
+REVIEWED_SIZE_DATE = "2026-09-28T21:45"
+C15_STRIPPED_LIMIT = 6_766_519
 C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
 PAIR_HELPERS = {
     "melee_ft::fighter::grab::capture_pair",

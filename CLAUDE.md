@@ -115,7 +115,7 @@ host timing and is not game state.
 ## Agents
 
 Subagents are allowed and always run on **Opus 5.5** (user, 2026-09-28). No
-Codex. Use them for bounded work, with at most two building at once:
+Codex. Use them for bounded work, as many in parallel as the work allows:
 - search-only agents (dry runs and scratch files, no repo edits);
 - worktree agents for one bug each, which commit on their own branch and sweep
   every recorded scenario before and after the change. The coordinator reviews,
