@@ -291,3 +291,12 @@ stage = "FinalDestination"
 players = ["DrMario", "Fox"]
 stocks = 4
 seed = 486281387
+
+[[boundary]]
+name = "start_fd_luigi_fox4"
+cold = "start_fd_luigi_fox4_cold"
+savestate = "harness/roms/start_fd_luigi_fox4.sav"
+stage = "FinalDestination"
+players = ["Luigi", "Fox"]
+stocks = 4
+seed = 1220824445

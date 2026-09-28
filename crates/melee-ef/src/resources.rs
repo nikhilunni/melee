@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 9] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 10] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -75,6 +75,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 9] = [
         table: "effMarsDataTable",
         models: 2,
     },
+    // Luigi (efAsync_DatEntries[18]): model 0x4650, the fireball's hand
+    // flash (efSync 0x507), and 0x4651, the Cyclone's (efSync 0x509).
+    CharacterEffectFile {
+        bank: 18,
+        file: "EfLgData.dat",
+        table: "effLuigiDataTable",
+        models: 2,
+    },
     // Models 0xBF68..0xBF69 (efSync 0x510..0x512, efsync.c:642-652): Roy's
     // Counter flash and Flare Blade release.
     CharacterEffectFile {
@@ -114,10 +122,20 @@ pub(super) fn is_character_bank(bank: u8) -> bool {
     CHARACTER_EFFECT_FILES.iter().any(|file| file.bank == bank)
 }
 
+/// ftData_UnkBytePerCharacter (ftdata.c:1514), indexed by FighterKind: the
+/// efAsync_DatEntries row Fighter_Create loads for each kind (-1: none).
+pub const FIGHTER_EFFECT_BANKS: [i8; 33] = [
+    1, 3, 4, 8, 5, 12, 6, 17, 10, 15, 14, 14, 7, 2, 9, 11, 13, 18, 16, 17, 6, 1, 3, 7, -1, 19, 49,
+    -1, -1, -1, -1, 12, -1,
+];
+
 #[derive(Clone)]
 pub struct Resources {
     pub(super) models: Vec<Arc<Effect>>,
     pub(super) character_banks: CharacterBanks,
+    /// efAsync_DatEntries rows the match's fighters loaded, one bit each
+    /// (`with_fighters`).
+    pub(super) loaded_banks: u64,
 }
 impl Resources {
     /// `characters` holds the archives of `CHARACTER_EFFECT_FILES`, in order.
@@ -139,7 +157,24 @@ impl Resources {
         Ok(Self {
             models,
             character_banks,
+            loaded_banks: 0,
         })
+    }
+    /// Fighter_Create's efAsync_LoadSync(ftData_UnkBytePerCharacter[kind])
+    /// for each fighter kind (`melee_types::FighterKind` as i32): which
+    /// banks retail holds (efsync.c:67 tests Mario's).
+    pub fn with_fighters(mut self, kinds: impl IntoIterator<Item = i32>) -> Self {
+        for kind in kinds {
+            let bank = usize::try_from(kind)
+                .ok()
+                .and_then(|kind| FIGHTER_EFFECT_BANKS.get(kind))
+                .copied()
+                .unwrap_or(-1);
+            if bank >= 0 {
+                self.loaded_banks |= 1 << bank;
+            }
+        }
+        self
     }
 }
 pub(super) fn character(

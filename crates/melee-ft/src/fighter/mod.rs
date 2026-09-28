@@ -218,6 +218,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// facing is set: Peach's ftPe_AttackS4_Enter. It draws from the RNG,
     /// so it runs once the IASA returns (`Fighter::finish_input`).
     const FORWARD_SMASH: Option<RngEntry> = None;
+    /// RNG draws a special's entry makes inside its motion change (an x21EC
+    /// such as Luigi's ftLg_SpecialS_SetVars), run once the entering IASA
+    /// returns (`Fighter::finish_input`): nothing in between draws.
+    const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
     /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
     fn forward_smash_variant(&self) -> ForwardSmashVariant {
         if Self::descriptor().common_behavior.forward_smash_entry {

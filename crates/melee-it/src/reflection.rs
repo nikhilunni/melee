@@ -71,8 +71,8 @@ impl ItemCore {
         let squares = v.x * v.x + v.y * v.y;
         let speed = gekko_math::msl::sqrtf(v.z * v.z + squares);
         // retail 8026B274: fmadds, then fadds.
-        let damage =
-            gekko_math::fma::fmadds(speed, common.speed_damage_scale, damage) + common.speed_damage_base;
+        let damage = gekko_math::fma::fmadds(speed, common.speed_damage_scale, damage)
+            + common.speed_damage_base;
         if f64::from(damage) <= 1.0 {
             1.0
         } else {
@@ -87,6 +87,24 @@ impl ItemCore {
         self.velocity.y = -self.velocity.y * speed;
         self.facing = -self.facing;
         self.life_timer = self.half_life;
+    }
+    /// itColl_BounceOffShield (80273078): the velocity mirrored off the
+    /// shield's normal (xC58, lbVector_Mirror); unless it is nearly level
+    /// (|x| < 1e-5, fcmpo) with a facing already set, the facing follows its
+    /// sign (x >= 0 faces right), and the collision takes that facing.
+    pub fn bounce_off_shield(&mut self, normal: hsd_types::Vec3) {
+        /// Retail @294.
+        const LEVEL: f32 = 0.00001;
+        self.velocity = melee_lb::vector::mirror(self.velocity, normal);
+        let x = self.velocity.x;
+        let magnitude = if x < 0.0 { -x } else { x };
+        // Retail 802730B8 fcmpo + bge: NaN also takes the new facing.
+        if magnitude.partial_cmp(&LEVEL) != Some(std::cmp::Ordering::Less) || self.facing == 0.0 {
+            self.facing = if x >= 0.0 { 1.0 } else { -1.0 };
+        }
+        let facing = if self.facing == -1.0 { -1 } else { 1 };
+        let collision = self.collision.as_mut().expect("item map collision");
+        melee_mp::set_facing_dir(collision, facing);
     }
     pub(crate) fn reflect<D: ItemDispatch>(
         &mut self,

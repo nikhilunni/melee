@@ -174,7 +174,8 @@ impl Assets {
                 .collect::<Result<Vec<_>>>()?
                 .try_into()
                 .expect("one archive per character effect file");
-        let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?;
+        let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?
+            .with_fighters(characters.iter().map(|c| i32::from(c.descriptor.kind)));
         let interface = archive("IfAll.usd")?;
         // it_8027B798 reads p_ftCommonData, the same PlCo every slot loads.
         let common_damage = &fighters[0].damage;

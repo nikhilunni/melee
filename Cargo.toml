@@ -23,6 +23,7 @@ members = [
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",
     "crates/it-mariofire",
+    "crates/it-luigifire",
     "crates/it-mariocape",
     "crates/it-drmariopill",
     "crates/it-peach",
@@ -51,6 +52,7 @@ members = [
     "crates/ft-mario-family",
     "crates/ft-mario",
     "crates/ft-drmario",
+    "crates/ft-luigi",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

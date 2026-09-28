@@ -467,6 +467,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-luigi"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-mario"
 version = "0.0.1"
 dependencies = [
@@ -847,6 +863,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-luigifire"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-mariocape"
 version = "0.0.1"
 dependencies = [
@@ -1182,6 +1207,7 @@ dependencies = [
  "ft-falco",
  "ft-fox",
  "ft-fox-family",
+ "ft-luigi",
  "ft-mario",
  "ft-mars",
  "ft-peach",
@@ -1199,6 +1225,7 @@ dependencies = [
  "it-foxillusion",
  "it-foxlaser",
  "it-heiho",
+ "it-luigifire",
  "it-mariocape",
  "it-mariofire",
  "it-peach",

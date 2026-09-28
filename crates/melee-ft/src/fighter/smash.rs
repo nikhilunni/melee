@@ -116,6 +116,9 @@ impl Fighter {
                 .expect("pending character forward smash");
             enter(self, assets, rng)?;
         }
+        if let Some(draw) = self.character.table().input_rng {
+            draw(self, rng);
+        }
         Ok(())
     }
 }

@@ -38,6 +38,7 @@ pub enum Character {
     Mario,
     Roy,
     DrMario,
+    Luigi,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -53,6 +54,7 @@ impl Character {
             Self::Mario => "Mario",
             Self::Roy => "Roy",
             Self::DrMario => "DrMario",
+            Self::Luigi => "Luigi",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -72,6 +74,7 @@ impl Character {
             melee_types::FighterKind::Mario => Self::Mario,
             melee_types::FighterKind::Emblem => Self::Roy,
             melee_types::FighterKind::DrMario => Self::DrMario,
+            melee_types::FighterKind::Luigi => Self::Luigi,
             _ => unreachable!("unregistered match character"),
         }
     }

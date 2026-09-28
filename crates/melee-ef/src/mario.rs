@@ -1,22 +1,46 @@
-//! Mario's efAlt rows (efalt.c:38-72), bank 1 (EfMrData.dat).
+//! Mario's efAlt rows (efalt.c:38-72), bank 1 (EfMrData.dat), and Luigi's
+//! efSync rows of the same shape (efsync.c 0x507, 0x509), bank 18
+//! (EfLgData.dat).
 use super::*;
 
-/// efAlt_Spawn 0x47A: the fireball's flash, model 0x3E8.
-const HAND_FIRE_MODEL: u32 = 0x3E8;
-/// hsd_8039EFAC(0, 1, 0x3E9, jobj): the flash's generator on the hand.
-const HAND_FIRE_GENERATOR: u32 = 0x3E9;
-const MARIO_BANK: u8 = 1;
+/// A fireball's hand flash: a model turned to the facing, then a
+/// generator of the same bank on the hand joint.
+#[derive(Clone, Copy)]
+pub(super) struct HandFire {
+    pub model: u32,
+    pub bank: u8,
+    pub generator: u32,
+}
+/// efAlt_Spawn 0x47A: Mario's flash, model 0x3E8 and hsd_8039EFAC(0, 1,
+/// 0x3E9, jobj).
+pub(super) const MARIO_HAND_FIRE: HandFire = HandFire {
+    model: 0x3E8,
+    bank: 1,
+    generator: 0x3E9,
+};
+/// efSync_Spawn 0x507 (efsync.c:566-580): Luigi's flash, model 0x4650 and
+/// hsd_8039EFAC(0, 0x12, 0x4650, jobj).
+pub(super) const LUIGI_HAND_FIRE: HandFire = HandFire {
+    model: 0x4650,
+    bank: 18,
+    generator: 0x4650,
+};
 /// efAlt_Spawn 0x47C: the Tornado's model.
-const TORNADO_MODEL: u32 = 0x3E9;
+pub(super) const TORNADO_MODEL: u32 = 0x3E9;
+/// efSync_Spawn 0x509 (efsync.c:584-590): the Cyclone's model.
+pub(super) const CYCLONE_MODEL: u32 = 0x4651;
 
 impl Effects {
-    /// efAlt_Spawn 0x47A (efalt.c:38-57), from ftMr_SpecialN_ItemFireSpawn:
-    /// efLib_Create_Attach(0x3E8) on the hand joint, turned once to the
-    /// facing (an f64 -+M_PI_2 rounded by HSD_JObjSetRotationY), then
-    /// generator 0x3E9 on the same joint. efAlt drains its animation queue
-    /// after the switch, so the model animates after the generator spawns.
+    /// efAlt_Spawn 0x47A (efalt.c:38-57), from ftMr_SpecialN_ItemFireSpawn,
+    /// and efSync_Spawn 0x507 from ftLg_SpecialN_FireSpawn:
+    /// efLib_Create_Attach(model) on the hand joint, turned once to the
+    /// facing (an f64 -+M_PI_2 rounded by HSD_JObjSetRotationY), then the
+    /// generator on the same joint. Both drain their animation queue after
+    /// the switch, so the model animates after the generator spawns.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn_hand_fire<T: InverseTrig>(
         &mut self,
+        fire: HandFire,
         player: usize,
         bone: usize,
         fighter: &mut impl EffectOwner,
@@ -24,7 +48,7 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let mut effect = self.acquire(HAND_FIRE_MODEL, particles);
+        let mut effect = self.acquire(fire.model, particles);
         effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
         self.next_joint += effect.tree.len();
         effect.owner = Some(ModelOwner::Fighter(player));
@@ -46,10 +70,10 @@ impl Effects {
         );
         assert!(bone < FIGHTER_JOINT_STRIDE);
         let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
-        let mut spawn = SpawnRequest::new(MARIO_BANK, HAND_FIRE_GENERATOR, 0);
+        let mut spawn = SpawnRequest::new(fire.bank, fire.generator, 0);
         spawn.joint = Some((joint_id, matrix));
         self.events.spawn(&spawn, false, false);
-        let bank = resources::character_bank(&self.character_banks, i32::from(MARIO_BANK))?;
+        let bank = resources::character_bank(&self.character_banks, i32::from(fire.bank))?;
         spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
         self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
         effect.animate_banks::<T>(
@@ -66,12 +90,15 @@ impl Effects {
         Ok(())
     }
 
-    /// efAlt_Spawn 0x47C (efalt.c:61-66), from the Tornado's setGfx:
-    /// efLib_Create_Attach_Scale(0x3E9) on the fighter's root with the
-    /// efLib_Cb_ftMr_SpecialLw update (its tilt arrives as OwnedRotationZ;
+    /// efAlt_Spawn 0x47C (efalt.c:61-66), from the Tornado's setGfx, and
+    /// efSync_Spawn 0x509 from the Cyclone's: efLib_Create_Attach_Scale(model)
+    /// on the fighter's root with the efLib_Cb_ftMr_SpecialLw /
+    /// efLib_Cb_ftLg_SpecialLw update (its tilt arrives as OwnedRotationZ;
     /// its child's JOBJ_HIDDEN toggle is display only).
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn_tornado<T: InverseTrig>(
         &mut self,
+        model: u32,
         player: usize,
         bone: usize,
         fighter: &mut impl EffectOwner,
@@ -79,7 +106,7 @@ impl Effects {
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let mut effect = self.acquire(TORNADO_MODEL, particles);
+        let mut effect = self.acquire(model, particles);
         effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
         self.next_joint += effect.tree.len();
         effect.owner = Some(ModelOwner::Fighter(player));

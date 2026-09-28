@@ -82,6 +82,7 @@ impl Effects {
     pub fn from_resources(resources: &Resources) -> Self {
         let mut effects = Self::from_models(ModelPool::from_definitions(&resources.models));
         effects.character_banks = resources.character_banks.clone();
+        effects.loaded_banks = resources.loaded_banks;
         effects
     }
     fn from_models(models: ModelPool) -> Self {
@@ -93,6 +94,7 @@ impl Effects {
             instances: Default::default(),
             models,
             character_banks: Default::default(),
+            loaded_banks: 0,
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
             item_joints: FixedVec::default(),

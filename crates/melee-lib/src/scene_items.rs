@@ -33,6 +33,7 @@ melee_it::item_kinds! {
         MarioCape: it_mariocape::MarioCape,
         DrMarioVitamin: it_drmariopill::DrMarioPill,
         DrMarioSheet: it_mariocape::DrMarioSheet,
+        LuigiFire: it_luigifire::LuigiFire,
     }
 }
 
@@ -325,6 +326,28 @@ impl Resources {
             )?);
             kinds.push((ItemKind::DrMarioSheet, sheet));
             visual_archives.push((ItemKind::DrMarioSheet, a));
+        }
+        // ftLg_Init_OnLoad: ftData.x48_items[0] is the fireball.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlLg.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataLuigi").context("Luigi fighter data")?;
+            let mut fire = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_luigifire::ARTICLE_INDEX,
+                &it_luigifire::ARTICLE_STATES,
+                it_luigifire::SPECIAL_ATTRIBUTES,
+            )?;
+            // Item_ApplyFallingPhysics reads the common falling spin.
+            fire.fall_spin_degrees = common.fall_spin_degrees;
+            // The fireball's joint animation may carry DPtcl keys.
+            fire.read_particle_tracks(&a)
+                .map_err(|e| anyhow::anyhow!("Luigi fireball particle track: {e}"))?;
+            kinds.push((ItemKind::LuigiFire, fire));
+            visual_archives.push((ItemKind::LuigiFire, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

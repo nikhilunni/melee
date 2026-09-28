@@ -2304,7 +2304,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 241] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 260] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2712,6 +2712,31 @@ const CORPUS_V3_MATCHES: [(&str, usize); 241] = [
     ("corpus_v3_fd_drmario_fox4_ee8d2a62f_p0", 6001),
     ("corpus_v3_fd_drmario_fox4_e2bf046d4_p1", 6001),
     ("corpus_v3_fd_drmario_fox4_e0d368f02_p2", 6001),
+    // LUIGI: Luigi vs Fox explorer cases through every special: Fireball
+    // (it_802C01AC, efSync 0x507/0x508, shield bounce itColl_BounceOffShield),
+    // Green Missile with its misfire draw (ftLg_SpecialS_SetVars) and the
+    // launch frame's effects flushed by the flight's motion change,
+    // Super Jump Punch, Cyclone (efSync 0x509) and item hits on an
+    // intangible fighter reaching clank and shield first (ftcoll.c:2285).
+    ("corpus_v3_fd_luigi_fox4_e0ac13e8e_p0", 5646),
+    ("corpus_v3_fd_luigi_fox4_e0fcf0c70_p2", 1193),
+    ("corpus_v3_fd_luigi_fox4_e121faf54_p2", 4121),
+    ("corpus_v3_fd_luigi_fox4_e1b05b110_p1", 6001),
+    ("corpus_v3_fd_luigi_fox4_e24fdee66_p2", 6001),
+    ("corpus_v3_fd_luigi_fox4_e27acb822_p0", 2844),
+    ("corpus_v3_fd_luigi_fox4_e50f774a0_p1", 3634),
+    ("corpus_v3_fd_luigi_fox4_e6af4a7bb_p1", 5880),
+    ("corpus_v3_fd_luigi_fox4_e7f8dc4fa_p2", 6001),
+    ("corpus_v3_fd_luigi_fox4_eae52f0ea_p2", 616),
+    ("corpus_v3_fd_luigi_fox4_eb4935276_p1", 6001),
+    ("corpus_v3_fd_luigi_fox4_ebfeefc0e_p1", 4173),
+    ("corpus_v3_fd_luigi_fox4_ec13743d5_p2", 4042),
+    ("corpus_v3_fd_luigi_fox4_edea229bd_p0", 4093),
+    ("corpus_v3_fd_luigi_fox4_ee133b82f_p0", 5850),
+    ("corpus_v3_fd_luigi_fox4_ef5188d7f_p1", 3916),
+    ("corpus_v3_fd_luigi_fox4_ef89b3e70_p0", 5660),
+    ("corpus_v3_fd_luigi_fox4_ef9e858d4_p0", 5340),
+    ("corpus_v3_fd_luigi_fox4_efc6a328f_p2", 5007),
 ];
 
 #[test]

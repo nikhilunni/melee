@@ -79,7 +79,7 @@ impl Fighter {
     /// bubbles), ahead of the new script's frame-0 effects. Resolve those
     /// graphics commands (their offset draws are this proc's next RNG work)
     /// so the motion change seals them with the outgoing pose.
-    fn seal_issued_graphics(&mut self, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
+    pub fn seal_issued_graphics(&mut self, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
         if !self.core.commands.graphics.is_empty() {
             self.core.resolve_graphics_commands(assets, rng);
         }

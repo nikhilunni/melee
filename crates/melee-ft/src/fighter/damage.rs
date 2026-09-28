@@ -2376,11 +2376,13 @@ impl Fighter {
         if (item.owner == Some(self.player.id) && !item.hits_owner)
             || item.destroyed
             || self.status.disabled
-            || self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
-            || self.status.ledge_intangibility != 0
         {
             return None;
         }
+        // ftcoll.c:2285-2287: intangibility (x1988 or x198C == 2) skips only
+        // the hurtbox step; reflection, clank and shield come first.
+        let intangible = self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
+            || self.status.ledge_intangibility != 0;
         let (mut clank_mask, clank_candidates) = super::clank::item_candidates(&self.core, item);
         let mut cursor = melee_coll::detection::PairCursor::default();
         while let Some(id) = cursor.next(
@@ -2465,6 +2467,9 @@ impl Fighter {
                         continue;
                     }
                 }
+            }
+            if intangible {
+                continue;
             }
             let Some((contact, height)) =
                 melee_coll::detection::first_contact(&mut self.core, &hit, item.scale)

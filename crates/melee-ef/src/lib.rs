@@ -62,6 +62,8 @@ pub struct Effects {
     instances: FixedVec<Effect, INSTANCE_CAPACITY>,
     models: ModelPool,
     character_banks: resources::CharacterBanks,
+    /// efAsync_DatEntries rows the match's fighters loaded (one bit each).
+    loaded_banks: u64,
     next_joint: usize,
     fighter_joints: [bool; 2 * FIGHTER_JOINT_STRIDE],
     /// Items whose JObj carries generators (item_generators.rs).
@@ -435,12 +437,30 @@ impl Effects {
                 }
                 continue;
             }
-            if let EffectRequest::SyncAttached { id: 0x47C, bone } = request {
-                self.spawn_tornado::<T>(player, bone, fighter, bank, particles, rng)?;
+            if let EffectRequest::SyncAttached {
+                id: id @ (0x47C | 0x509),
+                bone,
+            } = request
+            {
+                let model = if id == 0x47C {
+                    mario::TORNADO_MODEL
+                } else {
+                    mario::CYCLONE_MODEL
+                };
+                self.spawn_tornado::<T>(model, player, bone, fighter, bank, particles, rng)?;
                 continue;
             }
-            if let EffectRequest::SyncAttached { id: 0x47A, bone } = request {
-                self.spawn_hand_fire::<T>(player, bone, fighter, bank, particles, rng)?;
+            if let EffectRequest::SyncAttached {
+                id: id @ (0x47A | 0x507),
+                bone,
+            } = request
+            {
+                let fire = if id == 0x47A {
+                    mario::MARIO_HAND_FIRE
+                } else {
+                    mario::LUIGI_HAND_FIRE
+                };
+                self.spawn_hand_fire::<T>(fire, player, bone, fighter, bank, particles, rng)?;
                 continue;
             }
             if let EffectRequest::SyncAttached {
@@ -544,6 +564,17 @@ impl Effects {
                     self.events.flags(joint_id, 0x600, 0x800);
                     generator.flags = (generator.flags & !0x600) | 0x800;
                 }
+                self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
+                continue;
+            }
+            if let EffectRequest::SyncAttached { id: 0x50A, bone } = request {
+                // efsync.c:591-593: hsd_8039EFAC(0, 0, 0x5F, jobj), Green
+                // Missile's launch sparks on the hip.
+                let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+                let mut spawn = SpawnRequest::new(0, 0x5F, 0);
+                spawn.joint = Some((joint_id, fighter.effect_matrix(Some(bone))));
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
@@ -671,7 +702,11 @@ impl Effects {
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 continue;
             }
-            if let EffectRequest::PositionalGenerator { id: 0x4C3, position } = request {
+            if let EffectRequest::PositionalGenerator {
+                id: 0x4C3,
+                position,
+            } = request
+            {
                 // efsync.c:136-144: efLib_CreateGenerator_AddAppSRT(0x24C)
                 // with the point as the AppSRT's translation (Thunder's cloud).
                 let mut spawn = SpawnRequest::new(0, 0x24C, 0);
@@ -715,9 +750,13 @@ impl Effects {
                 let generator = match element {
                     melee_types::HitElement::Electric => Some(0x3E9),
                     melee_types::HitElement::Fire => Some(0x3EA),
-                    // efSync_Spawn 0x479: efAlt while Mario's bank is loaded
-                    // (efsync.c's 0x506 fallback otherwise).
-                    melee_types::HitElement::Coin => Some(0x479),
+                    // efSync_Spawn 0x479: efAlt while Mario's bank is loaded,
+                    // else efsync.c:67-69's 0x506 (Luigi's bank).
+                    melee_types::HitElement::Coin => Some(if self.loaded_banks & (1 << 1) != 0 {
+                        0x479
+                    } else {
+                        0x506
+                    }),
                     _ => None,
                 };
                 if let Some(generator) = generator {
