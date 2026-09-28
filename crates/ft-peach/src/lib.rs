@@ -1,5 +1,6 @@
 //! Peach: ft/kinds/ftPeach. Shared states live in melee-ft.
 pub mod articles;
+pub mod attack_s4;
 pub mod attributes;
 pub mod float;
 pub mod float_attack;
@@ -74,6 +75,20 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
             float_attack::input,
             float_attack::physics,
             float_attack::collision,
+        );
+        i += 1;
+    }
+    // ftPe_MS_AttackS4Club..Racket (349..351), ftPe_SM 298..300: the common
+    // forward smash callbacks (ftPe_AttackS4_Anim/IASA/Phys/Coll match them).
+    i = 8;
+    while i < 11 {
+        rows[i] = row(
+            341 + i as u16,
+            290 + i as i32,
+            callbacks::animation::jab,
+            callbacks::input::tilt,
+            callbacks::physics::jab,
+            callbacks::collision::escape,
         );
         i += 1;
     }

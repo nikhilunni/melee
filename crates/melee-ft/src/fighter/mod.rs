@@ -95,6 +95,10 @@ pub type ItemDefenseContact =
 /// Character-owned load/reset hooks (`ftData_OnLoad`/`ftData_OnDeath`).
 /// Implementations live in ft-<character>; common fighter code never loads a
 /// character crate. The implementation owns its typed special attributes.
+/// A character motion entry that draws from the RNG (ftPe_AttackS4_Enter).
+pub type RngEntry =
+    fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng) -> assets::Result<()>;
+
 pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
 
@@ -183,6 +187,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     }
 
     fn kind(&self) -> FighterKind;
+    /// decideFighter's character arm (ftCo_AttackS4.c:150-156), after the
+    /// facing is set: Peach's ftPe_AttackS4_Enter. It draws from the RNG,
+    /// so it runs once the IASA returns (`Fighter::finish_input`).
+    const FORWARD_SMASH: Option<RngEntry> = None;
     /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
     fn forward_smash_variant(&self) {
         if Self::descriptor().common_behavior.forward_smash_entry {
@@ -732,6 +740,9 @@ pub struct FighterCore {
     pub held_item: Option<item_pickup::HeldItem>,
     /// x2221_b4..b7 and x2104: the parasol's open timer.
     pub parasol: parasol::ParasolTimer,
+    /// A character forward smash chosen this IASA, entered by
+    /// `Fighter::finish_input` with the RNG.
+    pub pending_forward_smash: bool,
     /// fp->item_gobj while it holds one of the fighter's own articles.
     pub article_in_hand: Option<item_pickup::ArticleInHand>,
     /// The grabbable items the scene offered to the running proc.

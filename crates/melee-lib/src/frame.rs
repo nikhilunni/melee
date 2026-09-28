@@ -1733,7 +1733,9 @@ fn dispatch_fighter(
             // HSD_PadGameStatus[fp->x618_player_id]: in a Vs match
             // the human slot's port is its player index.
             let pad: PadSample = state_pads[usize::from(f.player.id)];
-            f.proc_input(assets, &pad)
+            f.proc_input(assets, &pad);
+            f.finish_input(assets, rng)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::Update => {
             f.proc_update(assets, map, wind);

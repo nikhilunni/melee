@@ -1137,6 +1137,7 @@ impl FighterCore {
             released_link: None,
             held_item: None,
             parasol: Default::default(),
+            pending_forward_smash: false,
             article_in_hand: None,
             pickup_candidates: Default::default(),
             ledge_holders: Default::default(),

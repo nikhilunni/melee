@@ -939,7 +939,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 109] = [
+const MATRIX_WITNESSES: [(&str, usize); 110] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1079,6 +1079,9 @@ const MATRIX_WITNESSES: [(&str, usize); 109] = [
     ("peach2_toad_air", 300),
     ("peach2_toad_counter_laser", 260),
     ("peach2_toad_counter_melee", 280),
+    // ftPe_AttackS4_Enter: three forward smashes redraw HSD_Randi(3) away
+    // from the previous club/pan/racket; one charged, one turning round.
+    ("peach2_fsmash_sequence", 360),
 ];
 
 #[test]
@@ -2047,7 +2050,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 89] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 91] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2232,6 +2235,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 89] = [
     ("corpus_v3_fd_peach_fox4_e3e74affa_p2", 124),
     // Peach's neutral special draws Toad (item 104) from joint 109.
     ("corpus_v3_fd_peach_fox4_eeda0d0fc_p1", 115),
+    // Peach's forward smash picks club, pan or racket (ftPe_AttackS4_Enter).
+    ("corpus_v3_fd_peach_fox4_ea4d5d9ec_p2", 108),
+    ("corpus_v3_fd_peach_fox4_e9943b4ab_p2", 88),
 ];
 
 #[test]

@@ -98,6 +98,8 @@ impl CharacterCallbacks for Peach {
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftCo_AttackS4.c decideFighter: ftPe_AttackS4_Enter.
+    const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
     /// ftData_SpecialN/Hi[Peach]; side and down specials are unported.
     fn enter_special(
         f: &mut melee_ft::fighter::Fighter,

@@ -60,6 +60,12 @@ impl Fighter {
         stick: Stick,
         facing: f32,
     ) -> Result<()> {
+        if self.character.table().forward_smash.is_some() {
+            // decideFighter: fp->facing_dir = stick_x_sign, then the arm.
+            self.core.physics.facing = facing;
+            self.core.pending_forward_smash = true;
+            return Ok(());
+        }
         self.character.forward_smash_variant();
         // ftCo_GetLStickAngle/GetCStickAngle (8007D964/8007D99C).
         let angle = melee_lb::trigf::atan2f(stick.y, stick.x.abs());
@@ -87,6 +93,25 @@ impl Fighter {
         self.step_animation(assets);
         self.core.state_data = MotionData::Smash { retained_word };
         self.core.status.interaction = super::Interaction::Attack;
+        Ok(())
+    }
+}
+impl Fighter {
+    /// The rest of this Input proc's IASA: a character forward smash
+    /// chosen there enters now, with the RNG (ftPe_AttackS4_Enter's Randi).
+    pub fn finish_input(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> Result<()> {
+        if std::mem::take(&mut self.core.pending_forward_smash) {
+            let enter = self
+                .character
+                .table()
+                .forward_smash
+                .expect("pending character forward smash");
+            enter(self, assets, rng)?;
+        }
         Ok(())
     }
 }

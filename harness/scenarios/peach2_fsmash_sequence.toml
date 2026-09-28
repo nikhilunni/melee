@@ -1,0 +1,34 @@
+# PEACH2 forward smash (ftPe_AttackS4_Enter): three swings in a row, each
+# chosen by HSD_Randi(3) among club, pan and racket (349..351) and redrawn
+# while it repeats the previous one (fp->u.pe.attacks4_motion_id). The
+# second is charged by holding A (the script's smash charge), the third is
+# aimed left, turning Peach round (decideFighter's facing).
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_fsmash_sequence"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { A = true, StickX = 0.64224609375 }, raw = { button = 256, stickX = 80 } },
+  { frame = 122, port = 0, buttons = {  }, raw = {  } },
+  { frame = 185, port = 0, buttons = { A = true, StickX = 0.64224609375 }, raw = { button = 256, stickX = 80 } },
+  { frame = 187, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 0, buttons = { A = true, StickX = -0.64388671875 }, raw = { button = 256, stickX = -80 } },
+  { frame = 282, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
