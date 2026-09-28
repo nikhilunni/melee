@@ -111,3 +111,12 @@ stage = "FinalDestination"
 players = ["Jigglypuff", "Fox"]
 stocks = 4
 seed = 3199439676
+
+[[boundary]]
+name = "start_fd_fox_jigglypuff4"
+cold = "start_fd_fox_jigglypuff4_cold"
+savestate = "harness/roms/start_fd_fox_jigglypuff4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Jigglypuff"]
+stocks = 4
+seed = 2935155039

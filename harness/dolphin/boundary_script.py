@@ -23,9 +23,9 @@ the inputs, so no step depends on timing or screenshots:
   sss      set the stage screen's forced stage (SSSData.force_stage_id, the
            field retail's ordered/random stage rules use), which starts the
            match on that stage on the next frame;
-  match    save the state at the first frame with a fully initialised roster
-           (the same predicate as remote.py `save-when-fighters`), write the
-           sidecar and `<savestate>.done`, then park.
+  match    save the state at the first frame where every fighter exists and
+           is in Entry (a stricter `save-when-fighters`), write the sidecar
+           and `<savestate>.done`, then park.
 
 Failures write `<savestate>.err`. Nothing outside the savestate path is written;
 the memory card belongs to the private Dolphin user folder the caller made.
@@ -93,6 +93,7 @@ SSS_FORCE_STAGE = 0x3
 
 SEED_ADDR = symbols.addr("seed")
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
+MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
 
 PULSE_PERIOD = 40   # menus ignore input for ~40 frames after a transition
 PRESS_FRAMES = 3
@@ -194,9 +195,12 @@ class BoundaryDriver:
                 return {}
             return self.pulse("Start")
         if self.phase == "match":
+            # Every fighter created and in Entry: a fighter still inside
+            # Fighter_Create reads as motion 0 at the origin, before its CPU
+            # setup draws, and would leave the seed short of post-creation.
             fighters = self.read_fighters()
-            if len(fighters) >= len(self.config["players"]) and all(
-                    proto.fighter_looks_valid(f) and 0 <= f["motion_id"] < 1000 for f in fighters):
+            if len(fighters) == len(self.config["players"]) and all(
+                    f["motion_id"] == MS_ENTRY for f in fighters):
                 self.save(self.config["savestate"])
                 self.done = True
                 self.enter("saved")
