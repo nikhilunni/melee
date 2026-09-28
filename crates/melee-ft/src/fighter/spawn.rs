@@ -1544,6 +1544,7 @@ impl FighterCore {
                 &mut self.ground_pose,
                 assets,
                 hand,
+                self.physics.facing,
             );
             self.apply_script_damage();
         }

@@ -322,6 +322,7 @@ impl FighterCore {
             &mut self.ground_pose,
             assets,
             hand,
+            self.physics.facing,
         );
         self.apply_script_damage();
         self.apply_airborne_commands();
@@ -395,6 +396,7 @@ impl FighterCore {
                         parameter: 0.0,
                         offset: hsd_types::Vec3::ZERO,
                         range: hsd_types::Vec3::ZERO,
+                        issued_facing: None,
                     },
                 );
                 inserted += 1;
@@ -478,7 +480,7 @@ impl FighterCore {
             &mut self.commands,
             &mut self.ground_pose,
             assets,
-            hand,
+            (hand, self.physics.facing),
         );
         self.apply_dynamic_commands(assets);
         Ok(())
@@ -490,6 +492,7 @@ impl FighterCore {
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
         let hand = self.held_item_hand(assets);
+        let facing = self.physics.facing;
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
         // ftCo_8008A7A8: holding an item, most kinds replay the current idle.
@@ -506,7 +509,14 @@ impl FighterCore {
             },
             |id| &assets.motions[&id],
             |animation, tree| {
-                restart_idle_step(animation, tree, commands, ground_pose, assets, hand)
+                restart_idle_step(
+                    animation,
+                    tree,
+                    commands,
+                    ground_pose,
+                    assets,
+                    (hand, facing),
+                )
             },
         )?;
         self.apply_dynamic_commands(assets);
@@ -838,12 +848,12 @@ fn restart_idle_step(
     commands: &mut super::commands::CommandState,
     ground_pose: &mut GroundPoseFlags,
     assets: &FighterAssets,
-    hand: super::commands::HeldItemHand,
+    (hand, facing): (super::commands::HeldItemHand, f32),
 ) {
     commands.restart(assets.command_entries[&animation.motion_id]);
     animation.step_with_hooks::<RetailTrig>(
         tree,
-        |animation, tree| commands.step(animation, tree, ground_pose, assets, hand),
+        |animation, tree| commands.step(animation, tree, ground_pose, assets, hand, facing),
         |_, _| {},
     );
 }

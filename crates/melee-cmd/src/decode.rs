@@ -277,6 +277,7 @@ pub fn graphics(words: &[u32; 5]) -> melee_types::combat::GraphicsCommand {
             SCALE * f32::from(half(words, 9)),
         ]
         .into(),
+        issued_facing: None,
     }
 }
 

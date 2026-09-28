@@ -176,7 +176,8 @@ impl CommandState {
     }
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
     /// `held_item_hand` names what a held-item visibility command acts on
-    /// (see [`HeldItemHand`]).
+    /// (see [`HeldItemHand`]). `facing` is the fighter's facing while the
+    /// script runs, which graphics commands copy as they are issued.
     pub fn step(
         &mut self,
         animation: &mut FighterAnimation,
@@ -184,8 +185,9 @@ impl CommandState {
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
         held_item_hand: HeldItemHand,
+        facing: f32,
     ) {
-        self.step_inner(animation, tree, pose, assets, held_item_hand, false);
+        self.step_inner(animation, tree, pose, assets, held_item_hand, Some(facing));
     }
 
     /// ftAction_80073354 (0x80073354): seek a newly installed script to a
@@ -198,7 +200,7 @@ impl CommandState {
         assets: &FighterAssets,
         held_item_hand: HeldItemHand,
     ) {
-        self.step_inner(animation, tree, pose, assets, held_item_hand, true);
+        self.step_inner(animation, tree, pose, assets, held_item_hand, None);
     }
 
     fn step_inner(
@@ -208,8 +210,10 @@ impl CommandState {
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
         held_item_hand: HeldItemHand,
-        seeking: bool,
+        // None while seeking: transient commands (graphics) are skipped.
+        issuing_facing: Option<f32>,
     ) {
+        let seeking = issuing_facing.is_none();
         let borrowed_script = self.borrowed_script.clone();
         let script = borrowed_script.as_deref().unwrap_or(&assets.commands);
         self.script
@@ -388,8 +392,13 @@ impl CommandState {
                 Command::HurtStatus(status) => self.hurt_status = *status,
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::Graphics(command) => {
-                    if !seeking {
-                        self.graphics.push(command.clone());
+                    if let Some(facing) = issuing_facing {
+                        // ftCo_09F7.c: efAsync_Spawn copies `fp->facing_dir`
+                        // into the queued request as the command runs.
+                        self.graphics.push(melee_types::combat::GraphicsCommand {
+                            issued_facing: Some(facing),
+                            ..command.clone()
+                        });
                     }
                 }
                 Command::SetVariable { index, value } => self.variables[*index] = *value,

@@ -424,6 +424,7 @@ impl ItemCore {
                 parameter: 0.0,
                 offset: hsd_types::Vec3::new(point.x, point.y, 0.0),
                 range: hsd_types::Vec3::ZERO,
+                issued_facing: None,
             },
         ));
     }

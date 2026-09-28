@@ -138,11 +138,12 @@ pub(super) fn sync_wait(state: &mut InitialState, player: usize) -> Result<()> {
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
 
-pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()> {
+/// Enters a requested throw; returns the victim's index when one began.
+pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
     let Some(throw) = with_fighter!(&state.fighters[player], |f| {
         grab_throw::requested(f, &state.assets.fighters[player])
     }) else {
-        return Ok(());
+        return Ok(None);
     };
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
     let Some(GrabLink::Holding { victim, .. }) = link else {
@@ -163,7 +164,8 @@ pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()>
             &state.assets.fighters[player],
         )
     }))
-    .map_err(|e| anyhow::anyhow!(e.to_string()))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
 }
 
 pub(super) fn constrain(state: &mut InitialState, player: usize) {

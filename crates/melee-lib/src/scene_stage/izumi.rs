@@ -279,9 +279,14 @@ pub(crate) fn run_proc(state: &mut InitialState, key: u8) -> Result<()> {
     let SceneStage::Izumi(stage) = &mut state.stage else {
         unreachable!()
     };
-    match key {
-        0..=2 => {}
-        COLLISION_MAP => follow_platform_tops(&mut state.stage_animations),
+    // The maps whose JObjs this proc moves after their animation callback
+    // published them.
+    let moved: &[u8] = match key {
+        0..=2 => &[],
+        COLLISION_MAP => {
+            follow_platform_tops(&mut state.stage_animations);
+            &[REFLECTION_MAP]
+        }
         _ => {
             let side = PLATFORMS
                 .iter()
@@ -298,6 +303,20 @@ pub(crate) fn run_proc(state: &mut InitialState, key: u8) -> Result<()> {
                 &mut state.stage_animations,
                 &mut state.map,
             )?;
+            &[key, COLLISION_MAP]
+        }
+    };
+    // Generators attached to those JObjs read their world matrices in the
+    // particle proc, after this s_link 4 proc moved them: republish so a
+    // rising platform's splash is not a tick behind.
+    for &map in moved {
+        if let Some(animation) = state.stage_animations.get_mut(&map) {
+            super::publish_joint_matrices(
+                animation,
+                map,
+                &mut state.particles,
+                &mut state.effects.events,
+            );
         }
     }
     Ok(())

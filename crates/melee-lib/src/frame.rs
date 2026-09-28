@@ -1149,7 +1149,27 @@ impl Runtime {
                     })?;
                 }
                 if proc == FighterProc::Input {
-                    grab_pairs::throw_input(state, player)?;
+                    if let Some(victim) = grab_pairs::throw_input(state, player)? {
+                        // ftCo_800DD4B0 changes the captor's motion, then
+                        // the victim's (ftCo_800DE3FC); each
+                        // Fighter_ChangeMotionState flushes that fighter's
+                        // efAsync queue (fighter.c:951) inside the captor's
+                        // input proc, ahead of the next fighter's procs.
+                        for member in [player, victim] {
+                            crate::scene_fighter::with_fighter!(
+                                &mut state.fighters[member],
+                                |f| state.effects.flush::<RetailTrig>(
+                                    melee_ef::EffectTiming::Immediate,
+                                    member,
+                                    &mut f.core,
+                                    &state.assets.common_particle_bank,
+                                    &state.assets.particle_bank,
+                                    &mut state.particles,
+                                    &mut state.rng,
+                                )
+                            )?;
+                        }
+                    }
                 }
                 if proc == FighterProc::ProcessHit {
                     credit_phantom_source(state, player);

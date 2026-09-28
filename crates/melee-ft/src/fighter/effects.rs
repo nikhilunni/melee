@@ -121,7 +121,7 @@ impl super::FighterCore {
                     id,
                     bone,
                     offset: hsd_types::Vec3::ZERO,
-                    facing: self.physics.facing,
+                    facing: command.issued_facing.unwrap_or(self.physics.facing),
                     floor_angle,
                 });
                 continue;
@@ -215,7 +215,7 @@ impl super::FighterCore {
                 id,
                 bone,
                 offset,
-                facing: self.physics.facing,
+                facing: command.issued_facing.unwrap_or(self.physics.facing),
                 floor_angle,
             });
         }

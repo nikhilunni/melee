@@ -53,6 +53,11 @@ pub struct GraphicsCommand {
     pub parameter: f32,
     pub offset: Vec3,
     pub range: Vec3,
+    /// The owner's facing when the command ran. ftCo_09F7.c passes
+    /// `&fp->facing_dir` to efAsync_Spawn, which copies the value into the
+    /// queued request then, so a facing flip later in the same proc (a
+    /// back throw's reversal) does not reach it. None until issued.
+    pub issued_facing: Option<f32>,
 }
 
 /// Move identity shared by fighters and their projectile attacks.

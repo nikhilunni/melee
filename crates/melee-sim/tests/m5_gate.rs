@@ -2332,7 +2332,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 303] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 304] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2684,6 +2684,11 @@ const CORPUS_V3_MATCHES: [(&str, usize); 303] = [
     // Super Jump Punch (ftMr_SpecialHi): ft_80085154's steered rise, coin hits
     // (hit_effect_ids[HitElement_Coin] = efAlt 0x479, generator 1010).
     ("corpus_v3_fd_mario_fox4_e00f31913_p2", 470),
+    // Mario's up throw of Fox: the throw input's captor and victim motion
+    // changes flush their efAsync queues (the CatchWait flash first) inside
+    // the captor's input proc; Fox's back throw flips facing after its
+    // graphics commands queued the old one (ftCo_09F7.c copies facing_dir).
+    ("corpus_v3_fd_mario_fox4_ec13743d5_p0", 6001),
     ("corpus_v3_fd_mario_fox4_e89a89d0e_p0", 4067),
     ("corpus_v3_fd_mario_fox4_edb2b114a_p0", 4005),
     ("corpus_v3_fd_mario_fox4_e726cfdde_p2", 2418),

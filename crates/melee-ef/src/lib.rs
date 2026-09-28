@@ -1058,8 +1058,10 @@ impl Effects {
                         );
                     }
                     // efasync.c:192-197: 0x3F5 takes the facing, no Z rotation;
-                    // efasync.c:524-529: 0x41D sets no rotation at all.
-                    if id != 0x3F5 && id != 0x41D {
+                    // efasync.c:199-246: 0x3F6 and 0x3FA-0x3FC (queued as kind 2,
+                    // ftCo_09F7.c:219-245, with no floor angle) and
+                    // efasync.c:524-529: 0x41D set no rotation at all.
+                    if !matches!(id, 0x3F5 | 0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x41D) {
                         effect.tree.set_rotation_z(effect.root, floor_angle);
                     }
                 }
@@ -1382,7 +1384,16 @@ impl Effect {
         let mut cb = hsd_anim::aobj::AObjEndCallback::default();
         for index in 0..self.joints.len() {
             let joint = self.joints[index];
+            // lb_8000C1C0's position constraint (RObj 0x90000001) replaces
+            // the attached root's world translation after its SRT, so an
+            // animated root translation (Raptor Boost's 0xFA3) never moves
+            // it: keep the attachment point the caller just set.
+            let constrained = (self.attachment.is_some() && joint == self.root)
+                .then(|| self.tree.get(joint).translate);
             self.tree.anim::<T>(joint, &mut cb);
+            if let Some(translation) = constrained {
+                self.tree.set_translate(joint, &translation);
+            }
             let mut events = std::mem::take(&mut self.tree.events);
             for event in events.drain(..) {
                 match event {

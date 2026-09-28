@@ -91,12 +91,19 @@ impl Fields<'_> {
             self.scalar(&format!("{name}[{index}]"), value);
         }
     }
-    fn program(&mut self, bank: &ParticleBank, bytes: &[u8]) {
-        let id = bank.descriptors.iter().enumerate().find_map(|(index, d)| {
-            d.as_ref()
-                .filter(|d| d.program.as_ref() == bytes)
-                .map(|_| bank.first_descriptor_id + index as u32)
-        });
+    fn program(&mut self, bank: &ParticleBank, program: &std::sync::Arc<[u8]>) {
+        // The dump names the descriptor whose program the pointer is. Some
+        // banks hold byte-identical programs (bank 0's 116 and 424), so the
+        // shared allocation identifies it; bytes are the fallback.
+        let find = |matches: &dyn Fn(&std::sync::Arc<[u8]>) -> bool| {
+            bank.descriptors.iter().enumerate().find_map(|(index, d)| {
+                d.as_ref()
+                    .filter(|d| matches(&d.program))
+                    .map(|_| bank.first_descriptor_id + index as u32)
+            })
+        };
+        let id = find(&|p| std::sync::Arc::ptr_eq(p, program))
+            .or_else(|| find(&|p| p.as_ref() == program.as_ref()));
         let resolved = u8::from(id.is_some());
         let index = id.map(|n| n as usize);
         // These are derived from the actual program, never copied from expected.

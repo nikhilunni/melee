@@ -655,6 +655,7 @@ fn item_graphics(w: [u32; 5]) -> melee_types::combat::GraphicsCommand {
         parameter: (w[1] & 0xFFFF) as f32,
         offset: hsd_types::Vec3::new(half(w[2], true), half(w[2], false), half(w[3], true)),
         range: hsd_types::Vec3::new(half(w[3], false), half(w[4], true), half(w[4], false)),
+        issued_facing: None,
     }
 }
 

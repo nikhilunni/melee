@@ -89,6 +89,7 @@ impl Fighter {
                 parameter: 0.0,
                 offset: Vec3::ZERO,
                 range: Vec3::ZERO,
+                issued_facing: None,
             });
         Ok(())
     }

@@ -194,6 +194,7 @@ impl Fighter {
                 parameter: 0.0,
                 offset: Vec3::ZERO,
                 range: Vec3::ZERO,
+                issued_facing: None,
             });
         // ftCo_800976A4's tail: Camera_RequestQuake(QuakeKind_Large) at
         // cur_pos (the epicenter is unread); ftCommon_8007EBAC is rumble.

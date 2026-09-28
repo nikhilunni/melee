@@ -31,6 +31,7 @@ fn invisible_commands_do_not_advance_rng_or_the_rotating_bone_cursor() {
         parameter: 0.0,
         offset: Vec3::ZERO,
         range: Vec3::ZERO,
+        issued_facing: None,
     };
     let mut rng = HsdRng::new(1);
     fighter.effect_state.invisible = true;
