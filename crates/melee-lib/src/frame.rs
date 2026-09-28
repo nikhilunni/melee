@@ -681,6 +681,12 @@ impl Runtime {
                 let item = state.items.get_mut(id).unwrap();
                 // Item_80269A9C: hitlag skips the accessory callback.
                 let in_hitlag = item.in_hitlag;
+                if !in_hitlag {
+                    (<SceneItems as melee_it::ItemDispatch>::logic(kind).accessory)(
+                        item,
+                        owner.as_ref(),
+                    );
+                }
                 if let melee_it::ItemScratch::Held(held) = &mut item.scratch {
                     if held.shot_pending && !in_hitlag {
                         held.shot_pending = false;

@@ -1,0 +1,31 @@
+# DRMARIO directed witness: a grounded Super Jump Punch steered right, falling
+# special into its landing; then a jumped one steered left (ftMr_SpecialHi's stick
+# steering and vel_mul with Dr. Mario's attributes; no coins).
+name = "drmario_super_jump_punch_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_drmario_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 106, port = 0, buttons = {  }, raw = { stickX = 100 } },
+  { frame = 120, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 231, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 238, port = 0, buttons = {  }, raw = { stickX = -100 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

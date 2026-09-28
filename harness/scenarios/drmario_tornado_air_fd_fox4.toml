@@ -1,0 +1,111 @@
+# DRMARIO directed witness: a jumped Dr. Tornado (350) mashed with B until the rise
+# is spent (x2234_tornadoCharge), then a second from a later jump that lands into
+# the grounded row 349.
+name = "drmario_tornado_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_drmario_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 105, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 114, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 115, port = 0, buttons = {  }, raw = {  } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 117, port = 0, buttons = {  }, raw = {  } },
+  { frame = 118, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 119, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 0, buttons = {  }, raw = {  } },
+  { frame = 122, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 125, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 127, port = 0, buttons = {  }, raw = {  } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 131, port = 0, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 135, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 137, port = 0, buttons = {  }, raw = {  } },
+  { frame = 138, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 139, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 141, port = 0, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 143, port = 0, buttons = {  }, raw = {  } },
+  { frame = 144, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 145, port = 0, buttons = {  }, raw = {  } },
+  { frame = 146, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 147, port = 0, buttons = {  }, raw = {  } },
+  { frame = 148, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 149, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 151, port = 0, buttons = {  }, raw = {  } },
+  { frame = 152, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 153, port = 0, buttons = {  }, raw = {  } },
+  { frame = 154, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 155, port = 0, buttons = {  }, raw = {  } },
+  { frame = 156, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 159, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 201, port = 0, buttons = {  }, raw = {  } },
+  { frame = 206, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 208, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 211, port = 0, buttons = {  }, raw = {  } },
+  { frame = 212, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 213, port = 0, buttons = {  }, raw = {  } },
+  { frame = 214, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+  { frame = 216, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 217, port = 0, buttons = {  }, raw = {  } },
+  { frame = 218, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 221, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 223, port = 0, buttons = {  }, raw = {  } },
+  { frame = 224, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 225, port = 0, buttons = {  }, raw = {  } },
+  { frame = 226, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 227, port = 0, buttons = {  }, raw = {  } },
+  { frame = 228, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 229, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 231, port = 0, buttons = {  }, raw = {  } },
+  { frame = 232, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 233, port = 0, buttons = {  }, raw = {  } },
+  { frame = 234, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 235, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 237, port = 0, buttons = {  }, raw = {  } },
+  { frame = 238, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 239, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 241, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

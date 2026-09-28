@@ -76,8 +76,7 @@ impl CharacterCallbacks for Mario {
     }
     /// ftCommon_8007DB58: take_dmg_cb, the Tornado's updateRot or the
     /// cape's ftMr_Init_OnTakeDamage (one installed at a time).
-    const TAKE_DAMAGE: Option<fn(&mut Fighter)> =
-        Some(ft_mario_family::damage_callback::<Self>);
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(ft_mario_family::damage_callback::<Self>);
     /// ftCo_800D331C: death2_cb, the same pair.
     const DEATH: Option<fn(&mut Fighter)> = Some(ft_mario_family::damage_callback::<Self>);
     fn on_motion_change(&mut self) {

@@ -31,6 +31,8 @@ melee_it::item_kinds! {
         PikachuThunder: it_pikachu::ThunderBolt,
         MarioFire: it_mariofire::MarioFire,
         MarioCape: it_mariocape::MarioCape,
+        DrMarioVitamin: it_drmariopill::DrMarioPill,
+        DrMarioSheet: it_mariocape::DrMarioSheet,
     }
 }
 
@@ -287,6 +289,42 @@ impl Resources {
             )?);
             kinds.push((ItemKind::MarioCape, cape));
             visual_archives.push((ItemKind::MarioCape, a));
+        }
+        // ftDr_Init_OnLoad: ftData.x48_items[1] is the Megavitamin, [3] the
+        // Super Sheet (the cape's logic row).
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlDr.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a
+                .public("ftDataDrmario")
+                .context("Dr. Mario fighter data")?;
+            let mut pill = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_drmariopill::ARTICLE_INDEX,
+                &it_drmariopill::ARTICLE_STATES,
+                it_drmariopill::SPECIAL_ATTRIBUTES,
+            )?;
+            // it_80274658 reads the common falling spin.
+            pill.fall_spin_degrees = common.fall_spin_degrees;
+            kinds.push((ItemKind::DrMarioVitamin, pill));
+            visual_archives.push((ItemKind::DrMarioVitamin, std::sync::Arc::clone(&a)));
+            let sheet = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_mariocape::SHEET_ARTICLE_INDEX,
+                &it_mariocape::ARTICLE_STATES,
+                0,
+            )?;
+            article_skeletons.push(crate::article_pose::ArticleSkeleton::load(
+                ItemKind::DrMarioSheet,
+                &a,
+                &sheet.visual,
+            )?);
+            kinds.push((ItemKind::DrMarioSheet, sheet));
+            visual_archives.push((ItemKind::DrMarioSheet, a));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

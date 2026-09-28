@@ -4,10 +4,7 @@
 //! hand once per swing. The script walks cmd_vars[0] through the swing's
 //! gust (1 -> 2), and holds cmd_vars[1] at 1 while the cape reflects
 //! (ftColl_CreateReflectHit with ftMario_DatAttrs.cape_reflection).
-use crate::{
-    common,
-    Accessory, MarioFamily,
-};
+use crate::{common, Accessory, MarioFamily};
 use hsd_types::Vec3;
 use melee_coll::defense::ReflectDescriptor;
 use melee_ft::{

@@ -17,6 +17,7 @@ it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 it-mariofire = { path = "../it-mariofire" }
 it-mariocape = { path = "../it-mariocape" }
+it-drmariopill = { path = "../it-drmariopill" }
 melee-coll = { path = "../melee-coll" }
 melee-cmd = { path = "../melee-cmd" }
 melee-ef = { path = "../melee-ef" }
@@ -44,6 +45,7 @@ ft-yoshi = { path = "../ft-yoshi" }
 ft-purin = { path = "../ft-purin" }
 ft-pikachu = { path = "../ft-pikachu" }
 ft-mario = { path = "../ft-mario" }
+ft-drmario = { path = "../ft-drmario" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

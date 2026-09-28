@@ -1,17 +1,23 @@
-//! Mario's cape (It_Kind_Mario_Cape), itmariocape.c (802B2560..802B2890).
-//! Mario's side special creates it in his right hand (it_802B2560); it
-//! lives while he stays in the cape's motions. Its script raises two
-//! command variables that sparkle along the cape's edges (efAlt 0x47E on
-//! bone 6, 0x47D on bone 16).
+//! Mario's cape (It_Kind_Mario_Cape) and Dr. Mario's Super Sheet
+//! (It_Kind_DrMario_Cape), itmariocape.c (802B2560..802B2890): both logic
+//! rows point at the same callbacks. The side special creates it in the
+//! right hand (it_802B2560); it lives while its owner stays in the cape's
+//! motions. Its script raises two command variables that sparkle along the
+//! cape's edges (efAlt 0x47E on bone 6, 0x47D on bone 16).
 use melee_it::{desc::ItemAssets, state_change::ANIM_UPDATE, *};
 use melee_types::ItemKind;
 
-pub struct MarioCape;
+/// The cape logic row; `SHEET` selects Dr. Mario's kind.
+pub struct Cape<const SHEET: bool>;
+pub type MarioCape = Cape<false>;
+pub type DrMarioSheet = Cape<true>;
 
 /// it_803F70F8's anim_id column.
 pub const ARTICLE_STATES: [i32; 2] = [0, 1];
 /// ftData.x48_items index (ftMr_Init_OnLoad registers it third).
 pub const ARTICLE_INDEX: u32 = 2;
+/// ftData.x48_items index of the sheet (ftDr_Init_OnLoad registers it fourth).
+pub const SHEET_ARTICLE_INDEX: u32 = 3;
 /// The cape's model bones the sparkles follow (xBBC_dynamicBoneTable).
 pub const SPARKLE_BONES: [usize; 2] = [16, 6];
 
@@ -38,9 +44,13 @@ static STATES: [ItemStateRow; 2] = [
     },
 ];
 
-/// it_3F2F.c's Logic41 row.
-impl ItemLogic for MarioCape {
-    const KIND: ItemKind = ItemKind::MarioCape;
+/// it_3F2F.c's Logic41 rows (Mario cape and Dr Mario cape).
+impl<const SHEET: bool> ItemLogic for Cape<SHEET> {
+    const KIND: ItemKind = if SHEET {
+        ItemKind::DrMarioSheet
+    } else {
+        ItemKind::MarioCape
+    };
     const STATES: &'static [ItemStateRow] = &STATES;
     fn pickup_possible(item: &ItemCore) -> bool {
         !item.held
@@ -62,7 +72,7 @@ impl ItemLogic for MarioCape {
             // it_802B26C0 / it_802B26E0 -> it_8026B724 / it_8026B73C: the
             // owner's hitlag freezes the cape (xDC8 x3; x7 is never set).
             ItemControl::OwnerHitlag(frozen) => item.frozen = frozen,
-            _ => unreachable!("{control:?} sent to Mario's cape"),
+            _ => unreachable!("{control:?} sent to a cape"),
         }
     }
 }

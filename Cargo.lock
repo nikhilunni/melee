@@ -395,6 +395,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-drmario"
+version = "0.0.1"
+dependencies = [
+ "ft-mario-family",
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "it-drmariopill",
+ "melee-ft",
+ "melee-it",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-emblem"
 version = "0.0.1"
 dependencies = [
@@ -789,6 +804,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-drmariopill"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-foxillusion"
 version = "0.0.1"
 dependencies = [
@@ -1153,6 +1177,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ft-captain",
+ "ft-drmario",
  "ft-emblem",
  "ft-falco",
  "ft-fox",
@@ -1170,6 +1195,7 @@ dependencies = [
  "hsd-particle",
  "hsd-types",
  "it-bombhei",
+ "it-drmariopill",
  "it-foxillusion",
  "it-foxlaser",
  "it-heiho",

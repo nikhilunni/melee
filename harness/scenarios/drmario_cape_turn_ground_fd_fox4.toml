@@ -1,0 +1,27 @@
+# DRMARIO directed witness: Dr. Mario runs in (to frame 162) and sheets a standing
+# Fox (HitElement_Cape, ftCo_800C3538 allowed): Fox takes 12% with no reaction and
+# turns around (ftCo_800C37A0, ftCo_800C3598).
+name = "drmario_cape_turn_ground_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_drmario_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 162, port = 0, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

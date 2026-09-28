@@ -1,0 +1,31 @@
+# DRMARIO directed witness: Dr. Mario runs in and throws a Megavitamin into a
+# standing Fox (itDrMarioPill_DmgDealt: sound 0x15FAE, the pill ends), then a
+# second into Fox's shield (itDrMarioPill_HitShield).
+name = "drmario_megavitamin_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_drmario_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 158, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 191, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 290, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 291, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

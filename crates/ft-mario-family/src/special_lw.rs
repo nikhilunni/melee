@@ -128,7 +128,10 @@ pub fn clear_tilt<C: MarioFamily>(f: &mut Fighter) {
 }
 
 /// ftMr_SpecialLw_Anim (800E22BC): Wait at the end.
-pub fn ground_anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn ground_anim<C: MarioFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         tornado::<C>(f).callbacks = false;
@@ -139,7 +142,10 @@ pub fn ground_anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Re
 
 /// ftMr_SpecialAirLw_Anim (800E2308): cmd_vars[1] spends the aerial rise;
 /// at the end, Fall with no landing lag, else FallSpecial.
-pub fn air_anim<C: MarioFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+pub fn air_anim<C: MarioFamily>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> Result<Option<WaitChoice>> {
     f.step_animation(p.assets);
     if f.commands.variables[1] != 0 {
         f.commands.variables[1] = 0;

@@ -941,7 +941,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 205] = [
+const MATRIX_WITNESSES: [(&str, usize); 217] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1226,6 +1226,23 @@ const MATRIX_WITNESSES: [(&str, usize); 205] = [
     ("roy_counter_hit_fd_fox4", 241),
     ("roy_counter_laser_fd_fox4", 225),
     ("roy_aircounter_laser_fd_fox4", 225),
+    // DRMARIO: Dr. Mario runs Mario's specials (ft-mario-family) with his own
+    // attributes: the Super Sheet (reflector, turnaround on the ground, in the air
+    // and on a shield, a whiff), the Megavitamin (thrown, reflected by Fox, into Fox
+    // and his shield), Super Jump Punch, Dr. Tornado and the pill-holding side
+    // taunt; scenario headers say what retail does.
+    ("drmario_cape_whiff_fd_fox4", 300),
+    ("drmario_cape_turn_ground_fd_fox4", 300),
+    ("drmario_cape_turn_air_fd_fox4", 300),
+    ("drmario_cape_turn_shield_fd_fox4", 300),
+    ("drmario_cape_reflect_laser_fd_fox4", 300),
+    ("drmario_fireball_shine_fd_fox4", 300),
+    ("drmario_megavitamin_fd_fox4", 400),
+    ("drmario_megavitamin_hit_fd_fox4", 400),
+    ("drmario_super_jump_punch_fd_fox4", 400),
+    ("drmario_tornado_ground_fd_fox4", 300),
+    ("drmario_tornado_air_fd_fox4", 300),
+    ("drmario_taunt_fd_fox4", 400),
 ];
 
 #[test]
@@ -2287,7 +2304,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 227] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 229] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2676,6 +2693,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 227] = [
     ("corpus_v3_fd_roy_fox4_ed5076307_p0", 6001),
     ("corpus_v3_fd_roy_fox4_ea33f1478_p2", 6001),
     ("corpus_v3_fd_roy_fox4_e6aa92c64_p1", 4286),
+    // DRMARIO: Dr. Mario vs Fox explorer cases up to the first graphics 0x41C
+    // (ftCo_8009F834 block_70, efAsync kind 2: generator 0x5D).
+    ("corpus_v3_fd_drmario_fox4_e0dee256e_p2", 144),
+    ("corpus_v3_fd_drmario_fox4_e67c8e917_p2", 144),
 ];
 
 #[test]

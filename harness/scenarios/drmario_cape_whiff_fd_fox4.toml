@@ -1,0 +1,33 @@
+# DRMARIO directed witness: a grounded Super Sheet and a jumped one (the first
+# aerial sheet rises, x2238_isCapeBoost) that reach nobody; the sheet's sparkles
+# follow its bones 16 and 6 (efAlt 0x47D/0x47E).
+name = "drmario_cape_whiff_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_drmario_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 106, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+  { frame = 166, port = 0, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 168, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 201, port = 0, buttons = {  }, raw = {  } },
+  { frame = 206, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 208, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

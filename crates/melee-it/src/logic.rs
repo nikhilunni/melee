@@ -132,6 +132,9 @@ pub trait ItemLogic {
     fn hit_shield(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
+    /// Item_80269A9C (item link 9): the item's on_accessory callback, which
+    /// hitlag skips.
+    fn accessory(_item: &mut ItemCore, _owner: Option<&ItemOwner>) {}
     fn owner_removed(item: &mut ItemCore, owner: u8) {
         if item.owner == Some(owner) {
             item.owner = None;
@@ -186,6 +189,7 @@ pub trait ItemLogic {
         absorbed: Self::absorbed,
         shield_bounced: Self::shield_bounced,
         hit_shield: Self::hit_shield,
+        accessory: Self::accessory,
         owner_removed: Self::owner_removed,
         control: Self::control,
         partner_bone: Self::PARTNER_BONE,
@@ -231,6 +235,7 @@ pub struct ItemLogicRow {
     pub absorbed: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub shield_bounced: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
+    pub accessory: fn(&mut ItemCore, Option<&ItemOwner>),
     pub owner_removed: fn(&mut ItemCore, u8),
     pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
     pub partner_bone: Option<usize>,
