@@ -201,9 +201,8 @@ impl FighterCore {
             MotionData::TurnRun(turn) => turn.retained_word?,
             MotionData::Smash { retained_word }
             | MotionData::Tilt { retained_word }
-            | MotionData::Catch { retained_word } => {
-                (*retained_word)?
-            }
+            | MotionData::Catch { retained_word }
+            | MotionData::DownTilt { retained_word, .. } => (*retained_word)?,
             // mv.co.kneebend.jump_input: ftCo_JumpInput (LStick 1, CStick 2, XY 3).
             MotionData::KneeBend(knee_bend) => f32::from_bits(match knee_bend.input {
                 super::jump::JumpInput::Stick => 1,

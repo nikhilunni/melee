@@ -110,8 +110,9 @@ impl Surface {
 }
 
 /// The per-line callback of `mpCheckFloor` (`bool (*)(Fighter_GObj*, int)`
-/// with the GObj captured): return `false` to skip a line.
-pub type LineFilter<'a, 'b> = Option<&'a mut (dyn FnMut(i32) -> bool + 'b)>;
+/// with the GObj captured): return `false` to skip a line. It receives the
+/// map read-only, as the retail callbacks query it (`mpLineGetFlags`).
+pub type LineFilter<'a, 'b> = Option<&'a mut (dyn FnMut(&CollMap, i32) -> bool + 'b)>;
 
 impl CollMap {
     /// Does the joint pass the `TooFar` / `joint_id_skip` / `joint_id_only`
@@ -451,7 +452,7 @@ impl CollMap {
 
             for line_id in self.joint_lines_with_dynamic(jid, surf.section()) {
                 if let Some(cb) = cb.as_mut() {
-                    if !cb(line_id) {
+                    if !cb(self, line_id) {
                         continue;
                     }
                 }

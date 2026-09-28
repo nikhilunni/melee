@@ -406,10 +406,10 @@ pub fn physics(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 }
 
 pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
-    fn accept_floor(line: i32) -> bool {
-        line != -1
-    }
     let assets = phase.assets.expect("walljump map needs assets");
+    let stick_y = fighter.core.input.current.stick.y;
+    let drop_threshold = assets.input.platform_drop_threshold;
+    let mut accept_floor = air::platform_floor_filter(stick_y, drop_threshold);
     let MotionData::WallJump(state) = &fighter.core.state_data else {
         panic!("walljump scratch missing")
     };
@@ -445,13 +445,15 @@ pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
             .set_translate(core.animation.root, &core.physics.position);
         landed
     } else {
-        air::collide_fall(
+        air::collide_fall_filtered(
             &mut core.physics,
             &mut core.collision,
             phase.map,
             &mut core.skeleton,
             core.animation.root,
             can_grab,
+            stick_y,
+            drop_threshold,
         )
     };
     if landed {

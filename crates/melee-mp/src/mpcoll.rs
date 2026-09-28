@@ -1550,7 +1550,7 @@ impl CollMap {
                     {
                         let pass = match cb {
                             None => true,
-                            Some(f) => f(cd.floor.index),
+                            Some(f) => f(self, cd.floor.index),
                         };
                         if pass {
                             cd.env_flags |= collide::FLOOR_PUSH as i32;

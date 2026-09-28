@@ -155,7 +155,7 @@ fn floor_hit_on_straight_down_sweep() {
         .unwrap();
     assert_eq!(hit.line_id, PLATFORM);
     // A line filter callback can veto the platform.
-    let mut veto = |id: i32| id != PLATFORM;
+    let mut veto = |_: &CollMap, id: i32| id != PLATFORM;
     let hit = m
         .check_floor(
             0.0,
@@ -1166,7 +1166,7 @@ mod mpcoll {
             Vec3::new(0.0, 33.0, 0.0),
             Vec3::new(0.0, 28.0, 0.0),
         );
-        let mut veto = |id: i32| id != PLATFORM;
+        let mut veto = |_: &CollMap, id: i32| id != PLATFORM;
         assert!(!m.air_collide_platform_pass(&mut cd, Some(&mut veto), None));
         assert_eq!(cd.cur_pos.y, 28.0);
         // Without the veto the platform catches the body.
@@ -1176,7 +1176,7 @@ mod mpcoll {
             Vec3::new(0.0, 33.0, 0.0),
             Vec3::new(0.0, 28.0, 0.0),
         );
-        let mut allow = |_id: i32| true;
+        let mut allow = |_: &CollMap, _id: i32| true;
         assert!(m.air_collide_platform_pass(&mut cd, Some(&mut allow), None));
         assert_eq!(cd.floor.index, PLATFORM);
         assert!(m.is_on_platform(&cd));

@@ -147,6 +147,9 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     } else {
         false
     };
+    // ftCo_80096CC8 compares the stick against PlCo +25C.
+    let assets = p.assets.expect("Dolphin Slash map assets");
+    let drop_threshold = assets.input.platform_drop_threshold;
     let c = &mut f.core;
     melee_ft::collision::air::begin_map(
         &c.physics,
@@ -164,13 +167,15 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         c.physics.position = cd.cur_pos;
         c.skeleton
             .set_translate(c.animation.root, &c.physics.position);
-    } else if melee_ft::collision::air::collide_fall(
+    } else if melee_ft::collision::air::collide_fall_filtered(
         &mut c.physics,
         &mut c.collision,
         p.map,
         &mut c.skeleton,
         c.animation.root,
         c.status.ledge_cooldown == 0,
+        c.input.current.stick.y,
+        drop_threshold,
     ) {
         let lag = f
             .character

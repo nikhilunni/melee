@@ -238,6 +238,7 @@ impl Fighter {
         self.core.state_data = match state {
             S::AttackLw3 => MotionData::DownTilt {
                 repeat_pressed: false,
+                retained_word,
             },
             // doEnter (8008B4D4): the dash-grab window starts closed.
             S::AttackDash => MotionData::DashAttack { grab_window: 0 },
@@ -282,7 +283,7 @@ impl Fighter {
     }
     /// ftCo_AttackLw3_Anim (8008BCFC): repeat latch, then SquatWait on completion.
     pub(super) fn down_tilt_animation(&mut self, assets: &FighterAssets) -> Result<()> {
-        let MotionData::DownTilt { repeat_pressed } = self.core.state_data else {
+        let MotionData::DownTilt { repeat_pressed, .. } = self.core.state_data else {
             panic!("down tilt scratch")
         };
         if self.core.commands.variables[0] != 0 && repeat_pressed {
@@ -319,7 +320,7 @@ impl Fighter {
             if self.core.commands.variables[0] != 0 {
                 return self.enter_simple_attack(S::AttackLw3, assets);
             }
-            let MotionData::DownTilt { repeat_pressed } = &mut self.core.state_data else {
+            let MotionData::DownTilt { repeat_pressed, .. } = &mut self.core.state_data else {
                 panic!("down tilt scratch")
             };
             *repeat_pressed = true;

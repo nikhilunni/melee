@@ -49,6 +49,7 @@ pub fn common() -> InputCommonData {
         activity_stick_threshold: 0.5,
         activity_trigger_threshold: 0.5,
         activity_window: 4.0,
+        platform_drop_threshold: -0.56,
     }
 }
 

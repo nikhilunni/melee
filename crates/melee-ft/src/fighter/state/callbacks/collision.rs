@@ -1,4 +1,5 @@
 //! Shared map callbacks; each row supplies its ground/air collision routine.
+use crate::collision::air::collide_fall_filtered as filtered_fall;
 use crate::collision::{
     air,
     ground::{map_escape, map_ground_action, map_wait, EnvironmentCollision, WaitGroundResult},
@@ -18,6 +19,8 @@ type GroundCollision = fn(
     JObjId,
     f32,
 ) -> WaitGroundResult;
+/// The airborne map call, with the ledge flag and the stick y and PlCo +25C
+/// that ftCo_80096CC8's floor filter compares.
 type AirCollision = fn(
     &mut FighterPhysics,
     &mut EnvironmentCollision,
@@ -25,6 +28,8 @@ type AirCollision = fn(
     &mut JObjTree,
     JObjId,
     bool,
+    f32,
+    f32,
 ) -> bool;
 
 /// ft_80084280 / ft_800844EC / ft_80083F88: preserve the old grounded API's
@@ -95,6 +100,8 @@ fn fall_collision(
         &mut fighter.core.skeleton,
         fighter.core.animation.root,
         fighter.core.status.ledge_cooldown == 0,
+        fighter.core.input.current.stick.y,
+        assets.input.platform_drop_threshold,
     ) {
         if special_landing {
             fighter.land_from_special_fall(assets)?;
@@ -361,7 +368,7 @@ pub fn air_catch_hit(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result
 pub fn fall(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
-    fall_collision(fighter, assets, map, air::collide_fall, false, false)?;
+    fall_collision(fighter, assets, map, filtered_fall, false, false)?;
     Ok(())
 }
 
@@ -369,7 +376,11 @@ pub fn fall(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 pub fn pass(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
-    fall_collision(fighter, assets, map, air::collide_pass, false, false)?;
+    // ft_CheckGroundAndLedge takes no floor filter.
+    let collide: AirCollision = |state, environment, map, tree, root, can_grab, _, _| {
+        air::collide_pass(state, environment, map, tree, root, can_grab)
+    };
+    fall_collision(fighter, assets, map, collide, false, false)?;
     Ok(())
 }
 
@@ -377,7 +388,7 @@ pub fn pass(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 pub fn fall_special(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
-    fall_collision(fighter, assets, map, air::collide_fall, true, false)?;
+    fall_collision(fighter, assets, map, filtered_fall, true, false)?;
     Ok(())
 }
 
@@ -386,7 +397,7 @@ pub fn fall_special(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<
 pub fn jump(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");
-    fall_collision(fighter, assets, map, air::collide_fall, false, true)?;
+    fall_collision(fighter, assets, map, filtered_fall, false, true)?;
     Ok(())
 }
 

@@ -85,10 +85,10 @@ pub fn animation(
 
 /// ftCo_StopCeil_Coll -> ft_80083464: landing, walljump, ledge in that order.
 pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
-    fn accept_floor(line: i32) -> bool {
-        line != -1
-    }
     let assets = phase.assets.expect("StopCeil collision assets");
+    let stick_y = fighter.core.input.current.stick.y;
+    let drop_threshold = assets.input.platform_drop_threshold;
+    let mut accept_floor = air::platform_floor_filter(stick_y, drop_threshold);
     let core = &mut fighter.core;
     air::begin_map(
         &core.physics,

@@ -806,8 +806,12 @@ pub enum MotionData {
     Entry(entry::EntryState),
     Jab(attack::JabState),
     RapidJab(attack::RapidJabState),
+    /// AttackLw3: mv.co.attacklw3.x0 (+2340) is the repeat latch; the state
+    /// writes nothing else, so mv+4 is the predecessor's word (`None` where
+    /// the port does not model it).
     DownTilt {
         repeat_pressed: bool,
+        retained_word: Option<f32>,
     },
     /// AttackHi4, AttackLw4 and AttackHi3: mv+4 as their predecessor left
     /// it (`None` where the port does not model it).

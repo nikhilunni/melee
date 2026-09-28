@@ -2016,7 +2016,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 77] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 79] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2176,6 +2176,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 77] = [
     // one that returns to Wait before the double-jump armor case.
     ("corpus_v3_fd_yoshi_fox4_ec3145eb3_p1", 93),
     ("yoshi_armor_fd_fox4_ef89b3e70_p2", 187),
+    // Dolphin Slash falls through Battlefield's top platform with the stick
+    // held down (ftCo_80096CC8 against PlCo +25C).
+    ("corpus_v3_bf_marth_fox4_ee133b82f_p0", 3139),
+    // Up smash out of a down tilt, then Dolphin Slash: mv+4 carries through
+    // AttackLw3, which writes only +2340.
+    ("corpus_v3_bf_marth_fox4_e50f774a0_p2", 380),
 ];
 
 #[test]
