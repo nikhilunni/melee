@@ -277,7 +277,7 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Optio
     let victim = with_fighter!(&state.fighters[player], |f| {
         if f.status.disabled
             || f.combat.hitlag_remaining > 0.0
-            || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch)
+            || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch { .. })
         {
             None
         } else if let Some(GrabLink::Holding { victim, .. }) = f.combat.grab {

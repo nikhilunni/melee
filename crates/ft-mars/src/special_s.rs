@@ -13,22 +13,6 @@ use melee_ft::{
 pub struct SpecialSide {
     /// Fighter +2340, mv.ms.specials.x0, reset by the first hit's entry.
     pub reserved: i32,
-    /// mv+4, which Dancing Blade never writes: the word the state before it
-    /// left, when the port models that state's (inherited by a landing).
-    pub retained_word: Option<f32>,
-}
-
-/// Dancing Blade's ground (349..=357) and air (358..=366) actions.
-const DANCING_BLADE: std::ops::RangeInclusive<u16> = 349..=366;
-
-/// The second motion scratch word while in Dancing Blade.
-pub fn retained_scratch_word(scratch: &SpecialSide, action: ActionId) -> Option<f32> {
-    if !DANCING_BLADE.contains(&action.0) {
-        return None;
-    }
-    Some(scratch.retained_word.unwrap_or_else(|| {
-        unimplemented!("ftMs_SpecialS: mv+4 inherited from an unmodelled scratch word")
-    }))
 }
 pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     f.physics.self_velocity.y = 0.0;
@@ -47,11 +31,8 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     }
     f.commands.variables[0] = 0;
     f.commands.variables[1] = 0;
-    let retained_word = f.inherited_scratch_word();
-    f.character.get_mut::<Marth>().special_side = SpecialSide {
-        retained_word,
-        ..Default::default()
-    };
+    crate::init::retain_scratch_word(f);
+    f.character.get_mut::<Marth>().special_side = SpecialSide::default();
     f.change_motion_state(ActionId(if air { 358 } else { 349 }), a)
         .expect("Dancing Blade assets");
     f.step_animation(a);

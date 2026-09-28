@@ -31,6 +31,7 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
             .momentum_divisor;
     }
     f.physics.self_velocity.y = 0.0;
+    crate::init::retain_scratch_word(f);
     f.change_motion_state(ActionId(if air { 371 } else { 369 }), a)
         .expect("Counter assets");
     f.step_animation(a);

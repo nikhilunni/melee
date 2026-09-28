@@ -199,7 +199,9 @@ impl FighterCore {
             MotionData::RunBrake(brake) => brake.remaining_frames,
             // TurnRun writes only +234C and +2354 (ftCo_TurnRun.c:48-51).
             MotionData::TurnRun(turn) => turn.retained_word?,
-            MotionData::Smash { retained_word } | MotionData::Tilt { retained_word } => {
+            MotionData::Smash { retained_word }
+            | MotionData::Tilt { retained_word }
+            | MotionData::Catch { retained_word } => {
                 (*retained_word)?
             }
             // mv.co.kneebend.jump_input: ftCo_JumpInput (LStick 1, CStick 2, XY 3).

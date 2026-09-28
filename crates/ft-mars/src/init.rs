@@ -14,10 +14,16 @@ pub struct Marth {
     pub side_special_boost_used: bool,
     /// ftMs_Init_OnDeath resets model groups 0 and 1.
     pub model_groups: [i32; 2],
+    /// mv+4 in every Marth special. ftMars_MotionVars has only an x0 word
+    /// (types.h), so no special writes mv+4: it keeps the word the state
+    /// before the special left (`None` when the port does not model it), and
+    /// a landing from a special inherits it (ftCo_Landing.c:41-50).
+    pub retained_scratch_word: Option<f32>,
 }
 impl Marth {
     pub fn new(attributes: MarsAttributes) -> Self {
         Self {
+            retained_scratch_word: None,
             attributes,
             special_hi: Default::default(),
             special_lw: Default::default(),
@@ -30,6 +36,27 @@ impl Marth {
 }
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
+
+/// Marth's special actions, SpecialNStart (341) through SpecialAirLwHit (372).
+const SPECIALS: std::ops::RangeInclusive<u16> = 341..=372;
+
+/// Called by each special's entry before it changes motion state: capture
+/// the mv+4 word the current state leaves behind. From one special into
+/// another the word is already the retained one, so it carries through.
+pub fn retain_scratch_word(f: &mut melee_ft::fighter::Fighter) {
+    let word = f.inherited_scratch_word();
+    f.character.get_mut::<Marth>().retained_scratch_word = word;
+}
+
+/// mv+4 while a Marth special is current (see `Marth::retained_scratch_word`).
+fn special_scratch_word(marth: &Marth, action: melee_ft::fighter::ActionId) -> Option<f32> {
+    if !SPECIALS.contains(&action.0) {
+        return None;
+    }
+    Some(marth.retained_scratch_word.unwrap_or_else(|| {
+        unimplemented!("ftMars specials: mv+4 inherited from an unmodelled scratch word")
+    }))
+}
 
 impl CharacterCallbacks for Marth {
     const KNOCKBACK_ENTER: fn(
@@ -67,9 +94,7 @@ impl CharacterCallbacks for Marth {
     const RETAINED_SCRATCH_WORD: fn(
         &melee_ft::fighter::CharacterState,
         melee_ft::fighter::ActionId,
-    ) -> Option<f32> = |state, action| {
-        crate::special_s::retained_scratch_word(&state.get::<Self>().special_side, action)
-    };
+    ) -> Option<f32> = |state, action| special_scratch_word(state.get::<Self>(), action);
     const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
         Some(crate::special_lw::contact);
     const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =

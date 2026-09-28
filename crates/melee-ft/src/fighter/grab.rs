@@ -33,9 +33,11 @@ impl Fighter {
 
     pub(super) fn enter_catch_motion(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
         self.character.catch_variant();
+        // ftCo_800D8C54: retail 800D8C84 stores +2340 only; +2344 carries over.
+        let retained_word = self.inherited_scratch_word();
         self.core.physics.animation_velocity = Vec3::ZERO;
         self.change_motion_state(state.into(), assets)?;
-        self.core.state_data = MotionData::Catch;
+        self.core.state_data = MotionData::Catch { retained_word };
         Ok(())
     }
 

@@ -30,6 +30,7 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
             .startup_momentum_multiplier;
     }
     f.character.get_mut::<Marth>().special_hi = SpecialHi::default();
+    crate::init::retain_scratch_word(f);
     f.change_motion_state(melee_ft::fighter::ActionId(if air { 368 } else { 367 }), a)
         .expect("Dolphin Slash assets");
     f.step_animation(a);

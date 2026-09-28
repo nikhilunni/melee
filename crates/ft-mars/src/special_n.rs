@@ -80,6 +80,7 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     }
     f.commands.variables[0] = 0;
     f.character.get_mut::<Marth>().special_n = Default::default();
+    crate::init::retain_scratch_word(f);
     f.change_motion_state(ActionId(if air { 345 } else { 341 }), a)
         .expect("Shield Breaker assets");
     f.step_animation(a);

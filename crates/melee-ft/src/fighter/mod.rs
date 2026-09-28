@@ -757,7 +757,12 @@ pub enum MotionData {
     Down {
         wait_remaining: f32,
     },
-    Catch,
+    /// Catch, CatchDash and the holding states. ftCo_800D8C54 writes only
+    /// mv.co.catch.x0 (+2340), so mv+4 is the predecessor's word (`None`
+    /// where the port does not model it).
+    Catch {
+        retained_word: Option<f32>,
+    },
     /// mv.co.itemget: LightGet (false) or HeavyGet (true).
     ItemGet {
         heavy: bool,
