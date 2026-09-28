@@ -23,23 +23,27 @@ do not keep a session log here.
 
 ## Next (user to choose; recommended order)
 
-1. [ ] **Slippi Fox-vs-Marth on FD.** Replay real tournament games through
-   `melee-sim replay`; build the batch runner that aggregates first
-   divergences, using `triage` for the reports. Verify the Slippi
-   `self_vel`/`kb_vel` field mapping first.
-2. [ ] **Battlefield.** Most real games are not on FD, and platforms open the
-   branches marked n/a on FD (pass-through, shield break on a platform, the
-   other shield-break orientation, DownReflect). Boundaries
-   `start_bf_fox_marth4` and `start_bf_marth_fox4` are registered; a first
-   explorer run (2026-09-27, 5 seeds) faults on `gm_80167638` (revival
-   marker offset), `ftCo_Pass.c:56-60` (shield platform drop),
-   `ftCo_8009A134` (Fire Fox platform skip),
-   `ftFx_SpecialLwStart_CheckPass` and `grbattle.c:379-380`.
-3. [ ] **Falco** (shares `ft-fox-family`), then other characters ranked by
-   tournament usage. Boundaries `start_fd_falco_fox4` and
-   `start_fd_fox_falco4` are registered; the first run faults on a missing
-   animation-table entry (`spawn.rs:1114`, an unnamed map lookup: name it) and
-   `ftCo_800DEA28` (taunt).
+1. [~] **Going wide (2026-09-27, parallel agents).** Registered boundaries:
+   Fox/Marth on FD, Battlefield and Dream Land (both layouts on FD/BF);
+   Falco, Captain Falcon, Peach, Yoshi, Jigglypuff vs Fox on FD. Merged:
+   Battlefield (revival markers, background swap cycle, platform drops,
+   stick-down fall-through, radial gust ageing), Dream Land (wind timing,
+   Whispy gusts on dynamic bones, Bronto Burt flyby, looping quake), every
+   special of Captain Falcon, Yoshi (and his egg shield/mouth hold/egg) and
+   Peach except Peach Bomber and Turnip, taunts for all registered
+   characters, and shared fixes (all authored motions load, +0x468 is a
+   float, effect-queue order for entry flashes, grab-pair hitlag link, TLUT
+   format byte). Long explorer matches on FD, BF and DL gate exact. In
+   flight: Jigglypuff specials (the default special entry now fails closed),
+   Peach Bomber/Turnip, Yoshi egg-shield damage, Yoshi's Story, Fountain of
+   Dreams, Pokémon Stadium.
+2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
+   build the batch runner that aggregates first divergences, using `triage`.
+   Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
+   replay corpus.
+3. [ ] More characters by tournament usage (Sheik, Samus, Ice Climbers,
+   Pikachu, Luigi, Dr. Mario, Ganondorf, Link, Mario...): `make_boundary.py`
+   then explore; unregistered kinds fail at load.
 
 For a new matchup or stage, reuse the Fox-Marth approach: an exit-criteria
 table like `docs/MATCHUP_COMPLETENESS.md`, a matrix from
@@ -51,18 +55,20 @@ agent each (`CLAUDE.md` "Agents").
 ## Status by area
 
 **Characters** (`crates/ft-<name>`): Fox and Marth complete for the matchup.
-Falco, Captain Falcon, Peach, Jigglypuff and Yoshi pass idle, start and
-movement scenes only. Mario's crate is a stub and not registered in
+Captain Falcon and Yoshi have every special ported; Peach all but Peach
+Bomber and Turnip; Falco shares Fox's family code; Jigglypuff's specials are
+in flight. All pass their start boundaries and explorer batches except the
+named in-flight faults. Mario's crate is a stub and not registered in
 `scene_characters!` (his recorded scenes fail to load). All others unstarted.
 
-**Stages**: Final Destination complete. Battlefield passes Fox idle/start and
-platform scenes and the Fox/Marth start boundaries. Yoshi's Story, Dream Land and Fountain of Dreams have idle and
-start recordings: Yoshi's Story diverges at tick 13 (the stage's Shy Guy item,
-kind 210, is not spawned), Fountain of Dreams is not supported by the port, and
-Dream Land (Whispy wind, Bronto Burts) is unported.
+**Stages**: Final Destination complete. Battlefield and Dream Land run full
+explorer matches exactly (background swaps, revivals, platforms; wind,
+flyby). Yoshi's Story (Shy Guys), Fountain of Dreams and Pokémon Stadium are
+in flight.
 
-**Items**: the core item system, Fox laser and Illusion, and Bob-omb are
-ported. Other items are unstarted.
+**Items**: the core item system, Fox laser and Illusion, Bob-omb, Yoshi's
+thrown egg and star, and Peach's parasol, Toad and spores are ported. Random
+items are unstarted.
 
 **Out of the gate by design**: the in-game Start pause (not modelled), menus,
 results and single-player modes; CPU AI (`melee-cpu` is a stub).
