@@ -23,20 +23,18 @@ do not keep a session log here.
 
 ## Next (user to choose; recommended order)
 
-1. [~] **Going wide (2026-09-27, parallel agents).** Registered boundaries:
-   Fox/Marth on FD, Battlefield and Dream Land (both layouts on FD/BF);
-   Falco, Captain Falcon, Peach, Yoshi, Jigglypuff vs Fox on FD. Merged:
-   Battlefield (revival markers, background swap cycle, platform drops,
-   stick-down fall-through, radial gust ageing), Dream Land (wind timing,
-   Whispy gusts on dynamic bones, Bronto Burt flyby, looping quake), every
-   special of Captain Falcon, Yoshi (and his egg shield/mouth hold/egg) and
-   Peach except Peach Bomber and Turnip, taunts for all registered
-   characters, and shared fixes (all authored motions load, +0x468 is a
-   float, effect-queue order for entry flashes, grab-pair hitlag link, TLUT
-   format byte). Long explorer matches on FD, BF and DL gate exact. In
-   flight: Jigglypuff specials (the default special entry now fails closed),
-   Peach Bomber/Turnip, Yoshi egg-shield damage, Yoshi's Story, Fountain of
-   Dreams, Pokémon Stadium.
+1. [~] **Going wide (2026-09-27, parallel agents).** Six stages run Fox vs
+   Marth exactly (boundaries, long witnesses, explorer matches): Final
+   Destination, Battlefield, Dream Land, Yoshi's Story, Fountain of Dreams,
+   Pokémon Stadium. Every registered character has its specials ported:
+   Fox, Falco, Marth, Captain Falcon, Peach, Yoshi, Jigglypuff (a kind without
+   ported specials fails closed on B). Registered boundaries: FD/BF/DL/YS/FoD/PS
+   Fox-Marth, and each other character vs Fox on FD. Open:
+   - Pokémon Stadium's second transformation depends on emulated disc read
+     latency (fails closed; user decision: model the timing or record the
+     read completion as an input), docs/PORT_NOTES/POKEMON_STADIUM.md.
+   - In flight: StopWall (running into a wall), scratch words inherited from
+     unmodelled states, a 1-ulp throw-damage rounding (Jigglypuff ThrowF).
 2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
    build the batch runner that aggregates first divergences, using `triage`.
    Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
@@ -55,20 +53,19 @@ agent each (`CLAUDE.md` "Agents").
 ## Status by area
 
 **Characters** (`crates/ft-<name>`): Fox and Marth complete for the matchup.
-Captain Falcon and Yoshi have every special ported; Peach all but Peach
-Bomber and Turnip; Falco shares Fox's family code; Jigglypuff's specials are
-in flight. All pass their start boundaries and explorer batches except the
-named in-flight faults. Mario's crate is a stub and not registered in
+Falco, Captain Falcon, Peach, Yoshi and Jigglypuff have every special ported
+and pass their start boundaries and explorer batches except the named
+in-flight faults. Mario is a stub; all other kinds are unregistered. Mario's crate is a stub and not registered in
 `scene_characters!` (his recorded scenes fail to load). All others unstarted.
 
-**Stages**: Final Destination complete. Battlefield and Dream Land run full
-explorer matches exactly (background swaps, revivals, platforms; wind,
-flyby). Yoshi's Story (Shy Guys), Fountain of Dreams and Pokémon Stadium are
-in flight.
+**Stages**: Final Destination complete. Battlefield, Dream Land, Yoshi's Story
+(Shy Guys, slopes), Fountain of Dreams (moving platforms, water terrain) and
+Pokémon Stadium (all four forms; later transformations fail closed on disc
+read latency) run explorer matches and long witnesses exactly.
 
 **Items**: the core item system, Fox laser and Illusion, Bob-omb, Yoshi's
-thrown egg and star, and Peach's parasol, Toad and spores are ported. Random
-items are unstarted.
+egg and star, Peach's parasol, Toad, spores, bomber blast and turnip, and
+Yoshi's Story's Shy Guys are ported. Random items are unstarted.
 
 **Out of the gate by design**: the in-game Start pause (not modelled), menus,
 results and single-player modes; CPU AI (`melee-cpu` is a stub).
