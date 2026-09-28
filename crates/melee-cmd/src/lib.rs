@@ -34,6 +34,9 @@ pub enum Command {
     FighterVisibility(bool),
     /// ftAction_80071F34: the ordinary held-item visibility flag.
     HeldItemVisibility(bool),
+    /// ftAction_80072894 -> ftCommon_8007E83C: play the held parasol's
+    /// animation `index` so that it lasts `frames` (zero: at the fighter's rate).
+    ParasolAnimation { index: usize, frames: f32 },
     SpawnHitbox {
         id: usize,
         descriptor: melee_types::combat::HitboxDescriptor,

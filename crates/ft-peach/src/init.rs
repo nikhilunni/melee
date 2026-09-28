@@ -6,12 +6,34 @@ use melee_types::{FighterKind, ItemKind};
 
 #[derive(Clone, Debug, Default)]
 pub struct PeachItems {
+    /// take_dmg_cb = ftPe_Init_OnDeath2, cleared by every motion change.
+    pub take_damage_armed: bool,
+    /// death2_cb (Toad), cleared by every motion change, and death3_cb
+    /// (the parasol), which survives them.
+    pub death2_armed: bool,
+    pub death3_armed: bool,
     /// Fighter +2238 / +223C: two parasol references.
     pub parasol: [bool; 2],
+    /// The parasol item's motion (1 opening, 2 open), which Peach drives
+    /// and ftGetParasolStatus reads through fp->item_gobj.
+    pub parasol_motion: u16,
     /// Fighter +2244.
     pub toad: bool,
     /// Fighter +2248.
     pub vegetable: bool,
+}
+
+/// The one-shot accessory4 callback a special installed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// onAccessory4 (8011E174): Toad hangs from joint 109.
+    DrawToad,
+    /// onHitAccessory4 (8011E230): one of Toad's spores.
+    ReleaseSpore,
+    /// ftPe_SpecialHi_8011D424: the parasol hangs from joint 109.
+    DrawParasol,
 }
 #[derive(Clone, Debug)]
 pub struct Peach {
@@ -27,6 +49,15 @@ pub struct Peach {
     pub items: PeachItems,
     /// fp->mv.pe.floatattack, the float aerials' motion scratch.
     pub float_attack: crate::float_attack::FloatAttack,
+    /// Fighter accessory4_cb while a special owns it.
+    pub accessory: Accessory,
+    /// Toad's counter volume and caught hit.
+    pub special_n: crate::special_n::SpecialN,
+    /// fp->mv.pe.specialhi.
+    pub special_hi: crate::special_hi::SpecialHi,
+    /// mv+4 as the state before a special left it: Toad and the parasol
+    /// start write only mv+0.
+    pub retained_word: Option<f32>,
     pub registered_items: Vec<ItemKind>,
     pub model_groups: [i32; 7],
     costume: u8,
@@ -41,13 +72,18 @@ impl Peach {
             aerial_toad_used: false,
             items: PeachItems::default(),
             float_attack: Default::default(),
+            accessory: Accessory::None,
+            special_n: Default::default(),
+            special_hi: Default::default(),
+            retained_word: None,
             registered_items: Vec::new(),
             model_groups: [0; 7],
             costume: 0,
         }
     }
 }
-static SPECIAL_ROWS: [melee_ft::fighter::MotionRow; 8] = crate::special_rows();
+static SPECIAL_ROWS: [melee_ft::fighter::MotionRow; crate::SPECIAL_ROW_COUNT] =
+    crate::special_rows();
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Peach>();
 
@@ -62,6 +98,59 @@ impl CharacterCallbacks for Peach {
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftData_SpecialN/Hi[Peach]; side and down specials are unported.
+    fn enter_special(
+        f: &mut melee_ft::fighter::Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Side => unimplemented!(
+                "ftPe_SpecialS_Enter / ftPe_SpecialAirS_Enter: Peach Bomber (airborne: {airborne})"
+            ),
+            SpecialSlot::Down => unimplemented!(
+                "ftPe_SpecialLw_Enter / ftPe_SpecialAirLw_Enter: turnip (airborne: {airborne})"
+            ),
+        }
+    }
+    /// Fighter_8006C80C: the special's one-shot accessory4.
+    fn accessory(f: &mut melee_ft::fighter::Fighter, _assets: &FighterAssets) {
+        let pending = f.character.get::<Peach>().accessory;
+        if !f.run_accessory4(pending != Accessory::None) {
+            return;
+        }
+        f.character.get_mut::<Peach>().accessory = Accessory::None;
+        match pending {
+            Accessory::DrawToad => crate::special_n::draw_toad(f),
+            Accessory::ReleaseSpore => crate::special_n::release_spore(f),
+            Accessory::DrawParasol => crate::special_hi::draw_parasol(f),
+            Accessory::None => unreachable!(),
+        }
+    }
+    /// itPeachParasol_Logic60_Destroyed / itPeachToad_Logic91_Destroyed:
+    /// the article lets go of its owner.
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = |state, action| {
+        (361..=368).contains(&action.0).then(|| {
+            state.get::<Self>().retained_word.unwrap_or_else(|| {
+                unimplemented!("ftPe specials: mv+4 inherited from an unmodelled scratch word")
+            })
+        })
+    };
+    const ARTICLE_DESTROYED: fn(&mut melee_ft::fighter::Fighter, ItemKind) =
+        crate::articles::destroyed;
+    const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
+        Some(crate::special_n::contact);
+    const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
+        Some(crate::special_n::process_hit);
+    const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =
+        Some(crate::special_n::item_contact);
     fn kind(&self) -> FighterKind {
         FighterKind::Peach
     }
@@ -116,13 +205,27 @@ impl CharacterCallbacks for Peach {
     fn on_grounded_motion(&mut self) {
         self.has_float = true;
     }
-    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:58-62.
-    fn on_landing(&mut self, allow_interrupt: bool) {
-        self.aerial_toad_used = false;
-        if allow_interrupt && self.items.parasol[0] {
-            unimplemented!("ftPe_8011D598: remove active parasol item on landing");
-        }
+    /// Fighter_ChangeMotionState, fighter.c:1385/1388.
+    fn on_motion_change(&mut self) {
+        self.items.take_damage_armed = false;
+        self.items.death2_armed = false;
     }
+    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:58-62.
+    fn on_landing(&mut self, _allow_interrupt: bool) {
+        self.aerial_toad_used = false;
+    }
+    /// ftCo_Landing.c:56-57: ftPe_8011D598 when the landing is interruptible.
+    const LANDING_ARTICLES: fn(&mut melee_ft::fighter::Fighter, bool) = crate::articles::landing;
+    fn special_parasol(&self) -> Option<melee_ft::fighter::parasol::SpecialParasol> {
+        crate::articles::special_parasol(self)
+    }
+    const SET_PARASOL_ANIMATION: fn(&mut melee_ft::fighter::Fighter, usize, f32) =
+        crate::articles::set_parasol_animation;
+    /// take_dmg_cb = ftPe_Init_OnDeath2 while armed.
+    const TAKE_DAMAGE: Option<fn(&mut melee_ft::fighter::Fighter)> =
+        Some(crate::articles::take_damage);
+    /// death2_cb / death3_cb = ftPe_Init_OnDeath2 while armed.
+    const DEATH: Option<fn(&mut melee_ft::fighter::Fighter)> = Some(crate::articles::death);
     /// ftCo_8009DD94, ftdynamics.c:397-405: only the last chain starts at zero.
     fn dynamics_first_force_bone(&self, set: usize, count: usize) -> usize {
         if set + 1 < count {

@@ -89,6 +89,8 @@ pub enum StaleMove {
     ThrowBack,
     ThrowUp,
     ThrowDown,
+    /// FtMoveId_Parasol: the parasol's open and fall states.
+    Parasol,
 }
 
 /// One attack instance retained by projectiles after their owner changes motion.

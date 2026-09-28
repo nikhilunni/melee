@@ -95,6 +95,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("corpus_")
         || name.starts_with("sudden_death_")
         || name.starts_with("yoshi_upb_")
+        || name.starts_with("peach2_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -938,7 +939,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 101] = [
+const MATRIX_WITNESSES: [(&str, usize); 109] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1064,6 +1065,20 @@ const MATRIX_WITNESSES: [(&str, usize); 101] = [
     ("yoshi_hold_mouth_escape_jump", 900),
     ("yoshi_hold_mouth_escape_cut", 900),
     ("yoshi_hold_egg_hit", 420),
+    // Peach Parasol (ftpeachspecialhi.c) and the shared parasol states:
+    // ground and aerial starts with steering and reversal, the opening and
+    // special fall, closing to FallSpecial and reopening, landing, and the
+    // parasol knocked out of her hand by a hit.
+    ("peach2_upb_float_land", 330),
+    ("peach2_upb_close_reopen", 360),
+    ("peach2_upb_air_steer", 380),
+    ("peach2_upb_hit", 300),
+    // Toad (ftpeachspecialn.c): ground and aerial, and the counter against a
+    // laser and a dash attack, whose spores hit Fox.
+    ("peach2_toad_ground", 220),
+    ("peach2_toad_air", 300),
+    ("peach2_toad_counter_laser", 260),
+    ("peach2_toad_counter_melee", 280),
 ];
 
 #[test]
@@ -2032,7 +2047,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 87] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 89] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2213,6 +2228,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 87] = [
     ("corpus_v3_fd_yoshi_fox4_eb8786a38_p0", 829),
     // Fox is hit inside Yoshi's egg (ftCo_800BC3D0, x1828 = 4).
     ("corpus_v3_fd_yoshi_fox4_e12d92447_p1", 258),
+    // Peach's up special draws the parasol (item 103) from joint 109.
+    ("corpus_v3_fd_peach_fox4_e3e74affa_p2", 124),
+    // Peach's neutral special draws Toad (item 104) from joint 109.
+    ("corpus_v3_fd_peach_fox4_eeda0d0fc_p1", 115),
 ];
 
 #[test]

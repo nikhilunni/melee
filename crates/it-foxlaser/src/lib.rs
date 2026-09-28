@@ -247,7 +247,7 @@ macro_rules! blaster {
                     ctx.assets,
                 );
             }
-            fn control(item: &mut ItemCore, control: ItemControl) {
+            fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
                 let ItemScratch::Held(held) = &mut item.scratch else {
                     unreachable!()
                 };
@@ -281,6 +281,12 @@ macro_rules! blaster {
                         held.shot_pending = true;
                     }
                     ItemControl::Remove => item.destroyed = true,
+                    ItemControl::Counter
+                    | ItemControl::ParasolOpening(_)
+                    | ItemControl::ParasolOpen(_)
+                    | ItemControl::OwnerHitlag(_) => {
+                        unreachable!("Peach article control sent to a blaster")
+                    }
                 }
             }
         }

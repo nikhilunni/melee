@@ -1,0 +1,31 @@
+# PEACH2 aerial neutral special (ftPe_SpecialAirN_Enter, 367) after a
+# jump: the momentum is halved, the script's frame-11 flag gives the
+# airtime's one Toad rise (ftPe_SpecialAirN_Phys, fp->u.pe.specialairn_used)
+# under Toad's gravity, and she falls at the end (ftCo_Fall_Enter) or lands
+# mid-move into the ground row (doAirColl).
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_toad_air"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { X = true, StickX = 0.64224609375 }, raw = { button = 1024, stickX = 80 } },
+  { frame = 122, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 130, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

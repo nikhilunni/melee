@@ -325,8 +325,10 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
     // it_8026B3A8 and it_8026BD24: the common lifetime stops.
     item.grabbable = false;
     item.hidden = true;
-    // it_8027518C: the common explosion lifetime.
+    // it_8027518C: the common explosion lifetime, and no destroy effect
+    // (xDCF b2).
     item.life_timer = assets.explosion_lifetime;
+    item.destroy_effect_suppressed = true;
     // it_80273454 -> itResetVelocity.
     item.velocity = Vec3::ZERO;
     bomb_mut(item).exploded = true;

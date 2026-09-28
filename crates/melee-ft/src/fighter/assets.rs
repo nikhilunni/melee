@@ -196,6 +196,7 @@ pub struct FighterAssets {
     pub wall_jump_sound: u32,
     pub jumping: super::jump::JumpParameters,
     pub falling: super::fall::FallParameters,
+    pub parasol: super::parasol::ParasolParameters,
     pub air_dodge: super::air_dodge::AirDodgeParameters,
     pub ledge: super::ledge::LedgeParameters,
     pub running: super::dash::RunningParameters,
@@ -501,6 +502,7 @@ impl FighterAssets {
                 smoothing: common.reader().f32(common_data + 0x448)?,
             },
             air_dodge: super::air_dodge::AirDodgeParameters::read(common, common_data)?,
+            parasol: super::parasol::ParasolParameters::read(common, common_data)?,
             ledge: super::ledge::LedgeParameters::read(common, common_data)?,
             jumping: super::jump::JumpParameters {
                 backward_threshold: common.reader().f32(common_data + 0x78)?,

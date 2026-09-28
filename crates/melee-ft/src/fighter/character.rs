@@ -52,6 +52,7 @@ pub struct CharacterTable {
     pub on_costume_loaded: fn(&mut CharacterState, &hsd_archive::Archive, u8) -> assets::Result<()>,
     pub on_resources_loaded: fn(&mut CharacterState, &assets::FighterAssets, &PlayerSlot),
     pub on_grounded_motion: fn(&mut CharacterState),
+    pub on_motion_change: fn(&mut CharacterState),
     pub dynamics_first_force_bone: fn(&CharacterState, usize, usize) -> usize,
     pub air_dodge_tether: fn(&CharacterState),
     pub on_landing: fn(&mut CharacterState, bool),
@@ -81,6 +82,10 @@ pub struct CharacterTable {
     pub enter_guard_off: fn(&mut Fighter, &assets::FighterAssets) -> Option<assets::Result<()>>,
     pub escape_finished: fn(&mut Fighter, &assets::FighterAssets) -> Option<assets::Result<()>>,
     pub escape_animated: fn(&mut Fighter),
+    pub special_parasol: fn(&CharacterState) -> Option<parasol::SpecialParasol>,
+    pub set_parasol_animation: fn(&mut Fighter, usize, f32),
+    pub article_destroyed: fn(&mut Fighter, melee_types::ItemKind),
+    pub landing_articles: fn(&mut Fighter, bool),
 }
 impl CharacterTable {
     pub const fn new<C: CharacterCallbacks>() -> Self {
@@ -127,6 +132,7 @@ impl CharacterTable {
                 state.get_mut::<C>().on_resources_loaded(assets, player)
             },
             on_grounded_motion: |state| state.get_mut::<C>().on_grounded_motion(),
+            on_motion_change: |state| state.get_mut::<C>().on_motion_change(),
             dynamics_first_force_bone: |state, set, count| {
                 state.get::<C>().dynamics_first_force_bone(set, count)
             },
@@ -156,6 +162,10 @@ impl CharacterTable {
             enter_guard_off: C::enter_guard_off,
             escape_finished: C::escape_finished,
             escape_animated: C::escape_animated,
+            special_parasol: |state| state.get::<C>().special_parasol(),
+            set_parasol_animation: C::SET_PARASOL_ANIMATION,
+            article_destroyed: C::ARTICLE_DESTROYED,
+            landing_articles: C::LANDING_ARTICLES,
         }
     }
 }
@@ -281,6 +291,9 @@ impl CharacterState {
     pub fn on_grounded_motion(&mut self) {
         (self.table.on_grounded_motion)(self)
     }
+    pub fn on_motion_change(&mut self) {
+        (self.table.on_motion_change)(self)
+    }
     pub fn dynamics_first_force_bone(&self, set: usize, count: usize) -> usize {
         (self.table.dynamics_first_force_bone)(self, set, count)
     }
@@ -354,6 +367,13 @@ mod tests;
 // no-op body into every table owner.
 #[inline(never)]
 pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+/// ftCommon_8007E83C without a special parasol: retail asserts
+/// (ftcommon.c:1069) unless the Parasol item is held, which is unported.
+pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize, frames: f32) {
+    unimplemented!("ftCommon_8007E83C({index}, {frames}): Parasol item animation")
+}
+pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
+pub(super) fn no_landing_articles(_fighter: &mut Fighter, _allow_interrupt: bool) {}
 
 #[inline(never)]
 pub(super) fn catch_frame(

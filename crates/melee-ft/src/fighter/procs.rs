@@ -20,7 +20,11 @@ impl Fighter {
             // ftCo_800D71D8 follows ftAnim_8006EBA4, before the state's callback.
             self.run_catch_window(assets);
             self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
-            (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })?
+            let choice = (self.motion_row.anim)(self, state::AnimationPhase { assets, rng })?;
+            // ftAction_80072894 ran inside ftAnim_8006EBA4; its item work
+            // needs the character.
+            self.apply_parasol_commands();
+            choice
         } else {
             None
         };

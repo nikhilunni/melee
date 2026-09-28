@@ -62,6 +62,8 @@ pub struct FootstepSound {
 pub struct CommandState {
     pub smash_charge: Option<melee_cmd::SmashCharge>,
     pub airborne_changes: FixedVec<melee_cmd::AirborneMode, COMMAND_REQUEST_CAPACITY>,
+    /// ftAction_80072894 requests, applied by the character's parasol hook.
+    pub parasol_animations: FixedVec<(usize, f32), COMMAND_REQUEST_CAPACITY>,
     pub thrown_by: Option<u32>,
     pub smash_sound_requests: usize,
     pub random_sounds: FixedVec<melee_cmd::RandomSound, COMMAND_REQUEST_CAPACITY>,
@@ -351,6 +353,9 @@ impl CommandState {
                 }
                 Command::SmashCharge(charge) => self.smash_charge = Some(*charge),
                 Command::SetAirborne(state) => self.airborne_changes.push(*state),
+                Command::ParasolAnimation { index, frames } => {
+                    self.parasol_animations.push((*index, *frames))
+                }
                 Command::HurtStatus(status) => self.hurt_status = *status,
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::Graphics(command) => {
@@ -396,6 +401,9 @@ impl CommandState {
                             3 => SoundChannel::Effect,
                             4 => SoundChannel::StatusEffect,
                             6 => SoundChannel::OverrideVoice,
+                            // ftaction.c:623-651: the one-word stops.
+                            11 => SoundChannel::StopAction,
+                            15 => SoundChannel::StopOverrideVoice,
                             _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
                         };
                         self.footstep_sounds.push(FootstepSound {

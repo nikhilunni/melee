@@ -267,6 +267,13 @@ pub fn revival(fighter: &mut Fighter, phase: InputPhase<'_>) {
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
 pub fn fall_special(fighter: &mut Fighter, _phase: InputPhase<'_>) {
+    // ftCo_FallSpecial_IASA (80096AF4): the parasol comes first.
+    if fighter
+        .try_reopen_parasol(_phase.assets)
+        .expect("parasol reopen")
+    {
+        return;
+    }
     fighter.core.input_fall_special(_phase)
 }
 
@@ -325,9 +332,9 @@ impl FighterCore {
         }
     }
     fn input_fall_special(&mut self, phase: InputPhase<'_>) {
-        // ftCo_FallSpecial_IASA (80096AF4): the parasol (ftCo_800CEE70)
-        // needs a parasol item; then ftCo_800D705C's catch window, then the
-        // aerial jump (air-dodge entry consumed all jumps).
+        // ftCo_FallSpecial_IASA (80096AF4), after the parasol
+        // (ftCo_800CEE70): ftCo_800D705C's catch window, then the aerial
+        // jump (air-dodge entry consumed all jumps).
         if self.try_open_catch_window(phase.assets) {
             return;
         }

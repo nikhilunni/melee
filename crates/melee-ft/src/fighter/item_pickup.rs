@@ -119,6 +119,18 @@ pub struct HeldItem {
     pub damage_multiplier: f32,
 }
 
+/// fp->item_gobj holding one of the fighter's own articles (Peach's
+/// parasol) rather than a picked-up item: only the launch drop
+/// (Fighter_8006CDA4) and the parasol status read it here.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ArticleInHand {
+    pub kind: melee_types::ItemKind,
+    /// fp->parts index the article hangs from (Item_8026AB54's part).
+    pub part: usize,
+    /// it_8026B30C: 0 throws, 2 swings, 3 shoots.
+    pub use_kind: u8,
+}
+
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
 const HELD_ITEM_STATES: [S; 117] = [

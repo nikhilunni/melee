@@ -1,0 +1,32 @@
+# PEACH2 Toad counter against a projectile: Fox fires his blaster from the
+# right while Peach holds Toad out; the laser meets Toad's front-only
+# counter volume (ftColl_8007B1B8, x221B_b3) through ftColl_80077688, and
+# onUnkHit enters SpecialNHit (366) from frame 9 with Toad in motion 1
+# (it_802BE100). The script releases seven spores (it_802BE214, two
+# HSD_Randf draws each, efSync 0x4D3 generators) that drift and expire.
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_toad_counter_laser"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 112, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 122, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

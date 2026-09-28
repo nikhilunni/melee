@@ -49,6 +49,7 @@ mod snapshot;
 mod spawn;
 pub mod squat;
 pub mod state;
+pub mod parasol;
 pub mod passive_ceil;
 pub mod stop_ceil;
 pub mod teeter;
@@ -150,6 +151,21 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const SPECIALS_KEEP_HELD_ITEM: bool = false;
     /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
     const DEATH: Option<fn(&mut Fighter)> = None;
+    /// The character's own parasol while it hangs on fp->item_gobj
+    /// (ftGetParasolStatus, ftCo_ItemParasolGetFallMotionId).
+    fn special_parasol(&self) -> Option<parasol::SpecialParasol> {
+        None
+    }
+    /// ftCommon_8007E83C (8007E83C): parasol animation `index` over
+    /// `frames` (zero: at the fighter's rate).
+    const SET_PARASOL_ANIMATION: fn(&mut Fighter, usize, f32) =
+        character::unsupported_parasol_animation;
+    /// An article this fighter owns was destroyed (the kind's Destroyed
+    /// logic callback reaching back to its owner).
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = character::no_article;
+    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:54-58: articles the
+    /// character puts away on landing, after `on_landing`.
+    const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
     fn item_muzzle(_fighter: &mut Fighter, _assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         None
     }
@@ -162,6 +178,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
             hold_position: fighter.physics.position,
             blaster_action: 9,
             remove_blaster: true,
+            motion: fighter.motion_state.action.0,
         }
     }
 
@@ -256,6 +273,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn on_resources_loaded(&mut self, _assets: &assets::FighterAssets, _player: &PlayerSlot) {}
     /// Fighter_ChangeMotionState, fighter.c:1120-1123: restore ground resources.
     fn on_grounded_motion(&mut self) {}
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks (take_dmg_cb, death2_cb, ...) a character installed go.
+    fn on_motion_change(&mut self) {}
     /// ftCo_8009DD94, ftdynamics.c:397-419: first joint affected by forces.
     fn dynamics_first_force_bone(&self, _set: usize, _count: usize) -> usize {
         0
@@ -637,6 +657,10 @@ impl Fighter {
     pub fn item_muzzle(&mut self, assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         (self.character.table().item_muzzle)(self, assets)
     }
+    /// A destroyed article's Destroyed callback reaching this owner.
+    pub fn article_destroyed(&mut self, kind: melee_types::ItemKind) {
+        (self.character.table().article_destroyed)(self, kind)
+    }
     pub fn item_owner(&mut self, assets: &assets::FighterAssets) -> melee_it::ItemOwner {
         (self.character.table().item_owner)(self, assets)
     }
@@ -706,6 +730,10 @@ pub struct FighterCore {
     pub released_link: Option<grab::GrabLink>,
     /// item_gobj (+1974): the item in hand.
     pub held_item: Option<item_pickup::HeldItem>,
+    /// x2221_b4..b7 and x2104: the parasol's open timer.
+    pub parasol: parasol::ParasolTimer,
+    /// fp->item_gobj while it holds one of the fighter's own articles.
+    pub article_in_hand: Option<item_pickup::ArticleInHand>,
     /// The grabbable items the scene offered to the running proc.
     pub pickup_candidates: item_pickup::PickupCandidates,
     /// ft_80082E3C's view of the other fighters on ledges, offered to Map.
@@ -852,6 +880,8 @@ pub enum MotionData {
     KneeBend(jump::KneeBendState),
     Jump(jump::JumpState),
     MultiJump(multi_jump::MultiJumpState),
+    /// mv.co.parasol_open (ItemParasolOpen and its special-fall sequel).
+    Parasol(parasol::ParasolState),
     JumpAerial {
         retained_drop_timer: f32,
     },

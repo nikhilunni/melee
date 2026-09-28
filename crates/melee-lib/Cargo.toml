@@ -10,6 +10,7 @@ ft-fox-family = { path = "../ft-fox-family" }
 it-foxillusion = { path = "../it-foxillusion" }
 it-bombhei = { path = "../it-bombhei" }
 it-yoshieggthrow = { path = "../it-yoshieggthrow" }
+it-peach = { path = "../it-peach" }
 it-foxlaser = { path = "../it-foxlaser" }
 it-yoshistar = { path = "../it-yoshistar" }
 melee-coll = { path = "../melee-coll" }

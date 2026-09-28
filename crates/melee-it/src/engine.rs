@@ -49,6 +49,13 @@ pub struct AfterimageState {
 pub enum ItemEvent {
     /// efSync_Spawn(id, gobj, &pos): a world-space effect.
     Effect { id: u16, position: Vec3 },
+    /// efSync_Spawn(id, gobj, jobj): generators that follow the item's own
+    /// root JObj (Toad's spores, 0x4D3).
+    OwnEffect { id: u16 },
+    /// ItemSwitch -> it_8027327C -> it_802787B4 (802787B4): the kind's
+    /// destroy effect at the item's root, through it_80278800's zero-range
+    /// offset spread (three HSD_Randf draws).
+    DestroyEffect { id: u16 },
     /// efSync_Spawn(0x3E8, gobj, &pos, &damage): the spark of a hit landing
     /// on the item (it_80270E30).
     HitSpark { position: Vec3, damage: f32 },
@@ -178,6 +185,10 @@ pub struct ItemCore {
     pub in_hitlag: bool,
     pub sound_requests: melee_types::fixed::FixedVec<u32, 8>,
     pub animation_frame: f32,
+    /// x5D0_animFrameSpeed: the joint animation's per-frame advance.
+    pub animation_rate: f32,
+    /// xDCF b2 (it_8027518C): the item ends without its destroy effect.
+    pub destroy_effect_suppressed: bool,
     pub script: ScriptState,
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
@@ -491,6 +502,26 @@ impl ItemCore {
         hsd_anim::mtx::mtx_mult_vec(&matrix, &hit.descriptor.offset, &mut position);
         hit.update_position(position);
     }
+    /// Item_8026A8EC's ItemSwitch (item.c:1993-1995): the kind's destroy
+    /// effect, unless suppressed or the item is still in its owner's hand.
+    fn queue_destroy_effect(&mut self, effect: Option<u16>) {
+        if self.destroy_effect_suppressed || (self.held && self.owner.is_some()) {
+            return;
+        }
+        if let Some(id) = effect {
+            self.events.push(ItemEvent::DestroyEffect { id });
+        }
+    }
+    /// Item_802694CC (802694CC): the joint animation advances by the item's
+    /// rate (HSD_JObjAnimAll, x5CC), then its script runs (it_802799E4).
+    pub fn advance_animation(&mut self, assets: &ItemAssets) {
+        // lbGetJObjCurrFrame: an article without a model (Item_80267978's
+        // bare JObj) has no AObj, so x5CC stays zero.
+        if assets.model != 0 {
+            self.animation_frame += self.animation_rate;
+        }
+        self.advance_script(assets);
+    }
     /// Item_802799E4: shared command timing, item-owned application.
     fn advance_script(&mut self, assets: &ItemAssets) {
         let Some(script) = assets.scripts.get(self.motion as usize) else {
@@ -694,6 +725,8 @@ impl ItemPool {
             in_hitlag: false,
             sound_requests: Default::default(),
             animation_frame: 0.0,
+            animation_rate: 1.0,
+            destroy_effect_suppressed: false,
             script: ScriptState::default(),
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),
@@ -764,6 +797,7 @@ impl ItemPool {
         let Some(item) = self.get_mut(id) else {
             return;
         };
+        let alive = !item.destroyed;
         item.past_hitbox_refresh = true;
         if item.pending_knockback != 0.0 || item.pending_damage_taken != 0 {
             // OnTakeDamageThink: the percent grows (capped at 999) and the
@@ -802,6 +836,10 @@ impl ItemPool {
                 (D::logic(item.kind).damage_dealt)(item, &ItemEventContext::new(assets));
         } else if let Some(reflection) = item.pending_reflection {
             item.reflect::<D>(reflection, reflected_stale, cap, assets);
+        }
+        // processCallback (item.c:1739): destroy_type 2.
+        if alive && item.destroyed {
+            item.queue_destroy_effect(assets.event_destroy_effect);
         }
         // Item_8026A294: a surviving item enters hitlag from xCA8. (The xCC0
         // path is a counter-style shield's own hitlag; no supported fighter
@@ -854,13 +892,19 @@ impl ItemPool {
     pub fn get_mut(&mut self, id: u32) -> Option<&mut ItemCore> {
         self.items.iter_mut().find(|i| i.id == id)
     }
-    pub fn control<D: ItemDispatch>(&mut self, owner: u8, kind: ItemKind, control: ItemControl) {
+    pub fn control<D: ItemDispatch>(
+        &mut self,
+        owner: u8,
+        kind: ItemKind,
+        control: ItemControl,
+        assets: &ItemAssets,
+    ) {
         for item in self
             .items
             .iter_mut()
             .filter(|i| i.owner == Some(owner) && i.kind == kind)
         {
-            (D::logic(kind).control)(item, control);
+            (D::logic(kind).control)(item, control, assets);
         }
     }
     pub fn animate<D: ItemDispatch>(
@@ -876,10 +920,9 @@ impl ItemPool {
         };
         // Item_80269528: hitlag pauses the animation and its callback.
         if !(item.frozen || item.in_hitlag) {
-            item.animation_frame += 1.0;
-            item.advance_script(assets);
+            item.advance_animation(assets);
             let row = D::logic(item.kind).states[item.motion as usize];
-            item.destroyed |= (row.animation)(
+            let ended = (row.animation)(
                 item,
                 &mut ItemAnimationContext {
                     owner,
@@ -888,6 +931,11 @@ impl ItemPool {
                     assets,
                 },
             );
+            if ended && !item.destroyed {
+                // Item_80269528: destroy_type 0.
+                item.queue_destroy_effect(assets.destroy_effect);
+            }
+            item.destroyed |= ended;
             if item.destroyed {
                 return;
             }
@@ -1062,6 +1110,8 @@ mod tests {
             throw_speed_multiplier: 1.0,
             bounce_scale: 1.0,
             bounce_sound: 0,
+            destroy_effect: None,
+            event_destroy_effect: None,
             grab_offset: hsd_types::Vec2::ZERO,
             grab_range: hsd_types::Vec2::ZERO,
             attachment_translation: Vec3::ZERO,

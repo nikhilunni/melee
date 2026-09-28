@@ -465,10 +465,15 @@ dependencies = [
 name = "ft-peach"
 version = "0.0.1"
 dependencies = [
+ "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-cmd",
+ "melee-coll",
  "melee-ef",
  "melee-ft",
+ "melee-it",
+ "melee-lb",
  "melee-test-support",
  "melee-types",
 ]
@@ -717,6 +722,16 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "it-peach"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
  "melee-types",
 ]
 
@@ -1028,6 +1043,7 @@ dependencies = [
  "it-bombhei",
  "it-foxillusion",
  "it-foxlaser",
+ "it-peach",
  "it-yoshieggthrow",
  "it-yoshistar",
  "melee-cm",

@@ -158,6 +158,8 @@ impl Fighter {
         self.leave_ground();
         let retained_drop_timer = self.retained_drop_timer();
         self.core.commands.variables[0] = 1;
+        // ftCo_800CBAC4: x2221_b7, a parasol may open without the stick.
+        self.core.parasol.without_stick = true;
         let attrs = &self.core.attributes.jumping;
         // retail 800CBC44/4C; Peach horizontal multiply 800CC15C:
         // separate fmuls, no fusion.

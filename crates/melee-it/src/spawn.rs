@@ -45,6 +45,18 @@ impl SpawnItem {
             ground_or_air: GroundOrAir::Air,
         }
     }
+    /// `Item_InitSpawn` (it/kinds/inlines.h), the attached-article spawn:
+    /// the position keeps its Z and the item takes its initial collision.
+    /// x48_ground_or_air is left unset by retail callers (it_802BDA64,
+    /// it_802BDE18); every recorded spawn resolves as airborne.
+    pub fn attached(kind: ItemKind, owner: u8, position: Vec3, facing: f32) -> Self {
+        Self {
+            position,
+            previous_position: position,
+            initial_collision: true,
+            ..Self::held(kind, owner, position, facing)
+        }
+    }
     /// `Item_InitRaySpawnPosition` / `Item_InitRaySpawnFields`.
     pub fn ray(kind: ItemKind, owner: u8, position: Vec3, facing: f32) -> Self {
         Self {
@@ -61,6 +73,14 @@ pub enum ItemControl {
     Close,
     Fire,
     Remove,
+    /// it_802BE100: Toad's counter, motion 1 with its animation ten frames in.
+    Counter,
+    /// it_802BDD40 / it_802BDDB4: the Peach parasol's opening (motion 1) or
+    /// open (motion 2) animation at the given rate (ftCommon_8007E83C).
+    ParasolOpening(f32),
+    ParasolOpen(f32),
+    /// it_8026B724 / it_8026B73C: the owner's pre/post-hitlag callbacks.
+    OwnerHitlag(bool),
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
@@ -121,6 +141,16 @@ pub enum ItemRequest {
         owner: u8,
         kind: ItemKind,
         launch: Launch,
+    },
+    /// Item_8026ABD8 on `owner`'s `kind` article (hold kind 8): it leaves
+    /// the joint whose world matrix is `hold`, offset back by its own attach
+    /// joint (it_80273B50), with no push.
+    DropArticle {
+        owner: u8,
+        kind: ItemKind,
+        hold: hsd_types::Mtx,
+        center: Vec3,
+        attack: Option<melee_types::combat::AttackInstance>,
     },
 }
 
@@ -186,4 +216,7 @@ pub struct ItemOwner {
     pub hold_position: Vec3,
     pub blaster_action: u16,
     pub remove_blaster: bool,
+    /// fp->motion_id, read by articles whose lifetime follows the owner's
+    /// motion (ftPe_SpecialN_IsActive, ftPe_SpecialHi_NotActive).
+    pub motion: u16,
 }

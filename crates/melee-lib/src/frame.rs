@@ -283,6 +283,38 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::DestroyEffect { id } => {
+                        // it_80278800: zero offset and range, but the three
+                        // spread draws still happen.
+                        for _ in 0..3 {
+                            state.rng.randf();
+                        }
+                        state.effects.spawn_positional::<RetailTrig>(
+                            id,
+                            item.position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                    melee_it::ItemEvent::OwnEffect { id } => {
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.position,
+                            None,
+                        );
+                        state.effects.spawn_item_generators::<RetailTrig>(
+                            id,
+                            item.id,
+                            matrix,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Effect { id, position } => {
                         state.effects.spawn_positional::<RetailTrig>(
                             id,
@@ -749,6 +781,17 @@ impl Runtime {
                                 if let (Some(owner), Some(attack)) = (owner, item.stale_source) {
                                     state.fighters[owner].combat.stale.record_attack(attack);
                                 }
+                                // ftColl_80078998 -> ftColl_8007646C: the owner's
+                                // repeated-hit count takes the item's attack id.
+                                if let Some(owner) = owner.filter(|&o| o != player) {
+                                    let victim = state.fighters[player].spawn_number;
+                                    let attack = item.stale_source.map(|a| a.move_id);
+                                    let combo = &assets.fighters[owner].combo;
+                                    state.fighters[owner]
+                                        .combat
+                                        .combo
+                                        .record(victim, attack, combo);
+                                }
                             }
                             // ftColl_80077C60 records contact; Item_8026A294 runs the callback at link 14.
                             item.record_damage_dealt(contact.damage);
@@ -992,6 +1035,7 @@ impl Runtime {
                             &mut self.item_objects,
                             position,
                             facing,
+                            &mut state.rng,
                         );
                         self.drain_item_events(false)?;
                     }
@@ -1108,6 +1152,22 @@ impl Runtime {
                     &mut state.rng,
                 )?,
             Callback::ParticlesMain => {
+                // Generators on an item's JObj read its current matrix.
+                for item in state.items.iter() {
+                    if state.effects.follows_item(item.id) {
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.position,
+                            None,
+                        );
+                        state
+                            .effects
+                            .update_item_joint(item.id, matrix, &mut state.particles);
+                    }
+                }
                 if let Some(pending) = state.pending_emission.take() {
                     pending.finish(
                         &mut state.particles,
@@ -1141,6 +1201,7 @@ impl Runtime {
                         | melee_it::ItemRequest::Throw { .. }
                         | melee_it::ItemRequest::Drop { .. }
                         | melee_it::ItemRequest::Destroy { .. }
+                        | melee_it::ItemRequest::DropArticle { .. }
                         | melee_it::ItemRequest::Launch { .. } => {}
                     }
                     let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
@@ -1160,10 +1221,21 @@ impl Runtime {
                                 .stale
                                 .multiplier(&state.assets.fighters[slot].stale_weights),
                         },
+                        &mut state.rng,
                     );
                 }
             });
         }
+        // A new article's own efSync_Spawn (it_802BE2E8) belongs to its
+        // spawner's proc.
+        if state
+            .items
+            .iter()
+            .any(|item| item.events.iter().any(|e| matches!(e, melee_it::ItemEvent::OwnEffect { .. })))
+        {
+            self.drain_item_events(false)?;
+        }
+        let state = &mut self.state;
         // Item SFX use the same headless request sink as ft_PlaySFX.
         for item in state.items.iter_mut() {
             while !item.sound_requests.is_empty() {
@@ -1195,6 +1267,13 @@ impl Runtime {
                     .effects
                     .destroy_blaster_muzzles(usize::from(owner), &mut state.particles);
             }
+        }
+        // The kinds' Destroyed callbacks (e.g. itPeachParasol_Logic60_Destroyed)
+        // release their owner's references.
+        for item in state.items.iter().filter(|item| item.destroyed) {
+            crate::scene_items::article_destroyed(&mut state.fighters, item);
+            // Item_8026A8EC frees the JObj its generators follow.
+            state.effects.expire_item_joint(item.id, &mut state.particles);
         }
         crate::scene_items::cleanup(&mut state.items, world, &mut self.item_objects);
         self.particle_draws.0.append(&mut state.effects.draws.0);
@@ -1638,7 +1717,13 @@ fn dispatch_fighter(
     let was_in_hitlag = f.in_hitlag();
     let had_effect_callbacks = f.effect_state.hitlag_callbacks;
     match proc {
-        FighterProc::Status => f.proc_status(),
+        FighterProc::Status => {
+            // Fighter_8006A360: the parasol timer (fighter.c:1577) precedes
+            // the hitlag countdown.
+            f.tick_parasol_timer(assets)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            f.proc_status()
+        }
         FighterProc::Animation => {
             f.proc_anim(assets, rng)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;

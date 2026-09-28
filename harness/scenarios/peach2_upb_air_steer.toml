@@ -1,0 +1,34 @@
+# PEACH2 aerial up special (ftPe_SpecialAirHi_Enter, 363) after a jump,
+# with the stick held right past PlPe +7C so ftPe_SpecialHiStart_IASA
+# steers the rise (lstick_angle, ft_80085154), then pushed left on the
+# frame the script opens the reverse window (ftCheckThrowB3, frame 6) to
+# turn round. The parasol opens
+# and Peach floats down and lands.
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_upb_air_steer"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 380
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 124, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = { B = true, StickX = 0.64224609375, StickY = 0.64224609375 }, raw = { button = 512, stickX = 80, stickY = 80 } },
+  { frame = 142, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 145, port = 0, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

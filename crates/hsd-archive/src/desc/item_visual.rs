@@ -17,10 +17,9 @@ impl ItemVisual {
     pub fn read(archive: &Archive, model: u32, states: u32, count: usize) -> Result<Self> {
         let reader = archive.reader();
         reader.slice(model, 16)?;
-        let joint = archive.link(model)?.ok_or(super::DescError::NullPointer {
-            field: "ItemModelDesc.model",
-            at: model,
-        })?;
+        // Item_80267978 (item.c:738-745): an article without a model gets a
+        // bare identity JObj (Toad's spores).
+        let joint = archive.link(model)?;
         if count > super::MAX_NODES {
             return Err(super::DescError::TooManyNodes {
                 what: "ItemStateDesc",
@@ -47,7 +46,10 @@ impl ItemVisual {
             });
         }
         Ok(Self {
-            model: JObjDesc::read(archive, joint)?,
+            model: match joint {
+                Some(joint) => JObjDesc::read(archive, joint)?,
+                None => JObjDesc::default(),
+            },
             attachment_bone: reader.u32(model + 8)? as usize,
             states: animations,
         })

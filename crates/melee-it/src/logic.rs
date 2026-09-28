@@ -61,6 +61,15 @@ pub trait ItemLogic {
         true
     }
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
+    /// The spawning code's own set-up once Item_80268B18 returns (e.g.
+    /// it_802BE2E8 for Toad's spores), which may draw from the RNG.
+    fn launched(
+        _item: &mut ItemCore,
+        _assets: &ItemAssets,
+        _common: &crate::desc::ItemCommonData,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
+    }
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
     fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
@@ -96,7 +105,7 @@ pub trait ItemLogic {
             item.owner = None;
         }
     }
-    fn control(_item: &mut ItemCore, _control: ItemControl) {
+    fn control(_item: &mut ItemCore, _control: ItemControl, _assets: &ItemAssets) {
         unimplemented!("item control for this kind")
     }
     const LOGIC: ItemLogicRow = ItemLogicRow {
@@ -106,6 +115,7 @@ pub trait ItemLogic {
         model_pose: Self::model_pose,
         model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
+        launched: Self::launched,
         pickup_possible: Self::pickup_possible,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -131,6 +141,12 @@ pub struct ItemLogicRow {
     pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree, usize) -> bool,
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
+    pub launched: fn(
+        &mut ItemCore,
+        &ItemAssets,
+        &crate::desc::ItemCommonData,
+        &mut gekko_math::HsdRng,
+    ),
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub destroyed: fn(&mut ItemCore),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
@@ -145,7 +161,7 @@ pub struct ItemLogicRow {
     pub shield_bounced: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub hit_shield: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub owner_removed: fn(&mut ItemCore, u8),
-    pub control: fn(&mut ItemCore, ItemControl),
+    pub control: fn(&mut ItemCore, ItemControl, &ItemAssets),
 }
 pub trait ItemDispatch {
     fn logic(kind: ItemKind) -> &'static ItemLogicRow;

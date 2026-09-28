@@ -53,6 +53,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         }),
         18 => Command::SmashSound,
         35 => Command::HeldItemVisibility(word & 0x03ff_ffff != 0),
+        // ftAction_80072894 (800728B4..C4): extrwi 13 bits after the opcode,
+        // and the low 13 bits as an unsigned frame count.
+        42 => Command::ParasolAnimation {
+            index: ((word >> 13) & 0x1FFF) as usize,
+            frames: (word & 0x1FFF) as f32,
+        },
         24 => Command::ThrowAccessory,
         21 => Command::MoveCue,
         19 => Command::SetVariable {

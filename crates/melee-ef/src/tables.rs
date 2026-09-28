@@ -155,7 +155,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 17] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 18] = [
     // efasync.c:381-383: an article's vanishing puff (it_80272BA4),
     // efLib_CreateGenerator 0x4B.
     DustSpawn {
@@ -250,6 +250,12 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 17] = [
     DustSpawn {
         request: 0x41C,
         particle: 0x5D,
+        directional: false,
+    },
+    // efasync.c:539-541: an item's destroy effect (ItemAttr x64/x68).
+    DustSpawn {
+        request: 0x421,
+        particle: 0x3F,
         directional: false,
     },
 ];

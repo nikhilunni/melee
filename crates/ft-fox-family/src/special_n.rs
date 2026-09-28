@@ -351,6 +351,7 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> mel
             9
         },
         remove_blaster: !f.character.get_mut::<C>().special_neutral().blaster_present,
+        motion: action,
     }
 }
 

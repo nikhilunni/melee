@@ -2004,6 +2004,7 @@ impl FighterCore {
         rng: &mut gekko_math::HsdRng,
     ) {
         let Some(held) = self.held_item else {
+            self.maybe_drop_article(hit, assets, rng);
             return;
         };
         if held.heavy || hit.descriptor.element == melee_types::HitElement::Cape {
@@ -2017,6 +2018,46 @@ impl FighterCore {
         );
         if rng.randi(assets.damage.item_drop_range) < damage {
             self.drop_held_item(held, assets);
+        }
+    }
+
+    /// Fighter_8006CDA4 with fp->item_gobj holding a light article of the
+    /// fighter's own: the same draw knocks it out of the hand (Item_8026ABD8
+    /// with no push).
+    fn maybe_drop_article(
+        &mut self,
+        hit: &ReceivedHit,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        let Some(article) = self.article_in_hand else {
+            return;
+        };
+        if hit.descriptor.element == melee_types::HitElement::Cape {
+            return;
+        }
+        assert!(
+            self.combat.armor == 0.0,
+            "ftCo_8008E984: an armoured launch while holding"
+        );
+        assert_ne!(
+            article.use_kind, 3,
+            "Fighter_8006CDA4: a shooting article's second draw"
+        );
+        let damage = fctiwz(hit.percent_damage);
+        if rng.randi(assets.damage.item_drop_range) < damage {
+            let hold = *self.skeleton.get_mtx(self.animation.parts[article.part].joint);
+            let holder = self.item_holder(self.bones.model.animation_translation, assets);
+            let (center, attack) = (holder.center, holder.attack);
+            self.item_requests.push(melee_it::ItemRequest::DropArticle {
+                owner: self.player.id,
+                kind: article.kind,
+                hold,
+                center,
+                attack,
+            });
+            // Item_8026A848 -> ftCommon_8007E6DC: the hand lets go.
+            self.article_in_hand = None;
         }
     }
 

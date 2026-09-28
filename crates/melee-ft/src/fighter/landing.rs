@@ -80,6 +80,21 @@ impl Fighter {
             retained_drop_timer,
         };
         self.character.on_landing(allow_interrupt);
+        (self.character.table().landing_articles)(self, allow_interrupt);
+        Ok(())
+    }
+    /// ftCo_LandingFallSpecial_Enter_Basic (800D5C54): LandingFallSpecial
+    /// at its own rate, without the landing interrupt.
+    pub(super) fn enter_basic_special_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        let retained_drop_timer = self.retained_drop_timer();
+        self.land();
+        self.change_motion_state(CommonMotionState::LandingFallSpecial.into(), assets)?;
+        self.core.state_data = MotionData::Landing {
+            allow_interrupt: false,
+            retained_drop_timer,
+        };
+        self.character.on_landing(false);
+        (self.character.table().landing_articles)(self, false);
         Ok(())
     }
     /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
@@ -88,6 +103,7 @@ impl Fighter {
         self.land();
         self.change_motion_state(CommonMotionState::Landing.into(), assets)?;
         self.character.on_landing(true);
+        (self.character.table().landing_articles)(self, true);
         self.core.state_data = MotionData::Landing {
             allow_interrupt: true,
             retained_drop_timer,
@@ -185,6 +201,7 @@ impl FighterCore {
                 ..
             }) => guard.tilt_magnitude,
             MotionData::FallSpecial(fall) => fall.animation.blend,
+            MotionData::Parasol(parasol) => parasol.retained_word?,
             // The +2344 words of the ground states (ftCommon types.h): an
             // int or enum is its bit pattern, as for Jump above.
             MotionData::WallJump(wall_jump) => f32::from_bits(wall_jump.retained_zero as u32),

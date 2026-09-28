@@ -20,6 +20,9 @@ melee_it::item_kinds! {
         BombHei: it_bombhei::BombHei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
         YoshiStar: it_yoshistar::YoshiStar,
+        PeachParasol: it_peach::PeachParasol,
+        PeachToad: it_peach::PeachToad,
+        PeachToadSpore: it_peach::PeachToadSpore,
     }
 }
 
@@ -134,6 +137,41 @@ impl Resources {
         kinds.push((ItemKind::YoshiStar, ItemAssets::from_fighter(&yoshi, root, 1, 1)?));
         visual_archives.push((ItemKind::YoshiStar, std::sync::Arc::clone(&yoshi)));
         visual_archives.push((ItemKind::YoshiEggThrow, yoshi));
+        // ftPe_Init_OnLoad: ftData.x48_items[2..=4] are the parasol, Toad
+        // and Toad's spores.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlPe.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataPeach").context("Peach fighter data")?;
+            for (kind, index, states, attributes) in [
+                (
+                    ItemKind::PeachParasol,
+                    2,
+                    &it_peach::parasol::ARTICLE_STATES[..],
+                    0,
+                ),
+                (
+                    ItemKind::PeachToad,
+                    3,
+                    &it_peach::toad::ARTICLE_STATES[..],
+                    0,
+                ),
+                (
+                    ItemKind::PeachToadSpore,
+                    4,
+                    &it_peach::spore::ARTICLE_STATES[..],
+                    it_peach::spore::SPECIAL_ATTRIBUTES,
+                ),
+            ] {
+                kinds.push((
+                    kind,
+                    ItemAssets::from_fighter_states(&a, root, index, states, attributes)?,
+                ));
+                visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            }
+        }
         Ok(Self {
             common,
             kinds,
@@ -190,6 +228,7 @@ pub struct RequestOwner<'a> {
     pub stale_multiplier: f32,
 }
 
+#[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn request(
     pool: &mut ItemPool,
     resources: &Resources,
@@ -198,7 +237,9 @@ pub fn request(
     objects: &mut Objects,
     request: ItemRequest,
     owner: RequestOwner<'_>,
+    rng: &mut gekko_math::HsdRng,
 ) {
+    let owner_context = &owner;
     let (spawn, ray, held_owner) = match request {
         ItemRequest::Spawn(spawn) => (spawn, None, None),
         ItemRequest::SpawnHeld(spawn) => (spawn, None, owner.held_item),
@@ -213,7 +254,7 @@ pub fn request(
             kind,
             control,
         } => {
-            pool.control::<SceneItems>(owner, kind, control);
+            pool.control::<SceneItems>(owner, kind, control, resources.get(kind));
             return;
         }
         ItemRequest::PickUp { item, part } => {
@@ -294,6 +335,41 @@ pub fn request(
             it_yoshieggthrow::launch(item, &launch, half_life_scale, map, resources.get(kind));
             return;
         }
+        ItemRequest::DropArticle {
+            owner,
+            kind,
+            hold,
+            center,
+            attack,
+        } => {
+            // it_80273B50, hold kind 8: the negated local translation of the
+            // article's attach joint, through the holding joint's matrix.
+            let assets = resources.get(kind);
+            let t = assets.attach_translation();
+            let offset = hsd_types::Vec3::new(-t.x, -t.y, -t.z);
+            let mut position = hsd_types::Vec3::ZERO;
+            hsd_anim::mtx::mtx_mult_vec(&hold, &offset, &mut position);
+            let Some(dropped) = pool
+                .iter_mut()
+                .find(|i| i.owner == Some(owner) && i.kind == kind)
+            else {
+                return;
+            };
+            dropped.throw_speed = 1.0;
+            dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
+            (SceneItems::logic(kind).dropped)(
+                dropped,
+                &mut ItemAnimationContext {
+                    owner: owner_context.held_item,
+                    holder: None,
+                    map,
+                    assets,
+                },
+            );
+            dropped.end_hold(center, attack, map, assets);
+            dropped.hurt_by_owner = true;
+            return;
+        }
         ItemRequest::Drop {
             item,
             position,
@@ -354,6 +430,9 @@ pub fn request(
                 },
             );
         }
+        // The spawner's own set-up after Item_80268B18 (it_802BE2E8).
+        let common = pool.common().clone();
+        (SceneItems::logic(spawn.kind).launched)(pool.get_mut(id).unwrap(), assets, &common, rng);
         if let Some(owner) = held_owner {
             // Item_8026AB54 invokes the kind's pickup callback after attachment.
             (SceneItems::logic(spawn.kind).picked_up)(
@@ -409,6 +488,7 @@ pub fn facing_toward_fighters(
 }
 
 /// it_8026BE84 (BobOmbRain kind 6) -> it_8027D670: a lit Bob-omb at `position`.
+#[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn spawn_rain_bomb(
     pool: &mut ItemPool,
     resources: &Resources,
@@ -417,6 +497,7 @@ pub fn spawn_rain_bomb(
     objects: &mut Objects,
     position: hsd_types::Vec3,
     facing: f32,
+    rng: &mut gekko_math::HsdRng,
 ) {
     let before = pool.len();
     request(
@@ -431,11 +512,30 @@ pub fn spawn_rain_bomb(
             held_item: None,
             stale_multiplier: 1.0,
         },
+        rng,
     );
     if pool.len() > before {
         let lifetime = pool.common().lifetime;
         let item = pool.iter_mut().last().expect("spawned Bob-omb");
         it_bombhei::light(item, resources.get(ItemKind::BombHei), lifetime);
+    }
+}
+
+/// Item_8026A8EC's kind callback reaching the owning fighter: the article
+/// lets go of it (ftPe_8011D518, ftPe_SpecialN_DoDeath2).
+pub fn article_destroyed(
+    fighters: &mut [crate::scene_fighter::SceneFighter],
+    item: &melee_it::ItemCore,
+) {
+    let Some(owner) = item.owner else {
+        return;
+    };
+    for fighter in fighters.iter_mut() {
+        crate::scene_fighter::with_fighter!(fighter, |f| {
+            if f.player.id == owner {
+                f.article_destroyed(item.kind);
+            }
+        });
     }
 }
 

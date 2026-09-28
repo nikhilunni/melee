@@ -1,0 +1,33 @@
+# PEACH2 hit out of the parasol: Peach floats down in ItemParasolFall (370)
+# over Fox, who waits below and uses his reflector as she comes into
+# reach. The hit's take-damage callback (ftPe_Init_OnDeath2 ->
+# ftPe_8011D598) destroys the parasol (it_802BDB94) before the damage
+# motion.
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_upb_hit"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 1, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 147, port = 1, buttons = {  }, raw = {  } },
+  { frame = 212, port = 1, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+  { frame = 214, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

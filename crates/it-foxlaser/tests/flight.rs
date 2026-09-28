@@ -135,7 +135,7 @@ fn blaster_sounds_follow_open_latch_and_visibility_transitions() {
         ItemControl::Visibility(1),
         ItemControl::Visibility(2),
     ] {
-        pool.control::<Items>(0, ItemKind::FoxBlaster, control);
+        pool.control::<Items>(0, ItemKind::FoxBlaster, control, &assets);
     }
     assert_eq!(
         pool.get_mut(id)

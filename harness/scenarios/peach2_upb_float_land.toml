@@ -1,0 +1,30 @@
+# PEACH2 up special on the ground (ftPe_SpecialHi_Enter): SpecialHiStart
+# (361) draws the parasol (item 103, motion 2) from joint 109, rises, then
+# ItemParasolOpen (369, ftCo_800CEFE0) and ItemParasolFall (370,
+# ftCo_800CF3C8). With the stick neutral Peach floats down and lands from
+# 370 into LandingFallSpecial (ftCo_LandingFallSpecial_Enter_Basic); the
+# parasol stays until it is fully open again (ftPe_SpecialHi_NotActive).
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_upb_float_land"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

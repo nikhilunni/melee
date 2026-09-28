@@ -1,0 +1,32 @@
+# PEACH2 Toad counter against a fighter: Fox runs in from the right and
+# dash-attacks into Peach's Toad; the attack lands on the front-only counter
+# volume (ftColl_8007B1B8 with x221B_b3), both take shield hitlag
+# (shield_unk0/1 = PlPe +A8), and onUnkHit enters SpecialNHit (366). The
+# spores (it_802BE214) fly into Fox.
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach2_toad_counter_melee"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 280
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 1, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 150, port = 1, buttons = { A = true, StickX = -0.64388671875 }, raw = { button = 256, stickX = -80 } },
+  { frame = 152, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -31,6 +31,8 @@ struct MotionChange<'a> {
     unclamped_fall: bool,
     /// Ft_MF_SkipColAnim (bit12): the secondary color slot (x488) survives.
     keep_secondary_color: bool,
+    /// Ft_MF_SkipParasol (bit10): the parasol step (fighter.c:986-993) is skipped.
+    skip_parasol: bool,
 }
 
 /// Fighter_ChangeMotionState's `flags` argument; bit names from ft/forward.h.
@@ -44,6 +46,7 @@ impl MotionEntryFlags {
     pub const SKIP_ANIM_VEL: Self = Self(1 << 5);
     pub const SKIP_MAT_ANIM: Self = Self(1 << 7);
     pub const SKIP_THROW_EXCEPTION: Self = Self(1 << 8);
+    pub const SKIP_PARASOL: Self = Self(1 << 10);
     pub const SKIP_COL_ANIM: Self = Self(1 << 12);
     pub const KEEP_ACCESSORY: Self = Self(1 << 13);
     pub const UPDATE_CMD: Self = Self(1 << 14);
@@ -341,6 +344,46 @@ impl Fighter {
         start: f32,
     ) -> Result<()> {
         self.change_motion_state_with_rate(state, assets, start, 1.0)
+    }
+
+    /// Fighter_ChangeMotionState from frame zero with an explicit blend
+    /// (ftCo_800CEFE0's 10-frame parasol opening).
+    pub fn change_motion_state_blended(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        blend_frames: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                rate: 1.0,
+                blend_frames: Some(blend_frames),
+                ..Default::default()
+            },
+        )
+    }
+
+    /// ftCo_800CF3C8 / ftCo_800CF280: Ft_MF_SkipHit | Ft_MF_SkipParasol.
+    pub(super) fn change_parasol_fall_motion(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                rate: 1.0,
+                skip_parasol: true,
+                preserve: MotionPreservation {
+                    hitboxes: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
     }
 
     /// Fighter_ChangeMotionState with Ft_MF_KeepGfx only: owned effects
@@ -747,6 +790,7 @@ impl Fighter {
                 skip_animation_velocity: flags.contains(F::SKIP_ANIM_VEL),
                 keep_hitstun: flags.contains(F::SKIP_HITSTUN),
                 keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
+                skip_parasol: flags.contains(F::SKIP_PARASOL),
                 preserve: MotionPreservation {
                     hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
                     hitboxes: flags.contains(F::SKIP_HIT),
@@ -841,6 +885,10 @@ impl Fighter {
             .then(|| self.character.table().specials_keep_held_item);
         let state = row.id;
         self.core.require_held_item_state(state, special);
+        if !change.skip_parasol {
+            self.parasol_motion_change();
+        }
+        self.character.on_motion_change();
         self.core.begin_motion_change(source);
         // The port's attack-proc guard belongs to the state that set it (an
         // attack entry, or hitlag ending during an attack); attack entries
@@ -850,6 +898,7 @@ impl Fighter {
         }
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             self.character.on_grounded_motion();
+            self.core.parasol.restore_on_ground();
         }
         let move_id = if usize::from(row.action.0) < super::COMMON_COUNT {
             super::attack::stale::GROUND_MOVES
@@ -1087,6 +1136,8 @@ impl FighterCore {
             quake_request: None,
             released_link: None,
             held_item: None,
+            parasol: Default::default(),
+            article_in_hand: None,
             pickup_candidates: Default::default(),
             ledge_holders: Default::default(),
             accessory4_armed: false,

@@ -130,6 +130,11 @@ pub struct ItemAssets {
     pub bounce_scale: f32,
     /// ItemAttr x80 (Item.xD84, it_8027321C): the bounce sound.
     pub bounce_sound: u32,
+    /// ItemAttr x64 (destroy_gfx): the effect when an animation callback
+    /// ends the item (ItemSwitch, destroy_type 0).
+    pub destroy_effect: Option<u16>,
+    /// ItemAttr x68: the effect when an event callback ends it (types 1/2).
+    pub event_destroy_effect: Option<u16>,
     /// ItemAttr x30 / x38: the pickup box offset and half extents.
     pub grab_offset: hsd_types::Vec2,
     pub grab_range: hsd_types::Vec2,
@@ -139,6 +144,26 @@ pub struct ItemAssets {
     pub attachment_translation: hsd_types::Vec3,
 }
 impl ItemAssets {
+    /// it_80272C90 / it_2725_JObjGetTranslation: the local translation of
+    /// the model's attach joint (ItemModelDesc x8), in depth-first order.
+    pub fn attach_translation(&self) -> hsd_types::Vec3 {
+        let mut stack = vec![&self.visual.model];
+        let mut index = 0;
+        while let Some(joint) = stack.pop() {
+            if index == self.visual.attachment_bone {
+                let p = joint.position;
+                return hsd_types::Vec3::new(p.x, p.y, p.z);
+            }
+            index += 1;
+            if let Some(next) = joint.next.as_deref() {
+                stack.push(next);
+            }
+            if let Some(child) = joint.child.as_deref() {
+                stack.push(child);
+            }
+        }
+        panic!("item attach joint {} missing", self.visual.attachment_bone)
+    }
     /// ftData.x48_items -> Article, loaded once before any item exists. A
     /// character article's state rows are its motion states in order.
     pub fn from_fighter(
@@ -299,6 +324,8 @@ impl ItemAssets {
             throw_speed_multiplier: r.f32(common + 4)?,
             bounce_scale: r.f32(common + 0x58)?,
             bounce_sound: r.u32(common + 0x80)?,
+            destroy_effect: u16::try_from(r.s32(common + 0x64)?).ok(),
+            event_destroy_effect: u16::try_from(r.s32(common + 0x68)?).ok(),
             grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
             grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
             attachment_translation,

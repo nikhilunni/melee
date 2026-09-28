@@ -95,6 +95,7 @@ impl Effects {
             character_banks: Default::default(),
             next_joint: 0,
             fighter_joints: [false; 2 * FIGHTER_JOINT_STRIDE],
+            item_joints: FixedVec::default(),
         }
     }
     pub(super) fn recycle_where(&mut self, remove: impl Fn(&Effect) -> bool) {

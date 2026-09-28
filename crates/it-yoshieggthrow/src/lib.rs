@@ -102,7 +102,7 @@ impl ItemLogic for YoshiEggThrow {
     /// it_802B2890 (802B2890), from Yoshi's take-damage and death callbacks
     /// (ftYs_SpecialS_8012E270): the egg still in his hand is let go and
     /// destroyed at once. A thrown egg is no longer his x2238.
-    fn control(item: &mut ItemCore, control: ItemControl) {
+    fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
         match control {
             ItemControl::Remove if item.held => {
                 item.owner = None;
