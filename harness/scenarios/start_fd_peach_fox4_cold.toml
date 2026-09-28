@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_peach_fox4_cold"
+expected = "start_fd_peach_fox4"
+frames = 600
+seed = 4112043230
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"

@@ -75,3 +75,30 @@ stage = "FinalDestination"
 players = ["Fox", "Falco"]
 stocks = 4
 seed = 1646358439
+
+[[boundary]]
+name = "start_fd_captainfalcon_fox4"
+cold = "start_fd_captainfalcon_fox4_cold"
+savestate = "harness/roms/start_fd_captainfalcon_fox4.sav"
+stage = "FinalDestination"
+players = ["CaptainFalcon", "Fox"]
+stocks = 4
+seed = 1125385215
+
+[[boundary]]
+name = "start_fd_peach_fox4"
+cold = "start_fd_peach_fox4_cold"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+stage = "FinalDestination"
+players = ["Peach", "Fox"]
+stocks = 4
+seed = 4112043230
+
+[[boundary]]
+name = "start_fd_yoshi_fox4"
+cold = "start_fd_yoshi_fox4_cold"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+stage = "FinalDestination"
+players = ["Yoshi", "Fox"]
+stocks = 4
+seed = 1445546448
