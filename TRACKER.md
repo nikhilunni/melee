@@ -30,6 +30,10 @@ do not keep a session log here.
    Fox, Falco, Marth, Captain Falcon, Peach, Yoshi, Jigglypuff, Pikachu, Mario (a
    kind without ported specials fails closed on B). Registered boundaries: FD/BF/DL/YS/FoD/PS
    Fox-Marth, and each other character vs Fox on FD. Open:
+   - corpus_v3_fd_mario_fox4_ec13743d5_p0 (tick-exact) differs in particle
+     RNG order on 3 ticks of Mario's down throw of Fox; unregistered until
+     fixed. Several Mario/Falcon cases also differ in effect positions
+     (+-0.09, throw effect facing) that the gate does not compare.
    - **User decision: Pokémon Stadium transformations depend on emulated
      disc read latency**, which varies between recordings even for a match's
      first form read (21-23 polls for the same file). The port uses a
