@@ -922,10 +922,13 @@ impl Fighter {
         let row = self.row(state);
         // fighter.c:1142-1144: only Wait and the walks keep the jab window.
         use CommonMotionState as C;
-        if ![C::Wait, C::WalkSlow, C::WalkMiddle, C::WalkFast]
-            .into_iter()
-            .any(|kept| state == kept.into())
-        {
+        let keeps_jab: [ActionId; 4] = [
+            C::Wait.into(),
+            C::WalkSlow.into(),
+            C::WalkMiddle.into(),
+            C::WalkFast.into(),
+        ];
+        if !keeps_jab.contains(&state) {
             self.core.jab_countdown = 0.0;
         }
         let special = (usize::from(row.action.0) >= super::COMMON_COUNT)
