@@ -34,14 +34,15 @@ do not keep a session log here.
      RNG order on 3 ticks of Mario's down throw of Fox; unregistered until
      fixed. Several Mario/Falcon cases also differ in effect positions
      (+-0.09, throw effect facing) that the gate does not compare.
-   - **User decision: Pokémon Stadium transformations depend on emulated
-     disc read latency**, which varies between recordings even for a match's
-     first form read (21-23 polls for the same file). The port uses a
-     measured table for the first read (exact on the registered witnesses)
-     and fails closed on later reads; explorer matches are exact only up to
-     the first transformation. Options: model Dolphin's disc timing, or take
-     the read-completion tick from the recording as an input.
-     docs/PORT_NOTES/POKEMON_STADIUM.md.
+   - Pokémon Stadium's form-archive read completion is an external input
+     (`melee_lib::ExternalEvents`, user decision 2026-09-28): the tracer
+     records it, the gate replays it like pads, recordings keep it, and a
+     run without it uses the documented default latency table. Slippi 3.18
+     declares a Stadium transformation event (0x41) that could supply it;
+     unverified without a Stadium replay.
+   - Particle positions (not compared by the gate) drift by small amounts in
+     some long explorer matches on several stages (e.g. 6 of 8 PS matches,
+     corpus_v3_fd_mario_fox4_e9943b4ab_p0); RNG order and generators match.
 2. [ ] **Slippi.** Replay real tournament games through `melee-sim replay`;
    build the batch runner that aggregates first divergences, using `triage`.
    Verify the Slippi `self_vel`/`kb_vel` field mapping first. Needs a local
@@ -68,8 +69,8 @@ turnaround, Super Jump Punch, Tornado). All other kinds are unregistered. Mario'
 
 **Stages**: Final Destination complete. Battlefield, Dream Land, Yoshi's Story
 (Shy Guys, slopes), Fountain of Dreams (moving platforms, water terrain) and
-Pokémon Stadium (all four forms; later transformations fail closed on disc
-read latency) run explorer matches and long witnesses exactly.
+Pokémon Stadium (every transformation, with read completion as an external
+input) run explorer matches and long witnesses exactly.
 
 **Items**: the core item system, Fox laser and Illusion, Bob-omb, Yoshi's
 egg and star, Peach's parasol, Toad, spores, bomber blast and turnip, and
@@ -109,3 +110,4 @@ None.
 | 2026-09-26 | The explorer corpus starts from registered retail boundaries, so every case is replayable in Dolphin. |
 | 2026-09-28 | Subagents allowed on Opus 5.5 only, at most two building at once; no Codex. |
 | 2026-09-28 | Perf size baseline raised to 4,956,208 stripped bytes (user). |
+| 2026-09-28 | Asynchronous disc reads that affect gameplay (Pokémon Stadium's forms) are external inputs, recorded from retail and replayed like pads; standalone runs use a documented default. |
