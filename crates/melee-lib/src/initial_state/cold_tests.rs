@@ -12,19 +12,24 @@ fn setup_snapshot(state: &InitialState) -> Record {
         let sink: &mut dyn SnapshotSink = &mut prefix;
         with_fighter!(fighter, |f| {
             sink.field("cpu.attack_delay", &f.cpu.attack_delay);
-            let melee_ft::fighter::MotionData::Entry(entry) = &f.state_data else {
-                panic!("match-start fighter must be in Entry");
-            };
-            sink.field("entry.timer", &entry.timer);
-            sink.field("entry.origin_y", &entry.origin_y);
-            sink.field("entry.original_scale", &entry.original_scale);
-            sink.field("entry.current_scale", &entry.current_scale);
-            sink.field("entry.ecb.top", &entry.collision_box.top);
-            sink.field("entry.ecb.bottom", &entry.collision_box.bottom);
-            sink.field("entry.ecb.left.x", &entry.collision_box.left.x);
-            sink.field("entry.ecb.left.y", &entry.collision_box.left.y);
-            sink.field("entry.ecb.right.x", &entry.collision_box.right.x);
-            sink.field("entry.ecb.right.y", &entry.collision_box.right.y);
+            // A transforming character's other form starts asleep (Sleep).
+            if f.motion_state.id == melee_types::CommonMotionState::Sleep {
+                sink.field("sleep", &1u8);
+            } else {
+                let melee_ft::fighter::MotionData::Entry(entry) = &f.state_data else {
+                    panic!("match-start fighter must be in Entry");
+                };
+                sink.field("entry.timer", &entry.timer);
+                sink.field("entry.origin_y", &entry.origin_y);
+                sink.field("entry.original_scale", &entry.original_scale);
+                sink.field("entry.current_scale", &entry.current_scale);
+                sink.field("entry.ecb.top", &entry.collision_box.top);
+                sink.field("entry.ecb.bottom", &entry.collision_box.bottom);
+                sink.field("entry.ecb.left.x", &entry.collision_box.left.x);
+                sink.field("entry.ecb.left.y", &entry.collision_box.left.y);
+                sink.field("entry.ecb.right.x", &entry.collision_box.right.x);
+                sink.field("entry.ecb.right.y", &entry.collision_box.right.y);
+            }
         });
     }
     match &state.stage {
