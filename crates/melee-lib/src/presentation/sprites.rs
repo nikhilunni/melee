@@ -72,10 +72,13 @@ impl Sprites {
             let table = archive
                 .public(symbol)
                 .ok_or_else(|| error("effect table missing"))?;
-            let offset = archive
-                .link(table + 4)
-                .map_err(error)?
-                .ok_or_else(|| error("effect texture bank missing"))?;
+            // A model-only effect file (EfPeData) has no particle texture bank.
+            let Some(offset) = archive.link(table + 4).map_err(error)? else {
+                if bank == 0 {
+                    return Err(error("common effect texture bank missing"));
+                }
+                continue;
+            };
             result.add_bank(bank, archive, offset)?;
         }
         Ok(result)
