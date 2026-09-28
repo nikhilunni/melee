@@ -60,10 +60,17 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
 }
 
 pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
-    // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during hitlag.
+    // fn_800DAD18 is a physics callback; Fighter_procUpdate skips it during
+    // hitlag. It still runs for a capture pinned in the captor's mouth.
     if with_fighter!(&state.fighters[player], |f| f.status.disabled
         || f.combat.hitlag_remaining > 0.0
-        || f.combat.thrown_pose.is_some())
+        || matches!(
+            f.motion_state.id,
+            melee_types::CommonMotionState::ThrownF
+                | melee_types::CommonMotionState::ThrownB
+                | melee_types::CommonMotionState::ThrownHi
+                | melee_types::CommonMotionState::ThrownLw
+        ))
     {
         return Ok(());
     }
@@ -104,17 +111,28 @@ pub(super) fn sync_wait(state: &mut InitialState, player: usize) -> Result<()> {
         .iter()
         .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
         .expect("live captured fighter");
-    with_fighter!(&mut state.fighters[other], |f| {
-        if matches!(
-            f.motion_state.id,
-            melee_types::CommonMotionState::CapturePulledLw
-                | melee_types::CommonMotionState::CapturePulledHi
-        ) {
-            grab::capture_wait(f, &state.assets.fighters[other])
-                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    let pulled = with_fighter!(&state.fighters[other], |f| matches!(
+        f.motion_state.id,
+        melee_types::CommonMotionState::CapturePulledLw
+            | melee_types::CommonMotionState::CapturePulledHi
+    ));
+    if !pulled {
+        return Ok(());
+    }
+    let (attacker, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+        let entered = grab::capture_wait(v, &state.assets.fighters[other]);
+        if entered.is_ok() {
+            grab::constrain_in_mouth(
+                &mut v.core,
+                &mut a.core,
+                &state.assets.fighters[other],
+                &state.assets.fighters[player],
+            );
         }
-        Ok(())
-    })
+        entered
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
 
 pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<()> {

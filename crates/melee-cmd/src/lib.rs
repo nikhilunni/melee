@@ -39,7 +39,8 @@ pub enum Command {
         descriptor: melee_types::combat::HitboxDescriptor,
     },
     ClearHitbox(usize),
-    /// it_80279544: update an active item's capsule damage without respawning it.
+    /// it_80279544 / ftAction_8007162C: update an active capsule's damage
+    /// without respawning it.
     SetHitboxDamage {
         id: usize,
         damage: f32,

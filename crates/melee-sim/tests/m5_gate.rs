@@ -2002,7 +2002,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 71] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 74] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2147,6 +2147,14 @@ const CORPUS_V3_MATCHES: [(&str, usize); 71] = [
     // Yoshi's Egg Throw entry, aerial and grounded (ftYs_SpecialHi_Enter).
     ("corpus_v3_fd_yoshi_fox4_ec13743d5_p0", 126),
     ("corpus_v3_fd_yoshi_fox4_e3e74affa_p2", 97),
+    // Subaction opcode 12, hitbox damage adjustment (ftAction_8007162C).
+    ("corpus_v3_fd_yoshi_fox4_e7ff378da_p1", 170),
+    // Fox back-throws Yoshi, who authors no ThrownB animation of his own.
+    ("corpus_v3_fd_yoshi_fox4_e0dee256e_p0", 176),
+    // Yoshi's tongue grab (fn_800D9CE8 skips ahead in CatchPull), mouth hold
+    // (ftCo_800DB368/800DB464) and forward throw of a victim he authors no
+    // ThrownF animation for: its CaptureWait AObjs keep playing.
+    ("corpus_v3_fd_yoshi_fox4_e005a4f43_p0", 256),
 ];
 
 #[test]

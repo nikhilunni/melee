@@ -81,6 +81,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             1 => Command::ThrowReverse,
             _ => return Err("unknown throw flag"),
         },
+        // ftAction_8007162C (80071654 extrwi, 80071664 clrlwi): three-bit
+        // capsule id, unsigned 23-bit damage.
+        12 => Command::SetHitboxDamage {
+            id: ((word >> 23) & 7) as usize,
+            damage: (word & 0x007f_ffff) as f32,
+        },
         15 => Command::ClearHitbox(((word >> 23) & 7) as usize),
         16 => Command::ClearHitboxes,
         27 => Command::HurtCapsuleStatus {

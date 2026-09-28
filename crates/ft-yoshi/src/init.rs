@@ -64,10 +64,19 @@ impl CharacterCallbacks for Yoshi {
     fn accessory(fighter: &mut Fighter, assets: &FighterAssets) {
         crate::special_hi::accessory(fighter, assets);
     }
+    const CATCH_PULL_START: fn(&mut Fighter, &FighterAssets, f32) -> f32 =
+        crate::catch::catch_pull_start;
 
     fn kind(&self) -> FighterKind {
         FighterKind::Yoshi
     }
+    /// ftYs_Init_8012BAC0 (8012BAC0): attribute +0x120.
+    fn mouth_capture_scale(&self) -> Option<f32> {
+        Some(self.attributes.captured_hurtbox_scale)
+    }
+    /// ftCo_800DE3FC's FTKIND_YOSHI arm (ftCo_Thrown.c:33) is the shared
+    /// mouth-hold path; ftCo_800DD398 has no Yoshi arm.
+    fn throw_variant(&self) {}
     fn descriptor() -> &'static CharacterDescriptor {
         &DESCRIPTOR
     }

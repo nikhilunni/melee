@@ -154,6 +154,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
     /// character-specific capture variants override this boundary.
     fn catch_variant(&mut self) {}
+    /// ftYs_Init_8012BAC0: a captor that holds its victim in its mouth (the
+    /// FTKIND_YOSHI arms of ftCo_CaptureWait.c and ftCo_Thrown.c:33) returns
+    /// the scale of the victim's single stand-in hurt capsule.
+    fn mouth_capture_scale(&self) -> Option<f32> {
+        None
+    }
     /// ftCo_Throw.c:145-157,346-353: special capture and Fox laser callbacks.
     fn throw_variant(&self) {
         if Self::descriptor().common_behavior.throw_callback {
@@ -167,6 +173,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
 
     /// Character article work before the common throw release/end processing.
     const THROW_ANIMATION: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
+
+    /// fn_800D9CE8 (ftCo_CatchPull.c:28-37): the frame a standing grab's
+    /// CatchPull starts at, given Catch's current frame. Default: that frame.
+    const CATCH_PULL_START: fn(&mut Fighter, &assets::FighterAssets, f32) -> f32 =
+        character::catch_frame;
 
     /// ftColl candidate boundary: special defense may consume an eligible hit.
     const DEFENSE_CONTACT: Option<DefenseContact> = None;

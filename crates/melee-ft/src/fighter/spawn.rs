@@ -971,6 +971,8 @@ impl FighterCore {
             self.combat.combo.grace = assets.combo.grace_frames;
         }
         self.status.on_ledge = false;
+        // fighter.c:1063: every entry shows the fighter again.
+        self.effect_state.invisible = false;
         self.catch_window = 0; // fighter.c:1072
         // Fighter_ChangeMotionState, fighter.c1128: retained throughout air.
         if self.physics.ground_or_air == GroundOrAir::Ground {
@@ -1129,15 +1131,25 @@ impl FighterCore {
         );
         // fighter.c:1266-1298: every nonzero motion entry loads the preceding pose first.
         let animation_start = if start != 0.0 { start - rate } else { start };
+        let mut animated = true;
         if let Some(source) = source {
-            self.animation.set_animation_remapped(
-                &mut self.skeleton,
-                source.motion,
-                animation_start,
-                rate,
-                Some(source.remap),
-                change.blend_frames,
-            )?;
+            if let Some((motion, remap)) = source.animation {
+                self.animation.set_animation_remapped(
+                    &mut self.skeleton,
+                    motion,
+                    animation_start,
+                    rate,
+                    Some(remap),
+                    change.blend_frames,
+                )?;
+            } else {
+                // fighter.c:1243-1289 with x590 NULL: ftAnim_8006EBE8 is
+                // skipped; the row's id and flags change, the attached
+                // AObjs (and their rates) keep playing.
+                self.animation.motion_id = animation_id;
+                self.animation.flags = source.flags;
+                animated = false;
+            }
         } else {
             let motion = &assets.motions[&animation_id];
             self.animation.set_animation_remapped(
@@ -1149,7 +1161,11 @@ impl FighterCore {
                 change.blend_frames,
             )?;
         }
-        self.animation.set_rate(&mut self.skeleton, rate, false);
+        if animated {
+            self.animation.set_rate(&mut self.skeleton, rate, false);
+        } else {
+            self.animation.speed = rate; // frame_speed_mul only
+        }
         self.animation.frame = start - rate;
         self.animation.remainder = 0.0;
         self.commands.restart(
@@ -1190,9 +1206,12 @@ impl FighterCore {
             .advance_main::<RetailTrig>(&mut self.skeleton);
         // Fighter_ChangeMotionState80069EE0..80069FAC: a departing motion
         // may request one joint to bypass the incoming animation blend.
-        let blend_frames = source.map_or(assets.motions[&animation_id].blend_frames, |source| {
-            source.motion.blend_frames
-        });
+        // fighter.c:1245-1250: a borrowed motion reads the thrower's table
+        // (the victim may author no animation of its own for this id).
+        let blend_frames = source.map_or_else(
+            || assets.motions[&animation_id].blend_frames,
+            |source| source.blend_frames,
+        );
         if exit_joint != 0 && blend_frames != 0.0 {
             let joint = self.animation.parts[usize::from(exit_joint)].joint;
             let pose = self.animation.blend_tree.get(joint);

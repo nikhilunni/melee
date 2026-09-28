@@ -128,6 +128,11 @@ pub fn thrown(_fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 
 /// ftData_MotionStateList: ftCo_MS_CapturePulledLw (226), ftCo_MS_CaptureWaitLw (227).
 pub fn capture(fighter: &mut Fighter, _phase: CollisionPhase<'_>) -> Result<()> {
+    // ftCo_CaptureWaitHi_Coll etc.: a victim pinned to its captor (x2226_b2)
+    // runs no Map at all.
+    if fighter.combat.thrown_pose.is_some() {
+        return Ok(());
+    }
     let MotionData::Capture(capture) = &mut fighter.state_data else {
         unreachable!()
     };

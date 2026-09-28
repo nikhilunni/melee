@@ -105,6 +105,9 @@ pub struct CaptureState {
     /// releases both fighters (ftCo_800DA698). Only that callback checks the
     /// timer: entering CaptureWait from CaptureDamage never releases at once.
     pub release_requested: bool,
+    /// The captor's [`super::CharacterCallbacks::mouth_capture_scale`]:
+    /// this victim is held in its captor's mouth.
+    pub mouth_scale: Option<f32>,
 
     fast_remaining: f32,
     stick_directions: [i8; 2],
@@ -125,6 +128,7 @@ impl CaptureState {
             map_prepared: false,
             jump_requested: false,
             release_requested: false,
+            mouth_scale: None,
             fast_remaining: 0.0,
             stick_directions: [0; 2],
         }
@@ -228,6 +232,7 @@ pub(super) fn capture_damage(
         S::CaptureDamageLw
     };
     f.change_motion_state(state.into(), assets)?;
+    super::grab::hold_in_mouth(&mut f.core, assets);
     let MotionData::Capture(capture) = &mut f.core.state_data else {
         panic!("capture scratch missing")
     };

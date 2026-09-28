@@ -75,6 +75,8 @@ pub static DOWN: Throw = Throw {
     weight_mask: 8,
 };
 
+pub static THROWS: [&Throw; 4] = [&FORWARD, &BACK, &UP, &DOWN];
+
 /// ftCo_800DD1E4 (800DD1E4): main horizontal, C-stick horizontal, up, down.
 pub fn requested(f: &FighterCore, assets: &FighterAssets) -> Option<&'static Throw> {
     if f.motion_state.id != S::CatchWait {
@@ -116,8 +118,15 @@ pub fn requested(f: &FighterCore, assets: &FighterAssets) -> Option<&'static Thr
 #[derive(Clone, Copy)]
 pub(super) struct ThrowSource<'a> {
     pub assets: &'a FighterAssets,
-    pub motion: &'a crate::anim::Motion,
-    pub remap: crate::anim::attach::MotionRemapView<'a>,
+    /// None: the thrower authors no animation for the row (ftData_80085CD8
+    /// leaves x590 NULL), so the victim's current AObjs keep playing.
+    pub animation: Option<(
+        &'a crate::anim::Motion,
+        crate::anim::attach::MotionRemapView<'a>,
+    )>,
+    /// The thrower's row flags (x594) and blend byte, animated or not.
+    pub flags: crate::anim::MotionFlags,
+    pub blend_frames: f32,
 }
 
 /// ftCo_800DD4B0 -> ftCo_800DD398 -> ftCo_800DE3FC.
@@ -133,16 +142,33 @@ pub fn enter_throw(
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
     let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
-    let motion = &aa.motions[&throw.victim_motion];
-    let remap = motion.remap.as_ref().expect("prepared throw skeleton");
-    let source = ThrowSource {
-        assets: aa,
-        motion,
-        remap: crate::anim::attach::MotionRemapView {
-            source: &remap.source,
-            destination: &va.parts,
-            source_masks: &remap.source_masks,
-        },
+    let held_in_mouth = attacker.character.mouth_capture_scale().is_some();
+    let source = match aa.motions.get(&throw.victim_motion) {
+        Some(motion) => {
+            let remap = motion.remap.as_ref().expect("prepared throw skeleton");
+            ThrowSource {
+                assets: aa,
+                animation: Some((
+                    motion,
+                    crate::anim::attach::MotionRemapView {
+                        source: &remap.source,
+                        destination: &va.parts,
+                        source_masks: &remap.source_masks,
+                    },
+                )),
+                flags: motion.flags,
+                blend_frames: motion.blend_frames,
+            }
+        }
+        None => {
+            let (flags, blend_frames) = aa.unanimated_thrown[&throw.victim_motion];
+            ThrowSource {
+                assets: aa,
+                animation: None,
+                flags,
+                blend_frames,
+            }
+        }
     };
     victim.change_motion_state_with_source(
         throw.victim_state.into(),
@@ -151,6 +177,16 @@ pub fn enter_throw(
         rate,
         Some(source),
     )?;
+    if held_in_mouth {
+        // ftCo_800DE3FC: ftColl_8007B62C(gobj, 2), intangible with colour
+        // animation 2, before the pose is kept and the new motion animated.
+        victim.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
+        victim
+            .core
+            .commands
+            .color_animations
+            .push(melee_cmd::ColorAnimationRequest { id: 2, duration: 0 });
+    }
     finish_thrown_pose(
         &mut victim.core,
         &mut attacker.core,
@@ -414,13 +450,9 @@ fn prepare_throw(
     attacker.commands.throw_accessory = false;
     rate
 }
-/// ftCo_800DD398 / ftCo_800DE3FC: pose remapping before victim motion entry.
-fn prepare_thrown_pose(
-    victim: &mut FighterCore,
-    attacker: &mut FighterCore,
-    va: &FighterAssets,
-) -> Vec3 {
-    attacker.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+/// ftCo_800DB368 (800DB368), unconstrained branch: zero XRotN's rotation
+/// and keep its local translation (x2174) for the release.
+fn detach_xrot(victim: &mut FighterCore, va: &FighterAssets) -> Vec3 {
     let xrot =
         victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
     let saved_translation = victim.skeleton.translation(xrot);
@@ -433,6 +465,40 @@ fn prepare_thrown_pose(
             w: 0.0,
         },
     );
+    saved_translation
+}
+fn hip_translation(victim: &FighterCore, va: &FighterAssets) -> Vec3 {
+    let hip =
+        victim.animation.parts[usize::from(va.parts.joint(FtPart::HipN).expect("HipN"))].joint;
+    victim.skeleton.translation(hip)
+}
+/// ftCo_800DB368 (800DB368): pin XRotN to the captor's TransN2 (x2226_b2).
+pub(super) fn constrain_to_captor(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) {
+    let saved_translation = detach_xrot(victim, va);
+    victim.combat.thrown_pose = Some(ThrownPose {
+        saved_translation,
+        // ftCommon_8007E358 sets this again at the throw.
+        hip_translation: hip_translation(victim, va),
+    });
+    update_constraint(victim, attacker, va, aa);
+}
+/// ftCo_800DD398 / ftCo_800DE3FC: pose remapping before victim motion entry.
+/// A victim already pinned (x2226_b2) keeps its saved translation.
+fn prepare_thrown_pose(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+) -> Vec3 {
+    attacker.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
+    let saved_translation = match &victim.combat.thrown_pose {
+        Some(pose) => pose.saved_translation,
+        None => detach_xrot(victim, va),
+    };
     victim.physics.facing = attacker.physics.facing;
     victim.commands.thrown_by = Some(attacker.spawn_number);
     saved_translation
@@ -445,11 +511,9 @@ fn finish_thrown_pose(
     aa: &FighterAssets,
     saved_translation: Vec3,
 ) {
-    let hip =
-        victim.animation.parts[usize::from(va.parts.joint(FtPart::HipN).expect("HipN"))].joint;
     victim.combat.thrown_pose = Some(ThrownPose {
         saved_translation,
-        hip_translation: victim.skeleton.translation(hip),
+        hip_translation: hip_translation(victim, va),
     });
     victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     victim.step_animation(va);

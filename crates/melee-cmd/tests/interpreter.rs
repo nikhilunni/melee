@@ -208,3 +208,14 @@ fn capsule_status_and_jab_flags_decode_independently() {
         Command::GrabRelease
     ));
 }
+#[test]
+fn hitbox_damage_adjustment_takes_three_bit_id_and_23_bit_damage() {
+    // ftAction_8007162C: extrwi 3 bits at 22 (id), clrlwi 9 (damage).
+    let Command::SetHitboxDamage { id, damage } =
+        decode(&[(12 << 26) | (5 << 23) | 0x7f_ffff], None, 1).unwrap()
+    else {
+        panic!("expected a hitbox damage adjustment");
+    };
+    assert_eq!(id, 5);
+    assert_eq!(damage, 8_388_607.0);
+}

@@ -17,10 +17,11 @@ pub struct YoshiAttributes {
     pub shield_material_frames: f32,
     /// +0x120: ftCo_CaptureWait uses this hurtbox scale.
     pub captured_hurtbox_scale: f32,
-    /// +0x124/+0x128: parameters not named by the current decomp consumers.
-    pub unknown_parameters: [f32; 2],
-    /// +0x12C..137: opaque byte table retained by COPY_ATTRS.
-    pub trailing_table: [u8; 12],
+    /// +0x124/+0x128: Catch frames [start, end) in which a catch skips
+    /// ahead in CatchPull (fn_800D9CE8).
+    pub catch_pull_window: [f32; 2],
+    /// +0x12C..137: CatchPull start frame per whole frame into that window.
+    pub catch_pull_start_frames: [u8; 12],
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct DoubleJumpAttributes {
@@ -268,8 +269,8 @@ impl YoshiAttributes {
             },
             shield_material_frames: r.f32(0xC)?,
             captured_hurtbox_scale: r.f32(0x120)?,
-            unknown_parameters: [r.f32(0x124)?, r.f32(0x128)?],
-            trailing_table: r.slice(0x12C, 12)?.try_into().unwrap(),
+            catch_pull_window: [r.f32(0x124)?, r.f32(0x128)?],
+            catch_pull_start_frames: r.slice(0x12C, 12)?.try_into().unwrap(),
         })
     }
 }

@@ -29,10 +29,12 @@ pub struct CharacterTable {
     pub item_owner: fn(&mut Fighter, &assets::FighterAssets) -> melee_it::ItemOwner,
     pub forward_smash_variant: fn(&CharacterState),
     pub catch_variant: fn(&mut CharacterState),
+    pub mouth_capture_scale: fn(&CharacterState) -> Option<f32>,
     pub throw_variant: fn(&CharacterState),
     pub knockback_enter: fn(&mut Fighter, &assets::FighterAssets),
     pub knockback_exit: fn(&mut Fighter, &assets::FighterAssets),
     pub throw_animation: fn(&mut Fighter, &assets::FighterAssets),
+    pub catch_pull_start: fn(&mut Fighter, &assets::FighterAssets, f32) -> f32,
     pub enter_taunt: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
     pub defense_contact: Option<DefenseContact>,
     pub reflector_contact: Option<super::reflection::CharacterContact>,
@@ -96,10 +98,12 @@ impl CharacterTable {
             item_owner: C::item_owner,
             forward_smash_variant: |state| state.get::<C>().forward_smash_variant(),
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
+            mouth_capture_scale: |state| state.get::<C>().mouth_capture_scale(),
             throw_variant: |state| state.get::<C>().throw_variant(),
             knockback_enter: C::KNOCKBACK_ENTER,
             knockback_exit: C::KNOCKBACK_EXIT,
             throw_animation: C::THROW_ANIMATION,
+            catch_pull_start: C::CATCH_PULL_START,
             enter_taunt: C::ENTER_TAUNT,
             defense_contact: C::DEFENSE_CONTACT,
             reflector_contact: C::REFLECTOR_CONTACT,
@@ -241,6 +245,9 @@ impl CharacterState {
     pub fn throw_variant(&self) {
         (self.table.throw_variant)(self)
     }
+    pub fn mouth_capture_scale(&self) -> Option<f32> {
+        (self.table.mouth_capture_scale)(self)
+    }
     pub fn jab_variant(&self) {
         (self.table.jab_variant)(self)
     }
@@ -342,6 +349,15 @@ mod tests;
 // no-op body into every table owner.
 #[inline(never)]
 pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAssets) {}
+
+#[inline(never)]
+pub(super) fn catch_frame(
+    _fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+    frame: f32,
+) -> f32 {
+    frame
+}
 
 #[inline(never)]
 pub(super) fn no_retained_scratch_word(_state: &CharacterState, _action: ActionId) -> Option<f32> {

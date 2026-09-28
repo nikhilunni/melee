@@ -264,9 +264,19 @@ impl CommandState {
                     }
                 }
                 Command::SetHitboxDamage { id, damage } => {
+                    // ftAction_8007162C -> ftColl_8007ABD0 (no fused ops):
+                    // charge-scaled damage, its integer knockback copy, then
+                    // staling. Seeking skips the word (ftAction_8007168C).
+                    // Fighter y-scale is always 1 here (8007AC0C branch).
                     if !seeking {
+                        let damage = match &self.smash_charge {
+                            Some(charge) => charge.scale_damage(*damage),
+                            None => *damage,
+                        };
+                        let staled = self.stale_damage(damage);
                         if let Some(hit) = &mut self.hitboxes[*id] {
-                            hit.descriptor.damage = *damage;
+                            hit.knockback_damage = gekko_math::msl::fctiwz(damage) as u32;
+                            hit.descriptor.damage = staled;
                         }
                     }
                 }

@@ -58,6 +58,32 @@ pub fn read_playback_motion(
     id: usize,
 ) -> Result<Motion, Box<dyn std::error::Error>> {
     let entry = table.entries.get(id).ok_or("motion index outside table")?;
+    let (flags, blend_frames) = read_motion_header(archive, fighter, table, id)?;
+    let animation_archive = Archive::parse(entry.sub_archive(aj)?.ok_or("absent motion")?)?;
+    let animation = read_public_figatree(
+        &animation_archive,
+        entry
+            .symbol_name
+            .as_deref()
+            .ok_or("missing animation public")?,
+    )?;
+    Ok(Motion {
+        id: i32::try_from(id)?,
+        animation,
+        flags,
+        blend_frames,
+        remap: None,
+    })
+}
+
+/// A motion row's flags (+0x10) and blend byte (`ftData.x10[id][0]`), which
+/// exist whether or not the row authors an animation.
+pub fn read_motion_header(
+    archive: &Archive,
+    fighter: u32,
+    table: &FighterAnimations,
+    id: usize,
+) -> Result<(MotionFlags, f32), Box<dyn std::error::Error>> {
     let row = add_offset(
         table.table_offset.ok_or("missing animation table")?,
         u32::try_from(id)?
@@ -76,19 +102,5 @@ pub fn read_playback_motion(
                 .ok_or("blend index overflow")?,
         )?)?,
     );
-    let animation_archive = Archive::parse(entry.sub_archive(aj)?.ok_or("absent motion")?)?;
-    let animation = read_public_figatree(
-        &animation_archive,
-        entry
-            .symbol_name
-            .as_deref()
-            .ok_or("missing animation public")?,
-    )?;
-    Ok(Motion {
-        id: i32::try_from(id)?,
-        animation,
-        flags: MotionFlags(flags),
-        blend_frames,
-        remap: None,
-    })
+    Ok((MotionFlags(flags), blend_frames))
 }

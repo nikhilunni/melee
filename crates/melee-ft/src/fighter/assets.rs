@@ -232,6 +232,9 @@ pub struct FighterAssets {
     pub idle_variants_while_holding: bool,
     pub magnifier: super::offscreen::MagnifierDamage,
     pub command_entries: BTreeMap<i32, usize>,
+    /// Thrown-victim rows (ftCo_800DD4B0) this fighter authors no animation
+    /// for: their flags and blend byte, which a thrown victim still takes.
+    pub unanimated_thrown: BTreeMap<i32, (crate::anim::MotionFlags, f32)>,
     pub part_animations: BTreeMap<(usize, usize), PartResource>,
 }
 impl FighterAssets {
@@ -259,7 +262,20 @@ impl FighterAssets {
         // Fighter_ChangeMotionState loads any motion row on demand (ftData_80085CD8), so every
         // row with authored animation data carries its script and animation.
         let script_ids = authored_motions(&table);
-        for &id in &script_ids {
+        // ftData_80085CD8 with x590 NULL: a thrower's unanimated thrown-victim
+        // row still supplies the victim's flags and script.
+        let mut unanimated_thrown = BTreeMap::new();
+        for throw in super::grab_throw::THROWS {
+            let id = throw.victim_motion as u32;
+            if !script_ids.contains(&id) {
+                unanimated_thrown.insert(
+                    throw.victim_motion,
+                    crate::desc::playback::read_motion_header(data, root, &table, id as usize)?,
+                );
+            }
+        }
+        let unanimated_ids = unanimated_thrown.keys().map(|&id| id as u32);
+        for id in script_ids.iter().copied().chain(unanimated_ids) {
             let entry = data
                 .link(motion_table + id * 0x18 + 0xC)?
                 .ok_or("missing Wait script")?;
@@ -445,12 +461,7 @@ impl FighterAssets {
                     .collect::<Result<_>>()?;
                 // Borrowed throw motions own their prepared maps through the existing
                 // MotionRemap storage, keeping resource destruction in the same owners.
-                for throw in [
-                    &super::grab_throw::FORWARD,
-                    &super::grab_throw::BACK,
-                    &super::grab_throw::UP,
-                    &super::grab_throw::DOWN,
-                ] {
+                for throw in super::grab_throw::THROWS {
                     if let Some(motion) = motions.get_mut(&throw.victim_motion) {
                         let source = crate::desc::bones::AnimationSource::read(
                             common,
@@ -626,6 +637,7 @@ impl FighterAssets {
                 .into_iter()
                 .map(|(id, offset)| (id, indices[&offset]))
                 .collect(),
+            unanimated_thrown,
             part_animations,
         })
     }

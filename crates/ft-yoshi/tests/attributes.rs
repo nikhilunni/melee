@@ -29,7 +29,7 @@ fn relocated_zero_preserves_payloads_and_rejects_truncated_attributes() {
         attributes.egg_throw.angle_stick_divisor.to_bits(),
         0x3F26_6666
     );
-    assert_eq!(attributes.trailing_table[11], 0x1D);
+    assert_eq!(attributes.catch_pull_start_frames[11], 0x1D);
     assert!(read_yoshi_attributes(&archive(&bytes, &[], Some(("ftDataYoshi", 0x138)))).is_err());
     assert!(YoshiAttributes::read(&archive(&bytes[..0x137], &[], None), 0).is_err());
 }

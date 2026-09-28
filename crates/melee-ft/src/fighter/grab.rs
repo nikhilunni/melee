@@ -215,13 +215,14 @@ pub fn capture_pair(
     attacker.character.catch_variant();
     attacker.core.physics.ground_velocity = 0.0;
     let frame = attacker.core.animation.frame;
+    let (pull, frame) = if attacker.motion_state.id == S::Catch {
+        let start = attacker.character.table().catch_pull_start;
+        (S::CatchPull, start(attacker, attacker_assets, frame))
+    } else {
+        (S::CatchDashPull, frame)
+    };
     attacker.core.commands.grab_release = false;
     attacker.core.commands.throw_reverse = false;
-    let pull = if attacker.motion_state.id == S::Catch {
-        S::CatchPull
-    } else {
-        S::CatchDashPull
-    };
     attacker.change_motion_state_at(pull.into(), attacker_assets, frame)?;
     attacker.core.combat.grab = Some(GrabLink::Holding {
         victim: victim.core.spawn_number,
@@ -236,12 +237,14 @@ pub fn capture_pair(
         S::CapturePulledLw
     };
     victim.change_motion_state(pulled.into(), victim_assets)?;
-    victim.core.state_data = MotionData::Capture(super::grab_escape::CaptureState::new(
+    let mut capture = super::grab_escape::CaptureState::new(
         victim.physics.percent,
         victim.grab_handicap,
         victim_rank,
         &victim_assets.grab_escape,
-    ));
+    );
+    capture.mouth_scale = attacker.character.mouth_capture_scale();
+    victim.core.state_data = MotionData::Capture(capture);
     finish_capture(&mut victim.core, &mut attacker.core, victim_assets);
     map_capture(victim, &mut attacker.core, victim_assets, map, false)?;
     Ok(())
@@ -377,6 +380,11 @@ fn capture_departure(
     assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
 ) -> Result<()> {
+    if victim.combat.thrown_pose.is_some() {
+        unimplemented!(
+            "ftCo_CaptureWait.c:256-270: lifted out of a mouth hold (fn_800DB5D8 again)"
+        );
+    }
     if victim.motion_state.id != S::CaptureDamageLw {
         victim.leave_ground(); // ftCommon_8007D5D4, not the spent-jumps variant.
         victim.collision.lock_frames = 0; // ftCommon_UnlockECB.
@@ -495,8 +503,60 @@ pub fn capture_wait(victim: &mut Fighter, assets: &FighterAssets) -> Result<()> 
         S::CaptureWaitLw
     };
     victim.change_motion_state(state.into(), assets)?;
+    hold_in_mouth(&mut victim.core, assets);
     victim.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     Ok(())
+}
+
+/// fn_800DB5D8 (800DB5D8), and the FTKIND_YOSHI arms of fn_800DB790 and
+/// fn_800DBAE4, after the capture motion entry: a victim in its captor's
+/// mouth is hidden and intangible except for one capsule on XRotN. Its
+/// accessory (ftCo_800DB464) is the thrown one, run while constrained.
+pub(super) fn hold_in_mouth(victim: &mut FighterCore, assets: &FighterAssets) {
+    let MotionData::Capture(capture) = &victim.state_data else {
+        unreachable!("capture scratch missing")
+    };
+    let Some(scale) = capture.mouth_scale else {
+        return;
+    };
+    victim.effect_state.invisible = true;
+    victim.set_hurt_capsules(melee_types::combat::HurtStatus::Intangible);
+    // ftCommon_GetModelScale: fmuls, then the capsule scale's fdivs.
+    let model_scale = victim.player.scale * victim.attributes.size.model_scaling;
+    victim.replace_hurt_capsule(
+        0,
+        melee_coll::hurtbox::HurtCapsule {
+            height: melee_coll::hurtbox::HurtHeight::Middle,
+            grabbable: false,
+            bone: usize::from(
+                assets
+                    .parts
+                    .joint(melee_types::FtPart::XRotN)
+                    .expect("capture XRotN"),
+            ),
+            offsets: [Vec3::ZERO; 2],
+            radius: scale / model_scale,
+            positions: [Vec3::ZERO; 2],
+            cached: false,
+        },
+    );
+}
+
+/// fn_800DB6C8's FTKIND_YOSHI arm, ftCo_800DB368 (800DB368): on CatchWait
+/// entry a victim held in the mouth is pinned to the captor's TransN2.
+pub fn constrain_in_mouth(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) {
+    let MotionData::Capture(capture) = &victim.state_data else {
+        unreachable!("capture scratch missing")
+    };
+    if capture.mouth_scale.is_none() || victim.combat.thrown_pose.is_some() {
+        return;
+    }
+    super::grab_throw::constrain_to_captor(victim, attacker, va, aa);
 }
 
 /// fn_800DAADC / fn_800DAA40: common linkage and initial pose alignment,
