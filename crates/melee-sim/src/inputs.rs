@@ -27,6 +27,24 @@ pub struct PadScript {
     events: Vec<ExternalEvents>,
 }
 
+/// The tick-trace keys a pad script reads. Deserializing only these lets
+/// serde skip the rest of each record (most of it) without building values.
+/// A present `events` or `ps_frame`, `null` included, is `Some`, as
+/// `Json::get` would find it.
+#[derive(serde::Deserialize)]
+struct ScriptRecord {
+    #[serde(default)]
+    inputs: Option<TracePorts>,
+    #[serde(default, deserialize_with = "present")]
+    events: Option<Json>,
+    #[serde(default, deserialize_with = "present")]
+    ps_frame: Option<Json>,
+}
+
+fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Json>, D::Error> {
+    serde::Deserialize::deserialize(d).map(Some)
+}
+
 impl PadScript {
     /// Slippi frame -123 is the first full scheduler pass. Simulation tick
     /// zero completes the cold setup/reset boundary, so prepend one pad row.
@@ -105,9 +123,9 @@ impl PadScript {
             if line.trim().is_empty() {
                 continue;
             }
-            let record: Json = serde_json::from_str(&line)
+            let record: ScriptRecord = serde_json::from_str(&line)
                 .with_context(|| format!("{}: line {}", path.display(), index + 1))?;
-            let pads = match record.get("inputs") {
+            let pads = match &record.inputs {
                 Some(inputs) => parse_ports(inputs)
                     .with_context(|| format!("{}: record {index} inputs", path.display()))?,
                 None if require => bail!(
@@ -117,9 +135,9 @@ impl PadScript {
                 None => [PadSample::default(); PORTS],
             };
             ticks.push(pads);
-            display_clock.push(display_clock_of(&record));
+            display_clock.push(display_clock_of(record.ps_frame.as_ref()));
             events.push(
-                recorded_events(&record)
+                recorded_events(record.events.as_ref())
                     .with_context(|| format!("{}: record {index} events", path.display()))?,
             );
         }
@@ -167,8 +185,8 @@ impl PadScript {
             if line.trim().is_empty() {
                 continue;
             }
-            let record: Json = serde_json::from_str(&line)?;
-            clock.push(display_clock_of(&record));
+            let record: ScriptRecord = serde_json::from_str(&line)?;
+            clock.push(display_clock_of(record.ps_frame.as_ref()));
         }
         if clock.iter().any(Option::is_some) {
             self.display_clock = clock;
@@ -223,8 +241,8 @@ impl PadScript {
 /// A retail tick's external events (`events` in the decoded trace,
 /// harness/decode.py). A trace without them recorded no stage reads: a
 /// replay fails closed if the stage polls one.
-fn recorded_events(record: &Json) -> Result<ExternalEvents> {
-    let Some(events) = record.get("events") else {
+fn recorded_events(events: Option<&Json>) -> Result<ExternalEvents> {
+    let Some(events) = events else {
         return Ok(ExternalEvents {
             stage_read: StageRead::Unrecorded,
         });
@@ -245,8 +263,8 @@ fn recorded_events(record: &Json) -> Result<ExternalEvents> {
 /// psFrameNum (psdisp.c:1857), recorded by the tick tracer since
 /// 2026-09-26. Older traces render every tick: their VI counts are not a
 /// reliable proxy for display passes.
-fn display_clock_of(record: &Json) -> Option<u64> {
-    record.get("ps_frame").and_then(Json::as_u64)
+fn display_clock_of(ps_frame: Option<&Json>) -> Option<u64> {
+    ps_frame.and_then(Json::as_u64)
 }
 
 /// Reconstruct the pad subset consumed by the human input proc. With old
@@ -284,11 +302,51 @@ pub fn replay_pad(input: &slp::cold::ControllerFrame) -> Result<PadSample> {
     })
 }
 
-fn parse_ports(inputs: &Json) -> Result<[PadSample; PORTS]> {
+/// A tick record's `inputs`: each port's decoded `HSD_PadStatus`.
+#[derive(serde::Deserialize)]
+struct TracePorts {
+    p0: Option<TracePad>,
+    p1: Option<TracePad>,
+    p2: Option<TracePad>,
+    p3: Option<TracePad>,
+}
+
+/// The `HSD_PadStatus` fields a pad script reads; serde skips the others.
+#[derive(serde::Deserialize)]
+#[allow(non_snake_case)]
+struct TracePad {
+    button: Option<UIntField>,
+    nml_stickX: Option<FloatField>,
+    nml_stickY: Option<FloatField>,
+    nml_subStickX: Option<FloatField>,
+    nml_subStickY: Option<FloatField>,
+    nml_analogL: Option<FloatField>,
+    nml_analogR: Option<FloatField>,
+}
+
+/// A decoded unsigned field, `{"t": "u", "v": value}`.
+#[derive(serde::Deserialize)]
+struct UIntField {
+    v: u64,
+}
+
+/// A decoded f32 field, `{"t": "f32", "v": {"bits": .., "approx": ..}}`.
+#[derive(serde::Deserialize)]
+struct FloatField {
+    v: FloatBits,
+}
+
+#[derive(serde::Deserialize)]
+struct FloatBits {
+    bits: u64,
+}
+
+fn parse_ports(inputs: &TracePorts) -> Result<[PadSample; PORTS]> {
     let mut pads = [PadSample::default(); PORTS];
-    for (port, pad) in pads.iter_mut().enumerate() {
-        let fields = inputs
-            .get(format!("p{port}"))
+    let ports = [&inputs.p0, &inputs.p1, &inputs.p2, &inputs.p3];
+    for (port, (pad, fields)) in pads.iter_mut().zip(ports).enumerate() {
+        let fields = fields
+            .as_ref()
             .with_context(|| format!("missing port {port}"))?;
         *pad = parse_pad(fields)?;
     }
@@ -297,30 +355,32 @@ fn parse_ports(inputs: &Json) -> Result<[PadSample; PORTS]> {
 
 /// `HSD_PadStatus` fields the fighter reads (Fighter_Spaghetti_8006AD10):
 /// the button word and the normalized sticks/triggers, by bit pattern.
-fn parse_pad(fields: &Json) -> Result<PadSample> {
-    let uint = |name: &str| -> Result<u64> {
-        fields[name]["v"]
-            .as_u64()
+fn parse_pad(fields: &TracePad) -> Result<PadSample> {
+    let uint = |name: &str, field: &Option<UIntField>| -> Result<u64> {
+        field
+            .as_ref()
+            .map(|f| f.v)
             .with_context(|| format!("field {name} is not an unsigned integer"))
     };
-    let float = |name: &str| -> Result<f32> {
-        let bits = fields[name]["v"]["bits"]
-            .as_u64()
+    let float = |name: &str, field: &Option<FloatField>| -> Result<f32> {
+        let bits = field
+            .as_ref()
+            .map(|f| f.v.bits)
             .with_context(|| format!("field {name} has no f32 bits"))?;
         Ok(f32::from_bits(u32::try_from(bits)?))
     };
     Ok(PadSample {
-        buttons: Buttons(u32::try_from(uint("button")?)?),
+        buttons: Buttons(u32::try_from(uint("button", &fields.button)?)?),
         stick: Stick {
-            x: float("nml_stickX")?,
-            y: float("nml_stickY")?,
+            x: float("nml_stickX", &fields.nml_stickX)?,
+            y: float("nml_stickY", &fields.nml_stickY)?,
         },
         cstick: Stick {
-            x: float("nml_subStickX")?,
-            y: float("nml_subStickY")?,
+            x: float("nml_subStickX", &fields.nml_subStickX)?,
+            y: float("nml_subStickY", &fields.nml_subStickY)?,
         },
-        left_trigger: float("nml_analogL")?,
-        right_trigger: float("nml_analogR")?,
+        left_trigger: float("nml_analogL", &fields.nml_analogL)?,
+        right_trigger: float("nml_analogR", &fields.nml_analogR)?,
     })
 }
 
