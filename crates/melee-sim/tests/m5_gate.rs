@@ -2253,7 +2253,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 162] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 168] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2548,6 +2548,15 @@ const CORPUS_V3_MATCHES: [(&str, usize); 162] = [
     // for that hit's knockback and ProcessHit's single percent addition.
     ("corpus_v3_fd_fox_jigglypuff4_e0fcbde24_p0", 6001),
     ("corpus_v3_fd_jigglypuff_fox4_e7254fba4_p0", 5310),
+    // Pikachu from its start boundary. A charged forward smash installs the
+    // charge color over the attack's electric program (ftCo_800DF0D0) and
+    // clears it on release (ftCo_800C0200).
+    ("corpus_v3_fd_pikachu_fox4_ec13743d5_p1", 6001),
+    ("corpus_v3_fd_pikachu_fox4_ecad2716f_p0", 6001),
+    ("corpus_v3_fd_pikachu_fox4_eeda0d0fc_p0", 6001),
+    ("corpus_v3_fd_pikachu_fox4_edb2b114a_p2", 5126),
+    ("corpus_v3_fd_pikachu_fox4_e1502cb40_p2", 6001),
+    ("corpus_v3_fd_pikachu_fox4_e573e2d95_p0", 6001),
 ];
 
 #[test]

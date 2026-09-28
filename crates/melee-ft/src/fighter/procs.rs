@@ -41,7 +41,7 @@ impl Fighter {
     /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
     pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {
         if self.core.sample_input(assets, sample) {
-            self.core.update_smash_charge_input();
+            self.core.update_smash_charge_input(assets);
             (self.motion_row.iasa)(self, state::InputPhase { assets });
         }
     }

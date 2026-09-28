@@ -125,35 +125,34 @@ impl FighterCore {
         let Some(charge) = &mut self.commands.smash_charge else {
             return;
         };
-        if matches!(charge.phase, ChargePhase::Charging) {
-            charge.frames += 1.0;
-            if charge.frames == 1.0 {
-                self.combat.charge_overlay = ChargeOverlay::default();
-            }
-            // The charge color program itself runs in ftCo_800C0408's
-            // secondary slot, after the primary (`advance_color_overlay`).
-            let overlay = &mut self.combat.charge_overlay;
-            if !overlay.sound_played && charge.frames >= assets.attacks.charge_sound_frame {
-                self.commands
-                    .footstep_sounds
-                    .push(super::commands::FootstepSound {
-                        channel: super::commands::SoundChannel::Ordinary,
-                        id: 0x7B,
-                        volume: 127,
-                        pan: 64,
-                    });
-                overlay.sound_played = true;
-            }
-            if charge.frames >= charge.maximum_frames {
-                charge.frames = charge.maximum_frames;
-                charge.phase = ChargePhase::Release;
-                self.animation
-                    .set_rate(&mut self.skeleton, charge.saved_rate, false);
-            }
+        if !matches!(charge.phase, ChargePhase::Charging) {
+            return;
+        }
+        charge.frames += 1.0;
+        if charge.frames >= charge.maximum_frames {
+            charge.frames = charge.maximum_frames;
+            charge.phase = ChargePhase::Release;
+            self.animation
+                .set_rate(&mut self.skeleton, charge.saved_rate, false);
+            let color = charge.color_animation;
+            self.release_charge_color(color, assets);
+        }
+        // x2130_sfxBool: the charge sound plays once per charge.
+        let frames = self.commands.smash_charge.as_ref().map_or(0.0, |c| c.frames);
+        if !self.combat.charge_sound_played && frames >= assets.attacks.charge_sound_frame {
+            self.commands
+                .footstep_sounds
+                .push(super::commands::FootstepSound {
+                    channel: super::commands::SoundChannel::Ordinary,
+                    id: 0x7B,
+                    volume: 127,
+                    pan: 64,
+                });
+            self.combat.charge_sound_played = true;
         }
     }
     /// ftCo_800DF0D0 (800DF0D0): hold/release before the state's IASA.
-    pub(super) fn update_smash_charge_input(&mut self) {
+    pub(super) fn update_smash_charge_input(&mut self, assets: &FighterAssets) {
         let Some(charge) = &mut self.commands.smash_charge else {
             return;
         };
@@ -163,8 +162,14 @@ impl FighterCore {
                     charge.phase = ChargePhase::Charging;
                     charge.saved_rate = self.animation.speed;
                     self.animation.set_rate(&mut self.skeleton, 0.0, false);
-                    // ftCo_800DF0D0 installs the charge color (unless 0x7B) in
-                    // the secondary slot; `charge_overlay` runs that program.
+                    self.combat.charge_sound_played = false;
+                    // ftCo_800BFFD0(fp, x2128, 0): the charge color takes its
+                    // slot like any color animation, replacing a program of
+                    // no higher priority (Pikachu's electric forward smash).
+                    let color = charge.color_animation;
+                    if color != NO_CHARGE_COLOR {
+                        self.install_color_overlay_now(color, assets);
+                    }
                 } else {
                     self.commands.smash_charge = None;
                 }
@@ -173,11 +178,15 @@ impl FighterCore {
                 charge.phase = ChargePhase::Release;
                 self.animation
                     .set_rate(&mut self.skeleton, charge.saved_rate, false);
+                let color = charge.color_animation;
+                self.release_charge_color(color, assets);
             }
             _ => {}
         }
     }
 }
+/// ftCo_800DF0D0 installs no charge color for 0x7B.
+const NO_CHARGE_COLOR: u8 = 0x7B;
 
 /// lb_80014258 / ft_800BFF34: decoded charge-overlay program.
 #[derive(Clone, Debug)]
@@ -204,7 +213,6 @@ pub struct ChargeOverlay {
     timer: u32,
     /// Renderer-facing target and blend duration; no gameplay depends on color.
     pub color: Option<(u32, u32)>,
-    sound_played: bool,
 }
 impl ChargeOverlay {
     /// lb_80014258's command loop; returns whether the program reached its end.

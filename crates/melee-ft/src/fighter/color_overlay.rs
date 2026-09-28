@@ -20,8 +20,6 @@ const TABLE_LEN: u32 = 0x7B;
 /// ftCo_800C0408: the flashing program installed while a fighter is
 /// intangible or invincible (x1990 / x1994 / x2221_b0).
 const INVINCIBILITY_FLASH: u8 = 9;
-/// ftCo_800DF0D0: a smash charge with color 0x7B installs no program.
-const NO_CHARGE_COLOR: u8 = 0x7B;
 
 #[derive(Clone, Copy, Debug)]
 struct Entry {
@@ -236,7 +234,6 @@ impl FighterCore {
             }
             self.combat.secondary_color_overlay = ColorOverlaySlot::default();
         }
-        self.advance_charge_color(assets);
     }
 
     /// lb_80014498 on the primary slot, then ftCo_800C0408's fallback: the
@@ -248,24 +245,22 @@ impl FighterCore {
         }
     }
 
-    /// ftCo_800C0408's secondary slot (x488), which holds the smash-charge
-    /// color while charging. With the primary slot busy it runs through
-    /// ft_800BFF70, which skips the program's effects and sounds.
-    fn advance_charge_color(&mut self, assets: &super::assets::FighterAssets) {
-        let Some(charge) = &self.commands.smash_charge else {
-            return;
-        };
-        if !matches!(charge.phase, melee_cmd::ChargePhase::Charging)
-            || charge.color_animation == NO_CHARGE_COLOR
-        {
+    /// ftCo_800C0200 (800C0200): a released smash charge clears its color's
+    /// slot. The secondary slot just empties (no supported kind has
+    /// ftData_UnkMotionStates4; the Hammer check is out of scope); the
+    /// primary slot takes ftCo_800C0408's fallbacks. Requests queued before
+    /// the release were installed earlier in retail, so they go first.
+    pub(super) fn release_charge_color(&mut self, id: u8, assets: &super::assets::FighterAssets) {
+        // ftcolanim.c:199-203: retail asserts on a spycloak id.
+        if id >= TABLE_LEN as u8 {
             return;
         }
-        let emit = self.combat.color_overlay.id == 0;
-        self.combat.charge_overlay.step(
-            emit,
-            assets.color_overlays.program(charge.color_animation),
-            &mut self.commands.graphics,
-            &mut self.commands.footstep_sounds,
-        );
+        self.install_requested_color_overlays(assets);
+        let table = &assets.color_overlays;
+        if table.entry(id).secondary {
+            self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+        } else {
+            self.clear_color_overlay(table);
+        }
     }
 }

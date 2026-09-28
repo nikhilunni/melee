@@ -20,13 +20,14 @@ use melee_types::{CommonMotionState as S, FighterKind, GroundOrAir};
 pub struct CombatState {
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
-    pub charge_overlay: super::smash::ChargeOverlay,
+    /// SmashAttr.x2130_sfxBool: the charge sound already played.
+    pub charge_sound_played: bool,
     /// Fighter.x408: the primary color animation (damage tints, burning,
     /// powershield flash); see `color_overlay`.
     pub color_overlay: super::color_overlay::ColorOverlaySlot,
     /// Fighter.x488: the secondary color animation, cleared by motion
-    /// changes without Ft_MF_SkipColAnim (ftCo_800C0134). The smash charge's
-    /// program runs separately in `charge_overlay`.
+    /// changes without Ft_MF_SkipColAnim (ftCo_800C0134). A smash charge
+    /// installs its color here and clears it on release (ftCo_800C0200).
     pub secondary_color_overlay: super::color_overlay::ColorOverlaySlot,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
