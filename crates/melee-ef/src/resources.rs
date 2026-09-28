@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 6] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 7] = [
     CharacterEffectFile {
         bank: 3,
         file: "EfFxData.dat",
@@ -31,6 +31,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 6] = [
         file: "EfCaData.dat",
         table: "effCaptainDataTable",
         models: 6,
+    },
+    // Models 0x1B58..0x1B5C (efSync 0x4BD..0x4C5): the jolt, Skull Bash
+    // and Thunder effects.
+    CharacterEffectFile {
+        bank: 7,
+        file: "EfPkData.dat",
+        table: "effPikachuDataTable",
+        models: 5,
     },
     // Particles only: the Egg Throw burst's generator 0x2328 (efsync.c:225).
     CharacterEffectFile {

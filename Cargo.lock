@@ -483,6 +483,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-pikachu"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-purin"
 version = "0.0.1"
 dependencies = [
@@ -1053,6 +1065,7 @@ dependencies = [
  "ft-mario",
  "ft-mars",
  "ft-peach",
+ "ft-pikachu",
  "ft-purin",
  "ft-yoshi",
  "gekko-math",

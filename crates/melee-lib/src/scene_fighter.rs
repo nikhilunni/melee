@@ -93,6 +93,7 @@ scene_characters! {
     "Peach" => Peach(ft_peach::init::Peach),
     "Yoshi" => Yoshi(ft_yoshi::init::Yoshi),
     "Jigglypuff" => Jigglypuff(ft_purin::init::Jigglypuff),
+    "Pikachu" => Pikachu(ft_pikachu::init::Pikachu),
     "Marth" => Marth(ft_mars::init::Marth),
     "Falco" => Falco(ft_falco::init::Falco),
     "CaptainFalcon" => CaptainFalcon(ft_captain::init::CaptainFalcon),

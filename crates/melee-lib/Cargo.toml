@@ -38,6 +38,7 @@ ft-captain = { path = "../ft-captain" }
 ft-peach = { path = "../ft-peach" }
 ft-yoshi = { path = "../ft-yoshi" }
 ft-purin = { path = "../ft-purin" }
+ft-pikachu = { path = "../ft-pikachu" }
 ft-mario = { path = "../ft-mario" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
