@@ -380,6 +380,9 @@ impl Fighter {
         if state == CommonMotionState::Wait.into() {
             self.core.play_wait_holding_idle(assets)?;
         }
+        if state == CommonMotionState::Wait.into() || state == CommonMotionState::SquatWait.into() {
+            (self.character.table().wait_entered)(self);
+        }
         Ok(())
     }
 

@@ -8,6 +8,7 @@ mod attack_s42;
 pub mod attributes;
 mod common;
 pub mod hookshot;
+pub mod hylian;
 pub mod special_hi;
 pub mod special_s;
 
@@ -27,6 +28,8 @@ pub trait LinkFamily: CharacterCallbacks {
     fn attributes(&self) -> &LinkAttributes;
     fn specials(&mut self) -> &mut Specials;
     fn specials_ref(&self) -> &Specials;
+    /// x5F4_arr[2].prev: model group 2's selection (0: the shield on the arm).
+    fn shield_model_group(&self) -> i32;
 }
 
 /// ftLk_FighterVars (fp+222C): the articles Link has out. ftLk_Init_OnDeath
@@ -65,6 +68,8 @@ pub struct Specials {
     pub hookshot_timer: f32,
     /// The down aerial's bounce (ftLk_AttackAir_Enter's callbacks).
     pub down_air: attack_air::DownAir,
+    /// The Hylian shield's volume while standing or crouching.
+    pub hylian: hylian::HylianShield,
 }
 impl Specials {
     /// ftLk_Init_OnDeath's clears, keeping the chain's allocation.
@@ -78,6 +83,7 @@ impl Specials {
         self.down_air.armed = false;
         self.down_air.frame_start = 0.0;
         self.down_air.hits.fill(None);
+        self.hylian = hylian::HylianShield::default();
     }
 }
 
@@ -298,6 +304,7 @@ pub fn death<C: LinkFamily>(f: &mut Fighter) {
 pub fn motion_changed(specials: &mut Specials) {
     specials.removal_armed = false;
     specials.down_air.armed = false;
+    specials.hylian.raised = false;
 }
 
 /// An owned article reached back (it_802A07B4 / Logic18_Destroyed's

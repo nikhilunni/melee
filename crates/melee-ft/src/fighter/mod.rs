@@ -227,6 +227,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const LANDING_ARTICLES: fn(&mut Fighter, bool) = character::no_landing_articles;
     /// ft_8008A348's kind branch on entering Wait (ft_08A1.c:85-91).
     const WAIT_ARTICLES: fn(&mut Fighter) = character::no_wait_articles;
+    /// ft_8008A348's and ftCo_SquatWait_Enter_inline's kind switch after
+    /// the motion change (Link's Hylian shield, ft_08A1.c:99-106,
+    /// ftCo_SquatWait.c:67-75).
+    const WAIT_ENTERED: fn(&mut Fighter) = character::no_wait_articles;
     /// ftCo_800C3538's x2222_b2: the character's current state takes a cape
     /// hit without the turnaround (Fox's Illusion).
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = character::cape_turn_allowed;

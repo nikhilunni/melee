@@ -239,6 +239,7 @@ fn counter_volume<C: MarsFamily>(f: &mut Fighter) -> Option<melee_ft::fighter::d
         radius,
         // ftMs_SpecialLw_Anim: x221B_b1 after ftColl_8007B1B8.
         fixed_bounce: true,
+        no_bounce: false,
     })
 }
 

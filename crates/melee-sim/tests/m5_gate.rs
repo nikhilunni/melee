@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 360] = [
+const MATRIX_WITNESSES: [(&str, usize); 363] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1436,6 +1436,12 @@ const MATRIX_WITNESSES: [(&str, usize); 360] = [
     ("links_yl_grab_fd_fox4", 560),
     ("links_yl_zair_fd_fox4", 520),
     ("links_dair_fd_fox4", 480),
+    // LINKS: the Hylian shield (Wait/SquatWait's kind switch, ftColl_8007B1B8
+    // with x221B_b2/b3/b4) against Fox's lasers, far and close, facing and turned
+    // away, for Link and Young Link.
+    ("links_hylian_fd_fox4", 520),
+    ("links_hylian_close_fd_fox4", 600),
+    ("links_yl_hylian_close_fd_fox4", 600),
 ];
 
 #[test]
@@ -2497,7 +2503,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 355] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 356] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3070,6 +3076,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 355] = [
     ("corpus_v3_fd_link_fox4_ed97ea327_p1", 2793),
     ("corpus_v3_fd_link_fox4_e266e1150_p0", 2688),
     ("corpus_v3_fd_link_fox4_e2b9e1400_p0", 2682),
+    // Link standing with his back to Fox stops a laser on the Hylian shield.
+    ("corpus_v3_fd_link_fox4_edafcfddf_p2", 2737),
 ];
 
 #[test]

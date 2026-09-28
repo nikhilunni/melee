@@ -398,6 +398,7 @@ fn toad_volume(f: &mut Fighter) -> Option<melee_ft::fighter::damage::DefenseVolu
         radius,
         // onAnim sets x221B_b3 (front only), not x221B_b1.
         fixed_bounce: false,
+        no_bounce: false,
     })
 }
 

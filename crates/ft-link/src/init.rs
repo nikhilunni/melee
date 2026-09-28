@@ -35,6 +35,9 @@ impl LinkFamily for Link {
     fn specials_ref(&self) -> &Specials {
         &self.specials
     }
+    fn shield_model_group(&self) -> i32 {
+        self.model_groups[2]
+    }
 }
 
 static SPECIAL_ROWS: [MotionRow; FamilyState::COUNT] = ft_link_family::rows::<Link>();
@@ -86,6 +89,12 @@ impl CharacterCallbacks for Link {
     /// ftLk_AttackAir_Enter (ftCo_AttackAir.c decideFighter).
     const ENTER_AERIAL: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         ft_link_family::attack_air::enter::<Self>;
+    /// ft_8008A348 / the SquatWait entry: the Hylian shield.
+    const WAIT_ENTERED: fn(&mut Fighter) = ft_link_family::hylian::raise::<Self>;
+    const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =
+        Some(ft_link_family::hylian::item_contact::<Self>);
+    const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
+        Some(ft_link_family::hylian::process_hit::<Self>);
     /// The down aerial's lwOnHit.
     const DEAL_DAMAGE: Option<fn(&mut Fighter, &FighterAssets)> =
         Some(ft_link_family::attack_air::deal_damage::<Self>);
@@ -141,6 +150,9 @@ impl CharacterCallbacks for Link {
     }
     /// ftLk_Init_OnDeath (800EAD84): ftParts_80074A4C(gobj, 0..2, 0) and
     /// the FighterVars reset.
+    fn restore_saved(&mut self, raw_fighter: &[u8]) {
+        ft_link_family::hylian::restore_saved(&mut self.specials.hylian, raw_fighter);
+    }
     fn on_reset(&mut self) {
         self.model_groups = [0; 3];
         self.specials.reset();

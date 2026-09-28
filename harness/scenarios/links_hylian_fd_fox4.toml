@@ -1,0 +1,41 @@
+# LINKS directed witness: the Hylian shield raised (ftLk_AttackAir_800EB3BC
+# on Wait and SquatWait entry) against Fox's lasers from across the stage:
+# standing and crouching toward Fox the laser is past Link when it touches
+# (x221B_b3 reads the item's position) and strikes him; turned away the shot
+# passes over the shield and strikes him too, and so does one while he walks.
+name = "links_hylian_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 122, port = 1, buttons = {  }, raw = {  } },
+  { frame = 170, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 172, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 240, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 242, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 322, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 362, port = 1, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 426, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 428, port = 1, buttons = {  }, raw = {  } },
+  { frame = 470, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

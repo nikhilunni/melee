@@ -530,6 +530,9 @@ pub struct DefenseVolume {
     /// x221B_b1: a counter's volume, off which a bouncing item leaves at
     /// PlCo +2D0 degrees whatever the geometry (ftColl_80077688).
     pub fixed_bounce: bool,
+    /// x221B_b2: nothing bounces off the volume (ftColl_80077688 clears the
+    /// item's xDCE b5; Link's Hylian shield).
+    pub no_bounce: bool,
 }
 
 /// getEnvDmg (ftcoll.c:205, inlined): zero stays zero; nonzero values which
@@ -1622,7 +1625,8 @@ impl FighterCore {
         };
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
-            item.pending_shield_deflection = item.hit_flags[id].shield_bounce.then(|| {
+            let bounces = item.hit_flags[id].shield_bounce && !volume.no_bounce;
+            item.pending_shield_deflection = bounces.then(|| {
                 let deflection = melee_lb::shield::deflection(
                     volume.position,
                     &volume.matrix,
