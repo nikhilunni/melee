@@ -137,7 +137,7 @@ const PIT_LINES: [i32; 2] = super::procs::PIT_LINES;
 /// successful one; indexed by `Form::archive`. Retail's latency is the
 /// emulated disc's: these are measured from retail recordings (the poll
 /// that succeeds is the tick before the announcement), not derived.
-const LOAD_POLLS: [Option<u32>; 4] = [None, None, None, Some(21)];
+const LOAD_POLLS: [Option<u32>; 4] = [Some(23), Some(18), Some(23), Some(21)];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transformation {

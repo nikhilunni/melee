@@ -188,6 +188,11 @@ impl Presentation {
         // Reuse live stage poses where available; static models retain their
         // authored hierarchy. No renderer-owned animation clock or RNG.
         for (map, desc) in assets.stage_desc.models.iter().enumerate() {
+            // A null map_head entry (Pokemon Stadium's forms) has no model
+            // here; its archive is read mid-match. TODO(presentation): forms.
+            if !desc.present {
+                continue;
+            }
             if let Some(animation) = game.engine.state().stage_animations.get(&(map as u8)) {
                 result.add_model(
                     &assets.stage,

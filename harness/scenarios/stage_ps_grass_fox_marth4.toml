@@ -1,0 +1,28 @@
+# STAGE-PS witness: from the start_ps_fox_marth4 boundary Fox (p1) walks
+# right for 28 tick(s) at tick 130 and both fighters then idle. The walk's
+# dust particles change the RNG draws before the first transformation, so
+# grStadium_801D4548 picks the grass form (datfiles[1], GrPs2.dat) at the
+# first base-form duration's end, reads its archive, announces it, sinks the
+# base arena and raises the form; after the form's duration the base
+# returns. The screen cycles its modes throughout.
+name = "stage_ps_grass_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 7500
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 130, port = 0, buttons = { StickX = 0.64224609375 }, raw = { stickX = 80 } },
+  { frame = 158, port = 0, buttons = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

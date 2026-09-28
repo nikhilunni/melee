@@ -1234,10 +1234,14 @@ fn slope_body_tilt_matches_retail_bones() {
 /// Pokemon Stadium from the Fox/Marth start boundary: the screen's mode
 /// cycle (grStadium_801D2A60) with its close-up framing, and the
 /// transformation controller (grStadium_801D4548) sinking the base arena
-/// under idle fighters, raising the rock form, and returning to the base.
+/// under idle fighters, raising each form (a short walk steers the first
+/// choice) with its collision and particles, and returning to the base.
 #[test]
 fn pokemon_stadium_transformations_match_retail() {
     combat_gate_ticks("stage_ps_idle_fox_marth4", 7200);
+    combat_gate_ticks("stage_ps_fire_fox_marth4", 7500);
+    combat_gate_ticks("stage_ps_water_fox_marth4", 7500);
+    combat_gate_ticks("stage_ps_grass_fox_marth4", 7500);
 }
 
 /// Marth dizzy after a decay break until Furafura wears off (831).
