@@ -137,10 +137,9 @@ fn hold<C: FoxFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<W
             let normal = f.collision.data.floor.normal;
             let grounded = stick.x.abs() + stick.y.abs() >= a.direction_stick_min
                 && melee_lb::shield::angle_xy(normal, direction) >= std::f32::consts::FRAC_PI_2;
-            if grounded {
-                if f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0 {
-                    unimplemented!("ftCo_8009A134: Fire Fox platform-skip launch");
-                }
+            // ftFx_SpecialAirHi_AirToGround (800E7AE4): on a platform,
+            // ftCo_8009A134 skips it and the launch goes airborne instead.
+            if grounded && !f.skip_platform_floor() {
                 return launch_ground::<C>(f, p.assets).map(|()| None);
             }
             f.leave_ground_with_spent_jumps();
@@ -408,11 +407,9 @@ fn travel_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) ->
     let bounce_var = a.bounce_var;
     let bound_ready = f.character.get_mut::<C>().special_hi().collision_ticks >= bounce_var;
     let flags = f.collision.data.env_flags as u32;
-    if landed {
-        if !bound_ready && f.collision.data.floor.flags & melee_types::mp::line_flag::PLATFORM != 0
-        {
-            unimplemented!("ftCo_8009A134: Fire Fox travel platform skip");
-        }
+    // ftFox_SpecialHi_IsBound: before bounce_var ticks, a platform landing
+    // is skipped (ftCo_8009A134) and handled like no landing at all.
+    if landed && (bound_ready || !f.skip_platform_floor()) {
         let shallow_contact =
             melee_lb::shield::angle_xy(f.collision.data.floor.normal, f.physics.self_velocity)
                 < threshold;
