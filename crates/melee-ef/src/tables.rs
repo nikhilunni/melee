@@ -140,7 +140,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 14] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 15] = [
     // efasync.c 0x410 (80063... efLib_CreateGenerator 0x22A): an item's
     // explosion (it_80272C08).
     DustSpawn {
@@ -193,6 +193,12 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 14] = [
         particle: 0xB,
         directional: false,
     },
+    // efasync.c:189-191: efLib_CreateGenerator(0x48) at the offset position.
+    DustSpawn {
+        request: 0x3F4,
+        particle: 0x48,
+        directional: false,
+    },
     DustSpawn {
         request: 0x3FE,
         particle: 0x107,
@@ -221,7 +227,7 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 14] = [
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 6] = [
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 7] = [
     (0x402, 0x59),
     (0x403, 0x5E),
     (0x412, 0x13),
@@ -229,7 +235,12 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 6] = [
     (0x414, 0xE1),
     // efasync.c:542-544: the item pickup sparkle.
     (0x422, 0x5B),
+    // efsync.c:443-445: Peach's float sparkle, efLib_CreateGenerator_Attach.
+    (0x4D4, 0x11E),
 ];
+// eflib.c:761-768: efLib_CreateGenerator_Attach clears PSAPPSRT_UNK_B10
+// after hsd_8039EFAC; the other attached rows keep it.
+pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 pub(super) static PARTICLE_KINDS: [i32; 27] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 306, 307, 364, 365, 366, 367, 368, 372, 373, 374,

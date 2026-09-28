@@ -233,14 +233,13 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
                 }
                 _ => true,
             };
-            if enabled {
-                fighter.character.check_float_input(
+            enabled
+                && fighter.character.check_float_input(
                     &fighter.core.input,
                     assets,
                     fighter.core.physics.self_velocity.y,
                     phase,
-                );
-            }
+                )
         },
     );
     match transition {
@@ -251,6 +250,9 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         }
         WaitTransition::Jump => fighter.enter_aerial_jump(assets).expect("aerial jump"),
         WaitTransition::Escape => fighter.enter_air_dodge(assets).expect("air dodge"),
+        WaitTransition::Float => {
+            (fighter.character.table().enter_float)(fighter, assets).expect("float entry")
+        }
         _ => unimplemented!("ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"),
     }
 }

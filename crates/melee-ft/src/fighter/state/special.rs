@@ -3,6 +3,16 @@ use crate::fighter::{assets::FighterAssets, Fighter, SpecialSlot};
 use crate::input::{WaitContext, WaitPredicate, WaitTransition};
 
 impl Fighter {
+    /// ftCo_SpecialAir_CheckInput (8009665C) as a character IASA's first check:
+    /// a B press enters the stick's aerial special.
+    pub fn try_air_special(&mut self, assets: &FighterAssets) -> bool {
+        if !self.core.input.pressed.intersects(crate::input::Buttons::B) {
+            return false;
+        }
+        self.enter_buffered_special(assets, true);
+        true
+    }
+
     /// ftCo_SpecialS_CheckInput / ftCo_Attack100_CheckInput / ftCo_800D6824 /
     /// ftCo_800D68C0 consult ftData_SpecialS/Hi/N/Lw[kind], respectively.
     /// In the air, ftCo_SpecialAir_CheckInput reads the stick itself.

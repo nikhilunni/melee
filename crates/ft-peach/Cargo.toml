@@ -10,6 +10,7 @@ melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
+melee-ef = { path = "../melee-ef" }
 
 [dev-dependencies]
 melee-test-support = { path = "../melee-test-support" }

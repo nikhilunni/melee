@@ -25,6 +25,8 @@ pub struct Peach {
     /// Fighter +2240: Toad's once-per-airtime vertical boost.
     pub aerial_toad_used: bool,
     pub items: PeachItems,
+    /// fp->mv.pe.floatattack, the float aerials' motion scratch.
+    pub float_attack: crate::float_attack::FloatAttack,
     pub registered_items: Vec<ItemKind>,
     pub model_groups: [i32; 7],
     costume: u8,
@@ -38,12 +40,14 @@ impl Peach {
             smash_motion: -1,
             aerial_toad_used: false,
             items: PeachItems::default(),
+            float_attack: Default::default(),
             registered_items: Vec::new(),
             model_groups: [0; 7],
             costume: 0,
         }
     }
 }
+static SPECIAL_ROWS: [melee_ft::fighter::MotionRow; 8] = crate::special_rows();
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Peach>();
 
@@ -56,6 +60,8 @@ impl CharacterCallbacks for Peach {
         &mut melee_ft::fighter::Fighter,
         &melee_ft::fighter::assets::FighterAssets,
     ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
+    const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &SPECIAL_ROWS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     fn kind(&self) -> FighterKind {
         FighterKind::Peach
     }
@@ -131,24 +137,13 @@ impl CharacterCallbacks for Peach {
         assets: &FighterAssets,
         vertical_velocity: f32,
         phase: melee_ft::fighter::FloatInputPhase,
-    ) {
-        use melee_ft::{fighter::FloatInputPhase, input::Buttons};
-        let selected = self.has_float
-            && match phase {
-                FloatInputPhase::BeforeAerialJump => {
-                    input.current.stick.y <= -assets.jumping.fast_fall_threshold
-                        && input.current.held.intersects(Buttons::XY)
-                }
-                FloatInputPhase::AfterAerialJump => {
-                    vertical_velocity <= 0.0
-                        && (input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
-                            || input.current.held.intersects(Buttons::XY))
-                }
-            };
-        if selected {
-            unimplemented!("ftPe_8011BA54 / ftPe_8011BAD8 -> ftPe_8011BB6C: float entry");
-        }
+    ) -> bool {
+        crate::float::float_input_selected(self, input, assets, vertical_velocity, phase)
     }
+    const ENTER_FLOAT: fn(
+        &mut melee_ft::fighter::Fighter,
+        &FighterAssets,
+    ) -> melee_ft::fighter::assets::Result<()> = crate::float::enter_from_input;
     /// ftPe_JumpAerial_Enter (800CC0E8): animation-driven vertical velocity.
     fn aerial_jump_style(&self) -> AerialJumpStyle {
         AerialJumpStyle::Peach

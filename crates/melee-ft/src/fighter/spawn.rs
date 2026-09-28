@@ -312,6 +312,29 @@ impl Fighter {
         self.change_motion_state_with_rate(state, assets, start, 1.0)
     }
 
+    /// Fighter_ChangeMotionState with Ft_MF_KeepGfx only: owned effects
+    /// survive the entry (ftPe_UpdateFloatDir, 8011BD6C).
+    pub fn change_motion_state_keeping_effects(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        start: f32,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start,
+                rate: 1.0,
+                preserve: MotionPreservation {
+                    effects: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+    }
+
     /// Fighter_ChangeMotionState with Ft_MF_SkipAnimVel: a mid-animation
     /// grounded start keeps the fighter's velocity (ftCo_TurnRun_Enter).
     pub(super) fn change_motion_state_keeping_velocity(

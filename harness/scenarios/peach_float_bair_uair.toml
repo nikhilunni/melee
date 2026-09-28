@@ -1,0 +1,31 @@
+# PEACH float aerials, back then up: Float, A with the stick back enters
+# FloatAttackAirB (346) and returns to Float; A with the stick up enters
+# FloatAttackAirHi (347) and returns again; the timer runs out into FloatFallF.
+# From the start_fd_peach_fox4 boundary (both fighters in Entry; P1 Peach
+# facing right reaches Wait at tick 102). Input frames count tick records.
+name = "peach_float_bair_uair"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 120, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 170, port = 0, buttons = { A = true, X = true, StickX = -0.64388671875 }, raw = { button = 1280, stickX = -80 } },
+  { frame = 172, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 240, port = 0, buttons = { A = true, X = true, StickY = 0.64224609375 }, raw = { button = 1280, stickY = 80 } },
+  { frame = 242, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 400, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

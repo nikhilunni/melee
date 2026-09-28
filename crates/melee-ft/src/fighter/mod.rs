@@ -269,15 +269,20 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         Ok(())
     }
     /// ftPe_8011BA54 / ftPe_8011BAD8: float selection surrounding the
-    /// aerial-jump predicate. Characters without float do nothing.
+    /// aerial-jump predicate. Characters without float never match; a match
+    /// ends the IASA chain with `ENTER_FLOAT`.
     fn check_float_input(
         &self,
         _input: &crate::input::FighterInput,
         _assets: &assets::FighterAssets,
         _vertical_velocity: f32,
         _phase: FloatInputPhase,
-    ) {
+    ) -> bool {
+        false
     }
+    /// ftPe_8011BB6C: the float entry selected by `check_float_input`.
+    const ENTER_FLOAT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+        character::unsupported_float;
 
     /// Which double-jump entry the character uses
     /// (ftCo_JumpAerial.c:103-119 `switch (fp->kind)`). The default arm is

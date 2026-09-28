@@ -937,7 +937,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 69] = [
+const MATRIX_WITNESSES: [(&str, usize); 76] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1009,6 +1009,15 @@ const MATRIX_WITNESSES: [(&str, usize); 69] = [
     ("taunt_start_fd_peach_fox4", 600),
     ("taunt_start_fd_yoshi_fox4", 600),
     ("taunt_start_fd_jigglypuff_fox4", 600),
+    // Peach's float (ftpeachfloat.c): entries, release, timeout, and the
+    // five float aerials returning to Float or falling after release.
+    ("peach_float_release_back", 280),
+    ("peach_float_timeout", 480),
+    ("peach_float_down_x", 280),
+    ("peach_float_nair_return", 400),
+    ("peach_float_fair_release", 300),
+    ("peach_float_dair_cstick", 320),
+    ("peach_float_bair_uair", 420),
 ];
 
 #[test]
@@ -1968,7 +1977,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 58] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 60] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2085,6 +2094,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 58] = [
     ("yoshi_egg_fd_fox4_e726cfdde_p2", 133),
     // Falco's taunt: ftCo_800DEA28's default arm (common AppealS).
     ("corpus_v3_fd_falco_fox4_e89a89d0e_p1", 102),
+    // Peach floats out of Fall on the final tick (ftPe_8011BAD8 -> ftPe_8011BB6C).
+    ("corpus_v3_fd_peach_fox4_e00f31913_p2", 125),
+    // Peach's subaction effect 0x3F4 (ftCo_09F7.c block_70, generator 0x48).
+    ("corpus_v3_fd_peach_fox4_edb2b114a_p2", 137),
 ];
 
 #[test]

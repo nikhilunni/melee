@@ -299,6 +299,11 @@ impl FighterCore {
 }
 
 impl FighterCore {
+    /// ftCo_JumpAerial_Phys_Cb (800CC6C8): drift, then TransN's vertical
+    /// delta. Also Peach's FloatFall physics (ftPe_FloatFall_Phys).
+    pub fn root_motion_aerial_physics(&mut self, assets: &FighterAssets) {
+        self.airborne_physics(assets, true);
+    }
     /// ftCo_Jump_Phys_Inner (800CB438): calculation after jump-style selection.
     fn airborne_physics(&mut self, assets: &FighterAssets, animation_driven: bool) {
         if animation_driven {

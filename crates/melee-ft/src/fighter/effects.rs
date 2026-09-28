@@ -144,6 +144,7 @@ impl super::FighterCore {
                         | 0x514
                         | 0x515
                         | 0x3F3
+                        | 0x3F4
                         | 0x3F7
                         | 0x407
                         | 0x3FE
@@ -163,7 +164,7 @@ impl super::FighterCore {
             ] {
                 let random = rng.randf();
                 // Early branch: retail 8009F94C/F970/F9A4 fmadds.
-                // 3F3/3F7/407/3FE/3FF/400/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
+                // 3F3/3F4/3F7/407/3FE/3FF/400/401 use block_70: 8009FCF8/FD1C/FD44 fmadds.
                 // The range doubling and random subtraction round separately.
                 *value = gekko_math::fma::fmadds(2.0 * range, random - 0.5, *value);
                 draws += 1;

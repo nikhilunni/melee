@@ -28,6 +28,8 @@ pub enum WaitTransition {
     Hold,
     Turn,
     Walk,
+    /// A character float predicate matched (ftPe_8011BA54 / ftPe_8011BAD8).
+    Float,
 }
 
 /// Individual retail predicates, including the misleading Attack100 symbol:

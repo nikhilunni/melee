@@ -256,7 +256,7 @@ pub fn iasa(
     jumps_used: u8,
     max_jumps: i32,
     allow_air_dodge: bool,
-    check_float: impl FnMut(super::FloatInputPhase),
+    check_float: impl FnMut(super::FloatInputPhase) -> bool,
 ) -> crate::input::WaitTransition {
     let jump = i32::from(jumps_used) < max_jumps
         && (input.pressed.intersects(crate::input::Buttons::XY)
@@ -272,7 +272,7 @@ pub(super) fn iasa_with_jump(
     common: &crate::input::InputCommonData,
     jump: bool,
     allow_air_dodge: bool,
-    mut check_float: impl FnMut(super::FloatInputPhase),
+    mut check_float: impl FnMut(super::FloatInputPhase) -> bool,
 ) -> crate::input::WaitTransition {
     use crate::input::{Buttons, WaitTransition as T};
     if input.pressed.intersects(Buttons::B) {
@@ -284,10 +284,14 @@ pub(super) fn iasa_with_jump(
     if super::attack::aerial::requested(input, common) {
         return T::Attack;
     }
-    check_float(super::FloatInputPhase::BeforeAerialJump);
+    if check_float(super::FloatInputPhase::BeforeAerialJump) {
+        return T::Float;
+    }
     if jump {
         return T::Jump;
     }
-    check_float(super::FloatInputPhase::AfterAerialJump);
+    if check_float(super::FloatInputPhase::AfterAerialJump) {
+        return T::Float;
+    }
     T::None
 }

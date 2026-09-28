@@ -1123,12 +1123,8 @@ impl Fighter {
             // input chain omits ordinary Fall's air-dodge check.
             !tumbling,
             |phase| {
-                self.character.check_float_input(
-                    &self.core.input,
-                    assets,
-                    vertical_velocity,
-                    phase,
-                );
+                self.character
+                    .check_float_input(&self.core.input, assets, vertical_velocity, phase)
             },
         );
         match transition {
@@ -1145,6 +1141,7 @@ impl Fighter {
             T::Attack => (self.character.table().enter_aerial)(self, assets),
             T::Jump => self.enter_aerial_jump(assets),
             T::Escape => self.enter_air_dodge(assets),
+            T::Float => (self.character.table().enter_float)(self, assets),
             T::AirSpecial => {
                 self.enter_buffered_special(assets, true);
                 Ok(())

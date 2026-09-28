@@ -2,7 +2,7 @@
 use crate::fighter::{
     assets::{FighterAssets, Result},
     state::{AnimationPhase, CollisionPhase, InputPhase},
-    Fighter, Interaction, MotionData,
+    ActionId, Fighter, Interaction, MotionData,
 };
 use crate::input::{Buttons, FighterInput, InputCommonData};
 use gekko_math::msl::fabsf;
@@ -57,6 +57,13 @@ pub fn enter(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         &assets.input,
         fighter.core.physics.facing,
     );
+    enter_action(fighter, assets, state.into())
+}
+
+/// ftCo_AttackAir_EnterFromMsid (8008CFAC) for an already chosen row: the
+/// common aerials, or a character's counterpart (Peach's float aerials,
+/// ftPe_8011BF34).
+pub fn enter_action(fighter: &mut Fighter, assets: &FighterAssets, action: ActionId) -> Result<()> {
     let retained_drop_timer = fighter.retained_drop_timer();
     let fast_fall = fighter.core.physics.fast_fall;
     fighter.core.commands.allow_interrupt = false;
@@ -64,7 +71,7 @@ pub fn enter(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     fighter.core.commands.grab_release = false;
     fighter.core.commands.throw_reverse = false;
     fighter.core.commands.rapid_jab_loop_end = false;
-    fighter.change_motion_state(state.into(), assets)?;
+    fighter.change_motion_state(action, assets)?;
     // Ft_MF_KeepFastFall; restore before the entry animation step and physics.
     fighter.core.physics.fast_fall = fast_fall;
     fighter.core.state_data = MotionData::Aerial {

@@ -122,7 +122,7 @@ impl Fighter {
 
     /// ftCo_80095328 (80095328): a held item thrown in the air, by a C-stick
     /// flick (ftCo_800DF50C) or A (ftCo_80094E54). Returns whether it threw.
-    pub(super) fn try_air_item_throw(&mut self, assets: &FighterAssets) -> Result<bool> {
+    pub fn try_air_item_throw(&mut self, assets: &FighterAssets) -> Result<bool> {
         use crate::input::Buttons;
         let Some(held) = self.core.held_item else {
             return Ok(false);

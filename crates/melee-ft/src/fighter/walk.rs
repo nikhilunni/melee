@@ -131,6 +131,7 @@ impl Fighter {
                 Ok(())
             }
             T::AirSpecial => unreachable!("ground transitions resolve their special slot"),
+            T::Float => unreachable!("float is an airborne transition"),
             T::ItemThrow => self.enter_ground_item_throw(assets),
             T::Attack => self.enter_ground_attack(assets),
             T::Grab => self.enter_catch(assets),

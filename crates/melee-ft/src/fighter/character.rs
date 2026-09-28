@@ -59,7 +59,8 @@ pub struct CharacterTable {
         &assets::FighterAssets,
         f32,
         FloatInputPhase,
-    ),
+    ) -> bool,
+    pub enter_float: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
     pub aerial_jump_style: fn(&CharacterState) -> AerialJumpStyle,
     pub multi_jump_attributes: fn(&CharacterState) -> Option<&multi_jump::MultiJumpAttributes>,
     pub multi_jump_family: fn(&CharacterState) -> usize,
@@ -130,6 +131,7 @@ impl CharacterTable {
                     .get::<C>()
                     .check_float_input(input, assets, vertical_velocity, phase)
             },
+            enter_float: C::ENTER_FLOAT,
             aerial_jump_style: |state| state.get::<C>().aerial_jump_style(),
             multi_jump_attributes: |state| state.get::<C>().multi_jump_attributes(),
             multi_jump_family: |state| state.get::<C>().multi_jump_family(),
@@ -288,7 +290,7 @@ impl CharacterState {
         assets: &assets::FighterAssets,
         vertical_velocity: f32,
         phase: FloatInputPhase,
-    ) {
+    ) -> bool {
         (self.table.check_float_input)(self, input, assets, vertical_velocity, phase)
     }
     pub fn aerial_jump_style(&self) -> AerialJumpStyle {
@@ -344,6 +346,13 @@ pub(super) fn no_animation(_fighter: &mut Fighter, _assets: &assets::FighterAsse
 #[inline(never)]
 pub(super) fn no_retained_scratch_word(_state: &CharacterState, _action: ActionId) -> Option<f32> {
     None
+}
+
+pub(super) fn unsupported_float(
+    _fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+) -> assets::Result<()> {
+    unreachable!("float entry for a character whose float predicate never matches");
 }
 
 pub(super) fn unsupported_taunt(

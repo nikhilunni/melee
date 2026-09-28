@@ -390,7 +390,13 @@ impl Effects {
                     resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),
                 ));
                 self.events.spawn(&spawn, false, false);
-                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                let generator = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                if let Some(generator) = generator.filter(|_| ATTACHED_CLEARS_B10.contains(&id)) {
+                    // PSAPPSRT_UNK_B10 (1 << 10).
+                    self.events.flags(joint_id, 0x400, 0);
+                    let generator = particles.generator_mut(generator).unwrap();
+                    generator.flags &= !0x400;
+                }
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
