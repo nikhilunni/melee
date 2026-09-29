@@ -13,6 +13,7 @@ pub mod frame;
 pub mod initial_state;
 pub mod inputs;
 pub mod replay;
+pub mod replay_batch;
 pub mod scenario;
 pub mod search;
 pub mod trace;

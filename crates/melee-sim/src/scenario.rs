@@ -26,6 +26,9 @@ pub struct Scenario {
     /// A cold match's counting-down timer, in seconds.
     #[serde(default)]
     pub time_limit: Option<u32>,
+    /// How players spawn (melee_lib::slippi::SpawnRule).
+    #[serde(default, deserialize_with = "spawn_rule::deserialize")]
+    pub spawn: melee_lib::slippi::SpawnRule,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -308,6 +311,7 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
             all_characters_unlocked: self.all_characters_unlocked,
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
+            slippi: melee_lib::slippi::SlippiCodes { spawn: self.spawn },
         })
     }
     fn is_cold(&self) -> bool {
@@ -330,5 +334,24 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     }
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
         Ok(Box::new(melee_trace_io::open(path)?))
+    }
+}
+
+/// `spawn = "retail" | "neutral-2019" | "neutral-2020"` in scenario TOML.
+mod spawn_rule {
+    use melee_lib::slippi::{NeutralTable, SpawnRule};
+    use serde::{Deserialize, Deserializer};
+    const NAMES: [(&str, SpawnRule); 3] = [
+        ("retail", SpawnRule::Retail),
+        ("neutral-2019", SpawnRule::NeutralTable(NeutralTable::V2019)),
+        ("neutral-2020", SpawnRule::NeutralTable(NeutralTable::V2020)),
+    ];
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<SpawnRule, D::Error> {
+        let name = String::deserialize(d)?;
+        NAMES
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, rule)| *rule)
+            .ok_or_else(|| serde::de::Error::custom(format!("unknown spawn rule {name}")))
     }
 }

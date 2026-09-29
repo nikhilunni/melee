@@ -15,6 +15,12 @@ pub fn character_descriptor(
 ) -> Option<&'static melee_ft::fighter::assets::CharacterDescriptor> {
     crate::scene_fighter::SceneFighter::descriptor_for(name)
 }
+/// The cold pre-music boundary seed from the seed before fn_8016E730's
+/// Ground and Player creation (Slippi's Game Start seed, injected at
+/// 0x8016E74C): that seed advanced by the setup's fixed draws.
+pub fn boundary_seed_from_creation(setup: &Setup, seed: u32) -> anyhow::Result<u32> {
+    crate::initial_state::boundary_seed_after(seed, setup.stage.kind, setup.roster().len())
+}
 pub const CHARACTERS: &[&str] = crate::scene_fighter::SceneFighter::NAMES;
 /// Content fingerprint of the source bytes actually loaded, including articles.
 /// Stable for the same Rust toolchain, loader and assets, independent of directory.
@@ -114,6 +120,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             all_characters_unlocked: self.all_characters_unlocked,
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
+            slippi: Default::default(),
         })
     }
     fn is_cold(&self) -> bool {

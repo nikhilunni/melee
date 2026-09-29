@@ -21,7 +21,8 @@
 //!
 //! `jumps_used` is deliberately not emitted: Slippi records jumps *remaining*
 //! and the conversion needs the character's max jump count. Nana (the Ice
-//! Climbers follower) has no schema path and is not emitted.
+//! Climbers follower) is emitted under `pN.follower.`, N being her leader's
+//! index; consumers map it to her own fighter.
 //!
 //! `rng.seed` in a `frame_end` record is the seed after the frame finished.
 //! Use adjacent Frame Start(n+1), never Pre Frame(n+1): the latter runs
@@ -56,33 +57,15 @@ pub fn to_trace(replay: &Replay) -> Vec<Record> {
 
         for (index, port) in replay.leader_ports().enumerate() {
             let pf = &frame.ports[port];
-            let Some(post) = &pf.leader.post else {
-                continue;
-            };
-            let p = format!("p{index}");
-            let mut put = |name: &str, v: Value| {
-                state.insert(format!("{p}.{name}"), v);
-            };
-            put("kind", Value::Int(post.internal_character as i64));
-            put("player_id", Value::UInt(post.player_index as u64));
-            put("motion_id", Value::Int(post.action_state as i64));
-            put("facing_dir", Value::f32(post.facing_direction));
-            put("cur_pos.x", Value::f32(post.position_x));
-            put("cur_pos.y", Value::f32(post.position_y));
-            put("percent", Value::f32(post.percent));
-            if let Some(air) = post.airborne {
-                put("ground_or_air", Value::Int(air as i64));
-            }
-            if let Some(f) = post.action_state_frame {
-                put("cur_anim_frame", Value::f32(f));
-            }
-            if let (Some(x), Some(y)) = (post.self_air_speed_x, post.self_speed_y) {
-                put("self_vel.x", Value::f32(x));
-                put("self_vel.y", Value::f32(y));
-            }
-            if let (Some(x), Some(y)) = (post.attack_speed_x, post.attack_speed_y) {
-                put("kb_vel.x", Value::f32(x));
-                put("kb_vel.y", Value::f32(y));
+            let members = [
+                (pf.leader.post.as_ref(), format!("p{index}")),
+                (pf.follower.post.as_ref(), format!("p{index}.follower")),
+            ];
+            for (post, p) in members {
+                let Some(post) = post else {
+                    continue;
+                };
+                put_post(&mut state, &p, post);
             }
         }
 
@@ -93,4 +76,31 @@ pub fn to_trace(replay: &Replay) -> Vec<Record> {
         });
     }
     out
+}
+
+fn put_post(state: &mut BTreeMap<String, Value>, p: &str, post: &crate::PostFrame) {
+    let mut put = |name: &str, v: Value| {
+        state.insert(format!("{p}.{name}"), v);
+    };
+    put("kind", Value::Int(post.internal_character as i64));
+    put("player_id", Value::UInt(post.player_index as u64));
+    put("motion_id", Value::Int(post.action_state as i64));
+    put("facing_dir", Value::f32(post.facing_direction));
+    put("cur_pos.x", Value::f32(post.position_x));
+    put("cur_pos.y", Value::f32(post.position_y));
+    put("percent", Value::f32(post.percent));
+    if let Some(air) = post.airborne {
+        put("ground_or_air", Value::Int(air as i64));
+    }
+    if let Some(f) = post.action_state_frame {
+        put("cur_anim_frame", Value::f32(f));
+    }
+    if let (Some(x), Some(y)) = (post.self_air_speed_x, post.self_speed_y) {
+        put("self_vel.x", Value::f32(x));
+        put("self_vel.y", Value::f32(y));
+    }
+    if let (Some(x), Some(y)) = (post.attack_speed_x, post.attack_speed_y) {
+        put("kb_vel.x", Value::f32(x));
+        put("kb_vel.y", Value::f32(y));
+    }
 }

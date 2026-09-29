@@ -39,30 +39,36 @@ pub struct StageDescriptor {
     pub name: &'static str,
     pub file: &'static str,
     pub music_id: i32,
+    /// The Ground kind the stage's creation runs (fixes its setup RNG draws).
+    pub kind: melee_types::GrKind,
     pub read: fn(&Archive) -> ReadResult<StageDesc>,
 }
 pub const FINAL_DESTINATION: StageDescriptor = StageDescriptor {
     name: "FinalDestination",
     file: "GrNLa.dat",
     music_id: 32,
+    kind: melee_types::GrKind::Last,
     read: melee_gr::desc::read_final_destination,
 };
 pub const BATTLEFIELD: StageDescriptor = StageDescriptor {
     name: "Battlefield",
     file: "GrNBa.dat",
     music_id: 31,
+    kind: melee_types::GrKind::Battle,
     read: melee_gr::desc::read_battlefield,
 };
 pub const YOSHIS_STORY: StageDescriptor = StageDescriptor {
     name: "YoshisStory",
     file: "GrSt.dat",
     music_id: 8,
+    kind: melee_types::GrKind::Story,
     read: melee_gr::desc::read_story,
 };
 pub const DREAM_LAND: StageDescriptor = StageDescriptor {
     name: "DreamLand",
     file: "GrOp.dat",
     music_id: 28,
+    kind: melee_types::GrKind::OldPupupu,
     read: melee_gr::desc::read_pupupu,
 };
 /// grIz_StageData (0x803E0E5C): GrIz.dat; StageParam row 2 (StKind).
@@ -70,12 +76,14 @@ pub const FOUNTAIN_OF_DREAMS: StageDescriptor = StageDescriptor {
     name: "FountainOfDreams",
     file: "GrIz.dat",
     music_id: 2,
+    kind: melee_types::GrKind::Izumi,
     read: melee_gr::desc::read_izumi,
 };
 pub const POKEMON_STADIUM: StageDescriptor = StageDescriptor {
     name: "PokemonStadium",
     file: "GrPs.dat",
     music_id: 3,
+    kind: melee_types::GrKind::PStadium,
     read: melee_gr::desc::read_stadium,
 };
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {

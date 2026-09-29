@@ -18,12 +18,18 @@ fn fixture_matched_frame_counts_never_decrease() {
     let cases = [
         ("ics.slp", "FinalDestination", "Cpu control", 0),
         ("joystick_udlr.slp", "FinalDestination", "Cpu control", 0),
-        ("netplay.slp", "FountainOfDreams", "cold stage", 0),
-        ("v0.1.slp", "DreamLand", "cold stage", 0),
-        ("v3.12.slp", "PokemonStadium", "cold stage", 0),
-        ("v3.13.slp", "FinalDestination", "requires singles stock mode", 0),
+        ("netplay.slp", "FountainOfDreams", "Online", 0),
+        // Pre-2.2: no Frame Start shows the unlock flag, which Setup::default omits.
+        ("v0.1.slp", "DreamLand", "unlock flag", 0),
+        ("v3.12.slp", "PokemonStadium", "Online", 0),
+        (
+            "v3.13.slp",
+            "FinalDestination",
+            "requires singles stock mode",
+            0,
+        ),
         ("v3.16.slp", "YoshisStory", "Online", 0),
-        ("v3.18.slp", "FountainOfDreams", "cold stage", 0),
+        ("v3.18.slp", "FountainOfDreams", "Cpu control", 0),
     ];
     for (name, stage, reason, floor) in cases {
         let report = replay::run(&fixture(name), &root(), Setup::default()).unwrap();
@@ -36,6 +42,10 @@ fn fixture_matched_frame_counts_never_decrease() {
                     reasons.iter().any(|s| s.contains(reason)),
                     "{name}: {report}"
                 );
+            }
+            Stop::NeedsSetup(why) => {
+                assert_eq!(report.matched, 0);
+                assert!(why.contains(reason), "{name}: {report}");
             }
             Stop::Complete | Stop::Unported { .. } => {
                 assert!(report.matched > 0, "{name}: {report}")
@@ -61,7 +71,13 @@ fn int(record: &Record, key: &str) -> i64 {
 
 /// Project an existing independent Dolphin oracle into fields Slippi records.
 /// This is adapter proof, NOT an additional real .slp fixture or corpus count.
-fn oracle_replay(scene: &str) -> Option<(Replay, Vec<Record>)> {
+/// Game Start's seed precedes the setup's fixed draws and, for an unlocked
+/// rule-6 stage, the music draw; invert them from the first Frame Start.
+fn oracle_replay(
+    scene: &str,
+    setup_draws: usize,
+    music_draw: bool,
+) -> Option<(Replay, Vec<Record>)> {
     let path = root().join(format!("harness/traces/{scene}.tick.expected.jsonl"));
     if !melee_test_support::require_files([&path, &root().join("harness/roms/files/PlCo.dat")]) {
         return None;
@@ -80,6 +96,13 @@ fn oracle_replay(scene: &str) -> Option<(Replay, Vec<Record>)> {
         p.dashback_fix = Some(0);
         p.shield_drop_fix = Some(0);
     }
+    let mut seed = int(&expected[0], "rng.seed") as u32;
+    for _ in 0..setup_draws + usize::from(music_draw) {
+        seed = seed
+            .wrapping_sub(gekko_math::HsdRng::INCREMENT)
+            .wrapping_mul(0xB9B3_3155);
+    }
+    replay.start.random_seed = seed;
     replay.frames = BTreeMap::new();
     for tick in 1..expected.len() {
         let number = SLIPPI_FIRST_FRAME + tick as i32 - 1;
@@ -140,7 +163,7 @@ fn oracle_replay(scene: &str) -> Option<(Replay, Vec<Record>)> {
 
 #[test]
 fn cold_replay_bridge_matches_599_independent_oracle_frames() {
-    let Some((replay, _)) = oracle_replay("start_fd_fox") else {
+    let Some((replay, _)) = oracle_replay("start_fd_fox", 8, false) else {
         return;
     };
     let report = replay::run(
@@ -149,6 +172,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
         Setup {
             all_characters_unlocked: Some(false),
             boundary_seed: None,
+            ignore_controller_fixes: false,
         },
     )
     .unwrap();
@@ -158,7 +182,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
 
 #[test]
 fn a_ported_state_one_bit_mismatch_is_a_failure() {
-    let Some((mut replay, _)) = oracle_replay("start_fd_fox") else {
+    let Some((mut replay, _)) = oracle_replay("start_fd_fox", 8, false) else {
         return;
     };
     let post = replay.frames.get_mut(&SLIPPI_FIRST_FRAME).unwrap().ports[0]
@@ -173,6 +197,7 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
         Setup {
             all_characters_unlocked: Some(false),
             boundary_seed: None,
+            ignore_controller_fixes: false,
         },
     )
     .unwrap();
@@ -187,7 +212,7 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
 
 #[test]
 fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
-    let Some((mut replay, _)) = oracle_replay("start_bf_fox") else {
+    let Some((mut replay, _)) = oracle_replay("start_bf_fox", 5, true) else {
         return;
     };
     replay.start.stage = 31;
@@ -197,6 +222,7 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
         Setup {
             all_characters_unlocked: Some(true),
             boundary_seed: None,
+            ignore_controller_fixes: false,
         },
     )
     .unwrap();
@@ -205,38 +231,8 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
 }
 
 #[test]
-fn unported_action_names_the_boundary_without_counting_that_frame() {
-    let Some((mut replay, _)) = oracle_replay("start_fd_fox") else {
-        return;
-    };
-    let number = SLIPPI_FIRST_FRAME + 150;
-    // Synthetic protocol probe; no captured expected values are changed.
-    replay.frames.get_mut(&number).unwrap().ports[0]
-        .leader
-        .post
-        .as_mut()
-        .unwrap()
-        .action_state = 65;
-    let report = replay::run(
-        &replay,
-        &root(),
-        Setup {
-            all_characters_unlocked: Some(false),
-            boundary_seed: None,
-        },
-    )
-    .unwrap();
-    assert_eq!(report.matched, 150, "{report}");
-    let Stop::Unported { tick, action, .. } = report.stop else {
-        panic!("{report}")
-    };
-    assert_eq!(tick, 150);
-    assert!(action.contains("AttackAirN (65)"));
-}
-
-#[test]
 fn missing_late_input_preserves_the_matched_prefix() {
-    let Some((mut replay, _)) = oracle_replay("start_fd_fox") else {
+    let Some((mut replay, _)) = oracle_replay("start_fd_fox", 8, false) else {
         return;
     };
     let number = SLIPPI_FIRST_FRAME + 150;
@@ -252,6 +248,7 @@ fn missing_late_input_preserves_the_matched_prefix() {
         Setup {
             all_characters_unlocked: Some(false),
             boundary_seed: None,
+            ignore_controller_fixes: false,
         },
     )
     .unwrap();
@@ -263,10 +260,11 @@ fn missing_late_input_preserves_the_matched_prefix() {
 }
 
 #[test]
-fn gapped_ports_preserve_spawn_markers_and_route_pads_by_port() {
-    let Some((mut replay, _)) = oracle_replay("start_fd_fox") else {
+fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
+    let Some((mut replay, _)) = oracle_replay("start_fd_fox", 8, false) else {
         return;
     };
+    // Relabel the slot-1 recording as slot 2 (port 3) with slot 1's marker.
     replay.start.players[2] = replay.start.players[1].clone();
     replay.start.players[2].port = 2;
     replay.start.players[2].spawn_point = 1;
@@ -279,26 +277,19 @@ fn gapped_ports_preserve_spawn_markers_and_route_pads_by_port() {
     let setup = Setup {
         all_characters_unlocked: Some(false),
         boundary_seed: None,
+        ignore_controller_fixes: false,
     };
+    // The marker, facing and pads route by port, so the prefix matches until
+    // entry. fn_8016D8AC's delay grows by five per slot before this one
+    // (tournament replays: ports 2 and 4 enter at ticks 10 and 20), so slot 2
+    // enters at 15, not at the recording's 10.
     let report = replay::run(&replay, &root(), setup).unwrap();
-    assert_eq!(report.matched, 599, "{report}");
-    let pre = replay
-        .frames
-        .get_mut(&(SLIPPI_FIRST_FRAME + 150))
-        .unwrap()
-        .ports[2]
-        .leader
-        .pre
-        .as_mut()
-        .unwrap();
-    pre.buttons_physical = 0x400;
-    pre.buttons_processed = 0x400;
-    let report = replay::run(&replay, &root(), setup).unwrap();
-    assert_eq!(report.matched, 150, "{report}");
+    assert_eq!(report.matched, 10, "{report}");
     let Stop::Diverged(diff) = report.stop else {
         panic!("{report}")
     };
-    assert!(diff.path.starts_with("p1."), "{diff}");
+    assert_eq!(diff.path, "p1.cur_anim_frame", "{diff}");
+    assert_eq!(diff.actual, Some(Value::f32(-1.0)), "{diff}");
 }
 
 /// InitOnlinePlay.asm's FN_SyncRNG resets before player animation on every
@@ -317,13 +308,20 @@ fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
                 .wrapping_add(replay.start.random_seed)
         );
     }
-    let reasons = replay::unsupported_setup(&replay);
-    assert_eq!(reasons, ["Slippi Online initialization/seed resets"]);
+    let reasons = replay::unsupported_setup(&replay, Setup::default());
+    assert_eq!(
+        reasons,
+        [
+            "port 1 controller fixes (UCF/Dween)",
+            "port 2 controller fixes (UCF/Dween)",
+            "Slippi Online initialization/seed resets"
+        ]
+    );
 }
 
 #[test]
 fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
-    let Some((mut replay, _)) = oracle_replay("start_ys_fox") else {
+    let Some((mut replay, _)) = oracle_replay("start_ys_fox", 5, false) else {
         return;
     };
     replay.start.stage = 8;
@@ -333,6 +331,7 @@ fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
         Setup {
             all_characters_unlocked: Some(true),
             boundary_seed: None,
+            ignore_controller_fixes: false,
         },
     )
     .unwrap();

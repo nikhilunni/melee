@@ -25,6 +25,8 @@ pub struct Setup {
     /// gm_Scene_SuddenDeath_OnEnter): one stock each at 300%, its own
     /// countdown and the Bob-omb rain.
     pub sudden_death: bool,
+    /// Slippi codes the recording ran (all off in retail).
+    pub slippi: crate::slippi::SlippiCodes,
 }
 /// One fighter GObj a match creates, in creation order (the fighter list
 /// order): each player's fighter, then its partner (Player_80031AD0 creates

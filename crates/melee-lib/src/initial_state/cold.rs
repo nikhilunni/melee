@@ -2,7 +2,7 @@
 //! Captures are comparison inputs in cold_tests.rs only.
 use super::InitialState;
 use crate::{assets::Assets, scene_fighter::SceneFighter, scene_stage::SceneStage, setup::Setup};
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use gekko_math::HsdRng;
 use hsd_anim::load::load_joint_tree;
 use hsd_particle::{
@@ -336,7 +336,7 @@ fn create_players(
     map: &mut melee_mp::CollMap,
     rng: &mut HsdRng,
 ) -> Result<(Vec<SceneFighter>, SpawnCounter)> {
-    let positions: Vec<_> = scenario
+    let mut positions: Vec<_> = scenario
         .fighters
         .iter()
         .map(|fighter| {
@@ -350,11 +350,22 @@ fn create_players(
         .collect::<Result<_>>()?;
     // fn_8016DEEC: face the other player; nearby/equal-X markers
     // resolve +1 for the first player, then -1 for the second.
-    let facing = if positions[1].x - positions[0].x < -5.0 {
+    let mut facing = if positions[1].x - positions[0].x < -5.0 {
         [-1.0, 1.0]
     } else {
         [1.0, -1.0]
     };
+    if let crate::slippi::SpawnRule::NeutralTable(table) = scenario.slippi.spawn {
+        // Slippi's NeutralSpawn (0x8016E510) then overwrites each Player's
+        // initial coordinates and facing by spawn order (players ascend by slot).
+        for (order, _) in scenario.fighters.iter().enumerate() {
+            let (position, face) =
+                crate::slippi::neutral_spawn(table, assets.stage_descriptor.music_id, order)
+                    .context("NeutralSpawn: no row for this stage")?;
+            positions[order] = position;
+            facing[order] = face;
+        }
+    }
     let mut counter = SpawnCounter(1);
     let mut fighters = Vec::new();
     // Player_80031AD0 per slot: the player's fighter, then its partner, which

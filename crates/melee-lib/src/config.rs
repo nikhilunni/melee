@@ -250,6 +250,7 @@ impl MatchConfig {
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
             time_limit: self.rules.time_limit_seconds,
             sudden_death: self.rules.sudden_death,
+            slippi: Default::default(),
         })
     }
 }

@@ -26,6 +26,27 @@ enum Command {
         /// Independently measured pre-music seed (decimal).
         #[arg(long)]
         boundary_seed: Option<u32>,
+        /// Run a recording made with UCF/Dween without the fix.
+        #[arg(long)]
+        ignore_controller_fixes: bool,
+    },
+    /// Replay every `.slp` under the given paths in parallel and group the
+    /// first stops by cause, largest group first.
+    ReplayBatch {
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+        /// Worker threads (default: available parallelism).
+        #[arg(long)]
+        jobs: Option<usize>,
+        /// The unlock flag for replays without Frame Start events.
+        #[arg(long, action = clap::ArgAction::Set, default_value_t = true)]
+        all_characters_unlocked: bool,
+        /// Run recordings made with UCF/Dween without the fix.
+        #[arg(long)]
+        ignore_controller_fixes: bool,
+        /// Write one JSON object per replay here.
+        #[arg(long)]
+        jsonl: Option<PathBuf>,
     },
     /// Run the imported savestate and emit one canonical record per tick.
     Run {
@@ -149,6 +170,7 @@ fn main() -> anyhow::Result<()> {
             file,
             all_characters_unlocked,
             boundary_seed,
+            ignore_controller_fixes,
         } => {
             let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
             let report = melee_sim::replay::run_file(
@@ -157,6 +179,7 @@ fn main() -> anyhow::Result<()> {
                 melee_sim::replay::Setup {
                     all_characters_unlocked,
                     boundary_seed,
+                    ignore_controller_fixes,
                 },
             )?;
             println!("{report}");
@@ -164,6 +187,35 @@ fn main() -> anyhow::Result<()> {
                 !matches!(report.stop, melee_sim::replay::Stop::Diverged(_)),
                 "ported-state replay mismatch"
             );
+            Ok(())
+        }
+        Command::ReplayBatch {
+            paths,
+            jobs,
+            all_characters_unlocked,
+            ignore_controller_fixes,
+            jsonl,
+        } => {
+            use melee_sim::replay_batch;
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+            let files = replay_batch::collect(&paths)?;
+            anyhow::ensure!(!files.is_empty(), "no .slp files under the given paths");
+            let jobs =
+                jobs.unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()));
+            let outcomes = replay_batch::run(
+                &files,
+                &root,
+                melee_sim::replay::Setup {
+                    all_characters_unlocked: Some(all_characters_unlocked),
+                    boundary_seed: None,
+                    ignore_controller_fixes,
+                },
+                jobs,
+            );
+            if let Some(path) = jsonl {
+                replay_batch::write_jsonl(&outcomes, &mut std::fs::File::create(path)?)?;
+            }
+            replay_batch::summarize(&outcomes, &mut io::stdout().lock())?;
             Ok(())
         }
         Command::Bones {

@@ -1,6 +1,6 @@
 //! Cold replay comparison. Expected state never initializes or repairs a tick.
 use crate::{frame::Simulation, initial_state::InitialState, scenario::Scenario};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
 use slp::{cold::ColdScenario, Replay};
 use std::{
@@ -10,10 +10,14 @@ use std::{
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Setup {
-    /// Slippi does not record the save's character unlock mask.
+    /// Slippi does not record the save's character unlock mask. A replay
+    /// with Frame Start events shows it (the music draw); older ones need it.
     pub all_characters_unlocked: Option<bool>,
-    /// Optional audited pre-music seed, needed by pre-Frame-Start recordings.
+    /// An audited pre-music seed, overriding the one derived from Game Start.
     pub boundary_seed: Option<u32>,
+    /// Replay a recording made with controller fixes (UCF/Dween) without
+    /// them. A divergence may then be the fix's, so reports say so.
+    pub ignore_controller_fixes: bool,
 }
 
 #[derive(Debug)]
@@ -39,6 +43,10 @@ pub struct Report {
     pub players: Vec<String>,
     pub frames: usize,
     pub matched: usize,
+    /// Controller fixes the recording had and the run ignored.
+    pub ignored_fixes: bool,
+    /// Each leader's recorded character and action at the stop.
+    pub context: String,
     pub stop: Stop,
 }
 
@@ -47,8 +55,14 @@ impl std::fmt::Display for Report {
         writeln!(f, "{}; {}", self.stage, self.players.join(", "))?;
         writeln!(
             f,
-            "{} / {} replay frames matched",
-            self.matched, self.frames
+            "{} / {} replay frames matched{}",
+            self.matched,
+            self.frames,
+            if self.ignored_fixes {
+                " (controller fixes ignored)"
+            } else {
+                ""
+            }
         )?;
         match &self.stop {
             Stop::Complete => write!(f, "all recorded frames matched"),
@@ -71,12 +85,15 @@ impl std::fmt::Display for Report {
     }
 }
 
+/// Slippi stage ids with a cold setup.
+const COLD_STAGES: [u16; 6] = [2, 3, 8, 28, 31, 32];
+
 /// Report every structural limitation, without loading DATs for an unsupported
 /// matchup. A supported character does not imply its whole moveset is ported.
-pub fn unsupported_setup(replay: &Replay) -> Vec<String> {
+pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     let mut reasons = Vec::new();
     let start = &replay.start;
-    if !matches!(start.stage, 8 | 31 | 32) {
+    if !COLD_STAGES.contains(&start.stage) {
         reasons.push(format!(
             "{} cold stage",
             slp::ids::stage_name(start.stage).unwrap_or("unknown")
@@ -102,6 +119,9 @@ pub fn unsupported_setup(replay: &Replay) -> Vec<String> {
                 .any(|v| v.to_bits() != 1.0_f32.to_bits())
         {
             reasons.push(format!("port {} nonstandard fighter rules", port + 1));
+        }
+        if !setup.ignore_controller_fixes && has_controller_fix(p) {
+            reasons.push(format!("port {} controller fixes (UCF/Dween)", port + 1));
         }
     }
     if start.pal == Some(true) {
@@ -129,37 +149,114 @@ pub fn unsupported_setup(replay: &Replay) -> Vec<String> {
     reasons
 }
 
-/// Frame Start is after pending music and before the first complete scheduler
-/// pass. Undo only the audited music draw; never use Game Start as that seed.
+fn has_controller_fix(p: &slp::PlayerStart) -> bool {
+    p.dashback_fix.is_some_and(|fix| fix != 0) || p.shield_drop_fix.is_some_and(|fix| fix != 0)
+}
+
+/// The cold boundary: the pre-music seed and the unlock flag.
+///
+/// Game Start's seed is taken at 0x8016E74C, before fn_8016E730 creates the
+/// Ground and Players, so the boundary is that seed advanced by the setup's
+/// fixed draws. The first Frame Start (2.2+) follows the music selection,
+/// which draws once only for an all-unlocked save on a rule-6 stage: equal
+/// seeds mean no draw, one step means the save was all-unlocked.
+fn cold_boundary(
+    replay: &Replay,
+    scenario: &Scenario,
+    setup: Setup,
+) -> Result<(u32, bool), String> {
+    let first_frame_start = replay
+        .frames
+        .values()
+        .next()
+        .and_then(slp::Frame::scheduler_start_seed);
+    if let Some(seed) = setup.boundary_seed {
+        let unlocked = setup
+            .all_characters_unlocked
+            .ok_or("an explicit boundary seed needs --all-characters-unlocked")?;
+        return Ok((seed, unlocked));
+    }
+    let lib_setup =
+        melee_lib::diagnostics::ScenarioSource::setup(scenario).map_err(|e| format!("{e:#}"))?;
+    let boundary =
+        melee_lib::diagnostics::boundary_seed_from_creation(&lib_setup, replay.start.random_seed)
+            .map_err(|e| format!("{e:#}"))?;
+    let Some(first) = first_frame_start else {
+        return setup
+            .all_characters_unlocked
+            .map(|unlocked| (boundary, unlocked))
+            .ok_or_else(|| {
+                "no Frame Start: the recording's unlock flag is required \
+                 (--all-characters-unlocked)"
+                    .into()
+            });
+    };
+    let mut after_music = gekko_math::HsdRng::new(boundary);
+    after_music.rand();
+    if first == boundary {
+        Ok((boundary, setup.all_characters_unlocked.unwrap_or(false)))
+    } else if first == after_music.seed {
+        Ok((boundary, true))
+    } else {
+        Err(format!(
+            "Game Start seed {:08X} does not reach the first Frame Start {first:08X} \
+             through the setup draws (boundary {boundary:08X})",
+            replay.start.random_seed
+        ))
+    }
+}
+
+/// The recording's spawn rule. Replays before the Gecko code list (3.3) do
+/// not name their codes, so choose among the known discrete rules by the
+/// first frame: a NeutralSpawn table when every leader stands exactly at
+/// its row, otherwise retail. Frame zero's comparison checks the choice;
+/// nothing else of the recorded state is used.
+fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
+    use melee_lib::slippi::{NeutralTable, SpawnRule};
+    let Some(first) = replay.frames.values().next() else {
+        return SpawnRule::Retail;
+    };
+    let fits = |table| {
+        replay.leader_ports().enumerate().all(|(order, port)| {
+            let (Some(post), Some((spawn, facing))) = (
+                first.ports[port].leader.post.as_ref(),
+                melee_lib::slippi::neutral_spawn(table, i32::from(replay.start.stage), order),
+            ) else {
+                return false;
+            };
+            post.position_x.to_bits() == spawn.x.to_bits()
+                && post.position_y.to_bits() == spawn.y.to_bits()
+                && post.facing_direction.to_bits() == facing.to_bits()
+        })
+    };
+    [NeutralTable::V2020, NeutralTable::V2019]
+        .into_iter()
+        .find(|&table| fits(table))
+        .map_or(SpawnRule::Retail, SpawnRule::NeutralTable)
+}
+
+/// A cold scenario for the replay, from Game Start's rules and the recorded
+/// inputs. Never initialized or repaired from recorded state.
 pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scenario> {
     ensure!(
-        unsupported_setup(replay).is_empty(),
+        unsupported_setup(replay, setup).is_empty(),
         "unsupported replay setup"
     );
-    let unlocked = setup.all_characters_unlocked.context(
-        "supply --all-characters-unlocked true/false from the recording setup; Slippi lacks this flag")?;
-    let seed = match setup.boundary_seed {
-        Some(seed) => seed,
-        None => {
-            let seed = replay
-                .frames
-                .values()
-                .next()
-                .and_then(slp::Frame::scheduler_start_seed)
-                .context("no Frame Start seed; supply an independently recorded --boundary-seed")?;
-            if unlocked && matches!(replay.start.stage, 31 | 32) {
-                seed.wrapping_sub(gekko_math::HsdRng::INCREMENT)
-                    .wrapping_mul(0xB9B3_3155)
-            } else {
-                seed
-            }
+    let build = |seed: u32, unlocked: bool| -> Result<Scenario> {
+        let cold = ColdScenario::from_replay(replay, "slippi_replay", seed, unlocked)?;
+        let mut scenario: Scenario = toml::from_str(&cold.to_toml()?)?;
+        scenario.root = root.into();
+        if replay.start.timer_type() == 2 && replay.start.game_timer != 0 {
+            scenario.time_limit = Some(replay.start.game_timer);
         }
+        scenario.spawn = spawn_rule(replay);
+        scenario.validate()?;
+        Ok(scenario)
     };
-    let cold = ColdScenario::from_replay(replay, "slippi_replay", seed, unlocked)?;
-    let mut scenario: Scenario = toml::from_str(&cold.to_toml()?)?;
-    scenario.root = root.into();
-    scenario.validate()?;
-    Ok(scenario)
+    let provisional = build(replay.start.random_seed, false)?;
+    let (seed, unlocked) =
+        cold_boundary(replay, &provisional, setup).map_err(|e| anyhow::anyhow!(e))?;
+    build(seed, unlocked)
 }
 
 pub fn run_file(path: &Path, root: &Path, setup: Setup) -> Result<Report> {
@@ -193,26 +290,25 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
             .collect(),
         frames: replay.frames.len(),
         matched: 0,
+        ignored_fixes: setup.ignore_controller_fixes
+            && replay
+                .leader_ports()
+                .any(|port| has_controller_fix(&replay.start.players[port])),
+        context: String::new(),
         stop: Stop::Complete,
     };
-    let reasons = unsupported_setup(replay);
+    let reasons = unsupported_setup(replay, setup);
     if !reasons.is_empty() {
         report.stop = Stop::Unsupported(reasons);
         return Ok(report);
     }
-    if setup.all_characters_unlocked.is_none()
-        || (setup.boundary_seed.is_none()
-            && replay
-                .frames
-                .values()
-                .next()
-                .and_then(slp::Frame::scheduler_start_seed)
-                .is_none())
-    {
-        report.stop = Stop::NeedsSetup("recording unlock flag required; old versions also need an audited pre-music boundary seed (see docs/SLIPPI.md)".into());
-        return Ok(report);
-    }
-    let scenario = cold_scenario(replay, root, setup)?;
+    let scenario = match cold_scenario(replay, root, setup) {
+        Ok(scenario) => scenario,
+        Err(error) => {
+            report.stop = Stop::NeedsSetup(format!("{error:#}"));
+            return Ok(report);
+        }
+    };
     // A bad late controller field must not discard an already comparable
     // prefix. Do not install guessed pads for the unavailable tick.
     let unavailable = scenario.replay_inputs.iter().find_map(|input| {
@@ -248,6 +344,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
             "boundary seed does not reach first Frame Start"
         );
     }
+    let leaders: Vec<usize> = replay.leader_ports().collect();
     for expected in slp::to_trace(replay) {
         if let Some((tick, reason)) = &unavailable {
             if *tick == expected.frame {
@@ -258,56 +355,10 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 return Ok(report);
             }
         }
-        if replay.start.timer_type() == 2
-            && replay.start.game_timer != 0
-            && expected.frame >= 123 + u64::from(replay.start.game_timer) * 60
-        {
-            report.stop = Stop::Unported {
-                tick: expected.frame,
-                action: "match timer".into(),
-                reason: "time-up/result processing is not ported".into(),
-            };
-            return Ok(report);
-        }
         let frame = &replay.frames[&(expected.frame as i32 + slp::SLIPPI_FIRST_FRAME)];
-        for port in replay.leader_ports() {
-            let post = frame.ports[port]
-                .leader
-                .post
-                .as_ref()
-                .context("missing Post Frame")?;
-            let pre = frame.ports[port]
-                .leader
-                .pre
-                .as_ref()
-                .context("missing Pre Frame")?;
-            let player = &replay.start.players[port];
-            if (player.dashback_fix.is_some_and(|fix| fix != 0)
-                || player.shield_drop_fix.is_some_and(|fix| fix != 0))
-                && (pre.joystick_x != 0.0 || pre.joystick_y != 0.0)
-            {
-                report.stop = Stop::Unported {
-                    tick: expected.frame,
-                    action: action_name(post.action_state),
-                    reason: format!(
-                        "port {} controller fixes (UCF/Dween) not implemented",
-                        port + 1
-                    ),
-                };
-                return Ok(report);
-            }
-            if !ported_state(post.action_state) {
-                report.stop = Stop::Unported {
-                    tick: expected.frame,
-                    action: format!("port {} {}", port + 1, action_name(post.action_state)),
-                    reason: "no implemented action callback table; frame not counted as matched"
-                        .into(),
-                };
-                return Ok(report);
-            }
-        }
+        report.context = leader_actions(replay, frame);
         let result = catch_unwind(AssertUnwindSafe(|| simulation.tick()));
-        let mut actual = match result {
+        let actual = match result {
             Ok(record) => record?,
             Err(payload) => {
                 let message = payload
@@ -332,7 +383,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 return Ok(report);
             }
         };
-        actual.frame = expected.frame;
+        let actual = by_leader(&actual, &leaders, frame, expected.frame);
         if let Some(diff) = compare_frame(&expected, &actual) {
             report.stop = Stop::Diverged(diff);
             return Ok(report);
@@ -340,6 +391,65 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         report.matched += 1;
     }
     Ok(report)
+}
+
+/// The simulated record keyed like the replay's: `pN` is the Nth leader's
+/// fighter in play, found by player slot and internal kind (a player's
+/// other fighters, such as Nana or Zelda's sleeping form, shift fighter-list
+/// indices). Nana's recorded follower frame is keyed `pN.follower`.
+fn by_leader(actual: &Record, leaders: &[usize], frame: &slp::Frame, tick: u64) -> Record {
+    let fighter_of = |slot: usize, kind: i64| {
+        (0..8).find(|k| {
+            actual.state.get(&format!("p{k}.player_id"))
+                == Some(&melee_diff::Value::UInt(slot as u64))
+                && actual.state.get(&format!("p{k}.kind")) == Some(&melee_diff::Value::Int(kind))
+        })
+    };
+    let mut state = std::collections::BTreeMap::new();
+    if let Some(seed) = actual.state.get("rng.seed") {
+        state.insert("rng.seed".to_string(), seed.clone());
+    }
+    for (index, &port) in leaders.iter().enumerate() {
+        let ports = &frame.ports[port];
+        let members = [
+            (ports.leader.post.as_ref(), format!("p{index}.")),
+            (ports.follower.post.as_ref(), format!("p{index}.follower.")),
+        ];
+        for (post, prefix) in members {
+            let Some(post) = post else { continue };
+            let Some(k) = fighter_of(port, i64::from(post.internal_character)) else {
+                continue;
+            };
+            let from = format!("p{k}.");
+            for (key, value) in actual.state.range(from.clone()..) {
+                let Some(field) = key.strip_prefix(&from) else {
+                    break;
+                };
+                state.insert(format!("{prefix}{field}"), value.clone());
+            }
+        }
+    }
+    Record {
+        frame: tick,
+        phase: actual.phase.clone(),
+        state,
+    }
+}
+
+fn leader_actions(replay: &Replay, frame: &slp::Frame) -> String {
+    replay
+        .leader_ports()
+        .enumerate()
+        .filter_map(|(index, port)| {
+            let post = frame.ports[port].leader.post.as_ref()?;
+            Some(format!(
+                "p{index} {} {}",
+                slp::ids::internal_character_name(post.internal_character).unwrap_or("?"),
+                action_name(post.action_state)
+            ))
+        })
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 pub fn compare_frame(expected: &Record, actual: &Record) -> Option<Divergence> {
@@ -350,57 +460,4 @@ fn action_name(id: u16) -> String {
     melee_types::CommonMotionState::try_from(i32::from(id))
         .map(|state| format!("{state:?} ({id})"))
         .unwrap_or_else(|_| format!("character action {id}"))
-}
-
-/// Use the existing action identities, not a numeric range that accidentally
-/// includes unported attacks. A table may still reach an explicit missing hook.
-fn ported_state(id: u16) -> bool {
-    use melee_types::CommonMotionState as M;
-    [
-        M::Wait,
-        M::WalkSlow,
-        M::WalkMiddle,
-        M::WalkFast,
-        M::Turn,
-        M::TurnRun,
-        M::Dash,
-        M::Run,
-        M::RunBrake,
-        M::KneeBend,
-        M::JumpF,
-        M::JumpB,
-        M::JumpAerialF,
-        M::JumpAerialB,
-        M::Fall,
-        M::FallAerial,
-        M::FallSpecial,
-        M::Squat,
-        M::SquatWait,
-        M::SquatRv,
-        M::Landing,
-        M::LandingFallSpecial,
-        M::Attack11,
-        M::DamageN2,
-        M::GuardOn,
-        M::Guard,
-        M::GuardOff,
-        M::GuardSetOff,
-        M::GuardReflect,
-        M::EscapeF,
-        M::EscapeB,
-        M::EscapeN,
-        M::EscapeAir,
-        M::Pass,
-        M::CliffCatch,
-        M::CliffWait,
-        M::CliffClimbQuick,
-        M::CliffEscapeQuick,
-        M::CliffJumpQuick1,
-        M::CliffJumpQuick2,
-        M::Entry,
-        M::EntryStart,
-        M::EntryEnd,
-    ]
-    .iter()
-    .any(|state| *state as i32 == i32::from(id))
 }
