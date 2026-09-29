@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 407] = [
+const MATRIX_WITNESSES: [(&str, usize); 409] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1170,6 +1170,11 @@ const MATRIX_WITNESSES: [(&str, usize); 407] = [
     ("peach3_turnip_floor", 260),
     ("peach3_turnip_air_downb", 320),
     ("peach3_turnip_shield", 300),
+    // Vegetable's rare pull (pickVeg): an unlit Bob-omb in hand (state 7 at
+    // attribute x0's rate), thrown into Fox (state 9, DmgDealt explosion)
+    // and dropped in the air to a hard landing (fn_80280974 detonation).
+    ("peach4_pull_bombhei_throw_hit", 700),
+    ("peach4_pull_bombhei_air_drop", 700),
     // Jigglypuff's specials against Fox: Rest's sleep hitbox, Sing's sleep
     // and wake, a full-charge Rollout hit, a Rollout that runs out, an aerial
     // Rollout that bounces and lands rolling, Pound into a shield.

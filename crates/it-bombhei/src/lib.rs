@@ -1,7 +1,8 @@
 //! Bob-omb (It_Kind_BombHei), itbombhei.c (8027D670..80280F40): the Sudden
-//! Death rain's bomb. Ported so far: the rain spawn (it_8027D670), the lit
-//! fuse on the ground, in the air and in a fighter's hand, throwing and
-//! dropping, landing (a soft landing starts the walk) and the explosion.
+//! Death rain's bomb and Peach's rare pull. Ported so far: the rain spawn
+//! (it_8027D670), the lit fuse on the ground, in the air and in a fighter's
+//! hand, the unlit hold, throw and drop of a pulled Bob-omb, landing (a
+//! soft landing starts the walk) and the explosion.
 //! The walk and turn rows themselves are explicit `unimplemented!` rows.
 use gekko_math::msl::{fabsf, fctiwz};
 use hsd_types::Vec3;
@@ -28,7 +29,8 @@ mod motion {
     pub const WALK: u16 = 2;
     /// Turning round at an edge or wall (itBombhei_UnkMotion4).
     pub const TURN: u16 = 4;
-    /// Thrown or dropped, lit (it_3F14_Logic6_Thrown).
+    /// Thrown or dropped, unlit / lit (it_3F14_Logic6_Thrown).
+    pub const THROWN: u16 = 9;
     pub const THROWN_LIT: u16 = 10;
     pub const LIT_FALL: u16 = 6;
     pub const EXPLODE: u16 = 11;
@@ -37,6 +39,10 @@ mod motion {
 /// itBombHeiAttributes (special attributes, x0..x28).
 struct Attributes<'a>(&'a [f32]);
 impl Attributes<'_> {
+    /// x0: the unlit Bob-omb's animation rate in a hand or in flight.
+    fn unlit_animation_rate(&self) -> f32 {
+        self.0[0]
+    }
     /// x4, x10, x14: the turning, wandering and walking phases.
     fn turn_frames(&self) -> f32 {
         self.0[1]
@@ -110,11 +116,23 @@ static STATES: [ItemStateRow; 13] = {
         collision: lit_fall_collision,
     };
     // it_803F54D8[7..=8]: no physics, no collision callback.
+    rows[motion::HELD as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[7],
+        animation: held_animation,
+        physics: no_physics,
+        collision: no_collision,
+    };
     rows[motion::HELD_LIT as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[8],
         animation: held_animation,
         physics: no_physics,
         collision: no_collision,
+    };
+    rows[motion::THROWN as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[9],
+        animation: thrown_animation,
+        physics: fall_physics,
+        collision: thrown_collision,
     };
     rows[motion::THROWN_LIT as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[10],
@@ -155,39 +173,52 @@ impl ItemLogic for BombHei {
     /// itBombhei_Logic6_PickedUp (8027E0B4): the model's spin axis and
     /// facing lock for the hand, then the held state.
     fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
-        // xDC8 x19 and x17.
-        item.spin_ignores_facing = true;
-        item.rotation_axis = 1;
-        if !bomb(item).lit {
-            // ap->x0 would slow the unlit hold animation; the port keeps
-            // item animations at one frame per tick.
-            unimplemented!("itBombhei_Logic6_PickedUp: unlit Bob-omb pickup");
+        enter_held(item, context.assets);
+    }
+    /// it_802BD4AC's Bob-omb (Peach's pull): xDE8 takes the item's scale
+    /// after it_80274594, for the throw's it_80274484. The owner's model
+    /// scale is 1 in every supported mode, so that is the spawn scale.
+    fn launched(
+        item: &mut ItemCore,
+        _assets: &ItemAssets,
+        _common: &melee_it::desc::ItemCommonData,
+        spawn: &SpawnItem,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
+        if spawn.owner.is_some() {
+            let scale = item.scale;
+            bomb_mut(item).throw_scale = scale;
         }
-        change(item, motion::HELD_LIT, UNK_0X1, context.assets);
     }
     /// it_3F14_Logic6_Thrown (80280380): the thrown state, whose hitboxes
     /// take the throw speed (ITEM_DROP_UPDATE); the blast's owner and kin
     /// flags clear (it_80275474).
     fn thrown(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
-        if !bomb(item).lit {
-            unimplemented!("it_3F14_Logic6_Thrown: unlit Bob-omb throw (state 9)");
-        }
-        enter_thrown_lit(item, context.assets);
+        enter_thrown(item, context.assets);
     }
     /// it_3F14_Logic6_Dropped (8027E648): spin about X ignoring facing, then
     /// the thrown state without it_80275474's owner/kin changes.
     fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         item.spin_ignores_facing = true;
         item.rotation_axis = 1;
-        if !bomb(item).lit {
-            unimplemented!("it_3F14_Logic6_Dropped: unlit Bob-omb drop (state 9)");
+        if bomb(item).lit {
+            item.animation_rate = 1.0;
+            change(
+                item,
+                motion::THROWN_LIT,
+                UNK_0X1 | DROP_UPDATE,
+                context.assets,
+            );
+        } else {
+            item.animation_rate =
+                Attributes(&context.assets.special_attributes).unlit_animation_rate();
+            change(
+                item,
+                motion::THROWN,
+                ANIM_UPDATE | DROP_UPDATE,
+                context.assets,
+            );
         }
-        change(
-            item,
-            motion::THROWN_LIT,
-            UNK_0X1 | DROP_UPDATE,
-            context.assets,
-        );
     }
     /// it_3F14_Logic6_DmgDealt: touching anything detonates it.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
@@ -389,12 +420,26 @@ fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> boo
     false
 }
 
-/// itBombhei_UnkMotion8_Anim (8027E3E4): the hold animation restarts when
-/// it ends (it_80272C6C), and the lit fuse burns.
+/// itBombhei_Logic6_PickedUp (8027E0B4) and inline_UnkMotion8_Anim: the
+/// model's spin axis and facing lock for the hand (xDC8 x19 and x17), then
+/// the unlit hold at the attribute rate or the lit one at full rate.
+fn enter_held(item: &mut ItemCore, assets: &ItemAssets) {
+    item.spin_ignores_facing = true;
+    item.rotation_axis = 1;
+    if bomb(item).lit {
+        item.animation_rate = 1.0;
+        change(item, motion::HELD_LIT, UNK_0X1, assets);
+    } else {
+        item.animation_rate = Attributes(&assets.special_attributes).unlit_animation_rate();
+        change(item, motion::HELD, ANIM_UPDATE, assets);
+    }
+}
+
+/// itBombhei_UnkMotion8_Anim (8027E3E4), states 7 and 8: the hold
+/// animation restarts when it ends (it_80272C6C), and the lit fuse burns.
 fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
-    let end = ctx.assets.animation_ends[ARTICLE_STATES[motion::HELD_LIT as usize] as usize];
-    if end.is_some_and(|end| item.animation_frame >= end) {
-        change(item, motion::HELD_LIT, UNK_0X1, ctx.assets);
+    if animation_ended(item, ctx.assets) {
+        enter_held(item, ctx.assets);
     }
     if bomb(item).lit {
         burn_fuse(item, ctx);
@@ -402,27 +447,31 @@ fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
     false
 }
 
-/// The lit branch of it_3F14_Logic6_Thrown and itBombhei_UnkMotion10_Anim:
-/// state 10 with CMD_UPDATE | DROP_UPDATE (0x104), then it_80275474.
-fn enter_thrown_lit(item: &mut ItemCore, assets: &ItemAssets) {
-    change(item, motion::THROWN_LIT, CMD_UPDATE | DROP_UPDATE, assets);
+/// it_3F14_Logic6_Thrown (80280380) and itBombhei_UnkMotion10_Anim's
+/// restart: unlit, state 9 at the attribute rate (ANIM_UPDATE |
+/// DROP_UPDATE); lit, state 10 at full rate (CMD_UPDATE | DROP_UPDATE);
+/// then it_80275474, and it_80274484 at xDE8 unless that is 1.
+fn enter_thrown(item: &mut ItemCore, assets: &ItemAssets) {
+    if bomb(item).lit {
+        item.animation_rate = 1.0;
+        change(item, motion::THROWN_LIT, CMD_UPDATE | DROP_UPDATE, assets);
+    } else {
+        item.animation_rate = Attributes(&assets.special_attributes).unlit_animation_rate();
+        change(item, motion::THROWN, ANIM_UPDATE | DROP_UPDATE, assets);
+    }
     item.hits_owner = false;
     item.strikes_kindred_items = false;
-    // xDE8: it_80274484 rescales the model after a Bob-omb was made
-    // bigger or smaller, which nothing here does.
-    assert_eq!(
-        bomb(item).throw_scale,
-        1.0,
-        "it_80274484: rescaled Bob-omb throw"
-    );
+    let scale = bomb(item).throw_scale;
+    if scale != 1.0 {
+        item.rescale(scale);
+    }
 }
 
-/// itBombhei_UnkMotion10_Anim (802806CC): the thrown animation restarts when
-/// it ends, and the lit fuse burns.
+/// itBombhei_UnkMotion10_Anim (802806CC), states 9 and 10: the thrown
+/// animation restarts when it ends, and the lit fuse burns.
 fn thrown_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
-    let end = ctx.assets.animation_ends[ARTICLE_STATES[motion::THROWN_LIT as usize] as usize];
-    if end.is_some_and(|end| item.animation_frame >= end) {
-        enter_thrown_lit(item, ctx.assets);
+    if animation_ended(item, ctx.assets) {
+        enter_thrown(item, ctx.assets);
     }
     if bomb(item).lit {
         burn_fuse(item, ctx);
@@ -471,10 +520,11 @@ fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
 /// it_8027F8E0 (8027F8E0) for a lit Bob-omb: it stops and burns on the
 /// ground again. An unlit one would first light (see [`light`]).
 fn relight(item: &mut ItemCore, assets: &ItemAssets) {
-    assert!(
-        bomb(item).lit,
-        "it_8027F8E0: an unlit Bob-omb stops walking"
-    );
+    if !bomb(item).lit {
+        // Peach's pulled Bob-omb, thrown to a soft landing: the lighting
+        // branch needs the common lifetime here.
+        unimplemented!("it_8027F8E0: an unlit Bob-omb stops walking (xDE0 == 0)");
+    }
     item.velocity.x = 0.0;
     item.grabbable = true;
     change(item, motion::LIT, UNK_0X1, assets);

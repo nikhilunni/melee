@@ -1,0 +1,33 @@
+# PEACH4 Vegetable pulls a Bob-omb (as peach4_pull_bombhei_throw_hit),
+# then Peach jumps and drops it at once with R + A and a neutral stick
+# (ftCo_80095328's drop; it_3F14_Logic6_Dropped, unlit state 9 at
+# attribute x0's rate). It falls from the hand and lands faster than x24,
+# so fn_80280974 detonates it (it_80280B60).
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). Input frames count ticks.
+name = "peach4_pull_bombhei_air_drop"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 479, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 481, port = 0, buttons = {  }, raw = {  } },
+  { frame = 530, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 532, port = 0, buttons = {  }, raw = {  } },
+  { frame = 535, port = 0, buttons = { A = true, R = true }, raw = { button = 288 } },
+  { frame = 537, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

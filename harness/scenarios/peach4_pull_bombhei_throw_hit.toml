@@ -1,0 +1,34 @@
+# PEACH4 Vegetable pulls a Bob-omb (getVeg: HSD_Randi(128) == 0, then
+# pickVeg's weighted draw lands on It_Kind_BombHei). The unlit Bob-omb is
+# held (itBombhei_Logic6_PickedUp, state 7 at attribute x0's rate), thrown
+# forward with A (LightThrowF; it_3F14_Logic6_Thrown, unlit state 9) and
+# explodes on Fox (it_3F14_Logic6_DmgDealt -> it_80280B60).
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). The pull tick was found
+# with `melee-sim search` over the down-B tick. Input frames count ticks.
+name = "peach4_pull_bombhei_throw_hit"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 479, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 481, port = 0, buttons = {  }, raw = {  } },
+  { frame = 482, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 500, port = 1, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

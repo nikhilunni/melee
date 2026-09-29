@@ -24,6 +24,9 @@ const GROUND_AIR_FLAGS: MotionEntryFlags = MotionEntryFlags(0x0C4C_5080);
 const PULL_JOINT: usize = 109;
 /// efSync_Spawn(1234, gobj, &fp->cur_pos) as the item comes up.
 const PULL_EFFECT: u16 = 1234;
+/// Item_802674AC's hold kind for common items (Bob-omb, Mr. Saturn, the
+/// Beam Sword).
+const COMMON_HOLD_KIND: u8 = 0;
 
 /// ftPe_SpecialLw_Enter (8011D11C) / ftPe_SpecialAirLw_Enter (8011D1C4).
 pub fn enter(f: &mut Fighter, air: bool, assets: &FighterAssets) {
@@ -72,16 +75,23 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
         hsd_types::Vec3::ZERO,
     );
     let kind = choose_item(f.character.get::<Peach>(), rng);
-    if kind != ItemKind::PeachTurnip {
-        unimplemented!("it_802BD4AC: Peach pulled a {kind:?}");
-    }
-    // it_802BD4AC -> it_802BD32C: the turnip's face, drawn before it is
-    // attached; the item reads it back from the spawn.
-    let face = choose_face(&f.character.get::<Peach>().attributes.turnip_faces, rng);
-    // Item_InitSpawn at the joint; Item_8026AB54 at ftData x8 +0x10.
-    let spawn = SpawnItem {
-        spawn_argument: face,
-        ..SpawnItem::attached(kind, f.player.id, position, f.physics.facing)
+    // it_802BD4AC: Item_InitSpawn at the joint; Item_8026AB54 at ftData
+    // x8 +0x10.
+    let attached = SpawnItem::attached(kind, f.player.id, position, f.physics.facing);
+    let spawn = match kind {
+        ItemKind::PeachTurnip => SpawnItem {
+            // it_802BD32C: the turnip's face, drawn before it is attached;
+            // the item reads it back from the spawn.
+            spawn_argument: choose_face(&f.character.get::<Peach>().attributes.turnip_faces, rng),
+            ..attached
+        },
+        // Item_802674AC: common items (below It_Kind_L_Gun_Ray) hold as
+        // kind 0; it_802BD4AC's Bob-omb keeps its scale (xDE8) itself.
+        ItemKind::BombHei => SpawnItem {
+            hold_kind: COMMON_HOLD_KIND,
+            ..attached
+        },
+        _ => unimplemented!("it_802BD4AC: Peach pulled a {kind:?}"),
     };
     let part = f.core.bones.model.animation_translation;
     f.core.item_requests.push(ItemRequest::SpawnInHand {
