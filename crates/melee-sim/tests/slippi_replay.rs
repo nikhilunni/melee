@@ -309,14 +309,8 @@ fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
         );
     }
     let reasons = replay::unsupported_setup(&replay, Setup::default());
-    assert_eq!(
-        reasons,
-        [
-            "port 1 controller fixes (UCF/Dween)",
-            "port 2 controller fixes (UCF/Dween)",
-            "Slippi Online initialization/seed resets"
-        ]
-    );
+    // Its ports ran UCF, which the runner dates to 0.84; Online remains.
+    assert_eq!(reasons, ["Slippi Online initialization/seed resets"]);
 }
 
 #[test]
