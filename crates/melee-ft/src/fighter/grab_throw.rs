@@ -315,7 +315,8 @@ pub(super) fn launch_thrown(
     va: &FighterAssets,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
-    victim.begin_damage_reaction(hit, forced_motion, None, throw_owner, va, rng)?;
+    // ftCo_800DDDE4 always routes the throw damage through ftColl_80076640.
+    victim.begin_damage_reaction(hit, forced_motion, None, throw_owner, true, va, rng)?;
     let stick = victim.input.current.stick;
     super::damage::apply_directional_influence(
         &mut victim.physics.knockback_velocity,

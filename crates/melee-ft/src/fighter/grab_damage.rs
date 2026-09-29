@@ -147,7 +147,7 @@ fn launch_by_captor(
     // ftCo_8008E908(gobj, 0.0). The damage motion change zeroes
     // dmg.kb_applied (fighter.c:1043), so the victim's own ProcessHit then
     // takes the no-knockback branch.
-    captured.begin_damage_reaction(hit, None, None, None, captured_assets, rng)?;
+    captured.begin_damage_reaction(hit, None, None, None, false, captured_assets, rng)?;
     Ok(())
 }
 
@@ -218,7 +218,7 @@ pub fn launch_released_captor(
     };
     // Fighter_UnkTakeDamage_8006CC30, ftCo_Damage_CalcKnockback and
     // ftCo_8008E908(gobj, 0.0).
-    captor.begin_damage_reaction(hit, None, None, None, assets, rng)?;
+    captor.begin_damage_reaction(hit, None, None, None, false, assets, rng)?;
     Ok(())
 }
 
@@ -404,6 +404,6 @@ impl Fighter {
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
         self.interrupt_actions();
-        self.begin_damage_reaction(hit, None, None, None, assets, rng)
+        self.begin_damage_reaction(hit, None, None, None, false, assets, rng)
     }
 }

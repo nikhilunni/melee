@@ -2550,7 +2550,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 451] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 453] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2778,6 +2778,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 451] = [
     ("corpus_v3_fd_ganondorf_fox4_e46703f61_p0", 5249),
     ("corpus_v3_fd_ganondorf_fox4_e0d368f02_p1", 3754),
     ("corpus_v3_fd_ganondorf_fox4_e255c070a_p1", 6001),
+    // Dark Dive: the throw's second collision (ft_80083B68 after a landing
+    // check) loads its ECB from the pre-collision joint pose; the release's
+    // damage goes to percentTemp before the fly-roll draw; the damage trail
+    // queues behind the entry's pending Dark graphic.
+    ("corpus_v3_fd_ganondorf_fox4_eae52f0ea_p0", 6001),
+    ("corpus_v3_fd_ganondorf_fox4_eecfcf1ea_p1", 5257),
     // Dream Land: Whispy's gust samples each fighter after its velocity
     // (ftColl_GetWindOffsetVec), and its dynamics gusts (lb_80011A50) swing
     // Fox's tail hurtbox and switch Marth's cape to the solver.

@@ -973,6 +973,7 @@ impl Fighter {
                             None,
                             Some(facing),
                             None,
+                            false,
                             assets,
                             rng,
                         )?;
@@ -1000,7 +1001,7 @@ impl Fighter {
                             self.interrupt_actions();
                             None
                         };
-                        self.begin_damage_reaction(hit, down, facing, None, assets, rng)?;
+                        self.begin_damage_reaction(hit, down, facing, None, false, assets, rng)?;
                         if down.is_some() {
                             self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
                         }
@@ -1117,23 +1118,24 @@ impl Fighter {
         }
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
+    /// `percent_pending`: the damage went to x1838_percentTemp
+    /// (ftColl_80076640, every ftCo_800DDDE4 throw release, with or without
+    /// a throw owner) and reaches x1830_percent only in Fighter_ProcessHit.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn begin_damage_reaction(
         &mut self,
         mut hit: ReceivedHit,
         forced_motion: Option<S>,
         facing: Option<f32>,
         throw_owner: Option<u32>,
+        percent_pending: bool,
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
         hit.knockback = self.core.modified_knockback(hit.knockback, assets);
-        let (state, stun) = self.core.prepare_damage_reaction(
-            &hit,
-            forced_motion,
-            throw_owner.is_some(),
-            assets,
-            rng,
-        );
+        let (state, stun) =
+            self.core
+                .prepare_damage_reaction(&hit, forced_motion, percent_pending, assets, rng);
         // ftCo_8008DA4C: with damage this frame (x1838_percentTemp), the
         // element's color animation for the reaction level, else the plain
         // damage flash (4), before Fighter_ChangeMotionState evaluates frame zero.
@@ -1195,9 +1197,17 @@ impl Fighter {
             if damage.trail_timer == 0 {
                 let v = self.core.physics.knockback_velocity;
                 let trajectory = melee_lb::trigf::atan2f(-v.x, v.y);
-                self.core
-                    .effects
-                    .push(melee_ef::request::EffectRequest::DamageTrail { trajectory });
+                // efAsync_Spawn(1032) queues behind the graphics commands
+                // already issued and still unresolved: a thrower's anim proc
+                // (Falcon Dive / Dark Dive's doCatchAnim) can enter this
+                // motion earlier in the same tick. (What
+                // push_effect_after_issued_graphics does, on disjoint fields.)
+                let issued =
+                    self.core.commands.graphics.len() + self.core.commands.landing_effects.len();
+                self.core.effects.push_after_graphics(
+                    melee_ef::request::EffectRequest::DamageTrail { trajectory },
+                    issued,
+                );
                 // ftCo_Damage_SetMv8FromKbThreshold: separate products/adds, no fused sites.
                 let speed = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
                 if speed >= assets.damage.trail_threshold {

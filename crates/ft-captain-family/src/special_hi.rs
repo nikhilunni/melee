@@ -230,7 +230,10 @@ pub fn physics<C: CaptainFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
 }
 
 /// ft_80083B68 -> ft_80082578 -> mpColl_800477E0: airborne collision that
-/// never lands.
+/// never lands. Like ft_CheckGroundAndLedge it moves only fp->cur_pos: the
+/// root joint keeps the translate Fighter_procMap set before the callback
+/// (fighter.c:2490) until procMap's tail, so a second collision after a
+/// landing check loads its ECB from the pre-collision pose.
 pub(crate) fn stay_airborne(f: &mut Fighter, p: &mut CollisionPhase<'_>) {
     let c = &mut f.core;
     let cd = &mut c.collision.data;
@@ -239,8 +242,6 @@ pub(crate) fn stay_airborne(f: &mut Fighter, p: &mut CollisionPhase<'_>) {
     let pose = EcbPose::read(&mut c.skeleton, c.animation.root, cd);
     p.map.air_collide_stay(cd, Some(&|i| pose.position(i)));
     c.physics.position = cd.cur_pos;
-    c.skeleton
-        .set_translate(c.animation.root, &c.physics.position);
 }
 
 /// ft_CheckGroundAndLedge(gobj, 0) (800822A4): landing, with ledge flags
@@ -258,8 +259,6 @@ fn land_or_ledge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
         p.map.air_collide_ledge(cd, Some(&|i| pose.position(i)))
     };
     c.physics.position = cd.cur_pos;
-    c.skeleton
-        .set_translate(c.animation.root, &c.physics.position);
     landed
 }
 
