@@ -42,16 +42,41 @@ impl Outcome {
                 "unported: {}",
                 reason.strip_prefix("not implemented: ").unwrap_or(reason)
             ),
-            Stop::Diverged(diff) => {
-                let field = diff
-                    .path
-                    .split_once('.')
-                    .filter(|(player, _)| player.starts_with('p'))
-                    .map_or(diff.path.as_str(), |(_, field)| field);
-                format!("diverged: {field} [{}]", report.context)
-            }
+            Stop::Diverged(diff) => format!(
+                "diverged: {} [{}]",
+                telling_field(&report.differing).unwrap_or(&diff.path),
+                report.context
+            ),
         }
     }
+}
+
+/// The differing field that best names the fault, without its player
+/// prefix: a motion change explains position and frame differences, a
+/// ground/air change explains position, and so on.
+fn telling_field(differing: &[String]) -> Option<&str> {
+    const ORDER: [&str; 6] = [
+        "motion_id",
+        "ground_or_air",
+        "percent",
+        "cur_pos",
+        "facing_dir",
+        "cur_anim_frame",
+    ];
+    let field = |key: &String| {
+        let rest = key.split_once('.').map_or(key.as_str(), |(_, f)| f);
+        rest.strip_prefix("follower.").unwrap_or(rest).to_string()
+    };
+    let fields: Vec<String> = differing.iter().map(field).collect();
+    ORDER
+        .iter()
+        .find_map(|name| fields.iter().position(|f| f.starts_with(name)))
+        .or((!fields.is_empty()).then_some(0))
+        .map(|index| {
+            let key = &differing[index];
+            let rest = key.split_once('.').map_or(key.as_str(), |(_, f)| f);
+            rest.split('.').next().unwrap_or(rest)
+        })
 }
 
 fn first_line(text: &str) -> &str {

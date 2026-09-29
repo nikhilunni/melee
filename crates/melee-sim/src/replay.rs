@@ -47,6 +47,8 @@ pub struct Report {
     pub ignored_fixes: bool,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
+    /// Every field that differs on the diverging frame, in key order.
+    pub differing: Vec<String>,
     pub stop: Stop,
 }
 
@@ -295,6 +297,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 .leader_ports()
                 .any(|port| has_controller_fix(&replay.start.players[port])),
         context: String::new(),
+        differing: Vec::new(),
         stop: Stop::Complete,
     };
     let reasons = unsupported_setup(replay, setup);
@@ -385,6 +388,12 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         };
         let actual = by_leader(&actual, &leaders, frame, expected.frame);
         if let Some(diff) = compare_frame(&expected, &actual) {
+            report.differing = expected
+                .state
+                .iter()
+                .filter(|(key, value)| actual.state.get(*key) != Some(value))
+                .map(|(key, _)| key.clone())
+                .collect();
             report.stop = Stop::Diverged(diff);
             return Ok(report);
         }
