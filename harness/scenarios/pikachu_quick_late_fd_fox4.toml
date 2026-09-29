@@ -1,0 +1,25 @@
+# PIKACHU directed witness: Pikachu grounded Quick Attack up-right, then left late.
+name = "pikachu_quick_late_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_pikachu_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 60, stickY = 60 } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickX = 60, stickY = 60 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 160, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Pikachu"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

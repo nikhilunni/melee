@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 370] = [
+const MATRIX_WITNESSES: [(&str, usize); 380] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1201,6 +1201,11 @@ const MATRIX_WITNESSES: [(&str, usize); 370] = [
     // and in the air.
     ("pikachu_thunder_fd_fox4", 360),
     ("pikachu_thunder_air_fd_fox4", 400),
+    // Pikachu replaying Pichu's Quick Attack and tilted Skull Bash witnesses.
+    ("pikachu_quick_air_fd_fox4", 400),
+    ("pikachu_quick_fd_fox4", 360),
+    ("pikachu_quick_late_fd_fox4", 360),
+    ("pikachu_skullbash_tilt_fd_fox4", 360),
     // PICHU: Pikachu's witnesses replayed by Pichu. PlPc.dat's scripts
     // hurt Pichu through ftAction_80072BF4 (self-damage: 1% per jolt,
     // Skull Bash and zip, 2% forward smash, 3% Thunder); the articles are
@@ -1360,6 +1365,8 @@ const MATRIX_WITNESSES: [(&str, usize); 370] = [
     ("samus_bomb_walk_fd_fox4", 300),
     ("samus_bomb_roll_fd_fox4", 320),
     ("samus_bomb_squat_fd_fox4", 300),
+    // The explorer's grounded Bomb (ftData_SpecialDown[Samus]) and 240 neutral ticks.
+    ("samus_x_ec3145eb3_p0", 360),
     // Grapple beam (itsamusgrapple.c, ftCo_0D95.c): the grab and dash
     // grab timelines with their RNG sparks, the rope's throw, sag and reel,
     // a catch reeled in to CatchWait, pummels, throws.
@@ -1453,6 +1460,15 @@ const MATRIX_WITNESSES: [(&str, usize); 370] = [
     ("links_yl_bomb_fd_fox4", 900),
     ("links_arrow_shield_fd_fox4", 420),
     ("links_yl_milk_fd_fox4", 600),
+    // LINKS: explorer cases from start_fd_link_fox4 extended by 240 neutral
+    // ticks past their old faults: Spin Attack grounded and aerial, the
+    // boomerang, Link shielding as Fox's up special starts, and a hookshot
+    // grab on a shielding Fox.
+    ("link_x_e3e74affa_p2", 337),
+    ("link_x_e4213e6a5_p2", 326),
+    ("link_x_ec13743d5_p0", 365),
+    ("link_x_e89a89d0e_p2", 326),
+    ("link_x_e50f774a0_p2", 340),
 ];
 
 #[test]
@@ -2514,7 +2530,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 390] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 436] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3141,6 +3157,57 @@ const CORPUS_V3_MATCHES: [(&str, usize); 390] = [
     ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p0", 6001),
     ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p1", 6001),
     ("corpus_v3_fd_younglink_fox4_ef9b6d16d_p2", 6001),
+    // Jigglypuff explorer matches from both port layouts, through her
+    // special rows (341-372: Rollout, Pound, Sing, Rest), exact since the
+    // specials' port (ft-purin).
+    ("corpus_v3_fd_fox_jigglypuff4_e0fcf0c70_p0", 6001),
+    ("corpus_v3_fd_fox_jigglypuff4_e121faf54_p0", 3084),
+    ("corpus_v3_fd_fox_jigglypuff4_e2b9e1400_p0", 2336),
+    ("corpus_v3_fd_fox_jigglypuff4_e4ef0d3e0_p0", 3255),
+    ("corpus_v3_fd_fox_jigglypuff4_e573e2d95_p0", 4900),
+    ("corpus_v3_fd_fox_jigglypuff4_e5f386e5e_p0", 6001),
+    ("corpus_v3_fd_fox_jigglypuff4_e7254fba4_p0", 3213),
+    ("corpus_v3_fd_fox_jigglypuff4_e7ff378da_p0", 5879),
+    ("corpus_v3_fd_fox_jigglypuff4_e8be4d273_p0", 5574),
+    ("corpus_v3_fd_fox_jigglypuff4_e8c6ff530_p0", 5850),
+    ("corpus_v3_fd_fox_jigglypuff4_ebfeefc0e_p0", 3869),
+    ("corpus_v3_fd_fox_jigglypuff4_ee98155f3_p0", 4052),
+    ("corpus_v3_fd_fox_jigglypuff4_efc6a328f_p0", 2741),
+    ("corpus_v3_fd_jigglypuff_fox4_e0fcf0c70_p0", 4782),
+    ("corpus_v3_fd_jigglypuff_fox4_e121faf54_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_fox4_e1611c835_p0", 3106),
+    ("corpus_v3_fd_jigglypuff_fox4_e3e74affa_p0", 3668),
+    ("corpus_v3_fd_jigglypuff_fox4_e3ef41ca4_p0", 1502),
+    ("corpus_v3_fd_jigglypuff_fox4_e4068796b_p0", 2650),
+    ("corpus_v3_fd_jigglypuff_fox4_e4ef0d3e0_p0", 4865),
+    ("corpus_v3_fd_jigglypuff_fox4_e573e2d95_p0", 2975),
+    ("corpus_v3_fd_jigglypuff_fox4_e5f386e5e_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_fox4_e8be4d273_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_fox4_e8c6ff530_p0", 4820),
+    ("corpus_v3_fd_jigglypuff_fox4_e8f0de8c6_p0", 5332),
+    ("corpus_v3_fd_jigglypuff_fox4_eae52f0ea_p0", 3503),
+    ("corpus_v3_fd_jigglypuff_fox4_eb17a6598_p0", 4495),
+    ("corpus_v3_fd_jigglypuff_fox4_ebfeefc0e_p0", 5660),
+    ("corpus_v3_fd_jigglypuff_fox4_edb4b01fd_p0", 3938),
+    ("corpus_v3_fd_jigglypuff_fox4_ee98155f3_p0", 4285),
+    // Clean Fox-Marth explorer samples (normal from both port layouts and
+    // Sudden Death), bridged alongside the fault witnesses above.
+    ("corpus_sd_s1_e2726590c_p0", 1683),
+    ("corpus_v3_s0_e01a74e09_p0", 6001),
+    ("corpus_v3_s0_e1f186101_p2", 6001),
+    ("corpus_v3_s0_e37053c42_p0", 4151),
+    ("corpus_v3_s0_e42b75250_p1", 4763),
+    ("corpus_v3_s0_e74315b3d_p2", 2447),
+    ("corpus_v3_s0_e8500e42f_p1", 4994),
+    ("corpus_v3_s0_ec36a7713_p1", 6001),
+    ("corpus_v3_s0_ec72b9942_p2", 6001),
+    ("corpus_v3_s1_e035918d1_p1", 5803),
+    ("corpus_v3_s1_e1f186101_p2", 3011),
+    ("corpus_v3_s1_e37053c42_p0", 5863),
+    ("corpus_v3_s1_e74315b3d_p2", 2641),
+    ("corpus_v3_s1_e8500e42f_p1", 6001),
+    ("corpus_v3_s1_ec36a7713_p1", 5266),
+    ("corpus_v3_s1_ec72b9942_p2", 5633),
 ];
 
 #[test]
