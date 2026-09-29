@@ -1606,6 +1606,9 @@ fn jigglypuff_hat_costumes_match_retail_bones() {
             let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
             assert!(report.is_empty(), "{name}: {report:#?}");
         }
+    }
+}
+
 /// Yoshi's forward smash from Wait (facing forward, turned by the stick or
 /// the C-stick) and turned out of a walk: frame 0's dust (0x3F3 on bone 57,
 /// ftCo_8009F834's three offset draws) precedes the smash voice's Randi
