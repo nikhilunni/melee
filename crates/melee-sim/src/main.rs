@@ -172,7 +172,12 @@ fn main() -> anyhow::Result<()> {
             boundary_seed,
             ignore_controller_fixes,
         } => {
-            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+            // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
+            // reads the main checkout's), as harness/data_root.py.
+            let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+                || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."),
+                PathBuf::from,
+            );
             let report = melee_sim::replay::run_file(
                 &file,
                 &root,
@@ -197,7 +202,12 @@ fn main() -> anyhow::Result<()> {
             jsonl,
         } => {
             use melee_sim::replay_batch;
-            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+            // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
+            // reads the main checkout's), as harness/data_root.py.
+            let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+                || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."),
+                PathBuf::from,
+            );
             let files = replay_batch::collect(&paths)?;
             anyhow::ensure!(!files.is_empty(), "no .slp files under the given paths");
             let jobs =
