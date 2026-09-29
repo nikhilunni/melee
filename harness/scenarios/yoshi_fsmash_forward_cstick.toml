@@ -1,0 +1,26 @@
+# YOSHI-FSMASH directed witness (boundary start_fd_yoshi_fox4). Yoshi,
+# facing right in Wait, C-sticks right at tick 160: AttackS4S (60), whose
+# frame 0 runs a graphics command (0x3F3 dust on bone 57: ftCo_8009F834
+# draws its three offsets) and then the smash voice (ftAction_80071CCC ->
+# ft_800889F4's Randi): the dust takes the three draws before the voice's.
+# Recorded with a bone dump (ticks 155-169) and the particle dump.
+name = "yoshi_fsmash_forward_cstick"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 240
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 160, port = 0, buttons = {  }, raw = { substickX = 80 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

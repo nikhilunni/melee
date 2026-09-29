@@ -1606,6 +1606,30 @@ fn jigglypuff_hat_costumes_match_retail_bones() {
             let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
             assert!(report.is_empty(), "{name}: {report:#?}");
         }
+/// Yoshi's forward smash from Wait (facing forward, turned by the stick or
+/// the C-stick) and turned out of a walk: frame 0's dust (0x3F3 on bone 57,
+/// ftCo_8009F834's three offset draws) precedes the smash voice's Randi
+/// (ftAction_80071CCC -> ft_800889F4) in the script. Only the dust's
+/// position shows the draw order, so the retail particle dumps are compared.
+#[test]
+fn yoshi_forward_smash_dust_positions_match_retail() {
+    for name in [
+        "yoshi_fsmash_forward_cstick",
+        "yoshi_fsmash_turn_cstick",
+        "yoshi_fsmash_turn_stick",
+        "yoshi_fsmash_walk_turn_cstick",
+    ] {
+        if combat_gate_ticks(name, 240).is_none() {
+            continue;
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        if !melee_test_support::require_files([scenario.trace_path("particles.jsonl")]) {
+            continue;
+        }
+        let report = trace::particle_state_diff_with(&scenario, 0, 240, false, false).unwrap();
+        assert!(report.is_empty(), "{name}: {report:#?}");
     }
 }
 

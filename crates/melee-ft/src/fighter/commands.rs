@@ -58,6 +58,16 @@ pub struct FootstepSound {
     pub pan: u8,
 }
 
+/// A sound command whose selection draws from the RNG.
+#[derive(Clone, Copy, Debug)]
+pub enum SoundDraw {
+    /// ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi over the
+    /// kind's smash voices.
+    Smash,
+    /// ftAction_80071FC8 (80072014): one Randi over the command's ids.
+    Random(melee_cmd::RandomSound),
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
     pub smash_charge: Option<melee_cmd::SmashCharge>,
@@ -65,8 +75,11 @@ pub struct CommandState {
     /// ftAction_80072894 requests, applied by the character's parasol hook.
     pub parasol_animations: FixedVec<(usize, f32), COMMAND_REQUEST_CAPACITY>,
     pub thrown_by: Option<u32>,
-    pub smash_sound_requests: usize,
-    pub random_sounds: FixedVec<melee_cmd::RandomSound, COMMAND_REQUEST_CAPACITY>,
+    /// Commands that draw from the RNG as they run (ftAction_80071CCC,
+    /// ftAction_80071FC8), in script order, each with the number of graphics
+    /// commands queued ahead of it: retail draws these between the graphics
+    /// commands' offset draws (ftCo_8009F834), as the script runs.
+    pub sound_draws: FixedVec<(SoundDraw, usize), COMMAND_REQUEST_CAPACITY>,
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
@@ -244,7 +257,7 @@ impl CommandState {
                 }
                 Command::SmashSound => {
                     if !seeking {
-                        self.smash_sound_requests += 1;
+                        self.sound_draws.push((SoundDraw::Smash, self.graphics.len()));
                     }
                 }
                 Command::GrabRelease => {
@@ -432,7 +445,8 @@ impl CommandState {
                 }
                 Command::RandomSound(sound) => {
                     if !seeking {
-                        self.random_sounds.push(*sound);
+                        self.sound_draws
+                            .push((SoundDraw::Random(*sound), self.graphics.len()));
                     }
                 }
                 Command::FootstepSound {
@@ -725,26 +739,57 @@ impl CommandState {
 }
 
 impl super::FighterCore {
-    /// ftAction_80071FC8 (80072014): select before graphics or effect procs draw.
-    pub fn resolve_random_sound_commands(&mut self, rng: &mut gekko_math::HsdRng) {
-        while !self.commands.random_sounds.is_empty() {
-            let sound = self.commands.random_sounds.remove(0);
-            assert!((1..=6).contains(&sound.range), "retail random sound range");
-            let index = rng.randi(i32::from(sound.range)) as usize;
-            let channel = match sound.behavior {
-                0 => SoundChannel::Ordinary,
-                1 => SoundChannel::Action,
-                2 => SoundChannel::FighterVoice,
-                3 => SoundChannel::Effect,
-                _ => unimplemented!("ftAction_80071FC8 sound behavior {}", sound.behavior),
+    /// The sound commands' draws issued before any still-queued graphics
+    /// command, in script order: each selection draws as its command runs.
+    pub fn resolve_sound_draws(&mut self, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
+        loop {
+            let next = self.commands.sound_draws.iter().next().copied();
+            let Some((draw, 0)) = next else {
+                break;
             };
-            self.commands.footstep_sounds.push(FootstepSound {
-                channel,
-                id: sound.ids[index],
-                volume: sound.volume,
-                pan: sound.pan,
-            });
+            self.commands.sound_draws.remove(0);
+            match draw {
+                SoundDraw::Smash => self.draw_smash_sound(assets, rng),
+                SoundDraw::Random(sound) => self.draw_random_sound(&sound, rng),
+            }
         }
+    }
+    /// A graphics command left the queue: the sound draws behind it move up.
+    pub(super) fn advance_sound_draws(&mut self) {
+        for (_, ahead) in self.commands.sound_draws.iter_mut() {
+            *ahead = ahead.saturating_sub(1);
+        }
+    }
+    /// ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi per smash voice.
+    fn draw_smash_sound(&mut self, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
+        if assets.smash_sounds.is_empty() {
+            return;
+        }
+        let id = assets.smash_sounds[rng.randi(assets.smash_sounds.len() as i32) as usize];
+        self.commands.footstep_sounds.push(FootstepSound {
+            channel: SoundChannel::Action,
+            id,
+            volume: 127,
+            pan: 64,
+        });
+    }
+    /// ftAction_80071FC8 (80072014).
+    fn draw_random_sound(&mut self, sound: &melee_cmd::RandomSound, rng: &mut gekko_math::HsdRng) {
+        assert!((1..=6).contains(&sound.range), "retail random sound range");
+        let index = rng.randi(i32::from(sound.range)) as usize;
+        let channel = match sound.behavior {
+            0 => SoundChannel::Ordinary,
+            1 => SoundChannel::Action,
+            2 => SoundChannel::FighterVoice,
+            3 => SoundChannel::Effect,
+            _ => unimplemented!("ftAction_80071FC8 sound behavior {}", sound.behavior),
+        };
+        self.commands.footstep_sounds.push(FootstepSound {
+            channel,
+            id: sound.ids[index],
+            volume: sound.volume,
+            pan: sound.pan,
+        });
     }
 }
 

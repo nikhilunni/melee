@@ -88,7 +88,9 @@ impl super::FighterCore {
         while !self.commands.graphics.is_empty() {
             draws += self.resolve_landing_effects(rng, index);
             index += 1;
+            self.resolve_sound_draws(assets, rng);
             let command = self.commands.graphics.remove(0);
+            self.advance_sound_draws();
             if self.effect_state.invisible {
                 self.effects.skip_graphics();
                 continue;
@@ -258,6 +260,9 @@ impl super::FighterCore {
             });
         }
         draws += self.resolve_landing_effects(rng, usize::MAX);
+        // Sound draws behind the last graphics command (or behind this
+        // command, when the caller hands graphics over one at a time).
+        self.resolve_sound_draws(assets, rng);
         self.effects.finish_graphics();
         draws
     }

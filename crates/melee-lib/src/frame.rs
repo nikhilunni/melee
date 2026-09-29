@@ -2767,22 +2767,11 @@ fn dispatch_fighter(
     for impulse in f.commands.radial_impulses.take_all() {
         radial_forces.insert(impulse);
     }
-    // ftAction_80071CCC -> ft_800889F4 (80088A18): one Randi per smash voice.
-    for _ in 0..std::mem::take(&mut f.commands.smash_sound_requests) {
-        if !assets.smash_sounds.is_empty() {
-            let id = assets.smash_sounds[rng.randi(assets.smash_sounds.len() as i32) as usize];
-            f.commands
-                .footstep_sounds
-                .push(melee_ft::fighter::commands::FootstepSound {
-                    channel: melee_ft::fighter::commands::SoundChannel::Action,
-                    id,
-                    volume: 127,
-                    pan: 64,
-                });
-        }
-    }
-    // S3: opcode 38 owns this draw before the following effect boundary.
-    f.resolve_random_sound_commands(rng);
+    // Smash voices (opcode 18) and random sounds (opcode 38) issued before
+    // any graphics command draw before the following effect boundary; those
+    // behind a graphics command draw after its offsets, in script order
+    // (resolve_graphics_commands).
+    f.resolve_sound_draws(assets, rng);
     // Opcode 54's footstep pitch draws (ftAction_80072CD8 -> ft_PlaySFX).
     f.resolve_terrain_footsteps(rng);
     if proc.s_link() >= 9 && !f.commands.graphics.is_empty() {
