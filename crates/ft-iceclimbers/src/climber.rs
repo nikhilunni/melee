@@ -10,6 +10,10 @@ pub fn vars(f: &mut Fighter) -> &mut ClimberVars {
     &mut f.character.get_mut::<IceClimber>().vars
 }
 
+pub fn payload(f: &mut Fighter) -> &mut IceClimber {
+    f.character.get_mut::<IceClimber>()
+}
+
 pub fn attributes(f: &Fighter) -> &IceClimberAttributes {
     &f.character.get::<IceClimber>().attributes
 }

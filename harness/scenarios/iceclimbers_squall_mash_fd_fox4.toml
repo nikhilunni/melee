@@ -1,0 +1,55 @@
+# ICECLIMBERS directed witness: Squall Hammer (ftPp_SpecialS_Enter) with Nana
+# beside Popo. Popo enters SpecialS2 (344) and Nana SpecialS_0 (359); B presses
+# every four ticks (cmd_vars[2] window, x10/x14 against attribute x68) lift
+# both into SpecialAirS2 (346) / 360. The move ends airborne in FallSpecial
+# (35, attribute x70) and both land in LandingFallSpecial (43).
+name = "iceclimbers_squall_mash_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 101, port = 0, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 105, port = 0, buttons = {  }, raw = {  } },
+  { frame = 108, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 109, port = 0, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 113, port = 0, buttons = {  }, raw = {  } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 117, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 0, buttons = {  }, raw = {  } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 125, port = 0, buttons = {  }, raw = {  } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 137, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 141, port = 0, buttons = {  }, raw = {  } },
+  { frame = 144, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 145, port = 0, buttons = {  }, raw = {  } },
+  { frame = 148, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 149, port = 0, buttons = {  }, raw = {  } },
+  { frame = 152, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 153, port = 0, buttons = {  }, raw = {  } },
+  { frame = 156, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

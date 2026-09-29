@@ -417,11 +417,17 @@ pub(super) fn in_hitlag(state: &InitialState, player: usize) -> bool {
     with_fighter!(&state.fighters[player], |f| f.in_hitlag())
 }
 
-/// The other member of `player`'s grab pair (x1A5C), by fighter index.
+/// The fighter `player`'s x1A5C names, by fighter index: the other member
+/// of its grab pair, or the partner a special linked it to.
 fn grab_partner(state: &InitialState, player: usize) -> Option<usize> {
-    let partner = match with_fighter!(&state.fighters[player], |f| f.combat.grab)? {
-        GrabLink::Holding { victim, .. } => victim,
-        GrabLink::Captured { captor } => captor,
+    let (grab, special) = with_fighter!(&state.fighters[player], |f| (
+        f.combat.grab,
+        f.combat.hitlag_link.partner
+    ));
+    let partner = match grab {
+        Some(GrabLink::Holding { victim, .. }) => victim,
+        Some(GrabLink::Captured { captor }) => captor,
+        None => special?,
     };
     state
         .fighters

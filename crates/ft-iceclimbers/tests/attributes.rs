@@ -21,23 +21,27 @@ fn relocated_attributes_name_the_spawn_offsets_and_nanas_armor() {
     word(&mut data, 0x00, 5.0_f32.to_bits());
     word(&mut data, 0xC4, (-5.0_f32).to_bits());
     word(&mut data, 0xC8, 0x7FC0_1234);
+    word(&mut data, 0x28, 1.5_f32.to_bits());
+    word(&mut data, 0x68, 6);
+    word(&mut data, 0x12C, 30.0_f32.to_bits());
     // ftData at +15C has a relocated ext_attr pointer to offset zero.
     let source = archive(&data, &[0x160], Some(("ftDataNana", 0x15C)));
     let attrs = read(&source, "ftDataNana").unwrap();
     assert_eq!(attrs.leader_spawn_offset, 5.0);
     assert_eq!(attrs.partner_spawn_offset, -5.0);
     assert_eq!(attrs.partner_armor.to_bits(), 0x7FC0_1234);
+    // The Squall Hammer's entry speed, press interval (an int) and Nana's
+    // FallSpecial lag.
+    assert_eq!(attrs.squall.ground_entry_speed, 1.5);
+    assert_eq!(attrs.squall.press_interval, 6);
+    assert_eq!(attrs.partner_squall_landing_lag, 30.0);
     assert!(read(&source, "ftDataPopo").is_err());
     assert!(IceClimberAttributes::read(&archive(&data[..0x15B], &[], None), 0).is_err());
 }
 
 #[test]
 fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
-    let mut popo = IceClimber {
-        climber: Climber::Popo,
-        attributes: attributes(),
-        vars: ClimberVars::default(),
-    };
+    let mut popo = IceClimber::new(Climber::Popo, attributes());
     let mut capabilities = Capabilities::default();
     popo.on_load(&mut capabilities);
     assert_eq!(popo.kind(), FighterKind::Popo);
@@ -46,11 +50,7 @@ fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
     assert_eq!(capabilities.armor, 0.0);
     assert_eq!(capabilities.specials, [true; 4]);
 
-    let mut nana = IceClimber {
-        climber: Climber::Nana,
-        attributes: attributes(),
-        vars: ClimberVars::default(),
-    };
+    let mut nana = IceClimber::new(Climber::Nana, attributes());
     let mut capabilities = Capabilities::default();
     nana.on_load(&mut capabilities);
     assert_eq!(nana.kind(), FighterKind::Nana);
@@ -63,11 +63,7 @@ fn popo_leads_and_nana_follows_as_a_cpu_with_armor() {
 
 #[test]
 fn landing_and_death_clear_the_climber_vars() {
-    let mut popo = IceClimber {
-        climber: Climber::Popo,
-        attributes: attributes(),
-        vars: ClimberVars::default(),
-    };
+    let mut popo = IceClimber::new(Climber::Popo, attributes());
     let mut raw = vec![0; 0x2254];
     raw[0x2230] = 0x80;
     word(&mut raw, 0x2234, 3);

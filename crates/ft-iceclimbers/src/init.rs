@@ -13,7 +13,9 @@ pub struct ClimberVars {
     /// +222C: the ice block the Ice Shot holds until it launches it.
     pub ice: bool,
     /// death2_cb and take_dmg_cb are ftPp_Init_8011F060 (installed with the
-    /// ice block, removed by a motion change or its release).
+    /// ice block or by the Squall Hammer; Nana's rows install
+    /// ftNn_Init_80122FAC, its tail), removed by a motion change or the
+    /// block's release.
     pub ice_callbacks: bool,
     /// accessory4_cb.
     pub accessory: crate::climber::Accessory,
@@ -70,6 +72,15 @@ pub struct IceClimber {
     pub climber: Climber,
     pub attributes: IceClimberAttributes,
     pub vars: ClimberVars,
+    /// Popo's fp->mv.pp.specials in the Squall Hammer.
+    pub squall: crate::special_s::SquallHammer,
+    /// Nana's fp->mv.pp.unk_80123954.x0: frames she has trailed Popo in
+    /// her Squall Hammer rows.
+    pub trail: i32,
+    /// The other climber as the scene offered it before this proc.
+    pub partner: Option<crate::partner::PartnerView>,
+    /// What this proc's callbacks left for the other climber.
+    pub work: crate::partner::PartnerWork,
 }
 
 /// Nana's form: her own archive and descriptor, Popo's payload type.
@@ -96,11 +107,23 @@ impl IceClimber {
             Climber::Popo => &POPO_DESCRIPTOR,
             Climber::Nana => &NANA_DESCRIPTOR,
         };
-        Ok(Self {
+        Ok(Self::new(
             climber,
-            attributes: attributes::read(data, descriptor.data_symbol)?,
+            attributes::read(data, descriptor.data_symbol)?,
+        ))
+    }
+
+    /// A climber as loaded: no move under way, no partner observed yet.
+    pub fn new(climber: Climber, attributes: IceClimberAttributes) -> Self {
+        Self {
+            climber,
+            attributes,
             vars: ClimberVars::default(),
-        })
+            squall: Default::default(),
+            trail: 0,
+            partner: None,
+            work: Default::default(),
+        }
     }
 }
 
@@ -165,6 +188,9 @@ impl CharacterCallbacks for IceClimber {
     fn on_motion_change(&mut self) {
         self.vars.ice_callbacks = false;
     }
+    const MOTION_FLAGS: &'static [u32] = &crate::SPECIAL_MOTION_FLAGS;
+    const OBSERVE_PARTNER: Option<fn(&mut Fighter, &Fighter)> = Some(crate::partner::observe);
+    const ACT_ON_PARTNER: Option<melee_ft::fighter::PartnerAction> = Some(crate::partner::act);
     /// ftCommon_8007DB58: take_dmg_cb, ftPp_Init_8011F060.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles);
     /// ftCo_800D331C: death2_cb, ftPp_Init_8011F060.

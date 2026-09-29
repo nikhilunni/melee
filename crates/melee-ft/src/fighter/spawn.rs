@@ -1169,6 +1169,7 @@ impl FighterCore {
             state_data: MotionData::None,
             combat: super::damage::CombatState {
                 capture_geometry,
+                stale: super::attack::stale::StaleHistory::for_fighter(player.secondary),
                 ..Default::default()
             },
             shield: super::shield::ShieldState::default(),

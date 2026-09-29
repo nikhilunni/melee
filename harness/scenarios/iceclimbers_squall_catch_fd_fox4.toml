@@ -1,0 +1,31 @@
+# ICECLIMBERS directed witness: Popo short-hops, lands, and Squall Hammers
+# while Nana is still in the air; ftNn_Init_80123954 lands her with his
+# collision (ft_800849EC, ftCommon_8007D7FC) into SpecialS_0 (359).
+name = "iceclimbers_squall_catch_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 280
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 101, port = 0, buttons = {  }, raw = {  } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 135, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 137, port = 0, buttons = {  }, raw = {  } },
+  { frame = 138, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 139, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

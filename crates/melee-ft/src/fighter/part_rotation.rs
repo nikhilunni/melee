@@ -25,4 +25,13 @@ impl FighterCore {
             Axis::Z => tree.set_rotation_z(joint, angle),
         }
     }
+    /// ftPartGetRotX (80075E78): the X angle ftPartSetRotX would set.
+    pub fn part_rotation_x(&self, part: usize) -> f32 {
+        let joint = self.animation.parts[part].joint;
+        if self.skeleton.get(joint).flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0 {
+            self.animation.blend_tree.rotation_x(joint)
+        } else {
+            self.skeleton.rotation_x(joint)
+        }
+    }
 }

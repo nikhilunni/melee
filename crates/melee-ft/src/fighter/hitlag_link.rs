@@ -19,6 +19,11 @@ pub struct HitlagLink {
     /// x2219_b5 without a running countdown: set by the partner's entry, or
     /// kept when this fighter's own countdown ends while `held`.
     pub frozen: bool,
+    /// x1A5C set by a special rather than a grab: the spawn number of the
+    /// fighter whose hitlag this one shares (the Ice Climbers' Squall
+    /// Hammer links Popo and Nana, ftNn_Init_80123954). Cleared with
+    /// Fighter_UnkSetFlag_8006CFBC, which `release_separated_hold` reads.
+    pub partner: Option<u32>,
 }
 
 impl FighterCore {
@@ -69,12 +74,15 @@ pub fn release_partner(fighter: &Fighter, partner: &mut Fighter) -> bool {
 
 impl FighterCore {
     /// Fighter_8006A1BC's x221A_b1 -> Fighter_8006CFE0 (8006CFE0), before the
-    /// countdown: ftCo_800DC920 separating the pair sets x221A_b1 on a held
-    /// member (Fighter_UnkSetFlag_8006CFBC). The port reads a held fighter
-    /// whose grab link is gone as that flag. With no countdown left (allow_sdi
-    /// clear; x1954 is unported) its hitlag ends now; x2219_b7 clears.
+    /// countdown: separating the pair (ftCo_800DC920 for a grab, the Squall
+    /// Hammer's ends for the climbers) sets x221A_b1 on a held member
+    /// (Fighter_UnkSetFlag_8006CFBC). The port reads a held fighter whose
+    /// grab or special link is gone as that flag. With no countdown left
+    /// (allow_sdi clear; x1954 is unported) its hitlag ends now; x2219_b7
+    /// clears.
     pub(super) fn release_separated_hold(&mut self) {
-        if !self.combat.hitlag_link.held || self.combat.grab.is_some() {
+        let link = &self.combat.hitlag_link;
+        if !link.held || self.combat.grab.is_some() || link.partner.is_some() {
             return;
         }
         if self.combat.hitlag_remaining == 0.0 {

@@ -109,6 +109,24 @@ pub type ItemDefenseContact =
 /// A character motion entry that draws from the RNG (ftPe_AttackS4_Enter).
 pub type RngEntry =
     fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng) -> assets::Result<()>;
+/// `CharacterCallbacks::ACT_ON_PARTNER`: the fighter, its partner, their
+/// assets in that order, and the stage.
+pub type PartnerAction = fn(
+    &mut Fighter,
+    &mut Fighter,
+    &assets::FighterAssets,
+    &assets::FighterAssets,
+    &mut melee_mp::CollMap,
+) -> assets::Result<PartnerMotionChanges>;
+
+/// Which of the pair `ACT_ON_PARTNER` moved to a new motion; the scene
+/// flushes that fighter's efAsync queue, as its Fighter_ChangeMotionState
+/// did within the proc (fighter.c:951).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PartnerMotionChanges {
+    pub fighter: bool,
+    pub partner: bool,
+}
 
 pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
@@ -441,6 +459,15 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const ACCESSORY2: Option<Accessory2> = None;
     /// accessory3_cb, which runs instead in hitlag (it_802BACC4).
     const HITLAG_ACCESSORY: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
+    /// A fighter that shares its player with a partner fighter (Popo and
+    /// Nana) reads it: the scene calls this before each of the fighter's
+    /// procs with the partner as it stands then, since retail's callbacks
+    /// dereference the other fighter directly (Player_GetEntityAtIndex).
+    const OBSERVE_PARTNER: Option<fn(&mut Fighter, &Fighter)> = None;
+    /// What a proc of this fighter left for its partner (a special that
+    /// changes the other fighter's motion or link): the scene calls this
+    /// after each proc with both fighters.
+    const ACT_ON_PARTNER: Option<PartnerAction> = None;
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
     fn escape_variant(
         _fighter: &mut Fighter,

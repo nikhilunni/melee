@@ -1,0 +1,46 @@
+# ICECLIMBERS directed witness: Popo jabs, then Squall Hammers while Nana still
+# replays the jab (motion class 2), so ftNn_Init_80123954 leaves her out and
+# Popo enters SpecialS1 (343) alone. The later presses lift him (SpecialAirS1
+# 345) and he lands back into SpecialS1 (ftCommon_AirToGroundStateChange).
+name = "iceclimbers_squall_solo_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 101, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 111, port = 0, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 113, port = 0, buttons = {  }, raw = {  } },
+  { frame = 114, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 115, port = 0, buttons = {  }, raw = {  } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 117, port = 0, buttons = {  }, raw = {  } },
+  { frame = 118, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 119, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 121, port = 0, buttons = {  }, raw = {  } },
+  { frame = 122, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 125, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 127, port = 0, buttons = {  }, raw = {  } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

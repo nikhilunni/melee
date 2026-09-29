@@ -1,0 +1,30 @@
+# ICECLIMBERS directed witness: Squall Hammer off the left edge with Nana
+# linked; one B press (tick 129) lifts the pair, the stick turns them back
+# (tick 130), and at tick 144 they meet the stage's side below the ledge:
+# SpecialAirS2_Coll's wall rebound (speed under attribute x48 leaves at x48).
+# melee-sim search: reached [p0.cur_pos.x < -86; p0.self_vel.x > 0.2; p0.self_vel.x < -0.1] at ticks [136, 143, 144].
+name = "iceclimbers_squall_wall_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 184
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickX = -80 } },
+  { frame = 101, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 129, port = 0, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

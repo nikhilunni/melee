@@ -2550,7 +2550,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 436] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 451] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3105,6 +3105,27 @@ const CORPUS_V3_MATCHES: [(&str, usize); 436] = [
     ("corpus_v3_fd_iceclimbers_fox4_ec3145eb3_p2", 98),
     ("corpus_v3_fd_iceclimbers_fox4_ecdf8887e_p0", 118),
     ("corpus_v3_fd_iceclimbers_fox4_edb2b114a_p2", 92),
+    // ICECLIMBERS: Squall Hammer (ftPp_SpecialS*, ftnanaspecials.c) entered on
+    // the ground and in the air with Nana linked (x1A5C, SpecialS_0/_1).
+    ("corpus_v3_fd_iceclimbers_fox4_e4213e6a5_p2", 86),
+    ("corpus_v3_fd_iceclimbers_fox4_e50814092_p2", 164),
+    ("corpus_v3_fd_iceclimbers_fox4_e573e2d95_p1", 203),
+    ("corpus_v3_fd_iceclimbers_fox4_ec13743d5_p2", 87),
+    // ICECLIMBERS: Squall Hammer witnesses: B-press lifts and landings, stick
+    // steering, running off the edge, the wall rebound, Nana joining from the
+    // other ground state, Popo alone (Nana mid-jab), hits on Fox sharing hitlag
+    // and the player's stale table, and a trade that unlinks the pair.
+    ("iceclimbers_squall_mash_fd_fox4", 300),
+    ("iceclimbers_squall_steer_fd_fox4", 240),
+    ("iceclimbers_squall_air_fd_fox4", 270),
+    ("iceclimbers_squall_edge_fd_fox4", 250),
+    ("iceclimbers_squall_wall_fd_fox4", 184),
+    ("iceclimbers_squall_land_fd_fox4", 240),
+    ("iceclimbers_squall_hop_fd_fox4", 260),
+    ("iceclimbers_squall_catch_fd_fox4", 280),
+    ("iceclimbers_squall_solo_fd_fox4", 260),
+    ("iceclimbers_squall_hit_fd_fox4", 300),
+    ("iceclimbers_squall_trade_fd_fox4", 222),
     // Sheik vs Fox: a thrown fighter against an owned item (it_802703E8),
     // Vanish's landing flash (efAsync 0x3FA), the smash charge's colour
     // program (ftColl_8007B62C on a body status), Zelda's up-air particle

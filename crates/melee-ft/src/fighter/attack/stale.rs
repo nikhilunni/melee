@@ -48,13 +48,47 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();
+/// Where a player's second fighter (Nana) starts numbering its attack
+/// instances, so they never equal the first fighter's: retail draws both
+/// from one counter (plStale_IncrementAttackInstance).
+const SECONDARY_SERIALS: u64 = 1 << 40;
+
 #[derive(Default, Clone, Debug)]
 pub struct StaleHistory {
     entries: [Option<AttackInstance>; 10],
     current: Option<GroundMove>,
     serial: u64,
+    /// Counts insertions, so a player's two fighters can tell whose copy
+    /// of the player's table is newer (`share_table`).
+    revision: u64,
 }
 impl StaleHistory {
+    /// A fresh history for one of a player's fighters.
+    pub fn for_fighter(secondary: bool) -> Self {
+        Self {
+            serial: if secondary { SECONDARY_SERIALS } else { 0 },
+            ..Self::default()
+        }
+    }
+    /// A fresh history after a stock loss (plStale_ResetStaleMoveTableForPlayer
+    /// from ftCo_800D34E0). The clearing counts as a change the player's
+    /// other fighter takes (`share_table`).
+    pub fn reset(&mut self, secondary: bool) {
+        let revision = self.revision + 1;
+        *self = Self::for_fighter(secondary);
+        self.revision = revision;
+    }
+    /// The table is the player's (Player_GetStaleMoveTableIndexPtr), shared
+    /// by its two fighters (Popo and Nana); each fighter keeps a copy. Take
+    /// `other`'s entries if they are newer. Returns whether they were.
+    pub fn share_table(&mut self, other: &StaleHistory) -> bool {
+        if other.revision <= self.revision {
+            return false;
+        }
+        self.entries = other.entries;
+        self.revision = other.revision;
+        true
+    }
     pub fn current_move(&self) -> Option<GroundMove> {
         self.current
     }
@@ -85,6 +119,7 @@ impl StaleHistory {
         if !self.entries.contains(&Some(attack)) {
             self.entries.rotate_right(1);
             self.entries[0] = Some(attack);
+            self.revision += 1;
         }
     }
     /// ft_80089118: subtract each of nine matching weights in retail order.

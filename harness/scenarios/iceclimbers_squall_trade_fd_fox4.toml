@@ -1,0 +1,32 @@
+# ICECLIMBERS directed witness: Popo runs right and Squall Hammers toward Fox
+# with Nana linked (x1A5C); Fox's forward smash (tick 161) hits the climbers
+# first. Popo's take_dmg_cb (ftPp_Init_8011F060 -> ftPp_SpecialS_8011F68C)
+# unlinks Nana before his hitlag starts, and Nana's rows end once he has
+# left SpecialS2 (ftPp_SpecialS_0_Anim).
+# melee-sim search: reached [p0.motion_id == 344; p0.percent > 0] at ticks [160, 172].
+name = "iceclimbers_squall_trade_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 222
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 161, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 161, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 163, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

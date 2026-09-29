@@ -49,4 +49,27 @@ Ice Shot (ftPp_SpecialN, it_802C1590/it_802C16F8, `it-climbersice`) is
 exact on both climbers, grounded and aerial, including its generators
 (bank 14, efsync 0x4E9..0x4EB on the block's child joint). efAsync_Spawn
 from an owner's accessory4 (s_link 9) dispatches at once (efasync.c:1458).
-Squall Hammer, Belay and Blizzard remain unported.
+Squall Hammer (ftPp_SpecialS*, ftnanaspecials.c; `special_s`) is exact on
+the ground and in the air, alone (343/345) and linked (344/346 with Nana in
+SpecialS_0/_1, 359/360): B-press lifts and landings, stick steering, running
+off the edge, the wall rebound, Nana joining from the other ground state,
+hits that share hitlag, and a trade that unlinks the pair.
+
+- The callbacks reach into the other climber (Player_GetEntityAtIndex). The
+  scene hands a climber its partner around each proc
+  (`CharacterCallbacks::OBSERVE_PARTNER` before, `ACT_ON_PARTNER` after;
+  `melee-lib` `frame/partner_fighters.rs`): Popo's entry decides from the
+  observed Nana (ftNn_Init_80123954) and moves her after his proc; Nana's
+  collision that stands on Popo's position copies his collision data after
+  hers. Either climber's unlinking (Fighter_UnkSetFlag_8006CFBC, x1A5C =
+  NULL) reaches the other the same way.
+- x1A5C outside a grab is `HitlagLink::partner`: a hit that starts one
+  climber's hitlag holds the other (Fighter_UnkRecursiveFunc_8006D044).
+- The stale-move table is the player's (Player_GetStaleMoveTableIndexPtr):
+  each fighter keeps a copy and the scene hands the newer one over before
+  every callback; Nana numbers her attack instances apart from Popo's, as
+  retail's single counter does. Nana's hit after Popo's is staled by his.
+- mv.pp.specials.x8 is never set, so ftPp_SpecialS_8011F720 never acts; the
+  aerial ceiling test (`(env & Collide_CeilingMask) == 1`) never holds.
+
+Belay and Blizzard remain unported.

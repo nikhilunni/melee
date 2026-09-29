@@ -950,6 +950,9 @@ impl Runtime {
         if continuation == Continuation::Complete {
             return Ok(());
         }
+        // Each of a player's fighters sees the player's stale-move table as
+        // the last proc left it.
+        partner_fighters::share_stale_tables(&mut self.state);
         let state = &mut self.state;
         let state_pads = &self.pads;
         match row.callback {
@@ -1119,6 +1122,8 @@ impl Runtime {
                         .count() as u8;
                     with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
+                // The partner as this proc's callbacks will read it.
+                partner_fighters::observe(state, player);
                 let assets = &state.assets;
                 // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.
                 if proc == FighterProc::HitDetection
@@ -1266,6 +1271,7 @@ impl Runtime {
                             )
                         }
                     })?;
+                    partner_fighters::act(state, player)?;
                 }
                 // Fighter_8006C80C's accessory4 may hand the player to its
                 // partner, whose own s_link 9 proc still runs this tick when
@@ -3157,6 +3163,7 @@ mod puff_state;
 mod yoshi_bones;
 
 mod grab_pairs;
+mod partner_fighters;
 mod transformation;
 #[cfg(test)]
 mod yoshi_state;

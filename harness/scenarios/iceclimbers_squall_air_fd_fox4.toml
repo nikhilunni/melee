@@ -1,0 +1,39 @@
+# ICECLIMBERS directed witness: aerial Squall Hammer (ftPp_SpecialAirS_Enter)
+# after a jump, reversed to face left; Nana joins (360). B presses rise while
+# both drift left past the edge; the move ends in FallSpecial (35) off stage.
+name = "iceclimbers_squall_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 270
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 101, port = 0, buttons = {  }, raw = {  } },
+  { frame = 108, port = 0, buttons = {  }, raw = { button = 512, stickX = -80 } },
+  { frame = 109, port = 0, buttons = {  }, raw = {  } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 117, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 0, buttons = {  }, raw = {  } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 125, port = 0, buttons = {  }, raw = {  } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 137, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

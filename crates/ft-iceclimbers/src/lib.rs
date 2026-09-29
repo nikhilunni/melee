@@ -6,8 +6,10 @@
 pub mod attributes;
 pub mod climber;
 pub mod init;
+pub mod partner;
 pub mod special;
 pub mod special_n;
+pub mod special_s;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -27,8 +29,48 @@ pub const SPECIAL_ROWS: [MotionRow; SPECIAL_ROW_COUNT] = {
     let ice_shot = special_n::ROWS;
     rows[0] = ice_shot[0];
     rows[1] = ice_shot[1];
+    let squall = special_s::rows();
+    let mut i = 0;
+    while i < squall.len() {
+        rows[2 + i] = squall[i];
+        i += 1;
+    }
+    let partner_squall = special_s::partner::rows();
+    rows[18] = partner_squall[0];
+    rows[19] = partner_squall[1];
     rows
 };
+
+/// ftPp_Init_MotionStateTable's x4_flags column (read from the DOL at
+/// 0x803CD2D4, every 0x20 bytes): each row's class nibble is 3.
+pub const SPECIAL_MOTION_FLAGS: [u32; SPECIAL_ROW_COUNT] = [
+    0x0034_0111, // SpecialN
+    0x0034_0511, // SpecialAirN
+    0x0034_0212, // SpecialS1
+    0x0034_0212, // SpecialS2
+    0x0034_0612, // SpecialAirS1
+    0x0034_0612, // SpecialAirS2
+    0x0034_0213, // SpecialHiStart_0
+    0x0034_0213, // SpecialHiThrow_0
+    0x0034_0213, // SpecialHiThrow2
+    0x0034_0213, // SpecialHiStart_1
+    0x0034_0213, // SpecialHiThrow_1
+    0x0034_0613, // SpecialAirHiStart_0
+    0x0034_0613, // SpecialAirHiThrow_0
+    0x0034_0613, // SpecialAirHiThrow2
+    0x0034_0613, // SpecialAirHiStart_1
+    0x0034_0613, // SpecialAirHiThrow_1
+    0x0034_0014, // SpecialLw
+    0x0034_0414, // SpecialAirLw
+    0x0034_0212, // SpecialS_0
+    0x0034_0612, // SpecialS_1
+    0x0034_0213, // SpecialHi_0
+    0x0034_0213, // SpecialHi_1
+    0x0034_0213, // SpecialHi_2
+    0x0034_0613, // SpecialHi_3
+    0x0034_0613, // SpecialHi_4
+    0x0034_0613, // SpecialHi_5
+];
 
 /// ftPp_Init_MotionStateTable's x9_b0 (bit 23 of the packed word): the
 /// neutral, side and down specials (0x803CD2D0, read from the DOL).

@@ -83,6 +83,8 @@ pub struct CharacterTable {
     pub catch_pulled: Option<fn(&mut Fighter)>,
     pub accessory2: Option<Accessory2>,
     pub hitlag_accessory: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
+    pub observe_partner: Option<fn(&mut Fighter, &Fighter)>,
+    pub act_on_partner: Option<PartnerAction>,
     pub escape_variant: fn(&mut Fighter, &assets::FighterAssets, bool) -> assets::Result<()>,
     pub check_float_input: fn(
         &CharacterState,
@@ -198,6 +200,8 @@ impl CharacterTable {
             catch_pulled: C::CATCH_PULLED,
             accessory2: C::ACCESSORY2,
             hitlag_accessory: C::HITLAG_ACCESSORY,
+            observe_partner: C::OBSERVE_PARTNER,
+            act_on_partner: C::ACT_ON_PARTNER,
             escape_variant: C::escape_variant,
             check_float_input: |state, input, assets, vertical_velocity, phase| {
                 state
