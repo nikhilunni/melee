@@ -205,6 +205,9 @@ pub fn capture_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
 }
 
 /// ftCo_8008EC90 / ftCo_800DC3A4: damage without releasing or launching the victim.
+/// Returns Fighter_ProcessHit's hitlag damage, dmg.x183C_applied
+/// (fighter.c:2885): this frame's largest damage count, 0 for a zero-damage
+/// hit (ftColl_80076ED8's dmg_count), so such a hit freezes neither member.
 pub(super) fn capture_damage(
     f: &mut Fighter,
     hit: &melee_coll::damage::ReceivedHit,
@@ -238,7 +241,7 @@ pub(super) fn capture_damage(
             let knockback = f.core.modified_knockback(hit.knockback, assets);
             f.core.unlaunched_damage_flash(knockback, hit, assets);
         }
-        return Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1));
+        return Ok(f.core.combat.frame_max_damage);
     }
     let state = if matches!(f.motion_state.id, S::CaptureWaitHi | S::CaptureDamageHi) {
         S::CaptureDamageHi
@@ -256,7 +259,7 @@ pub(super) fn capture_damage(
     // Fighter_ChangeMotionState (fighter.c:1043) has cleared dmg.kb_applied,
     // so the flash always takes reaction level 0 (electric: colanim 15).
     f.core.unlaunched_damage_flash(0.0, hit, assets);
-    Ok(gekko_math::msl::fctiwz(hit.descriptor.damage).max(1))
+    Ok(f.core.combat.frame_max_damage)
 }
 
 /// ftCo_CaptureDamageLw_Anim (800DC470): count down without the wait state's escape check.
