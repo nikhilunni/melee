@@ -2550,7 +2550,11 @@ impl Fighter {
             };
             if contact.overlap < assets.damage.phantom_threshold {
                 self.log_item_phantom_contact(item, &hit, contact, height, assets, common);
-                return None;
+                // ftColl_8007925C (ftcoll.c:2315): a phantom contact only
+                // breaks the hurt-capsule loop; the item's next hitbox is
+                // still tested and can land a full hit (Fox's throw laser
+                // has two).
+                continue;
             }
             let mut descriptor = hit.descriptor.clone();
             // ftColl_80077C60: an item entry's damage count is its contact
