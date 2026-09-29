@@ -159,6 +159,14 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     reasons
 }
 
+/// The first Slippi version whose Post Frame is sampled at the end of the
+/// fighter procs rather than after the map proc.
+const POST_FRAME_AT_CAMERA: slp::Version = slp::Version {
+    major: 3,
+    minor: 4,
+    build: 0,
+};
+
 /// The UCF version a UCF port ran. Slippi records only "UCF", so date the
 /// recording by its start time against Slippi's code history: 0.74 entered
 /// g_ucf.bin on 2019-10-09, 0.8 on 2021-03-31, 0.84 in 2024-02. Earlier
@@ -389,6 +397,11 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         );
     }
     let leaders: Vec<usize> = replay.leader_ports().collect();
+    // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of each
+    // fighter's map proc (Fighter_8006C27C, s_link 6), before hit detection
+    // and damage; 3.4.0 moved it to 0x8006DA34 in the camera proc (s_link
+    // 18), after the fighter procs the trace reads (slippi-ssbm-asm 9398d52).
+    simulation.capture_after_map(replay.version() < POST_FRAME_AT_CAMERA);
     for expected in slp::to_trace(replay) {
         if let Some((tick, reason)) = &unavailable {
             if *tick == expected.frame {
@@ -403,7 +416,10 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         report.context = leader_actions(replay, frame);
         let result = catch_unwind(AssertUnwindSafe(|| simulation.tick()));
         let actual = match result {
-            Ok(record) => record?,
+            Ok(record) => {
+                let record = record?;
+                simulation.after_map_record(&record).unwrap_or(record)
+            }
             Err(payload) => {
                 let message = payload
                     .downcast_ref::<String>()

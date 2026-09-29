@@ -247,6 +247,9 @@ struct Runtime {
     pad_queue_x: [melee_ft::input::PadQueueX; 4],
     /// The sticks of the queue entry this tick consumed (0.84 reads them).
     consumed_sticks: [melee_ft::input::RawSticks; 4],
+    /// Diagnostic only: each fighter's snapshot at the end of its map proc
+    /// (Fighter_8006C27C) this tick, when requested.
+    after_map: Option<Vec<(usize, Record)>>,
     /// This tick's external events: inputs like the pads, never state.
     external: crate::ExternalEvents,
     /// What the last tick consumed from `external`.
@@ -277,6 +280,7 @@ impl Clone for Runtime {
             raw_stick_x_history: self.raw_stick_x_history,
             pad_queue_x: self.pad_queue_x,
             consumed_sticks: self.consumed_sticks,
+            after_map: self.after_map.clone(),
             external: self.external,
             consumed: self.consumed,
             frame: self.frame,
@@ -1337,6 +1341,14 @@ impl Runtime {
                     })?;
                     partner_fighters::act(state, player)?;
                 }
+                if proc == FighterProc::Map {
+                    if let Some(snapshots) = self.after_map.as_mut() {
+                        snapshots.push((
+                            player,
+                            crate::diagnostics::snapshot(state, self.frame),
+                        ));
+                    }
+                }
                 // Fighter_8006C80C's accessory4 may hand the player to its
                 // partner, whose own s_link 9 proc still runs this tick when
                 // it follows in the fighter list.
@@ -2089,6 +2101,28 @@ impl Simulation {
     pub fn set_raw_sticks(&mut self, raw: Option<[melee_ft::input::RawSticks; 4]>) {
         self.runtime.raw_sticks = raw;
     }
+    /// Record each fighter's state at the end of its map proc
+    /// (Fighter_8006C27C, s_link 6) every tick: where Slippi before 3.4.0
+    /// sampled Post Frame (hook 0x8006C5D8).
+    pub fn capture_after_map(&mut self, enabled: bool) {
+        self.runtime.after_map = enabled.then(Vec::new);
+    }
+    /// The last tick's record as each fighter stood after its map proc:
+    /// fighter `N`'s `pN.*` keys from its own snapshot, the rest from the
+    /// tick's end (`end`).
+    pub fn after_map_record(&self, end: &Record) -> Option<Record> {
+        let snapshots = self.runtime.after_map.as_ref()?;
+        let mut record = end.clone();
+        for (fighter, snapshot) in snapshots {
+            let prefix = format!("p{fighter}.");
+            for (key, value) in &snapshot.state {
+                if key.starts_with(&prefix) {
+                    record.state.insert(key.clone(), value.clone());
+                }
+            }
+        }
+        Some(record)
+    }
     /// Replace each port's controller fix (a dry run or search borrowing
     /// another scenario's recorded boundary state).
     pub fn set_controller_fixes(&mut self, fixes: [melee_ft::input::ControllerFix; 4]) {
@@ -2241,6 +2275,7 @@ impl Simulation {
             raw_stick_x_history: Default::default(),
             pad_queue_x: Default::default(),
             consumed_sticks: Default::default(),
+            after_map: None,
             external: Default::default(),
             consumed: Default::default(),
             frame: 0,
@@ -2299,6 +2334,9 @@ impl Simulation {
             }
             runtime.state.effects.events.begin_tick(frame);
             runtime.consume_pad_queue();
+            if let Some(snapshots) = runtime.after_map.as_mut() {
+                snapshots.clear();
+            }
             runtime.consumed = Default::default();
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
