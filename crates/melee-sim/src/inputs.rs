@@ -84,9 +84,15 @@ impl PadScript {
                 .with_context(|| format!("replay tick {frame} port {}", input.port))?;
             // Pre Frame raw joystick/C-stick bytes are the SDK ring bytes UCF
             // reads; replays without them fall back to the normalized sticks.
+            // Slippi before 3.15 records raw X without Y: X is what UCF
+            // 0.74/0.8 read, so it never falls back while recorded.
             let derived = pad.raw_sticks();
+            let mut stick = input.raw_stick.unwrap_or(derived.stick);
+            if let Some(x) = input.raw_stick_x {
+                stick[0] = x;
+            }
             script.raw_sticks[frame + 1][usize::from(input.port)] = RawSticks {
-                stick: input.raw_stick.unwrap_or(derived.stick),
+                stick,
                 cstick: input.raw_cstick.unwrap_or(derived.cstick),
             };
             script.ticks[frame + 1][usize::from(input.port)] = pad;

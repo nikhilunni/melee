@@ -61,6 +61,7 @@ fn slippi_style_fields_recover_all_1800_recorded_movement_pads() {
                     triggers: [actual.left_trigger, actual.right_trigger],
                     raw_stick: None,
                     raw_cstick: None,
+                    raw_stick_x: None,
                 };
                 assert_eq!(
                     pad_bits(replay_pad(&input).unwrap()),
@@ -141,6 +142,7 @@ fn physical_bits_alone_and_dead_zoned_sticks_are_not_full_pad_copies() {
         triggers: [0.0, 0.0],
         raw_stick: None,
         raw_cstick: None,
+        raw_stick_x: None,
     };
     assert_eq!(replay_pad(&input).unwrap().buttons.0, 0x80000);
     let mut dead_zoned = input.clone();

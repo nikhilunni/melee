@@ -19,6 +19,10 @@ pub struct ControllerFrame {
     pub triggers: [f32; 2],
     pub raw_stick: Option<[i8; 2]>,
     pub raw_cstick: Option<[i8; 2]>,
+    /// Raw main-stick X alone (Slippi 1.2+; Y only from 3.15): the HSD queue
+    /// entry this frame consumed, which UCF's dashback and tumble read.
+    #[serde(default)]
+    pub raw_stick_x: Option<i8>,
 }
 
 impl ControllerFrame {
@@ -37,6 +41,7 @@ impl ControllerFrame {
                 .zip(pre.raw_joystick_y)
                 .map(|(x, y)| [x, y]),
             raw_cstick: pre.raw_cstick_x.zip(pre.raw_cstick_y).map(|(x, y)| [x, y]),
+            raw_stick_x: pre.raw_joystick_x,
         })
     }
 }
