@@ -99,6 +99,36 @@ def test_css_hand_enters_the_portrait_band_then_aims_its_token():
     assert d.css == [{"ckind": 2, "slot_type": 0, "stocks": 0, "color": 0}]
 
 
+def test_css_presses_x_until_each_port_wears_its_costume():
+    d, mem = driver(players=(15, 2))
+    d.config["costumes"] = [2, 0]
+    d.enter("css")
+    mem.write_u8(bs.SCENE_MACHINE, bs.GM_VS)
+    css = 0x80E00000
+    mem.write_u32(bs.CSS_DATA_PTR, css)
+    for port, ckind in enumerate((15, 2)):
+        mem.write_u8(css + bs.CSS_PLAYERS + port * bs.PLAYER_SIZE, ckind)
+    d.player = 2                                     # both characters picked
+    color = css + bs.CSS_PLAYERS + 3                 # port 0's PlayerInitData.color
+    presses = []
+    while d.phase != "start" and len(presses) < 10:
+        frame = d.step()
+        if frame:
+            presses.append(frame)
+            mem.write_u8(color, mem.read_u8(color) + 1)   # mnCharSel_CostumeChange: X steps up
+    assert presses == [{0: {"X": True}}, {0: {"X": True}}]
+    assert [p["color"] for p in d.css] == [2, 0]
+
+
+def test_a_costume_boundary_entry_names_its_costumes():
+    entry = tomllib.loads(mb.boundary_entry("b", "FinalDestination", ["Jigglypuff", "Fox"], 4, 7,
+                                            [3, 0]))["boundary"][0]
+    assert entry["costumes"] == [3, 0]
+    plain = tomllib.loads(mb.boundary_entry("b", "FinalDestination", ["Jigglypuff", "Fox"], 4, 7,
+                                            [0, 0]))["boundary"][0]
+    assert "costumes" not in plain
+
+
 def test_scenarios_and_registry_entry_parse():
     name = mb.default_name("Battlefield", ["Marth", "Fox"], 4)
     assert name == "start_bf_marth_fox4"

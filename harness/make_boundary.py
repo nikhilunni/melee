@@ -126,15 +126,18 @@ inputs = []
 {fighters}'''
 
 
-def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed: int) -> str:
+def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed: int,
+                   costumes: list[int] | None = None) -> str:
     quoted = ", ".join(f'"{p}"' for p in players)
+    # Costumes other than each port's first are written out (boundary.rs).
+    worn = f"costumes = {list(costumes)}\n" if costumes and any(costumes) else ""
     return (f'\n[[boundary]]\nname = "{name}"\ncold = "{name}_cold"\n'
             f'savestate = "harness/roms/{name}.sav"\nstage = "{stage}"\nplayers = [{quoted}]\n'
-            f'stocks = {stocks}\nseed = {seed}\n')
+            f'stocks = {stocks}\nseed = {seed}\n{worn}')
 
 
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
-                   transform: list[int] | None = None) -> dict:
+                   transform: list[int] | None = None, costumes: list[int] | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
@@ -144,7 +147,8 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
         config = Path(scratch) / "config.json"
         config.write_text(json.dumps({"savestate": str(sav), "stkind": stkind,
                                       "players": players, "stocks": stocks,
-                                      "transform": transform or []}))
+                                      "transform": transform or [],
+                                      **({"costumes": costumes} if costumes else {})}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
         env = {**os.environ, "MELEE_BOUNDARY_CONFIG": str(config)}
@@ -185,8 +189,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-register", action="store_true", help="record and gate, but leave boundaries.toml alone")
     ap.add_argument("--transform", type=int, nargs="*", default=[],
                     help="ports that hold A while the match loads (Zelda <-> Sheik); implied for Sheik")
+    ap.add_argument("--costumes", type=int, nargs="+",
+                    help="one costume per port (CSS X presses; default: each port's first free costume)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
+    if a.costumes is not None and len(a.costumes) != len(a.players):
+        sys.exit("--costumes needs one costume per player")
     transform = sorted(set(a.transform) | {i for i, p in enumerate(a.players) if p in TRANSFORMED})
     if not 2 <= len(a.players) <= 4:
         sys.exit("a boundary has 2 to 4 players")
@@ -202,7 +210,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"== {name}: driving the menus", flush=True)
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
-                             a.stocks, a.timeout, transform)
+                             a.stocks, a.timeout, transform, a.costumes)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
@@ -224,13 +232,13 @@ def main(argv: list[str] | None = None) -> None:
     if gate.returncode:
         print(f"== {name} is not registered: the port does not reproduce it yet. Its savestate, scenarios "
               f"and traces stay for that work; register it by rerunning the gate and adding\n"
-              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed)}")
+              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes)}")
         sys.exit(1)
     if a.no_register:
         print(f"== {name} passes; not registered (--no-register)")
         return
     with BOUNDARIES.open("a") as f:
-        f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed))
+        f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes))
     if BACKUP.is_dir():
         for src in (sav, Path(str(sav) + ".json")):
             dst = BACKUP / src.name

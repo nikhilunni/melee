@@ -23,6 +23,10 @@ pub struct Boundary {
     pub seed: u32,
     #[serde(default)]
     pub sudden_death: bool,
+    /// Costume per port when any is not the port's first (`make_boundary.py
+    /// --costumes`); absent means every port wears costume 0.
+    #[serde(default)]
+    pub costumes: Option<Vec<u8>>,
 }
 
 #[derive(Deserialize)]
@@ -39,7 +43,7 @@ pub fn load(path: &Path) -> Result<Vec<Boundary>, String> {
 }
 
 impl Boundary {
-    /// The match this boundary starts: default costumes, the unlocked roster
+    /// The match this boundary starts: its costumes, the unlocked roster
     /// every boundary is recorded with, and the savestate's seed.
     pub fn config(&self) -> Result<MatchConfig, String> {
         let [first, second] = self.players.as_slice() else {
@@ -48,9 +52,17 @@ impl Boundary {
                 self.name
             ));
         };
+        let [first_costume, second_costume] = match self.costumes.as_deref() {
+            None => [0, 0],
+            Some(&[a, b]) => [a, b],
+            Some(_) => return Err(format!("{}: one costume per player", self.name)),
+        };
         Config {
             stage: self.stage.clone(),
-            players: [(0, first.clone(), 0), (1, second.clone(), 0)],
+            players: [
+                (0, first.clone(), first_costume),
+                (1, second.clone(), second_costume),
+            ],
             stocks: self.stocks,
             all_characters_unlocked: true,
             seed: self.seed,
@@ -91,6 +103,27 @@ mod tests {
     }
 
     #[test]
+    fn a_costume_boundary_starts_its_costumes() {
+        let registry: Registry = toml::from_str(
+            r#"
+            [[boundary]]
+            name = "start_fd_jigglypuff_c2_fox4"
+            cold = "start_fd_jigglypuff_c2_fox4_cold"
+            savestate = "harness/roms/start_fd_jigglypuff_c2_fox4.sav"
+            stage = "FinalDestination"
+            players = ["Jigglypuff", "Fox"]
+            stocks = 4
+            seed = 7
+            costumes = [2, 0]
+            "#,
+        )
+        .unwrap();
+        let config = registry.boundary[0].config().unwrap();
+        assert_eq!(config.players[0].costume.0, 2);
+        assert_eq!(config.players[1].costume.0, 0);
+    }
+
+    #[test]
     fn three_player_boundaries_are_rejected() {
         let boundary = Boundary {
             name: "b".into(),
@@ -101,6 +134,7 @@ mod tests {
             stocks: 4,
             seed: 0,
             sudden_death: false,
+            costumes: None,
         };
         assert!(boundary.config().is_err());
     }

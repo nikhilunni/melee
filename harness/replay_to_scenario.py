@@ -60,10 +60,13 @@ def boundary_for(config: dict) -> dict:
     if not layout:
         raise SystemExit(f"no boundary in {BOUNDARIES.name} for {config['stage']} {players} "
                          f"{config['stocks']} stocks")
-    if any(p[2] != 0 for p in config["players"]) or not config["all_characters_unlocked"]:
-        raise SystemExit("boundaries assume default costumes and the unlocked roster")
+    if not config["all_characters_unlocked"]:
+        raise SystemExit("boundaries assume the unlocked roster")
+    costumes = [p[2] for p in sorted(config["players"])]
     for b in layout:
         if b["seed"] == config["seed"]:
+            if b.get("costumes", [0] * len(players)) != costumes:
+                raise SystemExit(f"recording costumes {costumes} differ from boundary {b['name']}'s")
             return b
     raise SystemExit(f"recording seed {config['seed']} is no boundary seed for this layout; "
                      f"use one of {[b['seed'] for b in layout]}")

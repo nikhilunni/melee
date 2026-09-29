@@ -4,9 +4,13 @@ Launched by harness/make_boundary.py (headless, unlimited speed). The config is
 a JSON file named by MELEE_BOUNDARY_CONFIG:
 
     {"savestate": "/abs/roms/<name>.sav", "stkind": 32, "stocks": 4,
-     "players": [2, 9], "time_limit_minutes": 0, "transform": [0]}
+     "players": [2, 9], "time_limit_minutes": 0, "transform": [0],
+     "costumes": [3, 0]}
 
 `players` are CSS character kinds (ft/forward.h CharacterKind), one per port.
+`costumes` (optional) gives each port's costume: after the characters are
+picked, that port presses X until the CSS door's costume matches
+(mnCharSel_CostumeChange, mncharsel.c:2186: X steps to the next costume).
 `transform` (optional) lists ports that hold A from the stage screen until
 the fighters exist: fn_8016D8AC (gm_16AE.c:1573-1583) reads that port's
 HSD_PadCopyStatus when the match loads and swaps a human Zelda for Sheik
@@ -252,6 +256,8 @@ class BoundaryDriver:
         if (mode, state) != (GM_VS, VS_STATE_CSS):
             raise BoundaryError(f"left the CSS early (mode {mode}, state {state})")
         players = self.config["players"]
+        if self.player == len(players) and not self.costumes_done():
+            return self.change_costume()
         if self.player == len(players):
             self.css = [self.css_player(p) for p in range(len(players))]
             if any(p["slot_type"] != PKIND_HUMAN for p in self.css):
@@ -295,6 +301,25 @@ class BoundaryDriver:
         self.mem.write_f32(cursor + 0x10, cy - dy)
         self.wait_until = self.frame + PULSE_PERIOD
         self.pending_press = (port, self.frame + 4)
+        return {}
+
+    def costumes_done(self) -> bool:
+        wanted = self.config.get("costumes")
+        return wanted is None or all(
+            self.css_player(port)["color"] == costume for port, costume in enumerate(wanted))
+
+    def change_costume(self) -> dict:
+        """X on the first port whose costume differs, one press per PULSE_PERIOD."""
+        if self.frame < self.wait_until:
+            return {}
+        for port, costume in enumerate(self.config["costumes"]):
+            if self.css_player(port)["color"] != costume:
+                self.attempts += 1
+                if self.attempts > 12:
+                    raise BoundaryError(f"port {port} did not reach costume {costume}: "
+                                        f"{self.css_player(port)}")
+                self.wait_until = self.frame + PULSE_PERIOD
+                return {port: {"X": True}}
         return {}
 
     def press_due(self) -> dict:
