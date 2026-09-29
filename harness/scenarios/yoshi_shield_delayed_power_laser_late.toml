@@ -1,0 +1,28 @@
+# YOSHI-SHIELD directed witness (boundary start_fd_yoshi_fox4), the window's
+# edge. As yoshi_shield_delayed_power_laser, but the analog half-press comes
+# at 168 and digital L at 170: GuardOn's elapsed frames have reached the
+# powershield window, so retail stays in GuardOn (341) into the hold (342)
+# and Fox's laser hits the plain egg (344).
+name = "yoshi_shield_delayed_power_laser_late"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 1, buttons = {  }, raw = {  } },
+  { frame = 168, port = 0, buttons = {  }, raw = { triggerL = 80 } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140 } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

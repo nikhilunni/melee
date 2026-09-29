@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 403] = [
+const MATRIX_WITNESSES: [(&str, usize); 407] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1140,6 +1140,14 @@ const MATRIX_WITNESSES: [(&str, usize); 403] = [
     ("yoshi_hold_egg_shield_hit", 360),
     ("yoshi_shield_release_stun", 232),
     ("yoshi_shield_powershield_stun", 232),
+    // Yoshi's delayed egg powershield (ftYs_Shield_8012C850): a digital press
+    // during GuardOn continues GuardOn_1 (345) at GuardOn's frame, against a
+    // laser (not reflected) and a melee hit released in and held through
+    // the stun; a press at the window's edge stays in GuardOn.
+    ("yoshi_shield_delayed_power_laser", 300),
+    ("yoshi_shield_delayed_power_laser_late", 300),
+    ("yoshi_shield_delayed_power_stun", 232),
+    ("yoshi_shield_delayed_power_hold", 300),
     ("yoshi_shield_hit_break", 399),
     // Peach Bomber (ftpeachspecials.c): ground and aerial flights whose inert
     // hitbox touches Fox (unk_gobj -> doAirEnd0) and leaves the PeachExplode
@@ -2587,7 +2595,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 465] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 467] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3121,6 +3129,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 465] = [
     ("corpus_v3_fod_pikachu_mario4_eae52f0ea_p2", 1366),
     // Peach drops through a platform holding a turnip (Pass keeps the item).
     ("corpus_v3_ys_peach_yoshi4_ea4d5d9ec_p1", 2354),
+    // Yoshi's delayed egg powershield (ftYs_Shield_8012C850).
+    ("corpus_v3_ys_peach_yoshi4_e2af099ca_p2", 87),
+    ("corpus_v3_ys_peach_yoshi4_ee133b82f_p2", 2223),
     // More exact cross-matchup matches.
     ("corpus_v3_fd_peach_falco4_ec0a10b25_p0", 1668),
     ("corpus_v3_fod_pikachu_mario4_ec0a10b25_p0", 1658),

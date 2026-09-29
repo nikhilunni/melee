@@ -1,0 +1,48 @@
+# YOSHI-SHIELD directed witness, as yoshi_shield_delayed_power_stun but L is
+# held through the stun: the delayed egg powershield (345, ftYs_Shield_8012C850)
+# takes Fox's hit (344), returns to the egg hold (342, ftYs_Shield_8012C1D4)
+# and releases at 230 (343).
+name = "yoshi_shield_delayed_power_hold"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = { button = 256, stickY = -40 } },
+  { frame = 1, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 3, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 14, port = 1, buttons = {  }, raw = { button = 320, triggerL = 140 } },
+  { frame = 27, port = 1, buttons = {  }, raw = { button = 512, stickY = 80 } },
+  { frame = 37, port = 0, buttons = {  }, raw = { button = 512, stickX = -80 } },
+  { frame = 40, port = 1, buttons = {  }, raw = { button = 512, stickX = -80 } },
+  { frame = 42, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 45, port = 1, buttons = {  }, raw = { button = 512, stickX = 56, stickY = -56 } },
+  { frame = 47, port = 1, buttons = {  }, raw = { button = 256, stickY = 80 } },
+  { frame = 58, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 68, port = 1, buttons = {  }, raw = { button = 512, stickX = 56, stickY = -56 } },
+  { frame = 70, port = 1, buttons = {  }, raw = { button = 256, stickY = 80 } },
+  { frame = 75, port = 1, buttons = {  }, raw = { button = 512, stickX = -80 } },
+  { frame = 79, port = 0, buttons = {  }, raw = { substickX = -56, substickY = -56 } },
+  { frame = 83, port = 1, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 87, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 97, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 256, stickX = 80 } },
+  { frame = 103, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 104, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 125, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 173, port = 1, buttons = {  }, raw = { button = 256, stickX = 80 } },
+  { frame = 174, port = 1, buttons = {  }, raw = { button = 64, stickX = 56, stickY = 56, triggerL = 140 } },
+  { frame = 178, port = 0, buttons = {  }, raw = { triggerL = 80 } },
+  { frame = 179, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+]
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

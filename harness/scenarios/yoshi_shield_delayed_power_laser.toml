@@ -1,0 +1,30 @@
+# YOSHI-SHIELD directed witness (boundary start_fd_yoshi_fox4). Fox fires a
+# laser at tick 150; Yoshi half-presses analog L at 170 (GuardOn, 341) and
+# presses digital L at 171, inside the powershield window: the delayed egg
+# powershield (ftCo_80093694 -> ftYs_Shield_8012C850) continues GuardOn_1
+# (345) at the current frame. The laser meets the egg at 175: Yoshi's
+# reflector does not return it (ftYs_Shield_8012CACC is empty); it breaks on
+# the shield (344), then the hold (342) and the release (343) at 200.
+name = "yoshi_shield_delayed_power_laser"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 1, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { triggerL = 80 } },
+  { frame = 171, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140 } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

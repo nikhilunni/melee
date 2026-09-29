@@ -7,7 +7,7 @@ use melee_ft::fighter::{
     assets::{FighterAssets, Result},
     commands::{FootstepSound, SoundChannel},
     shield::{GuardState, ReflectHitCallback, ReflectVolume, ShieldImpact, ShieldVolume},
-    Fighter, MotionData,
+    Fighter, MotionData, MotionEntryFlags,
 };
 use melee_ft::input::Buttons;
 use melee_types::combat::HurtStatus;
@@ -106,23 +106,7 @@ pub fn enter(fighter: &mut Fighter, assets: &FighterAssets, reflect: bool) -> Re
     // HurtCapsule_Disabled throughout the startup animation.
     fighter.core.set_hurt_capsules(HurtStatus::Invincible);
     if reflect {
-        fighter.input.shoulder.tilt = 0xFE;
-        fighter.shield.fresh_powershield = true;
-        fighter.shield.reflect_window = true;
-        fighter.shield.powershield_window = true;
-        fighter.shield.reflecting = true;
-        fighter.shield.reflect = ReflectVolume {
-            volume: ShieldVolume {
-                bone: usize::from(fighter.bones.model.shield),
-                radius: assets.shield.reflect_radius,
-                ..Default::default()
-            },
-            maximum_damage: fighter.status.shield_health,
-            damage_multiplier: assets.shield.reflect_damage,
-            speed_multiplier: assets.shield.reflect_speed,
-            reflect_behavior: true,
-        };
-        fighter.shield.on_reflect = Some(ReflectHitCallback::Egg);
+        arm_reflector(fighter, assets);
     } else {
         fighter.install_shield();
     }
@@ -239,6 +223,50 @@ pub fn animate(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     material(fighter);
     Ok(())
 }
+/// ftYs_Shield_8012C850 (8012C850), ftCo_80093850's Yoshi branch: a
+/// digital press during GuardOn continues GuardOn_1 (345) at the current
+/// frame with Ft_MF_SkipModel only (the animation reloads, owned effects
+/// end), clears the shield bits, and replaces them with the egg reflector.
+/// Unlike ftCo_8009388C it leaves the guard scratch's x1C alone.
+fn delayed_powershield(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    let frame = fighter.animation.frame;
+    fighter.change_motion_state_with_flags(
+        S::GuardReflect.into(),
+        assets,
+        MotionEntryFlags::SKIP_MODEL,
+        frame,
+        1.0,
+    )?;
+    fighter.shield.enabled = false;
+    fighter.shield.active = false;
+    let guard = fighter.guard();
+    guard.reflect_frames = assets.shield.reflect_frames;
+    guard.powershield_frames = assets.shield.powershield_frames;
+    arm_reflector(fighter, assets);
+    Ok(())
+}
+/// The powershield bits and the egg reflector shared by ftYs_Shield_8012C914
+/// and ftYs_Shield_8012C850: ftCo_8009370C (8009370C) with
+/// ftYs_Shield_8012CACC.
+fn arm_reflector(fighter: &mut Fighter, assets: &FighterAssets) {
+    fighter.input.shoulder.tilt = 0xFE;
+    fighter.shield.fresh_powershield = true;
+    fighter.shield.reflect_window = true;
+    fighter.shield.powershield_window = true;
+    fighter.shield.reflecting = true;
+    fighter.shield.reflect = ReflectVolume {
+        volume: ShieldVolume {
+            bone: usize::from(fighter.bones.model.shield),
+            radius: assets.shield.reflect_radius,
+            ..Default::default()
+        },
+        maximum_damage: fighter.status.shield_health,
+        damage_multiplier: assets.shield.reflect_damage,
+        speed_multiplier: assets.shield.reflect_speed,
+        reflect_behavior: true,
+    };
+    fighter.shield.on_reflect = Some(ReflectHitCallback::Egg);
+}
 /// ftYs_GuardOn_0 / GuardHold / GuardOff IASA (ftyoshiguard.c:135,204,258).
 /// Hold release belongs to Anim. These IASAs have neither shield jumping
 /// nor the common C-stick spot dodge; GuardOn_1 uses shared GuardReflect.
@@ -253,7 +281,7 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         && fighter.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS)
         && i32::from(fighter.input.shoulder.tilt) < assets.input.powershield_window
     {
-        unimplemented!("ftyoshiguard.c:332-347: delayed egg powershield");
+        return delayed_powershield(fighter, assets);
     }
     // ftCo_8009515C is false without a held item. ftCo_80099794 requires LR.
     if fighter.input.current.held.intersects(Buttons::SHIELD)
