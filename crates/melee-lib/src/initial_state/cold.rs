@@ -396,12 +396,13 @@ fn create_players(
             )?);
             continue;
         }
-        // fn_8016D8AC: increment by five for each entering Player slot.
+        // fn_8016D8AC: the delay grows by five for every Player slot before
+        // this one, entering or not (ports 2 and 4 enter at 10 and 20).
         fighters.push(SceneFighter::from_parameters(
             &assets.characters[index],
             &assets.fighters[index],
             player,
-            ENTRY_STAGGER_FRAMES * (p as i32 + 1),
+            ENTRY_STAGGER_FRAMES * (i32::from(scenario.fighters[p].slot) + 1),
             context,
         )?);
         if entry.secondary {
