@@ -193,10 +193,10 @@ impl FighterCore {
             .frame_max_damage
             .max(damage_count(phantom.damage));
         // plStale_UpdateStaleMovesFromFighter / ftColl_80076444 run on the
-        // source fighter; the scene applies this credit after ProcessHit.
-        if let HitSource::Fighter(source) = phantom.source {
-            self.combat.pending_credit = Some(source);
-        }
+        // source fighter (for an item, plStale_UpdateStaleMovesFromItem /
+        // ftColl_8007646C on its owner); the scene applies this credit after
+        // ProcessHit.
+        self.combat.pending_credit = Some(phantom.source);
         let knockback = self.combat.phantom_knockback;
         self.push_hit_effects(
             phantom.position,

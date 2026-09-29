@@ -232,7 +232,10 @@ pub fn replay(fp: &mut Fighter, scene: &Scene) {
         && own.core.motion_state.action.0 == BLIZZARD
         && usize::from(motion) < melee_ft::fighter::COMMON_COUNT;
     if joins_blizzard {
-        unimplemented!("ftCo_800B0AF4: ftPp_SpecialLw_Enter for the partner");
+        // ftPp_SpecialLw_Enter, run by the scene once the think returns.
+        fp.core.physics.facing = -own.core.physics.facing;
+        fp.core.cpu.joins_blizzard = true;
+        return;
     }
     let cpu = &mut fp.core.cpu;
     let sample = cpu.follow.entries[cpu.follow.read];

@@ -150,6 +150,7 @@ pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32]) -> CpuState {
         over_stage: bit(0xFA, 0x04),
         xfa_b6: bit(0xFA, 0x02),
         following: bit(0xFA, 0x01),
+        joins_blizzard: false,
         xfb_b0: bit(0xFB, 0x80),
         follow: FollowRing {
             entries,

@@ -9,6 +9,7 @@ pub mod init;
 pub mod partner;
 pub mod special;
 pub mod special_hi;
+pub mod special_lw;
 pub mod special_n;
 pub mod special_s;
 
@@ -51,6 +52,9 @@ pub const SPECIAL_ROWS: [MotionRow; SPECIAL_ROW_COUNT] = {
         rows[(partner[i].action.0 - FIRST_ACTION) as usize] = partner[i];
         i += 1;
     }
+    let blizzard = special_lw::ROWS;
+    rows[(special_lw::GROUND.0 - FIRST_ACTION) as usize] = blizzard[0];
+    rows[(special_lw::AIR.0 - FIRST_ACTION) as usize] = blizzard[1];
     rows
 };
 

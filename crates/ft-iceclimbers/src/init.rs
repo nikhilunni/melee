@@ -13,9 +13,9 @@ pub struct ClimberVars {
     /// +222C: the ice block the Ice Shot holds until it launches it.
     pub ice: bool,
     /// death2_cb and take_dmg_cb are ftPp_Init_8011F060 (installed with the
-    /// ice block or by the Squall Hammer; Nana's rows install
-    /// ftNn_Init_80122FAC, its tail), removed by a motion change or the
-    /// block's release.
+    /// ice block, the Blizzard's breath or the Squall Hammer; Nana's rows
+    /// install ftNn_Init_80122FAC, its tail), removed by a motion change or
+    /// their release.
     pub ice_callbacks: bool,
     /// accessory4_cb.
     pub accessory: crate::climber::Accessory,
@@ -24,9 +24,9 @@ pub struct ClimberVars {
     /// +2234: x2234.
     // TODO(meaning): written by the specials.
     pub x2234: u32,
-    /// +2230 bit 0.
-    // TODO(meaning): written by the specials.
-    pub x2230_b0: bool,
+    /// +2230 bit 0: the Blizzard's breath is out (fn_80122D2C); its
+    /// effects go with it (ftPp_SpecialHi_80122898).
+    pub breath: bool,
     /// +224C: an aerial Ice Shot lifted the climber since it last landed
     /// (cleared by ftCo_Landing_Enter too, ftCo_Landing.c:71).
     pub air_ice_shot_used: bool,
@@ -35,6 +35,8 @@ pub struct ClimberVars {
     pub ice_drop: f32,
     /// The Belay's scratch (mv.pp, +2238..+2248).
     pub belay: crate::special_hi::BelayVars,
+    /// fp->mv.pp.speciallw (+2340, +2344): the Blizzard's puff timer.
+    pub blizzard: crate::special_lw::Blizzard,
 }
 impl ClimberVars {
     /// ftPp_Init_OnDeath / ftNn_Init_OnDeath: the shared reset.
@@ -48,7 +50,7 @@ impl ClimberVars {
         if word(0x222C) != 0 || word(0x2238) != 0 {
             unimplemented!("ftPopo_FighterVars: a saved item GObj (+222C/+2238)");
         }
-        self.x2230_b0 = raw[0x2230] & 0x80 != 0;
+        self.breath = raw[0x2230] & 0x80 != 0;
         self.x2234 = word(0x2234);
         self.air_ice_shot_used = word(0x224C) != 0;
         self.ice_drop = f32::from_bits(word(0x2250));
@@ -247,6 +249,7 @@ impl CharacterCallbacks for IceClimber {
             crate::climber::Accessory::RopeAnchor => {
                 crate::special_hi::partner::anchor_accessory(f)
             }
+            crate::climber::Accessory::Blizzard => crate::special_lw::accessory(f),
             crate::climber::Accessory::None => {}
         }
     }

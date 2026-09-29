@@ -1,0 +1,28 @@
+# ICECLIMBERS death witness (retail): both dash off FD's left edge; Popo
+# jumps straight back (tick 128) and lands, Nana recovers out of step and
+# falls to her death alone (DeadDown at 278, no stock lost). When her
+# countdown ends she sleeps (338, ftCo_800BFD9C) and fn_8016719C(slot, 1)
+# takes a revival slot; Popo, not reviving, plays on alone.
+name = "iceclimbers_ko_nana_alone_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 127, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 1024 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -10,15 +10,12 @@ pub fn enter(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &Fighte
         SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
         SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
         SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
-        SpecialSlot::Down => unimplemented!(
-            "ftData_Special{slot:?}[{:?}] (airborne: {airborne}): the climbers' special",
-            f.core.kind
-        ),
+        SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
     }
 }
 
 /// ftCommon_8007DB58's take_dmg_cb: ftPp_Init_8011F060 while the Ice
-/// Shot, the Squall Hammer or the Belay's rope installed it.
+/// Shot, the Squall Hammer, the Blizzard or the Belay's rope installed it.
 pub fn take_damage(f: &mut Fighter) {
     let v = crate::climber::vars(f);
     if v.ice_callbacks || v.belay.rope_take_damage {
@@ -26,7 +23,8 @@ pub fn take_damage(f: &mut Fighter) {
     }
 }
 
-/// ftCo_800D331C's death2_cb (the Ice Shot's and Squall Hammer's) and
+/// ftCo_800D331C's death2_cb (the Ice Shot's, Squall Hammer's and
+/// Blizzard's) and
 /// death3_cb (the Belay's rope's): ftPp_Init_8011F060.
 pub fn death(f: &mut Fighter) {
     let v = crate::climber::vars(f);
@@ -35,15 +33,16 @@ pub fn death(f: &mut Fighter) {
     }
 }
 
-/// ftPp_Init_8011F060 (8011F060): the held block breaks
-/// (ftPp_Init_8011F190), the Belay's rope goes (ftPp_SpecialS_80121164),
-/// and both climbers leave each other's hitlag (ftPp_SpecialS_8011F68C).
-/// Nana's Squall Hammer rows install its tail, ftNn_Init_80122FAC
-/// (ftNn_Init_801238E4), which finds no block. The Blizzard's clean-up
-/// (ftPp_SpecialHi_80122898) finds nothing of its own while the Blizzard
-/// is unported.
+/// ftPp_Init_8011F060 (8011F060), in retail order: the held block breaks
+/// (ftPp_Init_8011F190), the Blizzard's breath stops
+/// (ftPp_SpecialHi_80122898, the Blizzard's despite its name), the Belay's
+/// rope goes (ftPp_SpecialS_80121164), and both climbers leave each
+/// other's hitlag (ftPp_SpecialS_8011F68C). Nana's Squall Hammer rows
+/// install its tail, ftNn_Init_80122FAC (ftNn_Init_801238E4), which finds
+/// no block.
 fn lose_articles(f: &mut Fighter) {
     crate::special_n::break_held_ice(f);
+    crate::special_lw::stop_breath(f);
     crate::special_hi::drop_rope(f);
     crate::partner::separate(f);
 }

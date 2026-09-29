@@ -38,6 +38,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
         control: PlayerKind::Human,
         costume: 0,
         stocks: 4,
+        falls: 0,
         position: Vec3::new(0.0, 100.0, 0.0),
         facing: 1.0,
         scale: 1.0,

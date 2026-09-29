@@ -233,6 +233,12 @@ impl Fighter {
         offsets: &mut RevivalOffsets,
         context: super::SpawnContext<'_>,
     ) -> Result<()> {
+        let platform = self.place_revival(arena, offsets);
+        self.revive_at(assets, platform, context)
+    }
+    /// fn_8016719C (8016719C): the player's spawn platform and the point
+    /// above it, facing the stage's middle. Returns the platform.
+    pub fn place_revival(&mut self, arena: &Arena, offsets: &mut RevivalOffsets) -> Vec3 {
         // fn_80167638: stage_info.unk8C.b4 gives each player its own marker
         // (4 + slot); otherwise players share marker 4, spaced by a timed slot.
         let (marker, offset) = if arena.player_revival_markers {
@@ -251,6 +257,16 @@ impl Fighter {
         } else {
             1.0
         };
+        self.core.player.damage = 0.0;
+        platform
+    }
+    /// ftCo_800D4FF4 (800D4FF4) at `platform`, after Fighter_UnkProcessDeath.
+    pub fn revive_at(
+        &mut self,
+        assets: &FighterAssets,
+        platform: Vec3,
+        context: super::SpawnContext<'_>,
+    ) -> Result<()> {
         // Every ported stage sets stage_info.unk8C.b5, so fn_8016719C skips
         // Player_80032FA4 and the fighter's marker index stays -1 (player.c:1954):
         // ftCo_800D4FF4 aims at the spawn platform position once, at entry.
@@ -264,7 +280,6 @@ impl Fighter {
             platform.y,
             0.0,
         );
-        self.core.player.damage = 0.0;
         self.core.reset_life(assets, context.map);
         self.install_motion_row(super::state::COMMON[S::Wait as usize]);
         let scale = self.core.skeleton.scale(self.core.animation.root);
@@ -661,7 +676,7 @@ impl Fighter {
     /// the Blaster away). A held item is destroyed (Item_8026A8EC, whose
     /// DestroyItemInline releases the hand); x197C/x1980, metal and the
     /// x2226_b4 hat are not part of the port yet.
-    fn release_for_death(&mut self, assets: &FighterAssets) {
+    pub(super) fn release_for_death(&mut self, assets: &FighterAssets) {
         if let Some(death) = self.character.table().death {
             death(self);
         }
@@ -713,6 +728,12 @@ impl Fighter {
         self.core.status.input_frozen = false;
         self.core.status.ignore_fighter_nudge = true;
         self.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
+        // 800D5108: only the player's own fighter (not Nana, x221F_b4)
+        // stands on a platform.
+        if self.core.player.secondary {
+            return Ok(());
+        }
+        let translation = self.core.revival_platform_position();
         let platform = &mut self.core.revival_platform;
         platform.tree.req_anim_all(platform.root, 0.0);
         // ftCoD4FF4 (800D51C0): separate model-scale product, no FMA.
@@ -722,9 +743,7 @@ impl Fighter {
         platform
             .tree
             .set_scale(platform.root, &Vec3::new(scale, scale, scale));
-        platform
-            .tree
-            .set_translate(platform.root, &self.core.physics.position);
+        platform.tree.set_translate(platform.root, &translation);
         self.core.revival_platform_active = true;
         Ok(())
     }
@@ -742,6 +761,19 @@ impl Fighter {
         let pressed = self.core.input.pressed;
         let held = self.core.input.current.held;
         let stick = self.core.input.current.stick;
+        // var_r30: the player's own fighter drops once its partner (Nana)
+        // is up and off its platform; the second fighter waits while its
+        // leader revives and drops as soon as the leader has.
+        let partner_left = match self.core.partner {
+            Some(partner) if self.core.player.secondary => {
+                if partner.reviving {
+                    return Ok(());
+                }
+                true
+            }
+            Some(partner) => !partner.asleep && !partner.reviving,
+            None => false,
+        };
         // ftCo_800D7100 after the special check: LR + A catches an item.
         let special = self.air_special_pressed(assets);
         if !special && self.try_aerial_item_catch(assets) {
@@ -750,7 +782,6 @@ impl Fighter {
         if !pressed.intersects(Buttons::B) && self.try_air_tether(assets) {
             return Ok(());
         }
-        // No partner (x221F_b4 is the Ice Climbers' Nana flag): var_r30 stays 0.
         let priority = if special {
             // ftCo_SpecialAir_CheckInput
             self.enter_buffered_special(assets, true);
@@ -776,7 +807,8 @@ impl Fighter {
                 || pressed.intersects(Buttons::UP) // ftCo_800DE9B8
                 || stick.y < -thresholds.squat_stick_threshold // fn_800D5F84
                 || stick.x * facing <= thresholds.turn_stick_threshold // ftCo_800C97A8
-                || stick.x * facing >= thresholds.walk_stick_threshold; // ftWalkCommon_800DFC70
+                || stick.x * facing >= thresholds.walk_stick_threshold // ftWalkCommon_800DFC70
+                || partner_left;
             if !fall {
                 return Ok(());
             }
@@ -928,11 +960,18 @@ impl FighterCore {
         self.physics.ground_knockback_velocity = 0.0;
         self.physics.ground_shield_knockback_velocity = 0.0;
     }
-    /// ftCo_800D34E0 (800D34E0): the stock-loss bookkeeping. Falls, KO/suicide
-    /// counts, the match frame count and Player_SetHPByIndex(0) feed no compared
-    /// key; the stock count drives the stock display.
+    /// ftCo_800D34E0 (800D34E0): the stock-loss bookkeeping. The fighter
+    /// falls once more, the player's stale table empties, and only the
+    /// player's own fighter (Player_GetEntity, not Nana) costs a stock. KO
+    /// and suicide counts, the match frame count and Player_SetHPByIndex(0)
+    /// feed no compared key; the stock count drives the stock display.
     fn lose_stock(&mut self) {
-        self.player.stocks = self.player.stocks.saturating_sub(1);
+        self.player.falls += 1;
+        self.combat.stale.reset_table();
+        if !self.player.secondary {
+            self.player.stocks = self.player.stocks.saturating_sub(1);
+        }
+        self.fell = true;
     }
     /// ft_80088C5C stops the fighter's channels, ftCo_800D38B8 plays x4C_sfx +4 and +8
     /// on the voice channel, then ft_PlaySFX(exit, 127, 64).
@@ -972,13 +1011,21 @@ impl FighterCore {
             self.state_data = MotionData::Life(LifeState::AwaitingRespawn);
         }
     }
+    /// The platform under a reviving fighter: its position less the
+    /// kind's spawn offset along the facing (800D5500: fnmsubs with
+    /// ftCommon_800804EC's fmuls).
+    fn revival_platform_position(&self) -> Vec3 {
+        let offset = self.capabilities.spawn_offset * self.player.scale;
+        let mut position = self.physics.position;
+        position.x = gekko_math::fma::fnmsubs(self.physics.facing, offset, position.x);
+        position
+    }
     /// fn_800D54A4 and Fighter_8006C80C: place then animate the accessory.
     pub fn update_revival_platform(&mut self) {
         if self.revival_platform_active {
+            let translation = self.revival_platform_position();
             let platform = &mut self.revival_platform;
-            platform
-                .tree
-                .set_translate(platform.root, &self.physics.position);
+            platform.tree.set_translate(platform.root, &translation);
             platform.tree.anim_all::<super::RetailTrig>(platform.root);
             assert!(
                 platform.tree.events.is_empty(),
@@ -995,11 +1042,19 @@ impl FighterCore {
             ) => (remaining, target),
             _ => panic!("revival physics scratch"),
         };
-        // The marker index is -1 (see reset_for_revival), so retail skips the
-        // per-frame marker re-aim (800D53BC / 800D5954) and keeps x4 from entry.
-        let inv = 1.0 / remaining as f32;
-        self.physics.self_velocity.x = (target.x - self.physics.position.x) * inv;
-        self.physics.self_velocity.y = (target.y - self.physics.position.y) * inv;
+        if self.player.secondary {
+            // The second fighter keeps pace with its leader (800D5304 /
+            // 800D5A0C): the leader's self_vel x and y.
+            let leader = self.partner.expect("a reviving second fighter's leader");
+            self.physics.self_velocity.x = leader.self_velocity.x;
+            self.physics.self_velocity.y = leader.self_velocity.y;
+        } else {
+            // The marker index is -1 (see reset_for_revival), so retail skips the
+            // per-frame marker re-aim (800D53BC / 800D5954) and keeps x4 from entry.
+            let inv = 1.0 / remaining as f32;
+            self.physics.self_velocity.x = (target.x - self.physics.position.x) * inv;
+            self.physics.self_velocity.y = (target.y - self.physics.position.y) * inv;
+        }
         self.free_flight_physics(assets, wind);
     }
     /// Fighter_procUpdate's tail for a state without its own physics: knockback

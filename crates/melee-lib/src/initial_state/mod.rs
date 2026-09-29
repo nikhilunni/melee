@@ -282,6 +282,12 @@ impl InitialState {
                 // Player_GetStocks, StaticPlayer stride 0xE90.
                 f.player.stocks =
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];
+                // Player_GetFallsByIndex: falls[x221F_b4] at +68.
+                let falls = 0x8045_3080
+                    + u32::from(f.player.id) * 0xE90
+                    + 0x68
+                    + 4 * u32::from(f.player.secondary);
+                f.player.falls = word(saved.bytes(falls, 4), 0);
             });
         }
         // The camera and its subjects: the list runs newest first, and each

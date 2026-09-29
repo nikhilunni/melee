@@ -37,6 +37,7 @@ melee_it::item_kinds! {
         MarioFire: it_mariofire::MarioFire,
         IceClimberIce: it_climbersice::ClimbersIce,
         IceClimberGumStrings: it_climbersice::ClimbersString,
+        IceClimberBlizzard: it_climbersice::blizzard::ClimbersBlizzard,
         MarioCape: it_mariocape::MarioCape,
         DrMarioVitamin: it_drmariopill::DrMarioPill,
         DrMarioSheet: it_mariocape::DrMarioSheet,
@@ -446,6 +447,20 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("ice block pose: {e}"))?;
             kinds.push((ItemKind::IceClimberIce, ice));
             visual_archives.push((ItemKind::IceClimberIce, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[1]: the Blizzard's puffs.
+            let mut blizzard = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_climbersice::blizzard::ARTICLE_INDEX,
+                &it_climbersice::blizzard::ARTICLE_STATES,
+                it_climbersice::blizzard::SPECIAL_ATTRIBUTES,
+            )?;
+            // The puff's joint animation may carry DPtcl keys.
+            blizzard
+                .read_particle_tracks(&a)
+                .map_err(|e| anyhow::anyhow!("Blizzard particle track: {e}"))?;
+            kinds.push((ItemKind::IceClimberBlizzard, blizzard));
+            visual_archives.push((ItemKind::IceClimberBlizzard, std::sync::Arc::clone(&a)));
             // [2]: the Belay's rope handle (its links are Popo's).
             let rope = ItemAssets::from_fighter_states(
                 &a,

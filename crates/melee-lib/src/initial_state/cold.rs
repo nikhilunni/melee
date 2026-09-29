@@ -380,6 +380,7 @@ fn create_players(
             control: PlayerKind::Human,
             costume: scenario.fighters[p].costume,
             stocks: scenario.fighters[p].stocks,
+            falls: 0,
             position: positions[p],
             facing: facing[p],
             scale: 1.0,

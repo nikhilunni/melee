@@ -89,6 +89,9 @@ pub struct PlayerSlot {
     pub control: PlayerKind,
     pub costume: u8,
     pub stocks: u8,
+    /// Player_GetFallsByIndex (StaticPlayer +68, one count per fighter):
+    /// the stocks this fighter lost (ftCo_800D34E0).
+    pub falls: u32,
     pub position: Vec3,
     pub facing: f32,
     /// Player_GetModelScale; independent of co_attrs.model_scaling.
@@ -1157,6 +1160,7 @@ impl FighterCore {
             kind: assets.kind,
             revival_platform: assets.revival_platform.clone(),
             revival_platform_active: false,
+            partner: None,
             spawn_number: 0,
             physics,
             animation,
@@ -1191,6 +1195,7 @@ impl FighterCore {
             camera: melee_cm::Subject::default(),
             offscreen: Offscreen::default(),
             quake_request: None,
+            fell: false,
             released_link: None,
             held_item: None,
             grafted_part: None,

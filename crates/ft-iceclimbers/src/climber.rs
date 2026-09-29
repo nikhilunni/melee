@@ -33,6 +33,8 @@ pub enum Accessory {
     IceShot,
     /// fn_80123218: Nana's hand for Popo's rope (her Belay rows).
     RopeAnchor,
+    /// fn_80122D2C: the Blizzard's puffs and script commands.
+    Blizzard,
 }
 
 /// ftPp_SM_SpecialN = ftCo_SM_Count: row 341 plays submotion 295.

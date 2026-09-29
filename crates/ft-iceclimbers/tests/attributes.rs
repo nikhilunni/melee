@@ -24,6 +24,9 @@ fn relocated_attributes_name_the_spawn_offsets_and_nanas_armor() {
     word(&mut data, 0x28, 1.5_f32.to_bits());
     word(&mut data, 0x68, 6);
     word(&mut data, 0x12C, 30.0_f32.to_bits());
+    word(&mut data, 0xB8, 4.0_f32.to_bits());
+    word(&mut data, 0xBC, 7.0_f32.to_bits());
+    word(&mut data, 0xC0, (-2.0_f32).to_bits());
     // ftData at +15C has a relocated ext_attr pointer to offset zero.
     let source = archive(&data, &[0x160], Some(("ftDataNana", 0x15C)));
     let attrs = read(&source, "ftDataNana").unwrap();
@@ -35,6 +38,14 @@ fn relocated_attributes_name_the_spawn_offsets_and_nanas_armor() {
     assert_eq!(attrs.squall.ground_entry_speed, 1.5);
     assert_eq!(attrs.squall.press_interval, 6);
     assert_eq!(attrs.partner_squall_landing_lag, 30.0);
+    assert_eq!(
+        (
+            attrs.blizzard_interval,
+            attrs.blizzard_reach,
+            attrs.blizzard_height
+        ),
+        (4.0, 7.0, -2.0)
+    );
     assert!(read(&source, "ftDataPopo").is_err());
     assert!(IceClimberAttributes::read(&archive(&data[..0x15B], &[], None), 0).is_err());
 }
@@ -75,7 +86,7 @@ fn landing_and_death_clear_the_climber_vars() {
         ClimberVars {
             model_groups: [0; 2],
             x2234: 3,
-            x2230_b0: true,
+            breath: true,
             air_ice_shot_used: true,
             ice_drop: 2.5,
             ..ClimberVars::default()

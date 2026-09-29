@@ -751,7 +751,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x4BE | 0x4BF | 0x4FB | 0x4FC | 0x4FD),
+                id: id @ (0x4BE | 0x4BF | 0x4EC | 0x4FB | 0x4FC | 0x4FD),
                 bone,
             } = request
             {
@@ -764,6 +764,9 @@ impl Effects {
                 let (bank_id, kind) = match id {
                     0x4BE => (7, 0x1B5C),
                     0x4BF => (7, 0x1B5D),
+                    // efsync.c:423-425: the Blizzard's breath,
+                    // hsd_8039EFAC(0, 0xE, 0x36B7, jobj).
+                    0x4EC => (14, 0x36B7),
                     // efsync.c:494-496: Din's Fire's hand flash,
                     // hsd_8039EFAC(0, 0, 0x71, jobj).
                     0x4FB => (0, 0x71),
@@ -945,6 +948,18 @@ impl Effects {
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 continue;
             }
+            if let EffectRequest::PartnerVanish { position, scale } = request {
+                let mut spawn = SpawnRequest::new(0, 0xCA, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: position,
+                    scale: Vec3::new(scale, scale, scale),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
             if let EffectRequest::PositionalGenerator {
                 id: id @ (0x504 | 0x505),
                 position,
@@ -1017,6 +1032,36 @@ impl Effects {
                         particles,
                         rng,
                     )?;
+                    continue;
+                }
+                if element == melee_types::HitElement::Ice {
+                    // efasync.c:136-152 (0x3ED): generator 0x50 at the point,
+                    // then 0x54 with the point as its AppSRT's translation,
+                    // turned to face the victim (rot.y 0 when it faces left,
+                    // else -M_PI as a double stored to a float).
+                    self.spawn_dust_generator::<T>(
+                        0x50,
+                        position,
+                        fighter.effect_facing(),
+                        bank,
+                        particles,
+                        rng,
+                    )?;
+                    let turn = if fighter.effect_facing() < 0.0 {
+                        0.0
+                    } else {
+                        -std::f64::consts::PI as f32
+                    };
+                    let mut spawn = SpawnRequest::new(0, 0x54, 0);
+                    spawn.application_transform =
+                        Some(hsd_particle::generator::ApplicationTransform {
+                            translation: position,
+                            rotation: Vec3::new(0.0, turn, 0.0),
+                            status: 1,
+                            ..Default::default()
+                        });
+                    self.events.spawn(&spawn, false, false);
+                    spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                     continue;
                 }
             }
@@ -1219,6 +1264,7 @@ impl Effects {
             match request {
                 EffectRequest::OwnedRotation { .. }
                 | EffectRequest::PositionalGenerator { .. }
+                | EffectRequest::PartnerVanish { .. }
                 | EffectRequest::OwnedRotationZ { .. }
                 | EffectRequest::EggShell { .. }
                 | EffectRequest::DamageTrail { .. }

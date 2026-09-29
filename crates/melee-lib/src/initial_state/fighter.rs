@@ -24,6 +24,7 @@ pub(crate) fn import(
         control: PlayerKind::Human,
         costume: 0,
         stocks: 1,
+        falls: 0,
         position: Vec3::ZERO,
         facing: 1.0,
         scale: 1.0,

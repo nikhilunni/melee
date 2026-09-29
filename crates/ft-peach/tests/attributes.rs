@@ -156,6 +156,7 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             control: melee_types::PlayerKind::Human,
             costume: 0,
             stocks: 4,
+            falls: 0,
             position: hsd_types::Vec3::ZERO,
             facing: 1.0,
             scale: 1.0,

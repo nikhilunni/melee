@@ -2676,7 +2676,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 468] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 487] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3279,6 +3279,32 @@ const CORPUS_V3_MATCHES: [(&str, usize); 468] = [
     ("corpus_v3_fd_iceclimbers_fox4_e50f774a0_p1", 123),
     ("corpus_v3_fd_iceclimbers_fox4_e573e2d95_p2", 105),
     ("corpus_v3_fd_iceclimbers_fox4_ec13743d5_p0", 125),
+    // ICECLIMBERS: Blizzard (ftPp_SpecialLw, fn_80122D2C, itClimbersBlizzard_*) by both
+    // climbers, grounded, aerial and landing; the partner joins facing away (ftCo_800B0AF4);
+    // an item phantom credits its owner's stale table and combo push.
+    ("corpus_v3_fd_iceclimbers_fox4_e7ff378da_p0", 96),
+    ("corpus_v3_fd_iceclimbers_fox4_ee133b82f_p1", 219),
+    ("corpus_v3_fd_iceclimbers_fox4_eeda0d0fc_p2", 195),
+    ("corpus_v3_fd_iceclimbers_fox4_ec3145eb3_p0", 120),
+    ("corpus_v3_fd_iceclimbers_fox4_e89a89d0e_p0", 92),
+    ("corpus_v3_fd_iceclimbers_fox4_ecad2716f_p0", 235),
+    ("corpus_v3_fd_iceclimbers_fox4_edafcfddf_p1", 92),
+    ("iceclimbers_blizzard_fd_fox4", 400),
+    ("iceclimbers_blizzard_fd_fox4_ec3145eb3_p0", 220),
+    ("iceclimbers_blizzard_fd_fox4_ecad2716f_p0", 335),
+    ("iceclimbers_blizzard_fd_fox4_e89a89d0e_p0", 192),
+    ("iceclimbers_blizzard_fd_fox4_e7ff378da_p0", 196),
+    ("iceclimbers_blizzard_fd_fox4_ee133b82f_p1", 319),
+    // ICECLIMBERS: deaths. Nana costs no stock; Popo's revival vanishes a dying Nana
+    // (ftCo_800D4F24) and revives her beside him (ftCo_800BFD9C, Player_80032070).
+    ("iceclimbers_ko_both_fd_fox4", 700),
+    ("iceclimbers_ko_nana_jump158_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump152_fd_fox4", 600),
+    ("iceclimbers_ko_nana2_fd_fox4", 700),
+    // ICECLIMBERS: Nana dies alone and sleeps (ftCo_800BFD9C, fn_8016719C(slot, 1));
+    // Popo's later revival brings her back.
+    ("iceclimbers_ko_nana_alone_fd_fox4", 700),
+    ("iceclimbers_ko_nana_alone_then_popo_fd_fox4", 1000),
     // Sheik vs Fox: a thrown fighter against an owned item (it_802703E8),
     // Vanish's landing flash (efAsync 0x3FA), the smash charge's colour
     // program (ftColl_8007B62C on a body status), Zelda's up-air particle

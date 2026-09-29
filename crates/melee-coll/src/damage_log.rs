@@ -21,7 +21,17 @@ pub enum HitSource {
     /// Entry kind 1: a fighter's hitbox, by spawn number.
     Fighter(u32),
     /// Entry kind 2: an item's hitbox.
-    Item,
+    Item(ItemSource),
+}
+
+/// What a phantom's credit (ftColl_8007BE3C) reads of the item that dealt
+/// it: its owner (ip->owner, the player's second fighter when `secondary`)
+/// and its attack (xD88 / xD8C).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ItemSource {
+    pub owner: Option<u8>,
+    pub secondary: bool,
+    pub attack: Option<melee_types::combat::AttackInstance>,
 }
 
 /// One DmgLogEntry. `hit.knockback` is filled in when the log is resolved.
@@ -93,7 +103,7 @@ mod tests {
 
     fn entry(damage: f32) -> LoggedHit {
         LoggedHit {
-            source: HitSource::Item,
+            source: HitSource::Item(Default::default()),
             hit: ReceivedHit {
                 descriptor: HitboxDescriptor {
                     group: 0,

@@ -1,0 +1,27 @@
+# ICECLIMBERS death witness (retail): both dash off FD's left edge; Popo's
+# double jump at tick 158 is too late and Nana repeats it: Popo dies first
+# (276), Nana at 281; Popo's revival (336) vanishes and revives her, and
+# his held stick drops both off the platform (396).
+name = "iceclimbers_ko_nana_jump158_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 1024, stickX = 80 } },
+  { frame = 159, port = 0, buttons = {  }, raw = { stickX = 80 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

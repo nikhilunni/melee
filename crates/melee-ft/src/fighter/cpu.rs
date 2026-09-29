@@ -181,6 +181,10 @@ pub struct CpuState {
     pub xfa_b6: bool,
     /// xFA bit 7: the partner replays its player's inputs.
     pub following: bool,
+    /// ftCo_800B0AF4 ends the think by calling ftPp_SpecialLw_Enter: the
+    /// partner joins its player's fighter's Blizzard. The scene, which
+    /// holds the assets, runs the entry as soon as the think returns.
+    pub joins_blizzard: bool,
     pub xfb_b0: bool,
     /// xFC..x448: the partner's input ring.
     pub follow: FollowRing,
@@ -363,6 +367,7 @@ impl CpuState {
             over_stage: false,
             xfa_b6: false,
             following: false,
+            joins_blizzard: false,
             xfb_b0: false,
             follow: FollowRing {
                 entries: [FollowSample {

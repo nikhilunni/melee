@@ -75,6 +75,8 @@ pub(super) fn fighter(
         control: melee_types::PlayerKind::Human,
         costume: raw[0x44],
         stocks: raw[0x8E],
+        // Player_GetFallsByIndex(slot, 0).
+        falls: u32::from_be_bytes(raw[0x68..0x6C].try_into().unwrap()),
         position: vector(raw, 0x10),
         facing: float(raw, 0x40),
         scale: float(raw, 0x5C),

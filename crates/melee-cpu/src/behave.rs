@@ -64,13 +64,42 @@ fn idle(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     }
     if fp.core.motion_state.action.0 == S::RebirthWait as u16 {
         // ftCo_800A5CE0: no one carries the star or the hammer.
-        unimplemented!("ftCo_800A08F0: leaving the revival platform");
+        leave_revival_platform(fp);
+        return;
     }
     if fp.core.physics.ground_or_air == GroundOrAir::Air {
         movement::toward_destination_in_air(fp, scene);
     } else {
         toward_destination_on_ground(fp, scene, rng);
     }
+}
+
+/// ftCo_800A08F0 (0x800A08F0): step off the revival platform. Nana
+/// (FTKIND_NANA) holds the stick down for five frames; a crouching CPU
+/// only waits.
+fn leave_revival_platform(fp: &mut Fighter) {
+    let crouching = matches!(
+        fp.core.motion_state.id,
+        S::SquatRv | S::Squat | S::SquatWait
+    );
+    let nana = fp.core.capabilities.cpu_partner;
+    let cpu = &mut fp.core.cpu;
+    script::neutral_stick(cpu);
+    if crouching {
+        script::command1(cpu, C::WaitFor, 1);
+        script::command(cpu, C::Done);
+        return;
+    }
+    if !nana {
+        unimplemented!("ftCo_800A08F0: a CPU's level-scaled wait on its platform");
+    }
+    script::command1(cpu, C::WaitFor, 1);
+    // -0x7F as the command's byte.
+    script::command1(cpu, C::SetLstickY, (-0x7F_i8) as u8);
+    script::command1(cpu, C::WaitFor, 5);
+    script::neutral_stick(cpu);
+    script::command1(cpu, C::WaitFor, 1);
+    script::command(cpu, C::Done);
 }
 
 /// ftCo_800AB224 (0x800AB224): grounded movement toward the destination.

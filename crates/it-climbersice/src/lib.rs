@@ -3,7 +3,9 @@
 //! (it_802C1590), where it drops until the script launches it
 //! (it_802C16F8); then it slides along the floor at attribute x10's speed,
 //! falls off edges and lands again, until its lifetime runs out. A wall it
-//! meets slowly turns it around; a fast one breaks it.
+//! meets slowly turns it around; a fast one breaks it. The Blizzard's
+//! puffs live in [`blizzard`].
+pub mod blizzard;
 pub mod string;
 pub use string::ClimbersString;
 

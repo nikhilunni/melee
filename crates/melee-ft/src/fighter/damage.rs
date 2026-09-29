@@ -63,9 +63,10 @@ pub struct CombatState {
     pub phantom_lockout: f32,
     /// The hit ftColl_8007AB48 selected from `hit_log`, with its knockback.
     pub pending: Option<ReceivedHit>,
-    /// A phantom's source fighter to credit (stale moves, combo) after this
-    /// fighter's ProcessHit applied the phantom's damage (ftColl_8007BE3C).
-    pub pending_credit: Option<u32>,
+    /// A phantom's source (a fighter, or an item's owner) to credit (stale
+    /// moves, combo) after this fighter's ProcessHit applied the phantom's
+    /// damage (ftColl_8007BE3C).
+    pub pending_credit: Option<HitSource>,
     /// ftColl_8007A06C: the selected hit came from this captured fighter's captor.
     pub pending_from_captor: bool,
     /// ftCo_8008EC90 inlineB1 for a captured fighter whose hit came from
@@ -2112,6 +2113,11 @@ impl FighterCore {
             .iter()
             .position(|&t| stun < t)
             .unwrap_or(3);
+        // ftCo_Damage.c:331, 430, 536: a strong Ice hit bends the angle,
+        // plays DamageIce and freezes the victim (ftCo_DamageIce_Init).
+        if base_level >= 2 && hit.descriptor.element == melee_types::HitElement::Ice {
+            unimplemented!("ftCo_8008DCE0: an Ice hit at knockback level {base_level} (DamageIce)");
+        }
         // ftCo_8008DCE0 block_9: an explicit motion forces level 3, not the angle.
         let level = if forced_motion.is_some() {
             3
@@ -2618,7 +2624,11 @@ impl Fighter {
                 common.knockback.still_speed,
             );
             self.combat.log_hit(LoggedHit {
-                source: HitSource::Item,
+                source: HitSource::Item(melee_coll::damage_log::ItemSource {
+                    owner: item.owner,
+                    secondary: item.owner_secondary,
+                    attack: item.stale_source,
+                }),
                 hit: ReceivedHit {
                     descriptor: descriptor.clone(),
                     height,
@@ -2696,7 +2706,11 @@ impl Fighter {
             );
             self.combat.phantom_max_damage = self.combat.phantom_max_damage.max(fctiwz(damage));
             self.combat.phantom_log.push(LoggedHit {
-                source: HitSource::Item,
+                source: HitSource::Item(melee_coll::damage_log::ItemSource {
+                    owner: item.owner,
+                    secondary: item.owner_secondary,
+                    attack: item.stale_source,
+                }),
                 hit: ReceivedHit {
                     descriptor,
                     height,

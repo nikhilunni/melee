@@ -1,0 +1,27 @@
+# ICECLIMBERS death witness (retail): Popo dashes off FD's left edge and
+# keeps holding left; Nana follows. Popo falls past the bottom first
+# (DeadDown at 223, a stock lost), Nana at 227 (no stock). When Popo's
+# countdown ends (283) the still-dying Nana vanishes (ftCo_800D4F24, efSync
+# 0x43F) and both revive, Nana beside Popo without a platform; Popo's held
+# stick drops him at 343 and Nana drops with him. They die again at 560/565.
+name = "iceclimbers_ko_both_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = -80 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -45,6 +45,7 @@ pub mod offscreen;
 pub mod overlap;
 pub mod parasol;
 pub mod part_rotation;
+pub mod partner;
 mod pass;
 pub mod passive_ceil;
 mod procs;
@@ -952,6 +953,9 @@ pub struct FighterCore {
     pub skeleton: JObjTree,
     pub revival_platform: life::RevivalPlatform,
     pub revival_platform_active: bool,
+    /// The player's other fighter (Popo's Nana, Nana's Popo) as the scene
+    /// last showed it, before this proc; None for a player's only fighter.
+    pub partner: Option<partner::PartnerView>,
     pub motion_state: MotionState,
     pub state_data: MotionData,
     pub combat: damage::CombatState,
@@ -992,6 +996,9 @@ pub struct FighterCore {
     pub offscreen: Offscreen,
     /// Camera_RequestQuake from this tick's procs, for the scene to forward.
     pub quake_request: Option<melee_cm::QuakeKind>,
+    /// ftCo_800D34E0 ran in this proc: the scene hands the player's stock
+    /// count and emptied stale table to the player's other fighter.
+    pub fell: bool,
     /// A grab link this fighter dropped by dying (ftCo_800DD100); the scene
     /// releases the partner.
     pub released_link: Option<grab::GrabLink>,

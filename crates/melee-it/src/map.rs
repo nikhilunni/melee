@@ -197,6 +197,16 @@ impl ItemCore {
         bits
     }
 
+    /// it_802763E0 (802763E0): 2 for a ceiling, whose line becomes xC30.
+    pub fn ceiling_bits(&mut self) -> u32 {
+        let collision = self.collision.as_ref().expect("item map collision");
+        if collision.env_flags as u32 & collide::CEILING_MASK == 0 {
+            return 0;
+        }
+        self.floor_line = collision.ceiling.index;
+        2
+    }
+
     /// it_80276CB8 (80276CB8) -> it_802765BC(gobj, 0): on a floor, the model
     /// leans with its slope about xDC8 x17's axis (it_8027649C: the angle
     /// between the floor normal and up, signed by the normal's X and the

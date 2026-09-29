@@ -21,14 +21,19 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         };
         item_count += 1;
     }
-    // gm_8016C75C: the player's KO total, which nothing counts yet. A KO
-    // starts with a fighter's death states, so none may be in them.
+    // gm_8016C75C: the player's KO total, the KOs it scored on other
+    // players (kos_by_player, which Player_UpdateKOsBySlot counts at a
+    // stock loss, ftCo_800D34E0). The port does not track who last hit a
+    // fighter (dmg.x18c4_source_ply), so it knows the total only while no
+    // other player's fighter has ever fallen: then it is zero. The player's
+    // own fighters falling never adds to it.
+    let own_player = state.fighters[index].player.id;
     if state
         .fighters
         .iter()
-        .any(|f| matches!(f.0.state_data, melee_ft::fighter::MotionData::Life(_)))
+        .any(|f| f.player.id != own_player && f.player.falls > 0)
     {
-        unimplemented!("gm_8016C75C: KO totals for the CPU");
+        unimplemented!("gm_8016C75C: KO totals for the CPU once another player has fallen");
     }
     let count = state.fighters.len();
     let deadzone = state.assets.fighters[index]
@@ -55,4 +60,16 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         horizontal_deadzone: deadzone,
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);
+    // ftCo_800B0AF4's last act: the partner joins the Blizzard
+    // (ftPp_SpecialLw_Enter, the grounded entry whatever the partner's
+    // footing).
+    if std::mem::take(&mut own.0.cpu.joins_blizzard) {
+        let fighter: &mut Fighter = &mut own.0;
+        (fighter.character.table().enter_special)(
+            fighter,
+            melee_ft::fighter::SpecialSlot::Down,
+            false,
+            &state.assets.fighters[index],
+        );
+    }
 }

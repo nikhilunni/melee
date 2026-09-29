@@ -78,6 +78,13 @@ impl StaleHistory {
         *self = Self::for_fighter(secondary);
         self.revision = revision;
     }
+    /// plStale_ResetStaleMoveTableForPlayer (ftCo_800D34E0): the player's
+    /// table empties when either of its fighters loses a stock or falls; the
+    /// clearing counts as a change the other fighter takes.
+    pub fn reset_table(&mut self) {
+        self.entries = [None; 10];
+        self.revision += 1;
+    }
     /// The table is the player's (Player_GetStaleMoveTableIndexPtr), shared
     /// by its two fighters (Popo and Nana); each fighter keeps a copy. Take
     /// `other`'s entries if they are newer. Returns whether they were.

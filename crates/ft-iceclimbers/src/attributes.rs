@@ -25,6 +25,12 @@ pub struct IceClimberAttributes {
     pub ice_height: f32,
     /// +0x20..+0x70: the Squall Hammer (ftpopospecials.c).
     pub squall: SquallAttributes,
+    /// +0xB8: frames between the Blizzard's puffs (fn_80122D2C: fctiwz).
+    pub blizzard_interval: f32,
+    /// +0xBC / +0xC0: where a puff forms, along the facing and above the
+    /// mouth joint (fn_80122D2C).
+    pub blizzard_reach: f32,
+    pub blizzard_height: f32,
     /// +0xC4: Nana's fp->x40 (ftNn_Init_OnLoad).
     pub partner_spawn_offset: f32,
     /// +0xC8: Nana's dmg.armor0, set on every reset (ftNn_Init_OnDeath).
@@ -172,6 +178,9 @@ impl IceClimberAttributes {
                 slope_pull: r.f32(0x6C)?,
                 landing_lag: r.f32(0x70)?,
             },
+            blizzard_interval: r.f32(0xB8)?,
+            blizzard_reach: r.f32(0xBC)?,
+            blizzard_height: r.f32(0xC0)?,
             partner_spawn_offset: r.f32(0xC4)?,
             partner_armor: r.f32(0xC8)?,
             squall_join_distance: r.f32(0xD0)?,

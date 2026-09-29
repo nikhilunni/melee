@@ -117,6 +117,14 @@ pub enum EffectRequest {
     },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
+    /// efSync_Spawn(0x43F, NULL, &pos, &scale) (efasync.c:758-771): the puff
+    /// a second fighter (Nana) vanishes in when its leader's death ends
+    /// (ftCo_800D4F24): common generator 0xCA whose AppSRT carries the point
+    /// and a uniform scale. No fighter owns it.
+    PartnerVanish {
+        position: Vec3,
+        scale: f32,
+    },
     /// ftCliffCommon_80081370: async kind 2 with no bone, absolute position.
     LedgeGrab {
         position: Vec3,

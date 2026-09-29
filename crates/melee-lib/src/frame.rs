@@ -1388,29 +1388,9 @@ impl Runtime {
                         .release_from_dead_partner(&state.assets.fighters[index]))
                     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
                 }
+                partner_fighters::share_fall(state, player);
                 if proc == FighterProc::Animation {
-                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
-                        if matches!(
-                            f.state_data,
-                            melee_ft::fighter::MotionData::Life(
-                                melee_ft::fighter::life::LifeState::AwaitingRespawn
-                            )
-                        ) {
-                            f.reset_for_revival(
-                                &state.assets.fighters[player],
-                                &state.assets.arena,
-                                &mut state.revival_offsets,
-                                melee_ft::fighter::SpawnContext {
-                                    map: &mut state.map,
-                                    stage_camera: &state.assets.stage_camera,
-                                    rng: &mut state.rng,
-                                    counter: &mut state.spawn_counter,
-                                },
-                            )
-                            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-                        }
-                        Ok::<(), anyhow::Error>(())
-                    })?;
+                    partner_fighters::complete_death(state, player)?;
                 }
                 if proc == FighterProc::Input {
                     if let Some(victim) = grab_pairs::throw_input(state, player)? {
@@ -1481,6 +1461,10 @@ impl Runtime {
                         }
                     }
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        // fn_800D54A4 / fn_800D55B4 (accessory1 while reviving).
+                        if f.reviving() {
+                            f.match_partner_height();
+                        }
                         f.update_revival_platform();
                         // Fighter_CallAcessoryCallbacks_8006C624: hitlag
                         // (x2219_b5) runs accessory3 instead of accessory1.
@@ -2653,6 +2637,7 @@ fn item_bounds(assets: &crate::assets::Assets) -> melee_it::ItemBounds {
 /// victim's ProcessHit runs; the victim only records whom to credit.
 fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player: usize) {
     use crate::scene_fighter::with_fighter;
+    use melee_coll::damage_log::HitSource;
     let Some(source) = with_fighter!(&mut state.fighters[player], |f| f
         .combat
         .pending_credit
@@ -2661,11 +2646,33 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
         return;
     };
     let victim = with_fighter!(&state.fighters[player], |f| f.spawn_number);
-    for (slot, fighter) in state.fighters.iter_mut().enumerate() {
-        let assets = &state.assets.fighters[slot];
-        with_fighter!(fighter, |f| if f.spawn_number == source {
-            f.core.credit_hit(victim, assets);
-        });
+    match source {
+        HitSource::Fighter(source) => {
+            for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+                let assets = &state.assets.fighters[slot];
+                with_fighter!(fighter, |f| if f.spawn_number == source {
+                    f.core.credit_hit(victim, assets);
+                });
+            }
+        }
+        // ftColl_8007BE3C's item arm: plStale_UpdateStaleMovesFromItem and
+        // ftColl_8007646C on the item's owner, never the victim itself.
+        HitSource::Item(item) => {
+            let owner =
+                crate::scene_items::owner_index(&state.fighters, item.owner, item.secondary)
+                    .filter(|&owner| owner != player);
+            if let Some(owner) = owner {
+                if let Some(attack) = item.attack {
+                    state.fighters[owner].combat.stale.record_attack(attack);
+                }
+                let combo = &state.assets.fighters[owner].combo;
+                state.fighters[owner].combat.combo.record(
+                    victim,
+                    item.attack.map(|a| a.move_id),
+                    combo,
+                );
+            }
+        }
     }
 }
 

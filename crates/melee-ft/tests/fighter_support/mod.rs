@@ -124,6 +124,7 @@ impl Fixture {
             control: PlayerKind::Human,
             costume: 0,
             stocks: 1,
+            falls: 0,
             position: Vec3::new(if id == 0 { -60.0 } else { 60.0 }, 0.0, 0.0),
             facing: if id == 0 { 1.0 } else { -1.0 },
             scale: 1.0,

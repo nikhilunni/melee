@@ -49,7 +49,8 @@ climbers' up special does nothing for Nana).
 Unported (fail closed): ranged attacks (800B9CBC), edge guarding
 (800B732C), off-island movement (800AB224 tail), the special-cased kinds'
 recoveries in ftCo_800A96B8 (Pikachu, Fox, Yoshi, Ness, Luigi, Zelda,
-Samus), KO totals (gm_8016C75C), stage routes.
+Samus), KO totals once another player has fallen (gm_8016C75C), stage
+routes.
 
 ## Specials
 
@@ -113,4 +114,42 @@ six frames late, so an aerial Belay she cannot join needs her hit or far
 away (a `melee-sim search` over Fox's approach and Popo's retreat found no
 candidate).
 
-The Blizzard remains unported.
+Blizzard (ftPp_SpecialLw, fn_80122D2C, itClimbersBlizzard_*) is exact on
+both climbers, grounded, aerial and across a landing. The partner joins the
+player's fighter's Blizzard facing the other way: ftCo_800B0AF4 ends the
+think by calling ftPp_SpecialLw_Enter, which the scene runs once
+`melee_cpu::think` returns (`CpuState::joins_blizzard`). The puffs'
+particles drive a point joint (particle opcode 0xBF, particle.c:2058) that
+the Ice hit spark's particles steer toward (0xB8); a strong Ice hit
+(DamageIce) fails closed.
+## Shared player records
+The stale table follows the Squall Hammer's mechanism above. A phantom from
+an item credits its owner (ftColl_8007BE3C's item arm: stale table and
+repeated-hit count), which the Blizzard's combo push depends on; a stock
+loss empties the player's table at once (ftCo_800D34E0), which the other
+climber takes. The revival states read the other climber through
+`melee_ft::fighter::partner::PartnerView`, which `frame/partner_fighters.rs`
+sets with each OBSERVE_PARTNER hand-over.
+## Deaths (ftCo_800BFD9C, gm_80167320, Player_80032070)
+- Nana's death loses no stock (ftCo_800D34E0 only for Player_GetEntity) but
+  counts a fall and empties the player's stale table.
+- When Popo's death countdown ends, an awake Nana vanishes (ftCo_800D4F24:
+  efSync 0x43F, the death releases, Sleep); Popo revives and an asleep Nana
+  revives beside him (no platform of her own), keeping pace with his
+  self_vel (ftCo_Rebirth_Phys) and his height (fn_800D55B4). Popo leaves
+  the platform once Nana is up and off hers; she drops as soon as he has
+  (ftCo_RebirthWait_IASA). Nana's CPU steps off with the stick down
+  (ftCo_800A08F0). Witness: `iceclimbers_ko_both_fd_fox4` and the
+  `iceclimbers_ko_nana_jump*` family (both die, Popo first).
+- Nana's own countdown ending first (ftCo_800BFD9C with x221F_b4): she
+  sleeps and fn_8016719C(slot, 1) takes a revival slot; Popo's next
+  revival brings her back beside him. Witnesses:
+  `iceclimbers_ko_nana_alone_fd_fox4` (found with `melee-sim search` once
+  Nana's recovery CPU, behaviour 4, was ported) and
+  `iceclimbers_ko_nana_alone_then_popo_fd_fox4`. Player_80032070(slot, 1)
+  reviving her at once while Popo is in Rebirth/RebirthWait fails closed:
+  Nana cannot be in a death countdown then (Popo's revival vanishes a
+  dying Nana, and she revives with him, intangible, and waits for him).
+- gm_8016C75C (the CPU's KO total) is known only while no other player's
+  fighter has fallen (Player falls, StaticPlayer +68): the port does not
+  track who last hit a fighter (dmg.x18c4_source_ply).

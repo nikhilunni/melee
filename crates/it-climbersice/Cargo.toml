@@ -1,6 +1,6 @@
 [package]
 name = "it-climbersice"
-description = "The Ice Climbers' ice block (itclimbersice.c)"
+description = "The Ice Climbers' ice block and Blizzard (itclimbersice.c, itclimbersblizzard.c)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
