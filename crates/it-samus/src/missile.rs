@@ -485,6 +485,7 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
     item.hidden = true;
     item.life_timer = assets.explosion_lifetime;
     item.destroy_effect_suppressed = true;
+    item.mark_exploding();
     item.velocity = Vec3::ZERO;
     item.events.push(ItemEvent::DestroyEffects);
     item.events.push(ItemEvent::Effect {

@@ -78,6 +78,7 @@ pub fn pull<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
         part,
         hold: true,
         catch_item: true,
+        scale_by_owner: false,
     });
 }
 

@@ -1,0 +1,39 @@
+# PEACH4 Vegetable pulls a Beam Sword (getVeg: HSD_Randi(128) == 0, then
+# pickVeg's weighted draw lands on It_Kind_Sword). Fox dashes in; Peach
+# swings the sword: a neutral A (ftCo_80095A30 -> state 99, SwordSwing1),
+# a forward smash (SwordSwing4), a forward tilt (SwordSwing3), then drops it with Z (state 99).
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). The pull tick was found
+# with `melee-sim search` over the down-B tick. Input frames count ticks.
+name = "peach4_pull_sword_swings"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1400
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1005, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 1007, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1008, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 1036, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1050, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 1052, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1110, port = 0, buttons = { A = true, StickX = 1.0 }, raw = { button = 256, stickX = 127 } },
+  { frame = 1112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1190, port = 0, buttons = { A = true, StickX = 0.3 }, raw = { button = 256, stickX = 40 } },
+  { frame = 1192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1260, port = 0, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 1262, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

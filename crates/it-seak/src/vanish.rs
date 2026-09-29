@@ -49,6 +49,7 @@ impl ItemLogic for SeakVanish {
         // it_8027518C: the common explosion lifetime and no destroy effect.
         item.life_timer = common.explosion_lifetime;
         item.destroy_effect_suppressed = true;
+        item.mark_exploding();
         item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, assets);
     }
     /// itSeakVanish_Logic42_DmgDealt: the smoke stays.

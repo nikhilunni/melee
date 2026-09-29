@@ -399,3 +399,9 @@ pub fn ottotto(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let InputPhase { assets } = phase;
     fighter.teeter_input(assets).expect("teeter input");
 }
+
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
+/// ftCo_SwordSwing_IASA -> ftCo_800CD204.
+pub fn swing(fighter: &mut Fighter, _phase: InputPhase<'_>) {
+    fighter.swing_input();
+}

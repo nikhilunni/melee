@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 125] = [
+const HELD_ITEM_STATES: [S; 130] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -177,6 +177,14 @@ const HELD_ITEM_STATES: [S; 125] = [
     S::LightThrowB4,
     S::LightThrowHi4,
     S::LightThrowLw4,
+    // ftCo_Attack1_CheckInput's drop with a shoulder held (Item_8026AC74
+    // at the release flag).
+    S::LightThrowDrop,
+    // ftswing.c: a battering item swings in the hand (ft_0CD3.c).
+    S::SwordSwing1,
+    S::SwordSwing3,
+    S::SwordSwing4,
+    S::SwordSwingDash,
     // ftCo_FallSpecial: no item branch for a held item.
     S::FallSpecial,
     S::FallSpecialF,
@@ -389,7 +397,7 @@ impl FighterCore {
 
     /// Fighter_OnItemPickup's ftAnim_80070FB4: the hand's pose for the
     /// item's hold kind (itGetHoldKind).
-    fn pose_hand_for_item(&mut self, hand_hold_kind: u8, assets: &FighterAssets) {
+    pub(super) fn pose_hand_for_item(&mut self, hand_hold_kind: u8, assets: &FighterAssets) {
         let hand = assets
             .item_hand
             .expect("ftData_OnItemPickupExt for this kind");
@@ -439,7 +447,7 @@ impl FighterCore {
     }
 
     /// Fighter_OnItemDrop(gobj, true) for the item just let go.
-    fn release_hand_pose(&mut self, assets: &FighterAssets) {
+    pub(super) fn release_hand_pose(&mut self, assets: &FighterAssets) {
         // ftCo_800C5240 is the hammer; OnItemDropExt: Fighter_OnItemDrop
         // (ft/inlines.h:188); ftLib_80086724 passes drop flag 1, so the shown
         // slot's live hand animation is removed too (ftAnim_80070CC4).

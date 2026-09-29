@@ -416,3 +416,16 @@ pub fn dash_throw(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         .core
         .dash_throw_physics(phase.assets, phase.map, phase.wind)
 }
+
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
+/// ftCo_SwordSwing_Phys -> ftCo_800CD278: ft_80084FA8 but for the dash
+/// swing's ft_80085030 at PlCo +420 of the ground friction.
+pub fn swing(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    let MotionData::Swing(swing) = fighter.core.state_data else {
+        panic!("swing scratch missing")
+    };
+    if swing.input == crate::fighter::item_swing::SwingInput::Dash {
+        unimplemented!("ftCo_800CD278: the dash swing's friction (ft_80085030)");
+    }
+    fighter.core.physics_jab(phase)
+}

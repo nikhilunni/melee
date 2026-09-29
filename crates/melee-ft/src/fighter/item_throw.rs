@@ -116,7 +116,8 @@ impl Fighter {
         } else if held.use_kind == 0 {
             S::LightThrowF
         } else {
-            unimplemented!("ftCo_80095A30: swinging a held item (state 99)");
+            // A neutral stick drops a swing or shooting item.
+            S::LightThrowDrop
         };
         self.enter_item_throw(state, assets)
     }
@@ -377,11 +378,6 @@ impl Fighter {
             fmadds(moment, throw.hand.y - hand.y, hand.y),
             0.0,
         );
-        assert_ne!(
-            self.core.motion_state.id,
-            S::LightThrowDrop,
-            "Item_8026AC74: dropping an item"
-        );
         let mut holder = self
             .core
             .item_holder(self.core.bones.model.animation_translation, assets);
@@ -395,6 +391,8 @@ impl Fighter {
             speed,
             center,
             attack,
+            // ftCo_80095EFC: LightThrowDrop releases through Item_8026AC74.
+            dropped: self.core.motion_state.id == S::LightThrowDrop,
         });
         // it_80273F34 -> Item_8026A848: the hand lets go at once.
         self.core.release_held_item(held.item, assets);

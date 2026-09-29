@@ -142,6 +142,7 @@ pub enum ItemScratch {
     Ray(RayState),
     Held(HeldState),
     Bomb(BombState),
+    Dosei(DoseiState),
     Heiho(HeihoState),
     Turnip(TurnipState),
     Jolt(JoltState),
@@ -438,6 +439,25 @@ impl Default for HeihoState {
         }
     }
 }
+/// Item.xDD4_itemVar.dosei (itdosei.c): Mr. Saturn.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DoseiState {
+    /// xDD4: frames it sits after landing from a spawn before looking round.
+    pub idle_countdown: i32,
+    /// xDD8: the look-round's phase (1 turning, 2 walking off).
+    pub turn_phase: i32,
+    /// xDDC: the look-round's angle, in radians.
+    pub turn_angle: f32,
+    /// xDE0: the scale a throw restores (it_80274484); Peach's pull stores
+    /// the item's scale here (it_802BD4AC).
+    pub throw_scale: f32,
+    /// xDE4: the position at the start of the frame, which a turn returns to.
+    pub last_position: Vec3,
+    /// xDF0: frames it lies after being hit before walking again.
+    pub recover_timer: i32,
+    /// xDF8: the floor normal when it slid off the ground.
+    pub floor_normal: Vec3,
+}
 /// Item.xDD4_itemVar.peachturnip (itpeachturnip.c).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TurnipState {
@@ -505,7 +525,22 @@ pub struct ItemCore {
     pub position: Vec3,
     pub previous_position: Vec3,
     pub velocity: Vec3,
+    /// x70: this frame's push (see [`crate::push`]).
     pub nudge: Vec3,
+    /// xDC8 x1A (ItemAttr x1_4): grounded, it can be pushed.
+    pub pushable: bool,
+    /// xDC8 x1C / x1D / x1E: fighters and other items push it, and a hold
+    /// kind 3 item may push it; all set at creation.
+    pub pushed_by_fighters: bool,
+    pub pushed_by_items: bool,
+    pub pushed_by_open_palm: bool,
+    /// xDC8 x1B: its animation proc has run this frame (it_80272298).
+    pub push_settled: bool,
+    /// xBEC (ItemAttr x20, scaled by it_80274E44): its push box.
+    pub push_box: melee_types::mp::ItEcb,
+    /// xDD1 b0: it_8027518C started its explosion lifetime; items no
+    /// longer push off it.
+    pub exploding: bool,
     pub environmental_velocity: Vec3,
     pub platform_velocity: Vec3,
     pub facing: f32,
@@ -996,9 +1031,9 @@ impl ItemCore {
         self.script = ScriptState::default();
     }
     /// it_80274484 (80274484): the model at `scale`; every live hitbox
-    /// takes x3C, the command size, as its radius (it_80275534), and the
-    /// grab range grows by the scale (it_80274DFC). it_80274E44's ECB boxes
-    /// (xBDC / xBEC) have no port consumer.
+    /// takes x3C, the command size, as its radius (it_80275534), the grab
+    /// offset and range grow by the scale (it_80274DFC), and so does the
+    /// push box (it_80274E44).
     pub fn rescale(&mut self, scale: f32) {
         self.scale = scale;
         self.model_scale = Vec3::new(scale, scale, scale);
@@ -1006,8 +1041,15 @@ impl ItemCore {
         for hit in self.hitboxes.iter_mut().flatten() {
             hit.descriptor.radius = size;
         }
+        self.grab_offset.x *= scale;
+        self.grab_offset.y *= scale;
         self.grab_range.x *= scale;
         self.grab_range.y *= scale;
+        // it_80274E44: the push box (xBEC); xBDC has no port consumer.
+        self.push_box.top *= scale;
+        self.push_box.bottom *= scale;
+        self.push_box.right *= scale;
+        self.push_box.left *= scale;
     }
     /// it_80272460 (80272460) for an existing hitbox `id`: its count and
     /// the damage restaled for the item's attack (ft_80089228).
@@ -1160,6 +1202,8 @@ pub struct ItemPool {
     next_id: u32,
     /// it_804D6D14: Item_8026AE60's hit group counter.
     pub(crate) next_hit_group: u32,
+    /// Item_804A0CCC: the fighters it_802722B0 last sampled.
+    pub(crate) fighter_push: crate::push::FighterPushSnapshot,
 }
 impl ItemPool {
     pub fn new(common: ItemCommonData) -> Self {
@@ -1168,6 +1212,7 @@ impl ItemPool {
             common,
             next_id: 0,
             next_hit_group: 1,
+            fighter_push: Default::default(),
         }
     }
     /// it_804D6D28: ItCo's common item data.
@@ -1273,6 +1318,13 @@ impl ItemPool {
             previous_position: spawn.previous_position,
             velocity: spawn.velocity,
             nudge: Vec3::ZERO,
+            pushable: assets.pushable,
+            pushed_by_fighters: true,
+            pushed_by_items: true,
+            pushed_by_open_palm: true,
+            push_settled: false,
+            push_box: assets.push_box,
+            exploding: false,
             environmental_velocity: Vec3::ZERO,
             platform_velocity: Vec3::ZERO,
             facing: spawn.facing,
@@ -1587,8 +1639,11 @@ impl ItemPool {
             item.life_timer -= 1.0;
             if item.life_timer <= 0.0 {
                 item.destroyed = true;
+                return;
             }
         }
+        // Item_80269528's tail: it_802721B8 and it_80272298.
+        self.push_apart(id, rng);
     }
     #[allow(clippy::too_many_arguments)] // Owner, targets and bounds stay separate.
     pub fn physics<D: ItemDispatch>(
@@ -1742,6 +1797,7 @@ impl Clone for ItemPool {
             common: self.common.clone(),
             next_id: self.next_id,
             next_hit_group: self.next_hit_group,
+            fighter_push: self.fighter_push,
         }
     }
 }
@@ -1765,6 +1821,8 @@ mod tests {
             model: 0,
             rotate_to_facing: false,
             collision_box: Default::default(),
+            push_box: Default::default(),
+            pushable: false,
             collision_damage_multiplier: 1.0,
             hitlag: false,
             camera_kind: 0,
@@ -1823,6 +1881,7 @@ mod tests {
             launch: Default::default(),
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
+            push_speed: 0.0,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
@@ -1857,6 +1916,7 @@ mod tests {
             launch: Default::default(),
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
+            push_speed: 0.0,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,

@@ -416,6 +416,7 @@ fn spawn_rope(f: &mut Fighter) {
         part: LEFT_HAND as u8,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     let attributes = rope(f).attributes;
     rope(f).lay_out(attributes, hand);

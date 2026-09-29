@@ -64,6 +64,14 @@ pub enum Command {
         bone: Option<usize>,
         status: melee_types::combat::HurtStatus,
     },
+    /// ftAction_800729D4 (opcode 45): a held Beam Sword's blade grows
+    /// (mode 0, it_80284FC4 over `frames` to `length` / 256) or returns
+    /// (mode 1, it_80285024 over `frames`) (ftCommon_8007EEC8/8007EF5C).
+    SwordBlade {
+        mode: u8,
+        frames: u16,
+        length: u16,
+    },
     SwordTrail {
         duration: i32,
         reverse: bool,

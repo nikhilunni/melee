@@ -842,6 +842,13 @@ impl Runtime {
                         )?;
                     }
                 }
+                // Item_80269A9C's tail: it_80272280, then it_802722B0's
+                // sample of every fighter's cur_pos (ftCo_80098634) by the
+                // first item in the list.
+                state.items.sample_fighters_for_push(
+                    id,
+                    state.fighters.iter().map(|f| f.0.core.physics.position),
+                );
             }
             11 => {
                 let item = state.items.get_mut(id).unwrap();

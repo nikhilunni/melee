@@ -1,0 +1,34 @@
+# PEACH4 Vegetable pulls Mr. Saturn (getVeg: HSD_Randi(128) == 0, then
+# pickVeg's weighted draw lands on It_Kind_Dosei). Fox dashes in; Peach
+# throws Mr. Saturn forward with A (LightThrowF; itDosei_Logic7_Thrown,
+# state 5). It hits Fox (itDosei_Logic7_DmgDealt: a random voice, then it
+# pops back) and lands, then walks the stage (state 1).
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60; both reach Wait near tick 102). The pull tick was found
+# with `melee-sim search` over the down-B tick. Input frames count ticks.
+name = "peach4_pull_dosei_throw_hit"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 145, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 172, port = 1, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

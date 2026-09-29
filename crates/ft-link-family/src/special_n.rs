@@ -138,6 +138,7 @@ fn take_bow<C: LinkFamily>(f: &mut Fighter, a: &FighterAssets) -> bool {
         part: part(a, FtPart::RThumbNb),
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     bow::<C>(f).bow_out = true;
     arm_removal::<C>(f);
@@ -162,6 +163,7 @@ fn nock<C: LinkFamily>(f: &mut Fighter, a: &FighterAssets) -> bool {
         part: part(a, FtPart::LThumbNb),
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     bow::<C>(f).arrow_out = true;
     arm_removal::<C>(f);

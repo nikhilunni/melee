@@ -418,3 +418,13 @@ pub fn ottotto_wait(
     fighter.step_animation(assets);
     Ok(None)
 }
+
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
+/// ftCo_SwordSwing_Anim -> ftCo_800CD1BC.
+pub fn swing(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.advance_smash_charge(assets);
+    fighter.swing_animation(assets)?;
+    Ok(None)
+}

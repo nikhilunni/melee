@@ -135,6 +135,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         }),
         50 => Command::ToggleDynamics(((word << 6) as i32) >> 6),
         51 => Command::SelfDamage(((word << 6) as i32) >> 6),
+        // struct unk12: 2-bit mode, 10-bit frames, 14-bit length.
+        45 => Command::SwordBlade {
+            mode: ((word >> 24) & 3) as u8,
+            frames: ((word >> 14) & 0x3FF) as u16,
+            length: (word & 0x3FFF) as u16,
+        },
         49 => Command::SwordTrail {
             duration: ((word << 7) as i32) >> 7,
             reverse: word & (1 << 25) != 0,

@@ -188,6 +188,7 @@ fn burst(item: &mut ItemCore, assets: &ItemAssets) {
     item.hidden = true;
     // it_8027518C's common explosion lifetime, overwritten below.
     item.life_timer = assets.explosion_lifetime;
+    item.mark_exploding();
     // it_80273454 -> itResetVelocity.
     item.velocity = Vec3::ZERO;
     item.life_timer = Attributes(&assets.special_attributes).burst_frames();

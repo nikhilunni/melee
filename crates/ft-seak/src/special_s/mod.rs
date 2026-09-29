@@ -271,6 +271,7 @@ fn spawn_chain(f: &mut Fighter, map: &mut CollMap) {
         part,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     let s = side(f);
     s.out = true;

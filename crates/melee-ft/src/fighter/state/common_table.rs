@@ -507,6 +507,15 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         collision: callbacks::collision::dash_item_throw,
         ..rows[S::LightThrowF as usize]
     };
+    // ftCo_MS_LightThrowDrop = 99: the ground throw's callbacks with
+    // ftCo_LightThrowDashDrop_Coll.
+    rows[S::LightThrowDrop as usize] = MotionRow {
+        action: ActionId(99),
+        id: S::LightThrowDrop,
+        animation: 84,
+        collision: callbacks::collision::dash_item_throw,
+        ..rows[S::LightThrowF as usize]
+    };
     // The air throws (ftCo_LightThrowAir_Phys / _Coll).
     const AIR_THROWS: [(S, i32); 8] = [
         (S::LightThrowAirF, 85),
@@ -528,6 +537,30 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
             physics: callbacks::physics::fall,
             collision: callbacks::collision::air_item_throw,
             ..rows[S::LightThrowF as usize]
+        };
+        i += 1;
+    }
+    // ftData_MotionStateList[120..=123]: ftCo_SM_SwordSwing1 (108) on,
+    // ft_0CD3.c's sword callbacks (ftCo_800CD1BC and its siblings).
+    const SWORD_SWINGS: [(S, i32); 4] = [
+        (S::SwordSwing1, 108),
+        (S::SwordSwing3, 109),
+        (S::SwordSwing4, 110),
+        (S::SwordSwingDash, 111),
+    ];
+    let mut i = 0;
+    while i < SWORD_SWINGS.len() {
+        let (state, animation) = SWORD_SWINGS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            anim: callbacks::animation::swing,
+            iasa: callbacks::input::swing,
+            physics: callbacks::physics::swing,
+            collision: callbacks::collision::swing,
+            camera: callbacks::camera::follow_fighter,
+            implemented: true,
         };
         i += 1;
     }

@@ -1113,6 +1113,11 @@ impl Fighter {
                     pan: 64,
                 });
         }
+        if self.core.swing_hand_armed {
+            // ft_800CD31C: the hand would take the held item again
+            // (ftCommon_8007E7E4) before the damage entry.
+            unimplemented!("ft_800CD31C: hit while swinging a held item");
+        }
         if let Some(take_damage) = self.character.table().take_damage {
             take_damage(self);
         }

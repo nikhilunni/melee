@@ -158,6 +158,7 @@ fn explode(
     // it_8027518C.
     item.life_timer = assets.explosion_lifetime;
     item.destroy_effect_suppressed = true;
+    item.mark_exploding();
     // it_802756D0.
     item.hurt_intangible = true;
     // it_80272A60.

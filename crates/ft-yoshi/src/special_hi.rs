@@ -244,6 +244,7 @@ fn create_egg(f: &mut Fighter, assets: &FighterAssets) {
         part: EGG_PART,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     f.character.get_mut::<Yoshi>().egg_active = true;
 }

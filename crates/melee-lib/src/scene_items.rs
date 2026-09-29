@@ -18,6 +18,8 @@ melee_it::item_kinds! {
         FoxBlaster: it_foxlaser::FoxBlaster,
         FalcoBlaster: it_foxlaser::FalcoBlaster,
         BombHei: it_bombhei::BombHei,
+        Sword: it_sword::Sword,
+        Dosei: it_dosei::Dosei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
         YoshiStar: it_yoshistar::YoshiStar,
         PeachExplode: it_peach::PeachExplode,
@@ -118,16 +120,39 @@ impl Resources {
             .context("itPublicData")?;
         let mut common = ItemCommonData::read(&common_archive, public)?;
         common.launch = launch;
-        let mut kinds = vec![(
-            ItemKind::BombHei,
-            ItemAssets::from_common(
-                &common_archive,
-                public,
+        let mut kinds = vec![
+            (
                 ItemKind::BombHei,
-                &it_bombhei::ARTICLE_STATES,
-                it_bombhei::SPECIAL_ATTRIBUTES,
-            )?,
-        )];
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::BombHei,
+                    &it_bombhei::ARTICLE_STATES,
+                    it_bombhei::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            // Peach's rare pulls.
+            (
+                ItemKind::Sword,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Sword,
+                    &it_sword::ARTICLE_STATES,
+                    it_sword::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Dosei,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Dosei,
+                    &it_dosei::ARTICLE_STATES,
+                    it_dosei::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+        ];
         let mut visual_archives = Vec::new();
         let mut article_skeletons = Vec::new();
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
@@ -907,6 +932,7 @@ pub fn request(
             speed,
             center,
             attack,
+            dropped,
         } => {
             // Item_8026AD20: it_802731E0's sound, xC44, it_80273748, the
             // kind's thrown callback, it_802741F4 (it_80273F34), then
@@ -919,7 +945,13 @@ pub fn request(
             thrown.throw_speed = speed;
             let position = thrown.throw_release_point(position, &hand, assets);
             thrown.leave_hand(velocity, position, assets);
-            (SceneItems::logic(thrown.kind).thrown)(
+            // Item_8026AC74 (a drop) runs the kind's dropped callback.
+            let callback = if dropped {
+                SceneItems::logic(thrown.kind).dropped
+            } else {
+                SceneItems::logic(thrown.kind).thrown
+            };
+            callback(
                 thrown,
                 &mut ItemAnimationContext {
                     owner: owner.held_item,
@@ -1079,7 +1111,12 @@ pub fn request(
                 item.blast_zone_checked = true;
             }
         }
-        if let ItemRequest::SpawnInHand { part, .. } = request {
+        if let ItemRequest::SpawnInHand {
+            part,
+            scale_by_owner,
+            ..
+        } = request
+        {
             // Item_8026AB54: it_802742F4's attachment, then the kind's
             // pickup callback.
             let lifetime = pool.common().lifetime;
@@ -1103,6 +1140,13 @@ pub fn request(
                     rng: None,
                 },
             );
+            if scale_by_owner {
+                // it_80274594: scl times ftLib_80086A0C, the owner's model
+                // scale (1 in every supported mode), through the model,
+                // hitbox radii, grab range and boxes again.
+                let scale = item.scale;
+                item.rescale(scale);
+            }
         }
         if let Some(owner) = held_owner {
             // Item_8026AB54 invokes the kind's pickup callback after attachment.

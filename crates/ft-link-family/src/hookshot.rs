@@ -157,6 +157,7 @@ fn create<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &CollMap)
         part: hand,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     let scale = f.core.player.scale;
     let aerial = f.motion_state.action == FamilyState::AirCatch.action();

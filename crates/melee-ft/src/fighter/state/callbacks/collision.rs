@@ -507,3 +507,10 @@ pub fn dash_item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Resu
     }
     Ok(())
 }
+
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
+/// ftCo_SwordSwing_Coll -> ftCo_800CD2C4.
+pub fn swing(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("swing collision assets");
+    fighter.swing_collision(phase.map, assets)
+}

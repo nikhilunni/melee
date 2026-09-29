@@ -63,6 +63,7 @@ impl ItemLogic for PeachExplode {
         // it_8027518C: the common explosion lifetime and no destroy effect.
         item.life_timer = common.explosion_lifetime;
         item.destroy_effect_suppressed = true;
+        item.mark_exploding();
         let motion = u16::from(spawn.spawn_argument != 0);
         item.change_motion_with(
             motion,

@@ -20,6 +20,8 @@ members = [
     "crates/it-foxlaser",
     "crates/it-foxillusion",
     "crates/it-bombhei",
+    "crates/it-sword",
+    "crates/it-dosei",
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",
     "crates/it-mariofire",

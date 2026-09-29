@@ -40,6 +40,8 @@ pub struct ItemCommonData {
     /// +14C..+158: a framed item's camera extents (item.c foobar3):
     /// left, right, top and bottom reach.
     pub camera_extents: [f32; 4],
+    /// +7C: the speed a push moves a grounded item (it_80271B60).
+    pub push_speed: f32,
 }
 
 /// itColl_BounceOffVictim (80272DB0): an item rebounding off what it hit.
@@ -108,6 +110,7 @@ impl ItemCommonData {
                 r.f32(base + 0x154)?,
                 r.f32(base + 0x158)?,
             ],
+            push_speed: r.f32(base + 0x7C)?,
         })
     }
 }
@@ -122,6 +125,10 @@ pub struct ItemAssets {
     pub model: u32,
     pub rotate_to_facing: bool,
     pub collision_box: melee_types::mp::ItEcb,
+    /// ItemAttr x20: the push box (Item xBEC).
+    pub push_box: melee_types::mp::ItEcb,
+    /// ItemAttr x1_4 (Item.xDC8 x1A at creation): grounded, it can be pushed.
+    pub pushable: bool,
     pub collision_damage_multiplier: f32,
     /// ItemAttr x1_5 (Item.xDC8 xC): contacts put this kind into hitlag.
     pub hitlag: bool,
@@ -401,6 +408,13 @@ impl ItemAssets {
             scale: r.f32(common + 0x60)?,
             model: r.u32(model_desc)?,
             rotate_to_facing: r.u8(common + 1)? & 0x20 != 0,
+            push_box: melee_types::mp::ItEcb {
+                top: r.f32(common + 0x20)?,
+                bottom: r.f32(common + 0x24)?,
+                right: r.f32(common + 0x28)?,
+                left: r.f32(common + 0x2C)?,
+            },
+            pushable: r.u8(common + 1)? & 0x10 != 0,
             collision_box: melee_types::mp::ItEcb {
                 top: r.f32(common + 0x40)?,
                 bottom: r.f32(common + 0x44)?,

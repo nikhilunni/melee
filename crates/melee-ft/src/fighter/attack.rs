@@ -74,35 +74,41 @@ impl Fighter {
             if self.first_ground_transition(assets, context, &[predicate]) == T::None {
                 continue;
             }
+            let shoulder = self.core.input.current.held.intersects(Buttons::SHIELD);
+            if predicate == P::SmashSide {
+                let (sign, main) = self.side_smash_sign(assets);
+                // checkItemThrow (8008C22C): a shoulder, a throwable item or
+                // a C-stick smash (ftCo_800DF21C) throws; a battering item
+                // swings toward the stick.
+                if held.use_kind == 2 && !shoulder {
+                    if !main {
+                        unimplemented!("checkItemThrow: a C-stick smash with a swing item");
+                    }
+                    self.core.physics.facing = sign;
+                    return self.enter_item_swing(super::item_swing::SwingInput::Smash, assets);
+                }
+                if held.use_kind != 0 && !shoulder {
+                    unimplemented!(
+                        "checkItemThrow: a smash with a held item of kind {}",
+                        held.use_kind
+                    );
+                }
+                let state = if sign * self.core.physics.facing >= 0.0 {
+                    S::LightThrowF4
+                } else {
+                    S::LightThrowB4
+                };
+                return self.enter_item_throw(state, assets);
+            }
             if held.use_kind != 0 {
                 unimplemented!(
-                    "checkItemThrow: a smash with a held item of kind {}",
+                    "ftCo_AttackHi4/Lw4_CheckInput: a smash with a held item of kind {}",
                     held.use_kind
                 );
             }
             let state = match predicate {
                 P::SmashUp => S::LightThrowHi4,
-                P::SmashDown => S::LightThrowLw4,
-                _ => {
-                    // checkLStick picks the main stick's sign, else the C-stick's.
-                    let input = &self.core.input;
-                    let t = &assets.input.thresholds;
-                    let main = input.pressed.intersects(Buttons::A)
-                        && gekko_math::msl::fabsf(input.current.stick.x)
-                            >= t.dash_smash_stick_threshold
-                        && i32::from(input.horizontal.tilt) < t.dash_smash_window;
-                    let x = if main {
-                        input.current.stick.x
-                    } else {
-                        input.current.cstick.x
-                    };
-                    let sign = if x >= 0.0 { 1.0 } else { -1.0 };
-                    if sign * self.core.physics.facing >= 0.0 {
-                        S::LightThrowF4
-                    } else {
-                        S::LightThrowB4
-                    }
-                }
+                _ => S::LightThrowLw4,
             };
             return self.enter_item_throw(state, assets);
         }
@@ -115,6 +121,10 @@ impl Fighter {
             let throws = self.core.item_throw_pressed()
                 || (predicate == P::TiltSide
                     && self.core.input.current.held.intersects(Buttons::SHIELD));
+            if !throws && predicate == P::TiltSide && held.use_kind == 2 {
+                // ftCo_AttackS3_CheckInput: a battering item swings.
+                return self.enter_item_swing(super::item_swing::SwingInput::Tilt, assets);
+            }
             if !throws {
                 unimplemented!(
                     "a tilt with a non-throwable held item of kind {}",
@@ -128,13 +138,37 @@ impl Fighter {
             };
             return self.enter_item_throw(state, assets);
         }
-        if held.use_kind != 0 {
-            unimplemented!(
-                "ftCo_Attack1_CheckInput: using a held item of kind {}",
-                held.use_kind
-            );
+        // ftCo_Attack1_CheckInput (8008A9F8): a throwable item is thrown
+        // forward; otherwise a shoulder drops it, and a battering item swings.
+        if held.use_kind == 0 {
+            return self.enter_item_throw(S::LightThrowF, assets);
         }
-        self.enter_item_throw(S::LightThrowF, assets)
+        if self.core.input.current.held.intersects(Buttons::SHIELD) {
+            return self.enter_item_throw(S::LightThrowDrop, assets);
+        }
+        if held.use_kind == 2 {
+            return self.enter_item_swing(super::item_swing::SwingInput::Jab, assets);
+        }
+        unimplemented!(
+            "ftCo_Attack1_CheckInput: using a held item of kind {}",
+            held.use_kind
+        );
+    }
+    /// ftCo_AttackS4_CheckInput's stick_x_sign: checkLStick picks the main
+    /// stick's sign, else the C-stick's (ftCo_800DF1C8). Also whether the
+    /// main stick made the smash.
+    fn side_smash_sign(&self, assets: &FighterAssets) -> (f32, bool) {
+        let input = &self.core.input;
+        let t = &assets.input.thresholds;
+        let main = input.pressed.intersects(Buttons::A)
+            && gekko_math::msl::fabsf(input.current.stick.x) >= t.dash_smash_stick_threshold
+            && i32::from(input.horizontal.tilt) < t.dash_smash_window;
+        let x = if main {
+            input.current.stick.x
+        } else {
+            input.current.cstick.x
+        };
+        (if x >= 0.0 { 1.0 } else { -1.0 }, main)
     }
     /// checkAttack11 (8008ABC0), also used by a looping jab combo.
     fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {

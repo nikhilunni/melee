@@ -86,8 +86,9 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
             ..attached
         },
         // Item_802674AC: common items (below It_Kind_L_Gun_Ray) hold as
-        // kind 0; it_802BD4AC's Bob-omb keeps its scale (xDE8) itself.
-        ItemKind::BombHei => SpawnItem {
+        // kind 0; it_802BD4AC's Bob-omb keeps its scale (xDE8) itself, and
+        // the Beam Sword skips it_80274594 (a unit owner scale either way).
+        ItemKind::BombHei | ItemKind::Sword | ItemKind::Dosei => SpawnItem {
             hold_kind: COMMON_HOLD_KIND,
             ..attached
         },
@@ -99,6 +100,8 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
         part,
         hold: true,
         catch_item: false,
+        // it_802BD4AC: it_80274594 for all but the Beam Sword.
+        scale_by_owner: kind != ItemKind::Sword,
     });
     // setupVeg: the pull's effect, then death2_cb and take_dmg_cb.
     let position = f.physics.position;

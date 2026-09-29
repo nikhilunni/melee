@@ -206,6 +206,8 @@ impl FighterCore {
             MotionData::Fall(fall) => fall.blend,
             // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).
             MotionData::ItemThrow(throw) => throw.rate,
+            // mv.co.swing.x4: the swing's input (an int).
+            MotionData::Swing(swing) => f32::from_bits(swing.input as u32),
             MotionData::ShieldBreak { retained_word } => (*retained_word)?,
             MotionData::Dizzy(dizzy) => dizzy.retained_word?,
             // mv.co.guard.x4: the shield's smoothed tilt magnitude.

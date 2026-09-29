@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 409] = [
+const MATRIX_WITNESSES: [(&str, usize); 412] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1175,6 +1175,15 @@ const MATRIX_WITNESSES: [(&str, usize); 409] = [
     // and dropped in the air to a hard landing (fn_80280974 detonation).
     ("peach4_pull_bombhei_throw_hit", 700),
     ("peach4_pull_bombhei_air_drop", 700),
+    // The Beam Sword pull: SwordSwing1/3/4 (ftswing.c) with the script's
+    // blade command, a smash swing hitting Fox, the Z drop (LightThrowDrop,
+    // Item_8026AC74), and a thrown sword bouncing off Fox and landing.
+    ("peach4_pull_sword_swings", 1400),
+    ("peach4_pull_sword_hits", 1700),
+    // The Mr. Saturn pull: held, thrown into Fox (the voice's HSD_Randi),
+    // landing into the walk, pushed by Fox (it_80271B60) and turning at
+    // the edge.
+    ("peach4_pull_dosei_throw_hit", 900),
     // Jigglypuff's specials against Fox: Rest's sleep hitbox, Sing's sleep
     // and wake, a full-charge Rollout hit, a Rollout that runs out, an aerial
     // Rollout that bounces and lands rolling, Pound into a shield.
@@ -2627,7 +2636,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 467] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 468] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3353,6 +3362,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 467] = [
     ("corpus_v3_s1_e8500e42f_p1", 6001),
     ("corpus_v3_s1_ec36a7713_p1", 5266),
     ("corpus_v3_s1_ec72b9942_p2", 5633),
+    // Peach pulls a Beam Sword (it_802BD4AC) and swings it.
+    ("corpus_v3_fd_peach_falco4_efc6a328f_p0", 286),
 ];
 
 #[test]

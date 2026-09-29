@@ -353,6 +353,10 @@ impl CommandState {
                             .push(usize::try_from(*bone).expect("dynamic bone index"));
                     }
                 }
+                // The blade's length scales only the sword model's joints
+                // and its afterimage (itsword.c it_80284E30, it_802852B8),
+                // which the port does not model.
+                Command::SwordBlade { .. } => {}
                 Command::SwordTrail { duration, reverse } => {
                     if !seeking {
                         self.sword_trail = Some((*duration, *reverse));

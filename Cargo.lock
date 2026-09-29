@@ -983,6 +983,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-dosei"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-drmariopill"
 version = "0.0.1"
 dependencies = [
@@ -1107,6 +1117,16 @@ dependencies = [
  "hsd-types",
  "melee-it",
  "melee-lb",
+ "melee-types",
+]
+
+[[package]]
+name = "it-sword"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
  "melee-types",
 ]
 
@@ -1444,6 +1464,7 @@ dependencies = [
  "hsd-types",
  "it-bombhei",
  "it-climbersice",
+ "it-dosei",
  "it-drmariopill",
  "it-foxillusion",
  "it-foxlaser",
@@ -1456,6 +1477,7 @@ dependencies = [
  "it-pikachu",
  "it-samus",
  "it-seak",
+ "it-sword",
  "it-yoshieggthrow",
  "it-yoshistar",
  "it-zelda",

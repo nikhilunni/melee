@@ -240,6 +240,7 @@ impl FighterCore {
                 | super::MotionData::Smash { .. }
                 | super::MotionData::DownTilt { .. }
                 | super::MotionData::Down { .. }
+                | super::MotionData::Swing(_)
         ) || matches!(
             (&self.state_data, self.motion_state.id),
             (

@@ -360,6 +360,7 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
     // (xDCF b2).
     item.life_timer = assets.explosion_lifetime;
     item.destroy_effect_suppressed = true;
+    item.mark_exploding();
     // it_80273454 -> itResetVelocity.
     item.velocity = Vec3::ZERO;
     bomb_mut(item).exploded = true;

@@ -228,6 +228,8 @@ pub struct FighterAssets {
     pub pickup: super::item_pickup::PickupBoxes,
     /// Fighter_804D6550: the item throw table.
     pub item_throws: [super::item_throw::ItemThrowRow; super::item_throw::ITEM_THROW_ROWS],
+    /// Fighter_804D654C: the swing items' animation rates.
+    pub swing_rates: super::item_swing::SwingRates,
     /// PlCo +400: the animation rate of a smash item throw (LightThrowF4 on).
     pub smash_throw_rate: f32,
     /// PlCo +1B8..1C0: the tumble bounce off a wall.
@@ -741,6 +743,7 @@ impl FighterAssets {
             },
             color_overlays,
             item_throws: super::item_throw::read_throw_table(common, common_root)?,
+            swing_rates: super::item_swing::read_swing_rates(common, common_root)?,
             smash_throw_rate: common.reader().f32(common_data + 0x400)?,
             fly_reflect: super::fly_reflect::BounceParameters::read(common, common_data)?,
             air_smash_throw_window: common.reader().s32(common_data + 0x3FC)?,

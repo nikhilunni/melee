@@ -34,6 +34,7 @@ pub mod hitbox;
 pub mod hitlag_link;
 pub mod item_hits;
 pub mod item_pickup;
+pub mod item_swing;
 pub mod item_throw;
 pub mod jump;
 pub mod landing;
@@ -1039,6 +1040,9 @@ pub struct FighterCore {
     /// created after the deferred flush). The character keeps what it will
     /// do; every Fighter_ChangeMotionState disarms it (fighter.c:1377).
     pub accessory4_armed: bool,
+    /// take_dmg_cb = ft_800CD31C while a swing runs; every
+    /// Fighter_ChangeMotionState disarms it (fighter.c:1376-1389).
+    pub swing_hand_armed: bool,
     /// x2224_b1: an item was just dropped or caught in the air, so the
     /// aerial catch waits for the next grounded motion entry.
     pub item_catch_locked: bool,
@@ -1139,6 +1143,8 @@ pub enum MotionData {
         retained_word: Option<f32>,
     },
     ItemThrow(item_throw::ItemThrowState),
+    /// SwordSwing1..SwordSwingDash (mv.co.swing).
+    Swing(item_swing::SwingState),
     Capture(grab_escape::CaptureState),
     YoshiEgg(capture_yoshi::YoshiEggState),
     CaptureJump(grab_escape::CaptureJumpState),

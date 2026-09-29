@@ -127,6 +127,9 @@ pub enum ItemRequest {
         speed: f32,
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
+        /// Item_8026AC74 (LightThrowDrop's release): the same flight, but
+        /// the kind's dropped callback runs in place of its thrown one.
+        dropped: bool,
     },
     /// Item_8026ABD8: the holder lets go of `item` at the hand (`position`)
     /// without a push; `speed` becomes xC44.
@@ -171,6 +174,11 @@ pub enum ItemRequest {
         /// With `hold`, ftpickupitem_80094818's catch flag: the hand also
         /// takes the shown selection (Fighter_OnItemPickup's ftAnim_80070C48).
         catch_item: bool,
+        /// it_80274594 after Item_8026AB54 (Peach's it_802BD4AC for all but
+        /// the Beam Sword): the item's scale times its owner's model scale
+        /// is applied again, to the model, hitbox radii, grab range and push
+        /// boxes.
+        scale_by_owner: bool,
     },
     /// The owner sends its held article of `kind` out of the hand
     /// (it_802B28C8, the Egg Throw): see [`Launch`].

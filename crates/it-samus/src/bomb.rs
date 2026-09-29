@@ -297,5 +297,6 @@ fn explode(item: &mut ItemCore, assets: &ItemAssets) {
     item.grabbable = false;
     item.life_timer = assets.explosion_lifetime;
     item.destroy_effect_suppressed = true;
+    item.mark_exploding();
     bomb_mut(item).blast_pending = true;
 }

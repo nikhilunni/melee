@@ -157,6 +157,7 @@ fn spawn(f: &mut Fighter, position: Vec3, map: &melee_mp::CollMap) -> bool {
         part: crate::common::part(FtPart::ThrowN) as u8,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     true
 }

@@ -89,6 +89,7 @@ fn take_out<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
         part: thumb,
         hold: false,
         catch_item: false,
+        scale_by_owner: false,
     });
     let specials = f.character.get_mut::<C>().specials();
     specials.milk_out = true;
