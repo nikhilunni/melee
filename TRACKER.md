@@ -19,7 +19,7 @@ do not keep a session log here.
 - Wave C of parallel agents finished on 2026-09-28; the user paused after it.
 - Gates at the wave C checkpoint: release workspace 1641/0 after two fixes,
   `m5_gate` 266/0, clippy clean, pytest 265, schema check clean. The perf
-  gate fails on size (see Next, item 5).
+  gate passes: 5.83 MB stripped, 18.8 ms per 600 ticks (31,900 ticks/s), 162 ms load.
 - Tooling:
   - `make_boundary.py` creates any stage and character boundary;
   - `explore_batch.py --boundary` runs the explorer from it;
@@ -73,16 +73,13 @@ do not keep a session log here.
    some long explorer matches (e.g. 6 of 8 PS matches, mario e9943b4ab_p0)
    and in some Mario/Falcon throw effects (±0.09, facing). Plan: add a
    per-tick particle digest to the gate, then fix what it finds.
-5. [ ] **Perf duplicate-label census.** The size baseline was raised after
-   wave C (user, 2026-09-28). The perf gate still fails its zero-tolerance
-   duplicate-label check:
-   - ft-iceclimbers: 35 labels (Popo and Nana instantiations);
-   - one label in each new character crate;
-   - melee-ft: 22 against 20;
-   - across crates: 118 against 100.
-
-   Either de-duplicate the labels or have the user re-baseline the census.
-   Throughput is 30,188 ticks/s (last pass 32,438).
+5. [ ] **Tick-path allocations.** Dream Land re-decodes its background
+   AnimJoint on about 60% of ticks
+   (`BackgroundAnimation::select_animation`). Stadium form changes,
+   Battlefield and Fountain of Dreams platform transitions, and a few
+   Mario, Link and Peach paths allocate occasionally. The allocation test
+   covers only Fox-Marth on FD; extend it to every stage and character,
+   then prepare the stage animations once at load.
 
 For a new matchup or stage, reuse the Fox-Marth approach:
 - an exit-criteria table like `docs/MATCHUP_COMPLETENESS.md`;
