@@ -20,22 +20,25 @@ impl Simulation {
     pub fn set_pads(&mut self, pads: PadScript) {
         self.pads = pads;
     }
+    /// The pads, raw stick bytes and display pass the next tick consumes.
+    fn set_tick_inputs(&mut self) {
+        let tick = self.engine.frame();
+        self.engine.set_inputs(self.pads.samples(tick));
+        self.engine.set_raw_stick_x(self.pads.raw_stick_x(tick));
+        self.engine
+            .set_recorded_pad_queue_x(self.pads.recorded_pad_queue_x(tick));
+        self.engine.set_display_pass(self.pads.display_pass(tick));
+    }
     pub fn tick_without_snapshot(&mut self) -> anyhow::Result<()> {
         self.engine
             .set_external_events(self.pads.events(self.engine.frame()));
-        self.engine
-            .set_inputs(self.pads.samples(self.engine.frame()));
-        self.engine
-            .set_display_pass(self.pads.display_pass(self.engine.frame()));
+        self.set_tick_inputs();
         self.engine.tick_without_snapshot()
     }
     pub fn tick(&mut self) -> anyhow::Result<melee_diff::Record> {
         self.engine
             .set_external_events(self.pads.events(self.engine.frame()));
-        self.engine
-            .set_inputs(self.pads.samples(self.engine.frame()));
-        self.engine
-            .set_display_pass(self.pads.display_pass(self.engine.frame()));
+        self.set_tick_inputs();
         self.engine.tick()
     }
 }

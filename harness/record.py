@@ -25,8 +25,11 @@ import time
 import tomllib
 from pathlib import Path
 
+import contextlib
+
 import data_root
 import dolphin_config
+import gecko
 import pads_to_inputs
 import trace_io
 
@@ -109,9 +112,41 @@ def main(argv: list[str] | None = None) -> None:
                     help="cap the particle dump at N ticks (the gate needs the initial state; a full "
                          "eight-minute dump is ~4 GB)")
     a = ap.parse_args(argv)
+    scenario = tomllib.loads(a.scenario.resolve().read_text())
+    with gecko_codes(scenario.get("gecko", [])):
+        record(a, scenario)
 
+
+@contextlib.contextmanager
+def gecko_codes(names: list[str]):
+    """Run every capture pass with the scenario's Gecko codes: written into the
+    run's private Dolphin user folder (a fresh one unless record_many gave one;
+    never the shared default folder), with cheats enabled and the injection
+    addresses handed to the tracers to verify."""
+    if not names:
+        yield
+        return
+    with contextlib.ExitStack() as stack:
+        user_dir = os.environ.get("DOLPHIN_USER_DIR")
+        if not user_dir:
+            user_dir = str(stack.enter_context(dolphin_config.isolated_user_dir()))
+        hooks = gecko.install(Path(user_dir), names)
+        saved = {key: os.environ.get(key) for key in ("DOLPHIN_USER_DIR", "DOLPHIN_CHEATS", gecko.HOOKS_ENV)}
+        os.environ.update({"DOLPHIN_USER_DIR": user_dir, "DOLPHIN_CHEATS": "1",
+                           gecko.HOOKS_ENV: ",".join(f"{addr:08X}" for addr in hooks)})
+        print(f"   gecko: {', '.join(names)} ({len(hooks)} injections) in {user_dir}")
+        try:
+            yield
+        finally:
+            for key, value in saved.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+
+def record(a: argparse.Namespace, scenario: dict) -> None:
     scenario_path = a.scenario.resolve()
-    scenario = tomllib.loads(scenario_path.read_text())
     name = scenario["name"]
     frames = scenario["frames"]
     savestate = ROOT / scenario["savestate"]

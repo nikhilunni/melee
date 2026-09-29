@@ -232,6 +232,19 @@ struct Runtime {
     state: InitialState,
     /// The pad each port consumed per tick: scenario input, never state.
     pads: [PadSample; 4],
+    /// This tick's raw `PADStatus.stickX` per port, when the caller knows
+    /// it (a tick-clock schedule, a Slippi replay, a recorded queue);
+    /// otherwise the byte behind each pad's normalized stick.
+    raw_stick_x: Option<[i8; 4]>,
+    /// This tick's queue bytes exactly as a retail recording read them;
+    /// overrides `raw_stick_x` and the history.
+    recorded_pad_queue_x: Option<[melee_ft::input::PadQueueX; 4]>,
+    /// HSD_PadLibData.queue as controller-fix codes read it: each port's
+    /// raw stick X one and two ticks back (queue entries qread-2, qread-3),
+    /// one poll consumed per tick.
+    raw_stick_x_history: [[i8; 2]; 4],
+    /// The pad-queue bytes this tick's codes read, from the two above.
+    pad_queue_x: [melee_ft::input::PadQueueX; 4],
     /// This tick's external events: inputs like the pads, never state.
     external: crate::ExternalEvents,
     /// What the last tick consumed from `external`.
@@ -257,6 +270,10 @@ impl Clone for Runtime {
             stage_objects: self.stage_objects,
             state: self.state.clone(),
             pads: self.pads,
+            raw_stick_x: self.raw_stick_x,
+            recorded_pad_queue_x: self.recorded_pad_queue_x,
+            raw_stick_x_history: self.raw_stick_x_history,
+            pad_queue_x: self.pad_queue_x,
             external: self.external,
             consumed: self.consumed,
             frame: self.frame,
@@ -271,6 +288,24 @@ impl Clone for Runtime {
 }
 
 impl Runtime {
+    /// HSD_PadRenewMasterStatus dequeues one raw sample per tick: this
+    /// tick's queue view and the history the next ticks will read.
+    fn consume_pad_queue(&mut self) {
+        let raw = self
+            .raw_stick_x
+            .unwrap_or_else(|| self.pads.map(|pad| pad.raw_stick_x()));
+        for (port, &current) in raw.iter().enumerate() {
+            let [previous, two_ticks_ago] = self.raw_stick_x_history[port];
+            self.pad_queue_x[port] = melee_ft::input::PadQueueX {
+                current,
+                two_ticks_ago,
+            };
+            self.raw_stick_x_history[port] = [current, previous];
+        }
+        if let Some(recorded) = self.recorded_pad_queue_x {
+            self.pad_queue_x = recorded;
+        }
+    }
     /// Item requests made during a proc, in request order: effects spawn and
     /// draw now; efAsync requests below s_link 9 wait for the item's link 9
     /// flush (Item_80269A9C -> efAsync_QueueFlush), which `flush` performs.
@@ -1102,6 +1137,21 @@ impl Runtime {
                         .owned_article =
                         report);
                 }
+                if proc == FighterProc::Input {
+                    // What controller-fix Gecko code reads this tick: the
+                    // fighter's port (fp+0x618) setting and pad-queue bytes.
+                    let port = usize::from(state.fighters[player].player.id);
+                    let hardware = melee_ft::input::HardwareInput {
+                        fix: state.controller_fixes[port],
+                        stick_x: self.pad_queue_x[port],
+                        partner_turn: None,
+                    };
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
+                        .core
+                        .input
+                        .hardware =
+                        hardware);
+                }
                 // ftpickupitem_800942A0 runs from input and animation callbacks.
                 let offers_items = matches!(proc, FighterProc::Input | FighterProc::Animation);
                 if offers_items {
@@ -1307,6 +1357,9 @@ impl Runtime {
                         .core
                         .ledge_holders
                         .withdraw());
+                }
+                if proc == FighterProc::Input {
+                    partner_turn(state, player);
                 }
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {
                     state.quakes.request(&mut state.camera, kind);
@@ -2036,6 +2089,23 @@ impl Simulation {
     pub fn set_inputs(&mut self, pads: [PadSample; 4]) {
         self.runtime.pads = pads;
     }
+    /// The next tick's raw `PADStatus.stickX` per port, before HSD clamps
+    /// it (held until replaced). `None` derives it from each pad's
+    /// normalized stick, exact inside the 80-unit circle. Only
+    /// controller-fix codes read raw bytes.
+    pub fn set_raw_stick_x(&mut self, raw: Option<[i8; 4]>) {
+        self.runtime.raw_stick_x = raw;
+    }
+    /// Replace each port's controller fix (a dry run or search borrowing
+    /// another scenario's recorded boundary state).
+    pub fn set_controller_fixes(&mut self, fixes: [melee_ft::input::ControllerFix; 4]) {
+        self.runtime.state.controller_fixes = fixes;
+    }
+    /// The next tick's pad-queue bytes as a retail recording read them
+    /// (held until replaced); `None` models the queue instead.
+    pub fn set_recorded_pad_queue_x(&mut self, queue: Option<[melee_ft::input::PadQueueX; 4]>) {
+        self.runtime.recorded_pad_queue_x = queue;
+    }
     /// The next tick's external events (held until replaced).
     pub fn set_external_events(&mut self, events: crate::ExternalEvents) {
         self.runtime.external = events;
@@ -2173,6 +2243,10 @@ impl Simulation {
             match_finished: false,
             display_pass: true,
             pads,
+            raw_stick_x: None,
+            recorded_pad_queue_x: None,
+            raw_stick_x_history: Default::default(),
+            pad_queue_x: Default::default(),
             external: Default::default(),
             consumed: Default::default(),
             frame: 0,
@@ -2230,6 +2304,7 @@ impl Simulation {
                 fighter.0.commands.rumble_requests.clear();
             }
             runtime.state.effects.events.begin_tick(frame);
+            runtime.consume_pad_queue();
             runtime.consumed = Default::default();
             runtime.rng_writers.clear();
             runtime.particle_draws.0.clear();
@@ -2627,6 +2702,24 @@ fn render_cameras(state: &mut InitialState) {
             .is_some_and(|point| point.on_screen);
         f.offscreen.outside_camera = !on_screen;
     }
+}
+
+/// `UCF DB.asm`'s Ice Climbers branch (Gecko hook 0x800C9A44), after
+/// Popo's input proc smash turned: Player_GetEntityAtIndex(slot, 1), and when
+/// Nana exists, her newest follow sample (cpu.x444, fp+0x1ECC) takes Popo's
+/// facing (+0x18) and a full stick toward it (+0x6).
+fn partner_turn(state: &mut InitialState, player: usize) {
+    let Some(turn) = state.fighters[player].0.input.hardware.partner_turn.take() else {
+        return;
+    };
+    let slot = state.fighters[player].player.id;
+    let Some(partner) = crate::scene_items::owner_index(&state.fighters, Some(slot), true) else {
+        return;
+    };
+    let follow = &mut state.fighters[partner].0.cpu.follow;
+    let sample = &mut follow.entries[follow.write];
+    sample.facing = turn.facing;
+    sample.stick[0] = turn.stick_x();
 }
 
 #[allow(clippy::too_many_arguments)] // Borrow each subsystem independently while dispatching a concrete fighter.

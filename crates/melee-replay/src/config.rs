@@ -14,6 +14,10 @@ pub struct Config {
     /// recordings, which are never Sudden Death.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) sudden_death: bool,
+    /// Each player's controller fix (`ControllerFix::name`); absent in
+    /// older recordings and when both are off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) controller_fixes: Option<[String; 2]>,
 }
 
 const CHARACTERS: [(Character, &str); 20] = [
@@ -71,6 +75,16 @@ impl From<&MatchConfig> for Config {
             all_characters_unlocked: config.rules.all_characters_unlocked,
             seed: config.seed.0,
             sudden_death: config.rules.sudden_death,
+            controller_fixes: config
+                .players
+                .iter()
+                .any(|p| p.controller_fix != ControllerFix::Off)
+                .then(|| {
+                    config
+                        .players
+                        .each_ref()
+                        .map(|p| p.controller_fix.name().to_owned())
+                }),
         }
     }
 }
@@ -93,6 +107,11 @@ impl Config {
                     .ok_or("unknown replay character")?
                     .0,
                 costume: Costume(*costume),
+                controller_fix: match &self.controller_fixes {
+                    None => ControllerFix::Off,
+                    Some(names) => ControllerFix::from_name(&names[index])
+                        .ok_or("unknown replay controller fix")?,
+                },
             })
         };
         let mut config = MatchConfig::versus(stage, [player(0)?, player(1)?])

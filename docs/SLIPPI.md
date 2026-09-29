@@ -406,3 +406,43 @@ transformation preload, PSCameraIndependentMonitor), tournament mods
 0.8 / 0.84, and netplay (per-frame RNG sync, FreezeDeadUpFallPhysics,
 PreventWobbling, FreezeFDSlippi, Frozen PS). Each must be ported before a
 replay recorded with it can match.
+
+## Controller fixes (UCF), 2026-09-28
+
+Tournament replays ran the Universal Controller Fix Gecko codes (Game Start
+`dashback_fix`/`shield_drop_fix` = 1). The port carries them as a per-port
+`ControllerFix` (`melee_ft::input::controller_fix`, re-exported by
+`melee-lib`): `Off`, `Ucf074`, `Ucf080`, and the explicitly unsupported
+`Ucf084` and `Dween` (match setup fails with the reason). Slippi does not
+record the UCF version; the caller chooses it (0.74 for 2019-2020 console
+builds, 0.8 from 2021; 0.84 from 2024).
+
+| Version | Slippi source (logic ported, not copied; GPL-3) | Hook |
+|---|---|---|
+| 0.74, 0.8 | `External/UCF 0.74/UCF DB.asm`, `External/UCF 0.8/Logic/UCF DB.asm` | 0x800C9A44, ftCo_Turn_IASA's first flip: slow turn to smash turn; Popo also rewrites Nana's newest follow sample |
+| 0.74, 0.8 | `.../UCF SD.asm` | 0x800998A4, ftCo_80099894: refuse a rim-angled spot dodge so the shield drops |
+| 0.8 | `External/UCF 0.8/Logic/UCF Tumble.asm` | 0x800908F4, ftCo_DamageFall_IASA's wiggle age |
+
+The 0.74 and 0.8 dashback and shield-drop programs are identical. The codes
+read the hardware pad queue (raw `PADStatus.stickX` now and two ticks ago,
+before HSD's clamp), which the engine models as one poll per tick
+(`Simulation::set_raw_stick_x`, derived from the pads when absent) or takes
+verbatim from a recording (`set_recorded_pad_queue_x`).
+
+API for a replay runner:
+
+- scenario TOML: `controller_fix = "ucf-0.8"` on each `[[fighters]]`
+  (`FighterScenario::controller_fix`, names in `ControllerFix::ALL`);
+  `PadScript::from_replay_inputs` already feeds Pre Frame raw joystick X;
+- `melee-lib`: `PlayerSetup::controller_fix` (diagnostics) or
+  `PlayerConfig::with_controller_fix` (public `Match`);
+- a borrowed boundary: `Simulation::set_controller_fixes([ControllerFix; 4])`.
+
+Recording with the codes: a scenario's `gecko = ["ucf-0.8"]` makes
+`record.py` write the codes into the run's private Dolphin user folder
+(`harness/gecko.py`, text read from `MELEE_GECKO_DIR`, never committed) and
+enable cheats; the tracer checks every C2 injection holds its branch, keeps the
+pad queue at one poll per tick and records `pad_queue_x` (what the codes read)
+beside each tick. Witnesses (`UCF_WITNESSES` in `m5_gate.rs`) gate exact with
+and without the codes: `ucf_dashback_fd_fox_*`, `ucf_dashback_fd_iceclimbers_*`,
+`ucf_shielddrop_bf_fox_*`, `ucf_tumble_fd_fox_*`.

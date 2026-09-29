@@ -72,11 +72,16 @@ impl Fighter {
     }
 }
 impl FighterCore {
-    /// ftCo_8009980C (0x8009980C): main-stick down smash or C-stick down.
+    /// ftCo_8009980C (0x8009980C): main-stick down smash or C-stick down,
+    /// unless UCF's hook in the entry ftCo_80099894 (0x800998A4) refuses.
     pub(super) fn spot_dodge_input(&self, assets: &FighterAssets) -> bool {
-        (self.input.current.stick.y <= assets.input.escape_threshold
+        ((self.input.current.stick.y <= assets.input.escape_threshold
             && i32::from(self.input.vertical.tilt) < assets.input.escape_window)
-            || self.input.current.cstick.y <= assets.input.escape_threshold
+            || self.input.current.cstick.y <= assets.input.escape_threshold)
+            && !crate::input::controller_fix::blocks_spot_dodge(
+                &self.input,
+                assets.input.escape_threshold,
+            )
     }
     /// ftCo_8009917C (0x8009917C): main-stick horizontal smash, then C-stick.
     pub fn roll_input(&self, assets: &FighterAssets) -> Option<S> {

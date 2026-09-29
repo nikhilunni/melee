@@ -67,6 +67,7 @@ impl Boundary {
             all_characters_unlocked: true,
             seed: self.seed,
             sudden_death: self.sudden_death,
+            controller_fixes: None,
         }
         .decode()
         .map_err(|e| format!("{}: {e}", self.name))

@@ -44,6 +44,11 @@ pub struct Scenario {
     #[serde(default)]
     pub replay_inputs: Vec<slp::cold::ControllerFrame>,
     pub replay_rules: Option<slp::cold::ReplayRules>,
+    /// Gecko codes the recording's Dolphin ran (`harness/gecko.py`), such as
+    /// `["ucf-0.8"]`. Every fighter then names the matching
+    /// `controller_fix`; the port reads only that.
+    #[serde(default)]
+    pub gecko: Vec<String>,
     #[serde(skip)]
     pub root: PathBuf,
 }
@@ -59,6 +64,10 @@ pub struct FighterScenario {
     pub spawn_point: i8,
     #[serde(default = "one_stock")]
     pub stocks: u8,
+    /// The port's controller-fix Gecko code (`"ucf-0.74"`, `"ucf-0.8"`,
+    /// ...; `ControllerFix::ALL`). Absent: retail.
+    #[serde(default)]
+    pub controller_fix: Option<String>,
 }
 fn one_stock() -> u8 {
     1
@@ -164,6 +173,16 @@ impl Scenario {
                 );
             }
         }
+        for fighter in &self.fighters {
+            let fix = fighter.controller_fix()?;
+            if !self.gecko.is_empty() {
+                ensure!(
+                    self.gecko.iter().any(|code| code == fix.name()),
+                    "gecko {:?} requires each fighter's controller_fix to name its code",
+                    self.gecko
+                );
+            }
+        }
         if let Some(rules) = &self.replay_rules {
             ensure!(self.is_cold(), "replay rules require cold setup");
             ensure!(
@@ -183,6 +202,11 @@ impl Scenario {
             );
         }
         Ok(())
+    }
+    /// Each port's controller fix (Off for an empty port).
+    pub fn controller_fixes(&self) -> Result<[melee_lib::ControllerFix; 4]> {
+        use melee_lib::diagnostics::ScenarioSource;
+        self.setup()?.controller_fixes()
     }
     /// Whether the Dolphin-side schedule ever leaves neutral.
     pub fn is_scripted(&self) -> bool {
@@ -285,6 +309,14 @@ impl Scenario {
 }
 
 impl FighterScenario {
+    /// The port's controller fix; an unknown name is an error.
+    pub fn controller_fix(&self) -> Result<melee_lib::ControllerFix> {
+        match &self.controller_fix {
+            None => Ok(melee_lib::ControllerFix::Off),
+            Some(name) => melee_lib::ControllerFix::from_name(name)
+                .with_context(|| format!("unknown controller_fix {name:?}")),
+        }
+    }
     /// Composition root selects a character crate; gameplay uses its callbacks.
     pub fn descriptor(&self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
         melee_lib::diagnostics::character_descriptor(&self.kind)
@@ -304,6 +336,7 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
                     costume: f.costume,
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
+                    controller_fix: f.controller_fix().expect("validated controller fix"),
                 }
             }),
             stage: self.stage_descriptor(),

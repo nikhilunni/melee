@@ -139,6 +139,7 @@ impl InitialState {
             camera,
             rendered_camera,
             quakes,
+            controller_fixes: scenario.controller_fixes()?,
         })
     }
 }

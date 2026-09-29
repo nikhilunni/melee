@@ -1,0 +1,30 @@
+# UCF shield drop witness (External/UCF 0.8/Logic/UCF SD.asm, Gecko hook
+# 0x800998A4 in ftCo_80099894). Fox (p1) stands on Battlefield's top
+# platform and shields (R, tick 120); the stick tilts right (40, tick 130)
+# and, six ticks later, moves to the down-right notch (56, -56).
+# UCF 0.8: the spot dodge is refused and the shield drops through the platform (Pass 244) at tick 136.
+name = "ucf_shielddrop_bf_fox_ucf08"
+input_clock = "tick"
+savestate = "harness/roms/start_bf_marth_fox4.sav"
+frames = 200
+seed = 1
+stage = "Battlefield"
+gecko = ["ucf-0.8"]
+inputs = [
+  { frame = 120, port = 1, buttons = { R = true, TriggerRight = 1.0 }, raw = { button = 32, triggerR = 140 } },
+  { frame = 130, port = 1, buttons = { R = true, TriggerRight = 1.0, StickX = 0.5 }, raw = { button = 32, triggerR = 140, stickX = 40 } },
+  { frame = 136, port = 1, buttons = { R = true, TriggerRight = 1.0, StickX = 0.7, StickY = -0.7 }, raw = { button = 32, triggerR = 140, stickX = 56, stickY = -56 } },
+  { frame = 160, port = 1, buttons = {}, raw = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "idle"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.8"

@@ -1,0 +1,26 @@
+# UCF dashback witness (External/UCF 0.8/Logic/UCF DB.asm, Gecko hook
+# 0x800C9A44 in ftCo_Turn_IASA). Fox (p0) stands facing right; the stick
+# goes 0 -> -40 (tilt: a slow Turn at tick 120) -> -80 at tick 121, the
+# Turn's second animation frame, a raw change of 80 over two ticks.
+# Retail (no code): the slow turn runs its frames and Dash starts at tick 125.
+name = "ucf_dashback_fd_fox_off"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_fox4.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 120, port = 0, buttons = { StickX = -0.5 }, raw = { stickX = -40 } },
+  { frame = 121, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -80 } },
+  { frame = 150, port = 0, buttons = {}, raw = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

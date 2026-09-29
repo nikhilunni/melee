@@ -12,6 +12,8 @@ Environment overrides:
   DOLPHIN_AUDIO=1   keep host audio output
   DOLPHIN_USER_DIR  a private Dolphin user folder (-u); parallel recordings
                     each get one from isolated_user_dir()
+  DOLPHIN_CHEATS=1  enable cheats, so the user folder's Gecko codes run
+                    (gecko.py; set by record.py for a scenario's `gecko`)
 """
 from __future__ import annotations
 
@@ -57,6 +59,8 @@ def launch_flags(executable: Path, video: str | None) -> list[str]:
         flags += ["-C", "Dolphin.DSP.Backend=No Audio Output"]
     if user_dir := os.environ.get("DOLPHIN_USER_DIR"):
         flags += ["-u", user_dir]
+    if os.environ.get("DOLPHIN_CHEATS"):
+        flags += ["-C", "Dolphin.Core.EnableCheats=True"]
     return flags
 
 

@@ -118,6 +118,9 @@ pub struct FighterInput {
     pub last_horizontal_positive: bool,
     /// x2229_b0: last vertical smash direction was negative.
     pub last_vertical_negative: bool,
+    /// Not Fighter state: the port's controller-fix setting and hardware
+    /// pad-queue bytes, refreshed by the scene each input proc.
+    pub hardware: super::controller_fix::HardwareInput,
 }
 impl FighterInput {
     /// fighter.c:655-681. Does not touch saved history or direction flags.

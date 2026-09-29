@@ -113,6 +113,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
                     costume: f.costume,
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
+                    controller_fix: f.controller_fix().expect("validated controller fix"),
                 }
             }),
             stage: stage_descriptor(&self.stage).unwrap(),

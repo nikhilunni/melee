@@ -128,6 +128,8 @@ pub fn write_dry_run(scenario: &Scenario, reference: &Scenario, mut out: impl Wr
         .with_display_from(&reference.expected_path())?;
     let mut simulation =
         Simulation::with_inputs(InitialState::from_savestate_traces(reference)?, pads);
+    // The boundary is borrowed; the controller fixes are this scenario's.
+    simulation.set_controller_fixes(scenario.controller_fixes()?);
     for frame in 0..scenario.frames {
         let mut record = simulation.tick()?;
         record.frame = frame;

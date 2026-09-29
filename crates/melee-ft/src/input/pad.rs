@@ -162,6 +162,12 @@ fn stick_byte(axis: f32) -> i8 {
 }
 
 impl PadSample {
+    /// The signed `PADStatus.stickX` byte behind the normalized stick, as
+    /// the pad queue held it. Exact when the stick lay inside HSD's 80-unit
+    /// circle; a clamped stick gives the clamped byte.
+    pub fn raw_stick_x(&self) -> i8 {
+        stick_byte(self.stick.x)
+    }
     /// The sample as HSD's game status carries it: the virtual stick
     /// direction bits follow the sticks (HSD_PadRenewMasterStatus runs
     /// HSD_PadADConvert on every read), whatever the caller supplied.

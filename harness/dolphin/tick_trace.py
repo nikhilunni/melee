@@ -18,6 +18,14 @@ depth. Before the first tick and at every tick end (the game is stopped in the
 memcheck callback) the tracer therefore rewrites the queue to hold exactly one
 entry: the pad the next tick must consume. Records then carry exactly the
 scheduled pads, which replay_to_scenario.py --verify checks.
+
+Controller-fix Gecko codes (UCF, harness/gecko.py) also read older queue
+entries: each record's `pad_queue_x` holds, per port, the raw stickX of
+entries qread-1 and qread-3 exactly as UCF's FETCH_INPUT indexes them. With
+codes installed (MELEE_GECKO_HOOKS), the tick clock also rewrites the two
+entries before the injected one with the two previous ticks' pads, so the
+queue holds one poll per tick whatever Dolphin's own polls did, and the
+first record checks every injection holds its branch.
 """
 from __future__ import annotations
 
@@ -36,6 +44,9 @@ from item_kinds import ITEM_KIND_NAMES  # noqa: E402
 import remote_proto  # noqa: E402
 import symbols  # noqa: E402
 
+sys.path.insert(0, str(HERE.parent))
+import gecko  # noqa: E402
+
 WATCH_ADDR = symbols.addr("gm_80479D58")  # unk_0, +0: scheduler tick count
 STORE_PC = 0x801A4FB8
 MASK = 0xFFFFFFFF
@@ -52,6 +63,9 @@ PS_FRAME_ADDR = symbols.addr("psFrameNum")
 PAD_STATUS_BYTES = 12  # SDK PADStatus: button u16, 4 x s8 sticks, 4 x u8 analog, s8 err
 PAD_ENTRY_BYTES = 4 * PAD_STATUS_BYTES
 RAW_KEYS = ("button", "stickX", "stickY", "substickX", "substickY", "triggerL", "triggerR")
+PAD_PORTS = 4
+#: UCF's FETCH_INPUT wraps a negative queue index by this constant (qnum 5).
+UCF_QUEUE_WRAP = 5
 PAD_BUTTON_A, PAD_BUTTON_B = 0x100, 0x200
 
 
@@ -114,6 +128,9 @@ class TickTracer(Tracer):
             self.tick_step_index = 0
             self.tick_held: dict[int, dict] = {0: {}, 1: {}}
             self.injected_ticks = 0
+            # The held steps of the last two injected ticks, newest first.
+            self.tick_history: list[dict[int, dict]] = []
+        self.gecko_hooks = gecko.hooks_from_env()
         self.vi_frame = -1
         self.last_tick_vi = 0
         self.last_tick: int | None = None
@@ -165,13 +182,49 @@ class TickTracer(Tracer):
         qwrite = self.mem.read_u8(PAD_LIB_ADDR + 2)
         queue = self.mem.read_u32(PAD_LIB_ADDR + 8)
         slot = (qwrite + qnum - 1) % qnum  # the latest poll; ports 2-3 and err stay as polled
-        for port, step in sorted(self.tick_held.items()):
-            base = queue + slot * PAD_ENTRY_BYTES + port * PAD_STATUS_BYTES
-            for offset, byte in enumerate(raw_pad_bytes(step.get("raw", {}))):
-                self.mem.write_u8(base + offset, byte)
+        entries = [(slot, self.tick_held)]
+        if self.gecko_hooks:
+            if qnum != UCF_QUEUE_WRAP:
+                raise ValueError(f"pad queue holds {qnum} entries; UCF assumes {UCF_QUEUE_WRAP}")
+            # Entries slot-1, slot-2: the previous ticks' pads (neutral before the first).
+            for back in (1, 2):
+                held = self.tick_history[back - 1] if len(self.tick_history) >= back \
+                    else {port: {} for port in self.tick_held}
+                entries.append(((slot - back) % qnum, held))
+        for entry, held in entries:
+            for port, step in sorted(held.items()):
+                base = queue + entry * PAD_ENTRY_BYTES + port * PAD_STATUS_BYTES
+                for offset, byte in enumerate(raw_pad_bytes(step.get("raw", {}))):
+                    self.mem.write_u8(base + offset, byte)
+        self.tick_history = [dict(self.tick_held), *self.tick_history][:2]
         self.mem.write_u8(PAD_LIB_ADDR + 1, slot)  # qread
         self.mem.write_u8(PAD_LIB_ADDR + 3, 1)     # qcount
         self.injected_ticks += 1
+
+    def read_pad_queue_x(self, mem=None) -> list[list[int]]:
+        """Per port, the signed stickX of queue entries qread-1 and qread-3,
+        indexed as UCF's FETCH_INPUT does (index-1, plus 5 when negative)."""
+        mem = self.mem if mem is None else mem
+        qread = mem.read_u8(PAD_LIB_ADDR + 1)
+        queue = mem.read_u32(PAD_LIB_ADDR + 8)
+
+        def entry(index: int) -> int:
+            index -= 1
+            return index + UCF_QUEUE_WRAP if index < 0 else index
+
+        def stick_x(index: int, port: int) -> int:
+            byte = mem.read_u8(queue + entry(index) * PAD_ENTRY_BYTES + port * PAD_STATUS_BYTES + 2)
+            return byte - 0x100 if byte & 0x80 else byte
+
+        return [[stick_x(qread, port), stick_x(qread - 2, port)] for port in range(PAD_PORTS)]
+
+    def check_gecko_hooks(self) -> None:
+        """Every Gecko C2 injection must hold its branch by the first record."""
+        missing = [f"0x{addr:08X}" for addr in self.gecko_hooks
+                   if not gecko.is_branch(self.mem.read_u32(addr))]
+        if missing:
+            raise ValueError(f"Gecko codes not installed at {missing}: enable cheats "
+                             "(DOLPHIN_CHEATS=1) and check the user folder's GALE01.ini")
 
     def on_frame(self) -> None:
         # Removal here avoids invalidating TMemCheck::Action's `this` while it
@@ -244,13 +297,16 @@ class TickTracer(Tracer):
             elif before != self.last_tick or value != (before + 1) & MASK:
                 raise ValueError(f"tick discontinuity at ordinal {self.frame}: "
                                  f"last={self.last_tick}, memory={before}, callback={value}")
+            if self.frame == 0 and self.gecko_hooks:
+                self.check_gecko_hooks()
             record = self.record("frame_end")
             if not record["fighters"]:
                 raise ValueError(f"no fighters at tick ordinal {self.frame}")
             record.update(tick=value, vi_frame=self.vi_frame,
                           ps_frame=self.mem.read_u8(PS_FRAME_ADDR),
                           watch_address=WATCH_ADDR, watch_value=before,
-                          pad_game=self.read_game_pads())
+                          pad_game=self.read_game_pads(),
+                          pad_queue_x=self.read_pad_queue_x())
             self.out.write(json.dumps(record) + "\n")
             self.out.flush()
             self.last_tick = value

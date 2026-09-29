@@ -1531,6 +1531,31 @@ fn matrix_witnesses_match_retail() {
     }
 }
 
+/// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
+/// witness recorded in Dolphin without the code (`_off`) and with it
+/// (`gecko = [...]`, harness/gecko.py): UCF's dashback (0x800C9A44), shield
+/// drop (0x800998A4) and 0.8's tumble wiggle (0x800908F4).
+const UCF_WITNESSES: [(&str, usize); 10] = [
+    ("ucf_dashback_fd_fox_off", 200),
+    ("ucf_dashback_fd_fox_ucf074", 200),
+    ("ucf_dashback_fd_fox_ucf08", 200),
+    // Popo's smash turn rewrites Nana's newest follow sample.
+    ("ucf_dashback_fd_iceclimbers_ucf074", 200),
+    ("ucf_dashback_fd_iceclimbers_ucf08", 200),
+    ("ucf_shielddrop_bf_fox_off", 200),
+    ("ucf_shielddrop_bf_fox_ucf074", 200),
+    ("ucf_shielddrop_bf_fox_ucf08", 200),
+    ("ucf_tumble_fd_fox_off", 290),
+    ("ucf_tumble_fd_fox_ucf08", 290),
+];
+
+#[test]
+fn ucf_controller_fix_witnesses_match_retail() {
+    for (name, ticks) in UCF_WITNESSES {
+        combat_gate_ticks(name, ticks);
+    }
+}
+
 /// Battlefield's background swaps (grBattle_BG_Callback2, 0x8021A3BC) run
 /// three full cycles from the start boundary: transition animation, color
 /// overlays, mid-match background creation with its particle keys, and the

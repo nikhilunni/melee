@@ -256,11 +256,13 @@ pub fn evaluate(
         | P::TiltUp
         | P::TiltDown
         | P::Jab => (attack_matches(predicate, input, common, context), T::Attack),
-        // ftCo_80099794, then ftCo_80091A4C. Escape precedes Guard.
+        // ftCo_80099794, then ftCo_80091A4C. Escape precedes Guard. Its
+        // entry ftCo_80099894 may refuse under UCF (Gecko hook 0x800998A4).
         P::Escape => (
             shield_held
                 && stick.y <= common.escape_threshold
-                && i32::from(input.vertical.tilt) < common.escape_window,
+                && i32::from(input.vertical.tilt) < common.escape_window
+                && !super::controller_fix::blocks_spot_dodge(input, common.escape_threshold),
             T::Escape,
         ),
         P::Shield => (

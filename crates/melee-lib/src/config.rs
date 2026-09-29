@@ -151,6 +151,9 @@ pub struct PlayerConfig {
     pub port: Port,
     pub character: Character,
     pub costume: Costume,
+    /// The controller-fix Gecko code the player's console ran (UCF);
+    /// retail is [`ControllerFix::Off`].
+    pub controller_fix: ControllerFix,
 }
 impl PlayerConfig {
     pub fn new(port: Port, character: Character) -> Self {
@@ -158,9 +161,15 @@ impl PlayerConfig {
             port,
             character,
             costume: Costume::default(),
+            controller_fix: ControllerFix::Off,
         }
     }
+    pub fn with_controller_fix(mut self, fix: ControllerFix) -> Self {
+        self.controller_fix = fix;
+        self
+    }
 }
+pub use melee_ft::input::ControllerFix;
 
 /// Supported Versus rules: singles, stock, no items, normal damage, no timer.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -244,6 +253,7 @@ impl MatchConfig {
                 costume: self.players[p].costume.0,
                 spawn_point: -1,
                 stocks: self.rules.stocks,
+                controller_fix: self.players[p].controller_fix,
             }),
             stage: self.stage.descriptor(),
             seed: Some(self.seed.0),

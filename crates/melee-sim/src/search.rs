@@ -391,10 +391,12 @@ pub fn search(
         tried: Default::default(),
         done: AtomicBool::new(false),
     };
-    let root = Simulation::with_inputs(
+    let mut root = Simulation::with_inputs(
         InitialState::from_savestate_traces(reference)?,
         search.pads(&[])?,
     );
+    // The boundary is borrowed; the controller fixes are this scenario's.
+    root.set_controller_fixes(scenario.controller_fixes()?);
     if spec.vary.is_empty() {
         search.finish(root, Vec::new())?;
     } else {

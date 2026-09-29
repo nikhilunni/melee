@@ -1321,10 +1321,16 @@ impl Fighter {
         );
         match transition {
             T::None => {
+                // ftCo_DamageFall_IASA (0x800908C4); UCF hooks the age
+                // compare (0x800908F4).
                 if tumbling
                     && gekko_math::msl::fabsf(self.core.input.current.stick.x)
                         >= assets.damage.tumble_exit_threshold
-                    && i32::from(self.core.input.horizontal.tilt) < assets.damage.tumble_exit_window
+                    && crate::input::controller_fix::tumble_wiggle(
+                        &self.core.input,
+                        assets.damage.tumble_exit_threshold,
+                        assets.damage.tumble_exit_window,
+                    )
                 {
                     self.change_motion_state(S::Fall.into(), assets)?;
                 }

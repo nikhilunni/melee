@@ -90,6 +90,7 @@ impl Match {
                 port: Port::from_index(f.player.id),
                 character: Character::from_kind(f.kind),
                 costume: Costume(f.player.costume),
+                controller_fix: engine.state().controller_fixes[usize::from(f.player.id)],
             }
         });
         let config = MatchConfig::versus(stage, players)

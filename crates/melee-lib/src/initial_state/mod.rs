@@ -89,6 +89,8 @@ pub struct InitialState {
     /// (grStadium_801D32D0) can see the camera of an earlier tick.
     pub(crate) rendered_camera: hsd_anim::cobj::PerspectiveCamera,
     pub(crate) quakes: crate::quake::Quakes,
+    /// Each port's controller-fix Gecko code (match setup, not saved state).
+    pub(crate) controller_fixes: [melee_ft::input::ControllerFix; 4],
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
@@ -498,6 +500,7 @@ impl InitialState {
             camera,
             rendered_camera,
             quakes,
+            controller_fixes: setup.controller_fixes()?,
         })
     }
 }

@@ -64,12 +64,16 @@ impl Fighter {
         let MotionData::Turn(turn) = &self.core.state_data else {
             panic!("turn data missing")
         };
-        let has_turned = turn.has_turned;
+        let mut has_turned = turn.has_turned;
         if turn.just_turned {
             self.core.input.pressed.0 |= turn.buffered_buttons.0;
         }
         if !has_turned {
             self.core.physics.facing = -self.core.physics.facing;
+            // Gecko hook 0x800C9A44 (the flip's stfs): UCF's dashback.
+            if self.ucf_smash_turn(assets) {
+                has_turned = true;
+            }
         }
         let mut attack_context = context.clone();
         attack_context.facing = self.core.physics.facing;
@@ -121,5 +125,35 @@ impl Fighter {
         turn.buffered_buttons.0 |= self.core.input.pressed.0 & (Buttons::A.0 | Buttons::B.0);
         turn.just_turned = false;
         Ok(())
+    }
+
+    /// `UCF DB.asm` (injected at 0x800C9A44): a slow turn becomes a smash
+    /// turn (x2358 and x2340 set, so the facing stays flipped). For Popo,
+    /// the scene then rewrites Nana's newest follow sample.
+    fn ucf_smash_turn(&mut self, assets: &FighterAssets) -> bool {
+        use crate::input::controller_fix::{smash_turn, PartnerTurn, TurnFacts};
+        let facts = TurnFacts {
+            animation_frame: self.core.animation.frame,
+            secondary: self.player.secondary,
+        };
+        if !smash_turn(
+            &self.core.input,
+            assets.input.thresholds.dash_smash_stick_threshold,
+            &facts,
+        ) {
+            return false;
+        }
+        let MotionData::Turn(turn) = &mut self.core.state_data else {
+            unreachable!()
+        };
+        turn.just_turned = true;
+        turn.has_turned = true;
+        // lwz r4,0x4; cmpwi r4,0xA: Popo (the code's own kind check).
+        if self.character.kind() == melee_types::FighterKind::Popo {
+            self.core.input.hardware.partner_turn = Some(PartnerTurn {
+                facing: self.core.physics.facing,
+            });
+        }
+        true
     }
 }

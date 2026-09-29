@@ -1,0 +1,35 @@
+# UCF tumble wiggle witness (External/UCF 0.8/Logic/UCF Tumble.asm, Gecko
+# hook 0x800908F4 in ftCo_DamageFall_IASA). Puff's Rest launches Fox (p1,
+# puff_rest_hit_fd_fox4's inputs); tumbling (DamageFall 38), his stick goes
+# 0 -> 40 (tick 250) -> 80 (tick 251): tilt age 1 at full deflection.
+# UCF 0.8: last tick's stick was below 0.8 and the raw X moved 80 in two ticks: Fall (29) at tick 251.
+name = "ucf_tumble_fd_fox_ucf08"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 290
+seed = 1
+stage = "FinalDestination"
+gecko = ["ucf-0.8"]
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 147, port = 1, buttons = {  }, raw = {  } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 159, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 1, buttons = { StickX = 0.5 }, raw = { stickX = 40 } },
+  { frame = 251, port = 1, buttons = { StickX = 1.0 }, raw = { stickX = 80 } },
+  { frame = 256, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.8"

@@ -7,6 +7,8 @@ pub struct PlayerSetup {
     pub costume: u8,
     pub spawn_point: i8,
     pub stocks: u8,
+    /// The player's controller-fix Gecko code (UCF), keyed by its port.
+    pub controller_fix: melee_ft::input::ControllerFix,
 }
 impl PlayerSetup {
     pub fn descriptor(&self) -> &'static CharacterDescriptor {
@@ -66,5 +68,17 @@ impl Setup {
     }
     pub fn stage_descriptor(&self) -> &'static crate::scene_stage::StageDescriptor {
         self.stage
+    }
+    /// Each port's controller fix (Off for an empty port), or why one
+    /// cannot be simulated.
+    pub fn controller_fixes(&self) -> anyhow::Result<[melee_ft::input::ControllerFix; 4]> {
+        let mut fixes = [melee_ft::input::ControllerFix::Off; 4];
+        for player in &self.fighters {
+            if let Some(reason) = player.controller_fix.unsupported() {
+                anyhow::bail!("port {}: {reason}", player.slot);
+            }
+            fixes[usize::from(player.slot)] = player.controller_fix;
+        }
+        Ok(fixes)
     }
 }
