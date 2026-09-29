@@ -132,6 +132,7 @@ other than the Fox articles and the Bob-omb (`melee-it`).
 | `input.rs` special fall with jumps left | Likely unreachable: entry spends the jumps |
 | `life.rs` gm_80167320 final stock | Unreachable: the scene freezes before the timer can expire |
 | `state/special.rs` buffered special | Fixed: ftCo_SpecialAir_CheckInput (8009665C) reads the stick with inclusive bounds; the port's reuse of the ground's strict tilt timers took the side special at exactly (0.6, -0.55) (`airspecial_bound_fd_marth`) |
+| `ft-purin/hat.rs` costume hats (2026-09-28) | The hat's pose and spring chains are not simulated: they reach no simulation state. The hat joints are no fighter part (ftCo_8009E318 matches part joints only); ftCo_8009E140 and ftCo_8009E7B4 select set 0 alone for Jigglypuff; the x594_b4 table path that indexes parts by a set's bone id needs ftData +2C +10, null in PlPr.dat, and no Jigglypuff motion sets 0x08000000; the hat root matrix is copied at display (ftPr_Init_UnkMtxFunc0). Witnessed exact with part bones in all four costumes (`puff_hat_c{1..4}_{rollout_ko,rest_hit}_fd_fox4`) |
 
 Catch boxes against items (`ftColl_8007BC90`) are not a gap: the item side
 requires `xDD0 b4`, which only stage enemies set. A grabber dying with its

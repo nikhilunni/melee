@@ -1,0 +1,28 @@
+# PUFF costume 4 (yellow crown) witness: puff_rest_hit_fd_fox4's inputs from the
+# costume 4 boundary. Fox dashes in and stops beside Puff; grounded Rest
+# (SpecialLwR 371) hits him with its sleep hitbox; he tumbles off the stage
+# (DeadDown 0) and respawns (Rebirth 12, RebirthWait 13).
+name = "puff_hat_c4_rest_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_c4_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 147, port = 1, buttons = {  }, raw = {  } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 159, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 395] = [
+const MATRIX_WITNESSES: [(&str, usize); 403] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1171,6 +1171,17 @@ const MATRIX_WITNESSES: [(&str, usize); 395] = [
     ("puff_rollout_whiff_fd_fox4", 316),
     ("puff_rollout_air_fd_fox4", 360),
     ("puff_pound_shield_fd_fox4", 272),
+    // Jigglypuff in each hat costume (ftPr_Init_8013C360; blue and green add
+    // hat spring chains, ftCo_8009DC54): Rollout off the edge, KO, respawn,
+    // Rest, Sing and Pound; and Rest's hit that KOs Fox.
+    ("puff_hat_c1_rollout_ko_fd_fox4", 1320),
+    ("puff_hat_c2_rollout_ko_fd_fox4", 1320),
+    ("puff_hat_c3_rollout_ko_fd_fox4", 1320),
+    ("puff_hat_c4_rollout_ko_fd_fox4", 1320),
+    ("puff_hat_c1_rest_hit_fd_fox4", 480),
+    ("puff_hat_c2_rest_hit_fd_fox4", 480),
+    ("puff_hat_c3_rest_hit_fd_fox4", 480),
+    ("puff_hat_c4_rest_hit_fd_fox4", 480),
     // Pikachu against Fox: the repeating jab (a new attack instance per
     // restart), the forward smash's hitlag callbacks and model effect, Skull
     // Bash tapped, charged in full, aerial, and into Fox; Quick Attack's
@@ -1561,6 +1572,32 @@ fn slope_body_tilt_matches_retail_bones() {
         }
         let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
         assert!(report.is_empty(), "{name}: {report:#?}");
+    }
+}
+
+/// Jigglypuff's costume hats are no fighter part and their spring chains move
+/// only the hat's joints, so every part keeps retail's pose in each costume
+/// through Rollout, a KO and respawn, and Rest.
+#[test]
+fn jigglypuff_hat_costumes_match_retail_bones() {
+    for costume in 1..=4 {
+        for (kind, ticks) in [("rollout_ko", 1320), ("rest_hit", 480)] {
+            let name = format!("puff_hat_c{costume}_{kind}_fd_fox4");
+            if combat_gate_ticks(&name, ticks).is_none() {
+                continue;
+            }
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml"));
+            let scenario = Scenario::load(&path).unwrap();
+            if !melee_test_support::require_files([
+                scenario.trace_path("bones.jsonl"),
+                scenario.trace_path("bones.raw.jsonl"),
+            ]) {
+                continue;
+            }
+            let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
+            assert!(report.is_empty(), "{name}: {report:#?}");
+        }
     }
 }
 
@@ -2550,7 +2587,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 461] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 465] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2858,6 +2895,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 461] = [
     ("corpus_v3_fd_jigglypuff_fox4_e7ff378da_p0", 5108),
     ("corpus_v3_fd_fox_jigglypuff4_e3ef41ca4_p0", 5135),
     ("corpus_v3_fd_jigglypuff_fox4_efc6a328f_p0", 3728),
+    // Full explorer matches from the four hat-costume boundaries
+    // (ftPr_Init_8013C360; the hat never reaches simulation state).
+    ("corpus_v3_fd_jigglypuff_c1_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_c2_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_c3_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_jigglypuff_c4_fox4_ef89b3e70_p0", 6001),
     // A roll or spot dodge out of Dash or Landing writes only mv.co.escape.x0
     // (ftCo_80099314), so a later special inherits the predecessor's mv+4.
     ("corpus_v3_fod_fox_marth4_e00f31913_p0", 3028),

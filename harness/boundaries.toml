@@ -122,6 +122,46 @@ stocks = 4
 seed = 2935155039
 
 [[boundary]]
+name = "start_fd_jigglypuff_c1_fox4"
+cold = "start_fd_jigglypuff_c1_fox4_cold"
+savestate = "harness/roms/start_fd_jigglypuff_c1_fox4.sav"
+stage = "FinalDestination"
+players = ["Jigglypuff", "Fox"]
+stocks = 4
+seed = 1637922794
+costumes = [1, 0]
+
+[[boundary]]
+name = "start_fd_jigglypuff_c2_fox4"
+cold = "start_fd_jigglypuff_c2_fox4_cold"
+savestate = "harness/roms/start_fd_jigglypuff_c2_fox4.sav"
+stage = "FinalDestination"
+players = ["Jigglypuff", "Fox"]
+stocks = 4
+seed = 1119689209
+costumes = [2, 0]
+
+[[boundary]]
+name = "start_fd_jigglypuff_c3_fox4"
+cold = "start_fd_jigglypuff_c3_fox4_cold"
+savestate = "harness/roms/start_fd_jigglypuff_c3_fox4.sav"
+stage = "FinalDestination"
+players = ["Jigglypuff", "Fox"]
+stocks = 4
+seed = 245785721
+costumes = [3, 0]
+
+[[boundary]]
+name = "start_fd_jigglypuff_c4_fox4"
+cold = "start_fd_jigglypuff_c4_fox4_cold"
+savestate = "harness/roms/start_fd_jigglypuff_c4_fox4.sav"
+stage = "FinalDestination"
+players = ["Jigglypuff", "Fox"]
+stocks = 4
+seed = 1575895321
+costumes = [4, 0]
+
+[[boundary]]
 name = "start_dl_fox_marth4"
 cold = "start_dl_fox_marth4_cold"
 savestate = "harness/roms/start_dl_fox_marth4.sav"

@@ -1,6 +1,7 @@
 //! Jigglypuff: ft/kinds/ftPurin. Common states live in melee-ft.
 pub mod attributes;
 mod common;
+pub mod hat;
 pub mod init;
 pub mod special_hi;
 pub mod special_lw;

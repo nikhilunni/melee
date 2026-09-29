@@ -39,6 +39,8 @@ pub struct Jigglypuff {
     pub rollout_callbacks: crate::special_n::Callbacks,
     /// Hitbox 0's contents when it was last disabled (retail keeps them).
     pub rollout_hitbox: Option<melee_coll::hitbox::HitCapsule>,
+    /// fp->u.pr.x223C: the costume's hat, loaded once by OnLoad.
+    pub hat: Option<crate::hat::CostumeHat>,
 }
 impl Jigglypuff {
     pub fn new(attributes: PurinAttributes) -> Self {
@@ -53,6 +55,7 @@ impl Jigglypuff {
             rollout_scale: hsd_types::Vec3::ZERO,
             rollout_callbacks: Default::default(),
             rollout_hitbox: None,
+            hat: None,
         }
     }
 }
@@ -173,16 +176,14 @@ impl CharacterCallbacks for Jigglypuff {
     fn on_load(&mut self, capabilities: &mut Capabilities) {
         capabilities.specials = [true; 4];
     }
-    /// ftPr_Init_8013C360: neutral costume has no accessory joint. Other
-    /// costumes load a hat with separate parts visibility and renderer callbacks.
+    /// ftPr_Init_OnLoad's ftPr_Init_8013C360: the neutral costume has no
+    /// hat; the others load one (see `crate::hat`).
     fn on_costume_loaded(
         &mut self,
-        _archive: &hsd_archive::Archive,
+        archive: &hsd_archive::Archive,
         costume: u8,
     ) -> melee_ft::fighter::assets::Result<()> {
-        if costume != 0 {
-            unimplemented!("ftpurin.c:447-478: costume hat loading and visibility");
-        }
+        self.hat = crate::hat::CostumeHat::load(archive, costume)?;
         Ok(())
     }
     /// ftPr_Init_OnDeath (8013C318): ftParts_80074A4C(gobj, 0, 0).
