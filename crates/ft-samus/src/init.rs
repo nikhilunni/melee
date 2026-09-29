@@ -189,7 +189,7 @@ impl CharacterCallbacks for Samus {
     const AIR_TETHER: Option<fn(&mut Fighter, &FighterAssets) -> bool> =
         Some(crate::grapple::air::try_tether);
     /// it_802BAC80: the beam's rope.
-    const ACCESSORY2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)> =
+    const ACCESSORY2: Option<melee_ft::fighter::Accessory2> =
         Some(crate::grapple::accessory);
     /// it_802BACC4: the rope in hitlag.
     const HITLAG_ACCESSORY: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> =

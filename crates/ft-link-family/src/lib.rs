@@ -199,6 +199,7 @@ pub const fn rows<C: LinkFamily>() -> [MotionRow; FamilyState::COUNT] {
     rows[FamilyState::SpecialHi.index()] = spin[0];
     rows[FamilyState::SpecialAirHi.index()] = spin[1];
     rows[FamilyState::AirCatch.index()] = air_catch::motion_row::<C>();
+    rows[FamilyState::AirCatchHit.index()] = air_catch::hit_motion_row();
     let bomb = special_lw::rows::<C>();
     rows[FamilyState::SpecialLw.index()] = bomb[0];
     rows[FamilyState::SpecialAirLw.index()] = bomb[1];

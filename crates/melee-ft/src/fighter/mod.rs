@@ -1,8 +1,9 @@
 //! Fighter ownership and scheduler callbacks for grounded, item-free Wait.
 //! Retail addresses and unsupported paths are documented at each entry point.
 mod character;
-pub use character::{CharacterState, CharacterTable};
+pub use character::{Accessory2, CharacterState, CharacterTable};
 
+pub mod air_catch;
 pub mod air_dodge;
 pub mod assets;
 pub mod attack;
@@ -437,8 +438,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// accessory2_cb (Fighter_CallAcessoryCallbacks_8006C624) outside
     /// hitlag, ahead of accessory1: an article the fighter drives from its
     /// own proc (Samus's grapple beam, it_802BAC80).
-    const ACCESSORY2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)> =
-        None;
+    const ACCESSORY2: Option<Accessory2> = None;
     /// accessory3_cb, which runs instead in hitlag (it_802BACC4).
     const HITLAG_ACCESSORY: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
@@ -1147,6 +1147,7 @@ pub enum MotionData {
     Dizzy(shield_break::DizzyState),
     Escape(escape::EscapeState),
     EscapeAir(air_dodge::AirDodgeState),
+    AirCatchHit(air_catch::AirCatchHitState),
     WallJump(wall_jump::State),
     Cliff(ledge::CliffState),
     CliffJump(ledge::CliffJumpState),

@@ -1,0 +1,30 @@
+# LINKS directed witness (Young Link): as links_yl_tether_hang, then A at tick
+# 175 climbs the chain; no ledge at the top, so Young Link hops
+# (CliffJumpSlow2 at 178), falls (214) and catches the ledge (217).
+name = "links_yl_tether_reel_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_younglink_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = {  } },
+  { frame = 155, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+  { frame = 175, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 177, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "YoungLink"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

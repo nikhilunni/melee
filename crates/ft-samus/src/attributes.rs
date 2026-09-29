@@ -25,12 +25,11 @@ pub struct SamusAttributes {
     pub dash_grab_beam: GrappleTimeline,
     /// +0xBC..+0xC8: the aerial tether's timeline (ftCo_AirCatch_Anim).
     pub air_beam: GrappleTimeline,
-    /// +0xCC.
-    // TODO(meaning): no decomp reader found yet.
-    pub unknown_cc: f32,
-    /// +0xD0.
-    // TODO(meaning): no decomp reader found yet.
-    pub unknown_d0: i32,
+    /// +0xCC: the hop's share of the ledge jump's height when the
+    /// tether's climb finds no ledge (fn_802B8B54 -> ftCo_8009B390).
+    pub tether_hop: f32,
+    /// +0xD0: the frames Samus hangs on the paid-out tether (it_802BABB8).
+    pub tether_hang_frames: i32,
 }
 
 /// The morph-ball launch from Samus's own bomb (ftSs_Init_80128944 and
@@ -207,8 +206,8 @@ impl SamusAttributes {
             grab_beam: timeline(0x9C)?,
             dash_grab_beam: timeline(0xAC)?,
             air_beam: timeline(0xBC)?,
-            unknown_cc: r.f32(0xCC)?,
-            unknown_d0: r.s32(0xD0)?,
+            tether_hop: r.f32(0xCC)?,
+            tether_hang_frames: r.s32(0xD0)?,
         })
     }
 }

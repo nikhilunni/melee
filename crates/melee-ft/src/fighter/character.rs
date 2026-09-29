@@ -11,6 +11,16 @@ const PAYLOAD_BYTES: usize = 1024;
 #[repr(C, align(16))]
 struct Payload([MaybeUninit<u8>; PAYLOAD_BYTES]);
 
+/// accessory2_cb (Fighter_CallAcessoryCallbacks_8006C624) outside hitlag:
+/// an article the fighter drives from its own proc, which may change the
+/// fighter's motion.
+pub type Accessory2 = fn(
+    &mut Fighter,
+    &assets::FighterAssets,
+    &mut melee_mp::CollMap,
+    &mut gekko_math::HsdRng,
+) -> assets::Result<()>;
+
 /// One immutable table per character crate. Common motion rows never belong here.
 pub struct CharacterTable {
     clone_payload: fn(&CharacterState) -> CharacterState,
@@ -71,7 +81,7 @@ pub struct CharacterTable {
     pub prepare_roll: Option<fn(&mut Fighter)>,
     pub catch_entered: Option<fn(&mut Fighter)>,
     pub catch_pulled: Option<fn(&mut Fighter)>,
-    pub accessory2: Option<fn(&mut Fighter, &mut melee_mp::CollMap, &mut gekko_math::HsdRng)>,
+    pub accessory2: Option<Accessory2>,
     pub hitlag_accessory: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
     pub escape_variant: fn(&mut Fighter, &assets::FighterAssets, bool) -> assets::Result<()>,
     pub check_float_input: fn(

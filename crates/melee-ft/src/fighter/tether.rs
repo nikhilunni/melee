@@ -2,7 +2,7 @@
 //! FTKIND_LINK / FTKIND_CLINK arms of ftCo_Catch.c, ftCo_CatchPull.c and
 //! ftCo_CatchWait.c, and the accessory callbacks the article installs
 //! (Fighter_CallAcessoryCallbacks_8006C624). Samus's grapple beam takes the
-//! same arms and is not ported.
+//! same arms through its own catch hooks.
 use super::{assets, Fighter};
 use melee_mp::CollMap;
 
@@ -22,8 +22,10 @@ pub struct Tether {
     pub pull_done: fn(&Fighter) -> bool,
     /// ftCo_CatchWait_IASA's arm (it_802A7AAC) once a pummel or throw began.
     pub released: fn(&mut Fighter),
-    /// accessory2_cb outside hitlag, accessory3_cb in it.
-    pub accessory: fn(&mut Fighter, &assets::FighterAssets, &mut CollMap, bool),
+    /// accessory2_cb outside hitlag, accessory3_cb in it; the article's
+    /// step may change the fighter's motion (the aerial tether's wall).
+    pub accessory:
+        fn(&mut Fighter, &assets::FighterAssets, &mut CollMap, bool) -> assets::Result<()>,
 }
 
 impl Fighter {
@@ -36,14 +38,18 @@ impl Fighter {
     }
     /// Fighter_CallAcessoryCallbacks_8006C624's accessory2 (accessory3 in
     /// hitlag) while a tether article is out; accessory1 follows in the scene.
-    pub fn tether_accessory(&mut self, assets: &assets::FighterAssets, map: &mut CollMap) {
+    pub fn tether_accessory(
+        &mut self,
+        assets: &assets::FighterAssets,
+        map: &mut CollMap,
+    ) -> assets::Result<()> {
         if self.core.status.disabled || !self.core.tether_article {
-            return;
+            return Ok(());
         }
         let Some(tether) = self.character.table().tether else {
-            return;
+            return Ok(());
         };
         let in_hitlag = self.core.in_hitlag();
-        (tether.accessory)(self, assets, map, in_hitlag);
+        (tether.accessory)(self, assets, map, in_hitlag)
     }
 }

@@ -1,0 +1,31 @@
+# LINKS directed witness: off FD's left ledge facing the stage, Z (tick 178)
+# throws the aerial hookshot into the wall below the ledge (AirCatchHit 361 at
+# 193). The chain pays out (state 6), Link swings on it (state 8) and at the
+# countdown's end lets go into DamageFall (381); he falls out (DeadDown 424).
+name = "links_tether_hang_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 142, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1073,21 +1073,11 @@ impl Runtime {
                 }
                 if proc == FighterProc::Map {
                     grab_pairs::map_capture(state, player)?;
-                    use crate::scene_fighter::with_fighter;
-                    use melee_ft::fighter::ledge::LedgeHolder;
-                    let mut holders = [None; 6];
-                    for (slot, other) in holders.iter_mut().zip(&state.fighters) {
-                        *slot = with_fighter!(other, |f| LedgeHolder::of(&f.core));
-                    }
-                    let holders = holders
-                        .into_iter()
-                        .enumerate()
-                        .filter(|&(other, _)| other != player)
-                        .filter_map(|(_, holder)| holder);
-                    with_fighter!(&mut state.fighters[player], |f| f
-                        .core
-                        .ledge_holders
-                        .offer(holders));
+                }
+                // ft_80082E3C reads the other fighters' ledges from the map
+                // proc and from a tether article's climb (accessory2).
+                if matches!(proc, FighterProc::Map | FighterProc::Accessories) {
+                    offer_ledge_holders(state, player);
                 }
                 if proc == FighterProc::Animation {
                     let slot = &state.fighters[player].player;
@@ -1299,7 +1289,7 @@ impl Runtime {
                 if proc == FighterProc::Status {
                     grab_pairs::release_partner_hitlag(state, player, was_in_hitlag)?;
                 }
-                if proc == FighterProc::Map {
+                if matches!(proc, FighterProc::Map | FighterProc::Accessories) {
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
                         .core
                         .ledge_holders
@@ -1374,8 +1364,29 @@ impl Runtime {
                     credit_phantom_source(state, player);
                 }
                 if proc == FighterProc::Accessories {
+                    // ft_80082E3C: a tether's climb asks who holds the ledge.
+                    offer_ledge_holders(state, player);
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
-                        .character_proc_accessories(&mut state.map, &mut state.rng));
+                        .character_proc_accessories(
+                            &state.assets.fighters[player],
+                            &mut state.map,
+                            &mut state.rng
+                        ))
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                        f.core.ledge_holders.withdraw();
+                        // efSync_Spawn from the article's step (a tether
+                        // meeting a wall) spawns at once.
+                        state.effects.flush::<RetailTrig>(
+                            melee_ef::EffectTiming::Immediate,
+                            player,
+                            &mut f.core,
+                            &state.assets.common_particle_bank,
+                            &state.assets.particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )
+                    })?;
                     if let Some(victim) = grab_pairs::accessory(state, player)? {
                         // ftCo_800DC920 changes the captor, then the victim;
                         // each Fighter_ChangeMotionState flushes efAsync then.
@@ -2343,6 +2354,26 @@ impl Simulation {
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.
 const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
 
+/// The other fighters holding ledges, offered to `player`'s proc for
+/// ft_80082E3C (retail walks the live fighter list).
+fn offer_ledge_holders(state: &mut InitialState, player: usize) {
+    use crate::scene_fighter::with_fighter;
+    use melee_ft::fighter::ledge::LedgeHolder;
+    let mut holders = [None; 6];
+    for (slot, other) in holders.iter_mut().zip(&state.fighters) {
+        *slot = with_fighter!(other, |f| LedgeHolder::of(&f.core));
+    }
+    let holders = holders
+        .into_iter()
+        .enumerate()
+        .filter(|&(other, _)| other != player)
+        .filter_map(|(_, holder)| holder);
+    with_fighter!(&mut state.fighters[player], |f| f
+        .core
+        .ledge_holders
+        .offer(holders));
+}
+
 /// An article's request of its owner from inside its physics proc
 /// (retail calls the fighter there): the owner reacts, then for a catch the
 /// article hangs from the owner's part again (Item_8026AB54: attach, then
@@ -2638,7 +2669,8 @@ fn dispatch_fighter(
         FighterProc::Accessories => {
             f.proc_accessories();
             // accessory2 (accessory3 in hitlag) before the scene's accessory1.
-            f.tether_accessory(assets, map);
+            f.tether_accessory(assets, map)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::HitboxPositions => {
             effects.flush::<melee_ft::fighter::RetailTrig>(

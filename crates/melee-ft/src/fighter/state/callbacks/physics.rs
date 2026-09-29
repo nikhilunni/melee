@@ -134,6 +134,21 @@ pub fn cliff_catch(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.finish_air_update(assets, wind);
 }
 
+/// ftCo_AirCatchHit_Phys (800C4438), the kinds' AirCatchHit rows: the
+/// fighter keeps last frame's motion (self_vel = pos_delta, which the
+/// article's swing sets) and falls, then procUpdate's tail.
+pub fn air_catch_hit(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    let c = &mut fighter.core;
+    c.physics.self_velocity = c.physics.position_delta;
+    let air = &c.attributes.air;
+    c.physics.self_velocity.y = crate::physics::airborne::gravity(
+        c.physics.self_velocity.y,
+        air.gravity,
+        air.terminal_velocity,
+    );
+    c.finish_air_update(phase.assets, phase.wind);
+}
+
 /// ftData_MotionStateList: ftCo_MS_CliffJumpSlow2 (261), ftCo_MS_CliffJumpQuick2 (263).
 pub fn cliff_jump2(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase {

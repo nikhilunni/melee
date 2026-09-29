@@ -275,6 +275,28 @@ impl Chain {
     /// its current direction, then every link toward the tip jitters
     /// (samus_grapple_calc_grav), moves, tracks and holds its span.
     pub fn hang(&mut self, from: usize, hand: Vec3, distance: f32, rng: &mut HsdRng) {
+        self.hang_with(from, hand, distance, |l| {
+            l.vel.y -= jitter(rng, l.vel.y, JITTER)
+        });
+    }
+
+    /// it_802B91C4 (802B91C4): it_802B900C with the rope's own gravity (x44)
+    /// in place of the jitter, for a rope whose tip is fixed in a wall.
+    pub fn hang_heavy(&mut self, from: usize, hand: Vec3, distance: f32) {
+        let gravity = self.attrs.gravity;
+        self.hang_with(from, hand, distance, |l| l.vel.y -= gravity);
+    }
+
+    /// The walk it_802B900C and it_802B91C4 share: `from` is pinned
+    /// `distance` from `hand` along its direction, then every link toward
+    /// the tip falls (`fall`), moves, tracks and holds its span.
+    fn hang_with(
+        &mut self,
+        from: usize,
+        hand: Vec3,
+        distance: f32,
+        mut fall: impl FnMut(&mut Link),
+    ) {
         let a = self.attrs;
         let (_, dir) = direction(self.links[from].pos, hand);
         self.links[from].pos = along(dir, distance, hand);
@@ -282,12 +304,135 @@ impl Chain {
         while let Some(prev) = self.prev(link) {
             let anchor = self.links[link].pos;
             let l = &mut self.links[prev];
-            l.vel.y -= jitter(rng, l.vel.y, JITTER);
+            fall(l);
             l.step();
             l.track();
             l.hold_span(anchor, a.span, Some(a.min_span));
             link = prev;
         }
+    }
+
+    /// The first paid-out link from the hand's end and the one after it
+    /// toward the tip (the scans that open it_802BA3BC and it_802BA5DC).
+    fn first_paid_out(&self) -> (usize, Option<usize>) {
+        let mut cur = self.head();
+        let mut next = self.prev(cur);
+        while let Some(n) = next {
+            if self.links[cur].active {
+                break;
+            }
+            cur = n;
+            next = self.prev(n);
+        }
+        (cur, next)
+    }
+
+    /// From the tip toward the hand, each paid-out link is kept within a
+    /// span of its neighbour (`stop_at_slack`: until the first already
+    /// within one); then the hand within a span of the last. Returns how
+    /// many links the walk passed.
+    fn pull_from_tip(&mut self, hand: &mut Vec3, stop_at_slack: bool) -> usize {
+        let span = self.attrs.span;
+        let mut count = 0;
+        let mut slack = false;
+        let mut anchor = self.tip();
+        let mut link = self.next(anchor);
+        while let Some(l) = link {
+            if !self.links[l].active {
+                break;
+            }
+            count += 1;
+            if !slack {
+                let base = self.links[anchor].pos;
+                let (distance, dir) = direction(self.links[l].pos, base);
+                if distance > span {
+                    self.links[l].pos = along(dir, span, base);
+                } else if stop_at_slack {
+                    slack = true;
+                }
+            }
+            anchor = l;
+            link = self.next(l);
+        }
+        let base = self.links[anchor].pos;
+        let (distance, dir) = direction(*hand, base);
+        if distance > span {
+            *hand = along(dir, span, base);
+        }
+        count
+    }
+
+    /// it_802B9FD4 (802B9FD4), the tip fixed in a wall while the fighter
+    /// falls away: the tip rides its wall line (it_802A4454); from it
+    /// toward the hand, paid-out links jitter, move, keep within a span and
+    /// track, and the next joins once the hand is a span past it. True
+    /// once every link is out.
+    pub fn pay_out_from_wall(
+        &mut self,
+        hand: Vec3,
+        map: &melee_mp::CollMap,
+        rng: &mut HsdRng,
+    ) -> bool {
+        let tip = self.tip();
+        self.ride_line(tip, map);
+        self.pay_out(
+            tip,
+            hand,
+            |l| {
+                l.vel.y -= jitter(rng, l.vel.y, JITTER);
+                l.step();
+            },
+            false,
+            true,
+        )
+        .is_some()
+    }
+
+    /// it_802BA3BC (802BA3BC), the climb: the tip rides its wall line and
+    /// stays put while the rope hangs heavy from the hand (it_802B91C4);
+    /// links within `target` of the hand leave it, the rest hang the
+    /// remaining way (at most a span); from the tip the links and then the
+    /// hand are pulled within a span. True once no link but the tip is
+    /// left.
+    pub fn climb(&mut self, hand: &mut Vec3, target: f32, map: &melee_mp::CollMap) -> bool {
+        let tip = self.tip();
+        self.ride_line(tip, map);
+        let saved = self.links[tip].pos;
+        let (mut cur, mut next) = self.first_paid_out();
+        let span = self.attrs.span;
+        self.hang_heavy(cur, *hand, span);
+        self.links[tip].pos = saved;
+        let (mut distance, _) = direction(self.links[cur].pos, *hand);
+        while let Some(n) = next {
+            if target <= distance {
+                break;
+            }
+            self.links[cur].active = false;
+            distance = direction(self.links[n].pos, *hand).0;
+            cur = n;
+            next = self.prev(n);
+        }
+        let mut remaining = distance - target;
+        if remaining > span {
+            remaining = span;
+        }
+        self.hang_heavy(cur, *hand, remaining);
+        self.links[tip].pos = saved;
+        self.pull_from_tip(hand, false) == 0
+    }
+
+    /// it_802BA5DC (802BA5DC), the swing: the tip rides its wall line and
+    /// stays put while the rope hangs heavy from the hand (it_802B91C4);
+    /// from the tip the links are pulled taut up to the first slack one,
+    /// and the hand within a span of the last link.
+    pub fn swing(&mut self, hand: &mut Vec3, map: &melee_mp::CollMap) {
+        let tip = self.tip();
+        self.ride_line(tip, map);
+        let saved = self.links[tip].pos;
+        let (cur, _) = self.first_paid_out();
+        self.hang_heavy(cur, *hand, self.attrs.span);
+        self.links[tip].pos = saved;
+        self.pull_from_tip(hand, true);
     }
 
     /// it_802B9328 (802B9328), the throw. `attach` is the hand once the

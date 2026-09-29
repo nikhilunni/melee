@@ -50,11 +50,12 @@ impl Fighter {
     /// scene's grab pairs).
     pub fn character_proc_accessories(
         &mut self,
+        assets: &FighterAssets,
         map: &mut melee_mp::CollMap,
         rng: &mut gekko_math::HsdRng,
-    ) {
+    ) -> Result<()> {
         if self.status.disabled {
-            return;
+            return Ok(());
         }
         let table = self.character.table();
         if self.in_hitlag() {
@@ -62,8 +63,9 @@ impl Fighter {
                 accessory(self, rng);
             }
         } else if let Some(accessory) = table.accessory2 {
-            accessory(self, map, rng);
+            accessory(self, assets, map, rng)?;
         }
+        Ok(())
     }
 
     /// ftCo_Catch_Anim (800D8CC8) / ftCo_CatchDash_Anim: the tether's frame

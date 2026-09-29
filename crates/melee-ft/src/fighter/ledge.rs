@@ -112,7 +112,7 @@ impl FighterCore {
     /// A left-ledge touch is blocked by a right-facing holder on a connected
     /// line, and the mirror for the right. (x213C, the blocked ledge id, only
     /// feeds pl bonus stats.)
-    fn ledge_occupied(&self, map: &CollMap) -> bool {
+    pub(super) fn ledge_occupied(&self, map: &CollMap) -> bool {
         assert!(
             self.ledge_holders.offered,
             "ft_80082E3C: the scene offered no ledge holders to this proc"
@@ -269,6 +269,30 @@ impl Fighter {
             }
             _ => unreachable!(),
         }
+        Ok(())
+    }
+    /// ftCo_8009B390 (8009B390): the ledge jump's second half without the
+    /// ledge (a tether's climb that found none): CliffJumpQuick2 after
+    /// CliffJumpQuick1, CliffJumpSlow2 otherwise, stepped once
+    /// (ftAnim_8006EBA4), rising at the ledge jump's height times `force`
+    /// (fmuls). mv+4 keeps the predecessor's word.
+    pub fn enter_cliff_hop(&mut self, assets: &FighterAssets, force: f32) -> Result<()> {
+        let retained_wait_frames = self
+            .inherited_scratch_word()
+            .expect("ftCo_8009B390: mv+4 from an unmodelled scratch word");
+        let next = if self.core.motion_state.id == S::CliffJumpQuick1 {
+            S::CliffJumpQuick2
+        } else {
+            S::CliffJumpSlow2
+        };
+        self.change_motion_state(next.into(), assets)?;
+        self.step_animation(assets);
+        self.core.state_data = MotionData::CliffJump(CliffJumpState {
+            physics_started: false,
+            retained_wait_frames,
+        });
+        self.core.physics.self_velocity.y =
+            self.core.attributes.ledge.ledge_jump_vertical_velocity * force;
         Ok(())
     }
     /// ftCo_CliffWait_IASA (8009A8FC): attack, escape, jump, stick option, timeout.

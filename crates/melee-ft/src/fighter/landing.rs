@@ -187,6 +187,8 @@ impl FighterCore {
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CaptureJump(jump) => jump.retained_drop_timer,
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
+            // mv.co.aircatchhit.x4: the tether's hang countdown.
+            MotionData::AirCatchHit(hit) => hit.hang_frames,
             MotionData::Jump(jump) => f32::from_bits(jump.physics_started),
             MotionData::Aerial {
                 retained_drop_timer,

@@ -1,0 +1,30 @@
+# SAMUS directed witness: as samus_tether_low_hang, then A at tick 178 (state
+# 6) climbs; no ledge at the top, so Samus hops (CliffJumpSlow2 at 183), falls
+# (218) and catches the ledge (236).
+name = "samus_tether_low_reel_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 98, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 116, port = 0, buttons = {  }, raw = {  } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 160, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

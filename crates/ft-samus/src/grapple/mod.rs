@@ -15,7 +15,10 @@ use crate::init::Samus;
 use chain::{Chain, RopeAttributes};
 use hsd_types::Vec3;
 use melee_ft::{
-    fighter::{assets::FighterAssets, Fighter, GraftedPart},
+    fighter::{
+        assets::{FighterAssets, Result},
+        ActionId, Fighter, GraftedPart,
+    },
     input::Buttons,
 };
 use melee_it::{ItemControl, ItemRequest, SpawnItem};
@@ -33,6 +36,9 @@ const SPARK_FIRST: i32 = 0x14;
 const SPARK_STEP: i32 = 3;
 /// efSync_Spawn(0x3F3): a spark at the tip.
 const SPARK: u16 = 0x3F3;
+/// fn_802B805C: the spark and dust where the aerial tether meets a wall.
+const WALL_SPARK: u16 = 0x41C;
+const WALL_DUST: u16 = 0x3F1;
 
 /// Item.xDD4_itemVar.samusgrapple's state index (Item_80268E5C).
 pub mod state {
@@ -48,6 +54,13 @@ pub mod state {
     pub const RETRACTING: u16 = 4;
     /// Reeling in a caught fighter (fn_802B8814).
     pub const REELING: u16 = 5;
+    /// The aerial tether's tip fixed in a wall, paying out after Samus
+    /// (fn_802B895C).
+    pub const WALL: u16 = 6;
+    /// Climbing the rope to the wall (fn_802B8B54).
+    pub const CLIMBING: u16 = 7;
+    /// Hanging from the wall on the paid-out rope (fn_802B8D38).
+    pub const HANGING: u16 = 8;
 }
 
 /// Samus's live beam: u.ss.x223C and its item's scratch.
@@ -301,21 +314,36 @@ fn read_code(f: &mut Fighter) {
 }
 
 /// it_802BAC80 (802BAC80), accessory2: the beam's state step
-/// (xDD4 unk_10, set by the article's physics).
-pub fn accessory(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::HsdRng) {
+/// (xDD4 unk_10, set by the article's physics); then
+/// Fighter_CallAcessoryCallbacks_8006C624 moves the root joint to cur_pos.
+pub fn accessory(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
     let g = grapple(f);
-    if !g.callbacks || !g.live {
-        return;
+    if !g.callbacks {
+        return Ok(());
     }
-    match g.state {
-        state::HELD => held(f),
-        state::THROWN => thrown(f, map, rng),
-        state::BOUNCED => bounced(f, map, rng),
-        state::SAGGING => sagging(f, rng),
-        state::RETRACTING => retracting(f, rng),
-        state::REELING => reeling(f, rng),
-        other => unimplemented!("itsamusgrapple.c: the beam's state {other} (tethers)"),
+    if g.live {
+        match g.state {
+            state::HELD => held(f),
+            state::THROWN => thrown(f, assets, map, rng)?,
+            state::BOUNCED => bounced(f, map, rng),
+            state::SAGGING => sagging(f, rng),
+            state::RETRACTING => retracting(f, rng),
+            state::REELING => reeling(f, rng),
+            state::WALL => wall(f, assets, map, rng)?,
+            state::CLIMBING => climbing(f, assets, map)?,
+            state::HANGING => hanging(f, assets, map)?,
+            other => unreachable!("itsamusgrapple.c: no beam state {other}"),
+        }
     }
+    let c = &mut f.core;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+    Ok(())
 }
 
 /// it_802BACC4 (802BACC4), accessory3 in hitlag: the rope holds (the tip
@@ -370,14 +398,19 @@ fn held(f: &mut Fighter) {
 /// second link has not joined goes. The throw's walls and floors bounce
 /// the tip back (x0 of its speed) into the bounced state; a paid-out rope
 /// sags. Each ends the grab's category exclusions (ftCommon_8007E2F4 0).
-fn thrown(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::HsdRng) {
+fn thrown(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
     read_code(f);
     let g = grapple(f);
     let tip = g.chain.tip();
     let second = g.chain.links[tip - 1].active;
     if !in_grapple_motion(f) && !second {
         remove(f);
-        return;
+        return Ok(());
     }
     let h = hand(f);
     let attach = attach_frame(f);
@@ -385,7 +418,7 @@ fn thrown(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::Hs
     match result {
         1 => {
             if f.motion_state.action.0 == AIR_CATCH {
-                unimplemented!("fn_802B805C: the aerial tether meeting a wall");
+                return catch_wall(f, assets);
             }
             let g = grapple(f);
             let bounce = g.chain.attrs.bounce;
@@ -406,6 +439,144 @@ fn thrown(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::Hs
     }
     let tip_pos = grapple(f).chain.tip_position();
     pose(f, tip_pos);
+    Ok(())
+}
+
+/// fn_802B805C's aerial tether meeting a wall: Samus hangs from it
+/// (ftCo_800C3CC0), the beam holds there (it_802BAB40: state 6), and the
+/// tip sparks (efSync_Spawn 0x41C, then 0x3F1 turned to Samus's facing).
+/// The tip's model is not posed this frame.
+fn catch_wall(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.enter_air_catch_hit(ActionId(AIR_CATCH_HIT), assets)?;
+    set_state(f, state::WALL);
+    let position = grapple(f).chain.tip_position();
+    for id in [WALL_SPARK, WALL_DUST] {
+        f.core
+            .effects
+            .push(melee_ef::request::EffectRequest::PositionalGenerator { id, position });
+    }
+    Ok(())
+}
+
+/// itGrappleCheckCollision (it/inlines.h): the map crosses the line from
+/// the hand, or from Samus's position, to the tip.
+fn rope_blocked(f: &Fighter, map: &mut melee_mp::CollMap, hand: Vec3) -> bool {
+    let tip = samus(f).grapple.chain.tip_position();
+    let position = f.physics.position;
+    map.check_all_remap(-1, -1, hand.x, hand.y, tip.x, tip.y)
+        .is_some()
+        || map
+            .check_all_remap(-1, -1, position.x, position.y, tip.x, tip.y)
+            .is_some()
+}
+
+/// ftCo_80090780 then it_802B7B84: Samus lets go into DamageFall and the
+/// beam goes.
+fn let_go(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.let_go_of_tether(assets)?;
+    remove(f);
+    Ok(())
+}
+
+/// fn_802B895C (802B895C), state 6: the rope pays out from the wall after
+/// Samus. Blocked by the map, she lets go; fully out, she hangs (state 8,
+/// it_802BABB8: mv+4 = (f32)(s32)xD0); landed, the beam is reeled in; A
+/// climbs (state 7).
+fn wall(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
+    let h = hand(f);
+    if rope_blocked(f, map, h) {
+        return let_go(f, assets);
+    }
+    if grapple(f).chain.pay_out_from_wall(h, map, rng) {
+        set_state(f, state::HANGING);
+        *f.air_catch_hang_frames() = samus(f).attributes.tether_hang_frames as f32;
+        return Ok(());
+    }
+    let tip = grapple(f).chain.tip_position();
+    pose(f, tip);
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_state(f, state::RETRACTING);
+        return Ok(());
+    }
+    if f.input.pressed.intersects(Buttons::A) {
+        set_state(f, state::CLIMBING);
+    }
+    Ok(())
+}
+
+/// fn_802B8B54 (802B8B54), state 7: Samus climbs the rope at x4C
+/// (it_802BA3BC), carried with her hand. At the top she takes the ledge
+/// or hops (ftCo_800C3A14, ft_80082E3C, ftCo_8009B390 at xCC) and the beam
+/// goes; landed on the way, the beam is reeled in.
+fn climbing(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap) -> Result<()> {
+    let mut h = hand(f);
+    let position = f.physics.position;
+    let offset_x = position.x - h.x;
+    let offset_y = position.y - h.y;
+    let speed = grapple(f).chain.attrs.retract_speed;
+    let done = grapple(f).chain.climb(&mut h, speed, map);
+    f.physics.position.x = h.x + offset_x;
+    f.physics.position.y = h.y + offset_y;
+    if done {
+        let hop = samus(f).attributes.tether_hop;
+        f.finish_tether_climb(assets, map, hop)?;
+        remove(f);
+        return Ok(());
+    }
+    let tip = grapple(f).chain.tip_position();
+    pose(f, tip);
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_state(f, state::RETRACTING);
+    }
+    Ok(())
+}
+
+/// fn_802B8D38 (802B8D38), state 8: Samus swings on the paid-out rope
+/// (it_802BA5DC); her position follows her hand and the move becomes her
+/// velocity and pos_delta (fsubs, fadds). Blocked by the map or at the
+/// countdown's end she lets go; landed, the beam is reeled in; A climbs.
+fn hanging(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap) -> Result<()> {
+    let mut h = hand(f);
+    if rope_blocked(f, map, h) {
+        return let_go(f, assets);
+    }
+    let before = f.physics.position;
+    let offset_x = before.x - h.x;
+    let offset_y = before.y - h.y;
+    grapple(f).chain.swing(&mut h, map);
+    let p = &mut f.core.physics;
+    p.position.x = h.x + offset_x;
+    p.position.y = h.y + offset_y;
+    let x = p.self_velocity.x + (p.position.x - before.x);
+    p.self_velocity.x = x;
+    p.position_delta.x = x;
+    let y = p.self_velocity.y + (p.position.y - before.y);
+    p.self_velocity.y = y;
+    p.position_delta.y = y;
+    let tip = grapple(f).chain.tip_position();
+    pose(f, tip);
+    // xDD4 x16 with L held adds a frame: the button code's beam, which
+    // it_802B7C18 refuses to make.
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_state(f, state::RETRACTING);
+        return Ok(());
+    }
+    if f.input.pressed.intersects(Buttons::A) {
+        set_state(f, state::CLIMBING);
+        return Ok(());
+    }
+    let frames = f.air_catch_hang_frames();
+    let left = *frames;
+    *frames = left - 1.0;
+    if left <= 0.0 {
+        return let_go(f, assets);
+    }
+    Ok(())
 }
 
 /// The counter's throw frame for the current grab (it_802B9328_attach).

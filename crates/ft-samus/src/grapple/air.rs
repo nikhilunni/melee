@@ -4,8 +4,8 @@
 //! The beam spawns at ThrowN on the timeline's first frame and is thrown
 //! with Samus's drift added; the rope then runs from accessory2 as for a
 //! grab. A tip that meets a wall hangs Samus from it (it_802BAB40, states
-//! 6..8, ftSs_MS_AirCatchHit), which stays unported.
-use super::{grapple, remove, set_state, state, AIR_CATCH};
+//! 6..8 in the grapple module, ftSs_MS_AirCatchHit).
+use super::{grapple, remove, set_state, state, AIR_CATCH, AIR_CATCH_HIT};
 use crate::init::Samus;
 use hsd_types::Vec3;
 use melee_ft::{
@@ -25,14 +25,28 @@ const SLOW_FALL_FRAMES: f32 = 20.0;
 /// ftCo_AirCatch_Phys: `co->gravity * 0.2` (a double product, rounded).
 const SLOW_FALL_SCALE: f64 = 0.2;
 
-pub const fn rows() -> [MotionRow; 1] {
-    [crate::common::row(
-        ROW,
-        animation,
-        crate::common::no_input,
-        physics,
-        collision,
-    )]
+/// ftSs_MS_AirCatchHit (358): the common hanging row (ftCo_AirCatchHit_*),
+/// its article's steps doing the rest.
+pub const HIT_ROW: ActionId = ActionId(AIR_CATCH_HIT);
+
+pub const fn rows() -> [MotionRow; 2] {
+    use melee_ft::fighter::state::callbacks;
+    [
+        crate::common::row(ROW, animation, crate::common::no_input, physics, collision),
+        crate::common::row(
+            HIT_ROW,
+            hit_animation,
+            crate::common::no_input,
+            callbacks::physics::air_catch_hit,
+            callbacks::collision::air_catch_hit,
+        ),
+    ]
+}
+
+/// ftCo_AirCatchHit_Anim (800C4380): empty; the animation steps on.
+fn hit_animation(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    f.step_animation(p.assets);
+    Ok(None)
 }
 
 /// ftCo_800C3B10's Samus arm: no beam callbacks installed, then

@@ -1,5 +1,7 @@
-//! ftLk_MS_AirCatch (360), the aerial hookshot: ftCo_AirCatch.c's common
-//! motion with Link's arm (the throw frames are in [`crate::hookshot`]).
+//! ftLk_MS_AirCatch (360), the aerial hookshot, and ftLk_MS_AirCatchHit
+//! (361), hanging from a wall by it: ftCo_AirCatch.c's common motions with
+//! Link's arm (the throw frames and the wall's steps are in
+//! [`crate::hookshot`]).
 use crate::{common, hookshot, FamilyState, LinkFamily};
 use melee_ft::{
     anim::WaitChoice,
@@ -34,6 +36,25 @@ pub(crate) const fn motion_row<C: LinkFamily>() -> MotionRow {
         physics::<C>,
         collision,
     )
+}
+
+/// ftLk_MS_AirCatchHit (361): the common hanging row (ftCo_AirCatchHit_*),
+/// the hookshot's steps doing the rest.
+pub(crate) const fn hit_motion_row() -> MotionRow {
+    use melee_ft::fighter::state::callbacks;
+    crate::row(
+        FamilyState::AirCatchHit,
+        hit_animation,
+        common::no_input,
+        callbacks::physics::air_catch_hit,
+        callbacks::collision::air_catch_hit,
+    )
+}
+
+/// ftCo_AirCatchHit_Anim (800C4380): empty; the animation steps on.
+fn hit_animation(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    f.step_animation(p.assets);
+    Ok(None)
 }
 
 /// ftCo_AirCatch_Anim (800C3E24).

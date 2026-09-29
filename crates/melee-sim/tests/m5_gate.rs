@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 380] = [
+const MATRIX_WITNESSES: [(&str, usize); 395] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1393,6 +1393,26 @@ const MATRIX_WITNESSES: [(&str, usize); 380] = [
     ("samus_zair_shined_fd_fox4", 300),
     ("samus_zair_reach150_fd_fox4", 300),
     ("samus_grab_edge_fd_fox4", 300),
+    // The aerial tether into FD's wall below the ledge (ftCo_800C3CC0,
+    // AirCatchHit; itsamusgrapple.c states 6-8, itlinkhookshot.c states
+    // 6-8): paying out, the swing and its countdown into DamageFall, and A
+    // climbing into CliffCatch or the ledge-less hop (ftCo_8009B390), for
+    // Samus, Link and Young Link (0 differing particle ticks).
+    ("samus_tether_hang_fd_fox4", 480),
+    ("samus_tether_reel_fd_fox4", 480),
+    ("samus_tether_late_reel_fd_fox4", 480),
+    ("samus_tether_low_hang_fd_fox4", 480),
+    ("samus_tether_low_reel_fd_fox4", 480),
+    ("samus_tether_low_late_reel_fd_fox4", 480),
+    ("links_tether_hang_fd_fox4", 480),
+    ("links_tether_reel_fd_fox4", 480),
+    ("links_tether_late_reel_fd_fox4", 480),
+    ("links_tether_low_hang_fd_fox4", 480),
+    ("links_tether_low_reel_fd_fox4", 480),
+    ("links_tether_low_late_reel_fd_fox4", 480),
+    ("links_yl_tether_hang_fd_fox4", 480),
+    ("links_yl_tether_reel_fd_fox4", 480),
+    ("links_yl_tether_late_reel_fd_fox4", 480),
     ("sheikzelda_transform_fd_sheik", 360),
     ("sheikzelda_transform_fd_zelda", 360),
     ("sheikzelda_transform_air_fd_sheik", 360),

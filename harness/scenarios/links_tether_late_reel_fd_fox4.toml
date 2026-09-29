@@ -1,0 +1,32 @@
+# LINKS directed witness: as links_tether_hang, then A at tick 243, while Link
+# swings (state 8), climbs the chain (state 7) into the ledge catch
+# (CliffCatch at 250).
+name = "links_tether_late_reel_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 142, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+  { frame = 243, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 245, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

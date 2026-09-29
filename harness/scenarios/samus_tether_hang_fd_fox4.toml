@@ -1,0 +1,29 @@
+# SAMUS directed witness: off FD's left ledge facing the stage, Z (tick 150)
+# throws the aerial grapple into the wall below the ledge (AirCatchHit 358 at
+# 162). The rope pays out (state 6), Samus swings on it (state 8) and at the
+# countdown's end lets go into DamageFall (361); she falls out (DeadDown 426).
+name = "samus_tether_hang_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 98, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 116, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

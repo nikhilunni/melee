@@ -568,6 +568,155 @@ impl Chain {
         lowest + 1 >= self.count
     }
 
+    /// it_802A4454's inline copies at the top of it_802A5AE0, it_802A5FE0
+    /// and it_802A6474: a claw in a moving wall line rides it.
+    fn ride_wall(&mut self, map: &CollMap) {
+        let head = self.head();
+        let claw = &mut self.links[head];
+        if let Some(speed) = map.line_speed(claw.wall_line, &claw.position) {
+            claw.position = add(claw.position, speed);
+        }
+    }
+
+    /// The lowest paid-out link, counting up from the hand.
+    fn lowest_out(&self) -> usize {
+        let mut lowest = 0;
+        while lowest + 1 < self.count && !self.links[lowest].active {
+            lowest += 1;
+        }
+        lowest
+    }
+
+    /// From the claw down, each paid-out link is kept within a link of the
+    /// one above (`stop_at_slack`: until the first already within one);
+    /// then the hand within a link of the last. Returns how many links the
+    /// walk passed.
+    fn pull_from_claw(&mut self, anchor: &mut Vec3, stop_at_slack: bool) -> usize {
+        let length = self.attributes.link_length;
+        let mut count = 0;
+        let mut slack = false;
+        let mut above = self.head();
+        while above > 0 && self.links[above - 1].active {
+            let index = above - 1;
+            count += 1;
+            if !slack {
+                let base = self.links[above].position;
+                let (dir, gap) = direction(self.links[index].position, base);
+                if gap > length {
+                    self.links[index].position = place(dir, length, base);
+                } else if stop_at_slack {
+                    slack = true;
+                }
+            }
+            above = index;
+        }
+        let base = self.links[above].position;
+        let (dir, gap) = direction(*anchor, base);
+        if gap > length {
+            *anchor = place(dir, length, base);
+        }
+        count
+    }
+
+    /// it_802A5AE0 (802A5AE0), the claw in a wall while the thrower falls
+    /// away: it rides its wall line; from it down, paid-out links fall,
+    /// collide (it_802A40D0) and keep within a link of the one above, and
+    /// the next comes out once the hand is a link past the last. True once
+    /// every link is out.
+    pub fn pay_out_from_wall(&mut self, anchor: Vec3, map: &mut CollMap) -> bool {
+        self.ride_wall(map);
+        let length = self.attributes.link_length;
+        let mut above = self.head();
+        while above > 0 {
+            let index = above - 1;
+            let base = self.links[above].position;
+            if self.links[index].active {
+                self.fall_step(index);
+                self.collide(index, length, map);
+                let base = self.links[above].position;
+                let (dir, gap) = direction(self.links[index].position, base);
+                if gap > length {
+                    self.links[index].position = place(dir, length, base);
+                }
+            } else {
+                let (dir, gap) = direction(anchor, base);
+                if gap <= length {
+                    return false;
+                }
+                let link = &mut self.links[index];
+                link.position = place(dir, length, base);
+                link.active = true;
+                Self::restart_collision(link);
+            }
+            above = index;
+        }
+        true
+    }
+
+    /// it_802A5FE0 (802A5FE0), the climb: the claw rides its wall line and
+    /// stays put while the chain hangs from the hand (it_802A44CC); links
+    /// within `speed` of the hand go back in and the rest settle the
+    /// remaining way, at most a link (it_802A49B0); from the claw the links
+    /// and then the hand are pulled within a link. True once only the claw
+    /// is out.
+    pub fn climb(&mut self, anchor: &mut Vec3, speed: f32, map: &mut CollMap) -> bool {
+        self.ride_wall(map);
+        let head = self.head();
+        let saved = self.links[head].position;
+        let length = self.attributes.link_length;
+        let mut lowest = self.lowest_out();
+        self.hang_above(lowest, *anchor, length, map);
+        self.links[head].position = saved;
+        let (_, mut gap) = direction(self.links[lowest].position, *anchor);
+        while lowest + 1 < self.count && speed > gap {
+            self.links[lowest].active = false;
+            gap = direction(self.links[lowest + 1].position, *anchor).1;
+            lowest += 1;
+        }
+        let remaining = gap - speed;
+        let distance = if remaining > length {
+            length
+        } else {
+            remaining
+        };
+        self.settle_above(lowest, *anchor, distance, map);
+        self.links[head].position = saved;
+        self.pull_from_claw(anchor, false) == 0
+    }
+
+    /// it_802A4758 (802A4758): `from` sits `distance` from `anchor`; each
+    /// link above falls, moves, tracks (it_802A43EC) and keeps within a
+    /// link of the one below, without meeting the map.
+    fn hang_loose(&mut self, from: usize, anchor: Vec3, distance: f32) {
+        let (dir, _) = direction(self.links[from].position, anchor);
+        self.links[from].position = place(dir, distance, anchor);
+        let length = self.attributes.link_length;
+        for index in from + 1..self.count {
+            self.fall_step(index);
+            Self::advance_collision(&mut self.links[index]);
+            let base = self.links[index - 1].position;
+            let (dir, gap) = direction(self.links[index].position, base);
+            if gap > length {
+                self.links[index].position = place(dir, length, base);
+            }
+        }
+    }
+
+    /// it_802A6474 (802A6474), the swing: the claw rides its wall line and
+    /// stays put while the chain hangs from the hand (it_802A4758); from the
+    /// claw the links are pulled taut up to the first slack one, and the
+    /// hand within a link of the last.
+    pub fn swing(&mut self, anchor: &mut Vec3, map: &CollMap) {
+        self.ride_wall(map);
+        let head = self.head();
+        let saved = self.links[head].position;
+        let lowest = self.lowest_out();
+        let length = self.attributes.link_length;
+        self.hang_loose(lowest, *anchor, length);
+        self.links[head].position = saved;
+        self.pull_from_claw(anchor, true);
+    }
+
     /// it_802A6A78 (802A6A78), the hitlag step: before the launch nothing
     /// moves (true: the claw stays at the hand); otherwise the chain pays
     /// out behind the claw as it_802A4BFC's walk does and the rest settles

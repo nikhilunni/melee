@@ -2,8 +2,9 @@
 //! frames (ftCo_0D8E.c fn_800D8EC8 / fn_800D9228), the aerial hookshot
 //! (ftCo_AirCatch.c), the catch's reel-in (fn_800D9CE8's Link arm), the
 //! article's per-state steps the thrower's accessory proc runs
-//! (it_802A7AF0 -> fn_802A2E4C..it_802A3500, and it_802A7B34 in hitlag)
-//! and its removal (it_802A2B10 / it_802A7AAC).
+//! (it_802A7AF0 -> fn_802A2E4C..it_802A39FC, the last three the aerial
+//! hookshot's wall hang; it_802A7B34 in hitlag) and its removal
+//! (it_802A2B10 / it_802A7AAC).
 //!
 //! The chain ([`Chain`]) lives here because retail runs every step of it
 //! from the thrower's procs; the article (it-link) only hangs from the hand
@@ -18,9 +19,10 @@ use melee_ft::fighter::{
     assets::{FighterAssets, Result},
     Fighter,
 };
+use melee_ft::input::Buttons;
 use melee_it::{ItemControl, ItemRequest, SpawnItem};
 use melee_mp::CollMap;
-use melee_types::{CommonMotionState, FtPart, ItemKind};
+use melee_types::{CommonMotionState, FtPart, GroundOrAir, ItemKind};
 
 /// fp->parts[0x8B]: the claw's joint takes this parts slot, where the
 /// grab's script puts its catch capsule (the Catch box names bone 139).
@@ -31,6 +33,9 @@ pub const CLAW_PART: usize = 0x8B;
 const CLAW_OFFSET: f32 = 6.0;
 /// The grabs' wall probe reaches 8 (in double) past the thumb, facing.
 const WALL_PROBE: f64 = 8.0;
+/// it_802A2EE4: the spark and dust where the aerial hookshot meets a wall.
+const WALL_SPARK: u16 = 0x41C;
+const WALL_DUST: u16 = 0x3F1;
 
 /// fp->u.lk.xC's article while it exists, and what the thrower keeps of it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -333,30 +338,34 @@ pub fn accessory<C: LinkFamily>(
     assets: &FighterAssets,
     map: &mut CollMap,
     in_hitlag: bool,
-) {
+) -> Result<()> {
     let Some(hookshot) = f.character.get::<C>().specials_ref().hookshot else {
-        return;
+        return Ok(());
     };
     if in_hitlag {
         hitlag_step::<C>(f, assets, map);
-        return;
+        return Ok(());
     }
     let Some(step) = hookshot.step else {
-        return;
+        return Ok(());
     };
     match u16::from(step) {
         motion::HELD => held_step::<C>(f, assets),
-        motion::EXTENDING => extending_step::<C>(f, assets, map),
+        motion::EXTENDING => extending_step::<C>(f, assets, map)?,
         motion::FALLING_BACK => falling_back_step::<C>(f, assets, map),
         motion::HANGING => hanging_step::<C>(f, assets, map),
         motion::REELING => reeling_step::<C>(f, assets, map),
         motion::REELING_CATCH => catch_reeling_step::<C>(f, assets, map),
-        _ => unimplemented!("it_802A3630 / it_802A3828 / it_802A39FC: the hookshot's wall hang"),
+        motion::WALL => wall_step::<C>(f, assets, map)?,
+        motion::WALL_CLIMB => climb_step::<C>(f, assets, map)?,
+        motion::WALL_HANG => wall_hang_step::<C>(f, assets, map)?,
+        other => unreachable!("itlinkhookshot.c: no hookshot state {other}"),
     }
     // HSD_JObjSetTranslate(gobj->hsd_obj, &fp->cur_pos).
     let c = &mut f.core;
     c.skeleton
         .set_translate(c.animation.root, &c.physics.position);
+    Ok(())
 }
 
 /// it_802A7168: the chain's models; the claw joint the fighter's bone 139
@@ -390,11 +399,15 @@ fn held_step<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) {
 /// it_802A2EE4 (802A2EE4), state 1: flying out (it_802A4BFC). Off a
 /// wall it rebounds (state 2), fully out it hangs (state 3); either way
 /// the thrower becomes grabbable again (ftCommon_8007E2F4(fp, 0)).
-fn extending_step<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &mut CollMap) {
+fn extending_step<C: LinkFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut CollMap,
+) -> Result<()> {
     let below_out = f.character.get::<C>().specials_ref().chain.below_claw_out();
     if !throwing(f) && !below_out {
         remove::<C>(f);
-        return;
+        return Ok(());
     }
     let anchor = anchor(f, assets);
     let throw = throw_state::<C>(f);
@@ -407,7 +420,7 @@ fn extending_step<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &
     match result {
         Extension::Wall => {
             if f.motion_state.action == FamilyState::AirCatch.action() {
-                unimplemented!("it_802A2EE4: the aerial hookshot's claw in a wall (ftCo_800C3CC0)");
+                return catch_wall::<C>(f, assets);
             }
             f.character.get_mut::<C>().specials().chain.rebound();
             set_article_state_clearing_hits::<C>(f, motion::FALLING_BACK);
@@ -420,6 +433,163 @@ fn extending_step<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &
         Extension::Extending | Extension::Ceiling | Extension::Floor => {}
     }
     place_models::<C>(f);
+    Ok(())
+}
+
+/// it_802A2EE4's aerial hookshot meeting a wall: the thrower hangs from it
+/// (ftCo_800C3CC0), the claw holds there (it_802A793C: state 6), and it
+/// sparks (efSync_Spawn 0x41C, then 0x3F1 turned to the thrower's facing).
+/// The chain's models are not placed this frame.
+fn catch_wall<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.enter_air_catch_hit(FamilyState::AirCatchHit.action(), assets)?;
+    set_article_state::<C>(f, motion::WALL);
+    let position = f.character.get::<C>().specials_ref().chain.claw().position;
+    for id in [WALL_SPARK, WALL_DUST] {
+        f.core
+            .effects
+            .push(melee_ef::request::EffectRequest::PositionalGenerator { id, position });
+    }
+    Ok(())
+}
+
+/// itGrappleCheckCollision (it/inlines.h): the map crosses the line from
+/// the hand, or from the thrower's position, to the claw.
+fn chain_blocked<C: LinkFamily>(f: &Fighter, map: &mut CollMap, anchor: Vec3) -> bool {
+    let claw = f.character.get::<C>().specials_ref().chain.claw().position;
+    let position = f.physics.position;
+    map.check_all_remap(-1, -1, anchor.x, anchor.y, claw.x, claw.y)
+        .is_some()
+        || map
+            .check_all_remap(-1, -1, position.x, position.y, claw.x, claw.y)
+            .is_some()
+}
+
+/// ftCo_80090780 then it_802A2B10: the thrower lets go into DamageFall and
+/// the hookshot goes.
+fn let_go<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    f.let_go_of_tether(assets)?;
+    remove::<C>(f);
+    Ok(())
+}
+
+/// it_802A3630 (802A3630), state 6: the chain pays out from the wall after
+/// the thrower (it_802A5AE0). Blocked by the map, the thrower lets go;
+/// fully out, it hangs (it_802A7A04: state 8, mv+4 = xB8); landed, the
+/// chain is reeled in; A climbs (state 7).
+fn wall_step<C: LinkFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut CollMap,
+) -> Result<()> {
+    let anchor = anchor(f, assets);
+    if chain_blocked::<C>(f, map, anchor) {
+        return let_go::<C>(f, assets);
+    }
+    if f.character
+        .get_mut::<C>()
+        .specials()
+        .chain
+        .pay_out_from_wall(anchor, map)
+    {
+        set_article_state::<C>(f, motion::WALL_HANG);
+        let frames = f
+            .character
+            .get::<C>()
+            .attributes()
+            .hookshot
+            .wall_hang_frames;
+        *f.air_catch_hang_frames() = frames as f32;
+        place_models::<C>(f);
+        return Ok(());
+    }
+    place_models::<C>(f);
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_article_state::<C>(f, motion::REELING);
+        return Ok(());
+    }
+    if f.input.pressed.intersects(Buttons::A) {
+        set_article_state::<C>(f, motion::WALL_CLIMB);
+    }
+    Ok(())
+}
+
+/// it_802A3828 (802A3828), state 7: the thrower climbs the chain at x40
+/// (it_802A5FE0), carried with its hand. At the top it takes the ledge or
+/// hops (ftCo_800C3A14, ft_80082E3C, ftCo_8009B390 at xB4) and the
+/// hookshot goes; landed on the way, the chain is reeled in.
+fn climb_step<C: LinkFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut CollMap,
+) -> Result<()> {
+    let mut hand = anchor(f, assets);
+    let position = f.physics.position;
+    let offset_x = position.x - hand.x;
+    let offset_y = position.y - hand.y;
+    let chain = &mut f.character.get_mut::<C>().specials().chain;
+    let speed = chain.attributes.reel_speed;
+    let done = chain.climb(&mut hand, speed, map);
+    f.physics.position.x = hand.x + offset_x;
+    f.physics.position.y = hand.y + offset_y;
+    if done {
+        let hop = f.character.get::<C>().attributes().hookshot.wall_release;
+        f.finish_tether_climb(assets, map, hop)?;
+        remove::<C>(f);
+        return Ok(());
+    }
+    place_models::<C>(f);
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_article_state::<C>(f, motion::REELING);
+    }
+    Ok(())
+}
+
+/// it_802A39FC (802A39FC), state 8: the thrower swings on the paid-out
+/// chain (it_802A6474); its position follows its hand and the move becomes
+/// its velocity and pos_delta (fsubs, fadds). Blocked by the map or at the
+/// countdown's end it lets go; landed, the chain is reeled in; A climbs.
+fn wall_hang_step<C: LinkFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    map: &mut CollMap,
+) -> Result<()> {
+    let mut hand = anchor(f, assets);
+    if chain_blocked::<C>(f, map, hand) {
+        return let_go::<C>(f, assets);
+    }
+    let before = f.physics.position;
+    let offset_x = before.x - hand.x;
+    let offset_y = before.y - hand.y;
+    f.character
+        .get_mut::<C>()
+        .specials()
+        .chain
+        .swing(&mut hand, map);
+    let p = &mut f.core.physics;
+    p.position.x = hand.x + offset_x;
+    p.position.y = hand.y + offset_y;
+    let x = p.self_velocity.x + (p.position.x - before.x);
+    p.self_velocity.x = x;
+    p.position_delta.x = x;
+    let y = p.self_velocity.y + (p.position.y - before.y);
+    p.self_velocity.y = y;
+    p.position_delta.y = y;
+    place_models::<C>(f);
+    if f.physics.ground_or_air != GroundOrAir::Air {
+        set_article_state::<C>(f, motion::REELING);
+        return Ok(());
+    }
+    if f.input.pressed.intersects(Buttons::A) {
+        set_article_state::<C>(f, motion::WALL_CLIMB);
+        return Ok(());
+    }
+    let frames = f.air_catch_hang_frames();
+    let left = *frames;
+    *frames = left - 1.0;
+    if left <= 0.0 {
+        return let_go::<C>(f, assets);
+    }
+    Ok(())
 }
 
 /// fn_802A3110 (802A3110), state 2: falling back from the wall

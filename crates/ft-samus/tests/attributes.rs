@@ -41,7 +41,7 @@ fn relocated_attributes_keep_floats_integers_the_ball_box_and_beam_timelines() {
     assert_eq!(attrs.grab_beam, timeline(7, 17, 75, 93));
     assert_eq!(attrs.dash_grab_beam, timeline(7, 17, 40, 64));
     assert_eq!(attrs.air_beam, timeline(1, 7, 40, 58));
-    assert_eq!(attrs.unknown_d0, -3);
+    assert_eq!(attrs.tether_hang_frames, -3);
     assert!(read_samus_attributes(&archive(&data, &[], Some(("ftDataSamus", 0xD4)))).is_err());
     assert!(read_samus_attributes(&archive(&data, &[0xD8], Some(("ftDataFox", 0xD4)))).is_err());
     assert!(SamusAttributes::read(&archive(&data[..0xD3], &[], None), 0).is_err());
