@@ -219,6 +219,7 @@ impl super::FighterCore {
                         | 0x401
                         | 0x402
                         | 0x40D
+                        | 0x44B
                         | NO_EFFECT
                 ))
             {

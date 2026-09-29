@@ -34,6 +34,7 @@ melee_it::item_kinds! {
         PichuThunder: it_pikachu::ThunderBolt<it_pikachu::Pichu>,
         MarioFire: it_mariofire::MarioFire,
         IceClimberIce: it_climbersice::ClimbersIce,
+        IceClimberGumStrings: it_climbersice::ClimbersString,
         MarioCape: it_mariocape::MarioCape,
         DrMarioVitamin: it_drmariopill::DrMarioPill,
         DrMarioSheet: it_mariocape::DrMarioSheet,
@@ -419,7 +420,17 @@ impl Resources {
             ice.read_pose(&a)
                 .map_err(|e| anyhow::anyhow!("ice block pose: {e}"))?;
             kinds.push((ItemKind::IceClimberIce, ice));
-            visual_archives.push((ItemKind::IceClimberIce, a));
+            visual_archives.push((ItemKind::IceClimberIce, std::sync::Arc::clone(&a)));
+            // [2]: the Belay's rope handle (its links are Popo's).
+            let rope = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_climbersice::string::ARTICLE_INDEX,
+                &it_climbersice::string::ARTICLE_STATES,
+                it_climbersice::string::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::IceClimberGumStrings, rope));
+            visual_archives.push((ItemKind::IceClimberGumStrings, a));
         }
         // ftSs_Init_OnLoad: ftData.x48_items[2] is the missile.
         if let Some(character) = characters

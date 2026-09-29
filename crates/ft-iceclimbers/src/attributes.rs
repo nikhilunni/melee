@@ -35,6 +35,8 @@ pub struct IceClimberAttributes {
     /// +0x12C: Nana's FallSpecial landing lag when her Squall Hammer ends
     /// in the air (ftPp_SpecialS_1_Anim).
     pub partner_squall_landing_lag: f32,
+    /// The Belay's attributes (+0x74..+0xB4, +0x130..+0x14C).
+    pub belay: BelayAttributes,
 }
 
 /// ftIceClimberAttributes +0x20..+0x70: the Squall Hammer. `solo` values
@@ -75,6 +77,57 @@ pub struct SquallAttributes {
     pub slope_pull: f32,
     /// +0x70: FallSpecial landing lag when Popo's move ends in the air.
     pub landing_lag: f32,
+}
+
+/// ftIceClimberAttributes x74..xB4 (Popo's Belay) and x130..x14C (Nana's
+/// flight up the rope).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct BelayAttributes {
+    /// +0x74 / +0x78: the special fall's drift scale and landing lag
+    /// (ftCo_80096900) after an aerial Belay.
+    pub fall_mobility: f32,
+    pub landing_lag: f32,
+    /// +0x7C: Nana joins from no farther than this (checkNanaInRange).
+    pub partner_reach: f32,
+    /// +0x80: the stick's x past this turns the climber (the IASA) or
+    /// drifts him (the climb's physics).
+    pub stick_threshold: f32,
+    /// +0x84 / +0x88: the entry divides the ground speed, or the aerial
+    /// velocity's x and y, by these.
+    pub entry_speed_divisor_x: f32,
+    pub entry_speed_divisor_y: f32,
+    /// +0x8C / +0x90: gravity and terminal speed while throwing Nana.
+    pub throw_gravity: f32,
+    pub throw_terminal_velocity: f32,
+    /// +0x94 / +0x98: Popo's climb speed toward Nana, and the distance
+    /// that adds one more unit of it (ftPp_SpecialS_80120E68).
+    pub climb_base_speed: f32,
+    pub climb_distance_per_speed: f32,
+    /// +0x9C / +0xA0: gravity and terminal speed while climbing.
+    pub climb_gravity: f32,
+    pub climb_terminal_velocity: f32,
+    /// +0xA4: the solo Belay's lift (ftPp_SpecialAirHiStart_1_Anim).
+    pub solo_lift: f32,
+    /// +0xA8 / +0xAC: gravity and terminal speed of the solo Belay.
+    pub solo_gravity: f32,
+    pub solo_terminal_velocity: f32,
+    /// +0xB0 / +0xB4: the climb's drift, as scales of the common aerial
+    /// drift acceleration and maximum.
+    pub climb_drift_scale: f32,
+    pub climb_drift_max_scale: f32,
+    /// +0x130 / +0x134: Nana's special fall drift scale and landing lag.
+    pub partner_fall_mobility: f32,
+    pub partner_landing_lag: f32,
+    /// +0x138: the stick's x past this drifts the flung Nana.
+    pub partner_stick_threshold: f32,
+    /// +0x13C / +0x140: Nana's launch speed and angle (radians).
+    pub partner_launch_speed: f32,
+    pub partner_launch_angle: f32,
+    /// +0x144 / +0x148: gravity and terminal speed of the flung Nana.
+    pub partner_gravity: f32,
+    pub partner_terminal_velocity: f32,
+    /// +0x14C: the share of her speed Nana keeps turning off a wall.
+    pub partner_wall_rebound: f32,
 }
 
 /// The attributes of `symbol`'s ftData (`ftDataPopo` or `ftDataNana`).
@@ -123,6 +176,64 @@ impl IceClimberAttributes {
             partner_armor: r.f32(0xC8)?,
             squall_join_distance: r.f32(0xD0)?,
             partner_squall_landing_lag: r.f32(0x12C)?,
+            belay: BelayAttributes {
+                fall_mobility: r.f32(0x74)?,
+                landing_lag: r.f32(0x78)?,
+                partner_reach: r.f32(0x7C)?,
+                stick_threshold: r.f32(0x80)?,
+                entry_speed_divisor_x: r.f32(0x84)?,
+                entry_speed_divisor_y: r.f32(0x88)?,
+                throw_gravity: r.f32(0x8C)?,
+                throw_terminal_velocity: r.f32(0x90)?,
+                climb_base_speed: r.f32(0x94)?,
+                climb_distance_per_speed: r.f32(0x98)?,
+                climb_gravity: r.f32(0x9C)?,
+                climb_terminal_velocity: r.f32(0xA0)?,
+                solo_lift: r.f32(0xA4)?,
+                solo_gravity: r.f32(0xA8)?,
+                solo_terminal_velocity: r.f32(0xAC)?,
+                climb_drift_scale: r.f32(0xB0)?,
+                climb_drift_max_scale: r.f32(0xB4)?,
+                partner_fall_mobility: r.f32(0x130)?,
+                partner_landing_lag: r.f32(0x134)?,
+                partner_stick_threshold: r.f32(0x138)?,
+                partner_launch_speed: r.f32(0x13C)?,
+                partner_launch_angle: r.f32(0x140)?,
+                partner_gravity: r.f32(0x144)?,
+                partner_terminal_velocity: r.f32(0x148)?,
+                partner_wall_rebound: r.f32(0x14C)?,
+            },
         })
     }
+}
+
+/// ftData.x48_items[2] (ftPp_Init_OnLoad registers It_Kind_IceClimber_GumStrings
+/// third): the rope article's itClimbersStringAttributes (+4).
+const ROPE_ARTICLE: u32 = 2;
+
+/// Popo's rope attributes (x0..x20 of itClimbersStringAttributes).
+pub fn read_rope(
+    archive: &Archive,
+    symbol: &str,
+) -> Result<crate::special_hi::rope::RopeAttributes> {
+    let root = archive.public(symbol).ok_or_else(|| {
+        FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
+            name: symbol.into(),
+        })
+    })?;
+    let r = archive.reader();
+    let items = r.u32(root + 0x48)?;
+    let article = r.u32(items + ROPE_ARTICLE * 4)?;
+    let special = r.u32(article + 4)?;
+    let word = |offset: u32| r.u32(special + offset);
+    Ok(crate::special_hi::rope::RopeAttributes {
+        links: word(0x00)? as usize,
+        hanging_links: word(0x04)? as i32,
+        link_length: r.f32(special + 0x08)?,
+        minimum_link_length: r.f32(special + 0x0C)?,
+        gravity: r.f32(special + 0x14)?,
+        pay_out_frame: word(0x18)? as i32,
+        hang_frame: word(0x1C)? as i32,
+        reel_frame: word(0x20)? as i32,
+    })
 }

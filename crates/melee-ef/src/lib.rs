@@ -1082,12 +1082,18 @@ impl Effects {
                     if matches!(id, 0x513..=0x515) {
                         // efAsync kind 8 -> Camera_RequestQuake(2/3/4), no particle spawn.
                         self.camera_quakes.push((id - 0x511, position));
-                    } else if id == 0x40D {
+                    } else if matches!(id, 0x40D | 0x44B) {
                         // efasync.c:356-370: efLib_CreateGenerator_AddAppSRT(0x19),
                         // the point as the AppSRT's translation and the
-                        // fighter root's Y scale as its uniform scale.
-                        let scale = fighter.effect_scale().y;
-                        let mut spawn = SpawnRequest::new(0, 0x19, 0);
+                        // fighter root's Y scale as its uniform scale;
+                        // efasync.c:842-864: 0x44B is generator 0x237 at
+                        // scale 1 (the Belay's script).
+                        let (generator, scale) = if id == 0x40D {
+                            (0x19, fighter.effect_scale().y)
+                        } else {
+                            (0x237, 1.0)
+                        };
+                        let mut spawn = SpawnRequest::new(0, generator, 0);
                         spawn.application_transform =
                             Some(hsd_particle::generator::ApplicationTransform {
                                 translation: position,

@@ -1,0 +1,28 @@
+# ICECLIMBERS directed witness: Belay off stage. Popo runs off the left
+# edge of Final Destination with Nana behind him, jumps out, turns back
+# and belays (ftPp_SpecialAirHi_Enter) toward the stage.
+name = "iceclimbers_belay_offstage_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 131, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 152, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 260, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

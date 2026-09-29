@@ -8,6 +8,7 @@ use crate::climber;
 use hsd_types::Vec3;
 use melee_ft::fighter::{
     assets::{FighterAssets, Result},
+    state::FighterProc,
     ActionId, Fighter, PartnerMotionChanges,
 };
 use melee_types::GroundOrAir;
@@ -36,6 +37,16 @@ pub struct PartnerView {
     pub root_rotation_x: f32,
     /// cmd_vars[1] (ftPp_SpecialS_8011F6FC).
     pub command_1: u32,
+    /// x221F_b3: out of play (asleep, dead).
+    pub disabled: bool,
+    /// x2219_b5: frozen in hitlag.
+    pub in_hitlag: bool,
+    /// frame_speed_mul (+89C).
+    pub animation_rate: f32,
+    /// The world position of the part this proc reads (lb_8000B1CC on
+    /// `partner->parts[part].joint`, NULL offset), when it reads one: the
+    /// Belay's hands (`crate::special_hi::partner::wants`).
+    pub part_position: Option<Vec3>,
 }
 
 impl PartnerView {
@@ -55,6 +66,10 @@ impl PartnerView {
             ground_or_air: f.physics.ground_or_air,
             root_rotation_x: f.core.part_rotation_x(0),
             command_1: f.commands.variables[1],
+            disabled: f.core.status.disabled,
+            in_hitlag: f.core.in_hitlag(),
+            animation_rate: f.core.animation.speed,
+            part_position: None,
         }
     }
 }
@@ -70,11 +85,31 @@ pub struct PartnerWork {
     /// Nana's SpecialS_0/_1 collision follows Popo's (ftPp_SpecialS_0_Coll's
     /// first branch), which copies his collision data.
     pub follow: bool,
+    /// ftNn_Init_801232A4: Popo's Belay takes Nana along, turning her to
+    /// his facing.
+    pub belay_join: Option<f32>,
+    /// fn_80123218: Nana's left hand for Popo's u.pp.x2240, where the
+    /// rope's far end hangs.
+    pub rope_anchor: Option<Vec3>,
 }
 
-/// OBSERVE_PARTNER.
-pub fn observe(f: &mut Fighter, partner: &Fighter) {
-    crate::climber::payload(f).partner = Some(PartnerView::of(partner));
+/// OBSERVE_PARTNER: the partner as it stands, with what this proc's
+/// Belay callbacks read of it (a hand's world position; Popo's CollData
+/// for Nana's launch).
+pub fn observe(f: &mut Fighter, partner: &mut Fighter, proc: FighterProc) {
+    let mut view = PartnerView::of(partner);
+    let wants = crate::special_hi::partner::wants(f, proc, view.action);
+    view.part_position = wants.part.map(|bone| {
+        let c = &mut partner.core;
+        melee_ft::fighter::caches::part_position(&mut c.skeleton, &c.animation, bone, Vec3::ZERO)
+    });
+    let payload = crate::climber::payload(f);
+    payload.partner = Some(view);
+    payload.partner_collision = if wants.collision {
+        Some(partner.core.collision.data)
+    } else {
+        None
+    };
 }
 
 /// The partner as observed before this proc. Every climber has one while
@@ -109,6 +144,13 @@ pub fn act(
     }
     if work.follow {
         changes.fighter |= crate::special_s::partner::follow(f, partner, assets)?.fighter;
+    }
+    if let Some(facing) = work.belay_join {
+        crate::special_hi::partner::join(partner, partner_assets, facing)?;
+        changes.partner = true;
+    }
+    if let Some(hand) = work.rope_anchor {
+        crate::special_hi::note_rope_anchor(partner, hand);
     }
     Ok(changes)
 }

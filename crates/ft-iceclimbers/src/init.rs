@@ -33,6 +33,8 @@ pub struct ClimberVars {
     /// +2250: how far below the usual height a repeated aerial Ice Shot
     /// makes its block.
     pub ice_drop: f32,
+    /// The Belay's scratch (mv.pp, +2238..+2248).
+    pub belay: crate::special_hi::BelayVars,
 }
 impl ClimberVars {
     /// ftPp_Init_OnDeath / ftNn_Init_OnDeath: the shared reset.
@@ -50,6 +52,11 @@ impl ClimberVars {
         self.x2234 = word(0x2234);
         self.air_ice_shot_used = word(0x224C) != 0;
         self.ice_drop = f32::from_bits(word(0x2250));
+        self.belay.anchor = hsd_types::Vec3::new(
+            f32::from_bits(word(0x2240)),
+            f32::from_bits(word(0x2244)),
+            f32::from_bits(word(0x2248)),
+        );
     }
 }
 
@@ -81,6 +88,13 @@ pub struct IceClimber {
     pub partner: Option<crate::partner::PartnerView>,
     /// What this proc's callbacks left for the other climber.
     pub work: crate::partner::PartnerWork,
+    /// The other climber's CollData, when this proc copies it
+    /// (ft_800849EC in Nana's Belay launch).
+    pub partner_collision: Option<melee_types::mp::CollData>,
+    /// The Belay's rope links (Popo's; Nana never makes one). Boxed: the
+    /// links outgrow the inline payload, and a reset keeps them (the next
+    /// rope lays them out again).
+    pub rope: Box<crate::special_hi::rope::Rope>,
 }
 
 /// Nana's form: her own archive and descriptor, Popo's payload type.
@@ -107,10 +121,12 @@ impl IceClimber {
             Climber::Popo => &POPO_DESCRIPTOR,
             Climber::Nana => &NANA_DESCRIPTOR,
         };
-        Ok(Self::new(
-            climber,
-            attributes::read(data, descriptor.data_symbol)?,
-        ))
+        let mut climber_payload =
+            Self::new(climber, attributes::read(data, descriptor.data_symbol)?);
+        if climber == Climber::Popo {
+            climber_payload.rope.attributes = attributes::read_rope(data, descriptor.data_symbol)?;
+        }
+        Ok(climber_payload)
     }
 
     /// A climber as loaded: no move under way, no partner observed yet.
@@ -123,6 +139,8 @@ impl IceClimber {
             trail: 0,
             partner: None,
             work: Default::default(),
+            partner_collision: None,
+            rope: Default::default(),
         }
     }
 }
@@ -187,14 +205,37 @@ impl CharacterCallbacks for IceClimber {
     /// take_dmg_cb go.
     fn on_motion_change(&mut self) {
         self.vars.ice_callbacks = false;
+        self.vars.belay.rope_take_damage = false;
     }
     const MOTION_FLAGS: &'static [u32] = &crate::SPECIAL_MOTION_FLAGS;
-    const OBSERVE_PARTNER: Option<fn(&mut Fighter, &Fighter)> = Some(crate::partner::observe);
+    const OBSERVE_PARTNER: Option<melee_ft::fighter::PartnerObserver> =
+        Some(crate::partner::observe);
     const ACT_ON_PARTNER: Option<melee_ft::fighter::PartnerAction> = Some(crate::partner::act);
     /// ftCommon_8007DB58: take_dmg_cb, ftPp_Init_8011F060.
-    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles);
-    /// ftCo_800D331C: death2_cb, ftPp_Init_8011F060.
-    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special::lose_articles);
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special::take_damage);
+    /// ftCo_800D331C: death2_cb and death3_cb, ftPp_Init_8011F060.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special::death);
+    /// The rope's links are Popo's: its on_accessory is his work.
+    const ARTICLE_ACCESSORY: fn(
+        &mut Fighter,
+        &FighterAssets,
+        &mut melee_mp::CollMap,
+    ) -> Option<u16> = crate::special_hi::rope_accessory;
+    /// it_2725_Logic70_EvtUnk's cleanup (itClimbersstring_UnkMotion3_Anim):
+    /// the rope went without Popo's own removal (he left the Belay).
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::IceClimberGumStrings {
+            crate::special_hi::rope_gone(f);
+        }
+    };
+    /// x2222_b2: Popo's start once Nana joined (Unk19 keeps it across its
+    /// ground/air changes), and Nana hanging (ftNn_Init_801232A4).
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = |f| {
+        let action = f.motion_state.action;
+        (crate::climber::vars(f).belay.partner_joined
+            && (action == crate::special_hi::START || action == crate::special_hi::AIR_START))
+            || action == crate::special_hi::partner::HANG
+    };
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
     fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
@@ -203,6 +244,9 @@ impl CharacterCallbacks for IceClimber {
         }
         match crate::climber::vars(f).accessory {
             crate::climber::Accessory::IceShot => crate::special_n::accessory(f, assets),
+            crate::climber::Accessory::RopeAnchor => {
+                crate::special_hi::partner::anchor_accessory(f)
+            }
             crate::climber::Accessory::None => {}
         }
     }

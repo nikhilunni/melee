@@ -182,8 +182,9 @@ fn validate_destination(fp: &mut Fighter, scene: &mut Scene) {
     };
 }
 
-/// x5C: the distance to the destination (800AE040: fmadds, inline sqrtf).
-fn note_destination_distance(fp: &mut Fighter) {
+/// x5C: the distance to the destination (800AE040: fmadds, inline sqrtf;
+/// ftCo_800A49B4 out of line the same way).
+pub(crate) fn note_destination_distance(fp: &mut Fighter) {
     let position = fp.core.physics.position;
     let destination = fp.core.cpu.destination;
     let dy = position.y - destination.y;

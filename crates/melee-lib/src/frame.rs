@@ -1123,7 +1123,7 @@ impl Runtime {
                     with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
                 // The partner as this proc's callbacks will read it.
-                partner_fighters::observe(state, player);
+                partner_fighters::observe(state, player, proc);
                 let assets = &state.assets;
                 // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.
                 if proc == FighterProc::HitDetection

@@ -39,9 +39,17 @@ mpIsland.
 its only reached caller, ftCo_800B0760, r31 holds fp+0x1A88, so the switch
 always happens.
 
+Recovery (behaviour 4): ftCo_800A8DE4 (also the Belay recovery a
+partner in rows 361..366 falls into) picks an island end once with
+ftCo_800A4038 / ftCo_800A3908 (the fall's height after t frames uses
+sqrtf(t), like 800B4AB0); ftCo_800A9904 then jumps toward it, drifts in
+over the stage, or up-specials (ftCo_800A96B8's default, diagonal; the
+climbers' up special does nothing for Nana).
+
 Unported (fail closed): ranged attacks (800B9CBC), edge guarding
-(800B732C), off-island movement (800AB224 tail), recovery (800A96B8),
-Belay recovery (800A8DE4), KO totals (gm_8016C75C), stage routes.
+(800B732C), off-island movement (800AB224 tail), the special-cased kinds'
+recoveries in ftCo_800A96B8 (Pikachu, Fox, Yoshi, Ness, Luigi, Zelda,
+Samus), KO totals (gm_8016C75C), stage routes.
 
 ## Specials
 
@@ -72,4 +80,37 @@ hits that share hitlag, and a trade that unlinks the pair.
 - mv.pp.specials.x8 is never set, so ftPp_SpecialS_8011F720 never acts; the
   aerial ceiling test (`(env & Collide_CeilingMask) == 1`) never holds.
 
-Belay and Blizzard remain unported.
+Belay (ftPp_SpecialHi, `special_hi`): Popo's start (347/352) pulls Nana
+in at the script's cmd_vars[2] when she is within x7C and free
+(ftNn_Init_8012300C: not out of play, not in hitlag, her row's x2071 class
+not 1, 3..8 or 10..13); otherwise the solo rows (350/355, 351/356). Nana
+hangs from Popo's right hand (361, ftNn_Init_801230D0), is flung (365) and
+lands (362); the throw's cmd_vars[1] sends Popo climbing after her (354,
+ftPp_SpecialS_80120E68). The Belay reads and moves the other climber
+through the Squall Hammer's OBSERVE_PARTNER / ACT_ON_PARTNER: the observer
+also takes the proc about to run and the partner mutably, so that a hand's
+world position (lb_8000B1CC on the partner's joint) is read only for the
+proc that reads it (`special_hi::partner::wants`), and Popo's CollData only
+for Nana's launch; PartnerWork carries the join and Nana's hand for Popo's
+u.pp.x2240 (fn_80123218). The FtPart constants index `fp->parts` directly
+(retail +0x1D0, +0x2F0, +0x20).
+
+The rope (It_Kind_IceClimber_GumStrings, `it_climbersice::string`) is a
+handle in Popo's left hand; its 40 links (`special_hi::rope`, boxed in the
+payload) and their steps are Popo's ARTICLE_ACCESSORY. Only its reel-in
+decides anything traced (state 3 back to 0). Removed by the Belay's frame
+0x53 it plays no destroy effect; destroyed because Popo left the Belay it
+plays the article's 0x421 (its cleanup clears the owner first,
+item.c:1993). The Belay script's efAsync 0x44B is generator 0x237 at scale
+1 (efasync.c:842-864).
+
+Witnesses: iceclimbers_belay_fd_fox4 (grounded then aerial, joined),
+iceclimbers_belay_solo_fd_fox4 (grounded, Nana still shielding),
+iceclimbers_belay_offstage_fd_fox4, iceclimbers_belay_ledge_fd_fox4 (the
+start catches the ledge; Nana lets go). The aerial solo rows (355/356) and
+Popo's climb hitting a wall or ceiling have no witness: Nana copies Popo
+six frames late, so an aerial Belay she cannot join needs her hit or far
+away (a `melee-sim search` over Fox's approach and Popo's retreat found no
+candidate).
+
+The Blizzard remains unported.

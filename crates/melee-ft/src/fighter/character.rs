@@ -83,7 +83,7 @@ pub struct CharacterTable {
     pub catch_pulled: Option<fn(&mut Fighter)>,
     pub accessory2: Option<Accessory2>,
     pub hitlag_accessory: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
-    pub observe_partner: Option<fn(&mut Fighter, &Fighter)>,
+    pub observe_partner: Option<PartnerObserver>,
     pub act_on_partner: Option<PartnerAction>,
     pub escape_variant: fn(&mut Fighter, &assets::FighterAssets, bool) -> assets::Result<()>,
     pub check_float_input: fn(

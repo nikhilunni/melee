@@ -212,6 +212,11 @@ impl CollMap {
         &self.islands.nodes[node]
     }
 
+    /// `mpIsland_80458E88.next`'s list: the floor islands, in list order.
+    pub fn floor_islands(&self) -> impl Iterator<Item = usize> + '_ {
+        self.islands.list(self.islands.floors)
+    }
+
     /// `mpIsland_8005B334` (retail `0x8005B334`, `mpisland.c:578`): after
     /// joint `joint_id`'s lines changed state, refresh the islands over its
     /// vertices and rebuild the islands of its dynamic lines.

@@ -14,7 +14,11 @@ fn partner_of(state: &InitialState, index: usize) -> Option<usize> {
 }
 
 /// Before one of `index`'s procs: the fighter reads its partner.
-pub(super) fn observe(state: &mut InitialState, index: usize) {
+pub(super) fn observe(
+    state: &mut InitialState,
+    index: usize,
+    proc: melee_ft::fighter::state::FighterProc,
+) {
     let Some(observe) = state.fighters[index].0.character.table().observe_partner else {
         return;
     };
@@ -22,7 +26,7 @@ pub(super) fn observe(state: &mut InitialState, index: usize) {
         return;
     };
     let (fighter, partner) = pair(&mut state.fighters, index, partner);
-    with_fighter!(fighter, |f| with_fighter!(partner, |p| observe(f, p)));
+    with_fighter!(fighter, |f| with_fighter!(partner, |p| observe(f, p, proc)));
 }
 
 /// After one of `index`'s procs: what it left for its partner. A fighter

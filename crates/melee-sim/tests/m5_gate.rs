@@ -2550,7 +2550,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 453] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 461] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3132,6 +3132,18 @@ const CORPUS_V3_MATCHES: [(&str, usize); 453] = [
     ("iceclimbers_squall_solo_fd_fox4", 260),
     ("iceclimbers_squall_hit_fd_fox4", 300),
     ("iceclimbers_squall_trade_fd_fox4", 222),
+    // ICECLIMBERS: Belay (ftPp_SpecialHi, it_802C27D4's rope) with Nana joining
+    // (ftNn_Init_8012300C) or not, on the ground, in the air, off stage and
+    // into a ledge grab; Nana's Belay recovery CPU (ftCo_800A8DE4,
+    // behaviour 4's ftCo_800A9904). Explorer cases end at the entry.
+    ("iceclimbers_belay_fd_fox4", 520),
+    ("iceclimbers_belay_solo_fd_fox4", 400),
+    ("iceclimbers_belay_offstage_fd_fox4", 400),
+    ("iceclimbers_belay_ledge_fd_fox4", 225),
+    ("corpus_v3_fd_iceclimbers_fox4_e3e74affa_p2", 97),
+    ("corpus_v3_fd_iceclimbers_fox4_e50f774a0_p1", 123),
+    ("corpus_v3_fd_iceclimbers_fox4_e573e2d95_p2", 105),
+    ("corpus_v3_fd_iceclimbers_fox4_ec13743d5_p0", 125),
     // Sheik vs Fox: a thrown fighter against an owned item (it_802703E8),
     // Vanish's landing flash (efAsync 0x3FA), the smash charge's colour
     // program (ftColl_8007B62C on a body status), Zelda's up-air particle

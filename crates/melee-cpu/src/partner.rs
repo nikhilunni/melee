@@ -162,7 +162,7 @@ fn seek(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     crate::targets::update_special_item(fp, scene);
     if crate::should_act(&mut fp.core.cpu) {
         if fp.core.cpu.xfb_b0 {
-            unimplemented!("ftCo_800A8DE4: the partner's Belay recovery");
+            crate::recover::belay_recovery(fp, scene);
         } else {
             route::toward_partner(fp, scene);
         }

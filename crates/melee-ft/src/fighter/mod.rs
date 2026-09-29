@@ -119,6 +119,12 @@ pub type PartnerAction = fn(
     &mut melee_mp::CollMap,
 ) -> assets::Result<PartnerMotionChanges>;
 
+/// `CharacterCallbacks::OBSERVE_PARTNER`: the fighter, its partner and the
+/// proc about to run. The partner is mutable only so that a part's world
+/// position can be read from it (lb_8000B1CC sets up the joint's matrix,
+/// as retail's callbacks do on the other fighter).
+pub type PartnerObserver = fn(&mut Fighter, &mut Fighter, state::FighterProc);
+
 /// Which of the pair `ACT_ON_PARTNER` moved to a new motion; the scene
 /// flushes that fighter's efAsync queue, as its Fighter_ChangeMotionState
 /// did within the proc (fighter.c:951).
@@ -463,7 +469,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Nana) reads it: the scene calls this before each of the fighter's
     /// procs with the partner as it stands then, since retail's callbacks
     /// dereference the other fighter directly (Player_GetEntityAtIndex).
-    const OBSERVE_PARTNER: Option<fn(&mut Fighter, &Fighter)> = None;
+    const OBSERVE_PARTNER: Option<PartnerObserver> = None;
     /// What a proc of this fighter left for its partner (a special that
     /// changes the other fighter's motion or link): the scene calls this
     /// after each proc with both fighters.

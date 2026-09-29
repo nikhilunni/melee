@@ -8,6 +8,7 @@ pub mod climber;
 pub mod init;
 pub mod partner;
 pub mod special;
+pub mod special_hi;
 pub mod special_n;
 pub mod special_s;
 
@@ -38,6 +39,18 @@ pub const SPECIAL_ROWS: [MotionRow; SPECIAL_ROW_COUNT] = {
     let partner_squall = special_s::partner::rows();
     rows[18] = partner_squall[0];
     rows[19] = partner_squall[1];
+    let belay = special_hi::ROWS;
+    let mut i = 0;
+    while i < belay.len() {
+        rows[(belay[i].action.0 - FIRST_ACTION) as usize] = belay[i];
+        i += 1;
+    }
+    let partner = special_hi::partner::ROWS;
+    let mut i = 0;
+    while i < partner.len() {
+        rows[(partner[i].action.0 - FIRST_ACTION) as usize] = partner[i];
+        i += 1;
+    }
     rows
 };
 

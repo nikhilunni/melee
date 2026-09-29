@@ -21,6 +21,7 @@ mod facts;
 mod hold;
 mod movement;
 mod partner;
+mod recover;
 mod route;
 pub mod script;
 mod select;

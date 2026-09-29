@@ -31,6 +31,8 @@ pub enum Accessory {
     None,
     /// ftPp_SpecialN_8011F500: the Ice Shot's script commands.
     IceShot,
+    /// fn_80123218: Nana's hand for Popo's rope (her Belay rows).
+    RopeAnchor,
 }
 
 /// ftPp_SM_SpecialN = ftCo_SM_Count: row 341 plays submotion 295.
