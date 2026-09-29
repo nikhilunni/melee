@@ -358,3 +358,51 @@ B5 final checks: `cargo gate` **821 passed, 0 failed, 1 pre-existing ignored**;
 clippy `--workspace --all-targets -- -D warnings`, fmt check and diff check
 passed; harness pytest **186 passed**. The Story oracle projection is included
 in the full gate. The complete B5 file list is in YOSHIS_STORY.md. No commit.
+
+## Corpus runner (2026-09-28)
+
+```sh
+melee-sim replay-batch ~/melee-data/replays/public-v3.7 --ignore-controller-fixes --jsonl out.jsonl
+```
+
+replays every `.slp` under the paths in parallel and prints the first stops
+grouped by cause, largest group first (the motion change when one differs,
+with both leaders' recorded actions). `--all-characters-unlocked` (default
+true) covers replays without Frame Start; `--ignore-controller-fixes` runs
+UCF recordings without the fix and marks each report.
+
+**Local corpus.** `~/melee-data/replays/public-v3.7/<CHARACTER>/`: 108
+tournament games sampled from the public Slippi dataset
+(huggingface.co/datasets/erickfm/slippi-public-dataset-v3.7). All are Slippi
+2.0.1 console (Nintendont) recordings from 2019-2020, singles, items off,
+four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
+
+**Setup contract changes.**
+- *Seed.* Game Start's seed (0x8016E74C) precedes fn_8016E730's Ground and
+  Player creation: the cold boundary is that seed advanced by the setup
+  draws (`boundary_seed_from_creation`). Verified on every fixture with
+  Frame Start; the first Frame Start then equals the boundary (no music
+  draw) or its successor (all-unlocked save on a rule-6 stage).
+- *Entry delay* is 5 x (slot + 1): ports 2 and 4 enter at ticks 10 and 20.
+- *Spawns.* Slippi builds replace retail's slot markers. NeutralSpawn.asm
+  (0x8016E510, in Slippi's asm from 2020-01) places the Nth present player
+  at its table row, facing by sign of x. Late-2019 console builds used the
+  same table except Dream Land ((-46.6, 37.0), (47.389, 37.0)); April 2019
+  builds used retail markers. `melee_lib::slippi::SpawnRule` models the
+  three; the runner picks the one the first frame shows exactly.
+- *Fighter mapping.* Each Slippi port maps to its fighter in play by slot
+  and kind; Nana compares as `pN.follower`.
+
+**First corpus result** (UCF ignored): every replay passes Entry and the
+countdown except two (an Ice Climbers spawn, one odd entry timing), and
+stops 90-300 ticks in, almost all at a Dash, Turn or Pass (platform drop)
+motion change: UCF's dashback and shield-drop fixes. Four stop at
+Jigglypuff's costume hats (unported). The corpus is blocked on UCF.
+
+**Slippi code sets that affect gameplay** (slippi-ssbm-asm
+`Output/InjectionLists`): console core (NanaDeterminism, Stadium
+transformation preload, PSCameraIndependentMonitor), tournament mods
+(NeutralSpawn, FreezeGlitchFix, Disable FoD During Doubles), UCF 0.74 /
+0.8 / 0.84, and netplay (per-frame RNG sync, FreezeDeadUpFallPhysics,
+PreventWobbling, FreezeFDSlippi, Frozen PS). Each must be ported before a
+replay recorded with it can match.
