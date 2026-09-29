@@ -931,6 +931,13 @@ impl Fighter {
                 self.core.combat.pending_from_captor = false;
                 self.launch_by_pair_order(hit, assets, rng)?;
                 hit_damage = self.core.combat.frame_max_damage;
+            } else if self.core.combat.cape_turn.turning && hit.knockback != 0.0 {
+                // ftCo_8008EC90 (ftCo_Damage.c:844): x2220_b4, a cape turn in
+                // progress, takes inlineB2 before any other branch: the
+                // damage without a reaction, even for a second cape.
+                let knockback = self.core.modified_knockback(hit.knockback, assets);
+                self.core.take_hit_while_turning(&hit, knockback, assets);
+                hit_damage = self.core.combat.frame_max_damage;
             } else if std::mem::take(&mut self.core.combat.pending_from_captor) || light_capture_hit
             {
                 // ftCo_8008EC90: the captor's hit, or any light hit (inlineB1),
@@ -2776,5 +2783,21 @@ impl FighterCore {
             self.physics.ground_or_air == GroundOrAir::Air,
             "ftCommon_800804FC: a grounded armored hit"
         );
+    }
+
+    /// ftCo_8008EC90 inlineB2 for a victim mid cape turn (x2220_b4): the
+    /// hit's damage and its flash at the knockback's reaction level
+    /// (ftCo_8008D8E8 of kb_applied * PlCo +154); the motion, the turn and
+    /// the velocity run on. ftCo_800C8D00 returns at once (no x2224_b3),
+    /// a turn never survives into a capture motion (a motion change ends
+    /// it), and ftCommon_800804FC is attacker statistics only.
+    fn take_hit_while_turning(
+        &mut self,
+        hit: &ReceivedHit,
+        knockback: f32,
+        assets: &FighterAssets,
+    ) {
+        self.physics.percent += hit.percent_damage;
+        self.unlaunched_damage_flash(knockback, hit, assets);
     }
 }
