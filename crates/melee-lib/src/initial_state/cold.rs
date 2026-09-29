@@ -140,6 +140,7 @@ impl InitialState {
             rendered_camera,
             quakes,
             controller_fixes: scenario.controller_fixes()?,
+            pad_buffers: Default::default(),
         })
     }
 }

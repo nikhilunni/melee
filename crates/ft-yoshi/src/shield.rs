@@ -290,7 +290,11 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         && i32::from(fighter.input.vertical.tilt) < assets.input.escape_window
         && !melee_ft::input::controller_fix::blocks_spot_dodge(
             &fighter.input,
-            assets.input.escape_threshold,
+            &melee_ft::input::controller_fix::SpotDodgeFacts {
+                escape_threshold: assets.input.escape_threshold,
+                roll_window: assets.input.roll_window,
+                floor: fighter.collision.data.floor,
+            },
         )
     {
         return fighter.enter_escape(assets, S::EscapeN);

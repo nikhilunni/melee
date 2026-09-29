@@ -122,3 +122,30 @@ impl Config {
         Ok(config)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(fix: ControllerFix) -> MatchConfig {
+        MatchConfig::versus(
+            Stage::Battlefield,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox).with_controller_fix(fix),
+                PlayerConfig::new(Port::P3, Character::Marth),
+            ],
+        )
+    }
+
+    #[test]
+    fn controller_fixes_round_trip_and_stay_absent_when_off() {
+        let off = Config::from(&config(ControllerFix::Off));
+        let json = serde_json::to_value(&off).unwrap();
+        assert!(json.get("controller_fixes").is_none());
+        assert_eq!(off.decode().unwrap(), config(ControllerFix::Off));
+        let ucf = Config::from(&config(ControllerFix::Ucf080));
+        let text = serde_json::to_string(&ucf).unwrap();
+        let read: Config = serde_json::from_str(&text).unwrap();
+        assert_eq!(read.decode().unwrap(), config(ControllerFix::Ucf080));
+    }
+}

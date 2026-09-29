@@ -133,8 +133,13 @@ impl Fighter {
             if transition != T::None {
                 return self.apply_ground_transition(assets, transition);
             }
-            if self.core.input.current.stick.y > -assets.movement.squat_release_threshold {
-                // ftCo_SquatRv_CheckInput/Enter (0x800D65D8/0x800D6620).
+            // ftCo_SquatRv_CheckInput/Enter (0x800D65D8/0x800D6620); UCF 0.84
+            // hooks the threshold's load (0x800D65EC).
+            let release = crate::input::controller_fix::squat_release_threshold(
+                &self.core.input,
+                assets.movement.squat_release_threshold,
+            );
+            if self.core.input.current.stick.y > -release {
                 self.change_motion_state(CommonMotionState::SquatRv.into(), assets)?;
             }
         }

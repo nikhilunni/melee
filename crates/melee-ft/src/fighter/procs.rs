@@ -665,7 +665,8 @@ impl FighterCore {
         // Fighter_Spaghetti_8006AD10 (fighter.c:1802-1869): ftCo_800A2040
         // selects the CPU's getters over HSD_PadGameStatus.
         let cpu_sample;
-        let sample = if self.input_source() == InputSource::Cpu {
+        let cpu_controlled = self.input_source() == InputSource::Cpu;
+        let sample = if cpu_controlled {
             cpu_sample = self.cpu.pad_sample();
             &cpu_sample
         } else {
@@ -679,6 +680,10 @@ impl FighterCore {
             InputContext {
                 save_and_clear: self.status.input_frozen,
                 hitlag,
+                cpu_controlled,
+                // UCF 0.84: lwz 0x4 == 19 (Zelda), lwz 0x10 == 349.
+                cardinal_exempt: self.kind == melee_types::FighterKind::Zelda
+                    && self.motion_state.action.0 == 349,
                 ..InputContext::default()
             },
         );

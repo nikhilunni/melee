@@ -1,0 +1,33 @@
+# UCF 0.84 witness: Puff's Pound hits Fox's (p1) shield at tick 212 (GuardSetOff sets the tilt age to 254), the tick his stick first tilts left (-40); at tick 213 it reaches -80.
+# UCF 0.84 (UCF Shield SDI.asm, 0x80093294): the raw jump shield-SDIs at tick 213.
+name = "ucf084_shieldsdi_pound_fd_fox_ucf084"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 272
+seed = 1
+stage = "FinalDestination"
+gecko = ["ucf-0.84"]
+inputs = [
+  { frame = 1, port = 0, buttons = {}, raw = {  } },
+  { frame = 1, port = 1, buttons = {}, raw = {  } },
+  { frame = 104, port = 1, buttons = {}, raw = { button = 64 } },
+  { frame = 104, port = 0, buttons = {}, raw = { stickX = 127 } },
+  { frame = 188, port = 0, buttons = {}, raw = {  } },
+  { frame = 188, port = 0, buttons = {}, raw = { button = 512, stickX = 127 } },
+  { frame = 189, port = 0, buttons = {}, raw = {  } },
+  { frame = 212, port = 1, buttons = {}, raw = { button = 64, stickX = -40 } },
+  { frame = 213, port = 1, buttons = {}, raw = { button = 64, stickX = -80 } },
+  { frame = 225, port = 1, buttons = {}, raw = { button = 64 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+controller_fix = "ucf-0.84"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.84"

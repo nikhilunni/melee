@@ -412,28 +412,39 @@ replay recorded with it can match.
 Tournament replays ran the Universal Controller Fix Gecko codes (Game Start
 `dashback_fix`/`shield_drop_fix` = 1). The port carries them as a per-port
 `ControllerFix` (`melee_ft::input::controller_fix`, re-exported by
-`melee-lib`): `Off`, `Ucf074`, `Ucf080`, and the explicitly unsupported
-`Ucf084` and `Dween` (match setup fails with the reason). Slippi does not
-record the UCF version; the caller chooses it (0.74 for 2019-2020 console
-builds, 0.8 from 2021; 0.84 from 2024).
+`melee-lib`): `Off`, `Ucf074`, `Ucf080`, `Ucf084`, and `Dween`, which match
+setup refuses with the reason. Slippi does not record the UCF version; the
+caller chooses it (0.74 for 2019-2020 console builds, 0.8 from 2021, 0.84
+from 2024).
 
 | Version | Slippi source (logic ported, not copied; GPL-3) | Hook |
 |---|---|---|
 | 0.74, 0.8 | `External/UCF 0.74/UCF DB.asm`, `External/UCF 0.8/Logic/UCF DB.asm` | 0x800C9A44, ftCo_Turn_IASA's first flip: slow turn to smash turn; Popo also rewrites Nana's newest follow sample |
 | 0.74, 0.8 | `.../UCF SD.asm` | 0x800998A4, ftCo_80099894: refuse a rim-angled spot dodge so the shield drops |
 | 0.8 | `External/UCF 0.8/Logic/UCF Tumble.asm` | 0x800908F4, ftCo_DamageFall_IASA's wiggle age |
+| 0.84 | `External/UCF 0.84/UCF/UCF Pad Buffer + 1.0 Cardinals.asm` | 0x8006B460, the human input proc: a per-port four-sample raw ring, cardinal sticks snapped to exactly 1.0, a lower-rim tick count |
+| 0.84 | `UCF Dashback.asm`, `UCF Shield Drop.asm`, `UCF Tumble.asm` | as above, reading the ring (dashback: stick toward the new facing, any kind's second fighter; shield drop: platforms only, roll window) |
+| 0.84 | `UCF Shield Drop Extended.asm` | 0x8009A0B8, ftCo_8009A080: a rim count above one passes the drop's stick test |
+| 0.84 | `UCF SDI.asm`, `UCF Shield SDI.asm` | 0x8008E54C / 0x80093294: a raw jump over 62 from inside the SDI radius SDIs |
+| 0.84 | `UCF DBOOC SquatRv Fix.asm` | 0x800D65EC: a fresh x tap on the rim lowers the squat release line to 0.59 |
 
-The 0.74 and 0.8 dashback and shield-drop programs are identical. The codes
+The 0.74 and 0.8 dashback and shield-drop programs are identical; 0.84 ships
+as machine code only and is ported from its disassembly. The 0.74/0.8 codes
 read the hardware pad queue (raw `PADStatus.stickX` now and two ticks ago,
-before HSD's clamp), which the engine models as one poll per tick
-(`Simulation::set_raw_stick_x`, derived from the pads when absent) or takes
-verbatim from a recording (`set_recorded_pad_queue_x`).
+before HSD's clamp), which the engine models as one poll per tick or takes
+verbatim from a recording (`Simulation::set_recorded_pad_queue_x`). 0.84's
+ring is fed from the consumed entry's four stick bytes
+(`Simulation::set_raw_sticks`; derived from the pads when absent) and lives in
+the match state, zero at start as when the code is installed. A console's ring
+carries the previous game's last samples into a new match; four input ticks
+refresh it, long before the countdown releases input.
 
 API for a replay runner:
 
 - scenario TOML: `controller_fix = "ucf-0.8"` on each `[[fighters]]`
   (`FighterScenario::controller_fix`, names in `ControllerFix::ALL`);
-  `PadScript::from_replay_inputs` already feeds Pre Frame raw joystick X;
+  `PadScript::from_replay_inputs` feeds Pre Frame raw joystick and C-stick
+  bytes (derived from the processed sticks when absent);
 - `melee-lib`: `PlayerSetup::controller_fix` (diagnostics) or
   `PlayerConfig::with_controller_fix` (public `Match`);
 - a borrowed boundary: `Simulation::set_controller_fixes([ControllerFix; 4])`.
@@ -442,7 +453,13 @@ Recording with the codes: a scenario's `gecko = ["ucf-0.8"]` makes
 `record.py` write the codes into the run's private Dolphin user folder
 (`harness/gecko.py`, text read from `MELEE_GECKO_DIR`, never committed) and
 enable cheats; the tracer checks every C2 injection holds its branch, keeps the
-pad queue at one poll per tick and records `pad_queue_x` (what the codes read)
-beside each tick. Witnesses (`UCF_WITNESSES` in `m5_gate.rs`) gate exact with
-and without the codes: `ucf_dashback_fd_fox_*`, `ucf_dashback_fd_iceclimbers_*`,
-`ucf_shielddrop_bf_fox_*`, `ucf_tumble_fd_fox_*`.
+pad queue at one poll per tick and records `pad_queue_x` and
+`pad_queue_sticks` (what the codes read) beside each tick. Witnesses
+(`UCF_WITNESSES` in `m5_gate.rs`) gate exact with and without the codes:
+`ucf_dashback_fd_fox_*`, `ucf_dashback_fd_iceclimbers_*`,
+`ucf_shielddrop_bf_fox_*`, `ucf_tumble_fd_fox_*` and the `ucf084_*` set
+(cardinal run, dashback, shield drop, rim-count drop, tumble, SDI, shield SDI,
+squat release).
+
+Not ported: the UCF 0.73 beta (`Binary/UCF/Ucf0.73Beta.bin`, a different
+dashback program) and Dween.

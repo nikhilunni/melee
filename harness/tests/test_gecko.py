@@ -116,6 +116,7 @@ def test_gecko_runs_keep_one_tick_per_queue_entry_and_record_what_ucf_reads(tmp_
     # UCF's FETCH_INPUT: entries qread-1 and qread-3 (index-1, +5 when negative).
     assert rows[0]["pad_queue_x"][0] == [-80, 0]
     assert rows[1]["pad_queue_x"][0] == [10, 0]
+    assert rows[1]["pad_queue_sticks"][0] == [10, 0, 0, 0]
     assert len(rows[1]["pad_queue_x"]) == 4
 
 

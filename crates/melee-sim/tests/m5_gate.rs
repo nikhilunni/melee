@@ -1534,8 +1534,10 @@ fn matrix_witnesses_match_retail() {
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
 /// witness recorded in Dolphin without the code (`_off`) and with it
 /// (`gecko = [...]`, harness/gecko.py): UCF's dashback (0x800C9A44), shield
-/// drop (0x800998A4) and 0.8's tumble wiggle (0x800908F4).
-const UCF_WITNESSES: [(&str, usize); 10] = [
+/// drop (0x800998A4) and 0.8's tumble wiggle (0x800908F4); 0.84's pad
+/// buffer and 1.0 cardinals (0x8006B460), rim-count shield drop (0x8009A0B8),
+/// SDI (0x8008E54C), shield SDI (0x80093294) and squat release (0x800D65EC).
+const UCF_WITNESSES: [(&str, usize); 23] = [
     ("ucf_dashback_fd_fox_off", 200),
     ("ucf_dashback_fd_fox_ucf074", 200),
     ("ucf_dashback_fd_fox_ucf08", 200),
@@ -1547,6 +1549,19 @@ const UCF_WITNESSES: [(&str, usize); 10] = [
     ("ucf_shielddrop_bf_fox_ucf08", 200),
     ("ucf_tumble_fd_fox_off", 290),
     ("ucf_tumble_fd_fox_ucf08", 290),
+    ("ucf084_dashback_fd_fox_ucf084", 200),
+    ("ucf084_shielddrop_bf_fox_ucf084", 200),
+    ("ucf084_tumble_fd_fox_ucf084", 290),
+    ("ucf084_cardinal_run_fd_fox_off", 200),
+    ("ucf084_cardinal_run_fd_fox_ucf084", 200),
+    ("ucf084_shielddrop_rim_bf_fox_off", 200),
+    ("ucf084_shielddrop_rim_bf_fox_ucf084", 200),
+    ("ucf084_sdi_rest_fd_fox_off", 240),
+    ("ucf084_sdi_rest_fd_fox_ucf084", 240),
+    ("ucf084_shieldsdi_pound_fd_fox_off", 272),
+    ("ucf084_shieldsdi_pound_fd_fox_ucf084", 272),
+    ("ucf084_squatrv_fd_fox_off", 200),
+    ("ucf084_squatrv_fd_fox_ucf084", 200),
 ];
 
 #[test]

@@ -80,7 +80,11 @@ impl FighterCore {
             || self.input.current.cstick.y <= assets.input.escape_threshold)
             && !crate::input::controller_fix::blocks_spot_dodge(
                 &self.input,
-                assets.input.escape_threshold,
+                &crate::input::controller_fix::SpotDodgeFacts {
+                    escape_threshold: assets.input.escape_threshold,
+                    roll_window: assets.input.roll_window,
+                    floor: self.collision.data.floor,
+                },
             )
     }
     /// ftCo_8009917C (0x8009917C): main-stick horizontal smash, then C-stick.

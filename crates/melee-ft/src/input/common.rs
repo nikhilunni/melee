@@ -42,6 +42,9 @@ pub struct InputCommonData {
     /// PlCo +314/+318, spot-dodge stick threshold and window.
     pub escape_threshold: f32,
     pub escape_window: i32,
+    /// PlCo +320, the roll's horizontal tap window (UCF 0.84's shield drop
+    /// reads it in the spot-dodge entry).
+    pub roll_window: i32,
     /// PlCo +7B8/+7BC/+7C0, ftCommon_8008031C joystick statistics.
     pub activity_stick_threshold: f32,
     pub activity_trigger_threshold: f32,
@@ -79,6 +82,7 @@ impl InputCommonData {
             powershield_window: r.s32(0x2A0)?,
             escape_threshold: r.f32(0x314)?,
             escape_window: r.s32(0x318)?,
+            roll_window: r.s32(0x320)?,
             activity_stick_threshold: r.f32(0x7B8)?,
             activity_trigger_threshold: r.f32(0x7BC)?,
             activity_window: r.f32(0x7C0)?,

@@ -329,6 +329,7 @@ impl FighterCore {
             shield_health: self.status.shield_health,
             held_item: self.held_item.map(|held| held.use_kind == 0),
             tether_active: self.tether_article,
+            floor: self.collision.data.floor,
             ..Default::default()
         }
     }

@@ -377,6 +377,7 @@ impl FighterCore {
 pub fn down_tilt(fighter: &mut Fighter, phase: InputPhase<'_>) {
     let context = WaitContext {
         facing: fighter.core.physics.facing,
+        floor: fighter.core.collision.data.floor,
         ..WaitContext::default()
     };
     fighter

@@ -21,7 +21,8 @@ scheduled pads, which replay_to_scenario.py --verify checks.
 
 Controller-fix Gecko codes (UCF, harness/gecko.py) also read older queue
 entries: each record's `pad_queue_x` holds, per port, the raw stickX of
-entries qread-1 and qread-3 exactly as UCF's FETCH_INPUT indexes them. With
+entries qread-1 and qread-3 exactly as UCF's FETCH_INPUT indexes them, and
+`pad_queue_sticks` entry qread-1's four stick bytes (UCF 0.84's buffer). With
 codes installed (MELEE_GECKO_HOOKS), the tick clock also rewrites the two
 entries before the injected one with the two previous ticks' pads, so the
 queue holds one poll per tick whatever Dolphin's own polls did, and the
@@ -218,6 +219,21 @@ class TickTracer(Tracer):
 
         return [[stick_x(qread, port), stick_x(qread - 2, port)] for port in range(PAD_PORTS)]
 
+    def read_pad_queue_sticks(self, mem=None) -> list[list[int]]:
+        """Per port, entry qread-1's signed stickX, stickY, substickX, substickY."""
+        mem = self.mem if mem is None else mem
+        qread = mem.read_u8(PAD_LIB_ADDR + 1)
+        queue = mem.read_u32(PAD_LIB_ADDR + 8)
+        entry = qread - 1 + UCF_QUEUE_WRAP if qread == 0 else qread - 1
+
+        def signed(addr: int) -> int:
+            byte = mem.read_u8(addr)
+            return byte - 0x100 if byte & 0x80 else byte
+
+        base = queue + entry * PAD_ENTRY_BYTES
+        return [[signed(base + port * PAD_STATUS_BYTES + 2 + i) for i in range(4)]
+                for port in range(PAD_PORTS)]
+
     def check_gecko_hooks(self) -> None:
         """Every Gecko C2 injection must hold its branch by the first record."""
         missing = [f"0x{addr:08X}" for addr in self.gecko_hooks
@@ -306,7 +322,8 @@ class TickTracer(Tracer):
                           ps_frame=self.mem.read_u8(PS_FRAME_ADDR),
                           watch_address=WATCH_ADDR, watch_value=before,
                           pad_game=self.read_game_pads(),
-                          pad_queue_x=self.read_pad_queue_x())
+                          pad_queue_x=self.read_pad_queue_x(),
+                          pad_queue_sticks=self.read_pad_queue_sticks())
             self.out.write(json.dumps(record) + "\n")
             self.out.flush()
             self.last_tick = value

@@ -168,6 +168,9 @@ pub struct WaitContext {
     pub held_item: Option<bool>,
     /// Link/Young Link u.lk.xC or Samus u.ss.x223C != NULL.
     pub tether_active: bool,
+    /// CollData floor (fp+0x83C), read by UCF 0.84's shield drop in the spot
+    /// dodge entry; no floor (-1) by default.
+    pub floor: melee_types::mp::SurfaceData,
 }
 impl Default for WaitContext {
     fn default() -> Self {
@@ -178,6 +181,10 @@ impl Default for WaitContext {
             fox_taunt_available: false,
             held_item: None,
             tether_active: false,
+            floor: melee_types::mp::SurfaceData {
+                index: -1,
+                ..Default::default()
+            },
         }
     }
 }
@@ -262,7 +269,14 @@ pub fn evaluate(
             shield_held
                 && stick.y <= common.escape_threshold
                 && i32::from(input.vertical.tilt) < common.escape_window
-                && !super::controller_fix::blocks_spot_dodge(input, common.escape_threshold),
+                && !super::controller_fix::blocks_spot_dodge(
+                    input,
+                    &super::controller_fix::SpotDodgeFacts {
+                        escape_threshold: common.escape_threshold,
+                        roll_window: common.roll_window,
+                        floor: context.floor,
+                    },
+                ),
             T::Escape,
         ),
         P::Shield => (

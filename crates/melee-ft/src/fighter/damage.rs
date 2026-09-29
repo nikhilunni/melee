@@ -1521,9 +1521,14 @@ impl FighterCore {
         };
         let parameters = damage.influence;
         let stick = self.input.current.stick;
+        // UCF 0.84 hooks the vertical tap compare (0x8008E54C).
         if stick_magnitude_passes(stick, parameters.minimum_stick)
             && (i32::from(self.input.horizontal.tilt) < parameters.tap_window
-                || i32::from(self.input.vertical.tilt) < parameters.tap_window)
+                || crate::input::controller_fix::sdi_vertical_tap(
+                    &self.input,
+                    parameters.tap_window,
+                    parameters.minimum_stick,
+                ))
         {
             // 8008E560..574: products and position sums round separately.
             self.physics.position.x += stick.x * parameters.sdi_distance;

@@ -24,7 +24,7 @@ impl Simulation {
     fn set_tick_inputs(&mut self) {
         let tick = self.engine.frame();
         self.engine.set_inputs(self.pads.samples(tick));
-        self.engine.set_raw_stick_x(self.pads.raw_stick_x(tick));
+        self.engine.set_raw_sticks(self.pads.raw_sticks(tick));
         self.engine
             .set_recorded_pad_queue_x(self.pads.recorded_pad_queue_x(tick));
         self.engine.set_display_pass(self.pads.display_pass(tick));

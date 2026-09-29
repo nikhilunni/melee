@@ -46,6 +46,7 @@ pub fn common() -> InputCommonData {
         powershield_window: 2,
         escape_threshold: -0.7,
         escape_window: 4,
+        roll_window: 4,
         activity_stick_threshold: 0.5,
         activity_trigger_threshold: 0.5,
         activity_window: 4.0,

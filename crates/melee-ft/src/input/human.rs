@@ -74,6 +74,11 @@ pub struct InputContext {
     pub captured: bool,
     /// smash_attrs.state is PreCharge or Charging: ftCo_800DF0D0 is not idle.
     pub smash_charge_active: bool,
+    /// ftCo_800A2040: the CPU, not the pad, drives this fighter (UCF 0.84's
+    /// pad buffer skips it).
+    pub cpu_controlled: bool,
+    /// fp->kind 19 (Zelda) in motion 349: UCF 0.84 leaves its sticks unsnapped.
+    pub cardinal_exempt: bool,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +114,7 @@ pub fn update_human_input(
     }
     if !context.freeze_sample {
         sample_input(input, sample, common, context);
-        update_analog_timers(input, common);
+        update_analog_timers(input, common, context);
         update_button_timers(input);
     }
     if context.save_and_clear || context.freeze_sample {
@@ -250,7 +255,7 @@ fn update_axis(
         Some(positive)
     }
 }
-fn update_analog_timers(input: &mut FighterInput, common: &InputCommonData) {
+fn update_analog_timers(input: &mut FighterInput, common: &InputCommonData, context: InputContext) {
     let t = &common.thresholds;
     if let Some(positive) = update_axis(
         &mut input.horizontal,
@@ -276,6 +281,12 @@ fn update_analog_timers(input: &mut FighterInput, common: &InputCommonData) {
         input.horizontal.activity = 0;
         input.vertical.activity = 0;
     }
+    // 0x8006B460: UCF 0.84's pad buffer and 1.0 cardinals hook here.
+    super::controller_fix::update_pad_buffer(
+        input,
+        !context.cpu_controlled,
+        context.cardinal_exempt,
+    );
     let s = &mut input.shoulder;
     increment_analog(&mut s.since_crossing);
     if input.current.trigger >= t.shield_press_threshold {

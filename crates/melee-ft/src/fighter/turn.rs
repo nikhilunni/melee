@@ -127,33 +127,32 @@ impl Fighter {
         Ok(())
     }
 
-    /// `UCF DB.asm` (injected at 0x800C9A44): a slow turn becomes a smash
-    /// turn (x2358 and x2340 set, so the facing stays flipped). For Popo,
-    /// the scene then rewrites Nana's newest follow sample.
+    /// UCF's dashback (injected at 0x800C9A44): a slow turn becomes a smash
+    /// turn (x2358 and x2340 set, so the facing stays flipped). The code may
+    /// also rewrite the player's second fighter's newest follow sample,
+    /// which the scene applies.
     fn ucf_smash_turn(&mut self, assets: &FighterAssets) -> bool {
-        use crate::input::controller_fix::{smash_turn, PartnerTurn, TurnFacts};
+        use crate::input::controller_fix::{smash_turn, TurnFacts};
         let facts = TurnFacts {
             animation_frame: self.core.animation.frame,
+            facing: self.core.physics.facing,
             secondary: self.player.secondary,
+            // 0.74/0.8: lwz r4,0x4; cmpwi r4,0xA (the code's own kind check).
+            popo: self.character.kind() == melee_types::FighterKind::Popo,
         };
-        if !smash_turn(
+        let Some(partner_turn) = smash_turn(
             &self.core.input,
             assets.input.thresholds.dash_smash_stick_threshold,
             &facts,
-        ) {
+        ) else {
             return false;
-        }
+        };
         let MotionData::Turn(turn) = &mut self.core.state_data else {
             unreachable!()
         };
         turn.just_turned = true;
         turn.has_turned = true;
-        // lwz r4,0x4; cmpwi r4,0xA: Popo (the code's own kind check).
-        if self.character.kind() == melee_types::FighterKind::Popo {
-            self.core.input.hardware.partner_turn = Some(PartnerTurn {
-                facing: self.core.physics.facing,
-            });
-        }
+        self.core.input.hardware.partner_turn = partner_turn;
         true
     }
 }

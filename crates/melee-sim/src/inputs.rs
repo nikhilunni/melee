@@ -7,7 +7,7 @@
 //! VI-to-tick alignment never has to be modelled. Inputs are inputs, not
 //! state: nothing here is compared by the gate.
 use anyhow::{bail, ensure, Context, Result};
-use melee_ft::input::{Buttons, PadQueueX, PadSample, Stick};
+use melee_ft::input::{Buttons, PadQueueX, PadSample, RawSticks, Stick};
 use melee_lib::{ExternalEvents, StageRead};
 use serde_json::Value as Json;
 use std::{io::BufRead, path::Path};
@@ -25,10 +25,10 @@ pub struct PadScript {
     /// Each tick's external events. Empty: the port's default policies
     /// (schedules and Slippi replays); a retail trace fills every tick.
     events: Vec<ExternalEvents>,
-    /// Each tick's raw `PADStatus.stickX` per port, when the source carries
-    /// it (a tick-clock schedule, a Slippi replay's raw joystick X). Empty:
-    /// the engine derives it from the normalized pads.
-    raw_stick_x: Vec<[i8; PORTS]>,
+    /// Each tick's raw `PADStatus` sticks per port, when the source carries
+    /// them (a tick-clock schedule, a Slippi replay's raw joysticks, a
+    /// recording). Empty: the engine derives them from the normalized pads.
+    raw_sticks: Vec<[RawSticks; PORTS]>,
     /// The pad-queue bytes each recorded tick's UCF code would read
     /// (`pad_queue_x` in the tick trace). Empty for older recordings.
     pad_queue_x: Vec<[PadQueueX; PORTS]>,
@@ -49,6 +49,9 @@ struct ScriptRecord {
     /// Per port, [queue entry qread-1, qread-3] `stickX` (tick_trace.py).
     #[serde(default)]
     pad_queue_x: Option<[[i8; 2]; PORTS]>,
+    /// Per port, entry qread-1's [stickX, stickY, substickX, substickY].
+    #[serde(default)]
+    pad_queue_sticks: Option<[[i8; 4]; PORTS]>,
 }
 
 fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Json>, D::Error> {
@@ -64,7 +67,7 @@ impl PadScript {
         ports: &[u8],
     ) -> Result<Self> {
         let mut script = Self::neutral(frames + 1);
-        script.raw_stick_x = vec![[0; PORTS]; frames + 1];
+        script.raw_sticks = vec![[RawSticks::default(); PORTS]; frames + 1];
         let mut seen = std::collections::BTreeSet::new();
         for input in inputs {
             let frame = usize::try_from(input.frame)?;
@@ -79,11 +82,13 @@ impl PadScript {
             );
             let pad = replay_pad(input)
                 .with_context(|| format!("replay tick {frame} port {}", input.port))?;
-            // Pre Frame raw joystick X is the SDK ring byte UCF reads; older
-            // replays without it fall back to the normalized stick.
-            script.raw_stick_x[frame + 1][usize::from(input.port)] = input
-                .raw_stick
-                .map_or_else(|| pad.raw_stick_x(), |[x, _]| x);
+            // Pre Frame raw joystick/C-stick bytes are the SDK ring bytes UCF
+            // reads; replays without them fall back to the normalized sticks.
+            let derived = pad.raw_sticks();
+            script.raw_sticks[frame + 1][usize::from(input.port)] = RawSticks {
+                stick: input.raw_stick.unwrap_or(derived.stick),
+                cstick: input.raw_cstick.unwrap_or(derived.cstick),
+            };
             script.ticks[frame + 1][usize::from(input.port)] = pad;
         }
         anyhow::ensure!(
@@ -101,13 +106,13 @@ impl PadScript {
         let mut steps: Vec<_> = steps.iter().collect();
         steps.sort_by_key(|step| step.frame);
         let mut current = [PadSample::default(); PORTS];
-        let mut current_raw_x = [0; PORTS];
+        let mut current_raw = [RawSticks::default(); PORTS];
         let mut next = 0;
-        script.raw_stick_x = vec![[0; PORTS]; ticks];
-        for (tick, (pads, raw_x)) in script
+        script.raw_sticks = vec![[RawSticks::default(); PORTS]; ticks];
+        for (tick, (pads, raw)) in script
             .ticks
             .iter_mut()
-            .zip(script.raw_stick_x.iter_mut())
+            .zip(script.raw_sticks.iter_mut())
             .enumerate()
         {
             while next < steps.len() && steps[next].frame as usize == tick {
@@ -115,11 +120,11 @@ impl PadScript {
                 let port = usize::from(step.port);
                 anyhow::ensure!(port < PORTS, "input step port {port}");
                 current[port] = scheduled_pad(&step.raw)?;
-                current_raw_x[port] = scheduled_raw_stick_x(&step.raw)?;
+                current_raw[port] = scheduled_raw_sticks(&step.raw)?;
                 next += 1;
             }
             *pads = current;
-            *raw_x = current_raw_x;
+            *raw = current_raw;
         }
         Ok(script)
     }
@@ -131,7 +136,7 @@ impl PadScript {
             ticks: vec![[PadSample::default(); PORTS]; ticks],
             display_clock: vec![None; ticks],
             events: Vec::new(),
-            raw_stick_x: Vec::new(),
+            raw_sticks: Vec::new(),
             pad_queue_x: Vec::new(),
         }
     }
@@ -147,6 +152,7 @@ impl PadScript {
         let mut display_clock = Vec::new();
         let mut events = Vec::new();
         let mut pad_queue_x = Vec::new();
+        let mut raw_sticks = Vec::new();
         for (index, line) in reader.lines().enumerate() {
             let line = line?;
             if line.trim().is_empty() {
@@ -174,6 +180,9 @@ impl PadScript {
                     current,
                     two_ticks_ago,
                 }));
+                raw_sticks.push(std::array::from_fn(|port| {
+                    consumed_sticks(record.pad_queue_sticks, queue, &pads, port)
+                }));
             }
             display_clock.push(display_clock_of(record.ps_frame.as_ref()));
             events.push(
@@ -187,10 +196,7 @@ impl PadScript {
             path.display()
         );
         Ok(Self {
-            raw_stick_x: pad_queue_x
-                .iter()
-                .map(|queue| queue.map(|q| q.current))
-                .collect(),
+            raw_sticks,
             ticks,
             display_clock,
             events,
@@ -212,16 +218,16 @@ impl PadScript {
         self.samples(tick)[port]
     }
 
-    /// Tick `tick`'s raw `PADStatus.stickX` per port, when the source
-    /// carries it (neutral past the end of such a source).
-    pub fn raw_stick_x(&self, tick: u64) -> Option<[i8; PORTS]> {
-        if self.raw_stick_x.is_empty() {
+    /// Tick `tick`'s raw `PADStatus` sticks per port, when the source
+    /// carries them (neutral past the end of such a source).
+    pub fn raw_sticks(&self, tick: u64) -> Option<[RawSticks; PORTS]> {
+        if self.raw_sticks.is_empty() {
             return None;
         }
         Some(
             usize::try_from(tick)
                 .ok()
-                .and_then(|t| self.raw_stick_x.get(t))
+                .and_then(|t| self.raw_sticks.get(t))
                 .copied()
                 .unwrap_or_default(),
         )
@@ -457,11 +463,44 @@ fn parse_pad(fields: &TracePad) -> Result<PadSample> {
     })
 }
 
-/// One tick-clock step's raw `PADStatus.stickX` (the pad queue's byte).
-fn scheduled_raw_stick_x(raw: &toml::Table) -> Result<i8> {
-    raw.get("stickX").map_or(Ok(0), |v| {
-        let value = v.as_integer().context("raw stickX")?;
-        Ok(i8::try_from(value)?)
+/// A recorded tick's consumed queue entry sticks for `port`: recorded
+/// (`pad_queue_sticks`), or, in traces before it, X from `pad_queue_x` and
+/// the rest behind the normalized pad.
+fn consumed_sticks(
+    recorded: Option<[[i8; 4]; PORTS]>,
+    queue_x: [[i8; 2]; PORTS],
+    pads: &[PadSample; PORTS],
+    port: usize,
+) -> RawSticks {
+    match recorded {
+        Some(sticks) => {
+            let [x, y, cx, cy] = sticks[port];
+            RawSticks {
+                stick: [x, y],
+                cstick: [cx, cy],
+            }
+        }
+        None => {
+            let derived = pads[port].raw_sticks();
+            RawSticks {
+                stick: [queue_x[port][0], derived.stick[1]],
+                cstick: derived.cstick,
+            }
+        }
+    }
+}
+
+/// One tick-clock step's raw `PADStatus` sticks (the pad queue's bytes).
+fn scheduled_raw_sticks(raw: &toml::Table) -> Result<RawSticks> {
+    let byte = |key: &str| -> Result<i8> {
+        raw.get(key).map_or(Ok(0), |v| {
+            let value = v.as_integer().with_context(|| format!("raw {key}"))?;
+            Ok(i8::try_from(value)?)
+        })
+    };
+    Ok(RawSticks {
+        stick: [byte("stickX")?, byte("stickY")?],
+        cstick: [byte("substickX")?, byte("substickY")?],
     })
 }
 
@@ -533,7 +572,7 @@ mod tests {
         assert!(script.has_input());
         assert!(PadScript::from_expected_trace(&path, true).is_err());
         assert!(!PadScript::neutral(3).has_input());
-        assert_eq!(script.raw_stick_x(0), None);
+        assert_eq!(script.raw_sticks(0), None);
         assert_eq!(script.recorded_pad_queue_x(0), None);
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -554,7 +593,8 @@ mod tests {
         }
         drop(f);
         let script = PadScript::from_expected_trace(&path, true).unwrap();
-        assert_eq!(script.raw_stick_x(1), Some([127, 1, 0, 0]));
+        let raw = script.raw_sticks(1).unwrap();
+        assert_eq!((raw[0].stick[0], raw[1].stick[0]), (127, 1));
         let queue = script.recorded_pad_queue_x(1).unwrap();
         assert_eq!(
             (queue[0], queue[1]),
@@ -581,9 +621,11 @@ mod tests {
             raw: toml::toml! { stickX = x },
         };
         let script = PadScript::from_tick_schedule(&[step(1, 127), step(3, -40)], 5).unwrap();
-        let raw: Vec<i8> = (0..5).map(|t| script.raw_stick_x(t).unwrap()[0]).collect();
+        let raw: Vec<i8> = (0..5)
+            .map(|t| script.raw_sticks(t).unwrap()[0].stick[0])
+            .collect();
         assert_eq!(raw, [0, 127, 127, -40, -40]);
         // HSD clamps 127 to the 80-unit circle; the queue keeps the byte.
-        assert_eq!(script.sample(1, 0).raw_stick_x(), 80);
+        assert_eq!(script.sample(1, 0).raw_sticks().stick[0], 80);
     }
 }

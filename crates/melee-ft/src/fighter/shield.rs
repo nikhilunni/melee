@@ -487,8 +487,12 @@ impl Fighter {
         }
         // ftCo_8009A080 (0x8009A080): with the shield held, a fresh stick
         // tap down on a platform (ftCo_80099F1C) drops through it.
+        // UCF 0.84 widens the stick test (0x8009A0B8).
         if self.core.input.current.held.intersects(Buttons::SHIELD)
-            && self.core.input.current.stick.y <= -assets.movement.platform_drop_threshold
+            && crate::input::controller_fix::platform_drop_stick(
+                &self.core.input,
+                assets.movement.platform_drop_threshold,
+            )
             && f32::from(self.core.input.vertical.tilt) < assets.movement.platform_drop_window
             && self.core.collision.data.floor.flags & line_flag::PLATFORM != 0
         {
@@ -836,7 +840,12 @@ impl FighterCore {
         if self.shield.allow_sdi
             && self.physics.ground_or_air == GroundOrAir::Ground
             && fabsf(stick_x) >= parameters.minimum_stick
-            && i32::from(self.input.horizontal.tilt) < parameters.tap_window
+            // UCF 0.84 hooks the tap compare (0x80093294).
+            && crate::input::controller_fix::shield_sdi_tap(
+                &self.input,
+                parameters.tap_window,
+                parameters.minimum_stick,
+            )
         {
             // 800932A8 / 800932B4: two fmuls.
             let scale = parameters.shield_influence_scale * (stick_x * parameters.sdi_distance);
