@@ -325,11 +325,13 @@ impl ParticleSystem {
                     None
                 }
             });
-        let point_joints = self.point_joints;
-        particle.update_with_generators::<T>(
+        // The point joints leave the system for the update and come back
+        // after it; child spawns never touch them.
+        let mut point_joints = self.point_joints;
+        let result = particle.update_with_generators::<T>(
             tornado,
             Some(T::atan2f),
-            &point_joints,
+            &mut point_joints,
             rng,
             draws,
             &mut |parent, kind, blend, rng, draws| {
@@ -392,7 +394,9 @@ impl ParticleSystem {
                 }
                 Ok(())
             },
-        )
+        );
+        self.point_joints = point_joints;
+        result
     }
 
     /// `particleSort` (psdisp.c, 0x8039FC70): rendering stably buckets the *simulation*
@@ -610,9 +614,15 @@ impl ParticleSystem {
         if generator.flags & 0x80 != 0 {
             let particles = &mut self.particles[usize::from(generator.link)];
             let before = particles.len();
+            let point_joints = &mut self.point_joints;
             particles.retain(|particle| {
-                particle.generator_id != Some(generator.id)
-                    || particle.family_id != generator.family_id
+                let keep = particle.generator_id != Some(generator.id)
+                    || particle.family_id != generator.family_id;
+                if !keep {
+                    // hsd_8039D0A0: a removed particle's point joint goes.
+                    particle.release_point_joint(point_joints);
+                }
+                keep
             });
             generator.children -= (before - particles.len()) as u32;
         }

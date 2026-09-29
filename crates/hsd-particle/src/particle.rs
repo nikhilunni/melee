@@ -132,7 +132,7 @@ impl Particle {
         self.update_with_generators::<T>(
             None,
             Some(T::atan2f),
-            &[None; 8],
+            &mut [None; 8],
             rng,
             draws,
             &mut |_, _, _, _, _| {
@@ -147,7 +147,7 @@ impl Particle {
         &mut self,
         tornado: Option<TornadoPhysics>,
         atan2: Option<fn(f32, f32) -> f32>,
-        point_joints: &[Option<[f32; 3]>; 8],
+        point_joints: &mut [Option<[f32; 3]>; 8],
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         spawn: &mut impl FnMut(
@@ -161,9 +161,6 @@ impl Particle {
         if self.kind & PAUSED != 0 {
             return Ok(true);
         }
-        if self.kind & 0x8000 != 0 {
-            return Err(Error::UnsupportedFeature("particle JObj attachment"));
-        }
         self.interpolate();
         if self.wait != 0 {
             self.wait -= 1;
@@ -173,6 +170,9 @@ impl Particle {
         }
         self.life = self.life.wrapping_sub(1);
         if self.life == 0 {
+            // hsd_8039D048 (particle.c:2864): the deleted particle's point
+            // joint goes.
+            self.release_point_joint(point_joints);
             return Ok(false);
         }
         if self.kind & TORNADO != 0 {
@@ -182,7 +182,29 @@ impl Particle {
         } else {
             self.integrate();
         }
+        self.drive_point_joint(point_joints);
         Ok(true)
+    }
+
+    /// particle.c:2922-2950: a particle that owns a point joint (0xBF)
+    /// moves it onto itself: a fresh joint (HSD_JObjAlloc, translation zero)
+    /// when the slot is empty, then each axis's translation gains the
+    /// particle's position minus the joint's (separate fsubs, fadds).
+    fn drive_point_joint(&self, point_joints: &mut [Option<[f32; 3]>; 8]) {
+        if self.kind & POINT_JOINT == 0 {
+            return;
+        }
+        let joint = point_joints[point_joint_slot(self.kind)].get_or_insert([0.0; 3]);
+        for (translation, position) in joint.iter_mut().zip(self.position) {
+            *translation += position - *translation;
+        }
+    }
+
+    /// hsd_8039D048 (8039D048): a deleted particle's point joint is released.
+    pub(crate) fn release_point_joint(&self, point_joints: &mut [Option<[f32; 3]>; 8]) {
+        if self.kind & POINT_JOINT != 0 {
+            point_joints[point_joint_slot(self.kind)] = None;
+        }
     }
 
     /// hsd_80398F8C (80398F8C): rotate velocity around a random cone azimuth.
@@ -350,6 +372,12 @@ impl Particle {
                             None
                         };
                         spawn(self, kind, blend, rng, draws)?;
+                    }
+                    0xbf => {
+                        // particle.c:2058-2064: the particle drives point
+                        // joint (index + pJObjOfs) & 7 from now on.
+                        let index = u32::from(cursor.byte()?) + u32::from(self.point_joint_offset);
+                        self.kind |= ((index & 7) << 12) | POINT_JOINT;
                     }
                     0xfa => {
                         self.loop_count = cursor.byte()?;
@@ -697,6 +725,15 @@ impl TornadoPhysics {
 }
 
 /// hsd_803991D8: B8 attracts toward a registered joint, killing inside its radius.
+/// Particle kind bit 15: the particle drives a point joint (0xBF), whose
+/// slot is bits 12..14.
+pub(crate) const POINT_JOINT: u32 = 0x8000;
+
+/// The point-joint slot a particle drives.
+fn point_joint_slot(kind: u32) -> usize {
+    ((kind >> 12) & 7) as usize
+}
+
 fn force_toward_joint(
     position: [f32; 3],
     velocity: &mut [f32; 3],

@@ -232,6 +232,18 @@ fn scalar_and_component_velocity_scales() {
 }
 
 #[test]
+fn point_joint_command_takes_its_slot_after_the_offset() {
+    // particle.c:2058-2064: kind |= ((index + pJObjOfs) & 7) << 12 | 0x8000.
+    for (index, offset, slot) in [(2u8, 0u8, 2u32), (6, 3, 1), (7, 0, 7)] {
+        let mut p = particle(vec![0xbf, index, 1]);
+        p.point_joint_offset = offset;
+        p.kind = 0x100;
+        tick(&mut p);
+        assert_eq!(p.kind, 0x100 | 0x8000 | slot << 12, "index {index} offset {offset}");
+    }
+}
+
+#[test]
 fn flag_commands_preserve_unrelated_flags() {
     for (opcode, mask, expected) in [
         (0xa1, TEXTURED, 0),
@@ -390,7 +402,7 @@ fn both_end_opcodes_delete_before_physics_and_pause_freezes_every_timer() {
 fn unported_opcodes_and_malformed_programs_fail_explicitly() {
     let supported = [
         0xa0, 0xa1, 0xa2, 0xa3, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb0,
-        0xb1, 0xb3, 0xb6, 0xb8, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xe0, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+        0xb1, 0xb3, 0xb6, 0xb8, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xe0, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
         0xe8, 0xed, 0xef, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
     ];
     for opcode in 0xa0..=0xff {
@@ -409,6 +421,7 @@ fn unported_opcodes_and_malformed_programs_fail_explicitly() {
         vec![0xa2, 0],
         vec![0xb8],
         vec![0xb8, 0, 0, 0],
+        vec![0xbf],
         vec![0xb3],
         vec![0xb3, 2, 0x12, 80],
     ] {
