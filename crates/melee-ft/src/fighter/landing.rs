@@ -234,7 +234,7 @@ impl FighterCore {
             MotionData::Squat(squat) => squat.platform_drop_timer,
             MotionData::Turn(turn) => turn.facing_after,
             // mv.co.walk.msid: ftCo_Walk_Enter passes the base walk state.
-            MotionData::Walk(_) => f32::from_bits(melee_types::CommonMotionState::WalkSlow as u32),
+            MotionData::Walk(walk) => f32::from_bits(walk.base_motion as u32),
             MotionData::Dash(dash) => f32::from_bits(u32::from(dash.early_interrupts)),
             MotionData::Run(run) => run.slippery_animation_velocity,
             MotionData::RunBrake(brake) => brake.remaining_frames,
@@ -274,14 +274,16 @@ impl Fighter {
     /// flag (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's
     /// slippery velocity (ftCo_Run.c:84) and Squat's drop timer
     /// (ftCo_Squat.c:82-85) read it as their own. Walk's word is its base
-    /// motion id (ftwalkcommon.c:115, 137), whose switch then reads an
-    /// uninitialised rate, so it and unmodelled states fail closed.
+    /// motion id (ftwalkcommon.c:115, 137): its IASA then re-enters Walk,
+    /// and its animation callback fails closed on the uninitialised rate.
+    /// Unmodelled states fail closed.
     pub fn overwrite_common_scratch_word(&mut self, word: f32) {
         match &mut self.core.state_data {
             MotionData::Jump(jump) => jump.physics_started = word.to_bits(),
             MotionData::Fall(fall) => fall.blend = word,
             MotionData::Run(run) => run.slippery_animation_velocity = word,
             MotionData::Squat(squat) => squat.platform_drop_timer = word,
+            MotionData::Walk(walk) => walk.base_motion = word.to_bits() as i32,
             MotionData::Aerial {
                 retained_drop_timer,
             }

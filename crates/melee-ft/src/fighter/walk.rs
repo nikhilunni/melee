@@ -16,6 +16,11 @@ use melee_types::CommonMotionState;
 #[derive(Clone, Debug)]
 pub struct WalkState {
     pub slippery_animation_velocity: f32,
+    /// mv.co.walk.msid (+2344): the base walk state ftCo_Walk_Enter passes
+    /// (WalkSlow). Another object can overwrite the word (a Pikachu or
+    /// Pichu Thunder bolt's end writes 3, ftPk_SpecialLw_SetState_Unk0);
+    /// both walk callbacks then read the motion relative to it.
+    pub base_motion: i32,
     pub acceleration_multiplier: f32,
 }
 
@@ -65,6 +70,7 @@ impl Fighter {
         self.step_animation(assets);
         self.core.state_data = MotionData::Walk(WalkState {
             slippery_animation_velocity: self.core.physics.ground_velocity,
+            base_motion: CommonMotionState::WalkSlow as i32,
             acceleration_multiplier: multiplier,
         });
         Ok(())
@@ -97,7 +103,10 @@ impl Fighter {
             walk.acceleration_multiplier,
             &assets.movement,
         );
-        if next != self.core.motion_state.id {
+        // ftWalkCommon_800DFEC8: the base word plus the speed tier against
+        // the motion id, so an overwritten base re-enters at any tier.
+        let tier = next as i32 - CommonMotionState::WalkSlow as i32;
+        if walk.base_motion.wrapping_add(tier) != i32::from(self.core.motion_state.id as u16) {
             let animation_id = match next {
                 CommonMotionState::WalkSlow => 7,
                 CommonMotionState::WalkMiddle => 8,
@@ -202,11 +211,16 @@ impl FighterCore {
             0.0
         } else {
             let attrs = &assets.attributes.walking;
-            let divisor = match self.motion_state.id {
-                CommonMotionState::WalkSlow => attrs.slow_walk_max,
-                CommonMotionState::WalkMiddle => attrs.mid_walk_point,
-                CommonMotionState::WalkFast => attrs.fast_walk_min,
-                _ => unreachable!("walk callback on non-walk state"),
+            // retail 800DFE50..: switch (motion_id - mv.co.walk.msid).
+            let tier = i32::from(self.motion_state.id as u16).wrapping_sub(walk.base_motion);
+            let divisor = match tier {
+                0 => attrs.slow_walk_max,
+                1 => attrs.mid_walk_point,
+                2 => attrs.fast_walk_min,
+                // No case: SetAnimRate takes the caller's f31 unchanged.
+                _ => unimplemented!(
+                    "ftWalkCommon_800DFDDC: walk tier {tier} after an overwritten mv.co.walk.msid (rate is the caller's f31)"
+                ),
             };
             fabsf(speed) / divisor
         };

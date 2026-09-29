@@ -2514,7 +2514,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 388] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 390] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -2867,6 +2867,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 388] = [
     ("corpus_v3_fd_pichu_fox4_eb6a96fbd_p1", 612),
     ("corpus_v3_fd_pichu_fox4_e936421d6_p0", 1202),
     ("corpus_v3_fd_pichu_fox4_e173083b8_p1", 2972),
+    // PICHU: a Thunder bolt's end in Walk writes 3 over mv.co.walk.msid;
+    // Walk's IASA (ftWalkCommon_800DFEC8) then re-enters Walk.
+    ("corpus_v3_fd_pichu_fox4_e793fae16_p0", 655),
+    ("corpus_v3_fd_pichu_fox4_e7bd97a61_p0", 1527),
     // PICHU thrown by Fox: a throw laser's first hitbox only glances her
     // (phantom); its second still lands a full hit (ftColl_8007925C).
     ("corpus_v3_fd_pichu_fox4_e68e14c22_p1", 2133),
