@@ -134,6 +134,29 @@ other than the Fox articles and the Bob-omb (`melee-it`).
 | `state/special.rs` buffered special | Fixed: ftCo_SpecialAir_CheckInput (8009665C) reads the stick with inclusive bounds; the port's reuse of the ground's strict tilt timers took the side special at exactly (0.6, -0.55) (`airspecial_bound_fd_marth`) |
 | `ft-purin/hat.rs` costume hats (2026-09-28) | The hat's pose and spring chains are not simulated: they reach no simulation state. The hat joints are no fighter part (ftCo_8009E318 matches part joints only); ftCo_8009E140 and ftCo_8009E7B4 select set 0 alone for Jigglypuff; the x594_b4 table path that indexes parts by a set's bone id needs ftData +2C +10, null in PlPr.dat, and no Jigglypuff motion sets 0x08000000; the hat root matrix is copied at display (ftPr_Init_UnkMtxFunc0). Witnessed exact with part bones in all four costumes (`puff_hat_c{1..4}_{rollout_ko,rest_hit}_fd_fox4`) |
 
+The two remaining tests of the grab routine (`ftColl_80078A2C`, port
+`grab::candidate`), read against the asm on 2026-10-03:
+
+- `is_grabbable` (0x80078B7C..0x80078B84, per hurt capsule before
+  `lbColl_80007ECC`): the port honours it, `melee_coll::detection::
+  first_hurt_contact` skips a capsule that is not grabbable for a Catch
+  hitbox (the flag comes from ftData and is clear on Samus's morph-ball
+  capsule and on a fighter held in a mouth or an egg).
+- `lbColl_8000ACFC` (0x80078B5C..0x80078B6C, per catch box before the hurt
+  loop): a box skips a fighter its victim list holds. The list of a Catch
+  hitbox is written in two ways only. The routine itself records the
+  victim on a contact with no wall between (`ftColl_80076808` mode 0,
+  0x80078BDC); the first such contact always becomes `victim_gobj` (x216C
+  starts at F32_MAX), `Fighter_UnkProcessGrab_8006CA5C` runs `grab_cb` on
+  the same tick, and the motion change drops the hitboxes, so that record
+  has no reader. Otherwise a hit or clank of another hitbox of the same
+  group would list the victim (catch boxes themselves neither hit nor
+  clank: 0x80078DA4, 0x80078E58), and no supported character has such a
+  script: a scan of every loaded script of the 20 characters finds Catch
+  hitboxes only in Catch (242), CatchDash (243), Falcon's and Ganondorf's
+  Dive (307) and Yoshi's Egg Lay (295), each with Catch hitboxes alone.
+  The port now makes the same list test, which no scenario can take.
+
 Catch boxes against items (`ftColl_8007BC90`) are not a gap: the item side
 requires `xDD0 b4`, which only stage enemies set. A grabber dying with its
 victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.

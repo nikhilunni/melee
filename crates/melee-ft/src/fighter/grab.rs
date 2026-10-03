@@ -239,6 +239,17 @@ pub fn candidate(
         {
             continue;
         }
+        // lbColl_8000ACFC (retail 0x80078B64): a catch box skips a fighter
+        // its hit group already lists. Only a struck victim of another
+        // hitbox of the group can be listed: catch boxes neither hit nor
+        // clank (0x80078DA4, 0x80078E58), and the record this routine makes
+        // on a contact (ftColl_80076808, 0x80078BDC) is dropped with the
+        // hitboxes when the grab changes the motion on the same tick.
+        if hit.victims.contains(&victim.spawn_number) {
+            continue;
+        }
+        // The hurt capsules are tested in table order, only those with
+        // is_grabbable (0x80078B7C) and enabled (lbColl_80007ECC).
         if victim
             .contact_with_hurtboxes(hit, attacker.player.scale)
             .is_some()
