@@ -46,6 +46,8 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
         }
     }
     // JumpAerialF1..F5 (341..345): the common multijump callbacks.
+    // ftCo_JumpAerialF1_Coll (800D767C) is ft_80082F28, as Pass: no floor
+    // filter, so a multijump lands on a platform even with the stick down.
     i = 0;
     while i < 5 {
         rows[i] = MotionRow {
@@ -53,7 +55,7 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
             animation: FIRST_SUBMOTION + i as i32,
             anim: callbacks::animation::multi_jump,
             physics: callbacks::physics::multi_jump,
-            collision: callbacks::collision::fall,
+            collision: callbacks::collision::pass,
             ..state::COMMON[S::JumpAerialF as usize]
         };
         i += 1;

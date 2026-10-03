@@ -1,0 +1,33 @@
+# Directed witness: Jigglypuff drops to the ground, jumps and multijumps
+# (JumpAerialF1, 341) up past Dream Land's left platform with the stick held
+# down. ftCo_JumpAerialF1_Coll (0x800D767C) is ft_80082F28, which has no
+# platform pass filter: she lands on the platform (soft landing to Wait, tick
+# 231) instead of falling through as Fall would.
+# melee-sim search: reached [p1.motion_id == 341; p1.ground_or_air == 0] at ticks [218, 231].
+name = "jigglypuff_multijump_platform_dl_captainfalcon4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_captainfalcon_jigglypuff4.sav"
+frames = 291
+seed = 1
+stage = "DreamLand"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 136, port = 1, buttons = {  }, raw = {  } },
+  { frame = 192, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 199, port = 1, buttons = {  }, raw = {  } },
+  { frame = 204, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 206, port = 1, buttons = {  }, raw = {  } },
+  { frame = 218, port = 1, buttons = {  }, raw = { stickY = -127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"

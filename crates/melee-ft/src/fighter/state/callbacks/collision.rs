@@ -390,7 +390,8 @@ pub fn fall(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
-/// ftData_MotionStateList: ftCo_MS_Pass (244).
+/// ftData_MotionStateList: ftCo_MS_Pass (244); the multijump states
+/// (ftCo_JumpAerialF1_Coll). ft_80082F28 (80082F28).
 pub fn pass(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     let assets = assets.expect("airborne map needs proc_map_with_assets");

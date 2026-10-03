@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 421] = [
+const MATRIX_WITNESSES: [(&str, usize); 422] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1542,6 +1542,9 @@ const MATRIX_WITNESSES: [(&str, usize); 421] = [
     ("samus_smash_angles_whiff_fd_fox4", 520),
     ("samus_smash_hi_hit_fd_fox4", 260),
     ("samus_smash_lw_hit_fd_fox4", 260),
+    // Jigglypuff's multijump lands on a platform with the stick down:
+    // ftCo_JumpAerialF1_Coll (0x800D767C) is ft_80082F28, no pass filter.
+    ("jigglypuff_multijump_platform_dl_captainfalcon4", 291),
 ];
 
 #[test]
