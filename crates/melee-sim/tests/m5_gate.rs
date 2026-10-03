@@ -73,6 +73,26 @@ fn ko_fd_marth_480_ticks_and_ordered_particle_draws() {
     combat_gate_ticks("ko_fd_marth", 480);
 }
 
+/// Gate every listed scenario with `combat_gate_ticks`, across the
+/// machine's cores: the lists hold hundreds of recordings and one thread
+/// takes minutes. A failing scenario panics its worker with the usual
+/// message and fails the test once the others finish.
+fn gate_in_parallel(scenarios: &[(&str, usize)]) {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let next = AtomicUsize::new(0);
+    let workers = std::thread::available_parallelism().map_or(1, |n| n.get());
+    std::thread::scope(|scope| {
+        for _ in 0..workers.min(scenarios.len()) {
+            scope.spawn(|| {
+                while let Some(&(name, ticks)) = scenarios.get(next.fetch_add(1, Ordering::Relaxed))
+                {
+                    combat_gate_ticks(name, ticks);
+                }
+            });
+        }
+    });
+}
+
 fn combat_gate(name: &str) -> Option<usize> {
     combat_gate_ticks(name, 300)
 }
@@ -1566,9 +1586,7 @@ const MATRIX_WITNESSES: [(&str, usize); 425] = [
 
 #[test]
 fn matrix_witnesses_match_retail() {
-    for (name, ticks) in MATRIX_WITNESSES {
-        combat_gate_ticks(name, ticks);
-    }
+    gate_in_parallel(&MATRIX_WITNESSES);
 }
 
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
@@ -1606,9 +1624,7 @@ const UCF_WITNESSES: [(&str, usize); 23] = [
 
 #[test]
 fn ucf_controller_fix_witnesses_match_retail() {
-    for (name, ticks) in UCF_WITNESSES {
-        combat_gate_ticks(name, ticks);
-    }
+    gate_in_parallel(&UCF_WITNESSES);
 }
 
 /// Slippi replays played back on retail (`harness/slippi_to_scenario.py`):
@@ -2751,9 +2767,7 @@ fn timeout_and_sudden_death_match_retail() {
 
 #[test]
 fn corpus_v2_matches_through_game() {
-    for (name, ticks) in CORPUS_MATCHES {
-        combat_gate_ticks(name, ticks);
-    }
+    gate_in_parallel(&CORPUS_MATCHES);
 }
 
 /// Corpus version 3 (`explore <dir> <count>`, seeds from a xorshift of
@@ -3521,9 +3535,7 @@ const CORPUS_V3_MATCHES: [(&str, usize); 487] = [
 
 #[test]
 fn corpus_v3_matches_retail() {
-    for (name, ticks) in CORPUS_V3_MATCHES {
-        combat_gate_ticks(name, ticks);
-    }
+    gate_in_parallel(&CORPUS_V3_MATCHES);
 }
 
 /// Hits found by tournament replays (Slippi wave). A shield takes a hit
