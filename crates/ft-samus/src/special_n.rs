@@ -384,7 +384,9 @@ fn air_fire_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCh
 }
 
 /// ftSs_SpecialNHold_IASA (80129B1C): a roll (ftCo_8009917C) drops the
-/// shot; otherwise B fires and a shield press cancels.
+/// shot; otherwise B fires and a shield press cancels. The cancel tests the
+/// input proc's shield bit (retail 0x80129BD8: clrrwi. r0, r3, 31), which a
+/// digital shoulder, an analog trigger past the deadzone or Z all set.
 fn hold_input(f: &mut Fighter, p: InputPhase<'_>) {
     if let Some(roll) = f.core.roll_input(p.assets) {
         f.enter_escape(p.assets, roll)
@@ -398,7 +400,7 @@ fn hold_input(f: &mut Fighter, p: InputPhase<'_>) {
         install_damage_callbacks(f);
         return;
     }
-    if pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
+    if pressed.intersects(Buttons::SHIELD) {
         change(f, CANCEL, MotionEntryFlags(0), 0.0, 1.0, p.assets).expect("Charge Shot cancel");
         drop_shot(f);
         install_damage_callbacks(f);

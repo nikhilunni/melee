@@ -1,0 +1,28 @@
+# SAMUS directed witness: a Charge Shot hold (B tapped at tick 100) cancelled
+# by Z (tick 150): the input proc's Z macro sets pressed bit 31, which
+# ftSs_SpecialNHold_IASA tests after B (0x80129BD8), so retail enters
+# SpecialNCancel (345) rather than charging on.
+name = "samus_charge_cancel_z_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

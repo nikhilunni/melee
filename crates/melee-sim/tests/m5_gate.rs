@@ -975,7 +975,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 425] = [
+const MATRIX_WITNESSES: [(&str, usize); 427] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1402,6 +1402,11 @@ const MATRIX_WITNESSES: [(&str, usize); 425] = [
     ("samus_charge_full_fd_fox4", 400),
     ("samus_charge_air_fd_fox4", 300),
     ("samus_charge_cancel_air_fd_fox4", 330),
+    // The hold cancels on the input proc's shield bit, not the digital
+    // shoulders (ftSs_SpecialNHold_IASA 0x80129BD8): an analog-only trigger
+    // or Z.
+    ("samus_charge_cancel_analog_fd_fox4", 300),
+    ("samus_charge_cancel_z_fd_fox4", 300),
     ("samus_charge_roll_fd_fox4", 300),
     ("samus_charge_hit_fd_fox4", 214),
     ("samus_charge_shine_fd_fox4", 398),
