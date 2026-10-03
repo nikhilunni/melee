@@ -293,6 +293,13 @@ fn dtilt_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("dtilt_fd_marth");
 }
 
+// A down tilt repeated out of its own IASA is a new attack instance
+// (callUnk 8008BC00 -> ft_800892A0): the third hit's damage shows two stale entries.
+#[test]
+fn dtilt_repeat_stale_fd_marth_300_ticks_and_ordered_particle_draws() {
+    combat_gate("dtilt_repeat_stale_fd_marth");
+}
+
 #[test]
 fn fsmashcharge_fd_marth_300_ticks_and_ordered_particle_draws() {
     combat_gate("fsmashcharge_fd_marth");

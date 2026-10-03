@@ -1,0 +1,36 @@
+# Marth down tilts four times in a row out of a crouch, each from the last
+# one's IASA (ftCo_AttackLw3_IASA re-enters AttackLw3). Retail's doEnter
+# installs callUnk (0x8008BC00) as x21EC, so every entry takes a new attack
+# instance (ft_800892A0, 0x800892A0) and each hit adds its own stale entry:
+# the damage of each later hit shows one more DownTilt in the stale table.
+# Boundary: idle_fd_marth.sav (P1 at -60 facing right, P2 Fox at +60 facing left, both in Wait); tick clock.
+name = "dtilt_repeat_stale_fd_marth"
+input_clock = "tick"
+savestate = "harness/roms/idle_fd_marth.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 10, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 66, port = 0, buttons = {  }, raw = {  } },
+  { frame = 90, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 98, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 124, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 146, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 148, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 172, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mars"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
