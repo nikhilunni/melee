@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 423] = [
+const MATRIX_WITNESSES: [(&str, usize); 424] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1548,6 +1548,9 @@ const MATRIX_WITNESSES: [(&str, usize); 423] = [
     // Captain Falcon's third jab checks the rapid jab before its interrupt
     // (ftCo_Attack13_IASA, 8008B390): A held from jab 3 enters Attack100Start.
     ("falcon_jab3_rapid_start_fd_captainfalcon_fox4", 420),
+    // An electric phantom (Falco's Reflector glancing a crouching Fox) takes
+    // the electric hitlag scale too (ftColl_8007A06C, 8007AAF4).
+    ("falco_shine_phantom_crouch_start_fd_falco_fox4", 322),
 ];
 
 #[test]

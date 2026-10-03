@@ -101,9 +101,13 @@ impl FighterCore {
     /// keeps the strongest phantom without effects; x18a0 = x187c.
     fn resolve_phantom_log(&mut self, assets: &FighterAssets) {
         self.combat.phantom_knockback = 0.0;
+        self.combat.phantom_electric = false;
         let log = std::mem::take(&mut self.combat.phantom_log);
         if let Some((index, knockback)) = log.strongest(|e| self.logged_knockback(e, assets)) {
             let entry = log.get(index).expect("strongest entry");
+            // retail 8007AAF4: cmplwi element, 2; 8007AB08: stfs x1960.
+            self.combat.phantom_electric =
+                entry.hit.descriptor.element == melee_types::HitElement::Electric;
             self.combat.phantom = Some(PhantomHit {
                 position: entry.position,
                 element: entry.hit.descriptor.element,

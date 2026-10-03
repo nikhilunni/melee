@@ -1,0 +1,32 @@
+# Directed retail witness (melee-sim search, 5616 candidates, 6 reached
+# p1.percent == 4): Falco walks up to a crouching Fox and the Reflector's
+# frame-1 hitbox only glances him (a phantom, ftColl_80076ED8). Resolving the
+# phantom log, ftColl_8007A06C writes the electric hitlag scale (x1960 =
+# PlCo +1A4, retail 8007AAF4..8007AB08) just as for an ordinary hit, so
+# Fox's phantom hitlag is int(int(4/3 + 3) * 1.5) = 6, crouching 4 ticks
+# (ftCommon_CalcHitlag), not 2; the halved 4% lands when that lockout expires
+# (tick 262).
+name = "falco_shine_phantom_crouch_start_fd_falco_fox4"
+savestate = "harness/roms/start_fd_falco_fox4.sav"
+input_clock = "tick"
+frames = 322
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 125, port = 1, buttons = { StickY = -1.0 }, raw = { stickY = -80 } },
+  { frame = 130, port = 0, buttons = { StickX = 0.725 }, raw = { stickX = 58 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 258, port = 0, buttons = { StickY = -1.0, B = true }, raw = { button = 512, stickY = -80 } },
+  { frame = 260, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

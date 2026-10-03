@@ -56,6 +56,10 @@ pub struct CombatState {
     /// dmg.x187c / x18a0: this frame's strongest phantom knockback; nonzero
     /// selects ProcessHit's phantom branch. Cleared by every resolution.
     pub phantom_knockback: f32,
+    /// This frame's strongest phantom contact is electric: ftColl_8007A06C
+    /// (retail 8007AAF4..8007AB08) writes x1960 = PlCo +1A4 for the phantom
+    /// log as well, whatever branch ProcessHit then takes.
+    pub phantom_electric: bool,
     /// dmg.x1870..x1898: the last resolved phantom contact, applied when its
     /// hitlag lockout expires without an ordinary hit (ftColl_8007BE3C).
     pub phantom: Option<PhantomHit>,
@@ -891,7 +895,13 @@ impl Fighter {
         if received_knockback {
             self.core.combat.phantom_lockout = 0.0;
         }
-        let mut hitlag_multiplier = 1.0;
+        // x1960_vibrateMult: 1.0 unless a log resolved this frame chose an
+        // electric hit (fighter.c:3039 resets it after every ProcessHit).
+        let mut hitlag_multiplier = if std::mem::take(&mut self.core.combat.phantom_electric) {
+            assets.damage.electric_hitlag_scale
+        } else {
+            1.0
+        };
         if let Some((damage, direction)) = self.core.combat.shield_pushback.take() {
             if damage != 0.0 {
                 // Fighter_ProcessHit, retail 8006D8D8: fmadds.
