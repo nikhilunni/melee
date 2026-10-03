@@ -422,3 +422,12 @@ players = ["Marth", "Marth"]
 stocks = 4
 seed = 4000242866
 costumes = [0, 1]
+
+[[boundary]]
+name = "start_bf_fox_falco4"
+cold = "start_bf_fox_falco4_cold"
+savestate = "harness/roms/start_bf_fox_falco4.sav"
+stage = "Battlefield"
+players = ["Fox", "Falco"]
+stocks = 4
+seed = 2597788932
