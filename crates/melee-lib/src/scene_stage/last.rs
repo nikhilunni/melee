@@ -103,8 +103,20 @@ pub(crate) fn run_proc(
                 if let Some(object) = objects[usize::from(map)].take() {
                     world.destroy(object);
                 }
-                for joint in 0..state.stage_animations[&map].joint_count() {
-                    state.particles.expire_joint(joint_id(map, joint));
+                // Ground_801C4A08 (0x801C4A08) removes the GObj and its
+                // model but visits no particle generator (no hsd_8039D5DC):
+                // each one holds a reference to its JObj (hsd_8039EFAC), which
+                // survives the model without a parent. The animation proc
+                // dirtied the joint earlier this tick, so the generator's next
+                // update sets its matrix up from the joint's own SRT.
+                let animation = &state.stage_animations[&map];
+                for joint in 0..animation.joint_count() {
+                    let id = joint_id(map, joint);
+                    if state.particles.has_joint_attachment(id) {
+                        let matrix = animation.released_joint_matrix(joint);
+                        state.effects.events.update_joint(id, matrix);
+                        state.particles.update_joint(id, matrix);
+                    }
                 }
             }
             StageAction::PlayAnimation {

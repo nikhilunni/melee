@@ -1699,6 +1699,15 @@ fn hit_out_of_a_ledge_state_starts_the_ledge_cooldown() {
     combat_gate_ticks("ledge_hit_cooldown_fd_marth", 330);
 }
 
+/// Final Destination's whole background cycle and the start of the second
+/// (grLast_8021B920, 0x8021B920): the star field's generators outlive their
+/// map when phase 17 retires it (Ground_801C4A08, tick 13015) and emit from
+/// the orphaned joint for their remaining life.
+#[test]
+fn final_destination_background_cycle_matches_retail() {
+    combat_gate_ticks("fd_background_cycle_marth_marth4", 13600);
+}
+
 /// Battlefield's background swaps (grBattle_BG_Callback2, 0x8021A3BC) run
 /// three full cycles from the start boundary: transition animation, color
 /// overlays, mid-match background creation with its particle keys, and the

@@ -1,0 +1,32 @@
+# FD-BACKGROUND directed witness: Marth vs Marth on Final Destination from the
+# start boundary, nobody pressing anything, through the whole background
+# cycle of grLast's phase controller (grLast_8021AAB0, 0x8021AAB0) and into
+# the second one; the longest earlier recording (match2_fd_foxmarth, 10059
+# ticks) ended in the quake phase.
+# From tick 11155 the star field (map 9) spawns a pair of generators from
+# its joint 3 (30003, 30004; life 60) every 60 ticks.
+# Tick 13015: the pair spawns in the animation proc and, later in the same
+# tick, phase 17 (grLast_8021B920) recreates the layers and retires map 9
+# with Ground_801C4A08 (0x801C4A08). That removes the model, not the
+# generators: the new pair lives out its 60 ticks (two draws a tick),
+# emitting from the orphaned joint, whose matrix is now its own SRT alone
+# (x = -1.7e-5, not the -270.8 it had under its parents).
+# Tick 13075: the second cycle's map-4 generator (30000).
+name = "fd_background_cycle_marth_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_marth_marth4.sav"
+frames = 13600
+seed = 1
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

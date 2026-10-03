@@ -116,6 +116,30 @@ impl BackgroundAnimation {
     pub fn joint_matrix(&mut self, bone: usize) -> hsd_types::Mtx {
         *self.tree.get_mtx(self.joints[bone])
     }
+    /// The matrix of a model bone that outlives its released model because
+    /// a particle generator still references it. HSD_JObjRemoveAll (jobj.c,
+    /// from JObjRelease's release_child) clears the survivor's parent, so the
+    /// HSD_JObjSetupMatrix that hsd_8039D214 (0x8039D214) runs on the dirty
+    /// joint builds its matrix from its own scale, rotation and translation
+    /// alone (HSD_JObjMakeMatrix with no parent and no parent scale).
+    pub fn released_joint_matrix(&self, bone: usize) -> hsd_types::Mtx {
+        use hsd_anim::{jobj::JOBJ_USE_QUATERNION, mtx};
+        let joint = self.tree.get(self.joints[bone]);
+        let mut matrix = joint.mtx;
+        if joint.flags & JOBJ_USE_QUATERNION != 0 {
+            mtx::hsd_mtx_srt_quat(
+                &mut matrix,
+                &joint.scale,
+                &joint.rotate,
+                &joint.translate,
+                None,
+            );
+        } else {
+            let euler = hsd_types::Vec3::new(joint.rotate.x, joint.rotate.y, joint.rotate.z);
+            mtx::hsd_mtx_srt(&mut matrix, &joint.scale, &euler, &joint.translate, None);
+        }
+        matrix
+    }
     pub fn set_joint_scale(&mut self, bone: usize, scale: hsd_types::Vec3) {
         self.tree.set_scale(self.joints[bone], &scale);
     }
