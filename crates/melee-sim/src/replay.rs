@@ -519,7 +519,7 @@ fn cold_boundary(
 /// The recording's spawn rule. Replays before the Gecko code list (3.3) do
 /// not name their codes, so choose among the known discrete rules by the
 /// first frame: a NeutralSpawn table when every leader stands exactly at
-/// its row, otherwise retail. The version that restaggers the entries shows
+/// its row (an Ice Climbers pair: on either side of it), otherwise retail. The version that restaggers the entries shows
 /// in the first leader, which has already left Entry on the first frame (no
 /// other rule enters anyone before the sixth tick), so it has risen off its
 /// row's height. Frame zero's comparison checks the choice; nothing else of
@@ -540,7 +540,23 @@ fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
             };
             // A zero entry delay starts EntryStart on the first tick.
             let entered = table.entry_delay(order) == Some(0);
-            post.position_x.to_bits() == spawn.x.to_bits()
+            // A kind with a second fighter (Ice Climbers) stands each one
+            // off the Player's position along its facing (fighter.c:241,
+            // 0x80067CE8; Popo five units ahead, Nana five behind), so the
+            // pair straddles the row instead of standing on it.
+            let follower = first.ports[port].follower.post.as_ref();
+            let at_row = match follower {
+                None => post.position_x.to_bits() == spawn.x.to_bits(),
+                Some(follower) => {
+                    let (low, high) = if post.position_x < follower.position_x {
+                        (post.position_x, follower.position_x)
+                    } else {
+                        (follower.position_x, post.position_x)
+                    };
+                    low < spawn.x && spawn.x < high
+                }
+            };
+            at_row
                 && post.facing_direction.to_bits() == facing.to_bits()
                 && (post.action_state == entry_start) == entered
                 && (entered || post.position_y.to_bits() == spawn.y.to_bits())

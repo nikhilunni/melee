@@ -389,7 +389,11 @@ four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
   Nth present player at its table row, facing by sign of x. Late-2019 console builds used the
   same table except Dream Land ((-46.6, 37.0), (47.389, 37.0)); April 2019
   builds used retail markers. `melee_lib::slippi::SpawnRule` models these;
-  the runner picks the one the first frame shows exactly.
+  the runner picks the one the first frame shows exactly. An Ice Climbers
+  pair stands on either side of its row (Popo five units ahead of the
+  Player position, Nana five behind: fighter.c:241, 0x80067CE8), so the
+  runner asks only that the row lie between them. One April 2019 console
+  (`FALCO/00_46_28`, Battlefield, ports 1 and 3) already used the table.
 - *Entry delay by spawn order.* `External/NeutralSpawn.asm` from 2019-10-21
   ([1a01aec](https://github.com/project-slippi/slippi-ssbm-asm/commit/1a01aec47d))
   until 2020-01-14
