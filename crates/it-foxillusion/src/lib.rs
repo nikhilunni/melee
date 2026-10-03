@@ -58,6 +58,15 @@ macro_rules! ghost {
                 });
                 item.life_timer = assets.special_attributes[0];
                 item.change_motion(u16::from(item.ground_or_air == GroundOrAir::Air), assets);
+                // it_8029CFF0, retail 0x8029D070: it_80274594 after the
+                // state change. scl takes the owner's model scale
+                // (0x802745C8 fmuls), then it_80275534 (0x80274628) gives
+                // the script's first hitbox x3C, the command size, as its
+                // radius: the 1 / scl of the hitbox command is undone, so
+                // the Phantasm's capsule (scl 1.1) is 1.1 times the
+                // command's in contact tests.
+                let scale = item.scale;
+                item.rescale(scale);
             }
         }
     };

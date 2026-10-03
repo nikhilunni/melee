@@ -108,6 +108,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
                 | "laser_shield_deflect_fd_marth"
                 | "match_fd_foxmarth"
                 | "match2_fd_foxmarth"
+                | "slp_bf_fox_falco_phantasm_t300"
         );
     if compare_items {
         trace::gate_items(&scenario).unwrap();
@@ -3491,4 +3492,13 @@ fn corpus_v3_matches_retail() {
 #[test]
 fn intangible_shield_takes_the_hit() {
     combat_gate_ticks("ledgedash_shield_intangible_fd_falco_fox4", 300);
+}
+
+/// Falco's Phantasm article keeps the command size as its capsule radius at
+/// scl 1.1 (it_8029CFF0's it_80274594, 0x8029D070), which reaches a falling
+/// Fox on its first frame: 300 ticks of a console game (Slippi wave) fed from
+/// a neutral-spawn UCF boundary.
+#[test]
+fn phantasm_capsule_keeps_the_command_size() {
+    combat_gate_ticks("slp_bf_fox_falco_phantasm_t300", 300);
 }
