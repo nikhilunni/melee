@@ -29,6 +29,10 @@ enum Command {
         /// Run a recording made with UCF/Dween without the fix.
         #[arg(long)]
         ignore_controller_fixes: bool,
+        /// The fix UCF ports run (`ucf-0.74`, `ucf-0.8`, `ucf-0.84`, `off`),
+        /// instead of the version dated from the recording.
+        #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
+        controller_fix: Option<melee_lib::ControllerFix>,
     },
     /// Replay every `.slp` under the given paths in parallel and group the
     /// first stops by cause, largest group first.
@@ -44,6 +48,10 @@ enum Command {
         /// Run recordings made with UCF/Dween without the fix.
         #[arg(long)]
         ignore_controller_fixes: bool,
+        /// The fix UCF ports run (`ucf-0.74`, `ucf-0.8`, `ucf-0.84`, `off`),
+        /// instead of the version dated from each recording.
+        #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
+        controller_fix: Option<melee_lib::ControllerFix>,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -163,6 +171,13 @@ enum Command {
     },
 }
 
+fn parse_controller_fix(name: &str) -> Result<melee_lib::ControllerFix, String> {
+    melee_lib::ControllerFix::from_name(name).ok_or_else(|| {
+        let names: Vec<_> = melee_lib::ControllerFix::ALL.iter().map(|(_, n)| *n).collect();
+        format!("unknown controller fix (one of {})", names.join(", "))
+    })
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args.command {
@@ -171,6 +186,7 @@ fn main() -> anyhow::Result<()> {
             all_characters_unlocked,
             boundary_seed,
             ignore_controller_fixes,
+            controller_fix,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
             // reads the main checkout's), as harness/data_root.py.
@@ -185,6 +201,7 @@ fn main() -> anyhow::Result<()> {
                     all_characters_unlocked,
                     boundary_seed,
                     ignore_controller_fixes,
+                    controller_fix,
                 },
             )?;
             println!("{report}");
@@ -199,6 +216,7 @@ fn main() -> anyhow::Result<()> {
             jobs,
             all_characters_unlocked,
             ignore_controller_fixes,
+            controller_fix,
             jsonl,
         } => {
             use melee_sim::replay_batch;
@@ -219,6 +237,7 @@ fn main() -> anyhow::Result<()> {
                     all_characters_unlocked: Some(all_characters_unlocked),
                     boundary_seed: None,
                     ignore_controller_fixes,
+                    controller_fix,
                 },
                 jobs,
             );

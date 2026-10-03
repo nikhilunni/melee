@@ -461,5 +461,10 @@ pad queue at one poll per tick and records `pad_queue_x` and
 (cardinal run, dashback, shield drop, rim-count drop, tumble, SDI, shield SDI,
 squat release).
 
+`melee-sim replay` and `replay-batch` date the UCF version from the recording
+(`ucf_version`); `--controller-fix <off|ucf-0.74|ucf-0.8|ucf-0.84>` names it
+instead for every port recorded with UCF (also for recordings older than
+0.74, which are otherwise refused).
+
 Not ported: the UCF 0.73 beta (`Binary/UCF/Ucf0.73Beta.bin`, a different
 dashback program) and Dween.

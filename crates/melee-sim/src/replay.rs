@@ -18,6 +18,9 @@ pub struct Setup {
     /// Replay a recording made with controller fixes (UCF/Dween) without
     /// them. A divergence may then be the fix's, so reports say so.
     pub ignore_controller_fixes: bool,
+    /// The fix every port recorded with UCF runs, instead of the version
+    /// dated from the recording (Slippi records "UCF", not which one).
+    pub controller_fix: Option<melee_lib::ControllerFix>,
 }
 
 #[derive(Debug)]
@@ -123,7 +126,10 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
             reasons.push(format!("port {} nonstandard fighter rules", port + 1));
         }
         if !setup.ignore_controller_fixes && has_controller_fix(p) {
-            match ucf_version(replay, p) {
+            match ucf_version(replay, p, setup) {
+                Some(melee_lib::ControllerFix::Dween) => {
+                    reasons.push(format!("port {} controller fix Dween", port + 1));
+                }
                 Some(_) => {}
                 None => reasons.push(format!(
                     "port {} controller fix {:?}/{:?} (Dween or pre-0.74 UCF)",
@@ -171,10 +177,18 @@ const POST_FRAME_AT_CAMERA: slp::Version = slp::Version {
 /// recording by its start time against Slippi's code history: 0.74 entered
 /// g_ucf.bin on 2019-10-09, 0.8 on 2021-03-31, 0.84 in 2024-02. Earlier
 /// recordings ran the 0.73 beta (not ported); Dween is not ported.
-fn ucf_version(replay: &Replay, p: &slp::PlayerStart) -> Option<melee_lib::ControllerFix> {
+/// `Setup::controller_fix` names the version instead.
+fn ucf_version(
+    replay: &Replay,
+    p: &slp::PlayerStart,
+    setup: Setup,
+) -> Option<melee_lib::ControllerFix> {
     use melee_lib::ControllerFix;
     if !has_controller_fix(p) {
         return Some(ControllerFix::Off);
+    }
+    if setup.controller_fix.is_some() {
+        return setup.controller_fix;
     }
     if p.dashback_fix != Some(1) || p.shield_drop_fix != Some(1) {
         return None;
@@ -296,7 +310,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         scenario.spawn = spawn_rule(replay);
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
-                let fix = ucf_version(replay, &replay.start.players[port])
+                let fix = ucf_version(replay, &replay.start.players[port], setup)
                     .expect("checked by unsupported_setup");
                 fighter.controller_fix = Some(fix.name().to_string());
             }
