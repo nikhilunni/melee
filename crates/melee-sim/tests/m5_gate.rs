@@ -975,7 +975,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 428] = [
+const MATRIX_WITNESSES: [(&str, usize); 430] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1591,6 +1591,12 @@ const MATRIX_WITNESSES: [(&str, usize); 428] = [
     // A catch box reaching its victim through a wall does not catch
     // (ft_80084CE4): Falcon Dive from under Dream Land's ledge.
     ("falcon_dive_wall_start_dl_captainfalcon_jigglypuff4", 347),
+    // A needle an aerial strikes shows the hit spark (efSync 0x3E8, parented
+    // to the needle, it_80270E30) and is destroyed in the same tick:
+    // Item_8026A8EC's efLib_DestroyAll (0x8005B880) takes the spark's model
+    // and generators before the particle pass.
+    ("sheikzelda_needle_struck_fd_sheik", 233),
+    ("sheikzelda_needle_struck_dair_fd_sheik", 236),
 ];
 
 #[test]

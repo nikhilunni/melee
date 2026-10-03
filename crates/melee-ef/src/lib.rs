@@ -132,6 +132,8 @@ enum HitlagPause {
 enum ModelOwner {
     Fighter(usize),
     Blaster(usize),
+    /// An item's id: the sparks of the hits it took (it_80270E30).
+    Item(u32),
 }
 /// Retail efSync runs at the caller; efAsync drains at fighter link 9.
 #[derive(Clone, Copy)]
@@ -283,6 +285,21 @@ impl Effects {
             }
         }
         self.recycle_where(|e| e.owner == Some(ModelOwner::Blaster(owner)));
+    }
+    /// Item_8026A8EC -> efLib_DestroyAll(item) (0x8005B880, eflib.c:249-279):
+    /// the models whose parent is the item go, each tree walked with
+    /// hsd_8039D688 first, so the spark of a hit that destroys the item
+    /// never emits.
+    pub fn destroy_item_models(&mut self, item: u32, particles: &mut ParticleSystem) {
+        let owned = |e: &Effect| e.owner == Some(ModelOwner::Item(item));
+        for effect in self.instances.iter().filter(|e| owned(e)) {
+            for joint in effect.tree.depth_first(effect.root) {
+                let id = effect.joint_base + joint.0;
+                self.events.expire_joint(id);
+                particles.expire_joint(id);
+            }
+        }
+        self.recycle_where(owned);
     }
     /// Diagnostic matrices; intentionally allocates outside the tick path.
     pub fn matrices(&self) -> BTreeMap<usize, Mtx> {

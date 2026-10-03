@@ -1,0 +1,33 @@
+# SHEIKZELDA directed witness: Sheik taps B (tick 120) and throws one needle;
+# Fox short hops (X at tick 112) and forward airs (tick 140) into it. Tick 153:
+# the aerial's hitbox (aerials do not clank) meets the needle's hurt capsule,
+# so the needle shows the plain hit spark (efSync 0x3E8, a model whose parent
+# is the needle) and, taking damage, is destroyed in the same tick
+# (it_2725_Logic109_DmgReceived, Item_8026A8EC): efLib_DestroyAll takes the
+# spark with it before the particle pass, so its generators never emit.
+name = "sheikzelda_needle_struck_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 233
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 114, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 142, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

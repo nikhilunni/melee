@@ -20,6 +20,7 @@ impl Effects {
     /// One of two spark models at random, scaled by the damage.
     pub fn spawn_item_hit_spark<T: InverseTrig>(
         &mut self,
+        item: u32,
         position: Vec3,
         damage: f32,
         bank: &ParticleBank,
@@ -32,7 +33,8 @@ impl Effects {
         effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
         self.next_joint += effect.tree.len();
         effect.attachment = None;
-        effect.owner = None;
+        // efLib_Create's parent_gobj: the struck item.
+        effect.owner = Some(ModelOwner::Item(item));
         // efAsync_Dispatch, retail 80063A10: fmadds.
         let scale = gekko_math::fma::fmadds(0.04, damage, 0.3).clamp(0.3, 1.5);
         effect
@@ -50,6 +52,7 @@ impl Effects {
     /// round), as on a fighter.
     pub fn spawn_item_slash_spark<T: InverseTrig>(
         &mut self,
+        item: u32,
         position: Vec3,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
@@ -59,7 +62,8 @@ impl Effects {
         effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
         self.next_joint += effect.tree.len();
         effect.attachment = None;
-        effect.owner = None;
+        // efLib_Create's parent_gobj: the struck item.
+        effect.owner = Some(ModelOwner::Item(item));
         self.events.external_randf(0x8006_3b70);
         effect.tree.set_rotation_z(
             effect.root,

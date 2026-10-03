@@ -1,0 +1,31 @@
+# SHEIKZELDA directed witness: Sheik taps B (tick 120) and throws one needle;
+# Fox short hops (X at tick 119) and down airs (tick 149) into it. Tick 156:
+# the aerial strikes the needle's hurt capsule (hit spark 0x3E8 on the
+# needle), the needle is destroyed in the same tick and efLib_DestroyAll
+# takes the spark with it (see sheikzelda_needle_struck_fd_sheik).
+name = "sheikzelda_needle_struck_dair_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 236
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 119, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 121, port = 1, buttons = {  }, raw = {  } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 149, port = 1, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 151, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

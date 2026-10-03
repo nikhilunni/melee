@@ -330,6 +330,7 @@ impl Runtime {
                 match item.events.remove(0) {
                     melee_it::ItemEvent::HitSpark { position, damage } => {
                         state.effects.spawn_item_hit_spark::<RetailTrig>(
+                            item.id,
                             position,
                             damage,
                             &state.assets.common_particle_bank,
@@ -406,6 +407,10 @@ impl Runtime {
                         state
                             .effects
                             .update_item_joint(item.id, matrix, &mut state.particles);
+                        // efLib_DestroyAll: the item's models, then its JObj.
+                        state
+                            .effects
+                            .destroy_item_models(item.id, &mut state.particles);
                         state
                             .effects
                             .expire_item_joint(item.id, &mut state.particles);
@@ -469,6 +474,7 @@ impl Runtime {
                     }
                     melee_it::ItemEvent::SlashSpark { position } => {
                         state.effects.spawn_item_slash_spark::<RetailTrig>(
+                            item.id,
                             position,
                             &state.assets.common_particle_bank,
                             &mut state.particles,
@@ -1983,6 +1989,9 @@ impl Runtime {
         // the article its proc created: the walk leaves the generator
         // insertion cursor at the list's tail, past the new generators.
         if let Some(spawner) = ended_spawner {
+            state
+                .effects
+                .destroy_item_models(spawner, &mut state.particles);
             state.effects.expire_item_joint(spawner, &mut state.particles);
         }
         // Effects a proc spawned after the items it created (their creation
@@ -2066,6 +2075,9 @@ impl Runtime {
             // Item_8026A8EC frees the JObj its generators follow, unless its
             // proc already did (ItemEvent::DestroyEffects).
             if !item.effects_destroyed {
+                state
+                    .effects
+                    .destroy_item_models(item.id, &mut state.particles);
                 state
                     .effects
                     .expire_item_joint(item.id, &mut state.particles);
