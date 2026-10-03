@@ -1,0 +1,30 @@
+# The port's side of slp_ps_falco_marth_ns_t3200: boundary start_ps_slippi8pre_ns_p14_falco3_marth4_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_falco_marth_ns_t3200_cold"
+expected = "slp_ps_falco_marth_ns_t3200"
+frames = 3200
+seed = 4239088384
+boundary_seed = 1786853954
+stage = "PokemonStadium"
+stadium_preload = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Marth"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

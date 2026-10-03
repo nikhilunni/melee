@@ -392,8 +392,20 @@ four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
   the runner picks the one the first frame shows exactly. An Ice Climbers
   pair stands on either side of its row (Popo five units ahead of the
   Player position, Nana five behind: fighter.c:241, 0x80067CE8), so the
-  runner asks only that the row lie between them. One April 2019 console
-  (`FALCO/00_46_28`, Battlefield, ports 1 and 3) already used the table.
+  runner asks only that the row lie between them.
+- *April 2019 consoles* ran Achilles' 20XX Neutral Spawns instead
+  (`Binary/FasterMeleeSettings/20xxNeutralSpawns.bin`, in
+  `console_tournament.json` until b5f06ae; first injection 0x80263058): the
+  two games below show the Nth player on a neutral stage *marker* with Game
+  Start's `spawn_point` holding that order (read from their first frames;
+  the binary's stage table is not decoded). It is not ported as a rule. The runner still
+  finds the placement from frame zero: Battlefield's markers equal the later
+  table's coordinates bit for bit (`FALCO/00_46_28`, ports 1 and 3: the
+  table), and Stadium's neutral markers are markers 0 and 1, so retail
+  markers with the recorded `spawn_point` fit (`FALCO/02_33_48`:
+  (-39.999996, 31.999992), which the table's (-40, 32) does not). A stage
+  whose markers match neither would stop at frame 0 and need the code's
+  marker table decoded from the binary.
 - *Entry delay by spawn order.* `External/NeutralSpawn.asm` from 2019-10-21
   ([1a01aec](https://github.com/project-slippi/slippi-ssbm-asm/commit/1a01aec47d))
   until 2020-01-14
@@ -696,3 +708,31 @@ stream at tick 209 and its fighters near tick 1630, so it says nothing about
 that replay's stop at 1887. Following such a replay needs a boundary whose
 match was created from the replay's Game Start seed, which
 `make_boundary.py` cannot do yet.
+
+## Display passes are not in a replay (2026-10-03)
+
+The magnifier's off-screen flag is set by the display pass (ftLib_80086A8C
+from each fighter's render callback; ifMagnify reads it on the next pass),
+and Fighter_8006A360 counts PlCo +7AC ticks of it before each point of
+damage. Retail does not render after every tick: the tick trace records
+psFrameNum and the port follows it, but a replay has no such field and the
+runner renders every tick. A game can therefore stop on `pN.percent`, one
+point apart, with nothing wrong in the port.
+
+`FALCO/02_33_48 Falco + Marth (PS).slp` does (frame 3042: expected 83.3,
+actual 84.3). Marth's forward smash launches Falco off the right side; with
+the camera shaking, Falco's projected x passes the scissor's right edge
+between ticks 2982 (637.4) and 2983 (658.2), eighteen pixels past it, so
+this is no rounding question. The console's first point of damage comes one
+tick after the port's. Three clocks, three answers:
+
+| Run | First magnifier point (tick) |
+|---|---|
+| Port, a display pass after every tick | 3042 |
+| The console's replay | 3043 |
+| Retail in Dolphin, same inputs (`slp_ps_falco_marth_ns_t3200`; a pass every other tick there) | 3045, and the port gates it exact |
+
+Dropping the one display pass before tick 2983 (or 2984) in the port makes
+the replay match all 11421 frames, seeds included: the console skipped one
+render there. Nothing in the recording says so, and the runner does not
+guess; the stop stays, as an external event like disc latency.

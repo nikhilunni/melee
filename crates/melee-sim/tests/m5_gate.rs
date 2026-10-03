@@ -1650,7 +1650,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 4] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 5] = [
     // Fox's up throw draws its voice in his input proc, ahead of Yoshi's
     // Story's puff timer draw in the same tick (1817).
     ("slp_ys_fox_falco_t1900_cold", 1900),
@@ -1662,6 +1662,10 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 4] = [
     ("slp_bf_marth_peach_t6500_cold", 6500),
     // Pokemon Stadium on ports 1 and 4 up to the first transformation.
     ("slp_ps_fox_falco_t4000_cold", 4000),
+    // A smash launch off Stadium's side shakes the camera; the magnifier's
+    // damage follows retail's display passes (3045, 3105), which the
+    // console's replay (3043) cannot show.
+    ("slp_ps_falco_marth_ns_t3200_cold", 3200),
 ];
 
 #[test]
