@@ -29,8 +29,9 @@ enum Command {
         /// Run a recording made with UCF/Dween without the fix.
         #[arg(long)]
         ignore_controller_fixes: bool,
-        /// The fix UCF ports run (`ucf-0.74`, `ucf-0.8`, `ucf-0.84`, `off`),
-        /// instead of the version dated from the recording.
+        /// The fix UCF ports run (`ucf-0.73`, `ucf-0.74`, `ucf-0.8`,
+        /// `ucf-0.84`, `off`), instead of the version dated from the
+        /// recording (and, where the date allows two, shown by its frames).
         #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
         controller_fix: Option<melee_lib::ControllerFix>,
         /// Instead of comparing, write the replay's setup and per-tick raw
@@ -53,8 +54,9 @@ enum Command {
         /// Run recordings made with UCF/Dween without the fix.
         #[arg(long)]
         ignore_controller_fixes: bool,
-        /// The fix UCF ports run (`ucf-0.74`, `ucf-0.8`, `ucf-0.84`, `off`),
-        /// instead of the version dated from each recording.
+        /// The fix UCF ports run (`ucf-0.73`, `ucf-0.74`, `ucf-0.8`,
+        /// `ucf-0.84`, `off`), instead of the version dated from each
+        /// recording (and, where the date allows two, shown by its frames).
         #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
         controller_fix: Option<melee_lib::ControllerFix>,
         /// Write one JSON object per replay here.

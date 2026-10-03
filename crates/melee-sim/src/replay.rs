@@ -23,6 +23,42 @@ pub struct Setup {
     pub controller_fix: Option<melee_lib::ControllerFix>,
 }
 
+/// The UCF version a recording's ports run and what decided it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FixChoice {
+    pub fix: melee_lib::ControllerFix,
+    pub reason: FixReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FixReason {
+    /// `Setup::controller_fix`.
+    Named,
+    /// The recording's start date against Slippi's code history.
+    Dated,
+    /// The date allows two versions; on this tick their dashbacks first
+    /// disagree and the recorded facing is this version's, not `over`'s.
+    Dashback {
+        tick: u64,
+        over: melee_lib::ControllerFix,
+    },
+}
+
+impl std::fmt::Display for FixChoice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.fix.name())?;
+        match self.reason {
+            FixReason::Named => write!(f, " (named)"),
+            FixReason::Dated => write!(f, " (by date)"),
+            FixReason::Dashback { tick, over } => write!(
+                f,
+                " (not {}: the recorded facing at tick {tick}, the first dashback they disagree on)",
+                over.name()
+            ),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Stop {
     Complete,
@@ -48,6 +84,8 @@ pub struct Report {
     pub matched: usize,
     /// Controller fixes the recording had and the run ignored.
     pub ignored_fixes: bool,
+    /// The UCF version the recording's UCF ports ran in this comparison.
+    pub controller_fix: Option<FixChoice>,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
@@ -58,6 +96,9 @@ pub struct Report {
 impl std::fmt::Display for Report {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}; {}", self.stage, self.players.join(", "))?;
+        if let Some(choice) = &self.controller_fix {
+            writeln!(f, "controller fix {choice}")?;
+        }
         writeln!(
             f,
             "{} / {} replay frames matched{}",
@@ -132,7 +173,7 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
                 }
                 Some(_) => {}
                 None => reasons.push(format!(
-                    "port {} controller fix {:?}/{:?} (Dween or pre-0.74 UCF)",
+                    "port {} controller fix {:?}/{:?} (Dween, or UCF without a start date)",
                     port + 1,
                     p.dashback_fix,
                     p.shield_drop_fix
@@ -184,11 +225,48 @@ const STADIUM_PRELOAD: slp::Version = slp::Version {
     build: 0,
 };
 
+/// The first day a Slippi output carried UCF 0.74: the Dolphin code lists
+/// and the console toggle set `g_toggles.bin` (slippi-ssbm-asm acc6f71).
+const UCF_074_FIRST_BUILT: &str = "2019-09-24";
+/// The day 0.74 replaced `Binary/UCF/Ucf0.73Beta.bin` in the console's
+/// `g_ucf.bin` (823067b).
+const UCF_074_CONSOLE: &str = "2019-10-09";
+/// The day 0.8 replaced 0.74 (bb86519).
+const UCF_080: &str = "2021-03-31";
+/// 0.84 (422bb78 and the console set that followed).
+const UCF_084: &str = "2024-02-01";
+
+/// The UCF versions a recording started on `day` can have run: the one
+/// Slippi's build of that day installed and, where setups are known to have
+/// run another, that one too. Consoles kept old builds: one recorded with
+/// the 0.73 beta on 2020-02-08 (`11_12_26 Marth + Peach (BF)`, the dashback
+/// at tick 7087), as others kept 2019's spawn code into March 2020.
+fn ucf_by_date(day: &str) -> (melee_lib::ControllerFix, Option<melee_lib::ControllerFix>) {
+    use melee_lib::ControllerFix::{Ucf073, Ucf074, Ucf080, Ucf084};
+    match day {
+        d if d < UCF_074_FIRST_BUILT => (Ucf073, None),
+        d if d < UCF_074_CONSOLE => (Ucf073, Some(Ucf074)),
+        d if d < UCF_080 => (Ucf074, Some(Ucf073)),
+        d if d < UCF_084 => (Ucf080, None),
+        _ => (Ucf084, None),
+    }
+}
+
+/// The recording's start day, `YYYY-MM-DD`.
+fn start_day(replay: &Replay) -> Option<&str> {
+    replay
+        .metadata
+        .as_ref()
+        .and_then(|m| m.get("startAt"))
+        .and_then(|s| s.as_str())?
+        .get(..10)
+}
+
 /// The UCF version a UCF port ran. Slippi records only "UCF", so date the
-/// recording by its start time against Slippi's code history: 0.74 entered
-/// g_ucf.bin on 2019-10-09, 0.8 on 2021-03-31, 0.84 in 2024-02. Earlier
-/// recordings ran the 0.73 beta (not ported); Dween is not ported.
-/// `Setup::controller_fix` names the version instead.
+/// recording by its start time against Slippi's code history
+/// ([`ucf_by_date`]); [`resolve_controller_fix`] settles a date with two
+/// candidates. Dween is not ported. `Setup::controller_fix` names the
+/// version instead.
 fn ucf_version(
     replay: &Replay,
     p: &slp::PlayerStart,
@@ -201,20 +279,183 @@ fn ucf_version(
     if setup.controller_fix.is_some() {
         return setup.controller_fix;
     }
-    if p.dashback_fix != Some(1) || p.shield_drop_fix != Some(1) {
+    if !is_ucf(p) {
         return None;
     }
-    let date = replay
-        .metadata
-        .as_ref()
-        .and_then(|m| m.get("startAt"))
-        .and_then(|s| s.as_str())?;
-    let day = date.get(..10)?;
-    match day {
-        d if d < "2019-10-09" => None,
-        d if d < "2021-03-31" => Some(ControllerFix::Ucf074),
-        d if d < "2024-02-01" => Some(ControllerFix::Ucf080),
-        _ => Some(ControllerFix::Ucf084),
+    Some(ucf_by_date(start_day(replay)?).0)
+}
+
+/// Game Start's UCF: both the dashback and shield drop fields are 1.
+fn is_ucf(p: &slp::PlayerStart) -> bool {
+    p.dashback_fix == Some(1) && p.shield_drop_fix == Some(1)
+}
+
+/// Name the UCF version for a recording whose date allows two.
+///
+/// The two dashbacks differ in one case (0.74 smash turns on a full stick
+/// either way, 0.73 only toward the turn), and until a game reaches it the
+/// versions compute the same match. So run the port under both in step, from
+/// the recorded inputs alone; on the first tick a UCF port's facing differs
+/// between them, the recorded facing is one version's. That version then
+/// runs the comparison (every frame, from the start). A game the versions
+/// never disagree on keeps the dated one.
+pub fn resolve_controller_fix(
+    replay: &Replay,
+    root: &Path,
+    setup: Setup,
+) -> (Setup, Option<FixChoice>) {
+    let ucf_ports = || {
+        replay
+            .leader_ports()
+            .map(|port| &replay.start.players[port])
+    };
+    if setup.ignore_controller_fixes || !ucf_ports().any(is_ucf) {
+        return (setup, None);
+    }
+    if let Some(fix) = setup.controller_fix {
+        let reason = FixReason::Named;
+        return (setup, Some(FixChoice { fix, reason }));
+    }
+    let Some((dated, other)) = start_day(replay).map(ucf_by_date) else {
+        return (setup, None);
+    };
+    let named = |fix| Setup {
+        controller_fix: Some(fix),
+        ..setup
+    };
+    let mut choice = FixChoice {
+        fix: dated,
+        reason: FixReason::Dated,
+    };
+    if let Some(other) = other.filter(|_| unsupported_setup(replay, named(dated)).is_empty()) {
+        // An unported boundary or setup error before any disagreement
+        // leaves the dated version; the comparison run reports it.
+        let probe = catch_unwind(AssertUnwindSafe(|| {
+            first_facing_disagreement(replay, root, named(dated), named(other))
+        }));
+        if let Ok(Ok(Some(disagreement))) = probe {
+            let (fix, over) = if disagreement.recorded_is_second {
+                (other, dated)
+            } else {
+                (dated, other)
+            };
+            let tick = disagreement.tick;
+            choice = FixChoice {
+                fix,
+                reason: FixReason::Dashback { tick, over },
+            };
+        }
+    }
+    (named(choice.fix), Some(choice))
+}
+
+/// The first tick two setups' runs differ in a UCF leader's facing.
+struct FacingDisagreement {
+    tick: u64,
+    /// The recorded facing is the second run's, not the first's.
+    recorded_is_second: bool,
+}
+
+/// Run the replay's inputs under two setups in step, up to the first tick
+/// any compared field differs between them. `None` unless a UCF leader's
+/// `facing_dir` is among what differs there (a dashback's first effect).
+fn first_facing_disagreement(
+    replay: &Replay,
+    root: &Path,
+    first: Setup,
+    second: Setup,
+) -> Result<Option<FacingDisagreement>> {
+    let mut first = ColdRun::start(replay, &cold_scenario(replay, root, first)?)?;
+    let mut second = ColdRun::start(replay, &cold_scenario(replay, root, second)?)?;
+    let leaders: Vec<usize> = replay.leader_ports().collect();
+    let last_tick = first.unavailable.as_ref().map(|(tick, _)| *tick);
+    for expected in slp::to_trace(replay) {
+        if last_tick == Some(expected.frame) {
+            break;
+        }
+        let frame = &replay.frames[&(expected.frame as i32 + slp::SLIPPI_FIRST_FRAME)];
+        let tick = |run: &mut ColdRun| -> Result<Record> {
+            let record = run.simulation.tick()?;
+            let record = run.simulation.after_map_record(&record).unwrap_or(record);
+            Ok(by_leader(&record, &leaders, frame, expected.frame))
+        };
+        let (a, b) = (tick(&mut first)?, tick(&mut second)?);
+        if expected
+            .state
+            .keys()
+            .all(|key| a.state.get(key) == b.state.get(key))
+        {
+            continue;
+        }
+        return Ok(leaders.iter().enumerate().find_map(|(index, &port)| {
+            let key = format!("p{index}.facing_dir");
+            let (a, b) = (a.state.get(&key), b.state.get(&key));
+            (is_ucf(&replay.start.players[port]) && a != b).then(|| FacingDisagreement {
+                tick: expected.frame,
+                recorded_is_second: expected.state.get(&key) == b,
+            })
+        }));
+    }
+    Ok(None)
+}
+
+/// A replay's cold simulation, before its first compared tick.
+struct ColdRun {
+    simulation: Simulation,
+    /// Observation zero: a reset store, not Slippi frame -123.
+    initial: Record,
+    /// The first tick whose recorded controller cannot be installed. A bad
+    /// late controller field must not discard an already comparable prefix,
+    /// and no guessed pads stand in for it.
+    unavailable: Option<(u64, String)>,
+}
+
+impl ColdRun {
+    fn start(replay: &Replay, scenario: &Scenario) -> Result<Self> {
+        let unavailable = scenario.replay_inputs.iter().find_map(|input| {
+            crate::inputs::replay_pad(input)
+                .err()
+                .map(|error| (input.frame, format!("port {}: {error}", input.port + 1)))
+        });
+        let pad_frames = unavailable
+            .as_ref()
+            .map_or(scenario.frames, |(frame, _)| *frame);
+        let prefix: Vec<_> = scenario
+            .replay_inputs
+            .iter()
+            .filter(|input| input.frame < pad_frames)
+            .cloned()
+            .collect();
+        let pads = crate::inputs::PadScript::from_replay_inputs(
+            &prefix,
+            pad_frames as usize,
+            &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
+        )?;
+        let mut simulation =
+            Simulation::with_inputs(InitialState::from_parameters(scenario)?, pads);
+        let initial = simulation.tick()?;
+        if let Some(seed) = replay
+            .frames
+            .values()
+            .next()
+            .and_then(slp::Frame::scheduler_start_seed)
+        {
+            ensure!(
+                initial.state["rng.seed"] == melee_diff::Value::UInt(u64::from(seed)),
+                "boundary seed does not reach first Frame Start"
+            );
+        }
+        // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of
+        // each fighter's map proc (Fighter_8006C27C, s_link 6), before hit
+        // detection and damage; 3.4.0 moved it to 0x8006DA34 in the camera
+        // proc (s_link 18), after the fighter procs the trace reads
+        // (slippi-ssbm-asm 9398d52).
+        simulation.capture_after_map(replay.version() < POST_FRAME_AT_CAMERA);
+        Ok(Self {
+            simulation,
+            initial,
+            unavailable,
+        })
     }
 }
 
@@ -358,6 +599,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         !replay.incomplete && !replay.frames.is_empty(),
         "incomplete or empty replay"
     );
+    let (setup, controller_fix) = resolve_controller_fix(replay, root, setup);
     let mut report = Report {
         stage: slp::ids::stage_name(replay.start.stage)
             .unwrap_or("unknown")
@@ -383,6 +625,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
             && replay
                 .leader_ports()
                 .any(|port| has_controller_fix(&replay.start.players[port])),
+        controller_fix,
         context: String::new(),
         differing: Vec::new(),
         stop: Stop::Complete,
@@ -399,48 +642,13 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
             return Ok(report);
         }
     };
-    // A bad late controller field must not discard an already comparable
-    // prefix. Do not install guessed pads for the unavailable tick.
-    let unavailable = scenario.replay_inputs.iter().find_map(|input| {
-        crate::inputs::replay_pad(input)
-            .err()
-            .map(|error| (input.frame, format!("port {}: {error}", input.port + 1)))
-    });
-    let pad_frames = unavailable
-        .as_ref()
-        .map_or(scenario.frames, |(frame, _)| *frame);
-    let prefix: Vec<_> = scenario
-        .replay_inputs
-        .iter()
-        .filter(|input| input.frame < pad_frames)
-        .cloned()
-        .collect();
-    let pads = crate::inputs::PadScript::from_replay_inputs(
-        &prefix,
-        pad_frames as usize,
-        &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
-    )?;
-    let mut simulation = Simulation::with_inputs(InitialState::from_parameters(&scenario)?, pads);
-    // Observation zero is a reset store, not Slippi frame -123.
-    let initial = simulation.tick()?;
-    if let Some(seed) = replay
-        .frames
-        .values()
-        .next()
-        .and_then(slp::Frame::scheduler_start_seed)
-    {
-        ensure!(
-            initial.state["rng.seed"] == melee_diff::Value::UInt(u64::from(seed)),
-            "boundary seed does not reach first Frame Start"
-        );
-    }
+    let ColdRun {
+        mut simulation,
+        initial,
+        unavailable,
+    } = ColdRun::start(replay, &scenario)?;
     let leaders: Vec<usize> = replay.leader_ports().collect();
     let mut previous_seed = seed_of(&initial);
-    // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of each
-    // fighter's map proc (Fighter_8006C27C, s_link 6), before hit detection
-    // and damage; 3.4.0 moved it to 0x8006DA34 in the camera proc (s_link
-    // 18), after the fighter procs the trace reads (slippi-ssbm-asm 9398d52).
-    simulation.capture_after_map(replay.version() < POST_FRAME_AT_CAMERA);
     for expected in slp::to_trace(replay) {
         if let Some((tick, reason)) = &unavailable {
             if *tick == expected.frame {
@@ -649,6 +857,7 @@ pub fn write_retail_inputs(
     setup: Setup,
     mut out: impl std::io::Write,
 ) -> Result<()> {
+    let (setup, _) = resolve_controller_fix(replay, root, setup);
     let scenario = cold_scenario(replay, root, setup)?;
     let players: Vec<_> = scenario
         .fighters
@@ -727,4 +936,30 @@ fn action_name(id: u16) -> String {
     melee_types::CommonMotionState::try_from(i32::from(id))
         .map(|state| format!("{state:?} ({id})"))
         .unwrap_or_else(|_| format!("character action {id}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use melee_lib::ControllerFix::{Ucf073, Ucf074, Ucf080, Ucf084};
+
+    #[test]
+    fn ucf_version_follows_slippi_code_history() {
+        // (start day, the build's version, the other a setup may have run)
+        for (day, dated, other) in [
+            ("2019-04-20", Ucf073, None),
+            ("2019-09-23", Ucf073, None),
+            // 0.74 reached Dolphin and the toggle set, then the console.
+            ("2019-09-24", Ucf073, Some(Ucf074)),
+            ("2019-10-08", Ucf073, Some(Ucf074)),
+            ("2019-10-09", Ucf074, Some(Ucf073)),
+            ("2020-02-08", Ucf074, Some(Ucf073)),
+            ("2021-03-30", Ucf074, Some(Ucf073)),
+            ("2021-03-31", Ucf080, None),
+            ("2024-01-31", Ucf080, None),
+            ("2024-02-01", Ucf084, None),
+        ] {
+            assert_eq!(ucf_by_date(day), (dated, other), "{day}");
+        }
+    }
 }

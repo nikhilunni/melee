@@ -426,13 +426,14 @@ preload and Frozen Stadium codes are (below).
 Tournament replays ran the Universal Controller Fix Gecko codes (Game Start
 `dashback_fix`/`shield_drop_fix` = 1). The port carries them as a per-port
 `ControllerFix` (`melee_ft::input::controller_fix`, re-exported by
-`melee-lib`): `Off`, `Ucf074`, `Ucf080`, `Ucf084`, and `Dween`, which match
-setup refuses with the reason. Slippi does not record the UCF version; the
-caller chooses it (0.74 for 2019-2020 console builds, 0.8 from 2021, 0.84
-from 2024).
+`melee-lib`): `Off`, `Ucf073`, `Ucf074`, `Ucf080`, `Ucf084`, and `Dween`,
+which match setup refuses with the reason. Slippi does not record the UCF
+version; the caller chooses it (the 0.73 beta until October 2019, 0.74 for
+2019-2020 console builds, 0.8 from 2021, 0.84 from 2024).
 
 | Version | Slippi source (logic ported, not copied; GPL-3) | Hook |
 |---|---|---|
+| 0.73 beta | `Binary/UCF/Ucf0.73Beta.bin` (machine code; removed from the tree in 87ae36e) | 0x800C9A44: as 0.74, but the stick must point toward the turn; 0x800998A4: as 0.74 |
 | 0.74, 0.8 | `External/UCF 0.74/UCF DB.asm`, `External/UCF 0.8/Logic/UCF DB.asm` | 0x800C9A44, ftCo_Turn_IASA's first flip: slow turn to smash turn; Popo also rewrites Nana's newest follow sample |
 | 0.74, 0.8 | `.../UCF SD.asm` | 0x800998A4, ftCo_80099894: refuse a rim-angled spot dodge so the shield drops |
 | 0.8 | `External/UCF 0.8/Logic/UCF Tumble.asm` | 0x800908F4, ftCo_DamageFall_IASA's wiggle age |
@@ -442,8 +443,9 @@ from 2024).
 | 0.84 | `UCF SDI.asm`, `UCF Shield SDI.asm` | 0x8008E54C / 0x80093294: a raw jump over 62 from inside the SDI radius SDIs |
 | 0.84 | `UCF DBOOC SquatRv Fix.asm` | 0x800D65EC: a fresh x tap on the rim lowers the squat release line to 0.59 |
 
-The 0.74 and 0.8 dashback and shield-drop programs are identical; 0.84 ships
-as machine code only and is ported from its disassembly. The 0.74/0.8 codes
+The 0.74 and 0.8 dashback and shield-drop programs are identical (checked
+on the machine code, below); 0.73 and 0.84 ship as machine code only and are
+ported from their disassembly. The 0.73/0.74/0.8 codes
 read the hardware pad queue (raw `PADStatus.stickX` now and two ticks ago,
 before HSD's clamp), which the engine models as one poll per tick or takes
 verbatim from a recording (`Simulation::set_recorded_pad_queue_x`). 0.84's
@@ -476,12 +478,81 @@ pad queue at one poll per tick and records `pad_queue_x` and
 squat release).
 
 `melee-sim replay` and `replay-batch` date the UCF version from the recording
-(`ucf_version`); `--controller-fix <off|ucf-0.74|ucf-0.8|ucf-0.84>` names it
-instead for every port recorded with UCF (also for recordings older than
-0.74, which are otherwise refused).
+(`ucf_by_date`) and, where the date allows two, read it from the frames
+(below); `--controller-fix <off|ucf-0.73|ucf-0.74|ucf-0.8|ucf-0.84>` names
+it instead for every port recorded with UCF. The report's `controller fix`
+line says which version ran and why.
 
-Not ported: the UCF 0.73 beta (`Binary/UCF/Ucf0.73Beta.bin`, a different
-dashback program) and Dween.
+Not ported: Dween, and the 0.74 shield drop without the truncation that
+Slippi's Dolphin lists and `g_toggles.bin` carried for one week (acc6f71,
+2019-09-24, to 4062e22, 2019-10-01).
+
+### The UCF 0.73 beta and which version a recording ran (2026-10-03)
+
+Slippi's console set installed `Ucf0.73Beta.bin` as `g_ucf.bin` until
+823067b (2019-10-09); the Dolphin lists and the console toggle set carried
+the same program as source (`External/UCF + Arduino Toggle UI/UCF/UCF 0.73
+{Dashback,Shield Drop} - Check for Toggle.asm`) until acc6f71 (2019-09-24).
+`melee_ft::input::controller_fix::ucf073` ports the binary:
+
+| | 0.73 beta | 0.74 / 0.8 |
+|---|---|---|
+| Turn's second frame | high half of the script frame, `lhz 0x3E8(fp)` = 0x4000 (CommandInfo frame_count; equal to the animation frame in Turn, ftAction_80073240 having just sampled it) | `cur_anim_frame` (+0x894) = 2.0 |
+| Stick | `stick.x * mv.co.turn.facing_after` (+0x2344) >= PlCo+0x3C: **toward the turn** | `fabs(stick.x)` >= PlCo+0x3C: either way |
+| Pad queue column | fp+0xC (slot) | fp+0x618 (port); the same for a human |
+| Popo's partner | `gobj->next_gx` (+0x10): Nana, created right after Popo on the fighters' GX link (Player_80031AD0), never relinked | Player_GetEntityAtIndex(slot, 1) |
+| Shield drop's lower limit | `-PlCo+0x2C` (the fast walk threshold, 0.8) | the literal -0.8 |
+
+So the versions differ in one case: a slow turn whose stick, on the second
+frame, is a full fresh tap back toward the old facing. 0.74 makes it a smash
+turn (the facing flips at once, no dash, since the stick is not toward the
+new facing); 0.73 leaves the slow turn. The shield drops compute the same
+result.
+
+The claim that 0.74 and 0.8 are one program was checked on the machine code:
+the 0x800C9A44 and 0x800998A4 blocks of `g_ucf.bin` are byte-identical at
+823067b (0.74, 2019-10-09), bb86519 (0.8, 2021-03-31) and 14b0f39; b89e160 /
+d43a2a6 (2019-11-03) add only the per-port toggle test in front, and the
+2022 text output differs only in the `backup` macro's stack frame.
+
+**Version by recording.** `ucf_by_date`: before 2019-09-24 only 0.73 existed
+in any Slippi output; from 2021-03-31 0.8; from 2024-02 0.84. In between a
+setup ran 0.73 or 0.74, and the date does not settle it: consoles kept old
+builds (`MARTH/11_12_26 Marth + Peach (BF).slp`, 2020-02-08, ran 0.73, as
+other consoles kept 2019's spawn code into March 2020). The replay's Slippi
+version does not help either (every game in this corpus says 2.0.1). So
+`resolve_controller_fix` reads it from the frames, between those two known
+versions only: it runs the port under both in step from the recorded inputs
+(no recorded state enters either run); the two compute the same match until
+a dashback they disagree on, and on that tick the recorded facing is one
+version's. That version then runs the whole comparison from the first frame.
+A game with no such dashback keeps the dated version (0.74 from 2019-10-09,
+the console set's date), and nothing distinguishes the two for it.
+
+**Witnesses** (`UCF_WITNESSES`), recorded with the Gecko codes `ucf-0.73`
+(`git show 823067b^:Binary/UCF/Ucf0.73Beta.bin`) and `ucf-0.74`
+(`git show b89e160^:Output/Console/g_ucf.bin`) in `MELEE_GECKO_DIR`, all
+exact with 0 differing particle-site ticks:
+
+| Scenario | Retail |
+|---|---|
+| `ucf_dashback_fd_fox_ucf073` | stick toward the turn: Dash at tick 121, as 0.74 |
+| `ucf_dashback_away_fd_fox_ucf073` | stick -40 then +80: Fox still faces right at tick 121; the slow turn flips him at 125 |
+| `ucf_dashback_away_fd_fox_ucf074`, `..._ucf08` | the same pads: Fox faces left from tick 121 |
+| `ucf_dashback_fd_iceclimbers_ucf073` | Popo's smash turn rewrites Nana's newest follow sample through the GX link; she dashes at 126 |
+| `ucf_shielddrop_bf_fox_ucf073` | the rim notch drops through the platform at tick 136, as 0.74 |
+
+**Corpus** (108 games; `replay-batch`, no flag): 85 match to the last
+frame (41 before, when the 57 games older than 2019-10-09 were refused; 81
+with every game forced to 0.74), and no game matches fewer frames, with or
+without `--controller-fix ucf-0.74`. Forced to 0.73 the result is the same
+85. Four games reach a dashback the versions disagree on, and all four show
+0.73: three from 2019 (`FOX/11_41_27` tick 1637, `FOX/12_39_37` tick 2522,
+`FALCO/12_47_36` tick 3630, each a facing the port's 0.74 had flipped) and
+`MARTH/11_12_26` (2020-02-08, tick 7087). Of the 50 games from 2019-10-09 on,
+that one is the only one with such a dashback, so no game in this corpus
+shows 0.74 itself: the other 49 match under either version as far as they
+match at all.
 
 ## Pokémon Stadium codes, 2026-10-03
 
@@ -603,10 +674,12 @@ the replay shows DamageFlyRoll, the preload's earlier form draw having moved
 every later draw by one. With `stadium_preload` the replay itself matches to
 its last frame.
 
-The Marth and Peach replay now stops at tick 7087 on Peach's facing in Turn:
-retail with UCF 0.8 has flipped it by then, as the port has
+The Marth and Peach replay then stopped at tick 7087 on Peach's facing in
+Turn: retail with UCF 0.8 has flipped it by then, as the port had
 (`slp_bf_marth_peach_t7300`, a tick-trace probe in the local data, exact to
-7300); the console had not.
+7300); the console had not, because it ran the UCF 0.73 beta ("The UCF 0.73
+beta and which version a recording ran" above). With 0.73 the replay matches
+to its last frame.
 
 A bridge on Final Destination does not keep the replay's random stream. The
 background's two accelerations (grLast_8021AC30, four draws) are drawn at
