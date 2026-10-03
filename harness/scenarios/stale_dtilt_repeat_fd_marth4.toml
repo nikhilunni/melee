@@ -1,0 +1,68 @@
+# Stale moves: a down tilt repeated out of a down tilt is a new attack instance.
+# Marth crouches and repeats down tilt (AttackLw3 re-entered from its own Anim
+# latch, never leaving motion 57) while Fox walks into it. Retail gives every
+# repeat its own stale entry (doEnter 8008BC70 installs x21EC = 8008BC00 ->
+# ft_800892A0), so the hits do 9, 8.19 (0.91), 6.64 (8 x 0.83), 6.08 (0.76),
+# 5.6, 5.2, 4.88.
+name = "stale_dtilt_repeat_fd_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_marth4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 140, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 142, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 152, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 154, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 164, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 166, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 176, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 178, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 188, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 190, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 202, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 212, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 214, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 224, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 226, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 236, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 238, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 248, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 250, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 262, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 272, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 274, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 284, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 286, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 296, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 298, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 308, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 310, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 320, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 322, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 332, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 334, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 344, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 346, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 356, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 358, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 368, port = 0, buttons = {  }, raw = { stickY = -127, button = 256 } },
+  { frame = 370, port = 0, buttons = {  }, raw = { stickY = -127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

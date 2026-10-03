@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 412] = [
+const MATRIX_WITNESSES: [(&str, usize); 413] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1522,6 +1522,9 @@ const MATRIX_WITNESSES: [(&str, usize); 412] = [
     ("link_x_ec13743d5_p0", 365),
     ("link_x_e89a89d0e_p2", 326),
     ("link_x_e50f774a0_p2", 340),
+    // Stale moves: a down tilt repeated out of a down tilt is a new attack
+    // instance (x21EC = 8008BC00 -> ft_800892A0), one stale entry per hit.
+    ("stale_dtilt_repeat_fd_marth4", 400),
 ];
 
 #[test]

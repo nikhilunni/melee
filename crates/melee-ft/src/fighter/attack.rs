@@ -285,6 +285,14 @@ impl Fighter {
         }
         self.core.commands.allow_interrupt = false;
         self.core.commands.variables[0] = 0;
+        if state == S::AttackLw3 {
+            // doEnter (8008BC70) installs x21EC = callUnk (8008BC00), which
+            // this state change runs (retail 0x8008BC14: bl ft_800892A0): a
+            // new attack instance, so a down tilt repeated out of a down
+            // tilt takes its own stale entry (ft_800890D0 alone keeps the
+            // instance while the move id is unchanged).
+            self.core.combat.stale.new_instance();
+        }
         // AttackHi4, AttackLw4 and AttackHi3 write no mv field (AttackLw3
         // and AttackDash only +2340), so mv+4 stays the predecessor's.
         let retained_word = self.inherited_scratch_word();
