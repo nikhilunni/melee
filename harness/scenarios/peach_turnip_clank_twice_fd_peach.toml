@@ -1,0 +1,41 @@
+# Item-on-item clank memory (it_8026FE68): the two Peaches run through each
+# other and stop back to back at x = +-3.7, each pulls a turnip (tick 175)
+# and both throw upward at the same tick (230). The turnips leave the hands
+# 5.65 apart with the same velocity and clank at once (tick 240). Each side
+# records the other in mode 4, since the turnip's hitbox has x41_b5 (retail
+# 0x8026FEFC / 0x8027006C), with its rehit timer of 16: retail forgets the
+# other turnip when the timer runs out, so they clank again at tick 256 and
+# every 16 ticks after, each clank popping both upward (clank spark 0x41C).
+# From the start_fd_peach_peach4 boundary.
+name = "peach_turnip_clank_twice_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_peach4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 104, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 148, port = 0, buttons = {  }, raw = {  } },
+  { frame = 148, port = 1, buttons = {  }, raw = {  } },
+  { frame = 175, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 175, port = 1, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 177, port = 0, buttons = {  }, raw = {  } },
+  { frame = 177, port = 1, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 230, port = 1, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 232, port = 0, buttons = {  }, raw = {  } },
+  { frame = 232, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+controller = "scripted"

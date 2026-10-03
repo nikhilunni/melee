@@ -431,3 +431,13 @@ stage = "Battlefield"
 players = ["Fox", "Falco"]
 stocks = 4
 seed = 2597788932
+
+[[boundary]]
+name = "start_fd_peach_peach4"
+cold = "start_fd_peach_peach4_cold"
+savestate = "harness/roms/start_fd_peach_peach4.sav"
+stage = "FinalDestination"
+players = ["Peach", "Peach"]
+stocks = 4
+seed = 1117749374
+costumes = [0, 1]

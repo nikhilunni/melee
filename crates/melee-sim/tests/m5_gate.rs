@@ -975,7 +975,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 427] = [
+const MATRIX_WITNESSES: [(&str, usize); 428] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1198,6 +1198,10 @@ const MATRIX_WITNESSES: [(&str, usize); 427] = [
     ("peach3_turnip_floor", 260),
     ("peach3_turnip_air_downb", 320),
     ("peach3_turnip_shield", 300),
+    // Two turnips thrown up side by side clank, forget each other when the
+    // rehit timer runs out and clank again every 16 ticks (it_8026FE68's
+    // mode 4, 0x8026FEFC / 0x8027006C).
+    ("peach_turnip_clank_twice_fd_peach", 400),
     // Vegetable's rare pull (pickVeg): an unlit Bob-omb in hand (state 7 at
     // attribute x0's rate), thrown into Fox (state 9, DmgDealt explosion)
     // and dropped in the air to a hard landing (fn_80280974 detonation).

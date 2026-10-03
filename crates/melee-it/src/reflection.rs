@@ -32,6 +32,8 @@ impl ItemCore {
     /// fighter's hitbox (retail 0x80077B8C..0x80077BB4): 4 (a rehit timer)
     /// when hitbox `id`'s x41_b5 is set, else 3. A timed record lets the
     /// item clank with that fighter again once the timer runs out.
+    /// it_8026FE68 picks the mode the same way for a clank against another
+    /// item's hitbox (retail 0x8026FEFC / 0x8027006C).
     pub fn record_clank_victim(&mut self, id: usize, group: u8, victim: u32) {
         self.record_fighter_victim(id, group, victim);
     }

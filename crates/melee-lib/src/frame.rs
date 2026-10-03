@@ -3435,7 +3435,7 @@ fn item_clank(
         0.5 * (other_point.z + victim_point.z),
     );
     let gap = items.common().clank_priority_gap;
-    let other_id = items.iter().nth(other_index).expect("listed item").id;
+    let other_id =items.iter().nth(other_index).expect("listed item").id;
     let (other_damage, victim_damage, other_tag, victim_tag) = {
         let other = items.iter().nth(other_index).expect("listed item");
         let victim = items.iter().find(|i| i.id == victim_id).expect("struck item");
@@ -3467,7 +3467,10 @@ fn item_clank(
                 }
             }
         }
-        melee_coll::detection::record_victim(&mut item.hitboxes, group, opponent);
+        // retail 0x8026FEFC / 0x8027006C: mode 4 (the capsule's rehit
+        // timer, after which it forgets the item) when the stopped hitbox's
+        // x41_b5 is set, else the permanent mode 3.
+        item.record_clank_victim(hit, group, opponent);
         let clank_damage = gekko_math::msl::fctiwz(damage);
         if clank_damage > item.pending_clank_damage {
             item.pending_clank_damage = clank_damage;
