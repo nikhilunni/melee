@@ -278,14 +278,18 @@ fn cold_boundary(
 /// The recording's spawn rule. Replays before the Gecko code list (3.3) do
 /// not name their codes, so choose among the known discrete rules by the
 /// first frame: a NeutralSpawn table when every leader stands exactly at
-/// its row, otherwise retail. Frame zero's comparison checks the choice;
-/// nothing else of the recorded state is used.
+/// its row, otherwise retail. The version that restaggers the entries shows
+/// in the first leader, which has already left Entry on the first frame (no
+/// other rule enters anyone before the sixth tick), so it has risen off its
+/// row's height. Frame zero's comparison checks the choice; nothing else of
+/// the recorded state is used.
 fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
     use melee_lib::slippi::{NeutralTable, SpawnRule};
     let Some(first) = replay.frames.values().next() else {
         return SpawnRule::Retail;
     };
-    let fits = |table| {
+    let entry_start = melee_types::CommonMotionState::EntryStart as u16;
+    let fits = |table: NeutralTable| {
         replay.leader_ports().enumerate().all(|(order, port)| {
             let (Some(post), Some((spawn, facing))) = (
                 first.ports[port].leader.post.as_ref(),
@@ -293,15 +297,22 @@ fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
             ) else {
                 return false;
             };
+            // A zero entry delay starts EntryStart on the first tick.
+            let entered = table.entry_delay(order) == Some(0);
             post.position_x.to_bits() == spawn.x.to_bits()
-                && post.position_y.to_bits() == spawn.y.to_bits()
                 && post.facing_direction.to_bits() == facing.to_bits()
+                && (post.action_state == entry_start) == entered
+                && (entered || post.position_y.to_bits() == spawn.y.to_bits())
         })
     };
-    [NeutralTable::V2020, NeutralTable::V2019]
-        .into_iter()
-        .find(|&table| fits(table))
-        .map_or(SpawnRule::Retail, SpawnRule::NeutralTable)
+    [
+        NeutralTable::V2020,
+        NeutralTable::V2019,
+        NeutralTable::V2019EntryByOrder,
+    ]
+    .into_iter()
+    .find(|&table| fits(table))
+    .map_or(SpawnRule::Retail, SpawnRule::NeutralTable)
 }
 
 /// A cold scenario for the replay, from Game Start's rules and the recorded

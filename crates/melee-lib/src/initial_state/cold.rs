@@ -364,15 +364,26 @@ fn create_players(
     } else {
         [1.0, -1.0]
     };
+    // fn_8016D8AC (0x8016DA3C): the delay grows by five for every Player slot
+    // up to this one, entering or not (ports 2 and 4 enter at 10 and 20).
+    let mut entry_delays: Vec<i32> = scenario
+        .fighters
+        .iter()
+        .map(|fighter| ENTRY_STAGGER_FRAMES * (i32::from(fighter.slot) + 1))
+        .collect();
     if let crate::slippi::SpawnRule::NeutralTable(table) = scenario.slippi.spawn {
         // Slippi's NeutralSpawn (0x8016E510) then overwrites each Player's
-        // initial coordinates and facing by spawn order (players ascend by slot).
+        // initial coordinates and facing by spawn order (players ascend by
+        // slot); one version also overwrites the entry delay.
         for (order, _) in scenario.fighters.iter().enumerate() {
             let (position, face) =
                 crate::slippi::neutral_spawn(table, assets.stage_descriptor.music_id, order)
                     .context("NeutralSpawn: no row for this stage")?;
             positions[order] = position;
             facing[order] = face;
+            if let Some(delay) = table.entry_delay(order) {
+                entry_delays[order] = delay;
+            }
         }
     }
     let mut counter = SpawnCounter(1);
@@ -417,13 +428,11 @@ fn create_players(
             )?);
             continue;
         }
-        // fn_8016D8AC: the delay grows by five for every Player slot before
-        // this one, entering or not (ports 2 and 4 enter at 10 and 20).
         fighters.push(SceneFighter::from_parameters(
             &assets.characters[index],
             &assets.fighters[index],
             player,
-            ENTRY_STAGGER_FRAMES * (i32::from(scenario.fighters[p].slot) + 1),
+            entry_delays[p],
             context,
         )?);
         if entry.secondary {

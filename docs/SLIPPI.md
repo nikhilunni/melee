@@ -388,8 +388,21 @@ four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
   (0x8016E510, in Slippi's asm from 2020-01) places the Nth present player
   at its table row, facing by sign of x. Late-2019 console builds used the
   same table except Dream Land ((-46.6, 37.0), (47.389, 37.0)); April 2019
-  builds used retail markers. `melee_lib::slippi::SpawnRule` models the
-  three; the runner picks the one the first frame shows exactly.
+  builds used retail markers. `melee_lib::slippi::SpawnRule` models these;
+  the runner picks the one the first frame shows exactly.
+- *Entry delay by spawn order.* `External/NeutralSpawn.asm` from 2019-10-21
+  ([1a01aec](https://github.com/project-slippi/slippi-ssbm-asm/commit/1a01aec47d))
+  until 2020-01-14
+  ([4dc7447](https://github.com/project-slippi/slippi-ssbm-asm/commit/4dc7447fdc),
+  "remove feature causing neutral spawn desync") also ran
+  `SetSpawn_AdjustEntryFrames`: Player_SetUnk4C (0x80035FDC) with 5 x spawn
+  order, so the first player leaves Entry on the first tick and the second
+  five ticks later. Consoles still ran that build in March 2020 (HNC 11,
+  2020-03-04). `NeutralTable::V2019EntryByOrder` (`spawn =
+  "neutral-2019-entry"`); the runner chooses it when the first leader is
+  already in EntryStart on the first frame, which no other rule produces.
+  No retail witness: recording one needs that build's code assembled from
+  the GPL source; the whole 9638-frame replay matching is the check.
 - *Fighter mapping.* Each Slippi port maps to its fighter in play by slot
   and kind; Nana compares as `pN.follower`.
 

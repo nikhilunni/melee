@@ -34,15 +34,36 @@ pub enum SpawnRule {
     NeutralTable(NeutralTable),
 }
 
-/// NeutralSpawnTable versions, which differ only in Dream Land's row.
+/// NeutralSpawn versions: the table (which differs only in Dream Land's
+/// row) and whether the code also restaggers the entries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NeutralTable {
-    /// Late-2019 console tournament builds (not in the Slippi asm history,
-    /// which adds the code in 2020-01): Dream Land (-46.6, 37.0) and
+    /// Late-2019 console tournament builds: Dream Land (-46.6, 37.0) and
     /// (47.389, 37.0), measured from those builds' replays.
     V2019,
-    /// The Slippi asm table from 2020-01 on.
+    /// External/NeutralSpawn.asm from 2019-10-21 (1a01aec) until 2020-01-14
+    /// (4dc7447, "remove feature causing neutral spawn desync"): the 2020
+    /// table, then SetSpawn_AdjustEntryFrames calls Player_SetUnk4C
+    /// (0x80035FDC) with five times the spawn order, so the first player
+    /// enters at once. Consoles still ran this build in March 2020.
+    V2019EntryByOrder,
+    /// The Slippi asm code from 2020-01-14 on.
     V2020,
+}
+
+/// SetSpawn_AdjustEntryFrames: `mulli r4, REG_SpawnID, 5`.
+const ENTRY_FRAMES_PER_ORDER: i32 = 5;
+
+impl NeutralTable {
+    /// The entry delay the code stores for the `order`th present player
+    /// (Player +0x4C, read by ftCo_800C61B0), replacing fn_8016D8AC's count;
+    /// `None` when this version leaves retail's delay alone.
+    pub fn entry_delay(self, order: usize) -> Option<i32> {
+        match self {
+            Self::V2019EntryByOrder => Some(ENTRY_FRAMES_PER_ORDER * order as i32),
+            Self::V2019 | Self::V2020 => None,
+        }
+    }
 }
 
 /// NeutralSpawnTable's singles rows: (external stage id, spawns by order).

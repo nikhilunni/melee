@@ -404,13 +404,18 @@ const STADIUM_PRELOAD_GECKO: &str = "ps-preload";
 /// The `gecko` name of Slippi's Frozen Stadium code.
 const STADIUM_FROZEN_GECKO: &str = "ps-frozen";
 
-/// `spawn = "retail" | "neutral-2019" | "neutral-2020"` in scenario TOML.
+/// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"`
+/// in scenario TOML.
 mod spawn_rule {
     use melee_lib::slippi::{NeutralTable, SpawnRule};
     use serde::{Deserialize, Deserializer};
-    const NAMES: [(&str, SpawnRule); 3] = [
+    const NAMES: [(&str, SpawnRule); 4] = [
         ("retail", SpawnRule::Retail),
         ("neutral-2019", SpawnRule::NeutralTable(NeutralTable::V2019)),
+        (
+            "neutral-2019-entry",
+            SpawnRule::NeutralTable(NeutralTable::V2019EntryByOrder),
+        ),
         ("neutral-2020", SpawnRule::NeutralTable(NeutralTable::V2020)),
     ];
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<SpawnRule, D::Error> {
