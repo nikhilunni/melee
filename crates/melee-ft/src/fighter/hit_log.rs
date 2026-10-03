@@ -17,6 +17,7 @@ use hsd_types::Vec3;
 use melee_coll::damage::ReceivedHit;
 use melee_coll::damage_log::{DamageLog, HitSource, LoggedHit};
 use melee_ef::request::EffectRequest;
+use melee_types::combat::AttackInstance;
 use melee_types::HitElement;
 
 impl CombatState {
@@ -218,6 +219,15 @@ impl FighterCore {
         self.commands.stale_multiplier = Some(self.combat.stale.multiplier(&assets.stale_weights));
         // The first queue entry is visible to later hitbox commands of this move.
         self.commands.first_hit_stale_penalty = Some(assets.first_stale_penalty);
+    }
+
+    /// plStale_UpdateStaleMovesFromItem (800373CC) on the item's owner: the
+    /// entry is the attack the item took when it was made. The owner's
+    /// hitboxes made afterwards read the table with it (ftColl_8007ABD0 ->
+    /// ft_80089228, retail 0x8007AC48: bl), whatever move the owner is in now.
+    pub fn credit_item_hit(&mut self, attack: AttackInstance, assets: &FighterAssets) {
+        self.combat.stale.record_attack(attack);
+        self.commands.stale_multiplier = Some(self.combat.stale.multiplier(&assets.stale_weights));
     }
 }
 

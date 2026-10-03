@@ -1260,7 +1260,9 @@ impl Runtime {
                                 if let (Some(owner), Some(attack)) =
                                     (owner.filter(|&o| o != player), item.stale_source)
                                 {
-                                    state.fighters[owner].combat.stale.record_attack(attack);
+                                    state.fighters[owner]
+                                        .core
+                                        .credit_item_hit(attack, &assets.fighters[owner]);
                                 }
                                 // ftColl_80078998 -> ftColl_8007646C: the owner's
                                 // repeated-hit count takes the item's attack id.
@@ -2701,7 +2703,8 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
                     .filter(|&owner| owner != player);
             if let Some(owner) = owner {
                 if let Some(attack) = item.attack {
-                    state.fighters[owner].combat.stale.record_attack(attack);
+                    let assets = &state.assets.fighters[owner];
+                    state.fighters[owner].core.credit_item_hit(attack, assets);
                 }
                 let combo = &state.assets.fighters[owner].combo;
                 state.fighters[owner].combat.combo.record(

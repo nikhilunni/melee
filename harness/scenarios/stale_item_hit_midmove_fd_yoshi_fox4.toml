@@ -1,0 +1,36 @@
+# Stale moves: an item's hit restales the owner's move in progress.
+# Yoshi forward-tilts Fox (stale queue: tilt), throws an egg up (B held 8
+# ticks) and starts a second forward tilt at tick 325. The egg hits Fox at
+# 327, during the tilt and before its hitbox exists (plStale_UpdateStaleMovesFromItem
+# 800373CC: queue egg, tilt); the hitbox made afterwards reads the table then
+# (ftColl_8007ABD0 -> ft_80089228), so the tilt does 12 x 0.92 = 11.04
+# (0.91 had the multiplier been taken at the tilt's start): 12, 24, 35.04.
+name = "stale_item_hit_midmove_fd_yoshi_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 156, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { stickX = 60, button = 256 } },
+  { frame = 212, port = 0, buttons = {  }, raw = {  } },
+  { frame = 270, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 272, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 278, port = 0, buttons = {  }, raw = {  } },
+  { frame = 325, port = 0, buttons = {  }, raw = { stickX = 60, button = 256 } },
+  { frame = 327, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
