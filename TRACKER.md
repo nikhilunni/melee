@@ -35,7 +35,8 @@ do not keep a session log here.
   - `record_many.py` records in parallel, with Gecko codes (`gecko = [..]`,
     `MELEE_GECKO_DIR`; the local code text is in `~/melee-data/gecko`);
   - `melee-sim search`, `triage`, `replay`, `replay-batch`
-    (`--controller-fix` names the UCF version);
+    (`--controller-fix` names the UCF version; a `pN.input_seed` stop is
+    RNG drift on the tick before);
   - **replay-to-retail bridge**: `melee-sim replay <slp> --retail-inputs`
     plus `harness/slippi_to_scenario.py` play a replay's inputs, ports,
     codes, timer and seed on retail, so the port gates against the full
@@ -157,8 +158,6 @@ Retail pixel fidelity, exact camera tracking and GX rounding quirks remain.
 ## Backlog
 
 - [ ] CI: `cargo gate`, clippy, harness pytest, `gen_schema.py --check`.
-- [ ] Parallelize `m5_gate`'s list tests (each loops hundreds of scenarios
-      on one thread; the binary takes over ten minutes on an idle machine).
 - [ ] 109 `unimplemented!` boundaries remain (26 in `melee-ft`): each is a
       branch no gated scenario reaches; port them as explorer faults or new
       content reach them.

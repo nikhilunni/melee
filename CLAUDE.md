@@ -24,16 +24,18 @@ trusted: nothing merges with a known divergence.
 | `crates/ft-<name>`, `ft-*-family` | One crate per character (20 registered); kinds that share retail code share a family crate (`fox`: Fox/Falco, `mars`: Marth/Roy, `mario`: Mario/Dr. Mario, `pikachu`: Pikachu/Pichu, `captain`: Falcon/Ganondorf, `link`: Link/Young Link). |
 | `crates/it-<kind>` | Item and article kinds (projectiles, thrown items, stage items such as Shy Guys). |
 | `crates/melee-lib` | Match composition and the curated create/step/inspect/clone API. |
-| `crates/melee-sim` | Oracle tooling binary: `gate`, `triage`, `dry-run`, `search`, `particle-sites`, `particles-diff`, `bones-diff`, `replay`. |
+| `crates/melee-sim` | Oracle tooling binary: `gate`, `triage`, `dry-run`, `search`, `particle-sites`, `particles-diff`, `bones-diff`, `replay`, `replay-batch`. |
 | `crates/melee-replay` | Recording format and the corpus explorer (`--example explore`). |
 | `crates/melee-platform` | Native graphical consumer (wgpu, macOS app). |
 | `crates/slp`, `melee-diff`, `melee-trace-io` | Slippi parsing; trace diffing; `.jsonl`/`.jsonl.zst` trace reading. |
 | `harness/` | Python oracle tooling (Dolphin scripts, recorder, decoder, bridges). Run with `cd harness && uv run ...`. |
-| `docs/` | `ORACLE.md` (verification design), `DOLPHIN_RUN.md`, `ASM.md`, `PERF.md`, `INTERACTION_MATRIX.md`, `COVERAGE_AUDIT.md`, per-character `*_DATA.md`. `docs/PORT_NOTES/` holds per-task reports: look up, do not preload. |
+| `docs/` | `ORACLE.md` (verification design), `SLIPPI.md` (replay runner, Slippi codes, the replay-to-retail bridge), `DOLPHIN_RUN.md`, `ASM.md`, `PERF.md`, `INTERACTION_MATRIX.md`, `COVERAGE_AUDIT.md`, per-character `*_DATA.md`. `docs/PORT_NOTES/` holds per-task reports: look up, do not preload. |
 | `third_party/melee-decomp` | The decomp as a pinned submodule. **Read-only reference.** |
 
 Local, not in git: `harness/roms/` (disc image `GALE01.iso`, extracted
-`files/`, `*.sav` savestates), `harness/traces/` (recordings, zstd), and the
+`files/`, `*.sav` savestates), `harness/traces/` (recordings, zstd),
+`~/melee-data/replays/` (the Slippi corpus), `~/melee-data/gecko/` (Gecko
+code text for recording with Slippi codes: `export MELEE_GECKO_DIR` to it), and the
 headless Dolphin at `~/Projects/dolphin-scripting/build/Binaries/DolphinHeadless.app`
 (`tools/build-headless-dolphin.sh`). The windowed `Dolphin.app` is only for
 live human play and menu driving (`dolphin/drive.py`).
@@ -59,6 +61,12 @@ cd harness && uv run python make_boundary.py --stage <Stage> --players <P1> <P2>
 tools/agent-merge/pick.sh <commit>                    # merge a worktree agent's commit (tools/agent-merge/README.md)
 cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>
 cd harness && uv run python asm.py <symbol> --fused                          # retail asm (docs/ASM.md)
+
+# Slippi replays (docs/SLIPPI.md)
+melee-sim replay <game.slp> --all-characters-unlocked true [--controller-fix ucf-0.74]   # first divergence
+melee-sim replay-batch ~/melee-data/replays/public-v3.7 [--controller-fix ucf-0.74] --jsonl out.jsonl
+melee-sim replay <game.slp> --all-characters-unlocked true --retail-inputs inputs.jsonl  # then, to play it on retail:
+cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name <n> --boundary <start scene> [--ticks N]
 ```
 
 Oracle tests fail on missing local data with the path and recovery command;
@@ -99,6 +107,23 @@ the tick trace carries raw Item struct bytes; `record.py --bones N` adds a bone
 dump for `bones-diff`; `particles-diff`/`particle-sites` show generator lists
 and RNG call sites. Confirm the order against the retail asm.
 
+**Slippi replays.** `replay-batch` over the corpus is the widest check of
+real play; a stop is a first divergence against the replay's recorded fields.
+- A `pN.input_seed` stop means the port's random stream left retail's on the
+  tick before (Pre Frame's seed is not on the tick's RNG path). It names the
+  drift tick; the fault is whatever drew differently then, usually an effect
+  or sound, not the fighter field that shows it hundreds of ticks later.
+- A replay holds no retail memory, so do not theorize from it: play the
+  window on retail with the bridge (`replay --retail-inputs`, a
+  `make_boundary.py --ports/--gecko/--spawn/--time-limit --no-register`
+  boundary with the replay's setup, `slippi_to_scenario.py`, `record_many.py`),
+  then `gate`/`triage` the port against the full retail trace through the
+  `<name>_cold` twin. Register the result in `SLIPPI_REPLAY_WITNESSES` or as
+  a smaller directed witness.
+- Replays run with the Slippi codes they were recorded with (UCF version by
+  date, spawn rule by frame zero, Stadium preload/frozen); `--controller-fix`
+  overrides the UCF version, e.g. for games older than 0.74.
+
 **Reachability.** A branch is out of the gate only with written evidence:
 the retail call graph (asm or decomp), stage geometry, or a `melee-sim search`
 count ("N candidates, none reached"). Record it in `docs/INTERACTION_MATRIX.md`
@@ -127,7 +152,9 @@ harness scripts). Brief every worktree agent with `docs/AGENT_BRIEF.md` plus
 its task; agents rebase onto `main` before reporting. Merge with
 `tools/agent-merge/pick.sh` (it refuses game data and decomp paths), gate the
 agent's scenarios and a cross-section after each merge, `m5_gate` every few
-merges, and a full checkpoint to close a wave. Remove finished agents'
+merges, and a full checkpoint to close a wave. Agents sweep every scenario
+once before and once after their change, not per edit: eight concurrent
+sweeps saturate the machine. Remove finished agents'
 worktrees (`git worktree remove`) when a wave is merged: each keeps a full
 build directory.
 

@@ -523,6 +523,20 @@ does not show. Not diagnosed; the jumbotron's close-up test
 (grStadium_801D32D0) reads the rendered camera and draws on a change, which
 is why Slippi later added PSCameraIndependentMonitor.
 
+## The Pre Frame seed check (2026-10-03)
+
+Pre Frame carries the RNG seed at the fighter's input proc (hook 0x8006B0E0),
+in every Slippi version. The port keeps retail's draw sequence but not its
+timing inside a tick (effect requests flush at their own points), so the
+runner checks membership, not position: the recorded seed must be one the
+port's stream passes through between the previous tick's end seed and this
+tick's (`compare_input_seeds`). When the port's stream has left retail's, the
+first quiet tick fails it and the report names `pN.input_seed`: the drift
+happened on the tick before, hundreds of ticks ahead of the fighter field
+that would otherwise show it. The reported actual value is the tick's first
+seed. A game can match every fighter field to the end and still fail this
+check: the port drew a different number of values (an effect or sound).
+
 ## A replay played back on retail (2026-10-03)
 
 A replay holds post-frame fields only, so a stop cannot be triaged against

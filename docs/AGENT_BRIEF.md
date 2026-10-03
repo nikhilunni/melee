@@ -27,6 +27,25 @@ You work in a git worktree of the main checkout
   `m5_gate` test binary likewise runs only in the main checkout.
 - Keep scratch files under your worktree's `target/`, not `/tmp`.
 
+- A scenario file you wrote in your worktree gates against the main
+  checkout's data with `MELEE_DATA_ROOT=/Users/nikhilunni/Projects/melee`
+  (also needed for `melee-sim replay`). Recording with Slippi Gecko codes
+  needs `MELEE_GECKO_DIR=~/melee-data/gecko`.
+- Sweep every recorded scenario once before your change (pristine build) and
+  once after, not per edit: other agents share the machine.
+
+## Slippi replay tasks
+
+The oracle is `melee-sim replay "<game.slp>" --all-characters-unlocked true`
+(add `--controller-fix ucf-0.74` for a game recorded before 2019-10-09); the
+corpus is `~/melee-data/replays/public-v3.7`, read in place. A `pN.input_seed`
+stop is RNG drift on the tick before: find what drew differently on that
+tick. A replay has no retail memory, so play the window on retail with the
+bridge in `docs/SLIPPI.md` ("A replay played back on retail") and triage the
+port against that trace; or build a smaller directed witness. Check the whole
+corpus before and after with `replay-batch --jsonl` (with and without
+`--controller-fix ucf-0.74`): no replay may match fewer frames.
+
 ## Task
 
 Make the named scenarios gate exact by porting what retail does, from the asm
