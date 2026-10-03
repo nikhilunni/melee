@@ -607,3 +607,15 @@ The Marth and Peach replay now stops at tick 7087 on Peach's facing in Turn:
 retail with UCF 0.8 has flipped it by then, as the port has
 (`slp_bf_marth_peach_t7300`, a tick-trace probe in the local data, exact to
 7300); the console had not.
+
+A bridge on Final Destination does not keep the replay's random stream. The
+background's two accelerations (grLast_8021AC30, four draws) are drawn at
+stage creation, before the boundary, so they stay the boundary's: retail's
+background meets its limits (one draw each, grLast_8021ADD0) on other ticks
+than the console's did. `MARTH/02_56_19 Captain Falcon + [PPAP] Marth
+(FD).slp` from `start_fd_slippi8_p12_captainfalcon2_marth0_4` (local data,
+`slp_fd_captainfalcon_marth_t1950`, exact to 1950) leaves the console's
+stream at tick 209 and its fighters near tick 1630, so it says nothing about
+that replay's stop at 1887. Following such a replay needs a boundary whose
+match was created from the replay's Game Start seed, which
+`make_boundary.py` cannot do yet.
