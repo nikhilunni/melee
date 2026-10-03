@@ -1232,6 +1232,7 @@ impl Runtime {
                                 &assets.fighters[player],
                                 player < other,
                                 thrower_player,
+                                &mut state.rng,
                             )
                         }));
                     }

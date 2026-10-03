@@ -481,6 +481,7 @@ pub fn detect_hit(
     assets: &FighterAssets,
     incoming_after_receiver: bool,
     attacker_thrower_player: Option<u8>,
+    rng: &mut gekko_math::HsdRng,
 ) {
     if victim.core.status.disabled
         || attacker.core.status.disabled
@@ -509,6 +510,7 @@ pub fn detect_hit(
                 id,
                 &mut clank_mask,
                 &assets.clank,
+                rng,
             )
         {
             continue;

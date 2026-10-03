@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 417] = [
+const MATRIX_WITNESSES: [(&str, usize); 418] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1534,6 +1534,9 @@ const MATRIX_WITNESSES: [(&str, usize); 417] = [
     // An egg's hit during Yoshi's forward tilt, before its hitbox is made:
     // the hitbox reads the stale table with the egg's entry (ft_80089228).
     ("stale_item_hit_midmove_fd_yoshi_fox4", 420),
+    // Two Marth jabs clank: slash against slash draws HSD_Randi(3) for the
+    // sword clank sound in hit detection (ftColl_800784B4, 0x800784E4).
+    ("clank_sword_jabs_fd_marth_marth4", 260),
 ];
 
 #[test]

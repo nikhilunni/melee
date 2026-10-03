@@ -412,3 +412,13 @@ stage = "FinalDestination"
 players = ["YoungLink", "Fox"]
 stocks = 4
 seed = 3155090647
+
+[[boundary]]
+name = "start_fd_marth_marth4"
+cold = "start_fd_marth_marth4_cold"
+savestate = "harness/roms/start_fd_marth_marth4.sav"
+stage = "FinalDestination"
+players = ["Marth", "Marth"]
+stocks = 4
+seed = 4000242866
+costumes = [0, 1]

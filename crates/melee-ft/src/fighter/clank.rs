@@ -111,6 +111,30 @@ fn accumulate(owner: &mut FighterCore, hit: &HitCapsule, facing: f32, params: &P
         }
     }
 }
+/// ftColl_803C0C4C: the sounds of two blades meeting.
+const SWORD_CLANK_SOUNDS: [u32; 3] = [107, 108, 109];
+/// The sound of any other pair of attacks clanking.
+const CLANK_SOUND: u32 = 0x6A;
+
+/// ftColl_800784B4 (800784B4): the receiver plays the clank. Two slashing
+/// hitboxes pick one of three sword sounds, drawing HSD_Randi(3) here, during
+/// hit detection (retail 0x800784E4), before the sound is queued.
+fn clank_sound(
+    receiver: &mut FighterCore,
+    incoming_hit: &HitCapsule,
+    receiver_hit: &HitCapsule,
+    rng: &mut gekko_math::HsdRng,
+) {
+    let id = if incoming_hit.descriptor.element == HitElement::Slash
+        && receiver_hit.descriptor.element == HitElement::Slash
+    {
+        SWORD_CLANK_SOUNDS[rng.randi(SWORD_CLANK_SOUNDS.len() as i32) as usize]
+    } else {
+        CLANK_SOUND
+    };
+    receiver.shield_sound(id);
+}
+
 /// Called only for opponents after this receiver in the fighter list.
 /// Returns true exactly when inlineA1 suppresses this incoming hitbox.
 pub(super) fn contact(
@@ -119,6 +143,7 @@ pub(super) fn contact(
     id: usize,
     mask: &mut [bool; 4],
     params: &Parameters,
+    rng: &mut gekko_math::HsdRng,
 ) -> bool {
     if receiver.physics.ground_or_air != GroundOrAir::Ground
         || incoming.physics.ground_or_air != GroundOrAir::Ground
@@ -193,14 +218,7 @@ pub(super) fn contact(
             receiver
                 .effects
                 .push(melee_ef::request::EffectRequest::Clank { position: midpoint });
-            // Mixed Fox/Marth attacks cannot produce Slash versus Slash.
-            // Keep the authored sound-table/Randi branch explicit for later rosters.
-            assert!(
-                !(a.descriptor.element == HitElement::Slash
-                    && b.descriptor.element == HitElement::Slash),
-                "ftColl_800784B4: slash/slash clank sound table"
-            );
-            receiver.shield_sound(0x6A);
+            clank_sound(receiver, &a, &b, rng);
             return true;
         }
     }
