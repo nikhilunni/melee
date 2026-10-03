@@ -37,14 +37,16 @@ You work in a git worktree of the main checkout
 ## Slippi replay tasks
 
 The oracle is `melee-sim replay "<game.slp>" --all-characters-unlocked true`
-(add `--controller-fix ucf-0.74` for a game recorded before 2019-10-09); the
+(it chooses the UCF version itself and prints it); the
 corpus is `~/melee-data/replays/public-v3.7`, read in place. A `pN.input_seed`
 stop is RNG drift on the tick before: find what drew differently on that
 tick. A replay has no retail memory, so play the window on retail with the
 bridge in `docs/SLIPPI.md` ("A replay played back on retail") and triage the
 port against that trace; or build a smaller directed witness. Check the whole
-corpus before and after with `replay-batch --jsonl` (with and without
-`--controller-fix ucf-0.74`): no replay may match fewer frames.
+corpus before and after with `replay-batch --jsonl`: no replay may match
+fewer frames. The bridge cannot follow a replay on Final Destination or
+Fountain of Dreams (stage draws at creation precede the boundary seed): use
+a directed witness there.
 
 ## Task
 

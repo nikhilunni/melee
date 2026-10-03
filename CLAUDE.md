@@ -63,8 +63,8 @@ cd harness && uv run python replay_to_scenario.py <recording.json> --name <name>
 cd harness && uv run python asm.py <symbol> --fused                          # retail asm (docs/ASM.md)
 
 # Slippi replays (docs/SLIPPI.md)
-melee-sim replay <game.slp> --all-characters-unlocked true [--controller-fix ucf-0.74]   # first divergence
-melee-sim replay-batch ~/melee-data/replays/public-v3.7 [--controller-fix ucf-0.74] --jsonl out.jsonl
+melee-sim replay <game.slp> --all-characters-unlocked true [--controller-fix ucf-0.8]    # first divergence
+melee-sim replay-batch ~/melee-data/replays/public-v3.7 --jsonl out.jsonl
 melee-sim replay <game.slp> --all-characters-unlocked true --retail-inputs inputs.jsonl  # then, to play it on retail:
 cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name <n> --boundary <start scene> [--ticks N]
 ```
@@ -121,8 +121,14 @@ real play; a stop is a first divergence against the replay's recorded fields.
   `<name>_cold` twin. Register the result in `SLIPPI_REPLAY_WITNESSES` or as
   a smaller directed witness.
 - Replays run with the Slippi codes they were recorded with (UCF version by
-  date, spawn rule by frame zero, Stadium preload/frozen); `--controller-fix`
-  overrides the UCF version, e.g. for games older than 0.74.
+  date, and 0.73 or 0.74 by the first dashback they disagree on; spawn rule
+  by frame zero; Stadium preload/frozen); `--controller-fix` overrides the
+  UCF version. The report prints the version chosen and why.
+- Some stops are not port faults: a console's stage codes (no Shy Guys, no
+  Final Destination transitions) and display-pass timing (the magnifier's
+  damage tick) are not in a replay (`docs/SLIPPI.md`). A bridge cannot follow
+  a replay on Final Destination or Fountain of Dreams: those stages draw at
+  creation, before the boundary seed.
 
 **Reachability.** A branch is out of the gate only with written evidence:
 the retail call graph (asm or decomp), stage geometry, or a `melee-sim search`
