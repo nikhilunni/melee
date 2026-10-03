@@ -745,3 +745,33 @@ Dropping the one display pass before tick 2983 (or 2984) in the port makes
 the replay match all 11421 frames, seeds included: the console skipped one
 render there. Nothing in the recording says so, and the runner does not
 guess; the stop stays, as an external event like disc latency.
+
+## Consoles without Shy Guys or FD transitions (2026-10-03, not ported)
+
+Three corpus games ran a stage that never drew what retail draws. The seed
+check shows it on the tick after the first draw the console skipped; nothing
+in a 2.0.1 replay names the code, and Game Start is byte-identical to the
+games that do draw.
+
+| Replay | Stops | The console never ran | Measured |
+|---|---|---|---|
+| `FOX/20200219 - HNC 9 - PM 0655 - Jigglypuff (Default) vs ZEN Fox (Red) - Yoshi_s Story.slp` | 121 | grStory_801E3418, the Shy Guy spawner (first group at tick 120: six draws) | with the call skipped the port matches 7314 / 7314 frames, every seed included; delayed by one, two or three ticks it stops at 121, 122, 123 |
+| `FOX/01_51_21.616Z [314] Fox + [TITP] Captain Falcon (FD).slp` (UCF 0.74 forced) | 1886 | grLast_8021B2E8, the background's phase timer (first transition when it passes 1800) | with the transition never enabled: 9630 / 9630 |
+| `MARTH/02_56_19 Captain Falcon + [PPAP] Marth (FD).slp` (UCF 0.74 forced) | 1887 | the same | 6854 / 6854 |
+
+Those runs were temporary experiments, not committed. Retail does draw: the
+first game's pads on retail (`slp_ys_jigglypuff_fox_t300`) spawn the group
+at tick 120 and the port equals that trace; the corpus's other Yoshi's Story
+games match with the Shy Guys, and its other FD games pass tick 1886 with the
+transition (two tried without it, `MARTH/12_07_47` and `FOX/12_09_22`, stop
+at 1886). So the seed check separates the two kinds of console on one tick.
+
+The sites are single calls: `bl grStory_801E3418` at 0x801E3348 in
+grStory_801E3334, and `bl grLast_8021B2E8` at 0x8021AAE4 in
+grLast_8021AAB0. Tournament code sets of the time carried stage codes that
+replace such a call with a `nop` ("disable Shy Guys", "disable Final
+Destination background transitions"); the exact code text those consoles
+ran has not been checked against a source. Porting them needs the code text
+in `MELEE_GECKO_DIR`, a retail witness recorded with each, a flag beside
+`stadium_frozen` in `SlippiCodes`, and a rule for choosing it per replay (a
+runner option like `--controller-fix`, or the first seed the code changes).
