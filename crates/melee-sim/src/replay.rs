@@ -435,6 +435,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         );
     }
     let leaders: Vec<usize> = replay.leader_ports().collect();
+    let mut previous_seed = seed_of(&initial);
     // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of each
     // fighter's map proc (Fighter_8006C27C, s_link 6), before hit detection
     // and damage; 3.4.0 moved it to 0x8006DA34 in the camera proc (s_link
@@ -481,7 +482,13 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 return Ok(report);
             }
         };
-        let actual = by_leader(&actual, &leaders, frame, expected.frame);
+        let end_seed = seed_of(&actual);
+        let mut expected = expected;
+        let mut actual = by_leader(&actual, &leaders, frame, expected.frame);
+        if let (Some(from), Some(to)) = (previous_seed, end_seed) {
+            compare_input_seeds(from, to, &leaders, frame, &mut expected, &mut actual);
+        }
+        previous_seed = end_seed;
         if let Some(diff) = compare_frame(&expected, &actual) {
             report.differing = expected
                 .state
@@ -537,6 +544,65 @@ fn by_leader(actual: &Record, leaders: &[usize], frame: &slp::Frame, tick: u64) 
         frame: tick,
         phase: actual.phase.clone(),
         state,
+    }
+}
+
+fn seed_of(record: &Record) -> Option<u32> {
+    match record.state.get("rng.seed")? {
+        melee_diff::Value::UInt(seed) => u32::try_from(*seed).ok(),
+        _ => None,
+    }
+}
+
+/// The most draws one tick is searched for (a tick with more is not checked).
+const MAX_TICK_DRAWS: usize = 1 << 16;
+
+/// Add `pN.input_seed` to both records: Pre Frame's seed (hook 0x8006B0E0,
+/// in the fighter's input proc) must be one the port's stream passes through
+/// during the same tick, from the previous tick's end seed (`from`) to this
+/// one's (`to`). The port does not keep retail's draw timing inside a tick,
+/// only the sequence, so the test is membership, not position. A stream that
+/// has left retail's fails it on the first quiet tick, which names the drift
+/// long before a fighter field shows it. The actual value reported is the
+/// tick's first seed.
+fn compare_input_seeds(
+    from: u32,
+    to: u32,
+    leaders: &[usize],
+    frame: &slp::Frame,
+    expected: &mut Record,
+    actual: &mut Record,
+) {
+    use melee_diff::Value;
+    let mut rng = gekko_math::rng::HsdRng { seed: from };
+    let mut path = vec![from];
+    while rng.seed != to {
+        if path.len() > MAX_TICK_DRAWS {
+            return;
+        }
+        rng.rand();
+        path.push(rng.seed);
+    }
+    for (index, &port) in leaders.iter().enumerate() {
+        let ports = &frame.ports[port];
+        let members = [
+            (&ports.leader, format!("p{index}.input_seed")),
+            (&ports.follower, format!("p{index}.follower.input_seed")),
+        ];
+        for (member, key) in members {
+            let Some(pre) = member.pre.as_ref() else {
+                continue;
+            };
+            let seen = if path.contains(&pre.random_seed) {
+                pre.random_seed
+            } else {
+                from
+            };
+            expected
+                .state
+                .insert(key.clone(), Value::UInt(u64::from(pre.random_seed)));
+            actual.state.insert(key, Value::UInt(u64::from(seen)));
+        }
     }
 }
 
