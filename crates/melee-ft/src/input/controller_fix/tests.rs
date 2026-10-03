@@ -13,8 +13,12 @@ fn fixed(fix: ControllerFix) -> FighterInput {
 }
 
 fn turn(frame: f32, facing: f32, popo: bool) -> TurnFacts {
+    // Before the natural flip the hook's facing is the turn's destination,
+    // and the script frame is the animation's.
     TurnFacts {
         animation_frame: frame,
+        script_frame: frame,
+        facing_after: facing,
         facing,
         secondary: false,
         popo,
@@ -86,6 +90,86 @@ fn smash_turn_needs_a_75_unit_raw_change_on_frame_two() {
 }
 
 #[test]
+fn ucf073_smash_turn_needs_the_stick_toward_the_turn() {
+    // A slow turn to the left on its second frame, the raw stick 80 units
+    // from where it was two ticks ago.
+    let facts = turn(2.0, -1.0, false);
+    // (stick x, raw now, raw two ticks ago, 0.73, 0.74)
+    for (x, current, earlier, beta, release) in [
+        // Toward the turn: both versions.
+        (-1.0, -80, 0, true, true),
+        (-0.8, -80, 0, true, true),
+        // Back toward the old facing: only 0.74 takes the absolute value.
+        (1.0, 80, 0, false, true),
+        (0.8, 64, -20, false, true),
+        // Short of the dash threshold, or a slow stick: neither.
+        (-0.7875, -80, 0, false, false),
+        (-1.0, -80, -5, false, false),
+    ] {
+        for (fix, expected) in [
+            (ControllerFix::Ucf073, beta),
+            (ControllerFix::Ucf074, release),
+        ] {
+            let mut input = fixed(fix);
+            input.current.stick = Stick { x, y: 0.0 };
+            input.horizontal.tilt = 1;
+            input.hardware.queue_x = PadQueueX {
+                current,
+                two_ticks_ago: earlier,
+            };
+            assert_eq!(
+                smash_turn(&input, 0.8, &facts).is_some(),
+                expected,
+                "{fix:?} {x} {current} {earlier}"
+            );
+        }
+    }
+    let mut input = fixed(ControllerFix::Ucf073);
+    input.current.stick = Stick { x: -1.0, y: 0.0 };
+    input.horizontal.tilt = 1;
+    input.hardware.queue_x = PadQueueX {
+        current: -80,
+        two_ticks_ago: 0,
+    };
+    // Popo writes his partner's sample: left unless the facing is 1.0.
+    for (facing, stick_x) in [(-1.0, i8::MIN), (1.0, 0x7F)] {
+        input.current.stick.x = facing;
+        assert_eq!(
+            smash_turn(&input, 0.8, &turn(2.0, facing, true)),
+            Some(Some(PartnerTurn { facing, stick_x }))
+        );
+    }
+    input.current.stick.x = -1.0;
+    // The frame test reads the script frame's high half: [2.0, 2.0078125).
+    for (script_frame, expected) in [
+        (2.0, true),
+        (f32::from_bits(0x4000_FFFF), true),
+        (f32::from_bits(0x4001_0000), false),
+        (1.0, false),
+        (3.0, false),
+    ] {
+        let facts = TurnFacts {
+            script_frame,
+            ..turn(2.0, -1.0, false)
+        };
+        assert_eq!(
+            smash_turn(&input, 0.8, &facts).is_some(),
+            expected,
+            "{script_frame}"
+        );
+    }
+    // Held two ticks, or Nana: no smash turn.
+    input.horizontal.tilt = 2;
+    assert_eq!(smash_turn(&input, 0.8, &facts), None);
+    input.horizontal.tilt = 1;
+    let nana = TurnFacts {
+        secondary: true,
+        ..turn(2.0, -1.0, false)
+    };
+    assert_eq!(smash_turn(&input, 0.8, &nana), None);
+}
+
+#[test]
 fn ucf084_smash_turn_reads_its_own_buffer_and_the_new_facing() {
     let mut input = fixed(ControllerFix::Ucf084);
     for stick in [[0, 0], [-40, 0], [-80, 0]] {
@@ -113,6 +197,7 @@ fn ucf084_smash_turn_reads_its_own_buffer_and_the_new_facing() {
 fn shield_drop_blocks_rim_stick_held_sideways() {
     let facts = SpotDodgeFacts {
         escape_threshold: -0.7,
+        walk_fast_threshold: 0.8,
         roll_window: 4,
         floor: SurfaceData {
             index: 3,
@@ -120,7 +205,11 @@ fn shield_drop_blocks_rim_stick_held_sideways() {
             ..SurfaceData::default()
         },
     };
-    for fix in [ControllerFix::Ucf074, ControllerFix::Ucf084] {
+    for fix in [
+        ControllerFix::Ucf073,
+        ControllerFix::Ucf074,
+        ControllerFix::Ucf084,
+    ] {
         let mut input = fixed(fix);
         input.horizontal.tilt = 4;
         // A down-right notch on the rim: 0.7 each way reaches the circle.

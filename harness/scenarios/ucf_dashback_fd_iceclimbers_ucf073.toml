@@ -1,0 +1,32 @@
+# UCF 0.73 dashback witness, Ice Climbers branch (Binary/UCF/Ucf0.73Beta.bin
+# at 0x800C9A44). Popo (p0) stands facing right; the stick goes 0 -> -40
+# (slow Turn, tick 120) -> -80 (tick 121). The code smash turns Popo into
+# Dash at tick 121 and rewrites the newest follow sample of the fighter after
+# him on the GX link (gobj+0x10: Nana) with facing -1 and stick 0x80;
+# replaying it, Nana dashes at tick 126, as under 0.74.
+name = "ucf_dashback_fd_iceclimbers_ucf073"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+gecko = ["ucf-0.73"]
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = { StickX = -0.5 }, raw = { stickX = -40 } },
+  { frame = 121, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -80 } },
+  { frame = 135, port = 0, buttons = {}, raw = {} },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.73"

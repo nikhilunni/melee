@@ -273,6 +273,7 @@ pub fn evaluate(
                     input,
                     &super::controller_fix::SpotDodgeFacts {
                         escape_threshold: common.escape_threshold,
+                        walk_fast_threshold: common.walk_fast_threshold,
                         roll_window: common.roll_window,
                         floor: context.floor,
                     },

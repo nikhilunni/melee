@@ -82,6 +82,7 @@ impl FighterCore {
                 &self.input,
                 &crate::input::controller_fix::SpotDodgeFacts {
                     escape_threshold: assets.input.escape_threshold,
+                    walk_fast_threshold: assets.input.walk_fast_threshold,
                     roll_window: assets.input.roll_window,
                     floor: self.collision.data.floor,
                 },

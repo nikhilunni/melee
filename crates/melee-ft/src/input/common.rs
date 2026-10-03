@@ -16,6 +16,9 @@ pub struct InputCommonData {
     /// PlCo +DC/+E0: aerial direction and C-stick edge thresholds.
     pub aerial_horizontal_threshold: f32,
     pub aerial_vertical_threshold: f32,
+    /// PlCo +2C: the fast walk's stick threshold; UCF 0.73's shield drop
+    /// reads it as its downward stick limit.
+    pub walk_fast_threshold: f32,
     /// PlCo +E4/+E8: L-cancel input age window and lag divisor.
     pub l_cancel_window: i32,
     pub l_cancel_divisor: f32,
@@ -62,6 +65,7 @@ impl InputCommonData {
         Ok(Self {
             thresholds,
             tilt_angle: r.f32(0x20)?,
+            walk_fast_threshold: r.f32(0x2C)?,
             item_smash_window_extension: r.f32(0x44)?,
             aerial_horizontal_threshold: r.f32(0xDC)?,
             aerial_vertical_threshold: r.f32(0xE0)?,

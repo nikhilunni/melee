@@ -6,6 +6,7 @@ code: `<name>.txt` (Dolphin/Slippi text, e.g. Slippi's
 Output/Console/g_ucf.txt) or `<name>.bin` (the raw code list, 8 bytes per
 line, e.g. g_ucf.bin). For UCF, from a slippi-ssbm-asm checkout:
 
+    ucf-0.73.bin   git show 823067b^:Binary/UCF/Ucf0.73Beta.bin
     ucf-0.74.bin   git show b89e160^:Output/Console/g_ucf.bin
     ucf-0.8.txt    Output/Console/g_ucf.txt
     ucf-0.84.txt   Output/Console/g_ucf_084.txt

@@ -133,8 +133,13 @@ impl Fighter {
     /// which the scene applies.
     fn ucf_smash_turn(&mut self, assets: &FighterAssets) -> bool {
         use crate::input::controller_fix::{smash_turn, TurnFacts};
+        let MotionData::Turn(turn) = &self.core.state_data else {
+            unreachable!()
+        };
         let facts = TurnFacts {
             animation_frame: self.core.animation.frame,
+            script_frame: self.core.commands.script.frame,
+            facing_after: turn.facing_after,
             facing: self.core.physics.facing,
             secondary: self.player.secondary,
             // 0.74/0.8: lwz r4,0x4; cmpwi r4,0xA (the code's own kind check).

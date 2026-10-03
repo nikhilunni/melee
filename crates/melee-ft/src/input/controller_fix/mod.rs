@@ -7,6 +7,7 @@
 //!
 //! | Version | File | Injection |
 //! |---|---|---|
+//! | 0.73 | `Binary/UCF/Ucf0.73Beta.bin` (machine code) | 0x800C9A44, 0x800998A4 |
 //! | 0.74, 0.8 | `External/UCF 0.74/UCF DB.asm`, `External/UCF 0.8/Logic/UCF DB.asm` | 0x800C9A44 (ftCo_Turn_IASA) |
 //! | 0.74, 0.8 | `External/UCF 0.74/UCF SD.asm`, `External/UCF 0.8/Logic/UCF SD.asm` | 0x800998A4 (ftCo_80099894) |
 //! | 0.8 | `External/UCF 0.8/Logic/UCF Tumble.asm` | 0x800908F4 (ftCo_DamageFall_IASA) |
@@ -19,11 +20,13 @@
 //!
 //! The 0.74 and 0.8 dashback and shield-drop codes are the same program
 //! (the 0.8 files only add version tables and comments); 0.8 adds the
-//! tumble wiggle. 0.84 is distributed as machine code only; its hooks here
-//! follow the disassembled instructions. The CSS indicator text (0x802662D0)
+//! tumble wiggle. 0.73 and 0.84 are distributed as machine code only; their
+//! hooks here follow the disassembled instructions. 0.73's dashback wants the
+//! stick toward the turn (0.74: a full stick either way); its shield drop
+//! computes what 0.74's does. The CSS indicator text (0x802662D0)
 //! draws on the character select screen and has no effect on a match.
 //!
-//! The 0.74/0.8 codes read the hardware pad queue (HSD_PadLibData.queue,
+//! The 0.73/0.74/0.8 codes read the hardware pad queue (HSD_PadLibData.queue,
 //! retail 0x8046B108, read index at HSD_PadLibData+1, 0x804C1F78): the
 //! signed, origin-adjusted `PADStatus.stickX` byte of the sample this tick
 //! consumed and of the sample two ticks earlier, before HSD clamps the stick
@@ -33,6 +36,7 @@
 use super::state::FighterInput;
 use melee_types::mp::SurfaceData;
 
+mod ucf073;
 mod ucf08;
 mod ucf084;
 
@@ -43,6 +47,9 @@ pub use ucf084::PadBuffer;
 pub enum ControllerFix {
     #[default]
     Off,
+    /// UCF 0.73 beta (2018): dashback (stick toward the turn) and shield
+    /// drop.
+    Ucf073,
     /// UCF 0.74 (2019): dashback and shield drop.
     Ucf074,
     /// UCF 0.8 (2021): 0.74 plus the tumble wiggle.
@@ -56,8 +63,9 @@ pub enum ControllerFix {
 
 impl ControllerFix {
     /// Every setting with its scenario/CLI name, in declaration order.
-    pub const ALL: [(Self, &'static str); 5] = [
+    pub const ALL: [(Self, &'static str); 6] = [
         (Self::Off, "off"),
+        (Self::Ucf073, "ucf-0.73"),
         (Self::Ucf074, "ucf-0.74"),
         (Self::Ucf080, "ucf-0.8"),
         (Self::Ucf084, "ucf-0.84"),
@@ -83,30 +91,38 @@ impl ControllerFix {
     /// Why the simulator cannot run this setting, if it cannot.
     pub fn unsupported(self) -> Option<&'static str> {
         match self {
-            Self::Off | Self::Ucf074 | Self::Ucf080 | Self::Ucf084 => None,
+            Self::Off | Self::Ucf073 | Self::Ucf074 | Self::Ucf080 | Self::Ucf084 => None,
             Self::Dween => Some("the Dween dashback fix is not ported"),
         }
     }
 
-    /// The 0.74/0.8 program (`UCF DB.asm`, `UCF SD.asm`) is installed.
-    fn ucf08(self) -> bool {
+    /// The dashback and shield-drop program this setting installs.
+    fn program(self) -> Option<Program> {
         match self {
-            Self::Off | Self::Ucf084 => false,
-            Self::Ucf074 | Self::Ucf080 => true,
+            Self::Off => None,
+            Self::Ucf073 => Some(Program::Ucf073),
+            Self::Ucf074 | Self::Ucf080 => Some(Program::Ucf08),
+            Self::Ucf084 => Some(Program::Ucf084),
             Self::Dween => unimplemented!("Dween controller fix"),
         }
     }
 
     fn ucf084(self) -> bool {
-        match self {
-            Self::Off | Self::Ucf074 | Self::Ucf080 => false,
-            Self::Ucf084 => true,
-            Self::Dween => unimplemented!("Dween controller fix"),
-        }
+        self.program() == Some(Program::Ucf084)
     }
 }
 
-/// The two raw `PADStatus.stickX` bytes UCF 0.74/0.8's FETCH_INPUT reads for
+/// The three dashback and shield-drop programs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Program {
+    /// `Ucf0.73Beta.bin`.
+    Ucf073,
+    /// `UCF DB.asm`, `UCF SD.asm` (0.74 and 0.8).
+    Ucf08,
+    Ucf084,
+}
+
+/// The two raw `PADStatus.stickX` bytes UCF 0.73/0.74/0.8's FETCH_INPUT reads for
 /// a port: queue entry `qread - 1` (the sample this tick consumed) and
 /// `qread - 3` (two samples earlier).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -160,6 +176,10 @@ pub struct PartnerTurn {
 pub struct TurnFacts {
     /// cur_anim_frame (+0x894).
     pub animation_frame: f32,
+    /// x3E4_fighterCmdScript.frame_count (+0x3E8), which 0.73 reads.
+    pub script_frame: f32,
+    /// mv.co.turn.facing_after (+0x2344), which 0.73 reads.
+    pub facing_after: f32,
     /// facing_dir (+0x2C) after ftCo_Turn_IASA's flip.
     pub facing: f32,
     /// x221F_b4: the player's second fighter (Nana).
@@ -177,13 +197,10 @@ pub fn smash_turn(
     dash_threshold: f32,
     facts: &TurnFacts,
 ) -> Option<Option<PartnerTurn>> {
-    let fix = input.hardware.fix;
-    if fix.ucf08() {
-        ucf08::smash_turn(input, dash_threshold, facts)
-    } else if fix.ucf084() {
-        ucf084::smash_turn(input, dash_threshold, facts)
-    } else {
-        None
+    match input.hardware.fix.program()? {
+        Program::Ucf073 => ucf073::smash_turn(input, dash_threshold, facts),
+        Program::Ucf08 => ucf08::smash_turn(input, dash_threshold, facts),
+        Program::Ucf084 => ucf084::smash_turn(input, dash_threshold, facts),
     }
 }
 
@@ -191,6 +208,9 @@ pub fn smash_turn(
 pub struct SpotDodgeFacts {
     /// PlCo+0x314: the spot dodge stick threshold.
     pub escape_threshold: f32,
+    /// PlCo+0x2C: the fast walk's stick threshold (0.8), which 0.73 reads
+    /// as its downward limit.
+    pub walk_fast_threshold: f32,
     /// PlCo+0x320: the roll's horizontal tap window.
     pub roll_window: i32,
     /// fp+0x6F0 CollData floor (+0x83C index, +0x840 flags).
@@ -203,13 +223,13 @@ pub struct SpotDodgeFacts {
 /// predicate fails, and the caller's next check (a shield drop through the
 /// platform) can run.
 pub fn blocks_spot_dodge(input: &FighterInput, facts: &SpotDodgeFacts) -> bool {
-    let fix = input.hardware.fix;
-    if fix.ucf08() {
-        ucf08::blocks_spot_dodge(input, facts.escape_threshold)
-    } else if fix.ucf084() {
-        ucf084::blocks_spot_dodge(input, facts)
-    } else {
-        false
+    match input.hardware.fix.program() {
+        None => false,
+        Some(Program::Ucf073) => {
+            ucf073::blocks_spot_dodge(input, facts.escape_threshold, facts.walk_fast_threshold)
+        }
+        Some(Program::Ucf08) => ucf08::blocks_spot_dodge(input, facts.escape_threshold),
+        Some(Program::Ucf084) => ucf084::blocks_spot_dodge(input, facts),
     }
 }
 

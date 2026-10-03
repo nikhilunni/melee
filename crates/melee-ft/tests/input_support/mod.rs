@@ -44,6 +44,7 @@ pub fn common() -> InputCommonData {
         special_reverse_threshold: 0.2,
         neutral_reverse_window: 20,
         powershield_window: 2,
+        walk_fast_threshold: 0.8,
         escape_threshold: -0.7,
         escape_window: 4,
         roll_window: 4,

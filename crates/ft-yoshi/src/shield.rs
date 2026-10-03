@@ -292,6 +292,7 @@ pub fn input(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
             &fighter.input,
             &melee_ft::input::controller_fix::SpotDodgeFacts {
                 escape_threshold: assets.input.escape_threshold,
+                walk_fast_threshold: assets.input.walk_fast_threshold,
                 roll_window: assets.input.roll_window,
                 floor: fighter.collision.data.floor,
             },

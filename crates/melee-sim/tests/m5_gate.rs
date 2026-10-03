@@ -1601,11 +1601,21 @@ fn matrix_witnesses_match_retail() {
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
 /// witness recorded in Dolphin without the code (`_off`) and with it
 /// (`gecko = [...]`, harness/gecko.py): UCF's dashback (0x800C9A44), shield
-/// drop (0x800998A4) and 0.8's tumble wiggle (0x800908F4); 0.84's pad
+/// drop (0x800998A4) and 0.8's tumble wiggle (0x800908F4); the 0.73 beta's
+/// dashback, which wants the stick toward the turn (`_away_`: 0.73 keeps the
+/// slow turn where 0.74 and 0.8 flip the facing at tick 121); 0.84's pad
 /// buffer and 1.0 cardinals (0x8006B460), rim-count shield drop (0x8009A0B8),
 /// SDI (0x8008E54C), shield SDI (0x80093294) and squat release (0x800D65EC).
-const UCF_WITNESSES: [(&str, usize); 23] = [
+const UCF_WITNESSES: [(&str, usize); 29] = [
     ("ucf_dashback_fd_fox_off", 200),
+    ("ucf_dashback_fd_fox_ucf073", 200),
+    // A full stick back toward the old facing on the turn's second frame.
+    ("ucf_dashback_away_fd_fox_ucf073", 200),
+    ("ucf_dashback_away_fd_fox_ucf074", 200),
+    ("ucf_dashback_away_fd_fox_ucf08", 200),
+    // 0.73 takes Popo's partner from the GX link (gobj+0x10).
+    ("ucf_dashback_fd_iceclimbers_ucf073", 200),
+    ("ucf_shielddrop_bf_fox_ucf073", 200),
     ("ucf_dashback_fd_fox_ucf074", 200),
     ("ucf_dashback_fd_fox_ucf08", 200),
     // Popo's smash turn rewrites Nana's newest follow sample.
