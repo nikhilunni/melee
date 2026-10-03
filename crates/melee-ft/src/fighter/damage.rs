@@ -981,6 +981,7 @@ impl Fighter {
                         );
                         let facing = self.core.physics.facing;
                         self.interrupt_actions();
+                        self.core.start_ledge_cooldown_if_hanging(assets);
                         self.begin_damage_reaction(
                             hit.clone(),
                             None,
@@ -1006,12 +1007,14 @@ impl Fighter {
                         // ftCommon_8007DB58, then ftCo_8008E908's sleep branch
                         // (ftCo_Damage.c:676-677): asleep, not launched.
                         self.interrupt_actions();
+                        self.core.start_ledge_cooldown_if_hanging(assets);
                         self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
                     } else {
                         let facing = if down.is_some() {
                             Some(self.core.physics.facing)
                         } else {
                             self.interrupt_actions();
+                            self.core.start_ledge_cooldown_if_hanging(assets);
                             None
                         };
                         self.begin_damage_reaction(hit, down, facing, None, false, assets, rng)?;
@@ -1503,6 +1506,15 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// ftCo_8008E908 (0x8008E908), before the reaction's motion change clears
+    /// the flag: a fighter hit out of a ledge state (x221D_b7: CliffCatch,
+    /// CliffWait and every ledge option) cannot grab a ledge again for PlCo's
+    /// ledge cooldown (+498).
+    fn start_ledge_cooldown_if_hanging(&mut self, assets: &FighterAssets) {
+        if self.status.on_ledge {
+            self.status.ledge_cooldown = assets.ledge.cooldown;
+        }
+    }
     /// ftCo_DamageFly_Phys (80090030..C8): disable collateral throw hits
     /// once knockback speed drops below PlCo+1C8, before shared decay.
     fn clear_slow_thrown_hitboxes(&mut self, assets: &FighterAssets) {

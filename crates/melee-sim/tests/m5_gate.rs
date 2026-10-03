@@ -1690,6 +1690,15 @@ fn slippi_replay_inputs_match_retail() {
     }
 }
 
+/// ftCo_8008E908 (0x8008E908): a hit that lands during a ledge state
+/// (x221D_b7) starts the ledge cooldown. Marth, hit out of his ledge attack
+/// and slid off the edge in MissFoot, falls through the grab range (retail
+/// tick 195 is where the port used to catch) and regrabs after a jump.
+#[test]
+fn hit_out_of_a_ledge_state_starts_the_ledge_cooldown() {
+    combat_gate_ticks("ledge_hit_cooldown_fd_marth", 330);
+}
+
 /// Battlefield's background swaps (grBattle_BG_Callback2, 0x8021A3BC) run
 /// three full cycles from the start boundary: transition animation, color
 /// overlays, mid-match background creation with its particle keys, and the
