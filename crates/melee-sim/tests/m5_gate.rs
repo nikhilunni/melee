@@ -1640,7 +1640,10 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 3] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 4] = [
+    // Fox's up throw draws its voice in his input proc, ahead of Yoshi's
+    // Story's puff timer draw in the same tick (1817).
+    ("slp_ys_fox_falco_t1900_cold", 1900),
     // Pikachu's second Quick Attack zip flushes its cheek spark in the
     // animation proc, ahead of the other fighter's link-9 effects (2244).
     ("slp_bf_captainfalcon_pikachu_t2900_cold", 2900),

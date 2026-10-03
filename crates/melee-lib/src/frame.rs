@@ -1414,18 +1414,34 @@ impl Runtime {
                         // Fighter_ChangeMotionState flushes that fighter's
                         // efAsync queue (fighter.c:951) inside the captor's
                         // input proc, ahead of the next fighter's procs.
+                        //
+                        // ftCo_800DD398 also runs the captor's new script
+                        // there (ftAnim_8006EBA4, retail 0x800DD3FC), before
+                        // the victim's entry (0x800DD418): the throw's voice
+                        // draw (ft_800889F4, retail 0x80088A18) and its
+                        // graphics offsets come before the stage's procs
+                        // and the next fighter's, not at the captor's next
+                        // proc boundary.
                         for member in [player, victim] {
-                            crate::scene_fighter::with_fighter!(
-                                &mut state.fighters[member],
-                                |f| state.effects.flush::<RetailTrig>(
-                                    melee_ef::EffectTiming::Immediate,
-                                    member,
-                                    &mut f.core,
-                                    &state.assets.common_particle_bank,
-                                    &state.assets.particle_bank,
-                                    &mut state.particles,
-                                    &mut state.rng,
-                                )
+                            let f = &mut state.fighters[member].0;
+                            f.resolve_sound_draws(&state.assets.fighters[member], &mut state.rng);
+                            f.resolve_terrain_footsteps(&mut state.rng);
+                            resolve_issued_graphics(
+                                f,
+                                member,
+                                &state.assets,
+                                &mut state.effects,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )?;
+                            state.effects.flush::<RetailTrig>(
+                                melee_ef::EffectTiming::Immediate,
+                                member,
+                                &mut f.core,
+                                &state.assets.common_particle_bank,
+                                &state.assets.particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
                             )?;
                         }
                     }
@@ -2786,6 +2802,33 @@ fn partner_turn(state: &mut InitialState, player: usize) {
     sample.stick[0] = turn.stick_x;
 }
 
+/// The graphics commands a fighter's script issued below link 9: the efAsync
+/// requests its motion change sealed dispatch first (Fighter_ChangeMotionState,
+/// fighter.c:951), then each command draws its random offsets
+/// (ftCo_8009F834).
+fn resolve_issued_graphics(
+    f: &mut melee_ft::fighter::Fighter,
+    player: usize,
+    scene_assets: &crate::assets::Assets,
+    effects: &mut melee_ef::Effects,
+    particles: &mut hsd_particle::system::ParticleSystem,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
+    if !f.commands.graphics.is_empty() || !f.commands.landing_effects.is_empty() {
+        effects.flush::<melee_ft::fighter::RetailTrig>(
+            melee_ef::EffectTiming::Sealed,
+            player,
+            &mut f.core,
+            &scene_assets.common_particle_bank,
+            &scene_assets.particle_bank,
+            particles,
+            rng,
+        )?;
+    }
+    f.resolve_graphics_commands(&scene_assets.fighters[player], rng);
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)] // Borrow each subsystem independently while dispatching a concrete fighter.
 fn dispatch_fighter(
     f: &mut melee_ft::fighter::Fighter,
@@ -2966,22 +3009,10 @@ fn dispatch_fighter(
         }
         f.effects = pending;
     } else {
-        if !f.commands.graphics.is_empty() || !f.commands.landing_effects.is_empty() {
-            // Fighter_ChangeMotionState flushed efAsync (fighter.c:951) when
-            // this proc changed motion, before the new script's graphics or
-            // landing dust drew their random offsets: dispatch what that
-            // entry sealed.
-            effects.flush::<melee_ft::fighter::RetailTrig>(
-                melee_ef::EffectTiming::Sealed,
-                player,
-                &mut f.core,
-                &scene_assets.common_particle_bank,
-                &scene_assets.particle_bank,
-                particles,
-                rng,
-            )?;
-        }
-        f.resolve_graphics_commands(assets, rng);
+        // Fighter_ChangeMotionState flushed efAsync when this proc changed
+        // motion, before the new script's graphics or landing dust drew
+        // their random offsets: dispatch what that entry sealed.
+        resolve_issued_graphics(f, player, scene_assets, effects, particles, rng)?;
     }
     effects.flush::<melee_ft::fighter::RetailTrig>(
         melee_ef::EffectTiming::Immediate,
