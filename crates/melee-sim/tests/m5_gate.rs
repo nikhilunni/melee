@@ -3502,3 +3502,9 @@ fn intangible_shield_takes_the_hit() {
 fn phantasm_capsule_keeps_the_command_size() {
     combat_gate_ticks("slp_bf_fox_falco_phantasm_t300", 300);
 }
+
+/// Fox's up throw on Fountain of Dreams' main floor, at Marth's weight rate.
+#[test]
+fn up_throw_on_fountain_of_dreams_floor_matches_retail() {
+    combat_gate_ticks("throwhi_floor_fod_fox_marth4", 330);
+}

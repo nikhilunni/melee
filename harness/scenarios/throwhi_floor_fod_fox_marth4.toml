@@ -1,0 +1,33 @@
+# Fox's up throw on Fountain of Dreams' main floor. Both fighters drop through
+# their start platforms (tick 130), Fox runs right, dash grabs Marth (Z at
+# tick 202, CatchWait at 216) and throws up at tick 240 (ThrowHi at Marth's
+# weight rate, 1.149).
+name = "throwhi_floor_fod_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_fod_fox_marth4.sav"
+frames = 330
+seed = 1
+stage = "FountainOfDreams"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 133, port = 1, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 243, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"
