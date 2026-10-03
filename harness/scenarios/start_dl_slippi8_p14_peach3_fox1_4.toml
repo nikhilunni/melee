@@ -1,0 +1,25 @@
+# Peach vs Fox on DreamLand, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_dl_slippi8_p14_peach3_fox1_4"
+gate = "start_dl_slippi8_p14_peach3_fox1_4_cold"
+savestate = "harness/roms/start_dl_slippi8_p14_peach3_fox1_4.sav"
+frames = 600
+seed = 1
+stage = "DreamLand"
+gecko = ["ucf-0.8", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Fox"
+controller = "idle"
+controller_fix = "ucf-0.8"

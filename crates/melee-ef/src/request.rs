@@ -266,7 +266,8 @@ impl EffectQueue {
     }
     /// efAsync_QueueFlush (80067624): newest pending request first, using
     /// transforms sampled before the caller replaces its animation resources.
-    pub fn resolve_pending(&mut self, mut matrix: impl FnMut(Option<usize>) -> Mtx) {
+    /// Returns how many requests it sealed.
+    pub fn resolve_pending(&mut self, mut matrix: impl FnMut(Option<usize>) -> Mtx) -> usize {
         let mut pending = FixedVec::<_, REQUEST_CAPACITY>::default();
         let mut old = std::mem::take(&mut self.entries);
         while !old.is_empty() {
@@ -277,10 +278,12 @@ impl EffectQueue {
                 pending.push(entry);
             }
         }
+        let sealed = pending.len();
         while let Some(mut entry) = pending.pop() {
             entry.matrix = Some(matrix(entry.request.bone()));
             self.entries.push(entry);
         }
+        sealed
     }
     pub(crate) fn drain(
         &mut self,

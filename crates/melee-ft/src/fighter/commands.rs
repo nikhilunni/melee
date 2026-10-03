@@ -80,6 +80,10 @@ pub struct CommandState {
     /// commands queued ahead of it: retail draws these between the graphics
     /// commands' offset draws (ftCo_8009F834), as the script runs.
     pub sound_draws: FixedVec<(SoundDraw, usize), COMMAND_REQUEST_CAPACITY>,
+    /// How many of `sound_draws` were issued before this proc's motion
+    /// change flushed pending efAsync requests (fighter.c:951); the rest
+    /// belong to the new script and draw after that flush.
+    pub sound_draws_before_seal: Option<usize>,
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,
@@ -742,7 +746,47 @@ impl CommandState {
     }
 }
 
+impl CommandState {
+    /// A motion change sealed pending effect requests: the sound draws
+    /// queued so far ran before it.
+    pub(super) fn mark_effect_seal(&mut self) {
+        let issued = self.sound_draws.len();
+        match self.sound_draws_before_seal {
+            None => self.sound_draws_before_seal = Some(issued),
+            Some(before) if before == issued => {}
+            Some(_) => unimplemented!(
+                "fighter.c:951: two efAsync flushes in one proc with a sound draw between them"
+            ),
+        }
+    }
+}
+
 impl super::FighterCore {
+    /// Fighter_ChangeMotionState flushes pending efAsync requests
+    /// (fighter.c:951) before the new script's frame-0 commands run, so a
+    /// sealed request's generator draw (hsd_8039F05C, 0x8039F250) comes after
+    /// the old script's sound draws and before the new script's. Draws the
+    /// former and reports whether a new-script sound draw waits behind the
+    /// flush: the caller then dispatches the sealed requests first.
+    pub fn resolve_sound_draws_before_seal(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> bool {
+        let Some(before) = self.commands.sound_draws_before_seal.take() else {
+            return false;
+        };
+        for _ in 0..before {
+            let Some((draw, 0)) = self.commands.sound_draws.iter().next().copied() else {
+                // Behind a graphics command of the old script: resolved in
+                // script order with it (resolve_graphics_commands).
+                return false;
+            };
+            self.commands.sound_draws.remove(0);
+            self.draw_sound(draw, assets, rng);
+        }
+        matches!(self.commands.sound_draws.iter().next(), Some((_, 0)))
+    }
     /// The sound commands' draws issued before any still-queued graphics
     /// command, in script order: each selection draws as its command runs.
     pub fn resolve_sound_draws(&mut self, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
@@ -752,10 +796,18 @@ impl super::FighterCore {
                 break;
             };
             self.commands.sound_draws.remove(0);
-            match draw {
-                SoundDraw::Smash => self.draw_smash_sound(assets, rng),
-                SoundDraw::Random(sound) => self.draw_random_sound(&sound, rng),
-            }
+            self.draw_sound(draw, assets, rng);
+        }
+    }
+    fn draw_sound(
+        &mut self,
+        draw: SoundDraw,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        match draw {
+            SoundDraw::Smash => self.draw_smash_sound(assets, rng),
+            SoundDraw::Random(sound) => self.draw_random_sound(&sound, rng),
         }
     }
     /// A graphics command left the queue: the sound draws behind it move up.

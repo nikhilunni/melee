@@ -1424,7 +1424,15 @@ impl Runtime {
                         // proc boundary.
                         for member in [player, victim] {
                             let f = &mut state.fighters[member].0;
-                            f.resolve_sound_draws(&state.assets.fighters[member], &mut state.rng);
+                            resolve_issued_sounds(
+                                f,
+                                member,
+                                &state.assets,
+                                &mut state.effects,
+                                &mut state.particles,
+                                &mut state.rng,
+                                true,
+                            )?;
                             f.resolve_terrain_footsteps(&mut state.rng);
                             resolve_issued_graphics(
                                 f,
@@ -2802,6 +2810,37 @@ fn partner_turn(state: &mut InitialState, player: usize) {
     sample.stick[0] = turn.stick_x;
 }
 
+/// The sound draws a fighter's scripts issued with no graphics command ahead
+/// of them. A motion change flushes the fighter's pending efAsync requests
+/// (efAsync_QueueFlush at retail 0x800694A0, fighter.c:951) before the new
+/// script's frame-0 commands run (ftAction_8007349C at 0x8006A0A4), so below
+/// link 9 what that change sealed dispatches between the old script's sound
+/// draws and the new script's.
+fn resolve_issued_sounds(
+    f: &mut melee_ft::fighter::Fighter,
+    player: usize,
+    scene_assets: &crate::assets::Assets,
+    effects: &mut melee_ef::Effects,
+    particles: &mut hsd_particle::system::ParticleSystem,
+    rng: &mut gekko_math::HsdRng,
+    below_link_9: bool,
+) -> Result<()> {
+    let assets = &scene_assets.fighters[player];
+    if f.resolve_sound_draws_before_seal(assets, rng) && below_link_9 {
+        effects.flush::<melee_ft::fighter::RetailTrig>(
+            melee_ef::EffectTiming::Sealed,
+            player,
+            &mut f.core,
+            &scene_assets.common_particle_bank,
+            &scene_assets.particle_bank,
+            particles,
+            rng,
+        )?;
+    }
+    f.resolve_sound_draws(assets, rng);
+    Ok(())
+}
+
 /// The graphics commands a fighter's script issued below link 9: the efAsync
 /// requests its motion change sealed dispatch first (Fighter_ChangeMotionState,
 /// fighter.c:951), then each command draws its random offsets
@@ -2978,7 +3017,15 @@ fn dispatch_fighter(
     // any graphics command draw before the following effect boundary; those
     // behind a graphics command draw after its offsets, in script order
     // (resolve_graphics_commands).
-    f.resolve_sound_draws(assets, rng);
+    resolve_issued_sounds(
+        f,
+        player,
+        scene_assets,
+        effects,
+        particles,
+        rng,
+        proc.s_link() < 9,
+    )?;
     // Opcode 54's footstep pitch draws (ftAction_80072CD8 -> ft_PlaySFX).
     f.resolve_terrain_footsteps(rng);
     if proc.s_link() >= 9 && !f.commands.graphics.is_empty() {

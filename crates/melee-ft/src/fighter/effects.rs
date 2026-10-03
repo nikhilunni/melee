@@ -35,8 +35,11 @@ impl super::FighterCore {
         self.skeleton
             .set_translate(self.animation.root, &self.physics.position);
         let mut queue = std::mem::take(&mut self.effects);
-        queue.resolve_pending(|bone| self.effect_matrix(bone));
+        let sealed = queue.resolve_pending(|bone| self.effect_matrix(bone));
         self.effects = queue;
+        if sealed != 0 {
+            self.commands.mark_effect_seal();
+        }
     }
 }
 
