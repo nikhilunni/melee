@@ -3583,3 +3583,14 @@ fn phantasm_capsule_keeps_the_command_size() {
 fn up_throw_on_fountain_of_dreams_floor_matches_retail() {
     combat_gate_ticks("throwhi_floor_fod_fox_marth4", 330);
 }
+
+/// Fox grabs and up-throws Marth on a Fountain of Dreams side platform while
+/// it descends. The captured fighter rides the floor in Fighter_procUpdate's
+/// tail (mpGetSpeed, 0x8006BE48) before the accessory pins it to the captor
+/// again, so the tick's end state does not show the ride; Slippi replays older
+/// than 3.4.0 (Post Frame at the map proc, 0x8006C5D8) do, and two of the
+/// corpus's FoD games check it.
+#[test]
+fn capture_and_throw_on_a_moving_platform_match_retail() {
+    combat_gate_ticks("capture_moving_platform_fod_fox_marth4", 740);
+}

@@ -1,0 +1,35 @@
+# Fox grabs and up-throws Marth on Fountain of Dreams' right side platform
+# while it descends (grIzumi's first step, ticks 615-667): Fox drops through
+# his platform, runs under Marth's, jumps onto it (tick 290) and waits; Z at
+# 625 (CatchPull 213 / CapturePulledLw 226), up at 660 (ThrowHi / ThrownHi).
+# The captured Marth rides the floor in Fighter_procUpdate's tail (0x8006BE48).
+name = "capture_moving_platform_fod_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_fod_fox_marth4.sav"
+frames = 740
+seed = 1
+stage = "FountainOfDreams"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 305, port = 0, buttons = {  }, raw = {  } },
+  { frame = 625, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 627, port = 0, buttons = {  }, raw = {  } },
+  { frame = 660, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 663, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

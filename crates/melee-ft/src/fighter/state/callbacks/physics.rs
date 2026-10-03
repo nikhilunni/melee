@@ -238,13 +238,24 @@ pub fn entry(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 }
 
 impl FighterCore {
+    /// The capture and thrown states have no physics callback of their own;
+    /// Fighter_procUpdate's tail still runs. A victim standing on a floor
+    /// (fp->ground_or_air == GA_Ground, 0x8006BE48) rides it by mpGetSpeed
+    /// before its accessory pins it to the captor again, which is the
+    /// position the map proc and the next tick's pin start from.
     fn physics_capture(&mut self, phase: PhysicsPhase<'_>) {
-        let PhysicsPhase {
-            assets,
-            map: _,
-            wind,
-        } = phase;
-        self.finish_air_update(assets, wind);
+        let PhysicsPhase { assets, map, wind } = phase;
+        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            crate::physics::grounded::finish_ground_update(
+                &mut self.physics,
+                &self.collision.data,
+                &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+                map,
+                wind,
+            );
+        } else {
+            self.finish_air_update(assets, wind);
+        }
     }
     fn physics_revival(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase {
