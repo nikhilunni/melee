@@ -30,7 +30,9 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
         }
         let (attacker, victim) = pair(&mut state.fighters, player, other);
         let candidate = with_fighter!(attacker, |a| with_fighter!(victim, |v| grab::candidate(
-            v, a
+            v,
+            a,
+            &mut state.map
         )));
         if let Some(candidate) = candidate {
             if candidate < distance {

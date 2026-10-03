@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 424] = [
+const MATRIX_WITNESSES: [(&str, usize); 425] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1551,6 +1551,9 @@ const MATRIX_WITNESSES: [(&str, usize); 424] = [
     // An electric phantom (Falco's Reflector glancing a crouching Fox) takes
     // the electric hitlag scale too (ftColl_8007A06C, 8007AAF4).
     ("falco_shine_phantom_crouch_start_fd_falco_fox4", 322),
+    // A catch box reaching its victim through a wall does not catch
+    // (ft_80084CE4): Falcon Dive from under Dream Land's ledge.
+    ("falcon_dive_wall_start_dl_captainfalcon_jigglypuff4", 347),
 ];
 
 #[test]

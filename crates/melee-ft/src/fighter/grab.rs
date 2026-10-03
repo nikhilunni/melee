@@ -206,7 +206,11 @@ pub enum GrabLink {
 
 /// ftColl_80078A2C (80078A2C): return distance only for a legal capsule contact.
 /// The scene chooses the strictly nearest candidate in fighter-list order.
-pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32> {
+pub fn candidate(
+    victim: &mut FighterCore,
+    attacker: &FighterCore,
+    map: &mut melee_mp::CollMap,
+) -> Option<f32> {
     use melee_types::{GroundOrAir, HitElement};
     // x221E_b6 / x1A68: Catch arms category 1 (ftCo_Catch.c:115); a
     // character special arms its own.
@@ -239,6 +243,11 @@ pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32
             .contact_with_hurtboxes(hit, attacker.player.scale)
             .is_some()
         {
+            // The first contact decides (goto next_gobj): a wall between
+            // the two leaves this victim without a candidate.
+            if wall_between(attacker, victim, map) {
+                return None;
+            }
             // ftGrabDist, inlined in 80078A2C: separate subtract and sign test.
             return Some(gekko_math::msl::fabsf(
                 victim.physics.position.x - attacker.physics.position.x,
@@ -246,6 +255,30 @@ pub fn candidate(victim: &mut FighterCore, attacker: &FighterCore) -> Option<f32
         }
     }
     None
+}
+
+/// ft_80084CE4 (80084CE4): a wall crosses the segment between the two ECB
+/// centres, so the grab does not connect (a Falcon Dive from under a ledge).
+/// The attacker's side picks the wall kind; equal x tests left walls.
+fn wall_between(attacker: &FighterCore, victim: &FighterCore, map: &mut melee_mp::CollMap) -> bool {
+    // retail 80084D00..80084D3C: fadds, fmuls by 0.5, fadds; x is 0.0 + x.
+    let centre = |fighter: &FighterCore| {
+        let ecb = &fighter.collision.data.ecb;
+        (
+            0.0 + fighter.physics.position.x,
+            0.5 * (ecb.top.y + ecb.bottom.y) + fighter.physics.position.y,
+        )
+    };
+    let (attacker_x, attacker_y) = centre(attacker);
+    let (victim_x, victim_y) = centre(victim);
+    // No joint is skipped or singled out (li r7, -1; li r8, -1).
+    if attacker_x > victim_x {
+        map.check_right_wall(attacker_x, attacker_y, victim_x, victim_y, -1, -1)
+            .is_some()
+    } else {
+        map.check_left_wall(attacker_x, attacker_y, victim_x, victim_y, -1, -1)
+            .is_some()
+    }
 }
 
 /// Fighter_UnkProcessGrab (8006CA5C): grab_cb runs before grabbed_cb.

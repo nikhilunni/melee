@@ -1,0 +1,40 @@
+# Directed retail witness (melee-sim search over Jigglypuff's stop, her down
+# smash and the dive's start: 8316 candidates, 12 with a wall-blocked
+# contact). Captain Falcon drops off Dream Land's left ledge and starts
+# Falcon Dive below it; at tick 257 its catch box reaches the foot of
+# Jigglypuff's down smash through the ledge. ftColl_80078A2C asks
+# ft_80084CE4 (80084CE4) before taking the victim: the segment between the
+# two ECB centres crosses the stage's left wall (mpCheckLeftWall, the
+# attacker being on the left), so there is no catch and the dive carries on
+# to the platform.
+name = "falcon_dive_wall_start_dl_captainfalcon_jigglypuff4"
+savestate = "harness/roms/start_dl_captainfalcon_jigglypuff4.sav"
+input_clock = "tick"
+frames = 347
+seed = 1
+stage = "DreamLand"
+
+inputs = [
+  { frame = 125, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -100 } },
+  { frame = 125, port = 1, buttons = { StickY = -1.0 }, raw = { stickY = -80 } },
+  { frame = 129, port = 1, buttons = {  }, raw = {  } },
+  { frame = 156, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 1, buttons = { StickX = -0.7 }, raw = { stickX = -56 } },
+  { frame = 218, port = 1, buttons = {  }, raw = {  } },
+  { frame = 232, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -100 } },
+  { frame = 235, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 100 } },
+  { frame = 236, port = 1, buttons = { CStickY = -1.0 }, raw = { substickY = -100 } },
+  { frame = 238, port = 1, buttons = {  }, raw = {  } },
+  { frame = 245, port = 0, buttons = { StickY = 1.0, B = true }, raw = { button = 512, stickY = 100 } },
+  { frame = 247, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 100 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"
