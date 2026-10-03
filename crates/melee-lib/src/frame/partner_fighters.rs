@@ -129,7 +129,7 @@ fn awaiting_respawn(fighter: &SceneFighter) -> bool {
 /// ftCo_800BFD9C (800BFD9C) once a death's countdown ends: Sleep; the
 /// leader's death takes its partner out too (ftCo_800D4F24); then
 /// gm_80167320's respawn (fn_8016719C, Player_80032070). The dying fighter's
-/// own Sleep is not modelled: its revival follows at once.
+/// own Sleep lasts no tick: its revival follows at once.
 pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<()> {
     if !awaiting_respawn(&state.fighters[index]) {
         return Ok(());
@@ -155,6 +155,14 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
         ..
     } = state;
     let fighter = &mut fighters[index];
+    // ftCo_800BFD04 (800BFD04): Sleep for an instant. Its motion change turns
+    // the root back to the facing (fighter.c:1173-1175), which a screen KO
+    // had turned to the screen. The respawn probe (ft_80082A68) reads its ECB
+    // from that pose, and the first Rebirth collision splits its move by the
+    // ECB change (mpColl_80043754): a wide enough one adds a step and moves
+    // the summed position by an ulp.
+    with_fighter!(fighter, |f| f.enter_sleep(&assets.fighters[index]))
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     let platform = fighter.place_revival(&assets.arena, revival_offsets);
     with_fighter!(fighter, |f| f.revive_at(
         &assets.fighters[index],
