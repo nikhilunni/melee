@@ -1,0 +1,27 @@
+# Directed witness: Fox runs at Samus and her forward smash angled down
+# (C-stick, AttackS4Lw) hits him: the angled rows share AttackS4S's callbacks
+# (ftData_MotionStateList[62], ftCo_AttackS4_Anim/IASA/Phys/Coll).
+name = "samus_smash_lw_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = { substickX = 100, substickY = -40 } },
+  { frame = 142, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

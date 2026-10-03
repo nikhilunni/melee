@@ -659,6 +659,27 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftData_MotionStateList[58, 59, 61, 62]: the angled forward smashes
+    // share AttackS4S's callbacks (ftCo_AttackS4_Anim/IASA/Phys/Coll) and
+    // differ in submotion only (ftCo_SM_AttackS4Hi = 60 .. AttackS4Lw = 64).
+    // doEnter (8008C3E0) enters one only when the fighter authors it.
+    const ANGLED_FORWARD_SMASHES: [(S, i32); 4] = [
+        (S::AttackS4Hi, 60),
+        (S::AttackS4HiS, 61),
+        (S::AttackS4LwS, 63),
+        (S::AttackS4Lw, 64),
+    ];
+    let mut i = 0;
+    while i < ANGLED_FORWARD_SMASHES.len() {
+        let (state, animation) = ANGLED_FORWARD_SMASHES[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            ..rows[S::AttackS4S as usize]
+        };
+        i += 1;
+    }
     // ftCo_MS_DamageHi3 = 77; ftData_MotionStateList[77].
     rows[S::DamageHi3 as usize] = MotionRow {
         action: ActionId(77),

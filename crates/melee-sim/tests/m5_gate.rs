@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 418] = [
+const MATRIX_WITNESSES: [(&str, usize); 421] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1537,6 +1537,11 @@ const MATRIX_WITNESSES: [(&str, usize); 418] = [
     // Two Marth jabs clank: slash against slash draws HSD_Randi(3) for the
     // sword clank sound in hit detection (ftColl_800784B4, 0x800784E4).
     ("clank_sword_jabs_fd_marth_marth4", 260),
+    // Samus's angled forward smashes (ftData_MotionStateList[58, 59, 61, 62],
+    // doEnter 0x8008C3E0): all five angles whiffing, up and down hitting Fox.
+    ("samus_smash_angles_whiff_fd_fox4", 520),
+    ("samus_smash_hi_hit_fd_fox4", 260),
+    ("samus_smash_lw_hit_fd_fox4", 260),
 ];
 
 #[test]
