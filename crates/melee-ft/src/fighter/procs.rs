@@ -72,7 +72,7 @@ impl Fighter {
             // offset is zero there.
             self.core.ride_floor_in_hitlag(map);
         }
-        self.core.invalidate_collision_positions();
+        self.core.invalidate_collision_positions(physics);
     }
     /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
     pub fn proc_map(&mut self, map: &mut CollMap) {
@@ -712,13 +712,23 @@ impl FighterCore {
         }
         true
     }
-    fn invalidate_collision_positions(&mut self) {
+    /// The shield's cached position (`shield_hit.skip_update_pos`) is cleared
+    /// only by the Guard states' physics callbacks (ftColl_8007AEE0, called
+    /// from ftCo_GuardOn_Phys, ftCo_Guard_Phys, ftCo_GuardSetOff_Phys and
+    /// ftCo_GuardReflect_Phys), which hitlag skips: a shield in hitlag keeps
+    /// the position of its last test, while lbColl_80007BCC (0x80007BCC)
+    /// still reads the bone's current matrix for its size. The hurt capsules
+    /// are cleared at the end of Fighter_procUpdate (ftColl_8007AF28) in
+    /// hitlag too.
+    fn invalidate_collision_positions(&mut self, state_physics_ran: bool) {
         if self.combat.reflector_enabled {
             self.shield.reflect.volume.position_cached = false;
         }
         if self.shield.active {
-            self.physics.shield_position_cached = false;
-            self.shield.hit.position_cached = false;
+            if state_physics_ran {
+                self.physics.shield_position_cached = false;
+                self.shield.hit.position_cached = false;
+            }
             if self.motion_state.id != melee_types::CommonMotionState::GuardSetOff {
                 self.shield.reflect.volume.position_cached = false;
             }

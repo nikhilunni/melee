@@ -1650,7 +1650,10 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 5] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 6] = [
+    // A shield in hitlag keeps its cached position: Sheik's second needle
+    // strikes where Marth's shield was a tick before (148, 149).
+    ("slp_bf_sheik_marth_t400_cold", 400),
     // Fox's up throw draws its voice in his input proc, ahead of Yoshi's
     // Story's puff timer draw in the same tick (1817).
     ("slp_ys_fox_falco_t1900_cold", 1900),
