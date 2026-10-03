@@ -20,6 +20,17 @@ pub struct Scenario {
     /// Cold-start seed; a restored match uses its saved seed instead.
     #[serde(default)]
     pub seed: Option<u32>,
+    /// The scenario the port gates in this one's place: the cold twin of a
+    /// recording whose savestate the importer does not cover (fighters on
+    /// slots other than 0..n, a replaced boundary seed). `load` follows it.
+    #[serde(default)]
+    pub gate: Option<String>,
+    /// The seed the recorder wrote over the savestate's before the first
+    /// tick (another match's draws from the same boundary). Such a recording
+    /// gates through its cold twin: `seed` builds the boundary as the
+    /// savestate was made, then this replaces the RNG seed.
+    #[serde(default)]
+    pub boundary_seed: Option<u32>,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,
@@ -105,6 +116,13 @@ impl Scenario {
             .canonicalize()
             .with_context(|| format!("scenario {}", path.display()))?;
         let mut scenario: Self = toml::from_str(&fs::read_to_string(&path)?)?;
+        if let Some(twin) = &scenario.gate {
+            ensure!(
+                scenario.savestate.is_some() && *twin != scenario.name,
+                "`gate` names a recording's cold twin"
+            );
+            return Self::load(&path.with_file_name(format!("{twin}.toml")));
+        }
         let checkout = path
             .parent()
             .and_then(Path::parent)
@@ -156,6 +174,10 @@ impl Scenario {
             );
         }
         ensure!(
+            self.boundary_seed.is_none() || self.is_cold(),
+            "a recording with a replaced boundary seed gates through its cold twin"
+        );
+        ensure!(
             crate::scene_stage::descriptor(&self.stage).is_some(),
             "unsupported stage"
         );
@@ -190,13 +212,18 @@ impl Scenario {
             (STADIUM_PRELOAD_GECKO, self.stadium_preload),
             (STADIUM_FROZEN_GECKO, self.stadium_frozen),
         ];
-        let is_stage_code = |code: &String| stage_codes.iter().any(|(name, _)| code == name);
-        let fix_recorded = self.gecko.iter().any(|code| !is_stage_code(code));
+        // Codes that are not controller fixes (`neutral-spawn`) have no
+        // per-fighter setting.
+        let fixes: Vec<&String> = self
+            .gecko
+            .iter()
+            .filter(|code| melee_lib::ControllerFix::from_name(code).is_some())
+            .collect();
         for fighter in &self.fighters {
             let fix = fighter.controller_fix()?;
-            if fix_recorded {
+            if !fixes.is_empty() {
                 ensure!(
-                    self.gecko.iter().any(|code| code == fix.name()),
+                    fixes.iter().any(|code| *code == fix.name()),
                     "gecko {:?} requires each fighter's controller_fix to name its code",
                     self.gecko
                 );
@@ -240,17 +267,29 @@ impl Scenario {
     pub fn is_cold(&self) -> bool {
         self.savestate.is_none()
     }
+    /// A cold twin of a scripted retail recording (`expected` names it and a
+    /// fighter is `scripted`): built from parameters, driven by the pads
+    /// that recording consumed. This is how a match on ports a savestate
+    /// import does not cover (slots 1 and 3) gates against retail.
+    pub fn replays_recorded_pads(&self) -> bool {
+        self.is_cold()
+            && self.expected.is_some()
+            && self.replay_inputs.is_empty()
+            && self.fighters.iter().any(|f| f.controller == "scripted")
+    }
     pub fn expected_path(&self) -> PathBuf {
         self.root.join("harness/traces").join(format!(
             "{}.tick.expected.jsonl",
             self.expected.as_deref().unwrap_or(&self.name)
         ))
     }
-    /// Traces recorded for this scenario (its own tick trace).
+    /// Traces recorded for this scenario, or for the recording a cold twin
+    /// names as `expected`.
     pub fn trace_path(&self, suffix: &str) -> PathBuf {
-        self.root
-            .join("harness/traces")
-            .join(format!("{}.{suffix}", self.name))
+        self.root.join("harness/traces").join(format!(
+            "{}.{suffix}",
+            self.expected.as_deref().unwrap_or(&self.name)
+        ))
     }
     /// The scenario whose captures describe this savestate's boundary: the
     /// savestate's file stem (`idle_fd_fox.sav` -> `idle_fd_fox`). Several
@@ -396,6 +435,93 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     }
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
         Ok(Box::new(melee_trace_io::open(path)?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn twin_text(extra: &str) -> String {
+        format!(
+            r#"name = "x_cold"
+frames = 10
+seed = 1
+stage = "Battlefield"
+all_characters_unlocked = true
+spawn = "neutral-2020"
+{extra}
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Peach"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+"#
+        )
+    }
+    fn twin(extra: &str) -> Scenario {
+        toml::from_str(&twin_text(extra)).unwrap()
+    }
+
+    #[test]
+    fn a_scripted_cold_twin_replays_the_pads_of_the_recording_it_names() {
+        let scenario = twin("expected = \"x\"\nboundary_seed = 7");
+        scenario.validate().unwrap();
+        assert!(scenario.replays_recorded_pads());
+        assert_eq!(scenario.boundary_seed, Some(7));
+        assert!(scenario
+            .trace_path("ledger.raw.jsonl")
+            .ends_with("harness/traces/x.ledger.raw.jsonl"));
+        // Without a recording to name, a cold scene's pads stay neutral.
+        assert!(!twin("").replays_recorded_pads());
+    }
+
+    #[test]
+    fn a_replaced_boundary_seed_needs_the_cold_twin() {
+        let mut scenario = twin("boundary_seed = 7");
+        scenario.savestate = Some("harness/roms/x.sav".into());
+        let error = scenario.validate().unwrap_err().to_string();
+        assert!(error.contains("cold twin"), "{error}");
+    }
+
+    #[test]
+    fn a_code_that_is_no_controller_fix_asks_nothing_of_the_fighters() {
+        let mut scenario = twin("");
+        for fighter in &mut scenario.fighters {
+            fighter.controller_fix = None;
+        }
+        scenario.gecko = vec!["neutral-spawn".into()];
+        scenario.validate().unwrap();
+        scenario.gecko.push("ucf-0.8".into());
+        assert!(scenario.validate().is_err());
+    }
+
+    #[test]
+    fn load_follows_gate_to_the_cold_twin() {
+        let root = std::env::temp_dir().join(format!("melee-scenario-gate-{}", std::process::id()));
+        let scenarios = root.join("harness/scenarios");
+        fs::create_dir_all(&scenarios).unwrap();
+        fs::write(
+            scenarios.join("x.toml"),
+            "name = \"x\"\ngate = \"x_cold\"\nsavestate = \"harness/roms/x.sav\"\nframes = 10\n\
+             stage = \"Battlefield\"\nfighters = []\n",
+        )
+        .unwrap();
+        fs::write(scenarios.join("x_cold.toml"), twin_text("expected = \"x\"")).unwrap();
+        let loaded = Scenario::load(&scenarios.join("x.toml")).unwrap();
+        assert_eq!(loaded.name, "x_cold");
+        assert!(loaded.is_cold());
+        fs::remove_dir_all(&root).unwrap();
     }
 }
 

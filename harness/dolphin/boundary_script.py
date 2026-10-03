@@ -8,6 +8,8 @@ a JSON file named by MELEE_BOUNDARY_CONFIG:
      "costumes": [3, 0]}
 
 `players` are CSS character kinds (ft/forward.h CharacterKind), one per port.
+`ports` (optional) names each player's port, 0-based and ascending (default:
+the first ports); only those hold a controller, so the other doors stay N/A.
 `costumes` (optional) gives each port's costume: after the characters are
 picked, that port presses X until the CSS door's costume matches
 (mnCharSel_CostumeChange, mncharsel.c:2186: X steps to the next costume).
@@ -140,6 +142,7 @@ class BoundaryDriver:
 
     def __init__(self, config: dict, mem, save) -> None:
         self.config = config
+        self.ports = list(config.get("ports") or range(len(config["players"])))
         self.mem = mem
         self.save = save          # save(path) -> None, writes the savestate
         self.frame = 0
@@ -178,10 +181,11 @@ class BoundaryDriver:
     def enter(self, phase: str) -> None:
         self.phase, self.phase_frame = phase, self.frame
 
-    def pulse(self, button: str, port: int = 0) -> dict:
-        """Press `button` for PRESS_FRAMES every PULSE_PERIOD frames of this phase."""
+    def pulse(self, button: str) -> dict:
+        """Press `button` for PRESS_FRAMES every PULSE_PERIOD frames of this phase
+        (the first player's controller drives the menus)."""
         if (self.frame - self.phase_frame) % PULSE_PERIOD < PRESS_FRAMES:
-            return {port: {button: True}}
+            return {self.ports[0]: {button: True}}
         return {}
 
     def step(self) -> dict:
@@ -192,8 +196,8 @@ class BoundaryDriver:
         for port, pad in self.press_due().items():
             inputs.setdefault(port, {}).update(pad)
         if self.phase == "match":
-            for port in self.config.get("transform", []):
-                inputs.setdefault(port, {})["A"] = True
+            for player in self.config.get("transform", []):
+                inputs.setdefault(self.ports[player], {})["A"] = True
         return inputs
 
     def phase_inputs(self, mode: int, state: int) -> dict:
@@ -246,11 +250,12 @@ class BoundaryDriver:
         hovered = self.mem.read_u16(MENU_FLOW + 2)
         target = {MENU_MAIN: SEL_MAIN_VS, MENU_VS: SEL_VS_MELEE}.get(menu)
         self.wait_until = self.frame + PULSE_PERIOD
+        first = self.ports[0]
         if target is None:   # a submenu this path never opens: back out
-            return {0: {"B": True}}
+            return {first: {"B": True}}
         if hovered == target:
-            return {0: {"A": True}}
-        return {0: {"Down" if hovered < target else "Up": True}}
+            return {first: {"A": True}}
+        return {first: {"Down" if hovered < target else "Up": True}}
 
     def select_characters(self, mode: int, state: int) -> dict:
         if (mode, state) != (GM_VS, VS_STATE_CSS):
@@ -259,7 +264,7 @@ class BoundaryDriver:
         if self.player == len(players) and not self.costumes_done():
             return self.change_costume()
         if self.player == len(players):
-            self.css = [self.css_player(p) for p in range(len(players))]
+            self.css = [self.css_player(p) for p in self.ports]
             if any(p["slot_type"] != PKIND_HUMAN for p in self.css):
                 raise BoundaryError(f"every port must be human: {self.css}")
             self.enter("start")
@@ -268,7 +273,7 @@ class BoundaryDriver:
             return {}
         if self.frame < self.wait_until:
             return {}
-        port, want = self.player, players[self.player]
+        port, want = self.ports[self.player], players[self.player]
         if self.css_player(port)["ckind"] == want:
             self.player += 1
             self.attempts = 0
@@ -306,13 +311,13 @@ class BoundaryDriver:
     def costumes_done(self) -> bool:
         wanted = self.config.get("costumes")
         return wanted is None or all(
-            self.css_player(port)["color"] == costume for port, costume in enumerate(wanted))
+            self.css_player(port)["color"] == costume for port, costume in zip(self.ports, wanted))
 
     def change_costume(self) -> dict:
         """X on the first port whose costume differs, one press per PULSE_PERIOD."""
         if self.frame < self.wait_until:
             return {}
-        for port, costume in enumerate(self.config["costumes"]):
+        for port, costume in zip(self.ports, self.config["costumes"]):
             if self.css_player(port)["color"] != costume:
                 self.attempts += 1
                 if self.attempts > 12:
@@ -369,7 +374,7 @@ def main() -> None:
             return None
         try:
             inputs = driver.step()
-            for port in range(len(config["players"])):
+            for port in driver.ports:
                 controller.set_gc_buttons(port, inputs.get(port, {}))
             if driver.done:
                 proto.write_json_atomic(done, driver.summary())

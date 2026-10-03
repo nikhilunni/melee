@@ -3,6 +3,8 @@
     cd harness && uv run python make_boundary.py --stage Battlefield --players Fox Marth [--stocks 4]
                                                  [--name start_bf_fox_marth4] [--no-register]
                                                  [--transform PORT ...]
+                                                 [--gecko ucf-0.8 neutral-spawn --spawn neutral-2020]
+                                                 [--ports 2 4] [--time-limit 8]
 
 Sheik is a player name too: the port picks Zelda on the CSS and holds A while
 the match loads (--transform on that port), as a person does.
@@ -26,6 +28,17 @@ Dolphin. This command makes one with no human steps:
    the savestate to ~/melee-data/roms when that backup exists). A failing gate
    leaves everything unregistered: the port does not yet support the layout.
 
+A Slippi layout: `--gecko ucf-0.8 neutral-spawn --spawn neutral-2020` boots
+with those Gecko codes (gecko.py; text from MELEE_GECKO_DIR), so the match
+starts where Slippi's tournament builds place the players; the cold scenario
+then names the port's spawn rule (melee_lib::slippi::SpawnRule) and each
+fighter's controller fix. The savestate keeps the installed code list in RAM
+and Dolphin does not reinstall over it: a scenario recorded from the boundary
+must list exactly the boundary's codes. `--ports 2 4` seats the players on
+those ports (only they hold a controller), as a tournament station does; the
+start scene then has fighter slots 1 and 3, which only its cold twin can gate.
+`--time-limit 8` plays stock with an eight-minute timer, the tournament rule.
+
 It never overwrites: an existing savestate or scenario of the same name stops
 it before Dolphin starts.
 """
@@ -47,6 +60,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import data_root  # noqa: E402
 import dolphin_config  # noqa: E402
+import gecko  # noqa: E402
 from record import dolphin_flags  # noqa: E402
 
 ISO = data_root.ROMS / "GALE01.iso"
@@ -85,34 +99,55 @@ def default_name(stage: str, players: list[str], stocks: int) -> str:
     return f"start_{STAGES[stage][1]}_{'_'.join(p.lower() for p in players)}{stocks}"
 
 
-def start_scenario(name: str, stage: str, players: list[str], stocks: int) -> str:
+def gecko_line(codes: list[str] | None) -> str:
+    return "gecko = [" + ", ".join(f'"{c}"' for c in codes) + "]\n" if codes else ""
+
+
+def fix_line(codes: list[str] | None) -> str:
+    """A controller-fix code (ucf-*) is also each fighter's `controller_fix`,
+    which is what the port reads."""
+    fixes = [c for c in codes or [] if c.startswith("ucf-")]
+    return f'controller_fix = "{fixes[0]}"\n' if fixes else ""
+
+
+def start_scenario(name: str, stage: str, players: list[str], stocks: int,
+                   codes: list[str] | None = None, slots: list[int] | None = None) -> str:
+    # The savestate importer covers slots 0..n: other ports gate the cold twin.
+    gate = f'gate = "{name}_cold"\n' if slots and slots != list(range(len(players))) else ""
+    slots = slots or list(range(len(players)))
     transformed = "".join(
         f"# {p} is {TRANSFORMED[p]}'s CSS icon with A held on port {i + 1} while the match loads\n"
         f"# (fn_8016D8AC); {TRANSFORMED[p]} sleeps beside {p} as the transformation partner.\n"
         for i, p in enumerate(players) if p in TRANSFORMED)
     fighters = "\n".join(
-        f'[[fighters]]\nslot = {i}\nkind = "{kind}"\ncontroller = "{"scripted" if i == 0 else "idle"}"\n'
+        f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncontroller = "{"scripted" if i == 0 else "idle"}"\n'
+        f'{fix_line(codes)}'
         for i, kind in enumerate(players))
     return f'''# {" vs ".join(players)} on {stage}, {stocks} stocks, start boundary. Savestate
 # made by make_boundary.py (headless, RAM-only save-data pokes: characters and
 # Battlefield/FD unlocked, stock rules, items off; the memory card is a
 # discarded copy). Every fighter in Entry at the first initialised frame.
 {transformed}name = "{name}"
-savestate = "harness/roms/{name}.sav"
+{gate}savestate = "harness/roms/{name}.sav"
 frames = 600
 seed = 1
 stage = "{stage}"
-
+{gecko_line(codes)}
 inputs = []
 
 {fighters}'''
 
 
 def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: int,
-                  costumes: list[int]) -> str:
+                  costumes: list[int], spawn: str | None = None,
+                  codes: list[str] | None = None, slots: list[int] | None = None,
+                  time_limit: int = 0) -> str:
+    slots = slots or list(range(len(players)))
+    timer_line = f"time_limit = {time_limit * 60}\n" if time_limit else ""
+    spawn_line = f'spawn = "{spawn}"\n' if spawn else ""
     fighters = "\n".join(
-        f'[[fighters]]\nslot = {i}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
-        f'controller = "idle"\n' for i, kind in enumerate(players))
+        f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
+        f'controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
     return f'''# Parameters only; seed is after stage/fighter creation, before music.
 # Stock {stocks}, items off, normal Versus Entry, human ports, neutral pads.
 name = "{name}_cold"
@@ -121,7 +156,7 @@ frames = 600
 seed = {seed}
 stage = "{stage}"
 all_characters_unlocked = true
-inputs = []
+{timer_line}{spawn_line}inputs = []
 
 {fighters}'''
 
@@ -137,7 +172,9 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
 
 
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
-                   transform: list[int] | None = None, costumes: list[int] | None = None) -> dict:
+                   transform: list[int] | None = None, costumes: list[int] | None = None,
+                   codes: list[str] | None = None, slots: list[int] | None = None,
+                   time_limit: int = 0) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
@@ -148,9 +185,15 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
         config.write_text(json.dumps({"savestate": str(sav), "stkind": stkind,
                                       "players": players, "stocks": stocks,
                                       "transform": transform or [],
+                                      "time_limit_minutes": time_limit,
+                                      **({"ports": slots} if slots else {}),
                                       **({"costumes": costumes} if costumes else {})}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
+        if codes:
+            # The codes run from boot, so match setup (spawns) sees them.
+            gecko.install(Path(user_dir), codes)
+            flags += ["-C", "Dolphin.Core.EnableCheats=True"]
         env = {**os.environ, "MELEE_BOUNDARY_CONFIG": str(config)}
         log = sav.with_suffix(".boundary.log")
         with log.open("wb") as out:
@@ -191,8 +234,27 @@ def main(argv: list[str] | None = None) -> None:
                     help="ports that hold A while the match loads (Zelda <-> Sheik); implied for Sheik")
     ap.add_argument("--costumes", type=int, nargs="+",
                     help="one costume per port (CSS X presses; default: each port's first free costume)")
+    ap.add_argument("--gecko", nargs="+", default=[],
+                    help="Gecko codes installed from boot (gecko.py names, e.g. neutral-spawn)")
+    ap.add_argument("--spawn", choices=["retail", "neutral-2019", "neutral-2019-entry", "neutral-2020"],
+                    help="the cold scenario's spawn rule, matching --gecko")
+    ap.add_argument("--ports", type=int, nargs="+", choices=[1, 2, 3, 4],
+                    help="each player's controller port, ascending (default: the first ports)")
+    ap.add_argument("--time-limit", type=int, default=0, metavar="MINUTES",
+                    help="stock with a countdown timer (default: none)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
+    if (a.gecko or a.spawn or a.ports or a.time_limit) and not a.no_register:
+        # boundaries.toml describes explorer matches: retail spawns, first
+        # ports, no timer, no codes.
+        sys.exit("a boundary with codes, ports or a timer is not an explorer boundary: pass --no-register")
+    slots = None
+    if a.ports is not None:
+        if len(a.ports) != len(a.players) or sorted(set(a.ports)) != a.ports:
+            sys.exit("--ports needs one ascending port per player")
+        slots = [p - 1 for p in a.ports]
+        # Every Dolphin this command starts plugs controllers into those ports.
+        os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     if a.costumes is not None and len(a.costumes) != len(a.players):
         sys.exit("--costumes needs one costume per player")
     transform = sorted(set(a.transform) | {i for i, p in enumerate(a.players) if p in TRANSFORMED})
@@ -210,15 +272,16 @@ def main(argv: list[str] | None = None) -> None:
     print(f"== {name}: driving the menus", flush=True)
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
-                             a.stocks, a.timeout, transform, a.costumes)
+                             a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
     print(f"   saved {sav.name} at frame {summary['frame']} in {time.monotonic() - t0:.0f}s: seed {seed}, "
           f"costumes {costumes}, item frequency {summary['item_frequency']}", flush=True)
 
-    scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks))
-    cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes))
+    scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots))
+    cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
+                                  slots, a.time_limit))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.

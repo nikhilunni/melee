@@ -1611,6 +1611,34 @@ fn ucf_controller_fix_witnesses_match_retail() {
     }
 }
 
+/// Slippi replays played back on retail (`harness/slippi_to_scenario.py`):
+/// tournament inputs from a boundary with the replay's ports, timer, codes
+/// and seed. Each is gated through its cold twin, with items and the
+/// ledger's particle draw order.
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 1] = [
+    // Pokemon Stadium on ports 1 and 4 up to the first transformation.
+    ("slp_ps_fox_falco_t4000_cold", 4000),
+];
+
+#[test]
+fn slippi_replay_inputs_match_retail() {
+    for (name, ticks) in SLIPPI_REPLAY_WITNESSES {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        if !melee_test_support::require_files(scenario.required_files().into_iter().chain([ledger]))
+        {
+            continue;
+        }
+        assert_eq!(scenario.frames as usize, ticks);
+        trace::gate_items(&scenario).unwrap();
+        let differing =
+            trace::particle_site_diff(&scenario, 0, scenario.frames - 1, "ledger").unwrap();
+        assert!(differing.is_empty(), "{name}: {}", differing[0]);
+    }
+}
+
 /// Battlefield's background swaps (grBattle_BG_Callback2, 0x8021A3BC) run
 /// three full cycles from the start boundary: transition animation, color
 /// overlays, mid-match background creation with its particle keys, and the

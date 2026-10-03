@@ -42,9 +42,6 @@ import data_root  # noqa: E402
 ISO = data_root.ROMS / "GALE01.iso"
 
 
-SI_GC_CONTROLLER, SI_NONE = 6, 0   # SerialInterface::SIDevices
-
-
 def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
                     tick_trace: bool = False, background_input: bool = False) -> list[str]:
     """Same SI setup as drive.py launch: the savestate was recorded with `ports`
@@ -58,9 +55,7 @@ def dolphin_command(iso: Path, speed: float, video: str | None, ports: int,
         # A human port: the keyboard reaches the emulated pad even when the render
         # window is not focused.
         cmd += ["-C", "Dolphin.Input.BackgroundInput=True"]
-    for i in range(4):
-        cmd += ["-C", f"Dolphin.Core.SIDevice{i}={SI_GC_CONTROLLER if i < ports else SI_NONE}"]
-    return cmd
+    return cmd + dolphin_config.si_flags(ports)
 
 
 def wait_for(path: Path, err: Path, timeout: float, proc: subprocess.Popen | None = None) -> None:

@@ -1,0 +1,25 @@
+# Fox vs Falco on PokemonStadium, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_ps_slippi8_p14_fox3_falco3_4"
+gate = "start_ps_slippi8_p14_fox3_falco3_4_cold"
+savestate = "harness/roms/start_ps_slippi8_p14_fox3_falco3_4.sav"
+frames = 600
+seed = 1
+stage = "PokemonStadium"
+gecko = ["ucf-0.8", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+controller = "idle"
+controller_fix = "ucf-0.8"

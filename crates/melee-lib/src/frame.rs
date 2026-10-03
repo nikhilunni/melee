@@ -2459,6 +2459,11 @@ impl Simulation {
             .copied()
             .collect()
     }
+    /// Replace the RNG seed between ticks, as a recorder's write to the
+    /// retail `seed` word (0x804D5F90) does at a boundary.
+    pub fn set_rng_seed(&mut self, seed: u32) {
+        self.runtime.state.rng.seed = seed;
+    }
     pub fn rng_writers(&self) -> Vec<(String, u32)> {
         self.runtime
             .rng_writers

@@ -522,3 +522,70 @@ animation, so the random stream differs by then from a draw the recording
 does not show. Not diagnosed; the jumbotron's close-up test
 (grStadium_801D32D0) reads the rendered camera and draws on a change, which
 is why Slippi later added PSCameraIndependentMonitor.
+
+## A replay played back on retail (2026-10-03)
+
+A replay holds post-frame fields only, so a stop cannot be triaged against
+it: no RNG seed (before 3.x), no items, no particles. Most stops in this
+corpus are random draws gone out of step long before they show (a
+DamageFlyRoll draw, a turnip's face). The bridge feeds the replay's pads to
+retail in Dolphin from a boundary with the replay's setup; the ordinary gate
+and `triage` then compare the port with a full retail trace of the same game.
+
+```sh
+melee-sim replay <game.slp> --retail-inputs inputs.jsonl   # setup, boundary seed, raw pads per tick
+cd harness && uv run python make_boundary.py --stage Battlefield --players Marth Peach \
+    --costumes 1 1 --ports 2 4 --time-limit 8 \
+    --gecko ucf-0.8 neutral-spawn --spawn neutral-2020 --no-register
+cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name slp_<...> \
+    --boundary start_<...> --ticks 6500
+cd harness && uv run python record_many.py scenarios/slp_<...>.toml
+melee-sim gate harness/scenarios/slp_<...>.toml             # follows `gate` to slp_<...>_cold
+```
+
+What makes retail follow the replay:
+
+- *Ports.* `make_boundary.py --ports 2 4` seats the players on the replay's
+  ports (controllers in those ports only; `MELEE_SI_PORTS` for every
+  recorder pass). Entry delay is per slot and fighters move before GO, so a
+  match on other ports leaves the replay within 130 ticks.
+- *Codes.* `--gecko` installs the build's codes from boot: NeutralSpawn
+  (`neutral-spawn`: `External/NeutralSpawn/NeutralSpawn.asm`'s C2 block from
+  `Output/Console/g_mods_tournament.txt`, in `MELEE_GECKO_DIR`) and UCF. The
+  savestate keeps the installed code list in RAM, so a scenario recorded from
+  the boundary lists exactly the boundary's codes. `--spawn` names the port's
+  spawn rule for the cold scenario; `--time-limit 8` is the tournament timer.
+- *Seed.* The scenario's `boundary_seed` is the replay's pre-music seed
+  (`boundary_seed_from_creation`); every tracer writes it over the saved
+  seed before the first tick. Retail then draws what the game drew: star or
+  screen KO, the roll, the faces.
+- *Pads.* Pre Frame's joystick is the fighter's dead-zoned stick, with the
+  raw X beside it (1.2+). `--retail-inputs` finds the raw Y whose clamped,
+  dead-zoned pair is the recorded one, with the recorded raw X (what UCF
+  reads); the tick input clock injects it.
+
+The port gates the cold twin `<name>_cold.toml`: the boundary built from
+parameters with its own `seed`, then `boundary_seed`, driven by the pads the
+recording consumed (a `scripted` cold scenario with `expected`). The retail
+scenario names it in `gate`, which `Scenario::load` follows, because the
+savestate importer covers neither slots other than 0..n nor a replaced seed.
+What the savestate fixed before the seed changed (each fighter's CPU timer)
+stays the boundary's; nothing a human match reads.
+
+Witnesses (`SLIPPI_REPLAY_WITNESSES` in `m5_gate.rs`), all exact with items
+and particle draw order; retail follows each replay tick for tick over the
+recorded range:
+
+| Scenario | Replay | Finds |
+|---|---|---|
+| `slp_ps_fox_falco_t4000` | Fox vs Falco (PS, ports 1, 4) | nothing: the port equals retail to tick 4000 |
+
+The Stadium replay still stops at tick 3820 (expected DamageFlyRoll, the
+port and this recording draw DamageFlyHi), so that console's draws differ
+from Dolphin's there. Two things are open: the monitor's framing test
+(grStadium_801D32D0) reads the camera as last rendered, and a headless
+recording renders on its own clock, which the port replays, while a console
+renders every tick; and Slippi's `PSCameraIndependentMonitor` (hook
+0x801D24FC, fixed bounds instead of the camera) changes the same test, though
+with it the replay stops earlier (1607), so that build did not run it as the
+current asm has it.

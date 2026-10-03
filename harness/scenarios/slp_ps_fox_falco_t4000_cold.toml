@@ -1,0 +1,34 @@
+# Tournament inputs as a retail witness: the first 4000 ticks of a Slippi 2.0.1
+# console game (Fox vs Falco, Pokemon Stadium, ports 1 and 4): the monitor's
+# draws, hits and launches before the first transformation, exact.
+# At tick 3820 Falco's back air launches Fox (124.1%): retail in Dolphin draws
+# DamageFlyHi, as the port does; the console's replay shows DamageFlyRoll.
+# The port's side of slp_ps_fox_falco_t4000: boundary start_ps_slippi8_p14_fox3_falco3_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_fox_falco_t4000_cold"
+expected = "slp_ps_fox_falco_t4000"
+frames = 4000
+seed = 1055155363
+boundary_seed = 4249520156
+stage = "PokemonStadium"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

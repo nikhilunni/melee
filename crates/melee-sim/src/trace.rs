@@ -62,10 +62,15 @@ pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
                 &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
             );
         }
-        return Ok(PadScript::neutral(scenario.frames as usize));
+        if !scenario.replays_recorded_pads() {
+            return Ok(PadScript::neutral(scenario.frames as usize));
+        }
     }
     let path = scenario.expected_path();
-    let script = PadScript::from_expected_trace(&path, scenario.is_scripted())?;
+    let script = PadScript::from_expected_trace(
+        &path,
+        scenario.is_scripted() || scenario.replays_recorded_pads(),
+    )?;
     ensure!(
         script.len() as u64 == scenario.frames,
         "expected trace length {} differs from scenario {}",
@@ -77,25 +82,24 @@ pub fn pad_script(scenario: &Scenario) -> Result<PadScript> {
 /// A scripted simulation whose display passes follow another capture run.
 pub fn simulation_displayed_as(scenario: &Scenario, capture: &Path) -> Result<Simulation> {
     let pads = pad_script(scenario)?.with_display_from(capture)?;
-    Ok(Simulation::with_inputs(
+    simulation_with(scenario, pads)
+}
+fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Simulation> {
+    let mut simulation = Simulation::with_inputs(
         if scenario.is_cold() {
             InitialState::from_parameters(scenario)?
         } else {
             InitialState::from_savestate_traces(scenario)?
         },
         pads,
-    ))
+    );
+    if let Some(seed) = scenario.boundary_seed {
+        simulation.set_rng_seed(seed);
+    }
+    Ok(simulation)
 }
 pub(crate) fn simulation(scenario: &Scenario) -> Result<Simulation> {
-    let pads = pad_script(scenario)?;
-    Ok(Simulation::with_inputs(
-        if scenario.is_cold() {
-            InitialState::from_parameters(scenario)?
-        } else {
-            InitialState::from_savestate_traces(scenario)?
-        },
-        pads,
-    ))
+    simulation_with(scenario, pad_script(scenario)?)
 }
 pub fn write_run(scenario: &Scenario, mut out: impl Write) -> Result<()> {
     let mut simulation = simulation(scenario)?;

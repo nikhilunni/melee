@@ -211,6 +211,14 @@ class Tracer:
         if self.sidecar is not None:
             self.load_info["sidecar_seed"] = self.sidecar.get("seed")
             self.load_info["synced"] = seed == self.sidecar.get("seed")
+        # A scenario's `boundary_seed` replaces the saved RNG seed before the
+        # first tick: the same boundary, another match's draws (a Slippi
+        # replay's Game Start seed advanced to this point). Only a cold twin
+        # with that seed can gate the recording.
+        forced = self.scenario.get("boundary_seed")
+        if forced is not None:
+            self.mem.write_u32(SEED_ADDR, int(forced))
+            self.load_info["boundary_seed"] = int(forced)
 
     def on_frame(self) -> None:
         if self.done:

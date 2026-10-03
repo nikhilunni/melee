@@ -14,6 +14,9 @@ Environment overrides:
                     each get one from isolated_user_dir()
   DOLPHIN_CHEATS=1  enable cheats, so the user folder's Gecko codes run
                     (gecko.py; set by record.py for a scenario's `gecko`)
+  MELEE_SI_PORTS    the ports holding a controller, 0-based and comma
+                    separated ("1,3": a match on ports 2 and 4; set by
+                    record.py and make_boundary.py from the fighters' slots)
 """
 from __future__ import annotations
 
@@ -40,6 +43,22 @@ def binary(gui: bool = False) -> Path:
         raise SystemExit(f"{HEADLESS_BIN} is missing: run tools/build-headless-dolphin.sh "
                          "(or set DOLPHIN_GUI=1 for the windowed app)")
     return HEADLESS_BIN
+
+
+SI_PORTS_ENV = "MELEE_SI_PORTS"
+SI_GC_CONTROLLER, SI_NONE = 6, 0   # SerialInterface::SIDevices
+
+
+def si_flags(ports: int) -> list[str]:
+    """A GC controller in each of the first `ports` ports, or in exactly the
+    ports MELEE_SI_PORTS names: Dolphin must see the devices the savestate
+    was made with."""
+    named = os.environ.get(SI_PORTS_ENV)
+    plugged = {int(p) for p in named.split(",")} if named else set(range(ports))
+    flags = []
+    for i in range(4):
+        flags += ["-C", f"Dolphin.Core.SIDevice{i}={SI_GC_CONTROLLER if i in plugged else SI_NONE}"]
+    return flags
 
 
 def is_headless(executable: Path) -> bool:

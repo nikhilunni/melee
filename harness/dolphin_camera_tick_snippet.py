@@ -111,6 +111,8 @@ def main() -> None:
              + (f', raw = {table(st["raw"])}' if "raw" in st else "") + " }"
              for st in scripted.get("inputs", [])]
     clock = f'input_clock = "{scripted["input_clock"]}"\n' if "input_clock" in scripted else ""
+    if "boundary_seed" in scripted:
+        clock += f'boundary_seed = {scripted["boundary_seed"]}\n'
     scenario = out.with_suffix(".scenario.toml")
     scenario.write_text(f'name = "{out.stem}"\n{clock}savestate = "{saved}"\nframes = {ticks}\n'
                         "inputs = [\n" + ",\n".join(steps) + "\n]\n")

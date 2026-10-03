@@ -33,6 +33,11 @@ enum Command {
         /// instead of the version dated from the recording.
         #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
         controller_fix: Option<melee_lib::ControllerFix>,
+        /// Instead of comparing, write the replay's setup and per-tick raw
+        /// pads (JSONL) for `harness/slippi_to_scenario.py`, which feeds
+        /// them to retail from a boundary.
+        #[arg(long)]
+        retail_inputs: Option<PathBuf>,
     },
     /// Replay every `.slp` under the given paths in parallel and group the
     /// first stops by cause, largest group first.
@@ -187,6 +192,7 @@ fn main() -> anyhow::Result<()> {
             boundary_seed,
             ignore_controller_fixes,
             controller_fix,
+            retail_inputs,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
             // reads the main checkout's), as harness/data_root.py.
@@ -194,16 +200,24 @@ fn main() -> anyhow::Result<()> {
                 || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."),
                 PathBuf::from,
             );
-            let report = melee_sim::replay::run_file(
-                &file,
-                &root,
-                melee_sim::replay::Setup {
-                    all_characters_unlocked,
-                    boundary_seed,
-                    ignore_controller_fixes,
-                    controller_fix,
-                },
-            )?;
+            let setup = melee_sim::replay::Setup {
+                all_characters_unlocked,
+                boundary_seed,
+                ignore_controller_fixes,
+                controller_fix,
+            };
+            if let Some(out) = retail_inputs {
+                let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
+                melee_sim::replay::write_retail_inputs(
+                    &replay,
+                    &root,
+                    setup,
+                    io::BufWriter::new(std::fs::File::create(&out)?),
+                )?;
+                println!("retail inputs written to {}", out.display());
+                return Ok(());
+            }
+            let report = melee_sim::replay::run_file(&file, &root, setup)?;
             println!("{report}");
             anyhow::ensure!(
                 !matches!(report.stop, melee_sim::replay::Stop::Diverged(_)),

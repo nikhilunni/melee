@@ -148,3 +148,47 @@ def test_every_registered_boundary_names_known_characters_and_stages():
     for b in registry:
         assert b["stage"] in mb.STAGES
         assert all(p in mb.CHARACTERS for p in b["players"])
+
+
+def test_a_slippi_layout_seats_players_on_their_ports_with_codes_and_timer():
+    name = "start_bf_slippi8_p24_marth1_peach1_4"
+    codes = ["ucf-0.8", "neutral-spawn"]
+    start = tomllib.loads(mb.start_scenario(name, "Battlefield", ["Marth", "Peach"], 4, codes, [1, 3]))
+    assert start["gecko"] == codes and start["gate"] == f"{name}_cold"
+    assert [(f["slot"], f["controller_fix"]) for f in start["fighters"]] == [(1, "ucf-0.8"), (3, "ucf-0.8")]
+    cold = tomllib.loads(mb.cold_scenario(name, "Battlefield", ["Marth", "Peach"], 4, 7, [1, 1],
+                                          "neutral-2020", codes, [1, 3], 8))
+    assert (cold["spawn"], cold["time_limit"]) == ("neutral-2020", 480)
+    assert [(f["slot"], f["controller_fix"]) for f in cold["fighters"]] == [(1, "ucf-0.8"), (3, "ucf-0.8")]
+    # The first ports need no cold twin to gate, and retail has no codes.
+    plain = tomllib.loads(mb.start_scenario("b", "Battlefield", ["Marth", "Fox"], 4))
+    assert "gate" not in plain and "gecko" not in plain
+
+
+def test_the_menu_driver_uses_the_players_ports():
+    d, mem = driver(players=(9, 12))
+    d.ports = [1, 3]
+    assert d.step() == {1: {"Start": True}}          # the first player's pad drives the menus
+    d.config["costumes"] = [1, 0]
+    d.enter("css")
+    mem.write_u8(bs.SCENE_MACHINE, bs.GM_VS)
+    css = 0x80E00000
+    mem.write_u32(bs.CSS_DATA_PTR, css)
+    for port, ckind in zip(d.ports, (9, 12)):
+        mem.write_u8(css + bs.CSS_PLAYERS + port * bs.PLAYER_SIZE, ckind)
+    d.player = 2                                     # both characters picked
+    assert d.step() == {1: {"X": True}}              # port 2's costume, not port 1's
+    mem.write_u8(css + bs.CSS_PLAYERS + 1 * bs.PLAYER_SIZE + 3, 1)
+    while d.phase != "start":
+        d.step()
+    assert [p["ckind"] for p in d.css] == [9, 12]
+
+
+def test_si_flags_plug_the_named_ports(monkeypatch):
+    import dolphin_config
+    monkeypatch.delenv(dolphin_config.SI_PORTS_ENV, raising=False)
+    assert dolphin_config.si_flags(2)[1::2] == [f"Dolphin.Core.SIDevice{i}={6 if i < 2 else 0}"
+                                                for i in range(4)]
+    monkeypatch.setenv(dolphin_config.SI_PORTS_ENV, "1,3")
+    assert dolphin_config.si_flags(2)[1::2] == [f"Dolphin.Core.SIDevice{i}={6 if i in (1, 3) else 0}"
+                                                for i in range(4)]

@@ -43,9 +43,7 @@ IDLE_SITES = {"hsd_8039EE24+0xDC", "hsd_8039DAD4+0x10A0", "hsd_8039DAD4+0x10F8",
 
 def dolphin_flags(executable: Path, ports: int = 2, video: str | None = None) -> list[str]:
     flags = [*dolphin_config.launch_flags(executable, video), "-C", "Dolphin.Core.EmulationSpeed=0"]
-    for i in range(4):
-        flags += ["-C", f"Dolphin.Core.SIDevice{i}={6 if i < ports else 0}"]
-    return flags
+    return flags + dolphin_config.si_flags(ports)
 
 
 def run_dolphin_until(script: Path, env: dict, done: Path, err: Path, log: Path, timeout: float, video: str | None = None) -> None:
@@ -113,6 +111,11 @@ def main(argv: list[str] | None = None) -> None:
                          "eight-minute dump is ~4 GB)")
     a = ap.parse_args(argv)
     scenario = tomllib.loads(a.scenario.resolve().read_text())
+    # Fighters on other ports than the first ones (a Slippi layout): every
+    # capture pass plugs controllers into exactly their slots.
+    slots = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))]
+    if slots != list(range(len(slots))):
+        os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     with gecko_codes(scenario.get("gecko", [])):
         record(a, scenario)
 

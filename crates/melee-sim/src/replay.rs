@@ -560,6 +560,103 @@ pub fn compare_frame(expected: &Record, actual: &Record) -> Option<Divergence> {
     first_divergence([expected], [actual])
 }
 
+/// PlCo's stick dead zone (ftCommonData x0/x4): Pre Frame's joystick is
+/// Fighter.input's, zero at or inside it.
+const STICK_DEAD_ZONE: f32 = 0.275;
+/// HSD's analog trigger scale (HSD_PadScale): raw 140 is 1.0.
+const TRIGGER_MAX: f32 = 140.0;
+
+/// The replay as a retail recording's input schedule: a header with the
+/// match setup (the pre-music boundary seed, timer, stage, each player's
+/// slot, kind and costume), then one line per player and tick with the raw
+/// `PADStatus` values the tick input clock injects
+/// (`harness/slippi_to_scenario.py`). `tick` is the scheduler tick that
+/// consumes the pad: Slippi frame + 124.
+///
+/// Slippi before 3.15 records the raw main-stick X and the fighter's
+/// dead-zoned sticks. The raw Y is the one nearest the processed value
+/// whose clamped, dead-zoned pair (HSD_PadClampCheck3, then the fighter's
+/// dead zone) equals the recorded pair; every pair must have one.
+pub fn write_retail_inputs(
+    replay: &Replay,
+    root: &Path,
+    setup: Setup,
+    mut out: impl std::io::Write,
+) -> Result<()> {
+    let scenario = cold_scenario(replay, root, setup)?;
+    let players: Vec<_> = scenario
+        .fighters
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "slot": f.slot,
+                "kind": f.kind,
+                "costume": f.costume,
+                "stocks": f.stocks,
+                "controller_fix": f.controller_fix,
+            })
+        })
+        .collect();
+    writeln!(
+        out,
+        "{}",
+        serde_json::json!({
+            "boundary_seed": scenario.seed,
+            "all_characters_unlocked": scenario.all_characters_unlocked,
+            "time_limit": scenario.time_limit,
+            "stage": scenario.stage,
+            "ticks": scenario.frames + 1,
+            "players": players,
+        })
+    )?;
+    let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
+    for input in &scenario.replay_inputs {
+        let pad = crate::inputs::replay_pad(input)?;
+        let derived = pad.raw_sticks();
+        let mut stick = input.raw_stick.unwrap_or(derived.stick);
+        if let (None, Some(x)) = (input.raw_stick, input.raw_stick_x) {
+            let y = (-128i16..=127)
+                .map(|y| y as i8)
+                .filter(|&y| {
+                    let clamped = melee_ft::input::pad::normalize_stick(x, y);
+                    dead(clamped.x) == input.stick[0] && dead(clamped.y) == input.stick[1]
+                })
+                .min_by_key(|&y| (i16::from(y) - i16::from(derived.stick[1])).abs());
+            let Some(y) = y else {
+                anyhow::bail!(
+                    "tick {} port {}: no raw stick Y gives {:?} with raw X {x}",
+                    input.frame + 1,
+                    input.port,
+                    input.stick
+                );
+            };
+            stick = [x, y];
+        }
+        let cstick = input.raw_cstick.unwrap_or(derived.cstick);
+        let trigger = |value: f32| -> Result<u8> {
+            let raw = (value * TRIGGER_MAX).round();
+            ensure!(
+                raw / TRIGGER_MAX == value,
+                "trigger {value} is not a multiple of 1/140"
+            );
+            Ok(raw as u8)
+        };
+        writeln!(
+            out,
+            "{}",
+            serde_json::json!({
+                "tick": input.frame + 1,
+                "slot": input.port,
+                "button": input.buttons_physical,
+                "stick": stick,
+                "cstick": cstick,
+                "triggers": [trigger(input.triggers[0])?, trigger(input.triggers[1])?],
+            })
+        )?;
+    }
+    Ok(())
+}
+
 fn action_name(id: u16) -> String {
     melee_types::CommonMotionState::try_from(i32::from(id))
         .map(|state| format!("{state:?} ({id})"))

@@ -85,6 +85,8 @@ def main() -> None:
         inputs = "inputs = [\n" + ",\n".join(steps) + "\n]\n"
         if "input_clock" in scripted:
             clock = f'input_clock = "{scripted["input_clock"]}"\n'
+        if "boundary_seed" in scripted:
+            clock += f'boundary_seed = {scripted["boundary_seed"]}\n'
     scenario.write_text(f'name = "{out.stem}"\n{clock}savestate = "{saved}"\nframes = {ticks}\n{inputs}')
     os.environ["MELEE_SCENARIO"] = str(scenario)
     os.environ["MELEE_RAW_OUT"] = str(out.with_suffix(".raw.jsonl"))
