@@ -214,7 +214,10 @@ fn fall(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
 }
 
 /// doIasa (ftSk_SpecialNLoop_IASA / ftSk_SpecialAirNLoop_IASA): B let go
-/// throws (accessory4 = shootNeedles); L or R cancels.
+/// throws (accessory4 = shootNeedles); otherwise a shield press cancels.
+/// Retail tests the pressed word's bit 31 (0x80112740: lwz 0x668, clrrwi.
+/// 31), the input proc's shield bit: a digital L or R, an analog trigger
+/// past the deadzone, or Z.
 pub fn loop_input(f: &mut Fighter, p: InputPhase<'_>) {
     let air = f.motion_state.action == AIR_LOOP;
     if !f.input.current.held.intersects(Buttons::B) {
@@ -224,7 +227,7 @@ pub fn loop_input(f: &mut Fighter, p: InputPhase<'_>) {
         install_damage_callbacks(f);
         sheik(f).accessory = Accessory::ThrowNeedles;
         f.core.arm_accessory4();
-    } else if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
+    } else if f.input.pressed.intersects(Buttons::SHIELD) {
         f.change_motion_state(if air { AIR_CANCEL } else { GROUND_CANCEL }, p.assets)
             .expect("Needle Storm cancel");
         install_damage_callbacks(f);

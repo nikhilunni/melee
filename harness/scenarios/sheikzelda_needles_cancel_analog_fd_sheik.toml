@@ -1,0 +1,28 @@
+# SHEIKZELDA directed witness: Sheik charges needles (B held from tick 120)
+# and an analog-only L press (tick 170, no digital click) cancels the charge:
+# ftSk_SpecialNLoop_IASA tests pressed bit 31 (0x80112744), SpecialNCancel
+# (343). B stays held to tick 230.
+name = "sheikzelda_needles_cancel_analog_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 512, triggerL = 100 } },
+  { frame = 172, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

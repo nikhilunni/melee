@@ -947,7 +947,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 414] = [
+const MATRIX_WITNESSES: [(&str, usize); 417] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1454,6 +1454,12 @@ const MATRIX_WITNESSES: [(&str, usize); 414] = [
     ("sheikzelda_needles_fd_sheik", 300),
     ("sheikzelda_needles_tap_fd_sheik", 240),
     ("sheikzelda_needles_air_fd_sheik", 300),
+    // The charge cancels on the input proc's shield bit, not the digital
+    // shoulders (ftSk_SpecialNLoop_IASA 0x80112744): an analog-only trigger
+    // or Z, on the ground and in the air.
+    ("sheikzelda_needles_cancel_analog_fd_sheik", 300),
+    ("sheikzelda_needles_cancel_z_fd_sheik", 300),
+    ("sheikzelda_needles_cancel_analog_air_fd_sheik", 300),
     ("sheikzelda_chain_fd_sheik", 300),
     ("sheikzelda_chain_hit_fd_sheik", 380),
     ("sheikzelda_chain_swing_fd_sheik", 320),
