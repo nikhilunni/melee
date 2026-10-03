@@ -1,0 +1,36 @@
+# Tournament inputs as a retail witness: the first 2900 ticks of a Slippi 2.0.1
+# console game (Captain Falcon vs Pikachu, Battlefield, ports 1 and 2).
+# Tick 2244: Pikachu starts Quick Attack's second zip while Falcon still sparks
+# from an electric hit. The zip passes through frame 12, whose script queues the
+# cheek spark (1042), then changes motion to frame 13, which flushes it: retail
+# spawns Pikachu's spark in his animation proc, before Falcon's link-9 spark.
+# Tick 2830: Falcon's back air launches Pikachu (106.7%): DamageFlyN, no roll.
+# The port's side of slp_bf_captainfalcon_pikachu_t2900: boundary start_bf_slippi8_p12_captainfalcon3_pikachu2_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_bf_captainfalcon_pikachu_t2900_cold"
+expected = "slp_bf_captainfalcon_pikachu_t2900"
+frames = 2900
+seed = 655203601
+boundary_seed = 1092093445
+stage = "Battlefield"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 1
+kind = "Pikachu"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

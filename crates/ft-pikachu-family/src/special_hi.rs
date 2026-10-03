@@ -158,9 +158,9 @@ fn start_anim<C: PikachuFamily, const AIR: bool>(
     f.step_animation(p.assets);
     if !f.animation.frames_remaining(&f.skeleton) {
         if AIR {
-            zip_air::<C>(f, p.assets)?;
+            zip_air::<C>(f, p.assets, p.rng)?;
         } else {
-            zip_ground::<C>(f, p.assets, p.map)?;
+            zip_ground::<C>(f, p.assets, p.map, p.rng)?;
         }
     }
     Ok(None)
@@ -175,11 +175,20 @@ fn stick_magnitude(f: &Fighter) -> f32 {
 /// The shared tail of both zips: its duration, every jump spent, and the
 /// zip motion frozen on frame 13, after a pass through frame 12 for a
 /// second zip (whose speed takes the decay first).
+///
+/// The pass through frame 12 (retail 0x80126FE4 in the air, 0x80126D8C on
+/// the ground) runs the zip script up to it, which queues the cheek spark
+/// (efAsync, 1042); the change to frame 13 that follows (0x8012700C,
+/// 0x80126DB4) flushes that queue (Fighter_ChangeMotionState's
+/// efAsync_QueueFlush, 0x800694A0), so the spark spawns here, in the
+/// animation proc, and not at this fighter's link-9 flush behind an earlier
+/// fighter's.
 fn begin_zip<C: PikachuFamily>(
     f: &mut Fighter,
     state: S,
     decay: impl FnOnce(&mut Fighter, f32),
     assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     let a = attributes::<C>(f);
     let (duration, multiplier) = (a.zip_frames, a.second_zip_multiplier);
@@ -194,6 +203,7 @@ fn begin_zip<C: PikachuFamily>(
         decay(f, multiplier);
         change(f, state.action(), KEEP_GFX, SECOND_ZIP_FRAME, 1.0, assets)?;
         f.step_animation(assets);
+        f.seal_issued_graphics(assets, rng);
     }
     change(
         f,
@@ -220,6 +230,7 @@ fn zip_ground<C: PikachuFamily>(
     f: &mut Fighter,
     assets: &FighterAssets,
     map: &melee_mp::CollMap,
+    rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     let mut magnitude = stick_magnitude(f);
     if magnitude > MAXIMUM_STICK {
@@ -244,18 +255,23 @@ fn zip_ground<C: PikachuFamily>(
                 S::SpecialHiStart1,
                 |f, multiplier| f.physics.ground_velocity *= multiplier,
                 assets,
+                rng,
             );
         }
     }
     f.leave_ground_with_spent_jumps();
-    zip_air::<C>(f, assets)
+    zip_air::<C>(f, assets, rng)
 }
 
 /// ftPk_SpecialHi_80126E1C (80126E1C): an aerial zip along the stick when
 /// it is past the minimum, else straight up (turning only past the
 /// deadzone, ftCommon_8007DA24). Speed per stick plus base (retail
 /// fmadds), times the angle's cosine and sine (fmuls).
-fn zip_air<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+fn zip_air<C: PikachuFamily>(
+    f: &mut Fighter,
+    assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
     let mut magnitude = stick_magnitude(f);
     if magnitude > MAXIMUM_STICK {
         magnitude = MAXIMUM_STICK;
@@ -291,6 +307,7 @@ fn zip_air<C: PikachuFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<
             f.physics.self_velocity.y *= multiplier;
         },
         assets,
+        rng,
     )
 }
 
@@ -675,9 +692,9 @@ fn end_anim<C: PikachuFamily, const AIR: bool>(
             f.commands.variables[0] = 0;
             scratch::<C>(f).second_zip = true;
             if AIR {
-                zip_air::<C>(f, p.assets)?;
+                zip_air::<C>(f, p.assets, p.rng)?;
             } else {
-                zip_ground::<C>(f, p.assets, p.map)?;
+                zip_ground::<C>(f, p.assets, p.map, p.rng)?;
             }
         } else {
             f.commands.variables[0] = 2;

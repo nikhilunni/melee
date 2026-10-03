@@ -578,6 +578,7 @@ recorded range:
 
 | Scenario | Replay | Finds |
 |---|---|---|
+| `slp_bf_captainfalcon_pikachu_t2900` | HNC 3, Captain Falcon vs Pikachu (BF, ports 1, 2) | Pikachu's second Quick Attack zip changes motion twice (frames 12 and 13, 0x80126FE4 / 0x8012700C); the second flushes the cheek spark the first queued, in the animation proc, before the other fighter's link-9 effects |
 | `slp_ps_fox_falco_t4000` | Fox vs Falco (PS, ports 1, 4) | nothing: the port equals retail to tick 4000 |
 
 The Stadium replay still stops at tick 3820 (expected DamageFlyRoll, the
