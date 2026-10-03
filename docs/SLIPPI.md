@@ -582,12 +582,13 @@ recorded range:
 | `slp_bf_marth_peach_t6500` | Marth + Peach (BF, ports 2, 4) | a turnip clanking with a fighter's hitbox records him with its rehit timer (mode 4 when x41_b5, 0x80077B8C) and clanks with him again 33 ticks later |
 | `slp_ps_fox_falco_t4000` | Fox vs Falco (PS, ports 1, 4) | nothing: the port equals retail to tick 4000 |
 
-The Stadium replay still stops at tick 3820 (expected DamageFlyRoll, the
-port and this recording draw DamageFlyHi), so that console's draws differ
-from Dolphin's there. Two things are open: the monitor's framing test
-(grStadium_801D32D0) reads the camera as last rendered, and a headless
-recording renders on its own clock, which the port replays, while a console
-renders every tick; and Slippi's `PSCameraIndependentMonitor` (hook
-0x801D24FC, fixed bounds instead of the camera) changes the same test, though
-with it the replay stops earlier (1607), so that build did not run it as the
-current asm has it.
+`slp_ps_fox_falco_t4000` was recorded without Slippi's Stadium preload code,
+which that console ran (above): retail draws DamageFlyHi at tick 3820 where
+the replay shows DamageFlyRoll, the preload's earlier form draw having moved
+every later draw by one. With `stadium_preload` the replay itself matches to
+its last frame.
+
+The Marth and Peach replay now stops at tick 7087 on Peach's facing in Turn:
+retail with UCF 0.8 has flipped it by then, as the port has
+(`slp_bf_marth_peach_t7300`, a tick-trace probe in the local data, exact to
+7300); the console had not.
