@@ -385,8 +385,8 @@ four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
   draw) or its successor (all-unlocked save on a rule-6 stage).
 - *Entry delay* is 5 x (slot + 1): ports 2 and 4 enter at ticks 10 and 20.
 - *Spawns.* Slippi builds replace retail's slot markers. NeutralSpawn.asm
-  (0x8016E510, in Slippi's asm from 2020-01) places the Nth present player
-  at its table row, facing by sign of x. Late-2019 console builds used the
+  (0x8016E510, in Slippi's asm from 2019-10-02, commit b5f06ae) places the
+  Nth present player at its table row, facing by sign of x. Late-2019 console builds used the
   same table except Dream Land ((-46.6, 37.0), (47.389, 37.0)); April 2019
   builds used retail markers. `melee_lib::slippi::SpawnRule` models these;
   the runner picks the one the first frame shows exactly.
