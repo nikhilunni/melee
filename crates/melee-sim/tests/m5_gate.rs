@@ -1615,10 +1615,13 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 2] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 3] = [
     // Pikachu's second Quick Attack zip flushes its cheek spark in the
     // animation proc, ahead of the other fighter's link-9 effects (2244).
     ("slp_bf_captainfalcon_pikachu_t2900_cold", 2900),
+    // A turnip that clanked with Marth clanks with him again once its
+    // rehit timer forgets him (5858, 5891).
+    ("slp_bf_marth_peach_t6500_cold", 6500),
     // Pokemon Stadium on ports 1 and 4 up to the first transformation.
     ("slp_ps_fox_falco_t4000_cold", 4000),
 ];

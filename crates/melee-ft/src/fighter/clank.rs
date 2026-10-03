@@ -438,11 +438,7 @@ pub(super) fn item_contact(
             // inlineItemA1: it_8026FAC4 records the fighter, then xC48 keeps
             // the strongest clank. (xCF4 and the knockback direction xCB8
             // have no reader among the supported items.)
-            melee_coll::detection::record_victim(
-                &mut item.hitboxes,
-                a.descriptor.group,
-                fighter.spawn_number,
-            );
+            item.record_clank_victim(id, a.descriptor.group, fighter.spawn_number);
             let damage = truncated_damage(a.descriptor.damage);
             if damage > item.pending_clank_damage {
                 item.pending_clank_damage = damage;

@@ -579,6 +579,7 @@ recorded range:
 | Scenario | Replay | Finds |
 |---|---|---|
 | `slp_bf_captainfalcon_pikachu_t2900` | HNC 3, Captain Falcon vs Pikachu (BF, ports 1, 2) | Pikachu's second Quick Attack zip changes motion twice (frames 12 and 13, 0x80126FE4 / 0x8012700C); the second flushes the cheek spark the first queued, in the animation proc, before the other fighter's link-9 effects |
+| `slp_bf_marth_peach_t6500` | Marth + Peach (BF, ports 2, 4) | a turnip clanking with a fighter's hitbox records him with its rehit timer (mode 4 when x41_b5, 0x80077B8C) and clanks with him again 33 ticks later |
 | `slp_ps_fox_falco_t4000` | Fox vs Falco (PS, ports 1, 4) | nothing: the port equals retail to tick 4000 |
 
 The Stadium replay still stops at tick 3820 (expected DamageFlyRoll, the

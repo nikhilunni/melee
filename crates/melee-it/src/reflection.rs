@@ -28,6 +28,13 @@ impl ItemCore {
             melee_coll::detection::record_victim(&mut self.hitboxes, group, victim);
         }
     }
+    /// it_8026FA2C with ftColl_80077970's mode for a clank against a
+    /// fighter's hitbox (retail 0x80077B8C..0x80077BB4): 4 (a rehit timer)
+    /// when hitbox `id`'s x41_b5 is set, else 3. A timed record lets the
+    /// item clank with that fighter again once the timer runs out.
+    pub fn record_clank_victim(&mut self, id: usize, group: u8, victim: u32) {
+        self.record_fighter_victim(id, group, victim);
+    }
     /// ftColl_80077464's mode 7 for a reflector.
     pub fn record_reflector(&mut self, group: u8, victim: u32) {
         self.record_timed_victim(group, victim);
