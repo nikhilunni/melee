@@ -102,10 +102,14 @@ impl Fighter {
                 entry.trophy_scale =
                     self.core.player.scale * self.core.attributes.size.trophy_scale;
                 entry.trophy_height = (1.497345_f64 * f64::from(entry.trophy_scale)) as f32;
-                self.core.effects.push(EffectRequest::EntryWarp {
-                    id: 0x43E,
-                    scale: entry.original_scale,
-                });
+                // Retail 0x800C644C changes motion (flushing efAsync,
+                // fighter.c:951) before 0x800C66C8 queues the warp
+                // (efAsync_Spawn kind 3): the warp waits for the fighter's
+                // s_link 9 flush, after the stage's procs.
+                let scale = entry.original_scale;
+                self.change_motion_state(next.into(), assets)?;
+                self.core.effects.push(EffectRequest::EntryWarp { id: 0x43E, scale });
+                return Ok(());
             }
             CommonMotionState::EntryEnd => {
                 self.core

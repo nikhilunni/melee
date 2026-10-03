@@ -683,6 +683,7 @@ recorded range:
 | `slp_bf_marth_peach_t6500` | Marth + Peach (BF, ports 2, 4) | a turnip clanking with a fighter's hitbox records him with its rehit timer (mode 4 when x41_b5, 0x80077B8C) and clanks with him again 33 ticks later |
 | `slp_ps_fox_falco_t4000` | Fox vs Falco (PS, ports 1, 4) | nothing: the port equals retail to tick 4000 |
 | `slp_ys_fox_falco_t1900` | Fox vs Falco (YS, ports 1, 2) | a throw runs its script on entry (ftAnim_8006EBA4, 0x800DD3FC), so its voice draw (0x80088A18) is made in the captor's input proc, before the stage's procs: at tick 1817 it precedes the puff timer's draw (lr 0x801E36B4), which the port had drawn first, taking the other value (a puff 16 ticks early) |
+| `slp_ys_jigglypuff_fox_t300` | HNC 9, Jigglypuff vs Fox (YS, ports 2, 3) | Fox leaves Entry on the tick Randall's puff timer expires (15): ftCo_800C6408 queues the entry warp (0x800C66C8) after its motion change (0x800C644C), so it waits for the link-9 flush and its generators are created after the puff's |
 
 `slp_ps_fox_falco_t4000` was recorded without Slippi's Stadium preload code,
 which that console ran (above): retail draws DamageFlyHi at tick 3820 where
