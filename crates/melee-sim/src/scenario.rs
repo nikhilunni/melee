@@ -96,12 +96,16 @@ impl Scenario {
             .canonicalize()
             .with_context(|| format!("scenario {}", path.display()))?;
         let mut scenario: Self = toml::from_str(&fs::read_to_string(&path)?)?;
-        scenario.root = path
+        let checkout = path
             .parent()
             .and_then(Path::parent)
             .and_then(Path::parent)
             .context("scenario must be under harness/scenarios")?
             .to_path_buf();
+        // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
+        // gates its own scenario file against the main checkout's
+        // recordings), as harness/data_root.py.
+        scenario.root = std::env::var_os("MELEE_DATA_ROOT").map_or(checkout, PathBuf::from);
         // The decomp and new recordings use Mars for Marth's retail kind.
         for fighter in &mut scenario.fighters {
             if fighter.kind == "Mars" {
