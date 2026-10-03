@@ -503,6 +503,45 @@ impl Fighter {
         self.core.state_data = MotionData::Smash { retained_word };
         Ok(())
     }
+    /// ftCo_Attack13_IASA (8008B390): the rapid-jab check runs before the
+    /// interrupt (bl ftCo_Attack_800D6A50 at 8008B3AC), then Wait's checks
+    /// once the script unlocks them (8008B3C8).
+    pub(super) fn third_jab_input(
+        &mut self,
+        assets: &FighterAssets,
+        context: &WaitContext,
+    ) -> Result<()> {
+        if self.try_rapid_jab(assets)? {
+            return Ok(());
+        }
+        self.tilt_input(assets, context)
+    }
+    /// ftCo_Attack_800D6A50 (800D6A50): count both A edges (x1A54); once the
+    /// script opens the rapid jab (x2218_b2) with enough edges, enter
+    /// Attack100Start (fn_800D6AC4 -> ftCo_800D6B00). True when the check
+    /// consumed the tick, including an item picked up instead.
+    fn try_rapid_jab(&mut self, assets: &FighterAssets) -> Result<bool> {
+        let MotionData::Jab(jab) = &mut self.core.state_data else {
+            panic!("jab scratch missing")
+        };
+        if (self.core.input.pressed | self.core.input.released).intersects(Buttons::A) {
+            jab.rapid_edges += 1;
+        }
+        if !self.core.commands.rapid_jab
+            || jab.rapid_edges < self.core.attributes.combat.rapid_jab_window
+        {
+            return Ok(false);
+        }
+        // ftCo_800D6B00 (800D6B00): an item in reach is picked up instead.
+        if self.try_item_pickup(assets)? {
+            return Ok(true);
+        }
+        self.core.commands.rapid_jab_loop_end = false;
+        self.change_motion_state(S::Attack100Start.into(), assets)?;
+        self.step_animation(assets);
+        self.core.state_data = MotionData::RapidJab(RapidJabState::default());
+        Ok(true)
+    }
     /// ftCo_Attack11_IASA (8008ACD8), checkAttack12 (8008AF0C).
     pub(super) fn jab_input(
         &mut self,
@@ -525,25 +564,12 @@ impl Fighter {
         {
             return self.enter_ground_attack(assets);
         }
+        if self.try_rapid_jab(assets)? {
+            return Ok(());
+        }
         let MotionData::Jab(jab) = &mut self.core.state_data else {
             panic!("jab scratch missing")
         };
-        if (self.core.input.pressed | self.core.input.released).intersects(Buttons::A) {
-            jab.rapid_edges += 1;
-        }
-        if self.core.commands.rapid_jab
-            && jab.rapid_edges >= self.core.attributes.combat.rapid_jab_window
-        {
-            // ftCo_800D6B00 (800D6B00): an item in reach is picked up instead.
-            if self.try_item_pickup(assets)? {
-                return Ok(());
-            }
-            self.core.commands.rapid_jab_loop_end = false;
-            self.change_motion_state(S::Attack100Start.into(), assets)?;
-            self.step_animation(assets);
-            self.core.state_data = MotionData::RapidJab(RapidJabState::default());
-            return Ok(());
-        }
         // checkAttack12 / checkAttack13: the window counts down, noting A.
         if self.core.jab_countdown > 0.0 {
             self.core.jab_countdown -= 1.0;

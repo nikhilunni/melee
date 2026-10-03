@@ -593,7 +593,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         id: S::Attack13,
         animation: 48,
         anim: callbacks::animation::jab,
-        iasa: callbacks::input::tilt,
+        iasa: callbacks::input::third_jab,
         physics: callbacks::physics::jab,
         collision: callbacks::collision::escape,
         camera: callbacks::camera::follow_fighter,

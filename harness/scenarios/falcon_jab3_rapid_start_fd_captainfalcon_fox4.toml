@@ -1,0 +1,34 @@
+# Directed retail witness: Captain Falcon's third jab into the rapid jab.
+# Attack13's IASA (ftCo_Attack13_IASA, 8008B390) runs the rapid-jab check
+# (ftCo_Attack_800D6A50, bl at 8008B3AC) before the script's interrupt. The A
+# edges counted since jab 1 (x1A54) reach rapid_jab_window during jab 3, so
+# with A simply held, the tick the script opens the rapid jab (x2218_b2)
+# Attack13 becomes Attack100Start, then Attack100Loop; releasing A and
+# pressing nothing more ends it in Attack100End.
+name = "falcon_jab3_rapid_start_fd_captainfalcon_fox4"
+savestate = "harness/roms/start_fd_captainfalcon_fox4.sav"
+input_clock = "tick"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 200, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 203, port = 0, buttons = {  }, raw = {  } },
+  { frame = 207, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 210, port = 0, buttons = {  }, raw = {  } },
+  { frame = 216, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 260, port = 0, buttons = {  }, raw = {  } },
+  { frame = 264, port = 0, buttons = { A = true }, raw = { button = 256 } },
+  { frame = 268, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

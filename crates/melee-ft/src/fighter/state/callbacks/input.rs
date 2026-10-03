@@ -115,6 +115,15 @@ pub fn jab(fighter: &mut Fighter, phase: InputPhase<'_>) {
     fighter.jab_input(assets, &context).expect("jab IASA");
 }
 
+/// ftData_MotionStateList: ftCo_MS_Attack13 (46).
+pub fn third_jab(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    let InputPhase { assets } = phase;
+    let context = fighter.core.wait_context();
+    fighter
+        .third_jab_input(assets, &context)
+        .expect("third jab IASA");
+}
+
 /// ftData_MotionStateList: ftCo_MS_GuardOn (178), ftCo_MS_Guard (179), ftCo_MS_GuardOff (180),
 /// ftCo_MS_GuardSetOff (181), ftCo_MS_GuardReflect (182).
 pub fn guard_on(fighter: &mut Fighter, phase: InputPhase<'_>) {
