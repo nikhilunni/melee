@@ -1877,11 +1877,12 @@ fn detect_eligible_hit(
         .as_ref()
         .expect("eligible hitbox");
     let desc = &hit.descriptor;
-    if victim.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
-        || victim.status.ledge_intangibility != 0
-    {
-        return;
-    }
+    // ftColl_80078C70: x1988/x198C == 2 (retail 0x800790B4, 0x800790C0)
+    // skip only the hurt-capsule loop. The shield test (0x80079074) comes
+    // first, so an intangible fighter's shield (a ledgedash into Guard)
+    // still takes the hit.
+    let intangible = victim.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
+        || victim.status.ledge_intangibility != 0;
     let inert = desc.element == melee_types::HitElement::Inert;
     let mut shield_touch = false;
     if victim.shield.active {
@@ -1896,8 +1897,11 @@ fn detect_eligible_hit(
             shield_touch = true;
         }
     }
-    let contact =
-        melee_coll::detection::first_hurt_contact(victim, hit, attacker.player.scale);
+    let contact = if intangible {
+        None
+    } else {
+        melee_coll::detection::first_hurt_contact(victim, hit, attacker.player.scale)
+    };
     if inert {
         // ftColl_80078C70: an inert hitbox only records the touched
         // fighter; it logs no hit and never marks the victim on its group.

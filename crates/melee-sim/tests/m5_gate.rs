@@ -3483,3 +3483,12 @@ fn corpus_v3_matches_retail() {
         combat_gate_ticks(name, ticks);
     }
 }
+
+/// Hits found by tournament replays (Slippi wave). A shield takes a hit
+/// while ledge intangibility lasts: ftColl_80078C70 tests the shield
+/// (0x80079074) before the x1988/x198C checks (0x800790B4) that skip only the
+/// hurt capsules.
+#[test]
+fn intangible_shield_takes_the_hit() {
+    combat_gate_ticks("ledgedash_shield_intangible_fd_falco_fox4", 300);
+}

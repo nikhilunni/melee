@@ -1,0 +1,39 @@
+# Ledge intangibility does not protect a shield (ftColl_80078C70: the shield
+# test at 0x80079074 precedes the x1988/x198C == 2 checks at 0x800790B4 that
+# only skip the hurt-capsule loop). Falco (p0) grabs the left ledge at tick 188, ledgedashes
+# (drop 196, air jump 197, air dodge 202, LandingFallSpecial 205) and holds R:
+# GuardOn at tick 215, 27 ticks into CliffCatch's intangibility. Fox (p1) down
+# smashes at tick 212; its first active frame (tick 217) lands on the shield
+# and retail puts the still intangible Falco in GuardSetOff at tick 218.
+name = "ledgedash_shield_intangible_fd_falco_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_falco_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = { X = true, StickX = -1.0 }, raw = { button = 1024, stickX = -127 } },
+  { frame = 136, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 172, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 130, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -127 } },
+  { frame = 172, port = 1, buttons = {  }, raw = {  } },
+  { frame = 189, port = 0, buttons = {  }, raw = {  } },
+  { frame = 196, port = 0, buttons = { StickY = -0.6 }, raw = { stickY = -50 } },
+  { frame = 197, port = 0, buttons = { X = true, StickX = 0.76, StickY = -0.62 }, raw = { button = 1024, stickX = 61, stickY = -50 } },
+  { frame = 202, port = 0, buttons = { R = true, StickX = 0.8, StickY = -0.55 }, raw = { button = 32, stickX = 65, stickY = -45, triggerR = 255 } },
+  { frame = 206, port = 0, buttons = { R = true }, raw = { button = 32, triggerR = 255 } },
+  { frame = 212, port = 1, buttons = { A = true, StickY = -1.0 }, raw = { button = 256, stickY = -127 } },
+  { frame = 214, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
