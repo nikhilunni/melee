@@ -1,0 +1,28 @@
+# SLIPPI witness: stage_ps_idle_fox_marth4 recorded with Slippi's Frozen
+# Stadium Gecko code (slippi-ssbm-asm External/Frozen PS/Core/
+# FreezePokemon.asm: 0x801D45FC becomes `b` to the controller's end) on top
+# of the preload code, as a console tournament build runs them. Retail still
+# draws and reads the first form on the first waiting tick (the preload
+# hook), the base duration runs out and the timer keeps counting down, and
+# the arena never moves.
+name = "slippi_ps_frozen_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 4600
+seed = 1
+stage = "PokemonStadium"
+gecko = ["ps-preload", "ps-frozen"]
+stadium_preload = true
+stadium_frozen = true
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

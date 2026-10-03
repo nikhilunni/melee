@@ -109,6 +109,17 @@ mpLib_803BD850: footstep 30026, landing 30009), and ftCo_8009A134 reading the
 floor line's flags from the map (a dynamic platform's bit is not in the
 flags cached at contact; Fire Fox on the rock form).
 
+## Slippi codes (2026-10-03)
+
+Slippi recordings run the transformation preload code, and some the Frozen
+Stadium code; both live in the controller as `Transformation::preload` and
+`Transformation::frozen`, off in retail (docs/SLIPPI.md, "Pokémon Stadium
+codes"). With preload the form is drawn on the first waiting tick and
+announced the tick the wait ends, so no read is polled and no external
+event is consumed. Witnesses: `slippi_ps_preload_fox_marth4`,
+`slippi_ps_frozen_fox_marth4`. A saved boundary run with the preload code
+reads the code's two fields from map 2 (+0xF0, +0xEC).
+
 ## Not ported
 
 - A model of the read latency: standalone runs use the default policy.

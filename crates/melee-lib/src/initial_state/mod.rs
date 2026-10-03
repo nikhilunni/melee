@@ -406,8 +406,14 @@ impl InitialState {
         let pending_emission = partial_emission
             .then(|| particle_resume::PendingEmission::restore(&saved, &particles, &metadata))
             .transpose()?;
-        let (stage, mut stage_animations) =
-            stage::restore_scene(&saved, &assets, match_start, &mut particles, &metadata)?;
+        let (stage, mut stage_animations) = stage::restore_scene(
+            &saved,
+            &assets,
+            match_start,
+            &mut particles,
+            &metadata,
+            &setup.slippi,
+        )?;
         crate::frame::validate_saved_resume(&resume, &stage, fighters.len())?;
         if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
             for (&id, animation) in &mut stage_animations {

@@ -1718,6 +1718,19 @@ fn pokemon_stadium_transformations_match_retail() {
     combat_gate_ticks("stage_ps_second_fox_marth4", 11000);
 }
 
+/// Slippi's Stadium codes (melee_lib::slippi), recorded in Dolphin with the
+/// Gecko codes (`gecko = [...]`, harness/gecko.py) over the idle witness.
+/// Preload (0x801D45EC and five more): the form is drawn on the first
+/// waiting tick and announced the tick the base duration ends, with no read
+/// poll; the next is drawn the tick after the base arena settles again.
+/// Frozen (0x801D45FC) on top of it: the same early draw, and no
+/// transformation.
+#[test]
+fn pokemon_stadium_slippi_codes_match_retail() {
+    combat_gate_ticks("slippi_ps_preload_fox_marth4", 7500);
+    combat_gate_ticks("slippi_ps_frozen_fox_marth4", 4600);
+}
+
 /// Pokemon Stadium's jumbotron close-up ends when the player's camera bone
 /// leaves the main CObj as last rendered (grStadium_801D32D0): a throw's
 /// graphics 0x514 shakes it with a Medium quake (efAsync kind 8 ->

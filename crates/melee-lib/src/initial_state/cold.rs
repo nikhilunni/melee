@@ -52,8 +52,15 @@ impl InitialState {
             setup_draws(assets.stage_desc.kind, scenario.roster().len())?,
         ));
         let mut particles = ParticleSystem::default();
-        let (stage, mut stage_animations) =
+        let (mut stage, mut stage_animations) =
             initialize_stage(&assets, &mut rng, &mut particles, &mut map)?;
+        if let SceneStage::Stadium(stadium) = &mut stage {
+            if scenario.slippi.stadium_preload {
+                // Init isLoaded Bool.asm (0x801D14C8), in map 2's init.
+                stadium.transformation.preload = melee_gr::stadium::transform::Preload::Pending;
+            }
+            stadium.transformation.frozen = scenario.slippi.stadium_frozen;
+        }
         // Fountain of Dreams binds its collision joints during creation.
         let archive_bindings = !matches!(stage, SceneStage::Izumi(_));
         if matches!(stage, SceneStage::Stadium(_)) {

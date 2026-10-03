@@ -105,6 +105,7 @@ pub(super) fn restore_scene(
     match_start: bool,
     particles: &mut ParticleSystem,
     metadata: &serde_json::Value,
+    slippi: &crate::slippi::SlippiCodes,
 ) -> Result<(SceneStage, Animations)> {
     match assets.stage_desc.kind {
         melee_types::GrKind::Last => {
@@ -127,7 +128,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Story => restore_story(saved, assets),
         melee_types::GrKind::OldPupupu => restore_pupupu(saved, assets, particles),
         melee_types::GrKind::Izumi => super::stage_izumi::restore(saved, assets, particles),
-        melee_types::GrKind::PStadium => restore_stadium(saved, assets, particles),
+        melee_types::GrKind::PStadium => restore_stadium(saved, assets, particles, slippi),
         _ => unreachable!("registered stage descriptor"),
     }
 }
@@ -354,8 +355,12 @@ fn restore_stadium(
     saved: &SavedPose,
     assets: &Assets,
     particles: &ParticleSystem,
+    slippi: &crate::slippi::SlippiCodes,
 ) -> Result<(SceneStage, Animations)> {
-    use melee_gr::stadium::{transform::Phase, Form, ScreenMode, Stadium};
+    use melee_gr::stadium::{
+        transform::{Phase, Preload},
+        Form, ScreenMode, Stadium,
+    };
     ensure!(
         particles.generators.is_empty() && particles.particles.iter().all(Vec::is_empty),
         "Pokemon Stadium initial particle population requires attachment restoration"
@@ -420,6 +425,20 @@ fn restore_stadium(
                     );
                     // xD0 may hold the last form's archive; the next form's
                     // choice releases it before anything reads it.
+                    controller.frozen = slippi.stadium_frozen;
+                    if slippi.stadium_preload {
+                        // The code's isLoaded (+0xF0) and TransformationID
+                        // (+0xEC) as the boundary left them: a boundary
+                        // saved without the code holds the Ground's zeroes.
+                        controller.preload = if raw[0xF0] == 0 {
+                            Preload::Pending
+                        } else {
+                            let form = Form::from_map(word(raw, 0xEC) as i16)
+                                .filter(|form| form.archive().is_some())
+                                .ok_or_else(|| anyhow::anyhow!("Pokemon Stadium preloaded form"))?;
+                            Preload::Chosen(form)
+                        };
+                    }
                 }
                 _ => {}
             }

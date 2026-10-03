@@ -401,11 +401,12 @@ Jigglypuff's costume hats (unported). The corpus is blocked on UCF.
 
 **Slippi code sets that affect gameplay** (slippi-ssbm-asm
 `Output/InjectionLists`): console core (NanaDeterminism, Stadium
-transformation preload, PSCameraIndependentMonitor), tournament mods
-(NeutralSpawn, FreezeGlitchFix, Disable FoD During Doubles), UCF 0.74 /
-0.8 / 0.84, and netplay (per-frame RNG sync, FreezeDeadUpFallPhysics,
-PreventWobbling, FreezeFDSlippi, Frozen PS). Each must be ported before a
-replay recorded with it can match.
+transformation preload, PSCameraIndependentMonitor from 2021-08), tournament
+mods (NeutralSpawn, FreezeGlitchFix, Disable FoD During Doubles), Frozen
+Stadium, UCF 0.74 / 0.8 / 0.84, and netplay (per-frame RNG sync,
+FreezeDeadUpFallPhysics, PreventWobbling, FreezeFDSlippi, Frozen PS). Each
+must be ported before a replay recorded with it can match; the Stadium
+preload and Frozen Stadium codes are (below).
 
 ## Controller fixes (UCF), 2026-09-28
 
@@ -468,3 +469,43 @@ instead for every port recorded with UCF (also for recordings older than
 
 Not ported: the UCF 0.73 beta (`Binary/UCF/Ucf0.73Beta.bin`, a different
 dashback program) and Dween.
+
+## Pokémon Stadium codes, 2026-10-03
+
+Two Slippi codes change the transformation controller (grStadium_801D4548);
+`melee_lib::slippi::SlippiCodes` carries both and
+`melee_gr::stadium::transform` runs them (logic ported, not copied; GPL-3).
+
+| Code | Slippi source | Hooks | Selected by |
+|---|---|---|---|
+| Preload (`stadium_preload`) | `Common/Preload Stadium Transformations` (console core and netplay) | 0x801D14C8 (init clears isLoaded, map 2 +0xF0), 0x801D45EC (a waiting tick with isLoaded clear draws the form into +0xEC and starts its read), 0x801D460C / 0x801D4610 (the wait's end takes that form instead of drawing), 0x801D4724 (skips the read and falls into phase 1's poll in the same tick), 0x801D4F14 (the settling base arena clears isLoaded) | replay version 1.3.0 or later, the rule Slippi's playback uses (Ishiiruka EXI_DeviceSlippi.cpp, "Write PS pre-load byte") |
+| Frozen (`stadium_frozen`) | `External/Frozen PS/Core/FreezePokemon.asm` | 0x801D45FC: `bge` becomes `b`, so the wait never ends (the timer keeps counting down) | Game Start's `frozen_ps` |
+
+With preload the form's `Randi(4)` moves from the end of the base duration
+to the controller's first waiting tick (and the tick after each return to
+the base), which shifts every later draw by one; the form is announced on
+the tick the duration ends, with no disc latency, so no external read event
+is consumed. The skipped retail code is what sets map 2's xC4_b1, so the
+poll at 0x801D4760 succeeds whatever the disc did. A frozen match with
+preload still makes the first draw. The code is unchanged in the Slippi
+asm from 2019-02 (then applied by a static patcher under a toggle) to now.
+PSCameraIndependentMonitor (0x801D24FC) dates from 2021-08 and is not in
+these recordings.
+
+Witnesses (`pokemon_stadium_slippi_codes_match_retail`), recorded with the
+Gecko codes `ps-preload` (the six preload injections from
+`Output/Console/g_core.bin`) and `ps-frozen` (`041D45FC 480009DC`) in
+`MELEE_GECKO_DIR`: `slippi_ps_preload_fox_marth4` (7500 ticks: retail draws
+at ticks 85 and 6564, a whole transformation cycle) and
+`slippi_ps_frozen_fox_marth4` (4600 ticks, both codes: the draw at tick 85
+and no transformation). A scenario names the codes with
+`stadium_preload = true` / `stadium_frozen = true` beside its `gecko` list.
+
+Corpus: the six Pokémon Stadium games stopped at ticks 3820-4304; five now
+match to the last frame (three transforming, two frozen). `MARTH/13_06_06
+Marth + Fox (PS).slp` (frozen) still stops at tick 4257: Marth's idle
+re-roll at tick 4167 (ftCo_8008A7A8, one `Randi(100)`) picks the other Wait
+animation, so the random stream differs by then from a draw the recording
+does not show. Not diagnosed; the jumbotron's close-up test
+(grStadium_801D32D0) reads the rendered camera and draws on a change, which
+is why Slippi later added PSCameraIndependentMonitor.

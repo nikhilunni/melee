@@ -29,6 +29,14 @@ pub struct Scenario {
     /// How players spawn (melee_lib::slippi::SpawnRule).
     #[serde(default, deserialize_with = "spawn_rule::deserialize")]
     pub spawn: melee_lib::slippi::SpawnRule,
+    /// Slippi's Stadium transformation preload code
+    /// (`melee_lib::slippi::SlippiCodes::stadium_preload`).
+    #[serde(default)]
+    pub stadium_preload: bool,
+    /// Slippi's Frozen Stadium code
+    /// (`melee_lib::slippi::SlippiCodes::stadium_frozen`).
+    #[serde(default)]
+    pub stadium_frozen: bool,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -46,7 +54,8 @@ pub struct Scenario {
     pub replay_rules: Option<slp::cold::ReplayRules>,
     /// Gecko codes the recording's Dolphin ran (`harness/gecko.py`), such as
     /// `["ucf-0.8"]`. Every fighter then names the matching
-    /// `controller_fix`; the port reads only that.
+    /// `controller_fix`, and `"ps-preload"` and `"ps-frozen"` go with
+    /// `stadium_preload` and `stadium_frozen`; the port reads only those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -177,15 +186,27 @@ impl Scenario {
                 );
             }
         }
+        let stage_codes = [
+            (STADIUM_PRELOAD_GECKO, self.stadium_preload),
+            (STADIUM_FROZEN_GECKO, self.stadium_frozen),
+        ];
+        let is_stage_code = |code: &String| stage_codes.iter().any(|(name, _)| code == name);
+        let fix_recorded = self.gecko.iter().any(|code| !is_stage_code(code));
         for fighter in &self.fighters {
             let fix = fighter.controller_fix()?;
-            if !self.gecko.is_empty() {
+            if fix_recorded {
                 ensure!(
                     self.gecko.iter().any(|code| code == fix.name()),
                     "gecko {:?} requires each fighter's controller_fix to name its code",
                     self.gecko
                 );
             }
+        }
+        for (name, enabled) in stage_codes {
+            ensure!(
+                self.gecko.is_empty() || self.gecko.iter().any(|code| code == name) == enabled,
+                "gecko {name:?} and its scenario flag go together"
+            );
         }
         if let Some(rules) = &self.replay_rules {
             ensure!(self.is_cold(), "replay rules require cold setup");
@@ -348,7 +369,11 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
             all_characters_unlocked: self.all_characters_unlocked,
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
-            slippi: melee_lib::slippi::SlippiCodes { spawn: self.spawn },
+            slippi: melee_lib::slippi::SlippiCodes {
+                spawn: self.spawn,
+                stadium_preload: self.stadium_preload,
+                stadium_frozen: self.stadium_frozen,
+            },
         })
     }
     fn is_cold(&self) -> bool {
@@ -373,6 +398,11 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
         Ok(Box::new(melee_trace_io::open(path)?))
     }
 }
+
+/// The `gecko` name of Slippi's Stadium transformation preload code.
+const STADIUM_PRELOAD_GECKO: &str = "ps-preload";
+/// The `gecko` name of Slippi's Frozen Stadium code.
+const STADIUM_FROZEN_GECKO: &str = "ps-frozen";
 
 /// `spawn = "retail" | "neutral-2019" | "neutral-2020"` in scenario TOML.
 mod spawn_rule {

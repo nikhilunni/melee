@@ -1,0 +1,29 @@
+# SLIPPI witness: stage_ps_idle_fox_marth4 recorded with Slippi's "Preload
+# Stadium Transformations" Gecko code (slippi-ssbm-asm Common/Preload Stadium
+# Transformations: 0x801D14C8, 0x801D45EC, 0x801D460C, 0x801D4610,
+# 0x801D4724, 0x801D4F14). Retail with the code draws the next form
+# (Randi(4) at the hook on 0x801D45EC) on the controller's first waiting tick
+# and starts its archive read there; when the base duration ends the form is
+# announced on that same tick, with no read poll, so the arena moves a disc
+# latency earlier than in stage_ps_idle_fox_marth4. When the base arena
+# settles again (0x801D4F14) the next form is drawn the tick after.
+name = "slippi_ps_preload_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 7500
+seed = 1
+stage = "PokemonStadium"
+gecko = ["ps-preload"]
+stadium_preload = true
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

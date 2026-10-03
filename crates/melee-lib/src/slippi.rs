@@ -10,6 +10,17 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SlippiCodes {
     pub spawn: SpawnRule,
+    /// Common/Preload Stadium Transformations (0x801D14C8, 0x801D45EC,
+    /// 0x801D460C, 0x801D4610, 0x801D4724, 0x801D4F14; in every recording
+    /// build from Slippi 1.3.0): Pokémon Stadium chooses and reads the next
+    /// form when the base form starts waiting, and announces it on the tick
+    /// the wait ends (`melee_gr::stadium::transform::Preload`). The form's
+    /// draw moves a whole base duration earlier and no disc read is polled.
+    pub stadium_preload: bool,
+    /// External/Frozen PS/Core/FreezePokemon.asm (0x801D45FC; Game Start's
+    /// "frozen PS" flag, Slippi 2.0.0): Pokémon Stadium never transforms.
+    /// With the preload code the first form is still drawn and read.
+    pub stadium_frozen: bool,
 }
 
 /// Where each player starts.

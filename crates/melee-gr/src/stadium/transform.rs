@@ -158,6 +158,25 @@ pub fn default_read_completed(form: Form, poll: u32) -> bool {
     poll >= DEFAULT_READ_POLLS[form.archive().expect("a form's archive")]
 }
 
+/// Slippi's "Preload Stadium Transformations" code (slippi-ssbm-asm
+/// `Common/Preload Stadium Transformations`, in the console core and
+/// netplay sets): the next form is chosen, and its archive read started, on
+/// the base form's first waiting tick instead of at the end of the wait, so
+/// the form is announced on the tick the wait ends with no disc latency.
+/// The code keeps two fields in map 2's spare user data: isLoaded (+0xF0)
+/// and TransformationID (+0xEC).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Preload {
+    /// Retail: the code is not installed.
+    #[default]
+    Off,
+    /// isLoaded clear: Init isLoaded Bool.asm (0x801D14C8, map 2's init) or
+    /// Reset isLoaded.asm (0x801D4F14, the base form settling).
+    Pending,
+    /// isLoaded set; TransformationID holds the form chosen ahead.
+    Chosen(Form),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transformation {
     /// Map 2's xC4_b0: set at creation, cleared by the deferred start
@@ -183,6 +202,12 @@ pub struct Transformation {
     /// xD0: the registered form archive (grDatFiles_801C6478), until the
     /// next form is chosen (grAnime_801C65B0).
     pub archive: Option<Form>,
+    /// Slippi's preload code; `Off` is retail.
+    pub preload: Preload,
+    /// Slippi's Frozen Stadium code (slippi-ssbm-asm `External/Frozen PS`,
+    /// FreezePokemon.asm): 0x801D45FC's `bge` becomes an unconditional
+    /// branch to the function's end, so the wait never ends.
+    pub frozen: bool,
 }
 
 impl Transformation {
@@ -200,6 +225,8 @@ impl Transformation {
             sparkle_path: 0.0,
             read_polls: 0,
             archive: None,
+            preload: Preload::Off,
+            frozen: false,
         }
     }
 
@@ -248,6 +275,10 @@ impl Transformation {
                 engine.settle(self.standing);
                 engine.stitch_all();
                 if self.form == Form::Base {
+                    // Reset isLoaded.asm (0x801D4F14), ahead of the draw.
+                    if self.preload != Preload::Off {
+                        self.preload = Preload::Pending;
+                    }
                     self.timer = range(engine.rng(), parameters.base_frames);
                     // grAnime_801C65B0(xCC) clears the preload buffer's head.
                     for line in PIT_LINES {
@@ -265,21 +296,29 @@ impl Transformation {
     /// base, redraw while the choice equals xE2 (the form before the
     /// previous one); a form always returns to the base.
     fn wait(&mut self, engine: &mut impl StadiumEngine) {
+        // Load Transformation.asm (0x801D45EC, the phase's first
+        // instruction): a waiting tick with isLoaded clear draws the next
+        // form by retail's redraw rule and starts its read (lbFile_80016580
+        // into xCC, callback fn_801D4220). isLoaded is clear only at the
+        // start and once the base form has settled.
+        if self.preload == Preload::Pending {
+            self.preload = Preload::Chosen(self.draw_form(engine));
+        }
         // Signed post-decrement: a timer of zero waits one more tick.
         let old = self.timer;
-        self.timer -= 1;
-        if old >= 0 {
+        self.timer = self.timer.wrapping_sub(1);
+        // FreezePokemon.asm (0x801D45FC): the timer still counts down.
+        if old >= 0 || self.frozen {
             return;
         }
-        let next = if self.form == Form::Base {
-            loop {
-                let form = FORMS[engine.rng().randi(FORMS.len() as i32) as usize];
-                if self.before_previous != Some(form) {
-                    break form;
-                }
-            }
-        } else {
-            Form::Base
+        let next = match (self.form, self.preload) {
+            (Form::Base, Preload::Off) => self.draw_form(engine),
+            // GetPreloadedTransition.asm (0x801D460C) loads
+            // TransformationID; SkipNormalDecision1.asm (0x801D4610)
+            // branches over the draw to 0x801D465C.
+            (Form::Base, Preload::Chosen(form)) => form,
+            (Form::Base, Preload::Pending) => unreachable!("chosen above"),
+            _ => Form::Base,
         };
         self.before_previous = self.previous;
         self.previous = Some(self.form);
@@ -290,8 +329,29 @@ impl Transformation {
         }
         // grAnime_801C65B0(xD0), then lbFile_80016580 on datfiles[form].
         self.archive = None;
+        if self.preload != Preload::Off {
+            // SkipNormalDecision2.asm (0x801D4724) branches over the read
+            // and the phase change to phase 1's poll at 0x801D4760, in this
+            // same tick. Nothing set map 2's xC4_b1 (the skipped code does),
+            // so grStadium_801D42B8 registers the archive whatever the disc
+            // did; the read itself began a whole base duration earlier.
+            self.archive = Some(self.form);
+            self.phase = Phase::Announcing;
+            return;
+        }
         self.read_polls = 0;
         self.phase = Phase::Loading;
+    }
+
+    /// 0x801D4638: draw among the four forms, again while the draw equals
+    /// xE2 (the form before the previous one).
+    fn draw_form(&self, engine: &mut impl StadiumEngine) -> Form {
+        loop {
+            let form = FORMS[engine.rng().randi(FORMS.len() as i32) as usize];
+            if self.before_previous != Some(form) {
+                break form;
+            }
+        }
     }
 
     /// Phase 4 (grpstadium.c:2143-2171): 801D48C8 fnmsubs lowers the scale
@@ -391,6 +451,190 @@ impl Transformation {
             );
             let scale = engine.map_scale();
             engine.sparkle(Vec3::new(point.x * scale, point.y * scale, point.z * scale));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::stadium::ModeWeights;
+
+    /// The poll of the mock disc that finds a read complete.
+    const READ_POLLS: u32 = 2;
+    const SEED: u32 = 0x1234_5678;
+
+    /// An arena with one scale per map and a disc that answers on a fixed poll.
+    struct Arena {
+        rng: HsdRng,
+        scale_y: [f32; 10],
+        polls: u32,
+        announcements: Vec<ScreenMode>,
+    }
+    impl Arena {
+        fn new() -> Self {
+            Self {
+                rng: HsdRng::new(SEED),
+                scale_y: [1.0; 10],
+                polls: 0,
+                announcements: Vec::new(),
+            }
+        }
+    }
+    impl StadiumEngine for Arena {
+        fn rng(&mut self) -> &mut HsdRng {
+            &mut self.rng
+        }
+        fn read_completed(&mut self, _: Form, poll: u32) -> bool {
+            self.polls += 1;
+            poll >= READ_POLLS
+        }
+        fn announce(&mut self, mode: ScreenMode) {
+            self.announcements.push(mode);
+        }
+        fn warn_standing(&mut self, _: Form) {}
+        fn scale_y(&mut self, form: Form) -> f32 {
+            self.scale_y[usize::from(form.map())]
+        }
+        fn set_scale_y(&mut self, form: Form, scale: f32) {
+            self.scale_y[usize::from(form.map())] = scale;
+        }
+        fn set_translate_y(&mut self, _: Form, _: f32) {}
+        fn freeze(&mut self, _: Form) {}
+        fn create(&mut self, _: Form) {}
+        fn destroy(&mut self, _: Form) {}
+        fn settle(&mut self, _: Form) {}
+        fn enable_line(&mut self, _: i32) {}
+        fn disable_line(&mut self, _: i32) {}
+        fn stitch_all(&mut self) {}
+        fn sparkle(&mut self, _: Vec3) {}
+        fn quake(&mut self) {}
+        fn map_scale(&self) -> f32 {
+            1.0
+        }
+    }
+
+    /// Fixed durations, so only the form choice and the sparkles draw.
+    fn parameters() -> Parameters {
+        Parameters {
+            base_frames: [3, 3],
+            form_frames: [2, 2],
+            announce_delay: 1,
+            sink_frames: 4,
+            sunk_frames: 1,
+            info_frames: 0,
+            defeat_frames: 0,
+            announce_frames: 0,
+            standings_frames: 0,
+            player_camera_frames: [0, 0],
+            stage_camera_frames: [0, 0],
+            standings_interval: 0,
+            mode_weights: ModeWeights {
+                player_camera: 0,
+                match_info: 0,
+                stage_camera: 0,
+                picture: 0,
+            },
+        }
+    }
+
+    fn started(preload: Preload, frozen: bool) -> (Transformation, Arena) {
+        let mut arena = Arena::new();
+        let mut controller = Transformation::new(&parameters(), &mut arena.rng);
+        controller.waiting_for_start = false;
+        controller.preload = preload;
+        controller.frozen = frozen;
+        (controller, arena)
+    }
+
+    /// The seed after `draws` draws from the start.
+    fn seed_after(draws: usize) -> u32 {
+        let mut rng = HsdRng::new(SEED);
+        for _ in 0..draws {
+            rng.randi(FORMS.len() as i32);
+        }
+        rng.seed
+    }
+
+    /// Ticks of a base duration of 3: the timer reads 3, 2, 1, 0, then -1.
+    const WAIT_TICKS: usize = 5;
+
+    #[test]
+    fn retail_draws_the_form_when_the_wait_ends_and_polls_the_read() {
+        let (mut controller, mut arena) = started(Preload::Off, false);
+        for _ in 0..WAIT_TICKS - 1 {
+            controller.tick(&parameters(), &mut arena);
+            assert_eq!((controller.phase, arena.rng.seed), (Phase::Waiting, SEED));
+        }
+        controller.tick(&parameters(), &mut arena);
+        assert_eq!(
+            (controller.phase, arena.rng.seed),
+            (Phase::Loading, seed_after(1))
+        );
+        controller.tick(&parameters(), &mut arena);
+        assert_eq!(controller.phase, Phase::Loading);
+        controller.tick(&parameters(), &mut arena);
+        assert_eq!((controller.phase, arena.polls), (Phase::Announcing, 2));
+        assert_eq!(controller.archive, Some(controller.form));
+    }
+
+    #[test]
+    fn preload_draws_on_the_first_waiting_tick_and_announces_without_a_poll() {
+        let (mut controller, mut arena) = started(Preload::Pending, false);
+        controller.tick(&parameters(), &mut arena);
+        let Preload::Chosen(form) = controller.preload else {
+            panic!("no form chosen on the first waiting tick");
+        };
+        assert_eq!(arena.rng.seed, seed_after(1));
+        for _ in 1..WAIT_TICKS {
+            assert_eq!(controller.phase, Phase::Waiting);
+            controller.tick(&parameters(), &mut arena);
+        }
+        assert_eq!(controller.phase, Phase::Announcing);
+        assert_eq!((controller.form, controller.archive), (form, Some(form)));
+        assert_eq!((arena.polls, arena.rng.seed), (0, seed_after(1)));
+        controller.tick(&parameters(), &mut arena);
+        assert_eq!(arena.announcements, [form.announcement()]);
+    }
+
+    #[test]
+    fn preload_draws_again_the_tick_after_the_base_arena_settles() {
+        let (mut controller, mut arena) = started(Preload::Pending, false);
+        let mut choices = Vec::new();
+        let mut base_settled = None;
+        for tick in 0..200 {
+            let before = (controller.phase, controller.form, controller.preload);
+            controller.tick(&parameters(), &mut arena);
+            if before.0 == Phase::Settling && before.1 == Form::Base {
+                assert_eq!(controller.preload, Preload::Pending);
+                base_settled.get_or_insert(tick);
+            }
+            if before.2 == Preload::Pending && controller.preload != Preload::Pending {
+                choices.push(tick);
+            }
+            if choices.len() == 2 {
+                break;
+            }
+        }
+        let settled = base_settled.expect("the base arena returned");
+        assert_eq!(choices, [0, settled + 1]);
+        assert_eq!(arena.polls, 0);
+    }
+
+    #[test]
+    fn frozen_stadium_never_leaves_the_wait() {
+        for (preload, draws) in [(Preload::Off, 0), (Preload::Pending, 1)] {
+            let (mut controller, mut arena) = started(preload, true);
+            for _ in 0..50 {
+                controller.tick(&parameters(), &mut arena);
+            }
+            assert_eq!(
+                (controller.phase, controller.form, controller.timer),
+                (Phase::Waiting, Form::Base, 3 - 50),
+                "{preload:?}"
+            );
+            assert_eq!(arena.rng.seed, seed_after(draws), "{preload:?}");
+            assert!(arena.announcements.is_empty());
         }
     }
 }

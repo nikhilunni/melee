@@ -173,6 +173,17 @@ const POST_FRAME_AT_CAMERA: slp::Version = slp::Version {
     build: 0,
 };
 
+/// The first Slippi version recorded with the Stadium transformation
+/// preload code. Replays before the Gecko code list (3.3) do not name it;
+/// Slippi's own playback enables it by this version (Ishiiruka
+/// EXI_DeviceSlippi.cpp, "Write PS pre-load byte": major > 1, or 1 with
+/// minor > 2).
+const STADIUM_PRELOAD: slp::Version = slp::Version {
+    major: 1,
+    minor: 3,
+    build: 0,
+};
+
 /// The UCF version a UCF port ran. Slippi records only "UCF", so date the
 /// recording by its start time against Slippi's code history: 0.74 entered
 /// g_ucf.bin on 2019-10-09, 0.8 on 2021-03-31, 0.84 in 2024-02. Earlier
@@ -308,6 +319,8 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
             scenario.time_limit = Some(replay.start.game_timer);
         }
         scenario.spawn = spawn_rule(replay);
+        scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
+        scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
                 let fix = ucf_version(replay, &replay.start.players[port], setup)
