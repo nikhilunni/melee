@@ -88,8 +88,11 @@ impl FighterCore {
     /// x2219_b1: a death entry (ftCo_800D3680..ftCo_800D481C), the respawn
     /// wait (ftCo_800D4F24) or the match entry (ftCo_800C61B0 and the
     /// Entry states after it, ft_0C31.c:43,99,263) sets it after its motion
-    /// change, and every motion change clears it. Fighter_8006CB94 skips
-    /// all hit detection while it is set; Revival does not set it.
+    /// change, and every motion change clears it. So do Rebirth
+    /// (ftCo_800D4FF4, 0x800D5104) and RebirthWait (ftCo_800D5600,
+    /// 0x800D566C), the revival platform. Fighter_8006CB94 skips all hit
+    /// detection while it is set, and a CPU does not target the fighter
+    /// (ftCo_800A1C44).
     pub fn out_of_play(&self) -> bool {
         matches!(
             self.state_data,
@@ -98,6 +101,8 @@ impl FighterCore {
                     | LifeState::StarKo { .. }
                     | LifeState::ScreenKo(_)
                     | LifeState::AwaitingRespawn
+                    | LifeState::Revival { .. }
+                    | LifeState::PlatformWait { .. }
             ) | MotionData::Entry(_)
         )
     }
