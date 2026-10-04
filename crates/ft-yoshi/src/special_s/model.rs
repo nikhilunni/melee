@@ -57,7 +57,6 @@ pub(super) fn step_shell(f: &mut Fighter) {
 
 /// ftParts_80074B0C(gobj, 0, variant): model group 0.
 fn select_model(f: &mut Fighter, variant: i32) {
-    f.character.get_mut::<Yoshi>().model_group = variant;
     f.commands.model_selections.insert(0, variant);
 }
 

@@ -60,7 +60,6 @@ fn egg_body(fighter: &mut Fighter) {
     );
 }
 fn model(fighter: &mut Fighter, variant: i32) {
-    fighter.character.get_mut::<Yoshi>().model_group = variant;
     fighter.commands.model_selections.insert(0, variant);
 }
 /// ftYs_Init_8012BE3C (8012BE3C): restore the body and burst twelve shell pieces.
@@ -329,7 +328,7 @@ pub fn escape_entered(fighter: &mut Fighter, assets: &FighterAssets, rolling: bo
     if rolling {
         model(fighter, 1);
         egg_body(fighter);
-    } else if fighter.character.get::<Yoshi>().model_group == 1 {
+    } else if fighter.commands.model_selections.get(&0) == Some(&1) {
         leave_egg(fighter, assets);
     }
     Ok(())

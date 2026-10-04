@@ -975,7 +975,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 430] = [
+const MATRIX_WITNESSES: [(&str, usize); 431] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1177,6 +1177,11 @@ const MATRIX_WITNESSES: [(&str, usize); 430] = [
     ("yoshi_shield_delayed_power_stun", 232),
     ("yoshi_shield_delayed_power_hold", 300),
     ("yoshi_shield_hit_break", 399),
+    // A spot dodge out of the egg's startup (ftCo_80099954, 0x80099954)
+    // bursts the shell only while the egg model is selected
+    // (x5F4_arr[0].idx == 1): not after a grab out of the egg put the body
+    // back (252), and from the held egg it does (340).
+    ("yoshi_shield_grab_then_spotdodge", 420),
     // Peach Bomber (ftpeachspecials.c): ground and aerial flights whose inert
     // hitbox touches Fox (unk_gobj -> doAirEnd0) and leaves the PeachExplode
     // blast, a smash-input flight (blast motion 1), one passing through a

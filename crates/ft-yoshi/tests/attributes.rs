@@ -59,11 +59,9 @@ fn death_clears_egg_handle_and_model_but_preserves_roll_scale() {
     word(&mut raw, 0x2234, 4.0_f32.to_bits());
     word(&mut raw, 0x2238, 0x81234560);
     yoshi.restore_saved(&raw);
-    yoshi.model_group = 1;
     assert!(yoshi.egg_active);
     yoshi.on_reset();
     assert!(!yoshi.egg_active);
-    assert_eq!(yoshi.model_group, 0);
     assert_eq!(yoshi.egg_roll_scale, hsd_types::Vec3::new(2.0, 3.0, 4.0));
     assert_eq!(yoshi.attributes, attributes);
 }

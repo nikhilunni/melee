@@ -16,7 +16,6 @@ pub struct Yoshi {
     /// Fighter +2238: Egg Throw item handle; reset by OnDeath.
     pub egg_active: bool,
     pub registered_items: Vec<ItemKind>,
-    pub model_group: i32,
     /// Costume visibility groups selected by ftParts_8007487C.
     pub egg_material_indices: Vec<Vec<usize>>,
     /// MObj AObjs frozen by ftYs_Init_8012B6E8; renderer consumes this output.
@@ -41,7 +40,6 @@ impl Yoshi {
             egg_roll_scale: Vec3::ZERO,
             egg_active: false,
             registered_items: Vec::new(),
-            model_group: 0,
             jump_turn_remaining: 0,
             stars_pending: false,
             egg_roll: Default::default(),
@@ -150,7 +148,6 @@ impl CharacterCallbacks for Yoshi {
     }
     /// ftYs_Init_OnDeath (8012B960): model group 0 and egg handle only.
     fn on_reset(&mut self) {
-        self.model_group = 0;
         self.egg_active = false;
     }
     fn on_costume_loaded(
