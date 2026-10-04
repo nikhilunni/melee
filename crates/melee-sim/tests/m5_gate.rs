@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 21] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 22] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2158,6 +2158,11 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 21] = [
     // The same pads on retail without the code: the close-up ends at 945
     // and the stage draws its next mode.
     ("slp_ps_fox_marth_standard_t2000_cold", 2000),
+    // Donkey Kong's delayed powershield (ftCo_8009388C, 121) has no shield
+    // bubble, only the reflect volume, which GuardReflect's physics moves
+    // with the shield bone (0x8009403C): Falco's laser is reflected a tick
+    // later (122) where the volume now is.
+    ("slp_fd_donkeykong_falco_t300_cold", 300),
 ];
 
 #[test]

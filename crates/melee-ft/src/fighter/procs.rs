@@ -763,6 +763,15 @@ impl FighterCore {
                 self.shield.reflect.volume.position_cached = false;
             }
         }
+        // ftCo_GuardReflect_Phys (0x8009403C) clears the reflect volume
+        // (ftColl_8007AEF8) with or without a shield bubble: a delayed
+        // powershield (ftCo_8009388C) removes the bubble (x221A_b7, x221B_b0)
+        // and leaves only the reflect volume, which follows the shield bone.
+        if state_physics_ran
+            && self.motion_state.id == melee_types::CommonMotionState::GuardReflect
+        {
+            self.shield.reflect.volume.position_cached = false;
+        }
         for hurt in &mut self.hurtboxes {
             hurt.cached = false;
         }

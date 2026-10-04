@@ -1,0 +1,30 @@
+# The port's side of slp_fd_donkeykong_falco_t300: boundary start_fd_slippi74_p12_donkeykong1_falco0_4_r221823 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fd_donkeykong_falco_t300_cold"
+expected = "slp_fd_donkeykong_falco_t300"
+frames = 300
+seed = 2326307569
+game_start_seed = 3712904585
+boundary_seed = 2326307569
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
