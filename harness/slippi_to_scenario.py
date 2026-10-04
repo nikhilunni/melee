@@ -28,7 +28,9 @@ Two scenarios are written:
   consumed.
 
 The controller fix is the boundary's (its codes live in the savestate), which
-may be a later UCF than the replay's build ran.
+may be a later UCF than the replay's build ran. The Stadium codes are the
+boundary's too (`stadium_preload`, `stadium_frozen`, from its Gecko list) and
+must be the replay's, because they move the stage's draws.
 """
 from __future__ import annotations
 
@@ -39,6 +41,7 @@ import tomllib
 from pathlib import Path
 
 import data_root
+import gecko
 import replay_to_scenario as pads
 
 #: Scenario.validate's limit (melee-sim scenario.rs).
@@ -50,6 +53,26 @@ def load_boundary(name: str) -> tuple[dict, dict]:
     if not start.exists() or not cold.exists():
         sys.exit(f"no boundary {name}: make it with make_boundary.py (see this file's header)")
     return tomllib.loads(start.read_text()), tomllib.loads(cold.read_text())
+
+
+def stage_flags(start: dict, cold: dict) -> dict[str, bool]:
+    """The boundary's stage-code flags: what its savestate runs (the start
+    scene's Gecko list), or what a boundary written by hand names."""
+    flags = gecko.scenario_flags(start.get("gecko"))
+    for flag in gecko.SCENARIO_FLAGS.values():
+        if start.get(flag) or cold.get(flag):
+            flags[flag] = True
+    return flags
+
+
+def check_stage_codes(header: dict, flags: dict[str, bool], boundary: str) -> None:
+    """The replay's console and the boundary must run the same stage codes
+    (a header written before it carried the flags is not checked)."""
+    for code, flag in gecko.SCENARIO_FLAGS.items():
+        if flag in header and bool(header[flag]) != bool(flags.get(flag)):
+            sys.exit(f"{boundary} is not the replay's match: the replay has {flag} = "
+                     f"{str(bool(header[flag])).lower()}; make the boundary "
+                     f"{'with' if header[flag] else 'without'} --gecko {code}")
 
 
 def check_setup(header: dict, cold: dict, boundary: str) -> None:
@@ -111,11 +134,14 @@ def main(argv: list[str] | None = None) -> None:
     header, records = json.loads(lines[0]), [json.loads(line) for line in lines[1:]]
     start, cold = load_boundary(a.boundary)
     check_setup(header, cold, a.boundary)
+    flags = stage_flags(start, cold)
+    check_stage_codes(header, flags, a.boundary)
+    stage_codes = gecko.scenario_flag_lines(flags)
     ticks = min(a.ticks or header["ticks"], header["ticks"], MAX_TICKS)
     schedule = steps(records, ticks, json.loads(pads.CALIBRATION.read_text()))
     seed = header["boundary_seed"]
     codes = start.get("gecko", [])
-    gecko = "gecko = [" + ", ".join(f'"{c}"' for c in codes) + "]\n" if codes else ""
+    gecko_list = "gecko = [" + ", ".join(f'"{c}"' for c in codes) + "]\n" if codes else ""
     comment = "".join(f"# {line}\n" for line in a.comment.splitlines())
 
     def fix(fighter: dict) -> str:
@@ -137,7 +163,7 @@ frames = {ticks}
 seed = 1
 boundary_seed = {seed}
 stage = "{cold["stage"]}"
-{gecko}inputs = [
+{stage_codes}{gecko_list}inputs = [
 {chr(10).join(schedule)}
 ]
 
@@ -157,7 +183,7 @@ frames = {ticks}
 seed = {cold["seed"]}
 boundary_seed = {seed}
 stage = "{cold["stage"]}"
-all_characters_unlocked = true
+{stage_codes}all_characters_unlocked = true
 {timer}{spawn}inputs = []
 
 {cold_fighters}''')

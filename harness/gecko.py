@@ -32,6 +32,20 @@ _LINE = re.compile(r"^([0-9A-Fa-f]{8})\s+([0-9A-Fa-f]{8})\b")
 INSERT_ASM = 0xC2
 #: PowerPC `b`/`bl`: primary opcode 18.
 BRANCH_OPCODE = 18
+#: Codes the port names with a scenario flag (melee-sim scenario.rs: a `gecko`
+#: list naming the code and the flag go together; a cold twin, which has no
+#: `gecko` list, carries the flag alone).
+SCENARIO_FLAGS = {"ps-preload": "stadium_preload", "ps-frozen": "stadium_frozen"}
+
+
+def scenario_flags(codes: list[str] | None) -> dict[str, bool]:
+    """The scenario flags a code list sets."""
+    return {flag: True for code, flag in SCENARIO_FLAGS.items() if code in (codes or [])}
+
+
+def scenario_flag_lines(flags: dict[str, bool]) -> str:
+    """The set flags as top-level scenario TOML lines, in SCENARIO_FLAGS order."""
+    return "".join(f"{flag} = true\n" for flag in SCENARIO_FLAGS.values() if flags.get(flag))
 
 
 def code_lines(name: str, directory: Path | None = None) -> list[str]:

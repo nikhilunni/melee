@@ -165,6 +165,24 @@ def test_a_slippi_layout_seats_players_on_their_ports_with_codes_and_timer():
     assert "gate" not in plain and "gecko" not in plain
 
 
+@pytest.mark.parametrize("codes,flags", [
+    (["ucf-0.8", "ps-preload"], {"stadium_preload"}),
+    (["ucf-0.8", "ps-preload", "ps-frozen"], {"stadium_preload", "stadium_frozen"}),
+    (["ucf-0.8"], set()),
+    (None, set()),
+])
+def test_stadium_codes_set_their_flags_in_the_start_scene_and_its_cold_twin(codes, flags):
+    start = tomllib.loads(mb.start_scenario("b", "PokemonStadium", ["Falco", "Marth"], 4, codes, [0, 3]))
+    cold = tomllib.loads(mb.cold_scenario("b", "PokemonStadium", ["Falco", "Marth"], 4, 7, [3, 4],
+                                          "retail", codes, [0, 3], 8))
+    for scenario in (start, cold):
+        assert {key for key in scenario if key.startswith("stadium_")} == flags
+        assert all(scenario[flag] is True for flag in flags)
+        # Top-level keys: none may fall under a [[fighters]] table.
+        assert not any(key.startswith("stadium_") for f in scenario["fighters"] for key in f)
+    assert "gecko" not in cold
+
+
 def test_the_menu_driver_uses_the_players_ports():
     d, mem = driver(players=(9, 12))
     d.ports = [1, 3]

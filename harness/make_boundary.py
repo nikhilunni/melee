@@ -38,6 +38,8 @@ must list exactly the boundary's codes. `--ports 2 4` seats the players on
 those ports (only they hold a controller), as a tournament station does; the
 start scene then has fighter slots 1 and 3, which only its cold twin can gate.
 `--time-limit 8` plays stock with an eight-minute timer, the tournament rule.
+A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
+`ps-frozen`: `stadium_frozen`; gecko.SCENARIO_FLAGS) sets it in both scenarios.
 
 It never overwrites: an existing savestate or scenario of the same name stops
 it before Dolphin starts.
@@ -132,7 +134,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
 frames = 600
 seed = 1
 stage = "{stage}"
-{gecko_line(codes)}
+{gecko.scenario_flag_lines(gecko.scenario_flags(codes))}{gecko_line(codes)}
 inputs = []
 
 {fighters}'''
@@ -155,7 +157,7 @@ expected = "{name}"
 frames = 600
 seed = {seed}
 stage = "{stage}"
-all_characters_unlocked = true
+{gecko.scenario_flag_lines(gecko.scenario_flags(codes))}all_characters_unlocked = true
 {timer_line}{spawn_line}inputs = []
 
 {fighters}'''

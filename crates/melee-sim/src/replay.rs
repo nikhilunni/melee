@@ -888,18 +888,22 @@ pub fn write_retail_inputs(
             })
         })
         .collect();
-    writeln!(
-        out,
-        "{}",
-        serde_json::json!({
-            "boundary_seed": scenario.seed,
-            "all_characters_unlocked": scenario.all_characters_unlocked,
-            "time_limit": scenario.time_limit,
-            "stage": scenario.stage,
-            "ticks": scenario.frames + 1,
-            "players": players,
-        })
-    )?;
+    let mut header = serde_json::json!({
+        "boundary_seed": scenario.seed,
+        "all_characters_unlocked": scenario.all_characters_unlocked,
+        "time_limit": scenario.time_limit,
+        "stage": scenario.stage,
+        "ticks": scenario.frames + 1,
+        "players": players,
+    });
+    // The Stadium codes the console ran: the boundary must run them too
+    // (`make_boundary.py --gecko ps-preload ps-frozen`). Other stages never
+    // reach the code, so their boundaries need not carry it.
+    if scenario.stage == "PokemonStadium" {
+        header["stadium_preload"] = scenario.stadium_preload.into();
+        header["stadium_frozen"] = scenario.stadium_frozen.into();
+    }
+    writeln!(out, "{header}")?;
     let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
     for input in &scenario.replay_inputs {
         let pad = crate::inputs::replay_pad(input)?;
