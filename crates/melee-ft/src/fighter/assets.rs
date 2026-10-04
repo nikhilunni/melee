@@ -606,6 +606,8 @@ impl FighterAssets {
                     .chain([
                         super::capture_yoshi::EGG_MOTION,
                         super::capture_captain::VICTIM_MOTION,
+                        super::capture_mewtwo::VICTIM_MOTION,
+                        super::capture_mewtwo::AIR_VICTIM_MOTION,
                     ])
                     .chain(cargo_motions.iter().copied())
                     .chain(super::capture_koopa::VICTIM_MOTIONS);

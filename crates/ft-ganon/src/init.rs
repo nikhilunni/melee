@@ -127,6 +127,9 @@ impl CharacterCallbacks for Ganondorf {
     > = Some(special_s::detect::<Self>);
     /// Dark Dive's catch: ftCa_SpecialLw_800E5128 and ftCo_8009CA0C.
     const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = special_hi_catch::grab;
+    /// ftCo_800DDDE4 / ftCo_800DE7C0 once the catch's animation ends.
+    const SPECIAL_RELEASE: melee_ft::fighter::SpecialRelease =
+        melee_ft::fighter::capture_captain::release;
     /// accessory4: ftCa_SpecialLw_800E550C while hanging from the victim.
     fn accessory(fighter: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
         special_hi_catch::follow_victim(fighter);

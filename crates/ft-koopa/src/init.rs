@@ -100,6 +100,9 @@ impl CharacterCallbacks for Koopa {
     }
     /// Fighter_UnkProcessGrab for the Koopa Klaw's catch.
     const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_s::grab;
+    /// ftCo_800DE2A8 / ftCo_800DE7C0 on the throw's cmd_vars[0].
+    const SPECIAL_RELEASE: melee_ft::fighter::SpecialRelease =
+        melee_ft::fighter::capture_captain::release;
     /// x2222_b2, set while the Klaw holds a fighter.
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = crate::special_s::cape_turn_blocked;
     /// Fighter_ChangeMotionState clears x2222_b2 (fighter.c:1021); a Klaw

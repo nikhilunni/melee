@@ -26,6 +26,8 @@ pub(super) struct Settings {
     pub damage_multiplier: f32,
     pub speed_multiplier: f32,
     pub exclude_master_ball_ownership: bool,
+    /// x2218_b4: the item keeps its owner (xDCC b1).
+    pub preserve_owner: bool,
 }
 impl FighterCore {
     /// The character owns the descriptor; shared lbColl owns its contact geometry.
@@ -97,7 +99,7 @@ impl FighterCore {
                 damage_multiplier: settings.damage_multiplier,
                 speed_multiplier: settings.speed_multiplier,
                 exclude_master_ball_ownership: settings.exclude_master_ball_ownership,
-                preserve_owner: false,
+                preserve_owner: settings.preserve_owner,
                 // Filled when the item's event proc runs (the reflector's
                 // pose then, after its own ProcessHit).
                 reflector_position: hsd_types::Vec3::ZERO,

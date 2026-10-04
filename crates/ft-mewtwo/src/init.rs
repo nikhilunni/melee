@@ -28,6 +28,11 @@ pub struct Mewtwo {
     /// ftMt_Init_OnDeath2, installed by a special until the next motion
     /// change.
     pub damage_callbacks: bool,
+    /// Confusion's motion scratch (mv.mt.SpecialS) and reflector.
+    pub confusion: crate::special_s::Confusion,
+    /// x2222_b2, set by Confusion's grab until a motion change without
+    /// Ft_MF_Unk19: a cape hit does not turn Mewtwo round.
+    pub cape_turn_blocked: bool,
 }
 
 /// accessory4_cb while a special owns it; a motion change removes it.
@@ -42,6 +47,9 @@ pub enum Accessory {
     /// ftMt_SpecialLw_CreateDisable: Disable's projectile on the script's
     /// flag; it stays installed through the special.
     Disable,
+    /// ftMt_SpecialS_ReflectThink: Confusion's reflector on the script's
+    /// flag; it stays installed through the special.
+    ConfusionReflect,
 }
 impl Mewtwo {
     pub fn new(attributes: MewtwoAttributes) -> Self {
@@ -54,6 +62,8 @@ impl Mewtwo {
             teleport: Default::default(),
             disable_article: false,
             damage_callbacks: false,
+            confusion: Default::default(),
+            cape_turn_blocked: false,
         }
     }
 }
@@ -109,6 +119,7 @@ impl CharacterCallbacks for Mewtwo {
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
             _ => unimplemented!(
                 "ftData_Special{slot:?}[Mewtwo] (airborne: {airborne}): character special entry"
             ),
@@ -123,6 +134,7 @@ impl CharacterCallbacks for Mewtwo {
             Accessory::TeleportStart => crate::special_hi::vanish_flash(f),
             Accessory::TeleportReappear => crate::special_hi::reappear(f),
             Accessory::Disable => crate::special_lw::create_projectile(f),
+            Accessory::ConfusionReflect => crate::special_s::reflect_think(f),
             Accessory::None => {}
         }
     }
@@ -143,7 +155,23 @@ impl CharacterCallbacks for Mewtwo {
     /// callbacks go.
     fn on_motion_change(&mut self) {
         self.damage_callbacks = false;
+        self.cape_turn_blocked = false;
     }
+    /// Fighter_UnkProcessGrab: Confusion's grab_cb (ftMt_SpecialS_SetFlags)
+    /// and grabbed_cb (ftCo_800BCF18 / ftCo_800BD000).
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_s::grab;
+    /// ftMewtwo_SetGrabVictim: ftCo_800DE2A8, then ftCo_80090780.
+    const SPECIAL_RELEASE: melee_ft::fighter::SpecialRelease =
+        melee_ft::fighter::capture_mewtwo::release;
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
+        Some(crate::special_s::reflector_contact);
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(crate::special_s::reflect_hit);
+    /// ftMt_SpecialS_ReflectThink sets x2218_b4 after ftColl_CreateReflectHit.
+    const REFLECTOR_KEEPS_OWNER: bool = true;
+    /// ftCo_800C3538's x2222_b2 (ftMt_SpecialS_SetFlags).
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool =
+        |f| f.character.get::<Mewtwo>().cape_turn_blocked;
 
     fn kind(&self) -> FighterKind {
         FighterKind::Mewtwo

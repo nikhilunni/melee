@@ -670,8 +670,10 @@ pub(super) fn withdraw_partner_position(state: &mut InitialState, player: usize)
         None);
 }
 
-/// ftCo_800DDDE4 / ftCo_800DE7C0 after a Falcon Dive captor changed to its
-/// throw in its animation callback.
+/// A special's release of the fighter it caught, once the captor's
+/// animation callback asked for it: the captor's SPECIAL_RELEASE hook
+/// (Falcon Dive's ftCo_800DDDE4 / ftCo_800DE7C0, Confusion's ftCo_800DE2A8 /
+/// ftCo_80090780).
 pub(super) fn special_throw_release(state: &mut InitialState, player: usize) -> Result<()> {
     let pending = with_fighter!(&mut state.fighters[player], |f| std::mem::take(
         &mut f.combat.special_throw_release
@@ -690,7 +692,7 @@ pub(super) fn special_throw_release(state: &mut InitialState, player: usize) -> 
         .expect("live victim");
     let (attacker, victim) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
-        melee_ft::fighter::capture_captain::release(
+        (a.character.table().special_release)(
             v,
             a,
             &state.assets.fighters[other],

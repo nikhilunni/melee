@@ -76,6 +76,9 @@ impl CharacterCallbacks for CaptainFalcon {
     /// ftCommon_8007E2D0's grab_cb (ftCa_SpecialLw_800E5128) and grabbed_cb
     /// (ftCo_8009CA0C).
     const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = special_hi_catch::grab;
+    /// ftCo_800DDDE4 / ftCo_800DE7C0 once the catch's animation ends.
+    const SPECIAL_RELEASE: melee_ft::fighter::SpecialRelease =
+        melee_ft::fighter::capture_captain::release;
     /// accessory4: Falcon Dive's ftCa_SpecialLw_800E550C.
     fn accessory(fighter: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
         special_hi_catch::follow_victim(fighter);

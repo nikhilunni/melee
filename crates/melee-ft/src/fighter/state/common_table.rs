@@ -1831,6 +1831,37 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: crate::fighter::damage_bind::bound_animation,
         ..rows[S::DamageSong as usize]
     };
+    // ftCo_CaptureMewtwo.c / ftCo_ThrownMewtwo.c: a Confusion victim. The
+    // capture rows (no animation, NULL callbacks) are left within their
+    // own entry (ftCo_800BD0E8); the thrown rows' callbacks are empty.
+    rows[S::CaptureMewtwo as usize] = MotionRow {
+        action: ActionId(301),
+        id: S::CaptureMewtwo,
+        animation: -1,
+        anim: crate::fighter::capture_mewtwo::animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::capture_captain::physics,
+        collision: crate::fighter::capture_mewtwo::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::CaptureMewtwoAir as usize] = MotionRow {
+        action: ActionId(302),
+        id: S::CaptureMewtwoAir,
+        ..rows[S::CaptureMewtwo as usize]
+    };
+    rows[S::ThrownMewtwo as usize] = MotionRow {
+        action: ActionId(303),
+        id: S::ThrownMewtwo,
+        animation: crate::fighter::capture_mewtwo::VICTIM_MOTION,
+        ..rows[S::CaptureMewtwo as usize]
+    };
+    rows[S::ThrownMewtwoAir as usize] = MotionRow {
+        action: ActionId(304),
+        id: S::ThrownMewtwoAir,
+        animation: crate::fighter::capture_mewtwo::AIR_VICTIM_MOTION,
+        ..rows[S::CaptureMewtwo as usize]
+    };
     // S7/S8: common throw pairs and quick ledge attack.
     rows[S::ThrowF as usize] = MotionRow {
         action: ActionId(S::ThrowF as u16),

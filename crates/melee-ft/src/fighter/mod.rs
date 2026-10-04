@@ -11,6 +11,7 @@ pub mod attack;
 pub mod caches;
 pub mod cape_turn;
 pub mod capture_captain;
+pub mod capture_mewtwo;
 pub mod bury;
 pub mod capture_koopa;
 pub mod capture_yoshi;
@@ -106,6 +107,17 @@ pub type SpecialGrab = fn(
 ) -> assets::Result<()>;
 /// A kind's own entry for a ground attack the common code selects.
 pub type GroundAttackEntry = fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>;
+/// A special's release of the fighter it caught, run on the pair once the
+/// captor's animation callback asks for it (`combat.special_throw_release`):
+/// (victim, captor, victim assets, captor assets, map, rng).
+pub type SpecialRelease = fn(
+    &mut Fighter,
+    &mut Fighter,
+    &assets::FighterAssets,
+    &assets::FighterAssets,
+    &mut melee_mp::CollMap,
+    &mut gekko_math::HsdRng,
+) -> assets::Result<()>;
 /// Deferred character defense reaction at Fighter_ProcessHit.
 pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
 /// A character shield volume against item hitbox `id` (ftColl_8007925C's
@@ -197,6 +209,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCommon_8007E2D0: the character's grab_cb on `captor`, then the
     /// grabbed_cb it installed on `victim` (a common capture entry).
     const SPECIAL_GRAB: SpecialGrab = character::unsupported_special_grab;
+    /// What the special's release does to the caught pair (Falcon Dive's
+    /// ftCo_800DE7C0 launch, Confusion's ftCo_80090780 drop).
+    const SPECIAL_RELEASE: SpecialRelease = character::unsupported_special_release;
 
     /// Fighter_8006C80C: character-owned accessory4, after the deferred effect flush.
     fn accessory(
@@ -406,6 +421,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const DEFENSE_CONTACT: Option<DefenseContact> = None;
     const REFLECTOR_CONTACT: Option<reflection::CharacterContact> = None;
     const REFLECT_HIT: Option<reflection::CharacterResponse> = None;
+    /// x2218_b4 while the character's reflector is up: a reflected item
+    /// keeps its owner (ftColl_80077464 sets the item's xDCC b1; Mewtwo's
+    /// Confusion, ftMt_SpecialS_ReflectThink).
+    const REFLECTOR_KEEPS_OWNER: bool = false;
     /// Fighter_ProcessHit: deferred special defense reaction, before hitlag.
     const PROCESS_DEFENSE_HIT: Option<DefenseHit> = None;
     const ITEM_DEFENSE_CONTACT: Option<ItemDefenseContact> = None;

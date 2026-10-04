@@ -2644,6 +2644,8 @@ impl Fighter {
                             damage_multiplier: volume.damage_multiplier,
                             speed_multiplier: volume.speed_multiplier,
                             exclude_master_ball_ownership: volume.reflect_behavior,
+                            // ftColl_CreateReflectHit clears x2218_b4.
+                            preserve_owner: false,
                         },
                         response,
                     );
@@ -2660,6 +2662,7 @@ impl Fighter {
                                 speed_multiplier: descriptor.speed_multiplier,
                                 exclude_master_ball_ownership: descriptor
                                     .exclude_master_ball_ownership,
+                                preserve_owner: self.character.table().reflector_keeps_owner,
                             },
                             super::reflection::Response::Character,
                         );

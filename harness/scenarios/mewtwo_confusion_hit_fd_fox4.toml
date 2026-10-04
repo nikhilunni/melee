@@ -1,0 +1,27 @@
+# MEWTWO directed witness: Mewtwo runs up to Fox and Confusion (side-B at tick
+# 215) catches him: ThrownMewtwo, then the release into DamageFall and the
+# throw record's hit.
+name = "mewtwo_confusion_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

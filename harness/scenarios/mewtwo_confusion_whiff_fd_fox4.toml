@@ -1,0 +1,31 @@
+# MEWTWO directed witness: Confusion on the ground out of range (side-B at tick
+# 120); then a jump and the aerial Confusion twice: the first lifts Mewtwo
+# (attribute x18), the second in the same airtime does not; then the landing.
+name = "mewtwo_confusion_whiff_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 460
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 124, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 203, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 266, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
