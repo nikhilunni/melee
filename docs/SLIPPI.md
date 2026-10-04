@@ -1087,3 +1087,90 @@ replay's recorded fighter fields match both. The console's Pre Frame seed at
 2807 is the port's seed three draws before the end of tick 2806. So the
 console drew three values fewer than retail does with these codes; what it
 ran differently is not in the replay. The stop is left as it is.
+
+## State-timing and position stops in the second corpus (2026-10-03)
+
+The `cur_anim_frame`, `cur_pos` and `motion_id` stops of `public-v3.7-b`
+(Ice Climbers and the level Fountain of Dreams consoles aside). Six port
+faults, each a retail callback wired to the wrong helper or a branch not
+ported; five are pinned by the replay's own window played back on retail
+(`SLIPPI_REPLAY_WITNESSES`), exact with items and particle draw order.
+
+| Fault | Retail | Replays (matched before to after) | Witness |
+|---|---|---|---|
+| Rebound stopped at a floor's edge | ftCo_Rebound_Coll (0x80099EFC) calls ft_80083F88 (0x80099F08: ft_80082708, Fall off the floor), not the edge-stopping ft_80084104 the port had borrowed from the attacks: the clank's recoil (ftCommon_800804A0) carries a fighter standing at an edge off it | `YOSHI/Yoshi vs Falcon [DL] Game_20200222T180833` 269 to 4951 / 4951; `MARIO/21_26_40 Luigi + [C2] Mario (FoD)` 911 to 9345 / 9345; `MARIO/YLink vs Mario [DL] Game_20200226T224213` 1034 to 9835 / 9835; `PICHU/20200108 - HNC 10 ... Final Destination` 6305 to 14674 / 14674 | `slp_fod_luigi_mario_t1100` (retail falls at 912; boundary `start_fod_slippi73_p23_luigi1_mario4_4_r212640`) |
+| A delayed powershield's reflect bubble stayed where it was created | ftCo_GuardReflect_Phys calls ftColl_8007AEF8 (0x80094060) on every tick out of hitlag. ftCo_8009388C (GuardOn, digital press inside the window) leaves the shield bubble off (x221B_b0 clear) and the port cleared the reflect bubble's cached position only for an active shield, so a sliding fighter's bubble stayed behind and the projectile hit the body or the later shield | `FALCO/20200212 - HNC 5 ... Dream Land` 579 to 8278 / 8278; `SAMUS/18_51_20 Samus + Samus (FD)` 10477 to 13358 / 20934 (then `input_seed`, Samus) | `slp_dl_falco_falco_fz_t700` (the laser is reflected at 579; `start_dl_slippi74_fz_p12_falco3_falco2_4`, with `frozen-stages`) |
+| A multi-jump fighter could not cancel a meteor by holding up | doIasa's jump test is ftCo_800CB8E0, which for can_multijump runs ftCo_800D730C(gobj, true): past the first aerial jump it takes a held stick or X/Y, with no tap and no lockout (0x800D73F4..) | `GANONDORF/Ganon vs Puff [BF] Game_CC9E0098B74E_20200311T211125` 8796 to 12864 / 12864 | `slp_bf_ganondorf_jigglypuff_t8900` (8797; `start_bf_slippi74_p14_ganondorf1_jigglypuff4_4`) |
+| DownReflect (335) not ported | ftCo_DownBound_Coll (0x80097E40) tests ftCo_800C7CA0 after its floor pass: ground knockback over PlCo +1B0 into a hugged wall enters DownReflect through fn_800C7DC4 (0x800C7DC4): off the floor, the ground knockback speed (xF0) along the wall's normal times PlCo +1BC, flags 0x18040, then x placed from TransN only for Collide_RightWallHug (0x800C7F38; the other wall places y), ft_80081DD4, intangibility. Its landing (ftCo_DownReflect_Coll, 0x800C8028) is ftCo_80097D88, which keeps mv+4's top byte (the last wall), where the tumble's ftCo_80097D40 clears it | `YLINK/Falco vs YLink [PS] Game_20210125T004228` 4567 to 16314 / 16314; `YOSHI/Game_20190511T011950` 12537 to 13403 / 13403; `MARIO/Game_20191207T130511` 5428 to 6489 / 7723 (then `input_seed`) | none recorded: see below |
+| The slow ledge options landed into Wait | ftCo_CliffClimb_Coll (0x8009ADA4) serves CliffClimb, CliffAttack and CliffEscape, quick and slow: an airborne landing only lands (ftCo_8009AE14). The port had that for the quick states and sent the slow ones (100% and over) through CliffCatch's landing | `JIGGLYPUFF/19_17_52 Jigglypuff + Falco (YS)` 4301 to 8629 / 8629 | `slp_ys_jigglypuff_falco_t4400` (4302; `start_ys_slippi8_p34_jigglypuff4_falco0_4`) |
+| A captor threw while frozen with its victim | The throw test (ftCo_800DD1E4) is CatchWait's IASA, which Fighter_Spaghetti_8006AD10 does not run in hitlag. A light hit on the captured fighter (Young Link's returning boomerang, 0.93%) freezes both for three ticks; the port tested the stick for a throw outside the IASA and threw on the flick | `YLINK/20_16_16 [PWN] Falco + Young Link (FD)` 961 to 6080 / 6080 | `slp_fd_falco_younglink_t1100` (962; `start_fd_slippi8_p34_falco1_younglink0_4_r201616`) |
+
+DownReflect has no retail recording yet. The three replays that reach it
+are on Pokemon Stadium (a transformation's wall), from consoles that spawned
+from the stage's markers 0 and 1 on ports 2/4 and 3/4 (x = -39.999996, the
+marker's joint, not NeutralSpawn's -40.0): Game Start names the spawn point
+per player, which `--retail-inputs` does not carry, so a boundary made from
+the menus on those ports starts retail at markers 2 and 3
+(`slp_ps_falco_younglink_t4700`: Falco at x = 70, dead by tick 365, and the
+match over at 3345; local data, not a witness). From a NeutralSpawn
+boundary retail starts at -40.0 exactly and has left the replay before the
+bounce (`slp_ps_mario_yoshi_t5500`, exact for 5500 ticks with Mario
+shielding at 5428; local data). What supports the port is
+the retail asm and the three recordings, each entering the state once
+(4567, 12537, 5428) and landing out of it on the next tick, with every
+later frame of two of the games matching.
+
+Stops that are not port faults, or are left open:
+
+- *Star and screen KO (4 games): a display pass the console skipped.* A
+  screen KO places the fighter from its camera-space position in the render
+  callback (ftDrawCommon_80080E18); with no pass, Fighter_procUpdate's own
+  integration stands (zero velocity while it approaches the screen, the fall
+  speed once it slides down). The recorded position holds for one tick and
+  moves two steps on the next. Dropping the one display pass makes each
+  recording match: `PIKACHU/Game_20190629T164554` (pass before tick 4577:
+  4576 to 7668 / 7668), `DOC/Game_20191106T211939` (4814: 7932 / 7932),
+  `FOX/Fox vs Marth [YS] Game_20200115T192755` (5874: 7816 / 7816),
+  `PEACH/15_52_33 Peach + Young Link (DL)` (8502: on to 11591, an
+  `input_seed` stop). As with the magnifier ("Display passes are not in a
+  replay"), the runner does not guess.
+- *`PICHU/Game_20161120T232910` (2158)*: the pad queue, above.
+- *DamageFlyRoll drawn where the console drew none (2 games).*
+  `PEACH/Peach vs Sheik [FoD] Game_20190820T104324` (9065, Sheik in her
+  aerial needle charge, hit by Peach's back air) and
+  `YOSHI/Game_20190309T173757` (9961, Yoshi in the aerial Egg Roll, hit by a
+  neutral air): the port picks DamageFlyLw / DamageFlyN as recorded, then its
+  ftCo_8008DCE0 roll (PlCo +23C, 30%) succeeds. In both the port's roll is
+  the third value after the previous Pre Frame seed (0.123 and 0.007); the
+  victim's hit-detection proc draws two values first. The recorded outcome
+  needs the roll at the second value (0.413, 0.491) or from the fourth on:
+  the port draws one value too many, or too few, before the roll when the
+  victim is in these looping specials. Needs the windows on retail.
+- *`DOC/Doc vs Fox [BF] Game_20180701T000930` (8598)*: Fox's FlyReflectCeil
+  under Battlefield starts at y = -25.461 recorded, -22.261 in the port (x
+  and the state match). ftCo_800C18A8's ceiling arm (TransN y plus the ECB
+  top, then ft_80082084) has no retail witness; FlyReflectWall's has.
+- *`DOC/16_29_39 Dr. Mario + Jigglypuff (FD)` (5638)*: Jigglypuff, hit one
+  tick into JumpAerialF1 (341) out of DamageFlyTop, leaves hitlag with
+  (-2.438, +7.257) recorded and (-2.315, +7.036) in the port: 3.4% short and
+  0.36 degrees off, percent and state equal. Not understood.
+- *Aerial hookshot (2 games).* `YLINK/Game_20190727T200303` (2632, Young
+  Link's AirCatch (361) beside Dream Land's wall: x = -98.765 recorded,
+  -99.184 in the port, the tick the chain pulls him off the wall) and
+  `LINK/Game_20190911T210634` (9904, Link's AirCatch, y one ulp apart).
+- *`MARIO/Game_20190309T094546` (6305)*: Pikachu's grounded Thunder loop
+  (360) ends (362) on frame 8 in the recording; the port's lead bolt is
+  still there (LEAD_GONE not set), on a Stadium transformation.
+
+Corpora before and after these six changes (`replay-batch`, no replay
+matches fewer frames):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 106 to 106 | 946,234 (unchanged) |
+| `public-v3.7-b` (502) | 325 to 337 | 3,780,417 to 3,864,066 |
+
+Two games outside the triaged rows complete as well: `DK vs Falco [FD]
+Game_A45C27B4D631_20200306T221823` (122 to 9855 / 9855, the delayed
+powershield) and `Falco vs Ganon [PS] Game_20200405T150206` (1071 to 6932 /
+6932).

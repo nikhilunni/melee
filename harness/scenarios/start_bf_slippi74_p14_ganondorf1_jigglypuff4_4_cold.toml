@@ -1,0 +1,27 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_bf_slippi74_p14_ganondorf1_jigglypuff4_4_cold"
+expected = "start_bf_slippi74_p14_ganondorf1_jigglypuff4_4"
+frames = 600
+seed = 2347657304
+stage = "Battlefield"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+costume = 1
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"

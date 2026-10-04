@@ -1,0 +1,29 @@
+# The port's side of slp_ys_jigglypuff_falco_t4400: boundary start_ys_slippi8_p34_jigglypuff4_falco0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ys_jigglypuff_falco_t4400_cold"
+expected = "slp_ys_jigglypuff_falco_t4400"
+frames = 4400
+seed = 3407294580
+boundary_seed = 1469631484
+stage = "YoshisStory"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 2
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

@@ -1,0 +1,25 @@
+# Falco vs Falco on DreamLand, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_dl_slippi74_fz_p12_falco3_falco2_4"
+savestate = "harness/roms/start_dl_slippi74_fz_p12_falco3_falco2_4.sav"
+frames = 600
+seed = 1
+stage = "DreamLand"
+frozen_stages = true
+gecko = ["ucf-0.74", "neutral-spawn", "frozen-stages"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Falco"
+controller = "idle"
+controller_fix = "ucf-0.74"

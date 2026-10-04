@@ -1,0 +1,25 @@
+# Ganondorf vs Jigglypuff on Battlefield, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_bf_slippi74_p14_ganondorf1_jigglypuff4_4"
+gate = "start_bf_slippi74_p14_ganondorf1_jigglypuff4_4_cold"
+savestate = "harness/roms/start_bf_slippi74_p14_ganondorf1_jigglypuff4_4.sav"
+frames = 600
+seed = 1
+stage = "Battlefield"
+gecko = ["ucf-0.74", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Ganondorf"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Jigglypuff"
+controller = "idle"
+controller_fix = "ucf-0.74"

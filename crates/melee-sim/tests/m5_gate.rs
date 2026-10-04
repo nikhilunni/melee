@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 14] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 19] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2131,6 +2131,26 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 14] = [
     // The Yoshi Bomb catches a ledge twice (ftCliffCommon_80081298, then
     // ftCliffCommon_80081370 at 0x8012E9E8): two ledge flashes (828).
     ("slp_bf_yoshi_samus_t860_cold", 860),
+    // Mario's clank recoil carries Luigi off the platform's edge: Rebound's
+    // collision is ft_80083F88 (0x80099F08), so he falls (912) instead of
+    // stopping at the edge.
+    ("slp_fod_luigi_mario_t1100_cold", 1100),
+    // A delayed powershield (ftCo_8009388C) has only its reflect bubble,
+    // which ftCo_GuardReflect_Phys moves with the sliding Falco
+    // (ftColl_8007AEF8, 0x80094060): the laser is reflected (579).
+    ("slp_dl_falco_falco_fz_t700_cold", 700),
+    // Jigglypuff cancels Ganondorf's meteor by holding up: a multi-jump
+    // fighter's later jumps take held input (ftCo_800D730C from
+    // ftCo_800CB8E0, 8797).
+    ("slp_bf_ganondorf_jigglypuff_t8900_cold", 8900),
+    // Jigglypuff's slow ledge roll touches the floor before its TransN
+    // lands her: ftCo_CliffClimb_Coll (0x8009ADA4) only lands, for the slow
+    // options too (4302).
+    ("slp_ys_jigglypuff_falco_t4400_cold", 4400),
+    // Young Link's boomerang returns into the Falco he holds: both freeze,
+    // and the back throw he flicks in that hitlag does not start (962), his
+    // IASA not running (Fighter_Spaghetti_8006AD10).
+    ("slp_fd_falco_younglink_t1100_cold", 1100),
 ];
 
 #[test]
