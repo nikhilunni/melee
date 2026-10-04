@@ -1,0 +1,42 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# A run to the middle, a short hop, a full hop with a double jump, a
+# backward jump with drift, a fast fall, and a jump from a dash.
+name = "bowser_jumps_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 680
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 166, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 212, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 292, port = 0, buttons = {  }, raw = {  } },
+  { frame = 310, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 314, port = 0, buttons = {  }, raw = {  } },
+  { frame = 410, port = 0, buttons = {  }, raw = { button = 1024, stickX = -80 } },
+  { frame = 420, port = 0, buttons = {  }, raw = {  } },
+  { frame = 425, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 445, port = 0, buttons = {  }, raw = {  } },
+  { frame = 452, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 472, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 530, port = 0, buttons = {  }, raw = { stickX = 127, button = 1024 } },
+  { frame = 540, port = 0, buttons = {  }, raw = {  } },
+  { frame = 555, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 558, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

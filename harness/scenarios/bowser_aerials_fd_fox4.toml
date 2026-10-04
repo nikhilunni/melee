@@ -1,0 +1,47 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Each aerial from a full hop, landing during or after it: neutral, forward,
+# back, up and down, the last two with an L press before landing.
+name = "bowser_aerials_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 142, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+  { frame = 270, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 282, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 0, buttons = {  }, raw = { button = 256, stickX = 100 } },
+  { frame = 292, port = 0, buttons = {  }, raw = {  } },
+  { frame = 410, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 256, stickX = -100 } },
+  { frame = 432, port = 0, buttons = {  }, raw = {  } },
+  { frame = 550, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 570, port = 0, buttons = {  }, raw = { button = 256, stickY = 100 } },
+  { frame = 572, port = 0, buttons = {  }, raw = {  } },
+  { frame = 598, port = 0, buttons = {  }, raw = { button = 64 } },
+  { frame = 601, port = 0, buttons = {  }, raw = {  } },
+  { frame = 690, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+  { frame = 722, port = 0, buttons = {  }, raw = { button = 256, stickY = -100 } },
+  { frame = 724, port = 0, buttons = {  }, raw = {  } },
+  { frame = 745, port = 0, buttons = {  }, raw = { button = 64 } },
+  { frame = 748, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

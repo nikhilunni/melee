@@ -1,0 +1,38 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Slow, middle and fast walk, a dash, a run with its brake, a dash back into
+# a run, and a run turn.
+name = "bowser_walk_dash_run_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 30 } },
+  { frame = 155, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { stickX = 55 } },
+  { frame = 185, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { stickX = 75 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 385, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 415, port = 0, buttons = {  }, raw = {  } },
+  { frame = 440, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 460, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

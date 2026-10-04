@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 26] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 28] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -74,6 +74,20 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 26] = [
         request: 0x3FB,
         source: ModelSource::Landing,
         model: 0x16,
+        attached: false,
+    },
+    // Bowser's LandingAirLw and LandingAirF/B landing-effect commands
+    // (efasync.c 0x3FC and 0x3F8).
+    ModelSpawn {
+        request: 0x3FC,
+        source: ModelSource::Landing,
+        model: 0x17,
+        attached: false,
+    },
+    ModelSpawn {
+        request: 0x3F8,
+        source: ModelSource::Landing,
+        model: 0x13,
         attached: false,
     },
     // efAsync_Dispatch 0x3FC: efLib_Create_Attach_Pos(0x17), like 0x3FB.
@@ -209,7 +223,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 26] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 27] = [
     // efsync.c:532-534: efLib_CreateGenerator(0x6A) at the point (Sheik's
     // needle throw).
     DustSpawn {
@@ -325,6 +339,13 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 26] = [
     DustSpawn {
         request: 0x41C,
         particle: 0x5D,
+        directional: false,
+    },
+    // efasync.c:560-562: efLib_CreateGenerator(0x7F) at the point (Bowser's
+    // run script).
+    DustSpawn {
+        request: 0x426,
+        particle: 0x7F,
         directional: false,
     },
     // efasync.c:539-541: an item's destroy effect (ItemAttr x64/x68).

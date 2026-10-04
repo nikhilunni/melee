@@ -1499,14 +1499,29 @@ impl Effects {
                     effect.tree.set_scale(effect.root, &scale)
                 }
                 EffectRequest::Landing {
+                    id,
                     offset,
                     floor_angle,
-                    ..
                 } => {
                     // efasync.c:1350-1355: lb_8000B1CC transforms the queued
                     // offset by the fighter root, then 0x404 dispatches 0x18.
                     mtx_mult_vec(&matrix, &offset, &mut position);
-                    effect.tree.set_rotation_z(effect.root, floor_angle);
+                    if id == 0x3F8 {
+                        // efasync.c:213-220 (queued as kind 6,
+                        // ftCo_09F7.c:293-305): the facing, then the floor.
+                        effect.tree.set_rotation_y(
+                            effect.root,
+                            if fighter.effect_facing() < 0.0 {
+                                -std::f32::consts::FRAC_PI_2
+                            } else {
+                                std::f32::consts::FRAC_PI_2
+                            },
+                        );
+                    }
+                    // efasync.c:229-246: 0x3FA..0x3FC set no rotation.
+                    if !matches!(id, 0x3FA..=0x3FC) {
+                        effect.tree.set_rotation_z(effect.root, floor_angle);
+                    }
                 }
             }
             effect.tree.set_translate(effect.root, &position);

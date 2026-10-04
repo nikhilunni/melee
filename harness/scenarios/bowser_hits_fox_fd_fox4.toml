@@ -1,0 +1,41 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Bowser runs in and hits a standing Fox: a dash attack, a forward tilt,
+# a down smash, then a grab with a pummel and each throw is left to the
+# explorer; here the forward throw.
+name = "bowser_hits_fox_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 176, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 178, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { button = 256, stickX = 60 } },
+  { frame = 323, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { substickY = -100 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 560, port = 0, buttons = {  }, raw = {  } },
+  { frame = 570, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 572, port = 0, buttons = {  }, raw = {  } },
+  { frame = 610, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 612, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 643, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

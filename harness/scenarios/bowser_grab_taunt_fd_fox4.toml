@@ -1,0 +1,34 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# A standing grab and a dash grab that whiff, then the taunt facing each
+# way.
+name = "bowser_grab_taunt_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = { button = 16, stickX = 127 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 332, port = 0, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 463, port = 0, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 492, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

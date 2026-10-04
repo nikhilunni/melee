@@ -1,0 +1,39 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# The forward smash at its five angles by C-stick, the up and down smashes,
+# and a forward smash charged with A held.
+name = "bowser_smashes_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { substickX = 100 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { substickX = 100, substickY = 40 } },
+  { frame = 222, port = 0, buttons = {  }, raw = {  } },
+  { frame = 310, port = 0, buttons = {  }, raw = { substickX = 100, substickY = -40 } },
+  { frame = 312, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { substickX = 100, substickY = 31 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = { substickX = 100, substickY = -31 } },
+  { frame = 492, port = 0, buttons = {  }, raw = {  } },
+  { frame = 580, port = 0, buttons = {  }, raw = { substickY = 100 } },
+  { frame = 582, port = 0, buttons = {  }, raw = {  } },
+  { frame = 670, port = 0, buttons = {  }, raw = { substickY = -100 } },
+  { frame = 672, port = 0, buttons = {  }, raw = {  } },
+  { frame = 760, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 810, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

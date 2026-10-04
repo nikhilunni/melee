@@ -1,0 +1,43 @@
+# BOWSER movement scene from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# A single jab, a double jab, the three forward tilt angles, the up and
+# down tilts, and a dash attack.
+name = "bowser_jab_tilts_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 182, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 256, stickX = 60 } },
+  { frame = 253, port = 0, buttons = {  }, raw = {  } },
+  { frame = 310, port = 0, buttons = {  }, raw = { button = 256, stickX = 60, stickY = 40 } },
+  { frame = 313, port = 0, buttons = {  }, raw = {  } },
+  { frame = 370, port = 0, buttons = {  }, raw = { button = 256, stickX = 60, stickY = -40 } },
+  { frame = 373, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 256, stickY = 60 } },
+  { frame = 433, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 510, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 513, port = 0, buttons = {  }, raw = {  } },
+  { frame = 580, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 588, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 591, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
