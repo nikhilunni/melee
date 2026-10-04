@@ -1,0 +1,37 @@
+# GAMEWATCH movement: full jump, double jump, drift, backward double jump, short hop, tap jump and a fast fall.
+name = "gamewatch_jump_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 155, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+  { frame = 217, port = 0, buttons = {  }, raw = { button = 2048, stickX = 80 } },
+  { frame = 237, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 257, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 259, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 309, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 366, port = 0, buttons = {  }, raw = {  } },
+  { frame = 406, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 408, port = 0, buttons = {  }, raw = {  } },
+  { frame = 422, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 452, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,40 @@
+# GAMEWATCH common attacks: forward and down aerials from a full jump and a short hop, landing lag with and without an L press.
+name = "gamewatch_air_attacks_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 141, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 143, port = 0, buttons = {  }, raw = {  } },
+  { frame = 223, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 226, port = 0, buttons = {  }, raw = {  } },
+  { frame = 234, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 316, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 317, port = 0, buttons = {  }, raw = {  } },
+  { frame = 322, port = 0, buttons = {  }, raw = { substickX = 127 } },
+  { frame = 324, port = 0, buttons = {  }, raw = {  } },
+  { frame = 384, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 385, port = 0, buttons = {  }, raw = {  } },
+  { frame = 390, port = 0, buttons = {  }, raw = { substickY = -127 } },
+  { frame = 392, port = 0, buttons = {  }, raw = {  } },
+  { frame = 396, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 398, port = 0, buttons = {  }, raw = {  } },
+  { frame = 458, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

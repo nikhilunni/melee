@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 455] = [
+const MATRIX_WITNESSES: [(&str, usize); 469] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1665,6 +1665,27 @@ const MATRIX_WITNESSES: [(&str, usize); 455] = [
     ("held_item_stopceil_fd_peach", 363),
     ("held_item_shieldbreak_fd_peach", 1100),
     ("held_item_yoshi_egg_ys_peach", 640),
+    // GAMEWATCH: Mr. Game & Watch vs Fox from start_fd_gameandwatch_fox4.
+    // Movement through the common states: walks and turns, dash, run and
+    // brake, jumps, crouch, shield, rolls and spot dodge, air dodges and a
+    // wavedash, the taunt, whiffed grabs, the teeter and the ledge options.
+    ("gamewatch_walk_turn_fd_fox4", 330),
+    ("gamewatch_dash_run_fd_fox4", 340),
+    ("gamewatch_jump_fd_fox4", 480),
+    ("gamewatch_squat_guard_escape_fd_fox4", 430),
+    ("gamewatch_airdodge_fd_fox4", 420),
+    ("gamewatch_appeal_fd_fox4", 400),
+    ("gamewatch_catch_whiff_fd_fox4", 320),
+    ("gamewatch_cliff_climb_fd_fox4", 420),
+    ("gamewatch_cliff_attack_fd_fox4", 420),
+    ("gamewatch_cliff_escape_fd_fox4", 420),
+    ("gamewatch_cliff_jump_fd_fox4", 420),
+    ("gamewatch_cliff_drop_fd_fox4", 700),
+    // The attacks that are common states: tilts, up and down smashes, the
+    // dash attack, forward and down aerials; the down aerial's landing
+    // effect is efAsync 0x3FB from the landing command (model 0x16).
+    ("gamewatch_ground_attacks_fd_fox4", 620),
+    ("gamewatch_air_attacks_fd_fox4", 480),
 ];
 
 #[test]

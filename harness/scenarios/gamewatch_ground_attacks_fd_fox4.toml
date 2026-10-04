@@ -1,0 +1,38 @@
+# GAMEWATCH common attacks: forward and up tilts, up and down smashes (A and C-stick), a dash attack.
+name = "gamewatch_ground_attacks_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 256, stickX = 60 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 182, port = 0, buttons = {  }, raw = { stickY = 40 } },
+  { frame = 186, port = 0, buttons = {  }, raw = { button = 256, stickY = 40 } },
+  { frame = 188, port = 0, buttons = {  }, raw = {  } },
+  { frame = 238, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 240, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 372, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 380, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 382, port = 0, buttons = {  }, raw = {  } },
+  { frame = 452, port = 0, buttons = {  }, raw = { substickY = 127 } },
+  { frame = 454, port = 0, buttons = {  }, raw = {  } },
+  { frame = 514, port = 0, buttons = {  }, raw = { substickY = -127 } },
+  { frame = 516, port = 0, buttons = {  }, raw = {  } },
+  { frame = 576, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
