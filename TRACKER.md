@@ -5,93 +5,92 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-03, second Slippi wave)
+## Current state (2026-10-04, third Slippi wave and four characters)
 
-- **20 of 26 characters and all six tournament stages run bit-exact**, with
-  every special. Registered: Fox, Falco, Marth, Roy, Captain Falcon,
-  Ganondorf, Peach, Yoshi, Jigglypuff, Pikachu, Pichu, Mario, Dr. Mario,
-  Luigi, Samus, Sheik, Zelda, Ice Climbers, Link, Young Link.
-- **Slippi replays.** All 108 sampled 2019-2020 tournament games
-  (`~/melee-data/replays/public-v3.7`) run by default, and **103 match to
-  the last frame**, seeds included (22 before the two waves). The runner
-  checks every tick's Pre Frame seed against the port's RNG path, so a
-  complete game has no random-stream drift.
-- The five that stop:
-  - three consoles ran stage codes a replay does not record: no Shy Guys on
-    Yoshi's Story (`HNC 9 Jigglypuff vs Fox`, 121) and no Final Destination
-    background transitions (`Fox + Captain Falcon (FD)` 1886,
-    `Captain Falcon + Marth (FD)` 1887). With the call withheld in a scratch
-    build each matches to its last frame;
-  - `Falco + Marth (PS)` 3042: the off-screen magnifier's damage tick
-    follows display passes, which a replay lacks (the port equals a retail
-    recording of the same inputs for 3200 ticks);
-  - `Falco + Ice Climbers (BF)` 121: unported `it_8026E15C`, Popo's
-    unlaunched ice block touching the map.
-- Gates at the wave checkpoint: release workspace 1685/0 (incl. `m5_gate`),
-  clippy clean, pytest 280, schema check clean. Perf gate passes: 6.14 MB
-  stripped, 18.5 ms per 600 ticks, 160 ms load.
-- Tooling:
-  - `make_boundary.py` creates any stage, character and costume boundary,
-    and (with `--no-register`) ports, Gecko codes, spawn rule and timer;
-  - `explore_batch.py --boundary` runs the explorer from it;
-  - `record_many.py` records in parallel, with Gecko codes (`gecko = [..]`,
-    `MELEE_GECKO_DIR`; the local code text is in `~/melee-data/gecko`);
-  - `melee-sim search`, `triage`, `replay`, `replay-batch` (a
-    `pN.input_seed` stop is RNG drift on the tick before; the UCF version
-    is chosen per replay and printed, `--controller-fix` overrides it);
-  - **replay-to-retail bridge**: `melee-sim replay <slp> --retail-inputs`
-    plus `harness/slippi_to_scenario.py` play a replay's inputs, ports,
-    codes, timer and seed on retail, so the port gates against the full
-    retail trace (`SLIPPI_REPLAY_WITNESSES`; `docs/SLIPPI.md`). It cannot
-    follow a replay on Final Destination or Fountain of Dreams yet;
-  - `MELEE_DATA_ROOT` lets worktrees use the main checkout's data, for
-    replays and scenarios;
-  - `docs/AGENT_BRIEF.md` briefs worktree agents;
-  - `tools/agent-merge/pick.sh` merges their commits (compile-check the
-    tests after each merge: the list resolver can drop a brace).
+- **25 of 26 characters and all six tournament stages run bit-exact.**
+  Registered: Fox, Falco, Marth, Roy, Captain Falcon, Ganondorf, Peach,
+  Yoshi, Jigglypuff, Pikachu, Pichu, Mario, Dr. Mario, Luigi, Samus, Sheik,
+  Zelda, Ice Climbers, Link, Young Link, and new this wave Donkey Kong
+  (cargo carry, Bury), Bowser, Mr. Game & Watch, Ness (with the yo-yo
+  smashes) and Mewtwo. Only Kirby is unregistered. Each new character has
+  a start boundary vs Fox on FD (`m4_gate`), a witness list in `m5_gate`
+  and explorer matches.
+- **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
+  game has no random-stream drift):
+  - `~/melee-data/replays/public-v3.7` (108 games): **106 complete**, 98.4%
+    of frames;
+  - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03;
+    triage in its `_triage/` folder): **396 complete**, 83.7% of frames
+    (247 when sampled); 48 are refused at setup (unregistered Kirby,
+    online games, doubles, CPU players).
+- **Console codes a replay does not record are read from its frames** by a
+  dry pass that compares the candidate setups and then runs the whole
+  comparison under one (never a switch mid-run; the report prints each
+  choice; a flag overrides it): UCF 0.73/0.74/0.8/0.84 (bounded by the
+  Slippi version, then the date, then the first dashback they disagree on),
+  Dween (runs no fix: the recording holds its output), Frozen Stages
+  (`--stage-codes`), Widescreen (`--screen`), the spawn rule (frame zero).
+- **Not port faults** (documented in `docs/SLIPPI.md`): the off-screen
+  magnifier's damage tick and some star-KO positions follow display passes a
+  console skipped, which a replay does not record; a few Samus tether games
+  where retail in Dolphin equals the port but the console drew otherwise.
+- Gates at the checkpoint (2026-10-04): release workspace 1743/0 (incl.
+  `m4_gate` 316 and `m5_gate` 286), clippy clean, pytest 301, schema check
+  clean. **Perf gate: REGRESSION on size and duplicate labels** (see Next).
+- Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
+  - `make_boundary.py`: any stage, characters, costumes; with
+    `--no-register`, ports, Gecko codes, spawn rule, timer, and
+    `--game-start-seed` (a per-replay boundary, needed on FD and FoD);
+  - `record_many.py` with Gecko codes (`MELEE_GECKO_DIR=~/melee-data/gecko`);
+    a scenario's `after_map = true` samples retail at the end of each
+    fighter's map proc (Slippi before 3.4.0 samples there);
+  - `melee-sim replay`, `replay-batch` (`pN.input_seed` = RNG drift on the
+    tick before), and the replay-to-retail bridge (`--retail-inputs`,
+    `harness/slippi_to_scenario.py`), which follows a replay on every stage;
+  - `MELEE_DATA_ROOT` for worktrees; `docs/AGENT_BRIEF.md`;
+    `tools/agent-merge/pick.sh` (array lengths in `m5_gate` lists often
+    need fixing after a merge: compile the tests).
 
 ## Next (recommended order)
 
-1. [~] **Slippi replay corpus (milestone 7), 2026-10-03.**
-   - **Stage codes.** Port "no Shy Guys" (`bl grStory_801E3418` at
-     0x801E3348 withheld) and "no FD transitions" (`bl grLast_8021B2E8` at
-     0x8021AAE4 withheld) as Slippi codes beside `stadium_frozen`: find the
-     code text and its source (the call sites are confirmed in the asm; that
-     tournament code sets nop'd exactly these calls is unchecked), a retail
-     witness per code, and a selection rule (the first seed the code changes
-     separates the two kinds of console on one tick, as for UCF 0.73/0.74).
-   - Port `it_8026E15C` (ice block touching the map) for the Ice Climbers
-     replay; the April 2019 "20XX Neutral Spawns" binary is not decoded (the
-     existing rules reproduce it on Battlefield and Stadium only).
-   - Bridge: make a boundary from the replay's Game Start seed so retail
-     follows a replay on Final Destination and Fountain of Dreams; carry
-     `stadium_preload` through `make_boundary.py`/`slippi_to_scenario.py`;
-     a recorder sample at the end of the map proc (0x8006C5D8) to witness
-     the moving-floor ride of a captured fighter.
-   - **A larger and newer corpus.** This sample is nearly exhausted: sample
-     several hundred more games from the public dataset, then Slippi Online
-     (per-frame RNG sync, netplay codes such as FreezeDeadUpFallPhysics and
-     PreventWobbling) and Gecko-list (3.3+) code detection instead of
-     inference.
-   - Same shape as fixed faults, unexamined: other cross-fighter entries
-     that only flush effects (e.g. `grab_pairs::accessory`); two seals in
-     one proc with a sound draw between (`unimplemented!`, fighter.c:951);
-     a struck needle that bounces and keeps its spark; the other victim
-     preconditions in `ftColl_80078A2C`.
-2. [ ] **Remaining fail-closed branches from wave D**: KO totals once
-   another player has fallen (needs `dmg.x18c4_source_ply`); Nana's CPU
-   behaviour 5; strong Ice hits (DamageIce); sword dash-swing friction,
-   Swing42 and hit mid-swing; Mr. Saturn idle/slide/knocked; item-on-item
-   push; UCF 0.84 branches without witnesses.
-3. [ ] **The remaining six characters**, in rough order of difficulty:
-   Bowser; Donkey Kong (cargo carry); Mr. Game & Watch; Ness (PK Thunder,
-   yo-yo); Mewtwo; Kirby (copy abilities need every copied character's
-   specials). Each goes through the bring-up recipe in `docs/AGENT_BRIEF.md`.
-4. [ ] **Particle positions in the gate.** The gate checks particle RNG
+1. [!] **Perf gate (user decision).** 6,565,712 stripped bytes against the
+   6,445,622 allowed (+5% over 6,138,688), still under the 6,766,519 fixed
+   ceiling; time passes (19.3 ms / 600 ticks, 162 ms load). Duplicate
+   labels: each new character crate has 1 (the same shared-default label
+   every older character crate has, but no baseline entry), Mr. Game &
+   Watch 2 (a `restore_saved` closure), `melee-ft` 22 against 20 (one is
+   a `begin_damage_reaction` closure). Either raise the baselines for five
+   new characters or reduce first; `docs/PERF.md` records the choice.
+2. [~] **Slippi corpus.** Remaining stops in `public-v3.7-b`, by kind:
+   - RNG drift with no shared cause left (each a separate fault): the
+     hit-log victim keyed by GObj address (retail reuses a freed address;
+     the port keys by unique id), Fox's wall tech while smoking from Fire
+     Bird, Fox's Reflector hitting Link below the stage, PK Thunder's trail
+     generator order, Ice Climbers explorer faults (Blizzard puffs, Ice
+     Shot particles, a Nana behaviour-18 choice, a staleness difference);
+   - Ice Climbers: Nana position and seed stops after KO credit;
+   - six HNC Fountain of Dreams games created both side platforms level
+     (code text not found; a scratch experiment matches two fully);
+   - the 2019 Dream Land NeutralSpawn row has no Gecko text, so those games
+     cannot be bridged; Stadium consoles that set per-player spawn points
+     cannot be bridged until `--retail-inputs` carries the spawn point;
+   - unported: a light hit on a grabbed fighter whose captor is launched
+     (`ftCo_8008EC90`, Ness's PK Thunder), the sliding Samus bomb, Dr.
+     Mario's neutral special while holding an item, a frozen fighter
+     leaving the top, Mr. Saturn's idle and slide states.
+   Then a newer corpus: Slippi Online (per-frame RNG sync, netplay codes)
+   and Gecko-list (3.3+) code detection instead of inference.
+3. [ ] **Kirby**, last: copy abilities need every copied character's
+   specials, all of which now exist.
+4. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword
+   Swing42, item-on-item push, Mr. Saturn's idle and slide states, UCF 0.84
+   branches without witnesses (KO totals, Nana's behaviours 5, 6 and 15,
+   DamageIce, the sword swings and Mr. Saturn knocked away are done).
+5. [ ] **Particle positions in the gate.** The gate checks particle RNG
    order and generators, not positions (wave D found one class of bug this
    way: sound draws out of script order). Add a per-tick particle digest to
    the gate, then fix what it finds.
-5. [ ] **Tick-path allocations.** Dream Land re-decodes its background
+6. [ ] **Tick-path allocations.** Dream Land re-decodes its background
    AnimJoint on about 60% of ticks
    (`BackgroundAnimation::select_animation`); extend the allocation test
    to every stage and character, then prepare stage animations at load.
@@ -105,13 +104,12 @@ For a new matchup or stage, reuse the Fox-Marth approach:
 ## Status by area
 
 **Characters** (`crates/ft-<name>`):
-- 20 of 26 are registered, with all their specials; fail-closed branches
-  are listed in Next, item 2.
+- 25 of 26 are registered, with all their specials; fail-closed branches
+  are listed in Next, items 2 and 4.
 - Family crates: fox, mars, mario, pikachu, captain, link.
 - Two-fighter players share one model: Ice Climbers, and Sheik/Zelda (the
   sleeping form).
-- Unregistered: Kirby, Ness, Mewtwo, Mr. Game & Watch, Donkey Kong, Bowser.
-  Their scenes fail at load.
+- Unregistered: Kirby. Its scenes fail at load.
 
 **Stages**: all six tournament stages run explorer matches and long witnesses
 exactly. This covers Yoshi's Story's Shy Guys and slopes, Fountain of Dreams'
@@ -139,13 +137,16 @@ items are ported:
 
 Random items are unstarted.
 
-**CPU** (`melee-cpu`): Nana's follow logic and Belay recovery. CPU players
+**CPU** (`melee-cpu`): Nana's follow logic, Belay recovery, island
+routing, getting up (behaviours 5, 6), tumbling (15) and the KO totals she
+reads. CPU players
 are out of scope.
 
 **Slippi codes** (`melee_lib::slippi`, `ControllerFix`): UCF
 0.73 beta, 0.74, 0.8 and 0.84; NeutralSpawn (2019, late-2019
 entry-by-order and 2020 tables); the Stadium transformation preload and
-Frozen Stadium. Not yet: Dween, the stage codes above, netplay codes.
+Frozen Stadium; Dween; Frozen Stages; Widescreen 16:9. Not yet: the level
+Fountain of Dreams platforms code (text not found), netplay codes.
 
 **Out of the gate by design**: the in-game Start pause, menus, results and
 single-player modes.
