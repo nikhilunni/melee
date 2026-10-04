@@ -1041,3 +1041,29 @@ witness, a flag beside `stadium_frozen` in `SlippiCodes` (the two creation
 heights), a NeutralSpawn table variant with the level row, and frame zero
 to choose it (both leaders at y = 24 on Fountain of Dreams, which no other
 rule produces).
+
+## The pad queue is not in a replay (2026-10-03)
+
+UCF 0.73/0.74/0.8's dashback compares the hardware pad queue's newest
+sample with the one two polls earlier (`qread - 1` and `qread - 3`,
+"Controller fixes" above). The runner builds that column from Pre Frame's
+raw X at this tick and two ticks ago: one poll per tick. A console that
+polled twice within one tick (a slow frame) has last tick's sample there
+instead, and nothing in the recording says so.
+
+`PICHU/Game_20161120T232910.slp` (2158 / 16108, Turn frame 2 recorded where
+the port restarts the turn as a smash turn) is that case, not a different
+fix. Over the whole game, the second tick of a slow Turn with a full stick:
+
+| Raw X change over two ticks / one tick against 75 | Console left the slow turn | Console kept it |
+|---|---|---|
+| over / under | 93 (92 Dash, one KneeBend) | 1 (tick 2158) |
+| over / over | 3 | 0 |
+| under / under | 43 (already past frame 2's test: other causes) | 16 |
+
+Tick 2158's raw X runs -2, -53, -100; tick 9848's runs -3, -53, -100 on the
+same port and dashes. Against the sample one tick back (-53) the change is
+47, under the bound, which is what a queue holding one extra poll reads.
+The other leader had respawned 20 ticks earlier. Forced to 0.74 the stop is
+the same; with the fix off the game stops at tick 172, so the console did
+run UCF. The stop stays, as an external event like the display pass.
