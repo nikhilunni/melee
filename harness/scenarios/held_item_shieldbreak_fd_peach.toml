@@ -1,0 +1,33 @@
+# HELD ITEM directed witness: a shield broken with a turnip in hand. Peach
+# pulls a turnip and holds R until her shield runs out: ftCo_80098B20 pops
+# her up (ShieldBreakFly), she falls (ShieldBreakFall), lies and stands
+# (ShieldBreakDown, ShieldBreakStand) and stays dazed (Furafura), holding the
+# turnip throughout: none of those states has an item branch. Back in Wait
+# she throws it forward with A.
+name = "held_item_shieldbreak_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1100
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 107, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 700, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1040, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 1042, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

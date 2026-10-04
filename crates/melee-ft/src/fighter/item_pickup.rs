@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 130] = [
+const HELD_ITEM_STATES: [S; 140] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -297,6 +297,23 @@ const HELD_ITEM_STATES: [S; 130] = [
     S::PassiveCeil,
     // ftCo_MissFoot.c: the slip off an edge never reads the item.
     S::MissFoot,
+    // ftCo_StopCeil.c: the ceiling bump (ftCo_8009EFA4, from a jump's
+    // ftCo_80096CC8) never reads the item and has no IASA.
+    S::StopCeil,
+    // ftCo_ShieldBreak*.c and ftCo_Furafura.c: a shield broken with the item
+    // in hand (ftCo_80098B20) keeps it through the pop, the fall, the
+    // get-up and the daze; none reads the item or offers an interrupt.
+    S::ShieldBreakFly,
+    S::ShieldBreakFall,
+    S::ShieldBreakDownU,
+    S::ShieldBreakDownD,
+    S::ShieldBreakStandU,
+    S::ShieldBreakStandD,
+    S::Furafura,
+    // ftCo_CaptureYoshi.c and ftCo_YoshiEgg.c: swallowed and laid as an egg
+    // (Yoshi's Egg Lay), the victim keeps its item; neither reads it.
+    S::CaptureYoshi,
+    S::YoshiEgg,
 ];
 
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348

@@ -1,0 +1,41 @@
+# HELD ITEM directed witness: swallowed by Yoshi with a turnip in hand (the B
+# press found by `melee-sim search`, 11 candidates, goal p0.motion_id ==
+# CaptureYoshi). From the start_ys_peach_yoshi4 boundary Peach pulls a turnip
+# and drops to the ground, Yoshi drops and walks to her and uses Egg Lay:
+# Peach is swallowed (CaptureYoshi, tick 227), laid as an egg (YoshiEgg) and
+# breaks out holding the turnip; neither state has an item branch. She throws
+# it with A once she has landed.
+name = "held_item_yoshi_egg_ys_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_peach_yoshi4.sav"
+frames = 640
+seed = 1
+stage = "YoshisStory"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 126, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 1, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 176, port = 0, buttons = {  }, raw = {  } },
+  { frame = 208, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 210, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 210, port = 1, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = {  } },
+  { frame = 570, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 572, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Yoshi"
+controller = "scripted"

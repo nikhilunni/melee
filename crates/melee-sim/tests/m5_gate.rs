@@ -1624,6 +1624,13 @@ const MATRIX_WITNESSES: [(&str, usize); 438] = [
     // of JumpAerial before the float: ftCo_Pass_IASA (8009A2D8) has no float
     // check, only the aerial jump (0x8009A36C).
     ("peach_pass_jump_float_ys_peach", 300),
+    // States with no item branch, entered with a turnip in hand and left
+    // still holding it: StopCeil (ftCo_8009EFA4, Final Destination's
+    // underside), a broken shield through Furafura (ftCo_80098B20), and
+    // Yoshi's Egg Lay (CaptureYoshi, YoshiEgg).
+    ("held_item_stopceil_fd_peach", 363),
+    ("held_item_shieldbreak_fd_peach", 1100),
+    ("held_item_yoshi_egg_ys_peach", 640),
 ];
 
 #[test]
