@@ -1,0 +1,28 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Aerial Fire Breath from a full hop (ftKp_SpecialAirN_Enter 80134ED0),
+# landing during the loop: ftKp_SpecialAirN_Coll (801356A8) continues in
+# the grounded loop at the current frame.
+name = "bowser_breath_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 460
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 142, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

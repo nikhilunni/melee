@@ -77,6 +77,19 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             add_appsrt: true,
             scaled: true,
         },
+        // efsync.c:357-368: efLib_CreateGenerator_Attach_Scale(0x2EE5 ..
+        // 0x2EE8): the four flames of Bowser's Fire Breath.
+        0x4DB..=0x4DE => ItemGenerators {
+            bank: 12,
+            kinds: match id {
+                0x4DB => &[0x2EE5],
+                0x4DC => &[0x2EE6],
+                0x4DD => &[0x2EE7],
+                _ => &[0x2EE8],
+            },
+            add_appsrt: true,
+            scaled: true,
+        },
         // efalt.c:92-97: Samus's missile trails, hsd_8039EFAC(0, 2, 0x7DB /
         // 0x7DE, jobj) on the missile model's grandchild.
         // efalt.c:77-85: the charge shot's glow in hand (0x7D4, on the

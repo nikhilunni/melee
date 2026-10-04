@@ -15,6 +15,8 @@ pub struct Koopa {
     pub breath_reach: f32,
     /// Fighter +2230, u.kp.x2230: the Fire Breath's lifetime left.
     pub breath_life: f32,
+    /// mv.kp.specials while a Fire Breath row runs.
+    pub breath: crate::special_n::Breath,
     /// mv.kp while a Whirling Fortress row runs.
     pub fortress: crate::special_hi::Fortress,
     /// accessory4_cb while a special owns it.
@@ -44,6 +46,7 @@ impl Koopa {
             model_group: 0,
             breath_reach: 0.0,
             breath_life: 0.0,
+            breath: Default::default(),
             fortress: Default::default(),
             accessory: Accessory::None,
         }
@@ -88,11 +91,16 @@ impl CharacterCallbacks for Koopa {
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(fighter, airborne, assets),
-            SpecialSlot::Neutral | SpecialSlot::Side => unimplemented!(
+            SpecialSlot::Neutral => crate::special_n::enter(fighter, airborne, assets),
+            SpecialSlot::Side => unimplemented!(
                 "ftData_Special{slot:?}[Koopa] (airborne: {airborne}): character special entry"
             ),
         }
     }
+    /// ftKp_SpecialLw_80134ACC's HSD_Randi draws and flame, once the
+    /// Fire Breath's IASA has returned.
+    const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> =
+        Some(crate::special_n::release_flame);
     /// Fighter_8006C80C: the special's accessory4, installed until it runs
     /// or the motion changes; each uninstalls itself.
     fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {

@@ -1933,13 +1933,20 @@ impl Runtime {
                     let mut request = f.item_requests.remove(0);
                     match &mut request {
                         melee_it::ItemRequest::Spawn(spawn)
+                        | melee_it::ItemRequest::SpawnInGroup(spawn)
                         | melee_it::ItemRequest::SpawnHeld(spawn)
                         | melee_it::ItemRequest::SpawnInHand { spawn, .. }
                         | melee_it::ItemRequest::SpawnChain { spawn, .. }
                         | melee_it::ItemRequest::SpawnLaser { spawn, .. } => {
-                            spawn.stale_source = f.combat.stale.attack()
+                            // A spawner that starts a new attack instance in
+                            // the same call (ftKp_SpecialLw_80134ACC) names
+                            // the instance its article took.
+                            if spawn.stale_source.is_none() {
+                                spawn.stale_source = f.combat.stale.attack()
+                            }
                         }
                         melee_it::ItemRequest::Control { .. }
+                        | melee_it::ItemRequest::NewHitGroup
                         | melee_it::ItemRequest::PickUp { .. }
                         | melee_it::ItemRequest::Throw { .. }
                         | melee_it::ItemRequest::Drop { .. }

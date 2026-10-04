@@ -1,0 +1,14 @@
+[package]
+name = "it-koopaflame"
+description = "Bowser's Fire Breath flames (itkoopaflame.c)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+melee-it = { path = "../melee-it" }
+melee-lb = { path = "../melee-lb" }
+melee-mp = { path = "../melee-mp" }
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }

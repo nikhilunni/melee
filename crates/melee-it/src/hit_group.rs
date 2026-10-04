@@ -18,7 +18,25 @@ pub struct GroupVictimMark {
     phantom: [PhantomVictims; 4],
 }
 
+/// Fighter slots that can hold a hit group id of their own: six players,
+/// each with a second fighter.
+pub(crate) const OWNER_GROUPS: usize = 12;
+
+fn owner_group_key(owner: u8, secondary: bool) -> usize {
+    usize::from(owner) * 2 + usize::from(secondary)
+}
+
 impl ItemPool {
+    /// A fighter's own Item_8026AE60 call: the id it keeps for the
+    /// articles it spawns next (ftKp_SpecialN_Enter, ftKp_SpecialLw_80134ACC).
+    pub fn begin_owner_hit_group(&mut self, owner: u8, secondary: bool) {
+        let group = self.allocate_hit_group();
+        self.owner_hit_groups[owner_group_key(owner, secondary)] = group;
+    }
+    /// The id the fighter's last Item_8026AE60 call returned (0: none yet).
+    pub fn owner_hit_group(&self, owner: u8, secondary: bool) -> u32 {
+        self.owner_hit_groups[owner_group_key(owner, secondary)]
+    }
     /// Item_8026AE60 (8026AE60): the next hit group id; it_804D6D14 starts
     /// at 1 (item.c:154) and skips 0, which means "no group".
     pub fn allocate_hit_group(&mut self) -> u32 {

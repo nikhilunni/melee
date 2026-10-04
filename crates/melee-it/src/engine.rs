@@ -157,7 +157,33 @@ pub enum ItemScratch {
     Arrow(ArrowState),
     LinkBomb(LinkBombState),
     Milk(MilkState),
+    KoopaFlame(KoopaFlameState),
     None,
+}
+/// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
+/// Fire Breath.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct KoopaFlameState {
+    /// xC: the direction the flame is turned toward, bent by each surface
+    /// it touches (itKoopaFlame_Update_Direction).
+    pub direction: hsd_types::Vec3,
+    /// x18: the velocity's unit vector.
+    pub heading: hsd_types::Vec3,
+    /// x24: the flight's angle from straight up, clockwise.
+    pub angle: f32,
+    /// x28: the flight's speed.
+    pub speed: f32,
+    /// x34: the hitbox's authored size, once read.
+    pub hitbox_size: f32,
+    /// x3C: the owner's breath left at spawn, as a share of full: the
+    /// model's and the hitbox's scale.
+    pub scale: f32,
+    /// x40: frames flown.
+    pub frames: i32,
+    /// x44: the flame's generator was made.
+    pub effect_spawned: bool,
+    /// x48: which of the four flame generators it carries.
+    pub effect: i32,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -1202,6 +1228,10 @@ pub struct ItemPool {
     next_id: u32,
     /// it_804D6D14: Item_8026AE60's hit group counter.
     pub(crate) next_hit_group: u32,
+    /// The id Item_8026AE60 last gave each fighter that asked for one
+    /// (ItemRequest::NewHitGroup), keyed by owner slot and fighter; the
+    /// fighter keeps it in its motion scratch (Bowser's mv.kp.specials.x4).
+    pub(crate) owner_hit_groups: [u32; crate::hit_group::OWNER_GROUPS],
     /// Item_804A0CCC: the fighters it_802722B0 last sampled.
     pub(crate) fighter_push: crate::push::FighterPushSnapshot,
 }
@@ -1212,6 +1242,7 @@ impl ItemPool {
             common,
             next_id: 0,
             next_hit_group: 1,
+            owner_hit_groups: [0; crate::hit_group::OWNER_GROUPS],
             fighter_push: Default::default(),
         }
     }
@@ -1797,6 +1828,7 @@ impl Clone for ItemPool {
             common: self.common.clone(),
             next_id: self.next_id,
             next_hit_group: self.next_hit_group,
+            owner_hit_groups: self.owner_hit_groups,
             fighter_push: self.fighter_push,
         }
     }

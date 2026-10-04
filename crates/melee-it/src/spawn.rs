@@ -96,6 +96,13 @@ pub enum ItemControl {
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
     Spawn(SpawnItem),
+    /// The requesting fighter's own Item_8026AE60 call: a new hit group id
+    /// for the articles it spawns with [`ItemRequest::SpawnInGroup`].
+    NewHitGroup,
+    /// `spawn` with SpawnItem.x40 set to the id the fighter's last
+    /// [`ItemRequest::NewHitGroup`] returned (Item_80268B18 copies it to
+    /// xAC4_ignoreItemID): Bowser's flames of one breath cycle.
+    SpawnInGroup(SpawnItem),
     SpawnHeld(SpawnItem),
     SpawnLaser {
         spawn: SpawnItem,

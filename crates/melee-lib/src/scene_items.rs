@@ -63,6 +63,7 @@ melee_it::item_kinds! {
         LinkBomb: it_link::LinkBomb,
         CLinkBomb: it_link::YoungLinkBomb,
         CLinkMilk: it_link::milk::Milk,
+        KoopaFlame: it_koopaflame::KoopaFlame,
     }
 }
 
@@ -424,6 +425,33 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Luigi fireball particle track: {e}"))?;
             kinds.push((ItemKind::LuigiFire, fire));
             visual_archives.push((ItemKind::LuigiFire, a));
+        }
+        // ftKp_Init_OnLoad: ftData.x48_items[0] is the Fire Breath's flame.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlKp.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataKoopa").context("Bowser fighter data")?;
+            let mut flame = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_koopaflame::ARTICLE_INDEX,
+                &it_koopaflame::ARTICLE_STATES,
+                it_koopaflame::SPECIAL_ATTRIBUTES,
+            )?;
+            // itKoopaFlame_Spawn divides by its owner's full fuels
+            // (ftKp_SpecialLw_80134DE0 / 80134E1C: ftKoopaAttributes x10
+            // and x18, returned as s32).
+            let breath = ft_koopa::attributes::read_koopa_attributes(&a)
+                .map_err(|e| anyhow::anyhow!("Bowser attributes: {e:?}"))?
+                .fire_breath;
+            flame.special_attributes.extend(it_koopaflame::owner_fuels(
+                breath.reach_max,
+                breath.life_max,
+            ));
+            kinds.push((ItemKind::KoopaFlame, flame));
+            visual_archives.push((ItemKind::KoopaFlame, a));
         }
         // ftPp_Init_OnLoad's it_8026B3F8: Popo's ice block, which Nana's
         // Ice Shot makes too.
@@ -888,7 +916,12 @@ pub fn request(
         return first;
     }
     let (spawn, ray, held_owner) = match request {
-        ItemRequest::Spawn(spawn) => (spawn, None, None),
+        ItemRequest::Spawn(spawn) | ItemRequest::SpawnInGroup(spawn) => (spawn, None, None),
+        ItemRequest::NewHitGroup => {
+            let slot = owner.slot.expect("Item_8026AE60 from a fighter");
+            pool.begin_owner_hit_group(slot, owner.secondary);
+            return None;
+        }
         ItemRequest::SpawnHeld(spawn) => (spawn, None, owner.held_item),
         ItemRequest::SpawnLaser {
             spawn,
@@ -1111,6 +1144,15 @@ pub fn request(
             &spawn,
             map,
         );
+        if let ItemRequest::SpawnInGroup(_) = request {
+            // Item_80268B18: xAC4_ignoreItemID = SpawnItem.x40, the id the
+            // spawning fighter holds. The hitboxes the first script step
+            // made take the group's history (it_8026FCF8), as a chain
+            // member's do.
+            let slot = owner.slot.expect("a grouped spawn from a fighter");
+            let group = pool.owner_hit_group(slot, owner.secondary);
+            pool.join_hit_group(id, group);
+        }
         if SceneItems::logic(spawn.kind).procs_at_spawn {
             let bounds = owner.bounds.expect("it_802750F8 from a fighter's spawn");
             // it_802750F8: physics and collision now, without Item_802696CC's
