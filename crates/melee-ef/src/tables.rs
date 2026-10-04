@@ -427,13 +427,15 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 29] = [
 ];
 // efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
 // request id and the model it creates at the given point.
-pub(super) static POSITIONAL_MODELS: [(u16, u32); 3] = [
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 4] = [
     // efasync.c:817-829: a buried fighter's dirt mound (common model 0x28).
     (0x447, 0x28),
     // efsync.c:433-435: Peach's vegetable pull.
     (0x4D2, 0x3A98),
     // efalt.c:98-113: Samus's charge shot muzzle flash, turned to the facing.
     (0x486, 0x7D1),
+    // efsync.c:412-413: Mewtwo's Teleport flash.
+    (0x4E8, 0x32CB),
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
@@ -462,12 +464,12 @@ pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 // 418: Din's Fire's cast (model 0x426C) and Zelda's up-air.
 // 427: Nayru's Love's crystal (model 0x4268).
-pub(super) static PARTICLE_KINDS: [i32; 37] = [
+pub(super) static PARTICLE_KINDS: [i32; 39] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
     374, 375, 376, 377, 445, 448, 449, 272, 295, 531, 418, 427,
     // Donkey Kong's models (EfDkData.dat): Headbutt's 96, Hand Slap's 273.
     96, 273,
-    // Mewtwo's models (EfMtData.dat): the dark burst's 387 (0x32CA) and the
-    // following orb's 391 (0x32C9).
-    387, 391,
+    // Mewtwo's models (EfMtData.dat): the dark burst's 387 (0x32CA), the
+    // following orb's 391 (0x32C9) and Teleport's flash's 1 and 5 (0x32CB).
+    387, 391, 1, 5,
 ];

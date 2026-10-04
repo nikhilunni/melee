@@ -2,7 +2,7 @@
 use crate::attributes::{read_mewtwo_attributes, MewtwoAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
-    AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, MotionRow,
+    AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
 use melee_types::FighterKind;
 
@@ -17,6 +17,21 @@ pub struct Mewtwo {
     /// Fighter +223C, u.mt.x223C_isConfusionBoost: the aerial Confusion
     /// already lifted Mewtwo this airtime.
     pub confusion_boost_used: bool,
+    /// The accessory4 callback a special installed.
+    pub accessory: Accessory,
+    /// Teleport's motion scratch (mv.mt.SpecialHi).
+    pub teleport: crate::special_hi::Teleport,
+}
+
+/// accessory4_cb while a special owns it; a motion change removes it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// ftMt_SpecialHi_CreateGFX: Teleport's vanishing flash.
+    TeleportStart,
+    /// ftMt_SpecialHi_SetEndGFX: Teleport's reappearance.
+    TeleportReappear,
 }
 impl Mewtwo {
     pub fn new(attributes: MewtwoAttributes) -> Self {
@@ -25,6 +40,8 @@ impl Mewtwo {
             model_group: 0,
             shadow_ball_charge: 0,
             confusion_boost_used: false,
+            accessory: Accessory::None,
+            teleport: Default::default(),
         }
     }
 }
@@ -57,6 +74,26 @@ impl CharacterCallbacks for Mewtwo {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftData_SpecialN/S/Hi/Lw[Mewtwo] and the aerial tables.
+    fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
+        match slot {
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            _ => unimplemented!(
+                "ftData_Special{slot:?}[Mewtwo] (airborne: {airborne}): character special entry"
+            ),
+        }
+    }
+    /// Fighter_8006C80C: the special's accessory4 while installed.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<Mewtwo>().accessory {
+            Accessory::TeleportStart => crate::special_hi::vanish_flash(f),
+            Accessory::TeleportReappear => crate::special_hi::reappear(f),
+            Accessory::None => {}
+        }
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Mewtwo

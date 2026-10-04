@@ -1,0 +1,28 @@
+# MEWTWO directed witness: a jump (X at tick 120) and Teleport in the air (up-B at
+# 126), travelling left-down into the floor.
+name = "mewtwo_teleport_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 512, stickY = 80 } },
+  { frame = 129, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { stickX = -60, stickY = -40 } },
+  { frame = 185, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
