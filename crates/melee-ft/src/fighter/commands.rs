@@ -49,6 +49,9 @@ pub enum SoundChannel {
     StopOverrideVoice,
     /// ft_80088478: Fighter +214C, AX channel 0x36 + player * 2.
     Loop,
+    /// ftAction_80072320: lbAudioAx_800263E8 with a pan direction, on the
+    /// handle its command names; no pitch draw.
+    Directional,
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
@@ -451,6 +454,16 @@ impl CommandState {
                 Command::WindEffect(wind) => {
                     if !seeking {
                         self.wind_effects.push(*wind);
+                    }
+                }
+                Command::DirectionalSound { id, .. } => {
+                    if !seeking {
+                        self.footstep_sounds.push(FootstepSound {
+                            channel: SoundChannel::Directional,
+                            id: *id,
+                            volume: 127,
+                            pan: 64,
+                        });
                     }
                 }
                 Command::RandomSound(sound) => {

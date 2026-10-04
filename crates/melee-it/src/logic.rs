@@ -95,6 +95,9 @@ pub trait ItemLogic {
     /// (Item_802697D4) and collision (Item_80269978) procs once at once,
     /// with the blast-zone check (xDCC b3) off (it_8029B6F8).
     const PROCS_AT_SPAWN: bool = false;
+    /// The spawner draws a hit group id for the new item (SpawnItem.x40 =
+    /// Item_8026AE60(), it_802AB58C): articles it spawns in turn join it.
+    const NEW_HIT_GROUP: bool = false;
     /// The physics callback looks for a target (Samus's missile,
     /// it_802B64FC): the scene supplies `ItemPhysicsContext::targets`.
     const LOCKS_ON: bool = false;
@@ -232,6 +235,7 @@ pub trait ItemLogic {
         pickup_possible: Self::pickup_possible,
         procs_at_spawn: Self::PROCS_AT_SPAWN,
         locks_on: Self::LOCKS_ON,
+        new_hit_group: Self::NEW_HIT_GROUP,
         launch: Self::launch,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -283,6 +287,7 @@ pub struct ItemLogicRow {
     pub pickup_possible: fn(&ItemCore) -> bool,
     pub procs_at_spawn: bool,
     pub locks_on: bool,
+    pub new_hit_group: bool,
     pub launch: fn(
         &mut ItemCore,
         &crate::Launch,

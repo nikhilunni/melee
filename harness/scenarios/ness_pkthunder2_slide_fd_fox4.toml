@@ -1,0 +1,29 @@
+# NESS PK Thunder 2 along the floor: the thunder comes back into Ness from his left above his centre, so the launch drives him into the floor at a shallow angle and he slides (ftNs_SpecialHi_Enter's grounded row, 361).
+# melee-sim search: reached [p0.motion_id == 361] at ticks [233].
+name = "ness_pkthunder2_slide_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 433
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 127, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 166, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 174, port = 0, buttons = {  }, raw = { stickX = 127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

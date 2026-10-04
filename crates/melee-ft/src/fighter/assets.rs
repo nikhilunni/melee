@@ -833,7 +833,7 @@ fn read_script(
                 offset = continuation as u32;
             }
             Command::RandomSound(_) => offset += 28,
-            Command::WindEffect(_) => offset += 16,
+            Command::WindEffect(_) | Command::DirectionalSound { .. } => offset += 16,
             Command::SmashCharge(_) => offset += 8,
             Command::Graphics(_) | Command::SpawnHitbox { .. } => offset += 20,
             Command::LandingEffect(_)

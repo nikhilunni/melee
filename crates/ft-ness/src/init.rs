@@ -20,6 +20,8 @@ pub struct Ness {
     pub accessory: Accessory,
     /// PK Flash's motion scratch and Ness's hold on the flash.
     pub pk_flash: crate::special_n::PkFlash,
+    /// PK Thunder's motion scratch and Ness's hold on the thunder.
+    pub pk_thunder: crate::special_hi::PkThunder,
     /// PSI Magnet's motion scratch.
     pub magnet: crate::special_lw::Magnet,
     /// mv+4 while a row that never writes it is current (PK Fire, PSI
@@ -45,6 +47,7 @@ impl Ness {
             damage_callbacks: false,
             accessory: Accessory::None,
             pk_flash: Default::default(),
+            pk_thunder: Default::default(),
             magnet: Default::default(),
             retained_word: None,
         }
@@ -60,6 +63,7 @@ fn damage_callback(f: &mut Fighter) {
     // ftNs_SpecialN_ItemPKFlushSetNULL clears both callbacks; the rest of
     // this call still runs.
     crate::special_n::orphan_flash(f);
+    crate::special_hi::take_damage(f);
     crate::attack_s4::remove_bat(f);
 }
 
@@ -71,6 +75,8 @@ fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
         melee_types::ItemKind::NessBat => f.character.get_mut::<Ness>().bat = false,
         // it_2725_Logic102_Destroyed -> ftNs_SpecialN_SetNULL.
         melee_types::ItemKind::NessPKFlush => crate::special_n::flash_gone(f),
+        // it_802AB90C -> ftNs_SpecialHi_ItemPKThunderRemove.
+        melee_types::ItemKind::NessPKThunder => crate::special_hi::thunder_gone(f),
         _ => {}
     }
 }
@@ -100,7 +106,7 @@ impl CharacterCallbacks for Ness {
         match slot {
             SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
             SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
-            SpecialSlot::Up => unimplemented!("ftNs_SpecialHi_Enter (ftnessspecialhi.c)"),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
         }
     }
@@ -124,10 +130,16 @@ impl CharacterCallbacks for Ness {
         &melee_ft::fighter::CharacterState,
         melee_ft::fighter::ActionId,
     ) -> Option<f32> = |state, action| {
-        let unwritten = matches!(action.0, 356 | 357 | 367..=376);
-        unwritten
-            .then(|| state.get::<Self>().retained_word)
-            .flatten()
+        let ness = state.get::<Self>();
+        match action.0 {
+            // mv.ns.specialn.frames_to_loop_charge_air.
+            348..=355 => Some(f32::from_bits(ness.pk_flash.gone_frames as u32)),
+            // mv.ns.specialhi.thunderTimerLoop1.
+            358..=366 => Some(f32::from_bits(ness.pk_thunder.loop_frames as u32)),
+            // PK Fire and PSI Magnet never write the word.
+            356 | 357 | 367..=376 => ness.retained_word,
+            _ => None,
+        }
     };
     /// What Ness's articles read of him: the flash, whether he still
     /// holds it in the hold row (ftNs_SpecialN_CheckSpecialNHold).
@@ -194,6 +206,8 @@ impl CharacterCallbacks for Ness {
     fn on_reset(&mut self) {
         self.model_group = 0;
         self.bat = false;
+        self.pk_flash.flash_out = false;
+        self.pk_thunder.thunder_out = false;
     }
 }
 

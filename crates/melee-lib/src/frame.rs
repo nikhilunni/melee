@@ -642,20 +642,30 @@ impl Runtime {
             let target = match request.target {
                 LinkTarget::Item(target) => target,
                 LinkTarget::Spawn(mut spawn) => {
-                    // it_8027B0C4: the parent fighter's current attack.
-                    let owner = spawn
-                        .owner
-                        .expect("linked article spawned without an owner");
+                    // it_8027B0C4: the parent fighter's current attack. An
+                    // article spawned with no parent (a PK Thunder segment
+                    // of a head that left its creator, it_802AC43C(NULL))
+                    // has none.
                     let secondary = state.items.get_mut(sender).unwrap().owner_secondary;
-                    let index =
+                    let sender_group = state.items.get_mut(sender).unwrap().hit_group;
+                    let index = spawn.owner.map(|owner| {
                         crate::scene_items::owner_index(&state.fighters, Some(owner), secondary)
-                            .expect("linked article owner");
-                    let fighter = &state.fighters[index];
-                    spawn.stale_source = fighter.combat.stale.attack();
-                    let stale_multiplier = fighter
-                        .combat
-                        .stale
-                        .multiplier(&state.assets.fighters[index].stale_weights);
+                            .expect("linked article owner")
+                    });
+                    let (stale_multiplier, owner_secondary) = match index {
+                        Some(index) => {
+                            let fighter = &state.fighters[index];
+                            spawn.stale_source = fighter.combat.stale.attack();
+                            (
+                                fighter
+                                    .combat
+                                    .stale
+                                    .multiplier(&state.assets.fighters[index].stale_weights),
+                                fighter.player.secondary,
+                            )
+                        }
+                        None => (1.0, false),
+                    };
                     let id = crate::scene_items::request(
                         &mut state.items,
                         &state.assets.items,
@@ -664,8 +674,8 @@ impl Runtime {
                         &mut self.item_objects,
                         melee_it::ItemRequest::Spawn(spawn),
                         crate::scene_items::RequestOwner {
-                            slot: Some(owner),
-                            secondary: fighter.player.secondary,
+                            slot: spawn.owner,
+                            secondary: owner_secondary,
                             held_item: None,
                             after_hitbox_refresh: s_link > 11,
                             efasync_immediate: s_link >= 9,
@@ -677,6 +687,10 @@ impl Runtime {
                     )
                     .unwrap_or_else(|| unimplemented!("it_802B4224: Item_80268B18 found no room"));
                     state.items.get_mut(id).unwrap().partner = Some(sender);
+                    if sender_group != 0 {
+                        // it_802AC43C: SpawnItem.x40 is the head's xAC4.
+                        state.items.join_hit_group(id, sender_group);
+                    }
                     let spawner = state.items.get_mut(sender).unwrap();
                     spawner.partner = Some(id);
                     if spawner.destroyed {

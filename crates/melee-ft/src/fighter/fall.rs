@@ -145,6 +145,39 @@ impl Fighter {
         Ok(())
     }
 
+    /// ftCo_800969D8 (800969D8): ftCo_80096900 with an explicit animation
+    /// blend, and without the airborne ftCommon_UseAllJumps (its callers
+    /// spend the jumps themselves).
+    #[allow(clippy::too_many_arguments)] // ftCo_800969D8's own argument list.
+    pub fn enter_special_fall_blended(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+        ordinary_gravity: bool,
+        force_landing_lag: bool,
+        allow_interrupt: bool,
+        mobility: f32,
+        landing_lag: f32,
+        blend_frames: f32,
+    ) -> super::assets::Result<()> {
+        self.change_motion_state_blended(
+            melee_types::CommonMotionState::FallSpecial.into(),
+            assets,
+            blend_frames,
+        )?;
+        self.core.state_data = MotionData::FallSpecial(SpecialFallState {
+            animation: FallState::new(FallFamily::Special),
+            mobility: self.core.attributes.air.air_drift_max * mobility,
+            ordinary_gravity,
+            force_landing_lag,
+            allow_interrupt,
+            landing_lag,
+        });
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            self.core.leave_ground_with_spent_jumps();
+        }
+        Ok(())
+    }
+
     /// ftCo_FallSpecial_Phys (80096B44), ftCo_FallSpecial.c:104-125.
     pub(super) fn special_fall_physics(&mut self, assets: &super::assets::FighterAssets) {
         let MotionData::FallSpecial(fall) = &self.core.state_data else {

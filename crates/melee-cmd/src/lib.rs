@@ -101,6 +101,10 @@ pub enum Command {
     },
     /// ftAction_80071FC8: seven-word random sound selection.
     RandomSound(RandomSound),
+    /// ftAction_80072320 (opcode 39): a four-word sound panned by a
+    /// direction (lbAudioAx_800263E8); `handle` is its sfx_base (which
+    /// Fighter sound handle keeps it). It draws nothing.
+    DirectionalSound { handle: u8, id: u32 },
     /// ftAction_80071B50 (opcode 17), or ftAction_80072CD8 (opcode 54,
     /// `terrain`), whose sound the floor's terrain may replace.
     FootstepSound {

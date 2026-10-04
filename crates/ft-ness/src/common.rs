@@ -1,13 +1,13 @@
 //! Motion helpers Ness's rows share (ft_081B.c, ft_084E.c, ftcommon.c).
 use crate::init::Ness;
 use melee_ft::{
-    collision::{air, ground},
+    collision::{air, ecb::EcbPose, ground},
     fighter::{
         assets::{FighterAssets, Result},
         state::{callbacks, CollisionPhase, InputPhase, MotionRow, PhysicsPhase},
         ActionId, Fighter, MotionEntryFlags,
     },
-    physics::airborne,
+    physics::{airborne, grounded},
 };
 use melee_it::{ItemControl, ItemRequest};
 use melee_types::{CommonMotionState, GroundOrAir, ItemKind};
@@ -170,6 +170,56 @@ pub fn air_friction_fall(f: &mut Fighter, p: PhysicsPhase<'_>) {
     physics.animation_velocity.x =
         airborne::drift_acceleration(physics.self_velocity.x, 0.0, 0.0, air);
     f.core.finish_air_update(p.assets, p.wind);
+}
+
+/// ft_CheckGroundAndLedge (800822A4) with CLIFFCATCH_BOTH (0): true on
+/// landing; with no ledge cooldown the ledges on either side are tested.
+pub fn lands_or_finds_ledge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    let cd = &mut c.collision.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = c.physics.position;
+    let pose = EcbPose::read(&mut c.skeleton, c.animation.root, cd);
+    let landed = if c.status.ledge_cooldown == 0 {
+        melee_mp::set_facing_dir(cd, 0);
+        p.map.air_collide_ledge(cd, Some(&|i| pose.position(i)))
+    } else {
+        p.map.air_collide_pass(cd, Some(&|i| pose.position(i)))
+    };
+    c.physics.position = cd.cur_pos;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+    landed
+}
+
+/// ftCommon_ApplyGroundMovement (8007CB74): self_vel from gr_vel along the
+/// floor.
+pub fn apply_ground_movement(f: &mut Fighter, p: &PhysicsPhase<'_>) {
+    let core = &mut f.core;
+    grounded::apply_ground_movement(
+        &mut core.physics,
+        core.collision.data.floor.normal,
+        p.map.floor_speed_scale(&core.collision.data),
+    );
+}
+
+/// Fighter_procUpdate's grounded tail, for a physics callback that moved
+/// the fighter itself.
+pub fn finish_ground_update(f: &mut Fighter, p: &PhysicsPhase<'_>) {
+    let core = &mut f.core;
+    grounded::finish_ground_update(
+        &mut core.physics,
+        &core.collision.data,
+        &grounded::GroundedParameters::from_attributes(&core.attributes, &p.assets.common),
+        p.map,
+        p.wind,
+    );
 }
 
 /// ftCommon_Fall (8007D494): gravity, then the terminal-speed clamp.

@@ -144,6 +144,9 @@ pub mod state_change {
     pub const CMD_UPDATE: u32 = 1 << 8;
 }
 
+// PK Thunder's head keeps its position history inline: an item's scratch
+// never allocates on the tick path, so the large variant is not boxed.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum ItemScratch {
     Needle(NeedleState),
@@ -162,6 +165,8 @@ pub enum ItemScratch {
     SamusBomb(SamusBombState),
     DinFire(DinFireState),
     PkFlash(PkFlashState),
+    PkThunder(PkThunderState),
+    PkThunderTrail(PkThunderTrailState),
     Boomerang(BoomerangState),
     Bow(BowState),
     Arrow(ArrowState),
@@ -322,6 +327,41 @@ pub struct PkFlashState {
     pub creator: Option<u8>,
     /// The explosion's xDD8: the hitbox's authored size, once read.
     pub hitbox_size: f32,
+}
+/// Item.xDD4_itemVar.pkthunder (itnesspkthunderball.c): PK Thunder's head.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PkThunderState {
+    /// xDEC positions[16]: the head's position at its last sixteen physics
+    /// callbacks, newest first.
+    pub positions: [Vec3; 16],
+    /// xEAC angles[16]: its heading at each, in radians.
+    pub angles: [f32; 16],
+    /// xDD4[6]: its tail segments, in spawn order.
+    pub trails: [Option<u32>; 6],
+    /// xEEC: its speed.
+    pub speed: f32,
+    /// xEF8: animation callbacks since the launch or the last reflection.
+    pub frames: i32,
+    /// xEFC: segments spawned since then.
+    pub spawned: i32,
+    /// xF00: a reflection took it out of its creator's hands.
+    pub reflected: bool,
+    /// xF04: the creator, who steers it while it owns it.
+    pub creator: Option<u8>,
+}
+/// Item.xDD4_itemVar.nesspkthundertrail (itnesspkthundertrail.c): one tail
+/// segment. Its head (x0) is the item's partner.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PkThunderTrailState {
+    /// x4: which of the head's kept positions it follows.
+    pub index: u8,
+    /// x8: animation callbacks so far; the model shows on even ones.
+    pub blink: u32,
+    /// What it last read of the head: its own kept position, the next
+    /// one, and the head's speed (it_802AB3F0, it_802AB468).
+    pub point: Vec3,
+    pub next: Vec3,
+    pub length: f32,
 }
 /// Item.xDD4_itemVar.clinkmilk (itclinkmilk.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -773,7 +813,7 @@ pub struct ItemCore {
     /// unlinked when the item goes (Item_80267454).
     pub camera: Option<melee_cm::Subject>,
     /// Requests for linked items, delivered once the proc returns.
-    pub link_requests: melee_types::fixed::FixedVec<crate::LinkRequest, 4>,
+    pub link_requests: melee_types::fixed::FixedVec<crate::LinkRequest, 8>,
     /// A request for a fighter (the owner, or the thrower a reflector took
     /// the article from), delivered once the proc returns.
     pub owner_request: Option<(u8, crate::OwnerRequest)>,

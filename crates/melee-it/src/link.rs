@@ -28,6 +28,20 @@ pub enum LinkMessage {
     /// Nothing beyond the spawn itself: its setup rode in the SpawnItem
     /// (Din's Fire's explosion, it_802C4580).
     Spawned,
+    /// What a PK Thunder tail segment reads of its head (it_802AB3F0,
+    /// it_802AB468): its index, its kept position and the next one, and
+    /// the head's speed.
+    Trail {
+        index: u8,
+        point: Vec3,
+        next: Vec3,
+        length: f32,
+    },
+    /// The head ends a tail segment (it_802AC58C): hitboxes, head and
+    /// owner go.
+    TrailEnd,
+    /// The head's owner let go (it_802AC5D8): the segment loses its owner.
+    TrailOrphan,
 }
 
 /// Whom a request is for.

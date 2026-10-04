@@ -1,0 +1,36 @@
+# NESS PK Thunder (ftnessspecialhi.c, itnesspkthunderball.c) with nobody in
+# reach: an unsteered thunder that flies out its lifetime while the six tail
+# segments follow, and the grounded end row; a thunder steered left, then
+# straight on, until it leaves the control row's counters; an aerial thunder
+# from a full hop, unsteered, whose control row lands on the floor.
+name = "ness_pkthunder_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 342, port = 0, buttons = {  }, raw = {  } },
+  { frame = 370, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 400, port = 0, buttons = {  }, raw = { stickX = -100, stickY = 60 } },
+  { frame = 450, port = 0, buttons = {  }, raw = {  } },
+  { frame = 620, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 630, port = 0, buttons = {  }, raw = {  } },
+  { frame = 636, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 638, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

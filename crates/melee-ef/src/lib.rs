@@ -655,6 +655,7 @@ impl Effects {
                     | 0x491..=0x493
                     | 0x4C6..=0x4CA
                     | 0x4D6
+                    | 0x4EE..=0x4EF
                     | 0x4F2..=0x4F7
                     | 0x50D..=0x50F
                     | 0x511..=0x512),
@@ -677,6 +678,9 @@ impl Effects {
                     0x50F => 0x4A3D,
                     // efsync.c:305-308: efLib_Create_Attach_Scale(0x2AF8).
                     0x4D6 => 0x2AF8,
+                    // efsync.c:292-297: efLib_Create_Attach(0x2710 / 0x2711),
+                    // PK Thunder's control and launch glows.
+                    0x4EE..=0x4EF => 0x2710 + u32::from(id - 0x4EE),
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     // efsync.c:645-652: Roy's Flare Blade release.
                     0x511..=0x512 => 0xBF68 + u32::from(id - 0x511),

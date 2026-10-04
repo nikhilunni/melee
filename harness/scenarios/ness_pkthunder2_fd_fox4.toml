@@ -1,0 +1,40 @@
+# NESS PK Thunder 2: a grounded thunder steered round a full loop (left,
+# down, right, up) back into Ness, which launches him (ftNs_SpecialHi_Enter,
+# 80118384) and ends in the special fall; then the same loop from a full hop
+# (the aerial control row's launch, ftNs_SpecialAirHi_Enter).
+name = "ness_pkthunder2_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 141, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 156, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 171, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 510, port = 0, buttons = {  }, raw = {  } },
+  { frame = 516, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 518, port = 0, buttons = {  }, raw = {  } },
+  { frame = 542, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 557, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 572, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 587, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 616, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

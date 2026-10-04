@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, &'static str>;
 pub fn word_count(opcode: u32) -> usize {
     match opcode {
         38 => 7,
-        58 => 4,
+        39 | 58 => 4,
         5 | 7 | 56 => 2,
         10 | 11 => 5,
         17 | 34 | 54 | 55 => 3,
@@ -30,6 +30,12 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             timer: (words[3] >> 16) as i16,
             angle: words[3] as i16,
         }),
+        // ftAction_80072320: stage_sfx_0.x2_b0_7 names the handle, the
+        // second word the sound.
+        39 => Command::DirectionalSound {
+            handle: (word >> 8) as u8,
+            id: words[1],
+        },
         1 => Command::Wait((word & 0x03ff_ffff) as f32),
         2 => Command::AtFrame((word & 0x03ff_ffff) as f32),
         3 => Command::BeginLoop(word & 0x03ff_ffff),

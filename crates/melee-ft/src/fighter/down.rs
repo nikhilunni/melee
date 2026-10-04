@@ -141,7 +141,7 @@ impl Fighter {
     }
     /// ftCo_80097D40 (80097D40): the landing out of a tumble, which forgets
     /// the wall of the last DownReflect.
-    pub(super) fn enter_down_bound(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub fn enter_down_bound(&mut self, assets: &FighterAssets) -> Result<()> {
         self.enter_down_bound_from(assets, false)
     }
 
@@ -149,7 +149,11 @@ impl Fighter {
     /// inverted for a kind with x2226_b1. `reflected` is ftCo_80097D88, the
     /// landing out of DownReflect, which leaves mv+4 alone.
     fn enter_down_bound_from(&mut self, assets: &FighterAssets, reflected: bool) -> Result<()> {
-        self.land();
+        // ftCo_8009794C: ftCommon_8007D7FC only from the air (a grounded
+        // PK Thunder 2 enters here from the floor).
+        if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+            self.land();
+        }
         let hip = self.core.animation.parts
             [usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"))]
         .joint;

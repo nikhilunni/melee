@@ -79,6 +79,11 @@ melee_it::item_kinds! {
         NessPKFireFlame: it_ness::NessPkFirePillar,
         NessPKFlush: it_ness::NessPkFlash,
         NessPKFlushExplode: it_ness::NessPkFlashExplode,
+        NessPKThunder: it_ness::NessPkThunder,
+        NessPKThunder1: it_ness::NessPkThunderTrail<0>,
+        NessPKThunder2: it_ness::NessPkThunderTrail<1>,
+        NessPKThunder3: it_ness::NessPkThunderTrail<2>,
+        NessPKThunder4: it_ness::NessPkThunderTrail<3>,
     }
 }
 
@@ -866,6 +871,36 @@ impl Resources {
                     &it_ness::pk_flash::EXPLODE_ARTICLE_STATES[..],
                     it_ness::pk_flash::EXPLODE_SPECIAL_ATTRIBUTES,
                 ),
+                (
+                    ItemKind::NessPKThunder,
+                    it_ness::pk_thunder::HEAD_ARTICLE_INDEX,
+                    &it_ness::pk_thunder::HEAD_ARTICLE_STATES[..],
+                    it_ness::pk_thunder::HEAD_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKThunder1,
+                    it_ness::pk_thunder::TRAIL_ARTICLE_INDICES[0],
+                    &it_ness::pk_thunder::TRAIL_ARTICLE_STATES[..],
+                    it_ness::pk_thunder::TRAIL_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKThunder2,
+                    it_ness::pk_thunder::TRAIL_ARTICLE_INDICES[1],
+                    &it_ness::pk_thunder::TRAIL_ARTICLE_STATES[..],
+                    it_ness::pk_thunder::TRAIL_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKThunder3,
+                    it_ness::pk_thunder::TRAIL_ARTICLE_INDICES[2],
+                    &it_ness::pk_thunder::TRAIL_ARTICLE_STATES[..],
+                    it_ness::pk_thunder::TRAIL_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKThunder4,
+                    it_ness::pk_thunder::TRAIL_ARTICLE_INDICES[3],
+                    &it_ness::pk_thunder::TRAIL_ARTICLE_STATES[..],
+                    it_ness::pk_thunder::TRAIL_SPECIAL_ATTRIBUTES,
+                ),
             ] {
                 let mut assets =
                     ItemAssets::from_fighter_states(&a, root, index, states, attributes)?;
@@ -1266,6 +1301,12 @@ pub fn request(
     if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
         let item = pool.get_mut(id).unwrap();
         item.owner_secondary = owner.secondary && spawn.owner == owner.slot;
+        if SceneItems::logic(spawn.kind).new_hit_group {
+            // SpawnItem.x40 = Item_8026AE60(): xAC4 before the first script.
+            let group = pool.allocate_hit_group();
+            pool.get_mut(id).unwrap().hit_group = group;
+        }
+        let item = pool.get_mut(id).unwrap();
         item.initialize_collision(spawn, assets, map);
         item.past_hitbox_refresh = owner.after_hitbox_refresh;
         if let Some((angle, speed, motion)) = ray {
