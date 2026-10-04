@@ -194,12 +194,10 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
         }
         if !setup.ignore_controller_fixes && has_controller_fix(p) {
             match ucf_version(replay, p, setup) {
-                Some(melee_lib::ControllerFix::Dween) => {
-                    reasons.push(format!("port {} controller fix Dween", port + 1));
-                }
                 Some(_) => {}
                 None => reasons.push(format!(
-                    "port {} controller fix {:?}/{:?} (Dween, or UCF without a start date)",
+                    "port {} controller fix {:?}/{:?} (neither UCF nor Dween, or UCF without a \
+                     start date)",
                     port + 1,
                     p.dashback_fix,
                     p.shield_drop_fix
@@ -368,8 +366,10 @@ fn start_day(replay: &Replay) -> Option<&str> {
 /// The UCF version a UCF port ran. Slippi records only "UCF", so bound it
 /// by the replay's Slippi version and date the recording by its start time
 /// against Slippi's code history ([`ucf_candidates`]);
-/// [`resolve_controller_fix`] settles two candidates. Dween is not ported.
-/// `Setup::controller_fix` names the version instead.
+/// [`resolve_controller_fix`] settles two candidates. `Setup::controller_fix`
+/// names the version instead, for the UCF ports only: a port recorded with
+/// Dween's fix (the toggle set's value 2) runs no fix, whatever the others
+/// run, because its recorded sticks are the fix's output.
 fn ucf_version(
     replay: &Replay,
     p: &slp::PlayerStart,
@@ -379,11 +379,19 @@ fn ucf_version(
     if !has_controller_fix(p) {
         return Some(ControllerFix::Off);
     }
-    if setup.controller_fix.is_some() {
-        return setup.controller_fix;
+    if is_dween(p) {
+        // Dween's code only rewrites the fighter's sampled stick (fp+0x620,
+        // at 0x8006B028), and Pre Frame records that stick afterwards (hook
+        // 0x8006B0E0): the recorded inputs already carry the fix, so the
+        // port runs none. Feeding them through `ControllerFix::Dween` would
+        // apply it twice.
+        return Some(ControllerFix::Off);
     }
     if !is_ucf(p) {
         return None;
+    }
+    if setup.controller_fix.is_some() {
+        return setup.controller_fix;
     }
     Some(ucf_candidates(replay.version(), start_day(replay))?.0)
 }
@@ -409,6 +417,13 @@ pub(crate) fn dated_controller_fix(replay: &Replay, setup: Setup) -> Setup {
         },
         None => setup,
     }
+}
+
+/// Game Start's Dween: Slippi's per-port toggle byte (`ControllerFixOptions`,
+/// written to both fields by Recording/SendGameInfo.asm until bb86519) is 2,
+/// the value the "Arduino" code at 0x8006B028 tests for.
+fn is_dween(p: &slp::PlayerStart) -> bool {
+    p.dashback_fix == Some(2) && p.shield_drop_fix == Some(2)
 }
 
 /// Name the UCF version for a recording whose date allows two.

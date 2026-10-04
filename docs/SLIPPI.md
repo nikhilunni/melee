@@ -443,8 +443,8 @@ consoles ran beside Slippi's own sets.
 Tournament replays ran the Universal Controller Fix Gecko codes (Game Start
 `dashback_fix`/`shield_drop_fix` = 1). The port carries them as a per-port
 `ControllerFix` (`melee_ft::input::controller_fix`, re-exported by
-`melee-lib`): `Off`, `Ucf073`, `Ucf074`, `Ucf080`, `Ucf084`, and `Dween`,
-which match setup refuses with the reason. Slippi does not record the UCF
+`melee-lib`): `Off`, `Ucf073`, `Ucf074`, `Ucf080`, `Ucf084`, and `Dween`
+(below). Slippi does not record the UCF
 version; the caller chooses it (the 0.73 beta until October 2019, 0.74 for
 2019-2020 console builds, 0.8 from 2021, 0.84 from 2024).
 
@@ -500,9 +500,59 @@ Slippi version, date it from the recording inside that bound
 it instead for every port recorded with UCF. The report's `controller fix`
 line says which version ran and why.
 
-Not ported: Dween, and the 0.74 shield drop without the truncation that
-Slippi's Dolphin lists and `g_toggles.bin` carried for one week (acc6f71,
+Not ported: the 0.74 shield drop without the truncation that Slippi's
+Dolphin lists and `g_toggles.bin` carried for one week (acc6f71,
 2019-09-24, to 4062e22, 2019-10-01).
+
+### Dween's fix and the per-port toggle (2026-10-03)
+
+Console builds from 2019-02 to bb86519 (2021-03-31) could run the toggle
+set `g_toggles.bin` ("UCF + Arduino Toggle UI") instead of `g_ucf.bin`:
+each port chooses off, UCF or "Arduino" on the character select screen, a
+byte per port at `ControllerFixOptions` (rtoc - 0xDD8, 0x804DEC08). Game
+Start's `dashback_fix` and `shield_drop_fix` are that one byte written
+twice (Recording/SendGameInfo.asm), so they are always equal: 0 off, 1 UCF,
+2 Dween. The set's UCF hooks (0x800C9A44, 0x800998A4, "Check for Toggle")
+run for a byte of 1 and Dween's code for 2.
+
+Dween's code (`External/UCF + Arduino Toggle UI/Arduino/Arduino - Check for
+Toggle.asm`, the same 448 bytes in every build of the set) is one injection
+at 0x8006B028, the store of the pad's buttons in the human arm of the input
+proc. It rewrites the fighter's dead-zoned main stick (fp+0x620/+0x624)
+before anything reads it, and keeps the pad's normalized stick x per port
+for the next tick. `melee_ft::input::controller_fix::dween` ports it
+(`ControllerFix::Dween`, scenario name `dween`; logic ported, not copied;
+GPL-3):
+
+| Branch | Condition | Effect |
+|---|---|---|
+| Dashback | no shield (analog trigger zero, no Z/R/L), no B/X/Y, A not pressed this tick; stick y zero, x non-zero and under PlCo+0x3C (0.8); last tick's pad x inside the dead zone (PlCo+0x0) and at least PlCo+0x8 (0.25) away | x reads zero this tick: a tap that passes through the tilt range is still a fresh full tap on the next |
+| Shield drop | shield held on both ticks (analog product positive, or Z/R/L with last tick's held word); stick on the same side as last tick with x670 at least 3; y at or below PlCo+0x314 (-0.7) and above -0.8; (abs x + 0.0125)^2 + (0.0125 - y)^2 over 1 | the stick becomes (+/-0.725, -0.6875), short of the spot dodge line, so the platform drop runs |
+
+Witnesses (`UCF_WITNESSES`), recorded with the Gecko code `dween` (the
+0x8006B028 block of `Output/Console/g_toggles.bin` at 009b155, then
+`004DEC08 00030002` to set the four toggle bytes to 2), exact with 0
+differing particle-site ticks:
+
+| Scenario | Retail |
+|---|---|
+| `dween_dashback_fd_fox` | stick 0, -40, -80: Wait at tick 120, Turn at 121, Dash at 122 (without the code: slow Turn 120, Dash 125) |
+| `dween_dashback_slow_fd_fox` | -20, -36, -80: 0.2 from the last sample, left alone (Turn 120, Dash 125) |
+| `dween_dashback_a_fd_fox` | A pressed with the first tilt: forward tilt at 120 (a zeroed stick would jab) |
+| `dween_shielddrop_bf_fox` | shielding, tilt right, then (56, -56): Pass at 136 (without the code: spot dodge) |
+| `dween_shielddrop_fresh_bf_fox` | shielding, neutral straight to (56, -56): left alone, spot dodge at 136 |
+
+**A replay's Dween port runs no fix.** Pre Frame is sampled at 0x8006B0E0,
+after the code, and its joystick is fp+0x620: the recorded stick is already
+the code's output (in `FALCO/Game_20200505T030157.slp` at tick 1850 the raw
+X is 34 and the recorded joystick 0.0). The code changes nothing else, so
+the runner gives such a port `ControllerFix::Off`; running `Dween` on those
+inputs would apply it twice (the zeroed sample becomes the next tick's
+"neutral"; four of the seven games then match fewer frames). The runner used
+to hand a Dween port the UCF version named for the game's other port, which
+ran UCF's dashback where the console ran none:
+`PEACH/Game_20161204T213742.slp` stopped at tick 5376 and
+`FALCO/Game_20190912T035958.slp` at 5426 on that port's Turn.
 
 ### The UCF 0.73 beta and which version a recording ran (2026-10-03)
 
