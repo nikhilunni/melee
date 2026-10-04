@@ -1,0 +1,36 @@
+# GAMEWATCH directed witness: Fire Fox's first launch tick hits him in his back aerial, Turtle out.
+name = "gamewatch_punish_firefox_bair_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 440
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 176, port = 1, buttons = {  }, raw = {  } },
+  { frame = 206, port = 1, buttons = {  }, raw = { stickX = -50 } },
+  { frame = 220, port = 1, buttons = {  }, raw = {  } },
+  { frame = 228, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 234, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 1, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 239, port = 1, buttons = {  }, raw = {  } },
+  { frame = 262, port = 0, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 264, port = 0, buttons = {  }, raw = {  } },
+  { frame = 277, port = 1, buttons = {  }, raw = { stickX = -90, stickY = 90 } },
+  { frame = 307, port = 1, buttons = {  }, raw = {  } },
+  { frame = 384, port = 0, buttons = {  }, raw = {  } },
+  { frame = 427, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

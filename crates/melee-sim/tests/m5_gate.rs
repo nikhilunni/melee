@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 506] = [
+const MATRIX_WITNESSES: [(&str, usize); 509] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1758,6 +1758,15 @@ const MATRIX_WITNESSES: [(&str, usize); 506] = [
     ("gamewatch_punish_guard_fd_fox4", 460),
     ("gamewatch_punish_grab_fd_fox4", 480),
     ("gamewatch_punish_laser_fd_fox4", 420),
+    // Fox's Fire Fox burns Mr. Game & Watch: the charge's weak fire hits and
+    // the launch, standing and out of a jump (the 0x413 body overlay on his
+    // flat joints).
+    ("gamewatch_punish_firefox_fd_fox4", 440),
+    ("gamewatch_punish_firefox_air_fd_fox4", 440),
+    // The same burn on the launch's first tick, in his back aerial with the
+    // Turtle out (the explorer's corpus_v3_fd_gameandwatch_fox4_e17844051_p0
+    // situation, which is exact here in isolation).
+    ("gamewatch_punish_firefox_bair_fd_fox4", 440),
 ];
 
 #[test]
@@ -4102,6 +4111,14 @@ const CORPUS_V3_MATCHES: [(&str, usize); 517] = [
     ("corpus_v3_fd_gameandwatch_fox4_e929b49af_p2", 5336),
     ("corpus_v3_fd_gameandwatch_fox4_e52b08364_p2", 4004),
     ("corpus_v3_fd_gameandwatch_fox4_ed7fcdf51_p2", 2550),
+    // Seven more whole random matches from start_fd_gameandwatch_fox4.
+    ("corpus_v3_fd_gameandwatch_fox4_ee9675143_p0", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_e2bad8462_p1", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_ec1c580b5_p2", 5291),
+    ("corpus_v3_fd_gameandwatch_fox4_e8d30e8ed_p2", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_e3250caea_p0", 5537),
+    ("corpus_v3_fd_gameandwatch_fox4_e45a17231_p2", 3745),
+    ("corpus_v3_fd_gameandwatch_fox4_e188c0a9b_p2", 3806),
 ];
 
 #[test]

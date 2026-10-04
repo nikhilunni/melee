@@ -80,3 +80,17 @@ file (no `EfGwData.dat`).
   (`ftGw_Attack100Start_Enter`): needs items on.
 - `ftGw_SpecialS_GetRandomInt` with no face enabled (retail reads an
   uninitialised result).
+- Strong Ice hits (`ftCo_8008DCE0`, DamageIce) are the shared fail-closed
+  branch Judgment's 8 reaches; `gamewatch_judgevar2_fd_fox4` is recorded
+  and waits for it, as do five explorer matches.
+
+## Open
+
+- `corpus_v3_fd_gameandwatch_fox4_e17844051_p0` diverges at tick 5464 on
+  the particle RNG only: Fire Fox's first launch tick burns him in his back
+  aerial, and the 0x413 overlay's child generators differ (retail keeps
+  kinds 59 and 58 of family 2195 ahead of Fox's 2193 family; the port
+  keeps 354, 58, 57, 56 after it). The same hit is exact in isolation
+  (`gamewatch_punish_firefox_bair_fd_fox4`), so the difference is in the
+  particle system's list state late in a match (insertion cursor or
+  order), not in his code. Not registered.
