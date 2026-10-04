@@ -149,9 +149,10 @@ impl ItemLogic for SamusBomb {
         explode_unless_exploding(item, context.assets);
         false
     }
-    /// itSamusBomb_Logic50_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itSamusBomb_Logic50_ShieldBounced: itColl_BounceOffShield (it_2725.c:430)")
+    /// itSamusBomb_Logic50_ShieldBounced (802B5354) -> itColl_BounceOffShield.
+    fn shield_bounced(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
+        item.bounce_off_shield(context.shield_normal);
+        false
     }
     /// it_2725_Logic50_Reflected (802B5370): it_80273030 turns it back, a
     /// falling bomb rises by the reflector's multiplier (xC70), and the

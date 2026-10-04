@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 445] = [
+const MATRIX_WITNESSES: [(&str, usize); 447] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1449,6 +1449,11 @@ const MATRIX_WITNESSES: [(&str, usize); 445] = [
     ("samus_bomb_walk_fd_fox4", 300),
     ("samus_bomb_roll_fd_fox4", 320),
     ("samus_bomb_squat_fd_fox4", 300),
+    // A Bomb dropped onto Fox's shield: square on it explodes
+    // (itSamusBomb_Logic50_HitShield); glancing it bounces off
+    // (itSamusBomb_Logic50_ShieldBounced, 802B5354).
+    ("samus_bomb_shield_fd_fox4", 330),
+    ("samus_bomb_shield_bounce_fd_fox4", 330),
     // The explorer's grounded Bomb (ftData_SpecialDown[Samus]) and 240 neutral ticks.
     ("samus_x_ec3145eb3_p0", 360),
     // Grapple beam (itsamusgrapple.c, ftCo_0D95.c): the grab and dash

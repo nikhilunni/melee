@@ -1,0 +1,27 @@
+# SAMUS directed witness: Samus runs at the shielding Fox, jumps and drops a Bomb that
+# meets his shield too squarely to bounce: it explodes on it (itSamusBomb_Logic50_HitShield).
+name = "samus_bomb_shield_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 97, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 153, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 183, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 185, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
