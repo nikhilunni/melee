@@ -112,6 +112,17 @@ pub struct CommandState {
     /// fighter.c:380): a subaction has hidden the held item (opcode 35).
     pub held_item_hidden: bool,
     pub hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
+    /// The fields of capsules a script or motion change disabled
+    /// (lbColl_80008428 sets state 0 and keeps them): lbColl_80008434
+    /// enables one with them again (`rehit_hitbox`).
+    pub disabled_hitboxes: [Option<melee_coll::hitbox::HitCapsule>; 4],
+    /// Fighter x2219_b3: a script enabled a capsule since the last
+    /// ftColl_8007AFF8. Fighter_ChangeMotionState disables the capsules only
+    /// while it is set (fighter.c:954).
+    pub hitboxes_registered: bool,
+    /// Capsules lbColl_80008434 enabled again while x2219_b3 was clear:
+    /// a motion change leaves them on (Ness's yo-yo's stored hitbox).
+    pub revived_hitboxes: [bool; 4],
     /// The first recorded contact affects subsequently created hitboxes of
     /// this attack instance. Multiple-entry history remains a combat boundary.
     pub first_hit_stale_penalty: Option<f32>,
@@ -170,6 +181,51 @@ pub struct TerrainStep {
     pub graphics_before: usize,
 }
 impl CommandState {
+    /// lbColl_80008428 (80008428) on capsule `id`: off, its fields kept.
+    pub fn disable_hitbox(&mut self, id: usize) {
+        if let Some(hit) = self.hitboxes[id].take() {
+            self.disabled_hitboxes[id] = Some(hit);
+        }
+        self.revived_hitboxes[id] = false;
+    }
+    /// ftColl_8007AFF8 (8007AFF8): every capsule off, x2219_b3 cleared.
+    pub fn disable_all_hitboxes(&mut self) {
+        for id in 0..self.hitboxes.len() {
+            self.disable_hitbox(id);
+        }
+        self.hitboxes_registered = false;
+    }
+    /// Fighter_ChangeMotionState without Ft_MF_SkipHit (fighter.c:953-956):
+    /// ftColl_8007AFF8 while x2219_b3 is set. The port's capsules that
+    /// characters place directly are cleared as before; only a capsule
+    /// lbColl_80008434 revived with x2219_b3 clear stays on.
+    pub fn disable_hitboxes_for_motion_change(&mut self) {
+        if self.hitboxes_registered {
+            self.disable_all_hitboxes();
+            return;
+        }
+        for id in 0..self.hitboxes.len() {
+            if !self.revived_hitboxes[id] {
+                self.disable_hitbox(id);
+            }
+        }
+    }
+    /// lbColl_80008440 then lbColl_80008434 (80008440, 80008434) on capsule
+    /// `id`: its victims forgotten and it enabled again (state 1), a
+    /// disabled one with the fields it kept. Nothing sets x2219_b3.
+    pub fn rehit_hitbox(&mut self, id: usize) {
+        if self.hitboxes[id].is_none() {
+            let kept = self.disabled_hitboxes[id].take().unwrap_or_else(|| {
+                unimplemented!("lbColl_80008434 on fighter capsule {id}, never made")
+            });
+            self.hitboxes[id] = Some(kept);
+            self.revived_hitboxes[id] = !self.hitboxes_registered;
+        }
+        let hit = self.hitboxes[id].as_mut().expect("enabled capsule");
+        hit.victims.clear();
+        hit.phantom_victims = Default::default();
+        hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
+    }
     /// ft_80089228 (80089228): stale a hitbox's damage for the current move.
     /// The motion's multiplier applies only when it differs from 1 (retail
     /// 8008927C fmuls); without a staled move, a hit this instance already
@@ -301,6 +357,16 @@ impl CommandState {
                         }
                         let knockback_damage = gekko_math::msl::fctiwz(descriptor.damage) as u32;
                         descriptor.damage = self.stale_damage(descriptor.damage);
+                        // ftAction_8007121C (ftaction.c:304-311): a
+                        // disabled capsule, or one of another group, is
+                        // enabled afresh and sets x2219_b3.
+                        if self.hitboxes[*id]
+                            .as_ref()
+                            .is_none_or(|hit| hit.descriptor.group != descriptor.group)
+                        {
+                            self.hitboxes_registered = true;
+                        }
+                        self.disabled_hitboxes[*id] = None;
                         melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                         self.hitboxes[*id]
                             .as_mut()
@@ -321,8 +387,9 @@ impl CommandState {
                     }
                 }
                 Command::ClearHitbox(id) => {
+                    // ftColl_8007AFC8: lbColl_80008428 alone.
                     if !seeking {
-                        self.hitboxes[*id] = None;
+                        self.disable_hitbox(*id);
                     }
                 }
                 Command::SetHitboxDamage { id, damage } => {
@@ -353,7 +420,7 @@ impl CommandState {
                 }
                 Command::ClearHitboxes => {
                     if !seeking {
-                        self.hitboxes.fill(None);
+                        self.disable_all_hitboxes();
                     }
                 }
                 Command::ToggleDynamics(bone) => {

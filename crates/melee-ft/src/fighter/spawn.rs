@@ -1386,7 +1386,7 @@ impl FighterCore {
         }
         self.commands.allow_interrupt = false;
         if !change.preserve.hitboxes {
-            self.commands.hitboxes.fill(None);
+            self.commands.disable_hitboxes_for_motion_change();
         }
         self.commands.first_hit_stale_penalty = None;
         self.combat.stale.enter(move_id);
