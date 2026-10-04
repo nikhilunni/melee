@@ -1,0 +1,37 @@
+# MEWTWO directed witness: Fox mashes out of Disable's stun (down-B at tick 215).
+name = "mewtwo_disable_mash_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 242, port = 1, buttons = {  }, raw = {  } },
+  { frame = 244, port = 1, buttons = {  }, raw = { button = 512, stickX = 100 } },
+  { frame = 246, port = 1, buttons = {  }, raw = {  } },
+  { frame = 248, port = 1, buttons = {  }, raw = { button = 256, stickX = -100 } },
+  { frame = 250, port = 1, buttons = {  }, raw = {  } },
+  { frame = 252, port = 1, buttons = {  }, raw = { button = 1024, stickY = 100 } },
+  { frame = 254, port = 1, buttons = {  }, raw = {  } },
+  { frame = 256, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 258, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

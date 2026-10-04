@@ -53,6 +53,16 @@ pub struct Parameters {
     pub song_decrement: f32,
     pub song_mash_decrement: f32,
     pub sleep_timer_multiplier: f32,
+    /// PlCo +658..+674: ftCo_800C4550's bind timer (the same terms again),
+    /// its per-frame decay and mash decrement.
+    pub bind_base_timer: f32,
+    pub bind_handicap_scale: f32,
+    pub bind_handicap_origin: f32,
+    pub bind_rank_scale: f32,
+    pub bind_rank_origin: f32,
+    pub bind_percent_scale: f32,
+    pub bind_decrement: f32,
+    pub bind_mash_decrement: f32,
 }
 impl Parameters {
     /// ftCommonData: ftCo_CapturePulled/Wait/Cut and ftCommon_GrabMash.
@@ -91,6 +101,14 @@ impl Parameters {
             song_decrement: r.f32(base + 0x63C)?,
             song_mash_decrement: r.f32(base + 0x640)?,
             sleep_timer_multiplier: r.f32(base + 0x644)?,
+            bind_base_timer: r.f32(base + 0x658)?,
+            bind_handicap_scale: r.f32(base + 0x65C)?,
+            bind_handicap_origin: r.f32(base + 0x660)?,
+            bind_rank_scale: r.f32(base + 0x664)?,
+            bind_rank_origin: r.f32(base + 0x668)?,
+            bind_percent_scale: r.f32(base + 0x66C)?,
+            bind_decrement: r.f32(base + 0x670)?,
+            bind_mash_decrement: r.f32(base + 0x674)?,
         })
     }
 }
@@ -678,6 +696,14 @@ mod tests {
             song_decrement: 1.0,
             song_mash_decrement: 6.0,
             sleep_timer_multiplier: 2.0,
+            bind_base_timer: 30.0,
+            bind_handicap_scale: 0.0,
+            bind_handicap_origin: 0.0,
+            bind_rank_scale: 0.0,
+            bind_rank_origin: 0.0,
+            bind_percent_scale: 0.0,
+            bind_decrement: 1.0,
+            bind_mash_decrement: 1.0,
         }
     }
 

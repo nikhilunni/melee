@@ -1822,6 +1822,15 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: crate::fighter::damage_song::wake_animation,
         ..rows[S::DamageSong as usize]
     };
+    // ftCo_DamageBind.c: a Disable-element hit (800C44CC..800C4744), dazed
+    // in Furafura's animation.
+    rows[S::DamageBind as usize] = MotionRow {
+        action: ActionId(300),
+        id: S::DamageBind,
+        animation: 205,
+        anim: crate::fighter::damage_bind::bound_animation,
+        ..rows[S::DamageSong as usize]
+    };
     // S7/S8: common throw pairs and quick ledge attack.
     rows[S::ThrowF as usize] = MotionRow {
         action: ActionId(S::ThrowF as u16),

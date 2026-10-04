@@ -21,6 +21,13 @@ pub struct Mewtwo {
     pub accessory: Accessory,
     /// Teleport's motion scratch (mv.mt.SpecialHi).
     pub teleport: crate::special_hi::Teleport,
+    /// Fighter +222C, u.mt.x222C_disableGObj: Disable's projectile is out
+    /// and still Mewtwo's.
+    pub disable_article: bool,
+    /// take_dmg_cb = ftMt_Init_OnTakeDamage and death2_cb =
+    /// ftMt_Init_OnDeath2, installed by a special until the next motion
+    /// change.
+    pub damage_callbacks: bool,
 }
 
 /// accessory4_cb while a special owns it; a motion change removes it.
@@ -32,6 +39,9 @@ pub enum Accessory {
     TeleportStart,
     /// ftMt_SpecialHi_SetEndGFX: Teleport's reappearance.
     TeleportReappear,
+    /// ftMt_SpecialLw_CreateDisable: Disable's projectile on the script's
+    /// flag; it stays installed through the special.
+    Disable,
 }
 impl Mewtwo {
     pub fn new(attributes: MewtwoAttributes) -> Self {
@@ -42,6 +52,8 @@ impl Mewtwo {
             confusion_boost_used: false,
             accessory: Accessory::None,
             teleport: Default::default(),
+            disable_article: false,
+            damage_callbacks: false,
         }
     }
 }
@@ -56,6 +68,24 @@ fn set_knockback_texture_frames(fighter: &mut Fighter, frame: f32) {
     for index in [2, 0] {
         fighter.commands.set_texture_frame(index, frame);
     }
+}
+
+/// ftMt_Init_OnTakeDamage (80144F18), the take_dmg_cb: Disable's projectile
+/// goes (ftMt_SpecialLw_RemoveDisable), then ftMt_SpecialN_OnDeath.
+fn take_damage_callback(f: &mut Fighter) {
+    if !f.character.get::<Mewtwo>().damage_callbacks {
+        return;
+    }
+    crate::special_lw::remove_projectile(f);
+}
+
+/// ftMt_Init_OnDeath2 (80144EE4), the death2_cb: Disable's projectile goes,
+/// then ftMt_SpecialN_OnTakeDamage.
+fn death_callback(f: &mut Fighter) {
+    if !f.character.get::<Mewtwo>().damage_callbacks {
+        return;
+    }
+    crate::special_lw::remove_projectile(f);
 }
 
 impl CharacterCallbacks for Mewtwo {
@@ -78,6 +108,7 @@ impl CharacterCallbacks for Mewtwo {
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
         match slot {
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
             _ => unimplemented!(
                 "ftData_Special{slot:?}[Mewtwo] (airborne: {airborne}): character special entry"
             ),
@@ -91,8 +122,27 @@ impl CharacterCallbacks for Mewtwo {
         match f.character.get::<Mewtwo>().accessory {
             Accessory::TeleportStart => crate::special_hi::vanish_flash(f),
             Accessory::TeleportReappear => crate::special_hi::reappear(f),
+            Accessory::Disable => crate::special_lw::create_projectile(f),
             Accessory::None => {}
         }
+    }
+    /// itMewtwoDisable_Logic67_Destroyed -> ftMt_SpecialLw_ClearDisableGObj
+    /// (80146198).
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
+        if kind == melee_types::ItemKind::MewtwoDisable {
+            f.character.get_mut::<Mewtwo>().disable_article = false;
+        }
+    };
+    /// ftCommon_8007DB58: take_dmg_cb (ftMt_Init_OnTakeDamage, 80144F18)
+    /// when installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(take_damage_callback);
+    /// ftCo_800D331C: death2_cb (ftMt_Init_OnDeath2, 80144EE4) when
+    /// installed.
+    const DEATH: Option<fn(&mut Fighter)> = Some(death_callback);
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.damage_callbacks = false;
     }
 
     fn kind(&self) -> FighterKind {

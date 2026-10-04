@@ -20,6 +20,7 @@ pub mod color_overlay;
 pub mod commands;
 pub mod cpu;
 pub mod damage;
+mod damage_bind;
 mod damage_song;
 pub mod dash;
 pub mod down;

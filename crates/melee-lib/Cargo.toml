@@ -71,6 +71,7 @@ it-koopaflame = { path = "../it-koopaflame" }
 ft-ness = { path = "../ft-ness" }
 it-ness = { path = "../it-ness" }
 ft-mewtwo = { path = "../ft-mewtwo" }
+it-mewtwo = { path = "../it-mewtwo" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

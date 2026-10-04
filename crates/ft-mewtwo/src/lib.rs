@@ -3,6 +3,7 @@ pub mod attributes;
 pub mod common;
 pub mod init;
 pub mod special_hi;
+pub mod special_lw;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -20,6 +21,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         i += 1;
     }
     place_all(&mut rows, special_hi::rows());
+    place_all(&mut rows, special_lw::rows());
     rows
 }
 

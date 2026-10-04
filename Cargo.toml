@@ -78,6 +78,7 @@ members = [
     "crates/it-ness",
     "crates/ft-ness",
     "crates/ft-mewtwo",
+    "crates/it-mewtwo",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

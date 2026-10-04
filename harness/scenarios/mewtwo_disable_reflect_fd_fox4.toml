@@ -1,0 +1,28 @@
+# MEWTWO directed witness: Fox's Reflector turns Disable (down-B at tick 215)
+# back at Mewtwo, who faces it and is stunned.
+name = "mewtwo_disable_reflect_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 1, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 270, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

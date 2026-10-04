@@ -84,6 +84,7 @@ melee_it::item_kinds! {
         NessPKThunder2: it_ness::NessPkThunderTrail<1>,
         NessPKThunder3: it_ness::NessPkThunderTrail<2>,
         NessPKThunder4: it_ness::NessPkThunderTrail<3>,
+        MewtwoDisable: it_mewtwo::MewtwoDisable,
     }
 }
 
@@ -576,6 +577,23 @@ impl Resources {
             )?;
             kinds.push((ItemKind::SamusGBeam, grapple));
             visual_archives.push((ItemKind::SamusGBeam, a));
+        }
+        // ftMt_Init_OnLoad: ftData.x48_items[0] is Disable's projectile.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlMt.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataMewtwo").context("Mewtwo fighter data")?;
+            let disable = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_mewtwo::disable::ARTICLE_INDEX,
+                &it_mewtwo::disable::ARTICLE_STATES,
+                it_mewtwo::disable::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::MewtwoDisable, disable));
+            visual_archives.push((ItemKind::MewtwoDisable, a));
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
         // articles load with Zelda too: both forms come to every match.

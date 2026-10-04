@@ -176,6 +176,7 @@ pub enum ItemScratch {
     Chef(ChefState),
     Rescue(RescueState),
     Judge(JudgeState),
+    MewtwoDisable(DisableState),
     None,
 }
 /// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
@@ -224,6 +225,12 @@ pub struct RescueState {
     /// xDD8: the fighter the trampoline was made for; the item is its
     /// `owner` only while this names the same fighter.
     pub fighter: Option<u8>,
+}
+/// Item.xDD4_itemVar.mdisable (itmewtwodisable.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DisableState {
+    /// owner: the fighter that created it, while it still keeps it.
+    pub owner: Option<u8>,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
 #[derive(Clone, Copy, Debug, Default)]
