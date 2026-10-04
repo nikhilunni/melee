@@ -477,3 +477,12 @@ stage = "FinalDestination"
 players = ["Bowser", "Fox"]
 stocks = 4
 seed = 2125490688
+
+[[boundary]]
+name = "start_fd_gameandwatch_fox4"
+cold = "start_fd_gameandwatch_fox4_cold"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+stage = "FinalDestination"
+players = ["GameAndWatch", "Fox"]
+stocks = 4
+seed = 2517060990

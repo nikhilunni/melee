@@ -65,6 +65,7 @@ members = [
     "crates/it-climbersice",
     "crates/ft-samus",
     "crates/it-samus",
+    "crates/ft-gamewatch",
     "crates/ft-seak",
     "crates/ft-zelda",
     "crates/ft-link-family",

@@ -157,6 +157,7 @@ scene_characters! {
     "IceClimbers" => IceClimbers(ft_iceclimbers::init::IceClimber) partner(ft_iceclimbers::init::Nana),
     "Link" => Link(ft_link::init::Link),
     "YoungLink" => YoungLink(ft_younglink::init::YoungLink),
+    "GameAndWatch" => GameAndWatch(ft_gamewatch::init::GameWatch),
     "Samus" => Samus(ft_samus::init::Samus),
     "Sheik" => Sheik(ft_seak::init::Sheik) partner(ft_zelda::init::Zelda),
     "Zelda" => Zelda(ft_zelda::init::Zelda) partner(ft_seak::init::Sheik),

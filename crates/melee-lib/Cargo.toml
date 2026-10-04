@@ -58,6 +58,7 @@ ft-ganon = { path = "../ft-ganon" }
 ft-iceclimbers = { path = "../ft-iceclimbers" }
 ft-samus = { path = "../ft-samus" }
 it-samus = { path = "../it-samus" }
+ft-gamewatch = { path = "../ft-gamewatch" }
 ft-seak = { path = "../ft-seak" }
 ft-zelda = { path = "../ft-zelda" }
 ft-link = { path = "../ft-link" }
