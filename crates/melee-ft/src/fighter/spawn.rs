@@ -1214,9 +1214,11 @@ impl FighterCore {
             secondary_history: Default::default(),
             effective_scale: model_scale,
             // ftAnim_8006E054, ftanim.c:249-261: fp->parts[ft_data->x8->x10].
-            compensate_joint: capabilities.compensates_root_motion.then(|| {
-                animation.parts[usize::from(assets.bones.model.animation_translation)].joint
-            }),
+            compensate_joint: if capabilities.compensates_root_motion {
+                Some(animation.parts[usize::from(assets.bones.model.animation_translation)].joint)
+            } else {
+                None
+            },
             pinned: false,
         });
         skeleton.set_scale(root, &Vec3::new(model_scale, model_scale, model_scale));

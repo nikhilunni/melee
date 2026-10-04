@@ -194,15 +194,14 @@ impl CharacterCallbacks for GameWatch {
     /// ftGameWatch_FighterVars +222C..+2270. The ten article GObjs
     /// (+2248..+226C) are not restored; a save with one set fails closed.
     fn restore_saved(&mut self, raw: &[u8]) {
-        let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
-        self.judge_last = word(0x222C) as i32;
-        self.judge_previous = word(0x2230) as i32;
-        self.x2234 = word(0x2234);
-        self.panic_charge = word(0x2238) as i32;
-        self.panic_damage = word(0x223C) as i32;
-        self.chef_last = word(0x2240) as i32;
-        self.chef_previous = word(0x2244) as i32;
-        if (0x2248..0x2270).step_by(4).any(|at| word(at) != 0) {
+        self.judge_last = saved_word(raw, 0x222C) as i32;
+        self.judge_previous = saved_word(raw, 0x2230) as i32;
+        self.x2234 = saved_word(raw, 0x2234);
+        self.panic_charge = saved_word(raw, 0x2238) as i32;
+        self.panic_damage = saved_word(raw, 0x223C) as i32;
+        self.chef_last = saved_word(raw, 0x2240) as i32;
+        self.chef_previous = saved_word(raw, 0x2244) as i32;
+        if (0x2248..0x2270).step_by(4).any(|at| saved_word(raw, at) != 0) {
             unimplemented!("ftGameWatch_FighterVars: a saved article GObj");
         }
     }
@@ -250,3 +249,8 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
     additional_part_animations: &[],
     costumes: &[COSTUME, COSTUME, COSTUME, COSTUME],
 };
+
+/// A big-endian word of a saved fighter struct.
+fn saved_word(raw: &[u8], offset: usize) -> u32 {
+    u32::from_be_bytes([raw[offset], raw[offset + 1], raw[offset + 2], raw[offset + 3]])
+}

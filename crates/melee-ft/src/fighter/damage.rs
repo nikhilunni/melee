@@ -316,6 +316,19 @@ pub struct DamageParameters {
     pub extra_spark_bounds: [i32; 2],
 }
 impl DamageParameters {
+    /// The reaction level (0..=3) of a scaled knockback: the first threshold
+    /// it is below (PlCo +158..+160, ftCo_8008DA4C and ftCo_8008DCE0), 3 above all.
+    pub fn reaction_level(&self, stun: f32) -> usize {
+        // The first threshold the stun is below; a NaN stun is below none
+        // and is level 3, as `stun < t` is false throughout.
+        for (level, &threshold) in self.reaction_thresholds.iter().enumerate() {
+            if stun < threshold {
+                return level;
+            }
+        }
+        self.reaction_thresholds.len()
+    }
+
     pub fn read(a: &Archive, p: u32) -> Result<Self> {
         let r = a.reader();
         Ok(Self {
@@ -1239,12 +1252,7 @@ impl Fighter {
             let level = if forced_motion.is_some() {
                 3
             } else {
-                assets
-                    .damage
-                    .reaction_thresholds
-                    .iter()
-                    .position(|&t| stun < t)
-                    .unwrap_or(3) as u8
+                assets.damage.reaction_level(stun) as u8
             };
             let id = match hit.descriptor.element {
                 melee_types::HitElement::Fire => 11 + level,
@@ -1283,12 +1291,7 @@ impl Fighter {
         (self.character.table().knockback_enter)(self, assets);
         // ftCo_Damage.c:530-538: an Ice hit at level 2 or 3 freezes a
         // victim that is not already frozen.
-        let base_level = assets
-            .damage
-            .reaction_thresholds
-            .iter()
-            .position(|&t| stun < t)
-            .unwrap_or(3);
+        let base_level = assets.damage.reaction_level(stun);
         if self.freezes(element, base_level) {
             if percent_pending {
                 unimplemented!("ftCo_DamageIce_Init: frozen by a throw release (ftCo_800DDDE4)");
@@ -2257,12 +2260,7 @@ impl FighterCore {
         self.maybe_drop_held_item(hit, assets, rng);
         let airborne = self.physics.ground_or_air == GroundOrAir::Air;
         let stun = hit.knockback * assets.damage.hitstun_scale;
-        let base_level = assets
-            .damage
-            .reaction_thresholds
-            .iter()
-            .position(|&t| stun < t)
-            .unwrap_or(3);
+        let base_level = assets.damage.reaction_level(stun);
         // ftCo_Damage.c:328-334, 427-433: an Ice hit at level 2 or 3 bends
         // the angle upward and plays DamageFlyTop; begin_damage_reaction
         // then freezes the victim (ftCo_DamageIce_Init).
@@ -2995,12 +2993,7 @@ impl FighterCore {
             return;
         }
         let scaled = knockback * assets.damage.hitstun_scale;
-        let level = assets
-            .damage
-            .reaction_thresholds
-            .iter()
-            .position(|&t| scaled < t)
-            .unwrap_or(3) as u8;
+        let level = assets.damage.reaction_level(scaled) as u8;
         let id = match hit.descriptor.element {
             melee_types::HitElement::Fire => 11 + level,
             melee_types::HitElement::Electric => 15 + level,
