@@ -865,6 +865,24 @@ impl Runtime {
                 }
             }
             4 => {
+                // Item_80269CA0: a kind whose phys_cb is its owner's work
+                // (OWNER_PHYSICS), skipped in hitlag and while frozen as the
+                // item's own callback is.
+                if <SceneItems as melee_it::ItemDispatch>::logic(kind).owner_physics {
+                    let runs = state
+                        .items
+                        .get_mut(id)
+                        .is_some_and(|item| !item.frozen && !item.in_hitlag);
+                    let index = crate::scene_items::owner_index(
+                        &state.fighters,
+                        owner_slot,
+                        owner_secondary,
+                    );
+                    if let (true, Some(index)) = (runs, index) {
+                        crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+                            .article_physics(&state.assets.fighters[index], &mut state.map));
+                    }
+                }
                 let rng = std::cell::Cell::new(state.rng);
                 let mut targets = melee_it::LockOnTargets::default();
                 if <SceneItems as melee_it::ItemDispatch>::logic(kind).locks_on {

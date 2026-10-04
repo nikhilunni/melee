@@ -290,6 +290,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         &assets::FighterAssets,
         &mut melee_mp::CollMap,
     ) -> Option<u16> = character::no_article_accessory;
+    /// The phys_cb of an article whose kind leaves it to its owner
+    /// (melee_it::ItemLogic::OWNER_PHYSICS), at item link 4: the owner's
+    /// work on it (Ness's yo-yo string, itnessyoyo.c).
+    const ARTICLE_PHYSICS: fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap) =
+        character::no_article_physics;
     /// The rest of an article's post-hitlag callback
     /// (`effect_state.article_hitlag`), after the article thaws.
     const ARTICLE_HITLAG_END: fn(&mut Fighter) = character::no_article_hitlag_end;
@@ -1030,6 +1035,10 @@ impl Fighter {
         map: &mut melee_mp::CollMap,
     ) -> Option<u16> {
         (self.character.table().article_accessory)(self, assets, map)
+    }
+    /// An owner-driven article's phys_cb (`ARTICLE_PHYSICS`).
+    pub fn article_physics(&mut self, assets: &assets::FighterAssets, map: &mut melee_mp::CollMap) {
+        (self.character.table().article_physics)(self, assets, map)
     }
     /// The installed article post-hitlag callback's own work.
     pub fn article_hitlag_begin(&mut self) {

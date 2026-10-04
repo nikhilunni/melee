@@ -139,6 +139,7 @@ pub struct CharacterTable {
     pub owner_blast: fn(&mut Fighter, &melee_it::OwnerBlast, &assets::FighterAssets),
     pub article_accessory:
         fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap) -> Option<u16>,
+    pub article_physics: fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap),
     pub article_hitlag_end: fn(&mut Fighter),
     pub article_hitlag_begin: fn(&mut Fighter),
     pub article_request: fn(
@@ -263,6 +264,7 @@ impl CharacterTable {
             article_destroyed: C::ARTICLE_DESTROYED,
             owner_blast: C::OWNER_BLAST,
             article_accessory: C::ARTICLE_ACCESSORY,
+            article_physics: C::ARTICLE_PHYSICS,
             article_hitlag_end: C::ARTICLE_HITLAG_END,
             article_hitlag_begin: C::ARTICLE_HITLAG_BEGIN,
             article_request: C::ARTICLE_REQUEST,
@@ -522,6 +524,13 @@ pub(super) fn no_article_accessory(
     _map: &mut melee_mp::CollMap,
 ) -> Option<u16> {
     unimplemented!("{:?} owns no owner-driven article", fighter.core.kind)
+}
+pub(super) fn no_article_physics(
+    fighter: &mut Fighter,
+    _assets: &assets::FighterAssets,
+    _map: &mut melee_mp::CollMap,
+) {
+    unimplemented!("{:?} owns no owner-driven article physics", fighter.core.kind)
 }
 #[inline(never)]
 pub(super) fn no_article_hitlag_end(_fighter: &mut Fighter) {}

@@ -220,6 +220,10 @@ pub trait ItemLogic {
     /// work: the scene runs the owner's ARTICLE_ACCESSORY hook in its place
     /// (Sheik's chain, whose links are the owner's).
     const OWNER_ACCESSORY: bool = false;
+    /// The kind's physics callback (Item_80269CA0's phys_cb, item link 4) is
+    /// its owner's work: the scene runs the owner's ARTICLE_PHYSICS hook
+    /// before the item's own (Ness's yo-yo, whose string the owner keeps).
+    const OWNER_PHYSICS: bool = false;
     /// A linked item's request arrived; true destroys the receiver.
     fn link_received(
         _item: &mut ItemCore,
@@ -265,6 +269,7 @@ pub trait ItemLogic {
         notifies_owner: Self::notifies_owner,
         link_received: Self::link_received,
         owner_accessory: Self::OWNER_ACCESSORY,
+        owner_physics: Self::OWNER_PHYSICS,
         pickup_reads_owner: Self::PICKUP_READS_OWNER,
     };
 }
@@ -324,6 +329,7 @@ pub struct ItemLogicRow {
     pub notifies_owner: fn(&ItemCore) -> bool,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
     pub owner_accessory: bool,
+    pub owner_physics: bool,
     pub pickup_reads_owner: bool,
 }
 pub trait ItemDispatch {
