@@ -21,6 +21,10 @@ pub type Accessory2 = fn(
     &mut gekko_math::HsdRng,
 ) -> assets::Result<()>;
 
+/// A kind's own up or down smash entry (`up`), in place of the common
+/// doEnter.
+pub type VerticalSmash = fn(&mut Fighter, bool, &assets::FighterAssets) -> assets::Result<()>;
+
 /// One immutable table per character crate. Common motion rows never belong here.
 pub struct CharacterTable {
     clone_payload: fn(&CharacterState) -> CharacterState,
@@ -54,6 +58,7 @@ pub struct CharacterTable {
     pub item_owner: fn(&mut Fighter, &assets::FighterAssets) -> melee_it::ItemOwner,
     pub forward_smash_variant: fn(&CharacterState) -> ForwardSmashVariant,
     pub forward_smash: Option<super::RngEntry>,
+    pub vertical_smash: Option<VerticalSmash>,
     pub input_rng: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
     pub input_rng_entry: Option<super::RngEntry>,
     pub forward_smash_combo: Option<ActionId>,
@@ -176,6 +181,7 @@ impl CharacterTable {
             item_owner: C::item_owner,
             forward_smash_variant: |state| state.get::<C>().forward_smash_variant(),
             forward_smash: C::FORWARD_SMASH,
+            vertical_smash: C::VERTICAL_SMASH,
             input_rng: C::INPUT_RNG,
             input_rng_entry: C::INPUT_RNG_ENTRY,
             forward_smash_combo: C::FORWARD_SMASH_COMBO,

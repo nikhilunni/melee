@@ -1,7 +1,7 @@
 //! Fighter ownership and scheduler callbacks for grounded, item-free Wait.
 //! Retail addresses and unsupported paths are documented at each entry point.
 mod character;
-pub use character::{Accessory2, CharacterState, CharacterTable};
+pub use character::{Accessory2, CharacterState, CharacterTable, VerticalSmash};
 
 pub mod absorb;
 pub mod air_catch;
@@ -349,6 +349,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// facing is set: Peach's ftPe_AttackS4_Enter. It draws from the RNG,
     /// so it runs once the IASA returns (`Fighter::finish_input`).
     const FORWARD_SMASH: Option<RngEntry> = None;
+    /// ftCo_AttackHi4_CheckInput's and ftCo_AttackLw4_CheckInput's
+    /// `switch (fp->kind)` (ftCo_AttackHi4.c:43, 76; ftCo_AttackLw4.c:42):
+    /// Ness's yo-yo smashes enter their own rows.
+    const VERTICAL_SMASH: Option<character::VerticalSmash> = None;
     /// RNG draws a special's entry makes inside its motion change (an x21EC
     /// such as Luigi's ftLg_SpecialS_SetVars), run once the entering IASA
     /// returns (`Fighter::finish_input`): nothing in between draws.

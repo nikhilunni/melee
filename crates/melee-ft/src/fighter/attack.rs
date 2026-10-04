@@ -318,6 +318,14 @@ impl Fighter {
         if state == S::AttackLw3 && self.try_item_pickup(assets)? {
             return Ok(());
         }
+        // ftCo_AttackHi4_CheckInput / ftCo_AttackLw4_CheckInput
+        // (ftCo_AttackHi4.c:43-50, ftCo_AttackLw4.c:42-48): the kind's own
+        // entry in place of doEnter.
+        if matches!(state, S::AttackHi4 | S::AttackLw4) {
+            if let Some(enter) = self.character.table().vertical_smash {
+                return enter(self, state == S::AttackHi4, assets);
+            }
+        }
         self.core.commands.allow_interrupt = false;
         self.core.commands.variables[0] = 0;
         if state == S::AttackLw3 {

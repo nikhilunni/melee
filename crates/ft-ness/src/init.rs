@@ -167,6 +167,16 @@ impl CharacterCallbacks for Ness {
     }
     /// ftCo_AttackS4.c decideFighter: ftNs_AttackS4_Enter.
     const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
+    /// ftCo_AttackHi4_CheckInput / ftCo_AttackLw4_CheckInput's FTKIND_NESS
+    /// arms: the yo-yo smashes (rows 342..347) and their article
+    /// (itnessyoyo.c) are not ported.
+    const VERTICAL_SMASH: Option<melee_ft::fighter::VerticalSmash> = Some(|_, up, _| {
+        if up {
+            unimplemented!("ftnessattackhi4.c:602: ftNs_AttackHi4_Enter (the yo-yo up smash)")
+        } else {
+            unimplemented!("ftnessattacklw4.c:19: ftNs_AttackLw4_Enter (the yo-yo down smash)")
+        }
+    });
     /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
         Some(crate::attack_s4::reflector_contact);
