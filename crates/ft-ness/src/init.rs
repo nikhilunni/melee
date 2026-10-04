@@ -2,7 +2,7 @@
 use crate::attributes::{read_ness_attributes, NessAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
-    AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, MotionRow,
+    AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
 use melee_types::FighterKind;
 
@@ -16,6 +16,23 @@ pub struct Ness {
     /// take_dmg_cb / death2_cb = ftNs_Init_OnDamage, installed with an
     /// article until the next motion change.
     pub damage_callbacks: bool,
+    /// The accessory4 callback a special installed.
+    pub accessory: Accessory,
+    /// PSI Magnet's motion scratch.
+    pub magnet: crate::special_lw::Magnet,
+    /// mv+4 while a row that never writes it is current (PK Fire, PSI
+    /// Magnet's turnFrames): the predecessor's word, `None` when the port
+    /// does not model that state's.
+    pub retained_word: Option<f32>,
+}
+
+/// accessory4_cb while a special owns it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// ftNs_SpecialS_ItemPKFireSpawn: the bolt on the script's throw flag.
+    PkFire,
 }
 impl Ness {
     pub fn new(attributes: NessAttributes) -> Self {
@@ -24,6 +41,9 @@ impl Ness {
             model_group: 0,
             bat: false,
             damage_callbacks: false,
+            accessory: Accessory::None,
+            magnet: Default::default(),
+            retained_word: None,
         }
     }
 }
@@ -66,6 +86,40 @@ impl CharacterCallbacks for Ness {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+    /// ftData_SpecialN/S/Hi/Lw[Ness] and the aerial tables.
+    fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
+        match slot {
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
+            SpecialSlot::Neutral => unimplemented!("ftNs_SpecialN_Enter (ftnessspecialn.c)"),
+            SpecialSlot::Up => unimplemented!("ftNs_SpecialHi_Enter (ftnessspecialhi.c)"),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
+        }
+    }
+    /// Fighter_8006C80C: the special's accessory4 while installed.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<Ness>().accessory {
+            Accessory::PkFire => crate::special_s::fire(f),
+            Accessory::None => {}
+        }
+    }
+    /// ftData_OnAbsorb[FTKIND_NESS]: ftNs_Init_OnAbsorb (8011493C).
+    const ON_ABSORB: Option<
+        fn(&mut Fighter, &FighterAssets, melee_ft::fighter::absorb::Absorbed),
+    > =
+        Some(crate::special_lw::on_absorb);
+    /// mv+4 of the rows that leave it as their predecessor did.
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = |state, action| {
+        let unwritten = matches!(action.0, 356 | 357 | 367..=376);
+        unwritten
+            .then(|| state.get::<Self>().retained_word)
+            .flatten()
+    };
     /// ftCo_AttackS4.c decideFighter: ftNs_AttackS4_Enter.
     const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
     /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).

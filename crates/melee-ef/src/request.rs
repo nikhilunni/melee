@@ -28,7 +28,10 @@ pub enum EffectRequest {
         scale: f32,
     },
     /// S6: efAsync 0x429, attached generator 0xCE and its shared AppSRT.
+    /// 0x428 and 0x42A are the same call with generators 0xCA and 0xCF
+    /// (efasync.c:589-597, efLib_CreateGenerator_AppSRT_SetScale).
     DizzyStars {
+        generator: u32,
         bone: usize,
         scale: f32,
     },

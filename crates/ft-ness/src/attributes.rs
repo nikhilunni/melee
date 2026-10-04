@@ -110,8 +110,14 @@ pub struct MagnetAttributes {
     /// +0x74 x74_PSI_MAGNET_RELEASE_LAG: frames the magnet stays out with
     /// B released.
     pub release_lag: f32,
-    /// +0x78..+0x80: unused in retail (types.h).
-    pub unused_78: [f32; 3],
+    /// +0x78 x78_PSI_MAGNET_UNK1: the turn rows' frames, which no retail
+    /// code enters.
+    pub turn_frames: f32,
+    /// +0x7C x7C_PSI_MAGNET_UNK2: an absorb while the hit row is at or
+    /// before this frame does not restart it (ftNs_AbsorbThink_DecideAction).
+    pub hit_restart_frame: f32,
+    /// +0x80 x80_PSI_MAGNET_UNK3: unused in retail (types.h).
+    pub unused_80: f32,
     /// +0x84 x84_PSI_MAGNET_FRAMES_BEFORE_GRAVITY.
     pub gravity_delay: i32,
     /// +0x88 x88_PSI_MAGNET_MOMENTUM_PRESERVATION: aerial entry x velocity
@@ -199,7 +205,9 @@ impl NessAttributes {
             },
             magnet: MagnetAttributes {
                 release_lag: r.f32(0x74)?,
-                unused_78: [r.f32(0x78)?, r.f32(0x7C)?, r.f32(0x80)?],
+                turn_frames: r.f32(0x78)?,
+                hit_restart_frame: r.f32(0x7C)?,
+                unused_80: r.f32(0x80)?,
                 gravity_delay: r.s32(0x84)?,
                 entry_velocity_divisor: r.f32(0x88)?,
                 fall_acceleration: r.f32(0x8C)?,

@@ -11,6 +11,12 @@ fn item_joint(item: u32) -> usize {
 
 // An item's model bones occupy their own range, 32 per item.
 const FIRST_ITEM_BONE_JOINT: usize = 1 << 26;
+/// efLib_SpawnParticleEffect's switch (eflib.c:864-980): the common-bank
+/// generator ids that do not take the default hsd_8039EFAC(0, ...) path.
+const COMMON_SPECIAL_PARTICLES: [u32; 26] = [
+    0x2D, 0x2E, 0x31, 0x127, 0x2, 0x6, 0xA3, 0xA7, 0xAA, 0xF2, 0x12A, 0x132, 0x133, 0x16D, 0x16E,
+    0x16F, 0x170, 0xD4, 0x243, 0xE3, 0xFC, 0xFF, 0xF7, 0x4A38, 0x4A39, 0x4A3A,
+];
 const ITEM_BONE_STRIDE: usize = 32;
 
 fn item_bone_joint(item: u32, bone: usize) -> usize {
@@ -181,25 +187,33 @@ impl Effects {
     /// efLib_Cb_DPtcl from an item's joint animation: efLib_SpawnParticleEffect
     /// (eflib.c:857-990) with a generator id outside its special cases takes
     /// hsd_8039EFAC(0, bank, id, jobj), a generator that follows the item's
-    /// root with no AppSRT (Mario's fireball trail, 1002).
+    /// root with no AppSRT (Mario's fireball trail, 1002; the PK Fire
+    /// pillar's flames, 291..294 of the common bank, `common`).
+    #[allow(clippy::too_many_arguments)] // The item, its joint and the particle state stay separate.
     pub fn spawn_item_particle<T: InverseTrig>(
         &mut self,
         bank: u8,
         id: u32,
         item: u32,
         matrix: Mtx,
+        common: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
         anyhow::ensure!(
-            resources::is_character_bank(bank) && id / 1000 == u32::from(bank),
+            (resources::is_character_bank(bank) && id / 1000 == u32::from(bank))
+                || (bank == 0 && id < 1000 && !COMMON_SPECIAL_PARTICLES.contains(&id)),
             "item joint particle {bank}/{id} outside the default hsd_8039EFAC path"
         );
         let joint = item_joint(item);
         let mut spawn = SpawnRequest::new(bank, id, 0);
         spawn.joint = Some((joint, matrix));
         self.events.spawn(&spawn, false, false);
-        let particle_bank = resources::character_bank(&self.character_banks, i32::from(bank))?;
+        let particle_bank = if bank == 0 {
+            common
+        } else {
+            resources::character_bank(&self.character_banks, i32::from(bank))?
+        };
         if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some()
             && !self.item_joints.contains(&item)
         {

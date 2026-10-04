@@ -878,7 +878,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::Attached {
-                id: id @ (0x4C0 | 0x4FE..=0x501),
+                id: id @ (0x4C0 | 0x4EE..=0x4F0 | 0x4FE..=0x501),
                 bone,
             } = request
             {
@@ -894,13 +894,19 @@ impl Effects {
                 // efLib_Cb_LifetimeEndSpawn on parts[85].
                 let model = match id {
                     0x4C0 => 0x1B58,
+                    // efsync.c:292-301: Ness's models 0x2710 and 0x2711
+                    // (efLib_Create_Attach) and PSI Magnet's 0x2712
+                    // (efLib_Create_Attach_Scale).
+                    0x4EE => 0x2710,
+                    0x4EF => 0x2711,
+                    0x4F0 => 0x2712,
                     0x4FE => 0x426C,
                     // efsync.c:500-503: 0x4FF shares 0x500's row.
                     0x4FF | 0x500 => 0x426D,
                     _ => 0x426E,
                 };
                 let mut effect = self.acquire(model, particles);
-                if matches!(id, 0x4FF..=0x501) {
+                if matches!(id, 0x4F0 | 0x4FF..=0x501) {
                     let scale = fighter.effect_scale().y;
                     effect
                         .tree
@@ -967,10 +973,15 @@ impl Effects {
                 self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
                 continue;
             }
-            if let EffectRequest::DizzyStars { bone, scale } = request {
+            if let EffectRequest::DizzyStars {
+                generator,
+                bone,
+                scale,
+            } = request
+            {
                 // efLib_CreateGenerator_AppSRT_SetScale (8005CE48).
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
-                let mut spawn = SpawnRequest::new(0, 0xCE, 0);
+                let mut spawn = SpawnRequest::new(0, generator as _, 0);
                 spawn.joint = Some((
                     joint_id,
                     resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),

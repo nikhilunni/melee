@@ -1,0 +1,39 @@
+# NESS PSI Magnet (ftnessspeciallw.c) with nothing to absorb: a tapped magnet
+# held out for its release lag (x74); a magnet held for a second and let go;
+# an aerial magnet from a full hop, stalled for its gravity delay, held down
+# to the floor (the hold row lands at the same frame) and released there; an
+# aerial tap that ends in the air and falls.
+name = "ness_magnet_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 184, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 250, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024, stickX = 50 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 322, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 326, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 400, port = 0, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 470, port = 0, buttons = {  }, raw = {  } },
+  { frame = 476, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 478, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

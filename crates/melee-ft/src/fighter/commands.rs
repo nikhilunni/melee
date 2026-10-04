@@ -47,6 +47,8 @@ pub enum SoundChannel {
     StopAction,
     /// ft_800887CC: clear the override voice handle (+2148).
     StopOverrideVoice,
+    /// ft_80088478: Fighter +214C, AX channel 0x36 + player * 2.
+    Loop,
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).

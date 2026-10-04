@@ -1,0 +1,35 @@
+# NESS PK Fire against Fox: Ness runs up, a grounded bolt hits Fox and leaves
+# the pillar (itNesspkfirepillar_802AA494), whose hits hold him; a second bolt
+# while he shields; an aerial bolt down onto him.
+name = "ness_pkfire_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 1, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 340, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 342, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 1, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { button = 1024, stickX = 60 } },
+  { frame = 470, port = 0, buttons = {  }, raw = {  } },
+  { frame = 478, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 480, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

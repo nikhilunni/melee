@@ -429,6 +429,7 @@ impl Runtime {
                             id,
                             item.id,
                             matrix,
+                            &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
                         )?;
@@ -1037,9 +1038,28 @@ impl Runtime {
         partner_fighters::share_stale_tables(&mut self.state);
         let state = &mut self.state;
         let state_pads = &self.pads;
+        // An event callback that spawns an article and ends its own item
+        // (the PK Fire bolt's it_2725_Logic23_DmgDealt): Item_8026A8EC's
+        // destroy effect follows the new article's creation.
+        let mut spawner_destroy_effect = None;
         match row.callback {
             Callback::Item { id, phase } => {
                 self.dispatch_item(id, phase)?;
+                if let Some(item) = self.state.items.get_mut(id) {
+                    let spawns = item
+                        .link_requests
+                        .iter()
+                        .any(|r| matches!(r.target, melee_it::LinkTarget::Spawn(_)));
+                    if spawns && item.destroyed {
+                        let index = item
+                            .events
+                            .iter()
+                            .position(|e| matches!(e, melee_it::ItemEvent::DestroyEffect { .. }));
+                        if let Some(index) = index {
+                            spawner_destroy_effect = Some((id, item.events.remove(index)));
+                        }
+                    }
+                }
                 self.drain_item_events(phase == 9)?;
             }
             Callback::Banner => {
@@ -2097,6 +2117,12 @@ impl Runtime {
                 )
             })
         }) {
+            self.drain_item_events(false)?;
+        }
+        if let Some((id, event)) = spawner_destroy_effect {
+            if let Some(item) = self.state.items.get_mut(id) {
+                item.events.push(event);
+            }
             self.drain_item_events(false)?;
         }
         let state = &mut self.state;

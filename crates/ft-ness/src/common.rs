@@ -4,7 +4,7 @@ use melee_ft::{
     collision::{air, ground},
     fighter::{
         assets::{FighterAssets, Result},
-        state::{callbacks, CollisionPhase, InputPhase, MotionRow},
+        state::{callbacks, CollisionPhase, InputPhase, MotionRow, PhysicsPhase},
         ActionId, Fighter, MotionEntryFlags,
     },
     physics::airborne,
@@ -72,6 +72,42 @@ pub fn fall(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.change_motion_state(CommonMotionState::Fall.into(), assets)
 }
 
+/// ftCommon_GroundToAirStateChange: ftCommon_8007D5D4, then the airborne
+/// row at the current frame with `flags`.
+pub fn ground_to_air(
+    f: &mut Fighter,
+    state: ActionId,
+    flags: MotionEntryFlags,
+    assets: &FighterAssets,
+) -> Result<()> {
+    f.leave_ground();
+    let frame = f.animation.frame;
+    change(f, state, flags, frame, 1.0, assets)
+}
+
+/// ftCommon_AirToGroundStateChange: ftCommon_8007D7FC, then the grounded
+/// row at the current frame with `flags`.
+pub fn air_to_ground(
+    f: &mut Fighter,
+    state: ActionId,
+    flags: MotionEntryFlags,
+    assets: &FighterAssets,
+) -> Result<()> {
+    f.land();
+    let frame = f.animation.frame;
+    change(f, state, flags, frame, 1.0, assets)
+}
+
+/// ftCommon_ClampSelfVelX (8007D440).
+pub fn clamp_self_velocity_x(f: &mut Fighter, maximum: f32) {
+    let velocity = f.physics.self_velocity.x;
+    if velocity < -maximum {
+        f.physics.self_velocity.x = -maximum;
+    } else if velocity > maximum {
+        f.physics.self_velocity.x = maximum;
+    }
+}
+
 /// ft_80082708 (80082708): ordinary ground collision that walks off the
 /// floor's edge. True while supported.
 pub fn stays_grounded(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
@@ -118,6 +154,24 @@ pub fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
     )
 }
 
+/// ft_80084F3C (80084F3C): ground friction (scaled above walk speed) and
+/// ftCommon_ApplyGroundMovement, with Fighter_procUpdate's tail.
+pub fn ground_friction(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    callbacks::physics::guard_on(f, p);
+}
+
+/// ft_80084EEC (80084EEC): gravity and air friction, no stick input, with
+/// Fighter_procUpdate's tail.
+pub fn air_friction_fall(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    let air = &f.core.attributes.air;
+    let physics = &mut f.core.physics;
+    physics.self_velocity.y =
+        airborne::gravity(physics.self_velocity.y, air.gravity, air.terminal_velocity);
+    physics.animation_velocity.x =
+        airborne::drift_acceleration(physics.self_velocity.x, 0.0, 0.0, air);
+    f.core.finish_air_update(p.assets, p.wind);
+}
+
 /// ftCommon_Fall (8007D494): gravity, then the terminal-speed clamp.
 pub fn fall_at(f: &mut Fighter, gravity: f32, terminal: f32) {
     f.physics.self_velocity.y = airborne::gravity(f.physics.self_velocity.y, gravity, terminal);
@@ -145,6 +199,18 @@ pub fn play_sound(f: &mut Fighter, id: u32) {
     use melee_ft::fighter::commands::{FootstepSound, SoundChannel};
     f.commands.footstep_sounds.push(FootstepSound {
         channel: SoundChannel::Ordinary,
+        id,
+        volume: 127,
+        pan: 64,
+    });
+}
+
+/// ft_80088478(fp, id, 127, 64): the fighter's looping-sound handle
+/// (Fighter +214C).
+pub fn play_loop_sound(f: &mut Fighter, id: u32) {
+    use melee_ft::fighter::commands::{FootstepSound, SoundChannel};
+    f.commands.footstep_sounds.push(FootstepSound {
+        channel: SoundChannel::Loop,
         id,
         volume: 127,
         pan: 64,

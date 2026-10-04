@@ -5,8 +5,10 @@
 use melee_it::ItemCore;
 
 pub mod bat;
+pub mod pk_fire;
 
 pub use bat::NessBat;
+pub use pk_fire::{NessPkFire, NessPkFirePillar};
 
 fn no_physics(_item: &mut ItemCore, _ctx: &melee_it::ItemPhysicsContext<'_>) {}
 fn no_collision(_item: &mut ItemCore, _ctx: &mut melee_it::ItemCollisionContext<'_>) -> bool {

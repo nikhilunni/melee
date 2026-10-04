@@ -1195,6 +1195,14 @@ impl ItemCore {
                     }
                     melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     let hit = self.hitboxes[*id].as_mut().unwrap();
+                    // it_8026FCF8 (8026FCF8): outside a hit group
+                    // (xAC4_ignoreItemID 0) a capsule that starts takes no
+                    // sibling's history: lbColl_80008440 empties it (the PK
+                    // Fire pillar's second capsule strikes at once).
+                    if starts && self.hit_group == 0 {
+                        hit.clear_victims();
+                        self.reflection_history[*id].clear();
+                    }
                     hit.descriptor.damage *= self.stale_multiplier;
                     // it_802790C0: x3C keeps the command's size, then
                     // it_80275594(1 / scl): the capsule radius is stored

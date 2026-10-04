@@ -137,9 +137,17 @@ impl super::FighterCore {
                 });
                 continue;
             }
-            if id == 0x429 {
-                // ftCo_09F7.c:142-150: dizzy stars use character effect scale.
+            if matches!(id, 0x428..=0x42A) {
+                // ftCo_09F7.c:142-150: efAsync kind 3 with the character's
+                // effect scale (ftData x0 +168): the dizzy stars (0x429,
+                // generator 0xCE), the heal's sparkle (0x428, 0xCA) and
+                // 0x42A (0xCF).
                 self.effects.push_graphics(EffectRequest::DizzyStars {
+                    generator: match id {
+                        0x428 => 0xCA,
+                        0x429 => 0xCE,
+                        _ => 0xCF,
+                    },
                     bone,
                     scale: self.attributes.size.unknown_168,
                 });

@@ -75,6 +75,8 @@ melee_it::item_kinds! {
         GameWatchPanic: it_gamewatch::Panic,
         GameWatchRescue: it_gamewatch::Rescue,
         NessBat: it_ness::NessBat,
+        NessPKFire: it_ness::NessPkFire,
+        NessPKFireFlame: it_ness::NessPkFirePillar,
     }
 }
 
@@ -831,16 +833,34 @@ impl Resources {
         {
             let a = std::sync::Arc::clone(&character.data);
             let root = a.public("ftDataNess").context("Ness fighter data")?;
-            for (kind, index, states, attributes) in [(
-                ItemKind::NessBat,
-                it_ness::bat::ARTICLE_INDEX,
-                &it_ness::bat::ARTICLE_STATES[..],
-                0,
-            )] {
-                kinds.push((
-                    kind,
-                    ItemAssets::from_fighter_states(&a, root, index, states, attributes)?,
-                ));
+            for (kind, index, states, attributes) in [
+                (
+                    ItemKind::NessBat,
+                    it_ness::bat::ARTICLE_INDEX,
+                    &it_ness::bat::ARTICLE_STATES[..],
+                    0,
+                ),
+                (
+                    ItemKind::NessPKFire,
+                    it_ness::pk_fire::BOLT_ARTICLE_INDEX,
+                    &it_ness::pk_fire::BOLT_ARTICLE_STATES[..],
+                    it_ness::pk_fire::BOLT_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKFireFlame,
+                    it_ness::pk_fire::PILLAR_ARTICLE_INDEX,
+                    &it_ness::pk_fire::PILLAR_ARTICLE_STATES[..],
+                    it_ness::pk_fire::PILLAR_SPECIAL_ATTRIBUTES,
+                ),
+            ] {
+                let mut assets =
+                    ItemAssets::from_fighter_states(&a, root, index, states, attributes)?;
+                // The articles' joint animations may carry DPtcl keys (the
+                // pillar's flames).
+                assets
+                    .read_particle_tracks(&a)
+                    .map_err(|e| anyhow::anyhow!("Ness article particle track: {e}"))?;
+                kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
         }
