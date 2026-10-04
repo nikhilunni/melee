@@ -134,6 +134,9 @@ pub struct LifeParameters {
     pub death_effect_scale: f32,
     /// +4F0: a top exit only counts with upward knockback above this (or grounded).
     pub top_knockback_threshold: f32,
+    /// +814: frames a hit's KO credit outlasts the victim's return to a
+    /// neutral grounded motion (Fighter_ChangeMotionState, fighter.c:1186).
+    pub ko_credit_frames: i32,
     pub star: StarKoParameters,
     pub screen_ko: ScreenKoParameters,
     pub death_sounds: DeathSounds,
@@ -980,14 +983,18 @@ impl FighterCore {
     }
     /// ftCo_800D34E0 (800D34E0): the stock-loss bookkeeping. The fighter
     /// falls once more, the player's stale table empties, and only the
-    /// player's own fighter (Player_GetEntity, not Nana) costs a stock. KO
-    /// and suicide counts, the match frame count and Player_SetHPByIndex(0)
-    /// feed no compared key; the stock count drives the stock display.
+    /// player's own fighter (Player_GetEntity, not Nana) costs a stock. A
+    /// standing KO source (0x800D3588) is that player's KO, which
+    /// Player_UpdateKOsBySlot counts for a player's first fighter only
+    /// (0x80035018); the scene keeps the counts. The suicide count, the
+    /// match frame count and Player_SetHPByIndex(0) feed no compared key;
+    /// the stock count drives the stock display.
     fn lose_stock(&mut self) {
         self.player.falls += 1;
         self.combat.stale.reset_table();
         if !self.player.secondary {
             self.player.stocks = self.player.stocks.saturating_sub(1);
+            self.fall_credit = self.combat.ko_source.player;
         }
         self.fell = true;
     }

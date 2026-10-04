@@ -400,6 +400,11 @@ pub(super) fn record_throw_hit(
     attacker.combat.stale.record();
     attacker.commands.stale_multiplier = Some(attacker.combat.stale.multiplier(&aa.stale_weights));
     attacker.commands.first_hit_stale_penalty = Some(aa.first_stale_penalty);
+    // ftColl_80078710 (0x80078710): the thrower is the victim's KO credit.
+    victim
+        .combat
+        .ko_source
+        .record(melee_coll::damage_log::HitCredit::Player(attacker.player.id));
     melee_coll::damage::ReceivedHit {
         facing: -attacker.physics.facing,
         facing_override: if descriptor.angle > 90 && descriptor.angle < 270 {

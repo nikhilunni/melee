@@ -264,6 +264,10 @@ pub(super) fn capture_damage(
             let knockback = f.core.modified_knockback(hit.knockback, assets);
             f.core.unlaunched_damage_flash(knockback, hit, assets);
         }
+        // ftCommon_800804FC: inlineB2's last call, or fighter.c:2961 for
+        // the knockback-free hit.
+        let ground_or_air = f.core.physics.ground_or_air;
+        f.core.combat.ko_source.clear_if_grounded(ground_or_air);
         return Ok(f.core.combat.frame_max_damage);
     }
     let state = if matches!(f.motion_state.id, S::CaptureWaitHi | S::CaptureDamageHi) {
@@ -282,6 +286,9 @@ pub(super) fn capture_damage(
     // Fighter_ChangeMotionState (fighter.c:1043) has cleared dmg.kb_applied,
     // so the flash always takes reaction level 0 (electric: colanim 15).
     f.core.unlaunched_damage_flash(0.0, hit, assets);
+    // ftCommon_800804FC.
+    let ground_or_air = f.core.physics.ground_or_air;
+    f.core.combat.ko_source.clear_if_grounded(ground_or_air);
     Ok(f.core.combat.frame_max_damage)
 }
 

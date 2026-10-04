@@ -134,7 +134,11 @@ fn launch_by_captor(
         captured.attributes.size.weight,
         captor.commands.throw_damage_counts[1],
     );
-    // ftColl_80078710 only records the source for stats (x18C0/x18C4).
+    // ftColl_80078710 (0x80078710): the captor is the KO credit.
+    captured
+        .combat
+        .ko_source
+        .record(melee_coll::damage_log::HitCredit::Player(captor.player.id));
     let hit = melee_coll::damage::ReceivedHit {
         facing: -captor.physics.facing,
         facing_override: None,
@@ -198,8 +202,12 @@ pub fn launch_released_captor(
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     captor.interrupt_actions();
-    // ftColl_800788D4 records a sourceless hit for stats only; TransN2's
-    // position (x1854_collpos) has no reader in scope.
+    // ftColl_800788D4 (0x800788D4): a sourceless hit, so the captor's KO
+    // credit goes. TransN2's position (x1854_collpos) has no reader in scope.
+    captor
+        .combat
+        .ko_source
+        .record(melee_coll::damage_log::HitCredit::Nobody);
     let descriptor = super::grab_throw::throw_descriptor(&assets.grab_escape.captor_release_hit);
     let knockback = assets.damage.knockback_for_frame(
         &descriptor,

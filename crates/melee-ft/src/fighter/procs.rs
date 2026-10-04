@@ -643,6 +643,8 @@ impl FighterCore {
         }
         self.status.require_supported();
         self.physics.begin_tick();
+        // fighter.c:1455-1462: the KO credit's countdown.
+        self.combat.ko_source.tick();
         // Fighter_8006A360, fighter.c:1464-1484: a protection timer running
         // out clears the flash (color animation 9) if it still owns the slot.
         // These and the magnifier run during hitlag too.

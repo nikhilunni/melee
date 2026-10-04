@@ -10,7 +10,7 @@ use gekko_math::{
 };
 use hsd_archive::Archive;
 use hsd_types::Vec3;
-use melee_coll::damage_log::{DamageLog, HitSource, LoggedHit};
+use melee_coll::damage_log::{DamageLog, HitCredit, HitSource, LoggedHit};
 use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
 use melee_gr::wind::Wind;
 use melee_types::combat::HitboxDescriptor;
@@ -76,6 +76,8 @@ pub struct CombatState {
     pub phantom_lockout: f32,
     /// The hit ftColl_8007AB48 selected from `hit_log`, with its knockback.
     pub pending: Option<ReceivedHit>,
+    /// dmg.x18C4 / x18C8: who is credited with this fighter's next fall.
+    pub ko_source: super::ko_source::KoSource,
     /// A phantom's source (a fighter, or an item's owner) to credit (stale
     /// moves, combo) after this fighter's ProcessHit applied the phantom's
     /// damage (ftColl_8007BE3C).
@@ -536,7 +538,10 @@ pub fn detect_hit(
                 continue;
             }
         }
-        detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id);
+        // ftColl_8007A06C: the hit's source is the fighter its log entry
+        // names (`hit_owner`), a thrown fighter's thrower.
+        let credit = HitCredit::Player(excluded_player);
+        detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id, credit);
     }
 }
 /// A character's shield volume as its bone places it this frame.
@@ -1066,6 +1071,9 @@ impl Fighter {
         // an expired phantom) still reaches percent.
         if !received_knockback && self.core.combat.frame_damage != 0.0 {
             self.core.physics.percent += self.core.combat.frame_damage;
+            // ftCommon_800804FC (fighter.c:2961).
+            let ground_or_air = self.core.physics.ground_or_air;
+            self.core.combat.ko_source.clear_if_grounded(ground_or_air);
         }
         // Fighter_ProcessHit: received damage and shield impact precede clank;
         // clank precedes ordinary damage dealt. Every path consumes the scratch.
@@ -1908,6 +1916,7 @@ fn detect_eligible_hit(
     attacker: &mut FighterCore,
     assets: &FighterAssets,
     id: usize,
+    credit: HitCredit,
 ) {
     let hit = attacker.commands.hitboxes[id]
         .as_ref()
@@ -1959,7 +1968,7 @@ fn detect_eligible_hit(
         // (hit1->state) keep the hit out of the damage and phantom logs.
         let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible;
         if contact.overlap < assets.damage.phantom_threshold {
-            log_phantom_contact(victim, attacker, id, contact, height, invincible);
+            log_phantom_contact(victim, attacker, id, contact, height, invincible, credit);
             return;
         }
         if victim.status.revival_invincibility != 0 || invincible {
@@ -2003,6 +2012,7 @@ fn detect_eligible_hit(
         // whose knockback and effects wait until every contact is logged.
         victim.combat.log_hit(LoggedHit {
             source: HitSource::Fighter(hit_owner(attacker)),
+            credit,
             hit: ReceivedHit {
                 descriptor: descriptor.clone(),
                 height,
@@ -2050,6 +2060,19 @@ fn record_inert_touch(victim: &FighterCore, attacker: &mut FighterCore, shield: 
     });
 }
 
+/// ftColl_8007A06C's item arm (ftcoll.c:2930-2952): an item credits its
+/// owner when that is a fighter (ftLib_80086960). An ownerless one clears
+/// the credit, unless its kind is one of pl_8003D60C's (0x8003D60C: the
+/// random Pokemon, Whispy's apples, the Arwing and Great Fox lasers, Birdo's
+/// egg and kind 0xED), which leave it alone.
+fn item_credit(item: &melee_it::ItemCore) -> HitCredit {
+    match item.owner {
+        Some(player) => HitCredit::Player(player),
+        None if matches!(i32::from(item.kind), 0xA0 | 0xE1 | 0xEA..=0xED) => HitCredit::Unchanged,
+        None => HitCredit::Nobody,
+    }
+}
+
 /// ftColl_80076ED8 logs a thrown fighter's hitbox under its thrower.
 fn hit_owner(attacker: &FighterCore) -> u32 {
     attacker.commands.thrown_by.unwrap_or(attacker.spawn_number)
@@ -2078,6 +2101,7 @@ fn log_phantom_contact(
     contact: Contact,
     height: HurtHeight,
     invincible_capsule: bool,
+    credit: HitCredit,
 ) {
     let hit = attacker.commands.hitboxes[id]
         .as_ref()
@@ -2108,6 +2132,7 @@ fn log_phantom_contact(
         victim.combat.phantom_max_damage = victim.combat.phantom_max_damage.max(fctiwz(damage));
         victim.combat.phantom_log.push(LoggedHit {
             source: HitSource::Fighter(hit_owner(attacker)),
+            credit,
             hit: ReceivedHit {
                 descriptor,
                 height,
@@ -2681,6 +2706,7 @@ impl Fighter {
                     secondary: item.owner_secondary,
                     attack: item.stale_source,
                 }),
+                credit: item_credit(item),
                 hit: ReceivedHit {
                     descriptor: descriptor.clone(),
                     height,
@@ -2763,6 +2789,7 @@ impl Fighter {
                     secondary: item.owner_secondary,
                     attack: item.stale_source,
                 }),
+                credit: item_credit(item),
                 hit: ReceivedHit {
                     descriptor,
                     height,
@@ -2874,11 +2901,10 @@ impl FighterCore {
         self.physics.percent += hit.percent_damage;
         // kb_applied is zero here: armor absorbed all of it.
         self.unlaunched_damage_flash(0.0, hit, assets);
-        // ftCommon_800804FC: grounded victims only; armor ends on landing.
-        assert!(
-            self.physics.ground_or_air == GroundOrAir::Air,
-            "ftCommon_800804FC: a grounded armored hit"
-        );
+        // ftCommon_800804FC: a grounded victim's KO credit goes.
+        self.combat
+            .ko_source
+            .clear_if_grounded(self.physics.ground_or_air);
     }
 
     /// ftCo_8008EC90 inlineB2 for a victim mid cape turn (x2220_b4): the
@@ -2886,7 +2912,7 @@ impl FighterCore {
     /// (ftCo_8008D8E8 of kb_applied * PlCo +154); the motion, the turn and
     /// the velocity run on. ftCo_800C8D00 returns at once (no x2224_b3),
     /// a turn never survives into a capture motion (a motion change ends
-    /// it), and ftCommon_800804FC is attacker statistics only.
+    /// it); ftCommon_800804FC then drops a grounded victim's KO credit.
     fn take_hit_while_turning(
         &mut self,
         hit: &ReceivedHit,
@@ -2895,5 +2921,8 @@ impl FighterCore {
     ) {
         self.physics.percent += hit.percent_damage;
         self.unlaunched_damage_flash(knockback, hit, assets);
+        self.combat
+            .ko_source
+            .clear_if_grounded(self.physics.ground_or_air);
     }
 }

@@ -38,6 +38,9 @@ struct MotionChange<'a> {
     keep_secondary_color: bool,
     /// Ft_MF_SkipParasol (bit10): the parasol step (fighter.c:986-993) is skipped.
     skip_parasol: bool,
+    /// Ft_MF_Unk06 (bit6): the entry does not start the KO credit's
+    /// countdown (fighter.c:1184).
+    skip_ko_credit_countdown: bool,
 }
 
 /// Fighter_ChangeMotionState's `flags` argument; bit names from ft/forward.h.
@@ -50,6 +53,7 @@ impl MotionEntryFlags {
     pub const SKIP_HIT: Self = Self(1 << 3);
     pub const SKIP_MODEL: Self = Self(1 << 4);
     pub const SKIP_ANIM_VEL: Self = Self(1 << 5);
+    pub const UNK06: Self = Self(1 << 6);
     pub const SKIP_MAT_ANIM: Self = Self(1 << 7);
     pub const SKIP_THROW_EXCEPTION: Self = Self(1 << 8);
     pub const SKIP_PARASOL: Self = Self(1 << 10);
@@ -866,6 +870,7 @@ impl Fighter {
                 keep_hitstun: flags.contains(F::SKIP_HITSTUN),
                 keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
                 skip_parasol: flags.contains(F::SKIP_PARASOL),
+                skip_ko_credit_countdown: flags.contains(F::UNK06),
                 preserve: MotionPreservation {
                     hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
                     hitboxes: flags.contains(F::SKIP_HIT),
@@ -980,6 +985,17 @@ impl Fighter {
             // fighter.c:1138.
             self.core.status.used_tether = false;
             self.core.parasol.restore_on_ground();
+            // fighter.c:1183-1192: a neutral grounded motion (x9_b1) starts
+            // the KO credit's countdown.
+            if !change.skip_ko_credit_countdown
+                && usize::from(row.action.0) < super::COMMON_COUNT
+                && super::ko_source::starts_countdown(state)
+            {
+                self.core
+                    .combat
+                    .ko_source
+                    .start_countdown(assets.life.ko_credit_frames);
+            }
         }
         let move_id = if usize::from(row.action.0) < super::COMMON_COUNT {
             super::attack::stale::GROUND_MOVES
@@ -1222,6 +1238,7 @@ impl FighterCore {
             offscreen: Offscreen::default(),
             quake_request: None,
             fell: false,
+            fall_credit: None,
             released_link: None,
             held_item: None,
             grafted_part: None,

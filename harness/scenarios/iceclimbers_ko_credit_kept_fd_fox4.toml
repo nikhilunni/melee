@@ -1,0 +1,37 @@
+# KO credit witness (retail), the countdown's last frame: Popo's dash attack
+# knocks Fox down on FD (hit at 179). Fox rolls and enters Turn at 277, a
+# neutral grounded motion (MotionState.x9_b1), which starts the source's
+# countdown at PlCo +814 = 60 frames (Fighter_ChangeMotionState,
+# fighter.c:1183); Fighter_8006A360 would clear the source on tick 337. Fox
+# runs off the edge and fast-falls from 301: DeadDown at 336, one tick
+# before, so the Ice Climbers are credited (ftCo_800D34E0) and, after Popo's
+# Belay at 360, Nana's CPU presses the taunt (cpu.buttons 8 at 445).
+# `iceclimbers_ko_credit_lapsed_fd_fox4` fast-falls one tick later.
+name = "iceclimbers_ko_credit_kept_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 163, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 165, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 301, port = 1, buttons = {  }, raw = { stickX = 127, stickY = -127 } },
+  { frame = 345, port = 1, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 362, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

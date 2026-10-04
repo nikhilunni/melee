@@ -34,10 +34,29 @@ pub struct ItemSource {
     pub attack: Option<melee_types::combat::AttackInstance>,
 }
 
+/// Whom ftColl_8007861C names as a hit's source, for the victim's KO
+/// credit (dmg.x18C4).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HitCredit {
+    /// A fighter's hitbox, or an item whose owner is a fighter
+    /// (ftLib_80086960): the fighter's player slot.
+    Player(u8),
+    /// No fighter behind the hit: the earlier source goes.
+    #[default]
+    Nobody,
+    /// No fighter behind the hit, but the earlier source stays
+    /// (ftColl_8007861C's last argument): the item kinds of pl_8003D60C
+    /// and stage damage.
+    Unchanged,
+}
+
 /// One DmgLogEntry. `hit.knockback` is filled in when the log is resolved.
 #[derive(Clone, Debug)]
 pub struct LoggedHit {
     pub source: HitSource,
+    /// What ftColl_8007A06C hands ftColl_8007861C if this entry is the
+    /// strongest.
+    pub credit: HitCredit,
     pub hit: ReceivedHit,
     /// DmgLogEntry.pos: the hitbox's hurt-contact position (hit0->hurt_coll_pos).
     pub position: Vec3,
@@ -104,6 +123,7 @@ mod tests {
     fn entry(damage: f32) -> LoggedHit {
         LoggedHit {
             source: HitSource::Item(Default::default()),
+            credit: HitCredit::Nobody,
             hit: ReceivedHit {
                 descriptor: HitboxDescriptor {
                     group: 0,

@@ -1,0 +1,35 @@
+# KO credit witness (retail), the countdown run out: as
+# `iceclimbers_ko_credit_kept_fd_fox4`, but Fox fast-falls one tick later
+# (302) and reaches the blast zone on tick 337, the tick Fighter_8006A360
+# (fighter.c:1455-1462, in the animation proc, before the fall is noticed)
+# ends the 60-frame countdown begun in Turn at 277 and clears the source.
+# The fall is a suicide: the Ice Climbers' KO total stays 0 and, after
+# Popo's Belay at 360, Nana's CPU does not press the taunt.
+name = "iceclimbers_ko_credit_lapsed_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_iceclimbers_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 163, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 165, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 302, port = 1, buttons = {  }, raw = { stickX = 127, stickY = -127 } },
+  { frame = 345, port = 1, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 362, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

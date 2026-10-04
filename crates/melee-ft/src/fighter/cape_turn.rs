@@ -67,8 +67,8 @@ impl FighterCore {
     }
 
     /// ftCo_800C3598 (800C3598): the turn, then the push along the hit's
-    /// launch angle (ftCo_Damage_CalcVel; ftCommon_800804FC's attacker
-    /// bookkeeping is statistics only).
+    /// launch angle (ftCo_Damage_CalcVel), and ftCommon_800804FC: turned
+    /// on the ground, the victim's KO credit goes.
     pub(super) fn cape_turn(
         &mut self,
         hit: &melee_coll::damage::ReceivedHit,
@@ -99,6 +99,9 @@ impl FighterCore {
             let normal = self.collision.data.floor.normal;
             self.combine_knockback(normal.y * push, -normal.x * push, assets);
         }
+        self.combat
+            .ko_source
+            .clear_if_grounded(self.physics.ground_or_air);
     }
 
     /// ftCo_800C36DC (800C36DC): a cape against a shield turns the

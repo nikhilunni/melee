@@ -23,18 +23,8 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
     }
     // gm_8016C75C: the player's KO total, the KOs it scored on other
     // players (kos_by_player, which Player_UpdateKOsBySlot counts at a
-    // stock loss, ftCo_800D34E0). The port does not track who last hit a
-    // fighter (dmg.x18c4_source_ply), so it knows the total only while no
-    // other player's fighter has ever fallen: then it is zero. The player's
-    // own fighters falling never adds to it.
-    let own_player = state.fighters[index].player.id;
-    if state
-        .fighters
-        .iter()
-        .any(|f| f.player.id != own_player && f.player.falls > 0)
-    {
-        unimplemented!("gm_8016C75C: KO totals for the CPU once another player has fallen");
-    }
+    // stock loss, ftCo_800D34E0).
+    let player_kills = state.ko_counts.total(state.fighters[index].player.id);
     let count = state.fighters.len();
     let deadzone = state.assets.fighters[index]
         .input
@@ -56,7 +46,7 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         arena: &state.assets.arena,
         items: &items[..item_count],
         data: &state.assets.cpu,
-        player_kills: 0,
+        player_kills,
         horizontal_deadzone: deadzone,
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);

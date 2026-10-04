@@ -3193,7 +3193,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 490] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 497] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -3832,6 +3832,20 @@ const CORPUS_V3_MATCHES: [(&str, usize); 490] = [
     // Popo's later revival brings her back.
     ("iceclimbers_ko_nana_alone_fd_fox4", 700),
     ("iceclimbers_ko_nana_alone_then_popo_fd_fox4", 1000),
+    // ICECLIMBERS: Nana's CPU thinks on after the other player has fallen
+    // (gm_8016C75C, the player's KO total).
+    ("corpus_v3_fd_iceclimbers_fox4_ed97ea327_p2", 279),
+    ("corpus_v3_fd_iceclimbers_fox4_edafcfddf_p2", 256),
+    // KO credit (dmg.x18C4 / x18C8 -> Player_UpdateKOsBySlot), witnessed by
+    // Nana's taunt press once her CPU sees the new total: a hit (credited),
+    // a throw (credited), a fall never hit (not), and a fall one tick before
+    // (credited) and on (not) the tick the 60-frame countdown ends. A
+    // fighter on its revival platform is not a CPU's target (x2219_b1).
+    ("iceclimbers_ko_credit_hit_fd_fox4", 480),
+    ("iceclimbers_ko_credit_throw_fd_fox4", 480),
+    ("iceclimbers_ko_credit_none_fd_fox4", 480),
+    ("iceclimbers_ko_credit_kept_fd_fox4", 520),
+    ("iceclimbers_ko_credit_lapsed_fd_fox4", 520),
     // Sheik vs Fox: a thrown fighter against an owned item (it_802703E8),
     // Vanish's landing flash (efAsync 0x3FA), the smash charge's colour
     // program (ftColl_8007B62C on a body status), Zelda's up-air particle

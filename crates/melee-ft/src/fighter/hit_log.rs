@@ -82,6 +82,9 @@ impl FighterCore {
         }
         if let Some((index, knockback)) = log.strongest(|e| self.logged_knockback(e, assets)) {
             let entry = log.get(index).expect("strongest entry");
+            // ftColl_8007A06C's last switch (ftcoll.c:2918-2962): the
+            // strongest entry names the hit's source (ftColl_8007861C).
+            self.combat.ko_source.record(entry.credit);
             let captor = match self.combat.grab {
                 Some(super::grab::GrabLink::Captured { captor }) => Some(captor),
                 _ => None,
@@ -105,6 +108,8 @@ impl FighterCore {
         let log = std::mem::take(&mut self.combat.phantom_log);
         if let Some((index, knockback)) = log.strongest(|e| self.logged_knockback(e, assets)) {
             let entry = log.get(index).expect("strongest entry");
+            // The same switch: a phantom names its source too.
+            self.combat.ko_source.record(entry.credit);
             // retail 8007AAF4: cmplwi element, 2; 8007AB08: stfs x1960.
             self.combat.phantom_electric =
                 entry.hit.descriptor.element == melee_types::HitElement::Electric;

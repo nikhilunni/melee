@@ -105,12 +105,17 @@ pub(super) fn share_stale_tables(state: &mut InitialState) {
     }
 }
 
-/// After a fighter's proc: a stock loss (ftCo_800D34E0) changed the
-/// player's stock count, which its other fighter's copy follows (the
-/// emptied stale table follows by `share_stale_tables`).
+/// After a fighter's proc: a stock loss (ftCo_800D34E0) counted a KO for
+/// the player that last hit the fighter (Player_UpdateKOsBySlot) and
+/// changed the player's stock count, which its other fighter's copy follows
+/// (the emptied stale table follows by `share_stale_tables`).
 pub(super) fn share_fall(state: &mut InitialState, index: usize) {
     if !std::mem::take(&mut state.fighters[index].fell) {
         return;
+    }
+    if let Some(source) = state.fighters[index].fall_credit.take() {
+        let fallen = state.fighters[index].player.id;
+        state.ko_counts.record(source, fallen);
     }
     let Some(partner) = partner_of(state, index) else {
         return;

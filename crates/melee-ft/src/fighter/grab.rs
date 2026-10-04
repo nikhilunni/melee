@@ -301,6 +301,10 @@ pub fn capture_pair(
     map: &mut melee_mp::CollMap,
     victim_rank: u8,
 ) -> Result<()> {
+    // ftColl_80078754 (0x80078754), before either callback: the grab is
+    // logged as the captor's hit, then the victim's KO credit is cleared
+    // (0x80078790).
+    victim.core.combat.ko_source.clear();
     if !matches!(attacker.motion_state.id, S::Catch | S::CatchDash) {
         let special_grab = attacker.character.table().special_grab;
         return special_grab(attacker, victim, attacker_assets, victim_assets);

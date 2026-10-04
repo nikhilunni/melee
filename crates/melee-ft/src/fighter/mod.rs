@@ -40,6 +40,7 @@ pub mod item_pickup;
 pub mod item_swing;
 pub mod item_throw;
 pub mod jump;
+pub mod ko_source;
 pub mod landing;
 pub mod ledge;
 pub mod life;
@@ -1039,6 +1040,9 @@ pub struct FighterCore {
     /// ftCo_800D34E0 ran in this proc: the scene hands the player's stock
     /// count and emptied stale table to the player's other fighter.
     pub fell: bool,
+    /// With `fell`: the player ftCo_800D34E0 credits with the KO
+    /// (Player_UpdateKOsBySlot), for the scene's KO counts.
+    pub fall_credit: Option<u8>,
     /// A grab link this fighter dropped by dying (ftCo_800DD100); the scene
     /// releases the partner.
     pub released_link: Option<grab::GrabLink>,

@@ -97,6 +97,8 @@ pub struct InitialState {
     /// Dween's per-port slot (the Gecko code's own data): the pad's stick x
     /// on the last tick the code ran for the port, zero when installed.
     pub(crate) dween_previous_x: [f32; 4],
+    /// StaticPlayer.kos_by_player: no KOs at a match's start.
+    pub(crate) ko_counts: crate::ko_counts::KoCounts,
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
@@ -522,6 +524,7 @@ impl InitialState {
             controller_fixes: setup.controller_fixes()?,
             pad_buffers: Default::default(),
             dween_previous_x: [0.0; 4],
+            ko_counts: Default::default(),
         })
     }
 }

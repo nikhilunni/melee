@@ -707,6 +707,7 @@ impl FighterAssets {
                 invincibility_duration: common.reader().s32(common_data + 0x5D8)?,
                 death_effect_scale: common.reader().f32(common_data + 0x4F4)?,
                 top_knockback_threshold: common.reader().f32(common_data + 0x4F0)?,
+                ko_credit_frames: common.reader().s32(common_data + 0x814)?,
                 star: super::life::StarKoParameters {
                     hold: common.reader().s32(common_data + 0x504)?,
                     flight: common.reader().s32(common_data + 0x508)?,

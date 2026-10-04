@@ -135,6 +135,8 @@ fn copy_state(src: &Fighter, dst: &mut Fighter) {
     // The Player's stale-move queue and standing are the player's, not the
     // form's.
     d.combat.stale = s.combat.stale.clone();
+    // ftcommon.c:1296-1297: dmg.x18C4 and x18C8, the KO credit.
+    d.combat.ko_source = s.combat.ko_source;
     d.standing_rank = s.standing_rank;
     d.grab_handicap = s.grab_handicap;
     d.player_position = s.player_position;
