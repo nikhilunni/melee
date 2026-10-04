@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 22] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 23] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2163,6 +2163,10 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 22] = [
     // with the shield bone (0x8009403C): Falco's laser is reflected a tick
     // later (122) where the volume now is.
     ("slp_fd_donkeykong_falco_t300_cold", 300),
+    // Pokemon Stadium's screen follows a player's fighter in play
+    // (Player_GetEntity): with Zelda's player playing Sheik, the close-up
+    // is not lost to the sleeping Zelda (grStadium_801D2344; 727).
+    ("slp_ps_zelda_sheik_t900_cold", 900),
 ];
 
 #[test]

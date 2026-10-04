@@ -1,0 +1,29 @@
+# Zelda vs Sheik on PokemonStadium, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+# Sheik is Zelda's CSS icon with A held on port 2 while the match loads
+# (fn_8016D8AC); Zelda sleeps beside Sheik as the transformation partner.
+name = "start_ps_slippi73prefrz_p14_zelda2_sheik0_4"
+gate = "start_ps_slippi73prefrz_p14_zelda2_sheik0_4_cold"
+savestate = "harness/roms/start_ps_slippi73prefrz_p14_zelda2_sheik0_4.sav"
+frames = 600
+seed = 1
+stage = "PokemonStadium"
+stadium_preload = true
+stadium_frozen = true
+gecko = ["ucf-0.73", "ps-preload", "ps-frozen"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Sheik"
+controller = "idle"
+controller_fix = "ucf-0.73"

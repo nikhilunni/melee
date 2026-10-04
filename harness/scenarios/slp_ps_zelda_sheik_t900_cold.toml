@@ -1,0 +1,30 @@
+# The port's side of slp_ps_zelda_sheik_t900: boundary start_ps_slippi73prefrz_p14_zelda2_sheik0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_zelda_sheik_t900_cold"
+expected = "slp_ps_zelda_sheik_t900"
+frames = 900
+seed = 3625572429
+boundary_seed = 81390883
+stage = "PokemonStadium"
+stadium_preload = true
+stadium_frozen = true
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Sheik"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

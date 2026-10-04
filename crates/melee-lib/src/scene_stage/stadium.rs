@@ -241,11 +241,13 @@ const CLOSE_UP_WIDTH: f32 = 124.0;
 const CLOSE_UP_HALF_HEIGHT: f32 = 40.0;
 const CLOSE_UP_HEIGHT: f32 = 80.0;
 impl Players<'_> {
-    /// `Player_GetEntity(slot)`.
+    /// `Player_GetEntity(slot)`: the player's own fighter (x221F_b4 clear),
+    /// which for Zelda and Sheik is the form in play, not the sleeping one.
     fn fighter(&self, slot: i16) -> Option<&SceneFighter> {
-        self.fighters
-            .iter()
-            .find(|f| with_fighter!(f, |f| i16::from(f.player.id) == slot))
+        self.fighters.iter().find(|f| {
+            with_fighter!(f, |f| i16::from(f.player.id) == slot
+                && !f.player.secondary)
+        })
     }
 }
 impl ScreenPlayers for Players<'_> {
