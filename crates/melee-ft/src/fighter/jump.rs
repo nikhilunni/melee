@@ -144,9 +144,6 @@ impl Fighter {
         if style == super::AerialJumpStyle::MultiJump {
             return self.enter_multi_jump(assets);
         }
-        if style == super::AerialJumpStyle::Mewtwo {
-            unimplemented!("ftCo_JumpAerial.c:113: ftMt_JumpAerial_Enter");
-        }
         let state = if style == super::AerialJumpStyle::Yoshi {
             CommonMotionState::JumpAerialF
         } else {
@@ -170,12 +167,14 @@ impl Fighter {
                 impulse
             },
             // ftPe_JumpAerial_Enter stores +0 Y/Z at 800CC198..1A0;
-            // ftYs_JumpAerial_Enter likewise uses animation-driven vertical motion.
+            // ftYs_JumpAerial_Enter and ftMt_JumpAerial_Enter (800CC238)
+            // likewise use animation-driven vertical motion.
             if matches!(
                 style,
                 super::AerialJumpStyle::Peach
                     | super::AerialJumpStyle::Yoshi
                     | super::AerialJumpStyle::Ness
+                    | super::AerialJumpStyle::Mewtwo
             ) {
                 0.0
             } else {
@@ -228,7 +227,9 @@ impl Fighter {
         let animation_driven = jumping
             && matches!(
                 style,
-                super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
+                super::AerialJumpStyle::Peach
+                    | super::AerialJumpStyle::Yoshi
+                    | super::AerialJumpStyle::Mewtwo
             );
         self.core.airborne_physics(assets, animation_driven);
     }

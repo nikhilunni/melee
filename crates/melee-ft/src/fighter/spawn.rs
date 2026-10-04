@@ -1160,6 +1160,12 @@ impl FighterCore {
             .joint(melee_types::FtPart::TransN)
             .expect("missing TransN");
         animation.parts[usize::from(bone)].flags.0 |= PartFlags::COPY;
+        if capabilities.compensates_root_motion {
+            // ftMt_Init_OnLoad (80144E48): fp->parts[FtPart_TransN].flags_b4,
+            // the parts array indexed by the part enum itself.
+            let index = i32::from(melee_types::FtPart::TransN) as usize;
+            animation.parts[index].flags.0 |= PartFlags::COPY;
+        }
         // ftParts_80074E58: translation-preserving semantic parts.
         for part in [
             melee_types::FtPart::TopN,
@@ -1207,7 +1213,11 @@ impl FighterCore {
             primary_history: Default::default(),
             secondary_history: Default::default(),
             effective_scale: model_scale,
-            compensate_joint: None,
+            // ftAnim_8006E054, ftanim.c:249-261: fp->parts[ft_data->x8->x10].
+            compensate_joint: capabilities.compensates_root_motion.then(|| {
+                animation.parts[usize::from(assets.bones.model.animation_translation)].joint
+            }),
+            pinned: false,
         });
         skeleton.set_scale(root, &Vec3::new(model_scale, model_scale, model_scale));
         let data = ecb::initialize(

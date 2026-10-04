@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 18] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 19] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -103,6 +103,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 18] = [
         file: "EfKpData.dat",
         table: "effKoopaDataTable",
         models: 3,
+    },
+    // Mewtwo (efAsync_DatEntries[13]): models 0x32C8..0x32CB (efSync
+    // 0x4E0..0x4E2 and 0x4E8, efsync.c:372-413): Shadow Ball's charge,
+    // Confusion, Disable and Teleport.
+    CharacterEffectFile {
+        bank: 13,
+        file: "EfMtData.dat",
+        table: "effMewtwoDataTable",
+        models: 4,
     },
     // Particles only: the ice block's generators 0x36B0..0x36B7
     // (efsync.c:414-425).

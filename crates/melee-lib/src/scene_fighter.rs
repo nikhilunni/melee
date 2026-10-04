@@ -164,6 +164,7 @@ scene_characters! {
     "DonkeyKong" => DonkeyKong(ft_donkey::init::DonkeyKong),
     "Bowser" => Bowser(ft_koopa::init::Koopa),
     "Ness" => Ness(ft_ness::init::Ness),
+    "Mewtwo" => Mewtwo(ft_mewtwo::init::Mewtwo),
 }
 
 /// ftMapping_list's `has_transformation` (pl/player.c:62-63): a partner of

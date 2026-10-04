@@ -46,6 +46,7 @@ pub fn attach(
         saved_translation,
         hip_translation: attached.skeleton.translation(hip),
     });
+    attached.set_pinned(true);
     grab_throw::update_constraint(attached, anchor, attached_assets, anchor_assets);
 }
 

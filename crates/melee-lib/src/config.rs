@@ -56,6 +56,7 @@ pub enum Character {
     /// Mr. Game & Watch.
     GameAndWatch,
     Ness,
+    Mewtwo,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -84,6 +85,7 @@ impl Character {
             Self::Bowser => "Bowser",
             Self::GameAndWatch => "GameAndWatch",
             Self::Ness => "Ness",
+            Self::Mewtwo => "Mewtwo",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -116,6 +118,7 @@ impl Character {
             melee_types::FighterKind::Koopa => Self::Bowser,
             melee_types::FighterKind::GameWatch => Self::GameAndWatch,
             melee_types::FighterKind::Ness => Self::Ness,
+            melee_types::FighterKind::Mewtwo => Self::Mewtwo,
             _ => unreachable!("unregistered match character"),
         }
     }

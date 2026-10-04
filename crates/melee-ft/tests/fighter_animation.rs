@@ -299,6 +299,7 @@ fn extracted_root_motion_tracks_both_histories_and_clears_local_translation() {
         secondary_history: TranslationHistory::default(),
         effective_scale: 2.0,
         compensate_joint: None,
+        pinned: false,
     };
     tree.set_translate(primary, &Vec3::new(3.0, 4.0, 5.0));
     tree.set_translate(secondary, &Vec3::new(1.0, 2.0, 3.0));
@@ -347,6 +348,7 @@ fn blend_root_extraction_keeps_primary_joint_pointer_identity() {
         },
         effective_scale: 2.0,
         compensate_joint: Some(compensate),
+        pinned: false,
     };
     primary_tree.set_translate(compensate, &Vec3::new(20.0, 0.0, 0.0));
     state

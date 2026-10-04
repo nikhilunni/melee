@@ -459,6 +459,7 @@ pub(super) fn detach(
         position.z = 0.0;
     }
     let pose = constrained.combat.thrown_pose.take().expect("throw pose");
+    constrained.set_pinned(false);
     let xrot = constrained.animation.parts[usize::from(
         constrained_assets
             .parts
@@ -569,6 +570,15 @@ fn hip_translation(victim: &FighterCore, va: &FighterAssets) -> Vec3 {
         victim.animation.parts[usize::from(va.parts.joint(FtPart::HipN).expect("HipN"))].joint;
     victim.skeleton.translation(hip)
 }
+impl FighterCore {
+    /// x2226_b2 as ftAnim_8006E054 reads it (ftanim.c:249): a pinned fighter's
+    /// model is not moved back by its extracted root motion.
+    pub(super) fn set_pinned(&mut self, pinned: bool) {
+        if let Some(root) = &mut self.animation.root_motion {
+            root.pinned = pinned;
+        }
+    }
+}
 /// ftCo_800DB368 (800DB368): pin XRotN to the captor's TransN2 (x2226_b2).
 pub(super) fn constrain_to_captor(
     victim: &mut FighterCore,
@@ -582,6 +592,7 @@ pub(super) fn constrain_to_captor(
         // ftCommon_8007E358 sets this again at the throw.
         hip_translation: hip_translation(victim, va),
     });
+    victim.set_pinned(true);
     update_constraint(victim, attacker, va, aa);
 }
 /// ftCo_800DD398 / ftCo_800DE3FC: pose remapping before victim motion entry.
@@ -612,6 +623,7 @@ fn finish_thrown_pose(
         saved_translation,
         hip_translation: hip_translation(victim, va),
     });
+    victim.set_pinned(true);
     victim.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
     victim.step_animation(va);
     update_constraint(victim, attacker, va, aa);

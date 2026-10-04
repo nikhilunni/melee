@@ -341,6 +341,7 @@ pub(super) fn release_thrown(
     point.y = gekko_math::fma::fmadds(offset.y, scale, point.y);
     point.z = 0.0;
     let pose = captured.combat.thrown_pose.take().expect("thrown pose");
+    captured.set_pinned(false);
     let joint = captured.animation.parts[xrot].joint;
     captured.skeleton.set_position_constraint(joint, None);
     captured

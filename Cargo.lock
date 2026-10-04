@@ -672,6 +672,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-mewtwo"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-ness"
 version = "0.0.1"
 dependencies = [
@@ -1558,6 +1575,7 @@ dependencies = [
  "ft-luigi",
  "ft-mario",
  "ft-mars",
+ "ft-mewtwo",
  "ft-ness",
  "ft-peach",
  "ft-pichu",

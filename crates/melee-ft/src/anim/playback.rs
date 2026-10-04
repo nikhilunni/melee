@@ -185,7 +185,9 @@ impl FighterAnimation {
         if let Some(root) = &mut self.root_motion {
             root.primary_history = Default::default();
             root.secondary_history = Default::default();
-            root.compensate_joint = None;
+            // Fighter_UnkInitReset (fighter.c:498) clears x2226_b2; x2221_b2
+            // is OnLoad's and stays.
+            root.pinned = false;
         }
         // Fighter_UnkInitReset does not reconstruct the parts or secondary
         // skeleton. Keep dynamic locks, cached matrices and retained SRT: the

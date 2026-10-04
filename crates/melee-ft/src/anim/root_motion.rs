@@ -33,8 +33,11 @@ pub struct RootMotion {
     pub secondary_history: TranslationHistory,
     /// Result of ftCommon_GetModelScale; supplied by the fighter size system.
     pub effective_scale: f32,
-    /// x2221_b2 && !x2226_b2: subtract extracted motion from this model joint.
+    /// x2221_b2 (Mewtwo's OnLoad): subtract the extracted motion from this
+    /// model joint, parts[ftData.x8.x10].
     pub compensate_joint: Option<JObjId>,
+    /// x2226_b2: pinned to a captor, which suspends the compensation.
+    pub pinned: bool,
 }
 impl RootMotion {
     /// No fused sites in retail (`asm.py ftAnim_8006E054 --fused`).
@@ -112,6 +115,9 @@ impl RootMotion {
     }
 
     fn compensate(&self, tree: &mut JObjTree, scale: f32) {
+        if self.pinned {
+            return;
+        }
         if let Some(id) = self.compensate_joint {
             // scale_inline: reciprocal first, then three fmuls; do not divide components.
             let reciprocal = 1.0 / scale;
