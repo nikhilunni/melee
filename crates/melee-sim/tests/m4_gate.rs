@@ -1585,6 +1585,25 @@ fn start_bowser_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_bowser_fox4", 600, "ledger600");
 }
 
+/// Mr. Game & Watch vs Fox on Final Destination: the flat fighter's cold
+/// construction (x34_scale.z on the model root, no effect file).
+#[test]
+fn start_fd_gameandwatch_fox4_cold_600() {
+    movement_gate_ticks("start_fd_gameandwatch_fox4_cold", 600);
+}
+
+#[test]
+fn start_gameandwatch_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_gameandwatch_fox4", 600, "ledger600");
+}
+
+/// Mr. Game & Watch vs Samus on Final Destination, the boundary of the
+/// Oil Panic witness that absorbs Charge Shots.
+#[test]
+fn start_fd_gameandwatch_samus4_cold_600() {
+    movement_gate_ticks("start_fd_gameandwatch_samus4_cold", 600);
+}
+
 /// Ice Climbers vs Fox on Yoshi's Story: every think of Nana's asks whether
 /// her island's joint moved (ftCo_800A2718 -> mpIsland_8005AC8C, 0x8005AC8C).
 #[test]
