@@ -70,6 +70,7 @@ members = [
     "crates/ft-link-family",
     "crates/ft-link",
     "crates/ft-younglink",
+    "crates/ft-donkey",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

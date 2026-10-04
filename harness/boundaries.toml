@@ -459,3 +459,12 @@ stage = "YoshisStory"
 players = ["IceClimbers", "Fox"]
 stocks = 4
 seed = 1436360687
+
+[[boundary]]
+name = "start_fd_donkeykong_fox4"
+cold = "start_fd_donkeykong_fox4_cold"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+stage = "FinalDestination"
+players = ["DonkeyKong", "Fox"]
+stocks = 4
+seed = 2974935244

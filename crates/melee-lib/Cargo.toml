@@ -63,6 +63,7 @@ ft-zelda = { path = "../ft-zelda" }
 ft-link = { path = "../ft-link" }
 it-link = { path = "../it-link" }
 ft-younglink = { path = "../ft-younglink" }
+ft-donkey = { path = "../ft-donkey" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

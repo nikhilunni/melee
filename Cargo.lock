@@ -406,6 +406,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-donkey"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-drmario"
 version = "0.0.1"
 dependencies = [
@@ -1437,6 +1454,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ft-captain",
+ "ft-donkey",
  "ft-drmario",
  "ft-emblem",
  "ft-falco",

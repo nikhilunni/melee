@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 15] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 16] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -63,6 +63,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 15] = [
         file: "EfPkData.dat",
         table: "effPikachuDataTable",
         models: 5,
+    },
+    // Donkey Kong (efAsync_DatEntries[8]): models 0x1F40..0x1F46 (efSync
+    // 0x4C6..0x4CC, efsync.c:164-222): Headbutt, Giant Punch, Spinning Kong
+    // and Hand Slap.
+    CharacterEffectFile {
+        bank: 8,
+        file: "EfDkData.dat",
+        table: "effDonkeyDataTable",
+        models: 7,
     },
     // Particles only: the Egg Throw burst's generator 0x2328 (efsync.c:225).
     CharacterEffectFile {

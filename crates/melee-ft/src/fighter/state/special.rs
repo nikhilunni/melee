@@ -42,7 +42,8 @@ impl Fighter {
             SpecialSlot::Neutral => 2,
             SpecialSlot::Down => 3,
         };
-        self.core.capabilities.specials[index]
+        let capabilities = &self.core.capabilities;
+        capabilities.air_specials.unwrap_or(capabilities.specials)[index]
     }
 
     /// ftCo_SpecialS_CheckInput / ftCo_Attack100_CheckInput / ftCo_800D6824 /

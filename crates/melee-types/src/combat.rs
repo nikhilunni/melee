@@ -96,6 +96,11 @@ pub enum StaleMove {
     ThrowDown,
     /// FtMoveId_Parasol: the parasol's open and fall states.
     Parasol,
+    /// FtMoveId_CargoThrowF..Lw (0x39..0x3C): Donkey Kong's cargo throws.
+    CargoThrowForward,
+    CargoThrowBack,
+    CargoThrowUp,
+    CargoThrowDown,
 }
 
 /// One attack instance retained by projectiles after their owner changes motion.

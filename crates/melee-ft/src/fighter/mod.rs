@@ -697,6 +697,10 @@ pub struct Capabilities {
     pub can_walljump: bool,
     /// ftData special callback presence, S/Hi/N/Lw.
     pub specials: [bool; 4],
+    /// ftData_SpecialAirS/Hi/N/Lw[kind] presence where it differs from the
+    /// ground tables (Donkey Kong has no aerial down special). `None`: the
+    /// same as `specials`.
+    pub air_specials: Option<[bool; 4]>,
     /// fp->x40, which OnLoad sets (the Ice Climbers only): the spawn and
     /// revival offset along the facing (ftCommon_800804EC).
     pub spawn_offset: f32,
