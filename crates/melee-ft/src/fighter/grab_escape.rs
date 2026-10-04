@@ -216,10 +216,12 @@ pub(super) fn capture_damage(
     // CaptureCaptain (Falcon Dive's victim) is neither 0xE0/0xE1 nor
     // 0xE3/0xE4: like a throw it keeps its motion.
     // The shouldered rows, the cargo throws' and the Koopa Klaw's rows are
-    // none of them either.
+    // none of them either, nor is the pull toward the captor (0xDF/0xE2).
     let thrown = matches!(
         f.motion_state.id,
-        S::ThrownF
+        S::CapturePulledHi
+            | S::CapturePulledLw
+            | S::ThrownF
             | S::ThrownB
             | S::ThrownHi
             | S::ThrownLw
@@ -248,7 +250,10 @@ pub(super) fn capture_damage(
             S::CaptureWaitLw | S::CaptureDamageLw | S::CaptureWaitHi | S::CaptureDamageHi
         )
     {
-        unimplemented!("ftCo_8008EC90: captured damage outside low capture or throw");
+        unimplemented!(
+            "ftCo_8008EC90: captured damage in {:?} (not a pull, wait or throw)",
+            f.motion_state.id
+        );
     }
     f.core.physics.percent += hit.percent_damage;
     f.core.input.pressed = Buttons::default();

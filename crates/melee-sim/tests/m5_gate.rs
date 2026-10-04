@@ -1784,6 +1784,10 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // nothing is logged for the fighter.
     ("invincible_egg_reflect_laser_fd_yoshi", 260),
     ("invincible_egg_startup_laser_fd_yoshi", 260),
+    // A captor's hit on a fighter still being pulled in (CapturePulledLw,
+    // ftCo_8008EC90 inlineB2): Link's bomb, thrown up, lands on Fox one tick
+    // after the hookshot catches him. He keeps his motion and the grab.
+    ("capture_pulled_bomb_fd_link", 420),
 ];
 
 #[test]

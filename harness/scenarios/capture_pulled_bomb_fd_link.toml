@@ -1,0 +1,40 @@
+# CAPTURED-DAMAGE directed witness (boundary start_fd_link_fox4; found with
+# `melee-sim search`, 3158 candidates). Link pulls a bomb, throws it straight
+# up (LightThrowHi) and rolls back to the ledge; Fox dashes to where it will
+# come down. Link's hookshot catches Fox at 290 (CapturePulledLw, 226) and
+# the bomb lands on him at 291, still being pulled in: his captor's hit
+# (x221C_b0), so ftCo_8008EC90 takes inlineB2 (retail 0x8008ECD4). 226 is
+# neither 0xE0/0xE1 nor 0xE3/0xE4, so Fox keeps his motion, takes the damage
+# and flash, and shares the hitlag with Link; the grab holds.
+name = "capture_pulled_bomb_fd_link"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 181, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 183, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140 } },
+  { frame = 204, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140, stickX = -127 } },
+  { frame = 206, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 270, port = 1, buttons = {  }, raw = {  } },
+  { frame = 280, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 282, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
