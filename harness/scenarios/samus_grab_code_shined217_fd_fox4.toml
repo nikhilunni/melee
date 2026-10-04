@@ -1,0 +1,37 @@
+# SAMUS directed witness: the button code's grounded beam with L held, and Fox,
+# who has dashed up to Samus, shines her on tick 217, the frame the beam is thrown
+# (grab frame 17).
+name = "samus_grab_code_shined217_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 380
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 4 } },
+  { frame = 114, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 118, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 186, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 202, port = 0, buttons = {  }, raw = { button = 64 } },
+  { frame = 217, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 219, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

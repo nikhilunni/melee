@@ -9,9 +9,9 @@ mod egg_shell;
 pub mod fixture_spawns;
 mod item_generators;
 mod mario;
-mod samus;
 mod pool;
 mod resources;
+mod samus;
 mod visual;
 pub use resources::{CharacterEffectFile, Resources, CHARACTER_EFFECT_FILES};
 pub use visual::{VisualModel, VISUAL_CAPACITY};
@@ -387,6 +387,10 @@ impl Effects {
                 if variant == 0 && selected {
                     self.spawn_dust_generator::<T>(0x3EF, position, facing, bank, particles, rng)?;
                 }
+                continue;
+            }
+            if matches!(request, EffectRequest::ArticleDestroyed) {
+                particles.walk_unowned_joint();
                 continue;
             }
             if matches!(request, EffectRequest::DestroyOwned) {
@@ -846,7 +850,14 @@ impl Effects {
             }
             if let EffectRequest::Attached { id: 0x487, bone } = request {
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
-                self.spawn_jump_thruster::<T>(player, (bone, matrix), fighter, bank, particles, rng)?;
+                self.spawn_jump_thruster::<T>(
+                    player,
+                    (bone, matrix),
+                    fighter,
+                    bank,
+                    particles,
+                    rng,
+                )?;
                 continue;
             }
             if let EffectRequest::Attached {
@@ -1345,6 +1356,7 @@ impl Effects {
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
+                | EffectRequest::ArticleDestroyed
                 | EffectRequest::Attached { .. }
                 | EffectRequest::AttachedParameter { .. }
                 | EffectRequest::SyncAttached { .. }
@@ -1641,7 +1653,9 @@ impl Effects {
                     .iter()
                     .find(|(id, _)| *id == item)
                     .map(|(_, p)| *p)
-                    .unwrap_or_else(|| unimplemented!("efLib_Cb_AccumOffset_FromParams on a freed item JObj"));
+                    .unwrap_or_else(|| {
+                        unimplemented!("efLib_Cb_AccumOffset_FromParams on a freed item JObj")
+                    });
                 // lb_8000B1CC, then three separate fadds.
                 effect.tree.set_translate(
                     effect.root,

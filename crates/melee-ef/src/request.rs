@@ -124,6 +124,12 @@ pub enum EffectRequest {
     },
     /// ftCommon_8007DB24 -> efLib_DestroyAll: remove this fighter's owned effects.
     DestroyOwned,
+    /// Item_8026A8EC on the fighter's own article from inside the fighter's
+    /// proc (the grapple beam, it_802B7B84): efLib_DestroyAll(item) walks
+    /// the article's JObj tree with hsd_8039D688 there and then, which parks
+    /// the generator insertion cursor at the list's tail for whatever the
+    /// fighter spawns next in the same proc.
+    ArticleDestroyed,
     /// efSync_Spawn(0x43F, NULL, &pos, &scale) (efasync.c:758-771): the puff
     /// a second fighter (Nana) vanishes in when its leader's death ends
     /// (ftCo_800D4F24): common generator 0xCA whose AppSRT carries the point
@@ -303,7 +309,12 @@ impl EffectQueue {
                     .entries
                     .iter()
                     .enumerate()
-                    .filter(|(_, e)| matches!(e.request, EffectRequest::DestroyOwned))
+                    .filter(|(_, e)| {
+                        matches!(
+                            e.request,
+                            EffectRequest::DestroyOwned | EffectRequest::ArticleDestroyed
+                        )
+                    })
                     .map(|(i, _)| i + 1)
                     .last()
                     .unwrap_or(0);

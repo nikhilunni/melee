@@ -208,6 +208,12 @@ pub fn remove(f: &mut Fighter) {
         kind: ItemKind::SamusGBeam,
         control: ItemControl::Remove,
     });
+    // Item_8026A8EC runs here, inside Samus's proc: its efLib_DestroyAll
+    // walk comes before any effect she spawns later in the proc (a hit's
+    // Damage script).
+    f.core
+        .effects
+        .push(melee_ef::request::EffectRequest::ArticleDestroyed);
 }
 
 /// it_802BAC3C (802BAC3C), death1_cb: the beam goes, or the callbacks do.

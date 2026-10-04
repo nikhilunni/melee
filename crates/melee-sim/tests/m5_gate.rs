@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 451] = [
+const MATRIX_WITNESSES: [(&str, usize); 455] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1503,6 +1503,17 @@ const MATRIX_WITNESSES: [(&str, usize); 451] = [
     ("samus_grab_code_l_fd_fox4", 420),
     ("samus_grab_code_strike_fd_fox4", 420),
     ("samus_tether_code_hang_fd_fox4", 620),
+    // Fox shines Samus while her beam is out. ftCommon_8007DB58's death1_cb
+    // (it_802BAC3C -> it_802B7B84 -> Item_8026A8EC) frees the beam before
+    // the Damage entry, and its efLib_DestroyAll walk (hsd_8039D688) parks
+    // the generator insertion cursor at the list's tail: the Damage script's
+    // electric effect (0x412) goes in ahead of the shine's generators and
+    // draws its emission count first. Before the throw, on the throw frame
+    // and after it, with and without the button code's beam.
+    ("samus_grab_shined216_fd_fox4", 380),
+    ("samus_grab_code_shined216_fd_fox4", 380),
+    ("samus_grab_code_shined217_fd_fox4", 380),
+    ("samus_grab_code_shined219_fd_fox4", 380),
     ("links_tether_hang_fd_fox4", 480),
     ("links_tether_reel_fd_fox4", 480),
     ("links_tether_late_reel_fd_fox4", 480),
