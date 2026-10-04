@@ -1,0 +1,34 @@
+# GAMEWATCH directed witness: Judgments hitting Fox next to him.
+name = "gamewatch_hit_judge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 252, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 254, port = 0, buttons = {  }, raw = {  } },
+  { frame = 349, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 351, port = 0, buttons = {  }, raw = {  } },
+  { frame = 446, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 448, port = 0, buttons = {  }, raw = {  } },
+  { frame = 543, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 545, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

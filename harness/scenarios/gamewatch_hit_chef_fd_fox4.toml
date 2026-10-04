@@ -1,0 +1,39 @@
+# GAMEWATCH directed witness: Chef's food hitting Fox (it is spent, not removed).
+name = "gamewatch_hit_chef_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 498
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 224, port = 0, buttons = {  }, raw = {  } },
+  { frame = 264, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 265, port = 0, buttons = {  }, raw = {  } },
+  { frame = 273, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 274, port = 0, buttons = {  }, raw = {  } },
+  { frame = 282, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 283, port = 0, buttons = {  }, raw = {  } },
+  { frame = 291, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 292, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 301, port = 0, buttons = {  }, raw = {  } },
+  { frame = 309, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 318, port = 0, buttons = {  }, raw = {  } },
+  { frame = 378, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

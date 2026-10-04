@@ -1,0 +1,39 @@
+# GAMEWATCH directed witness: Oil Panic absorbs Samus's Charge Shots (the bucket's damage is the shots' own), then spills.
+name = "gamewatch_panic_chargeshot_fd_samus4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_samus4.sav"
+frames = 632
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 135, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 137, port = 1, buttons = {  }, raw = {  } },
+  { frame = 187, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 189, port = 1, buttons = {  }, raw = {  } },
+  { frame = 249, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 251, port = 1, buttons = {  }, raw = {  } },
+  { frame = 301, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 303, port = 1, buttons = {  }, raw = {  } },
+  { frame = 363, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 365, port = 1, buttons = {  }, raw = {  } },
+  { frame = 415, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 417, port = 1, buttons = {  }, raw = {  } },
+  { frame = 477, port = 1, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+  { frame = 530, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 532, port = 0, buttons = {  }, raw = {  } },
+  { frame = 632, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+controller = "scripted"

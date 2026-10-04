@@ -1,0 +1,61 @@
+# GAMEWATCH directed witness: Fox's lasers hit him standing, crouching and in the air.
+name = "gamewatch_punish_laser_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 131, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 143, port = 1, buttons = {  }, raw = {  } },
+  { frame = 154, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 155, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 166, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 167, port = 1, buttons = {  }, raw = {  } },
+  { frame = 178, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 179, port = 1, buttons = {  }, raw = {  } },
+  { frame = 190, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 191, port = 1, buttons = {  }, raw = {  } },
+  { frame = 202, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 203, port = 1, buttons = {  }, raw = {  } },
+  { frame = 214, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 215, port = 1, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = {  } },
+  { frame = 226, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 227, port = 1, buttons = {  }, raw = {  } },
+  { frame = 238, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 239, port = 1, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 243, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 251, port = 1, buttons = {  }, raw = {  } },
+  { frame = 262, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 263, port = 1, buttons = {  }, raw = {  } },
+  { frame = 274, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 275, port = 1, buttons = {  }, raw = {  } },
+  { frame = 286, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 287, port = 1, buttons = {  }, raw = {  } },
+  { frame = 298, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 299, port = 1, buttons = {  }, raw = {  } },
+  { frame = 310, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 311, port = 1, buttons = {  }, raw = {  } },
+  { frame = 322, port = 1, buttons = {  }, raw = {  } },
+  { frame = 323, port = 0, buttons = {  }, raw = {  } },
+  { frame = 382, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

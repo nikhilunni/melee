@@ -75,6 +75,9 @@ impl CharacterCallbacks for GameWatch {
         &TABLE
     }
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
     /// decideAttack11's FTKIND_GAMEWATCH arm (ftCo_Attack1.c:92).
     const ENTER_JAB: Option<melee_ft::fighter::GroundAttackEntry> = Some(crate::attack::enter_jab);
     /// fn_800D6AC4's FTKIND_GAMEWATCH arm (ftCo_Attack100.c:137).

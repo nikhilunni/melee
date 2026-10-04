@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 485] = [
+const MATRIX_WITNESSES: [(&str, usize); 506] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1722,6 +1722,42 @@ const MATRIX_WITNESSES: [(&str, usize); 485] = [
     ("gamewatch_panic_fd_fox4", 560),
     ("gamewatch_panic_air_fd_fox4", 420),
     ("gamewatch_panic_laser_fd_fox4", 500),
+    // GAMEWATCH directed witnesses: his attacks landing on Fox. The jab and
+    // rapid jab (the second jab stales through the row's move id, 2), the
+    // Manhole, the torch, and the three article aerials.
+    ("gamewatch_hit_attack11_fd_fox4", 504),
+    ("gamewatch_hit_attacklw3_fd_fox4", 412),
+    ("gamewatch_hit_attacks4_fd_fox4", 404),
+    ("gamewatch_hit_attackairn_fd_fox4", 409),
+    ("gamewatch_hit_attackairb_fd_fox4", 432),
+    ("gamewatch_hit_attackairhi_fd_fox4", 411),
+    // Chef's food hitting Fox (spent, not removed) and Fire's launch.
+    ("gamewatch_hit_chef_fd_fox4", 498),
+    ("gamewatch_hit_fire_fd_fox4", 454),
+    // Judgment on Fox: a 9 that KOs him at 0%, then whiffs; and single
+    // Judgments after n short hops, whose landing dust moves the RNG: faces 9,
+    // 6 (flame), 7 (no food with items off), 4 and 3.
+    ("gamewatch_hit_judge_fd_fox4", 700),
+    ("gamewatch_judgevar0_fd_fox4", 434),
+    ("gamewatch_judgevar1_fd_fox4", 480),
+    ("gamewatch_judgevar5_fd_fox4", 664),
+    ("gamewatch_judgevar6_fd_fox4", 710),
+    ("gamewatch_judgevar8_fd_fox4", 802),
+    // Oil Panic's bucket filled by Samus's Charge Shots (from
+    // start_fd_gameandwatch_samus4) and by Fox's lasers, then spilled on Fox:
+    // the spill's hitboxes take the absorbed damage (ftColl_8007ABD0).
+    ("gamewatch_panic_chargeshot_fd_samus4", 632),
+    ("gamewatch_panic_spill_hit_fd_fox4", 614),
+    // Three aerial Judgments in one airtime off the left edge, then the KO.
+    ("gamewatch_judge_air_twice_fd_fox4", 566),
+    // Mr. Game & Watch as the victim: the flat fighter's hurt and shield
+    // tests (x44_mtx, ftCommon_8007F804). Fox jabs him out of a charging
+    // forward smash (ftGw_Init_OnDamage removes the torch), hits his shield,
+    // grabs and pummels him, and shoots him standing, crouching and airborne.
+    ("gamewatch_punish_attacks4_fd_fox4", 420),
+    ("gamewatch_punish_guard_fd_fox4", 460),
+    ("gamewatch_punish_grab_fd_fox4", 480),
+    ("gamewatch_punish_laser_fd_fox4", 420),
 ];
 
 #[test]

@@ -1,0 +1,34 @@
+# GAMEWATCH directed witness: Fox jabs him while he charges the forward smash: ftGw_Init_OnDamage removes the torch.
+name = "gamewatch_punish_attacks4_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 176, port = 1, buttons = {  }, raw = {  } },
+  { frame = 206, port = 1, buttons = {  }, raw = { stickX = -50 } },
+  { frame = 220, port = 1, buttons = {  }, raw = {  } },
+  { frame = 234, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 260, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 272, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 274, port = 1, buttons = {  }, raw = {  } },
+  { frame = 284, port = 0, buttons = {  }, raw = {  } },
+  { frame = 334, port = 1, buttons = {  }, raw = {  } },
+  { frame = 344, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
