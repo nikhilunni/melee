@@ -1,0 +1,36 @@
+# MR-SATURN directed witness (`melee-sim search`, 62 candidates). Fox jabs
+# the walking Mr. Saturn at 270: itDosei_Logic7_DmgReceived (80283588) knocks
+# it up along its facing (state 11, unk10 / |unk14|), 61 frames off its
+# lifetime; it lands and lies still for 20 frames (state 0,
+# itDosei_80281390), then walks again (itDosei_802817A0).
+# From the start_fd_peach_fox4 boundary; Vegetable at tick 142 pulls Mr.
+# Saturn, Peach throws it into Fox and it lands into its walk (as
+# peach4_pull_dosei_throw_hit). Input frames count ticks.
+name = "dosei_knocked_jab_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 145, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 172, port = 1, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+  { frame = 270, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 272, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

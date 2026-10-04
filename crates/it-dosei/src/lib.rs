@@ -1,11 +1,13 @@
 //! Mr. Saturn (It_Kind_Dosei), itdosei.c (80281164..80283558). Ported: the
 //! spawn's fall, the hold, throwing and dropping (a thrown Mr. Saturn pops
 //! back off what it hits), landing into the walk, turning at edges and
-//! walls, and falling off the floor. The idle and look-round states after a
-//! spawn's landing, sliding down a steep floor and being hit fail closed.
+//! walls, falling off the floor, and being hit (knocked up, then lying
+//! still until it walks again). The idle and look-round states after a
+//! spawn's landing and sliding down a steep floor fail closed.
 //!
-//! The model's rotations (HSD_JObjSetRotation on its facing) are drawing
-//! only and are not modelled.
+//! The model's turn to its facing (HSD_JObjSetRotationY) is drawing only;
+//! the rotation about the spin axis also aims the ECB (it_80274990) and is
+//! reset where retail resets it.
 use gekko_math::{fma::fmadds, HsdRng};
 use hsd_types::Vec3;
 use melee_it::{
@@ -28,6 +30,8 @@ pub const SPECIAL_ATTRIBUTES: u32 = 6;
 const UNK_0X1: u32 = 1;
 
 mod motion {
+    /// Lying still after a hit's landing (itDosei_80281390).
+    pub const STUNNED: u16 = 0;
     pub const WALK: u16 = 1;
     pub const TURN: u16 = 2;
     pub const FALL: u16 = 3;
@@ -35,7 +39,15 @@ mod motion {
     pub const THROWN: u16 = 5;
     /// The spawn's fall (itDosei_80282BFC).
     pub const SPAWN_FALL: u16 = 8;
+    /// Knocked up by a hit (itDosei_Logic7_DmgReceived).
+    pub const KNOCKED: u16 = 11;
 }
+
+/// itDosei_Logic7_DmgReceived's xDF0: frames it lies still after the
+/// knock's landing (retail 0x80283630: li r0, 0x14).
+const STUN_FRAMES: i32 = 20;
+/// The lifetime a hit costs before it_80273130's own frame (retail "@194").
+const HIT_LIFETIME_COST: f32 = 60.0;
 
 /// itDoseiAttributes.
 struct Attributes<'a>(&'a [f32]);
@@ -52,6 +64,14 @@ impl Attributes<'_> {
     fn walk_speed(&self) -> f32 {
         self.0[2]
     }
+    /// unk10 (an int): a hit's horizontal speed along the facing.
+    fn knock_speed_x(&self) -> i32 {
+        self.0[4].to_bits() as i32
+    }
+    /// unk14 (an int): a hit's upward speed, by magnitude.
+    fn knock_speed_y(&self) -> i32 {
+        self.0[5].to_bits() as i32
+    }
 }
 
 static STATES: [ItemStateRow; 12] = {
@@ -62,6 +82,18 @@ static STATES: [ItemStateRow; 12] = {
         collision: unported_collision,
     };
     let mut rows = [UNPORTED; 12];
+    rows[motion::STUNNED as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[0],
+        animation: stunned_animation,
+        physics: no_physics,
+        collision: stunned_collision,
+    };
+    rows[motion::KNOCKED as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[11],
+        animation: knocked_animation,
+        physics: gravity_physics,
+        collision: knocked_collision,
+    };
     rows[motion::WALK as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[1],
         animation: walk_animation,
@@ -184,9 +216,38 @@ impl ItemLogic for Dosei {
         }
         false
     }
-    /// itDosei_Logic7_DmgReceived (80283358).
-    fn damage_received(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itDosei_Logic7_DmgReceived: Mr. Saturn knocked away (state 11)")
+    /// itDosei_Logic7_DmgReceived (80283588): knocked into the air
+    /// (it_802762BC) along its facing at unk10 and up at |unk14| (both ints;
+    /// retail 0x80283600: fmuls), to lie still for 20 frames where it lands.
+    /// The hit costs 60 frames of its lifetime and it_80273130 one more,
+    /// which ends it at zero.
+    fn damage_received(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
+        let a = Attributes(&context.assets.special_attributes);
+        change(item, motion::KNOCKED, UNK_0X1 | ANIM_UPDATE, context.assets);
+        item.enter_air();
+        item.animation_rate = 1.0;
+        item.velocity = Vec3::new(
+            a.knock_speed_x() as f32 * item.facing,
+            a.knock_speed_y().wrapping_abs() as f32,
+            0.0,
+        );
+        item.spin_ignores_facing = true;
+        item.rotation_axis = 1;
+        dosei_mut(item).recover_timer = STUN_FRAMES;
+        // HSD_JObjSetRotationX/Y/Z: upright and facing its direction. The
+        // ECB follows the rotation about the spin axis (it_80274990), and a
+        // spin left over from a throw goes on turning it in the air
+        // (Item_802697D4), so a Mr. Saturn hit in flight restarts from zero.
+        item.rotation = Vec3::new(
+            0.0,
+            (core::f64::consts::FRAC_PI_2 * f64::from(item.facing)) as f32,
+            0.0,
+        );
+        item.owner = None;
+        item.life_timer -= HIT_LIFETIME_COST;
+        // it_80273130 (80273130).
+        item.life_timer -= 1.0;
+        item.life_timer <= 0.0
     }
     /// itDosei_Logic7_EnteredAir (80282A48).
     fn entered_air(_item: &mut ItemCore) {
@@ -438,6 +499,63 @@ fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
         }
         AirLanding::Broken => true,
     }
+}
+
+/// itDosei_UnkMotion11_Anim (802838FC): the knock's cycle restarts.
+fn knocked_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    if animation_ended(item, ctx.assets) {
+        change(item, motion::KNOCKED, ANIM_UPDATE, ctx.assets);
+    }
+    false
+}
+
+/// itDosei_UnkMotion11_Coll (80283990) -> it_8026E15C: a settled landing
+/// lies still (itDosei_80281390).
+fn knocked_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    let cell = ctx.rng.expect("it_8026DDFC draws");
+    let mut rng = cell.get();
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    cell.set(rng);
+    match landing {
+        AirLanding::Airborne => false,
+        AirLanding::Landed => {
+            start_stun(item, ctx.assets);
+            false
+        }
+        AirLanding::Broken => true,
+    }
+}
+
+/// itDosei_80281390 (80281390): stopped where it landed.
+fn start_stun(item: &mut ItemCore, assets: &ItemAssets) {
+    item.velocity = Vec3::ZERO;
+    change(item, motion::STUNNED, UNK_0X1 | ANIM_UPDATE, assets);
+    item.animation_rate = 1.0;
+    item.owner = None;
+}
+
+/// itDosei_UnkMotion0_Anim (802813F8): xDF0 counts down, then it walks
+/// (itDosei_802817A0).
+fn stunned_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    let state = dosei_mut(item);
+    state.recover_timer -= 1;
+    if state.recover_timer <= 0 {
+        state.recover_timer = 0;
+        start_walking(item, ctx.assets);
+    }
+    false
+}
+
+/// itDosei_UnkMotion0_Coll (802816F4): it_8026D62C falls off the floor
+/// (itDosei_80282074); it leans with the floor (it_80276CB8).
+fn stunned_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map) {
+        start_falling(item, ctx.assets);
+    }
+    item.lean_with_floor();
+    false
 }
 
 fn unported_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {

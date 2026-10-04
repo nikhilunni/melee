@@ -1808,6 +1808,12 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // ended (the pickup ends it, it_802742F4): Fox's down tilt sweeps the
     // spot where Peach pulled the Mr. Saturn she is floating with.
     ("held_item_intangible_dosei_fd_peach", 420),
+    // Mr. Saturn hit (itDosei_Logic7_DmgReceived): knocked up (state 11),
+    // lying still where it lands (state 0), then walking again. Fox's jab
+    // catches it still in flight from Peach's throw, its spin restarting
+    // from an upright model; his forward tilt hits it walking.
+    ("dosei_knocked_jab_fd_peach", 600),
+    ("dosei_knocked_tilt_fd_peach", 600),
 ];
 
 #[test]
