@@ -43,8 +43,12 @@ from pathlib import Path
 import yaml
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import data_root  # noqa: E402
+
 ROOT = HERE.parent
-DECOMP = ROOT / "third_party" / "melee-decomp"
+# The decomp is machine-local data: a worktree reads the main checkout's.
+DECOMP = data_root.DECOMP
 SRC = DECOMP / "src"
 SCHEMA_DIR = HERE / "schema"
 
@@ -296,7 +300,7 @@ class Node:
 class Header:
     def __init__(self, path: Path, typedefs: TypedefTable) -> None:
         self.path = path
-        self.rel = str(path.relative_to(ROOT))
+        self.rel = str(path.relative_to(data_root.ROOT))
         self.raw = path.read_text()
         self.text = preprocess(self.raw)
         self.typedefs = typedefs
