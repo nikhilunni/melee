@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 149] = [
+const HELD_ITEM_STATES: [S; 151] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -185,6 +185,10 @@ const HELD_ITEM_STATES: [S; 149] = [
     S::SwordSwing3,
     S::SwordSwing4,
     S::SwordSwingDash,
+    // ftCo_Rebound.c: a clanked swing rebounds with the item in hand (its
+    // take_dmg_cb gave the hand back in ftCommon_8007DB58); no item branch.
+    S::ReboundStop,
+    S::Rebound,
     // ftCo_FallSpecial: no item branch for a held item.
     S::FallSpecial,
     S::FallSpecialF,

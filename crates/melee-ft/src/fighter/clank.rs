@@ -228,7 +228,7 @@ pub(super) fn contact(
 impl Fighter {
     pub(super) fn enter_rebound(&mut self, assets: &FighterAssets, pending: Pending) -> Result<()> {
         // It does not clear velocity.
-        self.interrupt_actions();
+        self.interrupt_actions(assets);
         self.change_motion_state(S::ReboundStop.into(), assets)?;
         let animation_rate =
             (self.core.attributes.combat.clank_animation_length + 0.1) / pending.duration;

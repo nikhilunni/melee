@@ -54,7 +54,7 @@ pub fn resolve_linked_hit(
             if !partner_launched {
                 // ftCommon_8007DB58, then ftCo_800DCFD4: the captor's second
                 // throw record launches the unhit victim.
-                partner.interrupt_actions();
+                partner.interrupt_actions(partner_assets);
                 launch_by_captor(partner, fighter, partner_assets, fighter_assets, rng)?;
                 release_pair(fighter, partner, partner_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
@@ -201,7 +201,7 @@ pub fn launch_released_captor(
     assets: &FighterAssets,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
-    captor.interrupt_actions();
+    captor.interrupt_actions(assets);
     // ftColl_800788D4 (0x800788D4): a sourceless hit, so the captor's KO
     // credit goes. TransN2's position (x1854_collpos) has no reader in scope.
     captor
@@ -411,7 +411,7 @@ impl Fighter {
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
-        self.interrupt_actions();
+        self.interrupt_actions(assets);
         self.begin_damage_reaction(hit, None, None, None, false, assets, rng)
     }
 }

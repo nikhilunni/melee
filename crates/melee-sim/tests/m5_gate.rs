@@ -1788,6 +1788,13 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // ftCo_8008EC90 inlineB2): Link's bomb, thrown up, lands on Fox one tick
     // after the hookshot catches him. He keeps his motion and the grab.
     ("capture_pulled_bomb_fd_link", 420),
+    // Hit while swinging the Beam Sword (the swing's take_dmg_cb,
+    // ft_800CD31C, gives the hand the sword back before the damage entry):
+    // Fox's Reflector on Peach in SwordSwing1 and SwordSwing3; and a swing
+    // that clanks with it and rebounds with the sword in hand.
+    ("sword_swing_hit_jab_fd_peach", 1640),
+    ("sword_swing_hit_tilt_fd_peach", 1640),
+    ("sword_swing_rebound_fd_peach", 1640),
 ];
 
 #[test]

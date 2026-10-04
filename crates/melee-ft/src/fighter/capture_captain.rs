@@ -58,7 +58,7 @@ pub fn enter(
     captor_assets: &FighterAssets,
 ) -> Result<()> {
     // ftCommon_8007DB58.
-    victim.interrupt_actions();
+    victim.interrupt_actions(victim_assets);
     // ftCo_8009750C drops a heavy item; ftCo_800DD168 releases the victim's
     // own victim.
     assert!(

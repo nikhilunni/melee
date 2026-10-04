@@ -15,7 +15,7 @@ impl Fighter {
     /// false) or Sleep element hit: stop the action sounds, fall asleep and
     /// start the mash timer (ftCommon_InitGrab).
     pub(super) fn enter_damage_song(&mut self, sleep: bool, assets: &FighterAssets) -> Result<()> {
-        self.interrupt_actions();
+        self.interrupt_actions(assets);
         // ftCo_8009750C: a heavy item would be dropped.
         if self.core.held_item.as_ref().is_some_and(|held| held.heavy) {
             unimplemented!("ftCo_8009750C: sleeping with a heavy item");

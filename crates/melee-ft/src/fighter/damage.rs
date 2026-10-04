@@ -1013,7 +1013,7 @@ impl Fighter {
                             "ftCo_8008EC90: a blocked cape hit on a grab pair member"
                         );
                         let facing = self.core.physics.facing;
-                        self.interrupt_actions();
+                        self.interrupt_actions(assets);
                         self.core.reserve_item_launch_draws(rng);
                         self.core.start_ledge_cooldown_if_hanging(assets);
                         self.begin_damage_reaction(
@@ -1040,7 +1040,7 @@ impl Fighter {
                     {
                         // ftCommon_8007DB58, then ftCo_8008E908's sleep branch
                         // (ftCo_Damage.c:676-677): asleep, not launched.
-                        self.interrupt_actions();
+                        self.interrupt_actions(assets);
                         self.core.start_ledge_cooldown_if_hanging(assets);
                         self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
                     } else if down.is_none() && self.bury_hit(element) {
@@ -1051,8 +1051,8 @@ impl Fighter {
                         let facing = if down.is_some() {
                             Some(self.core.physics.facing)
                         } else {
-                            self.interrupt_actions();
-                            self.core.reserve_item_launch_draws(rng);
+                        self.interrupt_actions(assets);
+                        self.core.reserve_item_launch_draws(rng);
                             self.core.start_ledge_cooldown_if_hanging(assets);
                             None
                         };
@@ -1161,7 +1161,7 @@ impl Fighter {
     /// entry: stop the action and override-voice sound handles, then run the
     /// character's take-damage hook (Fox and Falco put the Blaster away).
     /// No supported character has a death1 hook.
-    pub fn interrupt_actions(&mut self) {
+    pub fn interrupt_actions(&mut self, assets: &FighterAssets) {
         for channel in [
             super::commands::SoundChannel::StopAction,
             super::commands::SoundChannel::StopOverrideVoice,
@@ -1177,9 +1177,10 @@ impl Fighter {
                 });
         }
         if self.core.swing_hand_armed {
-            // ft_800CD31C: the hand would take the held item again
-            // (ftCommon_8007E7E4) before the damage entry.
-            unimplemented!("ft_800CD31C: hit while swinging a held item");
+            // take_dmg_cb = ft_800CD31C (retail 0x8007DB98 blrl ->
+            // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item
+            // again before the damage entry.
+            self.swing_restore_hand(assets);
         }
         if let Some(take_damage) = self.character.table().take_damage {
             take_damage(self);

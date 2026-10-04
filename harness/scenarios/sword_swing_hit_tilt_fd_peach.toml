@@ -1,0 +1,35 @@
+# SWORD-SWING directed witness (`melee-sim search`, 3677 candidates). Peach
+# swings the Beam Sword with a forward tilt (SwordSwing3, 121) at 1501 and
+# Fox's Reflector hits her at 1505, mid-swing: the swing's take_dmg_cb
+# (ft_800CD31C) gives her hand the sword again before the damage entry.
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60); Vegetable at tick 1445 pulls a Beam Sword (as
+# peach4_pull_sword_swings) and Fox dashes in. Input frames count ticks.
+name = "sword_swing_hit_tilt_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1640
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1445, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 1447, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1448, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 1487, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1501, port = 0, buttons = {  }, raw = { button = 256, stickX = 40 } },
+  { frame = 1503, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1505, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 1507, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

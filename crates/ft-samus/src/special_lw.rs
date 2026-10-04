@@ -379,7 +379,7 @@ fn attack_id(flags: u32) -> u32 {
 /// clamped to x10 times the air drift maximum, the script's words and the
 /// ball clear, and the aerial launch row starts at `start`.
 fn launch(f: &mut Fighter, angle: f32, start: f32, a: &FighterAssets) -> Result<()> {
-    f.interrupt_actions();
+    f.interrupt_actions(a);
     let jump = attributes(f).bomb_jump.clone();
     f.physics.self_velocity.x = jump.speed * gekko_math::msl::cosf(angle);
     f.physics.self_velocity.y = jump.speed * gekko_math::msl::sinf(angle);

@@ -333,7 +333,7 @@ pub fn capture_pair(
         vertical_offset: 0.0,
     });
     // fn_800DA8E4 (800DA8E4): ftCommon_8007DB58 before the capture entry.
-    victim.interrupt_actions();
+    victim.interrupt_actions(victim_assets);
     victim.core.physics.facing = -attacker.core.physics.facing;
     let pulled = if victim.physics.ground_or_air == melee_types::GroundOrAir::Air {
         S::CapturePulledHi

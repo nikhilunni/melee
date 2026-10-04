@@ -136,7 +136,7 @@ impl Fighter {
         assets: &FighterAssets,
         captor_assets: &FighterAssets,
     ) -> Result<()> {
-        self.interrupt_actions();
+        self.interrupt_actions(assets);
         // ftCo_8009750C drops a heavy item; ftCo_800DD168 releases this
         // fighter's own victim (a grabbed fighter is never a candidate).
         if self.held_item.is_some_and(|held| held.heavy) {
