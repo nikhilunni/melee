@@ -82,6 +82,12 @@ pub fn requested(f: &FighterCore, assets: &FighterAssets) -> Option<&'static Thr
     if f.motion_state.id != S::CatchWait {
         return None;
     }
+    // The throw test is ftCo_CatchWait_IASA's, and Fighter_Spaghetti_8006AD10
+    // (8006AD10) runs no IASA for a fighter frozen in hitlag (x2219_b5): a
+    // captor frozen with its victim by a light hit throws only afterwards.
+    if f.status.disabled || f.in_hitlag() {
+        return None;
+    }
     let stick = f.input.current.stick;
     let last = f.input.previous.stick;
     let cstick = f.input.current.cstick;
