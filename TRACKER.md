@@ -36,7 +36,8 @@ do not keep a session log here.
   where retail in Dolphin equals the port but the console drew otherwise.
 - Gates at the checkpoint (2026-10-04): release workspace 1743/0 (incl.
   `m4_gate` 316 and `m5_gate` 286), clippy clean, pytest 301, schema check
-  clean. **Perf gate: REGRESSION on size and duplicate labels** (see Next).
+  clean. Perf gate passes: 6.55 MB stripped (size floor raised by the
+  user for the five new characters), 19.9 ms per 600 ticks, 163 ms load.
 - Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
   - `make_boundary.py`: any stage, characters, costumes; with
     `--no-register`, ports, Gecko codes, spawn rule, timer, and
@@ -53,15 +54,7 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [!] **Perf gate (user decision).** 6,565,712 stripped bytes against the
-   6,445,622 allowed (+5% over 6,138,688), still under the 6,766,519 fixed
-   ceiling; time passes (19.3 ms / 600 ticks, 162 ms load). Duplicate
-   labels: each new character crate has 1 (the same shared-default label
-   every older character crate has, but no baseline entry), Mr. Game &
-   Watch 2 (a `restore_saved` closure), `melee-ft` 22 against 20 (one is
-   a `begin_damage_reaction` closure). Either raise the baselines for five
-   new characters or reduce first; `docs/PERF.md` records the choice.
-2. [~] **Slippi corpus.** Remaining stops in `public-v3.7-b`, by kind:
+1. [~] **Slippi corpus.** Remaining stops in `public-v3.7-b`, by kind:
    - RNG drift with no shared cause left (each a separate fault): the
      hit-log victim keyed by GObj address (retail reuses a freed address;
      the port keys by unique id), Fox's wall tech while smoking from Fire
@@ -80,17 +73,17 @@ do not keep a session log here.
      leaving the top, Mr. Saturn's idle and slide states.
    Then a newer corpus: Slippi Online (per-frame RNG sync, netplay codes)
    and Gecko-list (3.3+) code detection instead of inference.
-3. [ ] **Kirby**, last: copy abilities need every copied character's
+2. [ ] **Kirby**, last: copy abilities need every copied character's
    specials, all of which now exist.
-4. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword
+3. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword
    Swing42, item-on-item push, Mr. Saturn's idle and slide states, UCF 0.84
    branches without witnesses (KO totals, Nana's behaviours 5, 6 and 15,
    DamageIce, the sword swings and Mr. Saturn knocked away are done).
-5. [ ] **Particle positions in the gate.** The gate checks particle RNG
+4. [ ] **Particle positions in the gate.** The gate checks particle RNG
    order and generators, not positions (wave D found one class of bug this
    way: sound draws out of script order). Add a per-tick particle digest to
    the gate, then fix what it finds.
-6. [ ] **Tick-path allocations.** Dream Land re-decodes its background
+5. [ ] **Tick-path allocations.** Dream Land re-decodes its background
    AnimJoint on about 60% of ticks
    (`BackgroundAnimation::select_animation`); extend the allocation test
    to every stage and character, then prepare stage animations at load.
@@ -182,5 +175,6 @@ None.
 | 2026-09-28 | Subagents allowed on Opus 5.5 only, run widely in parallel; no Codex. |
 | 2026-09-28 | Perf size baseline raised to 6,444,304 stripped bytes after wave C (user). |
 | 2026-09-28 | Slippi replays run with the Slippi codes they were recorded with, ported from slippi-ssbm-asm and cited; codes a replay does not name are inferred only between discrete known versions, and frame zero checks the choice. |
+| 2026-10-04 | Perf size floor raised to 6,549,232 stripped bytes for five new characters; each new character crate accepted at one duplicate label (the shared `CharacterTable` closure), as every older one is (user). |
 | 2026-10-03 | Where a recording's date allows UCF 0.73 or 0.74, the runner runs both from the recorded inputs and the recorded facing at the first dashback they disagree on picks the version, which then runs the whole comparison from frame one (never a switch mid-run); the report prints it and `--controller-fix` overrides it (user, 2026-10-03: coordinator's call). |
 | 2026-09-28 | Asynchronous disc reads that affect gameplay (Pokémon Stadium's forms) are external inputs, recorded from retail and replayed like pads; standalone runs use a documented default. |
