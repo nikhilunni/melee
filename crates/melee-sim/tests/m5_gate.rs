@@ -2229,6 +2229,23 @@ const MEWTWO_WITNESSES: &[(&str, usize)] = &[
     // model at HipN (ftAnim_8006DF0C) and his tail tests the floor in the
     // captured rows (ftCo_8009DD94's FTKIND_MEWTWO arm).
     ("mewtwo_grabbed_fd_fox4", 460),
+    // Explorer matches from the boundary (explore_batch.py), sampled
+    // clean and the fault each fixed: e0fcf0c70 strikes Fox in his Blaster
+    // loop with Disable (ftCo_800C44CC reads Fox's own rows' x4_flags).
+    ("corpus_v3_fd_mewtwo_fox4_e0fcf0c70_p0", 5941),
+    ("corpus_v3_fd_mewtwo_fox4_e1b05b110_p2", 4578),
+    ("corpus_v3_fd_mewtwo_fox4_e266e1150_p1", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_e2b9e1400_p1", 5698),
+    ("corpus_v3_fd_mewtwo_fox4_e4213e6a5_p0", 4030),
+    ("corpus_v3_fd_mewtwo_fox4_e50814092_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_e720659b1_p1", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_e7ff378da_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_eb8786a38_p0", 5411),
+    ("corpus_v3_fd_mewtwo_fox4_ec0a10b25_p2", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_ec13743d5_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_ee98155f3_p2", 2439),
+    ("corpus_v3_fd_mewtwo_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_ef9b6d16d_p0", 4352),
 ];
 
 #[test]

@@ -58,6 +58,7 @@ impl CharacterCallbacks for Falco {
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_fox_family::special_moves();
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &ft_fox_family::rows::<Self>();
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     fn enter_special(
         fighter: &mut melee_ft::fighter::Fighter,
         slot: melee_ft::fighter::SpecialSlot,
@@ -205,3 +206,13 @@ impl ft_fox_family::FoxFamily for Falco {
         &mut self.special_neutral
     }
 }
+
+/// ftFc_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the x2070 word each
+/// special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 35] = [
+    0x00340111, 0x003C0111, 0x00340111, 0x00340511, 0x003C0511, 0x00340511, 0x00340212, 0x00340212,
+    0x00340212, 0x00340612, 0x00340612, 0x00340612, 0x00340213, 0x00340613, 0x00340213, 0x00340613,
+    0x00340213, 0x00340613, 0x00340613, 0x00341014, 0x00341014, 0x00341014, 0x00341014, 0x00341014,
+    0x00341414, 0x00341414, 0x00341414, 0x00341414, 0x00341414, 0x00000072, 0x00000072, 0x00000072,
+    0x00000072, 0x00000072, 0x00000072,
+];
