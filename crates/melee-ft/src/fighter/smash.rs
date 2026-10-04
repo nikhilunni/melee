@@ -30,6 +30,12 @@ impl Fighter {
             } else {
                 -1.0
             };
+            // checkItemThrow (retail 0x8008C1E4) comes before decideFighter:
+            // an item in hand is thrown, and the facing stays.
+            if let Some(held) = self.core.held_item {
+                self.enter_side_smash_with_item(held, facing, forward, assets)?;
+                return Ok(true);
+            }
             self.enter_directed_forward_smash(assets, stick, facing)?;
             return Ok(true);
         }

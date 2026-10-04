@@ -74,31 +74,9 @@ impl Fighter {
             if self.first_ground_transition(assets, context, &[predicate]) == T::None {
                 continue;
             }
-            let shoulder = self.core.input.current.held.intersects(Buttons::SHIELD);
             if predicate == P::SmashSide {
                 let (sign, main) = self.side_smash_sign(assets);
-                // checkItemThrow (8008C22C): a shoulder, a throwable item or
-                // a C-stick smash (ftCo_800DF21C) throws; a battering item
-                // swings toward the stick.
-                if held.use_kind == 2 && !shoulder {
-                    if !main {
-                        unimplemented!("checkItemThrow: a C-stick smash with a swing item");
-                    }
-                    self.core.physics.facing = sign;
-                    return self.enter_item_swing(super::item_swing::SwingInput::Smash, assets);
-                }
-                if held.use_kind != 0 && !shoulder {
-                    unimplemented!(
-                        "checkItemThrow: a smash with a held item of kind {}",
-                        held.use_kind
-                    );
-                }
-                let state = if sign * self.core.physics.facing >= 0.0 {
-                    S::LightThrowF4
-                } else {
-                    S::LightThrowB4
-                };
-                return self.enter_item_throw(state, assets);
+                return self.enter_side_smash_with_item(held, sign, main, assets);
             }
             if held.use_kind != 0 {
                 unimplemented!(
@@ -153,6 +131,39 @@ impl Fighter {
             "ftCo_Attack1_CheckInput: using a held item of kind {}",
             held.use_kind
         );
+    }
+    /// checkItemThrow (8008C22C), ftCo_AttackS4.c: a side smash with an item
+    /// in hand. A shoulder, a throwable item or a C-stick smash
+    /// (ftCo_800DF21C) throws it, forward or backward by the stick's sign
+    /// against the facing, which does not turn; a battering item swings
+    /// toward the stick. `main` says the main stick made the smash.
+    pub(super) fn enter_side_smash_with_item(
+        &mut self,
+        held: super::item_pickup::HeldItem,
+        sign: f32,
+        main: bool,
+        assets: &FighterAssets,
+    ) -> Result<()> {
+        let shoulder = self.core.input.current.held.intersects(Buttons::SHIELD);
+        if held.use_kind == 2 && !shoulder {
+            if !main {
+                unimplemented!("checkItemThrow: a C-stick smash with a swing item");
+            }
+            self.core.physics.facing = sign;
+            return self.enter_item_swing(super::item_swing::SwingInput::Smash, assets);
+        }
+        if held.use_kind != 0 && !shoulder {
+            unimplemented!(
+                "checkItemThrow: a smash with a held item of kind {}",
+                held.use_kind
+            );
+        }
+        let state = if sign * self.core.physics.facing >= 0.0 {
+            S::LightThrowF4
+        } else {
+            S::LightThrowB4
+        };
+        self.enter_item_throw(state, assets)
     }
     /// ftCo_AttackS4_CheckInput's stick_x_sign: checkLStick picks the main
     /// stick's sign, else the C-stick's (ftCo_800DF1C8). Also whether the

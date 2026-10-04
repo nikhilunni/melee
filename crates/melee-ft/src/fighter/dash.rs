@@ -98,9 +98,13 @@ impl Fighter {
             return Ok(());
         }
         if dash.early_interrupts && frame <= common.early_interrupt_frames {
-            // ftCo_Dash_IASA: an item thrown this early is a smash throw.
+            // ftCo_Dash_IASA: an item thrown this early is a smash throw. It
+            // leaves through the interrupt friction like the smash and the
+            // roll (retail 0x800CA2AC: b .L_800CA500), unlike the dash grab.
             if self.core.item_throw_pressed() {
-                return self.enter_item_throw(CommonMotionState::LightThrowF4, assets);
+                self.enter_item_throw(CommonMotionState::LightThrowF4, assets)?;
+                self.apply_dash_interrupt_friction(assets);
+                return Ok(());
             }
             if self.try_dash_catch(assets, context)? {
                 return Ok(());
