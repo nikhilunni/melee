@@ -140,7 +140,7 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
 }
 
 /// ftCo_800A3200 (0x800A3200): 1 in CliffCatch, 2 in CliffWait.
-fn ledge_state(fp: &Fighter) -> u8 {
+pub(crate) fn ledge_state(fp: &Fighter) -> u8 {
     match fp.core.motion_state.action.0 {
         m if m == S::CliffCatch as u16 => 1,
         m if m == S::CliffWait as u16 => 2,

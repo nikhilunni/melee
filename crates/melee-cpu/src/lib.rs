@@ -18,6 +18,7 @@ mod behave;
 mod captured;
 pub mod desc;
 mod facts;
+mod get_up;
 mod hold;
 mod island_route;
 mod movement;

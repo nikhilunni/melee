@@ -27,6 +27,8 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
             script::command(&mut fp.core.cpu, C::Done);
         }
         B::ATTACK => crate::attack::attack(fp, scene, rng),
+        B::DOWN => crate::get_up::down(fp, scene, rng),
+        B::LEDGE => crate::get_up::ledge(fp, scene, rng),
         B::HOLD => crate::hold::hold(fp, scene, rng),
         B::ARRIVED => crate::arrived::arrived(fp, scene),
         B::CAPTURED => crate::captured::mash(fp, rng),
