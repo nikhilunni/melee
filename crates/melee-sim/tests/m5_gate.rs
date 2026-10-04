@@ -1866,7 +1866,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 12] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 13] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -1888,6 +1888,11 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 12] = [
     // Fox's entry warp is queued after EntryStart's motion change and waits
     // for his link-9 flush, behind Randall's puff of the same tick (15).
     ("slp_ys_jigglypuff_fox_t300_cold", 300),
+    // Samus's aerial grapple catches Yoshi's Story's wall (2798), she climbs
+    // it and hops off the top (ftCo_8009B390, 2806). Retail draws what the
+    // port draws on 2806; the console's replay shows three draws fewer there
+    // (docs/SLIPPI.md).
+    ("slp_ys_samus_jigglypuff_t2900_cold", 2900),
     // Peach's down smash, entered in the input proc, flushes her queued
     // shine spark before the new script's smash voice draws (1048).
     ("slp_dl_peach_fox_t1300_cold", 1300),

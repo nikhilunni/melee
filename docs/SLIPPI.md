@@ -1067,3 +1067,23 @@ same port and dashes. Against the sample one tick back (-53) the change is
 The other leader had respawned 20 ticks earlier. Forced to 0.74 the stop is
 the same; with the fix off the game stops at tick 172, so the console did
 run UCF. The stop stays, as an external event like the display pass.
+
+## Samus's wall tether: three draws the console did not make (2026-10-03, not a port fault found)
+
+Three Samus games stop on `input_seed` with the port exactly three draws
+ahead while she is on the aerial grapple's wall tether (AirCatchHit, 358):
+`SAMUS/Samus vs Puff [YS] Game_20180824T234533` (drift tick 2806, the hop
+off the top of the climb, ftCo_8009B390), `SAMUS/17_27_54 Samus + Falco
+(YS)` (6766, the tick after the catch) and `SAMUS/Game_20161113T214526`
+(Fountain of Dreams, 7249, the catch).
+
+The first was played back on retail (`slp_ys_samus_jigglypuff_t2900`, from
+`start_ys_slippi8_p13_samus0_jigglypuff4_ucf073`: ports 1 and 3, UCF 0.73,
+NeutralSpawn, the replay's boundary seed). The port equals that retail trace
+for all 2900 ticks, seed included, with 0 differing particle ticks: on tick
+2806 retail in Dolphin draws the hop's three graphics offsets (0x6B, 0x6C,
+0x3FF, nine values) and 24 particle values, as the port does, and the
+replay's recorded fighter fields match both. The console's Pre Frame seed at
+2807 is the port's seed three draws before the end of tick 2806. So the
+console drew three values fewer than retail does with these codes; what it
+ran differently is not in the replay. The stop is left as it is.
