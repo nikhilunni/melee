@@ -131,8 +131,18 @@ impl Fighter {
         }
         // Fighter_ProcessHit updates health before any response can clear Guard.
         let exhausted = self.core.update_shield_health(assets);
+        // fighter.c:2852-2907: the knockback branch (dmg.kb_applied) heads
+        // the chain x19A4's is an `else if` of, so a hit past the shield
+        // leaves a shield impact of the same frame without a response.
+        let damaged = self.core.combat.pending_from_captor
+            || self
+                .core
+                .combat
+                .pending
+                .as_ref()
+                .is_some_and(|hit| hit.knockback != 0.0);
         self.process_damage(assets, rng).expect("hit response");
-        self.shield_proc(assets, exhausted)
+        self.shield_proc(assets, exhausted, damaged)
             .expect("shield response");
         self.core.update_hurtbox_extents();
     }

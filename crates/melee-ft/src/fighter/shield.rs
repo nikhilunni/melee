@@ -501,8 +501,15 @@ impl Fighter {
         Ok(())
     }
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), fighter.c:2816-2843.
-    pub(super) fn shield_proc(&mut self, assets: &FighterAssets, exhausted: bool) -> Result<()> {
-        if let Some(impact) = self.core.shield.impact.take() {
+    /// `damaged`: the knockback branch ran, which the x19A4 branch follows
+    /// as an `else if` (fighter.c:2907).
+    pub(super) fn shield_proc(
+        &mut self,
+        assets: &FighterAssets,
+        exhausted: bool,
+        damaged: bool,
+    ) -> Result<()> {
+        if let Some(impact) = self.core.shield.impact.take().filter(|_| !damaged) {
             if exhausted {
                 self.enter_shield_break(assets)?;
                 // efAsync_Spawn at link 14 dispatches immediately.
