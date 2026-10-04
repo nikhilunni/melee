@@ -42,6 +42,7 @@ impl Outcome {
                 "unported: {}",
                 reason.strip_prefix("not implemented: ").unwrap_or(reason)
             ),
+            Stop::Panicked { message, .. } => format!("panic: {}", first_line(message)),
             Stop::Diverged(diff) => format!(
                 "diverged: {} [{}]",
                 telling_field(&report.differing).unwrap_or(&diff.path),

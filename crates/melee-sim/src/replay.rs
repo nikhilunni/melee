@@ -78,6 +78,12 @@ pub enum Stop {
         reason: String,
     },
     Diverged(Divergence),
+    /// The port panicked on this tick (a fault in the port, not a recorded
+    /// difference); the frames before it matched.
+    Panicked {
+        tick: u64,
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -137,6 +143,11 @@ impl std::fmt::Display for Report {
                 *tick as i64 + i64::from(slp::SLIPPI_FIRST_FRAME)
             ),
             Stop::Diverged(diff) => write!(f, "{diff}"),
+            Stop::Panicked { tick, message } => write!(
+                f,
+                "simulation panic at tick {tick} (Slippi {}): {message}",
+                *tick as i64 + i64::from(slp::SLIPPI_FIRST_FRAME)
+            ),
         }
     }
 }
@@ -752,7 +763,11 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                     .or_else(|| payload.downcast_ref::<&str>().copied())
                     .unwrap_or("unknown panic");
                 if !message.starts_with("not implemented:") {
-                    anyhow::bail!("simulation panic at tick {}: {message}", expected.frame);
+                    report.stop = Stop::Panicked {
+                        tick: expected.frame,
+                        message: message.into(),
+                    };
+                    return Ok(report);
                 }
                 report.stop = Stop::Unported {
                     tick: expected.frame,

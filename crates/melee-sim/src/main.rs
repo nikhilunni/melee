@@ -244,7 +244,10 @@ fn main() -> anyhow::Result<()> {
             let report = melee_sim::replay::run_file(&file, &root, setup)?;
             println!("{report}");
             anyhow::ensure!(
-                !matches!(report.stop, melee_sim::replay::Stop::Diverged(_)),
+                !matches!(
+                    report.stop,
+                    melee_sim::replay::Stop::Diverged(_) | melee_sim::replay::Stop::Panicked { .. }
+                ),
                 "ported-state replay mismatch"
             );
             Ok(())
