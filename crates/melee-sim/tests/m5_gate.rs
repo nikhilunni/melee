@@ -2168,6 +2168,8 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     // A whole match: the down smash's article ends itself when Ness jumps
     // out of the smash, and plays its destroy effect.
     ("corpus_v3_fd_ness_fox4_ec3145eb3_p2", 3739),
+    // Explorer (yo-yo wave, batch 1): a whole match with yo-yo up smashes.
+    ("corpus_v3_fd_ness_fox4_ebb526384_p0", 3508),
 ];
 
 #[test]
