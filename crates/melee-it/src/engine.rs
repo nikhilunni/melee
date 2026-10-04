@@ -744,6 +744,10 @@ pub struct ItemCore {
     pub animation_rate: f32,
     /// xDCF b2 (it_8027518C): the item ends without its destroy effect.
     pub destroy_effect_suppressed: bool,
+    /// The kind's own code set ip->owner = NULL before Item_8026A8EC
+    /// (it_802BE958_inline, Ness's yo-yo): a held item's destroy effect is
+    /// not withheld (item.c:1993).
+    pub owner_released: bool,
     /// Item_8026A8EC's efLib_DestroyAll already ran in the proc that ended
     /// the item.
     pub effects_destroyed: bool,
@@ -1194,7 +1198,9 @@ impl ItemCore {
         // item.c:1991: efLib_DestroyAll first.
         self.events.push(ItemEvent::DestroyEffects);
         self.effects_destroyed = true;
-        if self.destroy_effect_suppressed || (self.held && self.owner.is_some()) {
+        if self.destroy_effect_suppressed
+            || (self.held && self.owner.is_some() && !self.owner_released)
+        {
             return;
         }
         if let Some(id) = effect {
@@ -1551,6 +1557,7 @@ impl ItemPool {
             animation_frame: 0.0,
             animation_rate: 1.0,
             destroy_effect_suppressed: false,
+            owner_released: false,
             effects_destroyed: false,
             owner_notified: false,
             script: ScriptState::default(),
