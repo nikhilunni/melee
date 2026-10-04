@@ -1,0 +1,27 @@
+# MEWTWO directed witness: Fox shields the Shadow Ball (released at tick 150).
+name = "mewtwo_ball_shield_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 153, port = 0, buttons = {  }, raw = {  } },
+  { frame = 205, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 260, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

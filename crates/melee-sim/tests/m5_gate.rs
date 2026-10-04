@@ -121,6 +121,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("held_item_")
         || REPLAY_BRANCH_WITNESSES.iter().any(|(n, _)| *n == name)
         || name.starts_with("ness_")
+        || name.starts_with("mewtwo_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -2136,6 +2137,119 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
 #[test]
 fn ness_witnesses_match_retail() {
     gate_in_parallel(NESS_WITNESSES);
+}
+
+/// Mewtwo vs Fox on Final Destination (boundary `start_fd_mewtwo_fox4`):
+/// directed scenes and bridged explorer cases, items compared.
+const MEWTWO_WITNESSES: &[(&str, usize)] = &[
+    // Movement on the common rows with PlMt.dat's attributes and scripts:
+    // walks and turn, dash/run/turn-run/brake, jumps (the floating double
+    // jump, ftMt_JumpAerial_Enter) and landings, crouch, shield, rolls and
+    // dodges, jabs and tilts, smashes and the dash attack, the aerials with
+    // and without landing lag, the taunt and whiffed grabs; the two search
+    // bases (standing, and the run up to Fox).
+    ("mewtwo_walk_fd_fox4", 420),
+    ("mewtwo_dash_fd_fox4", 420),
+    ("mewtwo_jump_fd_fox4", 420),
+    ("mewtwo_squat_guard_fd_fox4", 520),
+    ("mewtwo_jab_tilt_fd_fox4", 620),
+    ("mewtwo_smash_fd_fox4", 620),
+    ("mewtwo_aerial_fd_fox4", 700),
+    ("mewtwo_aerial_land_fd_fox4", 520),
+    ("mewtwo_taunt_ledge_fd_fox4", 620),
+    ("mewtwo_grab_whiff_fd_fox4", 360),
+    ("mewtwo_base_idle_fd_fox4", 520),
+    ("mewtwo_base_runup_fd_fox4", 520),
+    // Shadow Ball (ftmewtwospecialn.c, itmewtwoshadowball.c): an uncharged
+    // ball wavering across the stage into Fox; the full charge (efSync 27,
+    // colour 92) kept through a shield cancel and released with its recoil;
+    // a partial charge cancelled and resumed; a roll out of the loop; the
+    // aerial rows through a landing and an aerial release; a shielded and
+    // a reflected ball (its lifetime is not renewed), and one reflected
+    // close enough to strike Mewtwo; Fox's Illusion striking Mewtwo in the
+    // loop (the partial charge lost) and in the full loop (the charge
+    // kept); a ball released below the stage bursting on its side.
+    ("mewtwo_ball_tap_fd_fox4", 420),
+    ("mewtwo_ball_full_fd_fox4", 620),
+    ("mewtwo_ball_cancel_fd_fox4", 520),
+    ("mewtwo_ball_roll_fd_fox4", 420),
+    ("mewtwo_ball_air_fd_fox4", 520),
+    ("mewtwo_ball_shield_fd_fox4", 420),
+    ("mewtwo_ball_reflect_fd_fox4", 520),
+    ("mewtwo_ball_reflect_hit_fd_fox4", 346),
+    ("mewtwo_ball_struck_fd_fox4", 520),
+    ("mewtwo_ball_struck_full_fd_fox4", 620),
+    ("mewtwo_ball_burst_fd_fox4", 262),
+    // Confusion (ftmewtwospecials.c; ftCo_CaptureMewtwo.c /
+    // ftCo_ThrownMewtwo.c for the victim): whiffs on the ground and twice
+    // in one airtime (the lift once); a grounded catch released into
+    // DamageFall with 10% and no launch; an aerial Confusion landing
+    // mid-move; a shielding Fox caught; Fox's laser reflected and still
+    // his (x2218_b4); an aerial catch carried through Mewtwo's landing; a
+    // jumping Fox caught out of the air.
+    ("mewtwo_confusion_whiff_fd_fox4", 460),
+    ("mewtwo_confusion_hit_fd_fox4", 520),
+    ("mewtwo_confusion_air_hit_fd_fox4", 520),
+    ("mewtwo_confusion_shield_fd_fox4", 520),
+    ("mewtwo_confusion_reflect_fd_fox4", 420),
+    ("mewtwo_confusion_air_catch_fd_fox4", 430),
+    ("mewtwo_confusion_catch_jumper_fd_fox4", 464),
+    // Teleport (ftmewtwospecialhi.c): the aerial travel into the helpless
+    // fall and its landing lag; an aerial start whose fall catches the
+    // ledge; the floor travel; the floor travel off the edge into a KO; the
+    // aerial travel into the floor; the neutral stick (straight up).
+    ("mewtwo_teleport_fd_fox4", 330),
+    ("mewtwo_teleport_air_fd_fox4", 360),
+    ("mewtwo_teleport_floor_fd_fox4", 300),
+    ("mewtwo_teleport_edge_fd_fox4", 330),
+    ("mewtwo_teleport_air_floor_fd_fox4", 330),
+    ("mewtwo_teleport_neutral_fd_fox4", 330),
+    // Disable (ftmewtwospeciallw.c, itmewtwodisable.c; ftCo_DamageBind.c
+    // for the victim): out of range on the ground and from the air into a
+    // landing; the stun (DamageBind) running out and mashed out; a Fox
+    // facing away untouched (the hitbox's x42_b2); an airborne Fox dropped
+    // in DamageFall; a shield; Fox's Reflector stunning Mewtwo; a second
+    // Disable launching the stunned Fox.
+    ("mewtwo_disable_whiff_fd_fox4", 420),
+    ("mewtwo_disable_hit_fd_fox4", 620),
+    ("mewtwo_disable_back_fd_fox4", 400),
+    ("mewtwo_disable_air_fd_fox4", 420),
+    ("mewtwo_disable_shield_fd_fox4", 400),
+    ("mewtwo_disable_reflect_fd_fox4", 620),
+    ("mewtwo_disable_mash_fd_fox4", 520),
+    ("mewtwo_disable_twice_fd_fox4", 620),
+    // The throws: forward (ftMt_SpecialN_Shoot's five Shadow Balls, whose
+    // hits share the throw's attack id and start the repeated-hit pushback,
+    // ftColl_80076444 / ftColl_80076528), back, up, and down after a pummel.
+    ("mewtwo_throw_f_fd_fox4", 520),
+    ("mewtwo_throw_b_fd_fox4", 520),
+    ("mewtwo_throw_hi_fd_fox4", 520),
+    ("mewtwo_throw_lw_fd_fox4", 520),
+];
+
+#[test]
+fn mewtwo_witnesses_match_retail() {
+    gate_in_parallel(MEWTWO_WITNESSES);
+}
+
+/// The Mewtwo start boundary's cold construction: PlMt.dat's attributes,
+/// 314 animations and EfMtData.dat build the retail start scene from
+/// parameters alone. make_boundary.py records a start scene's particle
+/// ledger as `ledger600`.
+#[test]
+fn mewtwo_start_boundary_cold_construction_matches_retail() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../harness/scenarios/start_fd_mewtwo_fox4_cold.toml");
+    let scenario = Scenario::load(&path).unwrap();
+    let ledger = scenario.trace_path("ledger600.raw.jsonl");
+    if !melee_test_support::require_files(scenario.required_files().into_iter().chain([ledger])) {
+        return;
+    }
+    assert_eq!(scenario.frames, 600);
+    trace::gate_items(&scenario).unwrap();
+    let differing =
+        trace::particle_site_diff(&scenario, 0, scenario.frames - 1, "ledger600").unwrap();
+    assert!(differing.is_empty(), "{}", differing[0]);
 }
 
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each

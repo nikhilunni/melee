@@ -1,0 +1,27 @@
+# MEWTWO directed witness: grab (Z at tick 215) and up throw (stick at 250).
+name = "mewtwo_throw_hi_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 218, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 254, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

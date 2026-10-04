@@ -402,6 +402,14 @@ pub(super) fn record_throw_hit(
         attacker.commands.throw_damage_counts[0],
     );
     attacker.combat.has_recorded_hit = true;
+    // ftColl_8007891C -> ftColl_80076444: the throw counts toward the
+    // thrower's repeated hits on this victim (Mewtwo's forward throw and
+    // its Shadow Balls share the attack id).
+    attacker.combat.combo.record(
+        victim.spawn_number,
+        attacker.combat.stale.current_move(),
+        &aa.combo,
+    );
     // ftColl_8007891C -> plStale_UpdateStaleMovesFromFighter: one entry per throw.
     attacker.combat.stale.record();
     attacker.commands.stale_multiplier = Some(attacker.combat.stale.multiplier(&aa.stale_weights));
