@@ -410,8 +410,8 @@ pub(crate) fn dated_controller_fix(replay: &Replay, setup: Setup) -> Setup {
     if setup.ignore_controller_fixes || !any_ucf || setup.controller_fix.is_some() {
         return setup;
     }
-    match start_day(replay).map(ucf_by_date) {
-        Some((dated, _)) => Setup {
+    match ucf_candidates(replay.version(), start_day(replay)) {
+        Some((dated, _, _)) => Setup {
             controller_fix: Some(dated),
             ..setup
         },
