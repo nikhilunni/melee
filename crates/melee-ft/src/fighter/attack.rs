@@ -350,7 +350,13 @@ impl Fighter {
     }
     /// ftCo_AttackDash_CheckInput from Dash, Run and RunDirect, then
     /// ftCo_AttackDash_SetMv0 (8008B570): open the dash-grab window (PlCo +68).
+    /// A battering item in hand swings instead (ftCo_Attack_800CCF58(gobj,
+    /// 4), retail 0x8008B460); the callers have already thrown a throwable
+    /// item or one with a shoulder held (ftCo_80094E54, the same test).
     pub(super) fn enter_dash_attack(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.held_item.is_some_and(|held| held.use_kind == 2) {
+            return self.enter_item_swing(super::item_swing::SwingInput::Dash, assets);
+        }
         self.enter_simple_attack(S::AttackDash, assets)?;
         let MotionData::DashAttack { grab_window, .. } = &mut self.core.state_data else {
             unreachable!("enter_simple_attack(AttackDash) installs DashAttack")

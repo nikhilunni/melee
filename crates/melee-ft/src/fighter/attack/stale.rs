@@ -45,6 +45,11 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::ThrowB as usize] = Some(GroundMove::ThrowBack);
     rows[S::ThrowHi as usize] = Some(GroundMove::ThrowUp);
     rows[S::ThrowLw as usize] = Some(GroundMove::ThrowDown);
+    // ftData_MotionStateList[120..=123]: the rows' x4 low bytes 0x40..0x43.
+    rows[S::SwordSwing1 as usize] = Some(GroundMove::SwordSwing1);
+    rows[S::SwordSwing3 as usize] = Some(GroundMove::SwordSwing3);
+    rows[S::SwordSwing4 as usize] = Some(GroundMove::SwordSwing4);
+    rows[S::SwordSwingDash as usize] = Some(GroundMove::SwordSwingDash);
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();

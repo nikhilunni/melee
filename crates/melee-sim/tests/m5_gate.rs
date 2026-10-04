@@ -1795,6 +1795,12 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     ("sword_swing_hit_jab_fd_peach", 1640),
     ("sword_swing_hit_tilt_fd_peach", 1640),
     ("sword_swing_rebound_fd_peach", 1640),
+    // A with the Beam Sword out of Dash and out of Run is the dash swing
+    // (ftCo_AttackDash_CheckInput, SwordSwingDash), slowed by PlCo +420 of
+    // the ground friction (ftCo_800CD278); its two hits on Fox are one
+    // FtMoveId_SwordSwingDash, so the second is staled by the first.
+    ("sword_swing_dash_fd_peach", 1640),
+    ("sword_swing_run_fd_peach", 1640),
 ];
 
 #[test]

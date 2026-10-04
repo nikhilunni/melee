@@ -448,7 +448,9 @@ pub fn swing(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
         panic!("swing scratch missing")
     };
     if swing.input == crate::fighter::item_swing::SwingInput::Dash {
-        unimplemented!("ftCo_800CD278: the dash swing's friction (ft_80085030)");
+        return fighter
+            .core
+            .dash_swing_physics(phase.assets, phase.map, phase.wind);
     }
     fighter.core.physics_jab(phase)
 }

@@ -466,6 +466,19 @@ impl super::FighterCore {
         self.root_motion_or_friction(friction, assets, map, wind);
     }
 
+    /// ftCo_800CD278 (800CD278), the dash swing (mv.co.swing.x4 == 4):
+    /// ft_80085030 at PlCo +420 of the ground friction (retail 0x800CD2AC:
+    /// fmuls).
+    pub(super) fn dash_swing_physics(
+        &mut self,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Wind,
+    ) {
+        let friction = assets.dash_swing_friction * self.attributes.ground.ground_friction;
+        self.root_motion_or_friction(friction, assets, map, wind);
+    }
+
     /// The world translation of the held part (ftData x8 +0x10).
     pub fn held_part_position(&mut self, assets: &FighterAssets) -> Vec3 {
         let part = self.bones.model.animation_translation;

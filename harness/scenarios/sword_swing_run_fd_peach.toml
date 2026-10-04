@@ -1,0 +1,34 @@
+# SWORD-SWING directed witness. Peach dashes at 1500 and presses A at 1525,
+# in Run: ftCo_AttackDash_CheckInput (retail 0x8008B460) swings the Beam
+# Sword (SwordSwingDash, 123) instead of the dash attack; the swing reaches
+# Fox. ftCo_800CD278 applies PlCo +420 of her ground friction.
+# From the start_fd_peach_fox4 boundary (P1 Peach at x=-60 facing right,
+# P2 Fox at x=60); Vegetable at tick 1445 pulls a Beam Sword (as
+# peach4_pull_sword_swings) and Fox dashes in. Input frames count ticks.
+name = "sword_swing_run_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1640
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1445, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 1447, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1448, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 1470, port = 1, buttons = {  }, raw = {  } },
+  { frame = 1500, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 1525, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 1527, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

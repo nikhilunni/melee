@@ -101,6 +101,12 @@ pub enum StaleMove {
     CargoThrowBack,
     CargoThrowUp,
     CargoThrowDown,
+    /// FtMoveId_SwordSwing1..SwordSwingDash (0x40..0x43): the Beam Sword's
+    /// swings.
+    SwordSwing1,
+    SwordSwing3,
+    SwordSwing4,
+    SwordSwingDash,
 }
 
 /// One attack instance retained by projectiles after their owner changes motion.
