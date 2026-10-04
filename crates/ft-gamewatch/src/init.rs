@@ -75,6 +75,10 @@ impl CharacterCallbacks for GameWatch {
         &TABLE
     }
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// ftGw_Init_MotionStateTable's rows with x9_b1 (bit 22 of the word at
+    /// +8, read from the DOL at 0x803D23E8): the neutral, back and up
+    /// aerials' landings (350..352).
+    const KO_COUNTDOWN_ROWS: &'static [u16] = &[350, 351, 352];
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
