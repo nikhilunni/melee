@@ -19,6 +19,7 @@ mod captured;
 pub mod desc;
 mod facts;
 mod hold;
+mod island_route;
 mod movement;
 mod partner;
 mod recover;

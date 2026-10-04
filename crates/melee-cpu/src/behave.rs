@@ -77,7 +77,7 @@ fn idle(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
 /// ftCo_800A08F0 (0x800A08F0): step off the revival platform. Nana
 /// (FTKIND_NANA) holds the stick down for five frames; a crouching CPU
 /// only waits.
-fn leave_revival_platform(fp: &mut Fighter) {
+pub(crate) fn leave_revival_platform(fp: &mut Fighter) {
     let crouching = matches!(
         fp.core.motion_state.id,
         S::SquatRv | S::Squat | S::SquatWait
@@ -121,18 +121,18 @@ fn attack_approach(_fp: &mut Fighter, _scene: &mut Scene, _rng: &mut HsdRng) {
 }
 
 /// ftCo_800AB224's block_49: walk when the destination is on this island,
-/// otherwise climb or jump toward it by its angle.
+/// otherwise head for it by its angle (`island_route`).
 fn walk_or_climb(fp: &mut Fighter, scene: &mut Scene) {
     if crate::route::destination_on_island(fp, scene) {
         walk(fp, scene);
         return;
     }
-    unimplemented!("ftCo_800AB224: a destination off this island (ftCo_0A01.c:5244)");
+    crate::island_route::toward_other_island(fp, scene);
 }
 
 /// ftCo_800AA320 (0x800AA320): the stick step and limit by level; Nana
 /// steers harder so she keeps up.
-fn stick_limits(fp: &Fighter) -> (i32, i32) {
+pub(crate) fn stick_limits(fp: &Fighter) -> (i32, i32) {
     if fp.core.capabilities.cpu_partner {
         return (0x40, 0x7F);
     }

@@ -1,0 +1,33 @@
+# ICECLIMBERS directed witness: Nana's destination on another island
+# (ftCo_800AB224, 0x800AB224, ftCo_0A01.c:5240-5293). Popo full-hops onto
+# Battlefield's right platform with a late aerial Ice Shot and teeters at
+# its edge; Nana, six ticks behind, misses the platform and lands on the
+# stage below him (tick 208). Her destination is then above her on another
+# island: she turns to face it (ftCo_CpuTurnAround, 224), jumps with Y held
+# (ftCo_800A0148, 236) and comes back with her aerial jump. Found from
+# start_bf_iceclimbers_fox4 by varying the Ice Shot's tick.
+name = "iceclimbers_nana_island_bf_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_bf_iceclimbers_fox4.sav"
+frames = 420
+seed = 1
+stage = "Battlefield"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 94 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 1024, stickX = 94 } },
+  { frame = 139, port = 0, buttons = {  }, raw = {  } },
+  { frame = 153, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
