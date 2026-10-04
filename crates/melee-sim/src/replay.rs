@@ -1006,6 +1006,10 @@ pub fn write_retail_inputs(
         header["stadium_preload"] = scenario.stadium_preload.into();
         header["stadium_frozen"] = scenario.stadium_frozen.into();
     }
+    // Frozen Stages, on the stages it changes (`--gecko frozen-stages`).
+    if crate::replay_stage_codes::changes_stage(replay.start.stage) {
+        header["frozen_stages"] = scenario.frozen_stages.into();
+    }
     writeln!(out, "{header}")?;
     let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
     for input in &scenario.replay_inputs {

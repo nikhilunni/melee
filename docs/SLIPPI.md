@@ -875,6 +875,9 @@ state enters any run. When the runs never differ over the recording, or
 both stop matching on the same tick (another fault came first), the stage is
 retail's. The report's `stage code` line says which and why;
 `--stage-codes <none|frozen-stages>` names it instead.
+The bridge carries the choice: `--retail-inputs` writes `frozen_stages` in
+its header on these stages, and a boundary made with `--gecko frozen-stages`
+sets the flag in its scenarios (`gecko.SCENARIO_FLAGS`).
 
 | Corpus | Complete before | after | Chosen `frozen-stages` |
 |---|---|---|---|

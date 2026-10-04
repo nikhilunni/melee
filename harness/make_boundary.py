@@ -46,7 +46,8 @@ boundary, and a replay bridged from any other boundary leaves the console's
 random stream there. Such a boundary serves that one replay; the cold twin
 names the seed, and its gate checks the port's setup draws reach the saved one.
 A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
-`ps-frozen`: `stadium_frozen`; gecko.SCENARIO_FLAGS) sets it in both scenarios.
+`ps-frozen`: `stadium_frozen`, `frozen-stages`: `frozen_stages`; gecko.SCENARIO_FLAGS)
+sets it in both scenarios.
 
 It never overwrites: an existing savestate or scenario of the same name stops
 it before Dolphin starts.

@@ -183,6 +183,15 @@ def test_stadium_codes_set_their_flags_in_the_start_scene_and_its_cold_twin(code
     assert "gecko" not in cold
 
 
+def test_frozen_stages_sets_its_flag_in_the_start_scene_and_its_cold_twin():
+    codes = ["ucf-0.8", "frozen-stages"]
+    start = tomllib.loads(mb.start_scenario("b", "YoshisStory", ["Falco", "Marth"], 4, codes, [0, 3]))
+    cold = tomllib.loads(mb.cold_scenario("b", "YoshisStory", ["Falco", "Marth"], 4, 7, [3, 4],
+                                          "retail", codes, [0, 3], 8))
+    assert start["frozen_stages"] is True and cold["frozen_stages"] is True
+    assert "gecko" not in cold
+
+
 def creation_driver(seed=0x1234_5678):
     """A driver on the stage screen whose config names a Game Start seed."""
     mem = Memory()

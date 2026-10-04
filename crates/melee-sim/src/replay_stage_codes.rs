@@ -72,6 +72,11 @@ fn name(frozen: bool) -> &'static str {
 /// have no write.
 const FROZEN_STAGE_IDS: [u16; 4] = [3, 8, 28, 32];
 
+/// Whether the code changes the stage with this Slippi id.
+pub fn changes_stage(stage: u16) -> bool {
+    FROZEN_STAGE_IDS.contains(&stage)
+}
+
 /// Choose the stage code for a recording on a stage it changes. `None` on
 /// the other stages, where the question does not arise.
 pub fn resolve_stage_codes(
@@ -79,7 +84,7 @@ pub fn resolve_stage_codes(
     root: &Path,
     setup: Setup,
 ) -> (Setup, Option<StageCodeChoice>) {
-    if !FROZEN_STAGE_IDS.contains(&replay.start.stage) {
+    if !changes_stage(replay.start.stage) {
         return (setup, None);
     }
     let named = |frozen| Setup {
