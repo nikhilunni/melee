@@ -1,0 +1,25 @@
+# Samus vs Falco on YoshisStory, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_ys_slippi8_p24_samus3_falco0_ucf073"
+gate = "start_ys_slippi8_p24_samus3_falco0_ucf073_cold"
+savestate = "harness/roms/start_ys_slippi8_p24_samus3_falco0_ucf073.sav"
+frames = 600
+seed = 1
+stage = "YoshisStory"
+gecko = ["ucf-0.73", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+controller = "idle"
+controller_fix = "ucf-0.73"

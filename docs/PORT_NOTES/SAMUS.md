@@ -69,13 +69,15 @@ rope's callers (`it_802B99A0`, `it_802B9CE8`) have no witness.
 lands on the thrown Fox in the port (a two-frame freeze at frame 13 of the
 throw); retail does not hit him. Not diagnosed.
 
-## Known divergence, not registered: a Bomb against Yoshi's Story's wall
+## A Bomb bouncing on Randall (fixed 2026-10-03)
 
-`slp_ys_samus_falco_t6900` (local data: `SAMUS/17_27_54 Samus + Falco (YS)`
-played back on retail from `start_ys_slippi8_p24_samus3_falco0_ucf073`,
-ports 2 and 4, UCF 0.73) first differs at tick 1731 on a falling Bomb's
-position below the stage's right side: retail has it at x 93.7959, the port
-at 94.1508 (y differs by two ulps), with every fighter key, the seed and the
-particle call sites still equal. Retail moved the Bomb off a surface the
-port's pass did not meet (`it_8026E248` through `bounce_to_rest`, or the map
-pass under it). Not diagnosed; a replay cannot show it (no items).
+`slp_ys_samus_falco_t6900` (`SAMUS/17_27_54 Samus + Falco (YS)` played back
+on retail from `start_ys_slippi8_p24_samus3_falco0_ucf073`, ports 2 and 4,
+UCF 0.73; a `SLIPPI_REPLAY_WITNESSES` entry, exact for 6900 ticks) differed
+at tick 1731 on a falling Bomb's position below the stage's right side:
+retail 93.7959, the port 94.1508. The Bomb had bounced on Randall's cloud at
+1729 (`it_8026E248`): `it_8027781C` stores the line's speed in x64, and the
+next position update adds it once and clears it (`Item_802697D4`:
+`it_8027346C` at 0x80269954, as `it_80273484` at 0x802698F0 clears x58). The
+port never cleared it, so the Bomb went on moving with the cloud (0.3548 a
+tick) after leaving it.

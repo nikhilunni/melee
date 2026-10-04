@@ -1853,8 +1853,13 @@ fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
     if !item.held && item.spin_speed != 0.0 && item.ground_or_air == GroundOrAir::Air {
         item.spin();
     }
+    // Each movement is spent once added: it_80273484 (retail 0x802698F0)
+    // clears the environmental one, it_8027346C (0x80269954) the platform
+    // one, which a bounce off a moving line set (it_8027781C).
     item.position = add(item.position, item.environmental_velocity);
+    item.environmental_velocity = Vec3::ZERO;
     item.position = add(item.position, item.platform_velocity);
+    item.platform_velocity = Vec3::ZERO;
 }
 fn add(a: Vec3, b: Vec3) -> Vec3 {
     Vec3 {

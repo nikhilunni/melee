@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 23] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 24] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2167,6 +2167,9 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 23] = [
     // (Player_GetEntity): with Zelda's player playing Sheik, the close-up
     // is not lost to the sleeping Zelda (grStadium_801D2344; 727).
     ("slp_ps_zelda_sheik_t900_cold", 900),
+    // A Samus Bomb bounces on Randall's cloud (1729): the cloud's speed
+    // moves it on the next tick only (Item_802697D4 clears x64, 0x80269954).
+    ("slp_ys_samus_falco_t6900_cold", 6900),
 ];
 
 #[test]
