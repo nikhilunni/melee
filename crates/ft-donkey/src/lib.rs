@@ -71,17 +71,13 @@ pub const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; SPECIAL_ROW_CO
 pub static MOTION_FLAGS: [u32; SPECIAL_ROW_COUNT] = [
     // 341..350: the heavy-item carry.
     0x00480000, 0x00484066, 0x00484066, 0x00484066, 0x00482064, 0x00480000, 0x00480000, 0x00488069,
-    0x00480000, 0x004A0000,
-    // 351..360: the cargo carry.
+    0x00480000, 0x004A0000, // 351..360: the cargo carry.
     0x00A80035, 0x00A84035, 0x00A84035, 0x00A84035, 0x00A82035, 0x00A80035, 0x00A80035, 0x00A88035,
-    0x00A80035, 0x00AA0035,
-    // 361..368: the cargo throws, ground then air.
+    0x00A80035, 0x00AA0035, // 361..368: the cargo throws, ground then air.
     0x00A40039, 0x00A4003A, 0x00A4003B, 0x00A4003C, 0x00A40039, 0x00A4003A, 0x00A4003B, 0x00A4003C,
     // 369..378: Giant Punch, ground then air.
     0x00340211, 0x00340211, 0x00340211, 0x00340211, 0x00340211, 0x00340611, 0x00340611, 0x00340611,
-    0x00340611, 0x00340611,
-    // 379..382: Headbutt and Spinning Kong.
-    0x00340212, 0x00340612, 0x00340213, 0x00340613,
-    // 383..386: Hand Slap.
+    0x00340611, 0x00340611, // 379..382: Headbutt and Spinning Kong.
+    0x00340212, 0x00340612, 0x00340213, 0x00340613, // 383..386: Hand Slap.
     0x00340214, 0x003C0214, 0x00340214, 0x00340614,
 ];

@@ -120,7 +120,8 @@ impl CharacterCallbacks for DonkeyKong {
     /// while Giant Punch installed it.
     const HIT_TAKEN: Option<fn(&mut Fighter)> = Some(|f| {
         if f.character.get::<DonkeyKong>().hit_destroys_effects {
-            f.effects.push(melee_ef::request::EffectRequest::DestroyOwned);
+            f.effects
+                .push(melee_ef::request::EffectRequest::DestroyOwned);
         }
     });
     /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion

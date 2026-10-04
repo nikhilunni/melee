@@ -1193,7 +1193,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 248,
         anim: callbacks::animation::throw,
         iasa: callbacks::input::catch,
-        physics: callbacks::physics::jab,
+        physics: callbacks::physics::throw,
         collision: callbacks::collision::grab_hold,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
@@ -1904,6 +1904,37 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         };
         i += 1;
     }
+    // ftCo_MS_Bury..BuryJump = 294..296 (ftCo_Bury.c). The buried rows
+    // have no animation; the jump out plays the forward jump's.
+    rows[S::Bury as usize] = MotionRow {
+        action: ActionId(294),
+        id: S::Bury,
+        animation: -1,
+        anim: crate::fighter::bury::bury_anim,
+        iasa: crate::fighter::bury::no_input,
+        physics: crate::fighter::bury::bury_physics,
+        collision: crate::fighter::bury::bury_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::BuryWait as usize] = MotionRow {
+        action: ActionId(295),
+        id: S::BuryWait,
+        anim: crate::fighter::bury::bury_wait_anim,
+        physics: crate::fighter::bury::bury_wait_physics,
+        ..rows[S::Bury as usize]
+    };
+    rows[S::BuryJump as usize] = MotionRow {
+        action: ActionId(296),
+        id: S::BuryJump,
+        animation: 16,
+        anim: crate::fighter::bury::bury_jump_anim,
+        iasa: crate::fighter::bury::bury_jump_input,
+        physics: crate::fighter::bury::bury_jump_physics,
+        collision: crate::fighter::bury::bury_jump_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::CliffAttackQuick as usize] = MotionRow {
         action: ActionId(S::CliffAttackQuick as u16),
         id: S::CliffAttackQuick,

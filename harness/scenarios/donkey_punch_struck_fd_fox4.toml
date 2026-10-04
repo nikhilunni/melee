@@ -1,0 +1,32 @@
+# DONKEY KONG directed witness: Fox runs up to Donkey Kong. Fox jabs Donkey Kong in the wind-up loop: take_dmg_cb
+# (ftDk_Init_8010D774) drops the stored swings, so the next neutral B starts from none.
+name = "donkey_punch_struck_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 144, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+  { frame = 185, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 187, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

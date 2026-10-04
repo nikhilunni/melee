@@ -30,8 +30,22 @@ const EFFECT: u16 = 0x4CA;
 
 pub const fn rows() -> [MotionRow; 2] {
     [
-        row(GROUND, 0x14B, ground_anim, common::no_input, ground_physics, ground_collision),
-        row(AIR, 0x14C, air_anim, common::no_input, air_physics, air_collision),
+        row(
+            GROUND,
+            0x14B,
+            ground_anim,
+            common::no_input,
+            ground_physics,
+            ground_collision,
+        ),
+        row(
+            AIR,
+            0x14C,
+            air_anim,
+            common::no_input,
+            air_physics,
+            air_collision,
+        ),
     ]
 }
 
@@ -41,8 +55,15 @@ fn attributes(f: &Fighter) -> &crate::attributes::SpinningKongAttributes {
 
 /// ftDk_SpecialHi_Enter (8010FCD4) / ftDk_SpecialAirHi_Enter (8010FDA4).
 pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
-    change(f, if air { AIR } else { GROUND }, MotionEntryFlags(0), 0.0, 1.0, a)
-        .expect("Spinning Kong assets");
+    change(
+        f,
+        if air { AIR } else { GROUND },
+        MotionEntryFlags(0),
+        0.0,
+        1.0,
+        a,
+    )
+    .expect("Spinning Kong assets");
     common::install_damage_callbacks(f);
     f.commands.variables = [0; 4];
     let (ground_max, launch) = {
@@ -114,7 +135,11 @@ fn air_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         let a = attributes(f);
         (a.gravity_scale, a.air_mobility, a.air_max)
     };
-    let scale = if f.commands.variables[0] != 0 { 1.0 } else { scale };
+    let scale = if f.commands.variables[0] != 0 {
+        1.0
+    } else {
+        scale
+    };
     let gravity = scale * f.attributes.air.gravity;
     let terminal = f.attributes.air.terminal_velocity;
     common::fall_at(f, gravity, terminal);

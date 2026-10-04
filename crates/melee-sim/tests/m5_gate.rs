@@ -1719,6 +1719,40 @@ const DONKEY_WITNESSES: &[(&str, usize)] = &[
     ("donkey_cargo_fall_ko_fd_fox4", 620),
     // An explorer match through a carry and a mash-out.
     ("corpus_v3_fd_donkeykong_fox4_e720659b1_p0", 4020),
+    // Headbutt's Ground-element hit buries a grounded victim (ftCo_Bury.c:
+    // Bury, BuryWait, BuryJump on the timer or mashed out; the dirt mound,
+    // efAsync 0x447); a hit on a buried fighter deals damage without a
+    // reaction; an airborne victim is launched; a shield takes it.
+    ("donkey_headbutt_bury_fd_fox4", 620),
+    ("donkey_headbutt_bury_mash_fd_fox4", 520),
+    ("donkey_headbutt_buried_hits_fd_fox4", 620),
+    ("donkey_headbutt_air_hit_fd_fox4", 460),
+    ("donkey_headbutt_shield_fd_fox4", 460),
+    // Giant Punch landing: partial and full, shielded; a jab on the
+    // wind-up drops the stored swings (ftDk_Init_8010D774), a jab on a
+    // charged Donkey Kong in Wait leaves them.
+    ("donkey_punch_hit_fd_fox4", 460),
+    ("donkey_punch_full_hit_fd_fox4", 560),
+    ("donkey_punch_shield_fd_fox4", 460),
+    ("donkey_punch_struck_fd_fox4", 560),
+    ("donkey_punch_kept_fd_fox4", 620),
+    // Spinning Kong's hits, grounded, shielded and aerial (the aerial row
+    // landing back into the grounded one).
+    ("donkey_kong_spin_hit_fd_fox4", 460),
+    ("donkey_kong_spin_shield_fd_fox4", 460),
+    ("donkey_kong_spin_air_hit_fd_fox4", 460),
+    // Hand Slap's quake on a grounded Fox, on his shield, and under him in
+    // the air; the slap's model holds through hitlag (EF_LOADKIND_SYNC).
+    ("donkey_hand_slap_hit_fd_fox4", 460),
+    ("donkey_hand_slap_shield_fd_fox4", 460),
+    // Explorer matches. A back throw whose script reverses the facing
+    // while its root motion keeps facing_dir1 (ft_80085004); Hand Slap
+    // hits with the effect paused in hitlag; a Headbutt burial and the
+    // landing out of BuryJump; a Giant Punch cancel on the input proc's
+    // shield bit (analog trigger or Z, retail 0x8010F140).
+    ("corpus_v3_fd_donkeykong_fox4_e8089e993_p1", 3902),
+    ("corpus_v3_fd_donkeykong_fox4_ea7e2e7e9_p2", 3976),
+    ("corpus_v3_fd_donkeykong_fox4_ee98155f3_p0", 4671),
 ];
 
 #[test]

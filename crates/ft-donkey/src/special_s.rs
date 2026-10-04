@@ -35,8 +35,22 @@ const GROUND_AIR: MotionEntryFlags =
 
 pub const fn rows() -> [MotionRow; 2] {
     [
-        row(GROUND, 0x149, anim::<false>, common::no_input, common::ground_friction, ground_collision),
-        row(AIR, 0x14A, anim::<true>, common::no_input, air_physics, air_collision),
+        row(
+            GROUND,
+            0x149,
+            anim::<false>,
+            common::no_input,
+            common::ground_friction,
+            ground_collision,
+        ),
+        row(
+            AIR,
+            0x14A,
+            anim::<true>,
+            common::no_input,
+            air_physics,
+            air_collision,
+        ),
     ]
 }
 
@@ -51,8 +65,15 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
         f.physics.self_velocity.x /= attributes(f).entry_velocity_divisor;
         f.physics.self_velocity.y = 0.0;
     }
-    change(f, if air { AIR } else { GROUND }, MotionEntryFlags(0), 0.0, 1.0, a)
-        .expect("Headbutt assets");
+    change(
+        f,
+        if air { AIR } else { GROUND },
+        MotionEntryFlags(0),
+        0.0,
+        1.0,
+        a,
+    )
+    .expect("Headbutt assets");
     // ftAnim_8006EBA4.
     f.step_animation(a);
     // Fighter_UnsetCmdVar0.

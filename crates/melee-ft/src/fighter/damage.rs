@@ -959,7 +959,9 @@ impl Fighter {
                 self.core.combat.pending_from_captor = false;
                 self.launch_by_pair_order(hit, assets, rng)?;
                 hit_damage = self.core.combat.frame_max_damage;
-            } else if self.core.combat.cape_turn.turning && hit.knockback != 0.0 {
+            } else if (self.core.combat.cape_turn.turning || self.core.status.no_hit_reaction)
+                && hit.knockback != 0.0
+            {
                 // ftCo_8008EC90 (ftCo_Damage.c:844): x2220_b4, a cape turn in
                 // progress, takes inlineB2 before any other branch: the
                 // damage without a reaction, even for a second cape.
@@ -1024,6 +1026,10 @@ impl Fighter {
                         self.interrupt_actions();
                         self.core.start_ledge_cooldown_if_hanging(assets);
                         self.enter_damage_song(element == melee_types::HitElement::Sleep, assets)?;
+                    } else if down.is_none() && self.bury_hit(element) {
+                        // ftCo_800C0CB8 (ftCo_Damage.c:952), after the prone
+                        // check: buried rather than launched.
+                        self.enter_bury(hit, assets, rng)?;
                     } else {
                         let facing = if down.is_some() {
                             Some(self.core.physics.facing)

@@ -10,6 +10,7 @@ pub mod attack;
 pub mod caches;
 pub mod cape_turn;
 pub mod capture_captain;
+pub mod bury;
 pub mod capture_yoshi;
 pub mod cargo;
 pub mod clank;
@@ -775,6 +776,11 @@ pub struct Status {
     pub input_frozen: bool,
     /// x221D_b5: skip fighter-overlap nudge while dodging (ftcommon.c:850).
     pub ignore_fighter_nudge: bool,
+    /// x2220_b3: a hit deals its damage without a reaction (ftCo_8008EC90's
+    /// inlineB2), set while buried.
+    pub no_hit_reaction: bool,
+    /// x2224_b4: buried; Fighter_procUpdate skips the stage's wind.
+    pub buried: bool,
     pub interaction: Interaction,
     /// dmg.x18ac_time_since_hit (+18AC), reset -1.
     pub time_since_hit: i32,
@@ -819,6 +825,8 @@ impl Status {
             in_hitstun: false,
             input_frozen: false,
             ignore_fighter_nudge: false,
+            no_hit_reaction: false,
+            buried: false,
             interaction: Interaction::Idle,
             time_since_hit: -1,
             time_since_smash: -1.0,
@@ -1180,6 +1188,14 @@ pub enum MotionData {
     /// SwordSwing1..SwordSwingDash (mv.co.swing).
     Swing(item_swing::SwingState),
     Capture(grab_escape::CaptureState),
+    /// Bury and BuryWait (mv.co.bury and the grab timer).
+    Bury(bury::BuryState),
+    /// mv.co.buryjump.x0: frames since the jump out of the ground; mv+4
+    /// is still the buried collision box's top.
+    BuryJump {
+        frames: f32,
+        retained_word: f32,
+    },
     /// The cargo carrier's rows with scratch of their own.
     Cargo(cargo::CargoState),
     /// ShoulderedWait..ShoulderedTurn: the carried fighter's grab timer.

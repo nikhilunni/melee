@@ -54,9 +54,8 @@ const WINDUP_GROUND_AIR: MotionEntryFlags = common::GROUND_AIR;
 /// KeepColAnimPartHitStatus (bit 16) is left out: it only spares x2221_b1's
 /// invincibility (ftCo_Damage.c:452, fighter.c:1007), which the move's own
 /// entry has already ended.
-const PUNCH_GROUND_AIR: MotionEntryFlags = MotionEntryFlags(
-    common::GROUND_AIR.0 | common::KEEP_GFX | (1 << 2) | common::SKIP_HIT,
-);
+const PUNCH_GROUND_AIR: MotionEntryFlags =
+    MotionEntryFlags(common::GROUND_AIR.0 | common::KEEP_GFX | (1 << 2) | common::SKIP_HIT);
 
 /// mv.dk.specialn (ftDonkey/types.h).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,16 +90,86 @@ pub const fn rows() -> [MotionRow; 10] {
         FIRST_ANIMATION + (action.0 - START.0) as i32
     }
     [
-        row(START, animation(START), start_anim::<false>, common::no_input, common::ground_friction, windup_collision::<false>),
-        row(LOOP, animation(LOOP), loop_anim::<false>, loop_input::<false>, common::ground_friction, windup_collision::<false>),
-        row(CANCEL, animation(CANCEL), cancel_anim::<false>, common::no_input, common::ground_friction, windup_collision::<false>),
-        row(PUNCH, animation(PUNCH), punch_anim::<false, true>, common::no_input, common::ground_friction, punch_collision::<false>),
-        row(FULL, animation(FULL), punch_anim::<false, false>, common::no_input, common::ground_friction, punch_collision::<false>),
-        row(AIR_START, animation(AIR_START), start_anim::<true>, common::no_input, common::air_friction_fall, windup_collision::<true>),
-        row(AIR_LOOP, animation(AIR_LOOP), loop_anim::<true>, loop_input::<true>, common::air_friction_fall, windup_collision::<true>),
-        row(AIR_CANCEL, animation(AIR_CANCEL), cancel_anim::<true>, common::no_input, common::air_friction_fall, windup_collision::<true>),
-        row(AIR_PUNCH, animation(AIR_PUNCH), punch_anim::<true, true>, common::no_input, common::air_friction_fall, punch_collision::<true>),
-        row(AIR_FULL, animation(AIR_FULL), punch_anim::<true, false>, common::no_input, common::air_friction_fall, punch_collision::<true>),
+        row(
+            START,
+            animation(START),
+            start_anim::<false>,
+            common::no_input,
+            common::ground_friction,
+            windup_collision::<false>,
+        ),
+        row(
+            LOOP,
+            animation(LOOP),
+            loop_anim::<false>,
+            loop_input::<false>,
+            common::ground_friction,
+            windup_collision::<false>,
+        ),
+        row(
+            CANCEL,
+            animation(CANCEL),
+            cancel_anim::<false>,
+            common::no_input,
+            common::ground_friction,
+            windup_collision::<false>,
+        ),
+        row(
+            PUNCH,
+            animation(PUNCH),
+            punch_anim::<false, true>,
+            common::no_input,
+            common::ground_friction,
+            punch_collision::<false>,
+        ),
+        row(
+            FULL,
+            animation(FULL),
+            punch_anim::<false, false>,
+            common::no_input,
+            common::ground_friction,
+            punch_collision::<false>,
+        ),
+        row(
+            AIR_START,
+            animation(AIR_START),
+            start_anim::<true>,
+            common::no_input,
+            common::air_friction_fall,
+            windup_collision::<true>,
+        ),
+        row(
+            AIR_LOOP,
+            animation(AIR_LOOP),
+            loop_anim::<true>,
+            loop_input::<true>,
+            common::air_friction_fall,
+            windup_collision::<true>,
+        ),
+        row(
+            AIR_CANCEL,
+            animation(AIR_CANCEL),
+            cancel_anim::<true>,
+            common::no_input,
+            common::air_friction_fall,
+            windup_collision::<true>,
+        ),
+        row(
+            AIR_PUNCH,
+            animation(AIR_PUNCH),
+            punch_anim::<true, true>,
+            common::no_input,
+            common::air_friction_fall,
+            punch_collision::<true>,
+        ),
+        row(
+            AIR_FULL,
+            animation(AIR_FULL),
+            punch_anim::<true, false>,
+            common::no_input,
+            common::air_friction_fall,
+            punch_collision::<true>,
+        ),
     ]
 }
 
@@ -147,8 +216,15 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     let stored = swings(f);
     let full = stored == attributes(f).max_swings;
     let state = if full { FULL } else { START };
-    change(f, ActionId(state.0 + offset), MotionEntryFlags(0), 0.0, 1.0, a)
-        .expect("Giant Punch assets");
+    change(
+        f,
+        ActionId(state.0 + offset),
+        MotionEntryFlags(0),
+        0.0,
+        1.0,
+        a,
+    )
+    .expect("Giant Punch assets");
     *scratch(f) = GiantPunch {
         effect: i32::from(full),
         swings: if full { stored } else { 0 },
@@ -196,7 +272,8 @@ fn loop_anim<const AIR: bool>(
         let stored = swings(f) + 1;
         let maximum = attributes(f).max_swings;
         if stored >= maximum {
-            f.core.install_color_overlay_now(FULL_CHARGE_COLOR, p.assets);
+            f.core
+                .install_color_overlay_now(FULL_CHARGE_COLOR, p.assets);
             set_swings(f, maximum);
             clear_callbacks(f);
             common::seal_graphics(f, p.assets, p.rng);
@@ -337,9 +414,9 @@ fn punch_anim<const AIR: bool, const CHARGED: bool>(
 }
 
 /// ftDk_SpecialNLoop_IASA (8010F280) / ftDk_SpecialAirNLoop_IASA
-/// (8010F3B8): the grounded loop first offers the common escapes
-/// (ftCo_8009917C); B punches with the stored swings; a shield press asks
-/// for the cancel, taken on the loop's wrap frame.
+/// (8010F3B8): the grounded loop first offers the roll (ftCo_8009917C); B
+/// punches with the stored swings; a press of the shield bit asks for the
+/// cancel, taken on the loop's wrap frame.
 fn loop_input<const AIR: bool>(f: &mut Fighter, p: InputPhase<'_>) {
     if !AIR {
         if let Some(roll) = f.core.roll_input(p.assets) {
@@ -358,7 +435,10 @@ fn loop_input<const AIR: bool>(f: &mut Fighter, p: InputPhase<'_>) {
         // ftAnim_8006EBA4.
         f.step_animation(p.assets);
     }
-    if pressed.intersects(Buttons::L | Buttons::R) {
+    // retail 0x8010F140 / 0x8010F284: clrrwi. r0, r0, 31, the input proc's
+    // shield bit, which a digital shoulder, an analog trigger past the
+    // deadzone or Z all set (the decomp's HSD_PAD_LR is wrong here).
+    if pressed.intersects(Buttons::SHIELD) {
         scratch(f).cancel = true;
     }
     if f.animation.frame == 0.0 && scratch(f).cancel {

@@ -1265,6 +1265,15 @@ impl Effects {
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
+            if matches!(
+                request,
+                EffectRequest::BoneModel { .. } | EffectRequest::PositionalModel { id: 0x447, .. }
+            ) {
+                // efSync_Spawn's own rows (efsync.c:84) and efAsync 0x447
+                // (efasync.c:818) create with EF_LOADKIND_SYNC: no ASYNC
+                // bit, so efLib_PauseAll holds them through hitlag.
+                effect.hitlag_pause = HitlagPause::Active;
+            }
             if matches!(request, EffectRequest::Shield { id: 0x41A, .. }) {
                 // efLib_Create_Attach leaves state_flags ACTIVE (no ASYNC bit).
                 // Hitlag eligibility is separate from the synchronous pool.
@@ -1353,6 +1362,15 @@ impl Effects {
                     id,
                 } => {
                     position = origin;
+                    if id == 0x447 {
+                        // efasync.c:822-827: the uniform scale argument is
+                        // the fighter's x34_scale.y, 1 for every supported
+                        // fighter. efLib_Cb_ftCo_Bury's floor tilt arrives
+                        // as OwnedRotationZ.
+                        effect
+                            .tree
+                            .set_scale(effect.root, &Vec3::new(1.0, 1.0, 1.0));
+                    }
                     if id == 0x486 {
                         // efAlt 0x486: HSD_JObjSetRotationY of an f64
                         // +-M_PI_2 by the facing, rounded.

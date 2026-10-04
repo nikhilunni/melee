@@ -41,9 +41,30 @@ const LIFT: f32 = 2.0;
 
 pub const fn rows() -> [MotionRow; 3] {
     [
-        row(START, 0x14D, start_anim, common::no_input, common::ground_friction, collision),
-        row(LOOP, 0x14E, loop_anim, loop_input, common::ground_friction, collision),
-        row(END, 0x14F, end_anim, common::no_input, common::ground_friction, collision),
+        row(
+            START,
+            0x14D,
+            start_anim,
+            common::no_input,
+            common::ground_friction,
+            collision,
+        ),
+        row(
+            LOOP,
+            0x14E,
+            loop_anim,
+            loop_input,
+            common::ground_friction,
+            collision,
+        ),
+        row(
+            END,
+            0x14F,
+            end_anim,
+            common::no_input,
+            common::ground_friction,
+            collision,
+        ),
     ]
 }
 
@@ -75,10 +96,11 @@ fn slap(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     f.commands.clear_throw_flags();
     change(f, LOOP, MotionEntryFlags(0), 0.0, 1.0, assets)?;
     if !f.effect_state.destroy_on_state_change {
-        f.core.push_effect_after_issued_graphics(EffectRequest::BoneModel {
-            id: EFFECT,
-            bone: common::part(FtPart::TopN),
-        });
+        f.core
+            .push_effect_after_issued_graphics(EffectRequest::BoneModel {
+                id: EFFECT,
+                bone: common::part(FtPart::TopN),
+            });
         f.effect_state.destroy_on_state_change = true;
     }
     f.effect_state.hitlag_callbacks = true;

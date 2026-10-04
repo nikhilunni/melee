@@ -75,7 +75,10 @@ pub enum CargoState {
     },
     /// mv.co.jump: the hop decision kept from the squat, and whether the
     /// first physics frame has passed (ftCo_Jump_Phys_Inner).
-    Jump { short_hop: bool, physics_started: bool },
+    Jump {
+        short_hop: bool,
+        physics_started: bool,
+    },
     /// The landing's frames left.
     Landing { frames: f32 },
     /// A cargo throw: facing_dir1, the facing the row was entered with.
@@ -155,7 +158,13 @@ fn request(f: &mut Fighter, request: CargoRequest) {
 }
 
 fn shoulder(f: &mut Fighter, state: S) {
-    request(f, CargoRequest::Shoulder { state, begin: false });
+    request(
+        f,
+        CargoRequest::Shoulder {
+            state,
+            begin: false,
+        },
+    );
 }
 
 impl Fighter {
@@ -206,7 +215,11 @@ impl Fighter {
             base_motion: i32::from(base),
             acceleration_multiplier: 1.0,
         });
-        let victim = [S::ShoulderedWait, S::ShoulderedWalkSlow, S::ShoulderedWalkMiddle];
+        let victim = [
+            S::ShoulderedWait,
+            S::ShoulderedWalkSlow,
+            S::ShoulderedWalkMiddle,
+        ];
         shoulder(self, victim[usize::from(tier)]);
         Ok(())
     }
@@ -813,7 +826,11 @@ pub fn apply(
 /// fctiwz), and the scratch cleared.
 fn begin_carry(victim: &mut Fighter, va: &FighterAssets) {
     let p = &va.cargo;
-    let timer = fctiwz(fmadds(victim.core.physics.percent, p.percent_scale, p.base_timer)) as f32;
+    let timer = fctiwz(fmadds(
+        victim.core.physics.percent,
+        p.percent_scale,
+        p.base_timer,
+    )) as f32;
     victim.core.state_data = MotionData::Shouldered(ShoulderedState {
         timer,
         fast_remaining: 0.0,

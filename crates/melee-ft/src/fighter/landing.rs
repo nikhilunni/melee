@@ -204,6 +204,23 @@ impl FighterCore {
                 ..
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
+            // mv.co.bury.coll_box.top (+2344); BuryJump writes only +2340.
+            MotionData::Bury(bury) => bury.collision_box.top,
+            MotionData::BuryJump { retained_word, .. } => *retained_word,
+            // mv.co.cargokneebend.x4 (the ftCo_JumpInput) and
+            // mv.co.jump.x4 in the carry's jump.
+            MotionData::Cargo(super::cargo::CargoState::KneeBend { input, .. }) => {
+                f32::from_bits(match input {
+                    super::jump::JumpInput::Stick => 1,
+                    super::jump::JumpInput::CStick => 2,
+                    super::jump::JumpInput::Buttons => 3,
+                })
+            }
+            MotionData::Cargo(super::cargo::CargoState::Jump {
+                physics_started, ..
+            }) => f32::from_bits(u32::from(*physics_started)),
+            // The carry landing's frames left (mv+4, ftCo_8009BD4C).
+            MotionData::Cargo(super::cargo::CargoState::Landing { frames }) => *frames,
             // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).
             MotionData::ItemThrow(throw) => throw.rate,
             // mv.co.swing.x4: the swing's input (an int).

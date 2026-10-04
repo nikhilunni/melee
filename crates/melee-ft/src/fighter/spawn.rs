@@ -1230,6 +1230,8 @@ impl FighterCore {
     /// Fighter_ChangeMotionState (fighter.c:933-949), before OnGroundedMotion.
     fn begin_motion_change(&mut self, source: Option<super::grab_throw::ThrowSource<'_>>) {
         self.status.require_supported();
+        // fighter.c:948.
+        self.physics.entry_facing = self.physics.facing;
         self.commands.smash_charge = None;
         self.commands.borrowed_script = source.map(|source| source.assets.commands.clone());
         // Fighter_ChangeMotionState (800693AC): clear the throw exception on
@@ -1267,6 +1269,9 @@ impl FighterCore {
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
+        // fighter.c:1069, 1085: x2220_b3 and x2224_b4.
+        self.status.no_hit_reaction = false;
+        self.status.buried = false;
         // Clearing ownership does not call OnKnockbackExit on interruption.
         if self.status.in_hitstun && !change.keep_hitstun {
             self.status.in_hitstun = false;

@@ -11,9 +11,9 @@ pub const INSTANCE_CAPACITY: usize = ASYNC_CAPACITY + SYNC_CAPACITY;
 // Either descriptor class can occupy all 64 slots in its own pool.
 const SLOTS_PER_MODEL: usize = 64;
 // Common descriptors reached by the supported efAsync/efSync dispatch rows.
-static MODEL_IDS: [u32; 26] = [
+static MODEL_IDS: [u32; 27] = [
     0, 0x14, 0x15, 1, 0x16, 0x17, 2, 3, 4, 5, 8, 9, 10, 0xB, 0xC, 0xD, 0xE, 0xF, 0x12, 0x13, 0x18,
-    0x19, 0x1E, 0x1F, 0x10, 0x11,
+    0x19, 0x1E, 0x1F, 0x10, 0x11, 0x28,
 ];
 const WARP_MODEL: u32 = 0x24;
 

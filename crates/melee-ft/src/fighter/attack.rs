@@ -692,6 +692,51 @@ impl FighterCore {
         }
         grounded::finish_ground_update(&mut self.physics, &self.collision.data, &params, map, wind);
     }
+
+    /// ft_80085004 (80085004), the grounded throws' physics: ft_80085030
+    /// with facing_dir1, so the root motion keeps the entry facing through
+    /// the script's reversal, and the plain ground friction (no scaling
+    /// above walk speed) when the animation has none.
+    pub(super) fn throw_physics(
+        &mut self,
+        assets: &FighterAssets,
+        map: &melee_mp::CollMap,
+        wind: Wind,
+    ) {
+        use crate::physics::grounded::{self, GroundedParameters};
+        let params = GroundedParameters::from_attributes(&self.attributes, &assets.common);
+        if self
+            .animation
+            .flags
+            .contains(crate::anim::MotionFlags::ROOT_MOTION)
+        {
+            let offset = self
+                .animation
+                .root_motion
+                .as_ref()
+                .expect("throw TransN")
+                .primary_history
+                .offset
+                .z;
+            // retail ft_80085030, 8008505C: fmsubs.
+            self.physics.ground_acceleration = gekko_math::fma::fmsubs(
+                offset,
+                self.physics.entry_facing,
+                self.physics.ground_velocity,
+            );
+        } else {
+            self.physics.ground_acceleration = crate::physics::friction::friction_acceleration(
+                self.physics.ground_velocity,
+                self.attributes.ground.ground_friction,
+            );
+        }
+        grounded::apply_ground_movement(
+            &mut self.physics,
+            self.collision.data.floor.normal,
+            map.floor_speed_scale(&self.collision.data),
+        );
+        grounded::finish_ground_update(&mut self.physics, &self.collision.data, &params, map, wind);
+    }
 }
 
 /// PlCo direction thresholds and dash-attack friction (ftCo_AttackS3/AttackDash).

@@ -50,6 +50,10 @@ pub struct FighterPhysics {
     pub percent: f32,
     /// `facing_dir`, +0x2C, always +1 or -1.
     pub facing: f32,
+    /// `facing_dir1`, +0x30: the facing at the last motion change
+    /// (fighter.c:948). The throws' root motion keeps it while their
+    /// scripts reverse `facing` (ft_80085004).
+    pub entry_facing: f32,
     /// `dmg.x1948/x194C` and `xA4_unk_vel` interpolation state.
     pub velocity_blend: integrate::VelocityBlend,
     /// `shield_hit.skip_update_pos`, +0x19C4 bit 7 (C first bitfield).
@@ -79,6 +83,7 @@ impl FighterPhysics {
             fast_fall: false,
             percent: 0.0,
             facing,
+            entry_facing: facing,
             velocity_blend: Default::default(),
             shield_position_cached: false,
         }

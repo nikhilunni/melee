@@ -195,6 +195,8 @@ pub struct FighterAssets {
     pub grab_escape: super::grab_escape::Parameters,
     /// PlCo +4A0..+4AC: the cargo carry's mash timer.
     pub cargo: super::cargo::Parameters,
+    /// PlCo +5F4..+620: ftCo_Bury.c.
+    pub bury: super::bury::Parameters,
     pub smash_sounds: Vec<u32>,
     /// Authored AJ availability for high, high-mid, low-mid and low forward smash.
     pub forward_smash_variants: [bool; 4],
@@ -493,6 +495,7 @@ impl FighterAssets {
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
             grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
             cargo: super::cargo::Parameters::read(common, common_data)?,
+            bury: super::bury::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,

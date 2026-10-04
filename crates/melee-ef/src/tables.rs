@@ -363,7 +363,9 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 26] = [
 ];
 // efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
 // request id and the model it creates at the given point.
-pub(super) static POSITIONAL_MODELS: [(u16, u32); 2] = [
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 3] = [
+    // efasync.c:817-829: a buried fighter's dirt mound (common model 0x28).
+    (0x447, 0x28),
     // efsync.c:433-435: Peach's vegetable pull.
     (0x4D2, 0x3A98),
     // efalt.c:98-113: Samus's charge shot muzzle flash, turned to the facing.
