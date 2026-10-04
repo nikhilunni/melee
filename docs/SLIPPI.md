@@ -712,6 +712,30 @@ recorded range:
 | `slp_dl_peach_fox_t1300` | Peach vs Fox (DL, ports 1, 4) | Peach, sparking from a shine, starts her down smash in the input proc (1048): Fighter_ChangeMotionState flushes the queued spark (0x800694A0) before the new script's frame-0 commands (0x8006A0A4), so the spark generator's initial count (0x8039F250) is drawn ahead of the smash voice and it emits on its first update |
 | `slp_bf_yoshi_samus_t860` | Yoshi vs Samus (BF, ports 1, 3) | the Yoshi Bomb's collision callback catches a ledge twice (828): ftCliffCommon_80081298 enters CliffCatch (0x8012E9D8) and the callback calls ftCliffCommon_80081370 again (0x8012E9E8), so there are two ledge flashes and the second generator draws on every tick it lives |
 
+Two Yoshi bridges are local probes, not witnesses: each shows a fault that is
+still open.
+
+- `slp_bf_yoshi_samus_t1000` (the same game to tick 1000) gates exact but
+  differs in particle draw order at tick 870: Yoshi's Egg Throw (frame 20)
+  and Samus's Run dust create a generator each on that tick (effect banks 9
+  and 0), and the port creates them in the other order. The draw count is
+  the same.
+- `slp_ps_fox_yoshi_t1300` (`YOSHI/Fox vs Yoshi [PS] Game_20200222T144019.slp`,
+  ports 1 and 4, boundary `start_ps_slippi74pre_ns_p14_fox2_yoshi4_4`) stops
+  at tick 1091. Yoshi's plain GuardOn (ftYs_Init_8012BECC) does not clear the
+  reflect and powershield bits (x221C_b1/b2) as ftCo_800924C0 does, nor write
+  their countdowns (guard x14/x18, fp+0x2354/0x2358): both keep whatever the
+  last state left in the motion scratch. Retail's memory in that trace: a
+  delayed powershield (345) at 809 sets the bits with x14 = 1, x18 = 3; a hit
+  at 810 leaves them set; DamageFly writes x14 = 1 (846); the next plain
+  shield's stun (877) counts 1/2 down to 0/1; a later Damage writes x18 = 0.5
+  and x14 = 23 (1049, 1060); so at 1090 the bits are still set and Fox's hit
+  on the held egg takes the powershield branch of ftColl_80076CBC (effect 27,
+  not 1052). The port starts a plain GuardOn out of any other state with both
+  countdowns at zero, so the first stun clears the bits. Following retail
+  needs the scratch words at +0x14 and +0x18 of every state Yoshi passes
+  through (Damage, Walk and Turn write them in this trace).
+
 `slp_dl_peach_fox_t1300` plays the replay's pads but is not its game after
 tick 78: that console spawned Dream Land from the 2019 NeutralSpawn row (no
 code text for it in `MELEE_GECKO_DIR`), the boundary from the 2020 one, and
