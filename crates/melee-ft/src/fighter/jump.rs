@@ -235,6 +235,11 @@ impl Fighter {
         if transition == T::Grab {
             return self.enter_catch(assets);
         }
+        // Its first check throws a held item instead, toward the stick
+        // (ftCo_800951D0 -> ftCo_80095A30; retail 0x800D89AC, from 0x800CB620).
+        if transition == T::ItemThrow {
+            return self.enter_ground_item_throw(assets);
+        }
         // ftCo_AttackHi4_CheckInputNoD0 (8008C948): the jump squat ignores
         // the ordinary up-smash stick timer. C-stick still requires an edge.
         let input = &self.core.input;
