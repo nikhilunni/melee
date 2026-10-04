@@ -1804,6 +1804,10 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // StopWall with a turnip in hand (ftCo_StopWall.c has no item branch):
     // Peach dashes into the wall of Pokemon Stadium's rock form.
     ("held_item_stopwall_ps_peach", 4800),
+    // A held item takes no hits after its creation countdown would have
+    // ended (the pickup ends it, it_802742F4): Fox's down tilt sweeps the
+    // spot where Peach pulled the Mr. Saturn she is floating with.
+    ("held_item_intangible_dosei_fd_peach", 420),
 ];
 
 #[test]

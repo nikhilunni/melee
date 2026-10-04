@@ -1,0 +1,37 @@
+# HELD ITEM directed witness (boundary start_fd_peach_fox4; `melee-sim
+# search`, 59 candidates). Vegetable at tick 142 pulls Mr. Saturn; Peach
+# jumps and floats with it in hand. An item's pos is not updated while it is
+# held, so its hurt capsule stays where it was pulled; Fox runs there and his
+# down tilt at 256 sweeps that spot. Nothing happens: the pickup made the
+# item intangible (it_802756D0, xD0C = 2) and ended the creation countdown
+# (it_802742F4, retail 0x802743E4: xDD0 b6 and xD40), so Item_80269528 never
+# restores its hits (it_802756E0) while Peach holds it. The port let the
+# countdown run on and Fox's tilt knocked Mr. Saturn out of her hand.
+name = "held_item_intangible_dosei_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 200, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 238, port = 1, buttons = {  }, raw = {  } },
+  { frame = 256, port = 1, buttons = {  }, raw = { button = 256, stickY = -80 } },
+  { frame = 258, port = 1, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

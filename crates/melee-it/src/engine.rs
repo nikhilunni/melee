@@ -855,6 +855,10 @@ impl ItemCore {
         self.holder_part = part;
         // it_802756D0: a held item takes no hits.
         self.hurt_intangible = true;
+        // it_802742F4 (it_2725.c:1001): the pickup ends the creation
+        // countdown (xDD0 b6, xD40), so its end cannot restore hits
+        // (it_802756E0) while the item is in a hand.
+        self.spawn_intangible_frames = None;
         // it_8026B3A8.
         self.grabbable = false;
         // The pickup (it_26B1.c:597) clears xDC8 x14.
