@@ -1,0 +1,28 @@
+# Fox vs Falco on FountainOfDreams, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fod_slippi74_p24_fox2_falco0_4_r114309"
+gate = "start_fod_slippi74_p24_fox2_falco0_4_r114309_cold"
+savestate = "harness/roms/start_fod_slippi74_p24_fox2_falco0_4_r114309.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 1225871461
+stage = "FountainOfDreams"
+gecko = ["ucf-0.74", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+controller = "idle"
+controller_fix = "ucf-0.74"

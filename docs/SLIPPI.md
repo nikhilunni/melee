@@ -634,10 +634,13 @@ retail in Dolphin from a boundary with the replay's setup; the ordinary gate
 and `triage` then compare the port with a full retail trace of the same game.
 
 ```sh
-melee-sim replay <game.slp> --retail-inputs inputs.jsonl   # setup, boundary seed, raw pads per tick
+melee-sim replay <game.slp> --retail-inputs inputs.jsonl   # setup, seeds, raw pads per tick
 cd harness && uv run python make_boundary.py --stage Battlefield --players Marth Peach \
     --costumes 1 1 --ports 2 4 --time-limit 8 \
     --gecko ucf-0.8 neutral-spawn --spawn neutral-2020 --no-register
+    # Final Destination, Fountain of Dreams: a boundary for this replay alone
+    #   ... --game-start-seed <header game_start_seed> --name start_<...>_r<replay>
+    # Pokemon Stadium: the console's codes, --gecko ... ps-preload [ps-frozen]
 cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name slp_<...> \
     --boundary start_<...> --ticks 6500
 cd harness && uv run python record_many.py scenarios/slp_<...>.toml
@@ -656,10 +659,32 @@ What makes retail follow the replay:
   savestate keeps the installed code list in RAM, so a scenario recorded from
   the boundary lists exactly the boundary's codes. `--spawn` names the port's
   spawn rule for the cold scenario; `--time-limit 8` is the tournament timer.
+  The Stadium codes (`ps-preload`, `ps-frozen`) set `stadium_preload` and
+  `stadium_frozen` in the boundary's scenarios and in every scenario bridged
+  from it; the header names the console's (replay version and `frozen_ps`)
+  and `slippi_to_scenario.py` refuses a boundary whose codes differ.
 - *Seed.* The scenario's `boundary_seed` is the replay's pre-music seed
   (`boundary_seed_from_creation`); every tracer writes it over the saved
   seed before the first tick. Retail then draws what the game drew: star or
   screen KO, the roll, the faces.
+- *Creation.* What a stage draws while it is created precedes the boundary,
+  so `boundary_seed` cannot change it. Final Destination keeps its
+  background's two accelerations (grLast_8021AC30, four draws) and Fountain
+  of Dreams its platforms' first waits (grIzumi_801CC358): from a boundary
+  of another seed retail leaves the console's stream at the stage's next
+  draw (FD: tick 209; FoD: the seed at 723, the heights at 854). There the
+  boundary is made for the replay: `make_boundary.py --game-start-seed N`
+  (the header's `game_start_seed`) writes Game Start's seed where Slippi
+  read it (0x8016E74C in fn_8016E730, before the Ground and Players exist).
+  The scripting API has memory breakpoints only, so `boundary_script.py`
+  takes the first store after that address (gm_801A4B08 at 0x8016E75C
+  storing gm_AnyControllerPressedStart at gm_80479D58 +0x14); nothing draws
+  between. The savestate's seed is then the header's `boundary_seed`, which
+  `slippi_to_scenario.py` checks, and the cold twin names `game_start_seed`,
+  which its gate checks against the port's setup draws. On the other stages
+  any boundary of the setup has served (the witnesses below follow their
+  replays from one); `slippi_to_scenario.py` insists on the replay's own
+  boundary only for these two, unless `--foreign-creation` is given.
 - *Pads.* Pre Frame's joystick is the fighter's dead-zoned stick, with the
   raw X beside it (1.2+). `--retail-inputs` finds the raw Y whose clamped,
   dead-zoned pair is the recorded one, with the recorded raw X (what UCF
@@ -706,17 +731,33 @@ Turn: retail with UCF 0.8 has flipped it by then, as the port had
 beta and which version a recording ran" above). With 0.73 the replay matches
 to its last frame.
 
-A bridge on Final Destination does not keep the replay's random stream. The
-background's two accelerations (grLast_8021AC30, four draws) are drawn at
-stage creation, before the boundary, so they stay the boundary's: retail's
-background meets its limits (one draw each, grLast_8021ADD0) on other ticks
-than the console's did. `MARTH/02_56_19 Captain Falcon + [PPAP] Marth
-(FD).slp` from `start_fd_slippi8_p12_captainfalcon2_marth0_4` (local data,
+A bridge on Final Destination from a boundary of another seed does not keep
+the replay's random stream. The background's two accelerations
+(grLast_8021AC30, four draws) are drawn at stage creation, before the
+boundary, so they stay the boundary's: retail's background meets its limits
+(one draw each, grLast_8021ADD0) on other ticks than the console's did.
+`MARTH/02_56_19 Captain Falcon + [PPAP] Marth (FD).slp` from
+`start_fd_slippi8_p12_captainfalcon2_marth0_4` (local data,
 `slp_fd_captainfalcon_marth_t1950`, exact to 1950) leaves the console's
 stream at tick 209 and its fighters near tick 1630, so it says nothing about
-that replay's stop at 1887. Following such a replay needs a boundary whose
-match was created from the replay's Game Start seed, which
-`make_boundary.py` cannot do yet.
+that replay's stop at 1887. Fountain of Dreams does the same with its
+platforms' first waits.
+
+With the boundary created from the replay's Game Start seed (*Creation*
+above) retail follows such a replay. Two complete games, each from its own
+boundary, 3000 ticks, exact with items and particle draw order:
+
+| Scenario | Replay, boundary | Creation | Stage draws in the range |
+|---|---|---|---|
+| `slp_fd_marth_marth_t3000` | `MARTH/12_07_47 Marth + Marth (FD).slp` (ports 1, 2; UCF 0.73); `start_fd_slippi73_p12_marth4_marth1_4_r120747` | Game Start seed 2534789673 written over the menus' 3684702607; the savestate holds 2462485393, the seed the port's eight setup draws reach | grLast_8021ADD0 at 206, 309, 606, 909, 1006, 1406, 1509, 1806, 2109, 2206, 2606, 2709 |
+| `slp_fod_fox_falco_t3000` | `FALCO/11_43_09 Fox + Falco (FoD).slp` (ports 2, 4; UCF 0.74); `start_fod_slippi74_p24_fox2_falco0_4_r114309` | 1225871461 over 3417641259; the savestate holds 2669272315, the port's six draws | grIzumi_801CC358 at 858, 913, 931, 1925, 1958, 1964, 2010, 2689, 2847 |
+
+That retail follows the replay rests on three checks: the savestate's seed
+equals the header's `boundary_seed` (retail's creation drew what the port's
+model of it draws); the cold twin gates exact, `rng.seed` included, on every
+tick; and the port's own run of the replay matches every recorded frame of
+both games (14414 and 5763) with the Pre Frame seed check, so over these
+ticks retail's random stream is the console's.
 
 ## Display passes are not in a replay (2026-10-03)
 

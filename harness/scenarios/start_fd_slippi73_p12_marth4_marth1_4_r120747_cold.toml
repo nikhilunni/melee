@@ -1,0 +1,30 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_slippi73_p12_marth4_marth1_4_r120747_cold"
+expected = "start_fd_slippi73_p12_marth4_marth1_4_r120747"
+frames = 600
+seed = 2462485393
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 2534789673
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 1
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"

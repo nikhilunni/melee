@@ -1,0 +1,33 @@
+# FALCO/11_43_09 Fox + Falco (FoD).slp on retail, from a boundary created from the replay's
+# Game Start seed: the platforms' first waits (grIzumi_801CC358) are the
+# console's, so retail follows the replay through the platforms' draws.
+# The port's side of slp_fod_fox_falco_t3000: boundary start_fod_slippi74_p24_fox2_falco0_4_r114309 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_fox_falco_t3000_cold"
+expected = "slp_fod_fox_falco_t3000"
+frames = 3000
+seed = 2669272315
+game_start_seed = 1225871461
+boundary_seed = 2669272315
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

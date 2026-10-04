@@ -44,9 +44,10 @@ tick. A replay has no retail memory, so play the window on retail with the
 bridge in `docs/SLIPPI.md` ("A replay played back on retail") and triage the
 port against that trace; or build a smaller directed witness. Check the whole
 corpus before and after with `replay-batch --jsonl`: no replay may match
-fewer frames. The bridge cannot follow a replay on Final Destination or
-Fountain of Dreams (stage draws at creation precede the boundary seed): use
-a directed witness there.
+fewer frames. On Final Destination and Fountain of Dreams the stage's
+creation draws precede the boundary seed, so the bridge needs a boundary
+made for that replay: `make_boundary.py --game-start-seed <the header's
+game_start_seed> --name <new name> --no-register`.
 
 ## Task
 
