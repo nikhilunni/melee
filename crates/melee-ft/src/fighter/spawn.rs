@@ -892,6 +892,21 @@ impl Fighter {
         state: CommonMotionState,
         assets: &FighterAssets,
     ) -> Result<()> {
+        self.change_reflect_motion(state, assets, true)
+    }
+
+    /// fn_800C7DC4's entry (retail 0x800C7F34): flags 0x18040, the same
+    /// without Ft_MF_SkipHitStun.
+    pub(super) fn change_down_reflect_motion(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.change_reflect_motion(CommonMotionState::DownReflect, assets, false)
+    }
+
+    fn change_reflect_motion(
+        &mut self,
+        state: CommonMotionState,
+        assets: &FighterAssets,
+        keep_hitstun: bool,
+    ) -> Result<()> {
         self.change_motion_state_with_options(
             state.into(),
             assets,
@@ -899,7 +914,7 @@ impl Fighter {
                 rate: 1.0,
                 blend_frames: Some(0.0),
                 preserve_name_tag: true,
-                keep_hitstun: true,
+                keep_hitstun,
                 ..Default::default()
             },
         )

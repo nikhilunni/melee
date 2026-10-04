@@ -1232,6 +1232,10 @@ pub enum MotionData {
         /// mv+4: the predecessor's word with its top byte cleared by
         /// ftCo_80097D40 (`None` where the port does not model it).
         retained_word: Option<f32>,
+        /// mv.co.downreflect.x4, that word's top byte: the wall of the last
+        /// DownReflect (1 and 2 in retail), which cannot bounce the fighter
+        /// again until a landing out of a tumble clears it.
+        last_reflect: Option<fly_reflect::BounceSurface>,
     },
     /// Catch, CatchDash and the holding states. ftCo_800D8C54 writes only
     /// mv.co.catch.x0 (+2340), so mv+4 is the predecessor's word (`None`

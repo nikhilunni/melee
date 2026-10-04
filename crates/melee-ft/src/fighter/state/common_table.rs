@@ -2126,6 +2126,22 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 214,
         ..rows[S::FlyReflectWall as usize]
     };
+    // ftCo_MS_DownReflect = 335 (ftCo_SM_WallDamage): a prone fighter's
+    // bounce off a wall. Its IASA is empty and its physics ft_80084DB0.
+    rows[S::DownReflect as usize] = MotionRow {
+        action: ActionId(335),
+        id: S::DownReflect,
+        animation: 212,
+        anim: crate::fighter::down::reflect_animation,
+        iasa: callbacks::input::entry,
+        physics: callbacks::physics::damage_fall,
+        collision: crate::fighter::down::reflect_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_DownBound_Coll (80097E40): Fall off the floor, else ftCo_800C7CA0.
+    rows[S::DownBoundU as usize].collision = crate::fighter::down::bound_collision;
+    rows[S::DownBoundD as usize].collision = crate::fighter::down::bound_collision;
     // ftCo_MS_PassiveWall = 202: the same ftCo_PassiveWall callbacks.
     rows[S::PassiveWall as usize] = MotionRow {
         action: ActionId(202),

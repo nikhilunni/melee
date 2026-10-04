@@ -1,4 +1,5 @@
 //! Tumble landing and prone recovery, ftCo_DownBound.c.
+use super::fly_reflect::BounceSurface;
 use super::FighterCore;
 use super::{
     assets::{FighterAssets, Result},
@@ -138,9 +139,16 @@ impl Fighter {
             });
         Ok(true)
     }
-    /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN,
-    /// inverted for a kind with x2226_b1.
+    /// ftCo_80097D40 (80097D40): the landing out of a tumble, which forgets
+    /// the wall of the last DownReflect.
     pub(super) fn enter_down_bound(&mut self, assets: &FighterAssets) -> Result<()> {
+        self.enter_down_bound_from(assets, false)
+    }
+
+    /// ftCo_8009794C (8009794C): choose face-up/down from the animated HipN,
+    /// inverted for a kind with x2226_b1. `reflected` is ftCo_80097D88, the
+    /// landing out of DownReflect, which leaves mv+4 alone.
+    fn enter_down_bound_from(&mut self, assets: &FighterAssets, reflected: bool) -> Result<()> {
         self.land();
         let hip = self.core.animation.parts
             [usize::from(assets.parts.joint(FtPart::HipN).expect("HipN"))]
@@ -154,16 +162,23 @@ impl Fighter {
         } else {
             S::DownBoundD
         };
-        // ftCo_80097D40 (the only port entry) stores a zero byte at +2344
-        // after ftCo_8009794C (retail 80097D70 stb): mv+4 keeps the
-        // predecessor's low three bytes.
-        let retained_word = self
-            .inherited_scratch_word()
-            .map(|word| f32::from_bits(word.to_bits() & 0x00FF_FFFF));
+        // ftCo_80097D40 stores a zero byte at +2344 after ftCo_8009794C
+        // (retail 80097D70 stb): mv+4 keeps the predecessor's low three
+        // bytes. ftCo_80097D88 does not.
+        let inherited = self.inherited_scratch_word();
+        let (retained_word, last_reflect) = if reflected {
+            (inherited, self.core.last_down_reflect())
+        } else {
+            (
+                inherited.map(|word| f32::from_bits(word.to_bits() & 0x00FF_FFFF)),
+                None,
+            )
+        };
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Down {
             wait_remaining: 0.0,
             retained_word,
+            last_reflect,
         };
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         self.core.input.buttons.attack = 255;
@@ -215,6 +230,7 @@ impl Fighter {
                 }
                 // ftCo_80097AF4 writes only mv.co.downwait.x0.
                 let retained_word = self.inherited_scratch_word();
+                let last_reflect = self.core.last_down_reflect();
                 self.change_motion_state(
                     (if self.core.motion_state.id == S::DownBoundU {
                         S::DownWaitU
@@ -227,6 +243,7 @@ impl Fighter {
                 self.core.state_data = MotionData::Down {
                     wait_remaining: assets.damage.down_wait_frames,
                     retained_word,
+                    last_reflect,
                 };
                 self.step_animation(assets);
                 self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
@@ -306,9 +323,11 @@ impl Fighter {
         // ftCo_80097F38 writes only mv.co.downwait.x0; x4 is DownDamage's.
         let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
+        // mv+4 was DownDamage's mv.co.damage.x4, a flag: its top byte is zero.
         self.core.state_data = MotionData::Down {
             wait_remaining: remaining,
             retained_word,
+            last_reflect: None,
         };
         self.step_animation(assets);
         self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
@@ -466,4 +485,217 @@ impl super::FighterCore {
             .bound
             .map_or(0x407, |effect| effect as u16)
     }
+}
+
+impl FighterCore {
+    /// mv.co.downreflect.x4: the wall of the last DownReflect.
+    fn last_down_reflect(&self) -> Option<BounceSurface> {
+        match &self.state_data {
+            MotionData::Down { last_reflect, .. } => *last_reflect,
+            _ => None,
+        }
+    }
+}
+
+impl Fighter {
+    /// ftCo_800C7CA0 (800C7CA0): ground knockback driving a prone fighter
+    /// into a wall faster than PlCo +1B0 bounces off it, unless that wall
+    /// was the last bounce.
+    fn try_down_reflect(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<bool> {
+        use melee_types::mp::collide::{LEFT_WALL_HUG, RIGHT_WALL_HUG};
+        let cd = &self.core.collision.data;
+        let env = cd.env_flags as u32;
+        let speed = assets.damage.fly_reflect_speed;
+        let knockback = self.core.physics.knockback_velocity.x;
+        let last = self.core.last_down_reflect();
+        let (corner, normal, surface) = if knockback < -speed
+            && env & RIGHT_WALL_HUG != 0
+            && last != Some(BounceSurface::LeftWall)
+        {
+            (
+                cd.ecb.left,
+                cd.right_facing_wall.normal,
+                BounceSurface::LeftWall,
+            )
+        } else if knockback > speed
+            && env & LEFT_WALL_HUG != 0
+            && last != Some(BounceSurface::RightWall)
+        {
+            (
+                cd.ecb.right,
+                cd.left_facing_wall.normal,
+                BounceSurface::RightWall,
+            )
+        } else {
+            return Ok(false);
+        };
+        // ftKb_SpecialN_800F1F1C is Kirby's.
+        let offset = Vec3::new(corner.x, corner.y, 0.0);
+        self.enter_down_reflect(normal, offset, surface, assets, map)?;
+        Ok(true)
+    }
+
+    /// fn_800C7DC4 (800C7DC4): off the floor, spark and small quake at the
+    /// contact, the ground knockback speed sent along the wall's normal and
+    /// damped, then DownReflect facing along it.
+    fn enter_down_reflect(
+        &mut self,
+        normal: Vec3,
+        offset: Vec3,
+        surface: BounceSurface,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        let MotionData::Down {
+            wait_remaining,
+            retained_word,
+            ..
+        } = self.core.state_data
+        else {
+            panic!("down scratch");
+        };
+        self.leave_ground();
+        let p = self.core.physics.position;
+        let contact = Vec3::new(p.x + offset.x, p.y + offset.y, p.z + offset.z);
+        let angle = melee_lb::trigf::atan2f(-normal.x, normal.y);
+        self.core
+            .effects
+            .push(melee_ef::request::EffectRequest::SurfaceRebound {
+                position: contact,
+                angle,
+            });
+        self.core.quake_request = Some(melee_cm::QuakeKind::Small);
+        // retail 800C7E90..800C7EC8: fmuls by xF0, then x and y by PlCo +1BC.
+        let speed = self.core.physics.ground_knockback_velocity;
+        let damping = assets.fly_reflect.damping;
+        self.core.physics.knockback_velocity = Vec3::new(
+            normal.x * speed * damping,
+            normal.y * speed * damping,
+            normal.z * speed,
+        );
+        self.core.physics.self_velocity = Vec3::ZERO;
+        self.core.physics.facing = if self.core.physics.knockback_velocity.x < 0.0 {
+            -1.0
+        } else {
+            1.0
+        };
+        self.change_down_reflect_motion(assets)?;
+        let trans = self
+            .core
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("DownReflect TransN")
+            .primary_history
+            .position;
+        // retail 800C7F38..800C7F44 tests only Collide_RightWallHug: off a
+        // wall on the right the fighter is placed in y, as off a ceiling.
+        if self.core.collision.data.env_flags as u32 & melee_types::mp::collide::RIGHT_WALL_HUG != 0
+        {
+            // retail 800C7F5C / 800C7F60: fadds, then fnmsubs with the negated facing.
+            self.core.physics.position.x =
+                gekko_math::fma::fnmsubs(trans.z, -self.core.physics.facing, p.x + offset.x);
+        } else {
+            // retail 800C7F78 / 800C7F7C: two fadds.
+            self.core.physics.position.y = trans.y + (p.y + offset.y);
+        }
+        // ftCo_80090574 -> ft_80081DD4, result unused.
+        self.damage_air_pass(assets, map);
+        // dmg.x18A8 = the speed: armour's reference knockback (ftCo_8008E984),
+        // which the port does not model.
+        self.core
+            .commands
+            .rumble_requests
+            .push(super::commands::RumbleRequest {
+                all_players: false,
+                id: 7,
+                duration: 0,
+            });
+        // ftColl_8007B760 with PlCo +1B8.
+        self.core.status.ledge_intangibility = self
+            .core
+            .status
+            .ledge_intangibility
+            .max(assets.fly_reflect.intangible_frames);
+        // The caller's stb at +2344 (retail 800C7D30 / 800C7D98).
+        let side = match surface {
+            BounceSurface::LeftWall => 1,
+            _ => 2,
+        };
+        self.core.state_data = MotionData::Down {
+            wait_remaining,
+            retained_word: retained_word
+                .map(|word| f32::from_bits(word.to_bits() & 0x00FF_FFFF | side << 24)),
+            last_reflect: Some(surface),
+        };
+        Ok(())
+    }
+}
+
+/// ftCo_DownBound_Coll (80097E40): off the floor the fighter falls;
+/// otherwise a wall may bounce it (ftCo_800C7CA0).
+pub(super) fn bound_collision(
+    fighter: &mut Fighter,
+    phase: super::state::CollisionPhase<'_>,
+) -> Result<()> {
+    use crate::collision::ground::{map_ground_action, WaitGroundResult};
+    let assets = phase.assets.expect("down bound collision needs assets");
+    let result = map_ground_action(
+        &mut fighter.core.physics,
+        &mut fighter.core.collision,
+        phase.map,
+        &mut fighter.core.skeleton,
+        fighter.core.animation.root,
+        fighter.core.input.current.stick.x,
+    );
+    if result == WaitGroundResult::EnterFall {
+        // ftCo_Fall_Enter converts only a grounded source; DownBound may
+        // already be airborne, with an expired ECB lock.
+        fighter.change_motion_state(S::Fall.into(), assets)?;
+    } else {
+        fighter.try_down_reflect(assets, phase.map)?;
+    }
+    Ok(())
+}
+
+/// ftCo_DownReflect_Anim (800C7FC8): the bounce ends in DamageFall.
+pub(super) fn reflect_animation(
+    fighter: &mut Fighter,
+    phase: super::state::AnimationPhase<'_>,
+) -> Result<Option<crate::anim::WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    if !fighter
+        .core
+        .animation
+        .frames_remaining(&fighter.core.skeleton)
+    {
+        fighter.enter_damage_fall(phase.assets)?;
+        fighter.core.state_data = MotionData::Damage(super::damage::DamageState {
+            hitstun: 0.0,
+            jump_buffer: 0.0,
+            trail_timer: 0,
+            influence: phase.assets.damage.influence,
+            last_bounce: None,
+            bounce_lock: 0,
+            meteor_cancel: None,
+        });
+    }
+    Ok(None)
+}
+
+/// ftCo_DownReflect_Coll (800C8028): a landing (ft_80081DD4) bounces again
+/// (ftCo_80097D88), keeping the wall of this reflect.
+pub(super) fn reflect_collision(
+    fighter: &mut Fighter,
+    phase: super::state::CollisionPhase<'_>,
+) -> Result<()> {
+    let assets = phase.assets.expect("down reflect collision needs assets");
+    if fighter.land_from_damage_air(assets, phase.map)? == Some(true) {
+        fighter.enter_down_bound_from(assets, true)?;
+    }
+    Ok(())
 }
