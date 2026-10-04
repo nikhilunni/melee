@@ -15,6 +15,7 @@ melee-coll = { path = "../melee-coll" }
 melee-mp = { path = "../melee-mp" }
 melee-lb = { path = "../melee-lb" }
 hsd-types = { path = "../hsd-types" }
+hsd-anim = { path = "../hsd-anim" }
 hsd-archive = { path = "../hsd-archive" }
 gekko-math = { path = "../gekko-math" }
 

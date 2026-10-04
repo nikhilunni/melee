@@ -8,11 +8,13 @@ pub mod bat;
 pub mod pk_fire;
 pub mod pk_flash;
 pub mod pk_thunder;
+pub mod yoyo;
 
 pub use bat::NessBat;
 pub use pk_fire::{NessPkFire, NessPkFirePillar};
 pub use pk_flash::{NessPkFlash, NessPkFlashExplode};
 pub use pk_thunder::{NessPkThunder, NessPkThunderTrail};
+pub use yoyo::NessYoyo;
 
 fn no_physics(_item: &mut ItemCore, _ctx: &melee_it::ItemPhysicsContext<'_>) {}
 fn no_collision(_item: &mut ItemCore, _ctx: &mut melee_it::ItemCollisionContext<'_>) -> bool {

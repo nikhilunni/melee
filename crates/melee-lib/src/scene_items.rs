@@ -75,6 +75,7 @@ melee_it::item_kinds! {
         GameWatchPanic: it_gamewatch::Panic,
         GameWatchRescue: it_gamewatch::Rescue,
         NessBat: it_ness::NessBat,
+        NessYoyo: it_ness::NessYoyo,
         NessPKFire: it_ness::NessPkFire,
         NessPKFireFlame: it_ness::NessPkFirePillar,
         NessPKFlush: it_ness::NessPkFlash,
@@ -868,7 +869,7 @@ impl Resources {
             kinds.push((ItemKind::GameWatchChef, chef));
             visual_archives.push((ItemKind::GameWatchChef, std::sync::Arc::clone(&a)));
         }
-        // ftNs_Init_OnLoad: ftData.x48_items[9] is the bat.
+        // ftNs_Init_OnLoad: ftData.x48_items[0..=10], Ness's articles.
         if let Some(character) = characters
             .iter()
             .find(|c| c.descriptor.data_file == "PlNs.dat")
@@ -880,6 +881,13 @@ impl Resources {
                     ItemKind::NessBat,
                     it_ness::bat::ARTICLE_INDEX,
                     &it_ness::bat::ARTICLE_STATES[..],
+                    0,
+                ),
+                // [10]: the yo-yo, whose special attributes Ness reads.
+                (
+                    ItemKind::NessYoyo,
+                    it_ness::yoyo::ARTICLE_INDEX,
+                    &it_ness::yoyo::ARTICLE_STATES[..],
                     0,
                 ),
                 (

@@ -230,3 +230,47 @@ impl NessAttributes {
         })
     }
 }
+
+/// ftData.x48_items index of the yo-yo (ftNs_Init_OnLoad's it_8026B3F8 for
+/// It_Kind_Ness_Yoyo).
+const YOYO_ARTICLE: u32 = 10;
+/// sizeof(itYoyoAttributes) (it/itYoyo.h), through x5C.
+const YOYO_ARTICLE_ATTRIBUTES_SIZE: u32 = 0x60;
+
+/// The yo-yo article's special attributes (ftData.x48_items[10]->x4), which
+/// Ness's smashes and the article's string steps both read.
+pub fn read_yoyo_article(archive: &Archive) -> Result<it_ness::yoyo::string::YoyoAttributes> {
+    let root = archive.public("ftDataNess").ok_or_else(|| {
+        FighterDescError::Archive(hsd_archive::desc::DescError::MissingSymbol {
+            name: "ftDataNess".into(),
+        })
+    })?;
+    let r = archive.reader();
+    let items = r.u32(root + 0x48)?;
+    let article = r.u32(items + YOYO_ARTICLE * 4)?;
+    let attributes = r.u32(article + 4)?;
+    let r = Reader::new(
+        archive
+            .reader()
+            .slice(attributes, YOYO_ARTICLE_ATTRIBUTES_SIZE)?,
+    );
+    Ok(it_ness::yoyo::string::YoyoAttributes {
+        links: r.s32(0x00)?,
+        up_charge_links: r.s32(0x04)?,
+        down_charge_links: r.s32(0x08)?,
+        link_length: r.f32(0x0C)?,
+        min_link_length: r.f32(0x10)?,
+        spin_rate: r.f32(0x18)?,
+        release_velocity_x: r.f32(0x24)?,
+        pull: r.f32(0x28)?,
+        max_speed_x: r.f32(0x2C)?,
+        release_velocity_y: r.f32(0x30)?,
+        gravity: r.f32(0x34)?,
+        max_fall_speed: r.f32(0x38)?,
+        string_gravity: r.f32(0x3C)?,
+        up_out_frame: r.s32(0x40)?,
+        up_return_frame: r.s32(0x44)?,
+        down_out_frame: r.s32(0x48)?,
+        down_return_frame: r.s32(0x4C)?,
+    })
+}

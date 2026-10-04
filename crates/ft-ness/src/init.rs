@@ -24,6 +24,8 @@ pub struct Ness {
     pub pk_thunder: crate::special_hi::PkThunder,
     /// PSI Magnet's motion scratch.
     pub magnet: crate::special_lw::Magnet,
+    /// The yo-yo smashes' scratch and Ness's side of the yo-yo.
+    pub yoyo: crate::yoyo::Yoyo,
     /// mv+4 while a row that never writes it is current (PK Fire, PSI
     /// Magnet's turnFrames): the predecessor's word, `None` when the port
     /// does not model that state's.
@@ -37,6 +39,8 @@ pub enum Accessory {
     None,
     /// ftNs_SpecialS_ItemPKFireSpawn: the bolt on the script's throw flag.
     PkFire,
+    /// ftNs_AttackHi4_YoyoUpdateHitPos: hitbox 0 at the yo-yo's point.
+    Yoyo,
 }
 impl Ness {
     pub fn new(attributes: NessAttributes) -> Self {
@@ -49,17 +53,24 @@ impl Ness {
             pk_flash: Default::default(),
             pk_thunder: Default::default(),
             magnet: Default::default(),
+            yoyo: Default::default(),
             retained_word: None,
         }
     }
+    /// The yo-yo article's attributes and string (ftData.x48_items[10]).
+    pub fn with_yoyo(mut self, attributes: it_ness::yoyo::string::YoyoAttributes) -> Self {
+        self.yoyo = crate::yoyo::Yoyo::new(attributes);
+        self
+    }
 }
 
-/// ftNs_Init_OnDamage (801148F8): the yo-yo, PK Flash, PK Thunder and the
-/// bat let go.
+/// ftNs_Init_OnDamage (801148F8): the yo-yo (ftNs_AttackHi4_YoyoItemDespawn),
+/// PK Flash, PK Thunder and the bat let go.
 fn damage_callback(f: &mut Fighter) {
     if !f.character.get::<Ness>().damage_callbacks {
         return;
     }
+    crate::yoyo::despawn(f);
     // ftNs_SpecialN_ItemPKFlushSetNULL clears both callbacks; the rest of
     // this call still runs.
     crate::special_n::orphan_flash(f);
@@ -73,6 +84,8 @@ fn damage_callback(f: &mut Fighter) {
 fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     match kind {
         melee_types::ItemKind::NessBat => f.character.get_mut::<Ness>().bat = false,
+        // it_802BE958_inline -> ftNs_AttackHi4_YoyoItemSetFlag.
+        melee_types::ItemKind::NessYoyo => f.character.get_mut::<Ness>().yoyo.out = false,
         // it_2725_Logic102_Destroyed -> ftNs_SpecialN_SetNULL.
         melee_types::ItemKind::NessPKFlush => crate::special_n::flash_gone(f),
         // it_802AB90C -> ftNs_SpecialHi_ItemPKThunderRemove.
@@ -120,6 +133,7 @@ impl CharacterCallbacks for Ness {
         }
         match f.character.get::<Ness>().accessory {
             Accessory::PkFire => crate::special_s::fire(f),
+            Accessory::Yoyo => crate::yoyo::place_hitbox(f),
             Accessory::None => {}
         }
     }
@@ -139,6 +153,8 @@ impl CharacterCallbacks for Ness {
             348..=355 => Some(f32::from_bits(ness.pk_flash.gone_frames as u32)),
             // mv.ns.specialhi.thunderTimerLoop1.
             358..=366 => Some(f32::from_bits(ness.pk_thunder.loop_frames as u32)),
+            // mv.ns.attackhi4.yoyoRehitTimer.
+            342..=347 => Some(f32::from_bits(ness.yoyo.scratch.rehit_frames as u32)),
             // PK Fire and PSI Magnet never write the word.
             356 | 357 | 367..=376 => ness.retained_word,
             _ => None,
@@ -173,13 +189,26 @@ impl CharacterCallbacks for Ness {
     /// ftCo_AttackHi4_CheckInput / ftCo_AttackLw4_CheckInput's FTKIND_NESS
     /// arms: the yo-yo smashes (rows 342..347) and their article
     /// (itnessyoyo.c) are not ported.
-    const VERTICAL_SMASH: Option<melee_ft::fighter::VerticalSmash> = Some(|_, up, _| {
+    const VERTICAL_SMASH: Option<melee_ft::fighter::VerticalSmash> = Some(|f, up, assets| {
         if up {
-            unimplemented!("ftnessattackhi4.c:602: ftNs_AttackHi4_Enter (the yo-yo up smash)")
+            crate::yoyo::up::enter(f, assets)
         } else {
-            unimplemented!("ftnessattacklw4.c:19: ftNs_AttackLw4_Enter (the yo-yo down smash)")
+            crate::yoyo::down::enter(f, assets)
         }
     });
+    /// deal_dmg_cb = ftNs_AttackHi4_YoyoStartTimedRehit while a yo-yo row
+    /// installed it.
+    const DEAL_DAMAGE: Option<fn(&mut Fighter, &FighterAssets)> = Some(|f, _| {
+        if f.character.get::<Ness>().yoyo.rehit_callback {
+            crate::yoyo::start_rehit(f);
+        }
+    });
+    /// x2222_b2: every yo-yo entry sets it after its motion change.
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool =
+        |f| crate::yoyo::ROWS.contains(&f.motion_state.action.0);
+    /// The yo-yo's phys callbacks (itnessyoyo.c) step Ness's string.
+    const ARTICLE_PHYSICS: fn(&mut Fighter, &FighterAssets, &mut melee_mp::CollMap) =
+        crate::yoyo::article_physics;
     /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
         Some(crate::attack_s4::reflector_contact);
@@ -194,6 +223,7 @@ impl CharacterCallbacks for Ness {
     /// callbacks go.
     fn on_motion_change(&mut self) {
         self.damage_callbacks = false;
+        self.yoyo.rehit_callback = false;
     }
 
     fn kind(&self) -> FighterKind {
@@ -203,7 +233,8 @@ impl CharacterCallbacks for Ness {
         &DESCRIPTOR
     }
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
-        Ok(Self::new(read_ness_attributes(data)?))
+        Ok(Self::new(read_ness_attributes(data)?)
+            .with_yoyo(crate::attributes::read_yoyo_article(data)?))
     }
     /// ftCo_JumpAerial_CheckInput's FTKIND_NESS arm: ftNs_JumpAerial_Enter.
     fn aerial_jump_style(&self) -> AerialJumpStyle {
@@ -219,6 +250,7 @@ impl CharacterCallbacks for Ness {
     fn on_reset(&mut self) {
         self.model_group = 0;
         self.bat = false;
+        self.yoyo.out = false;
         self.pk_flash.flash_out = false;
         self.pk_thunder.thunder_out = false;
     }

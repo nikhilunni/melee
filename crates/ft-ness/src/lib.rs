@@ -7,6 +7,7 @@ pub mod special_hi;
 pub mod special_lw;
 pub mod special_n;
 pub mod special_s;
+pub mod yoyo;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -24,6 +25,8 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         i += 1;
     }
     place_all(&mut rows, attack_s4::rows());
+    place_all(&mut rows, yoyo::up::rows());
+    place_all(&mut rows, yoyo::down::rows());
     place_all(&mut rows, special_n::rows());
     place_all(&mut rows, special_s::rows());
     place_all(&mut rows, special_hi::rows());

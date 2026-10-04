@@ -694,6 +694,7 @@ name = "ft-ness"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
  "hsd-archive",
  "hsd-types",
  "it-ness",
