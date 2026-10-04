@@ -1328,3 +1328,69 @@ Two games outside the triaged rows complete as well: `DK vs Falco [FD]
 Game_A45C27B4D631_20200306T221823` (122 to 9855 / 9855, the delayed
 powershield) and `Falco vs Ganon [PS] Game_20200405T150206` (1071 to 6932 /
 6932).
+
+## The second corpus's other RNG drifts (2026-10-03)
+
+Twenty `public-v3.7-b` games outside the HNC consoles and without Ice
+Climbers stopped on `input_seed` or `seed`. For each, the port's distance
+from the recorded Pre Frame seed was measured on the drift tick and the
+window played back on retail where a boundary can be made. Five causes are
+fixed, each with the replay's own window as its witness
+(`SLIPPI_REPLAY_WITNESSES`):
+
+| Fault | Retail | Witness | Replays |
+|---|---|---|---|
+| A delayed powershield (ftCo_8009388C) has no shield bubble, only the reflect volume; the port cleared that volume's cached position only while the bubble was installed, so it stayed where its first test put it | ftCo_GuardReflect_Phys (0x8009403C) calls ftColl_8007AEF8 every tick it runs | `slp_fd_donkeykong_falco_t300`: Donkey Kong, sliding out of a run, powershields at 121 and reflects Falco's laser at 122 | `DK vs Falco [FD] Game_A45C27B4D631` 122 to 9855 / 9855; `Falco vs Ganon [PS] Game_20200405T150206` 1071 to 6932 / 6932 |
+| Pokémon Stadium's screen tested the slot's first fighter, which for a player on Sheik is the sleeping Zelda (suppressed: the close-up was lost at once and a new mode drawn) | grStadium_801D2344 (0x801D2344) asks Player_GetEntity | `slp_ps_zelda_sheik_t900` (the port left retail at 727) | `Zelda vs Sheik [PS] Game_20180218T194152` 1769 to 7859 / 7859; `Peach vs Zelda [PS] Game_20200212T214444` 3220 to 14406 / 14406 |
+| Sheik's take-damage hook drops her charged needle, whose launch draws four values; the port created it after the proc, behind the reaction's draw | ftCommon_8007DB58 precedes ftCo_8008DCE0's draw (0x8008E124); it_802B00F4 draws at 0x802B0180..0x802B01D8 | `slp_bf_sheik_marth_needles_t1700`: the needle falls at 0.12 a tick (the port's at 0.24) | `ZELDA_SHEIK/Game_20191013T141233` 1620 to 10088 / 10088 |
+| A landing's bounce spark was queued for the scene, so the thrown item's break roll took its first value | it_8026E15C: it_80278800's draws (0x80278A30..78), then it_8026DDFC's (0x8026DE58) | `slp_bf_peach_falco_t3100`: Peach's thrown Mr. Saturn bounces on at 3025 (the port's broke) | `Peach vs Falco [BF] Game_20180225T201631` 3026 to 13556 / 13556 |
+| An item that bounced off a moving line kept the line's speed on every later tick | Item_802697D4 clears x58 and x64 once added (0x802698F0, 0x80269954) | `slp_ys_samus_falco_t6900`: a Bomb on Randall's cloud (`docs/PORT_NOTES/SAMUS.md`) | `Mario vs Falcon [PS] Game_20181117T184322` 5510 to 12366 / 12366 (with the fix taken out it stops at 5510 again; which item is not in the replay) |
+
+The seed check is membership within a tick, so a stop names the tick after
+the drift but not its size. Walking the stream both ways from the port's
+end-of-tick seed gives it: the recorded seed N draws behind means the port
+drew N more by then. A draw made on the right tick with another value (the
+needle, Mr. Saturn) shows only when its consequence does.
+
+**Open, with a cause.** `ZELDA_SHEIK/Game_20161023T221503` (3039, the port
+five draws ahead; `slp_bf_falco_sheik_t3100`, local data, follows the replay
+to that tick). Falco holds his Reflector's hitbox out while Sheik throws
+needles three ticks apart. The hitbox strikes the first needle at 3033 and
+the second at 3036; the third, created at 3036, is not struck at 3039.
+Retail's hit log holds GObj pointers (lbColl_80008688): the third needle's
+GObj is the first one's address (0x80D95940 in the tick trace, freed at 3033
+and handed out again), so the hitbox takes it for a victim it already has.
+The port names an item victim by its unique id, and the hitbox strikes
+again (spark, glance roll, bounce spark). Following retail needs the GObj
+allocator's free list, which every GObj kind shares.
+
+**Open, not diagnosed.** `FALCO/Game_20190420T213132` (2336;
+`slp_fod_fox_falco_t2400`, local data, follows the replay). Fox techs
+Fountain of Dreams' wall into PassiveWallJump at 2333 out of DamageFlyTop:
+the particle dump's newest generators are 261 and then 57 and 58 in retail
+(115 particle draws on the tick), 58, 59 and 354 and then 261 in the port
+(111). Fox is smoking from Falco's Fire Bird, so two requests meet on that
+tick: the body smoke (`Attached { id: 1043 }`, which the port flushes first)
+and the tech's flash (efAsync 0x41D from ftCo_800C1E64, model 0xF). Either
+their order or the flash model's first frames differ; not followed further.
+
+`LINK/16_45_19 [YETI] Fox + Link (FD)` (7127; `slp_fd_fox_link_t7200`,
+local data, follows the replay). Fox's Reflector hits Link below the stage
+at 7125 (4.3 to 8.25 percent): the port's percent display draws its eight
+shake values on that tick and its particles 100; retail draws no shake
+there and 92 (the port has one generator more, 332). Not followed further.
+
+**Retail in Dolphin equals the port; the console drew otherwise.** As with
+the wall tether above: `PIKACHU/13_03_44 Samus + Pikachu (FD)` played back
+from its own boundary (`slp_fd_samus_pikachu_t4250`, local data) is exact
+for 4250 ticks, items and particle call sites included. The console's seed
+is three draws ahead of both from tick 4150, the fifth frame of Samus's
+Charge Shot (346), and one more on each of the next five ticks. Nothing recorded says what that console ran. The two other Samus stops off
+the tether (`SAMUS/Game_20190629T124717`, `CPTFALCON/Game_20190629T183728`)
+were not played back: one recording failed, the other's retail run ended
+at tick 3948.
+
+**Dream Land with the 2019 spawn row** (`LINK/11_58_33 Marth + Link`,
+`DK/21_45_04 Donkey Kong + Ganondorf`, `YLINK/12_28_49 Young Link +
+Ganondorf`): no code text for that NeutralSpawn row is in `MELEE_GECKO_DIR`,
+so retail cannot be made to follow these games and they were measured only.
