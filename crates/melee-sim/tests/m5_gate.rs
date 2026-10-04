@@ -2129,6 +2129,8 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     // Explorer: Fox pulls Ness in (CapturePulledLw) and Ness's own PK
     // Thunder reaches him; the pull keeps its motion (inlineB2).
     ("corpus_v3_fd_ness_fox4_e6af4a7bb_p0", 166),
+    // Explorer: a clean whole-match sample (Fox wins) with no yo-yo smash.
+    ("corpus_v3_fd_ness_fox4_ee98155f3_p0", 2516),
 ];
 
 #[test]
