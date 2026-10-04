@@ -16,6 +16,7 @@ mod attack;
 mod awareness;
 mod behave;
 mod captured;
+mod damage_fall;
 pub mod desc;
 mod facts;
 mod get_up;

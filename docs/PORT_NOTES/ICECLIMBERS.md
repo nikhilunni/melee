@@ -39,6 +39,17 @@ mpIsland.
 its only reached caller, ftCo_800B0760, r31 holds fp+0x1A88, so the switch
 always happens.
 
+Tumbling (behaviour 15, `melee-cpu::damage_fall`, ftCo_800ABBA8): Nana at
+level 5 and up (her level is Popo's percent / 20) in DamageFall heads for
+the island end farthest from her target (ftCo_800A6700: ends 5 inside, a
+usable floor 5 above to 5 below, fmadds distance), techs a floor under ten
+frames away at level 8 and up (the fall's quadratic, inlined sqrtf),
+tech-jumps over an opponent below in AttackHi3/Hi4, and otherwise drifts
+toward the destination when the fall lands short (double fnmsub/fadd at
+800AC200 and 800AC28C). Witnesses: `corpus_v3_fd_iceclimbers_fox4_e57e41e12_p1`
+and the whole `public-v3.7-b` game `Game_20230505T050134.slp`; the tech
+and tech-jump branches have none.
+
 Recovery (behaviour 4): ftCo_800A8DE4 (also the Belay recovery a
 partner in rows 361..366 falls into) picks an island end once with
 ftCo_800A4038 / ftCo_800A3908 (the fall's height after t frames uses

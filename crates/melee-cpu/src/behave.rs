@@ -32,6 +32,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::HOLD => crate::hold::hold(fp, scene, rng),
         B::ARRIVED => crate::arrived::arrived(fp, scene),
         B::CAPTURED => crate::captured::mash(fp, rng),
+        B::DAMAGE_FALL => crate::damage_fall::steer(fp, scene, rng),
         B::TUMBLE => crate::tumble::steer(fp),
         B::RECOVER => crate::recover::recover(fp, scene),
         behavior @ (2..=19) => {

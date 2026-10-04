@@ -3622,7 +3622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 535] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 536] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4447,6 +4447,8 @@ const CORPUS_V3_MATCHES: [(&str, usize); 535] = [
     ("corpus_v3_fd_iceclimbers_fox4_e4ff31316_p1", 1483),
     ("corpus_v3_bf_iceclimbers_fox4_e12d92447_p0", 1750),
     ("corpus_v3_fd_iceclimbers_fox4_eb639b4ed_p0", 1717),
+    // Nana tumbling at level 5 (CPU behaviour 15, ftCo_800ABBA8).
+    ("corpus_v3_fd_iceclimbers_fox4_e57e41e12_p1", 2024),
     // Seven more whole random matches from start_fd_gameandwatch_fox4.
     ("corpus_v3_fd_gameandwatch_fox4_ee9675143_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_e2bad8462_p1", 6001),

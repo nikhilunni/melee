@@ -28,7 +28,8 @@ pub mod behavior {
     pub const ARRIVED: i32 = 10;
     pub const PICK_UP: i32 = 13;
     pub const USE_ITEM: i32 = 14;
-    pub const SHIELD_BROKEN: i32 = 15;
+    /// Tumbling (DamageFall, motion 0x26) at level 5 and up.
+    pub const DAMAGE_FALL: i32 = 15;
     pub const CAPTURED: i32 = 16;
     pub const BARREL: i32 = 17;
     pub const TUMBLE: i32 = 18;
@@ -85,12 +86,12 @@ pub fn choose_behavior(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) ->
         return switch(fp, B::RECOVER);
     }
     let current = fp.core.cpu.behavior;
-    if current == B::SHIELD_BROKEN {
+    if current == B::DAMAGE_FALL {
         return true;
     }
-    // Level 5 and up, in motion 0x26 (TODO(meaning): which state).
+    // Level 5 and up, tumbling (DamageFall, 0x26).
     if fp.core.cpu.level >= 5 && fp.core.motion_state.action.0 == 0x26 {
-        return switch(fp, B::SHIELD_BROKEN);
+        return switch(fp, B::DAMAGE_FALL);
     }
     if current == B::CAPTURED {
         return true;
