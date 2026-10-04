@@ -482,11 +482,17 @@ impl Fighter {
         let landed = map.air_collide_ecb10(cd, Some(&|i| pose.position(i)));
         self.core.physics.position = cd.cur_pos;
         if landed {
+            // ftCo_CliffClimb_Coll (8009ADA4) -> ftCo_8009AE14 lands only; the
+            // slow (100% and over) climb, attack and roll share it with the
+            // quick ones.
             if matches!(
                 self.core.motion_state.id,
                 S::CliffClimbQuick
+                    | S::CliffClimbSlow
                     | S::CliffAttackQuick
+                    | S::CliffAttackSlow
                     | S::CliffEscapeQuick
+                    | S::CliffEscapeSlow
                     | S::CliffJumpQuick1
                     | S::CliffJumpSlow1
             ) {
