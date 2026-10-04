@@ -36,6 +36,8 @@ const SPARK_FIRST: i32 = 0x14;
 const SPARK_STEP: i32 = 3;
 /// efSync_Spawn(0x3F3): a spark at the tip.
 const SPARK: u16 = 0x3F3;
+/// u.ss.x2240 once up, down, up and A have been read.
+const CODE_COMPLETE: u8 = 4;
 /// fn_802B805C: the spark and dust where the aerial tether meets a wall.
 const WALL_SPARK: u16 = 0x41C;
 const WALL_DUST: u16 = 0x3F1;
@@ -79,6 +81,22 @@ pub struct Grapple {
     pub callbacks: bool,
     /// u.ss.x2240: the hidden beam's button code (up, down, up, A).
     pub code: u8,
+    /// xDD4 x16: the beam the completed code makes.
+    pub extended: Extended,
+}
+
+/// xDD4 x16, set when the beam appears (it_802B7C18).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Extended {
+    /// 0: the button code was not complete.
+    #[default]
+    No,
+    /// 1: made on the ground: twice the links, no catch capsule, a tip that
+    /// follows the nearest foe while L is held, and A strikes with it once.
+    Ground,
+    /// 2: made in the air, or a grounded beam that has struck: L held keeps
+    /// Samus hanging from a wall.
+    Air,
 }
 
 fn samus(f: &Fighter) -> &Samus {
@@ -134,16 +152,28 @@ fn spawn(f: &mut Fighter, position: Vec3, map: &melee_mp::CollMap) -> bool {
     let player = f.player.id;
     let facing = f.physics.facing;
     let air = f.motion_state.action.0 == AIR_CATCH;
-    // x16: the button code's longer beam. Entering a beam resets the code
-    // unless it was complete.
+    // x16: the button code's beam, by where it is made; an incomplete code
+    // starts over, a complete one stays.
+    let grounded = f.physics.ground_or_air == GroundOrAir::Ground;
     let g = grapple(f);
-    if g.code >= 4 {
-        unimplemented!("it_802B7C18: the button code's grapple beam (xDD4 x16)");
-    }
-    g.code = 0;
+    g.extended = if g.code < CODE_COMPLETE {
+        g.code = 0;
+        Extended::No
+    } else if grounded {
+        Extended::Ground
+    } else {
+        Extended::Air
+    };
+    let extended = g.extended;
     let scale = f.player.scale;
     let article = samus(f).grapple_article.clone();
     let (attrs, count) = article.rope(scale, air);
+    // it_802B75FC (802B75FC): the grounded code beam has twice the links.
+    let count = if extended == Extended::Ground {
+        count * 2
+    } else {
+        count
+    };
     let g = grapple(f);
     g.chain.build(count, attrs, map);
     g.live = true;
@@ -414,8 +444,12 @@ fn thrown(
         return Ok(());
     }
     let h = hand(f);
-    let attach = attach_frame(f);
-    let result = grapple(f).chain.throw(h, attach, map, rng);
+    if attach_frame(f) {
+        grapple(f).chain.attach_tip(h);
+    }
+    strike_with_code_beam(f);
+    steer_code_beam(f);
+    let result = grapple(f).chain.throw(h, map, rng);
     match result {
         1 => {
             if f.motion_state.action.0 == AIR_CATCH {
@@ -561,8 +595,11 @@ fn hanging(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap)
     p.position_delta.y = y;
     let tip = grapple(f).chain.tip_position();
     pose(f, tip);
-    // xDD4 x16 with L held adds a frame: the button code's beam, which
-    // it_802B7C18 refuses to make.
+    // The button code's beam (xDD4 x16) with L held adds a frame to the
+    // countdown, which then stands still.
+    if grapple(f).extended != Extended::No && f.input.current.held.intersects(Buttons::L) {
+        *f.air_catch_hang_frames() += 1.0;
+    }
     if f.physics.ground_or_air != GroundOrAir::Air {
         set_state(f, state::RETRACTING);
         return Ok(());
@@ -578,6 +615,76 @@ fn hanging(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap)
         return let_go(f, assets);
     }
     Ok(())
+}
+
+/// The opening of it_802B9328, it_802B99A0 and it_802B9CE8 (the thrown,
+/// bounced and sagging rope): while Samus stands, the grounded code beam
+/// clears her hitboxes every frame (ftColl_8007AFF8), the grab's catch
+/// capsule with them, until A strikes with it once (it_802B7160) and the
+/// beam becomes the aerial kind.
+fn strike_with_code_beam(f: &mut Fighter) {
+    if f.physics.ground_or_air != GroundOrAir::Ground || grapple(f).extended != Extended::Ground {
+        return;
+    }
+    f.core.commands.hitboxes.fill(None);
+    if f.input.pressed.intersects(Buttons::A) {
+        melee_coll::hitbox::spawn(&mut f.core.commands.hitboxes, 0, &code_beam_catch());
+        grapple(f).extended = Extended::Air;
+    }
+}
+
+/// it_802B9328 (802B96E8..802B9778): while L is held, the grounded code
+/// beam's tip flies at ftCo_800A4A40's fighter at the throw speed (x40):
+/// the normalized difference times x40, an fmuls per axis.
+fn steer_code_beam(f: &mut Fighter) {
+    if grapple(f).extended != Extended::Ground || !f.input.current.held.intersects(Buttons::L) {
+        return;
+    }
+    let Some(target) = f.core.nearest_fighter else {
+        return;
+    };
+    let g = grapple(f);
+    let speed = g.chain.attrs.throw_speed;
+    let tip = g.chain.tip();
+    let link = &mut g.chain.links[tip];
+    let toward = melee_lb::vector::normalize(Vec3::new(
+        target.x - link.pos.x,
+        target.y - link.pos.y,
+        target.z - link.pos.z,
+    ));
+    link.vel = Vec3::new(toward.x * speed, toward.y * speed, toward.z * speed);
+}
+
+/// it_803B8660 through it_802B7160 (802B7160): the create-hitbox words
+/// 2C045800 04B00000 00000000 B4990012 0020008A. Hitbox 0 of group 0 on the
+/// tip's part (139, not a common bone id): a catch capsule of radius
+/// 1200 * 0.003906 that takes standing fighters only.
+fn code_beam_catch() -> melee_types::combat::HitboxDescriptor {
+    /// ftAction_8007121C's size unit; the literal is 0.003906f, not 1/256.
+    const SIZE_UNIT: f32 = 0.003906;
+    melee_types::combat::HitboxDescriptor {
+        group: 0,
+        bone: TIP_PART,
+        common_bone: false,
+        // HitCapsule +0x134 bit 3 is copied from the byte past the five
+        // words on the caller's stack (802B73F4), which nothing wrote.
+        requires_throw_owner: false,
+        damage: 0.0,
+        shield_damage: 0,
+        sound_severity: 1,
+        radius: SIZE_UNIT * 1200.0,
+        offset: Vec3::ZERO,
+        angle: 361,
+        growth: 100,
+        weight_knockback: 0,
+        base_knockback: 0,
+        element: melee_types::HitElement::Catch,
+        hit_ground: true,
+        hit_air: false,
+        ignore_scale: false,
+        clank: true,
+        rebound: false,
+    }
 }
 
 /// The counter's throw frame for the current grab (it_802B9328_attach).
@@ -606,6 +713,7 @@ fn bounce_off_floor(f: &mut Fighter) {
 /// fn_802B8384 (802B8384): the bounced tip flies loose.
 fn bounced(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::HsdRng) {
     let h = hand(f);
+    strike_with_code_beam(f);
     let result = grapple(f).chain.bounce(h, map, rng);
     match result {
         1 => {
@@ -626,6 +734,7 @@ fn bounced(f: &mut Fighter, map: &mut melee_mp::CollMap, rng: &mut gekko_math::H
 /// motion it is reeled in.
 fn sagging(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
     let h = hand(f);
+    strike_with_code_beam(f);
     grapple(f).chain.sag(h, rng);
     let tip_pos = grapple(f).chain.tip_position();
     pose(f, tip_pos);

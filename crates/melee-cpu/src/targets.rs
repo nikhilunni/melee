@@ -24,6 +24,48 @@ fn not_targetable(f: &Fighter) -> bool {
     f.core.status.disabled || f.core.motion_state.action.0 <= S::DeadUpFallHitCameraIce as u16
 }
 
+/// What ftCo_800A4A40 reads of another fighter.
+#[derive(Clone, Copy, Debug)]
+pub struct FighterView {
+    /// cur_pos.
+    pub position: hsd_types::Vec3,
+    /// Not inlineD1: in play and not in a death motion.
+    pub targetable: bool,
+}
+impl FighterView {
+    pub fn of(f: &Fighter) -> Self {
+        Self {
+            position: f.core.physics.position,
+            targetable: !not_targetable(f),
+        }
+    }
+}
+
+/// ftCo_800A4A40 (0x800A4A40): the position of the nearest other fighter,
+/// whoever's side it is on, that is inside the blast zones shrunk by the
+/// asking fighter's CPU half size (inlineD0) and targetable (inlineD1). Of
+/// two equally near the earlier in list order stays (800A4BAC: fcmpo, ble).
+pub fn nearest_fighter(
+    position: hsd_types::Vec3,
+    half_size: [f32; 2],
+    arena: &melee_ft::fighter::life::Arena,
+    others: impl Iterator<Item = FighterView>,
+) -> Option<hsd_types::Vec3> {
+    let mut closest: Option<(hsd_types::Vec3, f32)> = None;
+    for other in others {
+        let p = other.position;
+        if crate::world::outside(arena, p.x, p.y, half_size) || !other.targetable {
+            continue;
+        }
+        let d = distance(position, p);
+        match closest {
+            Some((_, best)) if best.partial_cmp(&d) != Some(core::cmp::Ordering::Greater) => {}
+            _ => closest = Some((p, d)),
+        }
+    }
+    closest.map(|(p, _)| p)
+}
+
 /// ftCo_800A4BEC (0x800A4BEC): the nearest fighter the CPU can fight, or
 /// the locked one while the lock (xF9_b0) holds. Choosing a new target
 /// locks it for a random time.

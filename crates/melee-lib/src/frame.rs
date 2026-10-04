@@ -1141,6 +1141,9 @@ impl Runtime {
                 if matches!(proc, FighterProc::Map | FighterProc::Accessories) {
                     offer_ledge_holders(state, player);
                 }
+                if proc == FighterProc::Accessories {
+                    offer_nearest_fighter(state, player);
+                }
                 if proc == FighterProc::Animation {
                     let slot = &state.fighters[player].player;
                     let report = crate::scene_items::owner_report(
@@ -2572,6 +2575,32 @@ fn offer_ledge_holders(state: &mut InitialState, player: usize) {
         .core
         .ledge_holders
         .offer(holders));
+}
+
+/// ftCo_800A4A40 for a fighter whose tether article is out, before its
+/// accessory proc (the grapple beam's button code reads it there).
+fn offer_nearest_fighter(state: &mut InitialState, player: usize) {
+    use crate::scene_fighter::with_fighter;
+    if !with_fighter!(&state.fighters[player], |f| f.core.tether_article) {
+        return;
+    }
+    let mut views = [None; 6];
+    for (slot, other) in views.iter_mut().zip(&state.fighters) {
+        *slot = Some(with_fighter!(other, |f| melee_cpu::FighterView::of(f)));
+    }
+    let (position, half_size) = with_fighter!(&state.fighters[player], |f| (
+        f.core.physics.position,
+        f.core.cpu.half_size
+    ));
+    let others = views
+        .into_iter()
+        .enumerate()
+        .filter(|&(other, _)| other != player)
+        .filter_map(|(_, view)| view);
+    let nearest =
+        melee_cpu::nearest_fighter(position, half_size, &state.assets.arena, others);
+    with_fighter!(&mut state.fighters[player], |f| f.core.nearest_fighter =
+        nearest);
 }
 
 /// An article's request of its owner from inside its physics proc

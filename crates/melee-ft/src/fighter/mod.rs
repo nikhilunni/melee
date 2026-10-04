@@ -1078,6 +1078,10 @@ pub struct FighterCore {
     /// The held fighter's position, offered to the accessory proc of a
     /// captor that follows its victim (Falcon Dive's accessory4).
     pub partner_position: Option<Vec3>,
+    /// ftCo_800A4A40's fighter (its cur_pos), offered to the accessory proc
+    /// while a tether article is out: the grapple beam's button code steers
+    /// its tip at it.
+    pub nearest_fighter: Option<Vec3>,
     /// accessory4_cb != NULL for a character's one-shot accessory (effects
     /// created after the deferred flush). The character keeps what it will
     /// do; every Fighter_ChangeMotionState disarms it (fighter.c:1377).

@@ -31,8 +31,29 @@ grapple beam).
 
 The beam article only mirrors its state; Samus's accessory2 (`it_802BAC80`)
 runs the rope from her own proc, accessory3 (`it_802BACC4`) in hitlag. The
-rope is a fixed 48-link array in the character payload (boxed, allocated
+rope is a fixed 60-link array in the character payload (boxed, allocated
 with the fighter). Links run hand (index 0) to tip (last).
+
+## The button code
+
+While a beam hangs from the hand or flies (`fn_802B7E34`, `fn_802B805C`),
+d-pad up, down, up held in turn and then A pressed complete `u.ss.x2240`
+(`samus_grapple_state_sync`). Every beam made after that, until Samus dies,
+carries xDD4 x16 (`grapple::Extended`):
+
+- made on the ground (1): twice the links (60); her hitboxes, the catch
+  capsule with them, are cleared every frame of the thrown, bounced and
+  sagging rope; while L is held the tip flies at `ftCo_800A4A40`'s fighter
+  (the scene offers it as `FighterCore::nearest_fighter`); A gives the tip a
+  catch capsule once (`it_802B7160`, words `it_803B8660`) and the beam
+  becomes kind 2.
+- made in the air (2): the usual rope; hanging from a wall, L held stops the
+  countdown.
+
+`it_802B7160` copies HitCapsule +0x134 bit 3 (hit the grabbed victim only)
+from a stack byte nothing wrote. `samus_grab_code_strike_fd_fox4` shows it
+clear on `it_802B9328`'s path (the beam catches Fox); the bounced and sagging
+rope's callers (`it_802B99A0`, `it_802B9CE8`) have no witness.
 
 ## Not ported (fail closed)
 
@@ -40,8 +61,7 @@ with the fighter). Links run hand (index 0) to tip (last).
   (`ftCo_800C3CC0`, `it_802BAB40`), beam states 6..8 (`fn_802B895C`,
   `fn_802B8B54`, `fn_802B8D38`), `ftSs_MS_AirCatchHit` (358). The wall and
   ledge tether needs the rope's hang and climb and `ftCliffCommon_80081370`.
-- The button code's longer beam (`u.ss.x2240 >= 4`).
-- `itSamusbomb_UnkMotion2` (a sliding bomb), bomb shield bounce.
+- `itSamusbomb_UnkMotion2` (a sliding bomb).
 
 ## Known divergence, not registered
 

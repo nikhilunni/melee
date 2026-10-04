@@ -251,6 +251,7 @@ impl CharacterCallbacks for Samus {
         self.charge_level = 0;
         self.missiles_fired = 0;
         self.screw_effect = false;
+        self.grapple.code = 0;
     }
 }
 

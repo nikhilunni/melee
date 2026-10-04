@@ -100,12 +100,17 @@ impl Scene<'_> {
     /// half size (the inlined test of ftCo_800B33B0, inlineD0 and others):
     /// left + hw, right - hw, bottom + hh, top - hh, each an fadds/fsubs.
     pub fn outside(&self, x: f32, y: f32, half_size: [f32; 2]) -> bool {
-        let [half_width, half_height] = half_size;
-        x < half_width + self.arena.left
-            || x > self.arena.right - half_width
-            || y < half_height + self.arena.bottom
-            || y > self.arena.top - half_height
+        outside(self.arena, x, y, half_size)
     }
+}
+
+/// [`Scene::outside`] for a caller with only the blast zones.
+pub fn outside(arena: &Arena, x: f32, y: f32, half_size: [f32; 2]) -> bool {
+    let [half_width, half_height] = half_size;
+    x < half_width + arena.left
+        || x > arena.right - half_width
+        || y < half_height + arena.bottom
+        || y > arena.top - half_height
 }
 
 /// ftCo_800A1AB4 (0x800A1AB4) and its inlined copies: sqrtf of

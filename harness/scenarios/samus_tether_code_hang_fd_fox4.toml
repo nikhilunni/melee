@@ -1,0 +1,37 @@
+# SAMUS directed witness: the button code is entered during a grab; off FD's left
+# ledge the aerial grapple (xDD4 x16 = 2, the usual link count) catches the wall and
+# Samus hangs. While L is held the hang's countdown stands still (fn_802B8D38: mv +4
+# gains a frame); released at tick 420 it runs out and she lets go into DamageFall.
+name = "samus_tether_code_hang_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 4 } },
+  { frame = 114, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 118, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 220, port = 0, buttons = {  }, raw = {  } },
+  { frame = 254, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 256, port = 0, buttons = {  }, raw = { button = 64 } },
+  { frame = 420, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

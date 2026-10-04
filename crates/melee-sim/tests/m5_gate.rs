@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 447] = [
+const MATRIX_WITNESSES: [(&str, usize); 451] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1493,6 +1493,16 @@ const MATRIX_WITNESSES: [(&str, usize); 447] = [
     ("samus_tether_low_hang_fd_fox4", 480),
     ("samus_tether_low_reel_fd_fox4", 480),
     ("samus_tether_low_late_reel_fd_fox4", 480),
+    // The grapple beam's button code (samus_grapple_state_sync; xDD4 x16
+    // from it_802B7C18, 802B7D04): entered during a grab, the next grab's
+    // beam has 60 links and no catch capsule; with L held its tip flies at
+    // Fox (802B96E8, ftCo_800A4A40); A gives it the catch capsule once
+    // (it_802B7160) and it takes him; in the air, L held stops the wall
+    // hang's countdown (fn_802B8D38). 0 differing particle ticks.
+    ("samus_grab_code_fd_fox4", 420),
+    ("samus_grab_code_l_fd_fox4", 420),
+    ("samus_grab_code_strike_fd_fox4", 420),
+    ("samus_tether_code_hang_fd_fox4", 620),
     ("links_tether_hang_fd_fox4", 480),
     ("links_tether_reel_fd_fox4", 480),
     ("links_tether_late_reel_fd_fox4", 480),

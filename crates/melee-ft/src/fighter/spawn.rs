@@ -1212,6 +1212,7 @@ impl FighterCore {
             pickup_candidates: Default::default(),
             owned_article: None,
             partner_position: None,
+            nearest_fighter: None,
             ledge_holders: Default::default(),
             accessory4_armed: false,
             item_catch_locked: false,

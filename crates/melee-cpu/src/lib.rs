@@ -31,6 +31,7 @@ mod targets;
 mod tumble;
 mod world;
 
+pub use targets::{nearest_fighter, FighterView};
 pub use world::{distance, ItemView, Scene};
 
 use gekko_math::HsdRng;

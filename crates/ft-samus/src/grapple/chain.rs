@@ -15,8 +15,9 @@ use gekko_math::{fma::fmadds, fma::fnmsubs, msl, HsdRng};
 use hsd_types::Vec3;
 use melee_types::mp::{collide, CollData};
 
-/// it_802B75FC's link count limit: x34 of the air tether (45 at scale 1).
-pub const MAX_LINKS: usize = 48;
+/// it_802B75FC's link count limit: x34 of the button code's grounded beam
+/// (twice a grab's 30 at scale 1; the air tether has 45).
+pub const MAX_LINKS: usize = 60;
 
 /// One ItemLink (itlinkhookshot.h): its position and velocity, and the two
 /// positions its CollData tracks (it_802A43EC / it_802A43B8).
@@ -435,23 +436,14 @@ impl Chain {
         self.pull_from_tip(hand, true);
     }
 
-    /// it_802B9328 (802B9328), the throw. `attach` is the hand once the
-    /// counter reaches the timeline's throw (it_802B9328_attach). The tip
-    /// flies (it_802A4420) and meets the map: 1 a wall (its line kept for
-    /// a left wall only as retail orders the tests), 2 a floor. Paid-out
-    /// links fall with the throw jitter and hold their spans; once the
-    /// hand is past the last link the rope hangs (it_802B900C) and the
-    /// result is 3.
-    pub fn throw(
-        &mut self,
-        hand: Vec3,
-        attach: bool,
-        map: &mut melee_mp::CollMap,
-        rng: &mut HsdRng,
-    ) -> i32 {
-        if attach {
-            self.attach_tip(hand);
-        }
+    /// it_802B9328 (802B9328), the throw, after its caller has attached the
+    /// tip on the timeline's throw frame (it_802B9328_attach) and run the
+    /// code beam's inputs. The tip flies (it_802A4420) and meets the map:
+    /// 1 a wall (its line kept for a left wall only as retail orders the
+    /// tests), 2 a floor. Paid-out links fall with the throw jitter and
+    /// hold their spans; once the hand is past the last link the rope hangs
+    /// (it_802B900C) and the result is 3.
+    pub fn throw(&mut self, hand: Vec3, map: &mut melee_mp::CollMap, rng: &mut HsdRng) -> i32 {
         let tip = self.tip();
         self.links[tip].step();
         let mut result = self.tip_pass(map) as i32;
