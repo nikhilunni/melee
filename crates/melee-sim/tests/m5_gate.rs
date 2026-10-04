@@ -2126,6 +2126,9 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     ("ness_pkthunder2_launch_fd_fox4", 379),
     ("ness_pkthunder2_slide_fd_fox4", 433),
     ("ness_pkthunder2_hit_fd_fox4", 520),
+    // Explorer: Fox pulls Ness in (CapturePulledLw) and Ness's own PK
+    // Thunder reaches him; the pull keeps its motion (inlineB2).
+    ("corpus_v3_fd_ness_fox4_e6af4a7bb_p0", 166),
 ];
 
 #[test]
