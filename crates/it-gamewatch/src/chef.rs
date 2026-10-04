@@ -126,6 +126,13 @@ impl ItemLogic for Chef {
         item.velocity.y = y;
         item.grabbable = false;
         item.change_motion_with(FLYING, ARTICLE_STATES[0], ANIM_UPDATE, assets);
+        // it_802C837C: it_8027CE64 after the launch runs it_80274594, whose
+        // it_80275534 gives the hitbox the flight's script has just made
+        // x3C, the command size, as its radius: the 1 / scl of the hitbox
+        // command is undone, so the food's capsule (scl 1.5) is 1.5 times
+        // the command's in contact tests.
+        let scale = item.scale;
+        item.rescale(scale);
     }
     /// itGameWatchChef_Logic112_DmgDealt (802C8474): spent, not removed.
     fn damage_dealt(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
