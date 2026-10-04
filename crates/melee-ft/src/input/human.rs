@@ -184,6 +184,12 @@ fn sample_input(
     if trigger <= t.analog_shoulder_deadzone {
         trigger = 0.0;
     }
+    // Fighter+0x620: the dead-zoned stick, which Dween's code (0x8006B028,
+    // the human arm's button store) may rewrite before anything reads it.
+    let mut stick = deadzone(pad.stick);
+    if !context.cpu_controlled {
+        stick = super::controller_fix::sampled_stick(input, pad, stick, trigger, common);
+    }
     let mut held = pad.buttons;
     if context.single_button_mode {
         trigger = 0.0;
@@ -201,7 +207,7 @@ fn sample_input(
         }
     }
     input.current = InputFrame {
-        stick: deadzone(pad.stick),
+        stick,
         cstick: deadzone(if context.suppress_cstick {
             Stick::default()
         } else {

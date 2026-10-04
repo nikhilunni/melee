@@ -149,6 +149,7 @@ impl InitialState {
             quakes,
             controller_fixes: scenario.controller_fixes()?,
             pad_buffers: Default::default(),
+            dween_previous_x: [0.0; 4],
         })
     }
 }

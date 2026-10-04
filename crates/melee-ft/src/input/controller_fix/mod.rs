@@ -17,6 +17,7 @@
 //! | 0.84 | `.../UCF Tumble.asm` | 0x800908F4 |
 //! | 0.84 | `.../UCF SDI.asm`, `UCF Shield SDI.asm` | 0x8008E54C (ftCo_Damage_OnEveryHitlag), 0x80093294 (ftCo_80093240) |
 //! | 0.84 | `.../UCF DBOOC SquatRv Fix.asm` | 0x800D65EC (ftCo_SquatRv_CheckInput) |
+//! | Dween | `External/UCF + Arduino Toggle UI/Arduino/Arduino - Check for Toggle.asm` | 0x8006B028 (Fighter_Spaghetti_8006AD10) |
 //!
 //! The 0.74 and 0.8 dashback and shield-drop codes are the same program
 //! (the 0.8 files only add version tables and comments); 0.8 adds the
@@ -33,9 +34,14 @@
 //! to the 80-unit circle ([`PadQueueX`]). 0.84 keeps its own four-sample ring
 //! per port instead ([`PadBuffer`]), fed from the consumed entry's sticks
 //! ([`RawSticks`]).
-use super::state::FighterInput;
+use super::{
+    common::InputCommonData,
+    pad::{PadSample, Stick},
+    state::FighterInput,
+};
 use melee_types::mp::SurfaceData;
 
+mod dween;
 mod ucf073;
 mod ucf08;
 mod ucf084;
@@ -57,7 +63,10 @@ pub enum ControllerFix {
     /// UCF 0.84 (2024): its own pad buffer, 1.0 cardinals, dashback, shield
     /// drop, tumble, SDI, shield SDI and the squat-release fix.
     Ucf084,
-    /// Slippi's "Dween" dashback fix: not ported.
+    /// Dween's fix, the "Arduino" setting of Slippi's per-port toggle set
+    /// (2019-2021 console builds; Game Start value 2): the input proc holds
+    /// a first tilt out of neutral at zero for a tick and snaps a shielding
+    /// rim stick to the shield-drop notch. None of UCF's hooks run.
     Dween,
 }
 
@@ -91,19 +100,24 @@ impl ControllerFix {
     /// Why the simulator cannot run this setting, if it cannot.
     pub fn unsupported(self) -> Option<&'static str> {
         match self {
-            Self::Off | Self::Ucf073 | Self::Ucf074 | Self::Ucf080 | Self::Ucf084 => None,
-            Self::Dween => Some("the Dween dashback fix is not ported"),
+            Self::Off
+            | Self::Ucf073
+            | Self::Ucf074
+            | Self::Ucf080
+            | Self::Ucf084
+            | Self::Dween => None,
         }
     }
 
     /// The dashback and shield-drop program this setting installs.
     fn program(self) -> Option<Program> {
         match self {
-            Self::Off => None,
+            // Dween's code rewrites the sampled stick instead
+            // ([`sampled_stick`]); the toggle set's UCF hooks test for 1.
+            Self::Off | Self::Dween => None,
             Self::Ucf073 => Some(Program::Ucf073),
             Self::Ucf074 | Self::Ucf080 => Some(Program::Ucf08),
             Self::Ucf084 => Some(Program::Ucf084),
-            Self::Dween => unimplemented!("Dween controller fix"),
         }
     }
 
@@ -158,6 +172,9 @@ pub struct HardwareInput {
     pub queue_x: PadQueueX,
     pub raw: RawSticks,
     pub buffer: PadBuffer,
+    /// Dween's slot for the port (the code's own data, zero when
+    /// installed): the pad's normalized stick x on the last tick it ran.
+    pub dween_previous_x: f32,
     /// A smash turn's write into the player's second fighter's newest follow
     /// sample, for the scene to apply (see [`PartnerTurn`]).
     pub partner_turn: Option<PartnerTurn>,
@@ -170,6 +187,25 @@ pub struct HardwareInput {
 pub struct PartnerTurn {
     pub facing: f32,
     pub stick_x: i8,
+}
+
+/// Dween's code at 0x8006B028, where the human arm of the input proc
+/// stores the pad's buttons: the dead-zoned main stick (fp+0x620) it leaves.
+/// `trigger` is fp+0x650 at that point (dead-zoned analog, before the
+/// digital shoulders and Z). The caller is the human arm only (ftCo_800A2040
+/// false).
+pub fn sampled_stick(
+    input: &mut FighterInput,
+    pad: &PadSample,
+    stick: Stick,
+    trigger: f32,
+    common: &InputCommonData,
+) -> Stick {
+    if input.hardware.fix == ControllerFix::Dween {
+        dween::adjust_stick(input, pad, stick, trigger, common)
+    } else {
+        stick
+    }
 }
 
 /// The fighter facts UCF DB reads beside the pad.

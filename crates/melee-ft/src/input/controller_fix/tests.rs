@@ -41,7 +41,7 @@ fn names_round_trip() {
         assert_eq!(fix.name(), name);
     }
     assert_eq!(ControllerFix::from_name("ucf"), None);
-    assert!(ControllerFix::Dween.unsupported().is_some());
+    assert!(ControllerFix::Dween.unsupported().is_none());
 }
 
 #[test]

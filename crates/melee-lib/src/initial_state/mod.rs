@@ -94,6 +94,9 @@ pub struct InitialState {
     /// UCF 0.84's per-port pad buffer (the Gecko code's own data), zero when
     /// the code is installed.
     pub(crate) pad_buffers: [melee_ft::input::controller_fix::PadBuffer; 4],
+    /// Dween's per-port slot (the Gecko code's own data): the pad's stick x
+    /// on the last tick the code ran for the port, zero when installed.
+    pub(crate) dween_previous_x: [f32; 4],
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
@@ -518,6 +521,7 @@ impl InitialState {
             quakes,
             controller_fixes: setup.controller_fixes()?,
             pad_buffers: Default::default(),
+            dween_previous_x: [0.0; 4],
         })
     }
 }

@@ -1161,6 +1161,7 @@ impl Runtime {
                         queue_x: self.pad_queue_x[port],
                         raw: self.consumed_sticks[port],
                         buffer: state.pad_buffers[port],
+                        dween_previous_x: state.dween_previous_x[port],
                         partner_turn: None,
                     };
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
@@ -1388,7 +1389,9 @@ impl Runtime {
                 }
                 if proc == FighterProc::Input {
                     let port = usize::from(state.fighters[player].player.id);
-                    state.pad_buffers[port] = state.fighters[player].0.input.hardware.buffer;
+                    let hardware = &state.fighters[player].0.input.hardware;
+                    state.pad_buffers[port] = hardware.buffer;
+                    state.dween_previous_x[port] = hardware.dween_previous_x;
                     partner_turn(state, player);
                 }
                 if let Some(kind) = state.fighters[player].0.quake_request.take() {

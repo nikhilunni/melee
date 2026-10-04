@@ -1624,7 +1624,7 @@ fn matrix_witnesses_match_retail() {
 /// slow turn where 0.74 and 0.8 flip the facing at tick 121); 0.84's pad
 /// buffer and 1.0 cardinals (0x8006B460), rim-count shield drop (0x8009A0B8),
 /// SDI (0x8008E54C), shield SDI (0x80093294) and squat release (0x800D65EC).
-const UCF_WITNESSES: [(&str, usize); 29] = [
+const UCF_WITNESSES: [(&str, usize); 34] = [
     ("ucf_dashback_fd_fox_off", 200),
     ("ucf_dashback_fd_fox_ucf073", 200),
     // A full stick back toward the old facing on the turn's second frame.
@@ -1657,6 +1657,16 @@ const UCF_WITNESSES: [(&str, usize); 29] = [
     ("ucf084_shieldsdi_pound_fd_fox_ucf084", 272),
     ("ucf084_squatrv_fd_fox_off", 200),
     ("ucf084_squatrv_fd_fox_ucf084", 200),
+    // Dween's fix (the toggle set's "Arduino" code, 0x8006B028): a first tilt
+    // out of neutral held at zero for a tick (dashback at 121/122), left
+    // alone when it is under PlCo+0x8 from the last pad sample or A is fresh;
+    // a shielding rim stick snapped to the notch (Pass at 136), left alone
+    // without three ticks on that side.
+    ("dween_dashback_fd_fox", 200),
+    ("dween_dashback_slow_fd_fox", 200),
+    ("dween_dashback_a_fd_fox", 200),
+    ("dween_shielddrop_bf_fox", 200),
+    ("dween_shielddrop_fresh_bf_fox", 200),
 ];
 
 #[test]

@@ -1,0 +1,31 @@
+# Dween controller fix witness (slippi-ssbm-asm External/UCF + Arduino Toggle UI/Arduino,
+# Gecko hook 0x8006B028 in the input proc, toggle byte 2 for every port).
+# Fox (p0) stands facing right; the stick goes -20 (tick 119, inside the dead zone)
+# -> -36 (tick 120) -> -80 (tick 121): 0.2 from the last pad sample, under PlCo+0x8.
+# RETAIL: the stick is left alone: the slow Turn at tick 120 and Dash at 125, as
+# without the code.
+name = "dween_dashback_slow_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_fox4.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+gecko = ["dween"]
+inputs = [
+  { frame = 119, port = 0, buttons = { StickX = -0.25 }, raw = { stickX = -20 } },
+  { frame = 120, port = 0, buttons = { StickX = -0.45 }, raw = { stickX = -36 } },
+  { frame = 121, port = 0, buttons = { StickX = -1.0 }, raw = { stickX = -80 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+controller_fix = "dween"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+controller_fix = "dween"

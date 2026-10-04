@@ -10,6 +10,9 @@ line, e.g. g_ucf.bin). For UCF, from a slippi-ssbm-asm checkout:
     ucf-0.74.bin   git show b89e160^:Output/Console/g_ucf.bin
     ucf-0.8.txt    Output/Console/g_ucf.txt
     ucf-0.84.txt   Output/Console/g_ucf_084.txt
+    dween.txt      the C206B028 block of Output/Console/g_toggles.bin at 009b155
+                   (the toggle set's "Arduino" code), then `004DEC08 00030002`
+                   (each port's toggle byte at 0x804DEC08 set to 2)
 
 `install` writes the codes into a private Dolphin user folder's
 GameSettings/GALE01.ini ([Gecko] and [Gecko_Enabled]); the recorder then

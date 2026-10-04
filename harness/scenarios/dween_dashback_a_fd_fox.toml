@@ -1,0 +1,29 @@
+# Dween controller fix witness (slippi-ssbm-asm External/UCF + Arduino Toggle UI/Arduino,
+# Gecko hook 0x8006B028 in the input proc, toggle byte 2 for every port).
+# Fox (p0) stands facing right; A is pressed with the stick at 40 (tick 120, the
+# first tilt out of neutral): a fresh A leaves the stick alone.
+# RETAIL: forward tilt (AttackS3S) at tick 120; a zeroed stick would have jabbed.
+name = "dween_dashback_a_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_fox4.sav"
+frames = 200
+seed = 1
+stage = "FinalDestination"
+gecko = ["dween"]
+inputs = [
+  { frame = 120, port = 0, buttons = { A = true, StickX = 0.5 }, raw = { button = 256, stickX = 40 } },
+  { frame = 122, port = 0, buttons = { StickX = 0.5 }, raw = { stickX = 40 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+controller_fix = "dween"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+controller_fix = "dween"
