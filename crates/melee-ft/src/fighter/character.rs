@@ -38,6 +38,9 @@ pub struct CharacterTable {
     pub accessory: fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng),
     pub special_grab: SpecialGrab,
     pub take_damage: Option<fn(&mut Fighter)>,
+    pub hit_taken: Option<fn(&mut Fighter)>,
+    pub map_accessory:
+        Option<fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap)>,
     /// Fighter.deal_dmg_cb: Fighter_ProcessHit's damage-dealt branch.
     pub deal_damage: Option<fn(&mut Fighter, &assets::FighterAssets)>,
     pub death: Option<fn(&mut Fighter)>,
@@ -150,6 +153,8 @@ impl CharacterTable {
             accessory: C::accessory,
             special_grab: C::SPECIAL_GRAB,
             take_damage: C::TAKE_DAMAGE,
+            hit_taken: C::HIT_TAKEN,
+            map_accessory: C::MAP_ACCESSORY,
             deal_damage: C::DEAL_DAMAGE,
             death: C::DEATH,
             hurtbox_detect: C::HURTBOX_DETECT,

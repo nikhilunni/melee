@@ -37,7 +37,8 @@ fn relocated_attributes_keep_the_carry_rows_floats_and_integers() {
 }
 
 fn donkey() -> DonkeyKong {
-    let data = vec![0; 0x74];
+    let mut data = vec![0; 0x74];
+    word(&mut data, 0x2C, 10);
     DonkeyKong::new(DonkeyAttributes::read(&archive(&data, &[], None), 0).unwrap())
 }
 

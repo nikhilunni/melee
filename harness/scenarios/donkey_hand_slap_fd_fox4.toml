@@ -1,0 +1,30 @@
+# DONKEY KONG directed witness: one Hand Slap, then three in a row (B during each slap,
+# ftDk_SpecialLwLoop_Anim), each a new attack instance with the quake hitboxes on the floor.
+name = "donkey_hand_slap_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 285, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 287, port = 0, buttons = {  }, raw = {  } },
+  { frame = 305, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 307, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

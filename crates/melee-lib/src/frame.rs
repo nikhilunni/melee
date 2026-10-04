@@ -2957,6 +2957,7 @@ fn dispatch_fighter(
                 && !f.core.egg_accessory()
             {
                 f.character_accessory(assets, rng);
+                f.character_map_accessory(assets, map);
             }
             f.proc_hitbox_positions();
         }

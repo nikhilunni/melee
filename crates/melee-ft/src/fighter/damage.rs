@@ -933,6 +933,12 @@ impl Fighter {
             if hit.descriptor.element == melee_types::HitElement::Electric {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
+            if hit.knockback != 0.0 {
+                // fighter.c:2862: take_dmg_2_cb, before the reaction.
+                if let Some(hit_taken) = self.character.table().hit_taken {
+                    hit_taken(self);
+                }
+            }
             if self.core.motion_state.id == S::YoshiEgg && hit.knockback != 0.0 {
                 // take_dmg_2_cb = ftCo_800BC3D0 sets x1828 = 4, which no
                 // reaction case takes: the egg keeps rolling into hitlag.

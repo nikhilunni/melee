@@ -1,0 +1,29 @@
+# DONKEY KONG directed witness: an aerial Spinning Kong from off the left edge, steered back late:
+# falling past the stage it catches the ledge (ftDk_SpecialAirHi_Coll: ftCliffCommon_80081298).
+# melee-sim search: reached [p0.motion_id == 382; p0.motion_id == CliffCatch] at ticks [172, 253].
+name = "donkey_kong_spin_ledge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 373
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 134, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+  { frame = 207, port = 0, buttons = {  }, raw = { stickX = 127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

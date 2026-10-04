@@ -1657,6 +1657,41 @@ const DONKEY_WITNESSES: &[(&str, usize)] = &[
     ("donkey_aerial_land_fd_fox4", 520),
     ("donkey_taunt_ledge_fd_fox4", 620),
     ("donkey_grab_whiff_fd_fox4", 360),
+    // Giant Punch (ftdonkeyspecialn.c): the wind-up's stored swings kept
+    // through a shield cancel and a roll, a partial punch's lunge and
+    // damage, the full charge's glow (colour 57 and
+    // ftDk_Init_UnkMotionStates4) kept while walking and the full punch;
+    // the aerial rows landing into the grounded ones, and both aerial
+    // punches ending in the special fall off stage.
+    ("donkey_punch_cancel_fd_fox4", 520),
+    ("donkey_punch_partial_fd_fox4", 420),
+    ("donkey_punch_full_fd_fox4", 760),
+    ("donkey_punch_roll_fd_fox4", 460),
+    ("donkey_punch_air_fd_fox4", 620),
+    ("donkey_punch_air_full_fd_fox4", 760),
+    ("donkey_punch_air_fall_fd_fox4", 420),
+    ("donkey_punch_air_full_fall_fd_fox4", 620),
+    // Headbutt (ftdonkeyspecials.c; efSync 0x4C6 / 0x4C7 from accessory4):
+    // grounded and aerial whiffs, and the aerial row landing into the
+    // grounded one.
+    ("donkey_headbutt_fd_fox4", 520),
+    ("donkey_headbutt_edge_fd_fox4", 520),
+    // Spinning Kong (ftdonkeyspecialhi.c; efSync 0x4CA): grounded and
+    // steered, aerial into the special fall, the grounded row walked off an
+    // edge, and ledge catches from the aerial row.
+    ("donkey_kong_spin_fd_fox4", 620),
+    ("donkey_kong_spin_slide_fd_fox4", 365),
+    ("donkey_kong_spin_ledge_fd_fox4", 373),
+    // Hand Slap (ftdonkeyspeciallw.c; efAsync 0x4CC): single and repeated
+    // slaps, each a new attack instance, with the quake hitboxes laid along
+    // the floor (ftDk_Init_8010DB3C) and at its end.
+    ("donkey_hand_slap_fd_fox4", 620),
+    ("donkey_hand_slap_brink_fd_fox4", 283),
+    // Falls to the bottom blast zone and the revival: a tap jump out of a
+    // dash off the edge; a dash off it, where down + B does nothing in the
+    // air (ftData_SpecialAirLw[FTKIND_DONKEY] is NULL).
+    ("donkey_kong_spin_edge_fd_fox4", 520),
+    ("donkey_hand_slap_edge_fd_fox4", 620),
 ];
 
 #[test]

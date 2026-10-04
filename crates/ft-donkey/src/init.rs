@@ -2,7 +2,7 @@
 use crate::attributes::{read_donkey_attributes, DonkeyAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
-    Capabilities, CharacterCallbacks, Fighter, MotionRow,
+    Capabilities, CharacterCallbacks, Fighter, MotionRow, SpecialSlot,
 };
 use melee_types::FighterKind;
 
@@ -18,6 +18,30 @@ pub struct DonkeyKong {
     /// savestate carries retail's.
     // TODO(meaning): no retail reader found.
     pub unknown_2230: u32,
+    /// take_dmg_cb / death2_cb = ftDk_Init_8010D774, installed by Giant
+    /// Punch and Spinning Kong until the next motion change.
+    pub damage_callbacks: bool,
+    /// take_dmg_2_cb = ftDk_SpecialN_DestroyAllEffects, Giant Punch's.
+    pub hit_destroys_effects: bool,
+    /// The accessory4 callback a special installed.
+    pub accessory: Accessory,
+    /// Giant Punch's motion scratch (mv.dk.specialn).
+    pub giant_punch: crate::special_n::GiantPunch,
+    /// mv.dk.speciallw.x0: B was pressed during the current Hand Slap.
+    pub slap_again: bool,
+}
+
+/// accessory4_cb while a special owns it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// ftDk_SpecialLw_8010E0CC: the grounded Headbutt's model.
+    HeadbuttEffect,
+    /// ftDk_SpecialLw_8010E148: the aerial Headbutt's model.
+    AirHeadbuttEffect,
+    /// ftDk_Init_8010DB3C: Hand Slap's quake hitboxes.
+    Quake,
 }
 impl DonkeyKong {
     pub fn new(attributes: DonkeyAttributes) -> Self {
@@ -26,6 +50,11 @@ impl DonkeyKong {
             model_group: 0,
             punch_swings: 0,
             unknown_2230: 0,
+            damage_callbacks: false,
+            hit_destroys_effects: false,
+            accessory: Accessory::None,
+            giant_punch: Default::default(),
+            slap_again: false,
         }
     }
 }
@@ -49,6 +78,57 @@ impl CharacterCallbacks for DonkeyKong {
         |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+    const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    /// ftData_SpecialN/S/Hi/Lw[Donkey] and the aerial tables (no aerial
+    /// down special).
+    fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
+        match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Down => {
+                assert!(!airborne, "ftData_SpecialAirLw[FTKIND_DONKEY] is NULL");
+                crate::special_lw::enter(f, assets)
+            }
+        }
+    }
+    /// Fighter_8006C80C: Headbutt's one-shot accessory4.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<DonkeyKong>().accessory {
+            Accessory::HeadbuttEffect => crate::special_s::spawn_effect(f, false),
+            Accessory::AirHeadbuttEffect => crate::special_s::spawn_effect(f, true),
+            Accessory::Quake | Accessory::None => {}
+        }
+    }
+    /// Fighter_8006C80C: Hand Slap's accessory4 reads the floor.
+    const MAP_ACCESSORY: Option<fn(&mut Fighter, &FighterAssets, &mut melee_mp::CollMap)> =
+        Some(|f, _assets, map| {
+            if f.core.accessory4_armed
+                && f.character.get::<DonkeyKong>().accessory == Accessory::Quake
+            {
+                crate::special_lw::quake(f, map);
+            }
+        });
+    /// ftCommon_8007DB58: take_dmg_cb (ftDk_Init_8010D774) when installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::common::damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::common::damage_callback);
+    /// Fighter_ProcessHit: take_dmg_2_cb (ftDk_SpecialN_DestroyAllEffects)
+    /// while Giant Punch installed it.
+    const HIT_TAKEN: Option<fn(&mut Fighter)> = Some(|f| {
+        if f.character.get::<DonkeyKong>().hit_destroys_effects {
+            f.effects.push(melee_ef::request::EffectRequest::DestroyOwned);
+        }
+    });
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.damage_callbacks = false;
+        self.hit_destroys_effects = false;
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Donkey
@@ -64,6 +144,11 @@ impl CharacterCallbacks for DonkeyKong {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
         self.punch_swings = word(0x222C) as i32;
         self.unknown_2230 = word(0x2230);
+        if self.punch_swings == self.attributes.giant_punch.max_swings {
+            // The glow is the fighter's secondary colour slot, which the
+            // character payload cannot restore.
+            unimplemented!("ftDk_Init_UnkMotionStates4: a savestate with a full Giant Punch");
+        }
     }
     /// ftDk_Init_OnLoad (8010D9AC): the carry walks' animation lengths,
     /// PUSH_ATTRS, x2222_b0 and x2CC (the cargo carry's attributes). Donkey

@@ -1,6 +1,11 @@
 //! Donkey Kong: ft/kinds/ftDonkey. Common states live in melee-ft.
 pub mod attributes;
+pub mod common;
 pub mod init;
+pub mod special_hi;
+pub mod special_lw;
+pub mod special_n;
+pub mod special_s;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -17,8 +22,47 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    place_all(&mut rows, special_n::rows());
+    place_all(&mut rows, special_s::rows());
+    place_all(&mut rows, special_hi::rows());
+    place_all(&mut rows, special_lw::rows());
     rows
 }
+
+const fn place_all<const N: usize>(
+    rows: &mut [MotionRow; SPECIAL_ROW_COUNT],
+    ported: [MotionRow; N],
+) {
+    let mut i = 0;
+    while i < N {
+        rows[(ported[i].action.0 - FIRST_ACTION) as usize] = ported[i];
+        i += 1;
+    }
+}
+
+/// ftDk_Init_MotionStateTable move IDs (the table's third word, 0x803CB838):
+/// both carries are FtMoveId_ThrowF, the cargo throws their own four, the
+/// rest their special's.
+pub const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; SPECIAL_ROW_COUNT] = {
+    use melee_types::combat::StaleMove as M;
+    let mut moves = [None; SPECIAL_ROW_COUNT];
+    let mut i = 0;
+    while i < SPECIAL_ROW_COUNT {
+        moves[i] = Some(match i {
+            0..=19 => M::ThrowForward,
+            20 | 24 => M::CargoThrowForward,
+            21 | 25 => M::CargoThrowBack,
+            22 | 26 => M::CargoThrowUp,
+            23 | 27 => M::CargoThrowDown,
+            28..=37 => M::SpecialNeutral,
+            38..=39 => M::SpecialSide,
+            40..=41 => M::SpecialUp,
+            _ => M::SpecialDown,
+        });
+        i += 1;
+    }
+    moves
+};
 
 /// ftDk_Init_MotionStateTable[i].x4_flags (0x803CB838, read from the retail
 /// DOL): the x2070 word each row sets (ft_800895E0).

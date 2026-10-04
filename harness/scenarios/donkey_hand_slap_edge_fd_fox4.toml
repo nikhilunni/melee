@@ -1,0 +1,34 @@
+# DONKEY KONG directed witness: a dash off the left edge and a fall to the bottom blast zone
+# (down + B in the air does nothing: ftData_SpecialAirLw[FTKIND_DONKEY] is NULL), the revival, then
+# a walk back and one Hand Slap at centre stage.
+name = "donkey_hand_slap_edge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 345, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 347, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 386, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

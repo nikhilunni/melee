@@ -1,0 +1,28 @@
+# DONKEY KONG directed witness: a grounded Headbutt that misses, then an aerial one from a full hop
+# (ftDk_SpecialS / SpecialAirS; efSync 1222 / 1223).
+name = "donkey_headbutt_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 270, port = 0, buttons = {  }, raw = {  } },
+  { frame = 275, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 277, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

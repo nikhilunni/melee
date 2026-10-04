@@ -1,0 +1,30 @@
+# DONKEY KONG directed witness: a grounded Spinning Kong walked off the left edge
+# (ftDk_SpecialHi_Coll: every jump spent, the aerial row at the same frame, the drift clamped to
+# x58), then steered back to catch the ledge.
+# melee-sim search: reached [p0.motion_id == 381; p0.motion_id == 382] at ticks [162, 165].
+name = "donkey_kong_spin_slide_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 365
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = -50 } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 122, port = 0, buttons = {  }, raw = {  } },
+  { frame = 122, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 162, port = 0, buttons = {  }, raw = {  } },
+  { frame = 162, port = 0, buttons = {  }, raw = { stickX = 127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

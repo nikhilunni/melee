@@ -197,8 +197,17 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         _rng: &mut gekko_math::HsdRng,
     ) {
     }
+    /// Fighter_8006C80C's accessory4 for a callback that reads the stage
+    /// (Donkey Kong's Hand Slap lays its hitboxes along the floor,
+    /// ftDk_Init_8010DB3C): called right after `accessory`.
+    const MAP_ACCESSORY: Option<fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap)> =
+        None;
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
+    /// Fighter_ProcessHit's take_dmg_2_cb (fighter.c:2862): a hit with
+    /// knockback landed, before the reaction is chosen (armour or not). The
+    /// hook decides whether the current motion installed the callback.
+    const HIT_TAKEN: Option<fn(&mut Fighter)> = None;
     /// Fighter.deal_dmg_cb (fighter.c:2929): Fighter_ProcessHit when this
     /// fighter's hit landed and nothing it received took precedence. The hook
     /// decides whether the current motion installed the callback.
@@ -893,6 +902,16 @@ impl Fighter {
         rng: &mut gekko_math::HsdRng,
     ) {
         (self.character.table().accessory)(self, assets, rng);
+    }
+    /// `CharacterCallbacks::MAP_ACCESSORY`, when the character has one.
+    pub fn character_map_accessory(
+        &mut self,
+        assets: &assets::FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) {
+        if let Some(accessory) = self.character.table().map_accessory {
+            accessory(self, assets, map);
+        }
     }
     pub fn item_muzzle(&mut self, assets: &assets::FighterAssets) -> Option<(Vec3, f32)> {
         (self.character.table().item_muzzle)(self, assets)

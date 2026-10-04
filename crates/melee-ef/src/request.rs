@@ -90,6 +90,13 @@ pub enum EffectRequest {
     CaptureFlash {
         bone: usize,
     },
+    /// efAsync kind 1 for a character model row: at the queue flush,
+    /// efSync_Spawn(id, gobj, &pos) -> efLib_Create_Attach_Pos at the
+    /// bone's world position (0x4CC, Donkey Kong's Hand Slap).
+    BoneModel {
+        id: u16,
+        bone: usize,
+    },
     /// efSync_Spawn: shield model attached to the shield joint.
     Shield {
         id: u16,
@@ -374,6 +381,7 @@ impl EffectRequest {
             | Self::ShieldBreak { bone, .. }
             | Self::EggShell { bone, .. }
             | Self::CaptureFlash { bone }
+            | Self::BoneModel { bone, .. }
             | Self::Attached { bone, .. }
             | Self::AttachedParameter { bone, .. }
             | Self::SyncAttached { bone, .. }

@@ -632,6 +632,7 @@ impl Effects {
                 id:
                     id @ (0x488..=0x48C
                     | 0x491..=0x493
+                    | 0x4C6..=0x4CA
                     | 0x4D6
                     | 0x4F2..=0x4F7
                     | 0x50D..=0x50F
@@ -645,6 +646,10 @@ impl Effects {
                     0x491 => 0xFA4,
                     0x492 => 0xFA3,
                     0x493 => 0xFA5,
+                    // efsync.c:164-211: Donkey Kong's models 0x1F40..0x1F44
+                    // (Headbutt ground and air, Giant Punch ground and air,
+                    // Spinning Kong).
+                    0x4C6..=0x4CA => 0x1F40 + u32::from(id - 0x4C6),
                     // efsync.c:611-640: Gerudo Dragon's start and lunge models.
                     0x50D => 0x4A3B,
                     0x50E => 0x4A3C,
@@ -669,6 +674,7 @@ impl Effects {
                     id,
                     0x488..=0x48A
                         | 0x492..=0x493
+                        | 0x4C6..=0x4CA
                         | 0x4D6
                         | 0x4F2..=0x4F7
                         | 0x50E..=0x50F
@@ -676,8 +682,19 @@ impl Effects {
                 );
                 let faces = matches!(
                     id,
-                    0x492..=0x493 | 0x4F2..=0x4F3 | 0x50E..=0x50F | 0x511..=0x512
+                    0x492..=0x493
+                        | 0x4C8..=0x4C9
+                        | 0x4F2..=0x4F3
+                        | 0x50E..=0x50F
+                        | 0x511..=0x512
                 );
+                // efLib_Create_Attach_Scale_FacingDir (eflib.c:606-628) for
+                // efSync 0x4C6/0x4C7: efLib_Cb_SetRotY_FromFighterDir as the
+                // update callback, no rotation at creation.
+                let follows_facing = matches!(id, 0x4C6..=0x4C7);
+                // efsync.c:185, 201: efSync 0x4C8/0x4C9 run HSD_JObjAnimAll on
+                // the new model themselves, before efLib_AnimQueue's drain.
+                let animated_at_creation = matches!(id, 0x4C8..=0x4C9);
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();
@@ -700,11 +717,30 @@ impl Effects {
                         std::f32::consts::FRAC_PI_2 * fighter.effect_facing(),
                     );
                 }
+                if follows_facing {
+                    effect.facing_rotation = Some(if fighter.effect_facing() < 0.0 {
+                        -std::f64::consts::FRAC_PI_2 as f32
+                    } else {
+                        std::f64::consts::FRAC_PI_2 as f32
+                    });
+                }
                 let matrix = fighter.effect_matrix(Some(bone));
                 effect.tree.set_translate(
                     effect.root,
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
+                if animated_at_creation {
+                    effect.animate_banks::<T>(
+                        resources::Banks {
+                            common: bank,
+                            characters: &self.character_banks,
+                        },
+                        particles,
+                        rng,
+                        &mut self.draws,
+                        &mut self.events,
+                    )?;
+                }
                 effect.animate_banks::<T>(
                     resources::Banks {
                         common: bank,
@@ -1193,6 +1229,8 @@ impl Effects {
                     element: melee_types::HitElement::Slash,
                     ..
                 } => (8, None),
+                // efsync.c:212-222: efLib_Create_Attach_Pos(0x1F46).
+                EffectRequest::BoneModel { id: 0x4CC, .. } => (0x1F46, None),
                 EffectRequest::PositionalModel { id, .. } => {
                     let (_, model) = POSITIONAL_MODELS
                         .iter()
@@ -1268,7 +1306,18 @@ impl Effects {
                     std::f64::consts::FRAC_PI_2 as f32
                 });
             }
+            if matches!(request, EffectRequest::BoneModel { .. }) {
+                // efSync 0x4CC: the fighter root's whole scale, and
+                // efLib_Cb_SetRotY_FromFighterDir as the update callback.
+                effect.tree.set_scale(effect.root, &fighter.effect_scale());
+                effect.facing_rotation = Some(if fighter.effect_facing() < 0.0 {
+                    -std::f64::consts::FRAC_PI_2 as f32
+                } else {
+                    std::f64::consts::FRAC_PI_2 as f32
+                });
+            }
             let bone = if let EffectRequest::CaptureFlash { bone }
+            | EffectRequest::BoneModel { bone, .. }
             | EffectRequest::Graphics { bone, .. }
             | EffectRequest::Shield { bone, .. } = request
             {
@@ -1382,7 +1431,9 @@ impl Effects {
                 EffectRequest::WallJump { position: origin } => {
                     position = origin;
                 }
-                EffectRequest::CaptureFlash { .. } | EffectRequest::Shield { .. } => {}
+                EffectRequest::CaptureFlash { .. }
+                | EffectRequest::BoneModel { .. }
+                | EffectRequest::Shield { .. } => {}
                 EffectRequest::Graphics {
                     id,
                     offset,
@@ -1430,7 +1481,12 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
-            if scaled_facing || matches!(request, EffectRequest::PositionalModel { .. }) {
+            if scaled_facing
+                || matches!(
+                    request,
+                    EffectRequest::PositionalModel { .. } | EffectRequest::BoneModel { .. }
+                )
+            {
                 // efSync_Spawn's efLib_AnimQueue drain (efsync.c:654-660);
                 // the model's particles come from its character bank.
                 effect.animate_banks::<T>(

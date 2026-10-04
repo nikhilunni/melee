@@ -392,7 +392,9 @@ pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 // 418: Din's Fire's cast (model 0x426C) and Zelda's up-air.
 // 427: Nayru's Love's crystal (model 0x4268).
-pub(super) static PARTICLE_KINDS: [i32; 33] = [
+pub(super) static PARTICLE_KINDS: [i32; 35] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
     374, 375, 376, 377, 445, 448, 449, 272, 295, 531, 418, 427,
+    // Donkey Kong's models (EfDkData.dat): Headbutt's 96, Hand Slap's 273.
+    96, 273,
 ];
