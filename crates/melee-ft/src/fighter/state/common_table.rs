@@ -1290,7 +1290,9 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: super::super::clank::animation,
         iasa: callbacks::input::catch,
         physics: super::super::clank::physics,
-        collision: callbacks::collision::escape,
+        // ftCo_Rebound_Coll (80099EFC) -> ft_80083F88 (retail 0x80099F08): the
+        // recoil can carry the fighter off the floor's edge into Fall.
+        collision: callbacks::collision::ground_action,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };

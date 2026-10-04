@@ -272,7 +272,7 @@ pub fn ground_wait(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<(
 
 /// ftData_MotionStateList: ftCo_MS_Turn (18), ftCo_MS_KneeBend (24), ftCo_MS_Squat (39),
 /// ftCo_MS_SquatWait (40), ftCo_MS_SquatRv (41), ftCo_MS_GuardOn (178), ftCo_MS_Guard (179),
-/// ftCo_MS_GuardOff (180), ftCo_MS_GuardReflect (182).
+/// ftCo_MS_GuardOff (180), ftCo_MS_GuardReflect (182), ftCo_MS_Rebound (238).
 pub fn ground_action(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let CollisionPhase { assets, map } = phase;
     finish_ground(fighter, assets, map, map_ground_action, false)?;
