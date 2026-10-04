@@ -435,7 +435,8 @@ mods (NeutralSpawn, FreezeGlitchFix, Disable FoD During Doubles), Frozen
 Stadium, UCF 0.74 / 0.8 / 0.84, and netplay (per-frame RNG sync,
 FreezeDeadUpFallPhysics, PreventWobbling, FreezeFDSlippi, Frozen PS). Each
 must be ported before a replay recorded with it can match; the Stadium
-preload and Frozen Stadium codes are (below).
+preload and Frozen Stadium codes are (below), and so is Frozen Stages, which
+consoles ran beside Slippi's own sets.
 
 ## Controller fixes (UCF), 2026-09-28
 
@@ -812,32 +813,100 @@ the replay match all 11421 frames, seeds included: the console skipped one
 render there. Nothing in the recording says so, and the runner does not
 guess; the stop stays, as an external event like disc latency.
 
-## Consoles without Shy Guys or FD transitions (2026-10-03, not ported)
+## Frozen Stages: the stage code a replay does not record (2026-10-03)
 
-Three corpus games ran a stage that never drew what retail draws. The seed
-check shows it on the tick after the first draw the console skipped; nothing
-in a 2.0.1 replay names the code, and Game Start is byte-identical to the
-games that do draw.
+Some consoles ran a stage that never drew what retail draws: no Shy Guys,
+no Final Destination background phases, no Stadium transformation, no wind
+on Dream Land. The seed check shows it on the tick after the first draw the
+console skipped; nothing in the replay names the code, and Game Start is
+byte-identical to the games that do draw (`frozen_ps` is 0: the recorder
+only tests the instruction at 0x801D45FC).
 
-| Replay | Stops | The console never ran | Measured |
+**The code.** `melee_lib::slippi::SlippiCodes::frozen_stages` is "Frozen
+Stages" [UnclePunch, Fizzi]: slippi-ssbm-asm `External/Frozen All/Core/1-4.asm`,
+built into `Output/Console/g_stages_all` (logic ported, not copied; GPL-3).
+It entered the Slippi tree on 2021-06-02 (3438f54, `Binary/FreezeAllStages.bin`,
+32 bytes); nothing in slippi-ssbm-asm or Slippi Nintendont before that
+carries the Shy Guy, Stadium or Dream Land write (every blob of both
+histories was searched), so the 2020 consoles loaded it themselves (Slippi
+Nintendont copies a user `.gct` into RAM when Cheats is on, `kernel/Patch.c`).
+Four writes, one instruction or one table entry each:
+
+| Write | Site | Effect | Port |
 |---|---|---|---|
-| `FOX/20200219 - HNC 9 - PM 0655 - Jigglypuff (Default) vs ZEN Fox (Red) - Yoshi_s Story.slp` | 121 | grStory_801E3418, the Shy Guy spawner (first group at tick 120: six draws) | with the call skipped the port matches 7314 / 7314 frames, every seed included; delayed by one, two or three ticks it stops at 121, 122, 123 |
-| `FOX/01_51_21.616Z [314] Fox + [TITP] Captain Falcon (FD).slp` (UCF 0.74 forced) | 1886 | grLast_8021B2E8, the background's phase timer (first transition when it passes 1800) | with the transition never enabled: 9630 / 9630 |
-| `MARTH/02_56_19 Captain Falcon + [PPAP] Marth (FD).slp` (UCF 0.74 forced) | 1887 | the same | 6854 / 6854 |
+| `041E3348 60000000` | `bl grStory_801E3418` in grStory_801E3334 | the Shy Guy spawner never runs (retail's first group: tick 120, six draws) | `melee_gr::story::Story::shy_guys_disabled` |
+| `0421AAE4 60000000` | `bl grLast_8021B2E8` in grLast_8021AAB0 | the phase update never runs: the hold timer stays at zero, so the first transition (its draws at tick 1885) and every later phase never come | `melee_gr::ground::Ground::phase_update_disabled` |
+| `041D1548 60000000` | `bl grStadium_801D4548` in grStadium_801D1520 | the transformation controller never runs: no timer, no form, and not the preload code's draw on the first waiting tick (85), whose hook is inside it | `melee_gr::stadium::transform::Transformation::disabled` |
+| `043E67E0 00000000` | grOp_803E67D8[2], Whispy's cycle table `{ 0, 1, 2 }` | the cycle's third step is the wait instead of the wind: Whispy turns to the fighters, then draws a new wait and blink timer (two draws retail does not make) | `melee_gr::pupupu::Pupupu::wind_disabled` |
 
-Those runs were temporary experiments, not committed. Retail does draw: the
-first game's pads on retail (`slp_ys_jigglypuff_fox_t300`) spawn the group
-at tick 120 and the port equals that trace; the corpus's other Yoshi's Story
-games match with the Shy Guys, and its other FD games pass tick 1886 with the
-transition (two tried without it, `MARTH/12_07_47` and `FOX/12_09_22`, stop
-at 1886). So the seed check separates the two kinds of console on one tick.
+The three nops are older standalone codes: "Disable Yoshi's Story Shyguys
+[Zauron]" and "Disable Pokemon Stadium Transformations [Zauron]" in
+Dolphin's `Data/Sys/GameSettings/GALE01r2.ini`, and "Disable FD Background
+Transitions [Achilles, Dan Salvato]", which Slippi's Dolphin builds have
+always installed (`Binary/FasterMeleeSettings/DisableFdTransitions.bin` in
+`netplay.json` from 3e47f17, 2019-01-07). 20XX TE's Frozen Mode
+(dansalvato/20XXTE `source/loader/code/frozen_mode.mgc`) has the same three
+but stops Whispy at 0x802115B4 (the waiting state's `ble`) and adds
+0x8020F4C0 (Kongo Jungle 64); that Dream Land write gives other draws than
+the consoles show and is not ported.
 
-The sites are single calls: `bl grStory_801E3418` at 0x801E3348 in
-grStory_801E3334, and `bl grLast_8021B2E8` at 0x8021AAE4 in
-grLast_8021AAB0. Tournament code sets of the time carried stage codes that
-replace such a call with a `nop` ("disable Shy Guys", "disable Final
-Destination background transitions"); the exact code text those consoles
-ran has not been checked against a source. Porting them needs the code text
-in `MELEE_GECKO_DIR`, a retail witness recorded with each, a flag beside
-`stadium_frozen` in `SlippiCodes`, and a rule for choosing it per replay (a
-runner option like `--controller-fix`, or the first seed the code changes).
+**Witnesses** (`frozen_stages_code_matches_retail`), recorded with the Gecko
+code `frozen-stages` (the four Core lines of `g_stages_all.txt`, in
+`MELEE_GECKO_DIR`; a scenario says `frozen_stages = true` beside it), all
+exact with 0 differing particle-site ticks; with the port's code off each
+leaves retail on the tick named:
+
+| Scenario | Retail with the code | Port without it stops at |
+|---|---|---|
+| `frozen_stages_ys_fox_marth4` (2400 ticks) | no Shy Guy is ever created | 121 |
+| `frozen_stages_fd_marth_marth4` (13600) | the first background phase to the end, past the star field's ticks | 1886 |
+| `frozen_stages_ps_fox_marth4` (7500, with `ps-preload`) | no form draw at tick 85, no transformation; the jumbotron and audience go on drawing | 85 |
+| `frozen_stages_dl_fox_marth4` (5000) | Whispy turns and waits again, nobody is pushed | 1176 |
+
+**Which replays ran it.** `replay_stage_codes::resolve_stage_codes` reads it
+from the frames, on the four stages the code changes, before the comparison
+and before the UCF probe (`resolve_setup`): the port runs the recorded
+inputs without and with the code in step; nothing is asked of the recording
+until the two runs differ (a compared field or the tick's end seed); from
+then on each is compared with it as the comparison would be, Pre Frame
+seeds included, and the first tick only one of them matches names that
+setup. It then runs the whole comparison from the first frame; no recorded
+state enters any run. When the runs never differ over the recording, or
+both stop matching on the same tick (another fault came first), the stage is
+retail's. The report's `stage code` line says which and why;
+`--stage-codes <none|frozen-stages>` names it instead.
+
+| Corpus | Complete before | after | Chosen `frozen-stages` |
+|---|---|---|---|
+| `public-v3.7` (108) | 103 | 106 | 3: `HNC 9 Jigglypuff vs Fox (YS)` 121 to 7314 / 7314; `Fox + Captain Falcon (FD)` 1886 to 9630 / 9630; `Captain Falcon + Marth (FD)` 1887 to 6854 / 6854 |
+| `public-v3.7-b` (502) | 247 | 284 | 73 (frames matched 2,878,309 to 3,342,557) |
+
+No replay matches fewer frames in either corpus. One reports fewer:
+`HNC 10 Luigi vs Zelda (PS)` passed tick 85 and reached Zelda's
+`walk/squat transition: InvalidTracks` panic at tick 555, which the runner
+reports as an error without a frame count (five other Zelda games stop on
+that panic with or without this change). Every game on these four stages
+that reaches its deciding tick is decided; the undecided ones stop earlier
+on something else. In `public-v3.7-b`:
+
+| Stage | HNC consoles (Jan-Mar 2020) | Other games |
+|---|---|---|
+| Yoshi's Story | 21 frozen (12 complete) | 49 not frozen (40 complete) |
+| Final Destination | 10 frozen (6 complete) | 10 frozen (all complete), 43 not (35 complete) |
+| Dream Land | 16 frozen (9 complete) | 47 not frozen (36 complete) |
+| Pokémon Stadium | 16 frozen (none complete) | 56 not frozen (37 complete) |
+
+The ten other frozen Final Destination games are two 2.0.1 consoles, one
+2.0.1 Dolphin recording and the seven Slippi 3.0.0 / 3.3.0 games that
+stopped on `rng.seed` at 1885: those stops are the code (each game matches
+to its last frame with it), not the Frame Start seed check being stricter.
+
+**Still open on the HNC consoles.** Their Stadium games pass tick 85 with
+the code and then stop on `input_seed` 700 to 4700 ticks in, the port a few
+draws ahead, where the port equals retail with the same codes for 7500
+ticks. And across all six stages 21 HNC games stop on `percent` against 6
+of the three times as many other games. Both are what a widescreen code
+would do (Slippi's `External/Widescreen` moves the off-screen bounds at
+0x80030C7C / 0x80030C88 that the magnifier's damage reads, and rewrites the
+CObj the jumbotron's close-up test reads); that is a hypothesis, not
+checked against a recording.
