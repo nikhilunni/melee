@@ -13,9 +13,13 @@ use melee_it::{ItemCollisionContext, ItemCore, ItemPhysicsContext};
 
 pub mod attack;
 pub mod attack_air;
+pub mod chef;
+pub mod special;
 
 pub use attack::{Fire, Greenhouse, Manhole};
 pub use attack_air::{Breath, Parachute, Turtle};
+pub use chef::Chef;
+pub use special::{Judge, Panic, Rescue};
 
 /// ftGameWatch_MotionState ids the articles' owner checks read.
 pub mod owner_motion {
@@ -30,6 +34,12 @@ pub mod owner_motion {
     pub const LANDING_AIR_N: u16 = 350;
     pub const LANDING_AIR_B: u16 = 351;
     pub const LANDING_AIR_HI: u16 = 352;
+    pub const SPECIAL_S1: u16 = 355;
+    pub const SPECIAL_AIR_S9: u16 = 372;
+    pub const SPECIAL_HI: u16 = 373;
+    pub const SPECIAL_AIR_HI: u16 = 374;
+    pub const SPECIAL_LW_SHOOT: u16 = 377;
+    pub const SPECIAL_AIR_LW_SHOOT: u16 = 380;
 }
 
 /// ftData.x48_items indices (ftGw_Init_OnLoad's it_8026B3F8 calls).
@@ -40,6 +50,10 @@ pub mod article_index {
     pub const PARACHUTE: u32 = 3;
     pub const TURTLE: u32 = 4;
     pub const BREATH: u32 = 5;
+    pub const JUDGE: u32 = 6;
+    pub const PANIC: u32 = 7;
+    pub const CHEF: u32 = 8;
+    pub const RESCUE: u32 = 9;
 }
 
 pub(crate) fn no_physics(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {}

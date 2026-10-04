@@ -167,6 +167,9 @@ pub enum ItemScratch {
     LinkBomb(LinkBombState),
     Milk(MilkState),
     KoopaFlame(KoopaFlameState),
+    Chef(ChefState),
+    Rescue(RescueState),
+    Judge(JudgeState),
     None,
 }
 /// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
@@ -193,6 +196,28 @@ pub struct KoopaFlameState {
     pub effect_spawned: bool,
     /// x48: which of the four flame generators it carries.
     pub effect: i32,
+}
+/// Mr. Game & Watch's Judgment sign (itgamewatchjudge.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct JudgeState {
+    /// it_802C7774's arg4: the face drawn, 0..8 (the sign shows it plus 1).
+    pub face: i32,
+}
+/// Item.xDD4_itemVar.gamewatchchef (itgamewatchchef.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ChefState {
+    /// x4: which of the five foods it is (its flight's attribute entry).
+    pub food: usize,
+    /// it_804D6D28 +4C as the launch read it: it_80275158's half-life
+    /// scale, for the lifetime the animation callback sets.
+    pub half_life_scale: f32,
+}
+/// Item.xDD4_itemVar.gamewatchrescue (itgamewatchrescue.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RescueState {
+    /// xDD8: the fighter the trampoline was made for; the item is its
+    /// `owner` only while this names the same fighter.
+    pub fighter: Option<u8>,
 }
 /// Item.xDD4_itemVar.samusbomb (itsamusbomb.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -548,6 +573,9 @@ pub struct ItemCore {
     /// Current owner factor used only when authoring/re-authoring a hitbox.
     pub stale_multiplier: f32,
     pub pending_reflection: Option<PendingReflection>,
+    /// xC90_absorbGObj: the fighter whose absorbing bubble took a hitbox
+    /// this frame (ftColl_8007925C), for the kind's absorbed callback.
+    pub pending_absorb: Option<u8>,
     pub reflection_direction: f32,
     pub reflection_history: [melee_types::fixed::FixedVec<RehitVictim, 12>; 4],
     /// xAC4_ignoreItemID: members of one hit group share victim histories
@@ -1345,6 +1373,7 @@ impl ItemPool {
             stale_source: spawn.stale_source,
             stale_multiplier,
             pending_reflection: None,
+            pending_absorb: None,
             reflection_direction: 0.0,
             reflection_history: Default::default(),
             hit_group: 0,
@@ -1545,6 +1574,10 @@ impl ItemPool {
             item.destroyed |= (D::logic(item.kind).damage_dealt)(item, &context);
         } else if let Some(reflection) = item.pending_reflection {
             item.reflect::<D>(reflection, reflected_stale, cap, assets, &common);
+        } else if item.pending_absorb.is_some() {
+            // Item_8026A294: the kind's absorbed callback.
+            let context = ItemEventContext::new(assets, &common);
+            item.destroyed |= (D::logic(item.kind).absorbed)(item, &context);
         }
         // processCallback (item.c:1739): destroy_type 2.
         if alive && item.destroyed {
@@ -1570,6 +1603,7 @@ impl ItemPool {
         item.pending_knockback = 0.0;
         item.hit_direction = 0.0;
         item.pending_reflection = None;
+        item.pending_absorb = None;
         item.reflection_direction = 0.0;
         item.pending_damage_dealt = 0;
         item.pending_damage_without_hitlag = 0;

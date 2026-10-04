@@ -70,6 +70,10 @@ melee_it::item_kinds! {
         GameWatchParachute: it_gamewatch::Parachute,
         GameWatchTurtle: it_gamewatch::Turtle,
         GameWatchBreath: it_gamewatch::Breath,
+        GameWatchChef: it_gamewatch::Chef,
+        GameWatchJudge: it_gamewatch::Judge,
+        GameWatchPanic: it_gamewatch::Panic,
+        GameWatchRescue: it_gamewatch::Rescue,
     }
 }
 
@@ -746,7 +750,7 @@ impl Resources {
             .iter()
             .find(|c| c.descriptor.data_file == "PlGw.dat")
         {
-            use it_gamewatch::{article_index as index, attack, attack_air};
+            use it_gamewatch::{article_index as index, attack, attack_air, special};
             let a = std::sync::Arc::clone(&character.data);
             let root = a
                 .public("ftDataGamewatch")
@@ -778,6 +782,23 @@ impl Resources {
                     index::BREATH,
                     &attack_air::ARTICLE_STATES[..],
                 ),
+                // [6], [7] and [9]: Judgment's sign, Oil Panic's oil and
+                // Fire's trampoline.
+                (
+                    ItemKind::GameWatchJudge,
+                    index::JUDGE,
+                    &special::JUDGE_STATES[..],
+                ),
+                (
+                    ItemKind::GameWatchPanic,
+                    index::PANIC,
+                    &special::PANIC_STATES[..],
+                ),
+                (
+                    ItemKind::GameWatchRescue,
+                    index::RESCUE,
+                    &special::RESCUE_STATES[..],
+                ),
             ] {
                 let assets = ItemAssets::from_fighter_states(&a, root, index, states, 0)?;
                 // The Manhole's gust blows from its cover bone.
@@ -791,6 +812,16 @@ impl Resources {
                 kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
+            // [8]: Chef's food, which flies free.
+            let chef = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                index::CHEF,
+                &it_gamewatch::chef::ARTICLE_STATES,
+                it_gamewatch::chef::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::GameWatchChef, chef));
+            visual_archives.push((ItemKind::GameWatchChef, std::sync::Arc::clone(&a)));
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(

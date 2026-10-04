@@ -806,7 +806,11 @@ pub struct ItemHitFlags {
     /// x41_b6: a shield contact records the victim with the rehit timer
     /// (ftColl_80077688's mode 2), so the hitbox may strike the shield again.
     pub shield_rehit: bool,
+    /// x42_b0: an absorbing bubble takes the hitbox (ftcoll.c:2137-2181).
     pub absorbable: bool,
+    /// x42_b2: the hitbox misses a fighter facing the way its item does
+    /// (ftColl_8007925C, ftcoll.c:2099-2103).
+    pub misses_same_facing: bool,
     pub shieldable: bool,
     pub shield_bounce: bool,
     pub hits_hurtboxes: bool,
@@ -824,7 +828,10 @@ impl ItemHitFlags {
             defense_interaction: extra & (1 << 15) != 0,
             damage_without_hitlag: extra & (1 << 22) != 0,
             shield_rehit: extra & (1 << 21) != 0,
-            absorbable: extra & (1 << 17) != 0,
+            // it_802790C0 (itanimlist.c:140-148): byte 1's bits 4..0 are
+            // x41_b7, x42_b0, x42_b1, x42_b2 and x42_b3.
+            absorbable: extra & (1 << 19) != 0,
+            misses_same_facing: extra & (1 << 17) != 0,
             shieldable: extra & (1 << 18) != 0,
             shield_bounce: extra & (1 << 16) != 0,
             hits_hurtboxes: extra & (1 << 14) != 0,

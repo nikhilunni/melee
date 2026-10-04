@@ -3,6 +3,7 @@
 mod character;
 pub use character::{Accessory2, CharacterState, CharacterTable};
 
+pub mod absorb;
 pub mod air_catch;
 pub mod air_dodge;
 pub mod assets;
@@ -218,6 +219,16 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// knockback landed, before the reaction is chosen (armour or not). The
     /// hook decides whether the current motion installed the callback.
     const HIT_TAKEN: Option<fn(&mut Fighter)> = None;
+    /// ftData_UnkMotionStates4[kind] as the kind's state stands once
+    /// OnDeath has run: the colour animation the secondary slot takes
+    /// whenever it empties (`CombatState::secondary_color_fallback`), for a
+    /// kind whose state survives the reset (Mr. Game & Watch's full bucket).
+    const COLOR_FALLBACK_AFTER_RESET: fn(&CharacterState) -> Option<u8> =
+        character::no_color_fallback;
+    /// ftData_OnAbsorb[kind] (Fighter_ProcessHit, fighter.c:2947-2950): the
+    /// absorbing bubble took an item's hitbox this frame and nothing the
+    /// fighter received or dealt came first.
+    const ON_ABSORB: Option<fn(&mut Fighter, &assets::FighterAssets, absorb::Absorbed)> = None;
     /// Fighter.deal_dmg_cb (fighter.c:2929): Fighter_ProcessHit when this
     /// fighter's hit landed and nothing it received took precedence. The hook
     /// decides whether the current motion installed the callback.
@@ -342,6 +353,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// such as Luigi's ftLg_SpecialS_SetVars), run once the entering IASA
     /// returns (`Fighter::finish_input`): nothing in between draws.
     const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = None;
+    /// A special whose entry draws from the RNG before its motion change
+    /// (ftGw_SpecialS_GetRandomInt chooses Judgment's row): the entry asked
+    /// for during the IASA runs once it returns (`Fighter::finish_input`).
+    /// The hook decides whether one is pending.
+    const INPUT_RNG_ENTRY: Option<RngEntry> = None;
     /// ftCo_800CED30 (800CED30): the kind's smash42 row (ftLk_MS_AttackS42
     /// for Link and Young Link); any other kind asserts "don't have smash42
     /// motion!!!".

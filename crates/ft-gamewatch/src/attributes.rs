@@ -38,16 +38,17 @@ pub struct ChefAttributes {
 /// Judgment (ftgamewatchspecials.c).
 #[derive(Clone, Debug, PartialEq)]
 pub struct JudgeAttributes {
-    /// +0x20 x20: the entry x velocity's divisor.
+    /// +0x20 x20_GAMEWATCH_JUDGE_MOMENTUM_PRESERVE: the aerial entry
+    /// divides the x velocity by it.
     pub momentum_preserve: f32,
-    /// +0x24 x24: aerial x deceleration.
-    pub momentum_mul: f32,
-    /// +0x28 x28: aerial fall acceleration.
-    pub vel_y: f32,
-    /// +0x2C x2C: aerial fall acceleration after the swing.
-    pub friction1: f32,
-    /// +0x30 x30: terminal velocity scale.
-    pub friction2: f32,
+    /// +0x24 x24_GAMEWATCH_JUDGE_MOMENTUM_MUL: the aerial rows' friction.
+    pub air_friction: f32,
+    /// +0x28 x28_GAMEWATCH_JUDGE_VEL_Y: the swing's hop, once per airtime.
+    pub hop: f32,
+    /// +0x2C x2C_GAMEWATCH_JUDGE_FRICTION1: gravity from the swing on.
+    pub gravity: f32,
+    /// +0x30 x30_GAMEWATCH_JUDGE_FRICTION2: terminal speed from the swing on.
+    pub terminal_velocity: f32,
     /// +0x34 x34_GAMEWATCH_JUDGE_ROLL: which faces can be drawn.
     pub enabled: [bool; JUDGE_FACES],
 }
@@ -119,10 +120,10 @@ impl GameWatchAttributes {
             },
             judge: JudgeAttributes {
                 momentum_preserve: r.f32(0x20)?,
-                momentum_mul: r.f32(0x24)?,
-                vel_y: r.f32(0x28)?,
-                friction1: r.f32(0x2C)?,
-                friction2: r.f32(0x30)?,
+                air_friction: r.f32(0x24)?,
+                hop: r.f32(0x28)?,
+                gravity: r.f32(0x2C)?,
+                terminal_velocity: r.f32(0x30)?,
                 enabled,
             },
             rescue: RescueAttributes {

@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 476] = [
+const MATRIX_WITNESSES: [(&str, usize); 485] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1701,6 +1701,27 @@ const MATRIX_WITNESSES: [(&str, usize); 476] = [
     ("gamewatch_attackairn_fd_fox4", 420),
     ("gamewatch_attackairb_fd_fox4", 420),
     ("gamewatch_attackairhi_fd_fox4", 420),
+    // GAMEWATCH directed witnesses: the specials. Chef (ftGw_SpecialN,
+    // itgamewatchchef.c): one food, B pressed again and B held, on the ground,
+    // in the air and landing mid-throw; each throw's HSD_Randi excludes the
+    // last two foods (0 differing particle-site ticks pins the draw order).
+    ("gamewatch_chef_fd_fox4", 480),
+    ("gamewatch_chef_air_fd_fox4", 400),
+    // Judgment (ftGw_SpecialS1..9): the entry's draw chooses the row; six
+    // grounded faces (5, 1, 2, 6, 8, 5), aerial ones with the hop, a landing
+    // mid-swing, and a 7 with items off (it_8028FAF4 makes no food).
+    ("gamewatch_judge_fd_fox4", 620),
+    ("gamewatch_judge_air_fd_fox4", 420),
+    // Fire (ftGw_SpecialHi): the trampoline article, the lean each way, the
+    // special fall and its landing lag, from the ground and from a jump.
+    ("gamewatch_fire_fd_fox4", 640),
+    ("gamewatch_fire_air_fd_fox4", 400),
+    // Oil Panic (ftGw_SpecialLw): the held loop and its turnarounds, the
+    // aerial hold landing, and three of Fox's lasers absorbed into the Catch
+    // rows (ftColl_8007925C's absorb step, ftData_OnAbsorb), then the spill.
+    ("gamewatch_panic_fd_fox4", 560),
+    ("gamewatch_panic_air_fd_fox4", 420),
+    ("gamewatch_panic_laser_fd_fox4", 500),
 ];
 
 #[test]

@@ -44,6 +44,8 @@ pub struct CharacterTable {
     pub hit_taken: Option<fn(&mut Fighter)>,
     pub map_accessory:
         Option<fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap)>,
+    pub on_absorb: Option<fn(&mut Fighter, &assets::FighterAssets, super::absorb::Absorbed)>,
+    pub color_fallback_after_reset: fn(&CharacterState) -> Option<u8>,
     /// Fighter.deal_dmg_cb: Fighter_ProcessHit's damage-dealt branch.
     pub deal_damage: Option<fn(&mut Fighter, &assets::FighterAssets)>,
     pub death: Option<fn(&mut Fighter)>,
@@ -53,6 +55,7 @@ pub struct CharacterTable {
     pub forward_smash_variant: fn(&CharacterState) -> ForwardSmashVariant,
     pub forward_smash: Option<super::RngEntry>,
     pub input_rng: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)>,
+    pub input_rng_entry: Option<super::RngEntry>,
     pub forward_smash_combo: Option<ActionId>,
     pub motion_flags: &'static [u32],
     pub catch_variant: fn(&mut CharacterState),
@@ -164,6 +167,8 @@ impl CharacterTable {
             take_damage: C::TAKE_DAMAGE,
             hit_taken: C::HIT_TAKEN,
             map_accessory: C::MAP_ACCESSORY,
+            on_absorb: C::ON_ABSORB,
+            color_fallback_after_reset: C::COLOR_FALLBACK_AFTER_RESET,
             deal_damage: C::DEAL_DAMAGE,
             death: C::DEATH,
             hurtbox_detect: C::HURTBOX_DETECT,
@@ -172,6 +177,7 @@ impl CharacterTable {
             forward_smash_variant: |state| state.get::<C>().forward_smash_variant(),
             forward_smash: C::FORWARD_SMASH,
             input_rng: C::INPUT_RNG,
+            input_rng_entry: C::INPUT_RNG_ENTRY,
             forward_smash_combo: C::FORWARD_SMASH_COMBO,
             motion_flags: C::MOTION_FLAGS,
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
@@ -509,6 +515,9 @@ pub(super) fn no_article_accessory(
 }
 #[inline(never)]
 pub(super) fn no_article_hitlag_end(_fighter: &mut Fighter) {}
+pub(super) fn no_color_fallback(_state: &CharacterState) -> Option<u8> {
+    None
+}
 pub(super) fn unsupported_article_request(
     fighter: &mut Fighter,
     _assets: &assets::FighterAssets,

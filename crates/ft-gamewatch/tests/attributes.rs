@@ -93,3 +93,60 @@ fn landing_restores_the_aerial_judgment_hop() {
     gw.on_landing(true);
     assert_eq!(gw.x2234, 0);
 }
+
+/// A Mr. Game & Watch with every Judgment face enabled.
+fn gamewatch_with_every_face() -> GameWatch {
+    let mut data = vec![0; 0x94];
+    for face in 0..9 {
+        word(&mut data, 0x34 + 4 * face, 1);
+    }
+    GameWatch::new(GameWatchAttributes::read(&archive(&data, &[], None), 0).unwrap())
+}
+
+#[test]
+fn judgment_never_repeats_either_of_the_last_two_faces() {
+    let mut gw = gamewatch_with_every_face();
+    let mut rng = gekko_math::HsdRng::new(0x1234_5678);
+    for _ in 0..2000 {
+        let (last, previous) = (gw.judge_last, gw.judge_previous);
+        let face = ft_gamewatch::special_s::draw_face(&mut gw, &mut rng);
+        assert!((0..9).contains(&face));
+        assert!(face != last && face != previous);
+        assert_eq!((gw.judge_last, gw.judge_previous), (face, last));
+    }
+}
+
+#[test]
+fn judgment_draws_one_value_and_skips_disabled_faces() {
+    let mut data = vec![0; 0x94];
+    for face in [3, 5, 8] {
+        word(&mut data, 0x34 + 4 * face, 1);
+    }
+    let mut gw = GameWatch::new(GameWatchAttributes::read(&archive(&data, &[], None), 0).unwrap());
+    let mut rng = gekko_math::HsdRng::new(7);
+    for _ in 0..200 {
+        let mut expected = rng;
+        expected.randi(1);
+        let before = (gw.judge_last, gw.judge_previous);
+        let face = ft_gamewatch::special_s::draw_face(&mut gw, &mut rng);
+        assert_eq!(rng.seed, expected.seed, "one HSD_Randi per Judgment");
+        assert!([3, 5, 8].contains(&face));
+        assert!(face != before.0 && face != before.1);
+    }
+}
+
+#[test]
+fn chef_picks_among_the_three_foods_not_thrown_last() {
+    let mut gw = gamewatch_with_every_face();
+    let mut rng = gekko_math::HsdRng::new(99);
+    let mut seen = [false; 5];
+    for _ in 0..500 {
+        let (last, previous) = (gw.chef_last, gw.chef_previous);
+        let food = ft_gamewatch::special_n::draw_food(&mut gw, &mut rng);
+        assert!((0..5).contains(&food));
+        assert!(food != last && food != previous);
+        assert_eq!((gw.chef_last, gw.chef_previous), (food, last));
+        seen[food as usize] = true;
+    }
+    assert_eq!(seen, [true; 5]);
+}

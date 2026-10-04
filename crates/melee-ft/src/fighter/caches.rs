@@ -123,6 +123,45 @@ pub fn hurtbox_extents(
     [front, back, (0.5_f64 * f64::from(front + back)) as f32, top]
 }
 
+/// The matrix a hurt, shield, reflect or absorb test takes for a bone: its
+/// world matrix, behind the fighter's x44_mtx when it is flat
+/// (PSMTXConcat(ftCommon_8007F804(fp), bone->mtx)).
+pub(super) fn unflattened(flat: Option<&hsd_types::Mtx>, bone: &hsd_types::Mtx) -> hsd_types::Mtx {
+    match flat {
+        Some(flat) => {
+            let mut matrix = hsd_types::Mtx::default();
+            mtx::mtx_concat(flat, bone, &mut matrix);
+            matrix
+        }
+        None => *bone,
+    }
+}
+
+impl super::FighterCore {
+    /// Fighter_UnkApplyTransformation_8006C0F0 (8006C0F0), from
+    /// Fighter_8006C80C after the effect flush: for a flat fighter, the
+    /// root's transform at the model scale along its x axis, times the
+    /// inverse of its world matrix.
+    pub fn update_flat_matrix(&mut self) {
+        if self.capabilities.model_width.is_none() {
+            return;
+        }
+        let root = self.animation.root;
+        let inverse = hsd_types::Mtx(gekko_math::matrix::inverse(&self.skeleton.get_mtx(root).0));
+        let mut scale = self.skeleton.scale(root);
+        // ftCommon_GetModelScale: fmuls.
+        scale.x = self.player.scale * self.attributes.size.model_scaling;
+        let rotation = self.skeleton.rotation(root);
+        let rotation = Vec3::new(rotation.x, rotation.y, rotation.z);
+        let translation = self.skeleton.translation(root);
+        let mut full = hsd_types::Mtx::default();
+        mtx::hsd_mtx_srt(&mut full, &scale, &rotation, &translation, None);
+        let mut flat = hsd_types::Mtx::default();
+        mtx::mtx_concat(&full, &inverse, &mut flat);
+        self.combat.flat_matrix = Some(flat);
+    }
+}
+
 impl melee_coll::detection::Collider for super::FighterCore {
     fn hurt_count(&self) -> usize {
         self.hurtboxes.len()
@@ -143,18 +182,27 @@ impl melee_coll::detection::Collider for super::FighterCore {
         self.hurtboxes[index].grabbable
     }
     fn sample_hurt(&mut self, index: usize) -> (HurtCapsule, hsd_types::Mtx) {
+        let depth = self.physics.position.z;
+        let flat = self.combat.flat_matrix;
         let hurt = &mut self.hurtboxes[index];
         if !hurt.cached {
             hurt.positions = hurt.offsets.map(|offset| {
                 bone_position(&mut self.skeleton, self.animation.root, hurt.bone, offset)
             });
+            // lbColl_80007ECC / lbColl_8000805C: a flat fighter's capsule,
+            // when the test is what places it, sits at the fighter's depth.
+            if flat.is_some() {
+                for position in &mut hurt.positions {
+                    position.z = depth;
+                }
+            }
             hurt.cached = true;
         }
         let bone = self
             .skeleton
             .bone(self.animation.root, hurt.bone)
             .expect("hurt bone");
-        let matrix = *self.skeleton.get_mtx(bone);
+        let matrix = unflattened(flat.as_ref(), self.skeleton.get_mtx(bone));
         (hurt.clone(), matrix)
     }
     fn scale(&self) -> f32 {

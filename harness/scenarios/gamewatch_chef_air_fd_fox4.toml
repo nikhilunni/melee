@@ -1,0 +1,45 @@
+# GAMEWATCH directed witness: aerial Chef (ftGw_SpecialAirN) into Fall, and one that lands mid-throw.
+name = "gamewatch_chef_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 143, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 151, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+  { frame = 159, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 160, port = 0, buttons = {  }, raw = {  } },
+  { frame = 167, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 168, port = 0, buttons = {  }, raw = {  } },
+  { frame = 175, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 176, port = 0, buttons = {  }, raw = {  } },
+  { frame = 183, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 184, port = 0, buttons = {  }, raw = {  } },
+  { frame = 191, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 199, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+  { frame = 207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 287, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 288, port = 0, buttons = {  }, raw = {  } },
+  { frame = 291, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 293, port = 0, buttons = {  }, raw = {  } },
+  { frame = 373, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

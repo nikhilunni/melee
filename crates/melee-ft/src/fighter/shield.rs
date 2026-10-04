@@ -129,6 +129,14 @@ pub struct ReflectVolume {
     pub speed_multiplier: f32,
     pub reflect_behavior: bool,
 }
+/// The point volumes lbColl_80007BCC tests: fp->shield_hit, reflect_hit
+/// and absorb_hit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Volume {
+    Shield,
+    Reflect,
+    Absorb,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShieldHitCallback {
     SetOff,
@@ -532,26 +540,36 @@ impl FighterCore {
         hit: &melee_coll::hitbox::HitCapsule,
         attacker_scale: f32,
     ) -> Option<melee_coll::geometry::Contact> {
-        self.shield_volume_contact(hit, attacker_scale, false)
+        self.shield_volume_contact(hit, attacker_scale, Volume::Shield)
     }
     pub(super) fn shield_reflect_contact(
         &mut self,
         hit: &melee_coll::hitbox::HitCapsule,
         attacker_scale: f32,
     ) -> Option<melee_coll::geometry::Contact> {
-        self.shield_volume_contact(hit, attacker_scale, true)
+        self.shield_volume_contact(hit, attacker_scale, Volume::Reflect)
+    }
+    /// lbColl_80007BCC against the absorbing bubble (ftcoll.c:2143).
+    pub(super) fn absorb_contact(
+        &mut self,
+        hit: &melee_coll::hitbox::HitCapsule,
+        attacker_scale: f32,
+    ) -> Option<melee_coll::geometry::Contact> {
+        self.shield_volume_contact(hit, attacker_scale, Volume::Absorb)
     }
     fn shield_volume_contact(
         &mut self,
         hit: &melee_coll::hitbox::HitCapsule,
         attacker_scale: f32,
-        reflecting: bool,
+        which: Volume,
     ) -> Option<melee_coll::geometry::Contact> {
         use melee_coll::geometry::{capsule_contact, Capsule};
-        let volume = if reflecting {
-            &mut self.shield.reflect.volume
-        } else {
-            &mut self.shield.hit
+        let depth = self.physics.position.z;
+        let flat = self.combat.flat_matrix;
+        let volume = match which {
+            Volume::Reflect => &mut self.shield.reflect.volume,
+            Volume::Shield => &mut self.shield.hit,
+            Volume::Absorb => &mut self.combat.absorb.volume,
         };
         if !volume.position_cached {
             volume.position = super::caches::bone_position(
@@ -560,10 +578,14 @@ impl FighterCore {
                 volume.bone,
                 volume.offset,
             );
+            // lbColl_80007BCC: a flat fighter's volume sits at its depth.
+            if flat.is_some() {
+                volume.position.z = depth;
+            }
             volume.position_cached = true;
         }
         let joint = self.animation.parts[volume.bone].joint;
-        let matrix = *self.skeleton.get_mtx(joint);
+        let matrix = super::caches::unflattened(flat.as_ref(), self.skeleton.get_mtx(joint));
         // lbColl_80007BCC --fused: none; broadphase differs from hurtboxes.
         capsule_contact(
             Capsule {

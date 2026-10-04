@@ -3087,7 +3087,11 @@ fn dispatch_fighter(
                 particles,
                 rng,
             )?;
-            // Fighter_8006C80C: accessory4 runs after efAsync_QueueFlush.
+            // Fighter_8006C80C: Fighter_UnkApplyTransformation_8006C0F0
+            // after efAsync_QueueFlush, then accessory4.
+            if !f.status.disabled {
+                f.core.update_flat_matrix();
+            }
             if !f.status.disabled
                 && !f.in_hitlag()
                 && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())

@@ -1,0 +1,43 @@
+# GAMEWATCH directed witness: Chef (ftGw_SpecialN): one sausage, B pressed again for more, and B held.
+name = "gamewatch_chef_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 480
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 202, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 203, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 211, port = 0, buttons = {  }, raw = {  } },
+  { frame = 218, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 219, port = 0, buttons = {  }, raw = {  } },
+  { frame = 226, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 227, port = 0, buttons = {  }, raw = {  } },
+  { frame = 234, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 235, port = 0, buttons = {  }, raw = {  } },
+  { frame = 242, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 243, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 251, port = 0, buttons = {  }, raw = {  } },
+  { frame = 258, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 259, port = 0, buttons = {  }, raw = {  } },
+  { frame = 266, port = 0, buttons = {  }, raw = {  } },
+  { frame = 326, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 396, port = 0, buttons = {  }, raw = {  } },
+  { frame = 456, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

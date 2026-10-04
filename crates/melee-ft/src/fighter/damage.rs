@@ -116,6 +116,13 @@ pub struct CombatState {
     pub clank: super::clank::Pending,
     pub reflection: Option<super::reflection::Pending>,
     pub reflector_enabled: bool,
+    /// x2218_b6, absorb_hit and AbsorbAttr: an absorbing bubble.
+    pub absorb: super::absorb::AbsorbState,
+    /// Fighter x44_mtx while x34_scale.z is not 1 (a flat fighter):
+    /// Fighter_UnkApplyTransformation_8006C0F0's matrix, which takes the
+    /// flattened bones back to full depth for the hurt, shield, reflect
+    /// and absorb tests (ftCommon_8007F804).
+    pub flat_matrix: Option<hsd_types::Mtx>,
     /// hitlag_cb / post_hitlag_cb, cleared by every motion change
     /// (fighter.c:1381-1383). They carry SDI during and ASDI after hitlag.
     pub hitlag_callbacks: HitlagCallbacks,
@@ -899,6 +906,7 @@ impl Fighter {
         self.core.combat.clank.duration = 0.0;
         // +1920 facing is retained; only +1918/+191C reset at the retail tail.
         let reflection = self.core.combat.reflection.take();
+        let absorbed = self.core.take_absorbed();
         let received_knockback = self.core.combat.pending_from_captor
             || self
                 .core
@@ -1107,6 +1115,11 @@ impl Fighter {
         {
             if let Some(reflection) = reflection {
                 self.process_reflection(reflection, assets)?;
+            } else if let Some(absorbed) = absorbed {
+                // fighter.c:2947-2950: ftData_OnAbsorb.
+                if let Some(on_absorb) = self.character.table().on_absorb {
+                    on_absorb(self, assets, absorbed);
+                }
             } else if let Some(touch) = detected {
                 // fighter.c:2950-2954: the last branch, an inert touch.
                 if let Some(detect) = self.character.table().hurtbox_detect {
@@ -2576,6 +2589,10 @@ impl Fighter {
             if !item.hit_flags[id].hits_hurtboxes {
                 continue;
             }
+            // ftcoll.c:2099-2103: x42_b2.
+            if item.hit_flags[id].misses_same_facing && self.physics.facing == item.facing {
+                continue;
+            }
             if item.hit_flags[id].reflectable
                 && item.hit_flags[id].defense_interaction
                 && hit.descriptor.element != melee_types::HitElement::Inert
@@ -2620,6 +2637,13 @@ impl Fighter {
                         continue;
                     }
                 }
+            }
+            // ftcoll.c:2133-2183: the absorbing bubble, after the reflectors.
+            if item.hit_flags[id].defense_interaction
+                && hit.descriptor.element != melee_types::HitElement::Inert
+                && self.core.absorb_item_hit(item, id, &hit)
+            {
+                continue;
             }
             // catch_path: clank with this fighter's own hitboxes first.
             if clank_candidates

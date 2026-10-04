@@ -1,0 +1,32 @@
+# GAMEWATCH directed witness: aerial Judgment (ftGw_SpecialAirS): the hop once per airtime, a second one without it, and one landing mid-swing.
+name = "gamewatch_judge_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 145, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 147, port = 0, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+  { frame = 307, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 308, port = 0, buttons = {  }, raw = {  } },
+  { frame = 311, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 313, port = 0, buttons = {  }, raw = {  } },
+  { frame = 403, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

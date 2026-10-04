@@ -22,6 +22,12 @@ pub struct Articles {
     pub turtle: bool,
     /// x2260_sparkyGObj.
     pub sparky: bool,
+    /// x2264_judgementGObj.
+    pub judgement: bool,
+    /// x2268_panicGObj.
+    pub panic: bool,
+    /// x226C_rescueGObj.
+    pub rescue: bool,
     /// death2_cb and take_dmg_cb are ftGw_Init_OnDamage until the next
     /// motion change.
     pub damage_callbacks: bool,
@@ -45,6 +51,14 @@ pub enum Accessory {
     /// ftGw_AttackAirN_ItemParachuteOnLand / ItemTurtleOnLand /
     /// ItemSparkyOnLand.
     AerialLanded(Aerial),
+    /// ftGw_SpecialN_CreateSausage.
+    CreateSausage,
+    /// ftGw_SpecialS_ItemJudgementSetup.
+    JudgementSetup,
+    /// ftGw_SpecialHi_ItemRescueSetup.
+    RescueSetup,
+    /// ftGw_SpecialLw_ItemPanicSetup.
+    PanicSetup,
 }
 
 /// The three aerials with an article.
@@ -92,7 +106,7 @@ pub fn install(f: &mut Fighter, accessory: Accessory) {
 }
 
 /// `fp->accessory4_cb = NULL`.
-fn uninstall(f: &mut Fighter) {
+pub fn uninstall(f: &mut Fighter) {
     f.character.get_mut::<GameWatch>().accessory = Accessory::None;
     f.core.accessory4_armed = false;
 }
@@ -129,17 +143,25 @@ fn control(f: &mut Fighter, kind: ItemKind, control: ItemControl) {
 
 /// death2_cb / take_dmg_cb = ftGw_Init_OnDamage, and the article's hitlag
 /// pair (it_8026B724 / it_8026B73C through the kind's wrappers).
-fn install_callbacks(f: &mut Fighter, kind: ItemKind) {
+pub fn install_callbacks(f: &mut Fighter, kind: ItemKind) {
     articles(f).damage_callbacks = true;
     f.effect_state.article_hitlag = Some(kind);
 }
 
 /// Fighter_8006C80C: the installed accessory4.
-pub fn accessory(f: &mut Fighter) {
+pub fn accessory(
+    f: &mut Fighter,
+    assets: &melee_ft::fighter::assets::FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) {
     if !f.core.accessory4_armed {
         return;
     }
     match f.character.get::<GameWatch>().accessory {
+        Accessory::CreateSausage => crate::special_n::create_sausage(f, assets, rng),
+        Accessory::JudgementSetup => crate::special_s::judgement_setup(f, assets),
+        Accessory::RescueSetup => crate::special_hi::rescue_setup(f),
+        Accessory::PanicSetup => crate::special_lw::panic_setup(f),
         Accessory::None => {}
         Accessory::GreenhouseSetup => greenhouse_setup(f),
         Accessory::GreenhouseMotion => greenhouse_motion(f),
@@ -308,6 +330,21 @@ pub fn destroyed(f: &mut Fighter, kind: ItemKind) {
         }
         ItemKind::GameWatchBreath => {
             a.sparky = false;
+            a.damage_callbacks = false;
+        }
+        // ftGw_SpecialS_ItemJudgementSetFlag (8014C590).
+        ItemKind::GameWatchJudge => {
+            a.judgement = false;
+            a.damage_callbacks = false;
+        }
+        // ftGw_SpecialLw_ItemPanicSetFlag.
+        ItemKind::GameWatchPanic => {
+            a.panic = false;
+            a.damage_callbacks = false;
+        }
+        // ftGw_SpecialHi_ItemRescueSetNULL (8014DFE4).
+        ItemKind::GameWatchRescue => {
+            a.rescue = false;
             a.damage_callbacks = false;
         }
         _ => {}

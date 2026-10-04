@@ -33,6 +33,16 @@ pub struct GameWatch {
     pub articles: crate::articles::Articles,
     /// accessory4_cb while a character row owns it.
     pub accessory: crate::articles::Accessory,
+    /// fp->mv.gw.SpecialN.
+    pub chef: crate::special_n::Chef,
+    /// A Judgment asked for in this Input proc's IASA (its airborne flag),
+    /// entered once the IASA returns.
+    pub pending_judgement: Option<bool>,
+    /// Fighter +6BC lstick_angle, which Fighter_ChangeMotionState zeroes
+    /// (fighter.c:1171): Fire's lean.
+    pub rescue_angle: f32,
+    /// fp->mv.gw.SpecialLw.
+    pub oil_panic: crate::special_lw::OilPanic,
 }
 
 impl GameWatch {
@@ -48,6 +58,10 @@ impl GameWatch {
             chef_previous: 3,
             articles: Default::default(),
             accessory: Default::default(),
+            chef: Default::default(),
+            pending_judgement: None,
+            rescue_angle: 0.0,
+            oil_panic: Default::default(),
         }
     }
 }
@@ -76,9 +90,37 @@ impl CharacterCallbacks for GameWatch {
     const ENTER_AERIAL: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         crate::attack_air::enter;
     /// Fighter_8006C80C: the row's accessory4.
-    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
-        crate::articles::accessory(f);
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
+        crate::articles::accessory(f, assets, rng);
     }
+    /// ftData_SpecialN/S/Hi/Lw[GameWatch] and the aerial tables.
+    fn enter_special(
+        f: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::request(f, airborne),
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
+        }
+    }
+    /// ftGw_SpecialS_Enter / ftGw_SpecialAirS_Enter draw the face first.
+    const INPUT_RNG_ENTRY: Option<melee_ft::fighter::RngEntry> =
+        Some(crate::special_s::enter_pending);
+    /// ftGw_Init_UnkMotionStates4 (8014A77C): OnDeath keeps the bucket's
+    /// level, so a full bucket glows again after a stock is lost.
+    const COLOR_FALLBACK_AFTER_RESET: fn(&melee_ft::fighter::CharacterState) -> Option<u8> =
+        |state| {
+            (state.get::<GameWatch>().panic_charge >= PANIC_FULL)
+                .then_some(crate::special_lw::FULL_BUCKET_COLOR)
+        };
+    /// ftData_OnAbsorb: ftGw_Init_OnAbsorb (8014A828).
+    const ON_ABSORB: Option<fn(&mut Fighter, &FighterAssets, melee_ft::fighter::absorb::Absorbed)> =
+        Some(crate::special_lw::on_absorb);
     /// ftCommon_8007DB58: take_dmg_cb (ftGw_Init_OnDamage) when installed.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::articles::damage_callback);
     /// ftCo_800D331C: death2_cb, the same callback.
@@ -94,6 +136,7 @@ impl CharacterCallbacks for GameWatch {
     fn on_motion_change(&mut self) {
         self.articles.damage_callbacks = false;
         self.accessory = crate::articles::Accessory::None;
+        self.rescue_angle = 0.0;
     }
     /// The Fire torch holds its animation while the forward smash charges
     /// (ftLib_800876D4: smash_attrs.state == 2), reported as stage 1.

@@ -294,6 +294,9 @@ impl Fighter {
             .initialize_spawn_geometry(map, counter, initial_scale);
         self.core.reset_camera_subject(assets, stage_camera);
         self.character.on_reset();
+        if let Some(color) = (self.character.table().color_fallback_after_reset)(&self.character) {
+            self.core.combat.secondary_color_fallback = Some(color);
+        }
         // Fighter_UnkProcessDeath, fighter.c:561: always initialize this capsule.
         self.core.thrown_hitbox.state = 1;
         self.core
@@ -1308,6 +1311,8 @@ impl FighterCore {
         }
         self.shield.clear_collision();
         self.combat.reflector_enabled = false;
+        // fighter.c:1057: x2218_b6.
+        self.combat.absorb.active = false;
         self.cancel_cape_turn();
         self.clear_cape_turn_end();
         self.effect_state.hitlag_callbacks = false;
