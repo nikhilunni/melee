@@ -1753,6 +1753,16 @@ const DONKEY_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_donkeykong_fox4_e8089e993_p1", 3902),
     ("corpus_v3_fd_donkeykong_fox4_ea7e2e7e9_p2", 3976),
     ("corpus_v3_fd_donkeykong_fox4_ee98155f3_p0", 4671),
+    // Clean explorer samples of a later batch (120 cases, no fault), as
+    // exactness checks over whole matches.
+    ("corpus_v3_fd_donkeykong_fox4_eaca6940d_p0", 6001),
+    ("corpus_v3_fd_donkeykong_fox4_e721bca4f_p0", 2904),
+    ("corpus_v3_fd_donkeykong_fox4_ef6b5a67f_p0", 6001),
+    ("corpus_v3_fd_donkeykong_fox4_e24fdee66_p0", 5065),
+    ("corpus_v3_fd_donkeykong_fox4_edb4b01fd_p0", 3774),
+    ("corpus_v3_fd_donkeykong_fox4_ee92d4a97_p0", 6001),
+    ("corpus_v3_fd_donkeykong_fox4_e3e98e6dc_p0", 5851),
+    ("corpus_v3_fd_donkeykong_fox4_e0211286e_p0", 4898),
 ];
 
 #[test]
