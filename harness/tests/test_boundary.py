@@ -183,6 +183,76 @@ def test_stadium_codes_set_their_flags_in_the_start_scene_and_its_cold_twin(code
     assert "gecko" not in cold
 
 
+def creation_driver(seed=0x1234_5678):
+    """A driver on the stage screen whose config names a Game Start seed."""
+    mem = Memory()
+    mem.add_memcheck = lambda addr: watched.append(addr)
+    mem.remove_memcheck = lambda addr: watched.remove(addr)
+    watched: list[int] = []
+    config = {"savestate": "/x.sav", "stkind": 0x20, "players": [9, 9], "stocks": 4,
+              "game_start_seed": seed}
+    d = bs.BoundaryDriver(config, mem, save=lambda path: None)
+    d.phase = "start"
+    mem.write_u8(bs.SCENE_MACHINE, bs.GM_VS)
+    mem.write_u8(bs.SCENE_MACHINE + 3, bs.VS_STATE_SSS)
+    mem.write_u32(bs.SSS_DATA_PTR, 0x80BD0000)
+    mem.write_u32(bs.SEED_ADDR, 99)
+    return d, mem, watched
+
+
+def test_the_game_start_seed_is_written_when_the_match_is_created():
+    d, mem, watched = creation_driver()
+    d.step()
+    assert d.phase == "match" and watched == [bs.MATCH_START_TEST]
+    # Other stores to the watched word, and reads, leave the seed alone.
+    d.on_memory(True, bs.MATCH_START_TEST, 0x801A46F4)
+    d.on_memory(False, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert mem.read_u32(bs.SEED_ADDR) == 99 and d.seed_replaced is None
+    # fn_8016E730's gm_801A4B08 call: the seed creation draws from.
+    d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert mem.read_u32(bs.SEED_ADDR) == 0x1234_5678 and d.seed_replaced == 99
+    # Only once (a later scene would pass the same call), and the breakpoint
+    # is removed on the next frame, outside its own callback.
+    mem.write_u32(bs.SEED_ADDR, 7)
+    d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert mem.read_u32(bs.SEED_ADDR) == 7 and watched == [bs.MATCH_START_TEST]
+    d.step()
+    assert watched == []
+    assert d.creation_seed() == {"game_start_seed": 0x1234_5678, "seed_replaced": 99}
+
+
+def test_a_match_created_without_the_seed_written_is_not_saved(monkeypatch):
+    d, mem, watched = creation_driver()
+    d.step()
+    fighters = [{"motion_id": bs.MS_ENTRY}, {"motion_id": bs.MS_ENTRY}]
+    monkeypatch.setattr(d, "read_fighters", lambda: fighters)
+    with pytest.raises(bs.BoundaryError, match="Game Start seed was not written"):
+        d.step()
+    assert not d.done
+
+
+def test_a_boundary_without_a_game_start_seed_sets_no_breakpoint():
+    d, mem = driver()
+    assert d.game_start_seed is None and d.creation_seed() == {}
+    d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert mem.read_u32(bs.SEED_ADDR) == 0
+
+
+def test_a_replays_boundary_names_its_game_start_seed_and_is_never_registered():
+    start = tomllib.loads(mb.start_scenario("b", "FinalDestination", ["Marth", "Marth"], 4,
+                                            ["ucf-0.73"], [0, 1], 2534789673))
+    cold = tomllib.loads(mb.cold_scenario("b", "FinalDestination", ["Marth", "Marth"], 4, 2462485393,
+                                          [4, 1], "neutral-2020", ["ucf-0.73"], [0, 1], 8, 2534789673))
+    assert start["game_start_seed"] == cold["game_start_seed"] == 2534789673
+    assert cold["seed"] == 2462485393
+    assert "game_start_seed" not in tomllib.loads(mb.start_scenario("b", "FinalDestination", ["Marth", "Fox"], 4))
+    with pytest.raises(SystemExit, match="--no-register"):
+        mb.main(["--stage", "FinalDestination", "--players", "Marth", "Marth", "--game-start-seed", "5"])
+    with pytest.raises(SystemExit, match="--name"):
+        mb.main(["--stage", "FinalDestination", "--players", "Marth", "Marth", "--game-start-seed", "5",
+                 "--no-register"])
+
+
 def test_the_menu_driver_uses_the_players_ports():
     d, mem = driver(players=(9, 12))
     d.ports = [1, 3]

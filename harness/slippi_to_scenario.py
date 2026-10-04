@@ -10,12 +10,20 @@ match from a start boundary with the replay's layout (stage, characters,
 costumes, ports, timer, the Slippi build's Gecko codes), so the ordinary gate
 and triage compare the port with a full retail trace of the same game.
 
-`inputs.jsonl` is `melee-sim replay --retail-inputs`: a header (setup and the
-pre-music boundary seed) and one raw pad per player and tick. The boundary is
-a `make_boundary.py` start scene made for that setup, for example
+`inputs.jsonl` is `melee-sim replay --retail-inputs`: a header (setup, the
+Game Start seed and the pre-music boundary seed it reaches) and one raw pad
+per player and tick. The boundary is a `make_boundary.py` start scene made for
+that setup, for example
 
     make_boundary.py --stage Battlefield --players Marth Peach --costumes 1 1 --ports 2 4 \
         --time-limit 8 --gecko ucf-0.8 neutral-spawn --spawn neutral-2020 --no-register
+
+On Final Destination and Fountain of Dreams the boundary must be made for the
+replay, with `--game-start-seed <header game_start_seed> --name <its own>`:
+those stages keep what they drew at creation (the background's accelerations,
+the platforms' first waits), which `boundary_seed` cannot change afterwards.
+`--foreign-creation` accepts another boundary there; retail then plays the
+replay's pads but leaves its random stream at the stage's first draw.
 
 Two scenarios are written:
 
@@ -75,6 +83,34 @@ def check_stage_codes(header: dict, flags: dict[str, bool], boundary: str) -> No
                      f"{'with' if header[flag] else 'without'} --gecko {code}")
 
 
+#: Stages whose creation draws set state that outlives the boundary:
+#: grLast_8021AC30's two background accelerations (four draws) and
+#: grIzumi_801CC358's first platform waits.
+CREATION_DRAW_STAGES = ("FinalDestination", "FountainOfDreams")
+
+
+def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = False) -> int | None:
+    """The Game Start seed the boundary's match was created from, when it is
+    the replay's; None for a boundary whose creation is its own."""
+    want, made = header.get("game_start_seed"), cold.get("game_start_seed")
+    if made is not None and made == want:
+        if cold["seed"] != header["boundary_seed"]:
+            sys.exit(f"{boundary} was created from the replay's Game Start seed {want} but retail "
+                     f"reached seed {cold['seed']} where the port's setup draws reach "
+                     f"{header['boundary_seed']}")
+        return made
+    if foreign:
+        return None
+    if made is not None:
+        sys.exit(f"{boundary} was created from Game Start seed {made}, the replay's is {want}: "
+                 "it is another replay's boundary (--foreign-creation to use it anyway)")
+    if header["stage"] in CREATION_DRAW_STAGES:
+        sys.exit(f"{header['stage']} keeps its creation draws: make the boundary for this replay "
+                 f"with make_boundary.py --game-start-seed {want} --name <name> "
+                 "(--foreign-creation to use this one; retail will not follow the replay's draws)")
+    return None
+
+
 def check_setup(header: dict, cold: dict, boundary: str) -> None:
     """The boundary must be the replay's match."""
     want = [(p["slot"], p["kind"], p["costume"], p["stocks"]) for p in header["players"]]
@@ -83,6 +119,10 @@ def check_setup(header: dict, cold: dict, boundary: str) -> None:
     made = (cold["stage"], cold.get("time_limit"), have)
     if replay != made:
         sys.exit(f"{boundary} is not the replay's match:\n  replay   {replay}\n  boundary {made}")
+    spawn = cold.get("spawn", "retail")
+    if header.get("spawn", spawn) != spawn:
+        # The 2019 and 2020 NeutralSpawn tables share every row but Dream Land's.
+        print(f"note: the replay spawned by {header['spawn']}, {boundary} by {spawn}", file=sys.stderr)
 
 
 def steps(records: list[dict], ticks: int, table: dict) -> list[str]:
@@ -128,6 +168,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--boundary", required=True, help="a make_boundary.py start scene with the replay's setup")
     ap.add_argument("--ticks", type=int, help="scheduler ticks to play (default: the whole replay)")
     ap.add_argument("--comment", default="", help="what the scenario witnesses (its header)")
+    ap.add_argument("--foreign-creation", action="store_true",
+                    help="accept a boundary not created from the replay's Game Start seed on a stage "
+                         "that keeps its creation draws")
     a = ap.parse_args(argv)
 
     lines = a.inputs.read_text().splitlines()
@@ -137,6 +180,8 @@ def main(argv: list[str] | None = None) -> None:
     flags = stage_flags(start, cold)
     check_stage_codes(header, flags, a.boundary)
     stage_codes = gecko.scenario_flag_lines(flags)
+    created = check_creation(header, cold, a.boundary, a.foreign_creation)
+    creation = f"game_start_seed = {created}\n" if created is not None else ""
     ticks = min(a.ticks or header["ticks"], header["ticks"], MAX_TICKS)
     schedule = steps(records, ticks, json.loads(pads.CALIBRATION.read_text()))
     seed = header["boundary_seed"]
@@ -161,7 +206,7 @@ input_clock = "tick"
 savestate = "{start["savestate"]}"
 frames = {ticks}
 seed = 1
-boundary_seed = {seed}
+{creation}boundary_seed = {seed}
 stage = "{cold["stage"]}"
 {stage_codes}{gecko_list}inputs = [
 {chr(10).join(schedule)}
@@ -181,13 +226,14 @@ name = "{a.name}_cold"
 expected = "{a.name}"
 frames = {ticks}
 seed = {cold["seed"]}
-boundary_seed = {seed}
+{creation}boundary_seed = {seed}
 stage = "{cold["stage"]}"
 {stage_codes}all_characters_unlocked = true
 {timer}{spawn}inputs = []
 
 {cold_fighters}''')
-    print(f"{retail.name}: {len(schedule)} steps over {ticks} ticks; {twin.name} gates it")
+    print(f"{retail.name}: {len(schedule)} steps over {ticks} ticks; {twin.name} gates it"
+          + ("; the match was created from the replay's Game Start seed" if created is not None else ""))
 
 
 if __name__ == "__main__":

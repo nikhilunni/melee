@@ -38,6 +38,13 @@ must list exactly the boundary's codes. `--ports 2 4` seats the players on
 those ports (only they hold a controller), as a tournament station does; the
 start scene then has fighter slots 1 and 3, which only its cold twin can gate.
 `--time-limit 8` plays stock with an eight-minute timer, the tournament rule.
+`--game-start-seed N` creates the match from a Slippi replay's Game Start seed
+(written where Slippi reads it, before the Ground and Players exist), so what
+the stage draws at creation is the replay's: Final Destination's background
+accelerations and Fountain of Dreams' first platform waits outlive the
+boundary, and a replay bridged from any other boundary leaves the console's
+random stream there. Such a boundary serves that one replay; the cold twin
+names the seed, and its gate checks the port's setup draws reach the saved one.
 A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
 `ps-frozen`: `stadium_frozen`; gecko.SCENARIO_FLAGS) sets it in both scenarios.
 
@@ -112,8 +119,18 @@ def fix_line(codes: list[str] | None) -> str:
     return f'controller_fix = "{fixes[0]}"\n' if fixes else ""
 
 
+def creation_line(game_start_seed: int | None) -> str:
+    """A boundary whose match was created from a replay's Game Start seed."""
+    if game_start_seed is None:
+        return ""
+    return ("# The match was created from this seed, written at Slippi's Game Start read\n"
+            "# (0x8016E74C, before fn_8016E730 creates the Ground and Players).\n"
+            f"game_start_seed = {game_start_seed}\n")
+
+
 def start_scenario(name: str, stage: str, players: list[str], stocks: int,
-                   codes: list[str] | None = None, slots: list[int] | None = None) -> str:
+                   codes: list[str] | None = None, slots: list[int] | None = None,
+                   game_start_seed: int | None = None) -> str:
     # The savestate importer covers slots 0..n: other ports gate the cold twin.
     gate = f'gate = "{name}_cold"\n' if slots and slots != list(range(len(players))) else ""
     slots = slots or list(range(len(players)))
@@ -133,7 +150,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
 {gate}savestate = "harness/roms/{name}.sav"
 frames = 600
 seed = 1
-stage = "{stage}"
+{creation_line(game_start_seed)}stage = "{stage}"
 {gecko.scenario_flag_lines(gecko.scenario_flags(codes))}{gecko_line(codes)}
 inputs = []
 
@@ -143,7 +160,7 @@ inputs = []
 def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: int,
                   costumes: list[int], spawn: str | None = None,
                   codes: list[str] | None = None, slots: list[int] | None = None,
-                  time_limit: int = 0) -> str:
+                  time_limit: int = 0, game_start_seed: int | None = None) -> str:
     slots = slots or list(range(len(players)))
     timer_line = f"time_limit = {time_limit * 60}\n" if time_limit else ""
     spawn_line = f'spawn = "{spawn}"\n' if spawn else ""
@@ -156,7 +173,7 @@ name = "{name}_cold"
 expected = "{name}"
 frames = 600
 seed = {seed}
-stage = "{stage}"
+{creation_line(game_start_seed)}stage = "{stage}"
 {gecko.scenario_flag_lines(gecko.scenario_flags(codes))}all_characters_unlocked = true
 {timer_line}{spawn_line}inputs = []
 
@@ -176,7 +193,7 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
                    transform: list[int] | None = None, costumes: list[int] | None = None,
                    codes: list[str] | None = None, slots: list[int] | None = None,
-                   time_limit: int = 0) -> dict:
+                   time_limit: int = 0, game_start_seed: int | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
@@ -189,6 +206,8 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       "transform": transform or [],
                                       "time_limit_minutes": time_limit,
                                       **({"ports": slots} if slots else {}),
+                                      **({"game_start_seed": game_start_seed}
+                                         if game_start_seed is not None else {}),
                                       **({"costumes": costumes} if costumes else {})}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
@@ -244,12 +263,21 @@ def main(argv: list[str] | None = None) -> None:
                     help="each player's controller port, ascending (default: the first ports)")
     ap.add_argument("--time-limit", type=int, default=0, metavar="MINUTES",
                     help="stock with a countdown timer (default: none)")
+    ap.add_argument("--game-start-seed", type=int, metavar="SEED",
+                    help="create the match from this seed (a replay's Game Start seed: "
+                         "`game_start_seed` in melee-sim replay --retail-inputs)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
-    if (a.gecko or a.spawn or a.ports or a.time_limit) and not a.no_register:
+    if (a.gecko or a.spawn or a.ports or a.time_limit or a.game_start_seed is not None) \
+            and not a.no_register:
         # boundaries.toml describes explorer matches: retail spawns, first
-        # ports, no timer, no codes.
-        sys.exit("a boundary with codes, ports or a timer is not an explorer boundary: pass --no-register")
+        # ports, no timer, no codes, the seed the menus left.
+        sys.exit("a boundary with codes, ports, a timer or a Game Start seed is not an explorer "
+                 "boundary: pass --no-register")
+    if a.game_start_seed is not None and not 0 <= a.game_start_seed < 1 << 32:
+        sys.exit("--game-start-seed is a 32-bit seed")
+    if a.game_start_seed is not None and not a.name:
+        sys.exit("a boundary made for one replay needs its own --name")
     slots = None
     if a.ports is not None:
         if len(a.ports) != len(a.players) or sorted(set(a.ports)) != a.ports:
@@ -274,16 +302,21 @@ def main(argv: list[str] | None = None) -> None:
     print(f"== {name}: driving the menus", flush=True)
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
-                             a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit)
+                             a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit,
+                             a.game_start_seed)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
     print(f"   saved {sav.name} at frame {summary['frame']} in {time.monotonic() - t0:.0f}s: seed {seed}, "
           f"costumes {costumes}, item frequency {summary['item_frequency']}", flush=True)
+    if a.game_start_seed is not None:
+        print(f"   created from Game Start seed {a.game_start_seed} (it replaced {summary['seed_replaced']})",
+              flush=True)
 
-    scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots))
+    scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots,
+                                       a.game_start_seed))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
-                                  slots, a.time_limit))
+                                  slots, a.time_limit, a.game_start_seed))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.

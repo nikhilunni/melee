@@ -31,6 +31,15 @@ pub struct Scenario {
     /// savestate was made, then this replaces the RNG seed.
     #[serde(default)]
     pub boundary_seed: Option<u32>,
+    /// The seed the boundary's match was created from: written over the RNG
+    /// seed at 0x8016E74C's point, before fn_8016E730 creates the Ground
+    /// and Players (`make_boundary.py --game-start-seed`, a Slippi replay's
+    /// Game Start seed). The stage's creation draws (Final Destination's
+    /// background accelerations, Fountain of Dreams' platform waits) are
+    /// then the replay's. A cold scenario's `seed` must be this one after
+    /// the setup draws.
+    #[serde(default)]
+    pub game_start_seed: Option<u32>,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,
@@ -267,6 +276,10 @@ impl Scenario {
     pub fn is_cold(&self) -> bool {
         self.savestate.is_none()
     }
+    /// `spawn` as scenario TOML spells it.
+    pub fn spawn_name(&self) -> &'static str {
+        spawn_rule::name(self.spawn)
+    }
     /// A cold twin of a scripted retail recording (`expected` names it and a
     /// fighter is `scripted`): built from parameters, driven by the pads
     /// that recording consumed. This is how a match on ports a savestate
@@ -388,10 +401,10 @@ impl FighterScenario {
     }
 }
 
-impl melee_lib::diagnostics::ScenarioSource for Scenario {
-    fn setup(&self) -> anyhow::Result<melee_lib::diagnostics::Setup> {
-        self.validate()?;
-        Ok(melee_lib::diagnostics::Setup {
+impl Scenario {
+    /// The match parameters of a validated scenario.
+    fn unchecked_setup(&self) -> melee_lib::diagnostics::Setup {
+        melee_lib::diagnostics::Setup {
             fighters: std::array::from_fn(|p| {
                 let f = &self.fighters[p];
                 melee_lib::diagnostics::PlayerSetup {
@@ -413,7 +426,25 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
                 stadium_preload: self.stadium_preload,
                 stadium_frozen: self.stadium_frozen,
             },
-        })
+        }
+    }
+}
+impl melee_lib::diagnostics::ScenarioSource for Scenario {
+    fn setup(&self) -> anyhow::Result<melee_lib::diagnostics::Setup> {
+        self.validate()?;
+        let setup = self.unchecked_setup();
+        // A boundary made from a replay's Game Start seed
+        // (`make_boundary.py --game-start-seed`): the port's setup draws
+        // must take that seed to the one the savestate holds.
+        if let (true, Some(start), Some(seed)) = (self.is_cold(), self.game_start_seed, self.seed) {
+            let reached = melee_lib::diagnostics::boundary_seed_from_creation(&setup, start)?;
+            ensure!(
+                reached == seed,
+                "game_start_seed {start} reaches boundary seed {reached} through the setup \
+                 draws, not {seed}"
+            );
+        }
+        Ok(setup)
     }
     fn is_cold(&self) -> bool {
         self.is_cold()
@@ -495,6 +526,26 @@ controller_fix = "ucf-0.8"
     }
 
     #[test]
+    fn a_game_start_seed_must_reach_the_boundary_seed_through_the_setup_draws() {
+        use melee_lib::diagnostics::ScenarioSource;
+        // MARTH/12_07_47 Marth + Marth (FD): Game Start's seed, and the seed
+        // retail held after creating the match from it (eight draws).
+        let mut scenario = twin("game_start_seed = 2534789673");
+        scenario.stage = "FinalDestination".into();
+        scenario.seed = Some(2_462_485_393);
+        scenario.setup().unwrap();
+        scenario.game_start_seed = Some(2_534_789_674);
+        let error = scenario.setup().err().expect("another seed").to_string();
+        assert!(error.contains("through the setup draws"), "{error}");
+        // A recording names the seed without building anything from it.
+        scenario.savestate = Some("harness/roms/x.sav".into());
+        for (slot, fighter) in scenario.fighters.iter_mut().enumerate() {
+            fighter.slot = slot as u8;
+        }
+        scenario.setup().unwrap();
+    }
+
+    #[test]
     fn a_code_that_is_no_controller_fix_asks_nothing_of_the_fighters() {
         let mut scenario = twin("");
         for fighter in &mut scenario.fighters {
@@ -551,5 +602,13 @@ mod spawn_rule {
             .find(|(n, _)| *n == name)
             .map(|(_, rule)| *rule)
             .ok_or_else(|| serde::de::Error::custom(format!("unknown spawn rule {name}")))
+    }
+    /// The rule's scenario spelling (`make_boundary.py --spawn`).
+    pub fn name(rule: SpawnRule) -> &'static str {
+        let (name, _) = NAMES
+            .iter()
+            .find(|(_, r)| *r == rule)
+            .expect("every rule is named");
+        name
     }
 }

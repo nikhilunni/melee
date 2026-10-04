@@ -17,6 +17,14 @@ picked, that port presses X until the CSS door's costume matches
 the fighters exist: fn_8016D8AC (gm_16AE.c:1573-1583) reads that port's
 HSD_PadCopyStatus when the match loads and swaps a human Zelda for Sheik
 (or back), as a player holding A does on retail.
+`game_start_seed` (optional) is written over the RNG seed when the match is
+created, where Slippi's Game Start reads it (0x8016E74C, after fn_8016E730's
+db_Setup call and before it creates the Ground and Players), so the stage's
+creation draws are those of the console that recorded the seed. The scripting
+API has memory breakpoints only, so the hook is the first store after that
+address: gm_801A4B08 (called at 0x8016E75C) stores
+gm_AnyControllerPressedStart at gm_80479D58 +0x14, and nothing between the
+two addresses draws.
 
 Every frame `BoundaryDriver.step` reads the game's own scene state and decides
 the inputs, so no step depends on timing or screenshots:
@@ -104,6 +112,11 @@ SSS_DATA_PTR = 0x804D6C90
 SSS_FORCE_STAGE = 0x3
 
 SEED_ADDR = symbols.addr("seed")
+# fn_8016E730 (gm_16AE.c:1982, 0x8016E75C): gm_801A4B08 stores the match's
+# Start-press test at gm_80479D58 +0x14 (0x801A4B10), the first store after
+# 0x8016E74C, where Slippi reads the Game Start seed.
+MATCH_START_TEST = symbols.addr("gm_80479D58") + 0x14
+MATCH_START_TEST_FN = symbols.addr("gm_AnyControllerPressedStart")
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
 MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
 # pl/player.c:58 ftMapping_list: CKIND_POPONANA creates a second fighter
@@ -154,6 +167,11 @@ class BoundaryDriver:
         self.css: list[dict] = []
         self.pending_press: tuple[int, int] | None = None   # (port, first frame)
         self.done = False
+        # The seed the match is created from, and the seed it replaced once
+        # the creation hook has written it.
+        self.game_start_seed: int | None = config.get("game_start_seed")
+        self.seed_replaced: int | None = None
+        self.watching_creation = False
 
     # --- memory ----------------------------------------------------------
     def scene(self) -> tuple[int, int]:
@@ -192,6 +210,10 @@ class BoundaryDriver:
         self.frame += 1
         if self.frame > TIMEOUT_FRAMES:
             raise BoundaryError(f"no boundary after {TIMEOUT_FRAMES} frames (phase {self.phase})")
+        if self.watching_creation and self.seed_replaced is not None:
+            # Not from inside the breakpoint's own callback.
+            self.mem.remove_memcheck(MATCH_START_TEST)
+            self.watching_creation = False
         inputs = self.phase_inputs(*self.scene())
         for port, pad in self.press_due().items():
             inputs.setdefault(port, {}).update(pad)
@@ -217,6 +239,9 @@ class BoundaryDriver:
         if self.phase == "start":
             if mode == GM_VS and state == VS_STATE_SSS and self.ptr(SSS_DATA_PTR):
                 self.mem.write_u8(self.ptr(SSS_DATA_PTR) + SSS_FORCE_STAGE, self.config["stkind"])
+                if self.game_start_seed is not None:
+                    self.mem.add_memcheck(MATCH_START_TEST)
+                    self.watching_creation = True
                 self.enter("match")
                 return {}
             return self.pulse("Start")
@@ -228,11 +253,24 @@ class BoundaryDriver:
             fighters = [f for f in self.read_fighters() if f["motion_id"] != MS_SLEEP]
             if len(fighters) == fighter_count(self.config["players"]) and all(
                     f["motion_id"] == MS_ENTRY for f in fighters):
+                if self.game_start_seed is not None and self.seed_replaced is None:
+                    raise BoundaryError("the match was created without passing fn_8016E730's "
+                                        "gm_801A4B08 call: the Game Start seed was not written")
                 self.save(self.config["savestate"])
                 self.done = True
                 self.enter("saved")
             return {}
         return {}
+
+    def on_memory(self, is_write: bool, addr: int, value: int) -> None:
+        """The creation hook (a memory breakpoint; the CPU is stopped inside
+        gm_801A4B08): replace the seed fn_8016E730 creates the match from."""
+        if not self.watching_creation or self.seed_replaced is not None:
+            return
+        if not is_write or addr != MATCH_START_TEST or value != MATCH_START_TEST_FN:
+            return
+        self.seed_replaced = self.mem.read_u32(SEED_ADDR)
+        self.mem.write_u32(SEED_ADDR, self.game_start_seed)
 
     def poke_save_data(self) -> None:
         mem = self.mem
@@ -350,7 +388,14 @@ class BoundaryDriver:
     def summary(self) -> dict:
         return {"frame": self.frame, "seed": self.mem.read_u32(SEED_ADDR),
                 "css_players": self.css, "fighters": self.read_fighters(),
-                "item_frequency": self.mem.read_s8(ITEM_FREQUENCY)}
+                "item_frequency": self.mem.read_s8(ITEM_FREQUENCY),
+                **self.creation_seed()}
+
+    def creation_seed(self) -> dict:
+        """The seed the match was created from, when the config named one."""
+        if self.game_start_seed is None:
+            return {}
+        return {"game_start_seed": self.game_start_seed, "seed_replaced": self.seed_replaced}
 
 
 def main() -> None:
@@ -362,11 +407,20 @@ def main() -> None:
         savestate.save_to_file(path)
         sidecar = {"savestate": path, "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                    "frame": driver.frame, "seed": memory.read_u32(SEED_ADDR),
-                   "fighters": driver.read_fighters()}
+                   "fighters": driver.read_fighters(), **driver.creation_seed()}
         proto.write_json_atomic(Path(path + ".json"), sidecar)
 
     driver = BoundaryDriver(config, memory, save)
     finished = False
+
+    def on_memory(is_write, addr, value):
+        try:
+            driver.on_memory(is_write, addr, value)
+        except Exception:  # noqa: BLE001
+            err.write_text(f"frame {driver.frame} creation hook\n{traceback.format_exc()}")
+
+    if driver.game_start_seed is not None:
+        event.on_memorybreakpoint(on_memory)
 
     def on_frame():
         nonlocal finished

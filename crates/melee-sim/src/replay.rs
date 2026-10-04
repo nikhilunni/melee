@@ -857,8 +857,9 @@ const STICK_DEAD_ZONE: f32 = 0.275;
 const TRIGGER_MAX: f32 = 140.0;
 
 /// The replay as a retail recording's input schedule: a header with the
-/// match setup (the pre-music boundary seed, timer, stage, each player's
-/// slot, kind and costume), then one line per player and tick with the raw
+/// match setup (the Game Start seed and the pre-music boundary seed it
+/// reaches, spawn rule, timer, stage, each player's slot, kind and
+/// costume), then one line per player and tick with the raw
 /// `PADStatus` values the tick input clock injects
 /// (`harness/slippi_to_scenario.py`). `tick` is the scheduler tick that
 /// consumes the pad: Slippi frame + 124.
@@ -889,7 +890,12 @@ pub fn write_retail_inputs(
         })
         .collect();
     let mut header = serde_json::json!({
+        // Game Start's seed, taken at 0x8016E74C before fn_8016E730 creates
+        // the Ground and Players (`make_boundary.py --game-start-seed`), and
+        // the same seed after the setup's draws.
+        "game_start_seed": replay.start.random_seed,
         "boundary_seed": scenario.seed,
+        "spawn": scenario.spawn_name(),
         "all_characters_unlocked": scenario.all_characters_unlocked,
         "time_limit": scenario.time_limit,
         "stage": scenario.stage,

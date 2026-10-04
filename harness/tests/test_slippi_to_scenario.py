@@ -51,12 +51,13 @@ def test_the_boundary_must_be_the_replays_match():
         s2s.check_setup(header, {**cold, "fighters": other_ports}, "b")
 
 
-def write_boundary(scenarios, name, stage, codes, seed=7):
+def write_boundary(scenarios, name, stage, codes, seed=7, game_start_seed=None):
     """A make_boundary.py start scene and cold twin, as that command writes them."""
     players, slots = ["Falco", "Marth"], [0, 3]
-    (scenarios / f"{name}.toml").write_text(mb.start_scenario(name, stage, players, 4, codes, slots))
+    (scenarios / f"{name}.toml").write_text(
+        mb.start_scenario(name, stage, players, 4, codes, slots, game_start_seed))
     (scenarios / f"{name}_cold.toml").write_text(
-        mb.cold_scenario(name, stage, players, 4, seed, [3, 4], "retail", codes, slots, 8))
+        mb.cold_scenario(name, stage, players, 4, seed, [3, 4], "retail", codes, slots, 8, game_start_seed))
 
 
 def write_inputs(path, stage, **header):
@@ -102,3 +103,41 @@ def test_a_boundary_without_the_replays_stadium_codes_is_refused(scenarios):
     write_boundary(scenarios, "start_frozen", "PokemonStadium", ["ucf-0.8", "ps-preload", "ps-frozen"])
     with pytest.raises(SystemExit, match="without --gecko ps-frozen"):
         s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_ps", "--boundary", "start_frozen"])
+
+
+@pytest.mark.parametrize("stage", s2s.CREATION_DRAW_STAGES)
+def test_a_stage_that_keeps_its_creation_draws_needs_the_replays_boundary(scenarios, stage):
+    inputs = scenarios / "inputs.jsonl"
+    write_inputs(inputs, stage, game_start_seed=41)   # boundary_seed 99
+    args = [str(inputs), "--name", "slp", "--boundary"]
+    # The boundary's own creation: refused, with the command that makes one.
+    write_boundary(scenarios, "start_own", stage, ["ucf-0.8"])
+    with pytest.raises(SystemExit, match="--game-start-seed 41"):
+        s2s.main([*args, "start_own"])
+    # Another replay's boundary.
+    write_boundary(scenarios, "start_other", stage, ["ucf-0.8"], seed=99, game_start_seed=40)
+    with pytest.raises(SystemExit, match="another replay's boundary"):
+        s2s.main([*args, "start_other"])
+    # The replay's seed, but retail did not reach the seed the port's setup draws do.
+    write_boundary(scenarios, "start_short", stage, ["ucf-0.8"], seed=98, game_start_seed=41)
+    with pytest.raises(SystemExit, match="retail reached seed 98"):
+        s2s.main([*args, "start_short", "--foreign-creation"])
+    assert not (scenarios / "slp.toml").exists()
+    # The replay's boundary: both scenarios name the Game Start seed.
+    write_boundary(scenarios, "start_replay", stage, ["ucf-0.8"], seed=99, game_start_seed=41)
+    s2s.main([*args, "start_replay"])
+    retail = tomllib.loads((scenarios / "slp.toml").read_text())
+    twin = tomllib.loads((scenarios / "slp_cold.toml").read_text())
+    assert retail["game_start_seed"] == twin["game_start_seed"] == 41
+    assert (retail["boundary_seed"], twin["boundary_seed"], twin["seed"]) == (99, 99, 99)
+    # A foreign boundary on request: retail plays the pads, not the replay's draws.
+    s2s.main([*args, "start_own", "--foreign-creation"])
+    twin = tomllib.loads((scenarios / "slp_cold.toml").read_text())
+    assert "game_start_seed" not in twin and (twin["seed"], twin["boundary_seed"]) == (7, 99)
+
+
+def test_other_stages_take_any_boundary_of_the_setup(scenarios):
+    write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "Battlefield", game_start_seed=41)
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp", "--boundary", "start_bf"])
+    assert "game_start_seed" not in tomllib.loads((scenarios / "slp.toml").read_text())
