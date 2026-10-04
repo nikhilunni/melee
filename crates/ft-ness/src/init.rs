@@ -101,6 +101,9 @@ impl CharacterCallbacks for Ness {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+    /// None of ftNs_Init_MotionStateTable's 36 rows (0x803CC650) sets x9_b1
+    /// (bit 22 of the word at +8): no Ness row starts the KO countdown.
+    const KO_COUNTDOWN_ROWS: &'static [u16] = &[];
     /// ftData_SpecialN/S/Hi/Lw[Ness] and the aerial tables.
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
         match slot {
