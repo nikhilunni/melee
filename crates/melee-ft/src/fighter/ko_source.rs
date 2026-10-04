@@ -67,10 +67,11 @@ impl KoSource {
     }
 }
 
-/// MotionState.x9_b1 (bit 22 of the packed move word, ftData_MotionStateList):
-/// the common motions that start the countdown. Of the character tables
-/// only Mr. Game & Watch's, Donkey Kong's, Kirby's and Sandbag's set the
-/// bit; none of them is ported.
+/// MotionState.x9_b1 (bit 22 of the word at +8): the 28 common motions
+/// that start the countdown, read from the retail table
+/// (ftData_MotionStateList, 0x803C2800). The character tables' rows are
+/// not modelled: in the decomp only Mr. Game & Watch's, Donkey Kong's,
+/// Kirby's and Sandbag's spell the bit, none of them ported.
 pub fn starts_countdown(state: S) -> bool {
     matches!(
         state,
@@ -84,6 +85,11 @@ pub fn starts_countdown(state: S) -> bool {
             | S::SquatWait
             | S::Landing
             | S::LandingFallSpecial
+            | S::LandingAirN
+            | S::LandingAirF
+            | S::LandingAirB
+            | S::LandingAirHi
+            | S::LandingAirLw
             | S::GuardOn
             | S::CaptureWaitHi
             | S::CaptureWaitLw
@@ -92,6 +98,7 @@ pub fn starts_countdown(state: S) -> bool {
             | S::CaptureDamageKoopaAir
             | S::CaptureWaitKirby
             | S::BarrelWait
+            | S::HammerWait
             | S::HammerLanding
             | S::CaptureWaitMasterHand
             | S::CaptureWaitCrazyHand
