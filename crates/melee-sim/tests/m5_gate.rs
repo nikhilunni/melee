@@ -3291,7 +3291,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 501] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 509] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4078,6 +4078,18 @@ const CORPUS_V3_MATCHES: [(&str, usize); 501] = [
     ("corpus_v3_fd_gameandwatch_fox4_ef89b3e70_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_edafcfddf_p1", 4626),
     ("corpus_v3_fd_gameandwatch_fox4_e12d92447_p1", 5916),
+    // A laser that reaches Mr. Game & Watch's shield does not bounce off it:
+    // ftColl_8007925C's lbColl_80007DD8 takes ftCommon_8007F804 (ftcoll.c:2271),
+    // so the flat fighter's bubble keeps its size in the deflection test and
+    // the laser is destroyed. Then seven whole random matches.
+    ("corpus_v3_fd_gameandwatch_fox4_e24fdee66_p2", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_e0fcbde24_p0", 5010),
+    ("corpus_v3_fd_gameandwatch_fox4_e98e8f6a6_p0", 5035),
+    ("corpus_v3_fd_gameandwatch_fox4_ef17f3433_p0", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_ebac668de_p0", 5092),
+    ("corpus_v3_fd_gameandwatch_fox4_e7254fba4_p0", 6001),
+    ("corpus_v3_fd_gameandwatch_fox4_ed486ea18_p1", 4880),
+    ("corpus_v3_fd_gameandwatch_fox4_e3e98e6dc_p0", 4673),
 ];
 
 #[test]

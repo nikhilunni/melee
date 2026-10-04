@@ -1665,7 +1665,13 @@ impl FighterCore {
             item.pending_shield_deflection = if item.hit_flags[id].shield_bounce {
                 let volume = &self.shield.hit;
                 let joint = self.animation.parts[volume.bone].joint;
-                let matrix = *self.skeleton.get_mtx(joint);
+                // ftcoll.c:2271: lbColl_80007DD8 takes ftCommon_8007F804, so
+                // a flat fighter's bubble keeps its size (PSMTXConcat of
+                // x44_mtx and the bone).
+                let matrix = super::caches::unflattened(
+                    self.combat.flat_matrix.as_ref(),
+                    self.skeleton.get_mtx(joint),
+                );
                 Some(melee_lb::shield::deflection(
                     volume.position,
                     &matrix,

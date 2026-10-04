@@ -40,6 +40,9 @@ file (no `EfGwData.dat`).
   loops on `cmd_vars[2]`, a B press on `cmd_vars[1]`, up to five foods.
   The food (`it-gamewatch::chef`) flies on its own attribute entry, turns
   back off walls and lies spent after a floor, a hit or its lifetime.
+  Its capsule is the command size, not size / scl: `it_8027CE64` runs
+  `it_80274594` after the launch has made the hitbox (retail x1C 1.953 at
+  scl 1.5), found by an explorer match where a food grazed an airborne Fox.
 - **Judgment** (355..372): the entry draws the face before the motion
   change (`ftGw_SpecialS_GetRandomInt`: the enabled faces minus the last
   two), so it is deferred to `Fighter::finish_input`
