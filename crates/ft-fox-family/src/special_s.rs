@@ -534,6 +534,11 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
     }
 }
 
+/// FtMoveId_SpecialS: the move id byte of every Illusion row in
+/// ftFx_Init_MotionStateTable and ftFc_Init_MotionStateTable (read from
+/// the DOL), which Fighter.x2073 holds during them.
+const ILLUSION_MOVE_ID: u32 = 19;
+
 pub fn item_owner<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> melee_it::ItemOwner {
     let mut owner = crate::special_n::item_owner::<C>(f, assets);
     let action = f.motion_state.action.0;
@@ -548,12 +553,20 @@ pub fn item_owner<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> mele
         || action == CommonMotionState::DeadLeft as u16
         || action == CommonMotionState::DeadRight as u16;
     let create_secondary = f.commands.variables[2] == 2;
+    let fatal_action = f.fatal_action.0;
     let scratch = f.character.get_mut::<C>().special_side();
-    let readable = in_illusion || (dead && scratch.ghosts_recorded);
-    owner.illusion = readable.then_some(melee_it::IllusionOwner {
+    let died_in_illusion = dead && ILLUSION.contains(&fatal_action) && scratch.ghosts_recorded;
+    let mut positions = scratch.ghost_positions;
+    if died_in_illusion {
+        // The words ftCo_800D331C left over the last sample: the fatal
+        // motion (fp+236C) and its move id (x2073 at fp+2370).
+        positions[3].y = f32::from_bits(u32::from(fatal_action));
+        positions[3].z = f32::from_bits(ILLUSION_MOVE_ID);
+    }
+    owner.illusion = (in_illusion || died_in_illusion).then_some(melee_it::IllusionOwner {
         in_illusion,
         create_secondary,
-        positions: scratch.ghost_positions,
+        positions,
         rotations: scratch.ghost_rotations,
     });
     owner

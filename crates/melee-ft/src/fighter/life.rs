@@ -689,6 +689,8 @@ impl Fighter {
     /// DestroyItemInline releases the hand); x197C/x1980, metal and the
     /// x2226_b4 hat are not part of the port yet.
     pub(super) fn release_for_death(&mut self, assets: &FighterAssets) {
+        // 0x800D34B4: mv x6C takes the motion the death interrupts.
+        self.core.fatal_action = self.core.motion_state.action;
         if let Some(death) = self.character.table().death {
             death(self);
         }

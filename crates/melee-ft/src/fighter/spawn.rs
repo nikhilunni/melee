@@ -1244,6 +1244,7 @@ impl FighterCore {
             quake_request: None,
             fell: false,
             fall_credit: None,
+            fatal_action: super::ActionId(0),
             released_link: None,
             held_item: None,
             grafted_part: None,

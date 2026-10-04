@@ -96,28 +96,17 @@ fn travel_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> 
 fn illusion(owner: Option<&ItemOwner>) -> Option<IllusionOwner> {
     owner.and_then(|owner| owner.illusion)
 }
-/// A ghost's physics callback reads the owner's scratch whatever the
-/// owner's motion (0x8029D578 tests only the owner pointer). After a death
-/// the fourth sample, the second ghost's, lies under the Dead motion's own
-/// words (fp+236C/2370, ftCo_800D331C at 0x800D34B8).
-fn second_sample(owner: &IllusionOwner) -> usize {
-    if !owner.in_illusion {
-        unimplemented!(
-            "itFoxillusion_Phys: the second ghost reads ghostEffectPos[3] under a Dead motion's x6C/x70"
-        );
-    }
-    3
-}
-/// itFoxillusion_Phys: the primary article follows history entry one.
+/// itFoxillusion_Phys: the primary article follows history entry one. The
+/// callback reads the owner's scratch whatever the owner's motion
+/// (0x8029D578 tests only the owner pointer).
 fn travel_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     if let Some(owner) = illusion(ctx.owner) {
         item.position = owner.positions[1];
         item.rotation.x = owner.rotations[1];
         if let ItemScratch::Afterimage(state) = &mut item.scratch {
             if state.secondary_visible {
-                let sample = second_sample(&owner);
-                state.secondary_position = owner.positions[sample];
-                state.secondary_rotation.x = owner.rotations[sample];
+                state.secondary_position = owner.positions[3];
+                state.secondary_rotation.x = owner.rotations[3];
             }
         }
     }
@@ -140,7 +129,7 @@ fn end_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
         (&mut item.scratch, illusion(ctx.owner))
     {
         if state.secondary_visible {
-            state.secondary_position = owner.positions[second_sample(&owner)];
+            state.secondary_position = owner.positions[3];
         }
     }
 }

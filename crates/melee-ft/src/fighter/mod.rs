@@ -1048,6 +1048,9 @@ pub struct FighterCore {
     /// With `fell`: the player ftCo_800D34E0 credits with the KO
     /// (Player_UpdateKOsBySlot), for the scene's KO counts.
     pub fall_credit: Option<u8>,
+    /// The motion a death interrupted, which ftCo_800D331C (0x800D34B4)
+    /// writes into the motion scratch at fp+236C before the Dead entry.
+    pub fatal_action: ActionId,
     /// A grab link this fighter dropped by dying (ftCo_800DD100); the scene
     /// releases the partner.
     pub released_link: Option<grab::GrabLink>,
