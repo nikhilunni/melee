@@ -11,13 +11,38 @@ pub struct Ness {
     pub attributes: NessAttributes,
     /// ftNs_Init_OnDeath resets model group 0 to selection 0.
     pub model_group: i32,
+    /// Fighter +2248, u.ns.bat_gobj: the forward smash's bat is out.
+    pub bat: bool,
+    /// take_dmg_cb / death2_cb = ftNs_Init_OnDamage, installed with an
+    /// article until the next motion change.
+    pub damage_callbacks: bool,
 }
 impl Ness {
     pub fn new(attributes: NessAttributes) -> Self {
         Self {
             attributes,
             model_group: 0,
+            bat: false,
+            damage_callbacks: false,
         }
+    }
+}
+
+/// ftNs_Init_OnDamage (801148F8): the yo-yo, PK Flash, PK Thunder and the
+/// bat let go.
+fn damage_callback(f: &mut Fighter) {
+    if !f.character.get::<Ness>().damage_callbacks {
+        return;
+    }
+    crate::attack_s4::remove_bat(f);
+}
+
+/// The Destroyed side of Ness's articles: an article that ends on its own
+/// clears its owner's pointer (itNessbat_ClearOwnerRef ->
+/// ftNs_AttackS4_ItemNessBatSetNULL).
+fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
+    if kind == melee_types::ItemKind::NessBat {
+        f.character.get_mut::<Ness>().bat = false;
     }
 }
 
@@ -41,6 +66,23 @@ impl CharacterCallbacks for Ness {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+    /// ftCo_AttackS4.c decideFighter: ftNs_AttackS4_Enter.
+    const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
+    /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
+        Some(crate::attack_s4::reflector_contact);
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(crate::attack_s4::reflect_hit);
+    /// ftCommon_8007DB58: take_dmg_cb (ftNs_Init_OnDamage) when installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(damage_callback);
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = article_destroyed;
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.damage_callbacks = false;
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Ness
@@ -64,6 +106,7 @@ impl CharacterCallbacks for Ness {
     /// article pointers.
     fn on_reset(&mut self) {
         self.model_group = 0;
+        self.bat = false;
     }
 }
 

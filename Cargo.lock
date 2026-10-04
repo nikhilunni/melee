@@ -678,6 +678,7 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "it-ness",
  "melee-coll",
  "melee-ef",
  "melee-ft",
@@ -1170,6 +1171,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-ness"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-types",
+]
+
+[[package]]
 name = "it-peach"
 version = "0.0.1"
 dependencies = [
@@ -1574,6 +1587,7 @@ dependencies = [
  "it-luigifire",
  "it-mariocape",
  "it-mariofire",
+ "it-ness",
  "it-peach",
  "it-pikachu",
  "it-samus",

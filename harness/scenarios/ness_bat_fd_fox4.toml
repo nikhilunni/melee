@@ -1,0 +1,37 @@
+# NESS forward smash (ftNs_AttackS4_Enter, 80114C24): the bat article in hand
+# for the swing and gone with the animation; a charged swing; a C-stick swing
+# to the left; a swing interrupted by a walk once the script allows it; a
+# dash into a swing.
+name = "ness_bat_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+  { frame = 310, port = 0, buttons = {  }, raw = { substickX = -127 } },
+  { frame = 312, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 470, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 506, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 508, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

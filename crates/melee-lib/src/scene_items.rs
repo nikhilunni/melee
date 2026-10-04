@@ -74,6 +74,7 @@ melee_it::item_kinds! {
         GameWatchJudge: it_gamewatch::Judge,
         GameWatchPanic: it_gamewatch::Panic,
         GameWatchRescue: it_gamewatch::Rescue,
+        NessBat: it_ness::NessBat,
     }
 }
 
@@ -822,6 +823,26 @@ impl Resources {
             )?;
             kinds.push((ItemKind::GameWatchChef, chef));
             visual_archives.push((ItemKind::GameWatchChef, std::sync::Arc::clone(&a)));
+        }
+        // ftNs_Init_OnLoad: ftData.x48_items[9] is the bat.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlNs.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataNess").context("Ness fighter data")?;
+            for (kind, index, states, attributes) in [(
+                ItemKind::NessBat,
+                it_ness::bat::ARTICLE_INDEX,
+                &it_ness::bat::ARTICLE_STATES[..],
+                0,
+            )] {
+                kinds.push((
+                    kind,
+                    ItemAssets::from_fighter_states(&a, root, index, states, attributes)?,
+                ));
+                visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            }
         }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
