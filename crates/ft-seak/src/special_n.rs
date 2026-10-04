@@ -373,6 +373,7 @@ fn spawn_needle(f: &mut Fighter, point: Vec3, launch: Launch) {
         c.physics.position.z + 0.0,
     );
     spawn.spawn_argument = launch.argument();
+    spawn.launch_draws = launch.draws();
     c.item_requests.push(ItemRequest::Spawn(spawn));
 }
 

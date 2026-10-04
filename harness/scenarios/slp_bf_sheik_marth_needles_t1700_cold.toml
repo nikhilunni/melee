@@ -1,0 +1,29 @@
+# The port's side of slp_bf_sheik_marth_needles_t1700: boundary start_bf_slippi74ns_p14_sheik4_marth0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_bf_sheik_marth_needles_t1700_cold"
+expected = "slp_bf_sheik_marth_needles_t1700"
+frames = 1700
+seed = 562095668
+boundary_seed = 2990541540
+stage = "Battlefield"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

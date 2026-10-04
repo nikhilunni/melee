@@ -81,6 +81,15 @@ impl Launch {
             Self::Thrown { airborne: true } => 2,
         }
     }
+    /// The values the launch draws (`SpawnItem::launch_draws`): a drop's
+    /// spin sign and size, terminal velocity and gravity (it_802B00F4,
+    /// 0x802B0180..0x802B01D8); a throw draws nothing.
+    pub const fn draws(self) -> u8 {
+        match self {
+            Self::Dropped => 4,
+            Self::Thrown { .. } => 0,
+        }
+    }
     const fn from_argument(argument: i32) -> Self {
         match argument {
             0 => Self::Thrown { airborne: false },

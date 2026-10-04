@@ -1219,12 +1219,15 @@ pub fn request(
         // The spawner's own set-up after Item_80268B18 (it_802BE2E8,
         // it_802BD4AC's turnip fields before its Item_8026AB54).
         let common = pool.common().clone();
+        // A launch whose draws the spawner reserved (SpawnItem::launch_seed)
+        // makes them from the stream's position at the request.
+        let mut reserved = spawn.launch_seed.map(|seed| gekko_math::HsdRng { seed });
         (SceneItems::logic(spawn.kind).launched)(
             pool.get_mut(id).unwrap(),
             assets,
             &common,
             &spawn,
-            rng,
+            reserved.as_mut().unwrap_or(rng),
         );
         (SceneItems::logic(spawn.kind).spawned_with_map)(
             pool.get_mut(id).unwrap(),

@@ -1014,6 +1014,7 @@ impl Fighter {
                         );
                         let facing = self.core.physics.facing;
                         self.interrupt_actions();
+                        self.core.reserve_item_launch_draws(rng);
                         self.core.start_ledge_cooldown_if_hanging(assets);
                         self.begin_damage_reaction(
                             hit.clone(),
@@ -1051,6 +1052,7 @@ impl Fighter {
                             Some(self.core.physics.facing)
                         } else {
                             self.interrupt_actions();
+                            self.core.reserve_item_launch_draws(rng);
                             self.core.start_ledge_cooldown_if_hanging(assets);
                             None
                         };
@@ -1554,6 +1556,17 @@ impl Fighter {
     }
 }
 impl FighterCore {
+    /// The take-damage hook's articles exist in retail before the reaction
+    /// draws (ftCommon_8007DB58 precedes ftCo_8008DCE0's draw at
+    /// 0x8008E124), while the port creates them after the proc: the draws
+    /// their launch makes leave the stream here, ahead of the reaction's.
+    fn reserve_item_launch_draws(&mut self, rng: &mut gekko_math::HsdRng) {
+        for request in self.item_requests.iter_mut() {
+            if let melee_it::ItemRequest::Spawn(spawn) = request {
+                spawn.reserve_launch_draws(rng);
+            }
+        }
+    }
     /// ftCo_8008E908 (0x8008E908), before the reaction's motion change clears
     /// the flag: a fighter hit out of a ledge state (x221D_b7: CliffCatch,
     /// CliffWait and every ledge option) cannot grab a ledge again for PlCo's

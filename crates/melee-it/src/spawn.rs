@@ -21,8 +21,27 @@ pub struct SpawnItem {
     pub initial_collision: bool,
     pub auxiliary_flags: [u8; 3],
     pub ground_or_air: GroundOrAir,
+    /// How many values the kind's launch draws (its spawner's set-up after
+    /// Item_80268B18). Retail creates the item inside the fighter's
+    /// callback; the port applies the request after the proc, so a spawner
+    /// whose callback is followed by other draws says how many to reserve.
+    pub launch_draws: u8,
+    /// The random stream's position at the request, once reserved
+    /// (`reserve_launch_draws`): the launch draws from there.
+    pub launch_seed: Option<u32>,
 }
 impl SpawnItem {
+    /// Take the launch's draws out of the stream now, where retail made
+    /// them, for the scene to replay when it applies the request.
+    pub fn reserve_launch_draws(&mut self, rng: &mut gekko_math::HsdRng) {
+        if self.launch_draws == 0 || self.launch_seed.is_some() {
+            return;
+        }
+        self.launch_seed = Some(rng.seed);
+        for _ in 0..self.launch_draws {
+            rng.rand();
+        }
+    }
     /// `Item_InitSpawnOnPlaneNoInitialCollision`, it/kinds/inlines.h.
     pub fn held(kind: ItemKind, owner: u8, mut position: Vec3, facing: f32) -> Self {
         position.z = 0.0;
@@ -43,6 +62,8 @@ impl SpawnItem {
             initial_collision: false,
             auxiliary_flags: [0; 3],
             ground_or_air: GroundOrAir::Air,
+            launch_draws: 0,
+            launch_seed: None,
         }
     }
     /// `Item_InitSpawn` (it/kinds/inlines.h), the attached-article spawn:

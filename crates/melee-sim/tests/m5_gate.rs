@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 24] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 25] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2170,6 +2170,10 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 24] = [
     // A Samus Bomb bounces on Randall's cloud (1729): the cloud's speed
     // moves it on the next tick only (Item_802697D4 clears x64, 0x80269954).
     ("slp_ys_samus_falco_t6900_cold", 6900),
+    // Sheik, hit while charging, drops her needle in the take-damage hook
+    // (ftCommon_8007DB58): its four launch draws (it_802B00F4) precede the
+    // reaction's (0x8008E124), so it falls with retail's gravity (1611).
+    ("slp_bf_sheik_marth_needles_t1700_cold", 1700),
 ];
 
 #[test]

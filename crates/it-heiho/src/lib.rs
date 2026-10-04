@@ -185,6 +185,8 @@ pub fn spawn(position: Vec3, facing: f32) -> SpawnItem {
         auxiliary_flags: [0; 3],
         // Item_80268B18.
         ground_or_air: GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
     }
 }
 
