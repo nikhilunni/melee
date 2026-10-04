@@ -94,6 +94,12 @@ impl FighterCore {
     /// detection while it is set, and a CPU does not target the fighter
     /// (ftCo_800A1C44).
     pub fn out_of_play(&self) -> bool {
+        // The platform's scratch outlives the platform: a fighter that
+        // leaves it by a special keeps `state_data`, so the motion decides.
+        let on_platform = matches!(
+            self.motion_state.id,
+            S::Rebirth | S::RebirthWait
+        );
         matches!(
             self.state_data,
             MotionData::Life(
@@ -101,10 +107,8 @@ impl FighterCore {
                     | LifeState::StarKo { .. }
                     | LifeState::ScreenKo(_)
                     | LifeState::AwaitingRespawn
-                    | LifeState::Revival { .. }
-                    | LifeState::PlatformWait { .. }
             ) | MotionData::Entry(_)
-        )
+        ) || on_platform
     }
 }
 impl LifeState {
