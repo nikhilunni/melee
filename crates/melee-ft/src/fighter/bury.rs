@@ -91,9 +91,11 @@ const BURY_FLAGS: MotionEntryFlags =
 
 impl Fighter {
     /// ftCo_800C0CB8 (800C0CB8): a Ground-element hit buries a grounded
-    /// fighter (x2227_b6, set by the death states, never holds here).
+    /// fighter that is not frozen (x2227_b6).
     pub(super) fn bury_hit(&self, element: HitElement) -> bool {
-        element == HitElement::Ground && self.core.physics.ground_or_air == GroundOrAir::Ground
+        element == HitElement::Ground
+            && self.core.physics.ground_or_air == GroundOrAir::Ground
+            && !self.core.status.frozen
     }
 
     /// ftCo_800C0D0C (800C0D0C): the ordinary damage entry

@@ -1977,6 +1977,31 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_DamageIce, DamageIceJump = 325, 326 (ftCo_DamageIce.c). The
+    // frozen row has no animation; the hop out holds Fall's first frame.
+    rows[S::DamageIce as usize] = MotionRow {
+        action: ActionId(325),
+        id: S::DamageIce,
+        animation: -1,
+        anim: crate::fighter::frozen::frozen_anim,
+        iasa: crate::fighter::frozen::no_input,
+        physics: crate::fighter::frozen::frozen_physics,
+        collision: crate::fighter::frozen::frozen_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::DamageIceJump as usize] = MotionRow {
+        action: ActionId(326),
+        id: S::DamageIceJump,
+        animation: 20,
+        anim: crate::fighter::frozen::frozen_jump_anim,
+        iasa: crate::fighter::frozen::no_input,
+        // ft_80084EEC; ft_800831CC(gobj, ftCo_80096CC8, ft_80082B1C).
+        physics: callbacks::physics::air_friction,
+        collision: callbacks::collision::fall,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     rows[S::CliffAttackQuick as usize] = MotionRow {
         action: ActionId(S::CliffAttackQuick as u16),
         id: S::CliffAttackQuick,

@@ -1486,7 +1486,12 @@ impl FighterCore {
         }
         let animation_id = row.animation;
         self.motion_state = row;
-        if animation_id >= 0 {
+        if self.status.frozen {
+            // ftCo_8009E7B4 (ftdynamics.c:610-620, 689-697): frozen
+            // (x2227_b6), no dynamic bone goes to the solver, with or
+            // without an animation.
+            self.release_dynamics(assets);
+        } else if animation_id >= 0 {
             // ftCo_8009E7B4 (ftdynamics.c:617-625): while the stage wind
             // blows, Marth and Roy leave every dynamic bone to the solver.
             let windy = super::assets::CommonBehavior::for_kind(assets.kind).stage_wind_dynamics

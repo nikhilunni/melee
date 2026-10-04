@@ -325,8 +325,13 @@ impl Fighter {
                 || self.core.physics.knockback_velocity.y > assets.life.top_knockback_threshold;
             if counts {
                 // Player_GetMoreFlagsBit5 (plain DeadUp) and Camera_8003010C (the fixed
-                // camera) are both off in a Vs match; DamageIce victims stop in damage.rs.
+                // camera) are both off in a Vs match.
                 let roll = rng.randi(100) + 1;
+                if self.core.motion_state.id == S::DamageIce {
+                    unimplemented!(
+                        "ft_0D31.c:61-67: a frozen fighter leaving the top (ftCo_800D47B8 / ftCo_800D41C4, DeadUpFallIce / DeadUpStarIce)"
+                    );
+                }
                 return if assets.life.screen_ko.threshold >= roll {
                     self.enter_screen_ko(assets)
                 } else {

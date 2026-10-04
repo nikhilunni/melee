@@ -3182,7 +3182,7 @@ fn dispatch_fighter(
         }
         FighterProc::Grab => f.proc_grab(),
         FighterProc::HitDetection => f.proc_hit_detection(),
-        FighterProc::ProcessHit => f.proc_process_hit(assets, rng),
+        FighterProc::ProcessHit => f.proc_process_hit_on_map(assets, rng, map),
         FighterProc::Dynamics => f.proc_dynamics_with_forces(assets, map, radial_forces.fields()),
         FighterProc::Camera => f.proc_camera_with_map(assets, &scene_assets.stage_camera, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),

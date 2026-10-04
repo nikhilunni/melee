@@ -207,6 +207,10 @@ impl FighterCore {
             // mv.co.bury.coll_box.top (+2344); BuryJump writes only +2340.
             MotionData::Bury(bury) => bury.collision_box.top,
             MotionData::BuryJump { retained_word, .. } => *retained_word,
+            // mv.co.damageice.rot_speed (+2344); DamageIceJump writes only
+            // +2340.
+            MotionData::Frozen(frozen) => frozen.spin,
+            MotionData::FrozenJump { retained_word, .. } => *retained_word,
             // mv.co.cargokneebend.x4 (the ftCo_JumpInput) and
             // mv.co.jump.x4 in the carry's jump.
             MotionData::Cargo(super::cargo::CargoState::KneeBend { input, .. }) => {

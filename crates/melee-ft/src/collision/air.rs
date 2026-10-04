@@ -129,6 +129,27 @@ pub fn collide_box(
     landed
 }
 
+/// ft_80082638 (80082638): an airborne pass with a fixed box that stays
+/// airborne (mpColl_80047A08); true when it touches a floor
+/// (Collide_FloorMask). The item landing (ft_80081A00) is not modelled.
+pub fn collide_stay_box(
+    state: &mut FighterPhysics,
+    environment: &mut EnvironmentCollision,
+    map: &mut CollMap,
+    tree: &mut JObjTree,
+    root: JObjId,
+    ecb: FtCollisionBox,
+) -> bool {
+    let ecb = facing_box(ecb, state.facing);
+    let cd = &mut environment.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = state.position;
+    map.air_collide_stay_box(cd, &ecb);
+    state.position = cd.cur_pos;
+    tree.set_translate(root, &state.position);
+    cd.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0
+}
+
 /// ft_8008239C (8008239C): an airborne pass with a fixed box that, when
 /// `can_grab_ledge` (no ledge cooldown), catches ledges on the `direction`
 /// side (mpColl_800475F4); otherwise mpColl_8004730C. The item landing

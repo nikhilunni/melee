@@ -31,6 +31,7 @@ pub mod entry;
 pub mod escape;
 pub mod fall;
 pub mod fly_reflect;
+pub mod frozen;
 pub mod grab;
 pub mod grab_damage;
 pub mod grab_escape;
@@ -861,6 +862,11 @@ pub struct Status {
     pub no_hit_reaction: bool,
     /// x2224_b4: buried; Fighter_procUpdate skips the stage's wind.
     pub buried: bool,
+    /// x2227_b6: frozen in ice (ftCo_DamageIce); every dynamic bone follows
+    /// the animation (ftCo_8009E7B4) and a Ground hit does not bury. No
+    /// motion change clears it: thawing, shattering and a take-damage
+    /// interrupt do.
+    pub frozen: bool,
     pub interaction: Interaction,
     /// dmg.x18ac_time_since_hit (+18AC), reset -1.
     pub time_since_hit: i32,
@@ -907,6 +913,7 @@ impl Status {
             ignore_fighter_nudge: false,
             no_hit_reaction: false,
             buried: false,
+            frozen: false,
             interaction: Interaction::Idle,
             time_since_hit: -1,
             time_since_smash: -1.0,
@@ -1291,6 +1298,14 @@ pub enum MotionData {
     /// is still the buried collision box's top.
     BuryJump {
         frames: f32,
+        retained_word: f32,
+    },
+    /// DamageIce (mv.co.damageice and the grab timer).
+    Frozen(frozen::FrozenState),
+    /// mv.co.damageicejump.escape_timer: frames of DamageIceJump left; mv+4
+    /// is still the block's spin.
+    FrozenJump {
+        frames_left: f32,
         retained_word: f32,
     },
     /// The cargo carrier's rows with scratch of their own.

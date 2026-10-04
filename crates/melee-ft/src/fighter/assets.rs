@@ -62,6 +62,10 @@ pub struct CommonBehavior {
     /// ftCo_8009E614 / ftCo_8009E7B4 (ftdynamics.c:555-583, 617-625): Marth
     /// and Roy hand every dynamic bone to the solver while stage wind blows.
     pub stage_wind_dynamics: bool,
+    /// ftCo_8009E140 / ftCo_8009E7B4 (ftdynamics.c:448-461, 610-625):
+    /// Jigglypuff freezing returns only her first dynamic set to the
+    /// animation; everyone else returns every set.
+    pub frozen_first_dynamics_only: bool,
     /// ftData_OnItemPickupExt / OnItemDropExt: the x8B0 hand-pose slots the
     /// kind's Fighter_OnItemPickup call names. None: not ported.
     pub item_hand: Option<ItemHandSlots>,
@@ -122,6 +126,7 @@ impl CommonBehavior {
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
             stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),
+            frozen_first_dynamics_only: matches!(kind, FighterKind::Purin),
             fixed_shield_size: matches!(kind, FighterKind::Yoshi),
             cargo_carry: matches!(kind, FighterKind::Donkey),
             item_hand: match kind {
@@ -197,6 +202,8 @@ pub struct FighterAssets {
     pub cargo: super::cargo::Parameters,
     /// PlCo +5F4..+620: ftCo_Bury.c.
     pub bury: super::bury::Parameters,
+    /// PlCo +714 and +77C..+7A4: ftCo_DamageIce.c.
+    pub frozen: super::frozen::Parameters,
     pub smash_sounds: Vec<u32>,
     /// Authored AJ availability for high, high-mid, low-mid and low forward smash.
     pub forward_smash_variants: [bool; 4],
@@ -499,6 +506,7 @@ impl FighterAssets {
             grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
             cargo: super::cargo::Parameters::read(common, common_data)?,
             bury: super::bury::Parameters::read(common, common_data)?,
+            frozen: super::frozen::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,

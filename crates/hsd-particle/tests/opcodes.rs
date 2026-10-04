@@ -297,6 +297,31 @@ fn random_color_uses_signed_deltas_clamps_and_draws_four_times() {
 }
 
 #[test]
+fn stepped_dual_color_shares_one_draw_for_rgb_and_quantizes_alpha() {
+    // E9: flags (R, B, A, both tracks), 3 steps, deltas for R, B and A.
+    let mut p = particle(vec![0xe9, 0x3d, 3, 10, 0x80, 4, 1]);
+    p.primary.target = [100, 7, 250, 20];
+    p.environment.target = [0, 7, 5, 200];
+    let mut rng = HsdRng::new(0x12345678);
+    let mut reference = rng;
+    let scale = ((4.0 * reference.randf()) as i32) as f32 / 3.0;
+    let alpha = 8.0 * ((4.0 * reference.randf()) as i32) as f32 / 3.0;
+    let offsets = [scale * 20.0, 0.0, scale * -256.0, alpha];
+    let mut log = DrawLog::default();
+    p.update::<common::RetailTrig>(&mut rng, &mut log).unwrap();
+    for (track, start) in [(&p.primary, [100, 7, 250, 20]), (&p.environment, [0, 7, 5, 200])] {
+        let expected: Vec<u8> = start
+            .iter()
+            .zip(offsets)
+            .map(|(&v, o)| (v as f32 + o).clamp(0.0, 255.0) as u8)
+            .collect();
+        assert_eq!(track.current.to_vec(), expected);
+    }
+    assert_eq!(log.0, [0x8039_BF98, 0x8039_C270]);
+    assert_eq!(rng.seed, reference.seed);
+}
+
+#[test]
 fn random_texture_pose_and_explicit_palette() {
     let mut p = particle(vec![0xbc, 2, 0, 0xe3, 7, 1]);
     p.texture_images = vec![false, false, true].into();
@@ -403,7 +428,7 @@ fn unported_opcodes_and_malformed_programs_fail_explicitly() {
     let supported = [
         0xa0, 0xa1, 0xa2, 0xa3, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xab, 0xac, 0xad, 0xae, 0xaf, 0xb0,
         0xb1, 0xb3, 0xb6, 0xb8, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xe0, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
-        0xe8, 0xed, 0xef, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+        0xe8, 0xe9, 0xed, 0xef, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
     ];
     for opcode in 0xa0..=0xff {
         if supported.contains(&opcode) || (0xc0..0xe0).contains(&opcode) {

@@ -963,6 +963,9 @@ impl Fighter {
                 if let Some(hit_taken) = self.character.table().hit_taken {
                     hit_taken(self);
                 }
+                // ftCo_DamageIce_OnHit2, the frozen state's own.
+                self.core
+                    .frozen_hit_taken(hit.descriptor.element, assets);
             }
             if self.core.motion_state.id == S::YoshiEgg && hit.knockback != 0.0 {
                 // take_dmg_2_cb = ftCo_800BC3D0 sets x1828 = 4, which no
@@ -1015,6 +1018,9 @@ impl Fighter {
                     // is blocked, the ordinary reaction facing as before and
                     // ftCo_800C3598 at ret_A8C.
                     let knockback = self.core.modified_knockback(hit.knockback, assets);
+                    if self.core.motion_state.id == S::DamageIce {
+                        unimplemented!("ftCo_Damage.c:847-853: a cape on a frozen fighter");
+                    }
                     if self.cape_turn_blocked() {
                         assert!(
                             self.core.combat.grab.is_none(),
@@ -1039,7 +1045,15 @@ impl Fighter {
                     self.core.cape_turn(&hit, knockback, assets);
                 } else {
                     let down = self.core.down_damage_state(hit.percent_damage, assets);
-                    if down.is_none()
+                    if let Some((timer, mash)) = self.core.frozen_timer() {
+                        // ftCo_Damage.c:953-955: a frozen fighter (never
+                        // prone, never buried) is launched in DamageIce
+                        // keeping its facing, then frozen again.
+                        let facing = Some(self.core.physics.facing);
+                        let frozen = Some(S::DamageIce);
+                        self.begin_damage_reaction(hit, frozen, facing, None, false, assets, rng)?;
+                        self.refreeze(timer, mash, assets, rng)?;
+                    } else if down.is_none()
                         && matches!(
                             element,
                             melee_types::HitElement::Nap | melee_types::HitElement::Sleep
@@ -1193,6 +1207,10 @@ impl Fighter {
         if let Some(take_damage) = self.character.table().take_damage {
             take_damage(self);
         }
+        // ftCo_DamageIce_OnHit (80090B48), DamageIce's take_dmg_cb.
+        if self.core.motion_state.id == S::DamageIce {
+            self.core.status.frozen = false;
+        }
     }
     /// ftCo_8008DCE0 (8008DCE0): launch and enter the strength/height reaction.
     /// `percent_pending`: the damage went to x1838_percentTemp
@@ -1210,6 +1228,7 @@ impl Fighter {
         rng: &mut gekko_math::HsdRng,
     ) -> Result<i32> {
         hit.knockback = self.core.modified_knockback(hit.knockback, assets);
+        let element = hit.descriptor.element;
         let (state, stun) =
             self.core
                 .prepare_damage_reaction(&hit, forced_motion, percent_pending, assets, rng);
@@ -1262,6 +1281,20 @@ impl Fighter {
         }
         // ftCo_8008DCE0 block_83: AFTER initial animation and reaction setup.
         (self.character.table().knockback_enter)(self, assets);
+        // ftCo_Damage.c:530-538: an Ice hit at level 2 or 3 freezes a
+        // victim that is not already frozen.
+        let base_level = assets
+            .damage
+            .reaction_thresholds
+            .iter()
+            .position(|&t| stun < t)
+            .unwrap_or(3);
+        if self.freezes(element, base_level) {
+            if percent_pending {
+                unimplemented!("ftCo_DamageIce_Init: frozen by a throw release (ftCo_800DDDE4)");
+            }
+            self.enter_frozen(assets, rng)?;
+        }
         Ok(result)
     }
     /// ftCo_Damage_Anim (8008F7F0) -> ftCo_8008F744 (8008F744).
@@ -2001,13 +2034,11 @@ fn detect_eligible_hit(
     }
     if let Some((contact, height, capsule_status)) = contact {
         // Retail's hit path reads the victim's state only for DamageIce
-        // (ftcoll.c:199/576/1155); crouch cancel (ftCo_Damage.c:124-127) and the
-        // airborne launch states (ftCo_Damage.c:543-558) are applied by the
-        // reaction in prepare_damage_reaction. Every other grounded victim state
-        // takes the ordinary path.
-        if victim.motion_state.id == S::DamageIce {
-            unimplemented!("ftcoll.c:199: DamageIce victim");
-        }
+        // (ftcoll.c:199/576/1155, in received_damage_scale); crouch cancel
+        // (ftCo_Damage.c:124-127) and the airborne launch states
+        // (ftCo_Damage.c:543-558) are applied by the reaction in
+        // prepare_damage_reaction. Every other grounded victim state takes
+        // the ordinary path.
         // ftColl_80076ED8: x1988, x198C, x221D_b6 or the capsule's own state
         // (hit1->state) keep the hit out of the damage and phantom logs.
         let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible
@@ -2232,11 +2263,10 @@ impl FighterCore {
             .iter()
             .position(|&t| stun < t)
             .unwrap_or(3);
-        // ftCo_Damage.c:331, 430, 536: a strong Ice hit bends the angle,
-        // plays DamageIce and freezes the victim (ftCo_DamageIce_Init).
-        if base_level >= 2 && hit.descriptor.element == melee_types::HitElement::Ice {
-            unimplemented!("ftCo_8008DCE0: an Ice hit at knockback level {base_level} (DamageIce)");
-        }
+        // ftCo_Damage.c:328-334, 427-433: an Ice hit at level 2 or 3 bends
+        // the angle upward and plays DamageFlyTop; begin_damage_reaction
+        // then freezes the victim (ftCo_DamageIce_Init).
+        let freezing = base_level >= 2 && hit.descriptor.element == melee_types::HitElement::Ice;
         // ftCo_8008DCE0 block_9: an explicit motion forces level 3, not the angle.
         let level = if forced_motion.is_some() {
             3
@@ -2270,6 +2300,11 @@ impl FighterCore {
             hit.knockback,
             self.physics.ground_or_air,
         );
+        let angle = if freezing {
+            ice_launch_angle(angle)
+        } else {
+            angle
+        };
         if level == 3
             && angle > assets.damage.top_angle_range[0]
             && angle < assets.damage.top_angle_range[1]
@@ -2330,6 +2365,11 @@ impl FighterCore {
         // Retail block_36 overrides the motion only after the fly-roll draw.
         if let Some(forced_motion) = forced_motion {
             state = forced_motion;
+        }
+        // block_38: every freezing launch plays DamageFlyTop, at level 2
+        // too; a hit on a frozen fighter keeps its forced DamageIce.
+        if freezing && state != S::DamageIce {
+            state = S::DamageFlyTop;
         }
         // ftCo_Damage.c block_70: queue the hit sound and voice set by scaled
         // knockback (var_r27 is only cleared on the unported steep-floor path).
@@ -2520,6 +2560,23 @@ impl FighterCore {
         self.input.horizontal.tilt = 254;
         self.input.vertical.tilt = 254;
         Ok(fctiwz(hit.descriptor.damage).max(1))
+    }
+}
+
+/// calcAngle, inlined in ftCo_8008DCE0 (8008DE38..8008DE98): a freezing
+/// launch's direction is the sum of its unit vector and straight up.
+fn ice_launch_angle(angle: f32) -> f32 {
+    const UP: f32 = std::f32::consts::FRAC_PI_2;
+    /// Below this squared length the two cancel and the launch is level.
+    const MINIMUM_SQUARED_LENGTH: f32 = 0.0001;
+    // Retail evaluates the constant's cosine and sine with its own cosf.
+    let x = cosf(angle) + cosf(UP);
+    let y = sinf(angle) + sinf(UP);
+    // retail 8008DE74 fmuls, 8008DE78 fmadds.
+    if fmadds(x, x, y * y) <= MINIMUM_SQUARED_LENGTH {
+        0.0
+    } else {
+        melee_lb::trigf::atan2f(y, x)
     }
 }
 

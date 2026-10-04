@@ -979,7 +979,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 509] = [
+const MATRIX_WITNESSES: [(&str, usize); 514] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1770,6 +1770,15 @@ const MATRIX_WITNESSES: [(&str, usize); 509] = [
     // Turtle out (the explorer's corpus_v3_fd_gameandwatch_fox4_e17844051_p0
     // situation, which is exact here in isolation).
     ("gamewatch_punish_firefox_bair_fd_fox4", 440),
+    // Frozen (ftCo_DamageIce.c): Judgment 8 freezes Fox standing (the ice
+    // block lands, the timer thaws it, DamageIceJump) and in a full hop;
+    // Fox mashes out early; G&W jabs the block (HitWhileFrozen, the +714
+    // damage and +718 knockback scales) and his torch thaws it (OnHit2).
+    ("gamewatch_judgevar2_fd_fox4", 526),
+    ("gamewatch_ice_air_fd_fox4", 439),
+    ("gamewatch_ice_mashout_fd_fox4", 434),
+    ("gamewatch_ice_hit_fd_fox4", 460),
+    ("gamewatch_ice_firethaw_fd_fox4", 464),
 ];
 
 #[test]
@@ -3613,7 +3622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 524] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 530] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4424,6 +4433,13 @@ const CORPUS_V3_MATCHES: [(&str, usize); 524] = [
     ("corpus_v3_fd_gameandwatch_fox4_e929b49af_p2", 5336),
     ("corpus_v3_fd_gameandwatch_fox4_e52b08364_p2", 4004),
     ("corpus_v3_fd_gameandwatch_fox4_ed7fcdf51_p2", 2550),
+    // Judgment 8 freezing Fox (DamageIce), and a hit on the frozen block.
+    ("corpus_v3_fd_gameandwatch_fox4_e573e2d95_p0", 536),
+    ("corpus_v3_fd_gameandwatch_fox4_ecdf8887e_p1", 270),
+    ("corpus_v3_fd_gameandwatch_fox4_e3e98e6dc_p1", 815),
+    ("corpus_v3_fd_gameandwatch_fox4_e1daf2f01_p1", 312),
+    ("corpus_v3_fd_gameandwatch_fox4_eab94f536_p0", 354),
+    ("corpus_v3_fd_gameandwatch_fox4_e63e1b15d_p0", 2207),
     // Seven more whole random matches from start_fd_gameandwatch_fox4.
     ("corpus_v3_fd_gameandwatch_fox4_ee9675143_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_e2bad8462_p1", 6001),

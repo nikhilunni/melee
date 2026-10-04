@@ -427,10 +427,13 @@ pub(super) fn egg_hit(fighter: &mut FighterCore, hit: &melee_coll::damage::Recei
 impl FighterCore {
     /// dmg.x182c_behavior (Fighter +182C): Fighter_ChangeMotionState resets
     /// it to 1; ftCo_800BBED4 sets the egg's +18. Hit detection multiplies
-    /// every received damage by it (ftColl_800765F0, ftcoll.c:580 / 1158).
+    /// every received damage by it (ftColl_800765F0, ftcoll.c:580 / 1158),
+    /// after PlCo +714 for a DamageIce victim (ftcoll.c:199 / 576 / 1155),
+    /// whose behavior is 1.
     pub(super) fn received_damage_scale(&self) -> f32 {
         match &self.state_data {
             MotionData::YoshiEgg(egg) => egg.parameters.damage_behavior,
+            MotionData::Frozen(frozen) => frozen.damage_scale,
             _ => 1.0,
         }
     }

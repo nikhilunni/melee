@@ -157,6 +157,26 @@ pub enum EffectRequest {
         bone: usize,
         parameter: f32,
     },
+    /// efAsync kind 3, efAsync_Dispatch 0x415 (efasync.c:393-402): the ice
+    /// block around a frozen fighter, efLib_Create_AttachChild(0x25) on the
+    /// live joint with the ASYNC state bit and a uniform scale.
+    IceBlock {
+        bone: usize,
+        scale: f32,
+    },
+    /// efAsync kind 5, efAsync_Dispatch 0x443 (efasync.c:786-799): the ice
+    /// shattering, generator 0x1F1 whose AppSRT carries the joint's world
+    /// position at the flush and a uniform scale.
+    IceShatter {
+        bone: usize,
+        scale: f32,
+    },
+    /// efAsync kind 5 with no joint, 0x406: [`Self::SurfaceRebound`] queued
+    /// for the fighter's flush (a frozen block bouncing off a wall).
+    QueuedRebound {
+        position: Vec3,
+        angle: f32,
+    },
     /// efAsync kind 7 (EF_SPAWN_ATTACH_OFFSET), efAsync_Dispatch 0x446:
     /// efLib_CreateGenerator_AppSRT_SetPos. An empty model follows the bone
     /// at a world-axis offset and carries one AppSRT generator.
@@ -398,6 +418,8 @@ impl EffectRequest {
             | Self::BoneModel { bone, .. }
             | Self::Attached { bone, .. }
             | Self::AttachedParameter { bone, .. }
+            | Self::IceBlock { bone, .. }
+            | Self::IceShatter { bone, .. }
             | Self::SyncAttached { bone, .. }
             | Self::FollowingGenerator { bone, .. }
             | Self::Graphics { bone, .. } => Some(bone),

@@ -91,6 +91,58 @@ impl ColorTrack {
         environment.restart();
         Ok(())
     }
+    /// E9, particle.c:2341-2534 (retail 0x8039BE54..0x8039C3BC): after both
+    /// tracks materialize, a flags byte (bits 0..3 the channels, 0x10 the
+    /// primary track, 0x20 the environment) and a step count. R, G and B
+    /// share one draw, quantized to `steps + 1` levels when steps is
+    /// nonzero; alpha takes its own draw, always quantized.
+    pub(crate) fn random_dual_stepped(
+        primary: &mut Self,
+        environment: &mut Self,
+        pc: &mut Cursor<'_>,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+    ) -> Result<(), Error> {
+        primary.materialize();
+        environment.materialize();
+        let flags = pc.byte()?;
+        let steps = i32::from(pc.byte()?);
+        let tracks = [flags & 0x10 != 0, flags & 0x20 != 0];
+        // retail 0x8039BFC0 fmuls, 0x8039BFCC fctiwz, 0x8039BFEC fdivs.
+        let scale = if steps != 0 {
+            let draw = draws.draw(rng, 0x8039_BF98);
+            fctiwz((steps + 1) as f32 * draw) as f32 / steps as f32
+        } else {
+            draws.draw(rng, 0x8039_BFF4)
+        };
+        let mut apply = |channel: usize, offset: f32| {
+            for (track, enabled) in [&mut *primary, &mut *environment].into_iter().zip(tracks) {
+                if enabled {
+                    // retail 0x8039C048 and siblings: fadds, then the
+                    // clamp to [0, 255] and fctiwz.
+                    let value = f32::from(track.target[channel]) + offset;
+                    track.target[channel] = fctiwz(value.clamp(0.0, 255.0)) as u8;
+                }
+            }
+        };
+        for channel in 0..3 {
+            if flags & (1 << channel) != 0 {
+                let delta = i32::from(pc.byte()? as i8) << 1;
+                // retail 0x8039C028 / C0F8 / C1C8: fmuls.
+                apply(channel, scale * delta as f32);
+            }
+        }
+        if flags & 0x08 != 0 {
+            let draw = draws.draw(rng, 0x8039_C270);
+            let delta = i32::from(pc.byte()? as i8) << 1;
+            let level = fctiwz((steps + 1) as f32 * draw);
+            // retail 0x8039C2EC fmuls, 0x8039C2F0 fdivs.
+            apply(3, delta as f32 * level as f32 / steps as f32);
+        }
+        primary.restart();
+        environment.restart();
+        Ok(())
+    }
     pub(crate) fn random_delta(
         &mut self,
         pc: &mut Cursor<'_>,

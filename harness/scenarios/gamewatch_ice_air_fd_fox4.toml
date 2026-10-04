@@ -1,0 +1,35 @@
+# DamageIce witness: Fox full-hops into Judgment 8 and freezes in the air (self_vel from the launch, InAirUpdate), then the block lands and thaws.
+# melee-sim search: reached [p1.motion_id == JumpF; p1.motion_id == DamageIce] at ticks [343, 359].
+name = "gamewatch_ice_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 439
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 252, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 253, port = 0, buttons = {  }, raw = {  } },
+  { frame = 298, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 299, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 341, port = 1, buttons = {  }, raw = {  } },
+  { frame = 344, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 496, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

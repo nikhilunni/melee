@@ -80,9 +80,41 @@ file (no `EfGwData.dat`).
   (`ftGw_Attack100Start_Enter`): needs items on.
 - `ftGw_SpecialS_GetRandomInt` with no face enabled (retail reads an
   uninitialised result).
-- Strong Ice hits (`ftCo_8008DCE0`, DamageIce) are the shared fail-closed
-  branch Judgment's 8 reaches; `gamewatch_judgevar2_fd_fox4` is recorded
-  and waits for it, as do five explorer matches.
+
+## Frozen (DamageIce, shared)
+
+Judgment 8 is an Ice hit; at knockback level 2 or 3 it freezes the victim
+(`melee-ft::fighter::frozen`, ftCo_DamageIce.c, for any victim):
+- the launch angle is bent upward (calcAngle inlined in ftCo_8008DCE0,
+  8008DE38: the unit vector plus straight up, fmadds) and plays DamageFlyTop;
+  then ftCo_DamageIce_Init: the timer is `x1838_percentTemp * PlCo +790`,
+  the spin is drawn (`HSD_Randf`, fmadds), YRotN moves by co_attrs
+  +154/+150, every dynamic bone returns to the animation (ftCo_8009E140,
+  x2227_b6 keeps it so in ftCo_8009E7B4), one round capsule on XRotN, and
+  a square box of the ice size around XRotN is the ECB (ftCo_800909D0; its
+  first map pass runs after Fighter_ProcessHit returns, which has no map);
+- the ice block is efAsync 0x415 (common model 0x25, AttachChild) and its
+  particles use opcode 0xE9 (stepped dual colour, now in `hsd-particle`);
+- DamageIce: reduced gravity in the air (PlCo +77C), friction on the
+  ground, the timer and mash-out (`ftCommon_GrabMash`, +794/+798); in the
+  air the box never lands before frame 3, so it lands through
+  ft_800824A0; walls and ceilings bounce or shatter it (ftCo_DamageIce_Collide,
+  fnmsubs at 80091804; retail tests the right wall twice, so a left wall
+  takes the ceiling's y adjustment);
+- a hit while frozen (ftCo_8008EC90 -> ftCo_8008DCE0(DamageIce) ->
+  HitWhileFrozen) takes PlCo +714 of the damage and +718 of the
+  knockback; OnHit2 takes `percentTemp * +79C` off the timer (fnmsubs)
+  and fire empties it;
+- the break-out (ftCo_80091854): efAsync 0x443 (generator 0x1F1), the hop
+  (co_attrs +158, stick x * +15C), DamageIceJump for PlCo +7A4 frames.
+
+Witnesses: `gamewatch_judgevar2_fd_fox4` (grounded freeze, landing,
+timer), five explorer matches, `gamewatch_ice_{mashout,hit,firethaw,air}_fd_fox4`.
+Not reached (explorer probes over 700 seeds found none): the bounce and
+shatter (Final Destination's walls are under the ledges), a grounded block
+leaving its floor (hits on the block barely move it: PlCo +718), a frozen
+fighter leaving the top (ftCo_800D41C4/800D47B8, `unimplemented!`), a
+cape or a throw release freezing (`unimplemented!`), the hammer thaw.
 
 ## Open
 

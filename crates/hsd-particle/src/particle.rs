@@ -550,6 +550,13 @@ impl Particle {
             0xe0 => {
                 ColorTrack::random_dual(&mut self.primary, &mut self.environment, pc, rng, draws)?
             }
+            0xe9 => ColorTrack::random_dual_stepped(
+                &mut self.primary,
+                &mut self.environment,
+                pc,
+                rng,
+                draws,
+            )?,
             0xba => self.primary.random_delta(pc, rng, draws, PRIMARY_COLOR)?,
             0xbb => self.environment.random_delta(
                 pc,

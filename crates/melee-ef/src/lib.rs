@@ -77,6 +77,8 @@ pub struct Effects {
     /// Root translations of the items models follow (`update_item_roots`).
     item_roots: FixedVec<(u32, Vec3), 16>,
 }
+/// efAsync_Dispatch 0x415: the ice block's common model.
+const ICE_BLOCK_MODEL: u32 = 0x25;
 /// efsync.c:504-521 (efSync 0x501): the model's life and the bone its
 /// efLib_Cb_LifetimeEndSpawn generator uses (fp->parts[85]).
 const SPARKLE_BURST_FRAMES: u16 = 6;
@@ -1080,6 +1082,44 @@ impl Effects {
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 continue;
             }
+            if let EffectRequest::IceBlock { bone, scale } = request {
+                // efasync.c:393-402: efLib_Create_AttachChild(0x25) on the
+                // live joint; the ASYNC bit keeps efLib_PauseAll off it.
+                // TODO(orientation): AttachChild's lb_8000C290 orientation
+                // constraint is not applied (drawn pose only).
+                let mut effect = self.acquire(ICE_BLOCK_MODEL, particles);
+                effect
+                    .tree
+                    .set_scale(effect.root, &Vec3::new(scale, scale, scale));
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.attachment = Some(player);
+                effect.attachment_bone = Some(bone);
+                effect.scale_attachment = false;
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+                effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+                self.instances.push(effect);
+                continue;
+            }
+            if let EffectRequest::IceShatter { bone, scale } = request {
+                // efasync.c:786-799: efLib_CreateGenerator_AddAppSRT(0x1F1).
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                let mut spawn = SpawnRequest::new(0, 0x1F1, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                    scale: Vec3::new(scale, scale, scale),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
             if let EffectRequest::PartnerVanish { position, scale } = request {
                 let mut spawn = SpawnRequest::new(0, 0xCA, 0);
                 spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
@@ -1294,7 +1334,9 @@ impl Effects {
                 }
             }
             let (id, attachment) = match request {
-                EffectRequest::SurfaceRebound { .. } => (4, None),
+                EffectRequest::SurfaceRebound { .. } | EffectRequest::QueuedRebound { .. } => {
+                    (4, None)
+                }
                 EffectRequest::Death { .. } => (0x19, None),
                 EffectRequest::CaptureFlash { .. } | EffectRequest::WallJump { .. } => (0xF, None),
                 EffectRequest::HitSpark {
@@ -1430,6 +1472,8 @@ impl Effects {
                 | EffectRequest::ArticleDestroyed
                 | EffectRequest::Attached { .. }
                 | EffectRequest::AttachedParameter { .. }
+                | EffectRequest::IceBlock { .. }
+                | EffectRequest::IceShatter { .. }
                 | EffectRequest::SyncAttached { .. }
                 | EffectRequest::SyncAttachedPair { .. }
                 | EffectRequest::FollowingGenerator { .. }
@@ -1468,6 +1512,10 @@ impl Effects {
                     }
                 }
                 EffectRequest::SurfaceRebound {
+                    position: origin,
+                    angle,
+                }
+                | EffectRequest::QueuedRebound {
                     position: origin,
                     angle,
                 } => {

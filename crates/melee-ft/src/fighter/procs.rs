@@ -122,6 +122,19 @@ impl Fighter {
     /// Fighter_ProcessHit_8006D1EC (0x8006D1EC), s_link 14.
     /// Apply accumulated hits and enter damage/hitlag, then update shield and caches.
     pub fn proc_process_hit(&mut self, assets: &FighterAssets, rng: &mut HsdRng) {
+        self.process_hit(assets, rng, None);
+    }
+    /// [`Self::proc_process_hit`] with the map a freezing hit's entry
+    /// collides against (ftCo_800909D0).
+    pub fn proc_process_hit_on_map(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut HsdRng,
+        map: &mut CollMap,
+    ) {
+        self.process_hit(assets, rng, Some(map));
+    }
+    fn process_hit(&mut self, assets: &FighterAssets, rng: &mut HsdRng, map: Option<&mut CollMap>) {
         if self.core.status.disabled {
             return;
         }
@@ -142,6 +155,13 @@ impl Fighter {
                 .as_ref()
                 .is_some_and(|hit| hit.knockback != 0.0);
         self.process_damage(assets, rng).expect("hit response");
+        match map {
+            Some(map) => self.place_frozen_block(map),
+            None => assert!(
+                !self.core.frozen_block_unplaced(),
+                "ftCo_800909D0: a freeze needs the map (proc_process_hit_on_map)"
+            ),
+        }
         self.shield_proc(assets, exhausted, damaged)
             .expect("shield response");
         self.core.update_hurtbox_extents();

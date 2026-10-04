@@ -11,8 +11,8 @@ use melee_lb::radial_force::WindState;
 impl FighterCore {
     /// ftCo_8009E614, run by ftCo_8009DD94 after ftColl_8007AF60.
     pub(super) fn respond_to_stage_wind(&mut self, assets: &FighterAssets) {
-        // The frozen flag (x2227_b6, ftCo_DamageIce) is not modelled.
-        if !CommonBehavior::for_kind(assets.kind).stage_wind_dynamics {
+        // ftdynamics.c:557-558: not while frozen (x2227_b6).
+        if !CommonBehavior::for_kind(assets.kind).stage_wind_dynamics || self.status.frozen {
             return;
         }
         match self.stage_wind {

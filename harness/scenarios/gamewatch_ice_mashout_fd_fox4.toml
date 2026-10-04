@@ -1,0 +1,47 @@
+# DamageIce witness: Judgment 8 freezes Fox (as gamewatch_judgevar2_fd_fox4);
+# Fox mashes buttons and the stick (ftCommon_GrabMash) and breaks out early,
+# hopping out with the stick held left (DamageIceJump's x velocity).
+# melee-sim search: reached [p1.motion_id == DamageIce; p1.motion_id == DamageIceJump] at ticks [372, 394].
+name = "gamewatch_ice_mashout_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 434
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 192, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 252, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 253, port = 0, buttons = {  }, raw = {  } },
+  { frame = 298, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 299, port = 0, buttons = {  }, raw = {  } },
+  { frame = 344, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 363, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 364, port = 1, buttons = {  }, raw = {  } },
+  { frame = 366, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 367, port = 1, buttons = {  }, raw = {  } },
+  { frame = 369, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 370, port = 1, buttons = {  }, raw = {  } },
+  { frame = 372, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 373, port = 1, buttons = {  }, raw = {  } },
+  { frame = 375, port = 1, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 377, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 379, port = 1, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 381, port = 1, buttons = {  }, raw = { stickX = -90 } },
+  { frame = 496, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
