@@ -588,6 +588,32 @@ impl Runtime {
                                 phase_step,
                             });
                     }
+                    melee_it::ItemEvent::BoneGust {
+                        bone,
+                        frames,
+                        strength,
+                        decay,
+                        phase_step,
+                    } => {
+                        // lb_8000B1CC(bone, NULL): the bone's world translation.
+                        let matrix = article_bone_matrix(
+                            &mut state.fighters,
+                            &mut state.article_poses,
+                            &state.assets.items.article_skeletons,
+                            &state.assets.items,
+                            item,
+                            bone,
+                            self.frame,
+                        );
+                        self.radial_forces
+                            .insert(melee_lb::radial_force::RadialImpulse {
+                                center: Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                                frames,
+                                strength,
+                                decay,
+                                phase_step,
+                            });
+                    }
                 }
             }
         }
@@ -1988,8 +2014,18 @@ impl Runtime {
                         | melee_it::ItemRequest::DropArticle { .. }
                         | melee_it::ItemRequest::Launch { .. } => {}
                     }
-                    let owner = matches!(request, melee_it::ItemRequest::SpawnHeld(_))
-                        .then(|| f.item_owner(&state.assets.fighters[slot]));
+                    let reads_owner = match &request {
+                        melee_it::ItemRequest::SpawnHeld(_) => true,
+                        melee_it::ItemRequest::SpawnInHand { spawn, .. } => {
+                            <crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                                spawn.kind,
+                            )
+                            .pickup_reads_owner
+                        }
+                        _ => false,
+                    };
+                    let owner =
+                        reads_owner.then(|| f.item_owner(&state.assets.fighters[slot]));
                     let (hold, catch_item) = match request {
                         melee_it::ItemRequest::SpawnInHand {
                             hold, catch_item, ..
@@ -3098,7 +3134,9 @@ fn dispatch_fighter(
             kind,
             control: melee_it::ItemControl::OwnerHitlag(frozen),
         });
-        if !frozen {
+        if frozen {
+            f.article_hitlag_begin();
+        } else {
             f.article_hitlag_end();
         }
     }

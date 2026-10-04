@@ -119,6 +119,15 @@ pub enum ItemEvent {
         decay: f32,
         phase_step: f32,
     },
+    /// lb_800119DC centred on one of the model's bones (lb_8000B1CC on it
+    /// when the event is handled): Mr. Game & Watch's Manhole.
+    BoneGust {
+        bone: usize,
+        frames: i32,
+        strength: f32,
+        decay: f32,
+        phase_step: f32,
+    },
 }
 
 /// The model root's first child in depth-first order, the joint

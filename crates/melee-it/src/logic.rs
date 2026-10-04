@@ -133,6 +133,10 @@ pub trait ItemLogic {
     }
     fn destroyed(_item: &mut ItemCore) {}
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
+    /// The pickup callback of an article created in its owner's hand reads
+    /// the owner (itGamewatchGreenhouse_PickedUp tests the owner's motion):
+    /// the scene samples the owner for it.
+    const PICKUP_READS_OWNER: bool = false;
     fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
         unimplemented!("dropped callback for this kind")
     }
@@ -251,6 +255,7 @@ pub trait ItemLogic {
         notifies_owner: Self::notifies_owner,
         link_received: Self::link_received,
         owner_accessory: Self::OWNER_ACCESSORY,
+        pickup_reads_owner: Self::PICKUP_READS_OWNER,
     };
 }
 #[derive(Clone, Copy)]
@@ -307,6 +312,7 @@ pub struct ItemLogicRow {
     pub notifies_owner: fn(&ItemCore) -> bool,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
     pub owner_accessory: bool,
+    pub pickup_reads_owner: bool,
 }
 pub trait ItemDispatch {
     fn logic(kind: ItemKind) -> &'static ItemLogicRow;

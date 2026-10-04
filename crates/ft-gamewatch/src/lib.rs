@@ -1,6 +1,12 @@
 //! Mr. Game & Watch: ft/kinds/ftGameWatch. Common states live in melee-ft.
+pub mod articles;
+pub mod attack;
+pub mod attack_air;
 pub mod attributes;
 pub mod init;
+pub mod special_hi;
+pub mod special_lw;
+pub mod special_s;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -16,10 +22,11 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    place_all(&mut rows, attack::rows());
+    place_all(&mut rows, attack_air::rows());
     rows
 }
 
-#[allow(dead_code)]
 pub(crate) const fn place_all<const N: usize>(
     rows: &mut [MotionRow; SPECIAL_ROW_COUNT],
     ported: [MotionRow; N],

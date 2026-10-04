@@ -579,7 +579,7 @@ impl FighterCore {
 impl Fighter {
     /// ftpickupitem_80094790 (80094790), before a jab or tilt: pick up an
     /// item in reach instead. True when LightGet or HeavyGet began.
-    pub(super) fn try_item_pickup(&mut self, assets: &FighterAssets) -> Result<bool> {
+    pub fn try_item_pickup(&mut self, assets: &FighterAssets) -> Result<bool> {
         // x1978, the second (consumable) hand, is never filled here.
         let Some(item) = self.core.find_pickup(&assets.pickup, PickupWeights::ANY) else {
             return Ok(false);

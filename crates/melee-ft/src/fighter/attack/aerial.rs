@@ -134,6 +134,16 @@ pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
 /// ftCo_AttackAir_Coll (8008D5D4) -> ft_80082C74: ordinary air collision,
 /// no ledge-grab or soft-landing predicate before LandingAir_EnterWithLag.
 pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    collision_with(fighter, phase, Fighter::land_from_aerial)
+}
+
+/// ft_80082C74 (80082C74) with the state's landing callback (a kind's own
+/// aerials pass their own: ftGw_LandingAirN_Enter).
+pub fn collision_with(
+    fighter: &mut Fighter,
+    phase: CollisionPhase<'_>,
+    land: fn(&mut Fighter, &FighterAssets) -> Result<()>,
+) -> Result<()> {
     let assets = phase.assets.expect("aerial collision assets");
     crate::collision::air::begin_map(
         &fighter.core.physics,
@@ -148,7 +158,7 @@ pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
         &mut fighter.core.skeleton,
         fighter.core.animation.root,
     ) {
-        fighter.land_from_aerial(assets)?;
+        land(fighter, assets)?;
     }
     Ok(())
 }

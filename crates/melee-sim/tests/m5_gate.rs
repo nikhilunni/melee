@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 469] = [
+const MATRIX_WITNESSES: [(&str, usize); 476] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1686,6 +1686,21 @@ const MATRIX_WITNESSES: [(&str, usize); 469] = [
     // effect is efAsync 0x3FB from the landing command (model 0x16).
     ("gamewatch_ground_attacks_fd_fox4", 620),
     ("gamewatch_air_attacks_fd_fox4", 480),
+    // GAMEWATCH directed witnesses: the normals that are character rows with
+    // an article hanging on one of his parts. The jab's Greenhouse sprayer
+    // (ftGw_Attack11, itgamewatchgreenhouse.c) and the rapid jab's three rows.
+    ("gamewatch_attack11_fd_fox4", 300),
+    ("gamewatch_attack100_fd_fox4", 300),
+    // The down tilt's Manhole (ftGw_AttackLw3: no repeat latch, down held
+    // keeps the tilt) and the forward smash's torch, held while it charges.
+    ("gamewatch_attacklw3_fd_fox4", 320),
+    ("gamewatch_attacks4_fd_fox4", 420),
+    // The neutral, back and up aerials (parachute, turtle, Spitball Sparky):
+    // in the air to the parachute's thirtieth frame, and landing in the
+    // character's landing rows at the full lag whether or not L is pressed.
+    ("gamewatch_attackairn_fd_fox4", 420),
+    ("gamewatch_attackairb_fd_fox4", 420),
+    ("gamewatch_attackairhi_fd_fox4", 420),
 ];
 
 #[test]

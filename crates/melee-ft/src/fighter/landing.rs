@@ -365,10 +365,19 @@ impl Fighter {
             _ => return self.enter_landing(assets),
         };
         let lag = cancelled_lag(lag, self.core.input.buttons.shield, &assets.input);
-        // ftCo_LandingAir_EnterWithMsidLag (8008D708): install at rate 1,
-        // then change the rate. Do not run Landing_Enter's character hook.
+        self.enter_aerial_landing(state.into(), lag, assets)
+    }
+    /// ftCo_LandingAir_EnterWithMsidLag (8008D708): install the landing row
+    /// at rate 1, then change the rate so it lasts `lag` frames. Landing_Enter's
+    /// character hook does not run.
+    pub fn enter_aerial_landing(
+        &mut self,
+        action: super::ActionId,
+        lag: f32,
+        assets: &FighterAssets,
+    ) -> Result<()> {
         self.land();
-        self.change_motion_state(state.into(), assets)?;
+        self.change_motion_state(action, assets)?;
         // retail 8008D764 fadds, 8008D768 fdivs: separate single operations.
         let frames = assets.motions[&self.core.motion_state.animation]
             .animation

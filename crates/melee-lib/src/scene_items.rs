@@ -64,6 +64,12 @@ melee_it::item_kinds! {
         CLinkBomb: it_link::YoungLinkBomb,
         CLinkMilk: it_link::milk::Milk,
         KoopaFlame: it_koopaflame::KoopaFlame,
+        GameWatchGreenhouse: it_gamewatch::Greenhouse,
+        GameWatchManhole: it_gamewatch::Manhole,
+        GameWatchFire: it_gamewatch::Fire,
+        GameWatchParachute: it_gamewatch::Parachute,
+        GameWatchTurtle: it_gamewatch::Turtle,
+        GameWatchBreath: it_gamewatch::Breath,
     }
 }
 
@@ -734,6 +740,58 @@ impl Resources {
                 visual_archives.push((ItemKind::CLinkMilk, a));
             }
         }
+        // ftGw_Init_OnLoad: ftData.x48_items[0..=5] are the attacks' articles
+        // (it_gamewatch::article_index).
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlGw.dat")
+        {
+            use it_gamewatch::{article_index as index, attack, attack_air};
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a
+                .public("ftDataGamewatch")
+                .context("Mr. Game & Watch fighter data")?;
+            for (kind, index, states) in [
+                (
+                    ItemKind::GameWatchGreenhouse,
+                    index::GREENHOUSE,
+                    &attack::GREENHOUSE_STATES[..],
+                ),
+                (
+                    ItemKind::GameWatchManhole,
+                    index::MANHOLE,
+                    &attack::MANHOLE_STATES[..],
+                ),
+                (ItemKind::GameWatchFire, index::FIRE, &attack::FIRE_STATES[..]),
+                (
+                    ItemKind::GameWatchParachute,
+                    index::PARACHUTE,
+                    &attack_air::ARTICLE_STATES[..],
+                ),
+                (
+                    ItemKind::GameWatchTurtle,
+                    index::TURTLE,
+                    &attack_air::ARTICLE_STATES[..],
+                ),
+                (
+                    ItemKind::GameWatchBreath,
+                    index::BREATH,
+                    &attack_air::ARTICLE_STATES[..],
+                ),
+            ] {
+                let assets = ItemAssets::from_fighter_states(&a, root, index, states, 0)?;
+                // The Manhole's gust blows from its cover bone.
+                if kind == ItemKind::GameWatchManhole {
+                    article_skeletons.push(crate::article_pose::ArticleSkeleton::load(
+                        kind,
+                        &a,
+                        &assets.visual,
+                    )?);
+                }
+                kinds.push((kind, assets));
+                visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            }
+        }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
             stage,
@@ -1189,7 +1247,8 @@ pub fn request(
             (SceneItems::logic(spawn.kind).picked_up)(
                 item,
                 &mut ItemAnimationContext {
-                    owner: None,
+                    // Sampled only for kinds with PICKUP_READS_OWNER.
+                    owner: owner.held_item,
                     holder: None,
                     map,
                     assets,

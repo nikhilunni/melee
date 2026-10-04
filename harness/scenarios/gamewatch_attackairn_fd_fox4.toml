@@ -1,0 +1,36 @@
+# GAMEWATCH directed witness: the neutral aerial (ftGw_AttackAirN) and its parachute: from a full jump, landing from a short hop, and with an L press.
+name = "gamewatch_attackairn_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 139, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 141, port = 0, buttons = {  }, raw = {  } },
+  { frame = 231, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 232, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 298, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 299, port = 0, buttons = {  }, raw = {  } },
+  { frame = 303, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 305, port = 0, buttons = {  }, raw = {  } },
+  { frame = 310, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 312, port = 0, buttons = {  }, raw = {  } },
+  { frame = 372, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

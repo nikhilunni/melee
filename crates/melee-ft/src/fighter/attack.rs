@@ -181,23 +181,41 @@ impl Fighter {
         };
         (if x >= 0.0 { 1.0 } else { -1.0 }, main)
     }
-    /// checkAttack11 (8008ABC0), also used by a looping jab combo.
+    /// decideAttack11 / doAttack12Rapid (ftCo_Attack1.c:89-98, 171-181): the
+    /// kind's own first jab, or checkAttack11 (8008ABC0), also used by a
+    /// looping jab combo.
     fn enter_jab(&mut self, assets: &FighterAssets) -> Result<()> {
-        let variant = self.character.jab_variant();
-        if self.try_item_pickup(assets)? {
-            return Ok(());
+        if let Some(enter) = self.character.table().enter_jab {
+            return enter(self, assets);
         }
-        if variant == super::JabVariant::Repeating {
-            // getMotionFlags installs onPkPc21EC, which this very state change
-            // runs before the frame-zero script: ft_800892A0's new attack
-            // instance (ft_80089824 and Ft_MF_SkipAttackCount only touch
-            // statistics).
+        let variant = self.character.jab_variant();
+        // getMotionFlags installs onPkPc21EC, which this very state change
+        // runs before the frame-zero script: ft_800892A0's new attack
+        // instance (ft_80089824 and Ft_MF_SkipAttackCount only touch
+        // statistics).
+        let new_instance = variant == super::JabVariant::Repeating;
+        self.enter_jab_row(S::Attack11.into(), new_instance, assets)?;
+        Ok(())
+    }
+    /// checkAttack11's body (8008ABC0) for the row `action`, which a kind's
+    /// own entry shares (ftGw_Attack11_Enter, 8014C07C). False when an item
+    /// in reach was picked up instead.
+    pub fn enter_jab_row(
+        &mut self,
+        action: super::ActionId,
+        new_instance: bool,
+        assets: &FighterAssets,
+    ) -> Result<bool> {
+        if self.try_item_pickup(assets)? {
+            return Ok(false);
+        }
+        if new_instance {
             self.core.combat.stale.new_instance();
         }
         self.core.commands.jab_followup = false;
         self.core.commands.rapid_jab = false;
         let retained_word = self.inherited_scratch_word();
-        self.change_motion_state(S::Attack11.into(), assets)?;
+        self.change_motion_state(action, assets)?;
         self.step_animation(assets);
         self.core.jab_countdown = self.core.attributes.combat.jab_2_input_window;
         self.core.last_jab = Some(S::Attack11);
@@ -207,7 +225,7 @@ impl Fighter {
             rapid_edges: 0,
             retained_word,
         });
-        Ok(())
+        Ok(true)
     }
     /// ftCo_Attack1_CheckInput (8008A9F8) with A: an open combo window
     /// (hitlag_mul, which survives into Wait and Walk) with the script's
@@ -290,6 +308,12 @@ impl Fighter {
     /// ftCo_AttackHi4 doEnter (8008CA38), AttackLw4 (8008CC5C),
     /// AttackHi3 (8008BA38), AttackLw3 (8008BC70), AttackDash (8008B4D4).
     pub(super) fn enter_simple_attack(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+        // ftCo_AttackLw3.c decideFighter (:67-76): the kind's own down tilt.
+        if state == S::AttackLw3 {
+            if let Some(enter) = self.character.table().enter_down_tilt {
+                return enter(self, assets);
+            }
+        }
         // AttackLw3 doEnter (8008BC70): an item in reach is picked up instead.
         if state == S::AttackLw3 && self.try_item_pickup(assets)? {
             return Ok(());
@@ -378,6 +402,15 @@ impl Fighter {
         }
         Ok(())
     }
+    /// A kind's own grounded IASA: the common ftCo_*_CheckInput calls in
+    /// its order (ftGw_AttackLw3_IASA, 8014AE78). ftCo_Attack1_CheckInput
+    /// reached without A counts the jab window down.
+    pub fn interrupt_ground(&mut self, assets: &FighterAssets, predicates: &[P]) -> Result<()> {
+        let context = self.core.wait_context();
+        let transition = self.first_ground_transition(assets, &context, predicates);
+        self.count_down_jab_window(assets, &context, predicates);
+        self.apply_ground_transition(assets, transition)
+    }
     /// ftCo_AttackLw3_IASA (8008BD80): latch A before ordinary movement interrupts.
     pub(super) fn down_tilt_input(
         &mut self,
@@ -437,6 +470,15 @@ impl Fighter {
     }
     /// ftCo_Attack100Loop_Anim (800D6D48): evaluate the script's end flag before IASA.
     pub(super) fn rapid_loop_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.rapid_loop_ended(assets)? {
+            self.change_motion_state(S::Attack100End.into(), assets)?;
+        }
+        Ok(())
+    }
+    /// ftCo_800D6C60 (800D6C60) up to its callback: true when the loop ends
+    /// and the caller's end entry runs (ftGw_Attack100Loop_Anim passes
+    /// ftGw_Attack100End_Enter).
+    pub fn rapid_loop_ended(&mut self, assets: &FighterAssets) -> Result<bool> {
         let MotionData::RapidJab(rapid) = &mut self.core.state_data else {
             panic!("rapid jab scratch")
         };
@@ -447,7 +489,7 @@ impl Fighter {
         }
         if std::mem::take(&mut self.core.commands.rapid_jab_loop_end) {
             if rapid.loop_started && !rapid.edge_pressed {
-                self.change_motion_state(S::Attack100End.into(), assets)?;
+                return Ok(true);
             } else if !self.try_item_pickup(assets)? {
                 let MotionData::RapidJab(rapid) = &mut self.core.state_data else {
                     panic!("rapid jab scratch")
@@ -455,7 +497,7 @@ impl Fighter {
                 rapid.edge_pressed = false;
             }
         }
-        Ok(())
+        Ok(false)
     }
     /// ftCo_Attack11_Anim (8008AC9C).
     pub(super) fn jab_animation(&mut self, assets: &FighterAssets) -> Result<()> {
@@ -543,12 +585,27 @@ impl Fighter {
         {
             return Ok(false);
         }
-        // ftCo_800D6B00 (800D6B00): an item in reach is picked up instead.
+        // fn_800D6AC4 (800D6AC4): the kind's own start, or fn_800D6B8C.
+        match self.character.table().enter_rapid_jab {
+            Some(enter) => enter(self, assets)?,
+            None => {
+                self.enter_rapid_jab_row(S::Attack100Start.into(), assets)?;
+            }
+        }
+        Ok(true)
+    }
+    /// ftCo_800D6B00 (800D6B00) for the row `action`: an item in reach is
+    /// picked up instead (false).
+    pub fn enter_rapid_jab_row(
+        &mut self,
+        action: super::ActionId,
+        assets: &FighterAssets,
+    ) -> Result<bool> {
         if self.try_item_pickup(assets)? {
-            return Ok(true);
+            return Ok(false);
         }
         self.core.commands.rapid_jab_loop_end = false;
-        self.change_motion_state(S::Attack100Start.into(), assets)?;
+        self.change_motion_state(action, assets)?;
         self.step_animation(assets);
         self.core.state_data = MotionData::RapidJab(RapidJabState::default());
         Ok(true)

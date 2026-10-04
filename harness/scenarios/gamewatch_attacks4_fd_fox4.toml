@@ -1,0 +1,28 @@
+# GAMEWATCH directed witness: the forward smash (ftGw_AttackS4) and its torch: tapped, charged the other way, and from the C-stick.
+name = "gamewatch_attacks4_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 202, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+  { frame = 332, port = 0, buttons = {  }, raw = { substickX = 127 } },
+  { frame = 334, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

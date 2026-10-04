@@ -467,11 +467,13 @@ impl FighterCore {
     }
 
     /// Fighter_UpdateModelScale (80067BB4), fighter.c:213-230: the root
-    /// takes Player_GetModelScale * co_attrs.model_scaling (separate fmuls).
+    /// takes Player_GetModelScale * co_attrs.model_scaling (separate fmuls);
+    /// a flat fighter's x34_scale.z replaces its x.
     pub(super) fn update_model_scale(&mut self) {
         let scale = self.player.scale * self.attributes.size.model_scaling;
+        let width = self.capabilities.model_width.unwrap_or(scale);
         let root = self.animation.root;
         self.skeleton
-            .set_scale(root, &Vec3::new(scale, scale, scale));
+            .set_scale(root, &Vec3::new(width, scale, scale));
     }
 }

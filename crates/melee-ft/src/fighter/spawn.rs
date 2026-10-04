@@ -1095,9 +1095,7 @@ impl FighterCore {
             self.leave_ground();
         }
         self.skeleton.set_translate(root, &self.physics.position);
-        let scale = self.player.scale * self.attributes.size.model_scaling;
-        self.skeleton
-            .set_scale(root, &Vec3::new(scale, scale, scale));
+        self.update_model_scale();
         supported
     }
 

@@ -18,7 +18,9 @@ use hsd_anim::jobj::{JObjId, JObjTree};
 use hsd_types::Mtx;
 use melee_types::ItemKind;
 
-/// A prepared article skeleton with its first article state's animation.
+/// A prepared article skeleton with its first article state's animation
+/// (none for a model that state does not animate: Mr. Game & Watch's
+/// Manhole).
 #[derive(Clone)]
 pub(crate) struct ArticleSkeleton {
     pub kind: ItemKind,
@@ -36,12 +38,10 @@ impl ArticleSkeleton {
     ) -> anyhow::Result<Self> {
         let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, &visual.model)
             .map_err(|e| anyhow::anyhow!("article model: {e}"))?;
-        let anim = visual.states[0]
-            .joint
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("article state 0 without a joint animation"))?;
-        hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)
-            .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
+        if let Some(anim) = visual.states[0].joint.as_ref() {
+            hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)
+                .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
+        }
         Ok(Self {
             kind,
             tree,

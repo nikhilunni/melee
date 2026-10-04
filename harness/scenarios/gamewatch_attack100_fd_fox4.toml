@@ -1,0 +1,83 @@
+# GAMEWATCH directed witness: A mashed into the rapid jab (ftGw_Attack100Start/Loop/End) and out of it.
+name = "gamewatch_attack100_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_gameandwatch_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 131, port = 0, buttons = {  }, raw = {  } },
+  { frame = 132, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 135, port = 0, buttons = {  }, raw = {  } },
+  { frame = 136, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 137, port = 0, buttons = {  }, raw = {  } },
+  { frame = 138, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 139, port = 0, buttons = {  }, raw = {  } },
+  { frame = 140, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 141, port = 0, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 143, port = 0, buttons = {  }, raw = {  } },
+  { frame = 144, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 145, port = 0, buttons = {  }, raw = {  } },
+  { frame = 146, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 147, port = 0, buttons = {  }, raw = {  } },
+  { frame = 148, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 149, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 151, port = 0, buttons = {  }, raw = {  } },
+  { frame = 152, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 153, port = 0, buttons = {  }, raw = {  } },
+  { frame = 154, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 155, port = 0, buttons = {  }, raw = {  } },
+  { frame = 156, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+  { frame = 158, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 159, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+  { frame = 162, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 163, port = 0, buttons = {  }, raw = {  } },
+  { frame = 164, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 165, port = 0, buttons = {  }, raw = {  } },
+  { frame = 166, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 167, port = 0, buttons = {  }, raw = {  } },
+  { frame = 168, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 169, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 171, port = 0, buttons = {  }, raw = {  } },
+  { frame = 172, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 173, port = 0, buttons = {  }, raw = {  } },
+  { frame = 174, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 175, port = 0, buttons = {  }, raw = {  } },
+  { frame = 176, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 177, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 179, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 181, port = 0, buttons = {  }, raw = {  } },
+  { frame = 182, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 183, port = 0, buttons = {  }, raw = {  } },
+  { frame = 184, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 185, port = 0, buttons = {  }, raw = {  } },
+  { frame = 186, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 187, port = 0, buttons = {  }, raw = {  } },
+  { frame = 188, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 189, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -102,6 +102,8 @@ pub type SpecialGrab = fn(
     &assets::FighterAssets,
     &assets::FighterAssets,
 ) -> assets::Result<()>;
+/// A kind's own entry for a ground attack the common code selects.
+pub type GroundAttackEntry = fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>;
 /// Deferred character defense reaction at Fighter_ProcessHit.
 pub type DefenseHit = fn(&mut Fighter, &assets::FighterAssets);
 /// A character shield volume against item hitbox `id` (ftColl_8007925C's
@@ -263,6 +265,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// The rest of an article's post-hitlag callback
     /// (`effect_state.article_hitlag`), after the article thaws.
     const ARTICLE_HITLAG_END: fn(&mut Fighter) = character::no_article_hitlag_end;
+    /// The rest of an article's pre-hitlag callback, after the article of
+    /// `effect_state.article_hitlag` freezes (ftGw_AttackAirN_EnterItemHitlag
+    /// freezes every aerial article that is out).
+    const ARTICLE_HITLAG_BEGIN: fn(&mut Fighter) = character::no_article_hitlag_end;
     /// An article this fighter owns asked something of it from its proc
     /// (the returning boomerang's catch, ftLk_SpecialS2_Enter). Returns the
     /// part a caught article hangs from.
@@ -391,6 +397,16 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
         JabVariant::Standard
     }
+    /// decideAttack11 and doAttack12Rapid's kind arm (ftCo_Attack1.c:89-98,
+    /// 171-181): the kind's own first jab (ftGw_Attack11_Enter) in place of
+    /// checkAttack11.
+    const ENTER_JAB: Option<GroundAttackEntry> = None;
+    /// fn_800D6AC4's kind arm (ftCo_Attack100.c:133-143): the kind's own
+    /// rapid-jab start (ftGw_Attack100Start_Enter) in place of fn_800D6B8C.
+    const ENTER_RAPID_JAB: Option<GroundAttackEntry> = None;
+    /// ftCo_AttackLw3.c decideFighter's kind arm (:67-76): the kind's own
+    /// down tilt (ftGw_AttackLw3_Enter) in place of doEnter.
+    const ENTER_DOWN_TILT: Option<GroundAttackEntry> = None;
     /// ftCo_Attack1 doAttack13 (8008B194): Marth restarts Attack11.
     fn third_jab_state(&self) -> melee_types::CommonMotionState {
         melee_types::CommonMotionState::Attack13
@@ -740,6 +756,11 @@ pub struct Capabilities {
     /// x2222_b0 and x2CC: the kind's forward throw ends in the cargo carry
     /// (Donkey Kong; ftCo_ThrowF_Anim).
     pub cargo: Option<cargo::CargoCarry>,
+    /// fp->x34_scale.z when OnLoad sets it (Mr. Game & Watch's
+    /// x0_GAMEWATCH_WIDTH): the model root's x scale in place of the model
+    /// scale (Fighter_UpdateModelScale, fighter.c:220-224), which flattens
+    /// the fighter along the depth axis. None: x34_scale.z is 1.
+    pub model_width: Option<f32>,
 }
 
 /// Unsupported interactions are represented explicitly, never inferred from
@@ -956,6 +977,9 @@ impl Fighter {
         (self.character.table().article_accessory)(self, assets, map)
     }
     /// The installed article post-hitlag callback's own work.
+    pub fn article_hitlag_begin(&mut self) {
+        (self.character.table().article_hitlag_begin)(self)
+    }
     pub fn article_hitlag_end(&mut self) {
         (self.character.table().article_hitlag_end)(self)
     }

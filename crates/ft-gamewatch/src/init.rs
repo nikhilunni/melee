@@ -1,8 +1,8 @@
 //! Mr. Game & Watch load/reset hooks, ft/kinds/ftGameWatch/ftgamewatch.c.
 use crate::attributes::{read_gamewatch_attributes, GameWatchAttributes};
 use melee_ft::fighter::{
-    assets::{CharacterDescriptor, CostumeDescriptor},
-    Capabilities, CharacterCallbacks, MotionRow,
+    assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
+    Capabilities, CharacterCallbacks, Fighter, MotionRow,
 };
 use melee_types::FighterKind;
 
@@ -28,6 +28,11 @@ pub struct GameWatch {
     pub chef_last: i32,
     /// Fighter +2244 x2244_chefVar2: the kind before it.
     pub chef_previous: i32,
+    /// Fighter +2248..+226C: the articles that are out, and the damage
+    /// callbacks their motions install.
+    pub articles: crate::articles::Articles,
+    /// accessory4_cb while a character row owns it.
+    pub accessory: crate::articles::Accessory,
 }
 
 impl GameWatch {
@@ -41,6 +46,8 @@ impl GameWatch {
             panic_damage: 0,
             chef_last: 1,
             chef_previous: 3,
+            articles: Default::default(),
+            accessory: Default::default(),
         }
     }
 }
@@ -54,11 +61,71 @@ impl CharacterCallbacks for GameWatch {
         &TABLE
     }
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// decideAttack11's FTKIND_GAMEWATCH arm (ftCo_Attack1.c:92).
+    const ENTER_JAB: Option<melee_ft::fighter::GroundAttackEntry> = Some(crate::attack::enter_jab);
+    /// fn_800D6AC4's FTKIND_GAMEWATCH arm (ftCo_Attack100.c:137).
+    const ENTER_RAPID_JAB: Option<melee_ft::fighter::GroundAttackEntry> =
+        Some(crate::attack::enter_rapid_jab);
+    /// ftCo_AttackLw3.c decideFighter's FTKIND_GAMEWATCH arm (:70).
+    const ENTER_DOWN_TILT: Option<melee_ft::fighter::GroundAttackEntry> =
+        Some(crate::attack::enter_down_tilt);
+    /// ftCo_AttackS4.c decideFighter's FTKIND_GAMEWATCH arm (:156).
+    const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> =
+        Some(crate::attack::enter_forward_smash);
+    /// ftCo_AttackAir.c decideFighter's FTKIND_GAMEWATCH arm (:81).
+    const ENTER_AERIAL: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
+        crate::attack_air::enter;
+    /// Fighter_8006C80C: the row's accessory4.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        crate::articles::accessory(f);
+    }
+    /// ftCommon_8007DB58: take_dmg_cb (ftGw_Init_OnDamage) when installed.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::articles::damage_callback);
+    /// ftCo_800D331C: death2_cb, the same callback.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::articles::damage_callback);
+    /// The articles' Destroyed callbacks.
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = crate::articles::destroyed;
+    /// ftGw_AttackAirN_EnterItemHitlag / ExitItemHitlag: every aerial
+    /// article that is out.
+    const ARTICLE_HITLAG_BEGIN: fn(&mut Fighter) = crate::articles::hitlag_begin;
+    const ARTICLE_HITLAG_END: fn(&mut Fighter) = crate::articles::hitlag_end;
+    /// Fighter_ChangeMotionState, fighter.c:1376-1389: the per-motion
+    /// callbacks go.
+    fn on_motion_change(&mut self) {
+        self.articles.damage_callbacks = false;
+        self.accessory = crate::articles::Accessory::None;
+    }
+    /// The Fire torch holds its animation while the forward smash charges
+    /// (ftLib_800876D4: smash_attrs.state == 2), reported as stage 1.
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        let charging = f
+            .commands
+            .smash_charge
+            .is_some_and(|c| matches!(c.phase, melee_cmd::ChargePhase::Charging));
+        melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            articles_fired: 0,
+            charge: None,
+            holds_needles: false,
+            stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+            steering_article: false,
+            detonating_article: false,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
+            article_stage: charging.then_some(1),
+            model_scale: f.player.scale * f.attributes.size.model_scaling,
+        }
+    }
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
-    const ENTER_TAUNT: fn(
-        &mut melee_ft::fighter::Fighter,
-        &melee_ft::fighter::assets::FighterAssets,
-    ) -> melee_ft::fighter::assets::Result<()> = melee_ft::fighter::Fighter::enter_common_taunt;
+    const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
+        Fighter::enter_common_taunt;
     /// ftCo_Landing_Enter's FTKIND_GAMEWATCH arm (ftCo_Landing.c:65-67):
     /// the aerial Judgment's hop is available again.
     fn on_landing(&mut self, _allow_interrupt: bool) {
@@ -95,6 +162,8 @@ impl CharacterCallbacks for GameWatch {
     fn on_load(&mut self, capabilities: &mut Capabilities) {
         capabilities.can_walljump = true;
         capabilities.specials = [true; 4];
+        // fp->x34_scale.z = da->x0_GAMEWATCH_WIDTH.
+        capabilities.model_width = Some(self.attributes.width);
         self.panic_charge = PANIC_EMPTY;
     }
     /// ftGw_Init_OnDeath (8014A37C): the model groups and the FighterVars
@@ -106,6 +175,7 @@ impl CharacterCallbacks for GameWatch {
         self.panic_damage = 0;
         self.chef_last = 1;
         self.chef_previous = 3;
+        self.articles = Default::default();
     }
 }
 
