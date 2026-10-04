@@ -710,6 +710,7 @@ recorded range:
 | `slp_ys_fox_falco_t1900` | Fox vs Falco (YS, ports 1, 2) | a throw runs its script on entry (ftAnim_8006EBA4, 0x800DD3FC), so its voice draw (0x80088A18) is made in the captor's input proc, before the stage's procs: at tick 1817 it precedes the puff timer's draw (lr 0x801E36B4), which the port had drawn first, taking the other value (a puff 16 ticks early) |
 | `slp_ys_jigglypuff_fox_t300` | HNC 9, Jigglypuff vs Fox (YS, ports 2, 3) | Fox leaves Entry on the tick Randall's puff timer expires (15): ftCo_800C6408 queues the entry warp (0x800C66C8) after its motion change (0x800C644C), so it waits for the link-9 flush and its generators are created after the puff's |
 | `slp_dl_peach_fox_t1300` | Peach vs Fox (DL, ports 1, 4) | Peach, sparking from a shine, starts her down smash in the input proc (1048): Fighter_ChangeMotionState flushes the queued spark (0x800694A0) before the new script's frame-0 commands (0x8006A0A4), so the spark generator's initial count (0x8039F250) is drawn ahead of the smash voice and it emits on its first update |
+| `slp_bf_yoshi_samus_t860` | Yoshi vs Samus (BF, ports 1, 3) | the Yoshi Bomb's collision callback catches a ledge twice (828): ftCliffCommon_80081298 enters CliffCatch (0x8012E9D8) and the callback calls ftCliffCommon_80081370 again (0x8012E9E8), so there are two ledge flashes and the second generator draws on every tick it lives |
 
 `slp_dl_peach_fox_t1300` plays the replay's pads but is not its game after
 tick 78: that console spawned Dream Land from the 2019 NeutralSpawn row (no

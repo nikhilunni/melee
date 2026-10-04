@@ -180,8 +180,11 @@ fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
         } else {
             f.leave_ground();
         }
-    } else if armed {
-        f.try_grab_ledge(assets, p.map)?;
+    } else if armed && f.try_grab_ledge(assets, p.map)? {
+        // ftCliffCommon_80081298 (0x8012E9D8) has entered CliffCatch; the
+        // callback then calls ftCliffCommon_80081370 itself (0x8012E9E8), so
+        // the catch runs twice: a second ledge flash and voice.
+        f.enter_cliff_catch(assets, p.map)?;
     }
     Ok(())
 }

@@ -1656,7 +1656,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 11] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 12] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -1693,6 +1693,9 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 11] = [
     // console's, so grIzumi_801CC358 draws again on its ticks (858, 913,
     // 931, ... nine by 3000).
     ("slp_fod_fox_falco_t3000_cold", 3000),
+    // The Yoshi Bomb catches a ledge twice (ftCliffCommon_80081298, then
+    // ftCliffCommon_80081370 at 0x8012E9E8): two ledge flashes (828).
+    ("slp_bf_yoshi_samus_t860_cold", 860),
 ];
 
 #[test]
