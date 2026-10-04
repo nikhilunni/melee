@@ -34,6 +34,10 @@ enum Command {
         /// recording (and, where the date allows two, shown by its frames).
         #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
         controller_fix: Option<melee_lib::ControllerFix>,
+        /// Whether the console ran the frozen-stage code (`frozen-stages`,
+        /// `none`), instead of what the recording's seeds show.
+        #[arg(long, value_parser = parse_stage_codes)]
+        stage_codes: Option<bool>,
         /// Instead of comparing, write the replay's setup and per-tick raw
         /// pads (JSONL) for `harness/slippi_to_scenario.py`, which feeds
         /// them to retail from a boundary.
@@ -59,6 +63,10 @@ enum Command {
         /// recording (and, where the date allows two, shown by its frames).
         #[arg(long, value_parser = parse_controller_fix, conflicts_with = "ignore_controller_fixes")]
         controller_fix: Option<melee_lib::ControllerFix>,
+        /// Whether the console ran the frozen-stage code (`frozen-stages`,
+        /// `none`), instead of what the recording's seeds show.
+        #[arg(long, value_parser = parse_stage_codes)]
+        stage_codes: Option<bool>,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -185,6 +193,18 @@ fn parse_controller_fix(name: &str) -> Result<melee_lib::ControllerFix, String> 
     })
 }
 
+fn parse_stage_codes(name: &str) -> Result<bool, String> {
+    let names = melee_sim::replay_stage_codes::NAMES;
+    names
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, frozen)| *frozen)
+        .ok_or_else(|| {
+            let names: Vec<_> = names.iter().map(|(n, _)| *n).collect();
+            format!("unknown stage code (one of {})", names.join(", "))
+        })
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args.command {
@@ -194,6 +214,7 @@ fn main() -> anyhow::Result<()> {
             boundary_seed,
             ignore_controller_fixes,
             controller_fix,
+            stage_codes,
             retail_inputs,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
@@ -207,6 +228,7 @@ fn main() -> anyhow::Result<()> {
                 boundary_seed,
                 ignore_controller_fixes,
                 controller_fix,
+                frozen_stages: stage_codes,
             };
             if let Some(out) = retail_inputs {
                 let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
@@ -233,6 +255,7 @@ fn main() -> anyhow::Result<()> {
             all_characters_unlocked,
             ignore_controller_fixes,
             controller_fix,
+            stage_codes,
             jsonl,
         } => {
             use melee_sim::replay_batch;
@@ -254,6 +277,7 @@ fn main() -> anyhow::Result<()> {
                     boundary_seed: None,
                     ignore_controller_fixes,
                     controller_fix,
+                    frozen_stages: stage_codes,
                 },
                 jobs,
             );

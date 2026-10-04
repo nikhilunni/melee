@@ -1,4 +1,5 @@
 //! Cold replay comparison. Expected state never initializes or repairs a tick.
+use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice};
 use crate::{frame::Simulation, initial_state::InitialState, scenario::Scenario};
 use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
@@ -21,6 +22,9 @@ pub struct Setup {
     /// The fix every port recorded with UCF runs, instead of the version
     /// dated from the recording (Slippi records "UCF", not which one).
     pub controller_fix: Option<melee_lib::ControllerFix>,
+    /// Whether the console ran the frozen-stage code, instead of what the
+    /// recording's seeds show (`replay_stage_codes`).
+    pub frozen_stages: Option<bool>,
 }
 
 /// The UCF version a recording's ports run and what decided it.
@@ -86,6 +90,9 @@ pub struct Report {
     pub ignored_fixes: bool,
     /// The UCF version the recording's UCF ports ran in this comparison.
     pub controller_fix: Option<FixChoice>,
+    /// Whether the frozen-stage code ran in this comparison; `None` on a
+    /// stage it does not change.
+    pub stage_code: Option<StageCodeChoice>,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
@@ -98,6 +105,9 @@ impl std::fmt::Display for Report {
         writeln!(f, "{}; {}", self.stage, self.players.join(", "))?;
         if let Some(choice) = &self.controller_fix {
             writeln!(f, "controller fix {choice}")?;
+        }
+        if let Some(choice) = &self.stage_code {
+            writeln!(f, "stage code {choice}")?;
         }
         writeln!(
             f,
@@ -290,6 +300,24 @@ fn is_ucf(p: &slp::PlayerStart) -> bool {
     p.dashback_fix == Some(1) && p.shield_drop_fix == Some(1)
 }
 
+/// The setup with the recording's dated UCF version named, when its ports
+/// ran UCF and no version is named yet; otherwise the setup as given.
+pub(crate) fn dated_controller_fix(replay: &Replay, setup: Setup) -> Setup {
+    let any_ucf = replay
+        .leader_ports()
+        .any(|port| is_ucf(&replay.start.players[port]));
+    if setup.ignore_controller_fixes || !any_ucf || setup.controller_fix.is_some() {
+        return setup;
+    }
+    match start_day(replay).map(ucf_by_date) {
+        Some((dated, _)) => Setup {
+            controller_fix: Some(dated),
+            ..setup
+        },
+        None => setup,
+    }
+}
+
 /// Name the UCF version for a recording whose date allows two.
 ///
 /// The two dashbacks differ in one case (0.74 smash turns on a full stick
@@ -400,18 +428,18 @@ fn first_facing_disagreement(
 }
 
 /// A replay's cold simulation, before its first compared tick.
-struct ColdRun {
-    simulation: Simulation,
+pub(crate) struct ColdRun {
+    pub(crate) simulation: Simulation,
     /// Observation zero: a reset store, not Slippi frame -123.
-    initial: Record,
+    pub(crate) initial: Record,
     /// The first tick whose recorded controller cannot be installed. A bad
     /// late controller field must not discard an already comparable prefix,
     /// and no guessed pads stand in for it.
-    unavailable: Option<(u64, String)>,
+    pub(crate) unavailable: Option<(u64, String)>,
 }
 
 impl ColdRun {
-    fn start(replay: &Replay, scenario: &Scenario) -> Result<Self> {
+    pub(crate) fn start(replay: &Replay, scenario: &Scenario) -> Result<Self> {
         let unavailable = scenario.replay_inputs.iter().find_map(|input| {
             crate::inputs::replay_pad(input)
                 .err()
@@ -589,6 +617,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         scenario.spawn = spawn_rule(replay);
         scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
         scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
+        scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
                 let fix = ucf_version(replay, &replay.start.players[port], setup)
@@ -605,6 +634,38 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
     build(seed, unlocked)
 }
 
+/// What a replay does not record, read from its frames: the stage code
+/// (`replay_stage_codes`) and the UCF version ([`resolve_controller_fix`]).
+/// Each is decided by its own dry pass before the comparison, which then
+/// runs under the one chosen setup from the first frame. The stage code is
+/// read first, under the dated UCF version, so the dashback probe runs on
+/// the console's random stream; if that probe then names the other UCF
+/// version, the stage code is read again under it.
+pub fn resolve_setup(
+    replay: &Replay,
+    root: &Path,
+    setup: Setup,
+) -> (Setup, Option<FixChoice>, Option<StageCodeChoice>) {
+    let (staged, stage_code) = resolve_stage_codes(replay, root, setup);
+    let (fixed, controller_fix) = resolve_controller_fix(replay, root, staged);
+    let redated = matches!(
+        controller_fix,
+        Some(FixChoice {
+            reason: FixReason::Dashback { .. },
+            ..
+        })
+    );
+    if !redated || setup.frozen_stages.is_some() {
+        return (fixed, controller_fix, stage_code);
+    }
+    let unstaged = Setup {
+        frozen_stages: None,
+        ..fixed
+    };
+    let (setup, stage_code) = resolve_stage_codes(replay, root, unstaged);
+    (setup, controller_fix, stage_code)
+}
+
 pub fn run_file(path: &Path, root: &Path, setup: Setup) -> Result<Report> {
     let replay = Replay::parse(&std::fs::read(path)?)?;
     run(&replay, root, setup)
@@ -615,7 +676,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         !replay.incomplete && !replay.frames.is_empty(),
         "incomplete or empty replay"
     );
-    let (setup, controller_fix) = resolve_controller_fix(replay, root, setup);
+    let (setup, controller_fix, stage_code) = resolve_setup(replay, root, setup);
     let mut report = Report {
         stage: slp::ids::stage_name(replay.start.stage)
             .unwrap_or("unknown")
@@ -642,6 +703,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 .leader_ports()
                 .any(|port| has_controller_fix(&replay.start.players[port])),
         controller_fix,
+        stage_code,
         context: String::new(),
         differing: Vec::new(),
         stop: Stop::Complete,
@@ -706,12 +768,11 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 return Ok(report);
             }
         };
-        let end_seed = seed_of(&actual);
-        let mut expected = expected;
-        let mut actual = by_leader(&actual, &leaders, frame, expected.frame);
-        if let (Some(from), Some(to)) = (previous_seed, end_seed) {
-            compare_input_seeds(from, to, &leaders, frame, &mut expected, &mut actual);
-        }
+        let ComparedTick {
+            expected,
+            actual,
+            end_seed,
+        } = compared_tick(&actual, &leaders, frame, expected, previous_seed);
         previous_seed = end_seed;
         if let Some(diff) = compare_frame(&expected, &actual) {
             report.differing = expected
@@ -726,6 +787,42 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         report.matched += 1;
     }
     Ok(report)
+}
+
+/// One simulated tick beside its recorded frame, both keyed by leader and
+/// with the Pre Frame seed check added.
+pub(crate) struct ComparedTick {
+    pub(crate) expected: Record,
+    pub(crate) actual: Record,
+    /// The simulation's seed at the end of the tick.
+    pub(crate) end_seed: Option<u32>,
+}
+
+impl ComparedTick {
+    pub(crate) fn matches(&self) -> bool {
+        compare_frame(&self.expected, &self.actual).is_none()
+    }
+}
+
+/// Key the tick's record like the recording's and add the seed check from
+/// the previous tick's end seed.
+pub(crate) fn compared_tick(
+    record: &Record,
+    leaders: &[usize],
+    frame: &slp::Frame,
+    mut expected: Record,
+    previous_seed: Option<u32>,
+) -> ComparedTick {
+    let end_seed = seed_of(record);
+    let mut actual = by_leader(record, leaders, frame, expected.frame);
+    if let (Some(from), Some(to)) = (previous_seed, end_seed) {
+        compare_input_seeds(from, to, leaders, frame, &mut expected, &mut actual);
+    }
+    ComparedTick {
+        expected,
+        actual,
+        end_seed,
+    }
 }
 
 /// The simulated record keyed like the replay's: `pN` is the Nth leader's
@@ -771,7 +868,7 @@ fn by_leader(actual: &Record, leaders: &[usize], frame: &slp::Frame, tick: u64) 
     }
 }
 
-fn seed_of(record: &Record) -> Option<u32> {
+pub(crate) fn seed_of(record: &Record) -> Option<u32> {
     match record.state.get("rng.seed")? {
         melee_diff::Value::UInt(seed) => u32::try_from(*seed).ok(),
         _ => None,
@@ -874,7 +971,7 @@ pub fn write_retail_inputs(
     setup: Setup,
     mut out: impl std::io::Write,
 ) -> Result<()> {
-    let (setup, _) = resolve_controller_fix(replay, root, setup);
+    let (setup, _, _) = resolve_setup(replay, root, setup);
     let scenario = cold_scenario(replay, root, setup)?;
     let players: Vec<_> = scenario
         .fighters
