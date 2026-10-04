@@ -17,6 +17,8 @@ pub struct Koopa {
     pub breath_life: f32,
     /// mv.kp.specials while a Fire Breath row runs.
     pub breath: crate::special_n::Breath,
+    /// mv.kp.unk1 while a Koopa Klaw row runs.
+    pub klaw: crate::special_s::Klaw,
     /// mv.kp while a Whirling Fortress row runs.
     pub fortress: crate::special_hi::Fortress,
     /// accessory4_cb while a special owns it.
@@ -47,6 +49,7 @@ impl Koopa {
             breath_reach: 0.0,
             breath_life: 0.0,
             breath: Default::default(),
+            klaw: Default::default(),
             fortress: Default::default(),
             accessory: Accessory::None,
         }
@@ -92,10 +95,17 @@ impl CharacterCallbacks for Koopa {
             SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(fighter, airborne, assets),
             SpecialSlot::Neutral => crate::special_n::enter(fighter, airborne, assets),
-            SpecialSlot::Side => unimplemented!(
-                "ftData_Special{slot:?}[Koopa] (airborne: {airborne}): character special entry"
-            ),
+            SpecialSlot::Side => crate::special_s::enter(fighter, airborne, assets),
         }
+    }
+    /// Fighter_UnkProcessGrab for the Koopa Klaw's catch.
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::special_s::grab;
+    /// x2222_b2, set while the Klaw holds a fighter.
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = crate::special_s::cape_turn_blocked;
+    /// Fighter_ChangeMotionState clears x2222_b2 (fighter.c:1021); a Klaw
+    /// row's own change puts it back where Ft_MF_Unk19 keeps it.
+    fn on_motion_change(&mut self) {
+        self.klaw.cape_proof = false;
     }
     /// ftKp_SpecialLw_80134ACC's HSD_Randi draws and flame, once the
     /// Fire Breath's IASA has returned.

@@ -1,0 +1,39 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Searched recipe: Bowser double jumps into a double-jumping Fox and catches him in the air at tick 250.
+# B during the aerial wait (ftKp_SpecialAirSWait_IASA 80134038): the
+# aerial bite row from the wait.
+name = "bowser_klaw_air_wait_bite_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 184, port = 0, buttons = {  }, raw = {  } },
+  { frame = 215, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 225, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 227, port = 0, buttons = {  }, raw = {  } },
+  { frame = 233, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 235, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 237, port = 1, buttons = {  }, raw = {  } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 248, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 250, port = 1, buttons = {  }, raw = {  } },
+  { frame = 286, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 288, port = 0, buttons = {  }, raw = {  } },
+  { frame = 380, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 383, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

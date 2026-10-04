@@ -2020,6 +2020,66 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_CaptureDamageKoopa = 279 .. ftCo_MS_ThrownKoopaAirB = 287
+    // (ftData_MotionStateList[279..288]): the Koopa Klaw's victim plays its
+    // captor's animations 278..283; the wait rows have none. Their IASA,
+    // physics and collision callbacks are empty (Fighter_procMap's ECB lock
+    // countdown still runs). ftCo_MS_CaptureKoopa (278)
+    // and ftCo_MS_CaptureKoopaAir (283) are entered by nothing.
+    rows[S::CaptureDamageKoopa as usize] = MotionRow {
+        action: ActionId(279),
+        id: S::CaptureDamageKoopa,
+        animation: 278,
+        anim: crate::fighter::capture_koopa::damage_animation,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::capture,
+        collision: crate::fighter::capture_koopa::collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::CaptureWaitKoopa as usize] = MotionRow {
+        action: ActionId(280),
+        id: S::CaptureWaitKoopa,
+        animation: -1,
+        anim: crate::fighter::capture_koopa::wait_animation,
+        ..rows[S::CaptureDamageKoopa as usize]
+    };
+    rows[S::ThrownKoopaF as usize] = MotionRow {
+        action: ActionId(281),
+        id: S::ThrownKoopaF,
+        animation: 279,
+        anim: crate::fighter::capture_koopa::thrown_animation,
+        ..rows[S::CaptureDamageKoopa as usize]
+    };
+    rows[S::ThrownKoopaB as usize] = MotionRow {
+        action: ActionId(282),
+        id: S::ThrownKoopaB,
+        animation: 280,
+        ..rows[S::ThrownKoopaF as usize]
+    };
+    rows[S::CaptureDamageKoopaAir as usize] = MotionRow {
+        action: ActionId(284),
+        id: S::CaptureDamageKoopaAir,
+        animation: 281,
+        ..rows[S::CaptureDamageKoopa as usize]
+    };
+    rows[S::CaptureWaitKoopaAir as usize] = MotionRow {
+        action: ActionId(285),
+        id: S::CaptureWaitKoopaAir,
+        ..rows[S::CaptureWaitKoopa as usize]
+    };
+    rows[S::ThrownKoopaAirF as usize] = MotionRow {
+        action: ActionId(286),
+        id: S::ThrownKoopaAirF,
+        animation: 282,
+        ..rows[S::ThrownKoopaF as usize]
+    };
+    rows[S::ThrownKoopaAirB as usize] = MotionRow {
+        action: ActionId(287),
+        id: S::ThrownKoopaAirB,
+        animation: 283,
+        ..rows[S::ThrownKoopaF as usize]
+    };
     // ftCo_MS_YoshiEgg = 277 (ftCo_SM_YoshiEgg, Yoshi's animation).
     rows[S::YoshiEgg as usize] = MotionRow {
         action: ActionId(277),

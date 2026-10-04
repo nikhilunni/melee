@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 28] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 29] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -74,6 +74,14 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 28] = [
         request: 0x3FB,
         source: ModelSource::Landing,
         model: 0x16,
+        attached: false,
+    },
+    // efsync.c:327-343: the Koopa Klaw's swipe, efLib_Create_Attach_Pos
+    // (0x2EE0) turned to the facing and scaled as the fighter's root.
+    ModelSpawn {
+        request: 0x4D9,
+        source: ModelSource::Graphics,
+        model: 0x2EE0,
         attached: false,
     },
     // Bowser's LandingAirLw and LandingAirF/B landing-effect commands

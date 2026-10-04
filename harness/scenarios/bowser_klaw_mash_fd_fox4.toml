@@ -1,0 +1,110 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Koopa Klaw on a Fox who mashes buttons and the stick: ftCommon_GrabMash
+# takes x44 from the hold timer per input, the struggle shakes YRotN
+# (ftCo_800BC4A8) and Fox breaks out early.
+name = "bowser_klaw_mash_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 191, port = 0, buttons = {  }, raw = {  } },
+  { frame = 225, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 256, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 258, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 264, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 266, port = 1, buttons = {  }, raw = {  } },
+  { frame = 268, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 270, port = 1, buttons = {  }, raw = {  } },
+  { frame = 272, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 274, port = 1, buttons = {  }, raw = {  } },
+  { frame = 276, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 278, port = 1, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 282, port = 1, buttons = {  }, raw = {  } },
+  { frame = 284, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 286, port = 1, buttons = {  }, raw = {  } },
+  { frame = 288, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 290, port = 1, buttons = {  }, raw = {  } },
+  { frame = 292, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 294, port = 1, buttons = {  }, raw = {  } },
+  { frame = 296, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 298, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 302, port = 1, buttons = {  }, raw = {  } },
+  { frame = 304, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 306, port = 1, buttons = {  }, raw = {  } },
+  { frame = 308, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 310, port = 1, buttons = {  }, raw = {  } },
+  { frame = 312, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 314, port = 1, buttons = {  }, raw = {  } },
+  { frame = 316, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 318, port = 1, buttons = {  }, raw = {  } },
+  { frame = 320, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 322, port = 1, buttons = {  }, raw = {  } },
+  { frame = 324, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 326, port = 1, buttons = {  }, raw = {  } },
+  { frame = 328, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 330, port = 1, buttons = {  }, raw = {  } },
+  { frame = 332, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 334, port = 1, buttons = {  }, raw = {  } },
+  { frame = 336, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 338, port = 1, buttons = {  }, raw = {  } },
+  { frame = 340, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 342, port = 1, buttons = {  }, raw = {  } },
+  { frame = 344, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 346, port = 1, buttons = {  }, raw = {  } },
+  { frame = 348, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 350, port = 1, buttons = {  }, raw = {  } },
+  { frame = 352, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 354, port = 1, buttons = {  }, raw = {  } },
+  { frame = 356, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 358, port = 1, buttons = {  }, raw = {  } },
+  { frame = 360, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 362, port = 1, buttons = {  }, raw = {  } },
+  { frame = 364, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 366, port = 1, buttons = {  }, raw = {  } },
+  { frame = 368, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 370, port = 1, buttons = {  }, raw = {  } },
+  { frame = 372, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 374, port = 1, buttons = {  }, raw = {  } },
+  { frame = 376, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 378, port = 1, buttons = {  }, raw = {  } },
+  { frame = 380, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 382, port = 1, buttons = {  }, raw = {  } },
+  { frame = 384, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 386, port = 1, buttons = {  }, raw = {  } },
+  { frame = 388, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 390, port = 1, buttons = {  }, raw = {  } },
+  { frame = 392, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 394, port = 1, buttons = {  }, raw = {  } },
+  { frame = 396, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 398, port = 1, buttons = {  }, raw = {  } },
+  { frame = 400, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 402, port = 1, buttons = {  }, raw = {  } },
+  { frame = 404, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 406, port = 1, buttons = {  }, raw = {  } },
+  { frame = 408, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 410, port = 1, buttons = {  }, raw = {  } },
+  { frame = 412, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 414, port = 1, buttons = {  }, raw = {  } },
+  { frame = 416, port = 1, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 418, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

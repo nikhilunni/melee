@@ -215,7 +215,8 @@ pub(super) fn capture_damage(
 ) -> Result<i32> {
     // CaptureCaptain (Falcon Dive's victim) is neither 0xE0/0xE1 nor
     // 0xE3/0xE4: like a throw it keeps its motion.
-    // The shouldered rows and the cargo throws' are none of them either.
+    // The shouldered rows, the cargo throws' and the Koopa Klaw's rows are
+    // none of them either.
     let thrown = matches!(
         f.motion_state.id,
         S::ThrownF
@@ -232,6 +233,14 @@ pub(super) fn capture_damage(
             | S::ThrownFB
             | S::ThrownFHi
             | S::ThrownFLw
+            | S::CaptureDamageKoopa
+            | S::CaptureWaitKoopa
+            | S::ThrownKoopaF
+            | S::ThrownKoopaB
+            | S::CaptureDamageKoopaAir
+            | S::CaptureWaitKoopaAir
+            | S::ThrownKoopaAirF
+            | S::ThrownKoopaAirB
     );
     if !thrown
         && !matches!(

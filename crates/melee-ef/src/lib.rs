@@ -1507,8 +1507,13 @@ impl Effects {
                     // efasync.c:199-246: 0x3F6 and 0x3FA-0x3FC (queued as kind 2,
                     // ftCo_09F7.c:219-245, with no floor angle) and
                     // efasync.c:524-529: 0x41D set no rotation at all.
-                    if !matches!(id, 0x3F5 | 0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x41D) {
+                    if !matches!(id, 0x3F5 | 0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x41D | 0x4D9) {
                         effect.tree.set_rotation_z(effect.root, floor_angle);
+                    }
+                    if id == 0x4D9 {
+                        // efsync.c:339-341: the fighter root's scale.
+                        let scale = fighter.effect_scale();
+                        effect.tree.set_scale(effect.root, &scale);
                     }
                 }
                 // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
@@ -1546,7 +1551,9 @@ impl Effects {
             if scaled_facing
                 || matches!(
                     request,
-                    EffectRequest::PositionalModel { .. } | EffectRequest::BoneModel { .. }
+                    EffectRequest::PositionalModel { .. }
+                        | EffectRequest::BoneModel { .. }
+                        | EffectRequest::Graphics { id: 0x4D9, .. }
                 )
             {
                 // efSync_Spawn's efLib_AnimQueue drain (efsync.c:654-660);

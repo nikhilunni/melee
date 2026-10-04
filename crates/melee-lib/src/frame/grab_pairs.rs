@@ -87,6 +87,11 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownFB
                 | melee_types::CommonMotionState::ThrownFHi
                 | melee_types::CommonMotionState::ThrownFLw
+        )
+        // The Koopa Klaw's rows have no physics callback either.
+        || matches!(
+            f.state_data,
+            melee_ft::fighter::MotionData::CaptureKoopa(_)
         ))
     {
         return Ok(());
@@ -695,4 +700,76 @@ pub(super) fn special_throw_release(state: &mut InitialState, player: usize) -> 
         )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// The fighter index of the one `player` holds.
+fn held_victim(state: &InitialState, player: usize) -> Option<usize> {
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Holding { victim, .. }) = link else {
+        return None;
+    };
+    state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
+}
+
+/// What a Koopa Klaw captor's callback asked of the fighter it holds
+/// (ftCo_800BC9C8, ftCo_800BCDE0, ftCo_800BCE64), run on the
+/// pair once the callback has returned. Returns the victim's index.
+pub(super) fn koopa_captor_request(
+    state: &mut InitialState,
+    player: usize,
+) -> Result<Option<usize>> {
+    use melee_ft::fighter::capture_koopa::{self, CaptorRequest};
+    let Some(request) = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .koopa_request
+        .take())
+    else {
+        return Ok(None);
+    };
+    let other = held_victim(state, player).expect("a Koopa Klaw request without a victim");
+    let (captor, victim) = pair(&mut state.fighters, player, other);
+    let (va, ca) = (&state.assets.fighters[other], &state.assets.fighters[player]);
+    with_fighter!(captor, |c| with_fighter!(victim, |v| match request {
+        CaptorRequest::Damage { air } => capture_koopa::bite(v, c, va, ca, air),
+        CaptorRequest::Throw { back, air } => capture_koopa::throw(v, c, va, ca, back, air),
+        CaptorRequest::ThrowLanded { back } => capture_koopa::throw_landed(v, c, va, ca, back),
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
+}
+
+/// ftCo_CaptureDamageKoopa_Anim / ftCo_CaptureWaitKoopa_Anim found the hold
+/// timer spent: ftCo_800DA698 on the captor, ftCo_CaptureCut_Enter on the
+/// victim. Returns the captor's index.
+pub(super) fn koopa_escape(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
+    use melee_ft::fighter::capture_koopa;
+    if !with_fighter!(&mut state.fighters[player], |f| {
+        capture_koopa::take_release_request(f)
+    }) {
+        return Ok(None);
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Captured { captor }) = link else {
+        panic!("a Koopa Klaw hold without a captor")
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .expect("live captor");
+    let (victim, captor) = pair(&mut state.fighters, player, other);
+    with_fighter!(captor, |c| with_fighter!(victim, |v| {
+        capture_koopa::escape(
+            v,
+            c,
+            &state.assets.fighters[player],
+            &state.assets.fighters[other],
+            &mut state.map,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
 }

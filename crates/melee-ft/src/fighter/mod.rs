@@ -11,6 +11,7 @@ pub mod caches;
 pub mod cape_turn;
 pub mod capture_captain;
 pub mod bury;
+pub mod capture_koopa;
 pub mod capture_yoshi;
 pub mod cargo;
 pub mod clank;
@@ -1209,6 +1210,8 @@ pub enum MotionData {
     /// ShoulderedWait..ShoulderedTurn: the carried fighter's grab timer.
     Shouldered(cargo::ShoulderedState),
     YoshiEgg(capture_yoshi::YoshiEggState),
+    /// The Koopa Klaw's hold and throw rows (278..287).
+    CaptureKoopa(capture_koopa::CaptureKoopaState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]
     None,

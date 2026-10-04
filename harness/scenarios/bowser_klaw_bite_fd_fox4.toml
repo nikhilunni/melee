@@ -1,0 +1,36 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Koopa Klaw with three bites (B during the hit rows and the wait), then a
+# forward throw: SpecialSHit1 with the bite's damage (ftColl_8007ABD0, x2C)
+# and CaptureDamageKoopa again each time (ftCo_800BC9C8).
+name = "bowser_klaw_bite_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 640
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 191, port = 0, buttons = {  }, raw = {  } },
+  { frame = 225, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 264, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 322, port = 0, buttons = {  }, raw = {  } },
+  { frame = 380, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 382, port = 0, buttons = {  }, raw = {  } },
+  { frame = 440, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 443, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

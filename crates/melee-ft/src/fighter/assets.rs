@@ -604,7 +604,8 @@ impl FighterAssets {
                         super::capture_yoshi::EGG_MOTION,
                         super::capture_captain::VICTIM_MOTION,
                     ])
-                    .chain(cargo_motions.iter().copied());
+                    .chain(cargo_motions.iter().copied())
+                    .chain(super::capture_koopa::VICTIM_MOTIONS);
                 for borrowed in borrowed {
                     if let Some(motion) = motions.get_mut(&borrowed) {
                         let source = crate::desc::bones::AnimationSource::read(

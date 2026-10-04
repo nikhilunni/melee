@@ -102,6 +102,9 @@ pub struct CombatState {
     /// A Falcon Dive captor changed to its throw this tick; the scene then
     /// runs ftCo_800DDDE4 / ftCo_800DE7C0 on the pair.
     pub special_throw_release: bool,
+    /// What a Koopa Klaw captor's callback asked of the fighter it holds
+    /// this proc; the scene runs it on the pair.
+    pub koopa_request: Option<super::capture_koopa::CaptorRequest>,
     /// unk_gobj / x221C_b5: the fighter one of this fighter's inert
     /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
     pub detected: Option<InertTouch>,

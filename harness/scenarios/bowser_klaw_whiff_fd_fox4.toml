@@ -1,0 +1,25 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Koopa Klaw whiffing on the ground (ftKp_SpecialS_Enter 80132F2C): the
+# swipe on TransN (ft_800850B4), its effect (efSync 0x4D9) and Wait.
+name = "bowser_klaw_whiff_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

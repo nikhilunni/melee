@@ -1,0 +1,30 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Koopa Klaw catching Fox and holding him until the hold timer runs out
+# (ftCo_CaptureWaitKoopa_Anim 800BCC70): the grab_cb / grabbed_cb pair
+# (8013302C, ftCo_800BC7E0), CaptureDamageKoopa then CaptureWaitKoopa, the
+# hit row's hand-off to the frozen wait, then CatchCut and CaptureCut
+# (ftCo_800DA698, ftCo_CaptureCut_Enter).
+name = "bowser_klaw_hold_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 640
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 191, port = 0, buttons = {  }, raw = {  } },
+  { frame = 225, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

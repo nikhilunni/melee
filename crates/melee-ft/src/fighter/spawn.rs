@@ -770,6 +770,32 @@ impl Fighter {
             });
         Ok(())
     }
+    /// [`Self::change_ground_air_motion`] into a row that plays another
+    /// fighter's animation (ftCo_800BCE64: a thrown row's counterpart with
+    /// the captor as the animation source).
+    pub(super) fn change_ground_air_motion_with_source(
+        &mut self,
+        state: ActionId,
+        assets: &FighterAssets,
+        source: super::grab_throw::ThrowSource<'_>,
+    ) -> Result<()> {
+        self.change_motion_state_with_options(
+            state,
+            assets,
+            MotionChange {
+                start: self.animation.frame,
+                rate: 1.0,
+                source: Some(source),
+                ground_air: true,
+                skip_model_part_visibility: true,
+                update_commands: true,
+                preserve_material_animation: true,
+                keep_secondary_color: true,
+                ..Default::default()
+            },
+        )
+    }
+
     /// Fighter_ChangeMotionState with ftCommon_GroundAirColl_MF (fighter.c).
     /// Preserve visibility and advance command control flow without executing
     /// commands already applied by the outgoing ground/air motion.

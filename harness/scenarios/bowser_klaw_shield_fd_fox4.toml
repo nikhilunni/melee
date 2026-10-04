@@ -1,0 +1,30 @@
+# BOWSER directed witness from start_fd_bowser_fox4 (Bowser at -60 facing right, Fox at +60).
+# Koopa Klaw catching a shielding Fox, then a forward throw.
+name = "bowser_klaw_shield_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 191, port = 0, buttons = {  }, raw = {  } },
+  { frame = 205, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 225, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = {  } },
+  { frame = 265, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 303, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1499,6 +1499,39 @@ impl Runtime {
                         }
                     }
                 }
+                if matches!(
+                    proc,
+                    FighterProc::Animation | FighterProc::Input | FighterProc::Map
+                ) {
+                    // The Koopa Klaw: the captor's callback changes its
+                    // victim's motion (ftCo_800BC9C8, ftCo_800BCDE0,
+                    // ftCo_800BCE64), and the victim's spent
+                    // hold timer both fighters' (ftCo_800DA698,
+                    // ftCo_CaptureCut_Enter). Each Fighter_ChangeMotionState
+                    // flushes that fighter's efAsync queue then.
+                    let mut members = [None; 2];
+                    if let Some(victim) = grab_pairs::koopa_captor_request(state, player)? {
+                        members = [Some(player), Some(victim)];
+                    }
+                    if proc == FighterProc::Animation {
+                        if let Some(captor) = grab_pairs::koopa_escape(state, player)? {
+                            members = [Some(captor), Some(player)];
+                        }
+                    }
+                    for member in members.into_iter().flatten() {
+                        crate::scene_fighter::with_fighter!(&mut state.fighters[member], |f| {
+                            state.effects.flush::<RetailTrig>(
+                                melee_ef::EffectTiming::Immediate,
+                                member,
+                                &mut f.core,
+                                &state.assets.common_particle_bank,
+                                &state.assets.particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )
+                        })?;
+                    }
+                }
                 if proc == FighterProc::ProcessHit {
                     credit_phantom_source(state, player);
                 }
