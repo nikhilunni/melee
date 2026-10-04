@@ -42,7 +42,7 @@ pub fn island_unsafe(scene: &mut Scene, island: Option<usize>) -> bool {
         }
     }
     match scene.stage() {
-        GrKind::Story => unimplemented!("ftCo_800A2718: mpIsland_8005AC8C (Yoshi's Story)"),
+        GrKind::Story => scene.map.island_joint_moved(island),
         GrKind::Zebes | GrKind::Onett => {
             unimplemented!("ftCo_800A2718: {:?}'s hazard islands", scene.stage())
         }

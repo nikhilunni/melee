@@ -450,3 +450,12 @@ stage = "Battlefield"
 players = ["IceClimbers", "Fox"]
 stocks = 4
 seed = 2498056134
+
+[[boundary]]
+name = "start_ys_iceclimbers_fox4"
+cold = "start_ys_iceclimbers_fox4_cold"
+savestate = "harness/roms/start_ys_iceclimbers_fox4.sav"
+stage = "YoshisStory"
+players = ["IceClimbers", "Fox"]
+stocks = 4
+seed = 1436360687

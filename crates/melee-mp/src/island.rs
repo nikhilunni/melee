@@ -9,7 +9,7 @@
 //! the lists are `next` links between node indices, so list order and node
 //! identity (the index) follow the C exactly.
 use crate::map::{id_range, CollMap};
-use melee_types::mp::{line_flag, line_kind, LineSection, NO_ID};
+use melee_types::mp::{joint_flag, line_flag, line_kind, LineSection, NO_ID};
 
 /// `mp_UnkStruct0` (`mp/types.h:33`).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -205,6 +205,14 @@ impl CollMap {
             }
         }
         (left, right)
+    }
+
+    /// `mpIsland_8005AC8C` (retail `0x8005AC8C`): the island's joint carries
+    /// one of CollJoint_B8, B9 or B10 (rlwinm 21..23 at `0x8005ACB4`): the
+    /// stage moved or re-placed it this frame.
+    pub fn island_joint_moved(&self, node: usize) -> bool {
+        let joint = &self.joints[self.islands.nodes[node].joint as usize];
+        joint.flags & (joint_flag::B8 | joint_flag::B9 | joint_flag::B10) != 0
     }
 
     /// An island's data.
