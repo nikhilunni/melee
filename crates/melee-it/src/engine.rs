@@ -177,6 +177,7 @@ pub enum ItemScratch {
     Rescue(RescueState),
     Judge(JudgeState),
     MewtwoDisable(DisableState),
+    ShadowBall(ShadowBallState),
     None,
 }
 /// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
@@ -225,6 +226,43 @@ pub struct RescueState {
     /// xDD8: the fighter the trampoline was made for; the item is its
     /// `owner` only while this names the same fighter.
     pub fighter: Option<u8>,
+}
+/// Item.xDD4_itemVar.mewtwoshadowball (itmewtwoshadowball.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ShadowBallState {
+    /// x4.x / x4.y: the flight's angle (radians) and speed.
+    pub angle: f32,
+    pub speed: f32,
+    /// x10: the model grandchild's scale in flight.
+    pub scale: f32,
+    /// x14: it left the hand (or was thrown).
+    pub launched: bool,
+    /// x18 / x1C: the charge and the full charge.
+    pub level: i32,
+    pub full: i32,
+    /// x20: a counter 0..2 fn_802C5E18 runs in flight (nothing reads it).
+    pub cycle: i32,
+    /// x24: the damage the charge gives (nothing ported reads it).
+    pub damage: u32,
+    /// x2C: the fighter that formed it.
+    pub creator: Option<u8>,
+    /// x30: the model grandchild's translation, the waver.
+    pub waver: Vec3,
+    /// x3C / x40 / x44: the waver's direction (radians), speed and the
+    /// speed's change per frame.
+    pub waver_angle: f32,
+    pub waver_speed: f32,
+    pub waver_acceleration: f32,
+    /// x48: frames since the waver last turned.
+    pub waver_frames: i32,
+    /// x4C: physics frames in flight.
+    pub flight_frames: i32,
+    /// x50: the charge's share of the speed and the waver, 0.5..1.
+    pub strength: f32,
+    /// x54: the creator's model scale (ftLib_800869D4).
+    pub owner_scale: f32,
+    /// x64: the burst's hitbox radius.
+    pub burst_radius: f32,
 }
 /// Item.xDD4_itemVar.mdisable (itmewtwodisable.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -763,6 +801,12 @@ pub struct ItemCore {
     /// (depth-first joint 1), for kinds whose code turns that joint (Sheik's
     /// needles); None leaves the joint to its animation.
     pub child_rotation_x: Option<f32>,
+    /// HSD_JObjSetTranslate on a joint below the root, for kinds whose code
+    /// moves that joint after its animation step (the Shadow Ball's
+    /// wavering grandchild): `(joint, translation)`.
+    pub joint_translation: Option<(usize, Vec3)>,
+    /// HSD_JObjSetScale on a joint below the root, likewise.
+    pub joint_scale: Option<(usize, Vec3)>,
     /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
     /// nor leaves the blast zones.
     pub held: bool,
@@ -1128,12 +1172,14 @@ impl ItemCore {
                 .pose
                 .as_ref()
                 .expect("item non-root hitbox bone without a sampled pose");
-            pose.bone_matrix_turned(
+            pose.bone_matrix_posed(
                 state,
                 steps,
                 hit.descriptor.bone,
                 root,
                 self.child_rotation_x.map(|x| (CHILD_JOINT, x)),
+                self.joint_translation,
+                self.joint_scale,
             )
         };
         let mut position = Vec3::ZERO;
@@ -1530,6 +1576,8 @@ impl ItemPool {
             grab_range: assets.grab_range,
             hitbox_size: 0.0,
             child_rotation_x: None,
+            joint_translation: None,
+            joint_scale: None,
             root_translation: if spawn.initial_collision {
                 spawn.previous_position
             } else {

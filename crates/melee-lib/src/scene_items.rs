@@ -85,6 +85,7 @@ melee_it::item_kinds! {
         NessPKThunder3: it_ness::NessPkThunderTrail<2>,
         NessPKThunder4: it_ness::NessPkThunderTrail<3>,
         MewtwoDisable: it_mewtwo::MewtwoDisable,
+        MewtwoShadowBall: it_mewtwo::MewtwoShadowBall,
     }
 }
 
@@ -593,6 +594,22 @@ impl Resources {
                 it_mewtwo::disable::SPECIAL_ATTRIBUTES,
             )?;
             kinds.push((ItemKind::MewtwoDisable, disable));
+            // ftData.x48_items[1]: the Shadow Ball, whose hitbox rides its
+            // model's grandchild.
+            let mut ball = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_mewtwo::shadow_ball::ARTICLE_INDEX,
+                &it_mewtwo::shadow_ball::ARTICLE_STATES,
+                it_mewtwo::shadow_ball::SPECIAL_ATTRIBUTES,
+            )?;
+            ball.read_pose(&a)
+                .map_err(|e| anyhow::anyhow!("Shadow Ball pose: {e}"))?;
+            // The ball's joint animations may carry DPtcl keys.
+            ball.read_particle_tracks(&a)
+                .map_err(|e| anyhow::anyhow!("Shadow Ball particle track: {e}"))?;
+            kinds.push((ItemKind::MewtwoShadowBall, ball));
+            visual_archives.push((ItemKind::MewtwoShadowBall, std::sync::Arc::clone(&a)));
             visual_archives.push((ItemKind::MewtwoDisable, a));
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's

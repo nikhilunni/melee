@@ -1,0 +1,26 @@
+# MEWTWO directed witness: a roll out of the charge loop (stick at tick 170)
+# drops the ball and keeps the charge.
+name = "mewtwo_ball_roll_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 175, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

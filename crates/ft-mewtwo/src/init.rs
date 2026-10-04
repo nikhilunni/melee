@@ -28,6 +28,11 @@ pub struct Mewtwo {
     /// ftMt_Init_OnDeath2, installed by a special until the next motion
     /// change.
     pub damage_callbacks: bool,
+    /// Fighter +2230, u.mt.x2230_shadowHeldGObj: the Shadow Ball in
+    /// Mewtwo's hand.
+    pub held_ball: bool,
+    /// Shadow Ball's motion scratch (mv.mt.SpecialN).
+    pub shadow_ball: crate::special_n::ShadowBall,
     /// Confusion's motion scratch (mv.mt.SpecialS) and reflector.
     pub confusion: crate::special_s::Confusion,
     /// x2222_b2, set by Confusion's grab until a motion change without
@@ -62,6 +67,8 @@ impl Mewtwo {
             teleport: Default::default(),
             disable_article: false,
             damage_callbacks: false,
+            held_ball: false,
+            shadow_ball: Default::default(),
             confusion: Default::default(),
             cape_turn_blocked: false,
         }
@@ -87,6 +94,15 @@ fn take_damage_callback(f: &mut Fighter) {
         return;
     }
     crate::special_lw::remove_projectile(f);
+    // ftMt_SpecialN_OnDeath (80146ED0): the held ball goes; a charge short
+    // of full is lost with its effects (ftCo_800BFFAC, efLib_DestroyAll).
+    crate::special_n::remove_ball(f);
+    let mewtwo = f.character.get::<Mewtwo>();
+    if mewtwo.shadow_ball_charge as f32 != mewtwo.attributes.shadow_ball.full_charge {
+        crate::special_n::set_charge(f, 0);
+        f.effects
+            .push(melee_ef::request::EffectRequest::DestroyOwned);
+    }
 }
 
 /// ftMt_Init_OnDeath2 (80144EE4), the death2_cb: Disable's projectile goes,
@@ -96,6 +112,12 @@ fn death_callback(f: &mut Fighter) {
         return;
     }
     crate::special_lw::remove_projectile(f);
+    // ftMt_SpecialN_OnTakeDamage (80146E30): the held ball goes and the
+    // charge is lost with its effects whatever it was.
+    crate::special_n::remove_ball(f);
+    crate::special_n::set_charge(f, 0);
+    f.effects
+        .push(melee_ef::request::EffectRequest::DestroyOwned);
 }
 
 impl CharacterCallbacks for Mewtwo {
@@ -117,12 +139,10 @@ impl CharacterCallbacks for Mewtwo {
     /// ftData_SpecialN/S/Hi/Lw[Mewtwo] and the aerial tables.
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
         match slot {
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
-            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
-            _ => unimplemented!(
-                "ftData_Special{slot:?}[Mewtwo] (airborne: {airborne}): character special entry"
-            ),
         }
     }
     /// Fighter_8006C80C: the special's accessory4 while installed.
@@ -140,9 +160,49 @@ impl CharacterCallbacks for Mewtwo {
     }
     /// itMewtwoDisable_Logic67_Destroyed -> ftMt_SpecialLw_ClearDisableGObj
     /// (80146198).
+    /// it_2725_Logic101_Destroyed -> ftMt_SpecialN_SetNULL (80146DC8) for a
+    /// ball that never left the hand.
     const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = |f, kind| {
         if kind == melee_types::ItemKind::MewtwoDisable {
             f.character.get_mut::<Mewtwo>().disable_article = false;
+        }
+        if kind == melee_types::ItemKind::MewtwoShadowBall {
+            f.character.get_mut::<Mewtwo>().held_ball = false;
+        }
+    };
+    /// The held Shadow Ball reads Mewtwo's charge while he keeps it
+    /// (ftMt_SpecialN_GetChargeLevel).
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        let mewtwo = f.character.get::<Mewtwo>();
+        let charge = mewtwo
+            .held_ball
+            .then(|| (mewtwo.shadow_ball_charge, crate::special_n::full_charge(f)));
+        melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            articles_fired: 0,
+            charge,
+            holds_needles: false,
+            stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+            steering_article: false,
+            detonating_article: false,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
+            article_stage: None,
+            model_scale: f.player.scale * f.attributes.size.model_scaling,
+        }
+    }
+    /// ftCo_ThrowF_Anim (800DD7DC): ftMt_SpecialN_Shoot, the forward
+    /// throw's Shadow Balls.
+    const THROW_ANIMATION: fn(&mut Fighter, &FighterAssets) = |f, assets| {
+        if f.motion_state.id == melee_types::CommonMotionState::ThrowF {
+            crate::special_n::throw_shot(f, assets);
         }
     };
     /// ftCommon_8007DB58: take_dmg_cb (ftMt_Init_OnTakeDamage, 80144F18)

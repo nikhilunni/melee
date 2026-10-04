@@ -1,0 +1,35 @@
+# MEWTWO directed witness: Shadow Ball started in the air (jump at tick 120, B at
+# 130), charging through the landing and released on the ground (B at 220);
+# then a jump, an aerial start and release with the aerial recoil.
+name = "mewtwo_ball_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 123, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 133, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 223, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 318, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 321, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 343, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

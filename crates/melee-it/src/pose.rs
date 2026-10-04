@@ -288,6 +288,54 @@ impl ItemPose {
         self.matrix_from_locals(&locals[..source.len()], bone, root)
     }
 
+    /// [`Self::bone_matrix_turned`] with joints the kind's code places and
+    /// sizes itself after the animation step (HSD_JObjSetTranslate /
+    /// HSD_JObjSetScale on a joint below the root): `(joint, value)` each.
+    #[allow(clippy::too_many_arguments)]
+    pub fn bone_matrix_posed(
+        &self,
+        state: usize,
+        steps: u32,
+        bone: usize,
+        root: RootSrt,
+        turned: Option<(usize, f32)>,
+        translated: Option<(usize, Vec3)>,
+        scaled: Option<(usize, Vec3)>,
+    ) -> Mtx {
+        let source: &[LocalSrt] = match &self.states[state] {
+            Some(samples) => {
+                assert!(
+                    !self.looping.contains(&state) || (steps as usize) <= samples.len(),
+                    "item pose: a looping animation played past its samples"
+                );
+                &samples[(steps.max(1) as usize - 1).min(samples.len() - 1)]
+            }
+            None => &self.rest,
+        };
+        let mut locals = [LocalSrt {
+            flags: 0,
+            rotate: Quaternion::default(),
+            scale: Vec3::ZERO,
+            translate: Vec3::ZERO,
+        }; 16];
+        assert!(source.len() <= locals.len(), "item pose: too many joints");
+        locals[..source.len()].copy_from_slice(source);
+        if let Some((joint, angle)) = turned {
+            assert!(
+                locals[joint].flags & JOBJ_USE_QUATERNION == 0,
+                "item pose: turning a quaternion joint"
+            );
+            locals[joint].rotate.x = angle;
+        }
+        if let Some((joint, translate)) = translated {
+            locals[joint].translate = translate;
+        }
+        if let Some((joint, scale)) = scaled {
+            locals[joint].scale = scale;
+        }
+        self.matrix_from_locals(&locals[..source.len()], bone, root)
+    }
+
     /// `bone`'s local transform `steps` animation steps into article state
     /// `state` (HSD_JObjGetRotationX and friends read these).
     pub fn local(&self, state: usize, steps: u32, bone: usize) -> &LocalSrt {
