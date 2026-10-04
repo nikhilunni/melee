@@ -441,3 +441,12 @@ players = ["Peach", "Peach"]
 stocks = 4
 seed = 1117749374
 costumes = [0, 1]
+
+[[boundary]]
+name = "start_bf_iceclimbers_fox4"
+cold = "start_bf_iceclimbers_fox4_cold"
+savestate = "harness/roms/start_bf_iceclimbers_fox4.sav"
+stage = "Battlefield"
+players = ["IceClimbers", "Fox"]
+stocks = 4
+seed = 2498056134

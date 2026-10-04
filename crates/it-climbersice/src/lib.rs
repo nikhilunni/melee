@@ -12,7 +12,7 @@ pub use string::ClimbersString;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
     state_change::ANIM_UPDATE,
-    ClimbersIceState, ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent,
+    AirLanding, ClimbersIceState, ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent,
     ItemEventContext, ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, SpawnItem,
 };
 use melee_types::ItemKind;
@@ -373,14 +373,20 @@ fn melting_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 }
 
 /// itClimbersice_UnkMotion1_Coll -> it_8026E15C (8026E15C): an airborne
-/// pass; a touched surface (it_80276FC4) or a landing (it_8026DBC8's
-/// checks, then it_802C1950) is not ported. The block drops for the few
-/// frames between the script's two commands, from the climber's head: it
-/// does not reach the floor first.
+/// pass that bounces off walls and ceilings (it_80276FC4); a block that
+/// settles on a floor before its launch stops there and melts
+/// (it_802C1950). It is never thrown (xD54 zero), so the landing's break
+/// check (it_8026DDFC) does not draw, and retail's callback returns false
+/// whatever the pass did.
 fn dropping_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    let bits = item.air_contact_bits(ctx.map);
-    if bits & 0xF != 0 {
-        unimplemented!("it_8026E15C: the unlaunched ice block touches the map ({bits:#x})");
+    let cell = ctx.rng.expect("it_8026DDFC's generator");
+    let mut rng = cell.get();
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    cell.set(rng);
+    match landing {
+        AirLanding::Airborne => {}
+        AirLanding::Landed => stop(item, ctx.assets),
+        AirLanding::Broken => unreachable!("it_8026DDFC: an ice block is never thrown"),
     }
     false
 }

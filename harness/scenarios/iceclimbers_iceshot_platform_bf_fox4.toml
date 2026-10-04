@@ -1,0 +1,34 @@
+# ICECLIMBERS directed witness: an unlaunched ice block meets a floor
+# (itClimbersice_UnkMotion1_Coll -> it_8026E15C, 0x8026E15C). Popo dashes
+# right and full-hops under Battlefield's right platform with an aerial Ice
+# Shot (found with `melee-sim search` from start_bf_iceclimbers_fox4). The
+# block is made above the platform at tick 150, drops onto it at tick 159
+# while Popo is still rising through it, and bounces (it_80276FC4: its fall
+# speed is above ItemAttr x5C, so it_8026DC24 does not settle it and
+# it_802C1950 is not called); the script launches it on tick 160. Nana's
+# block, six ticks behind, is launched as it reaches the platform.
+name = "iceclimbers_iceshot_platform_bf_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_bf_iceclimbers_fox4.sav"
+frames = 330
+seed = 1
+stage = "Battlefield"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 94 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 1024, stickX = 94 } },
+  { frame = 139, port = 0, buttons = {  }, raw = {  } },
+  { frame = 144, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
