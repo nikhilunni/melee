@@ -22,6 +22,14 @@ impl Fighter {
         map: &mut CollMap,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
+        // ftData_UnkMotionStates3 (fighter.c:1652) sits ahead of the hitlag
+        // gate; it touches only the character's own state, so its place
+        // among the timers before that gate is free.
+        if !self.core.status.disabled {
+            if let Some(every_frame) = self.character.table().every_frame {
+                every_frame(self);
+            }
+        }
         let choice = if self.core.begin_animation_phase(assets) {
             // ftCo_800D71D8 follows ftAnim_8006EBA4, before the state's callback.
             self.run_catch_window(assets);

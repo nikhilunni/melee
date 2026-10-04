@@ -15,6 +15,27 @@ pub struct Koopa {
     pub breath_reach: f32,
     /// Fighter +2230, u.kp.x2230: the Fire Breath's lifetime left.
     pub breath_life: f32,
+    /// mv.kp while a Whirling Fortress row runs.
+    pub fortress: crate::special_hi::Fortress,
+    /// accessory4_cb while a special owns it.
+    pub accessory: Accessory,
+}
+
+/// The accessory4 callback a special installed; a motion change removes it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// fn_80134590: the Bowser Bomb's drop trail.
+    BombDrop,
+    /// fn_80134518: the Bowser Bomb's landing burst.
+    BombLanding,
+}
+
+/// fp->accessory4_cb = `accessory`, until it runs or the motion changes.
+pub(crate) fn install_accessory(f: &mut Fighter, accessory: Accessory) {
+    f.character.get_mut::<Koopa>().accessory = accessory;
+    f.core.arm_accessory4();
 }
 impl Koopa {
     pub fn new(attributes: KoopaAttributes) -> Self {
@@ -23,6 +44,8 @@ impl Koopa {
             model_group: 0,
             breath_reach: 0.0,
             breath_life: 0.0,
+            fortress: Default::default(),
+            accessory: Accessory::None,
         }
     }
 }
@@ -49,6 +72,40 @@ impl CharacterCallbacks for Koopa {
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
+
+    /// ftData_UnkMotionStates3[FTKIND_KOOPA]: ftKp_Init_UnkMotionStates3
+    /// (80132A64) -> ftKp_SpecialLw_80134D78.
+    const EVERY_FRAME: Option<fn(&mut Fighter)> = Some(refill_breath);
+    /// ftData_SpecialN/S/Hi/Lw[Koopa]: Fire Breath, Koopa Klaw, Whirling
+    /// Fortress and Bowser Bomb.
+    fn enter_special(
+        fighter: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            SpecialSlot::Up => crate::special_hi::enter(fighter, airborne, assets),
+            SpecialSlot::Down => crate::special_lw::enter(fighter, airborne, assets),
+            SpecialSlot::Neutral | SpecialSlot::Side => unimplemented!(
+                "ftData_Special{slot:?}[Koopa] (airborne: {airborne}): character special entry"
+            ),
+        }
+    }
+    /// Fighter_8006C80C: the special's accessory4, installed until it runs
+    /// or the motion changes; each uninstalls itself.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        let pending = std::mem::take(&mut f.character.get_mut::<Koopa>().accessory);
+        if !f.run_accessory4(pending != Accessory::None) {
+            return;
+        }
+        match pending {
+            Accessory::BombDrop => crate::special_lw::drop_trail(f),
+            Accessory::BombLanding => crate::special_lw::landing_burst(f),
+            Accessory::None => {}
+        }
+    }
 
     fn kind(&self) -> FighterKind {
         FighterKind::Koopa
@@ -113,3 +170,23 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
+
+/// ftKp_SpecialLw_80134D78 (80134D78): outside the Fire Breath rows
+/// (341..346) both fuels regain their per-frame share, up to full.
+fn refill_breath(f: &mut Fighter) {
+    let action = f.motion_state.action.0;
+    if (crate::special_n::FIRST_ROW..=crate::special_n::LAST_ROW).contains(&action) {
+        return;
+    }
+    let koopa = f.character.get_mut::<Koopa>();
+    let a = &koopa.attributes.fire_breath;
+    // 80134DA4 / 80134DC0: fadds, then the clamp by fcmpo.
+    koopa.breath_reach += a.reach_recharge;
+    if koopa.breath_reach > a.reach_max {
+        koopa.breath_reach = a.reach_max;
+    }
+    koopa.breath_life += a.life_recharge;
+    if koopa.breath_life > a.life_max {
+        koopa.breath_life = a.life_max;
+    }
+}

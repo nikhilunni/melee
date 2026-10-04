@@ -204,6 +204,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftDk_Init_8010DB3C): called right after `accessory`.
     const MAP_ACCESSORY: Option<fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap)> =
         None;
+    /// ftData_UnkMotionStates3[kind] (fighter.c:1652): the kind's own work
+    /// every frame of Fighter_8006A360, in hitlag too, ahead of the
+    /// animation step (Bowser's breath refilling, ftKp_SpecialLw_80134D78).
+    const EVERY_FRAME: Option<fn(&mut Fighter)> = None;
     /// ftCommon_8007DB58: character take-damage callback before damage entry.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = None;
     /// Fighter_ProcessHit's take_dmg_2_cb (fighter.c:2862): a hit with

@@ -37,6 +37,8 @@ pub struct CharacterTable {
     pub enter_special: fn(&mut Fighter, SpecialSlot, bool, &assets::FighterAssets),
     pub accessory: fn(&mut Fighter, &assets::FighterAssets, &mut gekko_math::HsdRng),
     pub special_grab: SpecialGrab,
+    /// ftData_UnkMotionStates3[kind]: see `CharacterCallbacks::EVERY_FRAME`.
+    pub every_frame: Option<fn(&mut Fighter)>,
     pub take_damage: Option<fn(&mut Fighter)>,
     pub hit_taken: Option<fn(&mut Fighter)>,
     pub map_accessory:
@@ -152,6 +154,7 @@ impl CharacterTable {
             enter_special: C::enter_special,
             accessory: C::accessory,
             special_grab: C::SPECIAL_GRAB,
+            every_frame: C::EVERY_FRAME,
             take_damage: C::TAKE_DAMAGE,
             hit_taken: C::HIT_TAKEN,
             map_accessory: C::MAP_ACCESSORY,

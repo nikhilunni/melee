@@ -8,6 +8,7 @@ mod dust;
 mod egg_shell;
 pub mod fixture_spawns;
 mod item_generators;
+mod koopa;
 mod mario;
 mod pool;
 mod resources;
@@ -617,6 +618,22 @@ impl Effects {
             }
             if let EffectRequest::SyncAttached { id: 0x482, bone } = request {
                 self.spawn_screw_attack::<T>(player, bone, fighter, bank, particles, rng)?;
+                continue;
+            }
+            if let EffectRequest::SyncAttached { id: 0x4DA, bone } = request {
+                self.spawn_fortress::<T>(player, bone, fighter, bank, particles, rng)?;
+                continue;
+            }
+            if let EffectRequest::SyncAttached { id: 0x4DF, bone } = request {
+                self.spawn_bomb_drop::<T>(player, bone, fighter, bank, particles, rng)?;
+                continue;
+            }
+            if let EffectRequest::PositionalGenerator {
+                id: 0x4D8,
+                position,
+            } = request
+            {
+                self.spawn_bomb_landing::<T>(position, fighter, bank, particles, rng)?;
                 continue;
             }
             if let EffectRequest::SyncAttached {

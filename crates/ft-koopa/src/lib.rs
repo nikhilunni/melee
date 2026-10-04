@@ -1,6 +1,10 @@
 //! Bowser: ft/kinds/ftKoopa. Common states live in melee-ft.
 pub mod attributes;
+pub mod common;
 pub mod init;
+pub mod special_hi;
+pub mod special_lw;
+pub mod special_n;
 
 use melee_ft::fighter::{state, ActionId, MotionRow};
 
@@ -17,7 +21,20 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    place_all(&mut rows, special_hi::rows());
+    place_all(&mut rows, special_lw::rows());
     rows
+}
+
+const fn place_all<const N: usize>(
+    rows: &mut [MotionRow; SPECIAL_ROW_COUNT],
+    ported: [MotionRow; N],
+) {
+    let mut i = 0;
+    while i < N {
+        rows[(ported[i].action.0 - FIRST_ACTION) as usize] = ported[i];
+        i += 1;
+    }
 }
 
 /// ftKp_Init_MotionStateTable[i].x4_flags (0x803CEDC0, read from the retail
