@@ -40,6 +40,10 @@ pub enum FixReason {
     Named,
     /// The recording's start date against Slippi's code history.
     Dated,
+    /// The replay's Slippi version: no build that wrote it carried the
+    /// version its date names, or the date precedes the build (an unset
+    /// console clock).
+    Versioned,
     /// The date allows two versions; on this tick their dashbacks first
     /// disagree and the recorded facing is this version's, not `over`'s.
     Dashback {
@@ -54,6 +58,7 @@ impl std::fmt::Display for FixChoice {
         match self.reason {
             FixReason::Named => write!(f, " (named)"),
             FixReason::Dated => write!(f, " (by date)"),
+            FixReason::Versioned => write!(f, " (by Slippi version, not the date)"),
             FixReason::Dashback { tick, over } => write!(
                 f,
                 " (not {}: the recorded facing at tick {tick}, the first dashback they disagree on)",
@@ -273,6 +278,83 @@ fn ucf_by_date(day: &str) -> (melee_lib::ControllerFix, Option<melee_lib::Contro
     }
 }
 
+/// The replay version of the first build with UCF 0.8: bb86519 (2021-03-31)
+/// put it in every output, console and Dolphin, with `CURRENT_VERSION`
+/// 3.9.0 (Recording/Recording.s). Every `g_ucf.bin` beside an older
+/// `g_core.bin` is the 0.73 beta or 0.74.
+const UCF_080_VERSION: slp::Version = slp::Version::new(3, 9, 0);
+/// The replay version when 0.84 was first built (422bb78, 2023-05-07, a
+/// separate console file `g_ucf_084.bin`; Dolphin's list took it at
+/// 6d3e140, 2023-12-18, version 3.16.0).
+const UCF_084_VERSION: slp::Version = slp::Version::new(3, 14, 0);
+/// The replay version of the first console core built beside 0.74
+/// (0ec965e, 2019-10-24; `g_ucf.bin` is 0.74 from 823067b, 2019-10-09).
+const UCF_074_VERSION: slp::Version = slp::Version::new(3, 0, 0);
+
+/// The day slippi-ssbm-asm's `Output/Console/g_core.bin` first wrote each
+/// replay version below 3.9.0 (the commit that built it), ascending. A
+/// recording dated earlier than its own version was made with the console's
+/// clock unset, and its date says nothing.
+const VERSION_FIRST_BUILT: [(slp::Version, &str); 15] = [
+    (slp::Version::new(1, 7, 1), "2019-02-25"), // e10f583
+    (slp::Version::new(2, 0, 0), "2019-03-19"), // 5e7a923
+    (slp::Version::new(2, 0, 1), "2019-03-29"), // 7062149
+    (slp::Version::new(2, 1, 0), "2019-05-03"), // 009b155
+    (slp::Version::new(2, 2, 0), "2019-07-17"), // 26ab8a3
+    (slp::Version::new(3, 0, 0), "2019-10-24"), // 0ec965e
+    (slp::Version::new(3, 1, 0), "2020-01-18"), // 28df917
+    (slp::Version::new(3, 2, 0), "2020-01-31"), // c8403dc
+    (slp::Version::new(3, 3, 0), "2020-02-11"), // bc46aa7
+    (slp::Version::new(3, 4, 0), "2020-06-06"), // 9398d52
+    (slp::Version::new(3, 5, 0), "2020-06-13"), // 4e3b185
+    (slp::Version::new(3, 6, 0), "2020-06-20"), // 729c1dc
+    (slp::Version::new(3, 7, 0), "2020-07-12"), // b230594
+    (slp::Version::new(3, 8, 0), "2020-12-06"), // 4b0002b
+    (slp::Version::new(3, 9, 0), "2021-02-17"), // f99bdbe
+];
+
+/// The UCF versions a recording can have run, the likelier first, and
+/// whether its date or its Slippi version decided. The version is the
+/// stronger rule: it is written by the build, the date by a console clock
+/// that is often unset (corpus recordings say 1949, 2006, 2012, 2016) or
+/// wrong. A build older than 3.9.0 ran the 0.73 beta or 0.74, whatever its
+/// date; its date chooses between them only when it is one the build can
+/// have (not before the version existed, not after 0.8 replaced them).
+fn ucf_candidates(
+    version: slp::Version,
+    day: Option<&str>,
+) -> Option<(
+    melee_lib::ControllerFix,
+    Option<melee_lib::ControllerFix>,
+    FixReason,
+)> {
+    use melee_lib::ControllerFix::{Ucf073, Ucf074, Ucf080, Ucf084};
+    if version < UCF_080_VERSION {
+        let first_built = VERSION_FIRST_BUILT
+            .iter()
+            .rev()
+            .find(|(built, _)| *built <= version)
+            .map_or("", |(_, day)| day);
+        if let Some(day) = day.filter(|&day| first_built <= day && day < UCF_080) {
+            let (dated, other) = ucf_by_date(day);
+            return Some((dated, other, FixReason::Dated));
+        }
+        // The version built beside this core, and the other one a setup
+        // may have paired with it; the frames choose.
+        let (built, other) = if version < UCF_074_VERSION {
+            (Ucf073, Ucf074)
+        } else {
+            (Ucf074, Ucf073)
+        };
+        return Some((built, Some(other), FixReason::Versioned));
+    }
+    let (dated, other) = ucf_by_date(day?);
+    if dated == Ucf084 && version < UCF_084_VERSION {
+        return Some((Ucf080, None, FixReason::Versioned));
+    }
+    Some((dated, other, FixReason::Dated))
+}
+
 /// The recording's start day, `YYYY-MM-DD`.
 fn start_day(replay: &Replay) -> Option<&str> {
     replay
@@ -283,11 +365,11 @@ fn start_day(replay: &Replay) -> Option<&str> {
         .get(..10)
 }
 
-/// The UCF version a UCF port ran. Slippi records only "UCF", so date the
-/// recording by its start time against Slippi's code history
-/// ([`ucf_by_date`]); [`resolve_controller_fix`] settles a date with two
-/// candidates. Dween is not ported. `Setup::controller_fix` names the
-/// version instead.
+/// The UCF version a UCF port ran. Slippi records only "UCF", so bound it
+/// by the replay's Slippi version and date the recording by its start time
+/// against Slippi's code history ([`ucf_candidates`]);
+/// [`resolve_controller_fix`] settles two candidates. Dween is not ported.
+/// `Setup::controller_fix` names the version instead.
 fn ucf_version(
     replay: &Replay,
     p: &slp::PlayerStart,
@@ -303,7 +385,7 @@ fn ucf_version(
     if !is_ucf(p) {
         return None;
     }
-    Some(ucf_by_date(start_day(replay)?).0)
+    Some(ucf_candidates(replay.version(), start_day(replay))?.0)
 }
 
 /// Game Start's UCF: both the dashback and shield drop fields are 1.
@@ -355,17 +437,14 @@ pub fn resolve_controller_fix(
         let reason = FixReason::Named;
         return (setup, Some(FixChoice { fix, reason }));
     }
-    let Some((dated, other)) = start_day(replay).map(ucf_by_date) else {
+    let Some((dated, other, reason)) = ucf_candidates(replay.version(), start_day(replay)) else {
         return (setup, None);
     };
     let named = |fix| Setup {
         controller_fix: Some(fix),
         ..setup
     };
-    let mut choice = FixChoice {
-        fix: dated,
-        reason: FixReason::Dated,
-    };
+    let mut choice = FixChoice { fix: dated, reason };
     if let Some(other) = other.filter(|_| unsupported_setup(replay, named(dated)).is_empty()) {
         // An unported boundary or setup error before any disagreement
         // leaves the dated version; the comparison run reports it.
@@ -1103,5 +1182,37 @@ mod tests {
         ] {
             assert_eq!(ucf_by_date(day), (dated, other), "{day}");
         }
+    }
+
+    #[test]
+    fn slippi_version_bounds_the_ucf_version_before_the_date() {
+        use FixReason::{Dated, Versioned};
+        let v = slp::Version::new;
+        // (replay version, start day, candidates, what decided)
+        for (version, day, fixes, reason) in [
+            // A date the build can have: the date chooses.
+            (v(2, 0, 1), Some("2019-06-24"), (Ucf073, None), Dated),
+            (v(2, 0, 1), Some("2020-03-04"), (Ucf074, Some(Ucf073)), Dated),
+            (v(3, 9, 0), Some("2021-07-01"), (Ucf080, None), Dated),
+            // No build older than 3.9.0 carried 0.8, whatever the clock says.
+            (v(2, 0, 1), Some("2021-06-17"), (Ucf073, Some(Ucf074)), Versioned),
+            (v(2, 0, 1), Some("2023-05-05"), (Ucf073, Some(Ucf074)), Versioned),
+            (v(3, 7, 0), Some("2024-03-01"), (Ucf074, Some(Ucf073)), Versioned),
+            // A date before the version existed is an unset clock.
+            (v(2, 0, 1), Some("2016-11-20"), (Ucf073, Some(Ucf074)), Versioned),
+            (v(3, 0, 0), Some("1949-01-01"), (Ucf074, Some(Ucf073)), Versioned),
+            (v(3, 3, 0), Some("2019-06-01"), (Ucf074, Some(Ucf073)), Versioned),
+            (v(2, 0, 1), None, (Ucf073, Some(Ucf074)), Versioned),
+            // 0.84 was first built with 3.14.0.
+            (v(3, 12, 0), Some("2024-03-01"), (Ucf080, None), Versioned),
+            (v(3, 16, 0), Some("2024-03-01"), (Ucf084, None), Dated),
+        ] {
+            assert_eq!(
+                ucf_candidates(version, day),
+                Some((fixes.0, fixes.1, reason)),
+                "{version:?} {day:?}"
+            );
+        }
+        assert_eq!(ucf_candidates(v(3, 9, 0), None), None);
     }
 }

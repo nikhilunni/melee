@@ -494,9 +494,9 @@ pad queue at one poll per tick and records `pad_queue_x` and
 (cardinal run, dashback, shield drop, rim-count drop, tumble, SDI, shield SDI,
 squat release).
 
-`melee-sim replay` and `replay-batch` date the UCF version from the recording
-(`ucf_by_date`) and, where the date allows two, read it from the frames
-(below); `--controller-fix <off|ucf-0.73|ucf-0.74|ucf-0.8|ucf-0.84>` names
+`melee-sim replay` and `replay-batch` bound the UCF version by the replay's
+Slippi version, date it from the recording inside that bound
+(`ucf_candidates`) and, where two remain, read it from the frames (below); `--controller-fix <off|ucf-0.73|ucf-0.74|ucf-0.8|ucf-0.84>` names
 it instead for every port recorded with UCF. The report's `controller fix`
 line says which version ran and why.
 
@@ -537,7 +537,8 @@ in any Slippi output; from 2021-03-31 0.8; from 2024-02 0.84. In between a
 setup ran 0.73 or 0.74, and the date does not settle it: consoles kept old
 builds (`MARTH/11_12_26 Marth + Peach (BF).slp`, 2020-02-08, ran 0.73, as
 other consoles kept 2019's spawn code into March 2020). The replay's Slippi
-version does not help either (every game in this corpus says 2.0.1). So
+version does not separate the two either (every game in this corpus says
+2.0.1; it does bound the choice, below). So
 `resolve_controller_fix` reads it from the frames, between those two known
 versions only: it runs the port under both in step from the recorded inputs
 (no recorded state enters either run); the two compute the same match until
@@ -545,6 +546,37 @@ a dashback they disagree on, and on that tick the recorded facing is one
 version's. That version then runs the whole comparison from the first frame.
 A game with no such dashback keeps the dated version (0.74 from 2019-10-09,
 the console set's date), and nothing distinguishes the two for it.
+
+**The Slippi version bounds it (2026-10-03).** The date comes from the
+console's clock, which is often unset or wrong: the second corpus has
+recordings dated 1949, 2006, 2012, 2016 and 2018 (before Slippi 2.0.1
+existed) and 2.0.1 recordings dated 2021 and 2023. The replay version is
+written by the build, so `ucf_candidates` applies it first, from the history
+of `Output/Console/g_core.bin` (the version it writes) beside `g_ucf.bin`:
+
+| Replay version | UCF built beside it | Source |
+|---|---|---|
+| below 3.0.0 | the 0.73 beta (`g_ucf.bin` until 823067b, 2019-10-09, when the core wrote 2.2.0) | 2.0.1: 7062149 (2019-03-29) to 009b155 |
+| 3.0.0 to 3.8.0 | 0.74 | 0ec965e (2019-10-24) |
+| 3.9.0 on | 0.74 until bb86519 (2021-03-31), then 0.8, in the console and Dolphin outputs alike | f99bdbe (2021-02-17) wrote 3.9.0 first |
+| 3.14.0 on | 0.84 exists: a separate console file `g_ucf_084.bin` (422bb78, 2023-05-07); Dolphin's list takes it at 6d3e140 (2023-12-18, 3.16.0). `g_ucf.bin` stays 0.8 | |
+
+A recording below 3.9.0 therefore ran 0.73 or 0.74 whatever its date. Its
+date still chooses between them when it is a date the build can have: not
+before the version's first build (`VERSION_FIRST_BUILT`; earlier means an
+unset clock) and not after 0.8 replaced them. Otherwise the version built
+beside the core is the first candidate and the other the second, and the
+frames choose as above; the report says `(by Slippi version, not the date)`.
+A recording below 3.14.0 dated into 0.84's time runs 0.8. A recording below
+3.9.0 with no date at all is no longer refused.
+
+Second corpus: three 2.0.1 recordings dated 2021-06-17 and 2023-05-05 were
+given 0.8 and stopped on its tumble wiggle (`cur_anim_frame` in DamageFall /
+DamageFly at ticks 2256, 7339, 7529); all three now match to the last frame.
+Every game of that corpus whose result depends on the version agrees with
+the table (forced runs, `replay-batch --controller-fix`): six below 3.0.0
+match further under 0.73 than 0.74, and three 3.9.0 games further under 0.8
+than either.
 
 **Witnesses** (`UCF_WITNESSES`), recorded with the Gecko codes `ucf-0.73`
 (`git show 823067b^:Binary/UCF/Ucf0.73Beta.bin`) and `ucf-0.74`
