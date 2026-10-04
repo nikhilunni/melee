@@ -192,6 +192,15 @@ def test_frozen_stages_sets_its_flag_in_the_start_scene_and_its_cold_twin():
     assert "gecko" not in cold
 
 
+def test_widescreen_sets_its_flag_in_the_start_scene_and_its_cold_twin():
+    codes = ["widescreen"]
+    start = tomllib.loads(mb.start_scenario("b", "PokemonStadium", ["Fox", "Marth"], 4, codes, [0, 1]))
+    cold = tomllib.loads(mb.cold_scenario("b", "PokemonStadium", ["Fox", "Marth"], 4, 7, [0, 0],
+                                          "retail", codes, [0, 1], None))
+    assert start["widescreen"] is True and cold["widescreen"] is True
+    assert start["gecko"] == ["widescreen"] and "gecko" not in cold
+
+
 def creation_driver(seed=0x1234_5678):
     """A driver on the stage screen whose config names a Game Start seed."""
     mem = Memory()

@@ -39,7 +39,7 @@ BRANCH_OPCODE = 18
 #: list naming the code and the flag go together; a cold twin, which has no
 #: `gecko` list, carries the flag alone).
 SCENARIO_FLAGS = {"ps-preload": "stadium_preload", "ps-frozen": "stadium_frozen",
-                  "frozen-stages": "frozen_stages"}
+                  "frozen-stages": "frozen_stages", "widescreen": "widescreen"}
 
 
 def scenario_flags(codes: list[str] | None) -> dict[str, bool]:

@@ -14,6 +14,7 @@ pub mod initial_state;
 pub mod inputs;
 pub mod replay;
 pub mod replay_batch;
+pub mod replay_screen_codes;
 pub mod replay_stage_codes;
 pub mod scenario;
 pub mod search;

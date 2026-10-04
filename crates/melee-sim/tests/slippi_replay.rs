@@ -175,6 +175,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
+            widescreen: None,
         },
     )
     .unwrap();
@@ -202,6 +203,7 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
+            widescreen: None,
         },
     )
     .unwrap();
@@ -229,6 +231,7 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
+            widescreen: None,
         },
     )
     .unwrap();
@@ -257,6 +260,7 @@ fn missing_late_input_preserves_the_matched_prefix() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
+            widescreen: None,
         },
     )
     .unwrap();
@@ -288,6 +292,7 @@ fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
         ignore_controller_fixes: false,
         controller_fix: None,
         frozen_stages: None,
+        widescreen: None,
     };
     // The marker, facing and pads route by port, so the prefix matches until
     // entry. fn_8016D8AC's delay grows by five per slot before this one
@@ -338,6 +343,7 @@ fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
+            widescreen: None,
         },
     )
     .unwrap();

@@ -106,30 +106,47 @@ pub fn resolve_stage_codes(
         // An unported boundary or setup error before the recording decides
         // leaves retail's stage; the comparison run reports it.
         let probe = catch_unwind(AssertUnwindSafe(|| {
-            recorded_stage(replay, root, dated(false), dated(true))
+            recorded_between(replay, root, dated(false), dated(true))
         }));
         if let Ok(Ok(Some(recorded))) = probe {
-            choice = recorded;
+            choice = StageCodeChoice {
+                frozen: recorded.coded,
+                reason: StageCodeReason::Recorded {
+                    apart: recorded.apart,
+                    tick: recorded.tick,
+                },
+            };
         }
     }
     (named(choice.frozen), Some(choice))
 }
 
-/// Run the replay's inputs without and with the code in step. Until the two
+/// Which of two setups a recording followed, read from its frames.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Recorded {
+    /// The recording is the second setup's (the one with the code).
+    pub coded: bool,
+    /// The first tick the two runs differ.
+    pub apart: u64,
+    /// The tick only one of them matches the recording.
+    pub tick: u64,
+}
+
+/// Run the replay's inputs without and with a code in step. Until the two
 /// runs differ (a compared field or the tick's end seed) nothing is asked of
 /// the recording. From then on each is compared with it as the comparison
 /// run would be, Pre Frame seeds included: the first tick only one of them
 /// matches names that one. `None` when they never differ, or both stop
 /// matching on the same tick.
-fn recorded_stage(
+pub(crate) fn recorded_between(
     replay: &Replay,
     root: &Path,
     plain: Setup,
-    frozen: Setup,
-) -> Result<Option<StageCodeChoice>> {
+    coded: Setup,
+) -> Result<Option<Recorded>> {
     let mut runs = [
         ColdRun::start(replay, &cold_scenario(replay, root, plain)?)?,
-        ColdRun::start(replay, &cold_scenario(replay, root, frozen)?)?,
+        ColdRun::start(replay, &cold_scenario(replay, root, coded)?)?,
     ];
     let leaders: Vec<usize> = replay.leader_ports().collect();
     let last_tick = runs[0].unavailable.as_ref().map(|(tick, _)| *tick);
@@ -151,18 +168,17 @@ fn recorded_stage(
             *previous = tick.end_seed;
             compared.push(tick);
         }
-        let (plain, frozen) = (&compared[0], &compared[1]);
+        let (plain, coded) = (&compared[0], &compared[1]);
         if apart.is_none()
-            && (plain.end_seed != frozen.end_seed || plain.actual.state != frozen.actual.state)
+            && (plain.end_seed != coded.end_seed || plain.actual.state != coded.actual.state)
         {
             apart = Some(tick);
         }
         let Some(apart) = apart else { continue };
-        let reason = StageCodeReason::Recorded { apart, tick };
-        match (plain.matches(), frozen.matches()) {
+        match (plain.matches(), coded.matches()) {
             (true, true) => {}
             (false, false) => return Ok(None),
-            (_, frozen) => return Ok(Some(StageCodeChoice { frozen, reason })),
+            (_, coded) => return Ok(Some(Recorded { coded, apart, tick })),
         }
     }
     Ok(None)

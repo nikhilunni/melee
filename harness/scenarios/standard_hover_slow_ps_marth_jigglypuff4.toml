@@ -1,0 +1,39 @@
+# The 4:3 twin of widescreen_hover_slow_ps_marth_jigglypuff4: the same pads
+# from start_ps_marth_jigglypuff4, no code. Jigglypuff hovers off Pokemon
+# Stadium's right side at x = 170.2; the magnifier's first point of damage
+# comes at tick 341 (352 with the Widescreen code).
+name = "standard_hover_slow_ps_marth_jigglypuff4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_marth_jigglypuff4.sav"
+frames = 560
+seed = 1
+stage = "PokemonStadium"
+inputs = [
+  { frame = 130, port = 1, buttons = { StickX = 1.0 }, raw = { stickX = 100 } },
+  { frame = 165, port = 1, buttons = { StickX = 1.0, X = true }, raw = { stickX = 100, button = 1024 } },
+  { frame = 168, port = 1, buttons = { StickX = 1.0 }, raw = { stickX = 100 } },
+  { frame = 205, port = 1, buttons = { StickX = 1.0, X = true }, raw = { stickX = 100, button = 1024 } },
+  { frame = 208, port = 1, buttons = { StickX = 1.0 }, raw = { stickX = 100 } },
+  { frame = 225, port = 1, buttons = { StickX = 0.4375 }, raw = { stickX = 35 } },
+  { frame = 245, port = 1, buttons = { StickX = 0.4375, X = true }, raw = { stickX = 35, button = 1024 } },
+  { frame = 248, port = 1, buttons = { StickX = 0.4375 }, raw = { stickX = 35 } },
+  { frame = 275, port = 1, buttons = { StickX = 0.0 }, raw = { stickX = 0 } },
+  { frame = 285, port = 1, buttons = { StickX = 0.0, X = true }, raw = { stickX = 0, button = 1024 } },
+  { frame = 288, port = 1, buttons = { StickX = 0.0 }, raw = { stickX = 0 } },
+  { frame = 325, port = 1, buttons = { StickX = 0.0, X = true }, raw = { stickX = 0, button = 1024 } },
+  { frame = 328, port = 1, buttons = { StickX = 0.0 }, raw = { stickX = 0 } },
+  { frame = 365, port = 1, buttons = { StickX = 0.0, X = true }, raw = { stickX = 0, button = 1024 } },
+  { frame = 368, port = 1, buttons = { StickX = 0.0 }, raw = { stickX = 0 } },
+  { frame = 400, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -100 } },
+  { frame = 700, port = 1, buttons = { StickX = 0.0 }, raw = { stickX = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"

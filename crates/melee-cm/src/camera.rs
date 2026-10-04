@@ -63,6 +63,10 @@ pub struct GameCamera {
     /// +0x399 bit 2 (Camera_80030AF8): freeze framing while player 1 leaves
     /// the z plane.
     pub lock_depth: bool,
+    /// The screen code installed (`Screen::Widescreen`); retail otherwise.
+    /// Only the rendered CObj and the on-screen test read it: the framing
+    /// uses the description's aspect (cm_803BCB64) whatever the CObj holds.
+    pub screen: crate::view::Screen,
 }
 
 impl GameCamera {
@@ -84,6 +88,7 @@ impl GameCamera {
             zoom_distance: -1.0,
             single_player_zoom: false,
             lock_depth: false,
+            screen: crate::view::Screen::Standard,
         }
     }
 

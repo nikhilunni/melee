@@ -1,5 +1,6 @@
 //! Cold replay comparison. Expected state never initializes or repairs a tick.
-use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice};
+use crate::replay_screen_codes::{resolve_screen, ScreenChoice, ScreenReason};
+use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice, StageCodeReason};
 use crate::{frame::Simulation, initial_state::InitialState, scenario::Scenario};
 use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
@@ -25,6 +26,9 @@ pub struct Setup {
     /// Whether the console ran the frozen-stage code, instead of what the
     /// recording's seeds show (`replay_stage_codes`).
     pub frozen_stages: Option<bool>,
+    /// Whether the console ran the Widescreen code, instead of what the
+    /// recording's frames show (`replay_screen_codes`).
+    pub widescreen: Option<bool>,
 }
 
 /// The UCF version a recording's ports run and what decided it.
@@ -104,6 +108,8 @@ pub struct Report {
     /// Whether the frozen-stage code ran in this comparison; `None` on a
     /// stage it does not change.
     pub stage_code: Option<StageCodeChoice>,
+    /// Whether the Widescreen code ran in this comparison.
+    pub screen: ScreenChoice,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
@@ -120,6 +126,7 @@ impl std::fmt::Display for Report {
         if let Some(choice) = &self.stage_code {
             writeln!(f, "stage code {choice}")?;
         }
+        writeln!(f, "screen {}", self.screen)?;
         writeln!(
             f,
             "{} / {} replay frames matched{}",
@@ -723,6 +730,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
         scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
         scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
+        scenario.widescreen = setup.widescreen.unwrap_or(false);
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
                 let fix = ucf_version(replay, &replay.start.players[port], setup)
@@ -739,20 +747,26 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
     build(seed, unlocked)
 }
 
+/// What a replay does not record, as chosen for one comparison.
+#[derive(Debug, Clone, Copy)]
+pub struct Resolved {
+    pub setup: Setup,
+    pub controller_fix: Option<FixChoice>,
+    pub stage_code: Option<StageCodeChoice>,
+    pub screen: ScreenChoice,
+}
+
 /// What a replay does not record, read from its frames: the stage code
-/// (`replay_stage_codes`) and the UCF version ([`resolve_controller_fix`]).
-/// Each is decided by its own dry pass before the comparison, which then
-/// runs under the one chosen setup from the first frame. The stage code is
-/// read first, under the dated UCF version, so the dashback probe runs on
-/// the console's random stream; if that probe then names the other UCF
-/// version, the stage code is read again under it.
-pub fn resolve_setup(
-    replay: &Replay,
-    root: &Path,
-    setup: Setup,
-) -> (Setup, Option<FixChoice>, Option<StageCodeChoice>) {
-    let (staged, stage_code) = resolve_stage_codes(replay, root, setup);
-    let (fixed, controller_fix) = resolve_controller_fix(replay, root, staged);
+/// (`replay_stage_codes`), the screen code (`replay_screen_codes`) and the
+/// UCF version ([`resolve_controller_fix`]). Each is decided by its own dry
+/// pass before the comparison, which then runs under the one chosen setup
+/// from the first frame. The codes are read first, under the dated UCF
+/// version, so the dashback probe runs on the console's random stream; if
+/// that probe then names the other UCF version, the codes are read again
+/// under it.
+pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
+    let (coded, stage_code, screen) = resolve_codes(replay, root, setup);
+    let (fixed, controller_fix) = resolve_controller_fix(replay, root, coded);
     let redated = matches!(
         controller_fix,
         Some(FixChoice {
@@ -760,15 +774,55 @@ pub fn resolve_setup(
             ..
         })
     );
-    if !redated || setup.frozen_stages.is_some() {
-        return (fixed, controller_fix, stage_code);
+    if !redated {
+        return Resolved {
+            setup: fixed,
+            controller_fix,
+            stage_code,
+            screen,
+        };
+    }
+    let uncoded = Setup {
+        frozen_stages: setup.frozen_stages,
+        widescreen: setup.widescreen,
+        ..fixed
+    };
+    let (setup, stage_code, screen) = resolve_codes(replay, root, uncoded);
+    Resolved {
+        setup,
+        controller_fix,
+        stage_code,
+        screen,
+    }
+}
+
+/// The stage code, then the screen under it. A stage code the standard
+/// screen could not show (the wide screen's first difference came before
+/// the stage's) is read again on the wide screen.
+fn resolve_codes(
+    replay: &Replay,
+    root: &Path,
+    setup: Setup,
+) -> (Setup, Option<StageCodeChoice>, ScreenChoice) {
+    let (staged, stage_code) = resolve_stage_codes(replay, root, setup);
+    let (screened, screen) = resolve_screen(replay, root, staged);
+    let stage_unread = matches!(
+        stage_code,
+        Some(StageCodeChoice {
+            reason: StageCodeReason::Undecided,
+            ..
+        })
+    );
+    let wide_recorded = screen.widescreen && matches!(screen.reason, ScreenReason::Recorded { .. });
+    if !(stage_unread && wide_recorded) {
+        return (screened, stage_code, screen);
     }
     let unstaged = Setup {
         frozen_stages: None,
-        ..fixed
+        ..screened
     };
     let (setup, stage_code) = resolve_stage_codes(replay, root, unstaged);
-    (setup, controller_fix, stage_code)
+    (setup, stage_code, screen)
 }
 
 pub fn run_file(path: &Path, root: &Path, setup: Setup) -> Result<Report> {
@@ -781,7 +835,12 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         !replay.incomplete && !replay.frames.is_empty(),
         "incomplete or empty replay"
     );
-    let (setup, controller_fix, stage_code) = resolve_setup(replay, root, setup);
+    let Resolved {
+        setup,
+        controller_fix,
+        stage_code,
+        screen,
+    } = resolve_setup(replay, root, setup);
     let mut report = Report {
         stage: slp::ids::stage_name(replay.start.stage)
             .unwrap_or("unknown")
@@ -809,6 +868,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 .any(|port| has_controller_fix(&replay.start.players[port])),
         controller_fix,
         stage_code,
+        screen,
         context: String::new(),
         differing: Vec::new(),
         stop: Stop::Complete,
@@ -1080,7 +1140,7 @@ pub fn write_retail_inputs(
     setup: Setup,
     mut out: impl std::io::Write,
 ) -> Result<()> {
-    let (setup, _, _) = resolve_setup(replay, root, setup);
+    let setup = resolve_setup(replay, root, setup).setup;
     let scenario = cold_scenario(replay, root, setup)?;
     let players: Vec<_> = scenario
         .fighters
@@ -1119,6 +1179,8 @@ pub fn write_retail_inputs(
     if crate::replay_stage_codes::changes_stage(replay.start.stage) {
         header["frozen_stages"] = scenario.frozen_stages.into();
     }
+    // The Widescreen code (`--gecko widescreen`).
+    header["widescreen"] = scenario.widescreen.into();
     writeln!(out, "{header}")?;
     let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
     for input in &scenario.replay_inputs {

@@ -1,0 +1,31 @@
+# The port's side of slp_ps_fox_marth_standard_t2000: boundary start_ps_slippi74_ns_frozen_p12_fox0_marth0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_fox_marth_standard_t2000_cold"
+expected = "slp_ps_fox_marth_standard_t2000"
+frames = 2000
+seed = 806084477
+boundary_seed = 1962266846
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

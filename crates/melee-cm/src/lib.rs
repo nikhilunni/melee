@@ -14,4 +14,4 @@ pub use camera::{GameCamera, Mode, Transform};
 pub use quake::{Quake, QuakeKind};
 pub use stage::{Rect, StageCamera};
 pub use subject::{Extents, Subject, SubjectState};
-pub use view::{to_screen, ScreenPoint};
+pub use view::{to_screen, Screen, ScreenPoint};

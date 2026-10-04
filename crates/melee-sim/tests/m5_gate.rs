@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 19] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 21] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2151,6 +2151,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 19] = [
     // and the back throw he flicks in that hitlag does not start (962), his
     // IASA not running (Fighter_Spaghetti_8006AD10).
     ("slp_fd_falco_younglink_t1100_cold", 1100),
+    // An HNC console with the Widescreen code: the jumbotron's close-up
+    // (grStadium_801D32D0) still frames a fighter the 4:3 screen clips, so
+    // it outlasts tick 945.
+    ("slp_ps_fox_marth_wide_t2000_cold", 2000),
+    // The same pads on retail without the code: the close-up ends at 945
+    // and the stage draws its next mode.
+    ("slp_ps_fox_marth_standard_t2000_cold", 2000),
 ];
 
 #[test]
@@ -2350,6 +2357,18 @@ fn frozen_stages_code_matches_retail() {
     combat_gate_ticks("frozen_stages_fd_marth_marth4", 13600);
     combat_gate_ticks("frozen_stages_ps_fox_marth4", 7500);
     combat_gate_ticks("frozen_stages_dl_fox_marth4", 5000);
+}
+
+/// "Widescreen 16:9" (slippi-ssbm-asm External/Widescreen), recorded from a
+/// boundary booted with its Gecko text: CObjLoad scales the main CObj's
+/// aspect by 320 / 219 (0x8036A4A8) and Camera_80030BBC's on-screen test
+/// uses 100 and 540 across (0x80030C7C, 0x80030C88). Jigglypuff hovers off
+/// Stadium's right side: the magnifier's first point of damage comes at
+/// tick 352 with the code and 341 without it, on the same pads.
+#[test]
+fn widescreen_code_matches_retail() {
+    combat_gate_ticks("widescreen_hover_slow_ps_marth_jigglypuff4", 560);
+    combat_gate_ticks("standard_hover_slow_ps_marth_jigglypuff4", 560);
 }
 
 /// Pokemon Stadium's jumbotron close-up ends when the player's camera bone

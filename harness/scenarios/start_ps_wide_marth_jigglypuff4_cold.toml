@@ -1,0 +1,24 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_ps_wide_marth_jigglypuff4_cold"
+expected = "start_ps_wide_marth_jigglypuff4"
+frames = 600
+seed = 3295456148
+stage = "PokemonStadium"
+widescreen = true
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+costume = 0
+stocks = 4
+controller = "idle"

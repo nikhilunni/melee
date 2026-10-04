@@ -435,8 +435,8 @@ mods (NeutralSpawn, FreezeGlitchFix, Disable FoD During Doubles), Frozen
 Stadium, UCF 0.74 / 0.8 / 0.84, and netplay (per-frame RNG sync,
 FreezeDeadUpFallPhysics, PreventWobbling, FreezeFDSlippi, Frozen PS). Each
 must be ported before a replay recorded with it can match; the Stadium
-preload and Frozen Stadium codes are (below), and so is Frozen Stages, which
-consoles ran beside Slippi's own sets.
+preload and Frozen Stadium codes are (below), and so are Frozen Stages and
+the Widescreen code, which consoles ran beside Slippi's own sets.
 
 ## Controller fixes (UCF), 2026-09-28
 
@@ -895,6 +895,45 @@ the replay match all 11421 frames, seeds included: the console skipped one
 render there. Nothing in the recording says so, and the runner does not
 guess; the stop stays, as an external event like disc latency.
 
+**The other consoles' `percent` stops** (second corpus, after the
+Widescreen code took the HNC ones). Four are the same thing: the port one
+point above the console, the damaged fighter far off the stage, and the
+screen not the cause (two of them match the standard screen and not the
+wide one at an earlier magnifier tick; the other two never separate them).
+
+| Replay | Stop | Off-screen fighter | Screen read from the frames |
+|---|---|---|---|
+| `PEACH/Game_20191013T105824.slp` | 6022 | Link at (137.6, 46.1); the console's point comes at 6023 | standard, at tick 2509 |
+| `ZELDA_SHEIK/Marth vs Sheik [FD] Game_20181024T232813.slp` | 6345 | Zelda at (-183.1, 3.2) | standard, at tick 2454 |
+| `ZELDA_SHEIK/Game_20120109T050633.slp` | 2013 | Zelda at (-174.9, -20.8) | undecided |
+| `ZELDA_SHEIK/19_56_47 [TREW] Sheik + Captain Falcon (DL).slp` | 3073 | Captain Falcon at (155.4, 58.4) | undecided |
+
+The other two are not the magnifier: `FOX/Game_20190824T124750.slp` (1482:
+28.58 recorded, 28.61 in the port) and `ZELDA_SHEIK/21_27_18 Zelda + Falco
+(DL).slp` (4666: 85.37 and 85.17) differ by a hit's damage, not a point.
+
+Nothing in these recordings bounds when a display pass happened. They are
+Slippi 2.0.1: Pre Frame and Post Frame only, one pair per fighter and tick
+whatever the console rendered. The frame bookend (3.0.0, `da05c16`) carries
+the frame number and, later, the latest finalized frame; neither says
+whether the frame was drawn. So the runner still renders every tick and
+these four stops stay.
+
+**Nana takes no magnifier damage.** The four `follower.percent` stops of
+that corpus (two HNC, two not) were a port fault, not a display pass:
+Fighter_8006A360 tests x221F_b4, the player's second fighter, at 0x8006A830
+(`lbz 0x221F; extrwi. r0, r0, 1, 28; bne`) before the camera's zoom and
+skips the whole block, where the port counted her magnified ticks like
+Popo's and gave her the point. With the test all four pass their stop
+(1178 to 3921, 1931 to 2765, 2098 to 3799, 2903 to 6004; each then reaches
+an unported Ice Climbers boundary) and no Ice Climbers game of either
+corpus matches fewer frames. There is no directed retail witness: the
+bridge of one of them (`slp_bf_luigi_iceclimbers_t2300`, local data, from
+`start_bf_slippi74_ns_p14_luigi2_iceclimbers0_4`) leaves the port at tick
+540 on Luigi's height (retail in Dolphin 1.946, the port and the console's
+replay 1.146), long before Nana is off screen, so retail there is not
+playing the replay's game. Not diagnosed.
+
 ## Frozen Stages: the stage code a replay does not record (2026-10-03)
 
 Some consoles ran a stage that never drew what retail draws: no Shy Guys,
@@ -986,15 +1025,118 @@ The ten other frozen Final Destination games are two 2.0.1 consoles, one
 stopped on `rng.seed` at 1885: those stops are the code (each game matches
 to its last frame with it), not the Frame Start seed check being stricter.
 
-**Still open on the HNC consoles.** Their Stadium games pass tick 85 with
-the code and then stop on `input_seed` 700 to 4700 ticks in, the port a few
-draws ahead, where the port equals retail with the same codes for 7500
-ticks. And across all six stages 21 HNC games stop on `percent` against 6
-of the three times as many other games. Both are what a widescreen code
-would do (Slippi's `External/Widescreen` moves the off-screen bounds at
-0x80030C7C / 0x80030C88 that the magnifier's damage reads, and rewrites the
-CObj the jumbotron's close-up test reads); that is a hypothesis, not
-checked against a recording.
+**What was still open on the HNC consoles** (Stadium games stopping on
+`input_seed` 700 to 4700 ticks in, 24 games stopping on `percent`) was the
+Widescreen code: the next section.
+
+## Widescreen: the screen code a replay does not record (2026-10-03)
+
+Forty of the HNC games ran on a 16:9 picture. Nothing in the replay says
+so. Two things show it: the magnifier's damage falls a tick (or many) later
+than on a 4:3 screen, and Pokémon Stadium's jumbotron keeps a close-up the
+4:3 screen would have dropped, so the stage draws its next mode later.
+
+**The code.** `melee_lib::slippi::SlippiCodes::widescreen` is "Widescreen
+16:9" [Dan Salvato, mirrorbender, Achilles1515, UnclePunch]: slippi-ssbm-asm
+`External/Widescreen`, with the off-screen bounds of e9457ee (2019-11-03,
+"use 4:3 offscreen damage behavior for widescreen"); logic ported, not
+copied; GPL-3. Slippi's Dolphin lists carried it from then; the console
+output `g_screen_wide` dates from 4548f3f (2021-05-31), so the 2020 consoles
+loaded it themselves, as they did Frozen Stages. Its writes:
+
+| Write | Site | Effect | Port |
+|---|---|---|---|
+| `C236A4A8` | `lfs f1, 0x34(r31)` in CObjLoad (0x8036A2EC): the description's perspective aspect | every perspective CObj's aspect is the description's `* 320 / 219` (`fmuls`, `fdivs`), so a projected x lies nearer the centre by 219/320. The camera's framing does not change: it reads the description's aspect (cm_803BCB64), not the CObj's | `melee_cm::Screen::aspect`, taken by the rendered CObj (`GameCamera::render_camera`) |
+| `04030C7C 38000064`, `04030C88 3800021C` | Camera_80030BBC's `lhz` of the scissor's left and right | the on-screen test compares the window x with 100 and 540. That is about where the 4:3 edges fall in the wider picture (320 -/+ 219 = 101, 539), a pixel outside them: a fighter leaves the screen where the 4:3 screen's x would be -1.46 or 641.46, so up to one crossing tick later, and the magnifier's sixty-tick count (Fighter_8006A360) starts later or not at all | `melee_cm::to_screen` with `Screen::Widescreen` |
+| `04086B24 60000000` | ftLib_80086A8C's test of Camera_80030CFC | the model is drawn whether or not it is near the screen; display only | none |
+| `043BB05C`, `044DDB28..58`, `C22FCFC4`, `044DDB84` | screen flash, bubble zoom and placement, nametag scale | display only | none |
+
+Pokémon Stadium's close-up test (grStadium_801D32D0) projects the player's
+camera bone through the main CObj and asks that a 124-pixel box around it
+fit the viewport: with the wide aspect a fighter out to the 4:3 picture's
+edge and beyond still fits, the close-up lasts, and the mode draw that would
+have ended it is not made. Dream Land's fly-bys read the CObj's aspect too
+(Camera_800307D0), for where a background model is placed: nothing drawn
+from the random stream depends on it.
+
+Nintendont's own "Force Widescreen" (`kernel/PatchWidescreen.c`: C_MTXPerspective's
+aspect times 4/3, the scissor untouched) is not this. Measured on one game
+with a temporary experiment (`YLINK/20200205 - HNC 13 - ... Peach vs Young
+Link - Battlefield`, 1565 / 4511 on the standard screen, the port a point
+above): that patch and the Slippi code without its bounds (the tree before
+e9457ee) each stop at 1566 with the port a point below, and the aspect with
+the bounds of 100 and 540 matches all 4511 frames. Only the last was run
+over the corpus.
+
+**Witnesses**, recorded from boundaries booted with the Gecko code
+`widescreen` (the code's text at 4d15973, `Output/Netplay/GALE01r2.ini`
+without the deleted Offscreen Bubble Fix line, in `MELEE_GECKO_DIR`; a
+scenario says `widescreen = true` beside it). The aspect hook runs when a
+CObj is loaded, so the code must be installed before the match is created:
+on another boundary's savestate only the bounds would apply. All exact with
+0 differing particle-site ticks:
+
+| Scenario | Retail |
+|---|---|
+| `widescreen_hover_slow_ps_marth_jigglypuff4` (`widescreen_code_matches_retail`; boundary `start_ps_wide_marth_jigglypuff4`) | Jigglypuff drifts off Stadium's right side and hovers at x = 170.2: the magnifier's first point of damage comes at tick 352. The port without the code leaves the recording at tick 340 (it has the point at 341) |
+| `standard_hover_slow_ps_marth_jigglypuff4` (boundary `start_ps_marth_jigglypuff4`) | the same pads without the code: the point comes at tick 341 |
+| `slp_ps_fox_marth_wide_t2000` (`SLIPPI_REPLAY_WITNESSES`; boundary `start_ps_slippi74_ns_frozen_wide_p12_fox0_marth0_4`: UCF 0.74, NeutralSpawn, preload, Frozen Stages, Widescreen) | `FOX/20200122 - HNC 21 - PM 0952 - Fox (Default) vs Marth (Default) - Pokemon Stadium.slp` played back for 2000 ticks: the jumbotron's close-up outlasts tick 945. The port without the code leaves the recording there on `rng.seed` (the stage proc's draw) |
+| `slp_ps_fox_marth_standard_t2000` (boundary `start_ps_slippi74_ns_frozen_p12_fox0_marth0_4`) | the same pads without the code (the inputs header's `widescreen` set to false): retail's seed leaves the widescreen recording's at tick 945, with the value the port computes without the code |
+
+A second pair with a faster drift (`widescreen_hover_fast_...`,
+`standard_hover_fast_...`, local data) gates exact too but does not separate
+the screens: its first point comes at 326 with the code and 325 without,
+and the port without the code passes the widescreen recording.
+
+**Which replays ran it.** `replay_screen_codes::resolve_screen` reads it from
+the frames, as the stage code is read: the port runs the recorded inputs on
+the standard screen and the wide one in step (`recorded_between`, shared
+with the stage code); nothing is asked of the recording until the two runs
+differ; the first tick only one of them matches names the screen, which
+then runs the whole comparison from the first frame. When they never differ,
+or both stop matching on the same tick, the screen is retail's. It is read
+after the stage code and under it; when the standard screen left the stage
+code undecided and the frames then show the wide screen, the stage code is
+read again on the wide screen (`resolve_codes`). The report's `screen` line
+says which and why; `--screen <standard|widescreen>` names it instead. The
+bridge carries the choice: `--retail-inputs` writes `widescreen` in its
+header, a boundary made with `--gecko widescreen` sets the flag in its
+scenarios, and `slippi_to_scenario.py` refuses a boundary whose flag differs.
+
+| Corpus | Complete before | after | Read as widescreen | Read as standard | Never separated |
+|---|---|---|---|---|---|
+| `public-v3.7` (108) | 106 | 106 | 0 | 35 | 73 |
+| `public-v3.7-b` (502) | 325 | 356 | 40, all HNC (frames matched 3,780,417 to 3,995,461; 4,003,840 with Nana's fix, above) | 148 (7 HNC) | 313 |
+
+No replay matches fewer frames in either corpus, and every recorded
+scenario gates as before (1762 pass, 66 fail, the same ones). The HNC
+series in the second corpus (120 games, 114 runnable): 55 complete before,
+86 after; `percent` stops 24 to 3, `input_seed` stops 17 to 4.
+
+| Stage (HNC) | Games | Widescreen | Complete |
+|---|---|---|---|
+| Battlefield | 23 | 4 | 19 |
+| Dream Land | 17 | 4 | 13 |
+| Final Destination | 16 | 5 | 10 |
+| Fountain of Dreams | 21 | 2 | 12 |
+| Pokémon Stadium | 20 | 17 | 10 |
+| Yoshi's Story | 23 | 8 | 22 |
+
+Not every station ran it: seven HNC games match the standard screen and
+not the wide one (forced to the wide screen each matches fewer frames), and
+73 never put a fighter in the band that separates the two. On Stadium the
+jumbotron separates them within the first minutes of almost every game,
+which is why 17 of 20 are read there. One game outside the series was read
+as widescreen before Nana's magnifier damage was fixed (above): the wide
+screen had only delayed a point she never takes.
+
+**Still open on the widescreen consoles.** Two HNC games now stop on
+`percent` with the port one point *below* the console (`HNC 1 Fox vs
+Dr. Mario (PS)` at 7008, `HNC 21 Marth vs Jigglypuff (FoD)` at 5267), and
+three Stadium games on `input_seed` further in than before (2470, 3709,
+10437). Both tests read the CObj of the last display pass, which a replay
+does not record (above); nothing here separates a skipped pass from a
+difference in the code those consoles ran.
 
 ## Consoles with level Fountain of Dreams platforms (2026-10-03, not ported)
 
@@ -1035,7 +1177,19 @@ Two whole games match, so the code's effect is exactly that. Its text is
 unknown: no Slippi console set of the time hooks grizumi.c (every
 `Output/Console/*.bin` at 4dc7447^ decoded; `20xxNeutralSpawns.bin` hooks
 0x80263058 and 0x801C0A48 only) and no commit of slippi-ssbm-asm carries a
-y = 24 row. Like the consoles without Shy Guys, it is a tournament code the
+y = 24 row. Searched again with the Widescreen code (2026-10-03), with no
+result: every blob of Slippi Nintendont's history for a Gecko line (text or
+binary, 04 or C2) on grizumi.c's range 0x801CBB00..0x801CD400 (only
+Recording's SendFountainInfo hook at 0x801CC998); 20XX TE's source
+(`neutral_spawn_points.mgc` remaps players to the stage's own markers and
+has no Fountain of Dreams write; `frozen_mode.mgc` has none either); and
+Slippi's "Lagless FoD" [Achilles, Myougi, Dan Salvato] (0x801CBB90,
+0x801CC8AC, 0x801CBE9C, 0x801CBEF0, 0x801CBF54, 0x80390838, 0x801CD250,
+0x801CCDCC), which removes the reflection and particles and writes neither
+platform height (0x801CC8AC zeroes a joint's scale). The four games that
+then stopped on `percent` were measured on the standard screen; these
+consoles may have run the Widescreen code as well, which the tick-0 stop
+hides. Like the consoles without Shy Guys, it is a tournament code the
 recording does not name. Porting it needs the code text for a retail
 witness, a flag beside `stadium_frozen` in `SlippiCodes` (the two creation
 heights), a NeutralSpawn table variant with the level row, and frame zero

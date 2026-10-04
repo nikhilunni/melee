@@ -38,6 +38,10 @@ enum Command {
         /// `none`), instead of what the recording's seeds show.
         #[arg(long, value_parser = parse_stage_codes)]
         stage_codes: Option<bool>,
+        /// Whether the console ran the Widescreen code (`widescreen`,
+        /// `standard`), instead of what the recording's frames show.
+        #[arg(long, value_parser = parse_screen)]
+        screen: Option<bool>,
         /// Instead of comparing, write the replay's setup and per-tick raw
         /// pads (JSONL) for `harness/slippi_to_scenario.py`, which feeds
         /// them to retail from a boundary.
@@ -67,6 +71,10 @@ enum Command {
         /// `none`), instead of what the recording's seeds show.
         #[arg(long, value_parser = parse_stage_codes)]
         stage_codes: Option<bool>,
+        /// Whether the console ran the Widescreen code (`widescreen`,
+        /// `standard`), instead of what the recording's frames show.
+        #[arg(long, value_parser = parse_screen)]
+        screen: Option<bool>,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -205,6 +213,18 @@ fn parse_stage_codes(name: &str) -> Result<bool, String> {
         })
 }
 
+fn parse_screen(name: &str) -> Result<bool, String> {
+    let names = melee_sim::replay_screen_codes::NAMES;
+    names
+        .iter()
+        .find(|(n, _)| *n == name)
+        .map(|(_, widescreen)| *widescreen)
+        .ok_or_else(|| {
+            let names: Vec<_> = names.iter().map(|(n, _)| *n).collect();
+            format!("unknown screen (one of {})", names.join(", "))
+        })
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args.command {
@@ -215,6 +235,7 @@ fn main() -> anyhow::Result<()> {
             ignore_controller_fixes,
             controller_fix,
             stage_codes,
+            screen,
             retail_inputs,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
@@ -229,6 +250,7 @@ fn main() -> anyhow::Result<()> {
                 ignore_controller_fixes,
                 controller_fix,
                 frozen_stages: stage_codes,
+                widescreen: screen,
             };
             if let Some(out) = retail_inputs {
                 let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
@@ -259,6 +281,7 @@ fn main() -> anyhow::Result<()> {
             ignore_controller_fixes,
             controller_fix,
             stage_codes,
+            screen,
             jsonl,
         } => {
             use melee_sim::replay_batch;
@@ -281,6 +304,7 @@ fn main() -> anyhow::Result<()> {
                     ignore_controller_fixes,
                     controller_fix,
                     frozen_stages: stage_codes,
+                    widescreen: screen,
                 },
                 jobs,
             );

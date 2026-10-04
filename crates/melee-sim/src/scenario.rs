@@ -68,6 +68,10 @@ pub struct Scenario {
     /// (`melee_lib::slippi::SlippiCodes::frozen_stages`).
     #[serde(default)]
     pub frozen_stages: bool,
+    /// The Widescreen 16:9 code
+    /// (`melee_lib::slippi::SlippiCodes::widescreen`).
+    #[serde(default)]
+    pub widescreen: bool,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -87,7 +91,8 @@ pub struct Scenario {
     /// `["ucf-0.8"]`. Every fighter then names the matching
     /// `controller_fix`, and `"ps-preload"` and `"ps-frozen"` go with
     /// `stadium_preload` and `stadium_frozen`, `"frozen-stages"` with
-    /// `frozen_stages`; the port reads only those.
+    /// `frozen_stages`, `"widescreen"` with `widescreen`; the port reads
+    /// only those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -233,6 +238,7 @@ impl Scenario {
             (STADIUM_PRELOAD_GECKO, self.stadium_preload),
             (STADIUM_FROZEN_GECKO, self.stadium_frozen),
             (FROZEN_STAGES_GECKO, self.frozen_stages),
+            (WIDESCREEN_GECKO, self.widescreen),
         ];
         // Codes that are not controller fixes (`neutral-spawn`) have no
         // per-fighter setting.
@@ -439,6 +445,7 @@ impl Scenario {
                 stadium_preload: self.stadium_preload,
                 stadium_frozen: self.stadium_frozen,
                 frozen_stages: self.frozen_stages,
+                widescreen: self.widescreen,
             },
         }
     }
@@ -596,6 +603,8 @@ const STADIUM_PRELOAD_GECKO: &str = "ps-preload";
 const STADIUM_FROZEN_GECKO: &str = "ps-frozen";
 /// The `gecko` name of 20XX TE's Frozen Mode stage writes.
 const FROZEN_STAGES_GECKO: &str = "frozen-stages";
+/// The `gecko` name of the Widescreen 16:9 code.
+const WIDESCREEN_GECKO: &str = "widescreen";
 
 /// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"`
 /// in scenario TOML.

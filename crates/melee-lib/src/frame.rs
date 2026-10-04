@@ -2916,6 +2916,7 @@ fn render_cameras(state: &mut InitialState) {
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
     let camera = state.camera.render_camera(&state.assets.stage_camera);
+    let screen = state.camera.screen;
     state.rendered_camera = camera;
     // Camera_800310B8: cm_804D6464's viewing matrix, inverted for the screen KO.
     let copy_view = state
@@ -2939,7 +2940,7 @@ fn render_cameras(state: &mut InitialState) {
             }
             continue;
         }
-        let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position)
+        let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position, screen)
             .is_some_and(|point| point.on_screen);
         f.offscreen.outside_camera = !on_screen;
     }

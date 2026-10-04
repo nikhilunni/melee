@@ -299,7 +299,8 @@ impl InitialState {
         // fighter linked its subject at creation (fighter.c:893). A fighter the
         // setup resume creates keeps the subject its spawn reset.
         let (clock, bomb_rain) = scene_flow::restore_clock(&saved)?;
-        let (camera, subjects) = camera::restore(&saved)?;
+        let (mut camera, subjects) = camera::restore(&saved)?;
+        camera.screen = setup.slippi.screen();
         ensure!(
             subjects.len() <= fighters.len(),
             "unsupported camera subjects: {} for {} fighters",

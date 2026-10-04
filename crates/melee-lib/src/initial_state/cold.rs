@@ -78,6 +78,7 @@ impl InitialState {
         // gm_16AE: Camera_80030730 (the stage's field of view, see
         // StageCamera::fov), then Camera_8002F3AC snaps to the players.
         let mut camera = melee_cm::GameCamera::new();
+        camera.screen = scenario.slippi.screen();
         {
             // cm_804D6468 runs newest first: the reverse of creation.
             let subjects = fighters.iter_mut().rev().map(|f| &mut f.0.camera);
