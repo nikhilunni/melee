@@ -995,3 +995,49 @@ would do (Slippi's `External/Widescreen` moves the off-screen bounds at
 0x80030C7C / 0x80030C88 that the magnifier's damage reads, and rewrites the
 CObj the jumbotron's close-up test reads); that is a hypothesis, not
 checked against a recording.
+
+## Consoles with level Fountain of Dreams platforms (2026-10-03, not ported)
+
+Six second-corpus games, all Fountain of Dreams at one tournament day (HNC,
+2020-03-04, entry by spawn order), stop at tick 0 on `p0.cur_anim_frame`
+(EntryStart frame 0 recorded, Entry -1 in the port). That field is only the
+first one compared: no spawn rule fits their first frame, so the runner fell
+back to retail's. Frame zero shows both leaders at y = 24.0 (the first, one
+tick into EntryStart, at 24.04; x = -41.25 and 41.25), where every other
+Fountain of Dreams game in both corpora, 35 of them, including the two
+others with entry by order (`CPTFALCON/Game_19490902T135513.slp`,
+`DOC/Game_20191106T211939.slp`) and the same series' earlier days, shows the
+NeutralSpawn row (21.0 and 27.0).
+
+The spawn rule is not at fault. NeutralSpawn's Fountain of Dreams row is
+(-41.25, 21), (41.25, 27) at every commit of the file (b5f06ae through
+1e9eef5); those are the heights retail creates the side platforms at
+(`yakumono_param` +0x0 = 20 and +0x8 = 28, the arguments of
+grIzumi_801CCBDC at 0x801CBE64's two calls). These consoles created both
+platforms level, and their spawn rows followed: a fighter standing on the
+right platform is at y = 19.125 at tick 77 where an ordinary game has
+22.125, and the platforms move afterwards (71 distinct heights in one game),
+so nothing is frozen.
+
+Measured with a temporary experiment (not committed): both platforms created
+at height 24.0 and both rows at y = 24.
+
+| Replay | Matched |
+|---|---|
+| `JIGGLYPUFF/20200304 - HNC 12 - PM 0728 - Fox (Green) vs Jigglypuff (Yellow) - Fountain of Dreams.slp` | 13511 / 13511 |
+| `GANONDORF/20200304 - HNC 4 - PM 0900 - Ganondorf (Default) vs Marth (Default) - Fountain of Dreams.slp` | 15081 / 15081 |
+| `YLINK/20200304 - HNC 21 - ...` | 4142 / 10312, then `p0.percent` |
+| `ZELDA_SHEIK/20200304 - HNC 22 - ...` | 2258 / 11472, then `p1.percent` |
+| `FALCO/20200304 - HNC 13 - ...` | 1356 / 7607, then `p0.percent`, one point apart |
+| `PIKACHU/20200304 - HNC 18 - ...` | 1331 / 8616, then `p0.percent`, one point apart |
+
+Two whole games match, so the code's effect is exactly that. Its text is
+unknown: no Slippi console set of the time hooks grizumi.c (every
+`Output/Console/*.bin` at 4dc7447^ decoded; `20xxNeutralSpawns.bin` hooks
+0x80263058 and 0x801C0A48 only) and no commit of slippi-ssbm-asm carries a
+y = 24 row. Like the consoles without Shy Guys, it is a tournament code the
+recording does not name. Porting it needs the code text for a retail
+witness, a flag beside `stadium_frozen` in `SlippiCodes` (the two creation
+heights), a NeutralSpawn table variant with the level row, and frame zero
+to choose it (both leaders at y = 24 on Fountain of Dreams, which no other
+rule produces).
