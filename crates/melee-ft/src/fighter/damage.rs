@@ -1516,17 +1516,20 @@ impl Fighter {
             && i32::from(input.buttons.previous_special_up) >= lockout;
         // ft_did_jump(fp, true): a jump left, a tap or X/Y, and not a second
         // press within PlCo +1C of the last.
+        // ftCo_800CB8E0 (800CB8E0): a multi-jump fighter (can_multijump)
+        // takes ftCo_800D730C(gobj, true) instead, whose later jumps need
+        // only a held stick or X/Y.
         let jump = !up_special
-            && i32::from(self.core.physics.jumps_used) < self.core.attributes.jumping.max_jumps
-            && crate::input::human::jump_input(input, &assets.input)
-            && i32::from(input.buttons.previous_jump) >= lockout;
+            && if self.character.multi_jump_attributes().is_some() {
+                self.aerial_jump_requested_after(assets, Some(lockout))
+            } else {
+                i32::from(self.core.physics.jumps_used) < self.core.attributes.jumping.max_jumps
+                    && crate::input::human::jump_input(input, &assets.input)
+                    && i32::from(input.buttons.previous_jump) >= lockout
+            };
         if up_special {
             (self.character.table().enter_special)(self, super::SpecialSlot::Up, true, assets);
         } else if jump {
-            assert!(
-                self.character.multi_jump_attributes().is_none(),
-                "ftCo_800D730C: a multi-jump meteor cancel"
-            );
             self.enter_aerial_jump(assets)?;
         } else {
             return Ok(false);

@@ -46,6 +46,19 @@ pub struct MultiJumpState {
 impl Fighter {
     /// ft_did_jump (800CB804), ftCo_800D730C (800D730C).
     pub(super) fn aerial_jump_requested(&self, assets: &FighterAssets) -> bool {
+        self.aerial_jump_requested_after(assets, None)
+    }
+
+    /// ft_did_jump(fp, arg1) / ftCo_800D730C(gobj, arg1): with `lockout`
+    /// (arg1, the meteor cancel's ftCo_800CB8E0) a fresh press within that
+    /// many frames of the previous one (x68A < PlCo +1C) is refused. A
+    /// multi-jump fighter's later jumps take held input and never test it
+    /// (retail 0x800D73F4..0x800D7440).
+    pub(super) fn aerial_jump_requested_after(
+        &self,
+        assets: &FighterAssets,
+        lockout: Option<i32>,
+    ) -> bool {
         if i32::from(self.core.physics.jumps_used) >= self.core.attributes.jumping.max_jumps {
             return false;
         }
@@ -59,6 +72,9 @@ impl Fighter {
                     && (self.core.input.current.stick.y >= threshold
                         || self.core.input.current.held.intersects(Buttons::XY));
             }
+        }
+        if lockout.is_some_and(|frames| i32::from(self.core.input.buttons.previous_jump) < frames) {
+            return false;
         }
         self.core.input.pressed.intersects(Buttons::XY)
             || (self.core.input.current.stick.y >= threshold
