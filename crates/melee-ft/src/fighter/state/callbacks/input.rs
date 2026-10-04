@@ -67,6 +67,7 @@ pub fn standing_attacks(fighter: &mut Fighter, phase: InputPhase<'_>) {
         .expect("standing attack IASA");
 }
 
+#[inline(never)] // one definition: character rows point at it too
 pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).
@@ -322,6 +323,7 @@ pub fn fall_special(fighter: &mut Fighter, _phase: InputPhase<'_>) {
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
 /// (324).
+#[inline(never)] // one definition: character rows point at it too
 pub fn entry(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
 /// ftData_MotionStateList: ftCo_MS_Wait (14).
