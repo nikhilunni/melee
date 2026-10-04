@@ -504,3 +504,12 @@ stage = "PokemonStadium"
 players = ["Peach", "Fox"]
 stocks = 4
 seed = 4075074114
+
+[[boundary]]
+name = "start_fd_ness_fox4"
+cold = "start_fd_ness_fox4_cold"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+stage = "FinalDestination"
+players = ["Ness", "Fox"]
+stocks = 4
+seed = 2152001354

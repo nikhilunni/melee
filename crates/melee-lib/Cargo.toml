@@ -68,6 +68,7 @@ ft-younglink = { path = "../ft-younglink" }
 ft-donkey = { path = "../ft-donkey" }
 ft-koopa = { path = "../ft-koopa" }
 it-koopaflame = { path = "../it-koopaflame" }
+ft-ness = { path = "../ft-ness" }
 melee-diff = { path = "../melee-diff", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }

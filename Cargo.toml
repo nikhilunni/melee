@@ -75,6 +75,7 @@ members = [
     "crates/ft-donkey",
     "crates/ft-koopa",
     "crates/it-koopaflame",
+    "crates/ft-ness",
     # Layer 4: binaries and tooling.
     "crates/melee-lib",
     "crates/melee-sim",

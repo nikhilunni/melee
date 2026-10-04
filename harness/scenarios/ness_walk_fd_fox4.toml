@@ -1,0 +1,29 @@
+# NESS movement: slow, middle and fast walks right, a turn, a walk left.
+name = "ness_walk_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 30 } },
+  { frame = 140, port = 0, buttons = {  }, raw = { stickX = 55 } },
+  { frame = 180, port = 0, buttons = {  }, raw = { stickX = 75 } },
+  { frame = 220, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 300, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { stickX = -75 } },
+  { frame = 360, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

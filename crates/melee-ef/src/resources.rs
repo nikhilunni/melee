@@ -80,6 +80,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 17] = [
         table: "effYoshiDataTable",
         models: 0,
     },
+    // Ness (efAsync_DatEntries[10]): models 0x2710..0x2712 (efSync
+    // 0x4EE..0x4F0, efsync.c:292-301); no particles.
+    CharacterEffectFile {
+        bank: 10,
+        file: "EfNsData.dat",
+        table: "effNessDataTable",
+        models: 3,
+    },
     // Sing's notes, model 0x2AF8 (efsync.c:305-308).
     CharacterEffectFile {
         bank: 11,

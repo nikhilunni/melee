@@ -1,0 +1,39 @@
+# NESS movement: short-hop aerials landing mid-move (the LandingAir rows), one L-cancelled.
+name = "ness_aerial_land_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 118, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 120, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 212, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 214, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 316, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 318, port = 0, buttons = {  }, raw = {  } },
+  { frame = 332, port = 0, buttons = {  }, raw = { button = 64, triggerL = 255 } },
+  { frame = 335, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 414, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 416, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

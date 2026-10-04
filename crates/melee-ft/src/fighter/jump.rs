@@ -144,13 +144,8 @@ impl Fighter {
         if style == super::AerialJumpStyle::MultiJump {
             return self.enter_multi_jump(assets);
         }
-        if !matches!(
-            style,
-            super::AerialJumpStyle::Basic
-                | super::AerialJumpStyle::Peach
-                | super::AerialJumpStyle::Yoshi
-        ) {
-            unimplemented!("ftCo_JumpAerial.c:104-116: {style:?} double jump entry");
+        if style == super::AerialJumpStyle::Mewtwo {
+            unimplemented!("ftCo_JumpAerial.c:113: ftMt_JumpAerial_Enter");
         }
         let state = if style == super::AerialJumpStyle::Yoshi {
             CommonMotionState::JumpAerialF
@@ -165,13 +160,22 @@ impl Fighter {
         let attrs = &self.core.attributes.jumping;
         // retail 800CBC44/4C; Peach horizontal multiply 800CC15C:
         // separate fmuls, no fusion.
+        let impulse = self.core.input.current.stick.x * attrs.air_jump_h_multiplier;
         let velocity = Vec3::new(
-            self.core.input.current.stick.x * attrs.air_jump_h_multiplier,
+            // ftNs_JumpAerial_Enter (800CBD18) launches at rest and keeps
+            // the stick's impulse in mv.co.jumpaerial.init_h_vel (fmuls).
+            if style == super::AerialJumpStyle::Ness {
+                0.0
+            } else {
+                impulse
+            },
             // ftPe_JumpAerial_Enter stores +0 Y/Z at 800CC198..1A0;
             // ftYs_JumpAerial_Enter likewise uses animation-driven vertical motion.
             if matches!(
                 style,
-                super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
+                super::AerialJumpStyle::Peach
+                    | super::AerialJumpStyle::Yoshi
+                    | super::AerialJumpStyle::Ness
             ) {
                 0.0
             } else {
@@ -183,8 +187,14 @@ impl Fighter {
         self.core.physics.self_velocity = velocity;
         self.core.input.vertical.tilt = 0xFE;
         self.core.physics.jumps_used += 1;
+        // mv.co.jumpaerial.init_h_vel is the scratch word a landing reads
+        // as its drop timer (+2344).
         self.core.state_data = MotionData::JumpAerial {
-            retained_drop_timer,
+            retained_drop_timer: if style == super::AerialJumpStyle::Ness {
+                impulse
+            } else {
+                retained_drop_timer
+            },
         };
         (self.character.table().aerial_jump_entered)(self);
         Ok(())
@@ -210,9 +220,14 @@ impl Fighter {
     /// ftCo_Jump_Phys_Inner (800CB438), ft_80084DB0 and CheckFallFast (8007D528).
     #[inline(always)]
     pub(super) fn airborne_physics(&mut self, assets: &FighterAssets) {
-        let animation_driven = matches!(self.core.state_data, MotionData::JumpAerial { .. })
+        let style = self.character.aerial_jump_style();
+        let jumping = matches!(self.core.state_data, MotionData::JumpAerial { .. });
+        if jumping && style == super::AerialJumpStyle::Ness {
+            return self.core.curved_jump_physics();
+        }
+        let animation_driven = jumping
             && matches!(
-                self.character.aerial_jump_style(),
+                style,
                 super::AerialJumpStyle::Peach | super::AerialJumpStyle::Yoshi
             );
         self.core.airborne_physics(assets, animation_driven);
@@ -324,6 +339,42 @@ impl FighterCore {
     /// Fighter_procUpdate's tail.
     pub fn fall_physics(&mut self, assets: &FighterAssets) {
         self.airborne_physics(assets, false);
+    }
+    /// ftNs_JumpAerial_Phys_Cb (800CC654): the stick drifts the kept
+    /// impulse (mv.co.jumpaerial.init_h_vel) rather than the velocity, and
+    /// TransN's z and y deltas carry the jump's curve (ft_800851D0).
+    fn curved_jump_physics(&mut self) {
+        let MotionData::JumpAerial {
+            retained_drop_timer: impulse,
+        } = &mut self.state_data
+        else {
+            unreachable!()
+        };
+        // ftCommon_8007D28C(fp, init_h_vel) -> ftCommon_8007D174: with no
+        // target (a centred stick) ftCommon_ApplyFrictionAir brakes against
+        // self_vel.x, not the impulse. x74_anim_vel.x then moves into the
+        // impulse (retail 800CC688: fadds).
+        let stick = self.input.current.stick.x;
+        let air = &self.attributes.air;
+        let velocity = if stick * air.air_drift_max == 0.0 {
+            self.physics.self_velocity.x
+        } else {
+            *impulse
+        };
+        *impulse += crate::physics::airborne::drift(velocity, stick, air);
+        let impulse = *impulse;
+        self.physics.animation_velocity.x = 0.0;
+        let offset = self
+            .animation
+            .root_motion
+            .as_ref()
+            .expect("aerial jump root motion")
+            .primary_history
+            .offset;
+        // retail 800CC6A4: fmadds.
+        self.physics.self_velocity.x =
+            gekko_math::fma::fmadds(offset.z, self.physics.facing, impulse);
+        self.physics.self_velocity.y = offset.y;
     }
     /// ftCo_Jump_Phys_Inner (800CB438): calculation after jump-style selection.
     fn airborne_physics(&mut self, assets: &FighterAssets, animation_driven: bool) {

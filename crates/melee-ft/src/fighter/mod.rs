@@ -725,8 +725,8 @@ pub enum FloatInputPhase {
     AfterAerialJump,
 }
 
-/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. Basic, Peach and
-/// Yoshi are ported; the others retain explicit unsupported boundaries.
+/// Double-jump entry variants of ftCo_JumpAerial.c:103-119. Basic, Ness, Peach and
+/// Yoshi are ported; Mewtwo retains an explicit unsupported boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AerialJumpStyle {
     /// ftCo_JumpAerialF1: shared Kirby/Jigglypuff multijumps.
