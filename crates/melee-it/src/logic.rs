@@ -98,6 +98,11 @@ pub trait ItemLogic {
     /// The spawner draws a hit group id for the new item (SpawnItem.x40 =
     /// Item_8026AE60(), it_802AB58C): articles it spawns in turn join it.
     const NEW_HIT_GROUP: bool = false;
+    /// The kind's own callbacks tell its owner of its end from inside the
+    /// proc that ends it (it_802AB90C -> ftNs_SpecialHi_ItemPKThunderRemove),
+    /// ahead of Item_8026A8EC's efLib_DestroyAll and destroy effect; the
+    /// other kinds' notice is the frame-end Destroyed callback.
+    const NOTICE_AT_ONCE: bool = false;
     /// The physics callback looks for a target (Samus's missile,
     /// it_802B64FC): the scene supplies `ItemPhysicsContext::targets`.
     const LOCKS_ON: bool = false;
@@ -236,6 +241,7 @@ pub trait ItemLogic {
         procs_at_spawn: Self::PROCS_AT_SPAWN,
         locks_on: Self::LOCKS_ON,
         new_hit_group: Self::NEW_HIT_GROUP,
+        notice_at_once: Self::NOTICE_AT_ONCE,
         launch: Self::launch,
         destroyed: Self::destroyed,
         picked_up: Self::picked_up,
@@ -288,6 +294,7 @@ pub struct ItemLogicRow {
     pub procs_at_spawn: bool,
     pub locks_on: bool,
     pub new_hit_group: bool,
+    pub notice_at_once: bool,
     pub launch: fn(
         &mut ItemCore,
         &crate::Launch,

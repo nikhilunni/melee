@@ -120,6 +120,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("peach3_")
         || name.starts_with("held_item_")
         || REPLAY_BRANCH_WITNESSES.iter().any(|(n, _)| *n == name)
+        || name.starts_with("ness_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -2069,6 +2070,67 @@ const BOWSER_WITNESSES: [(&str, usize); 82] = [
 #[test]
 fn bowser_witnesses_match_retail() {
     gate_in_parallel(&BOWSER_WITNESSES);
+}
+
+/// Ness against Fox on Final Destination, all from the retail start
+/// boundary `start_fd_ness_fox4` (gated warm and cold in `m4_gate`).
+const NESS_WITNESSES: &[(&str, usize)] = &[
+    // Movement on the common rows with PlNs.dat's attributes and scripts.
+    ("ness_walk_fd_fox4", 420),
+    ("ness_dash_fd_fox4", 420),
+    ("ness_jump_fd_fox4", 420),
+    // The curved double jump (ftCo_JumpAerial's Ness/Yoshi/Mewtwo arm,
+    // 0x800CC6A4) steered both ways and with the stick centred.
+    ("ness_jump_curve_fd_fox4", 620),
+    ("ness_squat_guard_fd_fox4", 520),
+    ("ness_jab_tilt_fd_fox4", 620),
+    ("ness_aerial_fd_fox4", 700),
+    ("ness_aerial_land_fd_fox4", 520),
+    ("ness_taunt_ledge_fd_fox4", 620),
+    ("ness_grab_whiff_fd_fox4", 360),
+    // Forward smash: the bat article whiffed, landing on Fox, and its
+    // reflect bubble turning a Blaster shot (ftNs_AttackS4_OnReflect).
+    ("ness_bat_fd_fox4", 620),
+    ("ness_bat_hit_fd_fox4", 359),
+    ("ness_bat_reflect_fd_fox4", 261),
+    // PK Fire: the bolt whiffed on the ground and at the aerial angle, the
+    // pillar on Fox, and the bolt turned by Fox's Reflector onto Ness.
+    ("ness_pkfire_fd_fox4", 620),
+    ("ness_pkfire_hit_fd_fox4", 620),
+    ("ness_pkfire_reflect_fd_fox4", 386),
+    // PSI Magnet: the hold, release and aerial rows with nothing to absorb,
+    // and Fox's Blaster absorbed for the heal (ftNs_SpecialLw_Absorb).
+    ("ness_magnet_fd_fox4", 620),
+    ("ness_magnet_laser_fd_fox4", 620),
+    // PK Flash: held, steered and released whiffed; the explosion on Fox,
+    // on his shield, the lifetime burst beside him, and Ness struck in the
+    // hold row so the flash flies on unowned (it_802AAA50).
+    ("ness_pkflash_fd_fox4", 900),
+    ("ness_pkflash_hit_fd_fox4", 900),
+    ("ness_pkflash_blast_fd_fox4", 542),
+    ("ness_pkflash_shield_fd_fox4", 520),
+    ("ness_pkflash_struck_fd_fox4", 420),
+    // PK Thunder: the head and tail steered until the lifetime and the
+    // helpless fall; the head on Fox (its end tells Ness inside the hit
+    // proc, it_802AB90C), on his shield, turned by his Reflector
+    // (it_802AC098), and Ness struck in the control row (it_802AB9C0).
+    ("ness_pkthunder_fd_fox4", 900),
+    ("ness_pkthunder_hit_fd_fox4", 404),
+    ("ness_pkthunder_shield_fd_fox4", 420),
+    ("ness_pkthunder_reflect_fd_fox4", 460),
+    ("ness_pkthunder_struck_fd_fox4", 420),
+    // PK Thunder 2: the self-hit launch from the ground and the air, the
+    // launch into the floor (the slide) and off the stage into the helpless
+    // fall, and the launch's hitbox carried into Fox.
+    ("ness_pkthunder2_fd_fox4", 900),
+    ("ness_pkthunder2_launch_fd_fox4", 379),
+    ("ness_pkthunder2_slide_fd_fox4", 433),
+    ("ness_pkthunder2_hit_fd_fox4", 520),
+];
+
+#[test]
+fn ness_witnesses_match_retail() {
+    gate_in_parallel(NESS_WITNESSES);
 }
 
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each

@@ -1,0 +1,27 @@
+# NESS PK Flash hitting Fox: the flash is steered right, flies its lifetime out beside Fox and bursts; the explosion (it_802AF940), sized by the charge, hits him.
+# melee-sim search: reached [p1.percent > 0] at ticks [342].
+name = "ness_pkflash_blast_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 542
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 206, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = { button = 512 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,29 @@
+# NESS PK Flash against Fox's shield: the explosion beside Fox meets his
+# shield (itNessPKFlashExplode_Logic103_HitShield).
+name = "ness_pkflash_shield_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+  { frame = 190, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 206, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 228, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 320, port = 1, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 400, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -716,6 +716,41 @@ impl Runtime {
         Ok(ended_spawner)
     }
 
+    /// An item whose own callback tells its owner of its end
+    /// (`ItemLogic::NOTICE_AT_ONCE`): the owner hears inside the proc that
+    /// ended it, and what the notice does to the owner's effects
+    /// (ftNs_SpecialHiStopGFX's efLib_DestroyAll) happens before the item's
+    /// own Item_8026A8EC events.
+    fn notify_owner_at_once(&mut self, id: u32) -> Result<()> {
+        use crate::scene_items::SceneItems;
+        use melee_it::ItemDispatch;
+        let state = &mut self.state;
+        let Some(item) = state.items.get_mut(id) else {
+            return Ok(());
+        };
+        if !item.destroyed || item.owner_notified || !SceneItems::logic(item.kind).notice_at_once {
+            return Ok(());
+        }
+        crate::scene_items::article_destroyed(&mut state.fighters, item);
+        item.owner_notified = true;
+        let (owner, secondary) = (item.owner, item.owner_secondary);
+        for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                if Some(f.player.id) == owner && f.player.secondary == secondary {
+                    state.effects.flush::<RetailTrig>(
+                        melee_ef::EffectTiming::Immediate,
+                        slot,
+                        &mut f.core,
+                        &state.assets.common_particle_bank,
+                        &state.assets.particle_bank,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?;
+                }
+            });
+        }
+        Ok(())
+    }
     fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
         use crate::scene_items::SceneItems;
         let state = &mut self.state;
@@ -1059,6 +1094,7 @@ impl Runtime {
         match row.callback {
             Callback::Item { id, phase } => {
                 self.dispatch_item(id, phase)?;
+                self.notify_owner_at_once(id)?;
                 if let Some(item) = self.state.items.get_mut(id) {
                     let spawns = item
                         .link_requests

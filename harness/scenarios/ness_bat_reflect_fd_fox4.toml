@@ -1,0 +1,28 @@
+# NESS forward smash reflecting Fox's Blaster: the bat's reflect bubble (ftColl_CreateReflectHit with xB8, while the script's cmd_vars[0] is set) sends the first laser back into Fox (ftNs_AttackS4_OnReflect).
+# melee-sim search: reached [p0.motion_id == 341; p1.percent > 0] at ticks [109, 141].
+name = "ness_bat_reflect_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 261
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 102, port = 1, buttons = {  }, raw = {  } },
+  { frame = 109, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 111, port = 0, buttons = {  }, raw = {  } },
+  { frame = 112, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 114, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

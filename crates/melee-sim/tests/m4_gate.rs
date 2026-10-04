@@ -1556,6 +1556,18 @@ fn start_fd_iceclimbers_fox4_cold_600() {
     movement_gate_ticks("start_fd_iceclimbers_fox4_cold", 600);
 }
 
+/// Ness vs Fox from the FD start boundary: PlNs.dat's entry and wait, from
+/// the savestate and from a cold construction.
+#[test]
+fn start_fd_ness_fox4_600() {
+    movement_gate_ticks("start_fd_ness_fox4", 600);
+}
+
+#[test]
+fn start_fd_ness_fox4_cold_600() {
+    movement_gate_ticks("start_fd_ness_fox4_cold", 600);
+}
+
 #[test]
 fn start_iceclimbers_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");

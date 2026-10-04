@@ -702,6 +702,8 @@ pub struct ItemCore {
     /// Item_8026A8EC's efLib_DestroyAll already ran in the proc that ended
     /// the item.
     pub effects_destroyed: bool,
+    /// The owner already heard of this item's end (`ItemLogic::NOTICE_AT_ONCE`).
+    pub owner_notified: bool,
     pub script: ScriptState,
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
@@ -1497,6 +1499,7 @@ impl ItemPool {
             animation_rate: 1.0,
             destroy_effect_suppressed: false,
             effects_destroyed: false,
+            owner_notified: false,
             script: ScriptState::default(),
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),

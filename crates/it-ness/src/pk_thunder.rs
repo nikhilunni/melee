@@ -195,6 +195,7 @@ impl ItemLogic for NessPkThunder {
         item.velocity = Vec3::new(0.0, a.speed(), 0.0);
         item.blast_zone_checked = false;
     }
+    const NOTICE_AT_ONCE: bool = true;
     /// itNessPKThunderball_Logic26_DmgDealt (802AC050).
     fn damage_dealt(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         end(item);

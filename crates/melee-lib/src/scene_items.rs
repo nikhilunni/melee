@@ -1584,7 +1584,7 @@ pub fn article_destroyed(
     let Some(owner) = item.owner else {
         return;
     };
-    if !(SceneItems::logic(item.kind).notifies_owner)(item) {
+    if item.owner_notified || !(SceneItems::logic(item.kind).notifies_owner)(item) {
         return;
     }
     for fighter in fighters.iter_mut() {
