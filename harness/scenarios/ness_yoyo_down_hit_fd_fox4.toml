@@ -1,0 +1,27 @@
+# NESS yo-yo down smash, uncharged, hitting Fox as the yo-yo sweeps
+# forward (ftNs_AttackLw4_Anim).
+# melee-sim search: reached [p0.motion_id == 345; p1.percent > 0] at ticks [181, 210].
+name = "ness_yoyo_down_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 270
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 158, port = 0, buttons = {  }, raw = {  } },
+  { frame = 181, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 183, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

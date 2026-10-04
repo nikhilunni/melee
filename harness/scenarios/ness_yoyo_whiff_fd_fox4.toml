@@ -1,0 +1,28 @@
+# NESS yo-yo smashes whiffed: an uncharged up smash (A let go before frame
+# 13, ftNs_AttackHi4_IASA's isChargeDisable), then a down smash charged
+# until the charge's xAC frames release it (ftNs_AttackLw4Charge_Anim).
+name = "ness_yoyo_whiff_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 300, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

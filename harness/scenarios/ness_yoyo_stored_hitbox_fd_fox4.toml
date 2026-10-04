@@ -1,0 +1,31 @@
+# NESS yo-yo down smash with Fox behind: its first hit (frame 12) starts the
+# rehit timer, the script disables hitbox 0 at frame 32 (clear-all, x2219_b3
+# clear) and the timer's end at frame 42 enables it again with its stored
+# fields (lbColl_80008434) until the script's frame-44 clear.
+# melee-sim search: reached [p0.motion_id == 345; p1.percent > 0; p1.percent > 7.5] at ticks [144, 155, 155].
+name = "ness_yoyo_stored_hitbox_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 235
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 101, port = 0, buttons = {  }, raw = {  } },
+  { frame = 134, port = 1, buttons = {  }, raw = {  } },
+  { frame = 144, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 146, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,29 @@
+# NESS hit during the up smash's charge: the yo-yo hits Fox, then Fox's jab
+# puts Ness in DamageN with the yo-yo out; the article ends itself
+# (itNessyoyo_UnkMotion3_Anim, its destroy effect).
+# melee-sim search: reached [p0.motion_id == 343; p0.percent > 0] at ticks [164, 183].
+name = "ness_yoyo_charge_struck_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 243
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 131, port = 1, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 181, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 183, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

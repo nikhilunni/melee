@@ -1,0 +1,27 @@
+# NESS yo-yo down smash charged, the release hitting Fox with the charged
+# damage (ftNs_AttackHi4_YoyoSetChargeDamage).
+# melee-sim search: reached [p0.motion_id == 346; p0.motion_id == 347; p1.percent > 0] at ticks [205, 206, 222].
+name = "ness_yoyo_down_charge_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 282
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 158, port = 0, buttons = {  }, raw = {  } },
+  { frame = 181, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 206, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

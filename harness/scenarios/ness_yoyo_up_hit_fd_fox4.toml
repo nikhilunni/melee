@@ -1,0 +1,27 @@
+# NESS yo-yo up smash, uncharged, hitting Fox: hitbox 0 at the yo-yo's
+# point (ftNs_AttackHi4_YoyoUpdateHitPos) and the rehit timer it starts.
+# melee-sim search: reached [p0.motion_id == 342; p1.percent > 0] at ticks [184, 198].
+name = "ness_yoyo_up_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_ness_fox4.sav"
+frames = 258
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 161, port = 0, buttons = {  }, raw = {  } },
+  { frame = 184, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 186, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Ness"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

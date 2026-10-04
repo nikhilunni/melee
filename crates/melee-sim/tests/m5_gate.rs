@@ -2141,6 +2141,33 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_ness_fox4_e6af4a7bb_p0", 166),
     // Explorer: a clean whole-match sample (Fox wins) with no yo-yo smash.
     ("corpus_v3_fd_ness_fox4_ee98155f3_p0", 2516),
+    // The yo-yo smashes (ftnessattackhi4.c, ftnessattacklw4.c, the article
+    // itnessyoyo.c): the bat, then a charged up and an uncharged down smash
+    // whiffed; an uncharged up and a fully charged down whiffed (its yo-yo
+    // on the floor); each smash on Fox, charged on Fox (the charge's swing
+    // and the release's scaled damage), on his shield; Ness struck in the
+    // charge (the article ends itself, with its destroy effect); the yo-yo
+    // hanging over the ledge; and hitbox 0 enabled again by the rehit timer
+    // after the script's clear-all, with its stored fields.
+    ("ness_smash_fd_fox4", 620),
+    ("ness_yoyo_whiff_fd_fox4", 400),
+    ("ness_yoyo_up_hit_fd_fox4", 258),
+    ("ness_yoyo_down_hit_fd_fox4", 270),
+    ("ness_yoyo_up_charge_hit_fd_fox4", 266),
+    ("ness_yoyo_down_charge_hit_fd_fox4", 282),
+    ("ness_yoyo_up_shield_fd_fox4", 256),
+    ("ness_yoyo_down_shield_fd_fox4", 269),
+    ("ness_yoyo_charge_struck_fd_fox4", 243),
+    ("ness_yoyo_edge_fd_fox4", 260),
+    ("ness_yoyo_stored_hitbox_fd_fox4", 235),
+    // Explorer: yo-yo smashes in play (they stopped at the unported entries).
+    ("corpus_v3_fd_ness_fox4_e0fcf0c70_p0", 214),
+    ("corpus_v3_fd_ness_fox4_eae52f0ea_p0", 86),
+    ("corpus_v3_fd_ness_fox4_ee98155f3_p2", 90),
+    ("corpus_v3_fd_ness_fox4_ef9b6d16d_p1", 205),
+    // A whole match: the down smash's article ends itself when Ness jumps
+    // out of the smash, and plays its destroy effect.
+    ("corpus_v3_fd_ness_fox4_ec3145eb3_p2", 3739),
 ];
 
 #[test]
