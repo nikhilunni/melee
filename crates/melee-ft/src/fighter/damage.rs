@@ -2788,6 +2788,7 @@ impl Fighter {
     /// truncated before halving (at least 1), the knockback count is the
     /// item's integer damage halved (at least 1), and it_8026FC00 marks the
     /// victim on the item's group. Invincible victims log nothing.
+    #[allow(clippy::too_many_arguments)] // The contact, its capsule and both data tables stay separate.
     fn log_item_phantom_contact(
         &mut self,
         item: &mut melee_it::ItemCore,
