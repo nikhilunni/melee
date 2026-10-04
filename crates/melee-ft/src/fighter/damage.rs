@@ -2001,7 +2001,8 @@ fn detect_eligible_hit(
         }
         // ftColl_80076ED8: x1988, x198C, x221D_b6 or the capsule's own state
         // (hit1->state) keep the hit out of the damage and phantom logs.
-        let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible;
+        let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible
+            || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal;
         if contact.overlap < assets.damage.phantom_threshold {
             log_phantom_contact(victim, attacker, id, contact, height, invincible, credit);
             return;
@@ -2028,9 +2029,6 @@ fn detect_eligible_hit(
                     position: contact.position,
                 });
             return;
-        }
-        if victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal {
-            unimplemented!("ftcoll.c:658-662: invincible contact");
         }
         let descriptor = desc.clone();
         // ftColl_80076ED8 inlineB3: a captured fighter takes PlCo +128 of a
@@ -2698,13 +2696,23 @@ impl Fighter {
             if intangible {
                 continue;
             }
-            let Some((contact, height)) =
-                melee_coll::detection::first_contact(&mut self.core, &hit, item.scale)
+            let Some((contact, height, capsule_status)) =
+                melee_coll::detection::first_hurt_contact(&mut self.core, &hit, item.scale)
             else {
                 continue;
             };
+            // ftColl_80077C60 (retail 0x80077F08 phantom, 0x80078188
+            // ordinary): x1988, x198C or the capsule's own state
+            // (hit2->state) keep the hit out of the damage and phantom logs;
+            // the item still records the contact and its victim, and the
+            // spark is efSync_Spawn 0x41C (0x80078358).
+            let invincible = self.status.revival_invincibility != 0
+                || self.commands.hurt_status != melee_types::combat::HurtStatus::Normal
+                || capsule_status != melee_types::combat::HurtStatus::Normal;
             if contact.overlap < assets.damage.phantom_threshold {
-                self.log_item_phantom_contact(item, &hit, contact, height, assets, common);
+                self.log_item_phantom_contact(
+                    item, &hit, contact, height, invincible, assets, common,
+                );
                 // ftColl_8007925C (ftcoll.c:2315): a phantom contact only
                 // breaks the hurt-capsule loop; the item's next hitbox is
                 // still tested and can land a full hit (Fox's throw laser
@@ -2727,7 +2735,7 @@ impl Fighter {
             }
             // ftColl_80077C60 (ftcoll.c:1158): the victim's damage scale.
             descriptor.damage *= self.received_damage_scale();
-            if self.status.revival_invincibility != 0 {
+            if invincible {
                 item.record_fighter_victim(id, descriptor.group, self.spawn_number);
                 self.effects
                     .push(melee_ef::request::EffectRequest::ShieldSpark {
@@ -2785,6 +2793,7 @@ impl Fighter {
         hit: &HitCapsule,
         contact: Contact,
         height: HurtHeight,
+        invincible: bool,
         assets: &FighterAssets,
         common: &melee_it::desc::ItemCommonData,
     ) {
@@ -2819,9 +2828,7 @@ impl Fighter {
             descriptor.group,
             self.spawn_number,
         );
-        if self.commands.hurt_status == melee_types::combat::HurtStatus::Normal
-            && self.status.revival_invincibility == 0
-        {
+        if !invincible {
             let facing = melee_it::hurt::hit_direction(
                 self.physics.position.x,
                 item.position.x,

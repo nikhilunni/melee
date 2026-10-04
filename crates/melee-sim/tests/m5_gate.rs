@@ -119,6 +119,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("slope_")
         || name.starts_with("peach3_")
         || name.starts_with("held_item_")
+        || REPLAY_BRANCH_WITNESSES.iter().any(|(n, _)| *n == name)
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -1772,6 +1773,22 @@ const MATRIX_WITNESSES: [(&str, usize); 509] = [
 #[test]
 fn matrix_witnesses_match_retail() {
     gate_in_parallel(&MATRIX_WITNESSES);
+}
+
+/// Directed witnesses for branches tournament replays reach
+/// (`public-v3.7-b`), each gated with its items.
+const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
+    // An item hitbox on an invincible hurt capsule (ftColl_80077C60,
+    // ftcoll.c:1271): Fox's laser on Yoshi's egg startup, GuardOn_1 (345)
+    // and GuardOn (341). The item records its victim and dealt damage;
+    // nothing is logged for the fighter.
+    ("invincible_egg_reflect_laser_fd_yoshi", 260),
+    ("invincible_egg_startup_laser_fd_yoshi", 260),
+];
+
+#[test]
+fn replay_branch_witnesses_match_retail() {
+    gate_in_parallel(REPLAY_BRANCH_WITNESSES);
 }
 
 /// Donkey Kong vs Fox on Final Destination (boundary

@@ -1,0 +1,29 @@
+# INVINCIBLE-CAPSULE directed witness (boundary start_fd_yoshi_fox4). Fox
+# fires a laser at tick 150; Yoshi presses digital L at 173 (GuardOn_1, 345:
+# the egg's startup, every hurt capsule HurtCapsule_Invincible). The laser
+# passes the still-small egg and touches a hurt capsule at 175: retail's
+# ftColl_80077C60 (ftcoll.c:1271) records the item's victim and its dealt
+# damage but logs nothing, so Yoshi takes no damage, hitlag or knockback, and
+# the laser is destroyed on its hit. The hold (342) follows at 179.
+name = "invincible_egg_reflect_laser_fd_yoshi"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_yoshi_fox4.sav"
+frames = 260
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 150, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 152, port = 1, buttons = {  }, raw = {  } },
+  { frame = 173, port = 0, buttons = {  }, raw = { button = 64, triggerL = 140 } },
+  { frame = 215, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Yoshi"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
