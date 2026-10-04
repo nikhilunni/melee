@@ -1,0 +1,30 @@
+# HGOD Falco + Ice Climbers (BF, ports 1, 3): Popo's unlaunched ice block lands on the side platform under him (tick 121: it_8026E15C settles it, it_802C1950 stops it); Nana jumps at Falco hanging from the ledge above her (tick 1781: ftCo_800B732C, ftCo_800B7180)
+# The port's side of slp_bf_falco_iceclimbers_t2050: boundary start_bf_slippi8_p13_falco3_iceclimbers1_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_bf_falco_iceclimbers_t2050_cold"
+expected = "slp_bf_falco_iceclimbers_t2050"
+frames = 2050
+seed = 3723152446
+boundary_seed = 2862227131
+stage = "Battlefield"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 2
+kind = "IceClimbers"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

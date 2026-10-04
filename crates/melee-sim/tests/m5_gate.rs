@@ -1656,7 +1656,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 8] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 9] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -1681,6 +1681,9 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 8] = [
     // Peach's down smash, entered in the input proc, flushes her queued
     // shine spark before the new script's smash voice draws (1048).
     ("slp_dl_peach_fox_t1300_cold", 1300),
+    // Popo's unlaunched ice block meets Battlefield's top platform (121);
+    // Nana's edge-guard test leaves a ledge target below her alone (1781).
+    ("slp_bf_falco_iceclimbers_t2050_cold", 2050),
 ];
 
 #[test]

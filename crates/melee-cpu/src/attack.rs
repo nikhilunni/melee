@@ -538,7 +538,14 @@ pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, _rng: &mut HsdRng) 
         return 0;
     }
     if ledge_state(target) != 0 {
-        unimplemented!("ftCo_800B732C: a target on the ledge");
+        // 800B738C..800B7398: a ledge target below the CPU (fcmpo, bge) is
+        // left alone.
+        if target.core.physics.position.y < fp.core.physics.position.y {
+            return 0;
+        }
+        unimplemented!(
+            "ftCo_800B732C: a target on a ledge above the CPU (ftcpuattack.c:1258, mpCheckCeiling and the 75 degree test)"
+        );
     }
     if !fp.core.cpu.xf9_b3 {
         return 0;
