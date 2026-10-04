@@ -3622,7 +3622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 530] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 535] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4440,6 +4440,13 @@ const CORPUS_V3_MATCHES: [(&str, usize); 530] = [
     ("corpus_v3_fd_gameandwatch_fox4_e1daf2f01_p1", 312),
     ("corpus_v3_fd_gameandwatch_fox4_eab94f536_p0", 354),
     ("corpus_v3_fd_gameandwatch_fox4_e63e1b15d_p0", 2207),
+    // The climbers' Blizzard freezing Fox at 67-79% (DamageIce), standing
+    // and falling, on Final Destination and Battlefield, once Nana's alone.
+    ("corpus_v3_fd_iceclimbers_fox4_e1a144038_p1", 1407),
+    ("corpus_v3_fd_iceclimbers_fox4_e661568b9_p1", 1451),
+    ("corpus_v3_fd_iceclimbers_fox4_e4ff31316_p1", 1483),
+    ("corpus_v3_bf_iceclimbers_fox4_e12d92447_p0", 1750),
+    ("corpus_v3_fd_iceclimbers_fox4_eb639b4ed_p0", 1717),
     // Seven more whole random matches from start_fd_gameandwatch_fox4.
     ("corpus_v3_fd_gameandwatch_fox4_ee9675143_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_e2bad8462_p1", 6001),
