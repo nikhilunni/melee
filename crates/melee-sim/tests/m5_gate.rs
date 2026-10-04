@@ -976,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 437] = [
+const MATRIX_WITNESSES: [(&str, usize); 438] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1620,6 +1620,10 @@ const MATRIX_WITNESSES: [(&str, usize); 437] = [
     ("held_item_throws_fd_peach", 700),
     ("held_item_throws_fd_link", 760),
     ("held_item_pass_throw_ys_peach", 400),
+    // Peach's jump out of a platform drop with the stick down is one frame
+    // of JumpAerial before the float: ftCo_Pass_IASA (8009A2D8) has no float
+    // check, only the aerial jump (0x8009A36C).
+    ("peach_pass_jump_float_ys_peach", 300),
 ];
 
 #[test]

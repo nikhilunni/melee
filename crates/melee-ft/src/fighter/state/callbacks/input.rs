@@ -269,6 +269,11 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
                     phase == crate::fighter::FloatInputPhase::BeforeAerialJump
                         || fighter.core.commands.variables[0] != 0
                 }
+                // ftCo_Pass_IASA (8009A2D8) ends at the aerial jump
+                // (0x8009A36C: bl ftCo_800CB870): unlike Fall it has neither
+                // float check (ftPe_8011BA54, ftPe_8011BAD8), so jump held
+                // with the stick down is one frame of JumpAerial first.
+                MotionData::Pass { .. } => false,
                 _ => true,
             };
             enabled

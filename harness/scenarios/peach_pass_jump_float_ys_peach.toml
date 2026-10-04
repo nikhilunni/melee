@@ -1,0 +1,31 @@
+# PEACH directed witness: the jump out of a platform drop with the stick
+# down. From the start_ys_peach_yoshi4 boundary Peach stands on Yoshi's
+# Story's left platform, holds the stick down (Squat, then Pass) and presses
+# Y: ftCo_Pass_IASA (8009A2D8) has no float check (Fall's ftPe_8011BA54
+# before the aerial jump is absent), so its last call ftCo_800CB870
+# (0x8009A36C) starts the aerial jump, and JumpAerial's own check starts the
+# float one tick later.
+name = "peach_pass_jump_float_ys_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_peach_yoshi4.sav"
+frames = 300
+seed = 1
+stage = "YoshisStory"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 2048, stickY = -127 } },
+  { frame = 150, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Yoshi"
+controller = "scripted"
