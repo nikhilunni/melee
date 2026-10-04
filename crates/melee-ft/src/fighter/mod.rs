@@ -224,6 +224,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// hand (no item branch in the character's special code); a special
     /// entered while holding one otherwise fails closed.
     const SPECIALS_KEEP_HELD_ITEM: bool = false;
+    /// The character rows with MotionState.x9_b1 (bit 22 of the word at
+    /// +8), whose grounded entry starts the KO credit's countdown
+    /// (fighter.c:1185). In the retail tables only Donkey Kong's, Kirby's,
+    /// Mr. Game & Watch's and Sandbag's have any.
+    const KO_COUNTDOWN_ROWS: &'static [u16] = &[];
     /// Fighter x2226_b1, set by the kind's OnLoad (Yoshi, ftYs_Init_OnLoad):
     /// the down bound's face-up/face-down choice from HipN is inverted
     /// (ftCo_8009794C, ftCo_DownBound.c:129-131).

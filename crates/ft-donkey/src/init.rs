@@ -77,6 +77,9 @@ impl CharacterCallbacks for DonkeyKong {
     const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
         |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// ftDk_Init_MotionStateTable's rows with x9_b1 (read from the DOL):
+    /// HeavyWait, HeavyLanding, ThrowFWait0 and ThrowFLanding.
+    const KO_COUNTDOWN_ROWS: &'static [u16] = &[341, 349, 351, 359];
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     /// ftData_SpecialN/S/Hi/Lw[Donkey] and the aerial tables (no aerial

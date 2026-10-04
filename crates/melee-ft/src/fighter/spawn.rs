@@ -987,10 +987,15 @@ impl Fighter {
             self.core.parasol.restore_on_ground();
             // fighter.c:1183-1192: a neutral grounded motion (x9_b1) starts
             // the KO credit's countdown.
-            if !change.skip_ko_credit_countdown
-                && usize::from(row.action.0) < super::COMMON_COUNT
-                && super::ko_source::starts_countdown(state)
-            {
+            let counts = if usize::from(row.action.0) < super::COMMON_COUNT {
+                super::ko_source::starts_countdown(state)
+            } else {
+                self.character
+                    .table()
+                    .ko_countdown_rows
+                    .contains(&row.action.0)
+            };
+            if !change.skip_ko_credit_countdown && counts {
                 self.core
                     .combat
                     .ko_source

@@ -30,6 +30,7 @@ pub struct CharacterTable {
     pub enter_aerial: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
     pub special_rows: &'static [MotionRow],
     pub specials_keep_held_item: bool,
+    pub ko_countdown_rows: &'static [u16],
     pub down_bound_inverted: bool,
     pub special_moves: &'static [Option<melee_types::combat::StaleMove>],
     /// MotionState.x9_b0 of the character's rows (see `state::partner_sync`).
@@ -147,6 +148,7 @@ impl CharacterTable {
             descriptor: C::descriptor,
             special_rows: C::SPECIAL_ROWS,
             specials_keep_held_item: C::SPECIALS_KEEP_HELD_ITEM,
+            ko_countdown_rows: C::KO_COUNTDOWN_ROWS,
             down_bound_inverted: C::DOWN_BOUND_INVERTED,
             special_moves: C::SPECIAL_MOVES,
             special_partner_sync: C::SPECIAL_PARTNER_SYNC,

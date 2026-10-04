@@ -69,9 +69,8 @@ impl KoSource {
 
 /// MotionState.x9_b1 (bit 22 of the word at +8): the 28 common motions
 /// that start the countdown, read from the retail table
-/// (ftData_MotionStateList, 0x803C2800). The character tables' rows are
-/// not modelled: in the decomp only Mr. Game & Watch's, Donkey Kong's,
-/// Kirby's and Sandbag's spell the bit, none of them ported.
+/// (ftData_MotionStateList, 0x803C2800). A character's own rows are its
+/// table's `ko_countdown_rows`.
 pub fn starts_countdown(state: S) -> bool {
     matches!(
         state,

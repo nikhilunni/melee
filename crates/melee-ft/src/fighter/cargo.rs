@@ -943,7 +943,13 @@ pub fn escape(
 ) -> Result<()> {
     let (victim_record, victim_count) = second_throw_record(victim);
     let (carrier_record, carrier_count) = second_throw_record(carrier);
-    // ftColl_80078710 only records the source for stats.
+    // ftColl_80078710, both calls (ftCo_Shouldered.c:72, 112): the carrier
+    // is the attacker and the shouldered fighter the victim each time, so
+    // only the latter's KO credit changes.
+    victim
+        .combat
+        .ko_source
+        .record(melee_coll::damage_log::HitCredit::Player(carrier.player.id));
     let knockback = aa.damage.knockback_for_frame(
         &victim_record,
         carrier.physics.percent,
