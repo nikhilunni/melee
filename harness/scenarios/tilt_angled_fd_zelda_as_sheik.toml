@@ -1,0 +1,34 @@
+# Angled forward tilts from a walk (ftCo_AttackS3 decideAngle, 0x8008B788)
+# by the Sheik a Zelda player transformed into (down-B at tick 120): her
+# archive is loaded beside Zelda's. RETAIL: Sheik's rows 53, 54, 56 and 57
+# have no animation (ftData_80085FD4, 0x80085FD4, falls back to a
+# leader's rows for Nana only), so both tilts are AttackS3S (53), at
+# ticks 264 and 334.
+name = "tilt_angled_fd_zelda_as_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_zelda_fox4.sav"
+frames = 430
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 124, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 264, port = 0, buttons = {  }, raw = { button = 256, stickX = 61, stickY = 51 } },
+  { frame = 266, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 334, port = 0, buttons = {  }, raw = { button = 256, stickX = 61, stickY = -51 } },
+  { frame = 336, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

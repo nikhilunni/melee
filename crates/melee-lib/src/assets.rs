@@ -70,7 +70,10 @@ impl Assets {
         let mut data_archives = std::collections::BTreeMap::new();
         // The previous fighter's descriptor, data and AJ bytes: a player's
         // partner (Nana) plays its own fighter's animations where its table
-        // authors none (ftData_80085FD4).
+        // authors none (ftData_80085FD4, 0x80085FD4: FTKIND_NANA only). A
+        // transformation partner never does: Sheik's table authors no angled
+        // forward tilts, and decideAngle (0x8008B788) must find them absent
+        // even with Zelda's loaded before her.
         let mut previous: Option<(
             &'static CharacterDescriptor,
             std::sync::Arc<Archive>,
@@ -87,7 +90,9 @@ impl Assets {
             let aj = read(descriptor.animation_file)?;
             let fallback = previous.as_ref().and_then(|(owner, data, aj)| {
                 let partner = crate::scene_fighter::SceneFighter::partner_for(owner)?;
-                (partner.kind == descriptor.kind).then_some(
+                let borrows = partner.kind == descriptor.kind
+                    && !crate::scene_fighter::transforms(partner.kind);
+                borrows.then_some(
                     melee_ft::fighter::assets::AnimationFallback {
                         descriptor: owner,
                         data,

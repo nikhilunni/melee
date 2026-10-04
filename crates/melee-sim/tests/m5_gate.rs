@@ -975,7 +975,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 431] = [
+const MATRIX_WITNESSES: [(&str, usize); 434] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1602,6 +1602,13 @@ const MATRIX_WITNESSES: [(&str, usize); 431] = [
     // and generators before the particle pass.
     ("sheikzelda_needle_struck_fd_sheik", 233),
     ("sheikzelda_needle_struck_dair_fd_sheik", 236),
+    // Angled forward tilts from a walk (decideAngle, 0x8008B788): Zelda
+    // authors them (AttackS3Hi, AttackS3Lw); Sheik does not, alone or as the
+    // form a Zelda player transformed into, whose rows never borrow Zelda's
+    // (ftData_80085FD4, 0x80085FD4: Nana only), so she tilts straight.
+    ("tilt_angled_fd_zelda", 300),
+    ("tilt_angled_fd_zelda_as_sheik", 430),
+    ("tilt_angled_fd_sheik", 300),
 ];
 
 #[test]

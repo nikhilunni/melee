@@ -1,0 +1,30 @@
+# Angled forward tilts from a walk (ftCo_AttackS3 decideAngle, 0x8008B788).
+# Sheik walks right and presses A with the stick at (61, 51), then at
+# (61, -51). RETAIL: Sheik authors no angled animation; both tilts are
+# AttackS3S (53), at ticks 134 and 204.
+name = "tilt_angled_fd_sheik"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_sheik_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 256, stickX = 61, stickY = 51 } },
+  { frame = 136, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 204, port = 0, buttons = {  }, raw = { button = 256, stickX = 61, stickY = -51 } },
+  { frame = 206, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
