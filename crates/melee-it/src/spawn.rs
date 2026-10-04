@@ -296,6 +296,11 @@ impl ItemHolder<'_> {
 /// Fighter-owned inputs sampled for the item callback; no fighter dependency.
 #[derive(Clone, Copy, Debug)]
 pub struct IllusionOwner {
+    /// ftFx_SpecialS_CheckGhostRemove (0x800E9E78) is false: the owner is
+    /// in one of its Illusion motions. Out of them the ghost is removed at
+    /// its next animation callback, but its physics callback still reads
+    /// the owner's motion scratch, which a death leaves in place.
+    pub in_illusion: bool,
     pub create_secondary: bool,
     pub positions: [Vec3; 4],
     pub rotations: [f32; 4],

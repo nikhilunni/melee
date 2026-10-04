@@ -1979,7 +1979,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 13] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 14] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2012,6 +2012,11 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 13] = [
     // Popo's unlaunched ice block meets Battlefield's top platform (121);
     // Nana's edge-guard test leaves a ledge target below her alone (1781).
     ("slp_bf_falco_iceclimbers_t2050_cold", 2050),
+    // The same game on: Falco's Phantasm carries him past the right blast
+    // zone on the tick its ghost appears (2063). The ghost's physics
+    // callback still reads his second position sample, which DeadRight
+    // leaves in the motion scratch; Nana's CPU goes on with the KO total.
+    ("slp_bf_falco_iceclimbers_t2400_cold", 2400),
     // Final Destination from a boundary created from the replay's Game
     // Start seed: the background's accelerations are the console's, so its
     // limit draws (grLast_8021ADD0: 206, 309, 606, ... twelve by 3000) fall

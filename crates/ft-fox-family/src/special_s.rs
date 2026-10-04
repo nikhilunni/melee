@@ -536,11 +536,22 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
 
 pub fn item_owner<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> melee_it::ItemOwner {
     let mut owner = crate::special_n::item_owner::<C>(f, assets);
-    let active =
-        (S::SpecialSStart as u16..=S::SpecialAirSEnd as u16).contains(&f.motion_state.action.0);
+    let action = f.motion_state.action.0;
+    let in_illusion = ILLUSION.contains(&action);
+    // A fall past a side or the bottom keeps the ghost samples in the
+    // motion scratch: DeadDown, DeadLeft and DeadRight write only fp+2340
+    // (the countdown, 0x800D398C) and fp+236C/2370 (ftCo_800D331C,
+    // 0x800D34B8), the last sample's y and z. The ghost's physics callback
+    // reads them once more on the tick its owner dies; other motions put
+    // their own words there (not modelled: the ghost keeps its place).
+    let dead = action == CommonMotionState::DeadDown as u16
+        || action == CommonMotionState::DeadLeft as u16
+        || action == CommonMotionState::DeadRight as u16;
     let create_secondary = f.commands.variables[2] == 2;
     let scratch = f.character.get_mut::<C>().special_side();
-    owner.illusion = active.then_some(melee_it::IllusionOwner {
+    let readable = in_illusion || (dead && scratch.ghosts_recorded);
+    owner.illusion = readable.then_some(melee_it::IllusionOwner {
+        in_illusion,
         create_secondary,
         positions: scratch.ghost_positions,
         rotations: scratch.ghost_rotations,
